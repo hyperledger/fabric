@@ -24,7 +24,12 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 )
+
+func TestMain(m *testing.M) {
+	ledgertestutil.SetupCoreYAMLConfig("./../../../../../../peer")
+}
 
 func TestTxSimulatorWithNoExistingData(t *testing.T) {
 	// run the tests for each environment configured in pkg_test.go
@@ -390,7 +395,6 @@ func testIteratorWithDeletes(t *testing.T, env testEnv) {
 	defer itr.Close()
 	kv, _ := itr.Next()
 	testutil.AssertEquals(t, kv.(*ledger.KV).Key, createTestKey(3))
-
 	kv, _ = itr.Next()
 	testutil.AssertEquals(t, kv.(*ledger.KV).Key, createTestKey(5))
 }
