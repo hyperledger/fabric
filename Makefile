@@ -23,7 +23,7 @@
 #   - unit-test - runs the go-test based unit tests
 #   - test-cmd - generates a "go test" string suitable for manual customization
 #   - behave - runs the behave test
-#   - behave-deps - ensures pre-requisites are availble for running behave manually
+#   - behave-deps - ensures pre-requisites are available for running behave manually
 #   - gotools - installs go tools like golint
 #   - linter - runs all code checks
 #   - native - ensures all native binaries are available
@@ -33,6 +33,7 @@
 #   - protos - generate all protobuf artifacts based on .proto files
 #   - clean - cleans the build area
 #   - dist-clean - superset of 'clean' that also removes persistent state
+#   - unit-test-clean - cleans unit test state (particularly from docker)
 
 PROJECT_NAME   = hyperledger/fabric
 BASE_VERSION   = 1.0.0
@@ -114,7 +115,7 @@ testenv: build/image/testenv/$(DUMMY)
 
 couchdb: build/image/couchdb/$(DUMMY)
 
-unit-test: peer-docker testenv couchdb
+unit-test: unit-test-clean peer-docker testenv couchdb
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
@@ -267,9 +268,13 @@ protos: buildenv
 docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
 
 .PHONY: clean
-clean: docker-clean
+clean: docker-clean unit-test-clean
 	-@rm -rf build ||:
 
 .PHONY: dist-clean
 dist-clean: clean gotools-clean
 	-@rm -rf /var/hyperledger/* ||:
+
+.PHONY: unit-test-clean
+unit-test-clean:
+	cd unit-test && docker-compose down
