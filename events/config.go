@@ -19,6 +19,7 @@ package events
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"runtime"
 	"strings"
 
@@ -75,7 +76,12 @@ func SetupTestConfig() {
 		bccspConfig = nil
 	}
 
-	msp.SetupBCCSPKeystoreConfig(bccspConfig, viper.GetString("peer.mspConfigPath")+"/keystore")
+	tmpKeyStore, err := ioutil.TempDir("/tmp", "msp-keystore")
+	if err != nil {
+		panic(fmt.Errorf("Could not create temporary directory: %s\n", tmpKeyStore))
+	}
+
+	msp.SetupBCCSPKeystoreConfig(bccspConfig, tmpKeyStore)
 
 	err = factory.InitFactories(bccspConfig)
 	if err != nil {
