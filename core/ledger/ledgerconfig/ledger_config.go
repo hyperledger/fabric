@@ -91,7 +91,12 @@ func GetCouchDBDefinition() *CouchDBDef {
 
 //GetQueryLimit exposes the queryLimit variable
 func GetQueryLimit() int {
-	return viper.GetInt("ledger.state.queryLimit")
+	queryLimit := viper.GetInt("ledger.state.queryLimit")
+	// if queryLimit was unset, default to 10000
+	if queryLimit == 0 {
+		queryLimit = 10000
+	}
+	return queryLimit
 }
 
 //IsHistoryDBEnabled exposes the historyDatabase variable
