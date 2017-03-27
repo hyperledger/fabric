@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/filter"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
@@ -45,6 +46,9 @@ type Config struct {
 	PullPeerNum              int
 	PullInterval             time.Duration
 	RequestStateInfoInterval time.Duration
+
+	BlockExpirationInterval     time.Duration
+	StateInfoExpirationInterval time.Duration
 }
 
 // GossipChannel defines an object that deals with all channel-related messages
@@ -166,13 +170,22 @@ func NewGossipChannel(pkiID common.PKIidType, mcs api.MessageCryptoService, chai
 	gc.memFilter = &membershipFilter{adapter: gc.Adapter, gossipChannel: gc}
 
 	comparator := proto.NewGossipMessageComparator(adapter.GetConf().MaxBlockCountToStore)
-	gc.blockMsgStore = msgstore.NewMessageStore(comparator, func(m interface{}) {
+
+	gc.blocksPuller = gc.createBlockPuller()
+
+	gc.blockMsgStore = msgstore.NewMessageStoreExpirable(comparator, func(m interface{}) {
+		gc.blocksPuller.Remove(m.(*proto.SignedGossipMessage))
+	}, gc.GetConf().BlockExpirationInterval, nil, nil, func(m interface{}) {
 		gc.blocksPuller.Remove(m.(*proto.SignedGossipMessage))
 	})
 
-	gc.stateInfoMsgStore = newStateInfoCache()
-	gc.blocksPuller = gc.createBlockPuller()
-	gc.leaderMsgStore = msgstore.NewMessageStore(proto.NewGossipMessageComparator(0), func(m interface{}) {})
+	gc.stateInfoMsgStore = newStateInfoCache(gc.GetConf().StateInfoExpirationInterval)
+
+	ttl := election.GetMsgExpirationTimeout()
+	noopFunc := func(m interface{}) {}
+	pol := proto.NewGossipMessageComparator(0)
+
+	gc.leaderMsgStore = msgstore.NewMessageStoreExpirable(pol, noopFunc, ttl, nil, nil, nil)
 
 	gc.ConfigureChannel(joinMsg)
 
@@ -189,6 +202,9 @@ func (gc *gossipChannel) Stop() {
 	gc.blocksPuller.Stop()
 	gc.stateInfoPublishScheduler.Stop()
 	gc.stateInfoRequestScheduler.Stop()
+	gc.leaderMsgStore.Stop()
+	gc.stateInfoMsgStore.Stop()
+	gc.blockMsgStore.Stop()
 }
 
 func (gc *gossipChannel) periodicalInvocation(fn func(), c <-chan time.Time) {
@@ -586,16 +602,31 @@ func (gc *gossipChannel) UpdateStateInfo(msg *proto.SignedGossipMessage) {
 	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(1))
 }
 
-// NewStateInfoMessageStore returns a MessageStore
-func NewStateInfoMessageStore() msgstore.MessageStore {
-	return msgstore.NewMessageStore(proto.NewGossipMessageComparator(0), func(m interface{}) {})
+// NewStateInfoMessageStore returns a expirable MessageStore
+// ttl is time duration before msg expires and removed from store
+func NewStateInfoMessageStore(ttl time.Duration) msgstore.MessageStore {
+	return NewStateInfoMessageStoreWithCallback(ttl, nil)
 }
 
-func newStateInfoCache() *stateInfoCache {
-	return &stateInfoCache{
-		MembershipStore: util.NewMembershipStore(),
-		MessageStore:    NewStateInfoMessageStore(),
+// NewStateInfoMessageStoreWithCallback returns a exiprable MessageStore
+// Callback invoked once message expires and removed from store
+// ttl is time duration before msg expires
+func NewStateInfoMessageStoreWithCallback(ttl time.Duration, callback func(m interface{})) msgstore.MessageStore {
+	pol := proto.NewGossipMessageComparator(0)
+	noopTrigger := func(m interface{}) {}
+	return msgstore.NewMessageStoreExpirable(pol, noopTrigger, ttl, nil, nil, callback)
+}
+
+func newStateInfoCache(ttl time.Duration) *stateInfoCache {
+	membershipStore := util.NewMembershipStore()
+	callback := func(m interface{}) {
+		membershipStore.Remove(m.(*proto.SignedGossipMessage).GetStateInfo().PkiId)
 	}
+	s := &stateInfoCache{
+		MembershipStore: membershipStore,
+		MessageStore:    NewStateInfoMessageStoreWithCallback(ttl, callback),
+	}
+	return s
 }
 
 // stateInfoCache is actually a messageStore
@@ -611,8 +642,8 @@ type stateInfoCache struct {
 // Message must be a StateInfo message.
 func (cache *stateInfoCache) Add(msg *proto.SignedGossipMessage) bool {
 	added := cache.MessageStore.Add(msg)
-	pkiID := msg.GetStateInfo().PkiId
 	if added {
+		pkiID := msg.GetStateInfo().PkiId
 		cache.MembershipStore.Put(pkiID, msg)
 	}
 	return added

@@ -126,12 +126,14 @@ type gossipAdapterImpl struct {
 
 func (ga *gossipAdapterImpl) GetConf() channel.Config {
 	return channel.Config{
-		ID:                       ga.conf.ID,
-		MaxBlockCountToStore:     ga.conf.MaxBlockCountToStore,
-		PublishStateInfoInterval: ga.conf.PublishStateInfoInterval,
-		PullInterval:             ga.conf.PullInterval,
-		PullPeerNum:              ga.conf.PullPeerNum,
-		RequestStateInfoInterval: ga.conf.RequestStateInfoInterval,
+		ID:                          ga.conf.ID,
+		MaxBlockCountToStore:        ga.conf.MaxBlockCountToStore,
+		PublishStateInfoInterval:    ga.conf.PublishStateInfoInterval,
+		PullInterval:                ga.conf.PullInterval,
+		PullPeerNum:                 ga.conf.PullPeerNum,
+		RequestStateInfoInterval:    ga.conf.RequestStateInfoInterval,
+		BlockExpirationInterval:     ga.conf.PullInterval * 100,
+		StateInfoExpirationInterval: ga.conf.PublishStateInfoInterval * 100,
 	}
 }
 
