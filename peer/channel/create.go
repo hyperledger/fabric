@@ -21,6 +21,8 @@ import (
 	"io/ioutil"
 	"time"
 
+	"errors"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
@@ -34,6 +36,8 @@ import (
 
 //ConfigTxFileNotFound channel create configuration tx file not found
 type ConfigTxFileNotFound string
+
+const createCmdDescription = "Create a channel"
 
 func (e ConfigTxFileNotFound) Error() string {
 	return fmt.Sprintf("channel create configuration tx file not found %s", string(e))
@@ -49,8 +53,8 @@ func (e InvalidCreateTx) Error() string {
 func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 	createCmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create a chain.",
-		Long:  `Create a chain.`,
+		Short: createCmdDescription,
+		Long:  createCmdDescription,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return create(cmd, args, cf)
 		},
@@ -165,7 +169,7 @@ func executeCreate(cf *ChannelCmdFactory) error {
 func create(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	//the global chainID filled by the "-c" command
 	if chainID == common.UndefinedParamValue {
-		return fmt.Errorf("Must supply channel ID .\n")
+		return errors.New("Must supply channel ID")
 	}
 
 	var err error
