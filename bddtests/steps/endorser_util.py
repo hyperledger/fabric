@@ -23,7 +23,7 @@ from peer import chaincode_pb2
 from peer import transaction_pb2
 from peer import proposal_pb2
 from peer import peer_pb2_grpc
-import identities_pb2
+from msp import identities_pb2
 
 from common import common_pb2 as common_dot_common_pb2
 
@@ -62,7 +62,7 @@ def createInvokeProposalForBDD(context, ccSpec, chainID, signersCert, Mspid, typ
 
     bootstrapHelper = ContextHelper.GetHelper(context=context).getBootrapHelper(chainId=chainID)
 
-    serializedIdentity = identities_pb2.SerializedIdentity(Mspid=Mspid, IdBytes=crypto.dump_certificate(crypto.FILETYPE_PEM, signersCert))
+    serializedIdentity = identities_pb2.SerializedIdentity(mspid=Mspid, id_bytes=crypto.dump_certificate(crypto.FILETYPE_PEM, signersCert))
 
     nonce = bootstrap_util.BootstrapHelper.getNonce()
 

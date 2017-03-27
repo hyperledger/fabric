@@ -22,6 +22,8 @@ tags
 bddtests/coverage
 # bddtest Dockerfile
 bddtests/environments/kafka/Dockerfile
+bddtests/tmp
+bddtests/volumes
 *.cov
 # Makefile dummy artifacts
 .*-dummy
