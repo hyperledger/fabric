@@ -52,7 +52,7 @@ From your second terminal, lets create a channel by the name of "myc":
 
 .. code:: bash
 
-    peer channel create -c myc
+    peer channel create -c myc -o orderer:5005
 
 This will generate a genesis block - ``myc.block`` - and place it into
 the same directory from which you issued your ``peer channel create``
@@ -86,7 +86,7 @@ instantiation will initialize the chaincode with key value pairs of
 
 .. code:: bash
 
-    CORE_PEER_ADDRESS=peer0:7051 peer chaincode instantiate -C myc -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -v v0 -c '{"Args":["init","a","100","b","200"]}'
+    CORE_PEER_ADDRESS=peer0:7051 peer chaincode instantiate -o orderer:5005 -C myc -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -v v0 -c '{"Args":["init","a","100","b","200"]}'
 
 **Continue operating within your second terminal for the remainder of
 the commands**
