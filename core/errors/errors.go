@@ -116,7 +116,7 @@ func (h *hlError) Message() string {
 		// initialize logging level for errors from core.yaml. it can also be set
 		// for code running on the peer dynamically via CLI using
 		// "peer logging setlevel error <log-level>"
-		errorLogLevelString, _ := flogging.GetModuleLevel("error")
+		errorLogLevelString := flogging.GetModuleLevel("error")
 
 		if errorLogLevelString == logging.DEBUG.String() {
 			message = appendCallStack(message, h.GetStack())

@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,154 +24,96 @@ import (
 	"sync"
 
 	"github.com/op/go-logging"
-	"github.com/spf13/viper"
 )
 
-// A logger to log logging logs!
-var logger = logging.MustGetLogger("logging")
+const (
+	pkgLogID      = "flogging"
+	defaultFormat = "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
+	defaultLevel  = logging.INFO
+)
 
-var defaultFormat = "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
-var defaultOutput = os.Stderr
+var (
+	logger *logging.Logger
 
-// The default logging level, in force until LoggingInit() is called or in
-// case of configuration errors.
-var fallbackDefaultLevel = logging.INFO
+	defaultOutput *os.File
 
-var lock = sync.Mutex{}
+	modules map[string]string // Holds the map of all modules and their respective log level
+	lock    sync.Mutex
 
-// modules holds the map of all modules and the current log level
-var modules map[string]string
-
-// IsSetLevelByRegExpEnabled disables the code that will allow setting log
-// levels using a regular expression instead of one module/submodule at a time.
-// TODO - remove once peer code has switched over to using
-// flogging.MustGetLogger in place of logging.MustGetLogger
-var IsSetLevelByRegExpEnabled = false
+	// IsSetLevelByRegExpEnabled allows the setting of log levels using a regular
+	// expression, instead of one module at a time, when set to true.
+	// TODO Remove once all other packages have switched to
+	// `flogging.MustGetLogger` from `logging.MustGetLogger`.
+	IsSetLevelByRegExpEnabled bool
+)
 
 func init() {
+	logger = logging.MustGetLogger(pkgLogID)
+	Reset()
+}
+
+// Reset sets to logging to the defaults defined in this package.
+func Reset() {
+	IsSetLevelByRegExpEnabled = false // redundant since the default for booleans is `false` but added for clarity
 	modules = make(map[string]string)
+	lock = sync.Mutex{}
+
+	defaultOutput = os.Stderr
+	InitBackend(SetFormat(defaultFormat), defaultOutput)
+	InitFromSpec("")
 }
 
-// InitFromViper is a 'hook' called at the beginning of command processing to
-// parse logging-related options specified either on the command-line or in
-// config files.  Command-line options take precedence over config file
-// options, and can also be passed as suitably-named environment variables. To
-// change module logging levels at runtime call `logging.SetLevel(level,
-// module)`.  To debug this routine include logging=debug as the first
-// term of the logging specification.
-// TODO this initialization is specific to the peer config format.  The viper
-// references should be removed, and this path should be moved into the peer
-func InitFromViper(command string) {
-	spec := viper.GetString("logging_level")
-	if spec == "" {
-		spec = viper.GetString("logging." + command)
+// SetFormat sets the logging format.
+func SetFormat(formatSpec string) logging.Formatter {
+	if formatSpec == "" {
+		formatSpec = defaultFormat
 	}
-	defaultLevel := InitFromSpec(spec)
-	logger.Debugf("Setting default logging level to %s for command '%s'", defaultLevel, command)
+	return logging.MustStringFormatter(formatSpec)
 }
 
-// InitFromSpec initializes the logging based on the supplied spec, it is exposed externally
-// so that consumers of the flogging package who do not wish to use the default config structure
-// may parse their own logging specification
-func InitFromSpec(spec string) logging.Level {
-	// Parse the logging specification in the form
-	//     [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
-	defaultLevel := fallbackDefaultLevel
-	var err error
-	if spec != "" {
-		fields := strings.Split(spec, ":")
-		for _, field := range fields {
-			split := strings.Split(field, "=")
-			switch len(split) {
-			case 1:
-				// Default level
-				defaultLevel, err = logging.LogLevel(field)
-				if err != nil {
-					logger.Warningf("Logging level '%s' not recognized, defaulting to %s : %s", field, defaultLevel, err)
-					defaultLevel = fallbackDefaultLevel // NB - 'defaultLevel' was overwritten
-				}
-			case 2:
-				// <module>[,<module>...]=<level>
-				if level, err := logging.LogLevel(split[1]); err != nil {
-					logger.Warningf("Invalid logging level in '%s' ignored", field)
-				} else if split[0] == "" {
-					logger.Warningf("Invalid logging override specification '%s' ignored - no module specified", field)
-				} else {
-					modules := strings.Split(split[0], ",")
-					for _, module := range modules {
-						logging.SetLevel(level, module)
-						logger.Debugf("Setting logging level for module '%s' to %s", module, level)
-					}
-				}
-			default:
-				logger.Warningf("Invalid logging override '%s' ignored; Missing ':' ?", field)
-			}
-		}
-	}
-	// Set the default logging level for all modules
-	logging.SetLevel(defaultLevel, "")
-	return defaultLevel
-}
-
-// DefaultLevel returns the fallback value for loggers to use if parsing fails
-func DefaultLevel() logging.Level {
-	return fallbackDefaultLevel
-}
-
-// Initiate 'leveled' logging using the default format and output location
-func init() {
-	SetLoggingFormat(defaultFormat, defaultOutput)
-}
-
-// SetLoggingFormat sets the logging format and the location of the log output
-func SetLoggingFormat(formatString string, output io.Writer) {
-	if formatString == "" {
-		formatString = defaultFormat
-	}
-	format := logging.MustStringFormatter(formatString)
-
-	initLoggingBackend(format, output)
-}
-
-// initialize the logging backend based on the provided logging formatter
-// and I/O writer
-func initLoggingBackend(logFormatter logging.Formatter, output io.Writer) {
+// InitBackend sets up the logging backend based on
+// the provided logging formatter and I/O writer.
+func InitBackend(formatter logging.Formatter, output io.Writer) {
 	backend := logging.NewLogBackend(output, "", 0)
-	backendFormatter := logging.NewBackendFormatter(backend, logFormatter)
-	logging.SetBackend(backendFormatter).SetLevel(fallbackDefaultLevel, "")
+	backendFormatter := logging.NewBackendFormatter(backend, formatter)
+	logging.SetBackend(backendFormatter).SetLevel(defaultLevel, "")
 }
 
-// GetModuleLevel gets the current logging level for the specified module
-func GetModuleLevel(module string) (string, error) {
+// DefaultLevel returns the fallback value for loggers to use if parsing fails.
+func DefaultLevel() string {
+	return defaultLevel.String()
+}
+
+// GetModuleLevel gets the current logging level for the specified module.
+func GetModuleLevel(module string) string {
 	// logging.GetLevel() returns the logging level for the module, if defined.
-	// otherwise, it returns the default logging level, as set by
-	// flogging/logging.go
+	// Otherwise, it returns the default logging level, as set by
+	// `flogging/logging.go`.
 	level := logging.GetLevel(module).String()
-
-	logger.Debugf("Module '%s' logger enabled for log level: %s", module, level)
-
-	return level, nil
+	logger.Debugf("Module '%s' logger set to '%s' log level", module, level)
+	return level
 }
 
-// SetModuleLevel sets the logging level for the modules that match the
-// supplied regular expression. This is can be called from anywhere in the
-// code on a running peer to dynamically change log levels.
-func SetModuleLevel(moduleRegExp string, logLevel string) (string, error) {
-	level, err := logging.LogLevel(logLevel)
+// SetModuleLevel sets the logging level for the modules that match the supplied
+// regular expression. Can be used to dynamically change the log level for the
+// module.
+func SetModuleLevel(moduleRegExp string, level string) (string, error) {
+	var re *regexp.Regexp
 
+	logLevel, err := logging.LogLevel(level)
 	if err != nil {
-		logger.Warningf("Invalid logging level: %s - ignored", logLevel)
+		logger.Warningf("Invalid logging level '%s' - ignored", level)
 	} else {
-		// TODO - this check is in here temporarily until all modules have been
-		// converted to using flogging.MustGetLogger. until that point, this flag
-		// keeps the previous behavior in place.
+		// TODO This check is here to preserve the old functionality until all
+		// other packages switch to `flogging.MustGetLogger` (from
+		// `logging.MustGetLogger`).
 		if !IsSetLevelByRegExpEnabled {
-			logging.SetLevel(logging.Level(level), moduleRegExp)
-			logger.Infof("Module '%s' logger enabled for log level: %s", moduleRegExp, level)
+			logging.SetLevel(logging.Level(logLevel), moduleRegExp)
+			logger.Debugf("Module '%s' logger enabled for log level '%s'", moduleRegExp, logLevel)
 		} else {
-			re, err := regexp.Compile(moduleRegExp)
+			re, err = regexp.Compile(moduleRegExp)
 			if err != nil {
-				logger.Warningf("Invalid regular expression for module: %s", moduleRegExp)
+				logger.Warningf("Invalid regular expression: %s", moduleRegExp)
 				return "", err
 			}
 
@@ -179,31 +121,67 @@ func SetModuleLevel(moduleRegExp string, logLevel string) (string, error) {
 			defer lock.Unlock()
 			for module := range modules {
 				if re.MatchString(module) {
-					logging.SetLevel(logging.Level(level), module)
-					modules[module] = logLevel
-					logger.Infof("Module '%s' logger enabled for log level: %s", module, level)
+					logging.SetLevel(logging.Level(logLevel), module)
+					modules[module] = logLevel.String()
+					logger.Infof("Module '%s' logger enabled for log level '%s'", module, logLevel)
 				}
 			}
 		}
 	}
-
-	logLevelString := level.String()
-
-	return logLevelString, err
+	return logLevel.String(), err
 }
 
-// MustGetLogger is used in place of logging.MustGetLogger to allow us to store
-// a map of all modules and submodules that have loggers in the system
+// MustGetLogger is used in place of `logging.MustGetLogger` to allow us to
+// store a map of all modules and submodules that have loggers in the system.
 func MustGetLogger(module string) *logging.Logger {
-	logger := logging.MustGetLogger(module)
-
-	// retrieve the current log level for the logger
-	level := logging.GetLevel(module).String()
-
-	// store the module's name as well as the current log level for the logger
+	l := logging.MustGetLogger(module)
 	lock.Lock()
 	defer lock.Unlock()
-	modules[module] = level
+	modules[module] = GetModuleLevel(module)
+	return l
+}
 
-	return logger
+// InitFromSpec initializes the logging based on the supplied spec. It is
+// exposed externally so that consumers of the flogging package may parse their
+// own logging specification. The logging specification has the following form:
+//		[<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
+func InitFromSpec(spec string) string {
+	levelAll := defaultLevel
+	var err error
+
+	if spec != "" {
+		fields := strings.Split(spec, ":")
+		for _, field := range fields {
+			split := strings.Split(field, "=")
+			switch len(split) {
+			case 1:
+				if levelAll, err = logging.LogLevel(field); err != nil {
+					logger.Warningf("Logging level '%s' not recognized, defaulting to '%s': %s", field, defaultLevel, err)
+					levelAll = defaultLevel // need to reset cause original value was overwritten
+				}
+			case 2:
+				// <module>[,<module>...]=<level>
+				levelSingle, err := logging.LogLevel(split[1])
+				if err != nil {
+					logger.Warningf("Invalid logging level in '%s' ignored", field)
+					continue
+				}
+
+				if split[0] == "" {
+					logger.Warningf("Invalid logging override specification '%s' ignored - no module specified", field)
+				} else {
+					modules := strings.Split(split[0], ",")
+					for _, module := range modules {
+						logger.Debugf("Setting logging level for module '%s' to '%s'", module, levelSingle)
+						logging.SetLevel(levelSingle, module)
+					}
+				}
+			default:
+				logger.Warningf("Invalid logging override '%s' ignored - missing ':'?", field)
+			}
+		}
+	}
+
+	logging.SetLevel(levelAll, "") // set the logging level for all modules
+	return levelAll.String()
 }

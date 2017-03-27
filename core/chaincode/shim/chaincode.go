@@ -127,8 +127,9 @@ func SetupChaincodeLogging() {
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 
-	logFormat := viper.GetString("chaincode.logFormat")
-	flogging.SetLoggingFormat(logFormat, logOutput)
+	// setup system-wide logging backend
+	logFormat := flogging.SetFormat(viper.GetString("chaincode.logFormat"))
+	flogging.InitBackend(logFormat, logOutput)
 
 	chaincodeLogLevelString := viper.GetString("chaincode.logLevel")
 	if chaincodeLogLevelString == "" {
