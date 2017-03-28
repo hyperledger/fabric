@@ -81,7 +81,7 @@ func (sv *standardValues) initializeProtosStruct(objValue reflect.Value) error {
 		case reflect.Ptr:
 			fieldPtr := objValue.Elem().Field(i)
 			if !fieldPtr.CanSet() {
-				return fmt.Errorf("Cannot set structure field %s (unexported?)", structField)
+				return fmt.Errorf("Cannot set structure field %s (unexported?)", structField.Name)
 			}
 			fieldPtr.Set(reflect.New(structField.Type.Elem()))
 		default:

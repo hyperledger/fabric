@@ -74,7 +74,7 @@ func doInspectBlock(inspectBlock string) error {
 	block := &cb.Block{}
 	err = proto.Unmarshal(data, block)
 	if err != nil {
-		fmt.Errorf("Error unmarshaling block: %s", err)
+		return fmt.Errorf("Error unmarshaling block: %s", err)
 	}
 
 	ctx, err := utils.ExtractEnvelope(block, 0)

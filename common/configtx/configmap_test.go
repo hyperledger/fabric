@@ -17,8 +17,9 @@ limitations under the License.
 package configtx
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 )

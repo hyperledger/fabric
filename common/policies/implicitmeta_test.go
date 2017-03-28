@@ -34,7 +34,7 @@ func (rp acceptPolicy) Evaluate(signedData []*cb.SignedData) error {
 	return nil
 }
 
-func TestimplicitMarshalError(t *testing.T) {
+func TestImplicitMarshalError(t *testing.T) {
 	_, err := newImplicitMetaPolicy([]byte("GARBAGE"))
 	assert.Error(t, err, "Should have errored unmarshaling garbage")
 }

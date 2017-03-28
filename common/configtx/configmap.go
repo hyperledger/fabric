@@ -122,7 +122,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 	}
 
 	if group.ConfigGroup == nil {
-		return nil, fmt.Errorf("ConfigGroup not found at group path", groupPath)
+		return nil, fmt.Errorf("ConfigGroup not found at group path: %s", groupPath)
 	}
 
 	for key, _ := range group.Groups {
@@ -140,7 +140,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 			return nil, fmt.Errorf("Missing value at path: %s", valuePath)
 		}
 		if value.ConfigValue == nil {
-			return nil, fmt.Errorf("ConfigValue not found at value path", valuePath)
+			return nil, fmt.Errorf("ConfigValue not found at value path: %s", valuePath)
 		}
 		group.Values[key] = value.ConfigValue
 	}
@@ -152,7 +152,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 			return nil, fmt.Errorf("Missing policy at path: %s", policyPath)
 		}
 		if policy.ConfigPolicy == nil {
-			return nil, fmt.Errorf("ConfigPolicy not found at policy path", policyPath)
+			return nil, fmt.Errorf("ConfigPolicy not found at policy path: %s", policyPath)
 		}
 		group.Policies[key] = policy.ConfigPolicy
 	}
