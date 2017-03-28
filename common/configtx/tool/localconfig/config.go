@@ -171,7 +171,7 @@ func (p *Profile) completeInitialization() {
 func Load(profile string) *Profile {
 	config := viper.New()
 
-	config.SetConfigName("configtx")
+	config.SetConfigName(configName)
 	var cfgPath string
 
 	// Candidate paths to look for the config file in, based on GOPATH
