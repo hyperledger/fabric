@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"testing"
 
+	"reflect"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -38,17 +40,31 @@ import (
 )
 
 func TestPKIidOfCert(t *testing.T) {
-	msgCryptoService := New(&MockChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
+	deserializersManager := &mockDeserializersManager{
+		localDeserializer: &mockIdentityDeserializer{[]byte("Alice"), []byte("msg1")},
+	}
+	msgCryptoService := New(&mockChannelPolicyManagerGetter2{},
+		&mockscrypto.LocalSigner{Identity: []byte("Alice")},
+		deserializersManager,
+	)
 
 	peerIdentity := []byte("Alice")
 	pkid := msgCryptoService.GetPKIidOfCert(peerIdentity)
 
 	// Check pkid is not nil
 	assert.NotNil(t, pkid, "PKID must be different from nil")
-	// Check that pkid is the SHA2-256 of ithe peerIdentity
-	digest, err := factory.GetDefault().Hash(peerIdentity, &bccsp.SHA256Opts{})
+	// Check that pkid is correctly computed
+	id, err := deserializersManager.Deserialize(peerIdentity)
+	assert.NoError(t, err, "Failed getting validated identity from [% x]", []byte(peerIdentity))
+	idRaw := append([]byte(id.Mspid), id.IdBytes...)
+	assert.NoError(t, err, "Failed marshalling identity identifier [% x]: [%s]", peerIdentity, err)
+	digest, err := factory.GetDefault().Hash(idRaw, &bccsp.SHA256Opts{})
 	assert.NoError(t, err, "Failed computing digest of serialized identity [% x]", []byte(peerIdentity))
 	assert.Equal(t, digest, []byte(pkid), "PKID must be the SHA2-256 of peerIdentity")
+
+	//  The PKI-ID is calculated by concatenating the MspId with IdBytes. Ensure that additional fields haven't been introduced in the code
+	v := reflect.Indirect(reflect.ValueOf(id))
+	assert.Equal(t, 2, v.NumField())
 }
 
 func TestPKIidOfNil(t *testing.T) {
@@ -87,7 +103,7 @@ func TestVerify(t *testing.T) {
 			channelDeserializers: map[string]msp.IdentityDeserializer{
 				"A": &mockIdentityDeserializer{[]byte("Bob"), []byte("msg2")},
 				"B": &mockIdentityDeserializer{[]byte("Charlie"), []byte("msg3")},
-				"C": &mockIdentityDeserializer{[]byte("Yacov"), []byte("msg4")},
+				"C": &mockIdentityDeserializer{[]byte("Dave"), []byte("msg4")},
 			},
 		},
 	)
@@ -107,7 +123,7 @@ func TestVerify(t *testing.T) {
 
 	sigma, err = msgCryptoService.Sign(msg)
 	assert.NoError(t, err)
-	err = msgCryptoService.Verify(api.PeerIdentityType("Yacov"), sigma, msg)
+	err = msgCryptoService.Verify(api.PeerIdentityType("Dave"), sigma, msg)
 	assert.Error(t, err)
 	assert.Contains(t, fmt.Sprintf("%v", err), "Could not acquire policy manager")
 }

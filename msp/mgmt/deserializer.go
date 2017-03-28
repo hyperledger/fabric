@@ -17,12 +17,17 @@ limitations under the License.
 package mgmt
 
 import (
+	"fmt"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/msp"
+	mspproto "github.com/hyperledger/fabric/protos/msp"
 )
 
 // DeserializersManager is a support interface to
 // access the local and channel deserializers
 type DeserializersManager interface {
+	Deserialize(raw []byte) (*mspproto.SerializedIdentity, error)
 
 	// GetLocalMSPIdentifier returns the local MSP identifier
 	GetLocalMSPIdentifier() string
@@ -40,6 +45,15 @@ func NewDeserializersManager() DeserializersManager {
 }
 
 type mspDeserializersManager struct{}
+
+func (m *mspDeserializersManager) Deserialize(raw []byte) (*mspproto.SerializedIdentity, error) {
+	sId := &mspproto.SerializedIdentity{}
+	err := proto.Unmarshal(raw, sId)
+	if err != nil {
+		return nil, fmt.Errorf("Could not deserialize a SerializedIdentity, err %s", err)
+	}
+	return sId, nil
+}
 
 func (m *mspDeserializersManager) GetLocalMSPIdentifier() string {
 	id, _ := GetLocalMSP().GetIdentifier()

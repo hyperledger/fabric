@@ -84,6 +84,10 @@ type mockDeserializersManager struct {
 	channelDeserializers map[string]msp.IdentityDeserializer
 }
 
+func (m *mockDeserializersManager) Deserialize(raw []byte) (*mspproto.SerializedIdentity, error) {
+	return &mspproto.SerializedIdentity{Mspid: "mock", IdBytes: raw}, nil
+}
+
 func (m *mockDeserializersManager) GetLocalMSPIdentifier() string {
 	return "mock"
 }

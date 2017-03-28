@@ -88,8 +88,22 @@ func (s *mspMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 		return nil
 	}
 
+	sid, err := s.deserializer.Deserialize(peerIdentity)
+	if err != nil {
+		logger.Errorf("Failed getting validated identity from peer identity [% x]: [%s]", peerIdentity, err)
+
+		return nil
+	}
+
+	// concatenate msp-id and idbytes
+	// idbytes is the low-level representation of an identity.
+	// it is supposed to be already in its minimal representation
+
+	mspIdRaw := []byte(sid.Mspid)
+	raw := append(mspIdRaw, sid.IdBytes...)
+
 	// Hash
-	digest, err := factory.GetDefault().Hash(peerIdentity, &bccsp.SHA256Opts{})
+	digest, err := factory.GetDefault().Hash(raw, &bccsp.SHA256Opts{})
 	if err != nil {
 		logger.Errorf("Failed computing digest of serialized identity [% x]: [%s]", peerIdentity, err)
 
