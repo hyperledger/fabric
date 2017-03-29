@@ -34,11 +34,9 @@ from common import common_pb2 as common_dot_common_pb2
 from common import configtx_pb2 as common_dot_configtx_pb2
 from common import configuration_pb2 as common_dot_configuration_pb2
 from common import policies_pb2 as common_dot_policies_pb2
-from common import msp_principal_pb2
-from msp import mspconfig_pb2
+from msp import mspconfig_pb2, msp_principal_pb2, identities_pb2
 from peer import configuration_pb2 as peer_dot_configuration_pb2
 from orderer import configuration_pb2 as orderer_dot_configuration_pb2
-import identities_pb2
 import orderer_util
 
 from contexthelper import ContextHelper
@@ -256,7 +254,7 @@ class Organization(Entity):
         return False
 
     def getMspPrincipalAsRole(self, mspRoleTypeAsString):
-        mspRole = msp_principal_pb2.MSPRole(msp_identifier=self.name, Role=msp_principal_pb2.MSPRole.MSPRoleType.Value(mspRoleTypeAsString))
+        mspRole = msp_principal_pb2.MSPRole(msp_identifier=self.name, role=msp_principal_pb2.MSPRole.MSPRoleType.Value(mspRoleTypeAsString))
         mspPrincipal = msp_principal_pb2.MSPPrincipal(
             principal_classification=msp_principal_pb2.MSPPrincipal.Classification.Value('ROLE'),
             principal=mspRole.SerializeToString())
@@ -378,7 +376,7 @@ class AuthDSLHelper:
         'NOutOf creates a policy which requires N out of the slice of policies to evaluate to true'
         return common_dot_policies_pb2.SignaturePolicy(
             n_out_of=common_dot_policies_pb2.SignaturePolicy.NOutOf(
-                N=n,
+                n=n,
                 policies=policies,
             ),
         )
@@ -427,7 +425,7 @@ class BootstrapHelper:
 
     @classmethod
     def addSignatureToSignedConfigItem(cls, configUpdateEnvelope, (entity, cert)):
-        serializedIdentity = identities_pb2.SerializedIdentity(Mspid=entity.name, IdBytes=crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+        serializedIdentity = identities_pb2.SerializedIdentity(mspid=entity.name, id_bytes=crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
         sigHeader = common_dot_common_pb2.SignatureHeader(creator=serializedIdentity.SerializeToString(),
                                                           nonce=BootstrapHelper.getNonce())
         sigHeaderBytes = sigHeader.SerializeToString()
@@ -775,7 +773,7 @@ def createEnvelopeForMsg(directory, nodeAdminTuple, chainId, msg, typeAsString):
     org = directory.getOrganization(nodeAdminTuple.organization)
     user = directory.getUser(nodeAdminTuple.user)
     cert = directory.findCertForNodeAdminTuple(nodeAdminTuple)
-    serializedIdentity = identities_pb2.SerializedIdentity(Mspid=org.name, IdBytes=crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+    serializedIdentity = identities_pb2.SerializedIdentity(mspid=org.name, id_bytes=crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
     serializedCreatorCertChain = serializedIdentity.SerializeToString()
     nonce = None
     payloadSignatureHeader = common_dot_common_pb2.SignatureHeader(
