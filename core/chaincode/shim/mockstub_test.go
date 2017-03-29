@@ -219,3 +219,15 @@ func TestGetStateByPartialCompositeKeyCollision(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+func TestGetTxTimestamp(t *testing.T) {
+	stub := NewMockStub("GetTxTimestamp", nil)
+	stub.MockTransactionStart("init")
+
+	timestamp, err := stub.GetTxTimestamp()
+	if timestamp == nil || err != nil {
+		t.FailNow()
+	}
+
+	stub.MockTransactionEnd("init")
+}

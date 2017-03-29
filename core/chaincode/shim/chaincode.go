@@ -558,11 +558,20 @@ func (stub *ChaincodeStub) GetArgsSlice() ([]byte, error) {
 	return res, nil
 }
 
-// GetTxTimestamp returns transaction created timestamp, which is currently
-// taken from the peer receiving the transaction. Note that this timestamp
-// may not be the same with the other peers' time.
+// GetTxTimestamp returns the timestamp when the transaction was created. This
+// is taken from the transaction ChannelHeader, so it will be the same across
+// all endorsers.
 func (stub *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
-	return nil, nil
+	hdr, err := utils.GetHeader(stub.proposal.Header)
+	if err != nil {
+		return nil, err
+	}
+	chdr, err := utils.UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	return chdr.GetTimestamp(), nil
 }
 
 // ------------- ChaincodeEvent API ----------------------

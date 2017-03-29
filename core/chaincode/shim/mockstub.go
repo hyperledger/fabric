@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/hyperledger/fabric/common/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
@@ -57,6 +58,8 @@ type MockStub struct {
 	// stores a transaction uuid while being Invoked / Deployed
 	// TODO if a chaincode uses recursion this may need to be a stack of TxIDs or possibly a reference counting map
 	TxID string
+
+	TxTimestamp *timestamp.Timestamp
 }
 
 func (stub *MockStub) GetTxID() string {
@@ -92,6 +95,7 @@ func (stub *MockStub) GetFunctionAndParameters() (function string, params []stri
 // MockStub doesn't support concurrent transactions at present.
 func (stub *MockStub) MockTransactionStart(txid string) {
 	stub.TxID = txid
+	stub.setTxTimestamp(util.CreateUtcTimestamp())
 }
 
 // End a mocked transaction, clearing the UUID.
@@ -270,9 +274,15 @@ func (stub *MockStub) GetArgsSlice() ([]byte, error) {
 	return nil, nil
 }
 
-// Not implemented
+func (stub *MockStub) setTxTimestamp(time *timestamp.Timestamp) {
+	stub.TxTimestamp = time
+}
+
 func (stub *MockStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
-	return nil, nil
+	if stub.TxTimestamp == nil {
+		return nil, errors.New("TxTimestamp not set.")
+	}
+	return stub.TxTimestamp, nil
 }
 
 // Not implemented

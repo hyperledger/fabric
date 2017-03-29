@@ -118,9 +118,9 @@ type ChaincodeStubInterface interface {
 	// GetArgsSlice returns the arguments to the stub call as a byte array
 	GetArgsSlice() ([]byte, error)
 
-	// GetTxTimestamp returns transaction created timestamp, which is currently
-	// taken from the peer receiving the transaction. Note that this timestamp
-	// may not be the same with the other peers' time.
+	// GetTxTimestamp returns the timestamp when the transaction was created. This
+	// is taken from the transaction ChannelHeader, so it will be the same across
+	// all endorsers.
 	GetTxTimestamp() (*timestamp.Timestamp, error)
 
 	// SetEvent saves the event to be sent when a transaction is made part of a block
