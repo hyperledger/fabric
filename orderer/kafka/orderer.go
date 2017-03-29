@@ -105,13 +105,16 @@ func getLastOffsetPersisted(metadata *cb.Metadata, chainID string) int64 {
 // be satisfied by both the actual and the mock object and will allow
 // us to retrieve these constructors.
 func newChain(consenter testableConsenter, support multichain.ConsenterSupport, lastOffsetPersisted int64) *chainImpl {
-	logger.Debugf("[channel: %s] Starting chain with last persisted offset: %d", support.ChainID(), lastOffsetPersisted)
+	lastCutBlock := support.Height() - 1
+	logger.Debugf("[channel: %s] Starting chain with last persisted offset %d and last recorded block %d",
+		support.ChainID(), lastOffsetPersisted, lastCutBlock)
 	return &chainImpl{
 		consenter:           consenter,
 		support:             support,
 		partition:           newChainPartition(support.ChainID(), rawPartition),
 		batchTimeout:        support.SharedConfig().BatchTimeout(),
 		lastOffsetPersisted: lastOffsetPersisted,
+		lastCutBlock:        lastCutBlock,
 		producer:            consenter.prodFunc()(support.SharedConfig().KafkaBrokers(), consenter.kafkaVersion(), consenter.retryOptions(), consenter.tlsConfig()),
 		halted:              false, // Redundant as the default value for booleans is false but added for readability
 		exitChan:            make(chan struct{}),
