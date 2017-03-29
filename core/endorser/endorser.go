@@ -137,7 +137,11 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 		return nil, nil, err
 	}
 
-	if res.Status != shim.OK {
+	//per doc anything < 500 can be sent as TX.
+	//fabric errors will always be >= 500 (ie, unambiguous errors )
+	//"lccc" will respond with status 200 or >=500 (ie, unambiguous OK or ERROR)
+	//This leaves all < 500 errors to user chaincodes
+	if res.Status >= shim.ERROR {
 		return nil, nil, fmt.Errorf(string(res.Message))
 	}
 
