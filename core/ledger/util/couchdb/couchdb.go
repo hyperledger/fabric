@@ -19,6 +19,7 @@ package couchdb
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -157,10 +158,11 @@ type Attachment struct {
 	AttachmentBytes []byte
 }
 
-//DocRev returns the Id and revision for a couchdb document
-type DocRev struct {
-	Id  string `json:"_id"`
-	Rev string `json:"_rev"`
+//DocMetadata returns the ID, version and revision for a couchdb document
+type DocMetadata struct {
+	ID      string
+	Rev     string
+	Version string
 }
 
 //FileDetails defines the structure needed to send an attachment to couchdb
@@ -174,6 +176,33 @@ type FileDetails struct {
 type CouchDoc struct {
 	JSONValue   []byte
 	Attachments []Attachment
+}
+
+//BatchRetrieveDocMedatadataResponse is used for processing REST batch responses from CouchDB
+type BatchRetrieveDocMedatadataResponse struct {
+	Rows []struct {
+		ID  string `json:"id"`
+		Doc struct {
+			ID      string `json:"_id"`
+			Rev     string `json:"_rev"`
+			Version string `json:"version"`
+		} `json:"doc"`
+	} `json:"rows"`
+}
+
+//BatchUpdateResponse defines a structure for batch update response
+type BatchUpdateResponse struct {
+	ID     string `json:"id"`
+	Error  string `json:"error"`
+	Reason string `json:"reason"`
+	Ok     bool   `json:"ok"`
+	Rev    string `json:"rev"`
+}
+
+//Base64Attachment contains the definition for an attached file for couchdb
+type Base64Attachment struct {
+	ContentType    string `json:"content_type"`
+	AttachmentData string `json:"data"`
 }
 
 //CreateConnectionDefinition for a new client connection
@@ -568,6 +597,7 @@ func getRevisionHeader(resp *http.Response) (string, error) {
 //ReadDoc method provides function to retrieve a document from the database by id
 func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 	var couchDoc CouchDoc
+
 	logger.Debugf("Entering ReadDoc()  id=[%s]", id)
 	if !utf8.ValidString(id) {
 		return nil, "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
@@ -927,6 +957,98 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 	logger.Debugf("Exiting QueryDocuments()")
 
 	return &results, nil
+
+}
+
+//BatchUpdateDocuments - batch method to batch update documents
+func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*BatchUpdateResponse, error) {
+
+	logger.Debugf("Entering BatchUpdateDocuments()  documents=%v", documents)
+
+	batchURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return nil, err
+	}
+	batchURL.Path = dbclient.DBName + "/_bulk_docs"
+
+	documentMap := make(map[string]interface{})
+
+	var jsonDocumentMap []interface{}
+
+	for _, jsonDocument := range documents {
+
+		//create a document map
+		var document = make(map[string]interface{})
+
+		//unmarshal the JSON component of the CouchDoc into the document
+		json.Unmarshal(jsonDocument.JSONValue, &document)
+
+		//iterate through any attachments
+		if len(jsonDocument.Attachments) > 0 {
+
+			//create a file attachment map
+			fileAttachment := make(map[string]interface{})
+
+			//for each attachment, create a Base64Attachment, name the attachment,
+			//add the content type and base64 encode the attachment
+			for _, attachment := range jsonDocument.Attachments {
+				fileAttachment[attachment.Name] = Base64Attachment{attachment.ContentType,
+					base64.StdEncoding.EncodeToString(attachment.AttachmentBytes)}
+			}
+
+			//add attachments to the document
+			document["_attachments"] = fileAttachment
+
+		}
+
+		//Append the document to the map of documents
+		jsonDocumentMap = append(jsonDocumentMap, document)
+
+	}
+
+	//Add the documents to the "docs" item
+	documentMap["docs"] = jsonDocumentMap
+
+	jsonKeys, err := json.Marshal(documentMap)
+
+	if err != nil {
+		return nil, err
+	}
+
+	//Set up a buffer for the data to be pushed to couchdb
+	data := new(bytes.Buffer)
+
+	data.ReadFrom(bytes.NewReader(jsonKeys))
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), data, "", "")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if logger.IsEnabledFor(logging.DEBUG) {
+		dump, _ := httputil.DumpResponse(resp, false)
+		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
+		logger.Debugf("HTTP Response: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
+	}
+
+	//handle as JSON document
+	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonResponse = []*BatchUpdateResponse{}
+
+	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
+	if err2 != nil {
+		return nil, err2
+	}
+
+	logger.Debugf("Exiting BatchUpdateDocuments()")
+
+	return jsonResponse, nil
 
 }
 

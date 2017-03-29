@@ -35,6 +35,9 @@ var badConnectURL = "couchdb:5990"
 var username = ""
 var password = ""
 
+const updateDocumentConflictError = "conflict"
+const updateDocumentConflictReason = "Document update conflict."
+
 func cleanup(database string) error {
 	//create a new connection
 	couchInstance, err := CreateCouchInstance(connectURL, username, password)
@@ -125,7 +128,7 @@ func TestDBCreateEnsureFullCommit(t *testing.T) {
 			//create a new instance and database object
 			couchInstance, err := CreateCouchInstance(connectURL, username, password)
 			testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-			db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
 			_, errdb := db.CreateDatabaseIfNotExist()
@@ -142,6 +145,7 @@ func TestDBCreateEnsureFullCommit(t *testing.T) {
 		}
 	}
 }
+
 func TestDBBadDatabaseName(t *testing.T) {
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
@@ -318,7 +322,7 @@ func TestDBBadJSON(t *testing.T) {
 }
 
 func TestPrefixScan(t *testing.T) {
-	if !ledgerconfig.IsCouchDBEnabled() {
+	if !ledgerconfig.IsCouchDBEnabled() == true {
 		return
 	}
 	database := "testprefixscan"
@@ -612,7 +616,7 @@ func TestRichQuery(t *testing.T) {
 			//create a new instance and database object   --------------------------------------------------------
 			couchInstance, err := CreateCouchInstance(connectURL, username, password)
 			testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-			db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
 			_, errdb := db.CreateDatabaseIfNotExist()
@@ -769,6 +773,125 @@ func TestRichQuery(t *testing.T) {
 			//There should be 2 results for owner="tom" with a limit of 2
 			testutil.AssertEquals(t, len(*queryResult), 2)
 
+		}
+	}
+}
+
+func TestBatchCreateRetrieve(t *testing.T) {
+
+	if ledgerconfig.IsCouchDBEnabled() == true {
+
+		byteJSON01 := []byte(`{"_id":"marble01","asset_name":"marble01","color":"blue","size":"1","owner":"jerry"}`)
+		byteJSON02 := []byte(`{"_id":"marble02","asset_name":"marble02","color":"red","size":"2","owner":"tom"}`)
+		byteJSON03 := []byte(`{"_id":"marble03","asset_name":"marble03","color":"green","size":"3","owner":"jerry"}`)
+		byteJSON04 := []byte(`{"_id":"marble04","asset_name":"marble04","color":"purple","size":"4","owner":"tom"}`)
+		byteJSON05 := []byte(`{"_id":"marble05","asset_name":"marble05","color":"blue","size":"5","owner":"jerry"}`)
+
+		attachment1 := &Attachment{}
+		attachment1.AttachmentBytes = []byte(`marble01 - test attachment`)
+		attachment1.ContentType = "application/octet-stream"
+		attachment1.Name = "data"
+		attachments1 := []Attachment{}
+		attachments1 = append(attachments1, *attachment1)
+
+		attachment2 := &Attachment{}
+		attachment2.AttachmentBytes = []byte(`marble02 - test attachment`)
+		attachment2.ContentType = "application/octet-stream"
+		attachment2.Name = "data"
+		attachments2 := []Attachment{}
+		attachments2 = append(attachments2, *attachment2)
+
+		attachment3 := &Attachment{}
+		attachment3.AttachmentBytes = []byte(`marble03 - test attachment`)
+		attachment3.ContentType = "application/octet-stream"
+		attachment3.Name = "data"
+		attachments3 := []Attachment{}
+		attachments3 = append(attachments3, *attachment3)
+
+		attachment4 := &Attachment{}
+		attachment4.AttachmentBytes = []byte(`marble04 - test attachment`)
+		attachment4.ContentType = "application/octet-stream"
+		attachment4.Name = "data"
+		attachments4 := []Attachment{}
+		attachments4 = append(attachments4, *attachment4)
+
+		attachment5 := &Attachment{}
+		attachment5.AttachmentBytes = []byte(`marble05 - test attachment`)
+		attachment5.ContentType = "application/octet-stream"
+		attachment5.Name = "data"
+		attachments5 := []Attachment{}
+		attachments5 = append(attachments5, *attachment5)
+
+		database := "testbatch"
+		err := cleanup(database)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
+		defer cleanup(database)
+
+		//create a new instance and database object   --------------------------------------------------------
+		couchInstance, err := CreateCouchInstance(connectURL, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+		db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
+
+		//create a new database
+		_, errdb := db.CreateDatabaseIfNotExist()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
+
+		batchUpdateDocs := []*CouchDoc{}
+
+		value1 := &CouchDoc{JSONValue: byteJSON01, Attachments: attachments1}
+		value2 := &CouchDoc{JSONValue: byteJSON02, Attachments: attachments2}
+		value3 := &CouchDoc{JSONValue: byteJSON03, Attachments: attachments3}
+		value4 := &CouchDoc{JSONValue: byteJSON04, Attachments: attachments4}
+		value5 := &CouchDoc{JSONValue: byteJSON05, Attachments: attachments5}
+
+		batchUpdateDocs = append(batchUpdateDocs, value1)
+		batchUpdateDocs = append(batchUpdateDocs, value2)
+		batchUpdateDocs = append(batchUpdateDocs, value3)
+		batchUpdateDocs = append(batchUpdateDocs, value4)
+		batchUpdateDocs = append(batchUpdateDocs, value5)
+
+		batchUpdateResp, err := db.BatchUpdateDocuments(batchUpdateDocs)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when attempting to update a batch of documents"))
+
+		//check to make sure each batch update response was successful
+		for _, updateDoc := range batchUpdateResp {
+			testutil.AssertEquals(t, updateDoc.Ok, true)
+		}
+
+		//----------------------------------------------
+		//Test Retrieve JSON
+		dbGetResp, _, geterr := db.ReadDoc("marble01")
+		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when attempting read a document"))
+
+		assetResp := &Asset{}
+		geterr = json.Unmarshal(dbGetResp.JSONValue, &assetResp)
+		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
+		//Verify the owner retrieved matches
+		testutil.AssertEquals(t, assetResp.Owner, "jerry")
+
+		//----------------------------------------------
+		//Test retrieve binary
+		dbGetResp, _, geterr = db.ReadDoc("marble03")
+		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when attempting read a document"))
+		//Retrieve the attachments
+		attachments := dbGetResp.Attachments
+		//Only one was saved, so take the first
+		retrievedAttachment := attachments[0]
+		//Verify the text matches
+		testutil.AssertEquals(t, attachment3.AttachmentBytes, retrievedAttachment.AttachmentBytes)
+		//----------------------------------------------
+		//Test Bad Updates
+		batchUpdateDocs = []*CouchDoc{}
+		batchUpdateDocs = append(batchUpdateDocs, value1)
+		batchUpdateDocs = append(batchUpdateDocs, value2)
+		batchUpdateResp, err = db.BatchUpdateDocuments(batchUpdateDocs)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when attempting to update a batch of documents"))
+		//No revision was provided, so these two updates should fail
+		//Verify that the "Ok" field is returned as false
+		for _, updateDoc := range batchUpdateResp {
+			testutil.AssertEquals(t, updateDoc.Ok, false)
+			testutil.AssertEquals(t, updateDoc.Error, updateDocumentConflictError)
+			testutil.AssertEquals(t, updateDoc.Reason, updateDocumentConflictReason)
 		}
 	}
 }
