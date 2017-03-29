@@ -282,6 +282,12 @@
 			"revisionTime": "2015-07-31T22:42:12+02:00"
 		},
 		{
+			"checksumSHA1": "rdXfB1cKQi3dvOggO/w9QgPK01w=",
+			"path": "github.com/manudrijvers/amcl/go",
+			"revision": "765b9c1a68e0d5b22dc09dc7fa7bb46b69b700a8",
+			"revisionTime": "2017-01-30T13:11:20Z"
+		},
+		{
 			"path": "github.com/mattn/go-sqlite3",
 			"revision": "5651a9d9d49ec25811d08220ee972080378d52ea",
 			"revisionTime": "2015-11-06T23:54:04+09:00"
