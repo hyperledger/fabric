@@ -42,7 +42,7 @@ func cleanup(database string) error {
 		fmt.Println("Unexpected error", err)
 		return err
 	}
-	db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+	db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 	//drop the test database
 	db.DropDatabase()
 	return nil
@@ -99,7 +99,7 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 			//create a new instance and database object
 			couchInstance, err := CreateCouchInstance(connectURL, username, password)
 			testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-			db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
 			_, errdb := db.CreateDatabaseIfNotExist()
@@ -174,7 +174,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 			//create a new instance and database object
 			couchInstance, err := CreateCouchInstance(connectURL, username, password)
 			testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-			db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
 			_, errdb := db.CreateDatabaseIfNotExist()
@@ -264,7 +264,7 @@ func TestDBBadJSON(t *testing.T) {
 			//create a new instance and database object
 			couchInstance, err := CreateCouchInstance(connectURL, username, password)
 			testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-			db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
 			_, errdb := db.CreateDatabaseIfNotExist()
@@ -300,7 +300,7 @@ func TestPrefixScan(t *testing.T) {
 		//create a new instance and database object
 		couchInstance, err := CreateCouchInstance(connectURL, username, password)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-		db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+		db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 		//create a new database
 		_, errdb := db.CreateDatabaseIfNotExist()
@@ -372,7 +372,7 @@ func TestDBSaveAttachment(t *testing.T) {
 			//create a new instance and database object
 			couchInstance, err := CreateCouchInstance(connectURL, username, password)
 			testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-			db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
 			_, errdb := db.CreateDatabaseIfNotExist()
@@ -405,7 +405,7 @@ func TestDBDeleteDocument(t *testing.T) {
 			//create a new instance and database object
 			couchInstance, err := CreateCouchInstance(connectURL, username, password)
 			testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-			db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
 			_, errdb := db.CreateDatabaseIfNotExist()
@@ -443,7 +443,7 @@ func TestDBDeleteNonExistingDocument(t *testing.T) {
 			//create a new instance and database object
 			couchInstance, err := CreateCouchInstance(connectURL, username, password)
 			testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-			db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
 			_, errdb := db.CreateDatabaseIfNotExist()
