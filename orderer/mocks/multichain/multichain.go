@@ -45,6 +45,9 @@ type ConsenterSupport struct {
 	// ChainIDVal is the value returned by ChainID()
 	ChainIDVal string
 
+	// HeightVal is the value returned by Height()
+	HeightVal uint64
+
 	// NextBlockVal stores the block created by the most recent CreateNextBlock() call
 	NextBlockVal *cb.Block
 
@@ -83,6 +86,7 @@ func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Co
 		umtxs[i] = utils.UnmarshalEnvelopeOrPanic(block.Data.Data[i])
 	}
 	mcs.Batches <- umtxs
+	mcs.HeightVal++
 	if encodedMetadataValue != nil {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
@@ -93,6 +97,11 @@ func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Co
 // ChainID returns the chain ID this specific consenter instance is associated with
 func (mcs *ConsenterSupport) ChainID() string {
 	return mcs.ChainIDVal
+}
+
+// Height returns the number of blocks of the chain this specific consenter instance is associated with
+func (mcs *ConsenterSupport) Height() uint64 {
+	return mcs.HeightVal
 }
 
 // Sign returns the bytes passed in

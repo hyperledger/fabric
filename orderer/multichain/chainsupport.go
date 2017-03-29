@@ -70,6 +70,7 @@ type ConsenterSupport interface {
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
 	WriteBlock(block *cb.Block, committers []filter.Committer, encodedMetadataValue []byte) *cb.Block
 	ChainID() string // ChainID returns the chain ID this specific consenter instance is associated with
+	Height() uint64  // Returns the number of blocks on the chain this specific consenter instance is associated with
 }
 
 // ChainSupport provides a wrapper for the resources backing a chain
@@ -257,4 +258,8 @@ func (cs *chainSupport) WriteBlock(block *cb.Block, committers []filter.Committe
 		logger.Panicf("[channel: %s] Could not append block: %s", cs.ChainID(), err)
 	}
 	return block
+}
+
+func (cs *chainSupport) Height() uint64 {
+	return cs.Reader().Height()
 }
