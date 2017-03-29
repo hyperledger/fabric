@@ -21,5 +21,5 @@ import (
 )
 
 func init() {
-	logging.SetLevel(logging.INFO, "") // Silence debug-level outputs when testing
+	logging.SetLevel(logging.DEBUG, "") // Silence debug-level outputs when testing
 }
