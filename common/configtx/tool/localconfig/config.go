@@ -196,6 +196,7 @@ func Load(profile string) *Profile {
 		}
 		cfgPath = path
 		logger.Infof("Found %s there", configFileName)
+		break
 	}
 
 	if cfgPath == "" {
