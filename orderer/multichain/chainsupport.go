@@ -128,13 +128,13 @@ func newChainSupport(
 	// Assuming a block created with cb.NewBlock(), this should not
 	// error even if the orderer metadata is an empty byte slice
 	if err != nil {
-		logger.Fatalf("Error extracting orderer metadata for chain %x: %s", cs.ChainID(), err)
+		logger.Fatalf("[channel: %s] Error extracting orderer metadata: %s", cs.ChainID(), err)
 	}
-	logger.Debugf("Retrieved metadata for tip of chain (block #%d): %+v", cs.Reader().Height()-1, metadata)
+	logger.Debugf("[channel: %s] Retrieved metadata for tip of chain (block #%d): %+v", cs.ChainID(), cs.Reader().Height()-1, metadata)
 
 	cs.chain, err = consenter.HandleChain(cs, metadata)
 	if err != nil {
-		logger.Fatalf("Error creating consenter for chain %x: %s", ledgerResources.ChainID(), err)
+		logger.Fatalf("[channel: %s] Error creating consenter: %s", cs.ChainID(), err)
 	}
 
 	return cs
@@ -254,7 +254,7 @@ func (cs *chainSupport) WriteBlock(block *cb.Block, committers []filter.Committe
 
 	err := cs.ledger.Append(block)
 	if err != nil {
-		logger.Panicf("Could not append block: %s", err)
+		logger.Panicf("[channel: %s] Could not append block: %s", cs.ChainID(), err)
 	}
 	return block
 }

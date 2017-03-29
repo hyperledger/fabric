@@ -110,7 +110,7 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built
 			defer chain.start()
 		} else {
-			logger.Debugf("Starting chain: %x", chainID)
+			logger.Debugf("Starting chain: %s", chainID)
 			chain := newChainSupport(createStandardFilters(ledgerResources),
 				ledgerResources,
 				consenters,
