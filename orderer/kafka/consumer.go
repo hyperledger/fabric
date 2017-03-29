@@ -47,7 +47,7 @@ func newConsumer(brokers []string, kafkaVersion sarama.KafkaVersion, tls config.
 		parent:    parent,
 		partition: partition,
 	}
-	logger.Debugf("Created new consumer for session (partition %s, beginning offset %d)", cp, offset)
+	logger.Debugf("[channel: %s] Created new consumer for session (beginning offset: %d)", cp.Topic(), offset)
 	return c, nil
 }
 

@@ -17,7 +17,6 @@ limitations under the License.
 package kafka
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -48,7 +47,7 @@ loop:
 	for {
 		select {
 		case <-panicTick.C:
-			panic(fmt.Errorf("Failed to create Kafka producer: %v", err))
+			logger.Panicf("Failed to create Kafka producer: %v", err)
 		case <-repeatTick.C:
 			logger.Debug("Connecting to Kafka cluster:", brokers)
 			p, err = sarama.NewSyncProducer(brokers, brokerConfig)
@@ -72,12 +71,12 @@ func (p *producerImpl) Send(cp ChainPartition, payload []byte) error {
 	prt, ofs, err := p.producer.SendMessage(newProducerMessage(cp, payload))
 	if prt != cp.Partition() {
 		// If this happens, something's up with the partitioner
-		logger.Warningf("Blob destined for partition %d, but posted to %d instead", cp.Partition(), prt)
+		logger.Warningf("[channel: %s] Blob destined for partition %d, but posted to %d instead", cp.Topic(), cp.Partition(), prt)
 	}
 	if err == nil {
-		logger.Debugf("Forwarded blob with offset number %d to chain partition %s on the Kafka cluster", ofs, cp)
+		logger.Debugf("[channel %s] Posted blob to the Kafka cluster (offset number: %d)", cp.Topic(), ofs)
 	} else {
-		logger.Infof("Failed to send message to chain partition %s on the Kafka cluster: %s", cp, err)
+		logger.Infof("[channel %s] Failed to post blob to the Kafka cluster: %s", cp.Topic(), err)
 	}
 	return err
 }

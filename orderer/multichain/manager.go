@@ -104,7 +104,7 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 				ledgerResources,
 				consenters,
 				signer)
-			logger.Infof("Starting with system channel: %s and orderer type %s", chainID, chain.SharedConfig().ConsensusType())
+			logger.Infof("Starting with system channel %s and orderer type %s", chainID, chain.SharedConfig().ConsensusType())
 			ml.chains[string(chainID)] = chain
 			ml.systemChannelID = chainID
 			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built

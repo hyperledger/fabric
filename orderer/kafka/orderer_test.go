@@ -593,7 +593,7 @@ func TestKafkaConsenterTimeToCutLarger(t *testing.T) {
 
 func TestGetLastOffsetPersistedEmpty(t *testing.T) {
 	expected := sarama.OffsetOldest - 1
-	actual := getLastOffsetPersisted(&cb.Metadata{})
+	actual := getLastOffsetPersisted(&cb.Metadata{}, "")
 	if actual != expected {
 		t.Fatalf("Expected last offset %d, got %d", expected, actual)
 	}
@@ -601,7 +601,7 @@ func TestGetLastOffsetPersistedEmpty(t *testing.T) {
 
 func TestGetLastOffsetPersistedRight(t *testing.T) {
 	expected := int64(100)
-	actual := getLastOffsetPersisted(&cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: expected})})
+	actual := getLastOffsetPersisted(&cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: expected})}, "")
 	if actual != expected {
 		t.Fatalf("Expected last offset %d, got %d", expected, actual)
 	}
@@ -655,7 +655,7 @@ func TestKafkaConsenterRestart(t *testing.T) {
 		logger.Fatalf("Error extracting orderer metadata for chain %x: %s", cs.ChainIDVal, err)
 	}
 
-	lastPersistedOffset = getLastOffsetPersisted(metadata)
+	lastPersistedOffset = getLastOffsetPersisted(metadata, ch.support.ChainID())
 	nextProducedOffset = lastPersistedOffset + 1
 
 	co = mockNewConsenter(t, testConf.Kafka.Version, testConf.Kafka.Retry, nextProducedOffset)
