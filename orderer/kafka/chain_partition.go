@@ -35,8 +35,7 @@ type chainPartitionImpl struct {
 // Returns a new chain partition for a given chain ID and partition.
 func newChainPartition(chainID string, partition int32) ChainPartition {
 	return &chainPartitionImpl{
-		// TODO https://github.com/apache/kafka/blob/trunk/core/src/main/scala/kafka/common/Topic.scala#L29
-		tpc: fmt.Sprintf("%x", chainID),
+		tpc: fmt.Sprintf("%s", chainID),
 		prt: partition,
 	}
 }
