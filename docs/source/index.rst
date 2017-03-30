@@ -73,10 +73,8 @@ to craft a PoC for your own business network.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Getting Started
 
-   included
-   asset_setup
+   getting_started
 
 .. toctree::
    :maxdepth: 2
@@ -89,32 +87,30 @@ to craft a PoC for your own business network.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Education
+   :caption: Tutorials
 
    demos
-   dockercompose
-   learn_chaincode
+   chaincode
    videos
 
 .. toctree::
    :maxdepth: 2
-   :caption: Configuration Considerations
+   :caption: Operations Guide
 
    best_practices
-   bootstrap
-   adminops
+   configtx
+   configtxgen
    Setup/logging-control
 
 .. toctree::
    :maxdepth: 2
    :caption: Architecture
 
-   txflow
    arch-deep-dive
+   txflow
    Setup/ca-setup
-   nodesdk
-   chaincode
    endorsement-policies
+   nodesdk
    orderingservice
    ledger
    readwrite
