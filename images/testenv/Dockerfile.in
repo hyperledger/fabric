@@ -1,4 +1,4 @@
-FROM hyperledger/fabric-buildenv:_TAG_
+FROM _NS_/fabric-buildenv:_TAG_
 
 # fabric configuration locations
 ENV PEER_CFG_PATH /etc/hyperledger/fabric

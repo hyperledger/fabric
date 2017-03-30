@@ -1,4 +1,4 @@
-FROM hyperledger/fabric-baseos:_BASE_TAG_
+FROM _BASE_NS_/fabric-baseos:_BASE_TAG_
 ENV ORDERER_CFG_PATH /etc/hyperledger/fabric
 ENV ORDERER_GENERAL_LOCALMSPDIR $ORDERER_CFG_PATH/msp/sampleconfig
 ENV ORDERER_GENERAL_GENESISPROFILE=SampleInsecureSolo
