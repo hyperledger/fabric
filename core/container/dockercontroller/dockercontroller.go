@@ -25,6 +25,8 @@ import (
 
 	"bufio"
 
+	"regexp"
+
 	"github.com/fsouza/go-dockerclient"
 	container "github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -117,7 +119,10 @@ func (vm *DockerVM) createContainer(ctxt context.Context, client *docker.Client,
 }
 
 func (vm *DockerVM) deployImage(client *docker.Client, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
-	id, _ := vm.GetVMName(ccid)
+	id, err := vm.GetVMName(ccid)
+	if err != nil {
+		return err
+	}
 	outputbuf := bytes.NewBuffer(nil)
 	opts := docker.BuildImageOptions{
 		Name:         id,
@@ -156,7 +161,10 @@ func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string
 
 //Start starts a container using a previously created docker image
 func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, builder container.BuildSpecFactory) error {
-	imageID, _ := vm.GetVMName(ccid)
+	imageID, err := vm.GetVMName(ccid)
+	if err != nil {
+		return err
+	}
 	client, err := cutil.NewDockerClient()
 	if err != nil {
 		dockerLogger.Debugf("start - cannot create client %s", err)
@@ -283,7 +291,10 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 
 //Stop stops a running chaincode
 func (vm *DockerVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
-	id, _ := vm.GetVMName(ccid)
+	id, err := vm.GetVMName(ccid)
+	if err != nil {
+		return err
+	}
 	client, err := cutil.NewDockerClient()
 	if err != nil {
 		dockerLogger.Debugf("stop - cannot create client %s", err)
@@ -324,7 +335,10 @@ func (vm *DockerVM) stopInternal(ctxt context.Context, client *docker.Client, id
 
 //Destroy destroys an image
 func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error {
-	id, _ := vm.GetVMName(ccid)
+	id, err := vm.GetVMName(ccid)
+	if err != nil {
+		return err
+	}
 	client, err := cutil.NewDockerClient()
 	if err != nil {
 		dockerLogger.Errorf("destroy-cannot create client %s", err)
@@ -348,11 +362,29 @@ func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, 
 func (vm *DockerVM) GetVMName(ccid ccintf.CCID) (string, error) {
 	name := ccid.GetName()
 
-	if ccid.NetworkID != "" {
-		return fmt.Sprintf("%s-%s-%s", ccid.NetworkID, ccid.PeerID, name), nil
+	//Convert to lowercase and replace any invalid characters with "-"
+	r := regexp.MustCompile("[^a-zA-Z0-9-_.]")
+
+	if ccid.NetworkID != "" && ccid.PeerID != "" {
+		name = strings.ToLower(
+			r.ReplaceAllString(
+				fmt.Sprintf("%s-%s-%s", ccid.NetworkID, ccid.PeerID, name), "-"))
+	} else if ccid.NetworkID != "" {
+		name = strings.ToLower(
+			r.ReplaceAllString(
+				fmt.Sprintf("%s-%s", ccid.NetworkID, name), "-"))
 	} else if ccid.PeerID != "" {
-		return fmt.Sprintf("%s-%s", ccid.PeerID, name), nil
-	} else {
-		return name, nil
+		name = strings.ToLower(
+			r.ReplaceAllString(
+				fmt.Sprintf("%s-%s", ccid.PeerID, name), "-"))
 	}
+
+	// Check name complies with Docker's repository naming rules
+	r = regexp.MustCompile("^[a-z0-9]+(([._-][a-z0-9]+)+)?$")
+
+	if !r.MatchString(name) {
+		dockerLogger.Errorf("Error constructing Docker VM Name. '%s' breaks Docker's repository naming rules", name)
+		return name, fmt.Errorf("Error constructing Docker VM Name. '%s' breaks Docker's repository naming rules", name)
+	}
+	return name, nil
 }
