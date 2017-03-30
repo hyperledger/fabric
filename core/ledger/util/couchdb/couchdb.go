@@ -504,8 +504,11 @@ func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buf
 
 		//create a generic map
 		genericMap := make(map[string]interface{})
+
 		//unmarshal the data into the generic map
-		json.Unmarshal(couchDoc.JSONValue, &genericMap)
+		decoder := json.NewDecoder(bytes.NewBuffer(couchDoc.JSONValue))
+		decoder.UseNumber()
+		decoder.Decode(&genericMap)
 
 		//add all key/values to the attachmentJSONMap
 		for jsonKey, jsonValue := range genericMap {
