@@ -361,13 +361,13 @@ func (le *leaderElectionSvcImpl) IsLeader() bool {
 func (le *leaderElectionSvcImpl) beLeader() {
 	le.logger.Debug(le.id, ": Becoming a leader")
 	atomic.StoreInt32(&le.isLeader, int32(1))
-	go le.callback(true)
+	le.callback(true)
 }
 
 func (le *leaderElectionSvcImpl) stopBeingLeader() {
 	le.logger.Debug(le.id, "Stopped being a leader")
 	atomic.StoreInt32(&le.isLeader, int32(0))
-	go le.callback(false)
+	le.callback(false)
 }
 
 func (le *leaderElectionSvcImpl) shouldStop() bool {
