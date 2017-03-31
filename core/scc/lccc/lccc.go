@@ -18,9 +18,8 @@ package lccc
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
-	"strconv"
-	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -74,8 +73,8 @@ const (
 	//GETINSTALLEDCHAINCODES gets the installed chaincodes on a peer
 	GETINSTALLEDCHAINCODES = "getinstalledchaincodes"
 
-	//characters used in chaincodenamespace
-	specialChars = "/:[]${}"
+	allowedCharsChaincodeName = "[A-Za-z0-9_-]+"
+	allowedCharsVersion       = "[A-Za-z0-9_.-]+"
 )
 
 //---------- the LCCC -----------------
@@ -164,7 +163,28 @@ func (f InvalidChainNameErr) Error() string {
 type InvalidChaincodeNameErr string
 
 func (f InvalidChaincodeNameErr) Error() string {
-	return fmt.Sprintf("invalid chain code name %s", string(f))
+	return fmt.Sprintf("invalid chaincode name %s", string(f))
+}
+
+//EmptyChaincodeNameErr trying to upgrade to same version of Chaincode
+type EmptyChaincodeNameErr string
+
+func (f EmptyChaincodeNameErr) Error() string {
+	return fmt.Sprint("chaincode name not provided")
+}
+
+//InvalidVersionErr invalid version error
+type InvalidVersionErr string
+
+func (f InvalidVersionErr) Error() string {
+	return fmt.Sprintf("invalid chaincode version %s", string(f))
+}
+
+//EmptyVersionErr empty version error
+type EmptyVersionErr string
+
+func (f EmptyVersionErr) Error() string {
+	return fmt.Sprintf("version not provided for chaincode %s", string(f))
 }
 
 //MarshallErr error marshaling/unmarshalling
@@ -178,21 +198,7 @@ func (m MarshallErr) Error() string {
 type IdenticalVersionErr string
 
 func (f IdenticalVersionErr) Error() string {
-	return fmt.Sprintf("chain code with the same version exists %s", string(f))
-}
-
-//InvalidVersionErr trying to upgrade to same version of Chaincode
-type InvalidVersionErr string
-
-func (f InvalidVersionErr) Error() string {
-	return fmt.Sprintf("invalid version %s", string(f))
-}
-
-//EmptyVersionErr trying to upgrade to same version of Chaincode
-type EmptyVersionErr string
-
-func (f EmptyVersionErr) Error() string {
-	return fmt.Sprintf("version not provided for chaincode %s", string(f))
+	return fmt.Sprintf("chaincode with the same version exists %s", string(f))
 }
 
 //-------------- helper functions ------------------
@@ -338,22 +344,47 @@ func (lccc *LifeCycleSysCC) isValidChainName(chainname string) bool {
 	return true
 }
 
-//check validity of chaincode name
-func (lccc *LifeCycleSysCC) isValidChaincodeName(chaincodename string) bool {
-	//TODO we probably need more checks
-	if chaincodename == "" {
-		return false
+// isValidChaincodeName checks the validity of chaincode name. Chaincode names
+// should never be blank and should only consist of alphanumerics, '_', and '-'
+func (lccc *LifeCycleSysCC) isValidChaincodeName(chaincodeName string) error {
+	if chaincodeName == "" {
+		return EmptyChaincodeNameErr("")
 	}
 
-	//do not allow special characters in chaincode name
-	if strings.ContainsAny(chaincodename, specialChars) {
+	if !isValidCCNameOrVersion(chaincodeName, allowedCharsChaincodeName) {
+		return InvalidChaincodeNameErr(chaincodeName)
+	}
+
+	return nil
+}
+
+// isValidChaincodeVersion checks the validity of chaincode version. Versions
+// should never be blank and should only consist of alphanumerics, '_',  '-',
+// and '.'
+func (lccc *LifeCycleSysCC) isValidChaincodeVersion(chaincodeName string, version string) error {
+	if version == "" {
+		return EmptyVersionErr(chaincodeName)
+	}
+
+	if !isValidCCNameOrVersion(version, allowedCharsVersion) {
+		return InvalidVersionErr(version)
+	}
+
+	return nil
+}
+
+func isValidCCNameOrVersion(ccNameOrVersion string, regExp string) bool {
+	re, _ := regexp.Compile(regExp)
+
+	matched := re.FindString(ccNameOrVersion)
+	if len(matched) != len(ccNameOrVersion) {
 		return false
 	}
 
 	return true
 }
 
-//this implements "install" Invoke transaction
+// executeInstall implements the "install" Invoke transaction
 func (lccc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, depSpec []byte) error {
 	cds, err := utils.GetChaincodeDeploymentSpec(depSpec)
 
@@ -361,12 +392,12 @@ func (lccc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, dep
 		return err
 	}
 
-	if !lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name) {
-		return InvalidChaincodeNameErr(cds.ChaincodeSpec.ChaincodeId.Name)
+	if err = lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
+		return err
 	}
 
-	if cds.ChaincodeSpec.ChaincodeId.Version == "" {
-		return EmptyVersionErr(cds.ChaincodeSpec.ChaincodeId.Name)
+	if err = lccc.isValidChaincodeVersion(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
+		return err
 	}
 
 	if err = ccprovider.PutChaincodeIntoFS(cds); err != nil {
@@ -376,7 +407,7 @@ func (lccc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, dep
 	return err
 }
 
-//this implements "deploy" Invoke transaction
+// executeDeploy implements the "instantiate" Invoke transaction
 func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chainname string, depSpec []byte, policy []byte, escc []byte, vscc []byte) error {
 	cds, err := utils.GetChaincodeDeploymentSpec(depSpec)
 
@@ -384,8 +415,12 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 		return err
 	}
 
-	if !lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name) {
-		return InvalidChaincodeNameErr(cds.ChaincodeSpec.ChaincodeId.Name)
+	if err = lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
+		return err
+	}
+
+	if err = lccc.isValidChaincodeVersion(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
+		return err
 	}
 
 	if err = lccc.acl(stub, chainname, cds); err != nil {
@@ -397,40 +432,12 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 		return ExistsErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
-	if cds.ChaincodeSpec.ChaincodeId.Version == "" {
-		return EmptyVersionErr(cds.ChaincodeSpec.ChaincodeId.Name)
-	}
-
 	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, depSpec, policy, escc, vscc)
 
 	return err
 }
 
-func (lccc *LifeCycleSysCC) getUpgradeVersion(cd *ccprovider.ChaincodeData, cds *pb.ChaincodeDeploymentSpec) (string, error) {
-	if cd.Version == cds.ChaincodeSpec.ChaincodeId.Version {
-		return "", IdenticalVersionErr(cds.ChaincodeSpec.ChaincodeId.Name)
-	}
-
-	if cds.ChaincodeSpec.ChaincodeId.Version != "" {
-		return cds.ChaincodeSpec.ChaincodeId.Version, nil
-	}
-
-	//user did not specifcy Version. the previous version better be a number
-	v, err := strconv.ParseInt(cd.Version, 10, 32)
-
-	//This should never happen as long we don't expose version as version is computed internally
-	//so panic till we find a need to relax
-	if err != nil {
-		return "", InvalidVersionErr(cd.Version)
-	}
-
-	// replace the ChaincodeDeploymentSpec using the next version
-	newVersion := fmt.Sprintf("%d", (v + 1))
-
-	return newVersion, nil
-}
-
-//this implements "upgrade" Invoke transaction
+// executeUpgrade implements the "upgrade" Invoke transaction.
 func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName string, depSpec []byte, policy []byte, escc []byte, vscc []byte) ([]byte, error) {
 	cds, err := utils.GetChaincodeDeploymentSpec(depSpec)
 	if err != nil {
@@ -442,8 +449,12 @@ func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 	}
 
 	chaincodeName := cds.ChaincodeSpec.ChaincodeId.Name
-	if !lccc.isValidChaincodeName(chaincodeName) {
-		return nil, InvalidChaincodeNameErr(chaincodeName)
+	if err = lccc.isValidChaincodeName(chaincodeName); err != nil {
+		return nil, err
+	}
+
+	if err = lccc.isValidChaincodeVersion(chaincodeName, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
+		return nil, err
 	}
 
 	// check for existence of chaincode
@@ -452,10 +463,11 @@ func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 		return nil, NotFoundErr(chainName)
 	}
 
-	ver, err := lccc.getUpgradeVersion(cd, cds)
-	if err != nil {
-		return nil, err
+	if cd.Version == cds.ChaincodeSpec.ChaincodeId.Version {
+		return nil, IdenticalVersionErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
+
+	ver := cds.ChaincodeSpec.ChaincodeId.Version
 
 	newCD, err := lccc.upgradeChaincode(stub, chainName, chaincodeName, ver, depSpec, policy, escc, vscc)
 	if err != nil {

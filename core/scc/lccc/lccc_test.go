@@ -85,58 +85,18 @@ func constructDeploymentSpec(name string, path string, version string, initArgs 
 	return chaincodeDeploymentSpec, nil
 }
 
-//TestDeploy tests the deploy function (stops short of actually running the chaincode)
-func TestDeploy(t *testing.T) {
-	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
-
-	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		fmt.Println("Init failed", string(res.Message))
-		t.FailNow()
-	}
-
-	ccname := "example02"
+//TestInstall tests the install function with various inputs
+func TestInstall(t *testing.T) {
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	version := "0"
-	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
-	if err != nil {
-		t.FailNow()
-	}
-	defer os.Remove(lccctestpath + "/example02.0")
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.FailNow()
-	}
 
-	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
-		t.FailNow()
-	}
-
-	args = [][]byte{[]byte(GETCHAINCODES)}
-	res := stub.MockInvoke("1", args)
-	if res.Status != shim.OK {
-		t.FailNow()
-	}
-
-	cqr := &pb.ChaincodeQueryResponse{}
-	err = proto.Unmarshal(res.Payload, cqr)
-	if err != nil {
-		t.FailNow()
-	}
-	// deployed one chaincode so query should return an array with one chaincode
-	if len(cqr.GetChaincodes()) != 1 {
-		t.FailNow()
-	}
-
-	// check that the ChaincodeInfo values match the input values
-	if cqr.GetChaincodes()[0].Name != ccname || cqr.GetChaincodes()[0].Version != version || cqr.GetChaincodes()[0].Path != path {
-		t.FailNow()
-	}
+	testInstall(t, "example02", "0", path, "")
+	testInstall(t, "example02-2", "1.0", path, "")
+	testInstall(t, "example02.go", "0", path, InvalidChaincodeNameErr("example02.go").Error())
+	testInstall(t, "", "0", path, EmptyChaincodeNameErr("").Error())
+	testInstall(t, "example02", "1{}0", path, InvalidVersionErr("1{}0").Error())
 }
 
-//TestInstall tests the install function
-func TestInstall(t *testing.T) {
+func testInstall(t *testing.T, ccname string, version string, path string, expectedErrorMsg string) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
@@ -144,10 +104,11 @@ func TestInstall(t *testing.T) {
 		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
 	}
-	ccname := "example02"
-	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	version := "0"
+
 	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
+	if err != nil {
+		t.FailNow()
+	}
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -155,9 +116,17 @@ func TestInstall(t *testing.T) {
 
 	//constructDeploymentSpec puts the depspec on the FS. This should succeed
 	args := [][]byte{[]byte(INSTALL), b}
-	defer os.Remove(lccctestpath + "/example02.0")
-	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
-		t.FailNow()
+
+	if expectedErrorMsg == "" {
+		defer os.Remove(lccctestpath + "/" + ccname + "." + version)
+		if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+			t.FailNow()
+		}
+	} else {
+		if res := stub.MockInvoke("1", args); string(res.Message) != expectedErrorMsg {
+			t.Logf("Received error: %s", res.Message)
+			t.FailNow()
+		}
 	}
 
 	args = [][]byte{[]byte(GETINSTALLEDCHAINCODES)}
@@ -172,14 +141,23 @@ func TestInstall(t *testing.T) {
 		t.FailNow()
 	}
 
-	// installed one chaincode so query should return an array with one chaincode
-	if len(cqr.GetChaincodes()) != 1 {
-		t.FailNow()
-	}
+	if expectedErrorMsg == "" {
+		// installed one chaincode so query should return an array with one chaincode
+		if len(cqr.GetChaincodes()) != 1 {
+			t.Logf("Expected 1 chaincode, found %d\n", len(cqr.GetChaincodes()))
+			t.FailNow()
+		}
 
-	// check that the ChaincodeInfo values match the input values
-	if cqr.GetChaincodes()[0].Name != ccname || cqr.GetChaincodes()[0].Version != version || cqr.GetChaincodes()[0].Path != path {
-		t.FailNow()
+		// check that the ChaincodeInfo values match the input values
+		if cqr.GetChaincodes()[0].Name != ccname || cqr.GetChaincodes()[0].Version != version || cqr.GetChaincodes()[0].Path != path {
+			t.FailNow()
+		}
+	} else {
+		// we expected an error so no chaincodes should have installed
+		if len(cqr.GetChaincodes()) != 0 {
+			t.Logf("Expected 0 chaincodes, found %d\n", len(cqr.GetChaincodes()))
+			t.FailNow()
+		}
 	}
 }
 
@@ -195,6 +173,9 @@ func TestReinstall(t *testing.T) {
 
 	//note that this puts the code on the filesyste....
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	if err != nil {
+		t.FailNow()
+	}
 	defer os.Remove(lccctestpath + "/example02.0")
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -227,57 +208,46 @@ func TestInvalidCodeDeploy(t *testing.T) {
 	}
 }
 
-//TestInvalidChaincodeName tests the deploy function with invalid chaincode name
-func TestInvalidChaincodeName(t *testing.T) {
-	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+// TestDeploy tests the deploy function with various inputs for basic use cases
+// (and stops short of actually running the chaincode). More advanced tests like
+// redeploying, multiple deployments, and other failure cases that don't match
+// this standard test case pattern are handled in other test cases below.
+// Note: the forceBlankCCName and forceBlankVersion flags are necessary because
+// constructDeploymentSpec() with the createFS flag set to true places the
+// chaincode onto the filesystem to install it before it then attempts to
+// instantiate the chaincode
+func TestDeploy(t *testing.T) {
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		fmt.Println("Init failed", string(res.Message))
-		t.FailNow()
-	}
-
-	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
-	defer os.Remove(lccctestpath + "/example02.0")
-	if err != nil {
-		t.FailNow()
-	}
-
-	//change name to empty
-	cds.ChaincodeSpec.ChaincodeId.Name = ""
-
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.FailNow()
-	}
-
-	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	res := stub.MockInvoke("1", args)
-	if string(res.Message) != InvalidChaincodeNameErr("").Error() {
-		t.Logf("Get error: %s", res.Message)
-		t.FailNow()
-	}
+	testDeploy(t, "example02", "0", path, false, false, "")
+	testDeploy(t, "example02", "1.0", path, false, false, "")
+	testDeploy(t, "example02", "0", path, true, false, EmptyChaincodeNameErr("").Error())
+	testDeploy(t, "example02", "0", path, false, true, EmptyVersionErr("example02").Error())
+	testDeploy(t, "example02.go", "0", path, false, false, InvalidChaincodeNameErr("example02.go").Error())
+	testDeploy(t, "example02", "1{}0", path, false, false, InvalidVersionErr("1{}0").Error())
+	testDeploy(t, "example02", "0", path, true, true, EmptyChaincodeNameErr("").Error())
 }
 
-//TestEmptyChaincodeVersion tests the deploy function without a version name
-func TestEmptyChaincodeVersion(t *testing.T) {
+func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, expectedErrorMsg string) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		fmt.Println("Init failed", string(res.Message))
+		t.Logf("Init failed: %s", string(res.Message))
 		t.FailNow()
 	}
 
-	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
-	defer os.Remove(lccctestpath + "/example02.0")
+	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
 	if err != nil {
 		t.FailNow()
 	}
-
-	//change version to empty
-	cds.ChaincodeSpec.ChaincodeId.Version = ""
-
+	defer os.Remove(lccctestpath + "/" + ccname + "." + version)
+	if forceBlankCCName {
+		cds.ChaincodeSpec.ChaincodeId.Name = ""
+	}
+	if forceBlankVersion {
+		cds.ChaincodeSpec.ChaincodeId.Version = ""
+	}
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -285,9 +255,52 @@ func TestEmptyChaincodeVersion(t *testing.T) {
 
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
 	res := stub.MockInvoke("1", args)
-	if string(res.Message) != EmptyVersionErr("example02").Error() {
-		t.Logf("Get error: %s", res.Message)
+
+	if expectedErrorMsg == "" {
+		if res.Status != shim.OK {
+			t.FailNow()
+		}
+	} else {
+		if string(res.Message) != expectedErrorMsg {
+			t.Logf("Get error: %s", res.Message)
+			t.FailNow()
+		}
+	}
+
+	args = [][]byte{[]byte(GETCHAINCODES)}
+	res = stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
 		t.FailNow()
+	}
+
+	cqr := &pb.ChaincodeQueryResponse{}
+	err = proto.Unmarshal(res.Payload, cqr)
+	if err != nil {
+		t.FailNow()
+	}
+
+	if expectedErrorMsg == "" {
+		// instantiated one chaincode so query should return an array with one chaincode
+		if len(cqr.GetChaincodes()) != 1 {
+			t.Logf("Expected 1 chaincode, found %d\n", len(cqr.GetChaincodes()))
+			t.FailNow()
+		}
+
+		// check that the ChaincodeInfo values match the input values
+		if cqr.GetChaincodes()[0].Name != ccname || cqr.GetChaincodes()[0].Version != version || cqr.GetChaincodes()[0].Path != path {
+			t.FailNow()
+		}
+
+		args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+		if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+			t.FailNow()
+		}
+	} else {
+		// instantiated zero chaincodes so query should return a zero-length array
+		if len(cqr.GetChaincodes()) != 0 {
+			t.Logf("Expected 0 chaincodes, found %d\n", len(cqr.GetChaincodes()))
+			t.FailNow()
+		}
 	}
 }
 
@@ -302,6 +315,9 @@ func TestRedeploy(t *testing.T) {
 	}
 
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	if err != nil {
+		t.FailNow()
+	}
 	defer os.Remove(lccctestpath + "/example02.0")
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -321,35 +337,6 @@ func TestRedeploy(t *testing.T) {
 	}
 }
 
-//TestCheckCC invokes the GETCCINFO function to get status of deployed chaincode
-func TestCheckCC(t *testing.T) {
-	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
-
-	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		fmt.Println("Init failed", string(res.Message))
-		t.FailNow()
-	}
-
-	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
-	defer os.Remove(lccctestpath + "/example02.0")
-
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.FailNow()
-	}
-
-	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
-		t.FailNow()
-	}
-
-	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
-	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
-		t.FailNow()
-	}
-}
-
 //TestMultipleDeploy tests deploying multiple chaincodeschaincodes
 func TestMultipleDeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
@@ -362,6 +349,9 @@ func TestMultipleDeploy(t *testing.T) {
 
 	//deploy 02
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	if err != nil {
+		t.FailNow()
+	}
 	defer os.Remove(lccctestpath + "/example02.0")
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -380,6 +370,9 @@ func TestMultipleDeploy(t *testing.T) {
 
 	//deploy 01
 	cds, err = constructDeploymentSpec("example01", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	if err != nil {
+		t.FailNow()
+	}
 	defer os.Remove(lccctestpath + "/example01.0")
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -426,6 +419,9 @@ func TestRetryFailedDeploy(t *testing.T) {
 
 	//deploy 02
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	if err != nil {
+		t.FailNow()
+	}
 	defer os.Remove(lccctestpath + "/example02.0")
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -458,8 +454,20 @@ func TestRetryFailedDeploy(t *testing.T) {
 	}
 }
 
-//TestUpgrade tests the upgrade function
+// TestUpgrade tests the upgrade function with various inputs for basic use cases
 func TestUpgrade(t *testing.T) {
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+
+	testUpgrade(t, "example02", "0", "example02", "1", path, "")
+	testUpgrade(t, "example02", "0", "example02", "", path, EmptyVersionErr("example02").Error())
+	testUpgrade(t, "example02", "0", "example02", "0", path, IdenticalVersionErr("example02").Error())
+	testUpgrade(t, "example02", "0", "example03", "1", path, NotFoundErr("test").Error())
+	testUpgrade(t, "example02", "0", "example02", "1{}0", path, InvalidVersionErr("1{}0").Error())
+	testUpgrade(t, "example02", "0", "example*02", "1{}0", path, InvalidChaincodeNameErr("example*02").Error())
+	testUpgrade(t, "example02", "0", "", "1", path, EmptyChaincodeNameErr("").Error())
+}
+
+func testUpgrade(t *testing.T, ccname string, version string, newccname string, newversion string, path string, expectedErrorMsg string) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
@@ -468,8 +476,11 @@ func TestUpgrade(t *testing.T) {
 		t.FailNow()
 	}
 
-	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
-	defer os.Remove(lccctestpath + "/example02.0")
+	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	if err != nil {
+		t.FailNow()
+	}
+	defer os.Remove(lccctestpath + "/" + ccname + "." + version)
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.Fatalf("Marshal DeploymentSpec failed")
@@ -480,8 +491,18 @@ func TestUpgrade(t *testing.T) {
 		t.Fatalf("Deploy chaincode error: %v", err)
 	}
 
-	newCds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "1", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
-	defer os.Remove(lccctestpath + "/example02.1")
+	var newCds *pb.ChaincodeDeploymentSpec
+	// check to see if we've already created the deployment spec on the filesystem
+	// in the above step for the upgrade version
+	if ccname == newccname && version == newversion {
+		newCds, err = constructDeploymentSpec(newccname, path, newversion, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
+	} else {
+		newCds, err = constructDeploymentSpec(newccname, path, newversion, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	}
+	if err != nil {
+		t.FailNow()
+	}
+	defer os.Remove(lccctestpath + "/" + newccname + "." + newversion)
 	var newb []byte
 	if newb, err = proto.Marshal(newCds); err != nil || newb == nil {
 		t.Fatalf("Marshal DeploymentSpec failed")
@@ -489,50 +510,21 @@ func TestUpgrade(t *testing.T) {
 
 	args = [][]byte{[]byte(UPGRADE), []byte("test"), newb}
 	res := stub.MockInvoke("1", args)
-	if res.Status != shim.OK {
-		t.Fatalf("Upgrade chaincode error: %v", err)
-	}
+	if expectedErrorMsg == "" {
+		if res.Status != shim.OK {
+			t.Fatalf("Upgrade chaincode error: %v", err)
+		}
 
-	expectVer := "1"
-	newVer := string(res.Payload)
-	if newVer != expectVer {
-		t.Fatalf("Upgrade chaincode version error, expected %s, got %s", expectVer, newVer)
-	}
-}
-
-//TestUpgradeNonExistChaincode tests upgrade non exist chaincode
-func TestUpgradeNonExistChaincode(t *testing.T) {
-	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
-
-	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		fmt.Println("Init failed", string(res.Message))
-		t.FailNow()
-	}
-
-	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
-	defer os.Remove(lccctestpath + "/example02.0")
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.Fatalf("Marshal DeploymentSpec failed")
-	}
-
-	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
-		t.Fatalf("Deploy chaincode error: %s", res.Message)
-	}
-
-	newCds, err := constructDeploymentSpec("example03", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "1", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
-	defer os.Remove(lccctestpath + "/example03.1")
-	var newb []byte
-	if newb, err = proto.Marshal(newCds); err != nil || newb == nil {
-		t.Fatalf("Marshal DeploymentSpec failed")
-	}
-
-	args = [][]byte{[]byte(UPGRADE), []byte("test"), newb}
-	res := stub.MockInvoke("1", args)
-	if string(res.Message) != NotFoundErr("test").Error() {
-		t.FailNow()
+		expectVer := "1"
+		newVer := string(res.Payload)
+		if newVer != expectVer {
+			t.Fatalf("Upgrade chaincode version error, expected %s, got %s", expectVer, newVer)
+		}
+	} else {
+		if string(res.Message) != expectedErrorMsg {
+			t.Logf("Received error message: %s", res.Message)
+			t.FailNow()
+		}
 	}
 }
 
