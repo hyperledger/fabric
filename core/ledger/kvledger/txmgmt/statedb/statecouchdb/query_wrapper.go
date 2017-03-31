@@ -17,6 +17,7 @@ limitations under the License.
 package statecouchdb
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -66,7 +67,9 @@ func ApplyQueryWrapper(namespace, queryString string, queryLimit, querySkip int)
 	jsonQueryMap := make(map[string]interface{})
 
 	//unmarshal the selected json into the generic map
-	err := json.Unmarshal([]byte(queryString), &jsonQueryMap)
+	decoder := json.NewDecoder(bytes.NewBuffer([]byte(queryString)))
+	decoder.UseNumber()
+	err := decoder.Decode(&jsonQueryMap)
 	if err != nil {
 		return "", err
 	}
@@ -165,6 +168,10 @@ func processAndWrapQuery(jsonQueryMap map[string]interface{}) {
 
 		case float64:
 			//intercept the float64 case and prevent the []interface{} case from
+			//incorrectly processing the float64
+
+		case json.Number:
+			//intercept the Number case and prevent the []interface{} case from
 			//incorrectly processing the float64
 
 		//if the type is an array, then iterate through the items

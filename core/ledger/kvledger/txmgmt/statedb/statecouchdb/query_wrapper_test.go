@@ -366,3 +366,18 @@ func TestQueryWithUseDesignDocAndIndexName(t *testing.T) {
 	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"use_index\":[\"_design/testDoc\",\"testIndexName\"]"), 1)
 
 }
+
+//TestQueryWithLargeInteger tests query with large integer
+func TestQueryWithLargeInteger(t *testing.T) {
+
+	rawQuery := []byte(`{"selector":{"$and":[{"size":{"$eq": 1000007}}]}}`)
+
+	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery), 10000, 0)
+
+	//Make sure the query did not throw an exception
+	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
+
+	//check to make sure the default selector is added
+	testutil.AssertEquals(t, strings.Count(wrappedQuery, "{\"$eq\":1000007}"), 1)
+
+}

@@ -144,7 +144,9 @@ func removeDataWrapper(wrappedValue []byte, attachments []couchdb.Attachment) ([
 	jsonResult := make(map[string]interface{})
 
 	//unmarshal the selected json into the generic map
-	json.Unmarshal(wrappedValue, &jsonResult)
+	decoder := json.NewDecoder(bytes.NewBuffer(wrappedValue))
+	decoder.UseNumber()
+	_ = decoder.Decode(&jsonResult)
 
 	// handle binary or json data
 	if jsonResult[dataWrapper] == nil && attachments != nil { // binary attachment
