@@ -95,7 +95,7 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	}
 	defer func() { txmgr.batch = nil }()
 	if err := txmgr.db.ApplyUpdates(txmgr.batch,
-		version.NewHeight(txmgr.currentBlock.Header.Number, uint64(len(txmgr.currentBlock.Data.Data)))); err != nil {
+		version.NewHeight(txmgr.currentBlock.Header.Number, uint64(len(txmgr.currentBlock.Data.Data)-1))); err != nil {
 		return err
 	}
 	logger.Debugf("Updates committed to state database")

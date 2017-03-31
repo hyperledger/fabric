@@ -165,8 +165,8 @@ func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {
 	blkfileMgrWrapper.addBlocks(blocks)
 	for blockIndex, blk := range blocks {
 		for tranIndex, txEnvelopeBytes := range blk.Data.Data {
-			// blockNum starts with 1, tranNum starts with 1
-			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByBlockNumTranNum(uint64(blockIndex), uint64(tranIndex+1))
+			// blockNum and tranNum both start with 0
+			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByBlockNumTranNum(uint64(blockIndex), uint64(tranIndex))
 			testutil.AssertNoError(t, err, "Error while retrieving tx from blkfileMgr")
 			txEnvelope, err := putil.GetEnvelopeFromBlock(txEnvelopeBytes)
 			testutil.AssertNoError(t, err, "Error while unmarshalling tx")

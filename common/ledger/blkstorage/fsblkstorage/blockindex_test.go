@@ -179,7 +179,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		}
 
 		//test 'retrieveTrasnactionsByBlockNumTranNum
-		txEnvelope2, err := blockfileMgr.retrieveTransactionByBlockNumTranNum(0, 1)
+		txEnvelope2, err := blockfileMgr.retrieveTransactionByBlockNumTranNum(0, 0)
 		if testutil.Contains(indexItems, blkstorage.IndexableAttrBlockNumTranNum) {
 			testutil.AssertNoError(t, err, "Error while retrieving tx by blockNum and tranNum")
 			txEnvelopeBytes2 := blocks[0].Data.Data[0]
