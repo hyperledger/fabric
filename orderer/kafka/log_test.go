@@ -17,9 +17,12 @@ limitations under the License.
 package kafka
 
 import (
-	logging "github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 )
 
 func init() {
-	logging.SetLevel(logging.DEBUG, "") // Silence debug-level outputs when testing
+	// This call allows us to (a) get the logging backend initialization that
+	// takes place in the `flogging` package, and (b) adjust the verbosity of
+	// the logs when running tests on this package.
+	flogging.SetModuleLevel(pkgLogID, "ERROR")
 }
