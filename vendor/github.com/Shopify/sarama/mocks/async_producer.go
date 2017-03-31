@@ -147,7 +147,7 @@ func (mp *AsyncProducer) ExpectInputWithCheckerFunctionAndSucceed(cf ValueChecke
 	mp.expectations = append(mp.expectations, &producerExpectation{Result: errProduceSuccess, CheckFunction: cf})
 }
 
-// ExpectInputWithCheckerFunctionAndSucceed sets an expectation on the mock producer that a message
+// ExpectInputWithCheckerFunctionAndFail sets an expectation on the mock producer that a message
 // will be provided on the input channel. The mock producer will first call the given function to
 // check the message value. If an error is returned it will be made available on the Errors channel
 // otherwise the mock will handle the message as if it failed to produce successfully. This means

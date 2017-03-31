@@ -53,8 +53,12 @@ func (ps *produceSet) add(msg *ProducerMessage) error {
 
 	set.msgs = append(set.msgs, msg)
 	msgToSend := &Message{Codec: CompressionNone, Key: key, Value: val}
-	if ps.parent.conf.Version.IsAtLeast(V0_10_0_0) && !msg.Timestamp.IsZero() {
-		msgToSend.Timestamp = msg.Timestamp
+	if ps.parent.conf.Version.IsAtLeast(V0_10_0_0) {
+		if msg.Timestamp.IsZero() {
+			msgToSend.Timestamp = time.Now()
+		} else {
+			msgToSend.Timestamp = msg.Timestamp
+		}
 		msgToSend.Version = 1
 	}
 	set.setToSend.addMessage(msgToSend)
@@ -85,16 +89,22 @@ func (ps *produceSet) buildRequest() *ProduceRequest {
 				// and sent as the payload of a single fake "message" with the appropriate codec
 				// set and no key. When the server sees a message with a compression codec, it
 				// decompresses the payload and treats the result as its message set.
-				payload, err := encode(set.setToSend)
+				payload, err := encode(set.setToSend, ps.parent.conf.MetricRegistry)
 				if err != nil {
 					Logger.Println(err) // if this happens, it's basically our fault.
 					panic(err)
 				}
-				req.AddMessage(topic, partition, &Message{
+				compMsg := &Message{
 					Codec: ps.parent.conf.Producer.Compression,
 					Key:   nil,
 					Value: payload,
-				})
+					Set:   set.setToSend, // Provide the underlying message set for accurate metrics
+				}
+				if ps.parent.conf.Version.IsAtLeast(V0_10_0_0) {
+					compMsg.Version = 1
+					compMsg.Timestamp = set.setToSend.Messages[0].Msg.Timestamp
+				}
+				req.AddMessage(topic, partition, compMsg)
 			}
 		}
 	}

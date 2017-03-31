@@ -1,5 +1,7 @@
 package sarama
 
+import "github.com/rcrowley/go-metrics"
+
 // PacketEncoder is the interface providing helpers for writing with Kafka's encoding rules.
 // Types implementing Encoder only need to worry about calling methods like PutString,
 // not about how a string is represented in Kafka.
@@ -19,9 +21,15 @@ type packetEncoder interface {
 	putInt32Array(in []int32) error
 	putInt64Array(in []int64) error
 
+	// Provide the current offset to record the batch size metric
+	offset() int
+
 	// Stacks, see PushEncoder
 	push(in pushEncoder)
 	pop() error
+
+	// To record metrics when provided
+	metricRegistry() metrics.Registry
 }
 
 // PushEncoder is the interface for encoding fields like CRCs and lengths where the value
