@@ -16,7 +16,7 @@ BINDIR ?= /usr/local/bin
 OBJDIR ?= build
 
 TMP_GOPATH=$(OBJDIR)/gopath
-GOBIN=$(TMP_GOPATH)/bin
+GOBIN=$(abspath $(TMP_GOPATH)/bin)
 
 GOTOOLS = golint govendor goimports protoc-gen-go ginkgo gocov gocov-xml
 GOTOOLS_BIN = $(patsubst %,$(GOBIN)/%, $(GOTOOLS))
