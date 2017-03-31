@@ -15,7 +15,7 @@ _sym_db = _symbol_database.Default()
 
 
 from common import common_pb2 as common_dot_common__pb2
-from peer import chaincodeevent_pb2 as peer_dot_chaincodeevent__pb2
+from peer import chaincode_event_pb2 as peer_dot_chaincode__event__pb2
 from peer import transaction_pb2 as peer_dot_transaction__pb2
 
 
@@ -23,9 +23,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/events.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x11peer/events.proto\x12\x06protos\x1a\x13\x63ommon/common.proto\x1a\x19peer/chaincodeevent.proto\x1a\x16peer/transaction.proto\"8\n\x0c\x43haincodeReg\x12\x14\n\x0c\x63haincode_id\x18\x01 \x01(\t\x12\x12\n\nevent_name\x18\x02 \x01(\t\"\x81\x01\n\x08Interest\x12%\n\nevent_type\x18\x01 \x01(\x0e\x32\x11.protos.EventType\x12\x32\n\x12\x63haincode_reg_info\x18\x02 \x01(\x0b\x32\x14.protos.ChaincodeRegH\x00\x12\x0f\n\x07\x63hainID\x18\x03 \x01(\tB\t\n\x07RegInfo\",\n\x08Register\x12 \n\x06\x65vents\x18\x01 \x03(\x0b\x32\x10.protos.Interest\"?\n\tRejection\x12\x1f\n\x02tx\x18\x01 \x01(\x0b\x32\x13.protos.Transaction\x12\x11\n\terror_msg\x18\x02 \x01(\t\".\n\nUnregister\x12 \n\x06\x65vents\x18\x01 \x03(\x0b\x32\x10.protos.Interest\"4\n\x0bSignedEvent\x12\x11\n\tsignature\x18\x01 \x01(\x0c\x12\x12\n\neventBytes\x18\x02 \x01(\x0c\"\xec\x01\n\x05\x45vent\x12$\n\x08register\x18\x01 \x01(\x0b\x32\x10.protos.RegisterH\x00\x12\x1e\n\x05\x62lock\x18\x02 \x01(\x0b\x32\r.common.BlockH\x00\x12\x31\n\x0f\x63haincode_event\x18\x03 \x01(\x0b\x32\x16.protos.ChaincodeEventH\x00\x12&\n\trejection\x18\x04 \x01(\x0b\x32\x11.protos.RejectionH\x00\x12(\n\nunregister\x18\x05 \x01(\x0b\x32\x12.protos.UnregisterH\x00\x12\x0f\n\x07\x63reator\x18\x06 \x01(\x0c\x42\x07\n\x05\x45vent*B\n\tEventType\x12\x0c\n\x08REGISTER\x10\x00\x12\t\n\x05\x42LOCK\x10\x01\x12\r\n\tCHAINCODE\x10\x02\x12\r\n\tREJECTION\x10\x03\x32\x34\n\x06\x45vents\x12*\n\x04\x43hat\x12\r.protos.Event\x1a\r.protos.Event\"\x00(\x01\x30\x01\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x11peer/events.proto\x12\x06protos\x1a\x13\x63ommon/common.proto\x1a\x1apeer/chaincode_event.proto\x1a\x16peer/transaction.proto\"8\n\x0c\x43haincodeReg\x12\x14\n\x0c\x63haincode_id\x18\x01 \x01(\t\x12\x12\n\nevent_name\x18\x02 \x01(\t\"\x81\x01\n\x08Interest\x12%\n\nevent_type\x18\x01 \x01(\x0e\x32\x11.protos.EventType\x12\x32\n\x12\x63haincode_reg_info\x18\x02 \x01(\x0b\x32\x14.protos.ChaincodeRegH\x00\x12\x0f\n\x07\x63hainID\x18\x03 \x01(\tB\t\n\x07RegInfo\",\n\x08Register\x12 \n\x06\x65vents\x18\x01 \x03(\x0b\x32\x10.protos.Interest\"?\n\tRejection\x12\x1f\n\x02tx\x18\x01 \x01(\x0b\x32\x13.protos.Transaction\x12\x11\n\terror_msg\x18\x02 \x01(\t\".\n\nUnregister\x12 \n\x06\x65vents\x18\x01 \x03(\x0b\x32\x10.protos.Interest\"4\n\x0bSignedEvent\x12\x11\n\tsignature\x18\x01 \x01(\x0c\x12\x12\n\neventBytes\x18\x02 \x01(\x0c\"\xec\x01\n\x05\x45vent\x12$\n\x08register\x18\x01 \x01(\x0b\x32\x10.protos.RegisterH\x00\x12\x1e\n\x05\x62lock\x18\x02 \x01(\x0b\x32\r.common.BlockH\x00\x12\x31\n\x0f\x63haincode_event\x18\x03 \x01(\x0b\x32\x16.protos.ChaincodeEventH\x00\x12&\n\trejection\x18\x04 \x01(\x0b\x32\x11.protos.RejectionH\x00\x12(\n\nunregister\x18\x05 \x01(\x0b\x32\x12.protos.UnregisterH\x00\x12\x0f\n\x07\x63reator\x18\x06 \x01(\x0c\x42\x07\n\x05\x45vent*B\n\tEventType\x12\x0c\n\x08REGISTER\x10\x00\x12\t\n\x05\x42LOCK\x10\x01\x12\r\n\tCHAINCODE\x10\x02\x12\r\n\tREJECTION\x10\x03\x32\x34\n\x06\x45vents\x12*\n\x04\x43hat\x12\r.protos.Event\x1a\r.protos.Event\"\x00(\x01\x30\x01\x42^\n\"org.hyperledger.fabric.protos.peerB\rEventsPackageZ)github.com/hyperledger/fabric/protos/peerb\x06proto3')
   ,
-  dependencies=[common_dot_common__pb2.DESCRIPTOR,peer_dot_chaincodeevent__pb2.DESCRIPTOR,peer_dot_transaction__pb2.DESCRIPTOR,])
+  dependencies=[common_dot_common__pb2.DESCRIPTOR,peer_dot_chaincode__event__pb2.DESCRIPTOR,peer_dot_transaction__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 _EVENTTYPE = _descriptor.EnumDescriptor(
@@ -53,8 +53,8 @@ _EVENTTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=743,
-  serialized_end=809,
+  serialized_start=744,
+  serialized_end=810,
 )
 _sym_db.RegisterEnumDescriptor(_EVENTTYPE)
 
@@ -99,8 +99,8 @@ _CHAINCODEREG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=101,
-  serialized_end=157,
+  serialized_start=102,
+  serialized_end=158,
 )
 
 
@@ -147,8 +147,8 @@ _INTEREST = _descriptor.Descriptor(
       name='RegInfo', full_name='protos.Interest.RegInfo',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=160,
-  serialized_end=289,
+  serialized_start=161,
+  serialized_end=290,
 )
 
 
@@ -178,8 +178,8 @@ _REGISTER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=291,
-  serialized_end=335,
+  serialized_start=292,
+  serialized_end=336,
 )
 
 
@@ -216,8 +216,8 @@ _REJECTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=337,
-  serialized_end=400,
+  serialized_start=338,
+  serialized_end=401,
 )
 
 
@@ -247,8 +247,8 @@ _UNREGISTER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=402,
-  serialized_end=448,
+  serialized_start=403,
+  serialized_end=449,
 )
 
 
@@ -285,8 +285,8 @@ _SIGNEDEVENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=450,
-  serialized_end=502,
+  serialized_start=451,
+  serialized_end=503,
 )
 
 
@@ -354,8 +354,8 @@ _EVENT = _descriptor.Descriptor(
       name='Event', full_name='protos.Event.Event',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=505,
-  serialized_end=741,
+  serialized_start=506,
+  serialized_end=742,
 )
 
 _INTEREST.fields_by_name['event_type'].enum_type = _EVENTTYPE
@@ -368,7 +368,7 @@ _REJECTION.fields_by_name['tx'].message_type = peer_dot_transaction__pb2._TRANSA
 _UNREGISTER.fields_by_name['events'].message_type = _INTEREST
 _EVENT.fields_by_name['register'].message_type = _REGISTER
 _EVENT.fields_by_name['block'].message_type = common_dot_common__pb2._BLOCK
-_EVENT.fields_by_name['chaincode_event'].message_type = peer_dot_chaincodeevent__pb2._CHAINCODEEVENT
+_EVENT.fields_by_name['chaincode_event'].message_type = peer_dot_chaincode__event__pb2._CHAINCODEEVENT
 _EVENT.fields_by_name['rejection'].message_type = _REJECTION
 _EVENT.fields_by_name['unregister'].message_type = _UNREGISTER
 _EVENT.oneofs_by_name['Event'].fields.append(
@@ -446,7 +446,7 @@ _sym_db.RegisterMessage(Event)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z)github.com/hyperledger/fabric/protos/peer'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n\"org.hyperledger.fabric.protos.peerB\rEventsPackageZ)github.com/hyperledger/fabric/protos/peer'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.

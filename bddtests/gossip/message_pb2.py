@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='gossip/message.proto',
   package='gossip',
   syntax='proto3',
-  serialized_pb=_b('\n\x14gossip/message.proto\x12\x06gossip\"9\n\x13SignedGossipMessage\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\"\xcb\x07\n\rGossipMessage\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x0f\n\x07\x63hannel\x18\x02 \x01(\x0c\x12&\n\x03tag\x18\x03 \x01(\x0e\x32\x19.gossip.GossipMessage.Tag\x12\x11\n\tsignature\x18\x04 \x01(\x0c\x12(\n\x08\x61liveMsg\x18\x05 \x01(\x0b\x32\x14.gossip.AliveMessageH\x00\x12+\n\x06memReq\x18\x06 \x01(\x0b\x32\x19.gossip.MembershipRequestH\x00\x12,\n\x06memRes\x18\x07 \x01(\x0b\x32\x1a.gossip.MembershipResponseH\x00\x12&\n\x07\x64\x61taMsg\x18\x08 \x01(\x0b\x32\x13.gossip.DataMessageH\x00\x12$\n\x05hello\x18\t \x01(\x0b\x32\x13.gossip.GossipHelloH\x00\x12%\n\x07\x64\x61taDig\x18\n \x01(\x0b\x32\x12.gossip.DataDigestH\x00\x12&\n\x07\x64\x61taReq\x18\x0b \x01(\x0b\x32\x13.gossip.DataRequestH\x00\x12(\n\ndataUpdate\x18\x0c \x01(\x0b\x32\x12.gossip.DataUpdateH\x00\x12\x1e\n\x05\x65mpty\x18\r \x01(\x0b\x32\r.gossip.EmptyH\x00\x12%\n\x04\x63onn\x18\x0e \x01(\x0b\x32\x15.gossip.ConnEstablishH\x00\x12&\n\tstateInfo\x18\x0f \x01(\x0b\x32\x11.gossip.StateInfoH\x00\x12\x32\n\rstateSnapshot\x18\x10 \x01(\x0b\x32\x19.gossip.StateInfoSnapshotH\x00\x12\x38\n\x10stateInfoPullReq\x18\x11 \x01(\x0b\x32\x1c.gossip.StateInfoPullRequestH\x00\x12\x32\n\x0cstateRequest\x18\x12 \x01(\x0b\x32\x1a.gossip.RemoteStateRequestH\x00\x12\x34\n\rstateResponse\x18\x13 \x01(\x0b\x32\x1b.gossip.RemoteStateResponseH\x00\x12\x32\n\rleadershipMsg\x18\x14 \x01(\x0b\x32\x19.gossip.LeadershipMessageH\x00\x12,\n\x0cpeerIdentity\x18\x15 \x01(\x0b\x32\x14.gossip.PeerIdentityH\x00\"_\n\x03Tag\x12\r\n\tUNDEFINED\x10\x00\x12\t\n\x05\x45MPTY\x10\x01\x12\x0c\n\x08ORG_ONLY\x10\x02\x12\r\n\tCHAN_ONLY\x10\x03\x12\x10\n\x0c\x43HAN_AND_ORG\x10\x04\x12\x0f\n\x0b\x43HAN_OR_ORG\x10\x05\x42\t\n\x07\x63ontent\"Q\n\tStateInfo\x12\x10\n\x08metadata\x18\x01 \x01(\x0c\x12#\n\ttimestamp\x18\x02 \x01(\x0b\x32\x10.gossip.PeerTime\x12\r\n\x05pkiID\x18\x03 \x01(\x0c\"<\n\x11StateInfoSnapshot\x12\'\n\x08\x65lements\x18\x01 \x03(\x0b\x32\x15.gossip.GossipMessage\"\x16\n\x14StateInfoPullRequest\":\n\rConnEstablish\x12\r\n\x05pkiID\x18\x01 \x01(\x0c\x12\x0c\n\x04\x63\x65rt\x18\x02 \x01(\x0c\x12\x0c\n\x04hash\x18\x03 \x01(\x0c\"=\n\x0cPeerIdentity\x12\r\n\x05pkiID\x18\x01 \x01(\x0c\x12\x0c\n\x04\x63\x65rt\x18\x02 \x01(\x0c\x12\x10\n\x08metadata\x18\x03 \x01(\x0c\"S\n\x0b\x44\x61taRequest\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x0f\n\x07\x64igests\x18\x02 \x03(\t\x12$\n\x07msgType\x18\x03 \x01(\x0e\x32\x13.gossip.PullMsgType\"T\n\x0bGossipHello\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x10\n\x08metadata\x18\x02 \x01(\x0c\x12$\n\x07msgType\x18\x03 \x01(\x0e\x32\x13.gossip.PullMsgType\"f\n\nDataUpdate\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12#\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x15.gossip.GossipMessage\x12$\n\x07msgType\x18\x03 \x01(\x0e\x32\x13.gossip.PullMsgType\"R\n\nDataDigest\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x0f\n\x07\x64igests\x18\x02 \x03(\t\x12$\n\x07msgType\x18\x03 \x01(\x0e\x32\x13.gossip.PullMsgType\"/\n\x0b\x44\x61taMessage\x12 \n\x07payload\x18\x01 \x01(\x0b\x32\x0f.gossip.Payload\"5\n\x07Payload\x12\x0e\n\x06seqNum\x18\x01 \x01(\x04\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"i\n\x0c\x41liveMessage\x12\"\n\nmembership\x18\x01 \x01(\x0b\x32\x0e.gossip.Member\x12#\n\ttimestamp\x18\x02 \x01(\x0b\x32\x10.gossip.PeerTime\x12\x10\n\x08identity\x18\x04 \x01(\x0c\"^\n\x11LeadershipMessage\x12\r\n\x05pkiID\x18\x01 \x01(\x0c\x12#\n\ttimestamp\x18\x02 \x01(\x0b\x32\x10.gossip.PeerTime\x12\x15\n\risDeclaration\x18\x03 \x01(\x08\".\n\x08PeerTime\x12\x12\n\ninc_number\x18\x01 \x01(\x04\x12\x0e\n\x06seqNum\x18\x02 \x01(\x04\"R\n\x11MembershipRequest\x12.\n\x0fselfInformation\x18\x01 \x01(\x0b\x32\x15.gossip.GossipMessage\x12\r\n\x05known\x18\x02 \x03(\x0c\"_\n\x12MembershipResponse\x12$\n\x05\x61live\x18\x01 \x03(\x0b\x32\x15.gossip.GossipMessage\x12#\n\x04\x64\x65\x61\x64\x18\x02 \x03(\x0b\x32\x15.gossip.GossipMessage\"m\n\x06Member\x12\x10\n\x08\x65ndpoint\x18\x01 \x01(\t\x12\x10\n\x08metadata\x18\x02 \x01(\x0c\x12\r\n\x05pkiID\x18\x03 \x01(\x0c\x12\x30\n\x10internalEndpoint\x18\x04 \x01(\x0b\x32\x16.gossip.SignedEndpoint\"5\n\x0eSignedEndpoint\x12\x10\n\x08\x65ndpoint\x18\x01 \x01(\t\x12\x11\n\tsignature\x18\x02 \x01(\x0c\"\x07\n\x05\x45mpty\"%\n\x12RemoteStateRequest\x12\x0f\n\x07seqNums\x18\x01 \x03(\x04\"8\n\x13RemoteStateResponse\x12!\n\x08payloads\x18\x01 \x03(\x0b\x32\x0f.gossip.Payload*?\n\x0bPullMsgType\x12\r\n\tUndefined\x10\x00\x12\x10\n\x0c\x42lockMessage\x10\x01\x12\x0f\n\x0bIdentityMsg\x10\x02\x32t\n\x06Gossip\x12\x42\n\x0cGossipStream\x12\x15.gossip.GossipMessage\x1a\x15.gossip.GossipMessage\"\x00(\x01\x30\x01\x12&\n\x04Ping\x12\r.gossip.Empty\x1a\r.gossip.Empty\"\x00\x42-Z+github.com/hyperledger/fabric/protos/gossipb\x06proto3')
+  serialized_pb=_b('\n\x14gossip/message.proto\x12\x06gossip\"^\n\x08\x45nvelope\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\x12.\n\x0esecretEnvelope\x18\x03 \x01(\x0b\x32\x16.gossip.SecretEnvelope\"4\n\x0eSecretEnvelope\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\"/\n\x06Secret\x12\x1a\n\x10internalEndpoint\x18\x01 \x01(\tH\x00\x42\t\n\x07\x63ontent\"\xc8\x07\n\rGossipMessage\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x0f\n\x07\x63hannel\x18\x02 \x01(\x0c\x12&\n\x03tag\x18\x03 \x01(\x0e\x32\x19.gossip.GossipMessage.Tag\x12)\n\talive_msg\x18\x05 \x01(\x0b\x32\x14.gossip.AliveMessageH\x00\x12,\n\x07mem_req\x18\x06 \x01(\x0b\x32\x19.gossip.MembershipRequestH\x00\x12-\n\x07mem_res\x18\x07 \x01(\x0b\x32\x1a.gossip.MembershipResponseH\x00\x12\'\n\x08\x64\x61ta_msg\x18\x08 \x01(\x0b\x32\x13.gossip.DataMessageH\x00\x12$\n\x05hello\x18\t \x01(\x0b\x32\x13.gossip.GossipHelloH\x00\x12&\n\x08\x64\x61ta_dig\x18\n \x01(\x0b\x32\x12.gossip.DataDigestH\x00\x12\'\n\x08\x64\x61ta_req\x18\x0b \x01(\x0b\x32\x13.gossip.DataRequestH\x00\x12)\n\x0b\x64\x61ta_update\x18\x0c \x01(\x0b\x32\x12.gossip.DataUpdateH\x00\x12\x1e\n\x05\x65mpty\x18\r \x01(\x0b\x32\r.gossip.EmptyH\x00\x12%\n\x04\x63onn\x18\x0e \x01(\x0b\x32\x15.gossip.ConnEstablishH\x00\x12\'\n\nstate_info\x18\x0f \x01(\x0b\x32\x11.gossip.StateInfoH\x00\x12\x33\n\x0estate_snapshot\x18\x10 \x01(\x0b\x32\x19.gossip.StateInfoSnapshotH\x00\x12;\n\x13state_info_pull_req\x18\x11 \x01(\x0b\x32\x1c.gossip.StateInfoPullRequestH\x00\x12\x33\n\rstate_request\x18\x12 \x01(\x0b\x32\x1a.gossip.RemoteStateRequestH\x00\x12\x35\n\x0estate_response\x18\x13 \x01(\x0b\x32\x1b.gossip.RemoteStateResponseH\x00\x12\x33\n\x0eleadership_msg\x18\x14 \x01(\x0b\x32\x19.gossip.LeadershipMessageH\x00\x12-\n\rpeer_identity\x18\x15 \x01(\x0b\x32\x14.gossip.PeerIdentityH\x00\"_\n\x03Tag\x12\r\n\tUNDEFINED\x10\x00\x12\t\n\x05\x45MPTY\x10\x01\x12\x0c\n\x08ORG_ONLY\x10\x02\x12\r\n\tCHAN_ONLY\x10\x03\x12\x10\n\x0c\x43HAN_AND_ORG\x10\x04\x12\x0f\n\x0b\x43HAN_OR_ORG\x10\x05\x42\t\n\x07\x63ontent\"R\n\tStateInfo\x12\x10\n\x08metadata\x18\x01 \x01(\x0c\x12#\n\ttimestamp\x18\x02 \x01(\x0b\x32\x10.gossip.PeerTime\x12\x0e\n\x06pki_id\x18\x03 \x01(\x0c\"7\n\x11StateInfoSnapshot\x12\"\n\x08\x65lements\x18\x01 \x03(\x0b\x32\x10.gossip.Envelope\"\x16\n\x14StateInfoPullRequest\";\n\rConnEstablish\x12\x0e\n\x06pki_id\x18\x01 \x01(\x0c\x12\x0c\n\x04\x63\x65rt\x18\x02 \x01(\x0c\x12\x0c\n\x04hash\x18\x03 \x01(\x0c\">\n\x0cPeerIdentity\x12\x0e\n\x06pki_id\x18\x01 \x01(\x0c\x12\x0c\n\x04\x63\x65rt\x18\x02 \x01(\x0c\x12\x10\n\x08metadata\x18\x03 \x01(\x0c\"T\n\x0b\x44\x61taRequest\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x0f\n\x07\x64igests\x18\x02 \x03(\t\x12%\n\x08msg_type\x18\x03 \x01(\x0e\x32\x13.gossip.PullMsgType\"U\n\x0bGossipHello\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x10\n\x08metadata\x18\x02 \x01(\x0c\x12%\n\x08msg_type\x18\x03 \x01(\x0e\x32\x13.gossip.PullMsgType\"b\n\nDataUpdate\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x1e\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x10.gossip.Envelope\x12%\n\x08msg_type\x18\x03 \x01(\x0e\x32\x13.gossip.PullMsgType\"S\n\nDataDigest\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x0f\n\x07\x64igests\x18\x02 \x03(\t\x12%\n\x08msg_type\x18\x03 \x01(\x0e\x32\x13.gossip.PullMsgType\"/\n\x0b\x44\x61taMessage\x12 \n\x07payload\x18\x01 \x01(\x0b\x32\x0f.gossip.Payload\"6\n\x07Payload\x12\x0f\n\x07seq_num\x18\x01 \x01(\x04\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"i\n\x0c\x41liveMessage\x12\"\n\nmembership\x18\x01 \x01(\x0b\x32\x0e.gossip.Member\x12#\n\ttimestamp\x18\x02 \x01(\x0b\x32\x10.gossip.PeerTime\x12\x10\n\x08identity\x18\x04 \x01(\x0c\"`\n\x11LeadershipMessage\x12\x0e\n\x06pki_id\x18\x01 \x01(\x0c\x12#\n\ttimestamp\x18\x02 \x01(\x0b\x32\x10.gossip.PeerTime\x12\x16\n\x0eis_declaration\x18\x03 \x01(\x08\"/\n\x08PeerTime\x12\x12\n\ninc_number\x18\x01 \x01(\x04\x12\x0f\n\x07seq_num\x18\x02 \x01(\x04\"N\n\x11MembershipRequest\x12*\n\x10self_information\x18\x01 \x01(\x0b\x32\x10.gossip.Envelope\x12\r\n\x05known\x18\x02 \x03(\x0c\"U\n\x12MembershipResponse\x12\x1f\n\x05\x61live\x18\x01 \x03(\x0b\x32\x10.gossip.Envelope\x12\x1e\n\x04\x64\x65\x61\x64\x18\x02 \x03(\x0b\x32\x10.gossip.Envelope\"<\n\x06Member\x12\x10\n\x08\x65ndpoint\x18\x01 \x01(\t\x12\x10\n\x08metadata\x18\x02 \x01(\x0c\x12\x0e\n\x06pki_id\x18\x03 \x01(\x0c\"\x07\n\x05\x45mpty\"&\n\x12RemoteStateRequest\x12\x10\n\x08seq_nums\x18\x01 \x03(\x04\"8\n\x13RemoteStateResponse\x12!\n\x08payloads\x18\x01 \x03(\x0b\x32\x0f.gossip.Payload*=\n\x0bPullMsgType\x12\r\n\tUNDEFINED\x10\x00\x12\r\n\tBLOCK_MSG\x10\x01\x12\x10\n\x0cIDENTITY_MSG\x10\x02\x32j\n\x06Gossip\x12\x38\n\x0cGossipStream\x12\x10.gossip.Envelope\x1a\x10.gossip.Envelope\"\x00(\x01\x30\x01\x12&\n\x04Ping\x12\r.gossip.Empty\x1a\r.gossip.Empty\"\x00\x42-Z+github.com/hyperledger/fabric/protos/gossipb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -31,29 +31,29 @@ _PULLMSGTYPE = _descriptor.EnumDescriptor(
   file=DESCRIPTOR,
   values=[
     _descriptor.EnumValueDescriptor(
-      name='Undefined', index=0, number=0,
+      name='UNDEFINED', index=0, number=0,
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='BlockMessage', index=1, number=1,
+      name='BLOCK_MSG', index=1, number=1,
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IdentityMsg', index=2, number=2,
+      name='IDENTITY_MSG', index=2, number=2,
       options=None,
       type=None),
   ],
   containing_type=None,
   options=None,
-  serialized_start=2524,
-  serialized_end=2587,
+  serialized_start=2545,
+  serialized_end=2606,
 )
 _sym_db.RegisterEnumDescriptor(_PULLMSGTYPE)
 
 PullMsgType = enum_type_wrapper.EnumTypeWrapper(_PULLMSGTYPE)
-Undefined = 0
-BlockMessage = 1
-IdentityMsg = 2
+UNDEFINED = 0
+BLOCK_MSG = 1
+IDENTITY_MSG = 2
 
 
 _GOSSIPMESSAGE_TAG = _descriptor.EnumDescriptor(
@@ -89,28 +89,73 @@ _GOSSIPMESSAGE_TAG = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=957,
-  serialized_end=1052,
+  serialized_start=1094,
+  serialized_end=1189,
 )
 _sym_db.RegisterEnumDescriptor(_GOSSIPMESSAGE_TAG)
 
 
-_SIGNEDGOSSIPMESSAGE = _descriptor.Descriptor(
-  name='SignedGossipMessage',
-  full_name='gossip.SignedGossipMessage',
+_ENVELOPE = _descriptor.Descriptor(
+  name='Envelope',
+  full_name='gossip.Envelope',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='payload', full_name='gossip.SignedGossipMessage.payload', index=0,
+      name='payload', full_name='gossip.Envelope.payload', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='signature', full_name='gossip.SignedGossipMessage.signature', index=1,
+      name='signature', full_name='gossip.Envelope.signature', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='secretEnvelope', full_name='gossip.Envelope.secretEnvelope', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=32,
+  serialized_end=126,
+)
+
+
+_SECRETENVELOPE = _descriptor.Descriptor(
+  name='SecretEnvelope',
+  full_name='gossip.SecretEnvelope',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='payload', full_name='gossip.SecretEnvelope.payload', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='signature', full_name='gossip.SecretEnvelope.signature', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -128,8 +173,42 @@ _SIGNEDGOSSIPMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=32,
-  serialized_end=89,
+  serialized_start=128,
+  serialized_end=180,
+)
+
+
+_SECRET = _descriptor.Descriptor(
+  name='Secret',
+  full_name='gossip.Secret',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='internalEndpoint', full_name='gossip.Secret.internalEndpoint', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='content', full_name='gossip.Secret.content',
+      index=0, containing_type=None, fields=[]),
+  ],
+  serialized_start=182,
+  serialized_end=229,
 )
 
 
@@ -162,126 +241,119 @@ _GOSSIPMESSAGE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='signature', full_name='gossip.GossipMessage.signature', index=3,
-      number=4, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='aliveMsg', full_name='gossip.GossipMessage.aliveMsg', index=4,
+      name='alive_msg', full_name='gossip.GossipMessage.alive_msg', index=3,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='memReq', full_name='gossip.GossipMessage.memReq', index=5,
+      name='mem_req', full_name='gossip.GossipMessage.mem_req', index=4,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='memRes', full_name='gossip.GossipMessage.memRes', index=6,
+      name='mem_res', full_name='gossip.GossipMessage.mem_res', index=5,
       number=7, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='dataMsg', full_name='gossip.GossipMessage.dataMsg', index=7,
+      name='data_msg', full_name='gossip.GossipMessage.data_msg', index=6,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='hello', full_name='gossip.GossipMessage.hello', index=8,
+      name='hello', full_name='gossip.GossipMessage.hello', index=7,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='dataDig', full_name='gossip.GossipMessage.dataDig', index=9,
+      name='data_dig', full_name='gossip.GossipMessage.data_dig', index=8,
       number=10, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='dataReq', full_name='gossip.GossipMessage.dataReq', index=10,
+      name='data_req', full_name='gossip.GossipMessage.data_req', index=9,
       number=11, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='dataUpdate', full_name='gossip.GossipMessage.dataUpdate', index=11,
+      name='data_update', full_name='gossip.GossipMessage.data_update', index=10,
       number=12, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='empty', full_name='gossip.GossipMessage.empty', index=12,
+      name='empty', full_name='gossip.GossipMessage.empty', index=11,
       number=13, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='conn', full_name='gossip.GossipMessage.conn', index=13,
+      name='conn', full_name='gossip.GossipMessage.conn', index=12,
       number=14, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='stateInfo', full_name='gossip.GossipMessage.stateInfo', index=14,
+      name='state_info', full_name='gossip.GossipMessage.state_info', index=13,
       number=15, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='stateSnapshot', full_name='gossip.GossipMessage.stateSnapshot', index=15,
+      name='state_snapshot', full_name='gossip.GossipMessage.state_snapshot', index=14,
       number=16, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='stateInfoPullReq', full_name='gossip.GossipMessage.stateInfoPullReq', index=16,
+      name='state_info_pull_req', full_name='gossip.GossipMessage.state_info_pull_req', index=15,
       number=17, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='stateRequest', full_name='gossip.GossipMessage.stateRequest', index=17,
+      name='state_request', full_name='gossip.GossipMessage.state_request', index=16,
       number=18, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='stateResponse', full_name='gossip.GossipMessage.stateResponse', index=18,
+      name='state_response', full_name='gossip.GossipMessage.state_response', index=17,
       number=19, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='leadershipMsg', full_name='gossip.GossipMessage.leadershipMsg', index=19,
+      name='leadership_msg', full_name='gossip.GossipMessage.leadership_msg', index=18,
       number=20, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='peerIdentity', full_name='gossip.GossipMessage.peerIdentity', index=20,
+      name='peer_identity', full_name='gossip.GossipMessage.peer_identity', index=19,
       number=21, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -303,8 +375,8 @@ _GOSSIPMESSAGE = _descriptor.Descriptor(
       name='content', full_name='gossip.GossipMessage.content',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=92,
-  serialized_end=1063,
+  serialized_start=232,
+  serialized_end=1200,
 )
 
 
@@ -330,7 +402,7 @@ _STATEINFO = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='pkiID', full_name='gossip.StateInfo.pkiID', index=2,
+      name='pki_id', full_name='gossip.StateInfo.pki_id', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -348,8 +420,8 @@ _STATEINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1065,
-  serialized_end=1146,
+  serialized_start=1202,
+  serialized_end=1284,
 )
 
 
@@ -379,8 +451,8 @@ _STATEINFOSNAPSHOT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1148,
-  serialized_end=1208,
+  serialized_start=1286,
+  serialized_end=1341,
 )
 
 
@@ -403,8 +475,8 @@ _STATEINFOPULLREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1210,
-  serialized_end=1232,
+  serialized_start=1343,
+  serialized_end=1365,
 )
 
 
@@ -416,7 +488,7 @@ _CONNESTABLISH = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='pkiID', full_name='gossip.ConnEstablish.pkiID', index=0,
+      name='pki_id', full_name='gossip.ConnEstablish.pki_id', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -448,8 +520,8 @@ _CONNESTABLISH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1234,
-  serialized_end=1292,
+  serialized_start=1367,
+  serialized_end=1426,
 )
 
 
@@ -461,7 +533,7 @@ _PEERIDENTITY = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='pkiID', full_name='gossip.PeerIdentity.pkiID', index=0,
+      name='pki_id', full_name='gossip.PeerIdentity.pki_id', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -493,8 +565,8 @@ _PEERIDENTITY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1294,
-  serialized_end=1355,
+  serialized_start=1428,
+  serialized_end=1490,
 )
 
 
@@ -520,7 +592,7 @@ _DATAREQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='msgType', full_name='gossip.DataRequest.msgType', index=2,
+      name='msg_type', full_name='gossip.DataRequest.msg_type', index=2,
       number=3, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -538,8 +610,8 @@ _DATAREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1357,
-  serialized_end=1440,
+  serialized_start=1492,
+  serialized_end=1576,
 )
 
 
@@ -565,7 +637,7 @@ _GOSSIPHELLO = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='msgType', full_name='gossip.GossipHello.msgType', index=2,
+      name='msg_type', full_name='gossip.GossipHello.msg_type', index=2,
       number=3, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -583,8 +655,8 @@ _GOSSIPHELLO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1442,
-  serialized_end=1526,
+  serialized_start=1578,
+  serialized_end=1663,
 )
 
 
@@ -610,7 +682,7 @@ _DATAUPDATE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='msgType', full_name='gossip.DataUpdate.msgType', index=2,
+      name='msg_type', full_name='gossip.DataUpdate.msg_type', index=2,
       number=3, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -628,8 +700,8 @@ _DATAUPDATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1528,
-  serialized_end=1630,
+  serialized_start=1665,
+  serialized_end=1763,
 )
 
 
@@ -655,7 +727,7 @@ _DATADIGEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='msgType', full_name='gossip.DataDigest.msgType', index=2,
+      name='msg_type', full_name='gossip.DataDigest.msg_type', index=2,
       number=3, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -673,8 +745,8 @@ _DATADIGEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1632,
-  serialized_end=1714,
+  serialized_start=1765,
+  serialized_end=1848,
 )
 
 
@@ -704,8 +776,8 @@ _DATAMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1716,
-  serialized_end=1763,
+  serialized_start=1850,
+  serialized_end=1897,
 )
 
 
@@ -717,7 +789,7 @@ _PAYLOAD = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='seqNum', full_name='gossip.Payload.seqNum', index=0,
+      name='seq_num', full_name='gossip.Payload.seq_num', index=0,
       number=1, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -749,8 +821,8 @@ _PAYLOAD = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1765,
-  serialized_end=1818,
+  serialized_start=1899,
+  serialized_end=1953,
 )
 
 
@@ -794,8 +866,8 @@ _ALIVEMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1820,
-  serialized_end=1925,
+  serialized_start=1955,
+  serialized_end=2060,
 )
 
 
@@ -807,7 +879,7 @@ _LEADERSHIPMESSAGE = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='pkiID', full_name='gossip.LeadershipMessage.pkiID', index=0,
+      name='pki_id', full_name='gossip.LeadershipMessage.pki_id', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -821,7 +893,7 @@ _LEADERSHIPMESSAGE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='isDeclaration', full_name='gossip.LeadershipMessage.isDeclaration', index=2,
+      name='is_declaration', full_name='gossip.LeadershipMessage.is_declaration', index=2,
       number=3, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
@@ -839,8 +911,8 @@ _LEADERSHIPMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1927,
-  serialized_end=2021,
+  serialized_start=2062,
+  serialized_end=2158,
 )
 
 
@@ -859,7 +931,7 @@ _PEERTIME = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='seqNum', full_name='gossip.PeerTime.seqNum', index=1,
+      name='seq_num', full_name='gossip.PeerTime.seq_num', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -877,8 +949,8 @@ _PEERTIME = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2023,
-  serialized_end=2069,
+  serialized_start=2160,
+  serialized_end=2207,
 )
 
 
@@ -890,7 +962,7 @@ _MEMBERSHIPREQUEST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='selfInformation', full_name='gossip.MembershipRequest.selfInformation', index=0,
+      name='self_information', full_name='gossip.MembershipRequest.self_information', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -915,8 +987,8 @@ _MEMBERSHIPREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2071,
-  serialized_end=2153,
+  serialized_start=2209,
+  serialized_end=2287,
 )
 
 
@@ -953,8 +1025,8 @@ _MEMBERSHIPRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2155,
-  serialized_end=2250,
+  serialized_start=2289,
+  serialized_end=2374,
 )
 
 
@@ -980,19 +1052,12 @@ _MEMBER = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='pkiID', full_name='gossip.Member.pkiID', index=2,
+      name='pki_id', full_name='gossip.Member.pki_id', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
-    _descriptor.FieldDescriptor(
-      name='internalEndpoint', full_name='gossip.Member.internalEndpoint', index=3,
-      number=4, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
   ],
   extensions=[
   ],
@@ -1005,46 +1070,8 @@ _MEMBER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2252,
-  serialized_end=2361,
-)
-
-
-_SIGNEDENDPOINT = _descriptor.Descriptor(
-  name='SignedEndpoint',
-  full_name='gossip.SignedEndpoint',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='endpoint', full_name='gossip.SignedEndpoint.endpoint', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='signature', full_name='gossip.SignedEndpoint.signature', index=1,
-      number=2, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2363,
-  serialized_end=2416,
+  serialized_start=2376,
+  serialized_end=2436,
 )
 
 
@@ -1067,8 +1094,8 @@ _EMPTY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2418,
-  serialized_end=2425,
+  serialized_start=2438,
+  serialized_end=2445,
 )
 
 
@@ -1080,7 +1107,7 @@ _REMOTESTATEREQUEST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='seqNums', full_name='gossip.RemoteStateRequest.seqNums', index=0,
+      name='seq_nums', full_name='gossip.RemoteStateRequest.seq_nums', index=0,
       number=1, type=4, cpp_type=4, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -1098,8 +1125,8 @@ _REMOTESTATEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2427,
-  serialized_end=2464,
+  serialized_start=2447,
+  serialized_end=2485,
 )
 
 
@@ -1129,53 +1156,57 @@ _REMOTESTATERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2466,
-  serialized_end=2522,
+  serialized_start=2487,
+  serialized_end=2543,
 )
 
+_ENVELOPE.fields_by_name['secretEnvelope'].message_type = _SECRETENVELOPE
+_SECRET.oneofs_by_name['content'].fields.append(
+  _SECRET.fields_by_name['internalEndpoint'])
+_SECRET.fields_by_name['internalEndpoint'].containing_oneof = _SECRET.oneofs_by_name['content']
 _GOSSIPMESSAGE.fields_by_name['tag'].enum_type = _GOSSIPMESSAGE_TAG
-_GOSSIPMESSAGE.fields_by_name['aliveMsg'].message_type = _ALIVEMESSAGE
-_GOSSIPMESSAGE.fields_by_name['memReq'].message_type = _MEMBERSHIPREQUEST
-_GOSSIPMESSAGE.fields_by_name['memRes'].message_type = _MEMBERSHIPRESPONSE
-_GOSSIPMESSAGE.fields_by_name['dataMsg'].message_type = _DATAMESSAGE
+_GOSSIPMESSAGE.fields_by_name['alive_msg'].message_type = _ALIVEMESSAGE
+_GOSSIPMESSAGE.fields_by_name['mem_req'].message_type = _MEMBERSHIPREQUEST
+_GOSSIPMESSAGE.fields_by_name['mem_res'].message_type = _MEMBERSHIPRESPONSE
+_GOSSIPMESSAGE.fields_by_name['data_msg'].message_type = _DATAMESSAGE
 _GOSSIPMESSAGE.fields_by_name['hello'].message_type = _GOSSIPHELLO
-_GOSSIPMESSAGE.fields_by_name['dataDig'].message_type = _DATADIGEST
-_GOSSIPMESSAGE.fields_by_name['dataReq'].message_type = _DATAREQUEST
-_GOSSIPMESSAGE.fields_by_name['dataUpdate'].message_type = _DATAUPDATE
+_GOSSIPMESSAGE.fields_by_name['data_dig'].message_type = _DATADIGEST
+_GOSSIPMESSAGE.fields_by_name['data_req'].message_type = _DATAREQUEST
+_GOSSIPMESSAGE.fields_by_name['data_update'].message_type = _DATAUPDATE
 _GOSSIPMESSAGE.fields_by_name['empty'].message_type = _EMPTY
 _GOSSIPMESSAGE.fields_by_name['conn'].message_type = _CONNESTABLISH
-_GOSSIPMESSAGE.fields_by_name['stateInfo'].message_type = _STATEINFO
-_GOSSIPMESSAGE.fields_by_name['stateSnapshot'].message_type = _STATEINFOSNAPSHOT
-_GOSSIPMESSAGE.fields_by_name['stateInfoPullReq'].message_type = _STATEINFOPULLREQUEST
-_GOSSIPMESSAGE.fields_by_name['stateRequest'].message_type = _REMOTESTATEREQUEST
-_GOSSIPMESSAGE.fields_by_name['stateResponse'].message_type = _REMOTESTATERESPONSE
-_GOSSIPMESSAGE.fields_by_name['leadershipMsg'].message_type = _LEADERSHIPMESSAGE
-_GOSSIPMESSAGE.fields_by_name['peerIdentity'].message_type = _PEERIDENTITY
+_GOSSIPMESSAGE.fields_by_name['state_info'].message_type = _STATEINFO
+_GOSSIPMESSAGE.fields_by_name['state_snapshot'].message_type = _STATEINFOSNAPSHOT
+_GOSSIPMESSAGE.fields_by_name['state_info_pull_req'].message_type = _STATEINFOPULLREQUEST
+_GOSSIPMESSAGE.fields_by_name['state_request'].message_type = _REMOTESTATEREQUEST
+_GOSSIPMESSAGE.fields_by_name['state_response'].message_type = _REMOTESTATERESPONSE
+_GOSSIPMESSAGE.fields_by_name['leadership_msg'].message_type = _LEADERSHIPMESSAGE
+_GOSSIPMESSAGE.fields_by_name['peer_identity'].message_type = _PEERIDENTITY
 _GOSSIPMESSAGE_TAG.containing_type = _GOSSIPMESSAGE
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['aliveMsg'])
-_GOSSIPMESSAGE.fields_by_name['aliveMsg'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['alive_msg'])
+_GOSSIPMESSAGE.fields_by_name['alive_msg'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['memReq'])
-_GOSSIPMESSAGE.fields_by_name['memReq'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['mem_req'])
+_GOSSIPMESSAGE.fields_by_name['mem_req'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['memRes'])
-_GOSSIPMESSAGE.fields_by_name['memRes'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['mem_res'])
+_GOSSIPMESSAGE.fields_by_name['mem_res'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['dataMsg'])
-_GOSSIPMESSAGE.fields_by_name['dataMsg'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['data_msg'])
+_GOSSIPMESSAGE.fields_by_name['data_msg'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
   _GOSSIPMESSAGE.fields_by_name['hello'])
 _GOSSIPMESSAGE.fields_by_name['hello'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['dataDig'])
-_GOSSIPMESSAGE.fields_by_name['dataDig'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['data_dig'])
+_GOSSIPMESSAGE.fields_by_name['data_dig'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['dataReq'])
-_GOSSIPMESSAGE.fields_by_name['dataReq'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['data_req'])
+_GOSSIPMESSAGE.fields_by_name['data_req'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['dataUpdate'])
-_GOSSIPMESSAGE.fields_by_name['dataUpdate'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['data_update'])
+_GOSSIPMESSAGE.fields_by_name['data_update'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
   _GOSSIPMESSAGE.fields_by_name['empty'])
 _GOSSIPMESSAGE.fields_by_name['empty'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
@@ -1183,43 +1214,44 @@ _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
   _GOSSIPMESSAGE.fields_by_name['conn'])
 _GOSSIPMESSAGE.fields_by_name['conn'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['stateInfo'])
-_GOSSIPMESSAGE.fields_by_name['stateInfo'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['state_info'])
+_GOSSIPMESSAGE.fields_by_name['state_info'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['stateSnapshot'])
-_GOSSIPMESSAGE.fields_by_name['stateSnapshot'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['state_snapshot'])
+_GOSSIPMESSAGE.fields_by_name['state_snapshot'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['stateInfoPullReq'])
-_GOSSIPMESSAGE.fields_by_name['stateInfoPullReq'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['state_info_pull_req'])
+_GOSSIPMESSAGE.fields_by_name['state_info_pull_req'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['stateRequest'])
-_GOSSIPMESSAGE.fields_by_name['stateRequest'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['state_request'])
+_GOSSIPMESSAGE.fields_by_name['state_request'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['stateResponse'])
-_GOSSIPMESSAGE.fields_by_name['stateResponse'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['state_response'])
+_GOSSIPMESSAGE.fields_by_name['state_response'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['leadershipMsg'])
-_GOSSIPMESSAGE.fields_by_name['leadershipMsg'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['leadership_msg'])
+_GOSSIPMESSAGE.fields_by_name['leadership_msg'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _GOSSIPMESSAGE.oneofs_by_name['content'].fields.append(
-  _GOSSIPMESSAGE.fields_by_name['peerIdentity'])
-_GOSSIPMESSAGE.fields_by_name['peerIdentity'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
+  _GOSSIPMESSAGE.fields_by_name['peer_identity'])
+_GOSSIPMESSAGE.fields_by_name['peer_identity'].containing_oneof = _GOSSIPMESSAGE.oneofs_by_name['content']
 _STATEINFO.fields_by_name['timestamp'].message_type = _PEERTIME
-_STATEINFOSNAPSHOT.fields_by_name['elements'].message_type = _GOSSIPMESSAGE
-_DATAREQUEST.fields_by_name['msgType'].enum_type = _PULLMSGTYPE
-_GOSSIPHELLO.fields_by_name['msgType'].enum_type = _PULLMSGTYPE
-_DATAUPDATE.fields_by_name['data'].message_type = _GOSSIPMESSAGE
-_DATAUPDATE.fields_by_name['msgType'].enum_type = _PULLMSGTYPE
-_DATADIGEST.fields_by_name['msgType'].enum_type = _PULLMSGTYPE
+_STATEINFOSNAPSHOT.fields_by_name['elements'].message_type = _ENVELOPE
+_DATAREQUEST.fields_by_name['msg_type'].enum_type = _PULLMSGTYPE
+_GOSSIPHELLO.fields_by_name['msg_type'].enum_type = _PULLMSGTYPE
+_DATAUPDATE.fields_by_name['data'].message_type = _ENVELOPE
+_DATAUPDATE.fields_by_name['msg_type'].enum_type = _PULLMSGTYPE
+_DATADIGEST.fields_by_name['msg_type'].enum_type = _PULLMSGTYPE
 _DATAMESSAGE.fields_by_name['payload'].message_type = _PAYLOAD
 _ALIVEMESSAGE.fields_by_name['membership'].message_type = _MEMBER
 _ALIVEMESSAGE.fields_by_name['timestamp'].message_type = _PEERTIME
 _LEADERSHIPMESSAGE.fields_by_name['timestamp'].message_type = _PEERTIME
-_MEMBERSHIPREQUEST.fields_by_name['selfInformation'].message_type = _GOSSIPMESSAGE
-_MEMBERSHIPRESPONSE.fields_by_name['alive'].message_type = _GOSSIPMESSAGE
-_MEMBERSHIPRESPONSE.fields_by_name['dead'].message_type = _GOSSIPMESSAGE
-_MEMBER.fields_by_name['internalEndpoint'].message_type = _SIGNEDENDPOINT
+_MEMBERSHIPREQUEST.fields_by_name['self_information'].message_type = _ENVELOPE
+_MEMBERSHIPRESPONSE.fields_by_name['alive'].message_type = _ENVELOPE
+_MEMBERSHIPRESPONSE.fields_by_name['dead'].message_type = _ENVELOPE
 _REMOTESTATERESPONSE.fields_by_name['payloads'].message_type = _PAYLOAD
-DESCRIPTOR.message_types_by_name['SignedGossipMessage'] = _SIGNEDGOSSIPMESSAGE
+DESCRIPTOR.message_types_by_name['Envelope'] = _ENVELOPE
+DESCRIPTOR.message_types_by_name['SecretEnvelope'] = _SECRETENVELOPE
+DESCRIPTOR.message_types_by_name['Secret'] = _SECRET
 DESCRIPTOR.message_types_by_name['GossipMessage'] = _GOSSIPMESSAGE
 DESCRIPTOR.message_types_by_name['StateInfo'] = _STATEINFO
 DESCRIPTOR.message_types_by_name['StateInfoSnapshot'] = _STATEINFOSNAPSHOT
@@ -1238,18 +1270,31 @@ DESCRIPTOR.message_types_by_name['PeerTime'] = _PEERTIME
 DESCRIPTOR.message_types_by_name['MembershipRequest'] = _MEMBERSHIPREQUEST
 DESCRIPTOR.message_types_by_name['MembershipResponse'] = _MEMBERSHIPRESPONSE
 DESCRIPTOR.message_types_by_name['Member'] = _MEMBER
-DESCRIPTOR.message_types_by_name['SignedEndpoint'] = _SIGNEDENDPOINT
 DESCRIPTOR.message_types_by_name['Empty'] = _EMPTY
 DESCRIPTOR.message_types_by_name['RemoteStateRequest'] = _REMOTESTATEREQUEST
 DESCRIPTOR.message_types_by_name['RemoteStateResponse'] = _REMOTESTATERESPONSE
 DESCRIPTOR.enum_types_by_name['PullMsgType'] = _PULLMSGTYPE
 
-SignedGossipMessage = _reflection.GeneratedProtocolMessageType('SignedGossipMessage', (_message.Message,), dict(
-  DESCRIPTOR = _SIGNEDGOSSIPMESSAGE,
+Envelope = _reflection.GeneratedProtocolMessageType('Envelope', (_message.Message,), dict(
+  DESCRIPTOR = _ENVELOPE,
   __module__ = 'gossip.message_pb2'
-  # @@protoc_insertion_point(class_scope:gossip.SignedGossipMessage)
+  # @@protoc_insertion_point(class_scope:gossip.Envelope)
   ))
-_sym_db.RegisterMessage(SignedGossipMessage)
+_sym_db.RegisterMessage(Envelope)
+
+SecretEnvelope = _reflection.GeneratedProtocolMessageType('SecretEnvelope', (_message.Message,), dict(
+  DESCRIPTOR = _SECRETENVELOPE,
+  __module__ = 'gossip.message_pb2'
+  # @@protoc_insertion_point(class_scope:gossip.SecretEnvelope)
+  ))
+_sym_db.RegisterMessage(SecretEnvelope)
+
+Secret = _reflection.GeneratedProtocolMessageType('Secret', (_message.Message,), dict(
+  DESCRIPTOR = _SECRET,
+  __module__ = 'gossip.message_pb2'
+  # @@protoc_insertion_point(class_scope:gossip.Secret)
+  ))
+_sym_db.RegisterMessage(Secret)
 
 GossipMessage = _reflection.GeneratedProtocolMessageType('GossipMessage', (_message.Message,), dict(
   DESCRIPTOR = _GOSSIPMESSAGE,
@@ -1377,13 +1422,6 @@ Member = _reflection.GeneratedProtocolMessageType('Member', (_message.Message,),
   ))
 _sym_db.RegisterMessage(Member)
 
-SignedEndpoint = _reflection.GeneratedProtocolMessageType('SignedEndpoint', (_message.Message,), dict(
-  DESCRIPTOR = _SIGNEDENDPOINT,
-  __module__ = 'gossip.message_pb2'
-  # @@protoc_insertion_point(class_scope:gossip.SignedEndpoint)
-  ))
-_sym_db.RegisterMessage(SignedEndpoint)
-
 Empty = _reflection.GeneratedProtocolMessageType('Empty', (_message.Message,), dict(
   DESCRIPTOR = _EMPTY,
   __module__ = 'gossip.message_pb2'
@@ -1430,8 +1468,8 @@ try:
       """
       self.GossipStream = channel.stream_stream(
           '/gossip.Gossip/GossipStream',
-          request_serializer=GossipMessage.SerializeToString,
-          response_deserializer=GossipMessage.FromString,
+          request_serializer=Envelope.SerializeToString,
+          response_deserializer=Envelope.FromString,
           )
       self.Ping = channel.unary_unary(
           '/gossip.Gossip/Ping',
@@ -1463,8 +1501,8 @@ try:
     rpc_method_handlers = {
         'GossipStream': grpc.stream_stream_rpc_method_handler(
             servicer.GossipStream,
-            request_deserializer=GossipMessage.FromString,
-            response_serializer=GossipMessage.SerializeToString,
+            request_deserializer=Envelope.FromString,
+            response_serializer=Envelope.SerializeToString,
         ),
         'Ping': grpc.unary_unary_rpc_method_handler(
             servicer.Ping,
@@ -1521,11 +1559,11 @@ try:
     file not marked beta) for all further purposes. This function was
     generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
     request_deserializers = {
-      ('gossip.Gossip', 'GossipStream'): GossipMessage.FromString,
+      ('gossip.Gossip', 'GossipStream'): Envelope.FromString,
       ('gossip.Gossip', 'Ping'): Empty.FromString,
     }
     response_serializers = {
-      ('gossip.Gossip', 'GossipStream'): GossipMessage.SerializeToString,
+      ('gossip.Gossip', 'GossipStream'): Envelope.SerializeToString,
       ('gossip.Gossip', 'Ping'): Empty.SerializeToString,
     }
     method_implementations = {
@@ -1543,11 +1581,11 @@ try:
     file not marked beta) for all further purposes. This function was
     generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
     request_serializers = {
-      ('gossip.Gossip', 'GossipStream'): GossipMessage.SerializeToString,
+      ('gossip.Gossip', 'GossipStream'): Envelope.SerializeToString,
       ('gossip.Gossip', 'Ping'): Empty.SerializeToString,
     }
     response_deserializers = {
-      ('gossip.Gossip', 'GossipStream'): GossipMessage.FromString,
+      ('gossip.Gossip', 'GossipStream'): Envelope.FromString,
       ('gossip.Gossip', 'Ping'): Empty.FromString,
     }
     cardinalities = {

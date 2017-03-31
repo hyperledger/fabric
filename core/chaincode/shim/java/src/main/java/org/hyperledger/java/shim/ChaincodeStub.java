@@ -16,16 +16,15 @@ limitations under the License.
 
 package org.hyperledger.java.shim;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.hyperledger.protos.Chaincodeshim;
-
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.hyperledger.fabric.protos.peer.ChaincodeShim;
+
+import com.google.protobuf.ByteString;
 
 //import static org.hyperledger.protos.TableProto.ColumnDefinition.Type.STRING;
 
@@ -102,7 +101,7 @@ public class ChaincodeStub {
      */
     public Map<String, ByteString> getStateByRangeRaw(String startKey, String endKey) {
         Map<String, ByteString> map = new HashMap<>();
-        for (Chaincodeshim.QueryStateKeyValue mapping : handler.handleGetStateByRange(
+        for (ChaincodeShim.QueryStateKeyValue mapping : handler.handleGetStateByRange(
                 startKey, endKey, uuid).getKeysAndValuesList()) {
             map.put(mapping.getKey(), mapping.getValue());
         }

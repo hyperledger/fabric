@@ -34,7 +34,7 @@ from common import common_pb2 as common_dot_common_pb2
 from common import configtx_pb2 as common_dot_configtx_pb2
 from common import configuration_pb2 as common_dot_configuration_pb2
 from common import policies_pb2 as common_dot_policies_pb2
-from msp import mspconfig_pb2, msp_principal_pb2, identities_pb2
+from msp import msp_config_pb2, msp_principal_pb2, identities_pb2
 from peer import configuration_pb2 as peer_dot_configuration_pb2
 from orderer import configuration_pb2 as orderer_dot_configuration_pb2
 import orderer_util
@@ -243,8 +243,8 @@ class Organization(Entity):
         # Currently only 1 component, CN=<orgName>
         # name = self.getSelfSignedCert().get_subject().getComponents()[0][1]
         name = self.name
-        fabricMSPConfig = mspconfig_pb2.FabricMSPConfig(admins=adminCerts, root_certs=cacerts, name=name)
-        mspConfig = mspconfig_pb2.MSPConfig(config=fabricMSPConfig.SerializeToString(), type=0)
+        fabricMSPConfig = msp_config_pb2.FabricMSPConfig(admins=adminCerts, root_certs=cacerts, name=name)
+        mspConfig = msp_config_pb2.MSPConfig(config=fabricMSPConfig.SerializeToString(), type=0)
         return mspConfig
 
     def isInNetwork(self, network):

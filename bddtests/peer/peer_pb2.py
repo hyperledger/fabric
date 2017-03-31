@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/peer.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x0fpeer/peer.proto\x12\x06protos\x1a\x13peer/proposal.proto\x1a\x1cpeer/proposal_response.proto\"\x16\n\x06PeerID\x12\x0c\n\x04name\x18\x01 \x01(\t\";\n\x0cPeerEndpoint\x12\x1a\n\x02id\x18\x01 \x01(\x0b\x32\x0e.protos.PeerID\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x01(\t2Q\n\x08\x45ndorser\x12\x45\n\x0fProcessProposal\x12\x16.protos.SignedProposal\x1a\x18.protos.ProposalResponse\"\x00\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x0fpeer/peer.proto\x12\x06protos\x1a\x13peer/proposal.proto\x1a\x1cpeer/proposal_response.proto\"\x16\n\x06PeerID\x12\x0c\n\x04name\x18\x01 \x01(\t\";\n\x0cPeerEndpoint\x12\x1a\n\x02id\x18\x01 \x01(\x0b\x32\x0e.protos.PeerID\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x01(\t2Q\n\x08\x45ndorser\x12\x45\n\x0fProcessProposal\x12\x16.protos.SignedProposal\x1a\x18.protos.ProposalResponse\"\x00\x42O\n\"org.hyperledger.fabric.protos.peerZ)github.com/hyperledger/fabric/protos/peerb\x06proto3')
   ,
   dependencies=[peer_dot_proposal__pb2.DESCRIPTOR,peer_dot_proposal__response__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -117,7 +117,7 @@ _sym_db.RegisterMessage(PeerEndpoint)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z)github.com/hyperledger/fabric/protos/peer'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n\"org.hyperledger.fabric.protos.peerZ)github.com/hyperledger/fabric/protos/peer'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.
