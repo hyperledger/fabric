@@ -49,8 +49,7 @@ const cmdRoot = "core"
 var mainCmd = &cobra.Command{
 	Use: "peer",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		peerCommand := getPeerCommandFromCobraCommand(cmd)
-		flogging.InitFromViper(peerCommand)
+		flogging.InitFromSpec(viper.GetString("logging_level"))
 
 		return core.CacheConfiguration()
 	},
@@ -96,8 +95,8 @@ func main() {
 
 	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 
-	// initialize logging format from core.yaml
-	flogging.SetLoggingFormat(viper.GetString("logging.format"), logOutput)
+	// setup system-wide logging backend based on settings from core.yaml
+	flogging.InitBackend(flogging.SetFormat(viper.GetString("logging.format")), logOutput)
 
 	// Init the MSP
 	var mspMgrConfigDir = viper.GetString("peer.mspConfigPath")
@@ -112,36 +111,4 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Info("Exiting.....")
-}
-
-// getPeerCommandFromCobraCommand retreives the peer command from the cobra command struct.
-// i.e. for a command of `peer node start`, this should return "node"
-// For the main/root command this will return the root name (i.e. peer)
-// For invalid commands (i.e. nil commands) this will return an empty string
-func getPeerCommandFromCobraCommand(command *cobra.Command) string {
-	var commandName string
-
-	if command == nil {
-		return commandName
-	}
-
-	if peerCommand, ok := findChildOfRootCommand(command); ok {
-		commandName = peerCommand.Name()
-	} else {
-		commandName = command.Name()
-	}
-
-	return commandName
-}
-
-func findChildOfRootCommand(command *cobra.Command) (*cobra.Command, bool) {
-	for command.HasParent() {
-		if !command.Parent().HasParent() {
-			return command, true
-		}
-
-		command = command.Parent()
-	}
-
-	return nil, false
 }

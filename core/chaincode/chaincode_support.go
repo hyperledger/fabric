@@ -190,8 +190,8 @@ func NewChaincodeSupport(getPeerEndpoint func() (*pb.PeerEndpoint, error), userr
 	if err == nil {
 		theChaincodeSupport.chaincodeLogLevel = chaincodeLogLevel.String()
 	} else {
-		chaincodeLogger.Warningf("Chaincode logging level %s is invalid; defaulting to %s", chaincodeLogLevelString, flogging.DefaultLevel().String())
-		theChaincodeSupport.chaincodeLogLevel = flogging.DefaultLevel().String()
+		chaincodeLogger.Warningf("Chaincode logging level %s is invalid; defaulting to %s", chaincodeLogLevelString, flogging.DefaultLevel())
+		theChaincodeSupport.chaincodeLogLevel = flogging.DefaultLevel()
 	}
 	theChaincodeSupport.logFormat = viper.GetString("chaincode.logFormat")
 
