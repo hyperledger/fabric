@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rwset
+package rwsetutil
 
 import (
 	"fmt"
@@ -22,7 +22,14 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	bccspfactory "github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
+
+// MerkleTreeLevel used for representing a level of the merkle tree
+type MerkleTreeLevel uint32
+
+// Hash represents bytes of a hash
+type Hash []byte
 
 const (
 	leafLevel = MerkleTreeLevel(1)
@@ -53,14 +60,14 @@ var (
 // `AddResult` function should be invoke to supply the next result and at the end `Done` function should be invoked.
 // The `Done` function does the final processing and returns the final output
 type RangeQueryResultsHelper struct {
-	pendingResults []*KVRead
+	pendingResults []*kvrwset.KVRead
 	hashingEnabled bool
-	maxDegree      int
+	maxDegree      uint32
 	mt             *merkleTree
 }
 
 // NewRangeQueryResultsHelper constructs a RangeQueryResultsHelper
-func NewRangeQueryResultsHelper(enableHashing bool, maxDegree int) (*RangeQueryResultsHelper, error) {
+func NewRangeQueryResultsHelper(enableHashing bool, maxDegree uint32) (*RangeQueryResultsHelper, error) {
 	helper := &RangeQueryResultsHelper{nil, enableHashing, maxDegree, nil}
 	if enableHashing {
 		var err error
@@ -74,10 +81,10 @@ func NewRangeQueryResultsHelper(enableHashing bool, maxDegree int) (*RangeQueryR
 // AddResult adds a new query result for processing.
 // Put the result into the list of pending results. If the number of pending results exceeds `maxDegree`,
 // consume the results for incrementally update the merkle tree
-func (helper *RangeQueryResultsHelper) AddResult(kvRead *KVRead) error {
+func (helper *RangeQueryResultsHelper) AddResult(kvRead *kvrwset.KVRead) error {
 	logger.Debug("Adding a result")
 	helper.pendingResults = append(helper.pendingResults, kvRead)
-	if helper.hashingEnabled && len(helper.pendingResults) > helper.maxDegree {
+	if helper.hashingEnabled && uint32(len(helper.pendingResults)) > helper.maxDegree {
 		logger.Debug("Processing the accumulated results")
 		if err := helper.processPendingResults(); err != nil {
 			return err
@@ -91,7 +98,7 @@ func (helper *RangeQueryResultsHelper) AddResult(kvRead *KVRead) error {
 // Only one of these two will be non-nil (except when no results are ever added).
 // `MerkleSummary` will be nil if and only if either `enableHashing` is set to false
 // or the number of total results are less than `maxDegree`
-func (helper *RangeQueryResultsHelper) Done() ([]*KVRead, *MerkleSummary, error) {
+func (helper *RangeQueryResultsHelper) Done() ([]*kvrwset.KVRead, *kvrwset.QueryReadsMerkleSummary, error) {
 	// The merkle tree will be empty if total results are less than or equals to 'maxDegree'
 	// i.e., not even once the results were processed for hashing
 	if !helper.hashingEnabled || helper.mt.isEmpty() {
@@ -111,7 +118,7 @@ func (helper *RangeQueryResultsHelper) Done() ([]*KVRead, *MerkleSummary, error)
 // This intermediate state of the merkle tree helps during validation to detect a mismatch early on.
 // That helps by not requiring to build the complete merkle tree during validation
 // if there is a mismatch in early portion of the result-set.
-func (helper *RangeQueryResultsHelper) GetMerkleSummary() *MerkleSummary {
+func (helper *RangeQueryResultsHelper) GetMerkleSummary() *kvrwset.QueryReadsMerkleSummary {
 	if !helper.hashingEnabled {
 		return nil
 	}
@@ -133,28 +140,19 @@ func (helper *RangeQueryResultsHelper) processPendingResults() error {
 	return nil
 }
 
-func serializeKVReads(kvReads []*KVRead) ([]byte, error) {
-	buf := proto.NewBuffer(nil)
-	if err := buf.EncodeVarint(uint64(len(kvReads))); err != nil {
-		return nil, err
-	}
-	for i := 0; i < len(kvReads); i++ {
-		if err := kvReads[i].Marshal(buf); err != nil {
-			return nil, err
-		}
-	}
-	return buf.Bytes(), nil
+func serializeKVReads(kvReads []*kvrwset.KVRead) ([]byte, error) {
+	return proto.Marshal(&kvrwset.QueryReads{KvReads: kvReads})
 }
 
 //////////// Merkle tree building code  ///////
 
 type merkleTree struct {
-	maxDegree int
+	maxDegree uint32
 	tree      map[MerkleTreeLevel][]Hash
 	maxLevel  MerkleTreeLevel
 }
 
-func newMerkleTree(maxDegree int) (*merkleTree, error) {
+func newMerkleTree(maxDegree uint32) (*merkleTree, error) {
 	if maxDegree < 2 {
 		return nil, fmt.Errorf("maxDegree [is %d] should not be less than 2 in the merkle tree", maxDegree)
 	}
@@ -171,7 +169,7 @@ func (m *merkleTree) update(nextLeafLevelHash Hash) error {
 	currentLevel := leafLevel
 	for {
 		currentLevelHashes := m.tree[currentLevel]
-		if len(currentLevelHashes) <= m.maxDegree {
+		if uint32(len(currentLevelHashes)) <= m.maxDegree {
 			return nil
 		}
 		nextLevelHash, err := computeCombinedHash(currentLevelHashes)
@@ -216,7 +214,7 @@ func (m *merkleTree) done() error {
 	}
 
 	finalHashes := m.tree[m.maxLevel]
-	if len(finalHashes) > m.maxDegree {
+	if uint32(len(finalHashes)) > m.maxDegree {
 		delete(m.tree, m.maxLevel)
 		m.maxLevel++
 		combinedHash, err := computeCombinedHash(finalHashes)
@@ -228,8 +226,10 @@ func (m *merkleTree) done() error {
 	return nil
 }
 
-func (m *merkleTree) getSummery() *MerkleSummary {
-	return &MerkleSummary{m.maxDegree, m.maxLevel, m.tree[m.maxLevel]}
+func (m *merkleTree) getSummery() *kvrwset.QueryReadsMerkleSummary {
+	return &kvrwset.QueryReadsMerkleSummary{MaxDegree: m.maxDegree,
+		MaxLevel:       uint32(m.maxLevel),
+		MaxLevelHashes: hashesToBytes(m.tree[m.maxLevel])}
 }
 
 func (m *merkleTree) getMaxLevel() MerkleTreeLevel {
@@ -254,4 +254,12 @@ func computeCombinedHash(hashes []Hash) (Hash, error) {
 		combinedHash = append(combinedHash, h...)
 	}
 	return bccspfactory.GetDefault().Hash(combinedHash, hashOpts)
+}
+
+func hashesToBytes(hashes []Hash) [][]byte {
+	b := [][]byte{}
+	for _, hash := range hashes {
+		b = append(b, hash)
+	}
+	return b
 }

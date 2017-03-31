@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -129,19 +129,19 @@ func getTxIDandKeyWriteValueFromTran(
 
 	txID := chdr.TxId
 
-	txRWSet := &rwset.TxReadWriteSet{}
+	txRWSet := &rwsetutil.TxRwSet{}
 
 	// Get the Result from the Action and then Unmarshal
 	// it into a TxReadWriteSet using custom unmarshalling
-	if err = txRWSet.Unmarshal(respPayload.Results); err != nil {
+	if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
 		return txID, nil, err
 	}
 
 	// look for the namespace and key by looping through the transaction's ReadWriteSets
-	for _, nsRWSet := range txRWSet.NsRWs {
+	for _, nsRWSet := range txRWSet.NsRwSets {
 		if nsRWSet.NameSpace == namespace {
 			// got the correct namespace, now find the key write
-			for _, kvWrite := range nsRWSet.Writes {
+			for _, kvWrite := range nsRWSet.KvRwSet.Writes {
 				if kvWrite.Key == key {
 					return txID, kvWrite.Value, nil
 				}

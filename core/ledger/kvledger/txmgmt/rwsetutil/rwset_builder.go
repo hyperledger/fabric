@@ -14,25 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rwset
+package rwsetutil
 
 import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	logging "github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("rwset")
 
 type nsRWs struct {
-	readMap          map[string]*KVRead //for mvcc validation
-	writeMap         map[string]*KVWrite
-	rangeQueriesMap  map[rangeQueryKey]*RangeQueryInfo //for phantom read validation
+	readMap          map[string]*kvrwset.KVRead //for mvcc validation
+	writeMap         map[string]*kvrwset.KVWrite
+	rangeQueriesMap  map[rangeQueryKey]*kvrwset.RangeQueryInfo //for phantom read validation
 	rangeQueriesKeys []rangeQueryKey
 }
 
 func newNsRWs() *nsRWs {
-	return &nsRWs{make(map[string]*KVRead), make(map[string]*KVWrite), make(map[rangeQueryKey]*RangeQueryInfo), nil}
+	return &nsRWs{make(map[string]*kvrwset.KVRead),
+		make(map[string]*kvrwset.KVWrite),
+		make(map[rangeQueryKey]*kvrwset.RangeQueryInfo), nil}
 }
 
 type rangeQueryKey struct {
@@ -41,30 +44,30 @@ type rangeQueryKey struct {
 	itrExhausted bool
 }
 
-// RWSet maintains the read-write set
-type RWSet struct {
+// RWSetBuilder helps building the read-write set
+type RWSetBuilder struct {
 	rwMap map[string]*nsRWs
 }
 
-// NewRWSet constructs a new instance of RWSet
-func NewRWSet() *RWSet {
-	return &RWSet{make(map[string]*nsRWs)}
+// NewRWSetBuilder constructs a new instance of RWSetBuilder
+func NewRWSetBuilder() *RWSetBuilder {
+	return &RWSetBuilder{make(map[string]*nsRWs)}
 }
 
 // AddToReadSet adds a key and corresponding version to the read-set
-func (rws *RWSet) AddToReadSet(ns string, key string, version *version.Height) {
+func (rws *RWSetBuilder) AddToReadSet(ns string, key string, version *version.Height) {
 	nsRWs := rws.getOrCreateNsRW(ns)
 	nsRWs.readMap[key] = NewKVRead(key, version)
 }
 
 // AddToWriteSet adds a key and value to the write-set
-func (rws *RWSet) AddToWriteSet(ns string, key string, value []byte) {
+func (rws *RWSetBuilder) AddToWriteSet(ns string, key string, value []byte) {
 	nsRWs := rws.getOrCreateNsRW(ns)
-	nsRWs.writeMap[key] = NewKVWrite(key, value)
+	nsRWs.writeMap[key] = newKVWrite(key, value)
 }
 
 // AddToRangeQuerySet adds a range query info for performing phantom read validation
-func (rws *RWSet) AddToRangeQuerySet(ns string, rqi *RangeQueryInfo) {
+func (rws *RWSetBuilder) AddToRangeQuerySet(ns string, rqi *kvrwset.RangeQueryInfo) {
 	nsRWs := rws.getOrCreateNsRW(ns)
 	key := rangeQueryKey{rqi.StartKey, rqi.EndKey, rqi.ItrExhausted}
 	_, ok := nsRWs.rangeQueriesMap[key]
@@ -74,55 +77,42 @@ func (rws *RWSet) AddToRangeQuerySet(ns string, rqi *RangeQueryInfo) {
 	}
 }
 
-// GetFromWriteSet return the value of a key from the write-set
-func (rws *RWSet) GetFromWriteSet(ns string, key string) ([]byte, bool) {
-	nsRWs, ok := rws.rwMap[ns]
-	if !ok {
-		return nil, false
-	}
-	var value []byte
-	kvWrite, ok := nsRWs.writeMap[key]
-	if ok && !kvWrite.IsDelete {
-		value = kvWrite.Value
-	}
-	return value, ok
-}
-
 // GetTxReadWriteSet returns the read-write set in the form that can be serialized
-func (rws *RWSet) GetTxReadWriteSet() *TxReadWriteSet {
-	txRWSet := &TxReadWriteSet{}
+func (rws *RWSetBuilder) GetTxReadWriteSet() *TxRwSet {
+	txRWSet := &TxRwSet{}
 	sortedNamespaces := util.GetSortedKeys(rws.rwMap)
 	for _, ns := range sortedNamespaces {
 		//Get namespace specific read-writes
 		nsReadWriteMap := rws.rwMap[ns]
 
 		//add read set
-		reads := []*KVRead{}
+		var reads []*kvrwset.KVRead
 		sortedReadKeys := util.GetSortedKeys(nsReadWriteMap.readMap)
 		for _, key := range sortedReadKeys {
 			reads = append(reads, nsReadWriteMap.readMap[key])
 		}
 
 		//add write set
-		writes := []*KVWrite{}
+		var writes []*kvrwset.KVWrite
 		sortedWriteKeys := util.GetSortedKeys(nsReadWriteMap.writeMap)
 		for _, key := range sortedWriteKeys {
 			writes = append(writes, nsReadWriteMap.writeMap[key])
 		}
 
 		//add range query info
-		rangeQueriesInfo := []*RangeQueryInfo{}
+		var rangeQueriesInfo []*kvrwset.RangeQueryInfo
 		rangeQueriesMap := nsReadWriteMap.rangeQueriesMap
 		for _, key := range nsReadWriteMap.rangeQueriesKeys {
 			rangeQueriesInfo = append(rangeQueriesInfo, rangeQueriesMap[key])
 		}
-		nsRWs := &NsReadWriteSet{NameSpace: ns, Reads: reads, Writes: writes, RangeQueriesInfo: rangeQueriesInfo}
-		txRWSet.NsRWs = append(txRWSet.NsRWs, nsRWs)
+		kvRWs := &kvrwset.KVRWSet{Reads: reads, Writes: writes, RangeQueriesInfo: rangeQueriesInfo}
+		nsRWs := &NsRwSet{ns, kvRWs}
+		txRWSet.NsRwSets = append(txRWSet.NsRwSets, nsRWs)
 	}
 	return txRWSet
 }
 
-func (rws *RWSet) getOrCreateNsRW(ns string) *nsRWs {
+func (rws *RWSetBuilder) getOrCreateNsRW(ns string) *nsRWs {
 	var nsRWs *nsRWs
 	var ok bool
 	if nsRWs, ok = rws.rwMap[ns]; !ok {
