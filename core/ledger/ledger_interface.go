@@ -26,6 +26,10 @@ import (
 type PeerLedgerProvider interface {
 	// Create creates a new ledger with a given unique id
 	Create(ledgerID string) (PeerLedger, error)
+	// CreateWithGenesisBlock creates a new ledger with the given genesis block.
+	// This function guarentees that the creation of ledger and committing the genesis block would an atomic action
+	// The chain id retrieved from the genesis block is treated as a ledger id
+	CreateWithGenesisBlock(genesisBlock *common.Block) (PeerLedger, error)
 	// Open opens an already created ledger
 	Open(ledgerID string) (PeerLedger, error)
 	// Exists tells whether the ledger with given id exists
