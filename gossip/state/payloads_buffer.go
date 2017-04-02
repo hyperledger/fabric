@@ -54,9 +54,9 @@ type PayloadsBuffer interface {
 // PayloadsBufferImpl structure to implement PayloadsBuffer interface
 // store inner state of available payloads and sequence numbers
 type PayloadsBufferImpl struct {
-	buf map[uint64]*proto.Payload
-
 	next uint64
+
+	buf map[uint64]*proto.Payload
 
 	readyChan chan struct{}
 
