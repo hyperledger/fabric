@@ -264,7 +264,8 @@ message Empty {}
 // RemoteStateRequest is used to ask a set of blocks
 // from a remote peer
 message RemoteStateRequest {
-    repeated uint64 seq_nums = 1;
+    uint64 start_seq_num = 1;
+    uint64 end_seq_num = 2;
 }
 
 // RemoteStateResponse is used to send a set of blocks
