@@ -19,6 +19,8 @@ limitations under the License.
 package shim
 
 import (
+	"bytes"
+	"encoding/gob"
 	"errors"
 	"flag"
 	"fmt"
@@ -31,7 +33,9 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -348,14 +352,33 @@ func (stub *ChaincodeStub) DelState(key string) error {
 	return stub.handler.handleDelState(key, stub.TxID)
 }
 
-// StateQueryIterator allows a chaincode to iterate over a set of
+// CommonIterator allows a chaincode to iterate over a set of
 // key/value pairs in the state.
-type StateQueryIterator struct {
+type CommonIterator struct {
 	handler    *Handler
 	uuid       string
-	response   *pb.QueryStateResponse
+	response   *pb.QueryResponse
 	currentLoc int
 }
+
+//GeneralQueryIterator allows a chaincode to iterate the result
+//of range and execute query.
+type StateQueryIterator struct {
+	*CommonIterator
+}
+
+//GeneralQueryIterator allows a chaincode to iterate the result
+//of history query.
+type HistoryQueryIterator struct {
+	*CommonIterator
+}
+
+type resultType uint8
+
+const (
+	STATE_QUERY_RESULT resultType = iota + 1
+	HISTORY_QUERY_RESULT
+)
 
 // GetStateByRange function can be invoked by a chaincode to query of a range
 // of keys in the state. Assuming the startKey and endKey are in lexical order,
@@ -367,7 +390,7 @@ func (stub *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryI
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
 // GetQueryResult function can be invoked by a chaincode to perform a
@@ -380,17 +403,17 @@ func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInter
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
 // GetHistoryForKey function can be invoked by a chaincode to return a history of
 // key values across time. GetHistoryForKey is intended to be used for read-only queries.
-func (stub *ChaincodeStub) GetHistoryForKey(key string) (StateQueryIteratorInterface, error) {
+func (stub *ChaincodeStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error) {
 	response, err := stub.handler.handleGetHistoryForKey(key, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+	return &HistoryQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
 //CreateCompositeKey combines the given attributes to form a composite key.
@@ -461,42 +484,80 @@ func getStateByPartialCompositeKey(stub ChaincodeStubInterface, objectType strin
 	return keysIter, nil
 }
 
+func (iter *StateQueryIterator) Next() (*ledger.KV, error) {
+	result, err := next(iter.CommonIterator, STATE_QUERY_RESULT)
+	return result.(*ledger.KV), err
+}
+
+func (iter *HistoryQueryIterator) Next() (*ledger.KeyModification, error) {
+	result, err := next(iter.CommonIterator, HISTORY_QUERY_RESULT)
+	return result.(*ledger.KeyModification), err
+}
+
 // HasNext returns true if the range query iterator contains additional keys
 // and values.
-func (iter *StateQueryIterator) HasNext() bool {
-	if iter.currentLoc < len(iter.response.KeysAndValues) || iter.response.HasMore {
+func (iter *CommonIterator) HasNext() bool {
+	if iter.currentLoc < len(iter.response.Results) || iter.response.HasMore {
 		return true
 	}
 	return false
 }
 
-// Next returns the next key and value in the range query iterator.
-func (iter *StateQueryIterator) Next() (string, []byte, error) {
-	if iter.currentLoc < len(iter.response.KeysAndValues) {
-		keyValue := iter.response.KeysAndValues[iter.currentLoc]
-		iter.currentLoc++
-		return keyValue.Key, keyValue.Value, nil
-	} else if !iter.response.HasMore {
-		return "", nil, errors.New("No such key")
-	} else {
-		response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.uuid)
+func getResultFromBytes(queryResultBytes *pb.QueryResultBytes, iter *CommonIterator,
+	rType resultType) (commonledger.QueryResult, error) {
 
-		if err != nil {
-			return "", nil, err
+	decoder := gob.NewDecoder(bytes.NewBuffer(queryResultBytes.ResultBytes))
+
+	if rType == STATE_QUERY_RESULT {
+		var stateQueryResult ledger.KV
+		if err := decoder.Decode(&stateQueryResult); err != nil {
+			return nil, err
 		}
-
-		iter.currentLoc = 0
-		iter.response = response
-		keyValue := iter.response.KeysAndValues[iter.currentLoc]
 		iter.currentLoc++
-		return keyValue.Key, keyValue.Value, nil
+		return &stateQueryResult, nil
+
+	} else if rType == HISTORY_QUERY_RESULT {
+		var historyQueryResult ledger.KeyModification
+		if err := decoder.Decode(&historyQueryResult); err != nil {
+			return nil, err
+		}
+		iter.currentLoc++
+		return &historyQueryResult, nil
 
 	}
+	return nil, errors.New("Wrong result type")
+}
+
+func fetchRemainingQueryResult(iter *CommonIterator) error {
+	response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.uuid)
+
+	if err != nil {
+		return err
+	}
+
+	iter.currentLoc = 0
+	iter.response = response
+	return nil
+}
+
+// Next returns the next key and value in the state or history query iterator.
+func next(iter *CommonIterator, rType resultType) (commonledger.QueryResult, error) {
+
+	if iter.currentLoc < len(iter.response.Results) {
+		return getResultFromBytes(iter.response.Results[iter.currentLoc], iter, rType)
+	} else if !iter.response.HasMore {
+		return nil, errors.New("No such key")
+	}
+	if err := fetchRemainingQueryResult(iter); err != nil {
+		return nil, err
+	}
+	return getResultFromBytes(iter.response.Results[iter.currentLoc], iter, rType)
+
 }
 
 // Close closes the range query iterator. This should be called when done
 // reading from the iterator to free up resources.
-func (iter *StateQueryIterator) Close() error {
+func (iter *CommonIterator) Close() error {
 	_, err := iter.handler.handleQueryStateClose(iter.response.Id, iter.uuid)
 	return err
 }

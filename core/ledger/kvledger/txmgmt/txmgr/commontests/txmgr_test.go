@@ -591,7 +591,7 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 
 		//Unmarshal the document to Asset structure
 		assetResp := &Asset{}
-		json.Unmarshal(queryRecord.(*ledger.QueryRecord).Record, &assetResp)
+		json.Unmarshal(queryRecord.(*ledger.KV).Value, &assetResp)
 
 		//Verify the owner retrieved matches
 		testutil.AssertEquals(t, assetResp.Owner, "bob")

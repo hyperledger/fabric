@@ -81,6 +81,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -366,7 +367,7 @@ func (t *SimpleChaincode) getMarblesByRange(stub shim.ChaincodeStubInterface, ar
 
 	bArrayMemberAlreadyWritten := false
 	for resultsIterator.HasNext() {
-		queryResultKey, queryResultValue, err := resultsIterator.Next()
+		queryResponse, err := resultsIterator.Next()
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -376,12 +377,12 @@ func (t *SimpleChaincode) getMarblesByRange(stub shim.ChaincodeStubInterface, ar
 		}
 		buffer.WriteString("{\"Key\":")
 		buffer.WriteString("\"")
-		buffer.WriteString(queryResultKey)
+		buffer.WriteString(queryResponse.Key)
 		buffer.WriteString("\"")
 
 		buffer.WriteString(", \"Record\":")
 		// Record is a JSON object, so we write as-is
-		buffer.WriteString(string(queryResultValue))
+		buffer.WriteString(string(queryResponse.Value))
 		buffer.WriteString("}")
 		bArrayMemberAlreadyWritten = true
 	}
@@ -424,13 +425,13 @@ func (t *SimpleChaincode) transferMarblesBasedOnColor(stub shim.ChaincodeStubInt
 	var i int
 	for i = 0; coloredMarbleResultsIterator.HasNext(); i++ {
 		// Note that we don't get the value (2nd return variable), we'll just get the marble name from the composite key
-		colorNameKey, _, err := coloredMarbleResultsIterator.Next()
+		responseRange, err := coloredMarbleResultsIterator.Next()
 		if err != nil {
 			return shim.Error(err.Error())
 		}
 
 		// get the color and name from color~name composite key
-		objectType, compositeKeyParts, err := stub.SplitCompositeKey(colorNameKey)
+		objectType, compositeKeyParts, err := stub.SplitCompositeKey(responseRange.Key)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -534,7 +535,7 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 
 	bArrayMemberAlreadyWritten := false
 	for resultsIterator.HasNext() {
-		queryResultKey, queryResultRecord, err := resultsIterator.Next()
+		queryResponse, err := resultsIterator.Next()
 		if err != nil {
 			return nil, err
 		}
@@ -544,12 +545,12 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 		}
 		buffer.WriteString("{\"Key\":")
 		buffer.WriteString("\"")
-		buffer.WriteString(queryResultKey)
+		buffer.WriteString(queryResponse.Key)
 		buffer.WriteString("\"")
 
 		buffer.WriteString(", \"Record\":")
 		// Record is a JSON object, so we write as-is
-		buffer.WriteString(string(queryResultRecord))
+		buffer.WriteString(string(queryResponse.Value))
 		buffer.WriteString("}")
 		bArrayMemberAlreadyWritten = true
 	}
@@ -582,7 +583,7 @@ func (t *SimpleChaincode) getHistoryForMarble(stub shim.ChaincodeStubInterface, 
 
 	bArrayMemberAlreadyWritten := false
 	for resultsIterator.HasNext() {
-		txID, historicValue, err := resultsIterator.Next()
+		response, err := resultsIterator.Next()
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -592,12 +593,29 @@ func (t *SimpleChaincode) getHistoryForMarble(stub shim.ChaincodeStubInterface, 
 		}
 		buffer.WriteString("{\"TxId\":")
 		buffer.WriteString("\"")
-		buffer.WriteString(txID)
+		buffer.WriteString(response.TxID)
 		buffer.WriteString("\"")
 
 		buffer.WriteString(", \"Value\":")
-		// historicValue is a JSON marble, so we write as-is
-		buffer.WriteString(string(historicValue))
+		// if it was a delete operation on given key, then we need to set the
+		//corresponding value null. Else, we will write the response.Value
+		//as-is (as the Value itself a JSON marble)
+		if response.IsDelete {
+			buffer.WriteString("null")
+		} else {
+			buffer.WriteString(string(response.Value))
+		}
+
+		buffer.WriteString(", \"Timestamp\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(ptypes.TimestampString(response.Timestamp))
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"IsDelete\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(strconv.FormatBool(response.IsDelete))
+		buffer.WriteString("\"")
+
 		buffer.WriteString("}")
 		bArrayMemberAlreadyWritten = true
 	}

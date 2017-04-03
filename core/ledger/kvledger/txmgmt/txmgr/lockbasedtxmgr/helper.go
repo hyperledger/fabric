@@ -216,13 +216,13 @@ func (itr *queryResultsItr) Next() (commonledger.QueryResult, error) {
 	if queryResult == nil {
 		return nil, nil
 	}
-	versionedQueryRecord := queryResult.(*statedb.VersionedQueryRecord)
-	logger.Debugf("queryResultsItr.Next() returned a record:%s", string(versionedQueryRecord.Record))
+	versionedQueryRecord := queryResult.(*statedb.VersionedKV)
+	logger.Debugf("queryResultsItr.Next() returned a record:%s", string(versionedQueryRecord.Value))
 
 	if itr.RWSetBuilder != nil {
 		itr.RWSetBuilder.AddToReadSet(versionedQueryRecord.Namespace, versionedQueryRecord.Key, versionedQueryRecord.Version)
 	}
-	return &ledger.QueryRecord{Namespace: versionedQueryRecord.Namespace, Key: versionedQueryRecord.Key, Record: versionedQueryRecord.Record}, nil
+	return &ledger.KV{Key: versionedQueryRecord.Key, Value: versionedQueryRecord.Value}, nil
 }
 
 // Close implements method in interface ledger.ResultsIterator

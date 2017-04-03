@@ -475,11 +475,9 @@ func (scanner *queryScanner) Next() (statedb.QueryResult, error) {
 	//remove the data wrapper and return the value and version
 	returnValue, returnVersion := removeDataWrapper(selectedResultRecord.Value, selectedResultRecord.Attachments)
 
-	return &statedb.VersionedQueryRecord{
-		Namespace: namespace,
-		Key:       key,
-		Version:   &returnVersion,
-		Record:    returnValue}, nil
+	return &statedb.VersionedKV{
+		CompositeKey:   statedb.CompositeKey{Namespace: namespace, Key: key},
+		VersionedValue: statedb.VersionedValue{Value: returnValue, Version: &returnVersion}}, nil
 }
 
 func (scanner *queryScanner) Close() {

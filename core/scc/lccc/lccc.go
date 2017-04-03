@@ -278,13 +278,13 @@ func (lccc *LifeCycleSysCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.R
 	var ccInfoArray []*pb.ChaincodeInfo
 
 	for itr.HasNext() {
-		_, value, err := itr.Next()
+		response, err := itr.Next()
 		if err != nil {
 			return shim.Error(err.Error())
 		}
 
 		ccdata := &ccprovider.ChaincodeData{}
-		if err = proto.Unmarshal(value, ccdata); err != nil {
+		if err = proto.Unmarshal(response.Value, ccdata); err != nil {
 			return shim.Error(err.Error())
 		}
 
