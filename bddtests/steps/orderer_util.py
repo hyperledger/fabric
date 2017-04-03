@@ -199,11 +199,9 @@ class UserRegistration:
             return self.atomicBroadcastStubsDict[composeService]
         # Get the IP address of the server that the user registered on
         root_certificates = self.directory.getTrustedRootsForOrdererNetworkAsPEM()
-        # ipAddress = "{0}:{1}".format(*bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050))
-        ipAddress = bdd_test_util.ipFromContainerNamePart(composeService, context.compose_containers)
-        print("ipAddress in getABStubForComposeService == {0}".format(ipAddress))
-        channel = bdd_grpc_util.getGRPCChannel(ipAddress=ipAddress, port=7050, root_certificates=root_certificates, ssl_target_name_override=composeService)
-        # channel = getGRPCChannel(*bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050))
+        ipAddress, port = bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050)
+        print("ipAddress in getABStubForComposeService == {0}:{1}".format(ipAddress, port))
+        channel = bdd_grpc_util.getGRPCChannel(ipAddress=ipAddress, port=port, root_certificates=root_certificates, ssl_target_name_override=composeService)
         newABStub = ab_pb2_grpc.AtomicBroadcastStub(channel)
         self.atomicBroadcastStubsDict[composeService] = newABStub
         return newABStub

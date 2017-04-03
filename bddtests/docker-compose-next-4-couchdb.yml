@@ -5,7 +5,7 @@ services:
   couchdb0:
     image: hyperledger/fabric-couchdb
     ports:
-      - "5984:5984"
+      - '5984'
 
   peer0:
     environment:
@@ -17,7 +17,7 @@ services:
   couchdb1:
     image: hyperledger/fabric-couchdb
     ports:
-      - "6984:5984"
+      - '5984'
 
   peer1:
     environment:
@@ -29,7 +29,7 @@ services:
   couchdb2:
     image: hyperledger/fabric-couchdb
     ports:
-      - "7984:5984"
+      - '5984'
 
   peer2:
     environment:
@@ -41,7 +41,7 @@ services:
   couchdb3:
     image: hyperledger/fabric-couchdb
     ports:
-      - "8984:5984"
+      - '5984'
 
   peer3:
     environment:

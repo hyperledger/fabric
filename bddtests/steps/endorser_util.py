@@ -67,7 +67,7 @@ def createInvokeProposalForBDD(context, ccSpec, chainID, signersCert, Mspid, typ
     nonce = bootstrap_util.BootstrapHelper.getNonce()
 
     sigHdr = bootstrapHelper.makeSignatureHeader(serializedIdentity.SerializeToString(), nonce)
-    
+
     # Calculate the transaction ID
     tx_id = binascii.hexlify(bootstrap_util.computeCryptoHash(nonce + serializedIdentity.SerializeToString()))
 
@@ -139,11 +139,11 @@ def getEndorserStubs(context, composeServices, directory, nodeAdminTuple):
     signingOrg = directory.getOrganization(nodeAdminTuple.organization)
 
     for composeService in composeServices:
-        ipAddress = bdd_test_util.ipFromContainerNamePart(composeService, context.compose_containers)
+        ipAddress, port = bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7051)
         # natForPeerSigner = directory.findNodeAdminTuple(userName="{0}Signer".format(composeService), contextName=composeService, orgName="peerOrg0")
         # signerCert = directory.getCertAsPEM(natForPeerSigner)
         root_certificates = directory.getTrustedRootsForPeerNetworkAsPEM()
-        channel = bdd_grpc_util.getGRPCChannel(ipAddress=ipAddress, port=7051, root_certificates=root_certificates,
+        channel = bdd_grpc_util.getGRPCChannel(ipAddress=ipAddress, port=port, root_certificates=root_certificates,
                                                ssl_target_name_override=composeService)
         newEndorserStub = peer_pb2_grpc.EndorserStub(channel)
         stubs.append(newEndorserStub)

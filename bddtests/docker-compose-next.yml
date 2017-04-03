@@ -11,4 +11,6 @@ services:
           - CORE_PEER_ENDORSER_ENABLED=true
           - CORE_PEER_GOSSIP_ORGLEADER=false
           - CORE_PEER_GOSSIP_USELEADERELECTION=true
-
+        ports:
+          - '7051'
+          - '7053'
