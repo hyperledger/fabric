@@ -256,21 +256,33 @@ func MockCreateChain(cid string) error {
 		return err
 	}
 
-	i := mockconfigtx.Initializer{
+	chains.Lock()
+	defer chains.Unlock()
+
+	// Here we need to mock also the policy manager
+	// in order for the ACL to be checked
+	initializer := mockconfigtx.Initializer{
 		Resources: mockconfigtx.Resources{
 			PolicyManagerVal: &mockpolicies.Manager{
 				Policy: &mockpolicies.Policy{},
 			},
 		},
+		PolicyProposerVal: &mockconfigtx.PolicyProposer{
+			Transactional: mockconfigtx.Transactional{},
+		},
+		ValueProposerVal: &mockconfigtx.ValueProposer{
+			Transactional: mockconfigtx.Transactional{},
+		},
 	}
 
-	chains.Lock()
-	defer chains.Unlock()
+	manager := &mockconfigtx.Manager{
+		Initializer: initializer,
+	}
+
 	chains.list[cid] = &chain{
 		cs: &chainSupport{
-			ledger:  ledger,
-			Manager: &mockconfigtx.Manager{Initializer: i},
-		},
+			Manager: manager,
+			ledger:  ledger},
 	}
 
 	return nil

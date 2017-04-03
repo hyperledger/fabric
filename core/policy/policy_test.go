@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
@@ -73,11 +74,11 @@ func TestPolicyChecker(t *testing.T) {
 
 	// Alice is a member of the local MSP, policy check must succeed
 	identityDeserializer.Msg = sProp.ProposalBytes
-	err = pc.CheckPolicyNoChannel("member", sProp)
+	err = pc.CheckPolicyNoChannel(mgmt.Members, sProp)
 	assert.NoError(t, err)
 
 	sProp, _ = utils.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Bob"), []byte("msg2"))
 	// Bob is not a member of the local MSP, policy check must fail
-	err = pc.CheckPolicyNoChannel("member", sProp)
+	err = pc.CheckPolicyNoChannel(mgmt.Members, sProp)
 	assert.Error(t, err)
 }

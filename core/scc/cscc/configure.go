@@ -24,10 +24,15 @@ package cscc
 import (
 	"fmt"
 
+	"errors"
+
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/events/producer"
+	"github.com/hyperledger/fabric/msp/mgmt"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -37,6 +42,7 @@ import (
 // configuration transaction coming in from the ordering service, the
 // committer calls this system chaincode to process the transaction.
 type PeerConfiger struct {
+	policyChecker policy.PolicyChecker
 }
 
 var cnflogger = logging.MustGetLogger("chaincode")
@@ -54,6 +60,14 @@ const (
 // to any transaction execution on the chain.
 func (e *PeerConfiger) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	cnflogger.Info("Init CSCC")
+
+	// Init policy checker for access control
+	e.policyChecker = policy.NewPolicyChecker(
+		peer.NewChannelPolicyManagerGetter(),
+		mgmt.GetLocalMSP(),
+		mgmt.NewLocalMSPPrincipalGetter(),
+	)
+
 	return shim.Success(nil)
 }
 
@@ -82,18 +96,43 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 	cnflogger.Debugf("Invoke function: %s", fname)
 
-	// TODO: Handle ACL
-
-	if fname == JoinChain {
-		return joinChain(args[1])
-	} else if fname == GetConfigBlock {
-		return getConfigBlock(args[1])
-	} else if fname == UpdateConfigBlock {
-		return updateConfigBlock(args[1])
-	} else if fname == GetChannels {
-		return getChannels()
+	// Handle ACL:
+	// 1. get the signed proposal
+	sp, err := stub.GetSignedProposal()
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed getting signed proposal from stub: [%s]", err))
 	}
 
+	switch fname {
+	case JoinChain:
+		// 2. check local MSP Admins policy
+		if err = e.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
+			return shim.Error(fmt.Sprintf("\"JoinChain\" request failed authorization check for channel [%s]: [%s]", args[1], err))
+		}
+
+		return joinChain(args[1])
+	case GetConfigBlock:
+		// 2. check the channel reader policy
+		if err = e.policyChecker.CheckPolicy(string(args[1]), policies.ChannelApplicationReaders, sp); err != nil {
+			return shim.Error(fmt.Sprintf("\"GetConfigBlock\" request failed authorization check for channel [%s]: [%s]", args[1], err))
+		}
+		return getConfigBlock(args[1])
+	case UpdateConfigBlock:
+		// TODO: It needs to be clarified if this is a function invoked by a proposal or not.
+		// The issue is the following: ChannelApplicationAdmins might require multiple signatures
+		// but currently a proposal can be signed by a signle entity only. Therefore, the ChannelApplicationAdmins policy
+		// will be never satisfied.
+
+		return updateConfigBlock(args[1])
+	case GetChannels:
+		// 2. check local MSP Members policy
+		if err = e.policyChecker.CheckPolicyNoChannel(mgmt.Members, sp); err != nil {
+			return shim.Error(fmt.Sprintf("\"GetChannels\" request failed authorization check for channel [%s]: [%s]", args[1], err))
+		}
+
+		return getChannels()
+
+	}
 	return shim.Error(fmt.Sprintf("Requested function %s not found.", fname))
 }
 
@@ -126,6 +165,21 @@ func joinChain(blockBytes []byte) pb.Response {
 	}
 
 	return shim.Success(nil)
+}
+
+func getChannelFromConfigBlock(blockBytes []byte) (string, error) {
+	if blockBytes == nil {
+		return "", errors.New("Configuration block must not be nil.")
+	}
+	block, err := utils.GetBlockFromBlockBytes(blockBytes)
+	if err != nil {
+		return "", fmt.Errorf("Failed to reconstruct the configuration block, %s", err)
+	}
+	chainID, err := utils.GetChainIDFromBlock(block)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get the chain ID from the configuration block, %s", err)
+	}
+	return chainID, nil
 }
 
 func updateConfigBlock(blockBytes []byte) pb.Response {
