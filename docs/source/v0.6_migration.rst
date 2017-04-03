@@ -1,0 +1,281 @@
+This document serves as an overview of the new features present in
+fabric v0.6.1-preview release, and outlines the changes you will need to
+make to successfully migrate code originally written for the
+v0.5-developer-preview release that you now wish to run on fabric
+v0.6.1-preview.
+
+Migrating chaincode to fabric v0.6.1-preview
+--------------------------------------------
+
+**1.** The chaincode shim interface changes for compatibility with the
+latest Hyperledger shim:
+
+The chaincode interface has changed from ``shim.ChaincodeStub`` to
+``shim.ChaincodeStubInterface``. See the
+`interfaces.go <https://github.com/hyperledger/fabric/blob/v0.6/core/chaincode/shim/interfaces.go>`__
+file for the shim source code. The following code snippet from line 74
+of chaincode\_example02 will highlight this alteration.
+
+This change applies to all transaction types: Deploy, Invoke, and Query.
+
+.. code:: go
+
+
+    func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+
+    func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+
+**2.** Chaincode calling chaincode is included in the shim package.
+
+There are two functions available - **InvokeChaincode** and
+**QueryChaincode**. First, these functions no longer accept the function
+name as a parameter; instead the function must be passed in as an
+argument. Second, the arguments are passed in as a byte array, not a
+string. A utility is provided to convert your strings to a byte array.
+
+The following code snippets from chaincode\_example04 demonstrate the
+difference. Make note of ``f``, representing the function invoke. It is
+removed from the **InvokeChaincode** parameters, and instead passed as
+an argument to the **invokeArgs** element. The arguments are then
+converted to a byte array before being passed to **InvokeChaincode**.
+This change is not optional and must be implemented in your code.
+
+.. code:: go
+
+    // fabric v0.5-developer-preview
+    f := "invoke"
+    invokeArgs := []string{"a", "b", "10"}
+    response, err := stub.InvokeChaincode(chainCodeToCall, f, invokeArgs)
+
+.. code:: go
+
+    // fabric v0.6.1-preview code
+    f := "invoke"
+    // function is removed from InvokeChaincode, now passed as an argument within
+    // invokeArgs.  invokeArgs is converted to byte array and then passed along.
+    invokeArgs := util.ToChaincodeArgs(f, "a", "b", "10")
+    response, err := stub.InvokeChaincode(chainCodeToCall, invokeArgs)
+
+**3.** Chaincode APIs have changed when constructing REST API payloads
+and CLI commands.
+
+The function can now be passed within the "args" element as the first
+argument. The following code snippets will demonstrate the changes to a
+basic chaincode invoking transaction from the CLI and through the REST
+API.
+
+::
+
+    peer chaincode invoke -1 golang -n mycc -c '{"Function": "invoke", "Args": ["a", "b", "10"]}'
+
+    peer chaincode invoke -1 golang -n mycc -c '{"Args": ["invoke", "a", "b", "10"]}'
+
+.. code:: json
+
+    {
+      "jsonrpc": "2.0",
+      "method": "invoke",
+      "params": {
+          "type": 1,
+          "chaincodeID":{
+              "name":"mycc"
+          },
+          "ctorMsg": {
+             "function":"invoke",
+             "args":["a", "b", "10"]
+          }
+      },
+      "id": 3
+    }
+
+.. code:: json
+
+    {
+      "jsonrpc": "2.0",
+      "method": "invoke",
+      "params": {
+          "type": 1,
+          "chaincodeID":{
+              "name":"mycc"
+          },
+          "ctorMsg": {
+             "args":["invoke", "a", "b", "10"]
+          }
+      },
+      "id": 3
+    }
+
+**Note**: REST API and CLI developed in fabric v0.5-developer-preview
+will work with fabric v0.6.1-preview. However, when using the Java SDK
+you must implement the new format, where the function is passed within
+the "args" element.
+
+New Features
+------------
+
+**1.** Custom Events & Event handler:
+
+The fabric now has the ability to create custom events and emit this
+information to a client-side node application leveraging the hfc SDK.
+This is done by implementing the EventHub Service in your node program.
+The EventHub Service listens for events.
+
+You can customize the
+`eventsender.go <https://github.com/hyperledger/fabric/blob/v0.6/examples/chaincode/go/eventsender/eventsender.go>`__
+code to determine which events you want sent. In the example, only the
+invoke transaction type is coded to send outgoing events. See the
+following code snippet in eventsender.go which demonstrates invocations
+being broadcast by the event sender:
+
+.. code:: go
+
+    func (t *EventSender) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+        b, err := stub.GetState("noevents")
+        if err != nil {
+            return nil, errors.New("Failed to get state")
+        }
+      // define the construct for the event
+        noevts, _ := strconv.Atoi(string(b))
+
+        tosend := "Event " + string(b)
+        for _, s := range args {
+            tosend = tosend + "," + s
+        }
+      // create the event based on the construct
+        err = stub.PutState("noevents", []byte(strconv.Itoa(noevts+1)))
+        if err != nil {
+            return nil, err
+        }
+      // pass the event along for Event Listener service
+        err = stub.SetEvent("evtsender", []byte(tosend))
+        if err != nil {
+            return nil, err
+        }
+        return nil, nil
+    }
+
+Enable the event service in your node program with the following steps:
+
+.. code:: go
+
+    // set the port where the event service will listen
+    chain.eventHubConnect("localhost:7053");
+
+    // Get the eventHub service associated with the chain
+    var eventHub = chain.getEventHub();
+
+    // Register on a specific chaincode for a specific event - syntax example only
+    eventHub.registerChaincodeEvent(<chaincode ID>, <event name>, <callback>);
+    // actual code example
+    var registrationId = eh.registerChaincodeEvent("b16cec7aa4466f57dd18f3c159b85d2962e741824c702136fdfcf616addcec01", "evtsender", function(event) {
+            console.log(util.format("Custom event received, payload: %j\n", event.payload.toString()));
+    });
+
+    //Unregister events or a specific chaincode
+    eventHub.unregisterChaincodeEvent(registrationID);
+
+    // disconnect when done listening for events
+    process.on('exit', function() {
+        chain.eventHubDisconnect();
+    });
+
+Explore the full library of the `sample event
+application <https://github.com/ratnakar-asara/NodeSDKSample/tree/master/events>`__
+for the application source code and deeper documentation.
+
+**2.** Java chaincode shim - new shim library to support java chaincode
+interacting with Hyperledger fabric. See the `java
+shim <https://github.com/hyperledger/fabric/tree/v0.6/core/chaincode/shim/java>`__
+library for the source code.
+
+**3.** Ability to call chaincode using a 64encoded string. A custom
+UnmarshalJSON method for ChaincodeInput allows for string-based
+REST/JSON input, which is then converted to []byte-based. This allows
+browsers to pass in string or binary arguments to the application
+driving the chaincode.
+
+**4.** Docker client upgrade to `Docker
+1.12 <https://blog.docker.com/2016/07/docker-built-in-orchestration-ready-for-production-docker-1-12-goes-ga/>`__
+
+**5.** ``fabric-peer`` and ``fabric-membersrvc`` images for multiple
+platforms are available on `Hyperledger
+Dockerhub <https://hub.docker.com/r/hyperledger/>`__. The images are
+part of the continuous integration process and built with every new code
+change.
+
+**6.** New warnings for chaincode development. The following practices
+can lead to malfunctioning and/or non-deterministic chaincode and should
+be avoided:
+
+-  Iterating using GetRows
+-  Using associative arrays with iteration (the order is randomized in
+   Go)
+-  Reading list of items from KVS table (the order is not guaranteed).
+   Use ordering
+-  Writing thread-unsafe chaincode where invoke and query may be called
+   in parallel
+-  Substituting global memory or cache storage for ledger state
+   variables in the chaincode
+-  Accessing external services (e.g. databases) directly from the
+   chaincode
+-  Using libraries or globabl variables that could introduce
+   non-determinism (e.g. "random" or "time")
+-  For templates of deterministic and properly-written chaincode, see
+   the
+   `examples <https://github.com/hyperledger/fabric/tree/v0.6/examples/chaincode>`__
+   library. This directory contains samples written in Go and Java.
+
+**7.** Fabric Starter Kit - This section describes how to set up a
+self-contained environment for application development with the
+Hyperledger fabric. The setup uses **Docker** to provide a controlled
+environment with all the necessary Hyperledger fabric components to
+support a Node.js application built with the fabric's Node.js SDK, and
+chaincode written in Go.
+
+There are three Docker images that, when run, will provide a basic
+network environment. There is an image to run a single ``peer``, one to
+run the ``membersrvc``, and one to run both your Node.js application and
+your chaincode.
+
+**8.** `Fabric
+boilerplate <https://github.com/IBM-Blockchain/fabric-boilerplate>`__ -
+The public IBM-Blockchain repo now contains a boilerplate application to
+help application developers quickly create a network and deploy and app.
+The network can be spun up locally using Docker containers or through a
+Bluemix instance of the blockchain service.
+
+**9.** Fabric v0.6 provides the ability to dynamically register and
+enroll users with attributes through the hfc SDK. See
+`asset-mgmt-with-dynamic-roles.js <https://github.com/hyperledger/fabric/blob/v0.6/sdk/node/test/unit/asset-mgmt-with-dynamic-roles.js>`__
+as an example. The hfc SDK previously allowed you to dynamically enroll
+users, but these users were already registered and aligned with
+attributes/affiliations hardcoded in the membersrvc.yml. Now a user with
+``registrar`` authority can register and enroll unique users to the
+network. See the following code snippets as an example of dynamic
+registration:
+
+.. code:: js
+
+    // call the registerAndEnroll function to add a unique user to the network
+    // (i.e. a user not present in the membersrvc.yml)
+    // below we see "assigner2" being registered and enrolled with two unique
+    // attributes - a 'role' with the value of 'client' and an 'account' with the
+    // value of 'aliceAccount'
+    console.log("enrolling alice2 ...");
+    registerAndEnroll("alice2",[{name:'role',value:'client'},{name:'account',value:aliceAccount}], function(err,user) {
+      if (err) return cb(err);
+      alice = user;
+
+.. code:: js
+
+    // define the funtion
+    function registerAndEnroll(name, attrs, cb) {
+        console.log("registerAndEnroll name=%s attrs=%j",name,attrs);
+        var registrationRequest = {
+             roles: [ 'client' ],
+             enrollmentID: name,
+             affiliation: "bank_a",
+             attributes: attrs
+        };
+        chain.registerAndEnroll(registrationRequest,cb);
+    }
