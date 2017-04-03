@@ -36,8 +36,8 @@ It has these top-level messages:
 	GetHistoryForKey
 	QueryStateNext
 	QueryStateClose
-	QueryStateKeyValue
-	QueryStateResponse
+	QueryResultBytes
+	QueryResponse
 	AnchorPeers
 	AnchorPeer
 	ChaincodeReg

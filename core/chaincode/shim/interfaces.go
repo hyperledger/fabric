@@ -102,7 +102,7 @@ type ChaincodeStubInterface interface {
 	// key values across time. GetHistoryForKey is intended to be used for read-only queries.
 	GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error)
 
-	// GetCreator returns SignatureHeader.Creator of the proposal
+	// GetCreator returns SignatureHeader.Creator of the signedProposal
 	// this Stub refers to.
 	GetCreator() ([]byte, error)
 
@@ -115,6 +115,9 @@ type ChaincodeStubInterface interface {
 
 	// GetBinding returns the transaction binding
 	GetBinding() ([]byte, error)
+
+	// GetSignedProposal return the signed signedProposal this stub refers to.
+	GetSignedProposal() (*pb.SignedProposal, error)
 
 	// GetArgsSlice returns the arguments to the stub call as a byte array
 	GetArgsSlice() ([]byte, error)

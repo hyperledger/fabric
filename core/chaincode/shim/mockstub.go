@@ -271,6 +271,11 @@ func (stub *MockStub) GetBinding() ([]byte, error) {
 }
 
 // Not implemented
+func (stub *MockStub) GetSignedProposal() (*pb.SignedProposal, error) {
+	return nil, nil
+}
+
+// Not implemented
 func (stub *MockStub) GetArgsSlice() ([]byte, error) {
 	return nil, nil
 }

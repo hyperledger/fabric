@@ -60,9 +60,10 @@ type ChaincodeStub struct {
 	chaincodeEvent *pb.ChaincodeEvent
 	args           [][]byte
 	handler        *Handler
+	signedProposal *pb.SignedProposal
 	proposal       *pb.Proposal
 
-	// Additional fields extracted from the proposal
+	// Additional fields extracted from the signedProposal
 	creator   []byte
 	transient map[string][]byte
 	binding   []byte
@@ -286,28 +287,32 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 // -- init stub ---
 // ChaincodeInvocation functionality
 
-func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.ChaincodeInput, proposal *pb.Proposal) error {
+func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.ChaincodeInput, signedProposal *pb.SignedProposal) error {
 	stub.TxID = txid
 	stub.args = input.Args
 	stub.handler = handler
-	stub.proposal = proposal
+	stub.signedProposal = signedProposal
 
 	// TODO: sanity check: verify that every call to init with a nil
-	// proposal is a legitimate one, meaning it is an internal call
+	// signedProposal is a legitimate one, meaning it is an internal call
 	// to system chaincodes.
-	if proposal != nil {
-		// Extract creator, transient, binding...
+	if signedProposal != nil {
 		var err error
-		stub.creator, stub.transient, err = utils.GetChaincodeProposalContext(proposal)
+
+		stub.proposal, err = utils.GetProposal(signedProposal.ProposalBytes)
 		if err != nil {
-			return fmt.Errorf("Failed extracting proposal fields. [%s]", err)
+			return fmt.Errorf("Failed extracting signedProposal from signed signedProposal. [%s]", err)
 		}
 
-		// TODO: txid must uniquely identity the transaction.
-		// Remove this comment once replay attack protection will be in place
-		stub.binding, err = utils.ComputeProposalBinding(proposal)
+		// Extract creator, transient, binding...
+		stub.creator, stub.transient, err = utils.GetChaincodeProposalContext(stub.proposal)
 		if err != nil {
-			return fmt.Errorf("Failed computing binding from proposal. [%s]", err)
+			return fmt.Errorf("Failed extracting signedProposal fields. [%s]", err)
+		}
+
+		stub.binding, err = utils.ComputeProposalBinding(stub.proposal)
+		if err != nil {
+			return fmt.Errorf("Failed computing binding from signedProposal. [%s]", err)
 		}
 	}
 
@@ -590,7 +595,7 @@ func (stub *ChaincodeStub) GetFunctionAndParameters() (function string, params [
 	return
 }
 
-// GetCreator returns SignatureHeader.Creator of the proposal
+// GetCreator returns SignatureHeader.Creator of the signedProposal
 // this Stub refers to.
 func (stub *ChaincodeStub) GetCreator() ([]byte, error) {
 	return stub.creator, nil
@@ -608,6 +613,11 @@ func (stub *ChaincodeStub) GetTransient() (map[string][]byte, error) {
 // GetBinding returns the transaction binding
 func (stub *ChaincodeStub) GetBinding() ([]byte, error) {
 	return stub.binding, nil
+}
+
+// GetSignedProposal return the signed signedProposal this stub refers to.
+func (stub *ChaincodeStub) GetSignedProposal() (*pb.SignedProposal, error) {
+	return stub.signedProposal, nil
 }
 
 // GetArgsSlice returns the arguments to the stub call as a byte array
