@@ -26,6 +26,7 @@ Table of Contents
 -----------------
 
 1. `Overview`_
+
 2. `Getting Started`_
 
    1. `Prerequisites`_
@@ -125,8 +126,7 @@ is created in the local directory which can be customized.
 Start Server via Docker
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The hyperledger/fabric-ca docker image is not currently being published, but
-you can build and start the server via docker-compose as shown below.
+You can build and start the server via docker-compose as shown below.
 
 ::
 
@@ -141,7 +141,10 @@ the fabric-ca-client.
 Explore the Fabric CA CLI
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following shows the Fabric CA server usage message:
+This section simply provides the usage messages for the Fabric CA server and client
+for convenience.  Additional usage information is provided in following sections.
+
+The following shows the Fabric CA server usage message.
 
 ::
 
@@ -164,7 +167,7 @@ The following shows the Fabric CA server usage message:
           --csr.serialnumber string         The serial number in a certificate signing request to a parent fabric-ca-server
           --db.datasource string            Data source which is database specific (default "fabric-ca-server.db")
           --db.tls.certfiles string         PEM-encoded comma separated list of trusted certificate files (e.g. root1.pem, root2.pem)
-          --db.tls.client.certfile string   PEM-encoded certificate file when mutual authenticate is enabled
+          --db.tls.client.certfile string   PEM-encoded certificate file when mutual authentication is enabled
           --db.tls.client.keyfile string    PEM-encoded key file when mutual authentication is enabled
           --db.tls.enabled                  Enable TLS for client connection
           --db.type string                  Type of database; one of: sqlite3, postgres, mysql (default "sqlite3")
@@ -194,32 +197,35 @@ The following shows the Fabric CA client usage message:
 
     Available Commands:
       enroll      Enroll user
+      getcacert   Get CA certificate chain
       reenroll    Reenroll user
       register    Register user
       revoke      Revoke user
 
     Flags:
-      -c, --config string                Configuration file (default "/Users/saadkarim/.fabric-ca-client/fabric-ca-client-config.yaml")
+      -c, --config string                Configuration file (default "$HOME/.fabric-ca-client/fabric-ca-client-config.yaml")
           --csr.cn string                The common name field of the certificate signing request to a parent fabric-ca-server
           --csr.serialnumber string      The serial number in a certificate signing request to a parent fabric-ca-server
-      -d, --debug                        Enable debug logging
+      -d, --debug                        Enable debug level logging
           --enrollment.hosts string      Comma-separated host list
           --enrollment.label string      Label to use in HSM operations
           --enrollment.profile string    Name of the signing profile to use in issuing the certificate
-          --id.affiliation string        Name associated with the identity
-          --id.attr string               Attributes associated with this identity (e.g. hf.revoker=true)
-          --id.maxenrollments int        MaxEnrollments is the maximum number of times the secret can be reused to enroll.
+          --id.affiliation string        The identity's affiliation
+          --id.attr string               Attributes associated with this identity (e.g. hf.Revoker=true)
+          --id.maxenrollments int        The maximum number of times the secret can be reused to enroll
           --id.name string               Unique name of the identity
-          --id.secret string             Secret is an optional password. If not specified, a random secret is generated.
+          --id.secret string             The enrollment secret for the identity being registered
           --id.type string               Type of identity being registered (e.g. 'peer, app, user')
-      -m, --myhost string                Hostname to include in the certificate signing request during enrollment (default "saads-mbp.raleigh.ibm.com")
+      -M, --mspdir string                Membership Service Provider directory (default "msp")
+      -m, --myhost string                Hostname to include in the certificate signing request during enrollment (default "$HOSTNAME")
           --tls.certfiles string         PEM-encoded comma separated list of trusted certificate files (e.g. root1.pem, root2.pem)
-          --tls.client.certfile string   PEM-encoded certificate file when mutual authenticate is enabled
+          --tls.client.certfile string   PEM-encoded certificate file when mutual authentication is enabled
           --tls.client.keyfile string    PEM-encoded key file when mutual authentication is enabled
           --tls.enabled                  Enable TLS for client connection
       -u, --url string                   URL of fabric-ca-server (default "http://localhost:7054")
 
     Use "fabric-ca-client [command] --help" for more information about a command.
+
 
 `Back to Top`_
 
@@ -229,14 +235,11 @@ File Formats
 Fabric CA server's configuration file format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If no configuration file is provided to the server or no file exists,
-the server will generate a default configuration file like the one
-below.  The location of the default configuration will depend on whether the
-``-c`` or ``--config`` option was used or not. If the config option was used
-and the file did not exist it will be created in the specified
-location. However, if no config option was used, it will be create in
-the server home directory (see `Fabric CA Server <#server>`__ section
-more info).
+A configuration file can be provided to the server using the ``-c`` or ``--config``
+option. If the config option is used and the specified file doesn't exist,
+a default configuration file (like the one shown below) will be created in the
+specified location. However, if no config option was used, it will be created in
+the server's home directory (see `Fabric CA Server <#server>`__ section more info).
 
 ::
 
@@ -252,7 +255,6 @@ more info).
     tls:
       # Enable TLS (default: false)
       enabled: false
-      # TLS for the server's listening port (default: false)
       certfile: ca-cert.pem
       keyfile: ca-key.pem
 
@@ -308,7 +310,7 @@ more info).
     #  To run the fabric-ca-server in a cluster, you must choose "postgres"
     #  or "mysql".
     #############################################################################
-    database:
+    db:
       type: sqlite3
       datasource: fabric-ca-server.db
       tls:
@@ -322,7 +324,7 @@ more info).
     #  LDAP section
     #  If LDAP is enabled, the fabric-ca-server calls LDAP to:
     #  1) authenticate enrollment ID and secret (i.e. username and password)
-    #     for enrollment requests;
+    #     for enrollment requests
     #  2) To retrieve identity attributes
     #############################################################################
     ldap:
@@ -393,13 +395,11 @@ more info).
 Fabric CA client's configuration file format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If no configuration file is provided to the client, it will generate a
-default configuration file like the one below.  The location of the default
-configuration file will depend on whether or not the ``-c`` or ``--config`` option
-was used. If the config option was used and the file did not exist, it
-will be created in the specified location. However, if no config option
-was used, it will be created in the in the Fabric CA client home
-directory (see `Fabric CA Client <#client>`__ section for more info)
+A configuration file can be provided to the client using the ``-c`` or ``--config``
+option. If the config option is used and the specified file doesn't exist,
+a default configuration file (like the one shown below) will be created in the
+specified location. However, if no config option was used, it will be created in
+the client's home directory (see `Fabric CA Client <#client>`__ section more info).
 
 ::
 
@@ -410,14 +410,17 @@ directory (see `Fabric CA Client <#client>`__ section for more info)
     # URL of the fabric-ca-server (default: http://localhost:7054)
     URL: http://localhost:7054
 
+    # Membership Service Provider (MSP) directory
+    # When the client is used to enroll a peer or an orderer, this field must be
+    # set to the MSP directory of the peer/orderer
+    MSPDir:
+
     #############################################################################
-    #    TLS section for the client's listenting port
+    #    TLS section for secure socket connection
     #############################################################################
     tls:
       # Enable TLS (default: false)
       enabled: false
-
-      # TLS for the client's listenting port (default: false)
       certfiles:   # Comma Separated (e.g. root.pem, root2.pem)
       client:
         certfile:
@@ -466,8 +469,8 @@ directory (see `Fabric CA Client <#client>`__ section for more info)
 Configuration Settings Precedence
 ---------------------------------
 
-The Fabric CA provides 3 way to configure settings on the fabric-ca-server
-and fabric-ca-client. The precedence order is defined below:
+The Fabric CA provides 3 ways to configure settings on the fabric-ca-server
+and fabric-ca-client. The precedence order is:
 
 1. CLI flags
 2. Environment variables
@@ -504,6 +507,31 @@ file, we can use a command line flag.
 The same approach applies to fabric-ca-server, except instead of using
 ``FABIRC_CA_CLIENT`` as the prefix to environment variables,
 ``FABRIC_CA_SERVER`` is used.
+
+.. _server:
+
+
+A word on file paths
+--------------------
+All the properties in the Fabric CA server and client configuration file,
+that specify file names support both relative and absolute paths.
+Relative paths are relative to the config directory, where the
+configuration file is located. For example, if the config directory is
+``~/config`` and the tls section is as shown below, the Fabric CA server
+or client will look for the ``root.pem`` file in the ``~/config``
+directory, ``cert.pem`` file in the ``~/config/certs`` directory and the
+``key.pem`` file in the ``/abs/path`` directory
+
+::
+
+    tls:
+      enabled: true
+      certfiles:   root.pem
+      client:
+        certfile: certs/cert.pem
+        keyfile: /abs/path/key.pem
+
+
 
 Fabric CA Server
 ----------------
@@ -549,6 +577,8 @@ section that can be configured. The following is a sample CSR.
 If you are going to connect to the fabric-ca-server remotely over TLS,
 replace "localhost" in the CSR section below with the hostname where you
 will be running your fabric-ca-server.
+
+.. _csr-fields:
 
 ::
 
@@ -653,8 +683,8 @@ as shown below.
 
     # fabric-ca-server start -c <path-to-config-file> -b <admin>:<adminpw>
 
-To cause the fabric-ca-server to listen on ``http`` rather than
-``https``, set ``tls.enabled`` to ``true``.
+To cause the fabric-ca-server to listen on ``https`` rather than
+``http``, set ``tls.enabled`` to ``true``.
 
 To limit the number of times that the same secret (or password) can be
 used for enrollment, set the ``registry.maxEnrollments`` in the configuration
@@ -698,6 +728,8 @@ various values appropriately.
 Specifying *sslmode* configures the type of SSL authentication. Valid
 values for sslmode are:
 
+|
+
 +----------------+----------------+
 | Mode           | Description    |
 +================+================+
@@ -720,7 +752,7 @@ values for sslmode are:
 |                | verify-ca AND  |
 |                | verify that    |
 |                | the            |
-|                | certification  |
+|                | certificate    |
 |                | presented by   |
 |                | the server was |
 |                | signed by a    |
@@ -732,25 +764,27 @@ values for sslmode are:
 |                | certificate    |
 +----------------+----------------+
 
-If TLS would like to be used, we also need configure the TLS section in
-the fabric-ca-server config file. If the database server requires client
-authentication, then a client cert and key file needs to be provided.
-The following should be present in the fabric-ca-server config:
+|
+
+If you would like to use TLS, then the ``db.tls`` section in the fabric-ca-server
+configuration file must be specified. If SSL client authentication is enabled
+on the Postgres server, then the client certificate and key file must also be
+specified in the ``db.tls.client`` section. The following is an example
+of the ``db.tls`` section:
 
 ::
 
     db:
       ...
       tls:
-          enabled: false
+          enabled: true
           certfiles: db-server-cert.pem
           client:
                 certfile: db-client-cert.pem
                 keyfile: db-client-key.pem
 
-| **certfiles** - PEM-encoded trusted root certificate files.
-| **certfile** - PEM-encoded client certificate file.
-| **keyfile** - PEM-encoded client key file containing private key associated with client certificate file.
+| **certfiles** - Comma separated list of PEM-encoded trusted root certificate files.
+| **certfile** and **keyfile** - PEM-encoded certificate and key files that are used by the Fabric CA server to communicate securely with the Postgres server
 
 MySQL
 ^^^^^^^
@@ -776,7 +810,7 @@ The fabric-ca-server can be configured to read from an LDAP server.
 In particular, the fabric-ca-server may connect to an LDAP server to do
 the following:
 
--  authenticate a user prior to enrollment, and
+-  authenticate a user prior to enrollment
 -  retrieve a user's attribute values which are used for authorization.
 
 Modify the LDAP section of the server's configuration file to configure the
@@ -788,7 +822,7 @@ fabric-ca-server to connect to an LDAP server.
        # Enables or disables the LDAP client (default: false)
        enabled: false
        # The URL of the LDAP server
-       url: scheme://<adminDN>:<adminPassword>@<host>:<port>/<base>
+       url: <scheme>://<adminDN>:<adminPassword>@<host>:<port>/<base>
        userfilter: filter
 
 | where:
@@ -876,7 +910,12 @@ haproxy.conf
           server server2 hostname2:port
           server server3 hostname3:port
 
+
+Node: If using TLS, need to use ``mode tcp``.
+
 `Back to Top`_
+
+.. _client:
 
 Fabric CA Client
 ----------------
@@ -892,9 +931,6 @@ This section describes how to use the fabric-ca-client command.
   its value;
 | - otherwise, use ``$HOME/.fabric-ca-client``.
 
-The default fabric-ca-client's home directory is
-``$HOME/.fabric-ca-client``, but this can be changed by setting the
-``FABRIC_CA_HOME`` or ``FABRIC_CA_CLIENT_HOME`` environment variable.
 
 The instructions below assume that the client configuration file exists
 in the client's home directory.
@@ -902,58 +938,44 @@ in the client's home directory.
 Enrolling the bootstrap user
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-First, if desired, customize the CSR (Certificate Signing Request) in the client
-configuration file.  If custom values for the CSR are required, you
-must create the client config file before triggering the ``enroll``
-command and place it in the client's home directory. If no client
-configuration file is provided, default values will be used for CSR.
+First, if needed, customize the CSR (Certificate Signing Request) section
+in the client configuration file. Note that ``csr.cn`` field must be set
+to the ID of the bootstrap user. Default CSR values are shown below:
 
 ::
 
     csr:
+      cn: <<enrollment ID>>
       key:
         algo: ecdsa
         size: 256
       names:
         - C: US
           ST: North Carolina
-          L: Raleigh
+          L:
           O: Hyperledger Fabric
           OU: Fabric CA
       hosts:
-       - hostname
+       - <<hostname of the fabric-ca-client>>
       ca:
         pathlen:
         pathlenzero:
         expiry:
 
-See `CSR fields <#csr-fields>`__ for a description of the fields in this
-file. When enrolling, the CN (Common Name) field is automatically set to
-the enrollment ID which is *admin* in this example.
+See `CSR fields <#csr-fields>`__ for description of the fields.
 
-The following command enrolls the admin user and stores an enrollment
-certificate (ECert) in the fabric-ca-client's home directory.
+Then run ``fabric-ca-client enroll`` command to enroll the user. For example,
+following command enrolls an user whose ID is **admin** and password is **adminpw**
+by calling fabric-ca-server that is running locally at 7054 port.
 
 ::
 
     # export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin
     # fabric-ca-client enroll -u http://admin:adminpw@localhost:7054
 
-You should see a message similar to
-``[INFO] enrollment information was successfully stored in`` which
-indicates where the certificate and key files were stored.
-
-The enrollment certificate is stored at
-``$FABRIC_CA_ENROLLMENT_DIR/cert.pem`` by default, but a different path
-can be specified by setting the ``FABRIC_CA_CERT_FILE`` environment
-variable.
-
-The enrollment key is stored at ``$FABRIC_CA_ENROLLMENT_DIR/key.pem`` by
-default, but a different path can be specified by setting the
-``FABRIC_CA_KEY_FILE`` environment variable.
-
-If ``FABRIC_CA_ENROLLMENT_DIR`` is not set, the value of the fabric
-client home directory is used in its place.
+The enroll command stores an enrollment certificate (ECert), corresponding private key and CA
+certificate chain PEM files in the subdirectories of the fabric-ca-client's ``msp`` directory.
+You will see messages indicating where the PEM files are stored.
 
 Registering a new identity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -963,7 +985,7 @@ must also have the proper authority to register the type of user being
 registered.
 
 In particular, two authorization checks are made by the fabric-ca-server
-during registration as follows.
+during registration as follows:
 
  1. The invoker's identity must have the "hf.Registrar.Roles" attribute with a
     comma-separated list of values where one of the value equals the type of
@@ -976,107 +998,122 @@ during registration as follows.
     with an affiliation of "a.b" may register an identity with an affiliation
     of "a.b.c" but may not register an identity with an affiliation of "a.c".
 
-To register a new identity, you must first edit the ``id`` section in
-the client configuration file similar to the one below.  This information
-describes the identity being registered.
+The following command uses the **admin** user's credentials to register a new
+identity with an enrollment id of "admin2", a type of "user", an affiliation of
+"org1.department1", and an attribute named "hf.Revoker" with a value of "true".
+
+::
+
+    # export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin
+    # fabric-ca-client register --id.name admin2 --id.type user --id.affiliation org1.department1 --id.attr hf.Revoker=true
+
+The password, also known as the enrollment secret, is printed.
+This password is required to enroll the user.
+This allows an administrator to register an identity and to then give the
+enrollment ID and secret to someone else to enroll the identity.
+
+You may set default values for any of the fields used in the register command
+by editing the client's configuration file.  For example, suppose the configuration
+file contains the following:
 
 ::
 
     id:
-      name: MyPeer1
-      type: peer
+      name:
+      type: user
       affiliation: org1.department1
       attributes:
-        - name: SomeAttrName
-          value: SomeAttrValue
-        - name: foo
-          value: bar
+        - name: hf.Revoker
+          value: true
+        - name: anotherAttrName
+          value: anotherAttrValue
 
-The **id** field is the enrollment ID of the identity.
-
-The **type** field is the type of the identity: orderer, peer, app, or
-user.
-
-The **affiliation** field must be a valid group name as found in the
-server configuration file.
-
-The **attributes** field is optional and is not required for a peer, but
-is shown here as example of how you associate attributes with any
-identity.  Note that attribute names beginning with "hf." are reserved
-for Hyperledger Fabric usage (e.g. "hf.Revoker")
-
-The following command uses the **admin** user's credentials to register
-the **peer1** identity.
+The following command would then register a new identity with an enrollment id of
+"admin3" which it takes from the command line, and the remainder is taken from the
+config file including a type of "user", an affiliation of "org1.department1", and two attributes:
+"hf.Revoker" with a value of "true" and "anotherAttrName" with a value of "anotherAttrValue".
 
 ::
 
     # export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin
-    # fabric-ca-client register
+    # fabric-ca-client register --id.name admin3
 
-The output of a successful *fabric-ca-client register* command is a
-password similar to ``Password: gHIexUckKpHz``. Make a note of your
-password to use in the following section to enroll a peer.
+To register a user with multiple attributes requires specifying all attribute names and values
+in the configuration file as shown above.
 
-Suppose further than you wanted to register another peer and also want to
-provide your own password (or secret).  You may do so as follows:
+Next, let's register a peer identity which will be used to enroll the peer in the following section.
+The following command registers the **peer1** identity.  Note that we choose to specify our own
+password (or secret) rather than letting the server generate one for us.
 
 ::
 
     # export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin
-    # fabric-ca-client register --id.name MyPeer2 --id.secret mypassword
+    # fabric-ca-client register --id.name peer1 --id.type peer --id.affiliation org1.department1 --id.secret peer1pw
 
 Enrolling a Peer Identity
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now that you have successfully registered a peer identity, you may now
 enroll the peer given the enrollment ID and secret (i.e. the *password*
-from the previous section).
+from the previous section).  This is similar to enrolling the bootstrap user
+except that we also demonstrate how to use the "-M" option to populate the
+Hyperledger Fabric MSP (Membership Service Provider) directory structure.
 
-First, create a CSR (Certificate Signing Request) request file similar
-to the one described in the `Enrolling the bootstrap
-user <#EnrollBootstrap>`__ section.
-
-This is similar to enrolling the bootstrap user except that we also
-demonstrate how to use environment variables to place the key and
-certificate files in a specific location. The following example shows
-how to place them into a Hyperledger Fabric MSP (Membership Service
-Provider) directory structure. The *MSP\_DIR* environment variable
-refers to the root directory of MSP in Hyperledger Fabric and the
-``$MSP_DIR/signcerts`` and ``$MSP_DIR/keystore`` directories must exist.
+The following command enrolls peer1.
+Be sure to replace the value of the "-M" option with the path to your
+peer's MSP directory which is the
+'mspConfigPath' setting in the peer's core.yaml file.
+You may also set the FABRIC_CA_CLIENT_HOME to the home directory of your peer.
 
 ::
 
-    # export FABRIC_CA_CERT_FILE=$MSP_DIR/signcerts/peer.pem
-    # export FABRIC_CA_KEY_FILE=$MSP_DIR/keystore/key.pem
-    # fabric-ca client enroll -u http://peer1:<password>@localhost:7054
+    # export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/peer1
+    # fabric-ca-client enroll -u http://peer1:peer1pw@localhost:7054 -M $FABRIC_CA_CLIENT_HOME/msp
 
-The cert.pem and key.pem files should now exist at the locations
-specified by the environment variables.
+Enrolling an orderer is the same, except the path to the MSP directory is
+the 'LocalMSPDir' setting in your orderer's orderer.yaml file.
+
+Getting a CA certificate chain from another fabric-ca-server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In general, the cacerts directory of the MSP directory must contain the certificate authority chains
+of other certificate authorities, representing all of the roots of trust for the peer.
+
+The ``fabric-ca-client getcacerts`` command is used to retrieve these certificate chains from other
+fabric-ca-server instances.
+
+For example, the following will start a second fabric-ca-server on localhost
+listening on port 7055 with a name of "CA2".  This represents a completely separate
+root of trust and would be managed by a different member on the blockchain.
+
+::
+
+    # export FABRIC_CA_SERVER_HOME=$HOME/ca2
+    # fabric-ca-server start -b admin:ca2pw -p 7055 -n CA2
+
+The following command will install CA2's certificate chain into peer1's MSP directory.
+
+::
+
+    # export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/peer1
+    # fabric-ca-client getcacert -u http://localhost:7055 -M $FABRIC_CA_CLIENT_HOME/msp
 
 Reenrolling an Identity
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Suppose your enrollment certificate is about to expire. You can issue
-the reenroll command to renew your enrollment certificate as follows.
-Note that this is identical to the enroll command except that no username or
-password is required. Instead, your previously stored private key is
-used to authenticate to the Fabric CA server.
+Suppose your enrollment certificate is about to expire or has been compromised.
+You can issue the reenroll command to renew your enrollment certificate as follows.
 
 ::
 
-    # export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin
-    # cd $FABRIC_CA_HOME
+    # export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/peer1
     # fabric-ca-client reenroll
-
-The enrollment certificate and enrollment key are stored in the same
-location as described in the previous section for the ``enroll``
-command.
 
 Revoking a certificate or identity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In order to revoke a certificate or user, the calling identity must have
-the ``hf.Revoker`` attribute. The revoking identity can only revoke a
+the ``hf.Revoker`` attribute.  The revoking identity can only revoke a
 certificate or user that has an affiliation that is equal to or prefixed
 by the revoking identity's affiliation.
 
@@ -1113,6 +1150,13 @@ specified using ``-r`` flag.
 | - privilegewithdrawn
 | - aacompromise
 
+The bootstrap admin can revoke **peer1**'s identity as follows:
+
+::
+
+    # export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin
+    # fabric-ca-client revoke -e peer1
+
 Enabling TLS
 ~~~~~~~~~~~~
 
@@ -1126,8 +1170,6 @@ The following sections may be configured in the ``fabric-ca-client-config.yaml``
     tls:
       # Enable TLS (default: false)
       enabled: true
-
-      # TLS for the client's listenting port (default: false)
       certfiles: root.pem   # Comma Separated (e.g. root.pem,root2.pem)
       client:
         certfile: tls_client-cert.pem
@@ -1149,21 +1191,25 @@ Appendix
 Postgres SSL Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Basic instructions for configuring SSL on Postgres server:** 1. In
-postgresql.conf, uncomment SSL and set to "on" (SSL=on) 2. Place
-Certificate and Key files Postgress data directory.
+**Basic instructions for configuring SSL on the Postgres server:**
+
+1. In postgresql.conf, uncomment SSL and set to "on" (SSL=on)
+
+2. Place certificate and key files in the Postgres data directory.
 
 Instructions for generating self-signed certificates for:
-https://www.postgresql.org/docs/9.1/static/ssl-tcp.html
+https://www.postgresql.org/docs/9.5/static/ssl-tcp.html
 
 Note: Self-signed certificates are for testing purposes and should not
 be used in a production environment
 
-**Postgres Server - Require Client Certificates** 1. Place certificates
-of the certificate authorities (CAs) you trust in the file root.crt in
-the Postgres data directory 2. In postgresql.conf, set "ssl\_ca\_file"
-to point to the root cert of client (CA cert) 3. Set the clientcert
-parameter to 1 on the appropriate hostssl line(s) in pg\_hba.conf.
+**Postgres Server - Require Client Certificates**
+
+1. Place certificates of the certificate authorities (CAs) you trust in the file root.crt in the Postgres data directory
+
+2. In postgresql.conf, set "ssl\_ca\_file" to point to the root cert of client (CA cert)
+
+3. Set the clientcert parameter to 1 on the appropriate hostssl line(s) in pg\_hba.conf.
 
 For more details on configuring SSL on the Postgres server, please refer
 to the following Postgres documentation:
@@ -1172,27 +1218,23 @@ https://www.postgresql.org/docs/9.4/static/libpq-ssl.html
 MySQL SSL Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-On MySQL 5.7, strict mode affects whether the server permits '0000-00-00' as a valid date:
-If strict mode is not enabled, '0000-00-00' is permitted and inserts
-produce no warning. If strict mode is enabled, '0000-00-00' is not permitted
-and inserts produce an error.
+On MySQL 5.7.X, certain modes affect whether the server permits '0000-00-00' as a valid date.
+It might be necessary to relax the modes that MySQL server uses. We want to allow
+the server to be able to accept zero date values.
 
-**Disabling STRICT_TRANS_TABLES mode**
+Please refer to the following MySQL documentation on different modes available
+and select the appropriate settings for the specific version of MySQL that is
+being used.
 
-However to allow the format 0000-00-00 00:00:00, you have to disable
-STRICT_TRANS_TABLES mode in mysql config file or by command
-
-**Command:** SET sql_mode = '';
-
-**File:** Go to /etc/mysql/my.cnf and comment out STRICT_TRANS_TABLES
+https://dev.mysql.com/doc/refman/5.7/en/sql-mode.html
 
 **Basic instructions for configuring SSL on MySQL server:**
 
 1. Open or create my.cnf file for the server. Add or un-comment the
-   lines below in [mysqld] section. These should point to the key and
+   lines below in the [mysqld] section. These should point to the key and
    certificates for the server, and the root CA cert.
 
-   Instruction on creating server and client side certs:
+   Instructions on creating server and client side certficates:
    http://dev.mysql.com/doc/refman/5.7/en/creating-ssl-files-using-openssl.html
 
    [mysqld] ssl-ca=ca-cert.pem ssl-cert=server-cert.pem ssl-key=server-key.pem
@@ -1221,26 +1263,28 @@ STRICT_TRANS_TABLES mode in mysql config file or by command
    If you want to give a specific ip address from which the user will
    access the server change the '%' to the specific ip address.
 
-**MySQL Server - Require Client Certificates** Options for secure
-connections are similar to those used on the server side.
+**MySQL Server - Require Client Certificates**
+
+Options for secure connections are similar to those used on the server side.
 
 -  ssl-ca identifies the Certificate Authority (CA) certificate. This
    option, if used, must specify the same certificate used by the
    server.
--  ssl-cert identifies the client public key certificate.
--  ssl-key identifies the client private key.
+-  ssl-cert identifies MySQL server's certificate.
+-  ssl-key identifies MySQL server's private key.
 
 Suppose that you want to connect using an account that has no special
 encryption requirements or was created using a GRANT statement that
 includes the REQUIRE SSL option. As a recommended set of
 secure-connection options, start the MySQL server with at least
 --ssl-cert and --ssl-key, and invoke the fabric-ca-server with
-**ca\_certfiles** option set in the fabric-ca-server file.
+``db.tls.certfiles`` option set in the Fabric CA server configuration file.
 
 To require that a client certificate also be specified, create the
 account using the REQUIRE X509 option. Then the client must also specify
-the proper client key and certificate files or the MySQL server will
-reject the connection. CA cert, client cert, and client key are all
-required for the fabric-ca-server.
+proper client key and certificate files; otherwise, the MySQL server
+will reject the connection. To specify client key and certification files
+for the Fabric CA server, set ``db.tls.certfiles``, ``db.tls.client.certfile``,
+and the ``db.tls.client.keyfile`` configuration properties.
 
 `Back to Top`_
