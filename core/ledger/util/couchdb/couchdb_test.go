@@ -125,7 +125,7 @@ func TestDBCreateEnsureFullCommit(t *testing.T) {
 			//create a new instance and database object
 			couchInstance, err := CreateCouchInstance(connectURL, username, password)
 			testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-			db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
 			_, errdb := db.CreateDatabaseIfNotExist()
@@ -612,7 +612,7 @@ func TestRichQuery(t *testing.T) {
 			//create a new instance and database object   --------------------------------------------------------
 			couchInstance, err := CreateCouchInstance(connectURL, username, password)
 			testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-			db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+			db := CouchDatabase{CouchInstance: *couchInstance, DBName: database}
 
 			//create a new database
 			_, errdb := db.CreateDatabaseIfNotExist()
