@@ -82,7 +82,7 @@ var TxValidationCode_value = map[string]int32{
 func (x TxValidationCode) String() string {
 	return proto.EnumName(TxValidationCode_name, int32(x))
 }
-func (TxValidationCode) EnumDescriptor() ([]byte, []int) { return fileDescriptor10, []int{0} }
+func (TxValidationCode) EnumDescriptor() ([]byte, []int) { return fileDescriptor11, []int{0} }
 
 // This message is necessary to facilitate the verification of the signature
 // (in the signature field) over the bytes of the transaction (in the
@@ -100,7 +100,7 @@ type SignedTransaction struct {
 func (m *SignedTransaction) Reset()                    { *m = SignedTransaction{} }
 func (m *SignedTransaction) String() string            { return proto.CompactTextString(m) }
 func (*SignedTransaction) ProtoMessage()               {}
-func (*SignedTransaction) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{0} }
+func (*SignedTransaction) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{0} }
 
 // ProcessedTransaction wraps an Envelope that includes a transaction along with an indication
 // of whether the transaction was validated or invalidated by committing peer.
@@ -118,7 +118,7 @@ type ProcessedTransaction struct {
 func (m *ProcessedTransaction) Reset()                    { *m = ProcessedTransaction{} }
 func (m *ProcessedTransaction) String() string            { return proto.CompactTextString(m) }
 func (*ProcessedTransaction) ProtoMessage()               {}
-func (*ProcessedTransaction) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{1} }
+func (*ProcessedTransaction) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{1} }
 
 func (m *ProcessedTransaction) GetTransactionEnvelope() *common.Envelope {
 	if m != nil {
@@ -148,7 +148,7 @@ type Transaction struct {
 func (m *Transaction) Reset()                    { *m = Transaction{} }
 func (m *Transaction) String() string            { return proto.CompactTextString(m) }
 func (*Transaction) ProtoMessage()               {}
-func (*Transaction) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{2} }
+func (*Transaction) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{2} }
 
 func (m *Transaction) GetActions() []*TransactionAction {
 	if m != nil {
@@ -170,7 +170,7 @@ type TransactionAction struct {
 func (m *TransactionAction) Reset()                    { *m = TransactionAction{} }
 func (m *TransactionAction) String() string            { return proto.CompactTextString(m) }
 func (*TransactionAction) ProtoMessage()               {}
-func (*TransactionAction) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{3} }
+func (*TransactionAction) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{3} }
 
 // ChaincodeActionPayload is the message to be used for the TransactionAction's
 // payload when the Header's type is set to CHAINCODE.  It carries the
@@ -193,7 +193,7 @@ type ChaincodeActionPayload struct {
 func (m *ChaincodeActionPayload) Reset()                    { *m = ChaincodeActionPayload{} }
 func (m *ChaincodeActionPayload) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeActionPayload) ProtoMessage()               {}
-func (*ChaincodeActionPayload) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{4} }
+func (*ChaincodeActionPayload) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{4} }
 
 func (m *ChaincodeActionPayload) GetAction() *ChaincodeEndorsedAction {
 	if m != nil {
@@ -217,7 +217,7 @@ type ChaincodeEndorsedAction struct {
 func (m *ChaincodeEndorsedAction) Reset()                    { *m = ChaincodeEndorsedAction{} }
 func (m *ChaincodeEndorsedAction) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeEndorsedAction) ProtoMessage()               {}
-func (*ChaincodeEndorsedAction) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{5} }
+func (*ChaincodeEndorsedAction) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{5} }
 
 func (m *ChaincodeEndorsedAction) GetEndorsements() []*Endorsement {
 	if m != nil {
@@ -236,9 +236,9 @@ func init() {
 	proto.RegisterEnum("protos.TxValidationCode", TxValidationCode_name, TxValidationCode_value)
 }
 
-func init() { proto.RegisterFile("peer/transaction.proto", fileDescriptor10) }
+func init() { proto.RegisterFile("peer/transaction.proto", fileDescriptor11) }
 
-var fileDescriptor10 = []byte{
+var fileDescriptor11 = []byte{
 	// 748 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x74, 0x54, 0x51, 0x4f, 0xeb, 0x36,
 	0x18, 0x5d, 0x61, 0xc0, 0xf8, 0xca, 0xc0, 0x18, 0x6e, 0x6f, 0xa9, 0xd0, 0xee, 0x55, 0x1f, 0xa6,
