@@ -26,18 +26,18 @@ import (
 )
 
 func TestPolicyChecker(t *testing.T) {
-	policyManagerGetter := &mockChannelPolicyManagerGetter{
+	policyManagerGetter := &MockChannelPolicyManagerGetter{
 		map[string]policies.Manager{
-			"A": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
-			"B": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Bob"), []byte("msg2")}}},
-			"C": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Alice"), []byte("msg3")}}},
+			"A": &MockChannelPolicyManager{&MockPolicy{&MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
+			"B": &MockChannelPolicyManager{&MockPolicy{&MockIdentityDeserializer{[]byte("Bob"), []byte("msg2")}}},
+			"C": &MockChannelPolicyManager{&MockPolicy{&MockIdentityDeserializer{[]byte("Alice"), []byte("msg3")}}},
 		},
 	}
-	identityDeserializer := &mockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
+	identityDeserializer := &MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
 	pc := NewPolicyChecker(
 		policyManagerGetter,
 		identityDeserializer,
-		&mockMSPPrincipalGetter{Principal: []byte("Alice")},
+		&MockMSPPrincipalGetter{Principal: []byte("Alice")},
 	)
 
 	// Check that (non-empty channel, empty policy) fails
@@ -58,7 +58,7 @@ func TestPolicyChecker(t *testing.T) {
 
 	// Validate Alice signatures against channel A's readers
 	sProp, _ := utils.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
-	policyManagerGetter.managers["A"].(*mockChannelPolicyManager).mockPolicy.(*mockPolicy).deserializer.(*mockIdentityDeserializer).msg = sProp.ProposalBytes
+	policyManagerGetter.Managers["A"].(*MockChannelPolicyManager).MockPolicy.(*MockPolicy).Deserializer.(*MockIdentityDeserializer).Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
 	err = pc.CheckPolicy("A", "readers", sProp)
 	assert.NoError(t, err)
@@ -72,7 +72,7 @@ func TestPolicyChecker(t *testing.T) {
 	assert.Error(t, err)
 
 	// Alice is a member of the local MSP, policy check must succeed
-	identityDeserializer.msg = sProp.ProposalBytes
+	identityDeserializer.Msg = sProp.ProposalBytes
 	err = pc.CheckPolicyNoChannel("member", sProp)
 	assert.NoError(t, err)
 
