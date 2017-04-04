@@ -45,7 +45,7 @@ Prerequisites
    .. code:: bash
 
        # make sure you are in vagrant and in the /fabric directory
-       make peer-docker orderer-docker
+       make docker
 
    Execute a ``docker images`` command in your terminal. If the images
    compiled successfully, you should see an output similar to the
