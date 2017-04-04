@@ -47,7 +47,7 @@ func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 func chaincodeQuery(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(false)
+		cf, err = InitCmdFactory(true, false)
 		if err != nil {
 			return err
 		}

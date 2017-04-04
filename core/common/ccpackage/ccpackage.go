@@ -28,6 +28,28 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
+// extractSignedCCDepSpec extracts the messages from the envelope
+func extractSignedCCDepSpec(env *common.Envelope) (*common.ChannelHeader, *peer.SignedChaincodeDeploymentSpec, error) {
+	p := &common.Payload{}
+	err := proto.Unmarshal(env.Payload, p)
+	if err != nil {
+		return nil, nil, err
+	}
+	ch := &common.ChannelHeader{}
+	err = proto.Unmarshal(p.Header.ChannelHeader, ch)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sp := &peer.SignedChaincodeDeploymentSpec{}
+	err = proto.Unmarshal(p.Data, sp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return ch, sp, nil
+}
+
 // This file provides functions for helping with the chaincode install
 // package workflow. In particular
 //     OwnerCreateSignedCCDepSpec - each owner creates signs the package using the same deploy
@@ -184,4 +206,40 @@ func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *c
 	}
 
 	return createSignedCCDepSpec(cdsbytes, instpolicybytes, endorsements)
+}
+
+// SignExistingPackage adds a signature to a signed package.
+func SignExistingPackage(env *common.Envelope, owner msp.SigningIdentity) (*common.Envelope, error) {
+	if owner == nil {
+		return nil, fmt.Errorf("owner not provided")
+	}
+
+	ch, sdepspec, err := extractSignedCCDepSpec(env)
+	if err != nil {
+		return nil, err
+	}
+
+	if ch == nil {
+		return nil, fmt.Errorf("channel header not found in the envelope")
+	}
+
+	if sdepspec == nil || sdepspec.ChaincodeDeploymentSpec == nil || sdepspec.InstantiationPolicy == nil || sdepspec.OwnerEndorsements == nil {
+		return nil, fmt.Errorf("invalid signed deployment spec")
+	}
+
+	// serialize the signing identity
+	endorser, err := owner.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", owner.GetIdentifier(), err)
+	}
+
+	// sign the concatenation of cds, instpolicy and the serialized endorser identity with this endorser's key
+	signature, err := owner.Sign(append(sdepspec.ChaincodeDeploymentSpec, append(sdepspec.InstantiationPolicy, endorser...)...))
+	if err != nil {
+		return nil, fmt.Errorf("Could not sign the ccpackage, err %s", err)
+	}
+
+	endorsements := append(sdepspec.OwnerEndorsements, &peer.Endorsement{Signature: signature, Endorser: endorser})
+
+	return createSignedCCDepSpec(sdepspec.ChaincodeDeploymentSpec, sdepspec.InstantiationPolicy, endorsements)
 }
