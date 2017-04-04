@@ -149,6 +149,7 @@ func WriteStreamToPackage(is io.Reader, localpath string, packagepath string, tw
 	header.ModTime = zeroTime
 	header.ChangeTime = zeroTime
 	header.Name = packagepath
+	header.Mode = 0100644
 
 	if err = tw.WriteHeader(header); err != nil {
 		return fmt.Errorf("Error write header for (path: %s, oldname:%s,newname:%s,sz:%d) : %s", localpath, oldname, packagepath, header.Size, err)
