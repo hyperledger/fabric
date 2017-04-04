@@ -17,7 +17,6 @@ limitations under the License.
 package ledger
 
 import (
-	google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -90,11 +89,12 @@ type QueryExecutor interface {
 	// startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 	// and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
 	// can be supplied as empty strings. However, a full scan shuold be used judiciously for performance reasons.
-	// The returned ResultsIterator contains results of type *KV
+	// The returned ResultsIterator contains results of type *KV which is defined in protos/ledger/queryresult.
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
 	// Only used for state databases that support query
 	// For a chaincode, the namespace corresponds to the chaincodeId
+	// The returned ResultsIterator contains results of type *KV which is defined in protos/ledger/queryresult.
 	ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error)
 	// Done releases resources occupied by the QueryExecutor
 	Done()
@@ -103,6 +103,7 @@ type QueryExecutor interface {
 // HistoryQueryExecutor executes the history queries
 type HistoryQueryExecutor interface {
 	// GetHistoryForKey retrieves the history of values for a key.
+	// The returned ResultsIterator contains results of type *KeyModification which is defined in protos/ledger/queryresult.
 	GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error)
 }
 
@@ -127,18 +128,4 @@ type TxSimulator interface {
 	// of information in different way in order to support different data-models or optimize the information representations.
 	// TODO detailed illustration of a couple of representations.
 	GetTxSimulationResults() ([]byte, error)
-}
-
-// KV - QueryResult for KV-based datamodel. Holds a key and corresponding value. A nil value indicates a non-existent key.
-type KV struct {
-	Key   string
-	Value []byte
-}
-
-// KeyModification - QueryResult for History.
-type KeyModification struct {
-	TxID      string
-	Value     []byte
-	Timestamp *google_protobuf.Timestamp
-	IsDelete  bool
 }

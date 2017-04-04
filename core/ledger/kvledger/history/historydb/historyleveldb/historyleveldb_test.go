@@ -23,9 +23,9 @@ import (
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 )
@@ -129,10 +129,10 @@ func TestHistory(t *testing.T) {
 		if kmod == nil {
 			break
 		}
-		txid := kmod.(*ledger.KeyModification).TxID
-		retrievedValue := kmod.(*ledger.KeyModification).Value
-		retrievedTimestamp := kmod.(*ledger.KeyModification).Timestamp
-		retrievedIsDelete := kmod.(*ledger.KeyModification).IsDelete
+		txid := kmod.(*queryresult.KeyModification).TxId
+		retrievedValue := kmod.(*queryresult.KeyModification).Value
+		retrievedTimestamp := kmod.(*queryresult.KeyModification).Timestamp
+		retrievedIsDelete := kmod.(*queryresult.KeyModification).IsDelete
 		t.Logf("Retrieved history record for key=key7 at TxId=%s with value %v and timestamp %v",
 			txid, retrievedValue, retrievedTimestamp)
 		count++

@@ -19,7 +19,7 @@ package shim
 import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -150,7 +150,7 @@ type StateQueryIteratorInterface interface {
 	CommonIteratorInterface
 
 	// Next returns the next key and value in the range and execute query iterator.
-	Next() (*ledger.KV, error)
+	Next() (*queryresult.KV, error)
 }
 
 // HistoryQueryIteratorInterface allows a chaincode to iterate over a set of
@@ -160,7 +160,7 @@ type HistoryQueryIteratorInterface interface {
 	CommonIteratorInterface
 
 	// Next returns the next key and value in the history query iterator.
-	Next() (*ledger.KeyModification, error)
+	Next() (*queryresult.KeyModification, error)
 }
 
 // MockQueryIteratorInterface allows a chaincode to iterate over a set of
