@@ -16,16 +16,27 @@ limitations under the License.
 
 package mocks
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
+)
 
 func TestMockBlocksDeliverer(t *testing.T) {
-	_ = &MockBlocksDeliverer{}
+	var bd blocksprovider.BlocksDeliverer
+	bd = &MockBlocksDeliverer{}
+	_ = bd
 }
 
 func TestMockGossipServiceAdapter(t *testing.T) {
-	_ = &MockGossipServiceAdapter{}
+	var gsa blocksprovider.GossipServiceAdapter
+	gsa = &MockGossipServiceAdapter{}
+	_ = gsa
+
 }
 
 func TestMockLedgerInfo(t *testing.T) {
-	_ = &MockLedgerInfo{0}
+	var li blocksprovider.LedgerInfo
+	li = &MockLedgerInfo{}
+	_ = li
 }

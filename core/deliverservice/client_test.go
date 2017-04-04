@@ -565,11 +565,12 @@ func (s *signerMock) Sign(message []byte) ([]byte, error) {
 }
 
 func TestProductionUsage(t *testing.T) {
+	defer ensureNoGoroutineLeak(t)()
 	// This test configures the client in a similar fashion as will be
 	// in production, and tests against a live gRPC server.
 	os := mocks.NewOrderer(5612, t)
 	os.SetNextExpectedSeek(5)
-	defer os.Shutdown()
+
 	connFact := func(endpoint string) (*grpc.ClientConn, error) {
 		return grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithBlock())
 	}
@@ -593,6 +594,8 @@ func TestProductionUsage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, uint64(5), resp.GetBlock().Header.Number)
+	os.Shutdown()
+	cl.Close()
 }
 
 func newTestSeekInfo() *orderer.SeekInfo {

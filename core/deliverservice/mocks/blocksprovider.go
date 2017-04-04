@@ -26,6 +26,8 @@ import (
 	gossip_proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 // MockGossipServiceAdapter mocking structure for gossip service, used to initialize
@@ -34,7 +36,18 @@ import (
 type MockGossipServiceAdapter struct {
 	AddPayloadsCnt int32
 
-	GossipCallsCnt int32
+	GossipBlockDisseminations chan uint64
+}
+
+type MockAtomicBroadcastClient struct {
+	BD *MockBlocksDeliverer
+}
+
+func (mabc *MockAtomicBroadcastClient) Broadcast(ctx context.Context, opts ...grpc.CallOption) (orderer.AtomicBroadcast_BroadcastClient, error) {
+	panic("Should not be used")
+}
+func (mabc *MockAtomicBroadcastClient) Deliver(ctx context.Context, opts ...grpc.CallOption) (orderer.AtomicBroadcast_DeliverClient, error) {
+	return mabc.BD, nil
 }
 
 // PeersOfChannel returns the slice with peers participating in given channel
@@ -50,16 +63,15 @@ func (mock *MockGossipServiceAdapter) AddPayload(chainID string, payload *gossip
 
 // Gossip message to the all peers
 func (mock *MockGossipServiceAdapter) Gossip(msg *gossip_proto.GossipMessage) {
-	atomic.AddInt32(&mock.GossipCallsCnt, 1)
+	mock.GossipBlockDisseminations <- msg.GetDataMsg().Payload.SeqNum
 }
 
 // MockBlocksDeliverer mocking structure of BlocksDeliverer interface to initialize
 // the blocks provider implementation
 type MockBlocksDeliverer struct {
 	Pos uint64
-
-	RecvCnt int32
-
+	grpc.ClientStream
+	RecvCnt  int32
 	MockRecv func(mock *MockBlocksDeliverer) (*orderer.DeliverResponse, error)
 }
 
@@ -113,6 +125,8 @@ func (mock *MockBlocksDeliverer) Send(env *common.Envelope) error {
 	return nil
 }
 
+func (mock *MockBlocksDeliverer) Close() {}
+
 // MockLedgerInfo mocking implementation of LedgerInfo interface, needed
 // for test initialization purposes
 type MockLedgerInfo struct {
@@ -121,5 +135,5 @@ type MockLedgerInfo struct {
 
 // LedgerHeight returns mocked value to the ledger height
 func (li *MockLedgerInfo) LedgerHeight() (uint64, error) {
-	return li.Height, nil
+	return atomic.LoadUint64(&li.Height), nil
 }
