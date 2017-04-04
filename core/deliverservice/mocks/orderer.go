@@ -19,29 +19,45 @@ package mocks
 import (
 	"fmt"
 	"net"
+	"sync/atomic"
+	"testing"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
 
 type Orderer struct {
 	net.Listener
 	*grpc.Server
+	nextExpectedSeek uint64
+	t                *testing.T
+	blockChannel     chan uint64
+	stopChan         chan struct{}
 }
 
-func NewOrderer(port int) *Orderer {
+func NewOrderer(port int, t *testing.T) *Orderer {
 	srv := grpc.NewServer()
 	lsnr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
 		panic(err)
 	}
 	go srv.Serve(lsnr)
-	o := &Orderer{Server: srv, Listener: lsnr}
+	o := &Orderer{Server: srv,
+		Listener:         lsnr,
+		t:                t,
+		nextExpectedSeek: uint64(1),
+		blockChannel:     make(chan uint64, 1),
+		stopChan:         make(chan struct{}, 1),
+	}
 	orderer.RegisterAtomicBroadcastServer(srv, o)
 	return o
 }
 
 func (o *Orderer) Shutdown() {
+	o.stopChan <- struct{}{}
 	o.Server.Stop()
 	o.Listener.Close()
 }
@@ -50,6 +66,44 @@ func (*Orderer) Broadcast(orderer.AtomicBroadcast_BroadcastServer) error {
 	panic("Should not have ben called")
 }
 
-func (*Orderer) Deliver(orderer.AtomicBroadcast_DeliverServer) error {
-	return nil
+func (o *Orderer) SetNextExpectedSeek(seq uint64) {
+	atomic.StoreUint64(&o.nextExpectedSeek, uint64(seq))
+}
+
+func (o *Orderer) SendBlock(seq uint64) {
+	o.blockChannel <- seq
+}
+
+func (o *Orderer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) error {
+	envlp, err := stream.Recv()
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	payload := &common.Payload{}
+	proto.Unmarshal(envlp.Payload, payload)
+	seekInfo := &orderer.SeekInfo{}
+	proto.Unmarshal(payload.Data, seekInfo)
+	assert.True(o.t, seekInfo.Behavior == orderer.SeekInfo_BLOCK_UNTIL_READY)
+	assert.Equal(o.t, atomic.LoadUint64(&o.nextExpectedSeek), seekInfo.Start.GetSpecified().Number)
+
+	for {
+		select {
+		case <-o.stopChan:
+			return nil
+		case seq := <-o.blockChannel:
+			o.sendBlock(stream, seq)
+		}
+	}
+}
+
+func (o *Orderer) sendBlock(stream orderer.AtomicBroadcast_DeliverServer, seq uint64) {
+	block := &common.Block{
+		Header: &common.BlockHeader{
+			Number: seq,
+		},
+	}
+	stream.Send(&orderer.DeliverResponse{
+		Type: &orderer.DeliverResponse_Block{Block: block},
+	})
 }
