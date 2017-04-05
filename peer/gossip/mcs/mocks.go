@@ -131,8 +131,8 @@ func (id *mockIdentity) Validate() error {
 	return nil
 }
 
-func (id *mockIdentity) GetOrganizationalUnits() []string {
-	return []string{"dunno"}
+func (id *mockIdentity) GetOrganizationalUnits() []mspproto.FabricOUIdentifier {
+	return nil
 }
 
 func (id *mockIdentity) Verify(msg []byte, sig []byte) error {

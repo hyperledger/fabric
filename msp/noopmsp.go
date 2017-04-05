@@ -101,8 +101,8 @@ func (id *noopidentity) Validate() error {
 	return nil
 }
 
-func (id *noopidentity) GetOrganizationalUnits() []string {
-	return []string{"dunno"}
+func (id *noopidentity) GetOrganizationalUnits() []msp.FabricOUIdentifier {
+	return nil
 }
 
 func (id *noopidentity) Verify(msg []byte, sig []byte) error {

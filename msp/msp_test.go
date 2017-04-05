@@ -256,14 +256,21 @@ func TestGetOU(t *testing.T) {
 		return
 	}
 
-	assert.Equal(t, "COP", id.GetOrganizationalUnits()[0])
+	assert.Equal(t, "COP", id.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier)
 }
 
 func TestOUPolicyPrincipal(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 
-	ou := &msp.OrganizationUnit{OrganizationalUnitIdentifier: "COP", MspIdentifier: "DEFAULT"}
+	cid, err := localMsp.(*bccspmsp).getCertificationChainIdentifier(id.GetPublicVersion())
+	assert.NoError(t, err)
+
+	ou := &msp.OrganizationUnit{
+		OrganizationalUnitIdentifier: "COP",
+		MspIdentifier:                "DEFAULT",
+		CertifiersIdentifier:         cid,
+	}
 	bytes, err := proto.Marshal(ou)
 	assert.NoError(t, err)
 
@@ -274,6 +281,43 @@ func TestOUPolicyPrincipal(t *testing.T) {
 
 	err = id.SatisfiesPrincipal(principal)
 	assert.NoError(t, err)
+}
+
+func TestOUPolicyPrincipalBadPath(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	ou := &msp.OrganizationUnit{
+		OrganizationalUnitIdentifier: "COP",
+		MspIdentifier:                "DEFAULT",
+		CertifiersIdentifier:         nil,
+	}
+	bytes, err := proto.Marshal(ou)
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               bytes,
+	}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+
+	ou = &msp.OrganizationUnit{
+		OrganizationalUnitIdentifier: "COP",
+		MspIdentifier:                "DEFAULT",
+		CertifiersIdentifier:         []byte{0, 1, 2, 3, 4},
+	}
+	bytes, err = proto.Marshal(ou)
+	assert.NoError(t, err)
+
+	principal = &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               bytes,
+	}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
 }
 
 func TestAdminPolicyPrincipal(t *testing.T) {

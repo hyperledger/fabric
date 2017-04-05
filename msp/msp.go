@@ -137,7 +137,7 @@ type Identity interface {
 	// TODO: For X.509 based identities, check if we need a dedicated type
 	//       for OU where the Certificate OU is properly namespaced by the
 	//       signer's identity
-	GetOrganizationalUnits() []string
+	GetOrganizationalUnits() []msp.FabricOUIdentifier
 
 	// Verify a signature over some message using this identity as reference
 	Verify(msg []byte, sig []byte) error
