@@ -68,10 +68,7 @@ func Start(cc Chaincode) error {
 	backendFormatter := logging.NewBackendFormatter(backend, format)
 	logging.SetBackend(backendFormatter).SetLevel(logging.Level(shimLoggingLevel), "shim")
 
-	viper.SetEnvPrefix("CORE")
-	viper.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
+	SetChaincodeLoggingLevel()
 
 	flag.StringVar(&peerAddress, "peer.address", "", "peer address")
 
@@ -103,6 +100,31 @@ func Start(cc Chaincode) error {
 	err = chatWithPeer(chaincodename, stream, cc)
 
 	return err
+}
+
+// IsEnabledForLogLevel checks to see if the chaincodeLogger is enabled for a specific logging level
+// used primarily for testing
+func IsEnabledForLogLevel(logLevel string) bool {
+	lvl, _ := logging.LogLevel(logLevel)
+	return chaincodeLogger.IsEnabledFor(lvl)
+}
+
+// SetChaincodeLoggingLevel sets the chaincode logging level to the value
+// of CORE_LOGGING_CHAINCODE set from core.yaml by chaincode_support.go
+func SetChaincodeLoggingLevel() {
+	viper.SetEnvPrefix("CORE")
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+
+	chaincodeLogLevelString := viper.GetString("logging.chaincode")
+	chaincodeLogLevel, err := LogLevel(chaincodeLogLevelString)
+
+	if err == nil {
+		SetLoggingLevel(chaincodeLogLevel)
+	} else {
+		chaincodeLogger.Infof("error with chaincode log level: %s level= %s\n", err, chaincodeLogLevelString)
+	}
 }
 
 // StartInProc is an entry point for system chaincodes bootstrap. It is not an
@@ -582,6 +604,7 @@ func (stub *ChaincodeStub) GetRows(tableName string, key []Column) (<-chan Row, 
 		return rows, nil
 	}
 
+	chaincodeLogger.Debug("keyString= " + keyString)
 	iter, err := stub.RangeQueryState(keyString+"1", keyString+":")
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching rows: %s", err)
@@ -610,6 +633,67 @@ func (stub *ChaincodeStub) GetRows(tableName string, key []Column) (<-chan Row, 
 		}
 		close(rows)
 	}()
+
+	return rows, nil
+
+}
+
+func (stub *ChaincodeStub) GetRows2(tableName string, key []Column, start int, num int) ([]Row, error) {
+
+	keyString, err := buildKeyString(tableName, key)
+	if err != nil {
+		return nil, err
+	}
+
+	table, err := stub.getTable(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []Row
+	// Need to check for special case where table has a single column
+	if len(table.GetColumnDefinitions()) < 2 && len(key) > 0 {
+
+		row, err := stub.GetRow(tableName, key)
+		if err != nil {
+			return nil, err
+		}
+		
+		rows = append(rows, row)
+		return rows, nil
+	}
+
+	chaincodeLogger.Debug("keyString= " + keyString)
+	iter, err := stub.RangeQueryState(keyString+"1", keyString+":")
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching rows: %s", err)
+	}
+	
+	count := 0
+	numcount := 0
+	for iter.HasNext() {
+		_, rowBytes, err := iter.Next()
+		if err != nil {
+			break
+		}
+
+		var row Row
+		err = proto.Unmarshal(rowBytes, &row)
+		if err != nil {
+			return nil, err
+		} else {
+			if (count >= start) {
+				rows = append(rows, row)
+				numcount++
+				if (num > 0 && numcount >= num) {
+					break;
+				}
+			}
+			count++
+		}
+	}
+
+	chaincodeLogger.Debugf("total count : %v", count)
 
 	return rows, nil
 

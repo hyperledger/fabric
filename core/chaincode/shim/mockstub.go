@@ -223,7 +223,9 @@ func (stub *MockStub) GetRow(tableName string, key []Column) (Row, error) {
 func (stub *MockStub) GetRows(tableName string, key []Column) (<-chan Row, error) {
 	return nil, nil
 }
-
+func (stub *MockStub) GetRows2(tableName string, key []Column, start int, num int) ([]Row, error) {
+	return nil, nil
+}
 // Not implemented
 func (stub *MockStub) DeleteRow(tableName string, key []Column) error {
 	return nil

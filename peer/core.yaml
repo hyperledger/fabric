@@ -62,12 +62,12 @@ logging:
     #
     # Developers: Please see fabric/docs/Setup/logging-control.md for more
     # options.
-    peer: warning
+    peer: debug
 
-    node:      info
-    network:   warning
-    chaincode: warning
-    version: warning
+    node:      debug
+    network:   debug
+    chaincode: debug
+    version: debug
 
 ###############################################################################
 #
@@ -388,7 +388,7 @@ security:
     # Enable security will force every entity on the network to enroll with obc-ca
     # and maintain a valid set of certificates in order to communicate with
     # other peers
-    enabled: false
+    enabled: true
     # To enroll NVP or VP with membersrvc. These parameters are for 1 time use.
     # They will not be valid on subsequent times without un-enroll first.
     # The values come from off-line registration with obc-ca. For testing, make
@@ -398,7 +398,7 @@ security:
     # To enable privacy of transactions (requires security to be enabled). This
     # encrypts the transaction content during transit and at rest. The state
     # data is also encrypted
-    privacy: false
+    privacy: true
 
     # Can be 256 or 384. If you change here, you have to change also
     # the same property in membersrvc.yaml to the same value
@@ -417,7 +417,7 @@ security:
     # the chaincode using the metadata field of the transaction (requires
     # security to be enabled).
     attributes:
-      enabled: false
+      enabled: true
 
     # TCerts pool configuration.  Multi-thread pool can also be configured
     # by multichannel option switching concurrency in communication with TCA. 

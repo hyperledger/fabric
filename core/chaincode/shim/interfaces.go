@@ -111,7 +111,8 @@ type ChaincodeStubInterface interface {
 	// also be called with A only to return all rows that have A and any value
 	// for C and D as their key.
 	GetRows(tableName string, key []Column) (<-chan Row, error)
-
+	GetRows2(tableName string, key []Column, start int, num int) ([]Row, error)
+	
 	// DeleteRow deletes the row for the given key from the specified table.
 	DeleteRow(tableName string, key []Column) error
 

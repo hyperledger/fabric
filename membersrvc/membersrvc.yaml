@@ -54,17 +54,17 @@ logging:
 
 # Please see fabric/docs/Setup/logging-control.md for more
 # options.
-    server: warning
-    ca: warning
-    eca: warning
-    ecap: warning
-    ecaa: warning
-    aca: warning
-    acap: warning
-    tca: warning
-    tcap: warning
-    tcaa: warning
-    tlsca: warning
+    server: debug
+    ca: debug
+    eca: debug
+    ecap: debug
+    ecaa: debug
+    aca: debug
+    acap: debug
+    tca: debug
+    tcap: debug
+    tcaa: debug
+    tlsca: debug
 
 # Default users to be registered with the CA on first launch.  The role is a binary OR
 # of the different roles a user can have:
@@ -193,8 +193,8 @@ eca:
 # Uncomment this section to activate devnet setup as specficied in
 # devnet-setup.md
 #
-#               vp0: 4 vp0_secret
-#               vp1: 4 vp1_secret
+                vp0: 4 vp0_secret
+                vp1: 4 vp1_secret
 
                 test_user0: 1 MS9qrN8hFjlE bank_a
                 test_user1: 1 jGlNl6ImkuDo institution_a
@@ -273,6 +273,16 @@ eca:
                 test_nvp8: 2 LJu8DkUilBEH bank_a
                 test_nvp9: 2 VlEsBsiyXSjw institution_a
 
+                # users for consentmanager demo
+                pharmax: 1 CcXNhMuSuCTu institution_a
+                hmoy: 1 XHYXwiZpouln institution_a
+                ibmadmin: 1 fjYjhmbgOtcg institution_a
+                doc1: 1 iBFobzoqivBp institution_a
+                nurse1: 1 zTqSBNTJZGiW institution_a
+                sally1111: 1 xAVJmmPSGncM institution_a
+                jimmy2222: 1 lTTkxXARcsfA institution_a
+                audit: 1 zWZTUQCGdeoW institution_a
+
 tca:
           # Enabling/disabling attributes encryption, currently false is unique possible value due attributes encryption is not yet implemented.
           attribute-encryption:
@@ -300,11 +310,29 @@ aca:
               attribute-entry-9: bob;bank_a;role;client;2015-02-02T00:00:00-03:00;;
               attribute-entry-10: bob;bank_a;account;23456-67890;2015-02-02T00:00:00-03:00;;
               attribute-entry-11: assigner;bank_a;role;assigner;2015-01-01T00:00:00-03:00;;
+              
+              # for consent manmt demo
+              attribute-entry-12: WebAppAdmin;institution_a;role;system;2015-01-01T00:00:00-03:00;;
+              attribute-entry-13: pharmax;institution_a;role;org;2015-01-01T00:00:00-03:00;;
+              attribute-entry-14: pharmax;institution_a;org;pharmax;2015-01-01T00:00:00-03:00;;
+              attribute-entry-15: hmoy;institution_a;role;org;2015-01-01T00:00:00-03:00;;
+              attribute-entry-16: hmoy;institution_a;org;hmoy;2015-01-01T00:00:00-03:00;;
+              attribute-entry-17: ibmadmin;institution_a;role;org;2015-01-01T00:00:00-03:00;;
+              attribute-entry-18: ibmadmin;institution_a;org;IBM;2015-01-01T00:00:00-03:00;;
+              attribute-entry-19: doc1;institution_a;role;service;2015-01-01T00:00:00-03:00;;
+              attribute-entry-20: doc1;institution_a;org;hmoy;2015-01-01T00:00:00-03:00;;
+              attribute-entry-21: doc1;institution_a;service;1;2015-01-01T00:00:00-03:00;;
+              attribute-entry-22: nurse1;institution_a;role;service;2015-01-01T00:00:00-03:00;;
+              attribute-entry-23: nurse1;institution_a;org;hmoy;2015-01-01T00:00:00-03:00;;
+              attribute-entry-24: nurse1;institution_a;service;4;2015-01-01T00:00:00-03:00;;
+              attribute-entry-25: sally1111;institution_a;role;user;2015-01-01T00:00:00-03:00;;
+              attribute-entry-26: jimmy2222;institution_a;role;user;2015-01-01T00:00:00-03:00;;
+              attribute-entry-27: audit;institution_a;role;audit;2015-01-01T00:00:00-03:00;;
 
           address: localhost:7054
           server-name: acap
           # Enabling/disabling Attribute Certificate Authority, if ACA is enabled attributes will be added into the TCert.
-          enabled: false
+          enabled: true
 pki:
           ca:
                  subject:
