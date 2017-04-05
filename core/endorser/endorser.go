@@ -25,6 +25,7 @@ import (
 
 	"errors"
 
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -55,11 +56,8 @@ func NewEndorserServer() pb.EndorserServer {
 }
 
 // checkACL checks that the supplied proposal complies
-// with the policies of the chain; for a system chaincode
-// we use the admins policy, whereas for normal chaincodes
-// we use the writers policy
+// with the writers policy of the chain
 func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
-	/****** FAB-2457- we need to fix this right
 	// get policy manager to check ACLs
 	pm := peer.GetPolicyManager(chdr.ChannelId)
 	if pm == nil {
@@ -67,15 +65,7 @@ func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHea
 	}
 
 	// access the policy to use to validate this proposal
-	var policyName string
-	if syscc.IsSysCC(hdrext.ChaincodeId.Name) {
-		// in the case of a system chaincode, we use the admin policy
-		policyName = policies.ChannelApplicationAdmins
-	} else {
-		// in the case of a normal chaincode, we use the writers policy
-		policyName = policies.ChannelApplicationWriters
-	}
-	policy, _ := pm.GetPolicy(policyName)
+	policy, _ := pm.GetPolicy(policies.ChannelApplicationWriters)
 
 	// evaluate that this proposal complies with the writers
 	err := policy.Evaluate(
@@ -86,11 +76,10 @@ func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHea
 		}})
 	if err != nil {
 		return fmt.Errorf("The proposal does not comply with the %s for channel %s, error %s",
-			policyName,
+			policies.ChannelApplicationWriters,
 			chdr.ChannelId,
 			err)
 	}
-	**********/
 
 	return nil
 }
@@ -345,10 +334,13 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 			return nil, fmt.Errorf("Duplicate transaction found [%s]. Creator [%x]. [%s]", txid, shdr.Creator, err)
 		}
 
-		// check ACL - we verify that this proposal
-		// complies with the policy of the chain
-		if err = e.checkACL(signedProp, chdr, shdr, hdrExt); err != nil {
-			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+		// check ACL only for application chaincodes; ACLs
+		// for system chaincodes are checked elsewhere
+		if !syscc.IsSysCC(hdrExt.ChaincodeId.Name) {
+			// check that the proposal complies with the channel's writers
+			if err = e.checkACL(signedProp, chdr, shdr, hdrExt); err != nil {
+				return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+			}
 		}
 	} else {
 		// chainless proposals do not/cannot affect ledger and cannot be submitted as transactions
