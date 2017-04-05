@@ -129,8 +129,8 @@ func (handler *Handler) createTxContext(txid string, tx *pb.Transaction) (*trans
 }
 
 func (handler *Handler) getTxContext(txid string) *transactionContext {
-	handler.Lock()
-	defer handler.Unlock()
+	handler.RLock()
+	defer handler.RUnlock()
 	return handler.txCtxs[txid]
 }
 
@@ -481,8 +481,8 @@ func (handler *Handler) markIsTransaction(txid string, isTrans bool) bool {
 }
 
 func (handler *Handler) getIsTransaction(txid string) bool {
-	handler.Lock()
-	defer handler.Unlock()
+	handler.RLock()
+	defer handler.RUnlock()
 	if handler.isTransaction == nil {
 		return false
 	}
