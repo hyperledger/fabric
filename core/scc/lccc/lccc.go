@@ -135,21 +135,21 @@ func (t TXNotFoundErr) Error() string {
 type InvalidDeploymentSpecErr string
 
 func (f InvalidDeploymentSpecErr) Error() string {
-	return fmt.Sprintf("Invalid deployment spec : %s", string(f))
+	return fmt.Sprintf("invalid deployment spec : %s", string(f))
 }
 
 //ExistsErr chaincode exists error
 type ExistsErr string
 
 func (t ExistsErr) Error() string {
-	return fmt.Sprintf("Chaincode exists %s", string(t))
+	return fmt.Sprintf("chaincode exists %s", string(t))
 }
 
 //NotFoundErr chaincode not registered with LCCC error
 type NotFoundErr string
 
 func (t NotFoundErr) Error() string {
-	return fmt.Sprintf("chaincode not found %s", string(t))
+	return fmt.Sprintf("could not find chaincode with name '%s'", string(t))
 }
 
 //InvalidChainNameErr invalid chain name error
@@ -163,7 +163,7 @@ func (f InvalidChainNameErr) Error() string {
 type InvalidChaincodeNameErr string
 
 func (f InvalidChaincodeNameErr) Error() string {
-	return fmt.Sprintf("invalid chaincode name %s", string(f))
+	return fmt.Sprintf("invalid chaincode name '%s'. Names can only consist of alphanumerics, '_', and '-'", string(f))
 }
 
 //EmptyChaincodeNameErr trying to upgrade to same version of Chaincode
@@ -177,14 +177,14 @@ func (f EmptyChaincodeNameErr) Error() string {
 type InvalidVersionErr string
 
 func (f InvalidVersionErr) Error() string {
-	return fmt.Sprintf("invalid chaincode version %s", string(f))
+	return fmt.Sprintf("invalid chaincode version '%s'. Versions can only consist of alphanumerics, '_',  '-', and '.'", string(f))
 }
 
 //EmptyVersionErr empty version error
 type EmptyVersionErr string
 
 func (f EmptyVersionErr) Error() string {
-	return fmt.Sprintf("version not provided for chaincode %s", string(f))
+	return fmt.Sprintf("version not provided for chaincode with name '%s'", string(f))
 }
 
 //MarshallErr error marshaling/unmarshalling
@@ -198,7 +198,7 @@ func (m MarshallErr) Error() string {
 type IdenticalVersionErr string
 
 func (f IdenticalVersionErr) Error() string {
-	return fmt.Sprintf("chaincode with the same version exists %s", string(f))
+	return fmt.Sprintf("version already exists for chaincode with name '%s'", string(f))
 }
 
 //-------------- helper functions ------------------
