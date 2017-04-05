@@ -234,17 +234,13 @@ func CreateChainFromBlock(cb *common.Block) error {
 	if err != nil {
 		return err
 	}
-	var ledger ledger.PeerLedger
-	if ledger, err = createLedger(cid); err != nil {
-		return err
+
+	var l ledger.PeerLedger
+	if l, err = ledgermgmt.CreateWithGenesisBlock(cb); err != nil {
+		return fmt.Errorf("Cannot create ledger from genesis block, due to %s", err)
 	}
 
-	if err := ledger.Commit(cb); err != nil {
-		peerLogger.Errorf("Unable to get genesis block committed into the ledger, chainID %v", cid)
-		return err
-	}
-
-	return createChain(cid, ledger, cb)
+	return createChain(cid, l, cb)
 }
 
 // MockCreateChain used for creating a ledger for a chain for tests
