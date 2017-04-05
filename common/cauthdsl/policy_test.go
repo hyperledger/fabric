@@ -57,14 +57,14 @@ func makePolicySource(policyResult bool) *cb.Policy {
 }
 
 func addPolicy(manager policies.Proposer, id string, policy *cb.Policy) {
-	manager.BeginPolicyProposals(nil)
-	err := manager.ProposePolicy(id, &cb.ConfigPolicy{
+	manager.BeginPolicyProposals(id, nil)
+	_, err := manager.ProposePolicy(id, id, &cb.ConfigPolicy{
 		Policy: policy,
 	})
 	if err != nil {
 		panic(err)
 	}
-	manager.CommitProposals()
+	manager.CommitProposals(id)
 }
 
 func providerMap() map[int32]policies.Provider {

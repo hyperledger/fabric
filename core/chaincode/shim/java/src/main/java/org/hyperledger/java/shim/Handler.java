@@ -27,16 +27,17 @@ import org.hyperledger.java.fsm.FSM;
 import org.hyperledger.java.fsm.exceptions.CancelledException;
 import org.hyperledger.java.fsm.exceptions.NoTransitionException;
 import org.hyperledger.java.helper.Channel;
-import org.hyperledger.protos.Chaincode.*;
-import org.hyperledger.protos.Chaincodeshim.*;
-import org.hyperledger.protos.Chaincodeshim.ChaincodeMessage.Builder;
+import org.hyperledger.fabric.protos.peer.Chaincode.*;
+import org.hyperledger.fabric.protos.peer.ChaincodeShim.*;
+import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Builder;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.hyperledger.java.fsm.CallbackType.*;
-import static org.hyperledger.protos.Chaincodeshim.ChaincodeMessage.Type.*;
+import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.*;
 
 public class Handler {
 
@@ -248,12 +249,12 @@ public class Handler {
 	}
 
 	private String[] getParameters(List<ByteString> args) {
-		int size = (args.size() == 0) ? 0 : args.size() - 1;
-		String[] strArgs = new String[size];
-		for(int i = 1; i < args.size(); ++i) {
-			strArgs[i-1] = args.get(i).toStringUtf8();
-		}
-		return strArgs;
+	    	final ArrayList<String> results = new ArrayList<>();
+	    	// skip arg[0], that is the function name
+	    	for(int i = 1; i < args.size(); i++) {
+	    	    results.add(args.get(i).toStringUtf8());
+	    	}		
+		return results.toArray(new String[results.size()]);
 	}
 
 	// enterInitState will initialize the chaincode if entering init from established.
@@ -599,6 +600,8 @@ public class Handler {
 		}
 	}
 
+    //TODO: Uncomment and fix range query with new proto type
+/*
 	public QueryStateResponse handleGetStateByRange(String startKey, String endKey, String uuid) {
 		// Create the channel on which to communicate the response from validating peer
 		Channel<ChaincodeMessage> responseChannel;
@@ -672,7 +675,7 @@ public class Handler {
 			deleteChannel(uuid);
 		}
 	}
-
+*/
 	public ByteString handleInvokeChaincode(String chaincodeName, String function, List<ByteString> args, String uuid) {
 		// Check if this is a transaction
 		if (!isTransaction.containsKey(uuid)) {

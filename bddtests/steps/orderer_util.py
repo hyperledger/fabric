@@ -14,26 +14,20 @@
 # limitations under the License.
 #
 
-import os
-import re
 import time
 import datetime
 import Queue
-import subprocess
-import devops_pb2
-import fabric_pb2
-import chaincode_pb2
-from orderer import ab_pb2
+from orderer import ab_pb2, ab_pb2_grpc
 from common import common_pb2
 
 import bdd_test_util
+import bootstrap_util
 import bdd_grpc_util
 
+
 from grpc.beta import implementations
-from grpc.framework.interfaces.face.face import NetworkError
 from grpc.framework.interfaces.face.face import AbortionError
 from grpc.beta.interfaces import StatusCode
-from common.common_pb2 import Payload
 
 # The default chain ID when the system is statically bootstrapped for testing
 TEST_CHAIN_ID = "testchainid"
@@ -109,14 +103,29 @@ class StreamHelper:
 
 class DeliverStreamHelper(StreamHelper):
 
-    def __init__(self, ordererStub, timeout = 1):
+    def __init__(self, ordererStub, entity, directory, nodeAdminTuple, timeout = 110):
         StreamHelper.__init__(self)
+        self.nodeAdminTuple = nodeAdminTuple
+        self.directory = directory
+        self.entity = entity
         # Set the UpdateMessage and start the stream
         sendGenerator = self.createSendGenerator(timeout)
         self.replyGenerator = ordererStub.Deliver(sendGenerator, timeout + 1)
 
+    def createSeekInfo(self, chainID, start = 'Oldest', end = 'Newest',  behavior = 'FAIL_IF_NOT_READY'):
+        seekInfo = ab_pb2.SeekInfo(
+            start = seekPosition(start),
+            stop = seekPosition(end),
+            behavior = ab_pb2.SeekInfo.SeekBehavior.Value(behavior),
+        )
+        print("SeekInfo = {0}".format(seekInfo))
+        print("")
+        return seekInfo
+
     def seekToRange(self, chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest'):
-        self.sendQueue.put(createSeekInfo(start = start, chainID = chainID))
+        seekInfo = self.createSeekInfo(start = start, end = end, chainID = chainID)
+        envelope = bootstrap_util.createEnvelopeForMsg(directory=self.directory, chainId=chainID, msg=seekInfo, typeAsString="DELIVER_SEEK_INFO", nodeAdminTuple=self.nodeAdminTuple)
+        self.sendQueue.put(envelope)
 
     def getBlocks(self):
         blocks = []
@@ -138,8 +147,9 @@ class DeliverStreamHelper(StreamHelper):
 
 class UserRegistration:
 
-    def __init__(self, userName):
+    def __init__(self, userName, directory):
         self.userName= userName
+        self.directory = directory
         self.tags = {}
         # Dictionary of composeService->atomic broadcast grpc Stub
         self.atomicBroadcastStubsDict = {}
@@ -149,10 +159,17 @@ class UserRegistration:
     def getUserName(self):
         return self.userName
 
-    def connectToDeliverFunction(self, context, composeService, timeout=1):
+    def closeStreams(self):
+        for compose_service, deliverStreamHelper in self.abDeliversStreamHelperDict.iteritems():
+            deliverStreamHelper.sendQueue.put(None)
+
+    def connectToDeliverFunction(self, context, composeService, certAlias, nodeAdminTuple, timeout=1):
         'Connect to the deliver function and drain messages to associated orderer queue'
         assert not composeService in self.abDeliversStreamHelperDict, "Already connected to deliver stream on {0}".format(composeService)
-        streamHelper = DeliverStreamHelper(self.getABStubForComposeService(context, composeService))
+        streamHelper = DeliverStreamHelper(directory=self.directory,
+                                           ordererStub=self.getABStubForComposeService(context=context,
+                                                                                       composeService=composeService),
+                                           entity=self, nodeAdminTuple=nodeAdminTuple)
         self.abDeliversStreamHelperDict[composeService] = streamHelper
         return streamHelper
 
@@ -181,8 +198,11 @@ class UserRegistration:
         if composeService in self.atomicBroadcastStubsDict:
             return self.atomicBroadcastStubsDict[composeService]
         # Get the IP address of the server that the user registered on
-        channel = getGRPCChannel(*bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050))
-        newABStub = ab_pb2.beta_create_AtomicBroadcast_stub(channel)
+        root_certificates = self.directory.getTrustedRootsForOrdererNetworkAsPEM()
+        ipAddress, port = bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050)
+        print("ipAddress in getABStubForComposeService == {0}:{1}".format(ipAddress, port))
+        channel = bdd_grpc_util.getGRPCChannel(ipAddress=ipAddress, port=port, root_certificates=root_certificates, ssl_target_name_override=composeService)
+        newABStub = ab_pb2_grpc.AtomicBroadcastStub(channel)
         self.atomicBroadcastStubsDict[composeService] = newABStub
         return newABStub
 
@@ -230,8 +250,8 @@ def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  b
     return common_pb2.Envelope(
         payload = common_pb2.Payload(
             header = common_pb2.Header(
-                channel_header = common_pb2.ChannelHeader( channel_id = chainID ),
-                signature_header = common_pb2.SignatureHeader(),
+                channel_header = common_pb2.ChannelHeader( channel_id = chainID ).SerializeToString(),
+                signature_header = common_pb2.SignatureHeader().SerializeToString(),
             ),
             data = ab_pb2.SeekInfo(
                 start = seekPosition(start),
@@ -249,9 +269,3 @@ def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 3, timeTo
     for msg in messages:
         yield msg
     time.sleep(timeToHoldOpen)
-
-
-def getGRPCChannel(host='localhost', port=7050):
-    channel = implementations.insecure_channel(host, port)
-    print("Returning GRPC for address: {0}:{1}".format(host,port))
-    return channel

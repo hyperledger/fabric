@@ -14,19 +14,9 @@
 # limitations under the License.
 #
 
-import os
-import re
 import time
-import subprocess
-import devops_pb2
-import fabric_pb2
-import chaincode_pb2
 
 import orderer_util
-from grpc.framework.interfaces.face.face import NetworkError
-from grpc.beta.interfaces import StatusCode
-
-from grpc.beta import implementations
 
 @given(u'user "{enrollId}" is an authorized user of the ordering service')
 def step_impl(context, enrollId):

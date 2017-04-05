@@ -352,9 +352,11 @@ func pemToX509Certs(pemCerts []byte) ([]*x509.Certificate, []string, error) {
 		if block == nil {
 			break
 		}
+		/** TODO: check why msp does not add type to PEM header
 		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
 			continue
 		}
+		*/
 
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {

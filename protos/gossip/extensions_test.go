@@ -78,7 +78,7 @@ func TestToString(t *testing.T) {
 			Content: &GossipMessage_DataUpdate{
 				DataUpdate: &DataUpdate{
 					Nonce:   11,
-					MsgType: PullMsgType_BlockMessage,
+					MsgType: PullMsgType_BLOCK_MSG,
 					Data:    envelopes(),
 				},
 			},

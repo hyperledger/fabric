@@ -65,8 +65,8 @@ var (
 )
 
 type joinChanMsg struct {
-	getTS       func() time.Time
-	anchorPeers func() []api.AnchorPeer
+	getTS               func() time.Time
+	members2AnchorPeers map[string][]api.AnchorPeer
 }
 
 // SequenceNumber returns the sequence number of the block
@@ -79,12 +79,26 @@ func (jcm *joinChanMsg) SequenceNumber() uint64 {
 	return uint64(time.Now().UnixNano())
 }
 
-// AnchorPeers returns all the anchor peers that are in the channel
-func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
-	if jcm.anchorPeers != nil {
-		return jcm.anchorPeers()
+// Members returns the organizations of the channel
+func (jcm *joinChanMsg) Members() []api.OrgIdentityType {
+	if jcm.members2AnchorPeers == nil {
+		return []api.OrgIdentityType{orgInChannelA}
 	}
-	return []api.AnchorPeer{{OrgID: orgInChannelA}}
+	members := make([]api.OrgIdentityType, len(jcm.members2AnchorPeers))
+	i := 0
+	for org := range jcm.members2AnchorPeers {
+		members[i] = api.OrgIdentityType(org)
+		i++
+	}
+	return members
+}
+
+// AnchorPeersOf returns the anchor peers of the given organization
+func (jcm *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer {
+	if jcm.members2AnchorPeers == nil {
+		return []api.AnchorPeer{}
+	}
+	return jcm.members2AnchorPeers[string(org)]
 }
 
 type cryptoService struct {
@@ -104,7 +118,7 @@ func (cs *cryptoService) VerifyByChannel(channel common.ChainID, identity api.Pe
 	return args.Get(0).(error)
 }
 
-func (cs *cryptoService) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
+func (cs *cryptoService) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
 	args := cs.Called(signedBlock)
 	if args.Get(0) == nil {
 		return nil
@@ -194,11 +208,6 @@ func (ga *gossipAdapterMock) ValidateStateInfoMessage(msg *proto.SignedGossipMes
 		return nil
 	}
 	return args.Get(0).(error)
-}
-
-func (ga *gossipAdapterMock) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {
-	args := ga.Called(identity)
-	return args.Get(0).(api.OrgIdentityType)
 }
 
 func (ga *gossipAdapterMock) GetOrgOfPeer(PKIIID common.PKIidType) api.OrgIdentityType {
@@ -743,29 +752,29 @@ func TestChannelReconfigureChannel(t *testing.T) {
 	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgNotInChannelA)
 
 	outdatedJoinChanMsg := &joinChanMsg{
-		anchorPeers: func() []api.AnchorPeer {
-			return []api.AnchorPeer{{OrgID: orgNotInChannelA}}
-		},
 		getTS: func() time.Time {
 			return time.Now()
+		},
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(orgNotInChannelA): {},
 		},
 	}
 
 	newJoinChanMsg := &joinChanMsg{
-		anchorPeers: func() []api.AnchorPeer {
-			return []api.AnchorPeer{{OrgID: orgInChannelA}}
-		},
 		getTS: func() time.Time {
 			return time.Now().Add(time.Millisecond * 100)
+		},
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(orgInChannelA): {},
 		},
 	}
 
 	updatedJoinChanMsg := &joinChanMsg{
-		anchorPeers: func() []api.AnchorPeer {
-			return []api.AnchorPeer{{OrgID: orgNotInChannelA}}
-		},
 		getTS: func() time.Time {
 			return time.Now().Add(time.Millisecond * 200)
+		},
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(orgNotInChannelA): {},
 		},
 	}
 
@@ -815,6 +824,32 @@ func TestChannelReconfigureChannel(t *testing.T) {
 	}
 }
 
+func TestChannelNoAnchorPeers(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: We got a join channel message with no anchor peers
+	// In this case, we should be in the channel
+
+	cs := &cryptoService{}
+	adapter := new(gossipAdapterMock)
+	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
+
+	adapter.On("GetConf").Return(conf)
+	adapter.On("GetMembership").Return([]discovery.NetworkMember{})
+	adapter.On("OrgByPeerIdentity", api.PeerIdentityType(orgInChannelA)).Return(orgInChannelA)
+	adapter.On("GetOrgOfPeer", pkiIDInOrg1).Return(orgInChannelA)
+	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgNotInChannelA)
+
+	jcm := &joinChanMsg{
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(orgInChannelA): {},
+		},
+	}
+
+	gc := NewGossipChannel(cs, channelA, adapter, api.JoinChannelMessage(jcm))
+	assert.True(t, gc.IsOrgInChannel(orgInChannelA))
+}
+
 func TestChannelGetPeers(t *testing.T) {
 	t.Parallel()
 
@@ -854,7 +889,7 @@ func createDataUpdateMsg(nonce uint64) *proto.SignedGossipMessage {
 		Tag:     proto.GossipMessage_CHAN_AND_ORG,
 		Content: &proto.GossipMessage_DataUpdate{
 			DataUpdate: &proto.DataUpdate{
-				MsgType: proto.PullMsgType_BlockMessage,
+				MsgType: proto.PullMsgType_BLOCK_MSG,
 				Nonce:   nonce,
 				Data:    []*proto.Envelope{createDataMsg(10, channelA).Envelope, createDataMsg(11, channelA).Envelope},
 			},
@@ -870,7 +905,7 @@ func createHelloMsg(PKIID common.PKIidType) *receivedMsg {
 			Hello: &proto.GossipHello{
 				Nonce:    500,
 				Metadata: nil,
-				MsgType:  proto.PullMsgType_BlockMessage,
+				MsgType:  proto.PullMsgType_BLOCK_MSG,
 			},
 		},
 	}
@@ -902,7 +937,7 @@ func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common
 			StateInfo: &proto.StateInfo{
 				Timestamp: &proto.PeerTime{IncNumber: uint64(time.Now().UnixNano()), SeqNum: 1},
 				Metadata:  []byte(fmt.Sprintf("%d", ledgerHeight)),
-				PkiID:     []byte(pkiID),
+				PkiId:     []byte(pkiID),
 			},
 		},
 	}).NoopSign()
@@ -960,7 +995,7 @@ func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutat
 					Channel: []byte(channelA),
 					Content: &proto.GossipMessage_DataDig{
 						DataDig: &proto.DataDigest{
-							MsgType: proto.PullMsgType_BlockMessage,
+							MsgType: proto.PullMsgType_BLOCK_MSG,
 							Digests: []string{"10", "11"},
 							Nonce:   msg.GetHello().Nonce,
 						},

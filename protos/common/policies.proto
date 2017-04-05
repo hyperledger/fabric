@@ -16,9 +16,10 @@ limitations under the License.
 
 syntax = "proto3";
 
-import "common/msp_principal.proto";
+import "msp/msp_principal.proto";
 
 option go_package = "github.com/hyperledger/fabric/protos/common";
+option java_package = "org.hyperledger.fabric.protos.common";
 
 package common;
 
@@ -50,7 +51,7 @@ message SignaturePolicyEnvelope {
 // and will be the CA for more traditional certificates
 message SignaturePolicy {
     message NOutOf {
-        int32 N = 1;
+        int32 n = 1;
         repeated SignaturePolicy policies = 2;
     }
     oneof Type {

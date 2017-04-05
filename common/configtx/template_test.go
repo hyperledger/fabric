@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
+	"github.com/hyperledger/fabric/common/config"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -77,6 +77,33 @@ func TestCompositeTemplate(t *testing.T) {
 	verifyItemsResult(t, composite, 3)
 }
 
+func TestModPolicySettingTemplate(t *testing.T) {
+	subGroup := "group"
+	input := cb.NewConfigGroup()
+	input.Groups[subGroup] = cb.NewConfigGroup()
+
+	policyName := "policy"
+	valueName := "value"
+	for _, group := range []*cb.ConfigGroup{input, input.Groups[subGroup]} {
+		group.Values[valueName] = &cb.ConfigValue{}
+		group.Policies[policyName] = &cb.ConfigPolicy{}
+	}
+
+	modPolicyName := "foo"
+	mpst := NewModPolicySettingTemplate(modPolicyName, NewSimpleTemplate(input))
+	output, err := mpst.Envelope("bar")
+	assert.NoError(t, err, "Creating envelope")
+
+	configUpdate := UnmarshalConfigUpdateOrPanic(output.ConfigUpdate)
+
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Values[valueName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Policies[policyName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].Values[valueName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].Policies[policyName].ModPolicy)
+}
+
 func TestNewChainTemplate(t *testing.T) {
 	simple := NewSimpleTemplate(
 		simpleGroup(0),
@@ -104,7 +131,7 @@ func TestNewChainTemplate(t *testing.T) {
 		assert.True(t, ok, "Expected to find %d but did not", i)
 	}
 
-	configValue, ok := configNext.WriteSet.Groups[configtxorderer.GroupKey].Values[CreationPolicyKey]
+	configValue, ok := configNext.WriteSet.Groups[config.OrdererGroupKey].Values[CreationPolicyKey]
 	assert.True(t, ok, "Did not find creation policy")
 
 	creationPolicyMessage := new(ab.CreationPolicy)

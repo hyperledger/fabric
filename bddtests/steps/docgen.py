@@ -1,3 +1,17 @@
+# Copyright IBM Corp. 2016 All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 from StringIO import StringIO
 from itertools import chain
@@ -14,7 +28,6 @@ env = Environment(
 )
 
 from bootstrap_util import getDirectory
-from compose import Composition
 
 class DocumentGenerator:
 
@@ -27,24 +40,31 @@ class DocumentGenerator:
         self.composition = None
 
         #Weave advices into contextHelper
-        weave(target=self.contextHelper.before_step, advices=self.stepAdvice)
+        weave(target=self.contextHelper.before_step, advices=self.beforeStepAdvice)
+        weave(target=self.contextHelper.after_step, advices=self.afterStepAdvice)
         weave(target=self.contextHelper.after_scenario, advices=self.afterScenarioAdvice)
         weave(target=self.contextHelper.getBootrapHelper, advices=self.getBootstrapHelperAdvice)
-
-
-        weave(target=Composition.__init__, advices=self.registerCompositionAdvice)
+        weave(target=self.contextHelper.registerComposition, advices=self.registerCompositionAdvice)
 
         # Weave advices into Directory
         weave(target=self.directory._registerOrg, advices=self.registerOrgAdvice)
         weave(target=self.directory._registerUser, advices=self.registerUserAdvice)
         weave(target=self.directory.registerOrdererAdminTuple, advices=self.registerNamedNodeAdminTupleAdvice)
 
-    def stepAdvice(self, joinpoint):
+    def beforeStepAdvice(self, joinpoint):
         self.currentStep += 1
         step = joinpoint.kwargs['step']
         # Now the jinja template
         self.output.write(env.get_template("html/step.html").render(step_id="Step {0}".format(self.currentStep), step=step))
         return joinpoint.proceed()
+
+    def afterStepAdvice(self, joinpoint):
+        step = joinpoint.kwargs['step']
+        # Now the jinja template
+        if step.status=="failed":
+            self.output.write(env.get_template("html/error.html").render(err=step.error_message))
+        return joinpoint.proceed()
+
 
     def compositionCallCLIAdvice(self, joinpoint):
         'This advice is called around the compositions usage of the cli'
@@ -60,7 +80,7 @@ class DocumentGenerator:
         return result
 
     def _getNetworkGroup(self, serviceName):
-        groups = {"peer" : 1, "orderer" : 2}
+        groups = {"peer" : 1, "orderer" : 2, "kafka" : 7, "zookeeper" : 8, "couchdb" : 9}
         groupId = 0
         for group, id in groups.iteritems():
             if serviceName.lower().startswith(group):
@@ -110,11 +130,8 @@ class DocumentGenerator:
 
 
     def registerCompositionAdvice(self, joinpoint):
-        composition = None
-        if joinpoint.kwargs['context'] == self.contextHelper.context:
-            # This is our context, weave into issue_command
-            composition = joinpoint.kwargs['self']
-            weave(target=composition._callCLI, advices=self.compositionCallCLIAdvice)
+        composition = joinpoint.kwargs['composition']
+        weave(target=composition._callCLI, advices=self.compositionCallCLIAdvice)
         result = joinpoint.proceed()
         if composition:
             #Now get the config for the composition and dump out.
@@ -146,7 +163,7 @@ class DocumentGenerator:
             f.write(orgCert)
         self._addLinkToFile(fileName=fileName, linkText="Public cert for Organization")
         #Now the jinja output
-        self.output.write(env.get_template("html/org.html").render(org=newlyRegisteredOrg, cert_href=self._getLinkInfoForFile(fileName)))
+        self.output.write(env.get_template("html/org.html").render(org=newlyRegisteredOrg, cert_href=self._getLinkInfoForFile(fileName), path_to_cert=fileName))
         return newlyRegisteredOrg
 
     def registerUserAdvice(self, joinpoint):
@@ -170,7 +187,7 @@ class DocumentGenerator:
         main = env.get_template("html/main.html").render(header=header, body=self.output.getvalue())
         (fileName, fileExists) = self.contextHelper.getTmpPathForName("scenario", extension="html")
         with open(fileName, 'w') as f:
-            f.write(main)
+            f.write(main.encode("utf-8"))
         self._writeNetworkJson()
         return joinpoint.proceed()
 
@@ -212,6 +229,13 @@ class DocumentGenerator:
             result = len(messageList) == len(target)
         return result
 
+    def _isDictOfProtobufMessages(self, target):
+        result = False
+        if isinstance(target, dict):
+            messageList = [item for item in target.values() if self._isProtobufMessage(item)]
+            result = len(messageList) == len(target)
+        return result
+
     def _writeProtobuf(self, fileName, msg):
         import ntpath
         baseName = ntpath.basename(fileName)
@@ -237,12 +261,15 @@ class DocumentGenerator:
             self._writeProtobuf(fileName=fileName, msg=tagValue)
         # If protobuf message, write out in binary form
         elif self._isListOfProtobufMessages(tagValue):
-            import ntpath
             index = 0
             for msg in tagValue:
                 (fileName, fileExists) = self.contextHelper.getTmpPathForName("{0}-{1}-{2:0>4}".format(user.getUserName(), tagKey, index), extension="protobuf")
                 self._writeProtobuf(fileName=fileName, msg=msg)
                 index += 1
+        elif self._isDictOfProtobufMessages(tagValue):
+            for key,msg in tagValue.iteritems():
+                (fileName, fileExists) = self.contextHelper.getTmpPathForName("{0}-{1}-{2}".format(user.getUserName(), tagKey, key), extension="protobuf")
+                self._writeProtobuf(fileName=fileName, msg=msg)
         else:
             self.output.write(env.get_template("html/cli.html").render(command=str(tagValue)))
         return result

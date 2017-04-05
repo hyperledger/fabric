@@ -19,6 +19,8 @@ limitations under the License.
 package shim
 
 import (
+	"bytes"
+	"encoding/gob"
 	"errors"
 	"flag"
 	"fmt"
@@ -30,7 +32,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/flogging"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -41,6 +46,7 @@ import (
 
 // Logger for the shim package.
 var chaincodeLogger = logging.MustGetLogger("shim")
+var logOutput = os.Stderr
 
 const (
 	minUnicodeRuneValue = 0            //U+0000
@@ -70,12 +76,7 @@ var peerAddress string
 func Start(cc Chaincode) error {
 	// If Start() is called, we assume this is a standalone chaincode and set
 	// up formatted logging.
-	format := logging.MustStringFormatter("%{time:15:04:05.000} [%{module}] %{level:.4s} : %{message}")
-	backend := logging.NewLogBackend(os.Stderr, "", 0)
-	backendFormatter := logging.NewBackendFormatter(backend, format)
-	logging.SetBackend(backendFormatter).SetLevel(logging.Level(shimLoggingLevel), "shim")
-
-	SetChaincodeLoggingLevel()
+	SetupChaincodeLogging()
 
 	err := factory.InitFactories(&factory.DefaultOpts)
 	if err != nil {
@@ -121,18 +122,24 @@ func IsEnabledForLogLevel(logLevel string) bool {
 	return chaincodeLogger.IsEnabledFor(lvl)
 }
 
-// SetChaincodeLoggingLevel sets the chaincode logging level to the value
-// of CORE_LOGGING_CHAINCODE set from core.yaml by chaincode_support.go
-func SetChaincodeLoggingLevel() {
+// SetupChaincodeLogging sets the chaincode logging format and the level
+// to the values of CORE_CHAINCODE_LOGFORMAT and CORE_CHAINCODE_LOGLEVEL set
+// from core.yaml by chaincode_support.go
+func SetupChaincodeLogging() {
 	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 
-	chaincodeLogLevelString := viper.GetString("logging.chaincode")
+	// setup system-wide logging backend
+	logFormat := flogging.SetFormat(viper.GetString("chaincode.logFormat"))
+	flogging.InitBackend(logFormat, logOutput)
+
+	chaincodeLogLevelString := viper.GetString("chaincode.logLevel")
 	if chaincodeLogLevelString == "" {
 		shimLogLevelDefault := logging.Level(shimLoggingLevel)
 		chaincodeLogger.Infof("Chaincode log level not provided; defaulting to: %s", shimLogLevelDefault)
+		SetLoggingLevel(shimLoggingLevel)
 	} else {
 		chaincodeLogLevel, err := LogLevel(chaincodeLogLevelString)
 		if err == nil {
@@ -262,15 +269,13 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 			}
 
 			//keepalive messages are PONGs to the fabric's PINGs
-			if (nsInfo != nil && nsInfo.sendToCC) || (in.Type == pb.ChaincodeMessage_KEEPALIVE) {
-				if in.Type == pb.ChaincodeMessage_KEEPALIVE {
-					chaincodeLogger.Debug("Sending KEEPALIVE response")
-					//ignore any errors, maybe next KEEPALIVE will work
-					handler.serialSendAsync(in, nil)
-				} else {
-					chaincodeLogger.Debugf("[%s]send state message %s", shorttxid(in.Txid), in.Type.String())
-					handler.serialSendAsync(in, errc)
-				}
+			if in.Type == pb.ChaincodeMessage_KEEPALIVE {
+				chaincodeLogger.Debug("Sending KEEPALIVE response")
+				//ignore any errors, maybe next KEEPALIVE will work
+				handler.serialSendAsync(in, nil)
+			} else if nsInfo != nil && nsInfo.sendToCC {
+				chaincodeLogger.Debugf("[%s]send state message %s", shorttxid(in.Txid), in.Type.String())
+				handler.serialSendAsync(in, errc)
 			}
 		}
 	}()
@@ -347,14 +352,33 @@ func (stub *ChaincodeStub) DelState(key string) error {
 	return stub.handler.handleDelState(key, stub.TxID)
 }
 
-// StateQueryIterator allows a chaincode to iterate over a set of
+// CommonIterator allows a chaincode to iterate over a set of
 // key/value pairs in the state.
-type StateQueryIterator struct {
+type CommonIterator struct {
 	handler    *Handler
 	uuid       string
-	response   *pb.QueryStateResponse
+	response   *pb.QueryResponse
 	currentLoc int
 }
+
+//GeneralQueryIterator allows a chaincode to iterate the result
+//of range and execute query.
+type StateQueryIterator struct {
+	*CommonIterator
+}
+
+//GeneralQueryIterator allows a chaincode to iterate the result
+//of history query.
+type HistoryQueryIterator struct {
+	*CommonIterator
+}
+
+type resultType uint8
+
+const (
+	STATE_QUERY_RESULT resultType = iota + 1
+	HISTORY_QUERY_RESULT
+)
 
 // GetStateByRange function can be invoked by a chaincode to query of a range
 // of keys in the state. Assuming the startKey and endKey are in lexical order,
@@ -366,7 +390,7 @@ func (stub *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryI
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
 // GetQueryResult function can be invoked by a chaincode to perform a
@@ -379,17 +403,17 @@ func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInter
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
 // GetHistoryForKey function can be invoked by a chaincode to return a history of
 // key values across time. GetHistoryForKey is intended to be used for read-only queries.
-func (stub *ChaincodeStub) GetHistoryForKey(key string) (StateQueryIteratorInterface, error) {
+func (stub *ChaincodeStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error) {
 	response, err := stub.handler.handleGetHistoryForKey(key, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+	return &HistoryQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
 //CreateCompositeKey combines the given attributes to form a composite key.
@@ -460,42 +484,80 @@ func getStateByPartialCompositeKey(stub ChaincodeStubInterface, objectType strin
 	return keysIter, nil
 }
 
+func (iter *StateQueryIterator) Next() (*ledger.KV, error) {
+	result, err := next(iter.CommonIterator, STATE_QUERY_RESULT)
+	return result.(*ledger.KV), err
+}
+
+func (iter *HistoryQueryIterator) Next() (*ledger.KeyModification, error) {
+	result, err := next(iter.CommonIterator, HISTORY_QUERY_RESULT)
+	return result.(*ledger.KeyModification), err
+}
+
 // HasNext returns true if the range query iterator contains additional keys
 // and values.
-func (iter *StateQueryIterator) HasNext() bool {
-	if iter.currentLoc < len(iter.response.KeysAndValues) || iter.response.HasMore {
+func (iter *CommonIterator) HasNext() bool {
+	if iter.currentLoc < len(iter.response.Results) || iter.response.HasMore {
 		return true
 	}
 	return false
 }
 
-// Next returns the next key and value in the range query iterator.
-func (iter *StateQueryIterator) Next() (string, []byte, error) {
-	if iter.currentLoc < len(iter.response.KeysAndValues) {
-		keyValue := iter.response.KeysAndValues[iter.currentLoc]
-		iter.currentLoc++
-		return keyValue.Key, keyValue.Value, nil
-	} else if !iter.response.HasMore {
-		return "", nil, errors.New("No such key")
-	} else {
-		response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.uuid)
+func getResultFromBytes(queryResultBytes *pb.QueryResultBytes, iter *CommonIterator,
+	rType resultType) (commonledger.QueryResult, error) {
 
-		if err != nil {
-			return "", nil, err
+	decoder := gob.NewDecoder(bytes.NewBuffer(queryResultBytes.ResultBytes))
+
+	if rType == STATE_QUERY_RESULT {
+		var stateQueryResult ledger.KV
+		if err := decoder.Decode(&stateQueryResult); err != nil {
+			return nil, err
 		}
-
-		iter.currentLoc = 0
-		iter.response = response
-		keyValue := iter.response.KeysAndValues[iter.currentLoc]
 		iter.currentLoc++
-		return keyValue.Key, keyValue.Value, nil
+		return &stateQueryResult, nil
+
+	} else if rType == HISTORY_QUERY_RESULT {
+		var historyQueryResult ledger.KeyModification
+		if err := decoder.Decode(&historyQueryResult); err != nil {
+			return nil, err
+		}
+		iter.currentLoc++
+		return &historyQueryResult, nil
 
 	}
+	return nil, errors.New("Wrong result type")
+}
+
+func fetchRemainingQueryResult(iter *CommonIterator) error {
+	response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.uuid)
+
+	if err != nil {
+		return err
+	}
+
+	iter.currentLoc = 0
+	iter.response = response
+	return nil
+}
+
+// Next returns the next key and value in the state or history query iterator.
+func next(iter *CommonIterator, rType resultType) (commonledger.QueryResult, error) {
+
+	if iter.currentLoc < len(iter.response.Results) {
+		return getResultFromBytes(iter.response.Results[iter.currentLoc], iter, rType)
+	} else if !iter.response.HasMore {
+		return nil, errors.New("No such key")
+	}
+	if err := fetchRemainingQueryResult(iter); err != nil {
+		return nil, err
+	}
+	return getResultFromBytes(iter.response.Results[iter.currentLoc], iter, rType)
+
 }
 
 // Close closes the range query iterator. This should be called when done
 // reading from the iterator to free up resources.
-func (iter *StateQueryIterator) Close() error {
+func (iter *CommonIterator) Close() error {
 	_, err := iter.handler.handleQueryStateClose(iter.response.Id, iter.uuid)
 	return err
 }
@@ -558,11 +620,20 @@ func (stub *ChaincodeStub) GetArgsSlice() ([]byte, error) {
 	return res, nil
 }
 
-// GetTxTimestamp returns transaction created timestamp, which is currently
-// taken from the peer receiving the transaction. Note that this timestamp
-// may not be the same with the other peers' time.
+// GetTxTimestamp returns the timestamp when the transaction was created. This
+// is taken from the transaction ChannelHeader, so it will be the same across
+// all endorsers.
 func (stub *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
-	return nil, nil
+	hdr, err := utils.GetHeader(stub.proposal.Header)
+	if err != nil {
+		return nil, err
+	}
+	chdr, err := utils.UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	return chdr.GetTimestamp(), nil
 }
 
 // ------------- ChaincodeEvent API ----------------------
@@ -620,7 +691,7 @@ const (
 	LogCritical = LoggingLevel(logging.CRITICAL)
 )
 
-var shimLoggingLevel = LogDebug // Necessary for correct initialization; See Start()
+var shimLoggingLevel = LogInfo // Necessary for correct initialization; See Start()
 
 // SetLoggingLevel allows a Go language chaincode to set the logging level of
 // its shim.

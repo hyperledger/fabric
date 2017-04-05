@@ -27,6 +27,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/protos/common"
@@ -361,9 +362,12 @@ func CreateChaincodeProposalWithTxIDNonceAndTransient(txid string, typ common.He
 	// get a more appropriate mechanism to handle it in.
 	var epoch uint64 = 0
 
+	timestamp := util.CreateUtcTimestamp()
+
 	hdr := &common.Header{ChannelHeader: MarshalOrPanic(&common.ChannelHeader{
 		Type:      int32(typ),
 		TxId:      txid,
+		Timestamp: timestamp,
 		ChannelId: chainID,
 		Extension: ccHdrExtBytes,
 		Epoch:     epoch}),

@@ -33,7 +33,7 @@ type msgImpl struct {
 }
 
 func (mi *msgImpl) SenderID() peerID {
-	return mi.msg.GetLeadershipMsg().PkiID
+	return mi.msg.GetLeadershipMsg().PkiId
 }
 
 func (mi *msgImpl) IsProposal() bool {
@@ -135,7 +135,7 @@ func (ai *adapterImpl) CreateMessage(isDeclaration bool) Msg {
 	seqNum := ai.seqNum
 
 	leadershipMsg := &proto.LeadershipMessage{
-		PkiID:         ai.selfPKIid,
+		PkiId:         ai.selfPKIid,
 		IsDeclaration: isDeclaration,
 		Timestamp: &proto.PeerTime{
 			IncNumber: ai.incTime,

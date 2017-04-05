@@ -105,6 +105,18 @@ func TestHistory(t *testing.T) {
 	err = env.testHistoryDB.Commit(block2)
 	testutil.AssertNoError(t, err, "")
 
+	//block3
+	simulator, _ = env.txmgr.NewTxSimulator()
+	simulator.DeleteState("ns1", "key7")
+	simulator.Done()
+	simRes, _ = simulator.GetTxSimulationResults()
+	block3 := bg.NextBlock([][]byte{simRes}, false)
+	err = store1.AddBlock(block3)
+	testutil.AssertNoError(t, err, "")
+	err = env.testHistoryDB.Commit(block3)
+	testutil.AssertNoError(t, err, "")
+	t.Logf("Inserted all 3 blocks")
+
 	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
 	testutil.AssertNoError(t, err, "Error upon NewHistoryQueryExecutor")
 
@@ -119,12 +131,23 @@ func TestHistory(t *testing.T) {
 		}
 		txid := kmod.(*ledger.KeyModification).TxID
 		retrievedValue := kmod.(*ledger.KeyModification).Value
-		t.Logf("Retrieved history record for key=key7 at TxId=%s with value %v", txid, retrievedValue)
+		retrievedTimestamp := kmod.(*ledger.KeyModification).Timestamp
+		retrievedIsDelete := kmod.(*ledger.KeyModification).IsDelete
+		t.Logf("Retrieved history record for key=key7 at TxId=%s with value %v and timestamp %v",
+			txid, retrievedValue, retrievedTimestamp)
 		count++
-		expectedValue := []byte("value" + strconv.Itoa(count))
-		testutil.AssertEquals(t, retrievedValue, expectedValue)
+		if count != 4 {
+			expectedValue := []byte("value" + strconv.Itoa(count))
+			testutil.AssertEquals(t, retrievedValue, expectedValue)
+			testutil.AssertNotEquals(t, retrievedTimestamp, nil)
+			testutil.AssertEquals(t, retrievedIsDelete, false)
+		} else {
+			testutil.AssertEquals(t, retrievedValue, nil)
+			testutil.AssertNotEquals(t, retrievedTimestamp, nil)
+			testutil.AssertEquals(t, retrievedIsDelete, true)
+		}
 	}
-	testutil.AssertEquals(t, count, 3)
+	testutil.AssertEquals(t, count, 4)
 }
 
 func TestHistoryForInvalidTran(t *testing.T) {

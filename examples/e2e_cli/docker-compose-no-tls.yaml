@@ -1,0 +1,131 @@
+version: '2'
+
+services:
+
+  orderer0:
+    container_name: orderer0
+    image: hyperledger/fabric-orderer
+    environment:
+      - ORDERER_GENERAL_LOGLEVEL=debug
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.block
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/localMspConfig
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: orderer
+    volumes:
+    - ./crypto/orderer:/var/hyperledger/orderer
+    ports:
+      - 7050:7050
+
+  peer0:
+    container_name: peer0
+    extends:
+      file: peer-base/peer-base-no-tls.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
+      - CORE_PEER_LOCALMSPID=Org0MSP
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto/peer/peer0/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+    ports:
+      - 7051:7051
+      - 7053:7053
+    depends_on:
+      - orderer0
+
+  peer1:
+    container_name: peer1
+    extends:
+      file: peer-base/peer-base-no-tls.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
+      - CORE_PEER_LOCALMSPID=Org0MSP
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto/peer/peer1/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+    ports:
+      - 8051:7051
+      - 8053:7053
+    depends_on:
+      - orderer0
+      - peer0
+
+  peer2:
+    container_name: peer2
+    extends:
+      file: peer-base/peer-base-no-tls.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer2
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
+      - CORE_PEER_LOCALMSPID=Org1MSP
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto/peer/peer2/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+    ports:
+      - 9051:7051
+      - 9053:7053
+    depends_on:
+      - orderer0
+      - peer0
+      - peer1
+
+  peer3:
+    container_name: peer3
+    extends:
+      file: peer-base/peer-base-no-tls.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer3
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
+      - CORE_PEER_LOCALMSPID=Org1MSP
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto/peer/peer3/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+    ports:
+      - 10051:7051
+      - 10053:7053
+    depends_on:
+      - orderer0
+      - peer0
+      - peer1
+      - peer2
+
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-peer
+    tty: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_PEER_ADDRESSAUTODETECT=true
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_LOGGING_LEVEL=DEBUG
+      - CORE_NEXT=true
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ENDORSER_ENABLED=true
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
+      - CORE_PEER_ADDRESS=peer0:7051
+      - CORE_PEER_GOSSIP_IGNORESECURITY=true
+      - CORE_PEER_LOCALMSPID=Org0MSP
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/bash -c './scripts/script.sh ${CHANNEL_NAME}; '
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./examples/:/opt/gopath/src/github.com/hyperledger/fabric/examples/
+        - ./crypto:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
+        - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/
+    depends_on:
+      - orderer0
+      - peer0
+      - peer1
+      - peer2
+      - peer3

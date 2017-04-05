@@ -25,11 +25,11 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.hyperledger.protos.Chaincode.ChaincodeID;
-import org.hyperledger.protos.ChaincodeSupportGrpc;
-import org.hyperledger.protos.ChaincodeSupportGrpc.ChaincodeSupportStub;
-import org.hyperledger.protos.Chaincodeshim.ChaincodeMessage;
-import org.hyperledger.protos.Chaincodeshim.ChaincodeMessage.Type;
+import org.hyperledger.fabric.protos.peer.Chaincode.ChaincodeID;
+import org.hyperledger.fabric.protos.peer.ChaincodeSupportGrpc;
+import org.hyperledger.fabric.protos.peer.ChaincodeSupportGrpc.ChaincodeSupportStub;
+import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage;
+import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type;
 
 import com.google.protobuf.ByteString;
 
@@ -45,7 +45,7 @@ public abstract class ChaincodeBase {
 	private static Log logger = LogFactory.getLog(ChaincodeBase.class);
 
 	public abstract String run(ChaincodeStub stub, String function, String[] args);
-	public abstract String query(ChaincodeStub stub, String function, String[] args);
+//	public abstract String query(ChaincodeStub stub, String function, String[] args);
 	public abstract String getChaincodeID();
 
 	public static final String DEFAULT_HOST = "127.0.0.1";
@@ -239,23 +239,11 @@ public abstract class ChaincodeBase {
 		return null;
 	}
 
-	public ByteString queryRaw(ChaincodeStub stub, String function, String[] args) {
-		return null;
-	}
-
 	protected ByteString runHelper(ChaincodeStub stub, String function, String[] args) {
 		ByteString ret = runRaw(stub, function, args);
 		if (ret == null) {
 			String tmp = run(stub, function, args);
 			ret = ByteString.copyFromUtf8(tmp == null ? "" : tmp);
-		}
-		return ret;
-	}
-
-	protected ByteString queryHelper(ChaincodeStub stub, String function, String[] args) {
-		ByteString ret = queryRaw(stub, function, args);
-		if (ret == null) {
-			ret = ByteString.copyFromUtf8(query(stub, function, args));
 		}
 		return ret;
 	}

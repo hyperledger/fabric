@@ -24,7 +24,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
@@ -130,7 +129,7 @@ func TestSerializeIdentitiesWithWrongMSP(t *testing.T) {
 		return
 	}
 
-	sid := &SerializedIdentity{}
+	sid := &msp.SerializedIdentity{}
 	err = proto.Unmarshal(serializedID, sid)
 	assert.NoError(t, err)
 
@@ -159,7 +158,7 @@ func TestSerializeIdentitiesWithMSPManager(t *testing.T) {
 	_, err = mspMgr.DeserializeIdentity(serializedID)
 	assert.NoError(t, err)
 
-	sid := &SerializedIdentity{}
+	sid := &msp.SerializedIdentity{}
 	err = proto.Unmarshal(serializedID, sid)
 	assert.NoError(t, err)
 
@@ -264,12 +263,12 @@ func TestOUPolicyPrincipal(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 
-	ou := &common.OrganizationUnit{OrganizationalUnitIdentifier: "COP", MspIdentifier: "DEFAULT"}
+	ou := &msp.OrganizationUnit{OrganizationalUnitIdentifier: "COP", MspIdentifier: "DEFAULT"}
 	bytes, err := proto.Marshal(ou)
 	assert.NoError(t, err)
 
-	principal := &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ORGANIZATION_UNIT,
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
 		Principal:               bytes,
 	}
 
@@ -281,11 +280,11 @@ func TestAdminPolicyPrincipal(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&common.MSPRole{Role: common.MSPRole_ADMIN, MspIdentifier: "DEFAULT"})
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "DEFAULT"})
 	assert.NoError(t, err)
 
-	principal := &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
 		Principal:               principalBytes}
 
 	err = id.SatisfiesPrincipal(principal)
@@ -296,11 +295,11 @@ func TestAdminPolicyPrincipalFails(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&common.MSPRole{Role: common.MSPRole_ADMIN, MspIdentifier: "DEFAULT"})
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "DEFAULT"})
 	assert.NoError(t, err)
 
-	principal := &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
 		Principal:               principalBytes}
 
 	// remove the admin so validation will fail

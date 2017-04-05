@@ -23,7 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	"github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -42,7 +42,7 @@ func (mlw *mockLedgerReadWriter) Append(block *cb.Block) error {
 	return nil
 }
 
-func (mlw *mockLedgerReadWriter) Iterator(startType *ab.SeekPosition) (ordererledger.Iterator, uint64) {
+func (mlw *mockLedgerReadWriter) Iterator(startType *ab.SeekPosition) (ledger.Iterator, uint64) {
 	panic("Unimplemented")
 }
 

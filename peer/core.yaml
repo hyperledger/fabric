@@ -32,7 +32,6 @@ logging:
     peer:       warning
     node:       info
     network:    warning
-    chaincode:  warning
     version:    warning
     protoutils: debug
     error:      warning
@@ -69,13 +68,24 @@ peer:
 
     # Gossip related configuration
     gossip:
+        # Bootstrap set to initialize gossip with
         bootstrap: 127.0.0.1:7051
-        # Use automatically chosen peer (high avalibility) to distribute blocks in channel or static one
-        # Setting this true and orgLeader true cause panic exit
+
+        # NOTE: orgLeader and useLeaderElection parameters are mutual exclusive
+        # setting both to true would result in the termination of the peer, since this is undefined
+        # state.
+
+        # Defines whenever peer will initialize dynamic algorithm for
+        # "leader" selection, where leader is the peer to establish
+        # connection with ordering service and use delivery protocol
+        # to pull ledger blocks from ordering service
         useLeaderElection: false
-        # For debug - is peer is its org leader and should pass blocks from orderer to other peers in org
-        # Works only if useLeaderElection set to false
+        # Statically defines peer to be an organization "leader",
+        # where this means that current peer will maintain connection
+        # with ordering service and disseminate block across peers in
+        # its own organization
         orgLeader: true
+
         # ID of this instance
         endpoint:
         # Maximum count of blocks we store in memory
@@ -102,8 +112,6 @@ peer:
         publishCertPeriod: 10s
         # Should we skip verifying block messages or not
         skipBlockVerification: false
-        # Should we ignore security or not
-        ignoreSecurity: false
         # Dial timeout(unit: second)
         dialTimeout: 3s
         # Connection timeout(unit: second)
@@ -127,6 +135,20 @@ peer:
         # This is an endpoint that is published to peers outside of the organization.
         # If this isn't set, the peer will not be known to other organizations.
         externalEndpoint:
+        # Makes gossip skip verification of remote peer signature when performing
+        # the authentication handshake with remote peers
+        skipHandshake: false
+
+        # Leader election service configuration
+        election:
+            # Longest time peer wait for stable membership during leader election startup (unit: second)
+            startupGracePeriod: 15s
+            # Interval gossip membership sampled to check its stability (unit: second)
+            membershipSampleInterval: 1s
+            # Time pass since last declaration message before peer decide to go to election (unit: second)
+            leaderAliveThreshold: 10s
+            # Time between peer sends propose message and declare itself as a leader (sends declaration message) (unit: second)
+            leaderElectionDuration: 5s
 
     # Sync related configuration
     sync:
@@ -171,20 +193,6 @@ peer:
         # if > 0, if buffer full, blocks till timeout
         timeout: 10
 
-    # ----!!!!IMPORTANT!!!-!!!IMPORTANT!!!-!!!IMPORTANT!!!!----
-    # THIS HAS TO BE DONE IN THE CONTEXT OF BOOTSTRAP. TILL THAT
-    # IS DESIGNED AND FINALIZED, THE FOLLOWING COMMITTER/ORDERER
-    # DEFINITIONS HAVE TO SERVE AS THE MEANS TO DRIVE A SIMPLE
-    # SKELETON.
-    #
-    # All "chaincode" commands from CLI (except "query") will
-    # send response from the endorser to the Committer defined below.
-    committer:
-        enabled: true
-        ledger:
-            # orderer to talk to
-            orderer: 0.0.0.0:7050
-
     # TLS Settings for p2p communications
     tls:
         enabled:  false
@@ -197,7 +205,7 @@ peer:
     # this is sent to client to validate the recived certificate from server when
     # establishing TLS connection
         rootcert:
-            file:
+            file: testdata/server1.pem
         # The server name use to verify the hostname returned by TLS handshake
         serverhostoverride:
 
@@ -301,16 +309,16 @@ chaincode:
         name:
 
     # Generic builder environment, suitable for most chaincode types
-    builder: hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+    builder: $(DOCKER_NS)/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
 
     golang:
         # golang will never need more than baseos
-        runtime: hyperledger/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
     car:
         # car may need more facilities (JVM, etc) in the future as the catalog
         # of platforms are expanded.  For now, we can just use baseos
-        runtime: hyperledger/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
     java:
         # This is an image based on java:openjdk-8 with addition compiler
@@ -318,11 +326,16 @@ chaincode:
         # This image is packed with shim layer libraries that are necessary
         # for Java chaincode runtime.
         Dockerfile:  |
-            from hyperledger/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
+            from $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
     startuptimeout: 300000
+
+    # timeout in millisecs for invokes and initialize commands
+    # this timeout is used by all chaincodes in all the channels including
+    # system chaincodes. Default is 30000ms (30 seconds)
+    executetimeout: 30000
 
     #timeout in millisecs for deploying chaincode from a remote repository.
     deploytimeout: 30000
@@ -350,6 +363,10 @@ chaincode:
         vscc: enable
         qscc: enable
 
+    # logging section for the chaincode container
+    logLevel: warning
+    logFormat: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+
 ###############################################################################
 #
 #    Ledger section - ledger configuration encompases both the blockchain
@@ -370,9 +387,9 @@ ledger:
        username:
        password:
 
-       # Limit on the number of records to return per query
-       queryLimit: 1000
-
     # historyDatabase - options are true or false
     # Indicates if the history of key updates should be stored in goleveldb
     historyDatabase: true
+
+    # Limit on the number of records to return per query
+    queryLimit: 10000

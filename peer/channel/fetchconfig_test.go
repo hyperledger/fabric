@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/peer/common"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFetchChain(t *testing.T) {
@@ -46,10 +47,7 @@ func TestFetchChain(t *testing.T) {
 	args := []string{"-c", mockchain}
 	cmd.SetArgs(args)
 
-	if err := cmd.Execute(); err != nil {
-		t.Fail()
-		t.Errorf("expected join command to succeed")
-	}
+	assert.NoError(t, cmd.Execute(), "Join command expected to succeed")
 
 	os.Remove(mockchain + ".block")
 
@@ -61,14 +59,11 @@ func TestFetchChain(t *testing.T) {
 	args = []string{"-c", mockchain}
 	cmd.SetArgs(args)
 
-	if err := cmd.Execute(); err != nil {
-		t.Fail()
-		t.Errorf("expected join command to succeed")
-	}
+	assert.NoError(t, cmd.Execute(), "Join command expected to succeed")
 
 	if _, err := os.Stat(mockchain + ".block"); os.IsNotExist(err) {
 		// path/to/whatever does not exist
-		t.Fail()
 		t.Error("expected configuration block to be fetched")
+		t.Fail()
 	}
 }

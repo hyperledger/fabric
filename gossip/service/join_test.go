@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	api2 "github.com/hyperledger/fabric/common/configvalues"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -100,8 +100,8 @@ func (*configMock) ChainID() string {
 	return "A"
 }
 
-func (*configMock) Organizations() map[string]api2.ApplicationOrg {
-	return map[string]api2.ApplicationOrg{
+func (*configMock) Organizations() map[string]config.ApplicationOrg {
+	return map[string]config.ApplicationOrg{
 		"Org0": &appOrgMock{},
 	}
 }

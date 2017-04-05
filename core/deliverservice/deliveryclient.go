@@ -18,16 +18,16 @@ package deliverclient
 
 import (
 	"errors"
+	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
-	"fmt"
-
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
-	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -96,43 +96,47 @@ type deliverServiceImpl struct {
 	stopping bool
 
 	conn *grpc.ClientConn
+
+	mcs api.MessageCryptoService
 }
 
 // NewDeliverService construction function to create and initialize
 // delivery service instance. It tries to establish connection to
 // the specified in the configuration ordering service, in case it
 // fails to dial to it, return nil
-func NewDeliverService(gossip blocksprovider.GossipServiceAdapter) (DeliverService, error) {
-	// TODO: Has to be fixed as ordering service configuration is part of the part of configuration block
-	endpoint := viper.GetString("peer.committer.ledger.orderer")
-	logger.Infof("Creating delivery service to get blocks from the ordering service, %s", endpoint)
+func NewDeliverService(gossip blocksprovider.GossipServiceAdapter, endpoints []string, mcs api.MessageCryptoService) (DeliverService, error) {
+	indices := rand.Perm(len(endpoints))
+	for _, idx := range indices {
+		logger.Infof("Creating delivery service to get blocks from the ordering service, %s", endpoints[idx])
 
-	dialOpts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithTimeout(3 * time.Second), grpc.WithBlock()}
+		dialOpts := []grpc.DialOption{grpc.WithTimeout(3 * time.Second), grpc.WithBlock()}
 
-	if comm.TLSEnabled() {
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.InitTLSForPeer()))
-	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		if comm.TLSEnabled() {
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCASupport().GetDeliverServiceCredentials()))
+		} else {
+			dialOpts = append(dialOpts, grpc.WithInsecure())
+		}
+		grpc.EnableTracing = true
+		conn, err := grpc.Dial(endpoints[idx], dialOpts...)
+		if err != nil {
+			logger.Errorf("Cannot dial to %s, because of %s", endpoints[idx], err)
+			continue
+		}
+		return NewFactoryDeliverService(gossip, &blocksDelivererFactoryImpl{conn}, conn, mcs), nil
 	}
-
-	conn, err := grpc.Dial(endpoint, dialOpts...)
-	if err != nil {
-		logger.Errorf("Cannot dial to %s, because of %s", endpoint, err)
-		return nil, err
-	}
-
-	return NewFactoryDeliverService(gossip, &blocksDelivererFactoryImpl{conn}, conn), nil
+	return nil, fmt.Errorf("Wasn't able to connect to any of ordering service endpoints %s", endpoints)
 }
 
 // NewFactoryDeliverService construction function to create and initialize
 // delivery service instance, with gossip service adapter and customized
 // factory to create blocks deliverers.
-func NewFactoryDeliverService(gossip blocksprovider.GossipServiceAdapter, factory BlocksDelivererFactory, conn *grpc.ClientConn) DeliverService {
+func NewFactoryDeliverService(gossip blocksprovider.GossipServiceAdapter, factory BlocksDelivererFactory, conn *grpc.ClientConn, mcs api.MessageCryptoService) DeliverService {
 	return &deliverServiceImpl{
 		clientsFactory: factory,
 		gossip:         gossip,
 		clients:        make(map[string]blocksprovider.BlocksProvider),
 		conn:           conn,
+		mcs:            mcs,
 	}
 }
 
@@ -159,7 +163,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 			return err
 		}
 		logger.Debug("This peer will pass blocks from orderer service to other peers")
-		d.clients[chainID] = blocksprovider.NewBlocksProvider(chainID, abc, d.gossip)
+		d.clients[chainID] = blocksprovider.NewBlocksProvider(chainID, abc, d.gossip, d.mcs)
 
 		if err := d.clients[chainID].RequestBlocks(ledgerInfo); err == nil {
 			// Start reading blocks from ordering service in case this peer is a leader for specified chain

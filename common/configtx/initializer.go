@@ -20,19 +20,19 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/config"
+	configtxmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx/api"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
-	configtxmsp "github.com/hyperledger/fabric/common/configvalues/msp"
-	configvaluesroot "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 )
 
 type resources struct {
 	policyManager    *policies.ManagerImpl
-	configRoot       *configvaluesroot.Root
+	configRoot       *config.Root
 	mspConfigHandler *configtxmsp.MSPConfigHandler
 }
 
@@ -42,17 +42,17 @@ func (r *resources) PolicyManager() policies.Manager {
 }
 
 // ChannelConfig returns the api.ChannelConfig for the chain
-func (r *resources) ChannelConfig() configvalueschannel.ConfigReader {
+func (r *resources) ChannelConfig() config.Channel {
 	return r.configRoot.Channel()
 }
 
 // OrdererConfig returns the api.OrdererConfig for the chain
-func (r *resources) OrdererConfig() configvaluesapi.Orderer {
+func (r *resources) OrdererConfig() config.Orderer {
 	return r.configRoot.Orderer()
 }
 
 // ApplicationConfig returns the api.ApplicationConfig for the chain
-func (r *resources) ApplicationConfig() configvaluesapi.Application {
+func (r *resources) ApplicationConfig() config.Application {
 	return r.configRoot.Application()
 }
 
@@ -62,7 +62,7 @@ func (r *resources) MSPManager() msp.MSPManager {
 }
 
 func newResources() *resources {
-	mspConfigHandler := &configtxmsp.MSPConfigHandler{}
+	mspConfigHandler := configtxmsp.NewMSPConfigHandler()
 
 	policyProviderMap := make(map[int32]policies.Provider)
 	for pType := range cb.Policy_PolicyType_name {
@@ -79,7 +79,7 @@ func newResources() *resources {
 
 	return &resources{
 		policyManager:    policies.NewManagerImpl(RootGroupKey, policyProviderMap),
-		configRoot:       configvaluesroot.NewRoot(mspConfigHandler),
+		configRoot:       config.NewRoot(mspConfigHandler),
 		mspConfigHandler: mspConfigHandler,
 	}
 }
@@ -89,27 +89,27 @@ type policyProposerRoot struct {
 }
 
 // BeginPolicyProposals is used to start a new config proposal
-func (p *policyProposerRoot) BeginPolicyProposals(groups []string) ([]policies.Proposer, error) {
+func (p *policyProposerRoot) BeginPolicyProposals(tx interface{}, groups []string) ([]policies.Proposer, error) {
 	if len(groups) != 1 {
 		logger.Panicf("Initializer only supports having one root group")
 	}
 	return []policies.Proposer{p.policyManager}, nil
 }
 
-func (i *policyProposerRoot) ProposePolicy(key string, policy *cb.ConfigPolicy) error {
-	return fmt.Errorf("Programming error, this should never be invoked")
+func (i *policyProposerRoot) ProposePolicy(tx interface{}, key string, policy *cb.ConfigPolicy) (proto.Message, error) {
+	return nil, fmt.Errorf("Programming error, this should never be invoked")
 }
 
 // PreCommit is a no-op and returns nil
-func (i *policyProposerRoot) PreCommit() error {
+func (i *policyProposerRoot) PreCommit(tx interface{}) error {
 	return nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
-func (i *policyProposerRoot) RollbackProposals() {}
+func (i *policyProposerRoot) RollbackProposals(tx interface{}) {}
 
 // CommitConfig is used to commit a new config proposal
-func (i *policyProposerRoot) CommitProposals() {}
+func (i *policyProposerRoot) CommitProposals(tx interface{}) {}
 
 type initializer struct {
 	*resources
@@ -131,6 +131,6 @@ func (i *initializer) PolicyProposer() policies.Proposer {
 	return i.ppr
 }
 
-func (i *initializer) ValueProposer() configvaluesapi.ValueProposer {
+func (i *initializer) ValueProposer() config.ValueProposer {
 	return i.resources.configRoot
 }

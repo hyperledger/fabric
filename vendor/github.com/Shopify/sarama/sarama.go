@@ -25,24 +25,41 @@ Metrics are exposed through https://github.com/rcrowley/go-metrics library in a 
 
 Broker related metrics:
 
-	+------------------------------------------------+------------+---------------------------------------------------------------+
-	| Name                                           | Type       | Description                                                   |
-	+------------------------------------------------+------------+---------------------------------------------------------------+
-	| incoming-byte-rate                             | meter      | Bytes/second read off all brokers                             |
-	| incoming-byte-rate-for-broker-<broker-id>      | meter      | Bytes/second read off a given broker                          |
-	| outgoing-byte-rate                             | meter      | Bytes/second written off all brokers                          |
-	| outgoing-byte-rate-for-broker-<broker-id>      | meter      | Bytes/second written off a given broker                       |
-	| request-rate                                   | meter      | Requests/second sent to all brokers                           |
-	| request-rate-for-broker-<broker-id>            | meter      | Requests/second sent to a given broker                        |
-	| histogram request-size                         | histogram  | Distribution of the request size in bytes for all brokers     |
-	| histogram request-size-for-broker-<broker-id>  | histogram  | Distribution of the request size in bytes for a given broker  |
-	| response-rate                                  | meter      | Responses/second received from all brokers                    |
-	| response-rate-for-broker-<broker-id>           | meter      | Responses/second received from a given broker                 |
-	| histogram response-size                        | histogram  | Distribution of the response size in bytes for all brokers    |
-	| histogram response-size-for-broker-<broker-id> | histogram  | Distribution of the response size in bytes for a given broker |
-	+------------------------------------------------+------------+---------------------------------------------------------------+
+	+----------------------------------------------+------------+---------------------------------------------------------------+
+	| Name                                         | Type       | Description                                                   |
+	+----------------------------------------------+------------+---------------------------------------------------------------+
+	| incoming-byte-rate                           | meter      | Bytes/second read off all brokers                             |
+	| incoming-byte-rate-for-broker-<broker-id>    | meter      | Bytes/second read off a given broker                          |
+	| outgoing-byte-rate                           | meter      | Bytes/second written off all brokers                          |
+	| outgoing-byte-rate-for-broker-<broker-id>    | meter      | Bytes/second written off a given broker                       |
+	| request-rate                                 | meter      | Requests/second sent to all brokers                           |
+	| request-rate-for-broker-<broker-id>          | meter      | Requests/second sent to a given broker                        |
+	| request-size                                 | histogram  | Distribution of the request size in bytes for all brokers     |
+	| request-size-for-broker-<broker-id>          | histogram  | Distribution of the request size in bytes for a given broker  |
+	| request-latency-in-ms                        | histogram  | Distribution of the request latency in ms for all brokers     |
+	| request-latency-in-ms-for-broker-<broker-id> | histogram  | Distribution of the request latency in ms for a given broker  |
+	| response-rate                                | meter      | Responses/second received from all brokers                    |
+	| response-rate-for-broker-<broker-id>         | meter      | Responses/second received from a given broker                 |
+	| response-size                                | histogram  | Distribution of the response size in bytes for all brokers    |
+	| response-size-for-broker-<broker-id>         | histogram  | Distribution of the response size in bytes for a given broker |
+	+----------------------------------------------+------------+---------------------------------------------------------------+
 
 Note that we do not gather specific metrics for seed brokers but they are part of the "all brokers" metrics.
+
+Producer related metrics:
+
+	+-------------------------------------------+------------+--------------------------------------------------------------------------------------+
+	| Name                                      | Type       | Description                                                                          |
+	+-------------------------------------------+------------+--------------------------------------------------------------------------------------+
+	| batch-size                                | histogram  | Distribution of the number of bytes sent per partition per request for all topics    |
+	| batch-size-for-topic-<topic>              | histogram  | Distribution of the number of bytes sent per partition per request for a given topic |
+	| record-send-rate                          | meter      | Records/second sent to all topics                                                    |
+	| record-send-rate-for-topic-<topic>        | meter      | Records/second sent to a given topic                                                 |
+	| records-per-request                       | histogram  | Distribution of the number of records sent per request for all topics                |
+	| records-per-request-for-topic-<topic>     | histogram  | Distribution of the number of records sent per request for a given topic             |
+	| compression-ratio                         | histogram  | Distribution of the compression ratio times 100 of record batches for all topics     |
+	| compression-ratio-for-topic-<topic>       | histogram  | Distribution of the compression ratio times 100 of record batches for a given topic  |
+	+-------------------------------------------+------------+--------------------------------------------------------------------------------------+
 
 */
 package sarama

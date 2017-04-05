@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -39,22 +40,21 @@ func newDeliverClient(client ab.AtomicBroadcast_DeliverClient, chainID string) *
 }
 
 func seekHelper(chainID string, start *ab.SeekPosition) *common.Envelope {
-	return &common.Envelope{
-		Payload: utils.MarshalOrPanic(&common.Payload{
-			Header: &common.Header{
-				ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
-					ChannelId: chainID,
-				}),
-				SignatureHeader: utils.MarshalOrPanic(&common.SignatureHeader{}),
-			},
-
-			Data: utils.MarshalOrPanic(&ab.SeekInfo{
-				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
-				Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
-				Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
-			}),
-		}),
+	seekInfo := &ab.SeekInfo{
+		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
+		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 	}
+
+	//TODO- epoch and msgVersion may need to be obtained for nowfollowing usage in orderer/configupdate/configupdate.go
+	msgVersion := int32(0)
+	epoch := uint64(0)
+	env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch)
+	if err != nil {
+		fmt.Printf("Error signing envelope %s\n", err)
+		return nil
+	}
+	return env
 }
 
 func (r *deliverClient) seekOldest() error {

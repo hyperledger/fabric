@@ -1,0 +1,126 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+                 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/protos/msp";
+option java_package = "org.hyperledger.fabric.protos.common";
+
+package common;
+
+
+// msp_principal.proto contains proto messages defining the generalized
+// MSP notion of identity called an MSPPrincipal.  It is used as part of
+// the chain configuration, in particular as the identity parameters to
+// the configuration.proto file.  This does not represent the MSP
+// configuration for a chain, but is understood by MSPs
+
+// MSPPrincipal aims to represent an MSP-centric set of identities.
+// In particular, this structure allows for definition of
+//  - a group of identities that are member of the same MSP
+//  - a group of identities that are member of the same organization unit
+//    in the same MSP
+//  - a group of identities that are administering a specific MSP
+//  - a specific identity
+// Expressing these groups is done given two fields of the fields below
+//  - Classification, that defines the type of classification of identities
+//    in an MSP this principal would be defined on; Classification can take
+//    three values:
+//     (i)  ByMSPRole: that represents a classification of identities within
+//          MSP based on one of the two pre-defined MSP rules, "member" and "admin"
+//     (ii) ByOrganizationUnit: that represents a classification of identities
+//          within MSP based on the organization unit an identity belongs to
+//     (iii)ByIdentity that denotes that MSPPrincipal is mapped to a single
+//          identity/certificate; this would mean that the Principal bytes
+//          message
+message MSPPrincipal {
+
+    enum Classification {
+        ROLE = 0;  // Represents the one of the dedicated MSP roles, the
+        // one of a member of MSP network, and the one of an
+        // administrator of an MSP network
+        ORGANIZATION_UNIT = 1; // Denotes a finer grained (affiliation-based)
+        // groupping of entities, per MSP affiliation
+        // E.g., this can well be represented by an MSP's
+        // Organization unit
+        IDENTITY  = 2;    // Denotes a principal that consists of a single
+        // identity
+    }
+
+    // Classification describes the way that one should process
+    // Principal. An Classification value of "ByOrganizationUnit" reflects
+    // that "Principal" contains the name of an organization this MSP
+    // handles. A Classification value "ByIdentity" means that
+    // "Principal" contains a specific identity. Default value
+    // denotes that Principal contains one of the groups by
+    // default supported by all MSPs ("admin" or "member").
+    Classification principal_classification = 1;
+
+    // Principal completes the policy principal definition. For the default
+    // principal types, Principal can be either "Admin" or "Member".
+    // For the ByOrganizationUnit/ByIdentity values of Classification,
+    // PolicyPrincipal acquires its value from an organization unit or
+    // identity, respectively.
+    bytes principal = 2;
+}
+
+
+// OrganizationUnit governs the organization of the Principal
+// field of a policy principal when a specific organization unity members
+// are to be defined within a policy principal.
+message OrganizationUnit {
+
+    // MSPIdentifier represents the identifier of the MSP this organization unit
+    // refers to
+    string msp_identifier = 1;
+
+    // OrganizationUnitIdentifier defines the organizational unit under the
+    // MSP identified with MSPIdentifier
+    string organizational_unit_identifier = 2;
+
+    // CertifiersIdentifier is the hash of certificates chain of trust
+    // related to this organizational unit
+    bytes certifiers_identifier = 3;
+}
+
+// MSPRole governs the organization of the Principal
+// field of an MSPPrincipal when it aims to define one of the
+// two dedicated roles within an MSP: Admin and Members.
+message MSPRole {
+
+    // MSPIdentifier represents the identifier of the MSP this principal
+    // refers to
+    string msp_identifier = 1;
+
+    enum MSPRoleType {
+        MEMBER = 0; // Represents an MSP Member
+        ADMIN  = 1; // Represents an MSP Admin
+    }
+
+    // MSPRoleType defines which of the available, pre-defined MSP-roles
+    // an identiy should posess inside the MSP with identifier MSPidentifier
+    MSPRoleType role = 2;
+
+}
+
+
+// TODO: Bring msp.SerializedIdentity from fabric/msp/identities.proto here. Reason below.
+// SerializedIdentity represents an serialized version of an identity;
+// this consists of an MSP-identifier this identity would correspond to
+// and the bytes of the actual identity. A serialized form of
+// SerializedIdentity would govern "Principal" field of a PolicyPrincipal
+// of classification "ByIdentity".

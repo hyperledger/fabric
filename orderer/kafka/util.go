@@ -19,7 +19,6 @@ package kafka
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"strconv"
 
 	"github.com/Shopify/sarama"
@@ -37,13 +36,13 @@ func newBrokerConfig(kafkaVersion sarama.KafkaVersion, chosenStaticPartition int
 		// create public/private key pair structure
 		keyPair, err := tls.X509KeyPair([]byte(tlsConfig.Certificate), []byte(tlsConfig.PrivateKey))
 		if err != nil {
-			panic(fmt.Errorf("Unable to decode public/private key pair. Error: %v", err))
+			logger.Panicf("Unable to decode public/private key pair: %s", err)
 		}
 		// create root CA pool
 		rootCAs := x509.NewCertPool()
 		for _, certificate := range tlsConfig.RootCAs {
 			if !rootCAs.AppendCertsFromPEM([]byte(certificate)) {
-				panic(fmt.Errorf("Unable to decode certificate. Error: %v", err))
+				logger.Panic("Unable to parse the root certificate authority certificates (Kafka.Tls.RootCAs)")
 			}
 		}
 		brokerConfig.Net.TLS.Config = &tls.Config{
@@ -54,16 +53,19 @@ func newBrokerConfig(kafkaVersion sarama.KafkaVersion, chosenStaticPartition int
 		}
 	}
 
+	// Set equivalent of Kafka producer config max.request.bytes to the default
+	// value of a Kafka broker's socket.request.max.bytes property (100 MiB).
+	brokerConfig.Producer.MaxMessageBytes = int(sarama.MaxRequestSize)
+	// A partitioner is actually not needed the way we do things now,
+	// but we're adding it now to allow for flexibility in the future.
+	brokerConfig.Producer.Partitioner = newStaticPartitioner(chosenStaticPartition)
 	// Set the level of acknowledgement reliability needed from the broker.
 	// WaitForAll means that the partition leader will wait till all ISRs
 	// got the message before sending back an ACK to the sender.
 	brokerConfig.Producer.RequiredAcks = sarama.WaitForAll
-	// A partitioner is actually not needed the way we do things now,
-	// but we're adding it now to allow for flexibility in the future.
-	brokerConfig.Producer.Partitioner = newStaticPartitioner(chosenStaticPartition)
-	// Set equivalent of Kafka producer config max.request.bytes to the default
-	// value of a Kafka broker's socket.request.max.bytes property (100 MiB).
-	brokerConfig.Producer.MaxMessageBytes = int(sarama.MaxRequestSize)
+	// An esoteric setting required by the sarama library, see:
+	// https://github.com/Shopify/sarama/issues/816
+	brokerConfig.Producer.Return.Successes = true
 
 	brokerConfig.Version = kafkaVersion
 

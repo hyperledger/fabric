@@ -18,11 +18,13 @@
 #
 #   - all (default) - builds all targets and runs all tests/checks
 #   - checks - runs all tests/checks
+#   - configtxgen - builds a native configtxgen binary
 #   - peer - builds a native fabric peer binary
 #   - orderer - builds a native fabric orderer binary
 #   - unit-test - runs the go-test based unit tests
+#   - test-cmd - generates a "go test" string suitable for manual customization
 #   - behave - runs the behave test
-#   - behave-deps - ensures pre-requisites are availble for running behave manually
+#   - behave-deps - ensures pre-requisites are available for running behave manually
 #   - gotools - installs go tools like golint
 #   - linter - runs all code checks
 #   - native - ensures all native binaries are available
@@ -32,9 +34,10 @@
 #   - protos - generate all protobuf artifacts based on .proto files
 #   - clean - cleans the build area
 #   - dist-clean - superset of 'clean' that also removes persistent state
+#   - unit-test-clean - cleans unit test state (particularly from docker)
 
 PROJECT_NAME   = hyperledger/fabric
-BASE_VERSION   = 0.7.0
+BASE_VERSION   = 1.0.0
 IS_RELEASE     = false
 
 ifneq ($(IS_RELEASE),true)
@@ -54,8 +57,12 @@ BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 METADATA_VAR = Version=$(PROJECT_VERSION)
 METADATA_VAR += BaseVersion=$(BASEIMAGE_RELEASE)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
+METADATA_VAR += DockerNamespace=$(DOCKER_NS)
+METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
 
 GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
+
+GO_TAGS ?=
 
 CHAINTOOL_URL ?= https://github.com/hyperledger/fabric-chaintool/releases/download/$(CHAINTOOL_RELEASE)/chaintool
 
@@ -104,6 +111,7 @@ orderer: build/bin/orderer
 orderer-docker: build/image/orderer/$(DUMMY)
 
 .PHONY: configtxgen
+configtxgen: GO_TAGS+= nopkcs11
 configtxgen: build/bin/configtxgen
 
 buildenv: build/image/buildenv/$(DUMMY)
@@ -113,10 +121,14 @@ testenv: build/image/testenv/$(DUMMY)
 
 couchdb: build/image/couchdb/$(DUMMY)
 
-unit-test: peer-docker testenv couchdb
+unit-test: unit-test-clean peer-docker testenv couchdb
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
+
+# Generates a string to the terminal suitable for manual augmentation / re-issue, useful for running tests by hand
+test-cmd:
+	@echo "go test -ldflags \"$(GO_LDFLAGS)\""
 
 docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 native: peer orderer
@@ -138,7 +150,7 @@ behave-peer-chaincode: build/bin/peer peer-docker orderer-docker
 
 linter: buildenv
 	@echo "LINT: Running code checks.."
-	@$(DRUN) hyperledger/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
+	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
 
 %/chaintool: Makefile
 	@echo "Installing chaintool"
@@ -155,7 +167,7 @@ build/docker/bin/%: $(PROJECT_FILES)
 	@$(DRUN) \
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/$(TARGET)/pkg):/opt/gopath/pkg \
-		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
+		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		go install -ldflags "$(DOCKER_GO_LDFLAGS)" $(pkgmap.$(@F))
 	@touch $@
 
@@ -169,7 +181,7 @@ build/docker/gotools: gotools/Makefile
 	@$(DRUN) \
 		-v $(abspath $@):/opt/gotools \
 		-w /opt/gopath/src/$(PKGNAME)/gotools \
-		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
+		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		make install BINDIR=/opt/gotools/bin OBJDIR=/opt/gotools/obj
 
 # Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports).
@@ -179,7 +191,7 @@ build/image/peer/$(DUMMY): build/image/ccenv/$(DUMMY) build/image/javaenv/$(DUMM
 build/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
 	@echo "$@"
-	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
+	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 	@echo "Binary available as $@"
 	@touch $@
 
@@ -222,6 +234,8 @@ build/image/%/payload:
 
 build/image/%/Dockerfile: images/%/Dockerfile.in
 	@cat $< \
+		| sed -e 's/_BASE_NS_/$(BASE_DOCKER_NS)/g' \
+		| sed -e 's/_NS_/$(DOCKER_NS)/g' \
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $@
@@ -231,8 +245,8 @@ build/image/%/Dockerfile: images/%/Dockerfile.in
 build/image/%/$(DUMMY): Makefile build/image/%/payload build/image/%/Dockerfile
 	$(eval TARGET = ${patsubst build/image/%/$(DUMMY),%,${@}})
 	@echo "Building docker $(TARGET)-image"
-	$(DBUILD) -t $(PROJECT_NAME)-$(TARGET) $(@D)
-	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
+	$(DBUILD) -t $(DOCKER_NS)/fabric-$(TARGET) $(@D)
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
 build/gotools.tar.bz2: build/docker/gotools
@@ -252,19 +266,23 @@ build/%.tar.bz2:
 
 .PHONY: protos
 protos: buildenv
-	@$(DRUN) hyperledger/fabric-buildenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
+	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
 
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
-	-docker images -q $(PROJECT_NAME)-$(TARGET) | xargs -I '{}' docker rmi -f '{}'
+	-docker images -q $(DOCKER_NS)/fabric-$(TARGET) | xargs -I '{}' docker rmi -f '{}'
 	-@rm -rf build/image/$(TARGET) ||:
 
 docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
 
 .PHONY: clean
-clean: docker-clean
+clean: docker-clean unit-test-clean
 	-@rm -rf build ||:
 
 .PHONY: dist-clean
 dist-clean: clean gotools-clean
 	-@rm -rf /var/hyperledger/* ||:
+
+.PHONY: unit-test-clean
+unit-test-clean:
+	cd unit-test && docker-compose down

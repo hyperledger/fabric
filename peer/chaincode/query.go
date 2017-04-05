@@ -47,12 +47,11 @@ func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 func chaincodeQuery(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory()
+		cf, err = InitCmdFactory(false)
 		if err != nil {
 			return err
 		}
 	}
-	defer cf.BroadcastClient.Close()
 
 	return chaincodeInvokeOrQuery(cmd, args, false, cf)
 }

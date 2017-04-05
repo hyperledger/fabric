@@ -19,9 +19,9 @@ package multichain
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
-	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -89,8 +89,8 @@ func (mlw *mockLedgerWriter) Append(blockContents []*cb.Envelope, metadata [][]b
 
 func makeConfigTx(chainID string, i int) *cb.Envelope {
 	group := cb.NewConfigGroup()
-	group.Groups[configtxorderer.GroupKey] = cb.NewConfigGroup()
-	group.Groups[configtxorderer.GroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
+	group.Groups[config.OrdererGroupKey] = cb.NewConfigGroup()
+	group.Groups[config.OrdererGroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
 		Value: []byte(fmt.Sprintf("%d", i)),
 	}
 	configTemplate := configtx.NewSimpleTemplate(group)
@@ -115,7 +115,7 @@ func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.Co
 		panic(err)
 	}
 	configTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
-		Config:     &cb.Config{Header: &cb.ChannelHeader{ChannelId: chainID}, Channel: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
+		Config:     &cb.Config{ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
 		LastUpdate: configUpdateTx},
 		msgVersion, epoch)
 	if err != nil {

@@ -21,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util"
@@ -137,19 +137,19 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 			}
 
 			//preparation for extracting RWSet from transaction
-			txRWSet := &rwset.TxReadWriteSet{}
+			txRWSet := &rwsetutil.TxRwSet{}
 
 			// Get the Result from the Action and then Unmarshal
 			// it into a TxReadWriteSet using custom unmarshalling
-			if err = txRWSet.Unmarshal(respPayload.Results); err != nil {
+			if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
 				return err
 			}
 			// for each transaction, loop through the namespaces and writesets
 			// and add a history record for each write
-			for _, nsRWSet := range txRWSet.NsRWs {
+			for _, nsRWSet := range txRWSet.NsRwSets {
 				ns := nsRWSet.NameSpace
 
-				for _, kvWrite := range nsRWSet.Writes {
+				for _, kvWrite := range nsRWSet.KvRwSet.Writes {
 					writeKey := kvWrite.Key
 
 					//composite key for history records is in the form ns~key~blockNo~tranNo

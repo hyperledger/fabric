@@ -75,14 +75,6 @@ type VersionedKV struct {
 	VersionedValue
 }
 
-// VersionedQueryRecord encloses a query record
-type VersionedQueryRecord struct {
-	Namespace string
-	Key       string
-	Version   *version.Height
-	Record    []byte
-}
-
 // ResultsIterator hepls in iterates over query results
 type ResultsIterator interface {
 	Next() (QueryResult, error)

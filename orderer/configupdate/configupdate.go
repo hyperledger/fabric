@@ -136,8 +136,7 @@ func createInitialConfig(envConfigUpdate *cb.Envelope) (*cb.ConfigEnvelope, erro
 
 	return &cb.ConfigEnvelope{
 		Config: &cb.Config{
-			Header:  configUpdate.Header,
-			Channel: configUpdate.WriteSet,
+			ChannelGroup: configUpdate.WriteSet,
 		},
 
 		LastUpdate: envConfigUpdate,

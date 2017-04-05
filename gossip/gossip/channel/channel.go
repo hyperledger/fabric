@@ -102,9 +102,6 @@ type Adapter interface {
 	// hasn't been signed correctly, nil otherwise.
 	ValidateStateInfoMessage(message *proto.SignedGossipMessage) error
 
-	// OrgByPeerIdentity returns the organization ID of a given peer identity
-	OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType
-
 	// GetOrgOfPeer returns the organization ID of a given peer PKI-ID
 	GetOrgOfPeer(pkiID common.PKIidType) api.OrgIdentityType
 
@@ -239,7 +236,7 @@ func (gc *gossipChannel) publishStateInfo() {
 
 func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 	conf := pull.PullConfig{
-		MsgType:           proto.PullMsgType_BlockMessage,
+		MsgType:           proto.PullMsgType_BLOCK_MSG,
 		Channel:           []byte(gc.chainID),
 		ID:                gc.GetConf().ID,
 		PeerCountToSelect: gc.GetConf().PullPeerNum,
@@ -327,6 +324,11 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 	gc.Lock()
 	defer gc.Unlock()
 
+	if len(joinMsg.Members()) == 0 {
+		gc.logger.Warning("Received join channel message with empty set of members")
+		return
+	}
+
 	if gc.joinMsg == nil {
 		gc.joinMsg = joinMsg
 	}
@@ -335,16 +337,8 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 		gc.logger.Warning("Already have a more updated JoinChannel message(", gc.joinMsg.SequenceNumber(), ") than", gc.joinMsg.SequenceNumber())
 		return
 	}
-	orgs := []api.OrgIdentityType{}
-	existingOrgInJoinChanMsg := make(map[string]struct{})
-	for _, anchorPeer := range joinMsg.AnchorPeers() {
-		orgID := anchorPeer.OrgID
-		if _, exists := existingOrgInJoinChanMsg[string(orgID)]; !exists {
-			orgs = append(orgs, orgID)
-			existingOrgInJoinChanMsg[string(orgID)] = struct{}{}
-		}
-	}
-	gc.orgs = orgs
+
+	gc.orgs = joinMsg.Members()
 	gc.joinMsg = joinMsg
 }
 
@@ -409,7 +403,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		}
 		return
 	}
-	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BlockMessage {
+	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BLOCK_MSG {
 		if !gc.EligibleForChannel(discovery.NetworkMember{PKIid: msg.GetConnectionInfo().ID}) {
 			gc.logger.Warning(msg.GetConnectionInfo().ID, "isn't eligible for channel", gc.chainID)
 			return
@@ -454,14 +448,14 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 			return
 		}
 
-		orgID := gc.GetOrgOfPeer(stateInf.GetStateInfo().PkiID)
+		orgID := gc.GetOrgOfPeer(stateInf.GetStateInfo().PkiId)
 		if orgID == nil {
-			gc.logger.Warning("Couldn't find org identity of peer", stateInf.GetStateInfo().PkiID, "message sent from", sender)
+			gc.logger.Warning("Couldn't find org identity of peer", stateInf.GetStateInfo().PkiId, "message sent from", sender)
 			return
 		}
 
 		if !gc.IsOrgInChannel(orgID) {
-			gc.logger.Warning("Peer", stateInf.GetStateInfo().PkiID, "is not in an eligible org, can't process a stateInfo from it, sent from", sender)
+			gc.logger.Warning("Peer", stateInf.GetStateInfo().PkiId, "is not in an eligible org, can't process a stateInfo from it, sent from", sender)
 			return
 		}
 
@@ -487,7 +481,7 @@ func (gc *gossipChannel) verifyBlock(msg *proto.GossipMessage, sender common.PKI
 		gc.logger.Warning("Received empty payload from", sender)
 		return false
 	}
-	err := gc.mcs.VerifyBlock(msg.Channel, msg.GetDataMsg().Payload)
+	err := gc.mcs.VerifyBlock(msg.Channel, msg.GetDataMsg().Payload.Data)
 	if err != nil {
 		gc.logger.Warning("Received fabricated block from", sender, "in DataUpdate:", err)
 		return false
@@ -584,9 +578,9 @@ type stateInfoCache struct {
 // Add attempts to add the given message to the stateInfoCache,
 // and if the message was added, also indexes it.
 // Message must be a StateInfo message.
-func (cache stateInfoCache) Add(msg *proto.SignedGossipMessage) bool {
+func (cache *stateInfoCache) Add(msg *proto.SignedGossipMessage) bool {
 	added := cache.MessageStore.Add(msg)
-	pkiID := msg.GetStateInfo().PkiID
+	pkiID := msg.GetStateInfo().PkiId
 	if added {
 		cache.MembershipStore.Put(pkiID, msg)
 	}

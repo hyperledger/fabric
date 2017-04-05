@@ -88,7 +88,7 @@ func chaincodeInstall(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory()
+		cf, err = InitCmdFactory(false)
 		if err != nil {
 			return err
 		}

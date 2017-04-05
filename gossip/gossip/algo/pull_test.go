@@ -17,6 +17,7 @@ limitations under the License.
 package algo
 
 import (
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -500,6 +502,38 @@ func TestSpread(t *testing.T) {
 	}
 	lock.Unlock()
 
+}
+
+func TestDefaultConfig(t *testing.T) {
+	preDigestWaitTime := util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime)
+	preRequestWaitTime := util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime)
+	preResponseWaitTime := util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime)
+	defer func() {
+		SetDigestWaitTime(preDigestWaitTime)
+		SetRequestWaitTime(preRequestWaitTime)
+		SetResponseWaitTime(preResponseWaitTime)
+	}()
+
+	// Check if we can read default duration when no properties are
+	// defined in config file.
+	viper.Reset()
+	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime))
+	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
+	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
+
+	// Check if the properties in the config file (peer/core.yaml)
+	// are set to the desired duration.
+	viper.Reset()
+	viper.SetConfigName("core")
+	viper.SetEnvPrefix("CORE")
+	viper.AddConfigPath("./../../../peer")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
+	assert.NoError(t, err)
+	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime))
+	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
+	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
 }
 
 func Strcmp(a interface{}, b interface{}) bool {

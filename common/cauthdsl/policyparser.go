@@ -24,6 +24,7 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -138,17 +139,17 @@ func secondPass(args ...interface{}) (interface{}, error) {
 			}
 
 			/* get the right role */
-			var r common.MSPRole_MSPRoleType
+			var r msp.MSPRole_MSPRoleType
 			if subm[0][3] == "member" {
-				r = common.MSPRole_MEMBER
+				r = msp.MSPRole_MEMBER
 			} else {
-				r = common.MSPRole_ADMIN
+				r = msp.MSPRole_ADMIN
 			}
 
 			/* build the principal we've been told */
-			p := &common.MSPPrincipal{
-				PrincipalClassification: common.MSPPrincipal_ROLE,
-				Principal:               utils.MarshalOrPanic(&common.MSPRole{MspIdentifier: subm[0][1], Role: r})}
+			p := &msp.MSPPrincipal{
+				PrincipalClassification: msp.MSPPrincipal_ROLE,
+				Principal:               utils.MarshalOrPanic(&msp.MSPRole{MspIdentifier: subm[0][1], Role: r})}
 			ctx.principals = append(ctx.principals, p)
 
 			/* create a SignaturePolicy that requires a signature from
@@ -177,11 +178,11 @@ func secondPass(args ...interface{}) (interface{}, error) {
 
 type context struct {
 	IDNum      int
-	principals []*common.MSPPrincipal
+	principals []*msp.MSPPrincipal
 }
 
 func newContext() *context {
-	return &context{IDNum: 0, principals: make([]*common.MSPPrincipal, 0)}
+	return &context{IDNum: 0, principals: make([]*msp.MSPPrincipal, 0)}
 }
 
 // FromString takes a string representation of the policy,

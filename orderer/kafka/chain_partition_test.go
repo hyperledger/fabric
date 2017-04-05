@@ -27,7 +27,7 @@ import (
 func TestChainPartition(t *testing.T) {
 	cp := newChainPartition(provisional.TestChainID, rawPartition)
 
-	expectedTopic := fmt.Sprintf("%x", provisional.TestChainID)
+	expectedTopic := fmt.Sprintf("%s", provisional.TestChainID)
 	actualTopic := cp.Topic()
 	if strings.Compare(expectedTopic, actualTopic) != 0 {
 		t.Fatalf("Got the wrong topic, expected %s, got %s instead", expectedTopic, actualTopic)

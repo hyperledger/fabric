@@ -35,6 +35,8 @@ type SharedConfig struct {
 	IngressPolicyNamesVal []string
 	// EgressPolicyNamesVal is returned as the result of EgressPolicyNames()
 	EgressPolicyNamesVal []string
+	// MaxChannelsCountVal is returns as the result of MaxChannelsCount()
+	MaxChannelsCountVal uint64
 }
 
 // ConsensusType returns the ConsensusTypeVal
@@ -60,6 +62,11 @@ func (scm *SharedConfig) ChainCreationPolicyNames() []string {
 // KafkaBrokers returns the KafkaBrokersVal
 func (scm *SharedConfig) KafkaBrokers() []string {
 	return scm.KafkaBrokersVal
+}
+
+// MaxChannelsCount returns the MaxChannelsCountVal
+func (scm *SharedConfig) MaxChannelsCount() uint64 {
+	return scm.MaxChannelsCountVal
 }
 
 // IngressPolicyNames returns the IngressPolicyNamesVal

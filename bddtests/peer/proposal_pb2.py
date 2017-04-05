@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/proposal.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x13peer/proposal.proto\x12\x06protos\x1a\x14peer/chaincode.proto\x1a\x1cpeer/proposal_response.proto\";\n\x0eSignedProposal\x12\x16\n\x0eproposal_bytes\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\">\n\x08Proposal\x12\x0e\n\x06header\x18\x01 \x01(\x0c\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\x12\x11\n\textension\x18\x03 \x01(\x0c\"a\n\x18\x43haincodeHeaderExtension\x12\x1a\n\x12payload_visibility\x18\x01 \x01(\x0c\x12)\n\x0c\x63haincode_id\x18\x02 \x01(\x0b\x32\x13.protos.ChaincodeID\"\xa8\x01\n\x18\x43haincodeProposalPayload\x12\r\n\x05input\x18\x01 \x01(\x0c\x12H\n\x0cTransientMap\x18\x02 \x03(\x0b\x32\x32.protos.ChaincodeProposalPayload.TransientMapEntry\x1a\x33\n\x11TransientMapEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"V\n\x0f\x43haincodeAction\x12\x0f\n\x07results\x18\x01 \x01(\x0c\x12\x0e\n\x06\x65vents\x18\x02 \x01(\x0c\x12\"\n\x08response\x18\x03 \x01(\x0b\x32\x10.protos.ResponseB+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x13peer/proposal.proto\x12\x06protos\x1a\x14peer/chaincode.proto\x1a\x1cpeer/proposal_response.proto\";\n\x0eSignedProposal\x12\x16\n\x0eproposal_bytes\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\">\n\x08Proposal\x12\x0e\n\x06header\x18\x01 \x01(\x0c\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\x12\x11\n\textension\x18\x03 \x01(\x0c\"a\n\x18\x43haincodeHeaderExtension\x12\x1a\n\x12payload_visibility\x18\x01 \x01(\x0c\x12)\n\x0c\x63haincode_id\x18\x02 \x01(\x0b\x32\x13.protos.ChaincodeID\"\xa8\x01\n\x18\x43haincodeProposalPayload\x12\r\n\x05input\x18\x01 \x01(\x0c\x12H\n\x0cTransientMap\x18\x02 \x03(\x0b\x32\x32.protos.ChaincodeProposalPayload.TransientMapEntry\x1a\x33\n\x11TransientMapEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"V\n\x0f\x43haincodeAction\x12\x0f\n\x07results\x18\x01 \x01(\x0c\x12\x0e\n\x06\x65vents\x18\x02 \x01(\x0c\x12\"\n\x08response\x18\x03 \x01(\x0b\x32\x10.protos.ResponseB`\n\"org.hyperledger.fabric.protos.peerB\x0fProposalPackageZ)github.com/hyperledger/fabric/protos/peerb\x06proto3')
   ,
   dependencies=[peer_dot_chaincode__pb2.DESCRIPTOR,peer_dot_proposal__response__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -324,7 +324,7 @@ _sym_db.RegisterMessage(ChaincodeAction)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z)github.com/hyperledger/fabric/protos/peer'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n\"org.hyperledger.fabric.protos.peerB\017ProposalPackageZ)github.com/hyperledger/fabric/protos/peer'))
 _CHAINCODEPROPOSALPAYLOAD_TRANSIENTMAPENTRY.has_options = True
 _CHAINCODEPROPOSALPAYLOAD_TRANSIENTMAPENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
 try:

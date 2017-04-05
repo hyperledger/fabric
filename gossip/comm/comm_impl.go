@@ -115,6 +115,10 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		proto.RegisterGossipServer(s, commInst)
 	}
 
+	if viper.GetBool("peer.gossip.skipHandshake") {
+		commInst.skipHandshake = true
+	}
+
 	return commInst, nil
 }
 
@@ -140,6 +144,7 @@ func NewCommInstance(s *grpc.Server, cert *tls.Certificate, idStore identity.Map
 }
 
 type commImpl struct {
+	skipHandshake     bool
 	selfCertHash      []byte
 	peerIdentity      api.PeerIdentityType
 	idMapper          identity.Mapper
@@ -192,6 +197,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			if expectedPKIID != nil && !bytes.Equal(pkiID, expectedPKIID) {
 				// PKIID is nil when we don't know the remote PKI id's
 				c.logger.Warning("Remote endpoint claims to be a different peer, expected", expectedPKIID, "but got", pkiID)
+				cc.Close()
 				return nil, errors.New("Authentication failure")
 			}
 			conn := newConnection(cl, cc, stream, nil)
@@ -296,6 +302,32 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	return err
 }
 
+func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, error) {
+	cc, err := grpc.Dial(remotePeer.Endpoint, append(c.opts, grpc.WithBlock())...)
+	if err != nil {
+		return nil, err
+	}
+	defer cc.Close()
+
+	cl := proto.NewGossipClient(cc)
+	if _, err = cl.Ping(context.Background(), &proto.Empty{}); err != nil {
+		return nil, err
+	}
+
+	stream, err := cl.GossipStream(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	connInfo, err := c.authenticateRemotePeer(stream)
+	if err != nil {
+		return nil, err
+	}
+	if len(remotePeer.PKIID) > 0 && !bytes.Equal(connInfo.ID, remotePeer.PKIID) {
+		return nil, errors.New("PKI-ID of remote peer doesn't match expected PKI-ID")
+	}
+	return connInfo.Identity, nil
+}
+
 func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan proto.ReceivedMessage {
 	genericChan := c.msgPublisher.AddChannel(acceptor)
 	specificChan := make(chan proto.ReceivedMessage, 10)
@@ -398,7 +430,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 
 	// If TLS is detected, sign the hash of our cert to bind our TLS cert
 	// to the gRPC session
-	if remoteCertHash != nil && c.selfCertHash != nil {
+	if remoteCertHash != nil && c.selfCertHash != nil && !c.skipHandshake {
 		signer = func(msg []byte) ([]byte, error) {
 			return c.idMapper.Sign(msg)
 		}
@@ -425,29 +457,29 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 		return nil, errors.New("Wrong type")
 	}
 
-	if receivedMsg.PkiID == nil {
+	if receivedMsg.PkiId == nil {
 		c.logger.Warning("%s didn't send a pkiID")
 		return nil, fmt.Errorf("%s didn't send a pkiID", remoteAddress)
 	}
 
-	if c.isPKIblackListed(receivedMsg.PkiID) {
+	if c.isPKIblackListed(receivedMsg.PkiId) {
 		c.logger.Warning("Connection attempt from", remoteAddress, "but it is black-listed")
 		return nil, errors.New("Black-listed")
 	}
 	c.logger.Debug("Received", receivedMsg, "from", remoteAddress)
-	err = c.idMapper.Put(receivedMsg.PkiID, receivedMsg.Cert)
+	err = c.idMapper.Put(receivedMsg.PkiId, receivedMsg.Cert)
 	if err != nil {
 		c.logger.Warning("Identity store rejected", remoteAddress, ":", err)
 		return nil, err
 	}
 
 	connInfo := &proto.ConnectionInfo{
-		ID:       receivedMsg.PkiID,
+		ID:       receivedMsg.PkiId,
 		Identity: receivedMsg.Cert,
 	}
 
-	// if TLS is detected, verify remote peer
-	if remoteCertHash != nil && c.selfCertHash != nil {
+	// if TLS is enabled and detected, verify remote peer
+	if remoteCertHash != nil && c.selfCertHash != nil && !c.skipHandshake {
 		if !bytes.Equal(remoteCertHash, receivedMsg.Hash) {
 			return nil, fmt.Errorf("Expected %v in remote hash, but got %v", remoteCertHash, receivedMsg.Hash)
 		}
@@ -464,6 +496,13 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 			Signature:  m.Signature,
 			SignedData: m.Payload,
 		}
+	}
+
+	// TLS enabled but not detected on other side, and we're not configured to skip handshake verification
+	if remoteCertHash == nil && c.selfCertHash != nil && !c.skipHandshake {
+		err = fmt.Errorf("Remote peer %s didn't send TLS certificate", remoteAddress)
+		c.logger.Warning(err)
+		return nil, err
 	}
 
 	c.logger.Debug("Authenticated", remoteAddress)
@@ -566,7 +605,7 @@ func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, hash []byte, cert
 			Conn: &proto.ConnEstablish{
 				Hash:  hash,
 				Cert:  cert,
-				PkiID: pkiID,
+				PkiId: pkiID,
 			},
 		},
 	}

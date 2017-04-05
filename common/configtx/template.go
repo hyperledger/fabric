@@ -19,13 +19,14 @@ package configtx
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/golang/protobuf/proto"
 )
 
 const (
@@ -34,16 +35,6 @@ const (
 	CreationPolicyKey = "CreationPolicy"
 	msgVersion        = int32(0)
 	epoch             = 0
-
-	// ApplicationGroup identifies the `groups` map key in the channel
-	// config, under which the application-related config group is set.
-	ApplicationGroup = "Application"
-	// OrdererGroup identifies the `groups` map key in the channel
-	// config, under which the orderer-related config group is set.
-	OrdererGroup = "Orderer"
-	// MSPKey identifies the config key in the channel config,
-	// under which the application-related config group is set.
-	MSPKey = "MSP"
 )
 
 // Template can be used to faciliate creation of config transactions
@@ -70,11 +61,8 @@ func NewSimpleTemplate(configGroups ...*cb.ConfigGroup) Template {
 // Envelope returns a ConfigUpdateEnvelope for the given chainID
 func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error) {
 	config, err := proto.Marshal(&cb.ConfigUpdate{
-		Header: &cb.ChannelHeader{
-			ChannelId: chainID,
-			Type:      int32(cb.HeaderType_CONFIG),
-		},
-		WriteSet: st.configGroup,
+		ChannelId: chainID,
+		WriteSet:  st.configGroup,
 	})
 
 	if err != nil {
@@ -146,11 +134,8 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope,
 	}
 
 	marshaledConfig, err := proto.Marshal(&cb.ConfigUpdate{
-		Header: &cb.ChannelHeader{
-			ChannelId: chainID,
-			Type:      int32(cb.HeaderType_CONFIG),
-		},
-		WriteSet: channel,
+		ChannelId: chainID,
+		WriteSet:  channel,
 	})
 	if err != nil {
 		return nil, err
@@ -159,17 +144,67 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope,
 	return &cb.ConfigUpdateEnvelope{ConfigUpdate: marshaledConfig}, nil
 }
 
+type modPolicySettingTemplate struct {
+	modPolicy string
+	template  Template
+}
+
+// NewModPolicySettingTemplate wraps another template and sets the ModPolicy of
+// every ConfigGroup/ConfigValue/ConfigPolicy to modPolicy
+func NewModPolicySettingTemplate(modPolicy string, template Template) Template {
+	return &modPolicySettingTemplate{
+		modPolicy: modPolicy,
+		template:  template,
+	}
+}
+
+func setGroupModPolicies(modPolicy string, group *cb.ConfigGroup) {
+	group.ModPolicy = modPolicy
+
+	for _, value := range group.Values {
+		value.ModPolicy = modPolicy
+	}
+
+	for _, policy := range group.Policies {
+		policy.ModPolicy = modPolicy
+	}
+
+	for _, nextGroup := range group.Groups {
+		setGroupModPolicies(modPolicy, nextGroup)
+	}
+}
+
+func (mpst *modPolicySettingTemplate) Envelope(channelID string) (*cb.ConfigUpdateEnvelope, error) {
+	configUpdateEnv, err := mpst.template.Envelope(channelID)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	if err != nil {
+		return nil, err
+	}
+
+	setGroupModPolicies(mpst.modPolicy, config.WriteSet)
+	configUpdateEnv.ConfigUpdate = utils.MarshalOrPanic(config)
+	return configUpdateEnv, nil
+}
+
+type channelCreationTemplate struct {
+	consortiumName string
+	orgs           []string
+}
+
 // NewChainCreationTemplate takes a CreationPolicy and a Template to produce a
 // Template which outputs an appropriately constructed list of ConfigUpdateEnvelopes.
 func NewChainCreationTemplate(creationPolicy string, template Template) Template {
 	result := cb.NewConfigGroup()
-	result.Groups[configtxorderer.GroupKey] = cb.NewConfigGroup()
-	result.Groups[configtxorderer.GroupKey].Values[CreationPolicyKey] = &cb.ConfigValue{
+	result.Groups[config.OrdererGroupKey] = cb.NewConfigGroup()
+	result.Groups[config.OrdererGroupKey].Values[CreationPolicyKey] = &cb.ConfigValue{
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: creationPolicy,
 		}),
 	}
-
 	return NewCompositeTemplate(NewSimpleTemplate(result), template)
 }
 

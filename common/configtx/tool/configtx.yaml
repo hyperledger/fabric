@@ -102,7 +102,7 @@ Orderer: &OrdererDefaults
         - 127.0.0.1:7050
 
     # Batch Timeout: The amount of time to wait before creating a batch.
-    BatchTimeout: 10s
+    BatchTimeout: 2s
 
     # Batch Size: Controls the number of messages batched into a block.
     BatchSize:
@@ -120,6 +120,10 @@ Orderer: &OrdererDefaults
         # preferred max bytes will result in a batch larger than preferred max
         # bytes.
         PreferredMaxBytes: 512 KB
+
+    # Max Channels is the maximum number of channels to allow on the ordering network
+    # When set to 0, this implies no maximum number of channels
+    MaxChannels: 0
 
     Kafka:
         # Brokers: A list of Kafka brokers to which the orderer connects.

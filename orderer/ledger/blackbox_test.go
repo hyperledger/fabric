@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ordererledger_test
+package ledger_test
 
 import (
 	"bytes"
@@ -73,6 +73,7 @@ func testInitialization(lf ledgerTestFactory, t *testing.T) {
 	if block == nil {
 		t.Fatalf("Error retrieving genesis block")
 	}
+
 }
 
 func TestReinitialization(t *testing.T) {
@@ -84,12 +85,13 @@ func testReinitialization(lf ledgerTestFactory, t *testing.T) {
 		t.Log("Skipping test as persistence is not available for this ledger type")
 		return
 	}
-	_, oli := lf.New()
+	olf, oli := lf.New()
 	aBlock := CreateNextBlock(oli, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}})
 	err := oli.Append(aBlock)
 	if err != nil {
 		t.Fatalf("Error appending block: %s", err)
 	}
+	olf.Close()
 
 	_, li := lf.New()
 	if li.Height() != 2 {

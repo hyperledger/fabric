@@ -67,14 +67,15 @@ func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHea
 	}
 
 	// access the policy to use to validate this proposal
-	var policy policies.Policy
+	var policyName string
 	if syscc.IsSysCC(hdrext.ChaincodeId.Name) {
 		// in the case of a system chaincode, we use the admin policy
-		policy, _ = pm.GetPolicy(policies.ChannelApplicationAdmins)
+		policyName = policies.ChannelApplicationAdmins
 	} else {
 		// in the case of a normal chaincode, we use the writers policy
-		policy, _ = pm.GetPolicy(policies.ChannelApplicationWriters)
+		policyName = policies.ChannelApplicationWriters
 	}
+	policy, _ := pm.GetPolicy(policyName)
 
 	// evaluate that this proposal complies with the writers
 	err := policy.Evaluate(
@@ -84,7 +85,8 @@ func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHea
 			Signature: signedProp.Signature,
 		}})
 	if err != nil {
-		return fmt.Errorf("The proposal does not comply with the channel writers for channel %s, error %s",
+		return fmt.Errorf("The proposal does not comply with the %s for channel %s, error %s",
+			policyName,
 			chdr.ChannelId,
 			err)
 	}
@@ -135,7 +137,11 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 		return nil, nil, err
 	}
 
-	if res.Status != shim.OK {
+	//per doc anything < 500 can be sent as TX.
+	//fabric errors will always be >= 500 (ie, unambiguous errors )
+	//"lccc" will respond with status 200 or >=500 (ie, unambiguous OK or ERROR)
+	//This leaves all < 500 errors to user chaincodes
+	if res.Status >= shim.ERROR {
 		return nil, nil, fmt.Errorf(string(res.Message))
 	}
 

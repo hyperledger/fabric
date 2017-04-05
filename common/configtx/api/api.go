@@ -17,11 +17,12 @@ limitations under the License.
 package api
 
 import (
-	configvalues "github.com/hyperledger/fabric/common/configvalues"
-	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // Manager provides a mechanism to query and update config
@@ -36,9 +37,6 @@ type Manager interface {
 
 	// Validate attempts to validate a new configtx against the current config state
 	ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error)
-
-	// ConfigEnvelope returns the *cb.ConfigEnvelope from the last successful Apply
-	ConfigEnvelope() *cb.ConfigEnvelope
 
 	// ChainID retrieves the chain ID associated with this manager
 	ChainID() string
@@ -55,13 +53,13 @@ type Resources interface {
 	PolicyManager() policies.Manager
 
 	// ChannelConfig returns the ChannelConfig for the chain
-	ChannelConfig() configvalueschannel.ConfigReader
+	ChannelConfig() config.Channel
 
 	// OrdererConfig returns the configtxorderer.SharedConfig for the channel
-	OrdererConfig() configvalues.Orderer
+	OrdererConfig() config.Orderer
 
 	// ApplicationConfig returns the configtxapplication.SharedConfig for the channel
-	ApplicationConfig() configvalues.Application
+	ApplicationConfig() config.Application
 
 	// MSPManager returns the msp.MSPManager for the chain
 	MSPManager() msp.MSPManager
@@ -70,32 +68,38 @@ type Resources interface {
 // Transactional is an interface which allows for an update to be proposed and rolled back
 type Transactional interface {
 	// RollbackConfig called when a config proposal is abandoned
-	RollbackProposals()
+	RollbackProposals(tx interface{})
 
 	// PreCommit verifies that the transaction can be committed successfully
-	PreCommit() error
+	PreCommit(tx interface{}) error
 
 	// CommitConfig called when a config proposal is committed
-	CommitProposals()
+	CommitProposals(tx interface{})
 }
 
 // PolicyHandler is used for config updates to policy
 type PolicyHandler interface {
 	Transactional
 
-	BeginConfig(groups []string) ([]PolicyHandler, error)
+	BeginConfig(tx interface{}, groups []string) ([]PolicyHandler, error)
 
-	ProposePolicy(key string, path []string, policy *cb.ConfigPolicy) error
+	ProposePolicy(tx interface{}, key string, path []string, policy *cb.ConfigPolicy) (proto.Message, error)
+}
+
+// Proposer contains the references necesssary to appropriately unmarshal
+// a cb.ConfigGroup
+type Proposer interface {
+	// ValueProposer return the root value proposer
+	ValueProposer() config.ValueProposer
+
+	// PolicyProposer return the root policy proposer
+	PolicyProposer() policies.Proposer
 }
 
 // Initializer is used as indirection between Manager and Handler to allow
 // for single Handlers to handle multiple paths
 type Initializer interface {
-	// ValueProposer return the root value proposer
-	ValueProposer() configvalues.ValueProposer
-
-	// PolicyProposer return the root policy proposer
-	PolicyProposer() policies.Proposer
+	Proposer
 
 	Resources
 }

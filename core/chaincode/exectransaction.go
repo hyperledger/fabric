@@ -19,7 +19,6 @@ package chaincode
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -57,9 +56,6 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 		return nil, nil, fmt.Errorf("Failed to stablish stream to container %s", chaincode)
 	}
 
-	// TODO: Need to comment next line and uncomment call to getTimeout, when transaction blocks are being created
-	timeout := time.Duration(30000) * time.Millisecond
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to retrieve chaincode spec(%s)", err)
 	}
@@ -70,7 +66,7 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 		return nil, nil, fmt.Errorf("Failed to transaction message(%s)", err)
 	}
 
-	resp, err := theChaincodeSupport.Execute(ctxt, cccid, ccMsg, timeout)
+	resp, err := theChaincodeSupport.Execute(ctxt, cccid, ccMsg, theChaincodeSupport.executetimeout)
 	if err != nil {
 		// Rollback transaction
 		return nil, nil, fmt.Errorf("Failed to execute transaction (%s)", err)

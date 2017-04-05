@@ -91,9 +91,9 @@ task copyToLib(type: Copy) {
 task copyProtos(type:Copy){
 
  from ("${rootDir}/protos/peer"){
-     include '**/chaincodeevent.proto'
+     include '**/chaincode_event.proto'
      include '**/chaincode.proto'
-     include '**/chaincodeshim.proto'
+     include '**/chaincode_shim.proto'
      include '**/proposal.proto'
      include '**/proposal_response.proto'
  }

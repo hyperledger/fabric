@@ -93,7 +93,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 	// get the policy
 	mgr := mspmgmt.GetManagerForChain(chdr.ChannelId)
 	pProvider := cauthdsl.NewPolicyProvider(mgr)
-	policy, err := pProvider.NewPolicy(args[2])
+	policy, _, err := pProvider.NewPolicy(args[2])
 	if err != nil {
 		logger.Errorf("VSCC error: pProvider.NewPolicy failed, err %s", err)
 		return shim.Error(err.Error())

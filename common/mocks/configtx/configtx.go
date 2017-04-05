@@ -17,12 +17,13 @@ limitations under the License.
 package configtx
 
 import (
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
+	"github.com/hyperledger/fabric/common/config"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 )
 
 type Resources struct {
@@ -30,13 +31,13 @@ type Resources struct {
 	PolicyManagerVal *mockpolicies.Manager
 
 	// ChannelConfigVal is returned as the result of ChannelConfig()
-	ChannelConfigVal configvalueschannel.ConfigReader
+	ChannelConfigVal config.Channel
 
 	// OrdererConfigVal is returned as the result of OrdererConfig()
-	OrdererConfigVal configvaluesapi.Orderer
+	OrdererConfigVal config.Orderer
 
 	// ApplicationConfigVal is returned as the result of ApplicationConfig()
-	ApplicationConfigVal configvaluesapi.Application
+	ApplicationConfigVal config.Application
 
 	// MSPManagerVal is returned as the result of MSPManager()
 	MSPManagerVal msp.MSPManager
@@ -48,17 +49,17 @@ func (r *Resources) PolicyManager() policies.Manager {
 }
 
 // Returns the ChannelConfigVal
-func (r *Resources) ChannelConfig() configvalueschannel.ConfigReader {
+func (r *Resources) ChannelConfig() config.Channel {
 	return r.ChannelConfigVal
 }
 
 // Returns the OrdererConfigVal
-func (r *Resources) OrdererConfig() configvaluesapi.Orderer {
+func (r *Resources) OrdererConfig() config.Orderer {
 	return r.OrdererConfigVal
 }
 
 // Returns the ApplicationConfigVal
-func (r *Resources) ApplicationConfig() configvaluesapi.Application {
+func (r *Resources) ApplicationConfig() config.Application {
 	return r.ApplicationConfigVal
 }
 
@@ -71,13 +72,13 @@ func (r *Resources) MSPManager() msp.MSPManager {
 type Transactional struct{}
 
 // PreCommit returns nil
-func (t *Transactional) PreCommit() error { return nil }
+func (t *Transactional) PreCommit(tx interface{}) error { return nil }
 
 // CommitConfig does nothing
-func (t *Transactional) CommitProposals() {}
+func (t *Transactional) CommitProposals(tx interface{}) {}
 
 // RollbackConfig does nothing
-func (t *Transactional) RollbackProposals() {}
+func (t *Transactional) RollbackProposals(tx interface{}) {}
 
 // Initializer mocks the configtxapi.Initializer interface
 type Initializer struct {
@@ -96,7 +97,7 @@ func (i *Initializer) PolicyProposer() policies.Proposer {
 }
 
 // ValueProposers returns ValueProposerVal
-func (i *Initializer) ValueProposer() configvaluesapi.ValueProposer {
+func (i *Initializer) ValueProposer() config.ValueProposer {
 	return i.ValueProposerVal
 }
 
@@ -109,14 +110,14 @@ type PolicyProposer struct {
 }
 
 // ProposeConfig sets LastKey to key, LastPath to path, and LastPolicy to configPolicy, returning ErrorForProposedConfig
-func (pp *PolicyProposer) ProposePolicy(key string, configPolicy *cb.ConfigPolicy) error {
+func (pp *PolicyProposer) ProposePolicy(tx interface{}, key string, configPolicy *cb.ConfigPolicy) (proto.Message, error) {
 	pp.LastKey = key
 	pp.LastPolicy = configPolicy
-	return pp.ErrorForProposePolicy
+	return nil, pp.ErrorForProposePolicy
 }
 
 // BeginConfig will be removed in the future
-func (pp *PolicyProposer) BeginPolicyProposals(groups []string) ([]policies.Proposer, error) {
+func (pp *PolicyProposer) BeginPolicyProposals(tx interface{}, groups []string) ([]policies.Proposer, error) {
 	handlers := make([]policies.Proposer, len(groups))
 	for i := range handlers {
 		handlers[i] = pp
@@ -130,22 +131,21 @@ type ValueProposer struct {
 	LastKey               string
 	LastValue             *cb.ConfigValue
 	ErrorForProposeConfig error
-}
-
-// ProposeConfig sets LastKey to key, and LastValue to configValue, returning ErrorForProposedConfig
-func (vp *ValueProposer) ProposeValue(key string, configValue *cb.ConfigValue) error {
-	vp.LastKey = key
-	vp.LastValue = configValue
-	return vp.ErrorForProposeConfig
+	DeserializeReturn     proto.Message
+	DeserializeError      error
 }
 
 // BeginConfig returns slices populated by self
-func (vp *ValueProposer) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProposer, error) {
-	handlers := make([]configvaluesapi.ValueProposer, len(groups))
+func (vp *ValueProposer) BeginValueProposals(tx interface{}, groups []string) (config.ValueDeserializer, []config.ValueProposer, error) {
+	handlers := make([]config.ValueProposer, len(groups))
 	for i := range handlers {
 		handlers[i] = vp
 	}
-	return handlers, nil
+	return vp, handlers, nil
+}
+
+func (vp *ValueProposer) Deserialize(key string, value []byte) (proto.Message, error) {
+	return vp.DeserializeReturn, vp.DeserializeError
 }
 
 // Manager is a mock implementation of configtxapi.Manager

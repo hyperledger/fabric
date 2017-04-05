@@ -128,7 +128,8 @@ func genServerCertificateECDSA(name string, signKey *ecdsa.PrivateKey, signCert 
 		return err
 	}
 
-	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
+	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth,
+		x509.ExtKeyUsageClientAuth}
 
 	//set the organization for the subject
 	subject := subjectTemplate()
@@ -197,6 +198,7 @@ func genCertificateAuthorityECDSA(name string) (*ecdsa.PrivateKey, *x509.Certifi
 	subject.CommonName = name
 
 	template.Subject = subject
+	template.SubjectKeyId = []byte{1, 2, 3, 4}
 
 	x509Cert, err := genCertificateECDSA(name, &template, &template, &key.PublicKey, key)
 
@@ -262,7 +264,7 @@ func main() {
 			}
 		}
 		//generate client certificates for the org
-		for k := 1; k <= *numServerCerts; k++ {
+		for k := 1; k <= *numClientCerts; k++ {
 			err := genClientCertificateECDSA(fmt.Sprintf(baseOrgName+"%d-client%d", i, k), signKey, signCert)
 			if err != nil {
 				fmt.Printf("error generating client certificate for %s%d-client%d : %s\n",

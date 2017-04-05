@@ -25,8 +25,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
@@ -37,48 +35,40 @@ const (
 )
 
 type testEnv interface {
-	init(t *testing.T)
+	init(t *testing.T, testLedgerID string)
 	getName() string
 	getTxMgr() txmgr.TxMgr
 	getVDB() statedb.VersionedDB
 	cleanup()
 }
 
-var testEnvs = []testEnv{}
-
-func init() {
-	//call a helper method to load the core.yaml so that we can detect whether couch is configured
-	ledgertestutil.SetupCoreYAMLConfig("./../../../../../../peer")
-
-	//Only run the tests if CouchDB is explitily enabled in the code,
-	//otherwise CouchDB may not be installed and all the tests would fail
-	if ledgerconfig.IsCouchDBEnabled() == true {
-		testEnvs = []testEnv{&levelDBLockBasedEnv{}, &couchDBLockBasedEnv{}}
-	} else {
-		testEnvs = []testEnv{&levelDBLockBasedEnv{}}
-	}
-
-}
+// Tests will be run against each environment in this array
+// For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
+var testEnvs = []testEnv{&levelDBLockBasedEnv{}, &couchDBLockBasedEnv{}}
 
 ///////////// LevelDB Environment //////////////
 
+const levelDBtestEnvName = "levelDB_LockBasedTxMgr"
+
 type levelDBLockBasedEnv struct {
-	testDBEnv *stateleveldb.TestVDBEnv
-	testDB    statedb.VersionedDB
-	txmgr     txmgr.TxMgr
+	testLedgerID string
+	testDBEnv    *stateleveldb.TestVDBEnv
+	testDB       statedb.VersionedDB
+	txmgr        txmgr.TxMgr
 }
 
 func (env *levelDBLockBasedEnv) getName() string {
-	return "levelDB_LockBasedTxMgr"
+	return levelDBtestEnvName
 }
 
-func (env *levelDBLockBasedEnv) init(t *testing.T) {
+func (env *levelDBLockBasedEnv) init(t *testing.T, testLedgerID string) {
 	viper.Set("peer.fileSystemPath", testFilesystemPath)
 	testDBEnv := stateleveldb.NewTestVDBEnv(t)
-	testDB, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
+	testDB, err := testDBEnv.DBProvider.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
 
 	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB)
+	env.testLedgerID = testLedgerID
 	env.testDBEnv = testDBEnv
 	env.testDB = testDB
 	env.txmgr = txMgr
@@ -99,27 +89,29 @@ func (env *levelDBLockBasedEnv) cleanup() {
 
 ///////////// CouchDB Environment //////////////
 
-var couchTestChainID = "TxmgrTestDB"
+const couchDBtestEnvName = "couchDB_LockBasedTxMgr"
 
 type couchDBLockBasedEnv struct {
-	testDBEnv *statecouchdb.TestVDBEnv
-	testDB    statedb.VersionedDB
-	txmgr     txmgr.TxMgr
+	testLedgerID string
+	testDBEnv    *statecouchdb.TestVDBEnv
+	testDB       statedb.VersionedDB
+	txmgr        txmgr.TxMgr
 }
 
 func (env *couchDBLockBasedEnv) getName() string {
-	return "couchDB_LockBasedTxMgr"
+	return couchDBtestEnvName
 }
 
-func (env *couchDBLockBasedEnv) init(t *testing.T) {
+func (env *couchDBLockBasedEnv) init(t *testing.T, testLedgerID string) {
 	viper.Set("peer.fileSystemPath", testFilesystemPath)
 	// both vagrant and CI have couchdb configured at host "couchdb"
 	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
 	testDBEnv := statecouchdb.NewTestVDBEnv(t)
-	testDB, err := testDBEnv.DBProvider.GetDBHandle(couchTestChainID)
+	testDB, err := testDBEnv.DBProvider.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
 
 	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB)
+	env.testLedgerID = testLedgerID
 	env.testDBEnv = testDBEnv
 	env.testDB = testDB
 	env.txmgr = txMgr
@@ -135,7 +127,7 @@ func (env *couchDBLockBasedEnv) getVDB() statedb.VersionedDB {
 
 func (env *couchDBLockBasedEnv) cleanup() {
 	defer env.txmgr.Shutdown()
-	defer env.testDBEnv.Cleanup(couchTestChainID)
+	defer env.testDBEnv.Cleanup(env.testLedgerID)
 }
 
 //////////// txMgrTestHelper /////////////

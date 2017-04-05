@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -87,14 +87,14 @@ func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 		return nil, err
 	}
 
-	// Get the txid and key write value associated with this transaction
-	txID, keyValue, err := getTxIDandKeyWriteValueFromTran(tranEnvelope, scanner.namespace, scanner.key)
+	// Get the txid, key write value, timestamp, and delete indicator associated with this transaction
+	queryResult, err := getKeyModificationFromTran(tranEnvelope, scanner.namespace, scanner.key)
 	if err != nil {
 		return nil, err
 	}
 	logger.Debugf("Found historic key value for namespace:%s key:%s from transaction %s\n",
-		scanner.namespace, scanner.key, txID)
-	return &ledger.KeyModification{TxID: txID, Value: keyValue}, nil
+		scanner.namespace, scanner.key, queryResult.(*ledger.KeyModification).TxID)
+	return queryResult, nil
 }
 
 func (scanner *historyScanner) Close() {
@@ -102,53 +102,54 @@ func (scanner *historyScanner) Close() {
 }
 
 // getTxIDandKeyWriteValueFromTran inspects a transaction for writes to a given key
-func getTxIDandKeyWriteValueFromTran(
-	tranEnvelope *common.Envelope, namespace string, key string) (string, []byte, error) {
-	logger.Debugf("Entering getTxIDandKeyWriteValueFromTran()\n", namespace, key)
+func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string, key string) (commonledger.QueryResult, error) {
+	logger.Debugf("Entering getKeyModificationFromTran()\n", namespace, key)
 
 	// extract action from the envelope
 	payload, err := putils.GetPayload(tranEnvelope)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	tx, err := putils.GetTransaction(payload.Data)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	_, respPayload, err := putils.GetPayloads(tx.Actions[0])
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	chdr, err := putils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	txID := chdr.TxId
+	timestamp := chdr.Timestamp
 
-	txRWSet := &rwset.TxReadWriteSet{}
+	txRWSet := &rwsetutil.TxRwSet{}
 
 	// Get the Result from the Action and then Unmarshal
 	// it into a TxReadWriteSet using custom unmarshalling
-	if err = txRWSet.Unmarshal(respPayload.Results); err != nil {
-		return txID, nil, err
+	if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+		return nil, err
 	}
 
 	// look for the namespace and key by looping through the transaction's ReadWriteSets
-	for _, nsRWSet := range txRWSet.NsRWs {
+	for _, nsRWSet := range txRWSet.NsRwSets {
 		if nsRWSet.NameSpace == namespace {
 			// got the correct namespace, now find the key write
-			for _, kvWrite := range nsRWSet.Writes {
+			for _, kvWrite := range nsRWSet.KvRwSet.Writes {
 				if kvWrite.Key == key {
-					return txID, kvWrite.Value, nil
+					return &ledger.KeyModification{TxID: txID, Value: kvWrite.Value,
+						Timestamp: timestamp, IsDelete: kvWrite.IsDelete}, nil
 				}
 			} // end keys loop
-			return txID, nil, errors.New("Key not found in namespace's writeset")
+			return nil, errors.New("Key not found in namespace's writeset")
 		} // end if
 	} //end namespaces loop
-	return txID, nil, errors.New("Namespace not found in transaction's ReadWriteSets")
+	return nil, errors.New("Namespace not found in transaction's ReadWriteSets")
 
 }

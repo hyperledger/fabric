@@ -56,6 +56,9 @@ func AddFlags(cmd *cobra.Command) {
 		fmt.Sprint("The name of the endorsement system chaincode to be used for this chaincode"))
 	flags.StringVarP(&vscc, "vscc", "V", common.UndefinedParamValue,
 		fmt.Sprint("The name of the verification system chaincode to be used for this chaincode"))
+	flags.StringVarP(&orderingEndpoint, "orderer", "o", "", "Ordering service endpoint")
+	flags.BoolVarP(&tls, "tls", "", false, "Use TLS when communicating with the orderer endpoint")
+	flags.StringVarP(&caFile, "cafile", "", "", "Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint")
 }
 
 // Cmd returns the cobra command for Chaincode
@@ -88,6 +91,9 @@ var (
 	escc              string
 	vscc              string
 	policyMarhsalled  []byte
+	orderingEndpoint  string
+	tls               bool
+	caFile            string
 )
 
 var chaincodeCmd = &cobra.Command{

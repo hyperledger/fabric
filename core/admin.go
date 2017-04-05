@@ -81,17 +81,16 @@ func (*ServerAdmin) StopServer(context.Context, *empty.Empty) (*pb.ServerStatus,
 }
 
 // GetModuleLogLevel gets the current logging level for the specified module
+// TODO Modify the signature so as to remove the error return - it's always been nil
 func (*ServerAdmin) GetModuleLogLevel(ctx context.Context, request *pb.LogLevelRequest) (*pb.LogLevelResponse, error) {
-	logLevelString, err := flogging.GetModuleLevel(request.LogModule)
+	logLevelString := flogging.GetModuleLevel(request.LogModule)
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: logLevelString}
-
-	return logResponse, err
+	return logResponse, nil
 }
 
 // SetModuleLogLevel sets the logging level for the specified module
 func (*ServerAdmin) SetModuleLogLevel(ctx context.Context, request *pb.LogLevelRequest) (*pb.LogLevelResponse, error) {
 	logLevelString, err := flogging.SetModuleLevel(request.LogModule, request.LogLevel)
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: logLevelString}
-
 	return logResponse, err
 }

@@ -19,9 +19,10 @@ package multichain
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
@@ -47,7 +48,7 @@ func (ms *mockSupport) PolicyManager() policies.Manager {
 	return ms.mpm
 }
 
-func (ms *mockSupport) SharedConfig() configvaluesapi.Orderer {
+func (ms *mockSupport) SharedConfig() config.Orderer {
 	return ms.msc
 }
 
@@ -67,6 +68,10 @@ func (mcc *mockChainCreator) newChain(configTx *cb.Envelope) {
 	mcc.newChains = append(mcc.newChains, configTx)
 }
 
+func (mcc *mockChainCreator) channelsCount() int {
+	return len(mcc.newChains)
+}
+
 func TestGoodProposal(t *testing.T) {
 	newChainID := "NewChainID"
 
@@ -74,7 +79,7 @@ func TestGoodProposal(t *testing.T) {
 	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
 	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
 
-	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtxtest.CompositeTemplate()).Envelope(newChainID)
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
 	}
@@ -129,4 +134,26 @@ func TestProposalWithMissingPolicy(t *testing.T) {
 	action, _ := sysFilter.Apply(wrapped)
 
 	assert.EqualValues(t, filter.Reject, action, "Transaction had missing policy")
+}
+
+func TestNumChainsExceeded(t *testing.T) {
+	newChainID := "NewChainID"
+
+	mcc := newMockChainCreator()
+	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
+	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
+	mcc.ms.msc.MaxChannelsCountVal = 1
+	mcc.newChains = make([]*cb.Envelope, 2)
+
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
+	}
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
+
+	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	action, _ := sysFilter.Apply(wrapped)
+
+	assert.EqualValues(t, filter.Reject, action, "Transaction had created too many channels")
 }

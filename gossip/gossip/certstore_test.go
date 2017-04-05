@@ -110,7 +110,7 @@ func TestCertStoreShouldSucceed(t *testing.T) {
 
 func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.ReceivedMessage, shouldSucceed bool) {
 	config := pull.PullConfig{
-		MsgType:           proto.PullMsgType_IdentityMsg,
+		MsgType:           proto.PullMsgType_IDENTITY_MSG,
 		PeerCountToSelect: 1,
 		PullInterval:      time.Millisecond * 500,
 		Tag:               proto.GossipMessage_EMPTY,
@@ -124,7 +124,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 	pullMediator := pull.NewPullMediator(config,
 		sender,
 		memberSvc,
-		func(msg *proto.SignedGossipMessage) string { return string(msg.GetPeerIdentity().PkiID) },
+		func(msg *proto.SignedGossipMessage) string { return string(msg.GetPeerIdentity().PkiId) },
 		func(msg *proto.SignedGossipMessage) {})
 	certStore := newCertStore(&pullerMock{
 		Mediator: pullMediator,
@@ -163,7 +163,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 				Hello: &proto.GossipHello{
 					Nonce:    0,
 					Metadata: nil,
-					MsgType:  proto.PullMsgType_IdentityMsg,
+					MsgType:  proto.PullMsgType_IDENTITY_MSG,
 				},
 			},
 		}).NoopSign(),
@@ -191,7 +191,7 @@ func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
 		// This PKI-ID is different than the cert, and the mapping between
 		// certificate to PKI-ID in this test is simply the identity function.
-		PkiID: []byte("A"),
+		PkiId: []byte("A"),
 		Cert:  []byte("D"),
 	}
 
@@ -215,7 +215,7 @@ func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
 
 func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
-		PkiID: []byte("C"),
+		PkiId: []byte("C"),
 		Cert:  []byte("C"),
 	}
 
@@ -246,7 +246,7 @@ func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
 
 func createValidUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
-		PkiID: []byte("B"),
+		PkiId: []byte("B"),
 		Cert:  []byte("B"),
 	}
 
@@ -273,7 +273,7 @@ func createUpdateMessage(nonce uint64, idMsg *proto.SignedGossipMessage) proto.R
 		Tag: proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataUpdate{
 			DataUpdate: &proto.DataUpdate{
-				MsgType: proto.PullMsgType_IdentityMsg,
+				MsgType: proto.PullMsgType_IDENTITY_MSG,
 				Nonce:   nonce,
 				Data:    []*proto.Envelope{idMsg.Envelope},
 			},
@@ -288,7 +288,7 @@ func createDigest(nonce uint64) proto.ReceivedMessage {
 		Content: &proto.GossipMessage_DataDig{
 			DataDig: &proto.DataDigest{
 				Nonce:   nonce,
-				MsgType: proto.PullMsgType_IdentityMsg,
+				MsgType: proto.PullMsgType_IDENTITY_MSG,
 				Digests: []string{"A", "C"},
 			},
 		},

@@ -32,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/signer"
-	"github.com/hyperledger/fabric/protos/common"
 	m "github.com/hyperledger/fabric/protos/msp"
 )
 
@@ -341,6 +340,16 @@ func (msp *bccspmsp) GetIdentifier() (string, error) {
 	return msp.name, nil
 }
 
+// GetRootCerts returns the root certificates for this MSP
+func (msp *bccspmsp) GetRootCerts() []Identity {
+	return msp.rootCerts
+}
+
+// GetIntermediateCerts returns the intermediate root certificates for this MSP
+func (msp *bccspmsp) GetIntermediateCerts() []Identity {
+	return msp.intermediateCerts
+}
+
 // GetDefaultSigningIdentity returns the
 // default signing identity for this MSP (if any)
 func (msp *bccspmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
@@ -366,7 +375,7 @@ func (msp *bccspmsp) GetSigningIdentity(identifier *IdentityIdentifier) (Signing
 // nil in case the identity is valid or an
 // error otherwise
 func (msp *bccspmsp) Validate(id Identity) error {
-	mspLogger.Infof("MSP %s validating identity", msp.name)
+	mspLogger.Debugf("MSP %s validating identity", msp.name)
 
 	switch id := id.(type) {
 	// If this identity is of this specific type,
@@ -471,7 +480,7 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 	mspLogger.Infof("Obtaining identity")
 
 	// We first deserialize to a SerializedIdentity to get the MSP ID
-	sId := &SerializedIdentity{}
+	sId := &m.SerializedIdentity{}
 	err := proto.Unmarshal(serializedID, sId)
 	if err != nil {
 		return nil, fmt.Errorf("Could not deserialize a SerializedIdentity, err %s", err)
@@ -515,13 +524,13 @@ func (msp *bccspmsp) deserializeIdentityInternal(serializedIdentity []byte) (Ide
 }
 
 // SatisfiesPrincipal returns null if the identity matches the principal or an error otherwise
-func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrincipal) error {
+func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
 	switch principal.PrincipalClassification {
 	// in this case, we have to check whether the
 	// identity has a role in the msp - member or admin
-	case common.MSPPrincipal_ROLE:
+	case m.MSPPrincipal_ROLE:
 		// Principal contains the msp role
-		mspRole := &common.MSPRole{}
+		mspRole := &m.MSPRole{}
 		err := proto.Unmarshal(principal.Principal, mspRole)
 		if err != nil {
 			return fmt.Errorf("Could not unmarshal MSPRole from principal, err %s", err)
@@ -535,11 +544,11 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrinci
 
 		// now we validate the different msp roles
 		switch mspRole.Role {
-		case common.MSPRole_MEMBER:
+		case m.MSPRole_MEMBER:
 			// in the case of member, we simply check
 			// whether this identity is valid for the MSP
 			return msp.Validate(id)
-		case common.MSPRole_ADMIN:
+		case m.MSPRole_ADMIN:
 			// in the case of admin, we check that the
 			// id is exactly one of our admins
 			idBytes, err := id.Serialize()
@@ -565,7 +574,7 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrinci
 		}
 	// in this case we have to serialize this instance
 	// and compare it byte-by-byte with Principal
-	case common.MSPPrincipal_IDENTITY:
+	case m.MSPPrincipal_IDENTITY:
 		idBytes, err := id.Serialize()
 		if err != nil {
 			return fmt.Errorf("Could not serialize this identity instance, err %s", err)
@@ -577,9 +586,9 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrinci
 		} else {
 			return errors.New("The identities do not match")
 		}
-	case common.MSPPrincipal_ORGANIZATION_UNIT:
+	case m.MSPPrincipal_ORGANIZATION_UNIT:
 		// Principal contains the OrganizationUnit
-		OU := &common.OrganizationUnit{}
+		OU := &m.OrganizationUnit{}
 		err := proto.Unmarshal(principal.Principal, OU)
 		if err != nil {
 			return fmt.Errorf("Could not unmarshal OrganizationUnit from principal, err %s", err)

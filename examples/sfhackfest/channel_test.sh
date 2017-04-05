@@ -27,7 +27,7 @@ EOF
 
 #create
 echo "Creating channel on Orderer"
-CORE_PEER_GOSSIP_IGNORESECURITY=true CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp/sampleconfig CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer channel create -c myc1 -a anchorPeer.txt >>log.txt 2>&1
+CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp/sampleconfig CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer channel create -c myc1 -a anchorPeer.txt >>log.txt 2>&1
 cat log.txt
    grep -q "Exiting" log.txt
    if [ $? -ne 0 ]; then

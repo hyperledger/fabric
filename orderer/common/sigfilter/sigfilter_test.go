@@ -42,13 +42,9 @@ func makeEnvelope() *cb.Envelope {
 	}
 }
 
-func fooSource() []string {
-	return []string{"foo"}
-}
-
 func TestAccept(t *testing.T) {
 	mpm := &mockpolicies.Manager{Policy: &mockpolicies.Policy{}}
-	sf := New(fooSource, mpm)
+	sf := New("foo", mpm)
 	result, _ := sf.Apply(makeEnvelope())
 	if result != filter.Forward {
 		t.Fatalf("Should have accepted envelope")
@@ -57,7 +53,7 @@ func TestAccept(t *testing.T) {
 
 func TestMissingPolicy(t *testing.T) {
 	mpm := &mockpolicies.Manager{}
-	sf := New(fooSource, mpm)
+	sf := New("foo", mpm)
 	result, _ := sf.Apply(makeEnvelope())
 	if result != filter.Reject {
 		t.Fatalf("Should have rejected when missing policy")
@@ -66,7 +62,7 @@ func TestMissingPolicy(t *testing.T) {
 
 func TestEmptyPayload(t *testing.T) {
 	mpm := &mockpolicies.Manager{Policy: &mockpolicies.Policy{}}
-	sf := New(fooSource, mpm)
+	sf := New("foo", mpm)
 	result, _ := sf.Apply(&cb.Envelope{})
 	if result != filter.Reject {
 		t.Fatalf("Should have rejected when payload empty")
@@ -75,7 +71,7 @@ func TestEmptyPayload(t *testing.T) {
 
 func TestErrorOnPolicy(t *testing.T) {
 	mpm := &mockpolicies.Manager{Policy: &mockpolicies.Policy{Err: fmt.Errorf("Error")}}
-	sf := New(fooSource, mpm)
+	sf := New("foo", mpm)
 	result, _ := sf.Apply(makeEnvelope())
 	if result != filter.Reject {
 		t.Fatalf("Should have rejected when policy evaluated to err")

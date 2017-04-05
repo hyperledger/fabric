@@ -19,6 +19,7 @@ package comm
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
@@ -33,8 +34,13 @@ type Comm interface {
 	// Send sends a message to remote peers
 	Send(msg *proto.SignedGossipMessage, peers ...*RemotePeer)
 
-	// Probe probes a remote node and returns nil if its responsive
+	// Probe probes a remote node and returns nil if its responsive,
+	// and an error if it's not.
 	Probe(peer *RemotePeer) error
+
+	// Handshake authenticates a remote peer and returns
+	// (its identity, nil) on success and (nil, error)
+	Handshake(peer *RemotePeer) (api.PeerIdentityType, error)
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// Each message from the channel can be used to send a reply back to the sender

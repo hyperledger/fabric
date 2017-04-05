@@ -20,15 +20,15 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/common/config"
+	configtxmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
-	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
-	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
-	configtxmsp "github.com/hyperledger/fabric/common/configvalues/msp"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	mspproto "github.com/hyperledger/fabric/protos/msp"
 
 	logging "github.com/op/go-logging"
 )
@@ -79,6 +79,15 @@ func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 	return genesis.NewFactoryImpl(CompositeTemplate()).Block(chainID)
 }
 
+// MakeGenesisBlockWithMSPs creates a genesis block using the MSPs provided for the given chainID
+func MakeGenesisBlockFromMSPs(chainID string, appMSPConf, ordererMSPConf *mspproto.MSPConfig,
+	appOrgID, ordererOrgID string) (*cb.Block, error) {
+	appOrgTemplate := configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.ApplicationGroupKey, appOrgID}, appMSPConf))
+	ordererOrgTemplate := configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.OrdererGroupKey, ordererOrgID}, ordererMSPConf))
+	composite := configtx.NewCompositeTemplate(OrdererTemplate(), appOrgTemplate, ApplicationOrgTemplate(), ordererOrgTemplate)
+	return genesis.NewFactoryImpl(composite).Block(chainID)
+}
+
 // OrderererTemplate returns the test orderer template
 func OrdererTemplate() configtx.Template {
 	genConf := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
@@ -95,7 +104,7 @@ func ApplicationOrgTemplate() configtx.Template {
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
-	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey, sampleOrgID}, mspConf))
+	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.ApplicationGroupKey, sampleOrgID}, mspConf))
 }
 
 // OrdererOrgTemplate returns the SAMPLE org with MSP template
@@ -104,7 +113,7 @@ func OrdererOrgTemplate() configtx.Template {
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
-	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{configtxorderer.GroupKey, sampleOrgID}, mspConf))
+	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.OrdererGroupKey, sampleOrgID}, mspConf))
 }
 
 // CompositeTemplate returns the composite template of peer, orderer, and MSP

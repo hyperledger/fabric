@@ -24,13 +24,14 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -66,7 +67,7 @@ func (*mockDeliveryClient) Stop() {
 type mockDeliveryClientFactory struct {
 }
 
-func (*mockDeliveryClientFactory) Service(g service.GossipService) (deliverclient.DeliverService, error) {
+func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
 	return &mockDeliveryClient{}, nil
 }
 
@@ -152,7 +153,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	msptesttools.LoadMSPSetupForTesting("../../../msp/sampleconfig")
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
-	messageCryptoService := mcs.New(&mockpolicies.PolicyManagerMgmt{})
+	messageCryptoService := mcs.New(&mcs.MockChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
 	service.InitGossipServiceCustomDeliveryFactory(identity, "localhost:13611", grpcServer, &mockDeliveryClientFactory{}, messageCryptoService)
 
 	// Successful path for JoinChain

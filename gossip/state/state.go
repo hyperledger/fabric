@@ -120,6 +120,11 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 	_, commChan := g.Accept(remoteStateMsgFilter, true)
 
 	height, err := committer.LedgerHeight()
+	if height == 0 {
+		// Panic here since this is an indication of invalid situation which should not happen in normal
+		// code path.
+		logger.Panic("Committer height cannot be zero, ledger should include at least one block (genesis).")
+	}
 
 	if err != nil {
 		logger.Error("Could not read ledger info to obtain current ledger height due to: ", err)
@@ -261,6 +266,10 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg proto.ReceivedMessage)
 	response := msg.GetGossipMessage().GetStateResponse()
 	for _, payload := range response.GetPayloads() {
 		s.logger.Debugf("Received payload with sequence number %d.", payload.SeqNum)
+		if err := s.mcs.VerifyBlock(common2.ChainID(s.chainID), payload.Data); err != nil {
+			s.logger.Warningf("Error verifying block with sequence number %d, due to %s", payload.SeqNum, err)
+			return
+		}
 		err := s.payloads.Push(payload)
 		if err != nil {
 			s.logger.Warningf("Payload with sequence number %d was received earlier", payload.SeqNum)

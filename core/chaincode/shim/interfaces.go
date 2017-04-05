@@ -19,6 +19,7 @@ package shim
 import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -99,7 +100,7 @@ type ChaincodeStubInterface interface {
 
 	// GetHistoryForKey function can be invoked by a chaincode to return a history of
 	// key values across time. GetHistoryForKey is intended to be used for read-only queries.
-	GetHistoryForKey(key string) (StateQueryIteratorInterface, error)
+	GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error)
 
 	// GetCreator returns SignatureHeader.Creator of the proposal
 	// this Stub refers to.
@@ -118,27 +119,51 @@ type ChaincodeStubInterface interface {
 	// GetArgsSlice returns the arguments to the stub call as a byte array
 	GetArgsSlice() ([]byte, error)
 
-	// GetTxTimestamp returns transaction created timestamp, which is currently
-	// taken from the peer receiving the transaction. Note that this timestamp
-	// may not be the same with the other peers' time.
+	// GetTxTimestamp returns the timestamp when the transaction was created. This
+	// is taken from the transaction ChannelHeader, so it will be the same across
+	// all endorsers.
 	GetTxTimestamp() (*timestamp.Timestamp, error)
 
 	// SetEvent saves the event to be sent when a transaction is made part of a block
 	SetEvent(name string, payload []byte) error
 }
 
-// StateQueryIteratorInterface allows a chaincode to iterate over a set of
-// key/value pairs in the state.
-type StateQueryIteratorInterface interface {
-
+// CommonIteratorInterface allows a chaincode to check whether any more result
+//to be fetched from an iterate and close it when needed.
+type CommonIteratorInterface interface {
 	// HasNext returns true if the range query iterator contains additional keys
 	// and values.
 	HasNext() bool
 
-	// Next returns the next key and value in the range query iterator.
-	Next() (string, []byte, error)
-
 	// Close closes the range query iterator. This should be called when done
 	// reading from the iterator to free up resources.
 	Close() error
+}
+
+// StateQueryIteratorInterface allows a chaincode to iterate over a set of
+// key/value pairs returned by range and execute query.
+type StateQueryIteratorInterface interface {
+	// Inherit HasNext() and Close()
+	CommonIteratorInterface
+
+	// Next returns the next key and value in the range and execute query iterator.
+	Next() (*ledger.KV, error)
+}
+
+// HistoryQueryIteratorInterface allows a chaincode to iterate over a set of
+// key/value pairs returned by a history query.
+type HistoryQueryIteratorInterface interface {
+	// Inherit HasNext() and Close()
+	CommonIteratorInterface
+
+	// Next returns the next key and value in the history query iterator.
+	Next() (*ledger.KeyModification, error)
+}
+
+// MockQueryIteratorInterface allows a chaincode to iterate over a set of
+// key/value pairs returned by range query.
+// TODO: Once the execute query and history query are implemented in MockStub,
+// we need to update this interface
+type MockQueryIteratorInterface interface {
+	StateQueryIteratorInterface
 }

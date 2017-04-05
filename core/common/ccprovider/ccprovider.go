@@ -122,7 +122,9 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 	var ccInfoArray []*pb.ChaincodeInfo
 
 	for _, file := range files {
-		fileNameArray := strings.Split(file.Name(), ".")
+		// split at first period as chaincode versions can contain periods while
+		// chaincode names cannot
+		fileNameArray := strings.SplitN(file.Name(), ".", 2)
 
 		// check that length is 2 as expected, otherwise skip to next cc file
 		if len(fileNameArray) == 2 {

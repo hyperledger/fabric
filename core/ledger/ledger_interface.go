@@ -17,6 +17,7 @@ limitations under the License.
 package ledger
 
 import (
+	google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -26,6 +27,10 @@ import (
 type PeerLedgerProvider interface {
 	// Create creates a new ledger with a given unique id
 	Create(ledgerID string) (PeerLedger, error)
+	// CreateWithGenesisBlock creates a new ledger with the given genesis block.
+	// This function guarentees that the creation of ledger and committing the genesis block would an atomic action
+	// The chain id retrieved from the genesis block is treated as a ledger id
+	CreateWithGenesisBlock(genesisBlock *common.Block) (PeerLedger, error)
 	// Open opens an already created ledger
 	Open(ledgerID string) (PeerLedger, error)
 	// Exists tells whether the ledger with given id exists
@@ -132,14 +137,8 @@ type KV struct {
 
 // KeyModification - QueryResult for History.
 type KeyModification struct {
-	TxID  string
-	Value []byte
-}
-
-// QueryRecord - Result structure for query records. Holds a namespace, key and record.
-// Only used for state databases that support query
-type QueryRecord struct {
-	Namespace string
-	Key       string
-	Record    []byte
+	TxID      string
+	Value     []byte
+	Timestamp *google_protobuf.Timestamp
+	IsDelete  bool
 }

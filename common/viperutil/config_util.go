@@ -59,8 +59,17 @@ func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interfa
 			logger.Debugf("Found real value for %s setting to map[string]string %v", fqKey, m)
 			result[key] = m
 		} else {
+			if val == nil {
+				fileSubKey := fqKey + ".File"
+				fileVal := v.Get(fileSubKey)
+				if fileVal != nil {
+					result[key] = map[string]interface{}{"File": fileVal}
+					continue
+				}
+			}
 			logger.Debugf("Found real value for %s setting to %T %v", fqKey, val, val)
 			result[key] = val
+
 		}
 	}
 	return result
@@ -210,7 +219,7 @@ func pemBlocksFromFileDecodeHook() mapstructure.DecodeHookFunc {
 				var fileI interface{}
 				fileI, ok = d["File"]
 				if !ok {
-					fileI, ok = d["file"]
+					fileI, _ = d["file"]
 				}
 				fileName, ok = fileI.(string)
 			}
@@ -250,7 +259,7 @@ func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
 	baseKeys := v.AllSettings() // AllKeys doesn't actually return all keys, it only returns the base ones
 	leafKeys := getKeysRecursively("", v, baseKeys)
 
-	logger.Infof("%+v", leafKeys)
+	logger.Debugf("%+v", leafKeys)
 	config := &mapstructure.DecoderConfig{
 		ErrorUnused:      true,
 		Metadata:         nil,

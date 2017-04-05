@@ -19,6 +19,7 @@ syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/hyperledger/fabric/protos/common";
+option java_package = "org.hyperledger.fabric.protos.common";
 
 package common;
 
@@ -41,6 +42,7 @@ enum HeaderType {
     ENDORSER_TRANSACTION = 3;      // Used by the SDK to submit endorser based transactions
     ORDERER_TRANSACTION = 4;       // Used internally by the orderer for management
     DELIVER_SEEK_INFO = 5;         // Used as the type for Envelope messages submitted to instruct the Deliver API to seek
+    CHAINCODE_PACKAGE = 6;         // Used for packaging chaincode artifacts for install
 }
 
 // This enum enlists indexes of the block metadata array

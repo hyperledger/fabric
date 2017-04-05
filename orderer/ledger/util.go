@@ -14,10 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ordererledger
+package ledger
 
 import (
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 var closedChan chan struct{}
@@ -27,7 +29,8 @@ func init() {
 	close(closedChan)
 }
 
-// NotFoundErrorIterator simply always returns an error of cb.Status_NOT_FOUND, and is generally useful for implementations of the Reader interface
+// NotFoundErrorIterator simply always returns an error of cb.Status_NOT_FOUND,
+// and is generally useful for implementations of the Reader interface
 type NotFoundErrorIterator struct{}
 
 // Next returns nil, cb.Status_NOT_FOUND
@@ -38,4 +41,65 @@ func (nfei *NotFoundErrorIterator) Next() (*cb.Block, cb.Status) {
 // ReadyChan returns a closed channel
 func (nfei *NotFoundErrorIterator) ReadyChan() <-chan struct{} {
 	return closedChan
+}
+
+// CreateNextBlock provides a utility way to construct the next block from
+// contents and metadata for a given ledger
+// XXX This will need to be modified to accept marshaled envelopes
+//     to accomodate non-deterministic marshaling
+func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
+	var nextBlockNumber uint64
+	var previousBlockHash []byte
+
+	if rl.Height() > 0 {
+		it, _ := rl.Iterator(&ab.SeekPosition{
+			Type: &ab.SeekPosition_Newest{
+				&ab.SeekNewest{},
+			},
+		})
+		<-it.ReadyChan() // Should never block, but just in case
+		block, status := it.Next()
+		if status != cb.Status_SUCCESS {
+			panic("Error seeking to newest block for chain with non-zero height")
+		}
+		nextBlockNumber = block.Header.Number + 1
+		previousBlockHash = block.Header.Hash()
+	}
+
+	data := &cb.BlockData{
+		Data: make([][]byte, len(messages)),
+	}
+
+	var err error
+	for i, msg := range messages {
+		data.Data[i], err = proto.Marshal(msg)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	block := cb.NewBlock(nextBlockNumber, previousBlockHash)
+	block.Header.DataHash = data.Hash()
+	block.Data = data
+
+	return block
+}
+
+// GetBlock is a utility method for retrieving a single block
+func GetBlock(rl Reader, index uint64) *cb.Block {
+	i, _ := rl.Iterator(&ab.SeekPosition{
+		Type: &ab.SeekPosition_Specified{
+			Specified: &ab.SeekSpecified{Number: index},
+		},
+	})
+	select {
+	case <-i.ReadyChan():
+		block, status := i.Next()
+		if status != cb.Status_SUCCESS {
+			return nil
+		}
+		return block
+	default:
+		return nil
+	}
 }

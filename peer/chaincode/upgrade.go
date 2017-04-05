@@ -98,7 +98,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 func chaincodeUpgrade(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory()
+		cf, err = InitCmdFactory(true)
 		if err != nil {
 			return err
 		}

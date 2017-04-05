@@ -40,9 +40,11 @@ var mainCmd = &cobra.Command{
 	},
 }
 
+var orderingEndpoint string
+
 func main() {
 	mainFlags := mainCmd.PersistentFlags()
-
+	mainFlags.StringVarP(&orderingEndpoint, "orderer", "o", "", "Ordering service endpoint")
 	//initialize the env
 	InitCCCheckerEnv(mainFlags)
 
@@ -56,7 +58,7 @@ func main() {
 func run(args []string) {
 	CCCheckerInit()
 	//TODO make parameters out of report and verbose
-	CCCheckerRun(true, true)
+	CCCheckerRun(orderingEndpoint, true, true)
 	fmt.Printf("Test complete\n")
 	return
 }

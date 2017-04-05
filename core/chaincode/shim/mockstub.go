@@ -25,6 +25,8 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
@@ -57,6 +59,8 @@ type MockStub struct {
 	// stores a transaction uuid while being Invoked / Deployed
 	// TODO if a chaincode uses recursion this may need to be a stack of TxIDs or possibly a reference counting map
 	TxID string
+
+	TxTimestamp *timestamp.Timestamp
 }
 
 func (stub *MockStub) GetTxID() string {
@@ -92,6 +96,7 @@ func (stub *MockStub) GetFunctionAndParameters() (function string, params []stri
 // MockStub doesn't support concurrent transactions at present.
 func (stub *MockStub) MockTransactionStart(txid string) {
 	stub.TxID = txid
+	stub.setTxTimestamp(util.CreateUtcTimestamp())
 }
 
 // End a mocked transaction, clearing the UUID.
@@ -206,7 +211,7 @@ func (stub *MockStub) GetQueryResult(query string) (StateQueryIteratorInterface,
 
 // GetHistoryForKey function can be invoked by a chaincode to return a history of
 // key values across time. GetHistoryForKey is intended to be used for read-only queries.
-func (stub *MockStub) GetHistoryForKey(key string) (StateQueryIteratorInterface, error) {
+func (stub *MockStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error) {
 	return nil, errors.New("Not Implemented")
 }
 
@@ -270,9 +275,15 @@ func (stub *MockStub) GetArgsSlice() ([]byte, error) {
 	return nil, nil
 }
 
-// Not implemented
+func (stub *MockStub) setTxTimestamp(time *timestamp.Timestamp) {
+	stub.TxTimestamp = time
+}
+
 func (stub *MockStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
-	return nil, nil
+	if stub.TxTimestamp == nil {
+		return nil, errors.New("TxTimestamp not set.")
+	}
+	return stub.TxTimestamp, nil
 }
 
 // Not implemented
@@ -346,15 +357,15 @@ func (iter *MockStateRangeQueryIterator) HasNext() bool {
 }
 
 // Next returns the next key and value in the range query iterator.
-func (iter *MockStateRangeQueryIterator) Next() (string, []byte, error) {
+func (iter *MockStateRangeQueryIterator) Next() (*ledger.KV, error) {
 	if iter.Closed == true {
 		mockLogger.Error("MockStateRangeQueryIterator.Next() called after Close()")
-		return "", nil, errors.New("MockStateRangeQueryIterator.Next() called after Close()")
+		return nil, errors.New("MockStateRangeQueryIterator.Next() called after Close()")
 	}
 
 	if iter.HasNext() == false {
 		mockLogger.Error("MockStateRangeQueryIterator.Next() called when it does not HaveNext()")
-		return "", nil, errors.New("MockStateRangeQueryIterator.Next() called when it does not HaveNext()")
+		return nil, errors.New("MockStateRangeQueryIterator.Next() called when it does not HaveNext()")
 	}
 
 	for iter.Current != nil {
@@ -366,12 +377,12 @@ func (iter *MockStateRangeQueryIterator) Next() (string, []byte, error) {
 			key := iter.Current.Value.(string)
 			value, err := iter.Stub.GetState(key)
 			iter.Current = iter.Current.Next()
-			return key, value, err
+			return &ledger.KV{Key: key, Value: value}, err
 		}
 		iter.Current = iter.Current.Next()
 	}
 	mockLogger.Error("MockStateRangeQueryIterator.Next() went past end of range")
-	return "", nil, errors.New("MockStateRangeQueryIterator.Next() went past end of range")
+	return nil, errors.New("MockStateRangeQueryIterator.Next() went past end of range")
 }
 
 // Close closes the range query iterator. This should be called when done

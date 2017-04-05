@@ -53,20 +53,23 @@ func newBroker(brokers []string, cp ChainPartition) (Broker, error) {
 	}
 
 	if connectedBroker == nil {
-		return nil, fmt.Errorf("Failed to connect to any of the given brokers (%v) for metadata request", brokers)
+		return nil, fmt.Errorf("failed to connect to any of the given brokers (%v) for metadata request", brokers)
 	}
 	logger.Debugf("Connected to broker %s", connectedBroker.Addr())
 
 	// Get metadata for the topic that corresponds to this chain
 	metadata, err := connectedBroker.GetMetadata(&sarama.MetadataRequest{Topics: []string{cp.Topic()}})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get metadata for topic %s: %s", cp, err)
+		return nil, fmt.Errorf("failed to get metadata for topic %s: %s", cp, err)
 	}
 
 	// Get the leader broker for this chain partition
 	if (cp.Partition() >= 0) && (cp.Partition() < int32(len(metadata.Topics[0].Partitions))) {
 		leaderBrokerID := metadata.Topics[0].Partitions[cp.Partition()].Leader
-		logger.Debugf("Leading broker for chain %s is broker ID %d", cp, leaderBrokerID)
+		// ATTN: If we ever switch to more than one partition per topic, the message
+		// below should be updated to print `cp` (i.e. Topic/Partition) instead of
+		// `cp.Topic()`.
+		logger.Debugf("[channel: %s] Leading broker: %d", cp.Topic(), leaderBrokerID)
 		for _, availableBroker := range metadata.Brokers {
 			if availableBroker.ID() == leaderBrokerID {
 				leaderBroker = availableBroker
@@ -76,15 +79,18 @@ func newBroker(brokers []string, cp ChainPartition) (Broker, error) {
 	}
 
 	if leaderBroker == nil {
-		return nil, fmt.Errorf("Can't find leader for chain %s", cp)
+		// ATTN: If we ever switch to more than one partition per topic, the message
+		// below should be updated to print `cp` (i.e. Topic/Partition) instead of
+		// `cp.Topic()`.
+		return nil, fmt.Errorf("[channel: %s] cannot find leader", cp.Topic())
 	}
 
 	// Connect to broker
 	if err := leaderBroker.Open(nil); err != nil {
-		return nil, fmt.Errorf("Failed to connect ho Kafka broker: %s", err)
+		return nil, fmt.Errorf("failed to connect to Kafka broker: %s", err)
 	}
 	if connected, err := leaderBroker.Connected(); !connected {
-		return nil, fmt.Errorf("Failed to connect to Kafka broker: %s", err)
+		return nil, fmt.Errorf("failed to connect to Kafka broker: %s", err)
 	}
 
 	return &brokerImpl{broker: leaderBroker}, nil

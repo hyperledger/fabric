@@ -314,7 +314,7 @@ peer:
         listenAddress: 0.0.0.0:6060
 
     mspConfigPath: ../../msp/sampleconfig
-    
+
     # BCCSP (Blockchain crypto provider): Select which crypto implementation or
     # library to use
     BCCSP:
@@ -325,9 +325,9 @@ peer:
             # SHA2 is hardcoded in several places, not only BCCSP
             Hash: SHA2
             Security: 256
-            FileKeyStore: 
+            FileKeyStore:
                 KeyStore:
-            
+
 ###############################################################################
 #
 #    VM section
@@ -370,16 +370,16 @@ chaincode:
         name:
 
     # Generic builder environment, suitable for most chaincode types
-    builder: hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+    builder: $(DOCKER_NS)/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
 
     golang:
         # golang will never need more than baseos
-        runtime: hyperledger/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
     car:
         # car may need more facilities (JVM, etc) in the future as the catalog
         # of platforms are expanded.  For now, we can just use baseos
-        runtime: hyperledger/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
     java:
         # This is an image based on java:openjdk-8 with addition compiler
@@ -387,7 +387,7 @@ chaincode:
         # This image is packed with shim layer libraries that are necessary
         # for Java chaincode runtime.
         Dockerfile:  |
-            FROM hyperledger/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
+            FROM $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests

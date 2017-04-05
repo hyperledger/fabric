@@ -19,9 +19,11 @@ package policies
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 
+	"github.com/golang/protobuf/proto"
 	logging "github.com/op/go-logging"
 )
 
@@ -37,6 +39,12 @@ const (
 
 	// OrdererPrefix is used in the path of standard orderer policy paths
 	OrdererPrefix = "Orderer"
+
+	// ChannelReaders is the label for the channel's readers policy (encompassing both orderer and application readers)
+	ChannelReaders = PathSeparator + ChannelPrefix + PathSeparator + "Readers"
+
+	// ChannelWriters is the label for the channel's writers policy (encompassing both orderer and application writers)
+	ChannelWriters = PathSeparator + ChannelPrefix + PathSeparator + "Writers"
 
 	// ChannelApplicationReaders is the label for the channel's application readers policy
 	ChannelApplicationReaders = PathSeparator + ChannelPrefix + PathSeparator + ApplicationPrefix + PathSeparator + "Readers"
@@ -77,25 +85,34 @@ type Manager interface {
 // Proposer is the interface used by the configtx manager for policy management
 type Proposer interface {
 	// BeginPolicyProposals starts a policy update transaction
-	BeginPolicyProposals(groups []string) ([]Proposer, error)
+	BeginPolicyProposals(tx interface{}, groups []string) ([]Proposer, error)
 
-	// ProposePolicy createss a pending policy update from a ConfigPolicy
-	ProposePolicy(name string, policy *cb.ConfigPolicy) error
+	// ProposePolicy createss a pending policy update from a ConfigPolicy and returns the deserialized
+	// value of the Policy representation
+	ProposePolicy(tx interface{}, name string, policy *cb.ConfigPolicy) (proto.Message, error)
 
 	// RollbackProposals discards the pending policy updates
-	RollbackProposals()
+	RollbackProposals(tx interface{})
 
 	// CommitProposals commits the pending policy updates
-	CommitProposals()
+	CommitProposals(tx interface{})
 
 	// PreCommit tests if a commit will apply
-	PreCommit() error
+	PreCommit(tx interface{}) error
 }
 
 // Provider provides the backing implementation of a policy
 type Provider interface {
 	// NewPolicy creates a new policy based on the policy bytes
-	NewPolicy(data []byte) (Policy, error)
+	NewPolicy(data []byte) (Policy, proto.Message, error)
+}
+
+// ChannelPolicyManagerGetter is a support interface
+// to get access to the policy manager of a given channel
+type ChannelPolicyManagerGetter interface {
+	// Returns the policy manager associated to the passed channel
+	// and true if it was the manager requested, or false if it is the default manager
+	Manager(channelID string) (Manager, bool)
 }
 
 type policyConfig struct {
@@ -112,7 +129,8 @@ type ManagerImpl struct {
 	fqPrefix      string
 	providers     map[int32]Provider
 	config        *policyConfig
-	pendingConfig *policyConfig
+	pendingConfig map[interface{}]*policyConfig
+	pendingLock   sync.RWMutex
 }
 
 // NewManagerImpl creates a new ManagerImpl with the given CryptoHelper
@@ -130,6 +148,7 @@ func NewManagerImpl(basePath string, providers map[int32]Provider) *ManagerImpl 
 			policies: make(map[string]Policy),
 			managers: make(map[string]*ManagerImpl),
 		},
+		pendingConfig: make(map[interface{}]*policyConfig),
 	}
 }
 
@@ -205,59 +224,80 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 }
 
 // BeginPolicies is used to start a new config proposal
-func (pm *ManagerImpl) BeginPolicyProposals(groups []string) ([]Proposer, error) {
-	if pm.pendingConfig != nil {
-		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
+func (pm *ManagerImpl) BeginPolicyProposals(tx interface{}, groups []string) ([]Proposer, error) {
+	pm.pendingLock.Lock()
+	defer pm.pendingLock.Unlock()
+	pendingConfig, ok := pm.pendingConfig[tx]
+	if ok {
+		logger.Panicf("Serious Programming error: cannot call begin mulitply for the same proposal")
 	}
 
-	pm.pendingConfig = &policyConfig{
+	pendingConfig = &policyConfig{
 		policies: make(map[string]Policy),
 		managers: make(map[string]*ManagerImpl),
 	}
+	pm.pendingConfig[tx] = pendingConfig
 
 	managers := make([]Proposer, len(groups))
 	for i, group := range groups {
 		newManager := NewManagerImpl(group, pm.providers)
 		newManager.parent = pm
-		pm.pendingConfig.managers[group] = newManager
+		pendingConfig.managers[group] = newManager
 		managers[i] = newManager
 	}
 	return managers, nil
 }
 
 // RollbackProposals is used to abandon a new config proposal
-func (pm *ManagerImpl) RollbackProposals() {
-	pm.pendingConfig = nil
+func (pm *ManagerImpl) RollbackProposals(tx interface{}) {
+	pm.pendingLock.Lock()
+	defer pm.pendingLock.Unlock()
+	delete(pm.pendingConfig, tx)
 }
 
 // PreCommit is currently a no-op for the policy manager and always returns nil
-func (pm *ManagerImpl) PreCommit() error {
+func (pm *ManagerImpl) PreCommit(tx interface{}) error {
 	return nil
 }
 
 // CommitProposals is used to commit a new config proposal
-func (pm *ManagerImpl) CommitProposals() {
-	if pm.pendingConfig == nil {
+func (pm *ManagerImpl) CommitProposals(tx interface{}) {
+	pm.pendingLock.Lock()
+	defer pm.pendingLock.Unlock()
+	pendingConfig, ok := pm.pendingConfig[tx]
+	if !ok {
+		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
+	}
+
+	if pendingConfig == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
 	}
 
-	for managerPath, m := range pm.pendingConfig.managers {
+	for managerPath, m := range pendingConfig.managers {
 		for _, policyName := range m.PolicyNames() {
 			fqKey := managerPath + PathSeparator + policyName
-			pm.pendingConfig.policies[fqKey], _ = m.GetPolicy(policyName)
+			pendingConfig.policies[fqKey], _ = m.GetPolicy(policyName)
 			logger.Debugf("In commit adding relative sub-policy %s to %s", fqKey, pm.basePath)
 		}
 	}
 
 	// Now that all the policies are present, initialize the meta policies
-	for _, imp := range pm.pendingConfig.imps {
-		imp.initialize(pm.pendingConfig)
+	for _, imp := range pendingConfig.imps {
+		imp.initialize(pendingConfig)
 	}
 
-	pm.config = pm.pendingConfig
-	pm.pendingConfig = nil
+	pm.config = pendingConfig
+	delete(pm.pendingConfig, tx)
 
 	if pm.parent == nil && pm.basePath == ChannelPrefix {
+		for _, policyName := range []string{ChannelReaders, ChannelWriters} {
+			_, ok := pm.GetPolicy(policyName)
+			if !ok {
+				logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)
+			} else {
+				logger.Debugf("As expected, current configuration has policy '%s'", policyName)
+			}
+		}
 		if _, ok := pm.config.managers[ApplicationPrefix]; ok {
 			// Check for default application policies if the application component is defined
 			for _, policyName := range []string{
@@ -286,36 +326,46 @@ func (pm *ManagerImpl) CommitProposals() {
 }
 
 // ProposePolicy takes key, path, and ConfigPolicy and registers it in the proposed PolicyManager, or errors
-func (pm *ManagerImpl) ProposePolicy(key string, configPolicy *cb.ConfigPolicy) error {
+// It also returns the deserialized policy value for tracking and inspection at the invocation side.
+func (pm *ManagerImpl) ProposePolicy(tx interface{}, key string, configPolicy *cb.ConfigPolicy) (proto.Message, error) {
+	pm.pendingLock.RLock()
+	pendingConfig, ok := pm.pendingConfig[tx]
+	pm.pendingLock.RUnlock()
+	if !ok {
+		logger.Panicf("Serious Programming error: called Propose without Begin")
+	}
+
 	policy := configPolicy.Policy
 	if policy == nil {
-		return fmt.Errorf("Policy cannot be nil")
+		return nil, fmt.Errorf("Policy cannot be nil")
 	}
 
 	var cPolicy Policy
+	var deserialized proto.Message
 
 	if policy.Type == int32(cb.Policy_IMPLICIT_META) {
 		imp, err := newImplicitMetaPolicy(policy.Policy)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		pm.pendingConfig.imps = append(pm.pendingConfig.imps, imp)
+		pendingConfig.imps = append(pendingConfig.imps, imp)
 		cPolicy = imp
+		deserialized = imp.conf
 	} else {
 		provider, ok := pm.providers[int32(policy.Type)]
 		if !ok {
-			return fmt.Errorf("Unknown policy type: %v", policy.Type)
+			return nil, fmt.Errorf("Unknown policy type: %v", policy.Type)
 		}
 
 		var err error
-		cPolicy, err = provider.NewPolicy(policy.Policy)
+		cPolicy, deserialized, err = provider.NewPolicy(policy.Policy)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	pm.pendingConfig.policies[key] = cPolicy
+	pendingConfig.policies[key] = cPolicy
 
 	logger.Debugf("Proposed new policy %s for %s", key, pm.basePath)
-	return nil
+	return deserialized, nil
 }

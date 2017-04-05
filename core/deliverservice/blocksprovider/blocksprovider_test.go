@@ -21,10 +21,39 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/deliverservice/mocks"
+	"github.com/hyperledger/fabric/gossip/api"
+	common2 "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/stretchr/testify/assert"
 )
+
+type mockMCS struct {
+}
+
+func (*mockMCS) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common2.PKIidType {
+	return common2.PKIidType("pkiID")
+}
+
+func (*mockMCS) VerifyBlock(chainID common2.ChainID, signedBlock []byte) error {
+	return nil
+}
+
+func (*mockMCS) Sign(msg []byte) ([]byte, error) {
+	return msg, nil
+}
+
+func (*mockMCS) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	return nil
+}
+
+func (*mockMCS) VerifyByChannel(chainID common2.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	return nil
+}
+
+func (*mockMCS) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+	return nil
+}
 
 // Used to generate a simple test case to initialize delivery
 // from given block sequence number.
@@ -38,6 +67,7 @@ func makeTestCase(ledgerHeight uint64) func(*testing.T) {
 			chainID: "***TEST_CHAINID***",
 			gossip:  gossipServiceAdapter,
 			client:  deliverer,
+			mcs:     &mockMCS{},
 		}
 
 		provider.RequestBlocks(&mocks.MockLedgerInfo{ledgerHeight})

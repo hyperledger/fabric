@@ -77,21 +77,3 @@ func (m *Manager) GetPolicy(id string) (policies.Policy, bool) {
 	}
 	return m.Policy, m.Policy != nil
 }
-
-type PolicyManagerMgmt struct{}
-
-func (m *PolicyManagerMgmt) GetPolicy(id string) (policies.Policy, bool) {
-	panic("implement me")
-}
-
-func (m *PolicyManagerMgmt) Manager(path []string) (policies.Manager, bool) {
-	return &Manager{Policy: &Policy{Err: nil}}, false
-}
-
-func (m *PolicyManagerMgmt) BasePath() string {
-	panic("implement me")
-}
-
-func (m *PolicyManagerMgmt) PolicyNames() []string {
-	panic("implement me")
-}

@@ -24,6 +24,8 @@ import (
 	"github.com/docker/docker/pkg/testutil/assert"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/deliverservice/mocks"
+	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/spf13/viper"
 )
 
@@ -33,6 +35,33 @@ type mockBlocksDelivererFactory struct {
 
 func (mock *mockBlocksDelivererFactory) Create() (blocksprovider.BlocksDeliverer, error) {
 	return mock.mockCreate()
+}
+
+type mockMCS struct {
+}
+
+func (*mockMCS) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
+	return common.PKIidType("pkiID")
+}
+
+func (*mockMCS) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
+	return nil
+}
+
+func (*mockMCS) Sign(msg []byte) ([]byte, error) {
+	return msg, nil
+}
+
+func (*mockMCS) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	return nil
+}
+
+func (*mockMCS) VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	return nil
+}
+
+func (*mockMCS) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+	return nil
 }
 
 func TestNewDeliverService(t *testing.T) {
@@ -48,7 +77,7 @@ func TestNewDeliverService(t *testing.T) {
 		return blocksDeliverer, nil
 	}
 
-	service := NewFactoryDeliverService(gossipServiceAdapter, factory, nil)
+	service := NewFactoryDeliverService(gossipServiceAdapter, factory, nil, &mockMCS{})
 	assert.NilError(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}))
 
 	// Lets start deliver twice

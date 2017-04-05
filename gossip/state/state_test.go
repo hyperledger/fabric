@@ -18,13 +18,12 @@ package state
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
-
-	"errors"
 
 	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx/test"
@@ -66,9 +65,14 @@ func (*joinChanMsg) SequenceNumber() uint64 {
 	return uint64(time.Now().UnixNano())
 }
 
-// AnchorPeers returns all the anchor peers that are in the channel
-func (*joinChanMsg) AnchorPeers() []api.AnchorPeer {
-	return []api.AnchorPeer{{OrgID: orgID}}
+// Members returns the organizations of the channel
+func (jcm *joinChanMsg) Members() []api.OrgIdentityType {
+	return []api.OrgIdentityType{orgID}
+}
+
+// AnchorPeersOf returns the anchor peers of the given organization
+func (jcm *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer {
+	return []api.AnchorPeer{}
 }
 
 type orgCryptoService struct {
@@ -97,7 +101,7 @@ func (*cryptoServiceMock) GetPKIidOfCert(peerIdentity api.PeerIdentityType) comm
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*cryptoServiceMock) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
+func (*cryptoServiceMock) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
 	return nil
 }
 

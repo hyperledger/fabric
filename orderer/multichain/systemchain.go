@@ -19,9 +19,9 @@ package multichain
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -34,11 +34,12 @@ import (
 // Define some internal interfaces for easier mocking
 type chainCreator interface {
 	newChain(configTx *cb.Envelope)
+	channelsCount() int
 }
 
 type limitedSupport interface {
 	PolicyManager() policies.Manager
-	SharedConfig() configvaluesapi.Orderer
+	SharedConfig() config.Orderer
 }
 
 type systemChainCommitter struct {
@@ -87,6 +88,15 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) (filter.Action, filter.Com
 		return filter.Forward, nil
 	}
 
+	maxChannels := scf.support.SharedConfig().MaxChannelsCount()
+	if maxChannels > 0 {
+		// We check for strictly greater than to accomodate the system channel
+		if uint64(scf.cc.channelsCount()) > maxChannels {
+			logger.Warningf("Rejecting channel creation because the orderer has reached the maximum number of channels, %d", maxChannels)
+			return filter.Reject, nil
+		}
+	}
+
 	configTx := &cb.Envelope{}
 	err = proto.Unmarshal(msgData.Data, configTx)
 	if err != nil {
@@ -120,16 +130,16 @@ func (scf *systemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) error
 		return fmt.Errorf("Failing to validate chain creation because of config update envelope unmarshaling error: %s", err)
 	}
 
-	config, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	configMsg, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
 	if err != nil {
 		return fmt.Errorf("Failing to validate chain creation because of unmarshaling error: %s", err)
 	}
 
-	if config.WriteSet == nil {
+	if configMsg.WriteSet == nil {
 		return fmt.Errorf("Failing to validate channel creation because WriteSet is nil")
 	}
 
-	ordererGroup, ok := config.WriteSet.Groups[configtxorderer.GroupKey]
+	ordererGroup, ok := configMsg.WriteSet.Groups[config.OrdererGroupKey]
 	if !ok {
 		return fmt.Errorf("Rejecting channel creation because it is missing orderer group")
 	}
@@ -175,7 +185,7 @@ func (scf *systemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) error
 	return nil
 }
 
-func (scf *systemChainFilter) inspect(configResources *configResources) error {
+func (scf *systemChainFilter) inspect(configManager configtxapi.Resources) error {
 	// XXX decide what it is that we will require to be the same in the new config, and what will be allowed to be different
 	// Are all keys allowed? etc.
 
@@ -214,11 +224,12 @@ func (scf *systemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return err
 	}
 
-	configResources, err := newConfigResources(configEnvelope)
+	initializer := configtx.NewInitializer()
+	configManager, err := configtx.NewManagerImpl(configTx, initializer, nil)
 	if err != nil {
 		return fmt.Errorf("Failed to create config manager and handlers: %s", err)
 	}
 
 	// Make sure that the config does not modify any of the orderer
-	return scf.inspect(configResources)
+	return scf.inspect(configManager)
 }

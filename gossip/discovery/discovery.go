@@ -17,6 +17,8 @@ limitations under the License.
 package discovery
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/gossip/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
@@ -29,6 +31,26 @@ type CryptoService interface {
 	// SignMessage signs a message
 	SignMessage(m *proto.GossipMessage, internalEndpoint string) *proto.Envelope
 }
+
+// EnvelopeFilter may or may not remove part of the Envelope
+// that the given SignedGossipMessage originates from.
+type EnvelopeFilter func(message *proto.SignedGossipMessage) *proto.Envelope
+
+// Sieve defines the messages that are allowed to be sent to some remote peer,
+// based on some criteria.
+// Returns whether the sieve permits sending a given message.
+type Sieve func(message *proto.SignedGossipMessage) bool
+
+// DisclosurePolicy defines which messages a given remote peer
+// is eligible of knowing about, and also what is it eligible
+// to know about out of a given SignedGossipMessage.
+// Returns:
+// 1) A Sieve for a given remote peer.
+//    The Sieve is applied for each peer in question and outputs
+//    whether the message should be disclosed to the remote peer.
+// 2) A EnvelopeFilter for a given SignedGossipMessage, which may remove
+//    part of the Envelope the SignedGossipMessage originates from
+type DisclosurePolicy func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter)
 
 // CommService is an interface that the discovery expects to be implemented and passed on creation
 type CommService interface {
@@ -60,6 +82,11 @@ type NetworkMember struct {
 	InternalEndpoint string
 }
 
+// String returns a string representation of the NetworkMember
+func (n *NetworkMember) String() string {
+	return fmt.Sprintf("Endpoint: %s, InternalEndpoint: %s, PKI-ID: %v, Metadata: %v", n.Endpoint, n.InternalEndpoint, n.PKIid, n.Metadata)
+}
+
 // PreferredEndpoint computes the endpoint to connect to,
 // while preferring internal endpoint over the standard
 // endpoint
@@ -73,9 +100,8 @@ func (nm NetworkMember) PreferredEndpoint() string {
 // Discovery is the interface that represents a discovery module
 type Discovery interface {
 
-	// Exists returns whether a peer with given
-	// PKI-ID is known
-	Exists(PKIID common.PKIidType) bool
+	// Lookup returns a network member, or nil if not found
+	Lookup(PKIID common.PKIidType) *NetworkMember
 
 	// Self returns this instance's membership information
 	Self() NetworkMember
@@ -97,5 +123,7 @@ type Discovery interface {
 	InitiateSync(peerNum int)
 
 	// Connect makes this instance to connect to a remote instance
-	Connect(NetworkMember)
+	// The sendInternalEndpoint param determines whether or not
+	// to include the internal endpoint in the membership request,
+	Connect(member NetworkMember, sendInternalEndpoint func() bool)
 }

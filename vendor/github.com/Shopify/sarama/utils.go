@@ -146,5 +146,7 @@ var (
 	V0_9_0_0   = newKafkaVersion(0, 9, 0, 0)
 	V0_9_0_1   = newKafkaVersion(0, 9, 0, 1)
 	V0_10_0_0  = newKafkaVersion(0, 10, 0, 0)
+	V0_10_0_1  = newKafkaVersion(0, 10, 0, 1)
+	V0_10_1_0  = newKafkaVersion(0, 10, 1, 0)
 	minVersion = V0_8_2_0
 )

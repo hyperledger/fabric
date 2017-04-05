@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -41,7 +41,7 @@ func (ao applicationOrgs) Name() string {
 }
 
 type mockReceiver struct {
-	orgs     map[string]configvaluesapi.ApplicationOrg
+	orgs     map[string]config.ApplicationOrg
 	sequence uint64
 }
 
@@ -57,7 +57,7 @@ func (mc *mockConfig) Sequence() uint64 {
 	return mc.sequence
 }
 
-func (mc *mockConfig) Organizations() map[string]configvaluesapi.ApplicationOrg {
+func (mc *mockConfig) Organizations() map[string]config.ApplicationOrg {
 	return mc.orgs
 }
 
@@ -70,7 +70,7 @@ const testOrgID = "testID"
 func TestInitialUpdate(t *testing.T) {
 	mc := &mockConfig{
 		sequence: 7,
-		orgs: map[string]configvaluesapi.ApplicationOrg{
+		orgs: map[string]config.ApplicationOrg{
 			testOrgID: applicationOrgs([]*peer.AnchorPeer{
 				&peer.AnchorPeer{
 					Port: 9,
@@ -92,7 +92,7 @@ func TestInitialUpdate(t *testing.T) {
 func TestSecondUpdate(t *testing.T) {
 	mc := &mockConfig{
 		sequence: 7,
-		orgs: map[string]configvaluesapi.ApplicationOrg{
+		orgs: map[string]config.ApplicationOrg{
 			testOrgID: applicationOrgs([]*peer.AnchorPeer{
 				&peer.AnchorPeer{
 					Port: 9,
@@ -107,7 +107,7 @@ func TestSecondUpdate(t *testing.T) {
 	ce.ProcessConfigUpdate(mc)
 
 	mc.sequence = 8
-	mc.orgs = map[string]configvaluesapi.ApplicationOrg{
+	mc.orgs = map[string]config.ApplicationOrg{
 		testOrgID: applicationOrgs([]*peer.AnchorPeer{
 			&peer.AnchorPeer{
 				Port: 10,
@@ -125,7 +125,7 @@ func TestSecondUpdate(t *testing.T) {
 func TestSecondSameUpdate(t *testing.T) {
 	mc := &mockConfig{
 		sequence: 7,
-		orgs: map[string]configvaluesapi.ApplicationOrg{
+		orgs: map[string]config.ApplicationOrg{
 			testOrgID: applicationOrgs([]*peer.AnchorPeer{
 				&peer.AnchorPeer{
 					Port: 9,
@@ -154,7 +154,7 @@ func TestSecondSameUpdate(t *testing.T) {
 func TestUpdatedSeqOnly(t *testing.T) {
 	mc := &mockConfig{
 		sequence: 7,
-		orgs: map[string]configvaluesapi.ApplicationOrg{
+		orgs: map[string]config.ApplicationOrg{
 			testOrgID: applicationOrgs([]*peer.AnchorPeer{
 				&peer.AnchorPeer{
 					Port: 9,
