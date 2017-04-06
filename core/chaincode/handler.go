@@ -1415,7 +1415,7 @@ func (handler *Handler) setChaincodeProposal(signedProp *pb.SignedProposal, prop
 			return fmt.Errorf("Failed getting proposal context. Signed proposal is nil.")
 		}
 
-		msg.Proposal = prop
+		msg.Proposal = signedProp
 	}
 	return nil
 }

@@ -53,7 +53,7 @@ message ChaincodeMessage {
     bytes payload = 3;
     string txid = 4;
 
-    Proposal proposal = 5;
+    SignedProposal proposal = 5;
 
     //event emmited by chaincode. Used only with Init or Invoke.
     // This event is then stored (currently)
