@@ -196,7 +196,7 @@ func (ec *EventsClient) processEvents() error {
 func (ec *EventsClient) Start() error {
 	conn, err := newEventsClientConnectionWithAddress(ec.peerAddress)
 	if err != nil {
-		return fmt.Errorf("Could not create client conn to %s", ec.peerAddress)
+		return fmt.Errorf("Could not create client conn to %s:%s", ec.peerAddress, err)
 	}
 
 	ies, err := ec.adapter.GetInterestedEvents()
@@ -211,7 +211,7 @@ func (ec *EventsClient) Start() error {
 	serverClient := ehpb.NewEventsClient(conn)
 	ec.stream, err = serverClient.Chat(context.Background())
 	if err != nil {
-		return fmt.Errorf("Could not create client conn to %s", ec.peerAddress)
+		return fmt.Errorf("Could not create client conn to %s:%s", ec.peerAddress, err)
 	}
 
 	if err = ec.register(ies); err != nil {
