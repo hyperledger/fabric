@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -47,7 +46,7 @@ func (s *mspSigner) NewSignatureHeader() (*cb.SignatureHeader, error) {
 		return nil, fmt.Errorf("Failed serializing creator public identity [%s]", err)
 	}
 
-	nonce, err := primitives.GetRandomNonce()
+	nonce, err := crypto.GetRandomNonce()
 	if err != nil {
 		return nil, fmt.Errorf("Failed creating nonce [%s]", err)
 	}

@@ -27,9 +27,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 )
@@ -325,7 +325,7 @@ func CreateChaincodeProposal(typ common.HeaderType, chainID string, cis *peer.Ch
 // It returns the proposal and the transaction id associated to the proposal
 func CreateChaincodeProposalWithTransient(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte, transientMap map[string][]byte) (*peer.Proposal, string, error) {
 	// generate a random nonce
-	nonce, err := primitives.GetRandomNonce()
+	nonce, err := crypto.GetRandomNonce()
 	if err != nil {
 		return nil, "", err
 	}

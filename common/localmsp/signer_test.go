@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/common/crypto"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/stretchr/testify/assert"
 )
@@ -58,7 +58,7 @@ func TestMspSigner_NewSignatureHeader(t *testing.T) {
 	}
 
 	assert.NotNil(t, sh, "SignatureHeader must be different from nil")
-	assert.Len(t, sh.Nonce, primitives.NonceSize, "SignatureHeader.Nonce must be of length %d", primitives.NonceSize)
+	assert.Len(t, sh.Nonce, crypto.NonceSize, "SignatureHeader.Nonce must be of length %d", crypto.NonceSize)
 
 	mspIdentity, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	assert.NoError(t, err, "Failed getting default MSP Identity")

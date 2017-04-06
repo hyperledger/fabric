@@ -3,7 +3,6 @@
 set -e
 
 declare -a arr=(
-"./accesscontrol"
 "./bccsp"
 "./common"
 "./core"
