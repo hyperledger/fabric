@@ -19,8 +19,6 @@ limitations under the License.
 package shim
 
 import (
-	"bytes"
-	"encoding/gob"
 	"errors"
 	"flag"
 	"fmt"
@@ -491,11 +489,17 @@ func getStateByPartialCompositeKey(stub ChaincodeStubInterface, objectType strin
 
 func (iter *StateQueryIterator) Next() (*queryresult.KV, error) {
 	result, err := next(iter.CommonIterator, STATE_QUERY_RESULT)
+	if err != nil {
+		return nil, err
+	}
 	return result.(*queryresult.KV), err
 }
 
 func (iter *HistoryQueryIterator) Next() (*queryresult.KeyModification, error) {
 	result, err := next(iter.CommonIterator, HISTORY_QUERY_RESULT)
+	if err != nil {
+		return nil, err
+	}
 	return result.(*queryresult.KeyModification), err
 }
 
@@ -515,23 +519,21 @@ func (iter *CommonIterator) HasNext() bool {
 func getResultFromBytes(queryResultBytes *pb.QueryResultBytes, iter *CommonIterator,
 	rType resultType) (commonledger.QueryResult, error) {
 
-	decoder := gob.NewDecoder(bytes.NewBuffer(queryResultBytes.ResultBytes))
-
 	if rType == STATE_QUERY_RESULT {
-		var stateQueryResult queryresult.KV
-		if err := decoder.Decode(&stateQueryResult); err != nil {
+		stateQueryResult := &queryresult.KV{}
+		if err := proto.Unmarshal(queryResultBytes.ResultBytes, stateQueryResult); err != nil {
 			return nil, err
 		}
 		iter.currentLoc++
-		return &stateQueryResult, nil
+		return stateQueryResult, nil
 
 	} else if rType == HISTORY_QUERY_RESULT {
-		var historyQueryResult queryresult.KeyModification
-		if err := decoder.Decode(&historyQueryResult); err != nil {
+		historyQueryResult := &queryresult.KeyModification{}
+		if err := proto.Unmarshal(queryResultBytes.ResultBytes, historyQueryResult); err != nil {
 			return nil, err
 		}
 		iter.currentLoc++
-		return &historyQueryResult, nil
+		return historyQueryResult, nil
 
 	}
 	return nil, errors.New("Wrong result type")

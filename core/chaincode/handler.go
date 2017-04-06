@@ -18,7 +18,6 @@ package chaincode
 
 import (
 	"bytes"
-	"encoding/gob"
 	"fmt"
 	"io"
 	"sync"
@@ -761,16 +760,6 @@ func (handler *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 	}()
 }
 
-func getBytes(qresult interface{}) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(qresult)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
 //getQueryResponse takes an iterator and fetch state to construct QueryResponse
 func getQueryResponse(handler *Handler, txContext *transactionContext, iter commonledger.ResultsIterator,
 	iterID string) (*pb.QueryResponse, error) {
@@ -790,7 +779,7 @@ func getQueryResponse(handler *Handler, txContext *transactionContext, iter comm
 			break
 		}
 		var resultBytes []byte
-		resultBytes, err = getBytes(queryResult)
+		resultBytes, err = proto.Marshal(queryResult.(proto.Message))
 		if err != nil {
 			return nil, err
 		}
