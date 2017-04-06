@@ -29,42 +29,42 @@ import (
 	mspproto "github.com/hyperledger/fabric/protos/msp"
 )
 
-type mockChannelPolicyManagerGetter struct {
-	managers map[string]policies.Manager
+type MockChannelPolicyManagerGetter struct {
+	Managers map[string]policies.Manager
 }
 
-func (c *mockChannelPolicyManagerGetter) Manager(channelID string) (policies.Manager, bool) {
-	return c.managers[channelID], true
+func (c *MockChannelPolicyManagerGetter) Manager(channelID string) (policies.Manager, bool) {
+	return c.Managers[channelID], true
 }
 
-type mockChannelPolicyManager struct {
-	mockPolicy policies.Policy
+type MockChannelPolicyManager struct {
+	MockPolicy policies.Policy
 }
 
-func (m *mockChannelPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
-	return m.mockPolicy, true
+func (m *MockChannelPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
+	return m.MockPolicy, true
 }
 
-func (m *mockChannelPolicyManager) Manager(path []string) (policies.Manager, bool) {
+func (m *MockChannelPolicyManager) Manager(path []string) (policies.Manager, bool) {
 	panic("Not implemented")
 }
 
-func (m *mockChannelPolicyManager) BasePath() string {
+func (m *MockChannelPolicyManager) BasePath() string {
 	panic("Not implemented")
 }
 
-func (m *mockChannelPolicyManager) PolicyNames() []string {
+func (m *MockChannelPolicyManager) PolicyNames() []string {
 	panic("Not implemented")
 }
 
-type mockPolicy struct {
-	deserializer msp.IdentityDeserializer
+type MockPolicy struct {
+	Deserializer msp.IdentityDeserializer
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (m *mockPolicy) Evaluate(signatureSet []*common.SignedData) error {
+func (m *MockPolicy) Evaluate(signatureSet []*common.SignedData) error {
 	fmt.Printf("Evaluate [%s], [% x], [% x]\n", string(signatureSet[0].Identity), string(signatureSet[0].Data), string(signatureSet[0].Signature))
-	identity, err := m.deserializer.DeserializeIdentity(signatureSet[0].Identity)
+	identity, err := m.Deserializer.DeserializeIdentity(signatureSet[0].Identity)
 	if err != nil {
 		return err
 	}
@@ -72,50 +72,50 @@ func (m *mockPolicy) Evaluate(signatureSet []*common.SignedData) error {
 	return identity.Verify(signatureSet[0].Data, signatureSet[0].Signature)
 }
 
-type mockIdentityDeserializer struct {
-	identity []byte
-	msg      []byte
+type MockIdentityDeserializer struct {
+	Identity []byte
+	Msg      []byte
 }
 
-func (d *mockIdentityDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
-	fmt.Printf("id : [%s], [%s]\n", string(serializedIdentity), string(d.identity))
-	if bytes.Equal(d.identity, serializedIdentity) {
-		fmt.Printf("GOT : [%s], [%s]\n", string(serializedIdentity), string(d.identity))
-		return &mockIdentity{identity: d.identity, msg: d.msg}, nil
+func (d *MockIdentityDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
+	fmt.Printf("id : [%s], [%s]\n", string(serializedIdentity), string(d.Identity))
+	if bytes.Equal(d.Identity, serializedIdentity) {
+		fmt.Printf("GOT : [%s], [%s]\n", string(serializedIdentity), string(d.Identity))
+		return &MockIdentity{identity: d.Identity, msg: d.Msg}, nil
 	}
 
-	return nil, errors.New("Invalid identity")
+	return nil, errors.New("Invalid Identity")
 }
 
-type mockIdentity struct {
+type MockIdentity struct {
 	identity []byte
 	msg      []byte
 }
 
-func (id *mockIdentity) SatisfiesPrincipal(p *mspproto.MSPPrincipal) error {
+func (id *MockIdentity) SatisfiesPrincipal(p *mspproto.MSPPrincipal) error {
 	if !bytes.Equal(id.identity, p.Principal) {
 		return fmt.Errorf("Different identities [% x]!=[% x]", id.identity, p.Principal)
 	}
 	return nil
 }
 
-func (id *mockIdentity) GetIdentifier() *msp.IdentityIdentifier {
+func (id *MockIdentity) GetIdentifier() *msp.IdentityIdentifier {
 	return &msp.IdentityIdentifier{Mspid: "mock", Id: "mock"}
 }
 
-func (id *mockIdentity) GetMSPIdentifier() string {
+func (id *MockIdentity) GetMSPIdentifier() string {
 	return "mock"
 }
 
-func (id *mockIdentity) Validate() error {
+func (id *MockIdentity) Validate() error {
 	return nil
 }
 
-func (id *mockIdentity) GetOrganizationalUnits() []string {
+func (id *MockIdentity) GetOrganizationalUnits() []string {
 	return []string{"dunno"}
 }
 
-func (id *mockIdentity) Verify(msg []byte, sig []byte) error {
+func (id *MockIdentity) Verify(msg []byte, sig []byte) error {
 	fmt.Printf("VERIFY [% x], [% x], [% x]\n", string(id.msg), string(msg), string(sig))
 	if bytes.Equal(id.msg, msg) {
 		if bytes.Equal(msg, sig) {
@@ -126,22 +126,22 @@ func (id *mockIdentity) Verify(msg []byte, sig []byte) error {
 	return errors.New("Invalid Signature")
 }
 
-func (id *mockIdentity) VerifyOpts(msg []byte, sig []byte, opts msp.SignatureOpts) error {
+func (id *MockIdentity) VerifyOpts(msg []byte, sig []byte, opts msp.SignatureOpts) error {
 	return nil
 }
 
-func (id *mockIdentity) VerifyAttributes(proof []byte, spec *msp.AttributeProofSpec) error {
+func (id *MockIdentity) VerifyAttributes(proof []byte, spec *msp.AttributeProofSpec) error {
 	return nil
 }
 
-func (id *mockIdentity) Serialize() ([]byte, error) {
+func (id *MockIdentity) Serialize() ([]byte, error) {
 	return []byte("cert"), nil
 }
 
-type mockMSPPrincipalGetter struct {
+type MockMSPPrincipalGetter struct {
 	Principal []byte
 }
 
-func (m *mockMSPPrincipalGetter) Get(role string) (*mspproto.MSPPrincipal, error) {
+func (m *MockMSPPrincipalGetter) Get(role string) (*mspproto.MSPPrincipal, error) {
 	return &mspproto.MSPPrincipal{Principal: m.Principal}, nil
 }

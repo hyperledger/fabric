@@ -61,6 +61,9 @@ type MockStub struct {
 	TxID string
 
 	TxTimestamp *timestamp.Timestamp
+
+	// mocked signedProposal
+	signedProposal *pb.SignedProposal
 }
 
 func (stub *MockStub) GetTxID() string {
@@ -96,11 +99,13 @@ func (stub *MockStub) GetFunctionAndParameters() (function string, params []stri
 // MockStub doesn't support concurrent transactions at present.
 func (stub *MockStub) MockTransactionStart(txid string) {
 	stub.TxID = txid
+	stub.setSignedProposal(&pb.SignedProposal{})
 	stub.setTxTimestamp(util.CreateUtcTimestamp())
 }
 
 // End a mocked transaction, clearing the UUID.
 func (stub *MockStub) MockTransactionEnd(uuid string) {
+	stub.signedProposal = nil
 	stub.TxID = ""
 }
 
@@ -124,6 +129,16 @@ func (stub *MockStub) MockInit(uuid string, args [][]byte) pb.Response {
 func (stub *MockStub) MockInvoke(uuid string, args [][]byte) pb.Response {
 	stub.args = args
 	stub.MockTransactionStart(uuid)
+	res := stub.cc.Invoke(stub)
+	stub.MockTransactionEnd(uuid)
+	return res
+}
+
+// Invoke this chaincode, also starts and ends a transaction.
+func (stub *MockStub) MockInvokeWithSignedProposal(uuid string, args [][]byte, sp *pb.SignedProposal) pb.Response {
+	stub.args = args
+	stub.MockTransactionStart(uuid)
+	stub.signedProposal = sp
 	res := stub.cc.Invoke(stub)
 	stub.MockTransactionEnd(uuid)
 	return res
@@ -272,7 +287,11 @@ func (stub *MockStub) GetBinding() ([]byte, error) {
 
 // Not implemented
 func (stub *MockStub) GetSignedProposal() (*pb.SignedProposal, error) {
-	return nil, nil
+	return stub.signedProposal, nil
+}
+
+func (stub *MockStub) setSignedProposal(sp *pb.SignedProposal) {
+	stub.signedProposal = sp
 }
 
 // Not implemented
