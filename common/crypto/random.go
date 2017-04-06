@@ -14,17 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package crypto
 
-// IntArrayEquals checks if the arrays of ints are the same
-func IntArrayEquals(a []int, b []int) bool {
-	if len(a) != len(b) {
-		return false
+import "crypto/rand"
+
+const (
+	// NonceSize is the default NonceSize
+	NonceSize = 24
+)
+
+// GetRandomBytes returns len random looking bytes
+func GetRandomBytes(len int) ([]byte, error) {
+	key := make([]byte, len)
+
+	// TODO: rand could fill less bytes then len
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, err
 	}
-	for i, v := range a {
-		if v != b[i] {
-			return false
-		}
-	}
-	return true
+
+	return key, nil
+}
+
+// GetRandomNonce returns a random byte array of length NonceSize
+func GetRandomNonce() ([]byte, error) {
+	return GetRandomBytes(NonceSize)
 }
