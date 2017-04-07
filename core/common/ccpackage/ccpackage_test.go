@@ -64,6 +64,45 @@ func TestOwnerCreateSignedCCDepSpec(t *testing.T) {
 	}
 }
 
+func TestAddSignature(t *testing.T) {
+	mspid, _ := localmsp.GetIdentifier()
+	sigpolicy := createInstantiationPolicy(mspid, mspprotos.MSPRole_ADMIN)
+	env, err := ownerCreateCCDepSpec([]byte("codepackage"), sigpolicy, signer)
+	if err != nil || env == nil {
+		t.Fatalf("error owner creating package %s", err)
+		return
+	}
+	//add one more with the same signer (we don't have another signer to test with)
+	env, err = SignExistingPackage(env, signer)
+	if err != nil || env == nil {
+		t.Fatalf("error signing existing package %s", err)
+		return
+	}
+	//...and sign aother for luck
+	env, err = SignExistingPackage(env, signer)
+	if err != nil || env == nil {
+		t.Fatalf("error signing existing package %s", err)
+		return
+	}
+
+	p := &common.Payload{}
+	if err = proto.Unmarshal(env.Payload, p); err != nil {
+		t.Fatalf("fatal error unmarshal payload")
+		return
+	}
+
+	sigdepspec := &peer.SignedChaincodeDeploymentSpec{}
+	if err = proto.Unmarshal(p.Data, sigdepspec); err != nil || sigdepspec == nil {
+		t.Fatalf("fatal error unmarshal sigdepspec")
+		return
+	}
+
+	if len(sigdepspec.OwnerEndorsements) != 3 {
+		t.Fatalf("invalid number of endorsements %d", len(sigdepspec.OwnerEndorsements))
+		return
+	}
+}
+
 func TestMissingSigaturePolicy(t *testing.T) {
 	env, err := ownerCreateCCDepSpec([]byte("codepackage"), nil, signer)
 	if err == nil || env != nil {

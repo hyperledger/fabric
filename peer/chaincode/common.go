@@ -133,7 +133,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		return fmt.Errorf("Must supply value for %s name parameter.", chainFuncName)
 	}
 
-	if cmd.Name() == instantiate_cmdname || cmd.Name() == install_cmdname || cmd.Name() == upgrade_cmdname {
+	if cmd.Name() == instantiate_cmdname || cmd.Name() == install_cmdname || cmd.Name() == upgrade_cmdname || cmd.Name() == package_cmdname {
 		if chaincodeVersion == common.UndefinedParamValue {
 			return fmt.Errorf("Chaincode version is not provided for %s", cmd.Name())
 		}
@@ -198,7 +198,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 			return errors.New("Non-empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 		}
 	} else {
-		if cmd == nil || cmd != chaincodeInstallCmd {
+		if cmd == nil || (cmd != chaincodeInstallCmd && cmd != chaincodePackageCmd) {
 			return errors.New("Empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 		}
 	}
@@ -214,10 +214,14 @@ type ChaincodeCmdFactory struct {
 }
 
 // InitCmdFactory init the ChaincodeCmdFactory with default clients
-func InitCmdFactory(isOrdererRequired bool) (*ChaincodeCmdFactory, error) {
-	endorserClient, err := common.GetEndorserClient()
-	if err != nil {
-		return nil, fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
+func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFactory, error) {
+	var err error
+	var endorserClient pb.EndorserClient
+	if isEndorserRequired {
+		endorserClient, err = common.GetEndorserClient()
+		if err != nil {
+			return nil, fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
+		}
 	}
 
 	signer, err := common.GetDefaultSigner()
