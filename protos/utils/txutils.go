@@ -328,7 +328,7 @@ func GetProposalHash2(header *common.Header, ccPropPayl []byte) ([]byte, error) 
 		return nil, fmt.Errorf("Nil arguments")
 	}
 
-	hash, err := factory.GetDefault().GetHash(&bccsp.SHAOpts{})
+	hash, err := factory.GetDefault().GetHash(&bccsp.SHA256Opts{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
 	}
@@ -362,7 +362,7 @@ func GetProposalHash1(header *common.Header, ccPropPayl []byte, visibility []byt
 		return nil, err
 	}
 
-	hash2, err := factory.GetDefault().GetHash(&bccsp.SHAOpts{})
+	hash2, err := factory.GetDefault().GetHash(&bccsp.SHA256Opts{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
 	}

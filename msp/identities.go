@@ -101,7 +101,7 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 	// mspLogger.Infof("Verifying signature")
 
 	// Compute Hash
-	digest, err := id.msp.bccsp.Hash(msg, &bccsp.SHAOpts{})
+	digest, err := id.msp.bccsp.Hash(msg, &bccsp.SHA256Opts{})
 	if err != nil {
 		return fmt.Errorf("Failed computing digest [%s]", err)
 	}
@@ -170,7 +170,7 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	//mspLogger.Infof("Signing message")
 
 	// Compute Hash
-	digest, err := id.msp.bccsp.Hash(msg, &bccsp.SHAOpts{})
+	digest, err := id.msp.bccsp.Hash(msg, &bccsp.SHA256Opts{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed computing digest [%s]", err)
 	}
