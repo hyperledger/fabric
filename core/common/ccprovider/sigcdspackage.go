@@ -33,11 +33,17 @@ type SignedCDSPackage struct {
 	buf      []byte
 	depSpec  *pb.ChaincodeDeploymentSpec
 	sDepSpec *pb.SignedChaincodeDeploymentSpec
+	env      *common.Envelope
 }
 
 // GetDepSpec gets the ChaincodeDeploymentSpec from the package
 func (ccpack *SignedCDSPackage) GetDepSpec() *pb.ChaincodeDeploymentSpec {
 	return ccpack.depSpec
+}
+
+// GetPackageObject gets the ChaincodeDeploymentSpec as proto.Message
+func (ccpack *SignedCDSPackage) GetPackageObject() proto.Message {
+	return ccpack.env
 }
 
 // ValidateCC returns error if the chaincode is not found or if its not a
@@ -69,6 +75,7 @@ func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, erro
 	ccpack.buf = nil
 	ccpack.sDepSpec = nil
 	ccpack.depSpec = nil
+	ccpack.env = nil
 
 	env := &common.Envelope{}
 	err := proto.Unmarshal(buf, env)
@@ -92,6 +99,7 @@ func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, erro
 	ccpack.buf = buf
 	ccpack.sDepSpec = sDepSpec
 	ccpack.depSpec = depSpec
+	ccpack.env = env
 
 	return &ChaincodeData{Name: depSpec.ChaincodeSpec.ChaincodeId.Name, Version: depSpec.ChaincodeSpec.ChaincodeId.Version}, nil
 }
@@ -102,6 +110,7 @@ func (ccpack *SignedCDSPackage) InitFromFS(ccname string, ccversion string) ([]b
 	ccpack.buf = nil
 	ccpack.sDepSpec = nil
 	ccpack.depSpec = nil
+	ccpack.env = nil
 
 	buf, err := GetChaincodePackage(ccname, ccversion)
 	if err != nil {
@@ -123,6 +132,10 @@ func (ccpack *SignedCDSPackage) PutChaincodeToFS() error {
 
 	if ccpack.sDepSpec == nil || ccpack.depSpec == nil {
 		return fmt.Errorf("depspec cannot be nil if buf is not nil")
+	}
+
+	if ccpack.env == nil {
+		return fmt.Errorf("env cannot be nil if buf and depspec are not nil")
 	}
 
 	ccname := ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name

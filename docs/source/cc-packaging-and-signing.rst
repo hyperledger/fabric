@@ -10,8 +10,8 @@ installation simply as a file with name
 called a chaincode package.
 
 This document describes how a chaincode package can be created and
-signed from CLI. The package is used for install using the usual install
-procedures and not covered in this document.
+signed from CLI. It also describes how the ``install`` command can
+be used to install the chaincode package.
 
 What’s in the package ?
 -----------------------
@@ -63,6 +63,17 @@ A previously created package can be signed using the command
 where ``ccpack.out`` and ``signedccpack.out`` are input and output
 packages respectively. ``signedccpack.out`` contains an additional
 signature over the package signed using the Local MSP.
+
+Installing the package
+----------------------
+The package can be installed using the ``install`` command as follows
+
+::
+
+    peer chaincode install ccpack.out
+
+where ``ccpack.out`` is a package filecreated using the ``package``
+or ``signedpackage`` commands.
 
 Conclusion
 ----------

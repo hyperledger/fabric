@@ -37,6 +37,11 @@ func (ccpack *CDSPackage) GetDepSpec() *pb.ChaincodeDeploymentSpec {
 	return ccpack.depSpec
 }
 
+// GetPackageObject gets the ChaincodeDeploymentSpec as proto.Message
+func (ccpack *CDSPackage) GetPackageObject() proto.Message {
+	return ccpack.depSpec
+}
+
 // ValidateCC returns error if the chaincode is not found or if its not a
 // ChaincodeDeploymentSpec
 func (ccpack *CDSPackage) ValidateCC(ccdata *ChaincodeData) (*pb.ChaincodeDeploymentSpec, error) {
@@ -59,7 +64,7 @@ func (ccpack *CDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, error) {
 	depSpec := &pb.ChaincodeDeploymentSpec{}
 	err := proto.Unmarshal(buf, depSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal fs deployment spec from bytes")
+		return nil, fmt.Errorf("failed to unmarshal deployment spec from bytes")
 	}
 	ccpack.buf = buf
 	ccpack.depSpec = depSpec
