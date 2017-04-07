@@ -551,19 +551,8 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) 
 		case m.MSPRole_ADMIN:
 			// in the case of admin, we check that the
 			// id is exactly one of our admins
-			idBytes, err := id.Serialize()
-			if err != nil {
-				return fmt.Errorf("Could not serialize this identity instance, err %s", err)
-			}
-
 			for _, admincert := range msp.admins {
-				adBytes, err := admincert.Serialize()
-				if err != nil {
-					return fmt.Errorf("Could not serialize admin cert, err %s", err)
-				}
-
-				rv := bytes.Compare(idBytes, adBytes)
-				if rv == 0 {
+				if bytes.Equal(id.(*identity).cert.Raw, admincert.(*identity).cert.Raw) {
 					return nil
 				}
 			}
@@ -572,20 +561,19 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) 
 		default:
 			return fmt.Errorf("Invalid MSP role type %d", int32(mspRole.Role))
 		}
-	// in this case we have to serialize this instance
-	// and compare it byte-by-byte with Principal
 	case m.MSPPrincipal_IDENTITY:
-		idBytes, err := id.Serialize()
+		// in this case we have to deserialize the principal's identity
+		// and compare it byte-by-byte with our cert
+		principalId, err := msp.DeserializeIdentity(principal.Principal)
 		if err != nil {
-			return fmt.Errorf("Could not serialize this identity instance, err %s", err)
+			return fmt.Errorf("Invalid identity principal, not a certificate. Error %s", err)
 		}
 
-		rv := bytes.Compare(idBytes, principal.Principal)
-		if rv == 0 {
+		if bytes.Equal(id.(*identity).cert.Raw, principalId.(*identity).cert.Raw) {
 			return nil
-		} else {
-			return errors.New("The identities do not match")
 		}
+
+		return errors.New("The identities do not match")
 	case m.MSPPrincipal_ORGANIZATION_UNIT:
 		// Principal contains the OrganizationUnit
 		OU := &m.OrganizationUnit{}
