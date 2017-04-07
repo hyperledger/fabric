@@ -28,8 +28,8 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-// extractSignedCCDepSpec extracts the messages from the envelope
-func extractSignedCCDepSpec(env *common.Envelope) (*common.ChannelHeader, *peer.SignedChaincodeDeploymentSpec, error) {
+// ExtractSignedCCDepSpec extracts the messages from the envelope
+func ExtractSignedCCDepSpec(env *common.Envelope) (*common.ChannelHeader, *peer.SignedChaincodeDeploymentSpec, error) {
 	p := &common.Payload{}
 	err := proto.Unmarshal(env.Payload, p)
 	if err != nil {
@@ -214,7 +214,7 @@ func SignExistingPackage(env *common.Envelope, owner msp.SigningIdentity) (*comm
 		return nil, fmt.Errorf("owner not provided")
 	}
 
-	ch, sdepspec, err := extractSignedCCDepSpec(env)
+	ch, sdepspec, err := ExtractSignedCCDepSpec(env)
 	if err != nil {
 		return nil, err
 	}
