@@ -80,8 +80,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -608,7 +608,7 @@ func (t *SimpleChaincode) getHistoryForMarble(stub shim.ChaincodeStubInterface, 
 
 		buffer.WriteString(", \"Timestamp\":")
 		buffer.WriteString("\"")
-		buffer.WriteString(ptypes.TimestampString(response.Timestamp))
+		buffer.WriteString(time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).String())
 		buffer.WriteString("\"")
 
 		buffer.WriteString(", \"IsDelete\":")
