@@ -385,11 +385,16 @@ func isValidCCNameOrVersion(ccNameOrVersion string, regExp string) bool {
 }
 
 // executeInstall implements the "install" Invoke transaction
-func (lccc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, depSpec []byte) error {
-	cds, err := utils.GetChaincodeDeploymentSpec(depSpec)
-
+func (lccc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccbytes []byte) error {
+	ccpack, err := ccprovider.GetCCPackage(ccbytes)
 	if err != nil {
 		return err
+	}
+
+	cds := ccpack.GetDepSpec()
+
+	if cds == nil {
+		return fmt.Errorf("nil deployment spec from from the CC package")
 	}
 
 	if err = lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
@@ -400,7 +405,8 @@ func (lccc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, dep
 		return err
 	}
 
-	if err = ccprovider.PutChaincodeIntoFS(cds); err != nil {
+	//everything checks out..lets write the package to the FS
+	if err = ccpack.PutChaincodeToFS(); err != nil {
 		return fmt.Errorf("Error installing chaincode code %s:%s(%s)", cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, err)
 	}
 
