@@ -777,7 +777,7 @@ func TestRichQuery(t *testing.T) {
 	}
 }
 
-func TestBatchCreateRetrieve(t *testing.T) {
+func TestBatchBatchOperations(t *testing.T) {
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
@@ -893,5 +893,115 @@ func TestBatchCreateRetrieve(t *testing.T) {
 			testutil.AssertEquals(t, updateDoc.Error, updateDocumentConflictError)
 			testutil.AssertEquals(t, updateDoc.Reason, updateDocumentConflictReason)
 		}
+
+		//----------------------------------------------
+		//Test Batch Retrieve Keys and Update
+
+		var keys []string
+
+		keys = append(keys, "marble01")
+		keys = append(keys, "marble03")
+
+		batchRevs, err := db.BatchRetrieveIDRevision(keys)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when attempting retrieve revisions"))
+
+		batchUpdateDocs = []*CouchDoc{}
+
+		//iterate through the revision docs
+		for _, revdoc := range batchRevs {
+			if revdoc.ID == "marble01" {
+				//update the json with the rev and add to the batch
+				marble01Doc := addRevisionAndDeleteStatus(revdoc.Rev, byteJSON01, false)
+				batchUpdateDocs = append(batchUpdateDocs, &CouchDoc{JSONValue: marble01Doc, Attachments: attachments1})
+			}
+
+			if revdoc.ID == "marble03" {
+				//update the json with the rev and add to the batch
+				marble03Doc := addRevisionAndDeleteStatus(revdoc.Rev, byteJSON03, false)
+				batchUpdateDocs = append(batchUpdateDocs, &CouchDoc{JSONValue: marble03Doc, Attachments: attachments3})
+			}
+		}
+
+		//Update couchdb with the batch
+		batchUpdateResp, err = db.BatchUpdateDocuments(batchUpdateDocs)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when attempting to update a batch of documents"))
+		//check to make sure each batch update response was successful
+		for _, updateDoc := range batchUpdateResp {
+			testutil.AssertEquals(t, updateDoc.Ok, true)
+		}
+
+		//----------------------------------------------
+		//Test Batch Delete
+
+		keys = []string{}
+
+		keys = append(keys, "marble02")
+		keys = append(keys, "marble04")
+
+		batchRevs, err = db.BatchRetrieveIDRevision(keys)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when attempting retrieve revisions"))
+
+		batchUpdateDocs = []*CouchDoc{}
+
+		//iterate through the revision docs
+		for _, revdoc := range batchRevs {
+			if revdoc.ID == "marble02" {
+				//update the json with the rev and add to the batch
+				marble02Doc := addRevisionAndDeleteStatus(revdoc.Rev, byteJSON02, true)
+				batchUpdateDocs = append(batchUpdateDocs, &CouchDoc{JSONValue: marble02Doc, Attachments: attachments1})
+			}
+			if revdoc.ID == "marble04" {
+				//update the json with the rev and add to the batch
+				marble04Doc := addRevisionAndDeleteStatus(revdoc.Rev, byteJSON04, true)
+				batchUpdateDocs = append(batchUpdateDocs, &CouchDoc{JSONValue: marble04Doc, Attachments: attachments3})
+			}
+		}
+
+		//Update couchdb with the batch
+		batchUpdateResp, err = db.BatchUpdateDocuments(batchUpdateDocs)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when attempting to update a batch of documents"))
+
+		//check to make sure each batch update response was successful
+		for _, updateDoc := range batchUpdateResp {
+			testutil.AssertEquals(t, updateDoc.Ok, true)
+		}
+
+		//Retrieve the test document
+		dbGetResp, _, geterr = db.ReadDoc("marble02")
+		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
+
+		//assert the value was deleted
+		testutil.AssertNil(t, dbGetResp)
+
+		//Retrieve the test document
+		dbGetResp, _, geterr = db.ReadDoc("marble04")
+		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
+
+		//assert the value was deleted
+		testutil.AssertNil(t, dbGetResp)
 	}
+}
+
+//addRevisionAndDeleteStatus adds keys for version and chaincodeID to the JSON value
+func addRevisionAndDeleteStatus(revision string, value []byte, deleted bool) []byte {
+
+	//create a version mapping
+	jsonMap := make(map[string]interface{})
+
+	json.Unmarshal(value, &jsonMap)
+
+	//add the revision
+	if revision != "" {
+		jsonMap["_rev"] = revision
+	}
+
+	//If this record is to be deleted, set the "_deleted" property to true
+	if deleted {
+		jsonMap["_deleted"] = true
+	}
+	//marshal the data to a byte array
+	returnJSON, _ := json.Marshal(jsonMap)
+
+	return returnJSON
+
 }

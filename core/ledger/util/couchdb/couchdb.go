@@ -960,6 +960,70 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 
 }
 
+//BatchRetrieveIDRevision - batch method to retrieve IDs and revisions
+func (dbclient *CouchDatabase) BatchRetrieveIDRevision(keys []string) ([]*DocMetadata, error) {
+
+	batchURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return nil, err
+	}
+	batchURL.Path = dbclient.DBName + "/_all_docs"
+
+	queryParms := batchURL.Query()
+	queryParms.Add("include_docs", "true")
+	batchURL.RawQuery = queryParms.Encode()
+
+	keymap := make(map[string]interface{})
+
+	keymap["keys"] = keys
+
+	jsonKeys, err := json.Marshal(keymap)
+	if err != nil {
+		return nil, err
+	}
+
+	//Set up a buffer for the data response from CouchDB
+	data := new(bytes.Buffer)
+
+	data.ReadFrom(bytes.NewReader(jsonKeys))
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), data, "", "")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if logger.IsEnabledFor(logging.DEBUG) {
+		dump, _ := httputil.DumpResponse(resp, false)
+		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
+		logger.Debugf("HTTP Response: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
+	}
+
+	//handle as JSON document
+	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonResponse = &BatchRetrieveDocMedatadataResponse{}
+
+	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
+	if err2 != nil {
+		return nil, err2
+	}
+
+	revisionDocs := []*DocMetadata{}
+
+	for _, row := range jsonResponse.Rows {
+		revisionDoc := &DocMetadata{ID: row.ID, Rev: row.Doc.Rev, Version: row.Doc.Version}
+		revisionDocs = append(revisionDocs, revisionDoc)
+	}
+
+	return revisionDocs, nil
+
+}
+
 //BatchUpdateDocuments - batch method to batch update documents
 func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*BatchUpdateResponse, error) {
 
