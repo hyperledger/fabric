@@ -132,7 +132,7 @@ func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.Version
 	return &statedb.VersionedValue{Value: returnValue, Version: &returnVersion}, nil
 }
 
-func removeDataWrapper(wrappedValue []byte, attachments []couchdb.Attachment) ([]byte, version.Height) {
+func removeDataWrapper(wrappedValue []byte, attachments []*couchdb.Attachment) ([]byte, version.Height) {
 
 	//initialize the return value
 	returnValue := []byte{} // TODO: empty byte or nil
@@ -264,12 +264,14 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 					// Handle it as json
 					couchDoc.JSONValue = addVersionAndChainCodeID(vv.Value, ns, vv.Version)
 				} else { // if the data is not JSON, save as binary attachment in Couch
-					//Create an attachment structure and load the bytes
+
 					attachment := &couchdb.Attachment{}
 					attachment.AttachmentBytes = vv.Value
 					attachment.ContentType = "application/octet-stream"
 					attachment.Name = binaryWrapper
-					couchDoc.Attachments = append(couchDoc.Attachments, *attachment)
+					attachments := append([]*couchdb.Attachment{}, attachment)
+
+					couchDoc.Attachments = attachments
 					couchDoc.JSONValue = addVersionAndChainCodeID(nil, ns, vv.Version)
 				}
 

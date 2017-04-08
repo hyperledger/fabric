@@ -91,7 +91,7 @@ func TestDBBadConnectionDef(t *testing.T) {
 
 func TestDBCreateSaveWithoutRevision(t *testing.T) {
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		database := "testdbcreatesavewithoutrevision"
 		err := cleanup(database)
@@ -117,7 +117,7 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 
 func TestDBCreateEnsureFullCommit(t *testing.T) {
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		database := "testdbensurefullcommit"
 		err := cleanup(database)
@@ -148,7 +148,7 @@ func TestDBCreateEnsureFullCommit(t *testing.T) {
 
 func TestDBBadDatabaseName(t *testing.T) {
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		//create a new instance and database object using a valid database name mixed case
 		couchInstance, err := CreateCouchInstance(connectURL, username, password)
@@ -187,7 +187,7 @@ func TestDBBadConnection(t *testing.T) {
 	// TODO Re-enable once configurable retry logic is introduced
 	t.Skip()
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		//create a new instance and database object
 		_, err := CreateCouchInstance(badConnectURL, username, password)
@@ -197,7 +197,7 @@ func TestDBBadConnection(t *testing.T) {
 
 func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		database := "testdbcreatedatabaseandpersist"
 		err := cleanup(database)
@@ -286,7 +286,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
 func TestDBBadJSON(t *testing.T) {
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		database := "testdbbadjson"
 		err := cleanup(database)
@@ -322,7 +322,7 @@ func TestDBBadJSON(t *testing.T) {
 }
 
 func TestPrefixScan(t *testing.T) {
-	if !ledgerconfig.IsCouchDBEnabled() == true {
+	if !ledgerconfig.IsCouchDBEnabled() {
 		return
 	}
 	database := "testprefixscan"
@@ -384,7 +384,7 @@ func TestPrefixScan(t *testing.T) {
 
 func TestDBSaveAttachment(t *testing.T) {
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		database := "testdbsaveattachment"
 		err := cleanup(database)
@@ -395,12 +395,12 @@ func TestDBSaveAttachment(t *testing.T) {
 
 			byteText := []byte(`This is a test document.  This is only a test`)
 
-			attachment := Attachment{}
+			attachment := &Attachment{}
 			attachment.AttachmentBytes = byteText
 			attachment.ContentType = "text/plain"
 			attachment.Name = "valueBytes"
 
-			attachments := []Attachment{}
+			attachments := []*Attachment{}
 			attachments = append(attachments, attachment)
 
 			//create a new instance and database object
@@ -428,7 +428,7 @@ func TestDBSaveAttachment(t *testing.T) {
 
 func TestDBDeleteDocument(t *testing.T) {
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		database := "testdbdeletedocument"
 		err := cleanup(database)
@@ -466,7 +466,7 @@ func TestDBDeleteDocument(t *testing.T) {
 
 func TestDBDeleteNonExistingDocument(t *testing.T) {
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		database := "testdbdeletenonexistingdocument"
 		err := cleanup(database)
@@ -508,7 +508,7 @@ func TestCouchDBVersion(t *testing.T) {
 
 func TestRichQuery(t *testing.T) {
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		byteJSON01 := []byte(`{"asset_name":"marble01","color":"blue","size":1,"owner":"jerry"}`)
 		byteJSON02 := []byte(`{"asset_name":"marble02","color":"red","size":2,"owner":"tom"}`)
@@ -527,85 +527,85 @@ func TestRichQuery(t *testing.T) {
 		attachment1.AttachmentBytes = []byte(`marble01 - test attachment`)
 		attachment1.ContentType = "application/octet-stream"
 		attachment1.Name = "data"
-		attachments1 := []Attachment{}
-		attachments1 = append(attachments1, *attachment1)
+		attachments1 := []*Attachment{}
+		attachments1 = append(attachments1, attachment1)
 
 		attachment2 := &Attachment{}
 		attachment2.AttachmentBytes = []byte(`marble02 - test attachment`)
 		attachment2.ContentType = "application/octet-stream"
 		attachment2.Name = "data"
-		attachments2 := []Attachment{}
-		attachments2 = append(attachments2, *attachment2)
+		attachments2 := []*Attachment{}
+		attachments2 = append(attachments2, attachment2)
 
 		attachment3 := &Attachment{}
 		attachment3.AttachmentBytes = []byte(`marble03 - test attachment`)
 		attachment3.ContentType = "application/octet-stream"
 		attachment3.Name = "data"
-		attachments3 := []Attachment{}
-		attachments3 = append(attachments3, *attachment3)
+		attachments3 := []*Attachment{}
+		attachments3 = append(attachments3, attachment3)
 
 		attachment4 := &Attachment{}
 		attachment4.AttachmentBytes = []byte(`marble04 - test attachment`)
 		attachment4.ContentType = "application/octet-stream"
 		attachment4.Name = "data"
-		attachments4 := []Attachment{}
-		attachments4 = append(attachments4, *attachment4)
+		attachments4 := []*Attachment{}
+		attachments4 = append(attachments4, attachment4)
 
 		attachment5 := &Attachment{}
 		attachment5.AttachmentBytes = []byte(`marble05 - test attachment`)
 		attachment5.ContentType = "application/octet-stream"
 		attachment5.Name = "data"
-		attachments5 := []Attachment{}
-		attachments5 = append(attachments5, *attachment5)
+		attachments5 := []*Attachment{}
+		attachments5 = append(attachments5, attachment5)
 
 		attachment6 := &Attachment{}
 		attachment6.AttachmentBytes = []byte(`marble06 - test attachment`)
 		attachment6.ContentType = "application/octet-stream"
 		attachment6.Name = "data"
-		attachments6 := []Attachment{}
-		attachments6 = append(attachments6, *attachment6)
+		attachments6 := []*Attachment{}
+		attachments6 = append(attachments6, attachment6)
 
 		attachment7 := &Attachment{}
 		attachment7.AttachmentBytes = []byte(`marble07 - test attachment`)
 		attachment7.ContentType = "application/octet-stream"
 		attachment7.Name = "data"
-		attachments7 := []Attachment{}
-		attachments7 = append(attachments7, *attachment7)
+		attachments7 := []*Attachment{}
+		attachments7 = append(attachments7, attachment7)
 
 		attachment8 := &Attachment{}
 		attachment8.AttachmentBytes = []byte(`marble08 - test attachment`)
 		attachment8.ContentType = "application/octet-stream"
 		attachment7.Name = "data"
-		attachments8 := []Attachment{}
-		attachments8 = append(attachments8, *attachment8)
+		attachments8 := []*Attachment{}
+		attachments8 = append(attachments8, attachment8)
 
 		attachment9 := &Attachment{}
 		attachment9.AttachmentBytes = []byte(`marble09 - test attachment`)
 		attachment9.ContentType = "application/octet-stream"
 		attachment9.Name = "data"
-		attachments9 := []Attachment{}
-		attachments9 = append(attachments9, *attachment9)
+		attachments9 := []*Attachment{}
+		attachments9 = append(attachments9, attachment9)
 
 		attachment10 := &Attachment{}
 		attachment10.AttachmentBytes = []byte(`marble10 - test attachment`)
 		attachment10.ContentType = "application/octet-stream"
 		attachment10.Name = "data"
-		attachments10 := []Attachment{}
-		attachments10 = append(attachments10, *attachment10)
+		attachments10 := []*Attachment{}
+		attachments10 = append(attachments10, attachment10)
 
 		attachment11 := &Attachment{}
 		attachment11.AttachmentBytes = []byte(`marble11 - test attachment`)
 		attachment11.ContentType = "application/octet-stream"
 		attachment11.Name = "data"
-		attachments11 := []Attachment{}
-		attachments11 = append(attachments11, *attachment11)
+		attachments11 := []*Attachment{}
+		attachments11 = append(attachments11, attachment11)
 
 		attachment12 := &Attachment{}
 		attachment12.AttachmentBytes = []byte(`marble12 - test attachment`)
 		attachment12.ContentType = "application/octet-stream"
 		attachment12.Name = "data"
-		attachments12 := []Attachment{}
-		attachments12 = append(attachments12, *attachment12)
+		attachments12 := []*Attachment{}
+		attachments12 = append(attachments12, attachment12)
 
 		database := "testrichquery"
 		err := cleanup(database)
@@ -779,7 +779,7 @@ func TestRichQuery(t *testing.T) {
 
 func TestBatchBatchOperations(t *testing.T) {
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		byteJSON01 := []byte(`{"_id":"marble01","asset_name":"marble01","color":"blue","size":"1","owner":"jerry"}`)
 		byteJSON02 := []byte(`{"_id":"marble02","asset_name":"marble02","color":"red","size":"2","owner":"tom"}`)
@@ -791,36 +791,36 @@ func TestBatchBatchOperations(t *testing.T) {
 		attachment1.AttachmentBytes = []byte(`marble01 - test attachment`)
 		attachment1.ContentType = "application/octet-stream"
 		attachment1.Name = "data"
-		attachments1 := []Attachment{}
-		attachments1 = append(attachments1, *attachment1)
+		attachments1 := []*Attachment{}
+		attachments1 = append(attachments1, attachment1)
 
 		attachment2 := &Attachment{}
 		attachment2.AttachmentBytes = []byte(`marble02 - test attachment`)
 		attachment2.ContentType = "application/octet-stream"
 		attachment2.Name = "data"
-		attachments2 := []Attachment{}
-		attachments2 = append(attachments2, *attachment2)
+		attachments2 := []*Attachment{}
+		attachments2 = append(attachments2, attachment2)
 
 		attachment3 := &Attachment{}
 		attachment3.AttachmentBytes = []byte(`marble03 - test attachment`)
 		attachment3.ContentType = "application/octet-stream"
 		attachment3.Name = "data"
-		attachments3 := []Attachment{}
-		attachments3 = append(attachments3, *attachment3)
+		attachments3 := []*Attachment{}
+		attachments3 = append(attachments3, attachment3)
 
 		attachment4 := &Attachment{}
 		attachment4.AttachmentBytes = []byte(`marble04 - test attachment`)
 		attachment4.ContentType = "application/octet-stream"
 		attachment4.Name = "data"
-		attachments4 := []Attachment{}
-		attachments4 = append(attachments4, *attachment4)
+		attachments4 := []*Attachment{}
+		attachments4 = append(attachments4, attachment4)
 
 		attachment5 := &Attachment{}
 		attachment5.AttachmentBytes = []byte(`marble05 - test attachment`)
 		attachment5.ContentType = "application/octet-stream"
 		attachment5.Name = "data"
-		attachments5 := []Attachment{}
-		attachments5 = append(attachments5, *attachment5)
+		attachments5 := []*Attachment{}
+		attachments5 = append(attachments5, attachment5)
 
 		database := "testbatch"
 		err := cleanup(database)

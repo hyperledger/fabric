@@ -122,7 +122,7 @@ type DocID struct {
 type QueryResult struct {
 	ID          string
 	Value       []byte
-	Attachments []Attachment
+	Attachments []*Attachment
 }
 
 //CouchConnectionDef contains parameters
@@ -175,7 +175,7 @@ type FileDetails struct {
 //CouchDoc defines the structure for a JSON document value
 type CouchDoc struct {
 	JSONValue   []byte
-	Attachments []Attachment
+	Attachments []*Attachment
 }
 
 //BatchRetrieveDocMedatadataResponse is used for processing REST batch responses from CouchDB
@@ -597,6 +597,7 @@ func getRevisionHeader(resp *http.Response) (string, error) {
 //ReadDoc method provides function to retrieve a document from the database by id
 func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 	var couchDoc CouchDoc
+	attachments := []*Attachment{}
 
 	logger.Debugf("Entering ReadDoc()  id=[%s]", id)
 	if !utf8.ValidString(id) {
@@ -668,7 +669,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 			default:
 
 				//Create an attachment structure and load it
-				attachment := Attachment{}
+				attachment := &Attachment{}
 				attachment.ContentType = p.Header.Get("Content-Type")
 				contentDispositionParts := strings.Split(p.Header.Get("Content-Disposition"), ";")
 				if strings.TrimSpace(contentDispositionParts[0]) == "attachment" {
@@ -689,7 +690,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 						logger.Debugf("Retrieved attachment data")
 						attachment.AttachmentBytes = respBody
 						attachment.Name = p.FileName()
-						couchDoc.Attachments = append(couchDoc.Attachments, attachment)
+						attachments = append(attachments, attachment)
 
 					default:
 
@@ -701,12 +702,14 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 						logger.Debugf("Retrieved attachment data")
 						attachment.AttachmentBytes = partdata
 						attachment.Name = p.FileName()
-						couchDoc.Attachments = append(couchDoc.Attachments, attachment)
+						attachments = append(attachments, attachment)
 
 					} // end content-encoding switch
 				} // end if attachment
 			} // end content-type switch
 		} // for all multiparts
+
+		couchDoc.Attachments = attachments
 
 		return &couchDoc, revision, nil
 	}
