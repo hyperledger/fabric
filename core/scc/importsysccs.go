@@ -41,7 +41,8 @@ var systemChaincodes = []*SystemChaincode{
 		Path:              "github.com/hyperledger/fabric/core/scc/lscc",
 		InitArgs:          [][]byte{[]byte("")},
 		Chaincode:         &lscc.LifeCycleSysCC{},
-		InvokableExternal: true, // lccc is invoked to deploy new chaincodes
+		InvokableExternal: true, // lscc is invoked to deploy new chaincodes
+		InvokableCC2CC:    true, // lscc can be invoked by other chaincodes
 	},
 	{
 		Enabled:   true,
@@ -111,6 +112,18 @@ func IsSysCCAndNotInvokable(name string) bool {
 	for _, sysCC := range systemChaincodes {
 		if sysCC.Name == name {
 			return !sysCC.InvokableExternal
+		}
+	}
+	return false
+}
+
+// IsSysCCAndNotInvokableCC2CC returns true if the chaincode
+// is a system chaincode and *CANNOT* be invoked through
+// a cc2cc invocation
+func IsSysCCAndNotInvokableCC2CC(name string) bool {
+	for _, sysCC := range systemChaincodes {
+		if sysCC.Name == name {
+			return !sysCC.InvokableCC2CC
 		}
 	}
 	return false

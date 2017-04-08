@@ -29,7 +29,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
-	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/peer"
@@ -238,12 +238,20 @@ func (handler *Handler) deleteQueryIterator(txContext *transactionContext, txid 
 }
 
 // Check if the transactor is allow to call this chaincode on this channel
-func (handler *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal, calledCC *ccParts) *pb.ChaincodeMessage {
-	// TODO: Decide what to pass in to verify that this transactor can access this
-	// channel (chID) and chaincode (ccID). Very likely we need the signedProposal
-	// which contains the sig and creator cert
+func (handler *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal, calledCC *ccParts) error {
+	// ensure that we don't invoke a system chaincode
+	// that is not invokable through a cc2cc invocation
+	if sysccprovider.GetSystemChaincodeProvider().IsSysCCAndNotInvokableCC2CC(calledCC.name) {
+		return fmt.Errorf("System chaincode %s cannot be invoked with a cc2cc invocation", calledCC.name)
+	}
 
-	// If error, return ChaincodeMessage with type ChaincodeMessage_ERROR
+	// if we are here, all we know is that the invoked chaincode is either
+	// - a system chaincode that *is* invokable through a cc2cc
+	//   (but we may still have to determine whether the invoker
+	//   can perform this invocation)
+	// - an application chaincode (and we still need to determine
+	//   whether the invoker can invoke it)
+
 	return nil
 }
 
@@ -1269,8 +1277,12 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix)
 			}
 
-			triggerNextStateMsg = handler.checkACL(txContext.signedProp, txContext.proposal, calledCcParts)
-			if triggerNextStateMsg != nil {
+			err := handler.checkACL(txContext.signedProp, txContext.proposal, calledCcParts)
+			if err != nil {
+				chaincodeLogger.Errorf("[%s] C-call-C %s on channel %s failed check ACL [%v]: [%s]",
+					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix, txContext.signedProp, err)
+				triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR,
+					Payload: []byte(err.Error()), Txid: msg.Txid}
 				return
 			}
 
