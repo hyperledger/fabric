@@ -623,6 +623,21 @@ func TestAdminACLFail(t *testing.T) {
 	chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 }
 
+// TestInvokeSccFail makes sure that invoking a system chaincode fails
+func TestInvokeSccFail(t *testing.T) {
+	chainID := util.GetTestChainID()
+
+	chaincodeID := &pb.ChaincodeID{Name: "escc"}
+	args := util.ToChaincodeArgs("someFunc", "someArg")
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, _, _, err := invoke(chainID, spec)
+	if err == nil {
+		t.Logf("Invoking escc should have failed!")
+		t.Fail()
+		return
+	}
+}
+
 func newTempDir() string {
 	tempDir, err := ioutil.TempDir("", "fabric-")
 	if err != nil {

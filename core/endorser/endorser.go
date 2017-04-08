@@ -313,6 +313,14 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
+	// block invocations to security-sensitive system chaincodes
+	if syscc.IsSysCCAndNotInvokable(hdrExt.ChaincodeId.Name) {
+		endorserLogger.Errorf("ProcessProposal error: an attempt was made by %#v to invoke system chaincode %s",
+			shdr.Creator, hdrExt.ChaincodeId.Name)
+		err = fmt.Errorf("Chaincode %s cannot be invoked through a proposal", hdrExt.ChaincodeId.Name)
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+	}
+
 	chainID := chdr.ChannelId
 
 	// Check for uniqueness of prop.TxID with ledger

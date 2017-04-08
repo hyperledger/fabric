@@ -28,18 +28,20 @@ import (
 //see systemchaincode_test.go for an example using "sample_syscc"
 var systemChaincodes = []*SystemChaincode{
 	{
-		Enabled:   true,
-		Name:      "cscc",
-		Path:      "github.com/hyperledger/fabric/core/scc/cscc",
-		InitArgs:  [][]byte{[]byte("")},
-		Chaincode: &cscc.PeerConfiger{},
+		Enabled:           true,
+		Name:              "cscc",
+		Path:              "github.com/hyperledger/fabric/core/scc/cscc",
+		InitArgs:          [][]byte{[]byte("")},
+		Chaincode:         &cscc.PeerConfiger{},
+		InvokableExternal: true, // cscc is invoked to join a channel
 	},
 	{
-		Enabled:   true,
-		Name:      "lscc",
-		Path:      "github.com/hyperledger/fabric/core/scc/lscc",
-		InitArgs:  [][]byte{[]byte("")},
-		Chaincode: &lscc.LifeCycleSysCC{},
+		Enabled:           true,
+		Name:              "lscc",
+		Path:              "github.com/hyperledger/fabric/core/scc/lscc",
+		InitArgs:          [][]byte{[]byte("")},
+		Chaincode:         &lscc.LifeCycleSysCC{},
+		InvokableExternal: true, // lccc is invoked to deploy new chaincodes
 	},
 	{
 		Enabled:   true,
@@ -56,11 +58,13 @@ var systemChaincodes = []*SystemChaincode{
 		Chaincode: &vscc.ValidatorOneValidSignature{},
 	},
 	{
-		Enabled:   true,
-		Name:      "qscc",
-		Path:      "github.com/hyperledger/fabric/core/chaincode/qscc",
-		InitArgs:  [][]byte{[]byte("")},
-		Chaincode: &qscc.LedgerQuerier{},
+		Enabled:           true,
+		Name:              "qscc",
+		Path:              "github.com/hyperledger/fabric/core/chaincode/qscc",
+		InitArgs:          [][]byte{[]byte("")},
+		Chaincode:         &qscc.LedgerQuerier{},
+		InvokableExternal: true, // qscc can be invoked to retrieve blocks
+		InvokableCC2CC:    true, // qscc can be invoked to retrieve blocks also by a cc
 	},
 }
 
@@ -95,6 +99,18 @@ func IsSysCC(name string) bool {
 	for _, sysCC := range systemChaincodes {
 		if sysCC.Name == name {
 			return true
+		}
+	}
+	return false
+}
+
+// IsSysCCAndNotInvokable returns true if the chaincode
+// is a system chaincode and *CANNOT* be invoked through
+// a proposal to this peer
+func IsSysCCAndNotInvokable(name string) bool {
+	for _, sysCC := range systemChaincodes {
+		if sysCC.Name == name {
+			return !sysCC.InvokableExternal
 		}
 	}
 	return false
