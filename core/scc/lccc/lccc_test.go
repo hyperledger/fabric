@@ -515,8 +515,14 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 			t.Fatalf("Upgrade chaincode error: %v", err)
 		}
 
+		cd := &ccprovider.ChaincodeData{}
+		if err = proto.Unmarshal(res.Payload, cd); err != nil {
+			t.Fatalf("Upgrade chaincode could not unmarshal response")
+		}
+
+		newVer := cd.Version
+
 		expectVer := "1"
-		newVer := string(res.Payload)
 		if newVer != expectVer {
 			t.Fatalf("Upgrade chaincode version error, expected %s, got %s", expectVer, newVer)
 		}

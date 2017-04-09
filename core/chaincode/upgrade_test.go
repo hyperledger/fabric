@@ -83,17 +83,22 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 	sysCCVers := util.GetSysCCVersion()
 	lcccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, nil, nil)
 
-	var versionBytes []byte
+	var cdbytes []byte
 	//write to lccc
-	if versionBytes, _, err = ExecuteWithErrorFilter(ctx, lcccid, cis); err != nil {
+	if cdbytes, _, err = ExecuteWithErrorFilter(ctx, lcccid, cis); err != nil {
 		return nil, fmt.Errorf("Error executing LCCC for upgrade: %s", err)
 	}
 
-	if versionBytes == nil {
-		return nil, fmt.Errorf("Expected version back from LCCC but got nil")
+	if cdbytes == nil {
+		return nil, fmt.Errorf("Expected ChaincodeData back from LCCC but got nil")
 	}
 
-	newVersion := string(versionBytes)
+	cd := &ccprovider.ChaincodeData{}
+	if err = proto.Unmarshal(cdbytes, cd); err != nil {
+		return nil, fmt.Errorf("getting  ChaincodeData failed")
+	}
+
+	newVersion := string(cd.Version)
 	if newVersion == cccid.Version {
 		return nil, fmt.Errorf("Expected new version from LCCC but got same %s(%s)", newVersion, cccid.Version)
 	}
