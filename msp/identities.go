@@ -71,12 +71,27 @@ func (id *identity) Validate() error {
 }
 
 // GetOrganizationalUnits returns the OU for this instance
-func (id *identity) GetOrganizationalUnits() []string {
+func (id *identity) GetOrganizationalUnits() []msp.FabricOUIdentifier {
 	if id.cert == nil {
 		return nil
 	}
 
-	return id.cert.Subject.OrganizationalUnit
+	cid, err := id.msp.getCertificationChainIdentifier(id)
+	if err != nil {
+		mspLogger.Errorf("Failed getting certification chain identifier for [%v]: [%s]", id, err)
+
+		return nil
+	}
+
+	res := []msp.FabricOUIdentifier{}
+	for _, unit := range id.cert.Subject.OrganizationalUnit {
+		res = append(res, msp.FabricOUIdentifier{
+			OrganizationalUnitIdentifier: unit,
+			CertifiersIdentifier:         cid,
+		})
+	}
+
+	return res
 }
 
 // NewSerializedIdentity returns a serialized identity
