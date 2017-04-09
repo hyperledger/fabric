@@ -17,8 +17,6 @@ limitations under the License.
 package committer
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/events/producer"
@@ -65,8 +63,7 @@ func (lc *LedgerCommitter) Commit(block *common.Block) error {
 
 	// send block event *after* the block has been committed
 	if err := producer.SendProducerBlockEvent(block); err != nil {
-		logger.Errorf("Error sending block event %s", err)
-		return fmt.Errorf("Error sending block event %s", err)
+		logger.Errorf("Error publishing block %d, because: %v", block.Header.Number, err)
 	}
 
 	return nil
