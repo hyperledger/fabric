@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -642,6 +643,10 @@ func TestExecuteInvokeTransaction(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.chaincodeType.String(), func(t *testing.T) {
+
+			if tc.chaincodeType == pb.ChaincodeSpec_JAVA && runtime.GOARCH != "amd64" {
+				t.Skip("No Java chaincode support yet on non-x86_64.")
+			}
 
 			chainID := util.GetTestChainID()
 
@@ -1548,6 +1553,10 @@ func TestChaincodeInitializeInitError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name+"_"+tc.chaincodeType.String(), func(t *testing.T) {
+
+			if tc.chaincodeType == pb.ChaincodeSpec_JAVA && runtime.GOARCH != "amd64" {
+				t.Skip("No Java chaincode support yet on non-x86_64.")
+			}
 
 			// initialize peer
 			if listener, err := initPeer(channelID); err != nil {
