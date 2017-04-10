@@ -51,8 +51,12 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
-	bg := testutil.NewBlockGenerator(t)
-	blocksBeforeCP := bg.NextTestBlocks(numBlocksBeforeCheckpoint)
+	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
+	blocksBeforeCP := []*common.Block{}
+	if numBlocksBeforeCheckpoint > 0 {
+		blocksBeforeCP = append(blocksBeforeCP, gb)
+	}
+	blocksBeforeCP = append(blocksBeforeCP, bg.NextTestBlocks(numBlocksBeforeCheckpoint-1)...)
 	blkfileMgrWrapper.addBlocks(blocksBeforeCP)
 	currentCPInfo := blkfileMgrWrapper.blockfileMgr.cpInfo
 	cpInfo1 := &checkpointInfo{
@@ -61,7 +65,14 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 		currentCPInfo.isChainEmpty,
 		currentCPInfo.lastBlockNumber}
 
-	blocksAfterCP := bg.NextTestBlocks(numBlocksAfterCheckpoint)
+	blocksAfterCP := []*common.Block{}
+	if numBlocksBeforeCheckpoint == 0 {
+		blocksAfterCP = append(blocksAfterCP, gb)
+		blocksAfterCP = append(blocksAfterCP, bg.NextTestBlocks(numBlocksAfterCheckpoint-1)...)
+	} else {
+		blocksAfterCP = bg.NextTestBlocks(numBlocksAfterCheckpoint)
+	}
+
 	blkfileMgrWrapper.addBlocks(blocksAfterCP)
 	cpInfo2 := blkfileMgrWrapper.blockfileMgr.cpInfo
 
@@ -140,11 +151,11 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
-	blocks := testutil.ConstructTestBlocks(t, 10)
+	blocks := testutil.ConstructTestBlocks(t, 2)
 	blkfileMgrWrapper.addBlocks(blocks)
 	for _, blk := range blocks {
 		for j, txEnvelopeBytes := range blk.Data.Data {
-			// blockNum starts with 1
+			// blockNum starts with 0
 			txID, err := extractTxID(blk.Data.Data[j])
 			testutil.AssertNoError(t, err, "")
 			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByID(txID)

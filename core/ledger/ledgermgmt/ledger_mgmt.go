@@ -64,28 +64,10 @@ func initialize() {
 	logger.Info("ledger mgmt initialized")
 }
 
-// CreateLedger creates a new ledger with the given id
-func CreateLedger(id string) (ledger.PeerLedger, error) {
-	logger.Infof("Creating ledger with id = %s", id)
-	lock.Lock()
-	defer lock.Unlock()
-	if !initialized {
-		return nil, ErrLedgerMgmtNotInitialized
-	}
-	l, err := ledgerProvider.Create(id)
-	if err != nil {
-		return nil, err
-	}
-	l = wrapLedger(id, l)
-	openedLedgers[id] = l
-	logger.Infof("Created ledger with id = %s", id)
-	return l, nil
-}
-
-// CreateWithGenesisBlock creates a new ledger with the given genesis block.
+// CreateLedger creates a new ledger with the given genesis block.
 // This function guarentees that the creation of ledger and committing the genesis block would an atomic action
 // The chain id retrieved from the genesis block is treated as a ledger id
-func CreateWithGenesisBlock(genesisBlock *common.Block) (ledger.PeerLedger, error) {
+func CreateLedger(genesisBlock *common.Block) (ledger.PeerLedger, error) {
 	lock.Lock()
 	defer lock.Unlock()
 	if !initialized {
@@ -97,7 +79,7 @@ func CreateWithGenesisBlock(genesisBlock *common.Block) (ledger.PeerLedger, erro
 	}
 
 	logger.Infof("Creating ledger [%s] with genesis block", id)
-	l, err := ledgerProvider.CreateWithGenesisBlock(genesisBlock)
+	l, err := ledgerProvider.Create(genesisBlock)
 	if err != nil {
 		return nil, err
 	}

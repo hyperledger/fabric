@@ -19,6 +19,7 @@ package committer
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -32,18 +33,20 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/committertest")
 	ledgermgmt.InitializeTestEnv()
 	defer ledgermgmt.CleanupTestEnv()
-	ledger, err := ledgermgmt.CreateLedger("TestLedger")
+	gb, _ := test.MakeGenesisBlock("TestLedger")
+	gbHash := gb.Header.Hash()
+	ledger, err := ledgermgmt.CreateLedger(gb)
 	assert.NoError(t, err, "Error while creating ledger: %s", err)
 	defer ledger.Close()
 
 	committer := NewLedgerCommitter(ledger, &validator.MockValidator{})
 	height, err := committer.LedgerHeight()
-	assert.Equal(t, uint64(0), height)
+	assert.Equal(t, uint64(1), height)
 	assert.NoError(t, err)
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
-		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil})
 
 	simulator, _ := ledger.NewTxSimulator()
 	simulator.SetState("ns1", "key1", []byte("value1"))
@@ -52,13 +55,13 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.Done()
 
 	simRes, _ := simulator.GetTxSimulationResults()
-	block0 := testutil.ConstructBlock(t, [][]byte{simRes}, true)
+	block1 := testutil.ConstructBlock(t, 1, gbHash, [][]byte{simRes}, true)
 
-	err = committer.Commit(block0)
+	err = committer.Commit(block1)
 	assert.NoError(t, err)
 
 	height, err = committer.LedgerHeight()
-	assert.Equal(t, uint64(1), height)
+	assert.Equal(t, uint64(2), height)
 	assert.NoError(t, err)
 
 	blocks := committer.GetBlocks([]uint64{0})
@@ -66,7 +69,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.NoError(t, err)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block1Hash := block0.Header.Hash()
+	block1Hash := block1.Header.Hash()
 	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
-		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
+		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash})
 }

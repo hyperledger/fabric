@@ -160,6 +160,9 @@ func extractHeader(buf *ledgerutil.Buffer) (*common.BlockHeader, error) {
 	if header.PreviousHash, err = buf.DecodeRawBytes(false); err != nil {
 		return nil, err
 	}
+	if len(header.PreviousHash) == 0 {
+		header.PreviousHash = nil
+	}
 	return header, nil
 }
 

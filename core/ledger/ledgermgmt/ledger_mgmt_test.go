@@ -22,6 +22,7 @@ import (
 
 	"os"
 
+	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/spf13/viper"
@@ -39,7 +40,8 @@ func TestLedgerMgmt(t *testing.T) {
 	numLedgers := 10
 	ledgers := make([]ledger.PeerLedger, 10)
 	for i := 0; i < numLedgers; i++ {
-		l, _ := CreateLedger(constructTestLedgerID(i))
+		gb, _ := test.MakeGenesisBlock(constructTestLedgerID(i))
+		l, _ := CreateLedger(gb)
 		ledgers[i] = l
 	}
 

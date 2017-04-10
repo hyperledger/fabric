@@ -188,9 +188,8 @@ func newGossipInstance(config *gossip.Config, mcs api.MessageCryptoService) goss
 
 // Create new instance of KVLedger to be used for testing
 func newCommitter(id int) committer.Committer {
-	ledger, _ := ledgermgmt.CreateLedger(strconv.Itoa(id))
-	cb, _ := test.MakeGenesisBlock(util.GetTestChainID())
-	ledger.Commit(cb)
+	cb, _ := test.MakeGenesisBlock(strconv.Itoa(id))
+	ledger, _ := ledgermgmt.CreateLedger(cb)
 	return committer.NewLedgerCommitter(ledger, &validator.MockValidator{})
 }
 

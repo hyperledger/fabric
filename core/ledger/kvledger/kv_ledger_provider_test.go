@@ -34,40 +34,8 @@ func TestLedgerProvider(t *testing.T) {
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, len(existingLedgerIDs), 0)
 	for i := 0; i < numLedgers; i++ {
-		provider.Create(constructTestLedgerID(i))
-	}
-	existingLedgerIDs, err = provider.List()
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertEquals(t, len(existingLedgerIDs), numLedgers)
-
-	provider.Close()
-
-	provider, _ = NewProvider()
-	defer provider.Close()
-	ledgerIds, _ := provider.List()
-	testutil.AssertEquals(t, len(ledgerIds), numLedgers)
-	t.Logf("ledgerIDs=%#v", ledgerIds)
-	for i := 0; i < numLedgers; i++ {
-		testutil.AssertEquals(t, ledgerIds[i], constructTestLedgerID(i))
-	}
-	_, err = provider.Create(constructTestLedgerID(2))
-	testutil.AssertEquals(t, err, ErrLedgerIDExists)
-
-	_, err = provider.Open(constructTestLedgerID(numLedgers))
-	testutil.AssertEquals(t, err, ErrNonExistingLedgerID)
-}
-
-func TestLedgerCreationWithGenesisBlock(t *testing.T) {
-	env := newTestEnv(t)
-	defer env.cleanup()
-	numLedgers := 10
-	provider, _ := NewProvider()
-	existingLedgerIDs, err := provider.List()
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertEquals(t, len(existingLedgerIDs), 0)
-	for i := 0; i < numLedgers; i++ {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
-		provider.CreateWithGenesisBlock(genesisBlock)
+		provider.Create(genesisBlock)
 	}
 	existingLedgerIDs, err = provider.List()
 	testutil.AssertNoError(t, err, "")
@@ -91,7 +59,8 @@ func TestLedgerCreationWithGenesisBlock(t *testing.T) {
 		testutil.AssertNoError(t, err, "")
 		testutil.AssertEquals(t, bcInfo.Height, uint64(1))
 	}
-	_, err = provider.Create(constructTestLedgerID(2))
+	gb, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(2))
+	_, err = provider.Create(gb)
 	testutil.AssertEquals(t, err, ErrLedgerIDExists)
 
 	_, err = provider.Open(constructTestLedgerID(numLedgers))
@@ -105,19 +74,17 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 	provider, _ := NewProvider()
 	ledgers := make([]ledger.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
-		l, err := provider.Create(constructTestLedgerID(i))
+		bg, gb := testutil.NewBlockGenerator(t, constructTestLedgerID(i), false)
+		l, err := provider.Create(gb)
 		testutil.AssertNoError(t, err, "")
 		ledgers[i] = l
-	}
-
-	for i, l := range ledgers {
 		s, _ := l.NewTxSimulator()
-		err := s.SetState("ns", "testKey", []byte(fmt.Sprintf("testValue_%d", i)))
+		err = s.SetState("ns", "testKey", []byte(fmt.Sprintf("testValue_%d", i)))
 		s.Done()
 		testutil.AssertNoError(t, err, "")
 		res, err := s.GetTxSimulationResults()
 		testutil.AssertNoError(t, err, "")
-		b := testutil.ConstructBlock(t, [][]byte{res}, false)
+		b := bg.NextBlock([][]byte{res})
 		err = l.Commit(b)
 		l.Close()
 		testutil.AssertNoError(t, err, "")

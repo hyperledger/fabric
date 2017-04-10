@@ -103,12 +103,12 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	return provider, nil
 }
 
-// CreateWithGenesisBlock implements the corresponding method from interface ledger.PeerLedgerProvider
+// Create implements the corresponding method from interface ledger.PeerLedgerProvider
 // This functions sets a under construction flag before doing any thing related to ledger creation and
 // upon a successful ledger creation with the committed genesis block, removes the flag and add entry into
 // created ledgers list (atomically). If a crash happens in between, the 'recoverUnderConstructionLedger'
 // function is invoked before declaring the provider to be usable
-func (provider *Provider) CreateWithGenesisBlock(genesisBlock *common.Block) (ledger.PeerLedger, error) {
+func (provider *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger, error) {
 	ledgerID, err := utils.GetChainIDFromBlock(genesisBlock)
 	if err != nil {
 		return nil, err
@@ -135,26 +135,6 @@ func (provider *Provider) CreateWithGenesisBlock(genesisBlock *common.Block) (le
 		return nil, err
 	}
 	panicOnErr(provider.idStore.createLedgerID(ledgerID), "Error while marking ledger as created")
-	return ledger, nil
-}
-
-// Create implements the corresponding method from interface ledger.PeerLedgerProvider
-func (provider *Provider) Create(ledgerID string) (ledger.PeerLedger, error) {
-	exists, err := provider.idStore.ledgerIDExists(ledgerID)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, ErrLedgerIDExists
-	}
-	ledger, err := provider.openInternal(ledgerID)
-	if err != nil {
-		return nil, err
-	}
-	if err = provider.idStore.createLedgerID(ledgerID); err != nil {
-		ledger.Close()
-		return nil, err
-	}
 	return ledger, nil
 }
 

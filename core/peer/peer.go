@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/flogging"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
@@ -248,7 +249,7 @@ func CreateChainFromBlock(cb *common.Block) error {
 	}
 
 	var l ledger.PeerLedger
-	if l, err = ledgermgmt.CreateWithGenesisBlock(cb); err != nil {
+	if l, err = ledgermgmt.CreateLedger(cb); err != nil {
 		return fmt.Errorf("Cannot create ledger from genesis block, due to %s", err)
 	}
 
@@ -453,13 +454,15 @@ func SetCurrConfigBlock(block *common.Block, cid string) error {
 	return fmt.Errorf("Chain %s doesn't exist on the peer", cid)
 }
 
-// All ledgers are located under `peer.fileSystemPath`
+// createLedger function is used only for the testing (see function 'MockCreateChain').
+// TODO - this function should not be in this file which contains production code
 func createLedger(cid string) (ledger.PeerLedger, error) {
 	var ledger ledger.PeerLedger
 	if ledger = GetLedger(cid); ledger != nil {
 		return ledger, nil
 	}
-	return ledgermgmt.CreateLedger(cid)
+	gb, _ := configtxtest.MakeGenesisBlock(cid)
+	return ledgermgmt.CreateLedger(gb)
 }
 
 // NewPeerClientConnection Returns a new grpc.ClientConn to the configured local PEER.

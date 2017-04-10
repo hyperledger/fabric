@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -54,7 +55,9 @@ func init() {
 	cleanup()
 	ledgermgmt.Initialize()
 	var err error
-	peerLedger, err = ledgermgmt.CreateLedger(ledgerID)
+
+	gb, _ := configtxtest.MakeGenesisBlock(ledgerID)
+	peerLedger, err = ledgermgmt.CreateLedger(gb)
 	if err != nil {
 		panic(fmt.Errorf("Error in NewKVLedger(): %s", err))
 	}

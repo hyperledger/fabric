@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -41,14 +42,17 @@ func TestFirstBlockValidation(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest")
 	ledgermgmt.InitializeTestEnv()
 	defer ledgermgmt.CleanupTestEnv()
-	ledger, _ := ledgermgmt.CreateLedger("TestLedger")
+
+	gb, _ := test.MakeGenesisBlock("TestLedger")
+	gbHash := gb.Header.Hash()
+	ledger, _ := ledgermgmt.CreateLedger(gb)
 	defer ledger.Close()
 
 	tValidator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, &validator.MockVsccValidator{}}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
-		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil})
 
 	simulator, _ := ledger.NewTxSimulator()
 	simulator.SetState("ns1", "key1", []byte("value1"))
@@ -57,7 +61,7 @@ func TestFirstBlockValidation(t *testing.T) {
 	simulator.Done()
 
 	simRes, _ := simulator.GetTxSimulationResults()
-	block := testutil.ConstructBlock(t, [][]byte{simRes}, true)
+	block := testutil.ConstructBlock(t, 1, gbHash, [][]byte{simRes}, true)
 
 	tValidator.Validate(block)
 
@@ -69,7 +73,10 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest")
 	ledgermgmt.InitializeTestEnv()
 	defer ledgermgmt.CleanupTestEnv()
-	ledger, _ := ledgermgmt.CreateLedger("TestLedger")
+
+	gb, _ := test.MakeGenesisBlock("TestLedger")
+	ledger, _ := ledgermgmt.CreateLedger(gb)
+
 	defer ledger.Close()
 
 	tValidator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, &validator.MockVsccValidator{}}

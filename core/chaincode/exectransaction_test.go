@@ -571,9 +571,8 @@ func checkFinalState(cccid *ccprovider.CCContext) error {
 
 // Invoke chaincode_example02
 func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContext, cID *pb.ChaincodeID, chaincodeType pb.ChaincodeSpec_Type, args []string, destroyImage bool) error {
-
-	var nextBlockNumber uint64
-
+	// the ledger is created with genesis block. Start block number 1 onwards
+	var nextBlockNumber uint64 = 1
 	f := "init"
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: chaincodeType, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: argsDeploy}}
@@ -645,7 +644,7 @@ func runChaincodeInvokeChaincode(t *testing.T, chainID1 string, chainID2 string,
 	sProp, prop := putils.MockSignedEndorserProposalOrPanic(chainID1, spec1, []byte([]byte("Alice")), nil)
 	cccid1 := ccprovider.NewCCContext(chainID1, "example02", "0", "", false, sProp, prop)
 
-	var nextBlockNumber uint64
+	var nextBlockNumber uint64 = 1
 
 	_, err = deploy(ctxt, cccid1, spec1, nextBlockNumber)
 	nextBlockNumber++
@@ -741,7 +740,7 @@ func runChaincodeInvokeChaincode(t *testing.T, chainID1 string, chainID2 string,
 	sProp, prop = putils.MockSignedEndorserProposalOrPanic(chainID2, spec3, []byte([]byte("Alice")), nil)
 	cccid3 := ccprovider.NewCCContext(chainID2, "example04", "0", "", false, sProp, prop)
 
-	_, err = deploy(ctxt, cccid3, spec3, 0)
+	_, err = deploy(ctxt, cccid3, spec3, 1)
 	chaincodeID2 := spec2.ChaincodeId.Name
 	if err != nil {
 		t.Fail()
@@ -764,7 +763,7 @@ func runChaincodeInvokeChaincode(t *testing.T, chainID1 string, chainID2 string,
 	//var uuid string
 
 	// Bob should not be able to call
-	_, _, _, err = invoke(ctxt, chainID2, spec2, 1, []byte("Bob"))
+	_, _, _, err = invoke(ctxt, chainID2, spec2, 2, []byte("Bob"))
 	if err == nil {
 		t.Fail()
 		t.Logf("Bob invoking <%s> should fail. It did not happen instead: %s", chaincodeID2, err)
@@ -775,7 +774,7 @@ func runChaincodeInvokeChaincode(t *testing.T, chainID1 string, chainID2 string,
 	}
 
 	// Alice should be able to call
-	_, _, _, err = invoke(ctxt, chainID2, spec2, 1, []byte("Alice"))
+	_, _, _, err = invoke(ctxt, chainID2, spec2, 2, []byte("Alice"))
 	if err != nil {
 		t.Fail()
 		t.Logf("Alice invoking <%s> should not fail. It did happen instead: %s", chaincodeID2, err)
@@ -953,7 +952,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	sProp, prop := putils.MockSignedEndorserProposalOrPanic(util.GetTestChainID(), spec1, []byte([]byte("Alice")), nil)
 	cccid1 := ccprovider.NewCCContext(chainID, "example02", "0", "", false, sProp, prop)
 
-	var nextBlockNumber uint64
+	var nextBlockNumber uint64 = 1
 
 	_, err = deploy(ctxt, cccid1, spec1, nextBlockNumber)
 	nextBlockNumber++
@@ -1044,7 +1043,7 @@ func TestQueries(t *testing.T) {
 
 	cccid := ccprovider.NewCCContext(chainID, "tmap", "0", "", false, nil, nil)
 
-	var nextBlockNumber uint64
+	var nextBlockNumber uint64 = 1
 	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
 	nextBlockNumber++
 	ccID := spec.ChaincodeId.Name
@@ -1398,7 +1397,7 @@ func TestGetEvent(t *testing.T) {
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(f)}}
 
 	cccid := ccprovider.NewCCContext(chainID, "esender", "0", "", false, nil, nil)
-	var nextBlockNumber uint64
+	var nextBlockNumber uint64 = 1
 	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
 	nextBlockNumber++
 	ccID := spec.ChaincodeId.Name
@@ -1580,7 +1579,7 @@ func TestChaincodeInvokesForbiddenSystemChaincode(t *testing.T) {
 
 	var ctxt = context.Background()
 
-	var nextBlockNumber uint64
+	var nextBlockNumber uint64 = 1
 
 	// Deploy second chaincode
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/passthru"
@@ -1635,7 +1634,7 @@ func TestChaincodeInvokesSystemChaincode(t *testing.T) {
 
 	var ctxt = context.Background()
 
-	var nextBlockNumber uint64
+	var nextBlockNumber uint64 = 1
 
 	// Deploy second chaincode
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/passthru"

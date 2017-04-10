@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 func TestBlockfileStream(t *testing.T) {
@@ -100,16 +101,23 @@ func TestBlockStream(t *testing.T) {
 }
 
 func testBlockStream(t *testing.T, numFiles int) {
+	ledgerID := "testLedger"
 	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
-	w := newTestBlockfileWrapper(env, "testLedger")
+	w := newTestBlockfileWrapper(env, ledgerID)
 	defer w.close()
 	blockfileMgr := w.blockfileMgr
 
 	numBlocksInEachFile := 10
-	bg := testutil.NewBlockGenerator(t)
+	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
+	w.addBlocks([]*common.Block{gb})
 	for i := 0; i < numFiles; i++ {
-		blocks := bg.NextTestBlocks(numBlocksInEachFile)
+		numBlocks := numBlocksInEachFile
+		if i == 0 {
+			// genesis block already added so adding one less block
+			numBlocks = numBlocksInEachFile - 1
+		}
+		blocks := bg.NextTestBlocks(numBlocks)
 		w.addBlocks(blocks)
 		blockfileMgr.moveToNextFile()
 	}
