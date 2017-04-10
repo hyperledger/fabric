@@ -47,19 +47,28 @@ type CCPackage interface {
 	// InitFromFS gets the chaincode from the filesystem (includes the raw bytes too)
 	InitFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error)
 
+	// PutChaincodeToFS writes the chaincode to the filesystem
+	PutChaincodeToFS() error
+
 	// GetDepSpec gets the ChaincodeDeploymentSpec from the package
 	GetDepSpec() *pb.ChaincodeDeploymentSpec
 
-	// PutChaincodeToFS writes the chaincode to the filesystem
-	PutChaincodeToFS() error
+	// GetDepSpecBytes gets the serialized ChaincodeDeploymentSpec from the package
+	GetDepSpecBytes() []byte
 
 	// ValidateCC validates and returns the chaincode deployment spec corresponding to
 	// ChaincodeData. The validation is based on the metadata from ChaincodeData
 	// One use of this method is to validate the chaincode before launching
-	ValidateCC(ccdata *ChaincodeData) (*pb.ChaincodeDeploymentSpec, error)
+	ValidateCC(ccdata *ChaincodeData) error
 
 	// GetPackageObject gets the object as a proto.Message
 	GetPackageObject() proto.Message
+
+	// GetChaincodeData gets the ChaincodeData
+	GetChaincodeData() *ChaincodeData
+
+	// GetId gets the fingerprint of the chaincode based on package computation
+	GetId() []byte
 }
 
 //SetChaincodesPath sets the chaincode path for this peer
@@ -91,19 +100,20 @@ func GetChaincodePackage(ccname string, ccversion string) ([]byte, error) {
 }
 
 // GetChaincodeFromFS this is a wrapper for hiding package implementation.
-func GetChaincodeFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
+func GetChaincodeFromFS(ccname string, ccversion string) (CCPackage, error) {
 	//try raw CDS
 	cccdspack := &CDSPackage{}
-	b, depSpec, err := cccdspack.InitFromFS(ccname, ccversion)
+	_, _, err := cccdspack.InitFromFS(ccname, ccversion)
 	if err != nil {
 		//try signed CDS
 		ccscdspack := &SignedCDSPackage{}
-		b, depSpec, err = ccscdspack.InitFromFS(ccname, ccversion)
+		_, _, err = ccscdspack.InitFromFS(ccname, ccversion)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
+		return ccscdspack, nil
 	}
-	return b, depSpec, nil
+	return cccdspack, nil
 }
 
 // PutChaincodeIntoFS is a wrapper for putting raw ChaincodeDeploymentSpec
@@ -158,13 +168,15 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 		if len(fileNameArray) == 2 {
 			ccname := fileNameArray[0]
 			ccversion := fileNameArray[1]
-			_, cdsfs, err := GetChaincodeFromFS(ccname, ccversion)
+			ccpack, err := GetChaincodeFromFS(ccname, ccversion)
 			if err != nil {
 				// either chaincode on filesystem has been tampered with or
 				// a non-chaincode file has been found in the chaincodes directory
 				ccproviderLogger.Errorf("Unreadable chaincode file found on filesystem: %s", file.Name())
 				continue
 			}
+
+			cdsfs := ccpack.GetDepSpec()
 
 			name := cdsfs.GetChaincodeSpec().GetChaincodeId().Name
 			version := cdsfs.GetChaincodeSpec().GetChaincodeId().Version
@@ -273,6 +285,11 @@ type ChaincodeData struct {
 
 	//Data data specific to the package
 	Data []byte `protobuf:"bytes,6,opt,name=data,proto3"`
+
+	//Id of the chaincode that's the unique fingerprint for the CC
+	//This is not currently used anywhere but serves as a good
+	//eyecatcher
+	Id []byte `protobuf:"bytes,7,opt,name=id,proto3"`
 }
 
 //implement functions needed from proto.Message for proto's mar/unmarshal functions

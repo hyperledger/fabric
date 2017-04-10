@@ -537,6 +537,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 		var depPayload []byte
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
+		//this will also validate the ID from the LCCC
 		depPayload, err = GetCDSFromLCCC(context, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, cID.Name)
 		if err != nil {
 			return cID, cMsg, fmt.Errorf("Could not get deployment transaction from LCCC for %s - %s", canName, err)
@@ -558,21 +559,24 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 
 	//launch container if it is a System container or not in dev mode
 	if (!chaincodeSupport.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) && (chrte == nil || chrte.handler == nil) {
-		//whether we deploying, upgrading or launching a chaincode we now have a
-		//deployment package. If lauching, we got it from LCCC and has gone through
-		//ccprovider.GetChaincodeFromFS
+		//NOTE-We need to streamline code a bit so the data from LCCC gets passed to this thus
+		//avoiding the need to go to the FS. In particular, we should use cdsfs completely. It is
+		//just a vestige of old protocol that we continue to use ChaincodeDeploymentSpec for
+		//anything other than Install. In particular, instantiate, invoke, upgrade should be using
+		//just some form of ChaincodeInvocationSpec.
+		//
+		//But for now, if we are invoking we have gone through the LCCC path above. If  instantiating
+		//or upgrading currently we send a CDS with nil CodePackage. In this case the codepath
+		//in the endorser has gone through LCCC validation. Just get the code from the FS.
 		if cds.CodePackage == nil {
 			//no code bytes for these situations
 			if !(chaincodeSupport.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) {
-				_, cdsfs, err := ccprovider.GetChaincodeFromFS(cID.Name, cID.Version)
+				ccpack, err := ccprovider.GetChaincodeFromFS(cID.Name, cID.Version)
 				if err != nil {
 					return cID, cMsg, err
 				}
-				//we should use cdsfs completely. It is just a vestige of old protocol that we
-				//continue to use ChaincodeDeploymentSpec for anything other than Install. In
-				//particular, instantiate, invoke, upgrade should be using just some form of
-				//ChaincodeInvocationSpec.
-				cds = cdsfs
+
+				cds = ccpack.GetDepSpec()
 				chaincodeLogger.Debugf("launchAndWaitForRegister fetched %d from file system", len(cds.CodePackage), err)
 			}
 		}

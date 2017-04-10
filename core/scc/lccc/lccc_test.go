@@ -17,9 +17,10 @@ package lccc
 
 import (
 	"fmt"
-	"testing"
-
+	"io/ioutil"
 	"os"
+	"strings"
+	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -450,6 +451,87 @@ func TestRetryFailedDeploy(t *testing.T) {
 	//get the deploymentspec
 	args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK || res.Payload == nil {
+		t.FailNow()
+	}
+}
+
+//TestTamperChaincode modifies the chaincode on the FS after deploy
+func TestTamperChaincode(t *testing.T) {
+	scc := new(LifeCycleSysCC)
+	stub := shim.NewMockStub("lccc", scc)
+
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+
+	//deploy 01
+	cds, err := constructDeploymentSpec("example01", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01", "0", [][]byte{[]byte("init"), []byte("a"), []byte("1"), []byte("b"), []byte("2")}, true)
+	if err != nil {
+		t.Logf("Could not construct example01.0")
+		t.FailNow()
+	}
+
+	defer os.Remove(lccctestpath + "/example01.0")
+
+	var b []byte
+	if b, err = proto.Marshal(cds); err != nil || b == nil {
+		t.Logf("Could not construct example01.0")
+		t.FailNow()
+	}
+
+	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		t.Logf("Could not deploy example01.0")
+		t.FailNow()
+	}
+
+	//deploy 02
+	cds, err = constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	if err != nil {
+		t.FailNow()
+	}
+
+	defer os.Remove(lccctestpath + "/example02.0")
+
+	if b, err = proto.Marshal(cds); err != nil || b == nil {
+		t.FailNow()
+	}
+
+	//deploy correctly now
+	args = [][]byte{[]byte(DEPLOY), []byte("test"), b}
+	if res = stub.MockInvoke("1", args); res.Status != shim.OK {
+		t.Logf("Could not deploy example02.0")
+		t.FailNow()
+	}
+
+	//remove the old file...
+	os.Remove(lccctestpath + "/example02.0")
+
+	//read 01 and ...
+	if b, err = ioutil.ReadFile(lccctestpath + "/example01.0"); err != nil {
+		t.Logf("Could not read back example01.0")
+		t.FailNow()
+	}
+
+	//...brute force replace 02 with bytes from 01
+	if err = ioutil.WriteFile(lccctestpath+"/example02.0", b, 0644); err != nil {
+		t.Logf("Could not write to example02.0")
+		t.FailNow()
+	}
+
+	//get the deploymentspec
+	args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+	if res = stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Logf("Expected error on tampering files but succeeded")
+		t.FailNow()
+	}
+
+	//look specifically for Invalid error
+	expectedErr := InvalidCCOnFSError("").Error()
+	if strings.Index(res.Message, expectedErr) < 0 {
+		t.Logf("Expected prefix %s on error but appeared to have got a different error : %+v", expectedErr, res)
 		t.FailNow()
 	}
 }
