@@ -14,18 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.fsm.exceptions;
+package org.hyperledger.fabric.shim.fsm;
 
-public class InvalidEventException extends Exception {
-
-	public final String event;
-	public final String state;
+public enum CallbackType {
 	
-	public InvalidEventException(String event, String state) {
-		super("Event '" + event + "' is innappropriate"
-				+ " given the current state, " + state);
-		this.event = event;
-		this.state = state;
-	}
+	NONE,
+	BEFORE_EVENT,
+	LEAVE_STATE,
+	ENTER_STATE,
+	AFTER_EVENT;
 	
 }

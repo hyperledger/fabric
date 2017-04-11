@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.shim;
+package org.hyperledger.fabric.shim;
 
 import java.util.Collections;
 import java.util.List;

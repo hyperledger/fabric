@@ -17,11 +17,11 @@ limitations under the License.
 package example;
 
 import static java.lang.String.format;
-import static org.hyperledger.java.shim.ChaincodeHelper.newBadRequestResponse;
+import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
 
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
-import org.hyperledger.java.shim.ChaincodeBase;
-import org.hyperledger.java.shim.ChaincodeStub;
+import org.hyperledger.fabric.shim.ChaincodeBase;
+import org.hyperledger.fabric.shim.ChaincodeStub;
 
 public class Example06 extends ChaincodeBase {
 	

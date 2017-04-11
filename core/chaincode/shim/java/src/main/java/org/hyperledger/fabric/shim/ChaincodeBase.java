@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.shim;
+package org.hyperledger.fabric.shim;
 
 import java.io.File;
 
@@ -45,13 +45,13 @@ import io.netty.handler.ssl.SslContext;
 public abstract class ChaincodeBase implements Chaincode {
 
 	/* (non-Javadoc)
-	 * @see org.hyperledger.java.shim.Chaincode#init(org.hyperledger.java.shim.ChaincodeStub)
+	 * @see org.hyperledger.fabric.shim.Chaincode#init(org.hyperledger.fabric.shim.ChaincodeStub)
 	 */
 	@Override
 	public abstract Response init(ChaincodeStub stub);
 	
 	/* (non-Javadoc)
-	 * @see org.hyperledger.java.shim.Chaincode#invoke(org.hyperledger.java.shim.ChaincodeStub)
+	 * @see org.hyperledger.fabric.shim.Chaincode#invoke(org.hyperledger.fabric.shim.ChaincodeStub)
 	 */
 	@Override
 	public abstract Response invoke(ChaincodeStub stub);
@@ -176,7 +176,7 @@ public abstract class ChaincodeBase implements Chaincode {
 		public void onNext(ChaincodeMessage message) {
 		    logger.info("Got message from peer: " + toJsonString(message));
 		    try {
-			logger.info(String.format("[%s]Received message %s from org.hyperledger.java.shim",
+			logger.info(String.format("[%s]Received message %s from org.hyperledger.fabric.shim",
 				Handler.shortID(message.getTxid()), message.getType()));
 			handler.handleMessage(message);
 		    } catch (Exception e) {
@@ -202,7 +202,7 @@ public abstract class ChaincodeBase implements Chaincode {
 	    System.exit(-1);
 	}
 
-	// Create the org.hyperledger.java.shim handler responsible for all
+	// Create the org.hyperledger.fabric.shim handler responsible for all
 	// control logic
 	handler = new Handler(requestObserver, this);
 

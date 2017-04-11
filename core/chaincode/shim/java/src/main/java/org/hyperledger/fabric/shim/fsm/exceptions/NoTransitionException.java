@@ -14,18 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.shim;
+package org.hyperledger.fabric.shim.fsm.exceptions;
 
-import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage;
+public class NoTransitionException extends Exception {
 
-public class NextStateInfo {
-
-	public ChaincodeMessage message;
-	public boolean sendToCC;
+	public final Exception error;
 	
-	public NextStateInfo(ChaincodeMessage message, boolean sendToCC) {
-		this.message = message;
-		this.sendToCC = sendToCC;
+	public NoTransitionException() {
+		this(null);
+	}
+	
+	public NoTransitionException(Exception error) {
+		super("No transition occurred" + (error == null ? "" : " because of error " + error.toString()));
+		this.error = error;
 	}
 	
 }

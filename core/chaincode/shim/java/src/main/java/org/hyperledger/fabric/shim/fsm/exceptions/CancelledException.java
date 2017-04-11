@@ -14,18 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.fsm;
+package org.hyperledger.fabric.shim.fsm.exceptions;
 
-import org.hyperledger.java.fsm.exceptions.NotInTransitionException;
+public class CancelledException extends Exception {
 
-public class Transitioner {
+	public final Exception error;
 	
-	public void transition(FSM fsm) throws NotInTransitionException {
-		if (fsm.transition == null) {
-			throw new NotInTransitionException();
-		}
-		fsm.transition.run();
-		fsm.transition = null;
+	public CancelledException() {
+		this(null);
+	}
+	
+	public CancelledException(Exception error) {
+		super("The transition was cancelled" + error == null ?
+				"" : " with error " + error.toString());
+		this.error = error;
 	}
 	
 }

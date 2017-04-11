@@ -14,19 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.fsm.exceptions;
+package org.hyperledger.fabric.shim.fsm.exceptions;
 
-public class NoTransitionException extends Exception {
+public class InvalidEventException extends Exception {
 
-	public final Exception error;
+	public final String event;
+	public final String state;
 	
-	public NoTransitionException() {
-		this(null);
-	}
-	
-	public NoTransitionException(Exception error) {
-		super("No transition occurred" + (error == null ? "" : " because of error " + error.toString()));
-		this.error = error;
+	public InvalidEventException(String event, String state) {
+		super("Event '" + event + "' is innappropriate"
+				+ " given the current state, " + state);
+		this.event = event;
+		this.state = state;
 	}
 	
 }

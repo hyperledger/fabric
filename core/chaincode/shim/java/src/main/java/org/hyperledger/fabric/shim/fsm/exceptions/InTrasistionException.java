@@ -14,20 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.fsm.exceptions;
+package org.hyperledger.fabric.shim.fsm.exceptions;
 
-public class AsyncException extends Exception {
+public class InTrasistionException extends Exception {
 
-	public final Exception error;
+	public final String event;
 	
-	public AsyncException() {
-		this(null);
-	}
-	
-	public AsyncException(Exception error) {
-		super("Async started" + error == null ?
-				"" : " with error " + error.toString());
-		this.error = error;
+	public InTrasistionException(String event) {
+		super("Event '" + event + "' is inappropriate because"
+				+ " the previous trasaction had not completed");
+		this.event = event;
 	}
 	
 }
