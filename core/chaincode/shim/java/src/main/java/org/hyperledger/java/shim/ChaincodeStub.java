@@ -16,28 +16,43 @@ limitations under the License.
 
 package org.hyperledger.java.shim;
 
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.hyperledger.fabric.protos.peer.ChaincodeShim;
 
 import com.google.protobuf.ByteString;
 
-//import static org.hyperledger.protos.TableProto.ColumnDefinition.Type.STRING;
-
 public class ChaincodeStub {
+	
     private static Log logger = LogFactory.getLog(ChaincodeStub.class);
+    
     private final String uuid;
     private final Handler handler;
+    private final List<ByteString> args;
 
-    public ChaincodeStub(String uuid, Handler handler) {
+    public ChaincodeStub(String uuid, Handler handler, List<ByteString> args) {
         this.uuid = uuid;
         this.handler = handler;
+        this.args = Collections.unmodifiableList(args);
     }
 
+    public List<byte[]> getArgs() {
+		return args
+				.stream()
+				.map(x -> x.toByteArray())
+				.collect(Collectors.toList());
+	}
+    
+    public List<String> getArgsAsStrings() {
+		return args
+				.stream()
+				.map(x -> x.toStringUtf8())
+				.collect(Collectors.toList());
+	}
+    
     /**
      * Gets the UUID of this stub
      *
