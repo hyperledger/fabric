@@ -73,7 +73,7 @@ Fixing issues and working stories
 Review the `issues
 list <https://github.com/hyperledger/fabric/issues>`__ and find
 something that interests you. You could also check the
-`"help-wanted" <https://jira.hyperledger.org/issues/?jql=project%20%3D%20Fabric%20AND%20labels%20%3D%20help-wanted>`__
+`"help-wanted" <https://jira.hyperledger.org/issues/?filter=10147>`__
 list. It is wise to start with something relatively straight forward and
 achievable, and that no one is already assigned. If no one is assigned,
 then assign the issue to yourself. Please be considerate and rescind the
@@ -140,7 +140,7 @@ What makes a good change request?
 -  Minimize the lines of code per CR. Why? Maintainers have day jobs,
    too. If you send a 1,000 or 2,000 LOC change, how long do you think
    it takes to review all of that code? Keep your changes to < 200-300
-   LOC if possible. If you have a larger change, decompose it into
+   LOC, if possible. If you have a larger change, decompose it into
    multiple independent changess. If you are adding a bunch of new
    functions to fulfill the requirements of a new capability, add them
    separately with their tests, and then write the code that uses them
@@ -150,11 +150,23 @@ What makes a good change request?
    bunch of generated code (protobufs, etc.). Again, there can be
    exceptions.
 
+   Note: large change requests, e.g. those with more than 300 LOC are more likely
+   than not going to receive a -2, and you'll be asked to refactor the change
+   to conform with this guidance.
+
+-  Do not stack change requests (e.g. submit a CR from the same local branch
+   as your previous CR) unless they are related. This will minimize merge
+   conflicts and allow changes to be merged more quickly. If you stack requests
+   your subsequent requests may be held up because of review comments in the
+   preceding requests.
+
 -  Write a meaningful commit message. Include a meaningful 50 (or less)
-   character title, followed by a blank line, followed my a more
-   comprehensive description of the change. Be sure to include the JIRA
+   character title, followed by a blank line, followed by a more
+   comprehensive description of the change. Each change MUST include the JIRA
    identifier corresponding to the change (e.g. [FAB-1234]). This can be
    in the title but should also be in the body of the commit message.
+
+   Note that Gerrit will automatically create a hyperlink to the JIRA item.
 
 e.g.
 
@@ -177,7 +189,7 @@ Be sure to check out the language-specific `style
 guides <Style-guides/go-style.md>`__ before making any changes. This
 will ensure a smoother review.
 
-Communication 
+Communication
 --------------
 
 We use `RocketChat <https://chat.hyperledger.org/>`__ for communication
