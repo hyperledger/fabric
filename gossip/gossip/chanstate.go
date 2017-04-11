@@ -17,6 +17,7 @@ limitations under the License.
 package gossip
 
 import (
+	"bytes"
 	"sync"
 	"sync/atomic"
 
@@ -51,12 +52,54 @@ func (cs *channelState) isStopping() bool {
 	return atomic.LoadInt32(&cs.stopping) == int32(1)
 }
 
+func (cs *channelState) lookupChannelForMsg(msg proto.ReceivedMessage) channel.GossipChannel {
+	if msg.GetGossipMessage().IsStateInfoPullRequestMsg() {
+		sipr := msg.GetGossipMessage().GetStateInfoPullReq()
+		mac := sipr.ChannelMAC
+		pkiID := msg.GetConnectionInfo().ID
+		return cs.getGossipChannelByMAC(mac, pkiID)
+	}
+	return cs.lookupChannelForGossipMsg(msg.GetGossipMessage().GossipMessage)
+}
+
+func (cs *channelState) lookupChannelForGossipMsg(msg *proto.GossipMessage) channel.GossipChannel {
+	if !msg.IsStateInfoMsg() {
+		// If we reached here then the message isn't:
+		// 1) StateInfoPullRequest
+		// 2) StateInfo
+		// Hence, it was already sent to a peer (us) that has proved it knows the channel name, by
+		// sending StateInfo messages in the past.
+		// Therefore- we use the channel name from the message itself.
+		return cs.getGossipChannelByChainID(msg.Channel)
+	}
+
+	// Else, it's a StateInfo message.
+	stateInfMsg := msg.GetStateInfo()
+	return cs.getGossipChannelByMAC(stateInfMsg.ChannelMAC, stateInfMsg.PkiId)
+}
+
+func (cs *channelState) getGossipChannelByMAC(receivedMAC []byte, pkiID common.PKIidType) channel.GossipChannel {
+	// Iterate over the channels, and try to find a channel that the computation
+	// of the MAC is equal to the MAC on the message.
+	// If it is, then the peer that signed the message knows the name of the channel
+	// because its PKI-ID was checked when the message was verified.
+	cs.RLock()
+	defer cs.RUnlock()
+	for chanName, gc := range cs.channels {
+		mac := channel.ChannelMAC(pkiID, common.ChainID(chanName))
+		if bytes.Equal(mac, receivedMAC) {
+			return gc
+		}
+	}
+	return nil
+}
+
 func (cs *channelState) getGossipChannelByChainID(chainID common.ChainID) channel.GossipChannel {
 	if cs.isStopping() {
 		return nil
 	}
-	cs.Lock()
-	defer cs.Unlock()
+	cs.RLock()
+	defer cs.RUnlock()
 	return cs.channels[string(chainID)]
 }
 
@@ -67,7 +110,10 @@ func (cs *channelState) joinChannel(joinMsg api.JoinChannelMessage, chainID comm
 	cs.Lock()
 	defer cs.Unlock()
 	if gc, exists := cs.channels[string(chainID)]; !exists {
-		cs.channels[string(chainID)] = channel.NewGossipChannel(cs.g.mcs, chainID, &gossipAdapterImpl{gossipServiceImpl: cs.g, Discovery: cs.g.disc}, joinMsg)
+		pkiID := cs.g.comm.GetPKIid()
+		ga := &gossipAdapterImpl{gossipServiceImpl: cs.g, Discovery: cs.g.disc}
+		gc := channel.NewGossipChannel(pkiID, cs.g.mcs, chainID, ga, joinMsg)
+		cs.channels[string(chainID)] = gc
 	} else {
 		gc.ConfigureChannel(joinMsg)
 	}
