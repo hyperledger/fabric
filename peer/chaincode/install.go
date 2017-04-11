@@ -74,7 +74,7 @@ func install(chaincodeName string, chaincodeVersion string, cds *pb.ChaincodeDep
 	}
 
 	if proposalResponse != nil {
-		logger.Debug("Installed remotely %v", proposalResponse)
+		logger.Debugf("Installed remotely %v", proposalResponse)
 	}
 
 	return nil
