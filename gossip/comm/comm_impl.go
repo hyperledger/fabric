@@ -124,6 +124,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 
 // NewCommInstance creates a new comm instance that binds itself to the given gRPC server
 func NewCommInstance(s *grpc.Server, cert *tls.Certificate, idStore identity.Mapper, peerIdentity api.PeerIdentityType, dialOpts ...grpc.DialOption) (Comm, error) {
+	dialOpts = append(dialOpts, grpc.WithTimeout(util.GetDurationOrDefault("peer.gossip.dialTimeout", defDialTimeout)))
 	commInst, err := NewCommInstanceWithServer(-1, idStore, peerIdentity, dialOpts...)
 	if err != nil {
 		return nil, err
