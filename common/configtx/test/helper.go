@@ -40,24 +40,20 @@ const (
 	AcceptAllPolicyKey = "AcceptAllPolicy"
 )
 
-var sampleMSPPath string
-
 func dirExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
 }
 
-func init() {
+func getConfigDir() string {
 	mspSampleConfig := "/msp/sampleconfig"
 	peerPath := filepath.Join(os.Getenv("PEER_CFG_PATH"), mspSampleConfig)
 	ordererPath := filepath.Join(os.Getenv("ORDERER_CFG_PATH"), mspSampleConfig)
 	switch {
 	case dirExists(peerPath):
-		sampleMSPPath = peerPath
-		return
+		return peerPath
 	case dirExists(ordererPath):
-		sampleMSPPath = ordererPath
-		return
+		return ordererPath
 	}
 
 	gopath := os.Getenv("GOPATH")
@@ -66,12 +62,11 @@ func init() {
 		if !dirExists(samplePath) {
 			continue
 		}
-		sampleMSPPath = samplePath
+		return samplePath
 	}
 
-	if sampleMSPPath == "" {
-		logger.Panicf("Could not find genesis.yaml, try setting PEER_CFG_PATH, ORDERER_CFG_PATH, or GOPATH correctly")
-	}
+	logger.Panicf("Could not find genesis.yaml, try setting PEER_CFG_PATH, ORDERER_CFG_PATH, or GOPATH correctly")
+	return ""
 }
 
 // MakeGenesisBlock creates a genesis block using the test templates for the given chainID
@@ -100,7 +95,7 @@ const sampleOrgID = "DEFAULT"
 
 // ApplicationOrgTemplate returns the SAMPLE org with MSP template
 func ApplicationOrgTemplate() configtx.Template {
-	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, nil, sampleOrgID)
+	mspConf, err := msp.GetLocalMspConfig(getConfigDir(), nil, sampleOrgID)
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
@@ -109,7 +104,7 @@ func ApplicationOrgTemplate() configtx.Template {
 
 // OrdererOrgTemplate returns the SAMPLE org with MSP template
 func OrdererOrgTemplate() configtx.Template {
-	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, nil, sampleOrgID)
+	mspConf, err := msp.GetLocalMspConfig(getConfigDir(), nil, sampleOrgID)
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
