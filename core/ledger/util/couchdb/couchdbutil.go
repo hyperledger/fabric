@@ -41,9 +41,9 @@ func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
 	//Create the CouchDB instance
 	couchInstance := &CouchInstance{conf: *couchConf}
 
-	connectInfo, retVal, verifyErr := couchInstance.VerifyConnection()
+	connectInfo, retVal, verifyErr := couchInstance.VerifyCouchConfig()
 	if verifyErr != nil {
-		return nil, fmt.Errorf("Unable to connect to CouchDB, check the hostname and port: %s", verifyErr.Error())
+		return nil, verifyErr
 	}
 
 	//return an error if the http return value is not 200
@@ -94,6 +94,37 @@ func CreateCouchDatabase(couchInstance CouchInstance, dbName string) (*CouchData
 	}
 
 	return &couchDBDatabase, nil
+}
+
+//CreateSystemDatabasesIfNotExist - creates the system databases if they do not exist
+func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
+
+	dbName := "_users"
+	systemCouchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: dbName}
+	_, err := systemCouchDBDatabase.CreateDatabaseIfNotExist()
+	if err != nil {
+		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
+		return err
+	}
+
+	dbName = "_replicator"
+	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName}
+	_, err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
+	if err != nil {
+		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
+		return err
+	}
+
+	dbName = "_global_changes"
+	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName}
+	_, err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
+	if err != nil {
+		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
+		return err
+	}
+
+	return nil
+
 }
 
 //mapAndValidateDatabaseName checks to see if the database name contains illegal characters

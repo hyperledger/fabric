@@ -321,8 +321,11 @@ func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 
 }
 
-//VerifyConnection method provides function to verify the connection information
-func (couchInstance *CouchInstance) VerifyConnection() (*ConnectionInfo, *DBReturn, error) {
+//VerifyCouchConfig method provides function to verify the connection information
+func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBReturn, error) {
+
+	logger.Debugf("Entering VerifyCouchConfig()")
+	defer logger.Debugf("Exiting VerifyCouchConfig()")
 
 	connectURL, err := url.Parse(couchInstance.conf.URL)
 	if err != nil {
@@ -334,16 +337,18 @@ func (couchInstance *CouchInstance) VerifyConnection() (*ConnectionInfo, *DBRetu
 	//get the number of retries for startup
 	maxRetriesOnStartup := couchInstance.conf.MaxRetriesOnStartup
 
-	resp, couchDBReturn, err := couchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "", maxRetriesOnStartup)
+	resp, couchDBReturn, err := couchInstance.handleRequest(http.MethodGet, connectURL.String(), nil,
+		couchInstance.conf.Username, couchInstance.conf.Password, maxRetriesOnStartup)
+
 	if err != nil {
-		return nil, couchDBReturn, err
+		return nil, couchDBReturn, fmt.Errorf("Unable to connect to CouchDB, check the hostname and port: %s", err.Error())
 	}
 	defer resp.Body.Close()
 
 	dbResponse := &ConnectionInfo{}
 	errJSON := json.NewDecoder(resp.Body).Decode(&dbResponse)
 	if errJSON != nil {
-		return nil, nil, errJSON
+		return nil, nil, fmt.Errorf("Unable to connect to CouchDB, check the hostname and port: %s", errJSON.Error())
 	}
 
 	// trace the database info response
@@ -352,6 +357,16 @@ func (couchInstance *CouchInstance) VerifyConnection() (*ConnectionInfo, *DBRetu
 		if err == nil {
 			logger.Debugf("VerifyConnection() dbResponseJSON: %s", dbResponseJSON)
 		}
+	}
+
+	//check to see if the system databases exist
+	//Verifying the existence of the system database accomplishes two steps
+	//1.  Ensures the system databases are created
+	//2.  Verifies the username password provided in the CouchDB config are valid for system admin
+	err = CreateSystemDatabasesIfNotExist(*couchInstance)
+	if err != nil {
+		logger.Errorf("Unable to connect to CouchDB,  error: %s   Check the admin username and password.\n", err.Error())
+		return nil, nil, fmt.Errorf("Unable to connect to CouchDB,  error: %s   Check the admin username and password.\n", err.Error())
 	}
 
 	return dbResponse, couchDBReturn, nil
