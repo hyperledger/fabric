@@ -70,7 +70,13 @@ type deliveryFactoryImpl struct {
 
 // Returns an instance of delivery client
 func (*deliveryFactoryImpl) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
-	return deliverclient.NewDeliverService(g, endpoints, mcs)
+	return deliverclient.NewDeliverService(&deliverclient.Config{
+		CryptoSvc:   mcs,
+		Gossip:      g,
+		Endpoints:   endpoints,
+		ConnFactory: deliverclient.DefaultConnectionFactory,
+		ABCFactory:  deliverclient.DefaultABCFactory,
+	})
 }
 
 type gossipServiceImpl struct {

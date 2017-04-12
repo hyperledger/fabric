@@ -47,14 +47,14 @@ type clientFactory func(*grpc.ClientConn) orderer.AtomicBroadcastClient
 
 type broadcastClient struct {
 	stopFlag int32
-	sync.RWMutex
+	sync.Mutex
 	stopChan     chan struct{}
 	createClient clientFactory
 	shouldRetry  retryPolicy
 	onConnect    broadcastSetup
 	prod         comm.ConnectionProducer
 	blocksprovider.BlocksDeliverer
-	conn *grpc.ClientConn
+	conn *connection
 }
 
 // NewBroadcastClient returns a broadcastClient with the given params
@@ -65,6 +65,9 @@ func NewBroadcastClient(prod comm.ConnectionProducer, clFactory clientFactory, o
 // Recv receives a message from the ordering service
 func (bc *broadcastClient) Recv() (*orderer.DeliverResponse, error) {
 	o, err := bc.try(func() (interface{}, error) {
+		if bc.shouldStop() {
+			return nil, errors.New("closing")
+		}
 		return bc.BlocksDeliverer.Recv()
 	})
 	if err != nil {
@@ -76,6 +79,9 @@ func (bc *broadcastClient) Recv() (*orderer.DeliverResponse, error) {
 // Send sends a message to the ordering service
 func (bc *broadcastClient) Send(msg *common.Envelope) error {
 	_, err := bc.try(func() (interface{}, error) {
+		if bc.shouldStop() {
+			return nil, errors.New("closing")
+		}
 		return nil, bc.BlocksDeliverer.Send(msg)
 	})
 	return err
@@ -106,7 +112,7 @@ func (bc *broadcastClient) try(action func() (interface{}, error)) (interface{},
 }
 
 func (bc *broadcastClient) doAction(action func() (interface{}, error)) (interface{}, error) {
-	if bc.BlocksDeliverer == nil {
+	if bc.conn == nil {
 		err := bc.connect()
 		if err != nil {
 			return nil, err
@@ -114,9 +120,7 @@ func (bc *broadcastClient) doAction(action func() (interface{}, error)) (interfa
 	}
 	resp, err := action()
 	if err != nil {
-		bc.conn.Close()
-		bc.BlocksDeliverer = nil
-		bc.conn = nil
+		bc.disconnect()
 		return nil, err
 	}
 	return resp, nil
@@ -141,16 +145,45 @@ func (bc *broadcastClient) connect() error {
 		conn.Close()
 		return err
 	}
-	err = bc.onConnect(bc)
+	err = bc.afterConnect(conn, abc)
 	if err == nil {
-		bc.Lock()
-		bc.conn = conn
+		return nil
+	}
+	// If we reached here, lets make sure connection is closed
+	// and nullified before we return
+	bc.disconnect()
+	return err
+}
+
+func (bc *broadcastClient) afterConnect(conn *grpc.ClientConn, abc orderer.AtomicBroadcast_DeliverClient) error {
+	bc.Lock()
+	bc.conn = &connection{ClientConn: conn}
+	bc.BlocksDeliverer = abc
+	if bc.shouldStop() {
 		bc.Unlock()
-		bc.BlocksDeliverer = abc
+		return errors.New("closing")
+	}
+	bc.Unlock()
+	// If the client is closed at this point- before onConnect,
+	// any use of this object by onConnect would return an error.
+	err := bc.onConnect(bc)
+	// If the client is closed right after onConnect, but before
+	// the following lock- this method would return an error because
+	// the client has been closed.
+	bc.Lock()
+	defer bc.Unlock()
+	if bc.shouldStop() {
+		return errors.New("closing")
+	}
+	// If the client is closed right after this method exits,
+	// it's because this method returned nil and not an error.
+	// So- connect() would return nil also, and the flow of the goroutine
+	// is returned to doAction(), where action() is invoked - and is configured
+	// to check whether the client has closed or not.
+	if err == nil {
 		return nil
 	}
 	logger.Error("Failed setting up broadcast:", err)
-	conn.Close()
 	return err
 }
 
@@ -159,12 +192,39 @@ func (bc *broadcastClient) shouldStop() bool {
 }
 
 func (bc *broadcastClient) Close() {
+	bc.Lock()
+	defer bc.Unlock()
+	if bc.shouldStop() {
+		return
+	}
 	atomic.StoreInt32(&bc.stopFlag, int32(1))
 	bc.stopChan <- struct{}{}
-	bc.RLock()
-	defer bc.RUnlock()
 	if bc.conn == nil {
 		return
 	}
 	bc.conn.Close()
+}
+
+func (bc *broadcastClient) disconnect() {
+	bc.Lock()
+	defer bc.Unlock()
+	if bc.conn == nil {
+		return
+	}
+	bc.conn.Close()
+	bc.conn = nil
+	bc.BlocksDeliverer = nil
+}
+
+type connection struct {
+	*grpc.ClientConn
+	sync.Once
+}
+
+func (c *connection) Close() error {
+	var err error
+	c.Once.Do(func() {
+		err = c.ClientConn.Close()
+	})
+	return err
 }

@@ -17,16 +17,20 @@ limitations under the License.
 package deliverclient
 
 import (
+	"crypto/sha256"
 	"errors"
+	"math"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/deliverservice/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -153,7 +157,6 @@ func (cp *connProducer) UpdateEndpoints(endpoints []string) {
 }
 
 func TestOrderingServiceConnFailure(t *testing.T) {
-	t.Parallel()
 	testOrderingServiceConnFailure(t, blockDelivererConsumerWithRecv)
 	testOrderingServiceConnFailure(t, blockDelivererConsumerWithSend)
 	assert.Equal(t, 0, connNumber)
@@ -406,13 +409,11 @@ func testLimitedConnAttempts(t *testing.T, bdc blocksDelivererConsumer) {
 }
 
 func TestLimitedTotalConnTimeRcv(t *testing.T) {
-	t.Parallel()
 	testLimitedTotalConnTime(t, blockDelivererConsumerWithRecv)
 	assert.Equal(t, 0, connNumber)
 }
 
 func TestLimitedTotalConnTimeSnd(t *testing.T) {
-	t.Parallel()
 	testLimitedTotalConnTime(t, blockDelivererConsumerWithSend)
 	assert.Equal(t, 0, connNumber)
 }
@@ -473,11 +474,10 @@ func testGreenPath(t *testing.T, bdc blocksDelivererConsumer) {
 }
 
 func TestCloseWhileRecv(t *testing.T) {
-	t.Parallel()
 	// Scenario: Recv is being called and after a while,
 	// the connection is closed.
 	// The Recv should return immediately in such a case
-	fakeOrderer := mocks.NewOrderer(5611)
+	fakeOrderer := mocks.NewOrderer(5611, t)
 	time.Sleep(time.Second)
 	defer fakeOrderer.Shutdown()
 	cp := &connProducer{ordererEndpoint: "localhost:5611"}
@@ -496,6 +496,7 @@ func TestCloseWhileRecv(t *testing.T) {
 	time.AfterFunc(time.Second, func() {
 		atomic.StoreInt32(&flag, int32(1))
 		bc.Close()
+		bc.Close() // Try to close a second time
 	})
 	resp, err := bc.Recv()
 	// Ensure we returned because bc.Close() was called and not because some other reason
@@ -506,7 +507,6 @@ func TestCloseWhileRecv(t *testing.T) {
 }
 
 func TestCloseWhileSleep(t *testing.T) {
-	t.Parallel()
 	testCloseWhileSleep(t, blockDelivererConsumerWithRecv)
 	testCloseWhileSleep(t, blockDelivererConsumerWithSend)
 	assert.Equal(t, 0, connNumber)
@@ -543,9 +543,64 @@ func testCloseWhileSleep(t *testing.T, bdc blocksDelivererConsumer) {
 	go func() {
 		wg.Wait()
 		bc.Close()
+		bc.Close() // Try to close a second time
 	}()
 	err := bdc(bc)
 	assert.Error(t, err)
 	assert.Equal(t, 1, cp.connAttempts)
 	assert.Equal(t, 0, setupInvoked)
+}
+
+type signerMock struct {
+}
+
+func (s *signerMock) NewSignatureHeader() (*common.SignatureHeader, error) {
+	return &common.SignatureHeader{}, nil
+}
+
+func (s *signerMock) Sign(message []byte) ([]byte, error) {
+	hasher := sha256.New()
+	hasher.Write(message)
+	return hasher.Sum(nil), nil
+}
+
+func TestProductionUsage(t *testing.T) {
+	defer ensureNoGoroutineLeak(t)()
+	// This test configures the client in a similar fashion as will be
+	// in production, and tests against a live gRPC server.
+	os := mocks.NewOrderer(5612, t)
+	os.SetNextExpectedSeek(5)
+
+	connFact := func(endpoint string) (*grpc.ClientConn, error) {
+		return grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithBlock())
+	}
+	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5612"})
+	clFact := func(cc *grpc.ClientConn) orderer.AtomicBroadcastClient {
+		return orderer.NewAtomicBroadcastClient(cc)
+	}
+	onConnect := func(bd blocksprovider.BlocksDeliverer) error {
+		env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE,
+			"TEST",
+			&signerMock{}, newTestSeekInfo(), 0, 0)
+		assert.NoError(t, err)
+		return bd.Send(env)
+	}
+	retryPol := func(attemptNum int, elapsedTime time.Duration) (time.Duration, bool) {
+		return time.Second * 3, attemptNum < 2
+	}
+	cl := NewBroadcastClient(prod, clFact, onConnect, retryPol)
+	go os.SendBlock(5)
+	resp, err := cl.Recv()
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, uint64(5), resp.GetBlock().Header.Number)
+	os.Shutdown()
+	cl.Close()
+}
+
+func newTestSeekInfo() *orderer.SeekInfo {
+	return &orderer.SeekInfo{Start: &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: 5}}},
+		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+	}
 }

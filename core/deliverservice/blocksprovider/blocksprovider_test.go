@@ -59,7 +59,7 @@ func (*mockMCS) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
 // from given block sequence number.
 func makeTestCase(ledgerHeight uint64) func(*testing.T) {
 	return func(t *testing.T) {
-		gossipServiceAdapter := &mocks.MockGossipServiceAdapter{}
+		gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
 		deliverer := &mocks.MockBlocksDeliverer{Pos: ledgerHeight}
 		deliverer.MockRecv = mocks.MockRecv
 
@@ -70,15 +70,9 @@ func makeTestCase(ledgerHeight uint64) func(*testing.T) {
 			mcs:     &mockMCS{},
 		}
 
-		provider.RequestBlocks(&mocks.MockLedgerInfo{ledgerHeight})
-
-		var wg sync.WaitGroup
-		wg.Add(1)
-
 		ready := make(chan struct{})
 		go func() {
-			provider.DeliverBlocks()
-			wg.Done()
+			go provider.DeliverBlocks()
 			// Send notification
 			ready <- struct{}{}
 		}()
@@ -91,7 +85,11 @@ func makeTestCase(ledgerHeight uint64) func(*testing.T) {
 			{
 				// Check that all blocks received eventually get gossiped and locally committed
 				assert.True(t, deliverer.RecvCnt == gossipServiceAdapter.AddPayloadsCnt)
-				assert.True(t, deliverer.RecvCnt == gossipServiceAdapter.GossipCallsCnt)
+				select {
+				case <-gossipServiceAdapter.GossipBlockDisseminations:
+				case <-time.After(time.Second):
+					assert.Fail(t, "Didn't gossip a block within a timely manner")
+				}
 				return
 			}
 		case <-time.After(time.Duration(1) * time.Second):
@@ -140,8 +138,6 @@ func TestBlocksProvider_CheckTerminationDeliveryResponseStatus(t *testing.T) {
 		client:  &tmp,
 	}
 
-	provider.RequestBlocks(&mocks.MockLedgerInfo{0})
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 
@@ -163,7 +159,11 @@ func TestBlocksProvider_CheckTerminationDeliveryResponseStatus(t *testing.T) {
 			// No payload should commit locally
 			assert.Equal(t, int32(0), gossipServiceAdapter.AddPayloadsCnt)
 			// No payload should be transfered to other peers
-			assert.Equal(t, int32(0), gossipServiceAdapter.GossipCallsCnt)
+			select {
+			case <-gossipServiceAdapter.GossipBlockDisseminations:
+				assert.Fail(t, "Gossiped block but shouldn't have")
+			case <-time.After(time.Second):
+			}
 			return
 		}
 	case <-time.After(time.Duration(1) * time.Second):
