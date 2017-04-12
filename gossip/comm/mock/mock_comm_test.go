@@ -46,7 +46,8 @@ func TestMockComm(t *testing.T) {
 
 	comm2.Send((&proto.GossipMessage{
 		Content: &proto.GossipMessage_StateRequest{&proto.RemoteStateRequest{
-			SeqNums: []uint64{1, 2, 3},
+			StartSeqNum: 1,
+			EndSeqNum:   3,
 		}},
 	}).NoopSign(), &comm.RemotePeer{"first", common.PKIidType("first")})
 

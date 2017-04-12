@@ -36,7 +36,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/identity"
-	gossipUtil "github.com/hyperledger/fabric/gossip/util"
 	pcomm "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/spf13/viper"
@@ -45,7 +44,6 @@ import (
 
 var (
 	portPrefix = 5610
-	logger     = gossipUtil.GetLogger(gossipUtil.LoggingStateModule, "")
 )
 
 var orgID = []byte("ORG1")
@@ -200,18 +198,18 @@ func newCommitter(id int) committer.Committer {
 func newPeerNode(config *gossip.Config, committer committer.Committer, acceptor peerIdentityAcceptor) *peerNode {
 	cs := &cryptoServiceMock{acceptor: acceptor}
 	// Gossip component based on configuration provided and communication module
-	gossip := newGossipInstance(config, &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor})
+	g := newGossipInstance(config, &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor})
 
 	logger.Debug("Joinning channel", util.GetTestChainID())
-	gossip.JoinChan(&joinChanMsg{}, common.ChainID(util.GetTestChainID()))
+	g.JoinChan(&joinChanMsg{}, common.ChainID(util.GetTestChainID()))
 
 	// Initialize pseudo peer simulator, which has only three
 	// basic parts
 
 	return &peerNode{
 		port:   config.BindPort,
-		g:      gossip,
-		s:      NewGossipStateProvider(util.GetTestChainID(), gossip, committer, cs),
+		g:      g,
+		s:      NewGossipStateProvider(util.GetTestChainID(), g, committer, cs),
 		commit: committer,
 		cs:     cs,
 	}
@@ -240,8 +238,8 @@ func TestAccessControl(t *testing.T) {
 	}
 
 	for i := 0; i < bootstrapSetSize; i++ {
-		committer := newCommitter(i)
-		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i), committer, blockPullPolicy))
+		commit := newCommitter(i)
+		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i), commit, blockPullPolicy))
 	}
 
 	defer func() {
@@ -254,8 +252,8 @@ func TestAccessControl(t *testing.T) {
 
 	for i := 1; i <= msgCount; i++ {
 		rawblock := pcomm.NewBlock(uint64(i), []byte{})
-		if bytes, err := pb.Marshal(rawblock); err == nil {
-			payload := &proto.Payload{uint64(i), "", bytes}
+		if b, err := pb.Marshal(rawblock); err == nil {
+			payload := &proto.Payload{uint64(i), "", b}
 			bootstrapSet[0].s.AddPayload(payload)
 		} else {
 			t.Fail()
@@ -266,8 +264,8 @@ func TestAccessControl(t *testing.T) {
 	peersSet := make([]*peerNode, 0)
 
 	for i := 0; i < standardPeerSetSize; i++ {
-		committer := newCommitter(bootstrapSetSize + i)
-		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 0, 1, 2, 3, 4), committer, blockPullPolicy))
+		commit := newCommitter(bootstrapSetSize + i)
+		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 0, 1, 2, 3, 4), commit, blockPullPolicy))
 	}
 
 	defer func() {
@@ -396,8 +394,8 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	bootstrapSet := make([]*peerNode, 0)
 
 	for i := 0; i < bootstrapSetSize; i++ {
-		committer := newCommitter(i)
-		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i), committer, noopPeerIdentityAcceptor))
+		commit := newCommitter(i)
+		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i), commit, noopPeerIdentityAcceptor))
 	}
 
 	defer func() {
@@ -410,8 +408,8 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	for i := 1; i <= msgCount; i++ {
 		rawblock := pcomm.NewBlock(uint64(i), []byte{})
-		if bytes, err := pb.Marshal(rawblock); err == nil {
-			payload := &proto.Payload{uint64(i), "", bytes}
+		if b, err := pb.Marshal(rawblock); err == nil {
+			payload := &proto.Payload{uint64(i), "", b}
 			bootstrapSet[0].s.AddPayload(payload)
 		} else {
 			t.Fail()
@@ -422,8 +420,8 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	peersSet := make([]*peerNode, 0)
 
 	for i := 0; i < standartPeersSize; i++ {
-		committer := newCommitter(bootstrapSetSize + i)
-		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 0, 1, 2, 3, 4), committer, noopPeerIdentityAcceptor))
+		commit := newCommitter(bootstrapSetSize + i)
+		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 0, 1, 2, 3, 4), commit, noopPeerIdentityAcceptor))
 	}
 
 	defer func() {
@@ -508,7 +506,7 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 	chainID := common.ChainID(util.GetTestChainID())
 
 	peer.g.Send(&proto.GossipMessage{
-		Content: &proto.GossipMessage_StateRequest{&proto.RemoteStateRequest{nil}},
+		Content: &proto.GossipMessage_StateRequest{&proto.RemoteStateRequest{0, 1}},
 	}, &comm.RemotePeer{peer.g.PeersOfChannel(chainID)[0].Endpoint, peer.g.PeersOfChannel(chainID)[0].PKIid})
 	logger.Info("Waiting until peers exchange messages")
 
@@ -521,6 +519,100 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 	case <-time.After(time.Duration(10) * time.Second):
 		{
 			t.Fail()
+		}
+	}
+}
+
+// Start one bootstrap peer and submit defAntiEntropyBatchSize + 5 messages into
+// local ledger, next spawning a new peer waiting for anti-entropy procedure to
+// complete missing blocks. Since state transfer messages now batched, it is expected
+// to see _exactly_ two messages with state transfer response.
+func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
+	viper.Set("peer.fileSystemPath", "/tmp/tests/ledger/node")
+	ledgermgmt.InitializeTestEnv()
+	defer ledgermgmt.CleanupTestEnv()
+
+	bootPeer := newPeerNode(newGossipConfig(0), newCommitter(0), noopPeerIdentityAcceptor)
+	defer bootPeer.shutdown()
+
+	msgCount := defAntiEntropyBatchSize + 5
+	expectedMessagesCnt := 2
+
+	for i := 1; i <= msgCount; i++ {
+		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		if b, err := pb.Marshal(rawblock); err == nil {
+			payload := &proto.Payload{uint64(i), "", b}
+			bootPeer.s.AddPayload(payload)
+		} else {
+			t.Fail()
+		}
+	}
+
+	peer := newPeerNode(newGossipConfig(1, 0), newCommitter(1), noopPeerIdentityAcceptor)
+	defer peer.shutdown()
+
+	naiveStateMsgPredicate := func(message interface{}) bool {
+		return message.(proto.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage()
+	}
+	_, peerCh := peer.g.Accept(naiveStateMsgPredicate, true)
+
+	messageCh := make(chan struct{})
+	stopWaiting := make(chan struct{})
+
+	// Number of submitted messages is defAntiEntropyBatchSize + 5, therefore
+	// expected number of batches is expectedMessagesCnt = 2. Following go routine
+	// makes sure it receives expected amount of messages and sends signal of success
+	// to continue the test
+	go func(expected int) {
+		cnt := 0
+		for cnt < expected {
+			select {
+			case <-peerCh:
+				{
+					cnt++
+				}
+
+			case <-stopWaiting:
+				{
+					return
+				}
+			}
+		}
+
+		messageCh <- struct{}{}
+	}(expectedMessagesCnt)
+
+	// Waits for message which indicates that expected number of message batches received
+	// otherwise timeouts after 2 * defAntiEntropyInterval + 1 seconds
+	select {
+	case <-messageCh:
+		{
+			// Once we got message which indicate of two batches being received,
+			// making sure messages indeed committed.
+			waitUntilTrueOrTimeout(t, func() bool {
+				if len(peer.g.PeersOfChannel(common.ChainID(util.GetTestChainID()))) != 1 {
+					logger.Debug("Peer discovery has not finished yet")
+					return false
+				}
+				logger.Debug("All peer discovered each other!!!")
+				return true
+			}, 30*time.Second)
+
+			logger.Debug("Waiting for all blocks to arrive.")
+			waitUntilTrueOrTimeout(t, func() bool {
+				logger.Debug("Trying to see all peers get all blocks")
+				height, err := peer.commit.LedgerHeight()
+				if height != uint64(msgCount+1) || err != nil {
+					return false
+				}
+				logger.Debug("All peers have same ledger height!!!")
+				return true
+			}, 60*time.Second)
+		}
+	case <-time.After(defAntiEntropyInterval*2 + time.Second*1):
+		{
+			close(stopWaiting)
+			t.Fatal("Expected to receive two batches with missing payloads")
 		}
 	}
 }
