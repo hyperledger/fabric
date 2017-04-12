@@ -57,6 +57,9 @@ type CCPackage interface {
 	// ChaincodeData. The validation is based on the metadata from ChaincodeData
 	// One use of this method is to validate the chaincode before launching
 	ValidateCC(ccdata *ChaincodeData) (*pb.ChaincodeDeploymentSpec, error)
+
+	// GetPackageObject gets the object as a proto.Message
+	GetPackageObject() proto.Message
 }
 
 //SetChaincodesPath sets the chaincode path for this peer
@@ -89,8 +92,18 @@ func GetChaincodePackage(ccname string, ccversion string) ([]byte, error) {
 
 // GetChaincodeFromFS this is a wrapper for hiding package implementation.
 func GetChaincodeFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
+	//try raw CDS
 	cccdspack := &CDSPackage{}
-	return cccdspack.InitFromFS(ccname, ccversion)
+	b, depSpec, err := cccdspack.InitFromFS(ccname, ccversion)
+	if err != nil {
+		//try signed CDS
+		ccscdspack := &SignedCDSPackage{}
+		b, depSpec, err = ccscdspack.InitFromFS(ccname, ccversion)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return b, depSpec, nil
 }
 
 // PutChaincodeIntoFS is a wrapper for putting raw ChaincodeDeploymentSpec
@@ -110,8 +123,10 @@ func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
 // GetCCPackage tries each known package implementation one by one
 // till the right package is found
 func GetCCPackage(buf []byte) (CCPackage, error) {
+	//try raw CDS
 	cccdspack := &CDSPackage{}
 	if _, err := cccdspack.InitFromBuffer(buf); err != nil {
+		//try signed CDS
 		ccscdspack := &SignedCDSPackage{}
 		if _, err := ccscdspack.InitFromBuffer(buf); err != nil {
 			return nil, err
