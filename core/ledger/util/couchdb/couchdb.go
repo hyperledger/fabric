@@ -42,9 +42,6 @@ import (
 
 var logger = logging.MustGetLogger("couchdb")
 
-//maximum number of retry attempts
-const maxRetries = 10
-
 //time between retry attempts in milliseconds
 const retryWaitTime = 125
 
@@ -127,9 +124,11 @@ type QueryResult struct {
 
 //CouchConnectionDef contains parameters
 type CouchConnectionDef struct {
-	URL      string
-	Username string
-	Password string
+	URL                 string
+	Username            string
+	Password            string
+	MaxRetries          int
+	MaxRetriesOnStartup int
 }
 
 //CouchInstance represents a CouchDB instance
@@ -206,7 +205,7 @@ type Base64Attachment struct {
 }
 
 //CreateConnectionDefinition for a new client connection
-func CreateConnectionDefinition(couchDBAddress, username, password string) (*CouchConnectionDef, error) {
+func CreateConnectionDefinition(couchDBAddress, username, password string, maxRetries, maxRetriesOnStartup int) (*CouchConnectionDef, error) {
 
 	logger.Debugf("Entering CreateConnectionDefinition()")
 
@@ -229,7 +228,7 @@ func CreateConnectionDefinition(couchDBAddress, username, password string) (*Cou
 	logger.Debugf("Exiting CreateConnectionDefinition()")
 
 	//return an object containing the connection information
-	return &CouchConnectionDef{finalURL.String(), username, password}, nil
+	return &CouchConnectionDef{finalURL.String(), username, password, maxRetries, maxRetriesOnStartup}, nil
 }
 
 //CreateDatabaseIfNotExist method provides function to create database
@@ -255,8 +254,11 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() (*DBOperationResponse,
 		}
 		connectURL.Path = dbclient.DBName
 
+		//get the number of retries
+		maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
 		//process the URL with a PUT, creates the database
-		resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, connectURL.String(), nil, "", "")
+		resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, connectURL.String(), nil, "", "", maxRetries)
 		if err != nil {
 			return nil, err
 		}
@@ -294,7 +296,10 @@ func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 	}
 	connectURL.Path = dbclient.DBName
 
-	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "")
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "", maxRetries)
 	if err != nil {
 		return nil, couchDBReturn, err
 	}
@@ -325,7 +330,10 @@ func (couchInstance *CouchInstance) VerifyConnection() (*ConnectionInfo, *DBRetu
 	}
 	connectURL.Path = "/"
 
-	resp, couchDBReturn, err := couchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "")
+	//get the number of retries for startup
+	maxRetriesOnStartup := couchInstance.conf.MaxRetriesOnStartup
+
+	resp, couchDBReturn, err := couchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "", maxRetriesOnStartup)
 	if err != nil {
 		return nil, couchDBReturn, err
 	}
@@ -361,7 +369,10 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 	}
 	connectURL.Path = dbclient.DBName
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, connectURL.String(), nil, "", "")
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, connectURL.String(), nil, "", "", maxRetries)
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +409,10 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 	}
 	connectURL.Path = dbclient.DBName + "/_ensure_full_commit"
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, connectURL.String(), nil, "", "")
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, connectURL.String(), nil, "", "", maxRetries)
 	if err != nil {
 		logger.Errorf("Failed to invoke _ensure_full_commit Error: %s\n", err.Error())
 		return nil, err
@@ -457,7 +471,7 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 	logger.Debugf("  rev=%s", rev)
 
 	//Set up a buffer for the data to be pushed to couchdb
-	data := new(bytes.Buffer)
+	data := []byte{}
 
 	//Set up a default boundary for use by multipart if sending attachments
 	defaultBoundary := ""
@@ -471,7 +485,7 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 		}
 
 		// if there are no attachments, then use the bytes passed in as the JSON
-		data.ReadFrom(bytes.NewReader(couchDoc.JSONValue))
+		data = couchDoc.JSONValue
 
 	} else { // there are attachments
 
@@ -482,15 +496,18 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 		}
 
 		//Set the data buffer to the data from the create multi-part data
-		data.ReadFrom(&multipartData)
+		data = multipartData.Bytes()
 
 		//Set the default boundary to the value generated in the multipart creation
 		defaultBoundary = multipartBoundary
 
 	}
 
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
 	//handle the request for saving the JSON or attachments
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, saveURL.String(), data, rev, defaultBoundary)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, saveURL.String(), data, rev, defaultBoundary, maxRetries)
 	if err != nil {
 		return "", err
 	}
@@ -618,7 +635,10 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 
 	readURL.RawQuery = query.Encode()
 
-	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, readURL.String(), nil, "", "")
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, readURL.String(), nil, "", "", maxRetries)
 	if err != nil {
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
 			logger.Debug("Document not found (404), returning nil value instead of 404 error")
@@ -769,7 +789,10 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 	rangeURL.RawQuery = queryParms.Encode()
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodGet, rangeURL.String(), nil, "", "")
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodGet, rangeURL.String(), nil, "", "", maxRetries)
 	if err != nil {
 		return nil, err
 	}
@@ -864,7 +887,10 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 
 	logger.Debugf("  rev=%s", rev)
 
-	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, deleteURL.String(), nil, rev, "")
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, deleteURL.String(), nil, rev, "", maxRetries)
 	if err != nil {
 		fmt.Printf("couchDBReturn=%v", couchDBReturn)
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
@@ -898,12 +924,10 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 
 	queryURL.Path = dbclient.DBName + "/_find"
 
-	//Set up a buffer for the data to be pushed to couchdb
-	data := new(bytes.Buffer)
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	data.ReadFrom(bytes.NewReader([]byte(query)))
-
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, queryURL.String(), data, "", "")
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, queryURL.String(), []byte(query), "", "", maxRetries)
 	if err != nil {
 		return nil, err
 	}
@@ -986,12 +1010,10 @@ func (dbclient *CouchDatabase) BatchRetrieveIDRevision(keys []string) ([]*DocMet
 		return nil, err
 	}
 
-	//Set up a buffer for the data response from CouchDB
-	data := new(bytes.Buffer)
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	data.ReadFrom(bytes.NewReader(jsonKeys))
-
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), data, "", "")
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), jsonKeys, "", "", maxRetries)
 	if err != nil {
 		return nil, err
 	}
@@ -1083,12 +1105,10 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 		return nil, err
 	}
 
-	//Set up a buffer for the data to be pushed to couchdb
-	data := new(bytes.Buffer)
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	data.ReadFrom(bytes.NewReader(jsonKeys))
-
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), data, "", "")
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), jsonKeys, "", "", maxRetries)
 	if err != nil {
 		return nil, err
 	}
@@ -1120,60 +1140,9 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 }
 
 //handleRequest method is a generic http request handler
-func (couchInstance *CouchInstance) handleRequest(method, connectURL string, data io.Reader, rev string, multipartBoundary string) (*http.Response, *DBReturn, error) {
+func (couchInstance *CouchInstance) handleRequest(method, connectURL string, data []byte, rev string, multipartBoundary string, maxRetries int) (*http.Response, *DBReturn, error) {
 
 	logger.Debugf("Entering handleRequest()  method=%s  url=%v", method, connectURL)
-
-	//Create request based on URL for couchdb operation
-	req, err := http.NewRequest(method, connectURL, data)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	//add content header for PUT
-	if method == http.MethodPut || method == http.MethodPost || method == http.MethodDelete {
-
-		//If the multipartBoundary is not set, then this is a JSON and content-type should be set
-		//to application/json.   Else, this is contains an attachment and needs to be multipart
-		if multipartBoundary == "" {
-			req.Header.Set("Content-Type", "application/json")
-		} else {
-			req.Header.Set("Content-Type", "multipart/related;boundary=\""+multipartBoundary+"\"")
-		}
-
-		//check to see if the revision is set,  if so, pass as a header
-		if rev != "" {
-			req.Header.Set("If-Match", rev)
-		}
-	}
-
-	//add content header for PUT
-	if method == http.MethodPut || method == http.MethodPost {
-		req.Header.Set("Accept", "application/json")
-	}
-
-	//add content header for GET
-	if method == http.MethodGet {
-		req.Header.Set("Accept", "multipart/related")
-	}
-
-	//If username and password are set the use basic auth
-	if couchInstance.conf.Username != "" && couchInstance.conf.Password != "" {
-		req.SetBasicAuth(couchInstance.conf.Username, couchInstance.conf.Password)
-	}
-
-	if logger.IsEnabledFor(logging.DEBUG) {
-		dump, _ := httputil.DumpRequestOut(req, false)
-		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
-		logger.Debugf("HTTP Request: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
-	}
-
-	//Create the http client
-	client := &http.Client{}
-
-	transport := &http.Transport{Proxy: http.ProxyFromEnvironment}
-	transport.DisableCompression = false
-	client.Transport = transport
 
 	//create the return objects for couchDB
 	var resp *http.Response
@@ -1186,6 +1155,61 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	//attempt the http request for the max number of retries
 	for attempts := 0; attempts < maxRetries; attempts++ {
 
+		//Set up a buffer for the payload data
+		payloadData := new(bytes.Buffer)
+
+		payloadData.ReadFrom(bytes.NewReader(data))
+
+		//Create request based on URL for couchdb operation
+		req, err := http.NewRequest(method, connectURL, payloadData)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		//add content header for PUT
+		if method == http.MethodPut || method == http.MethodPost || method == http.MethodDelete {
+
+			//If the multipartBoundary is not set, then this is a JSON and content-type should be set
+			//to application/json.   Else, this is contains an attachment and needs to be multipart
+			if multipartBoundary == "" {
+				req.Header.Set("Content-Type", "application/json")
+			} else {
+				req.Header.Set("Content-Type", "multipart/related;boundary=\""+multipartBoundary+"\"")
+			}
+
+			//check to see if the revision is set,  if so, pass as a header
+			if rev != "" {
+				req.Header.Set("If-Match", rev)
+			}
+		}
+
+		//add content header for PUT
+		if method == http.MethodPut || method == http.MethodPost {
+			req.Header.Set("Accept", "application/json")
+		}
+
+		//add content header for GET
+		if method == http.MethodGet {
+			req.Header.Set("Accept", "multipart/related")
+		}
+
+		//If username and password are set the use basic auth
+		if couchInstance.conf.Username != "" && couchInstance.conf.Password != "" {
+			req.SetBasicAuth(couchInstance.conf.Username, couchInstance.conf.Password)
+		}
+
+		if logger.IsEnabledFor(logging.DEBUG) {
+			dump, _ := httputil.DumpRequestOut(req, false)
+			// compact debug log by replacing carriage return / line feed with dashes to separate http headers
+			logger.Debugf("HTTP Request: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
+		}
+
+		//Create the http client
+		client := &http.Client{}
+
+		transport := &http.Transport{Proxy: http.ProxyFromEnvironment}
+		transport.DisableCompression = false
+		client.Transport = transport
 		//Execute http request
 		resp, errResp = client.Do(req)
 
@@ -1219,7 +1243,6 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 				waitDuration.String(), attempts+1, couchDBReturn.Error, resp.Status, couchDBReturn.Reason)
 
 		}
-
 		//sleep for specified sleep time, then retry
 		time.Sleep(waitDuration)
 
@@ -1237,7 +1260,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	couchDBReturn.StatusCode = resp.StatusCode
 
 	//check to see if the status code is 400 or higher
-	//in this case, the http request succeeded but CouchDB is reporing an error
+	//response codes 4XX and 500 will be treated as errors
 	if resp.StatusCode >= 400 {
 
 		//Read the response body

@@ -386,6 +386,8 @@ ledger:
        couchDBAddress: 127.0.0.1:5984
        username:
        password:
+       maxRetries: 3
+       maxRetriesOnStartup: 10
 
     # historyDatabase - options are true or false
     # Indicates if the history of key updates should be stored in goleveldb

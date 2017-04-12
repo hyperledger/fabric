@@ -27,10 +27,9 @@ var validNamePattern = `^[a-z][a-z0-9_$(),+/-]+`
 var maxLength = 249
 
 //CreateCouchInstance creates a CouchDB instance
-func CreateCouchInstance(couchDBConnectURL string, id string, pw string) (*CouchInstance, error) {
+func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries, maxRetriesOnStartup int) (*CouchInstance, error) {
 	couchConf, err := CreateConnectionDefinition(couchDBConnectURL,
-		id,
-		pw)
+		id, pw, maxRetries, maxRetriesOnStartup)
 	if err != nil {
 		logger.Errorf("Error during CouchDB CreateConnectionDefinition(): %s\n", err.Error())
 		return nil, err

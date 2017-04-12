@@ -22,25 +22,18 @@ import (
 	"github.com/spf13/viper"
 )
 
-// TODO remove all these config variables, they are never used as defaults
-var stateDatabase = "goleveldb"
-var couchDBAddress = "127.0.0.1:5984"
-var username = ""
-var password = ""
-var historyDatabase = true
-
-var maxBlockFileSize = 0
-
 // CouchDBDef contains parameters
 type CouchDBDef struct {
-	URL      string
-	Username string
-	Password string
+	URL                 string
+	Username            string
+	Password            string
+	MaxRetries          int
+	MaxRetriesOnStartup int
 }
 
 //IsCouchDBEnabled exposes the useCouchDB variable
 func IsCouchDBEnabled() bool {
-	stateDatabase = viper.GetString("ledger.state.stateDatabase")
+	stateDatabase := viper.GetString("ledger.state.stateDatabase")
 	if stateDatabase == "CouchDB" {
 		return true
 	}
@@ -82,11 +75,13 @@ func GetMaxBlockfileSize() int {
 //GetCouchDBDefinition exposes the useCouchDB variable
 func GetCouchDBDefinition() *CouchDBDef {
 
-	couchDBAddress = viper.GetString("ledger.state.couchDBConfig.couchDBAddress")
-	username = viper.GetString("ledger.state.couchDBConfig.username")
-	password = viper.GetString("ledger.state.couchDBConfig.password")
+	couchDBAddress := viper.GetString("ledger.state.couchDBConfig.couchDBAddress")
+	username := viper.GetString("ledger.state.couchDBConfig.username")
+	password := viper.GetString("ledger.state.couchDBConfig.password")
+	maxRetries := viper.GetInt("ledger.state.couchDBConfig.maxRetries")
+	maxRetriesOnStartup := viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup")
 
-	return &CouchDBDef{couchDBAddress, username, password}
+	return &CouchDBDef{couchDBAddress, username, password, maxRetries, maxRetriesOnStartup}
 }
 
 //GetQueryLimit exposes the queryLimit variable

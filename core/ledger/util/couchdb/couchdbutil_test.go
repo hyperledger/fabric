@@ -32,7 +32,7 @@ func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 		cleanup(database)
 		defer cleanup(database)
 		//create a new connection
-		couchInstance, err := CreateCouchInstance(connectURL, "", "")
+		couchInstance, err := CreateCouchInstance(connectURL, "", "", maxRetries, maxRetriesOnStartup)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchInstance"))
 
 		_, err = CreateCouchDatabase(*couchInstance, database)
