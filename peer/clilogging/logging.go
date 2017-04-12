@@ -32,6 +32,7 @@ var logger = logging.MustGetLogger("loggingCmd")
 func Cmd() *cobra.Command {
 	loggingCmd.AddCommand(getLevelCmd())
 	loggingCmd.AddCommand(setLevelCmd())
+	loggingCmd.AddCommand(revertLevelsCmd())
 
 	return loggingCmd
 }

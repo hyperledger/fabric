@@ -94,3 +94,11 @@ func (*ServerAdmin) SetModuleLogLevel(ctx context.Context, request *pb.LogLevelR
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: logLevelString}
 	return logResponse, err
 }
+
+// RevertLogLevels reverts the log levels for all modules to the level
+// defined at the end of peer startup.
+func (*ServerAdmin) RevertLogLevels(context.Context, *empty.Empty) (*empty.Empty, error) {
+	err := flogging.RevertToPeerStartupLevels()
+
+	return &empty.Empty{}, err
+}

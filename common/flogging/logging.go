@@ -37,8 +37,11 @@ var (
 
 	defaultOutput *os.File
 
-	modules map[string]string // Holds the map of all modules and their respective log level
-	lock    sync.Mutex
+	modules          map[string]string // Holds the map of all modules and their respective log level
+	peerStartModules map[string]string
+
+	lock sync.RWMutex
+	once sync.Once
 
 	// IsSetLevelByRegExpEnabled allows the setting of log levels using a regular
 	// expression, instead of one module at a time, when set to true.
@@ -56,7 +59,7 @@ func init() {
 func Reset() {
 	IsSetLevelByRegExpEnabled = false // redundant since the default for booleans is `false` but added for clarity
 	modules = make(map[string]string)
-	lock = sync.Mutex{}
+	lock = sync.RWMutex{}
 
 	defaultOutput = os.Stderr
 	InitBackend(SetFormat(defaultFormat), defaultOutput)
@@ -98,8 +101,12 @@ func GetModuleLevel(module string) string {
 // regular expression. Can be used to dynamically change the log level for the
 // module.
 func SetModuleLevel(moduleRegExp string, level string) (string, error) {
-	var re *regexp.Regexp
+	return setModuleLevel(moduleRegExp, level, false)
+}
 
+func setModuleLevel(moduleRegExp string, level string, revert bool) (string, error) {
+
+	var re *regexp.Regexp
 	logLevel, err := logging.LogLevel(level)
 	if err != nil {
 		logger.Warningf("Invalid logging level '%s' - ignored", level)
@@ -107,7 +114,7 @@ func SetModuleLevel(moduleRegExp string, level string) (string, error) {
 		// TODO This check is here to preserve the old functionality until all
 		// other packages switch to `flogging.MustGetLogger` (from
 		// `logging.MustGetLogger`).
-		if !IsSetLevelByRegExpEnabled {
+		if !IsSetLevelByRegExpEnabled || revert {
 			logging.SetLevel(logging.Level(logLevel), moduleRegExp)
 			logger.Debugf("Module '%s' logger enabled for log level '%s'", moduleRegExp, logLevel)
 		} else {
@@ -123,7 +130,7 @@ func SetModuleLevel(moduleRegExp string, level string) (string, error) {
 				if re.MatchString(module) {
 					logging.SetLevel(logging.Level(logLevel), module)
 					modules[module] = logLevel.String()
-					logger.Infof("Module '%s' logger enabled for log level '%s'", module, logLevel)
+					logger.Debugf("Module '%s' logger enabled for log level '%s'", module, logLevel)
 				}
 			}
 		}
@@ -184,4 +191,45 @@ func InitFromSpec(spec string) string {
 
 	logging.SetLevel(levelAll, "") // set the logging level for all modules
 	return levelAll.String()
+}
+
+// SetPeerStartupModulesMap saves the modules and their log levels.
+// this function should only be called at the end of peer startup.
+func SetPeerStartupModulesMap() {
+	lock.Lock()
+	defer lock.Unlock()
+
+	once.Do(func() {
+		peerStartModules = make(map[string]string)
+		for k, v := range modules {
+			peerStartModules[k] = v
+		}
+	})
+}
+
+// GetPeerStartupLevel returns the peer startup level for the specified module.
+// It will return an empty string if the input parameter is empty or the module
+// is not found
+func GetPeerStartupLevel(module string) string {
+	if module != "" {
+		if level, ok := peerStartModules[module]; ok {
+			return level
+		}
+	}
+
+	return ""
+}
+
+// RevertToPeerStartupLevels reverts the log levels for all modules to the level
+// defined at the end of peer startup.
+func RevertToPeerStartupLevels() error {
+	lock.RLock()
+	defer lock.RUnlock()
+	for key := range peerStartModules {
+		_, err := setModuleLevel(key, peerStartModules[key], true)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
