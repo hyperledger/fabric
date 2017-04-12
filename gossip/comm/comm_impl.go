@@ -217,6 +217,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			conn.handler = h
 			return conn, nil
 		}
+		c.logger.Warning("Authentication failed:", err)
 	}
 	cc.Close()
 	return nil, err
@@ -320,6 +321,7 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 	}
 	connInfo, err := c.authenticateRemotePeer(stream)
 	if err != nil {
+		c.logger.Warning("Authentication failed:", err)
 		return nil, err
 	}
 	if len(remotePeer.PKIID) > 0 && !bytes.Equal(connInfo.ID, remotePeer.PKIID) {
@@ -516,7 +518,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	}
 	connInfo, err := c.authenticateRemotePeer(stream)
 	if err != nil {
-		c.logger.Error("Authentication failed")
+		c.logger.Error("Authentication failed:", err)
 		return err
 	}
 	c.logger.Debug("Servicing", extractRemoteAddress(stream))
