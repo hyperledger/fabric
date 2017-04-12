@@ -26,7 +26,7 @@ import (
 
 const loggingFuncName = "logging"
 
-var logger = logging.MustGetLogger("loggingCmd")
+var logger = logging.MustGetLogger("cli/logging")
 
 // Cmd returns the cobra command for Logging
 func Cmd() *cobra.Command {
