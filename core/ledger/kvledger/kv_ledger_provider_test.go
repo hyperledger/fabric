@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"testing"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
 func TestLedgerProvider(t *testing.T) {
@@ -56,12 +57,53 @@ func TestLedgerProvider(t *testing.T) {
 	testutil.AssertEquals(t, err, ErrNonExistingLedgerID)
 }
 
+func TestLedgerCreationWithGenesisBlock(t *testing.T) {
+	env := newTestEnv(t)
+	defer env.cleanup()
+	numLedgers := 10
+	provider, _ := NewProvider()
+	existingLedgerIDs, err := provider.List()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertEquals(t, len(existingLedgerIDs), 0)
+	for i := 0; i < numLedgers; i++ {
+		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
+		provider.CreateWithGenesisBlock(genesisBlock)
+	}
+	existingLedgerIDs, err = provider.List()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertEquals(t, len(existingLedgerIDs), numLedgers)
+
+	provider.Close()
+
+	provider, _ = NewProvider()
+	defer provider.Close()
+	ledgerIds, _ := provider.List()
+	testutil.AssertEquals(t, len(ledgerIds), numLedgers)
+	t.Logf("ledgerIDs=%#v", ledgerIds)
+	for i := 0; i < numLedgers; i++ {
+		testutil.AssertEquals(t, ledgerIds[i], constructTestLedgerID(i))
+	}
+	for i := 0; i < numLedgers; i++ {
+		ledger, err := provider.Open(constructTestLedgerID(i))
+		testutil.AssertNoError(t, err, "")
+		bcInfo, err := ledger.GetBlockchainInfo()
+		ledger.Close()
+		testutil.AssertNoError(t, err, "")
+		testutil.AssertEquals(t, bcInfo.Height, uint64(1))
+	}
+	_, err = provider.Create(constructTestLedgerID(2))
+	testutil.AssertEquals(t, err, ErrLedgerIDExists)
+
+	_, err = provider.Open(constructTestLedgerID(numLedgers))
+	testutil.AssertEquals(t, err, ErrNonExistingLedgerID)
+}
+
 func TestMultipleLedgerBasicRW(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
 	numLedgers := 10
 	provider, _ := NewProvider()
-	ledgers := make([]ledger.ValidatedLedger, numLedgers)
+	ledgers := make([]ledger.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		l, err := provider.Create(constructTestLedgerID(i))
 		testutil.AssertNoError(t, err, "")
@@ -85,7 +127,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 
 	provider, _ = NewProvider()
 	defer provider.Close()
-	ledgers = make([]ledger.ValidatedLedger, numLedgers)
+	ledgers = make([]ledger.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		l, err := provider.Open(constructTestLedgerID(i))
 		testutil.AssertNoError(t, err, "")

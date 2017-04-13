@@ -16,13 +16,14 @@ limitations under the License.
 
 syntax = "proto3";
 
+option java_package = "org.hyperledger.fabric.protos.peer";
 option go_package = "github.com/hyperledger/fabric/protos/peer";
 
 package protos;
 
 // AnchorPeers simply represents list of anchor peers which is used in ConfigurationItem
 message AnchorPeers {
-    repeated AnchorPeer anchorPees = 1;
+    repeated AnchorPeer anchor_peers = 1;
 }
 
 // AnchorPeer message structure which provides information about anchor peer, it includes host name,
@@ -30,12 +31,9 @@ message AnchorPeers {
 message AnchorPeer {
 
     // DNS host name of the anchor peer
-    string Host = 1;
+    string host = 1;
 
     // The port number
-    int32 Port  = 2;
+    int32 port  = 2;
 
-    // SSL certificate to be used to maintain mutual TLS
-    // connection with anchor peer
-    bytes Cert  = 3;
 }

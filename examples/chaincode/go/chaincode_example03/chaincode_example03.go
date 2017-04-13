@@ -18,11 +18,11 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // SimpleChaincode example simple Chaincode implementation
@@ -30,55 +30,55 @@ type SimpleChaincode struct {
 }
 
 // Init takes a string and int. These are stored as a key/value pair in the state
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	var A string // Entity
 	var Aval int // Asset holding
 	var err error
 	_, args := stub.GetFunctionAndParameters()
 	if len(args) != 2 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 2")
+		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
 
 	// Initialize the chaincode
 	A = args[0]
 	Aval, err = strconv.Atoi(args[1])
 	if err != nil {
-		return nil, errors.New("Expecting integer value for asset holding")
+		return shim.Error("Expecting integer value for asset holding")
 	}
 	fmt.Printf("Aval = %d\n", Aval)
 
 	// Write the state to the ledger - this put is legal within Run
 	err = stub.PutState(A, []byte(strconv.Itoa(Aval)))
 	if err != nil {
-		return nil, err
+		return shim.Error(err.Error())
 	}
 
-	return nil, nil
+	return shim.Success(nil)
 }
 
 // Invoke is a no-op
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	if function == "query" {
 		return t.query(stub, args)
 	}
 
-	return nil, errors.New("Invalid invoke function name. Expecting \"query\"")
+	return shim.Error("Invalid invoke function name. Expecting \"query\"")
 }
 
-func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	var A string // Entity
 	var Aval int // Asset holding
 	var err error
 
 	if len(args) != 2 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 2")
+		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
 
 	A = args[0]
 	Aval, err = strconv.Atoi(args[1])
 	if err != nil {
-		return nil, errors.New("Expecting integer value for asset holding")
+		return shim.Error("Expecting integer value for asset holding")
 	}
 	fmt.Printf("Aval = %d\n", Aval)
 
@@ -86,11 +86,10 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
 	err = stub.PutState(A, []byte(strconv.Itoa(Aval)))
 	if err != nil {
 		jsonResp := "{\"Error\":\"Cannot put state within chaincode query\"}"
-		return nil, errors.New(jsonResp)
+		return shim.Error(jsonResp)
 	}
 
-	fmt.Printf("Something is wrong. This query should not have succeeded")
-	return nil, nil
+	return shim.Success(nil)
 }
 
 func main() {

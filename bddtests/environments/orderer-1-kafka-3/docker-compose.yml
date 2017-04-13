@@ -1,15 +1,15 @@
 version: '2'
 services:
   zookeeper:
-    # Offical Apache ZooKeeper image. See https://hub.docker.com/_/zookeeper/
-    image: zookeeper:3.4.9
+    image: hyperledger/fabric-zookeeper
 
   orderer0:
-    image: hyperledger/fabric-orderer
+    image: hyperledger/fabric-testenv-orderer
     environment:
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
-      - ORDERER_GENESIS_ORDERERTYPE=kafka
-      - ORDERER_KAFKA_BROKERS=[kafka0:9092,kafka1:9092,kafka2:9092]
+      - ORDERER_GENERAL_GENESISPROFILE=SampleInsecureKafka
+      - CONFIGTX_ORDERER_KAFKA_BROKERS=[kafka0:9092,kafka1:9092,kafka2:9092]
+      - CONFIGTX_ORDERER_ORDERERTYPE=kafka
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
     command: orderer
     ports:
@@ -20,28 +20,31 @@ services:
       - kafka2
 
   kafka0:
-    build: ../kafka
+    image: hyperledger/fabric-kafka
     environment:
       KAFKA_BROKER_ID: 0
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
     depends_on:
       - zookeeper
 
   kafka1:
-    build: ../kafka
+    image: hyperledger/fabric-kafka
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
     depends_on:
       - zookeeper
 
   kafka2:
-    build: ../kafka
+    image: hyperledger/fabric-kafka
     environment:
       KAFKA_BROKER_ID: 2
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
     depends_on:
       - zookeeper

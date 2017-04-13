@@ -21,16 +21,22 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
+func TestMain(m *testing.M) {
+	ledgertestutil.SetupCoreYAMLConfig("./../../../../../../peer")
+}
+
 func TestTxSimulatorWithNoExistingData(t *testing.T) {
+	// run the tests for each environment configured in pkg_test.go
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testEnv.init(t)
+		testLedgerID := "testtxsimulatorwithnoexistingdata"
+		testEnv.init(t, testLedgerID)
 		testTxSimulatorWithNoExistingData(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -49,19 +55,17 @@ func testTxSimulatorWithNoExistingData(t *testing.T, env testEnv) {
 	s.SetState("ns2", "key4", []byte("value4"))
 
 	value, _ = s.GetState("ns2", "key3")
-	testutil.AssertEquals(t, value, []byte("value3"))
-
-	s.DeleteState("ns2", "key3")
-	value, _ = s.GetState("ns2", "key3")
 	testutil.AssertNil(t, value)
 }
 
 func TestTxSimulatorWithExistingData(t *testing.T) {
 	for _, testEnv := range testEnvs {
-		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testEnv.init(t)
-		testTxSimulatorWithExistingData(t, testEnv)
-		testEnv.cleanup()
+		t.Run(testEnv.getName(), func(t *testing.T) {
+			testLedgerID := "testtxsimulatorwithexistingdata"
+			testEnv.init(t, testLedgerID)
+			testTxSimulatorWithExistingData(t, testEnv)
+			testEnv.cleanup()
+		})
 	}
 }
 
@@ -86,7 +90,7 @@ func testTxSimulatorWithExistingData(t *testing.T, env testEnv) {
 	s2.SetState("ns1", "key1", []byte("value1_1"))
 	s2.DeleteState("ns2", "key3")
 	value, _ = s2.GetState("ns1", "key1")
-	testutil.AssertEquals(t, value, []byte("value1_1"))
+	testutil.AssertEquals(t, value, []byte("value1"))
 	s2.Done()
 	// validate and commit RWset for tx2
 	txRWSet2, _ := s2.GetTxSimulationResults()
@@ -102,16 +106,16 @@ func testTxSimulatorWithExistingData(t *testing.T, env testEnv) {
 
 	// verify the versions of keys in persistence
 	vv, _ := env.getVDB().GetState("ns1", "key1")
-	//TODO re-enable after adding couch version wrapper
-	//testutil.AssertEquals(t, vv.Version, version.NewHeight(2, 1))
-	vv, _ = env.getVDB().GetState("ns1", "key2")
 	testutil.AssertEquals(t, vv.Version, version.NewHeight(1, 1))
+	vv, _ = env.getVDB().GetState("ns1", "key2")
+	testutil.AssertEquals(t, vv.Version, version.NewHeight(0, 1))
 }
 
 func TestTxValidation(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testEnv.init(t)
+		testLedgerID := "testtxvalidation"
+		testEnv.init(t, testLedgerID)
 		testTxValidation(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -131,7 +135,8 @@ func testTxValidation(t *testing.T, env testEnv) {
 	txRWSet1, _ := s1.GetTxSimulationResults()
 	txMgrHelper.validateAndCommitRWSet(txRWSet1)
 
-	// simulate tx2 that make changes to existing data
+	// simulate tx2 that make changes to existing data.
+	// tx2: Read/Update ns1:key1, Delete ns2:key3.
 	s2, _ := txMgr.NewTxSimulator()
 	value, _ := s2.GetState("ns1", "key1")
 	testutil.AssertEquals(t, value, []byte("value1"))
@@ -140,71 +145,155 @@ func testTxValidation(t *testing.T, env testEnv) {
 	s2.DeleteState("ns2", "key3")
 	s2.Done()
 
-	// simulate tx3 before committing tx2 changes. Reads and modifies the key changed by tx2
+	// simulate tx3 before committing tx2 changes. Reads and modifies the key changed by tx2.
+	// tx3: Read/Update ns1:key1
 	s3, _ := txMgr.NewTxSimulator()
 	s3.GetState("ns1", "key1")
 	s3.SetState("ns1", "key1", []byte("value1_3"))
 	s3.Done()
 
 	// simulate tx4 before committing tx2 changes. Reads and Deletes the key changed by tx2
+	// tx4: Read/Delete ns2:key3
 	s4, _ := txMgr.NewTxSimulator()
 	s4.GetState("ns2", "key3")
 	s4.DeleteState("ns2", "key3")
 	s4.Done()
 
 	// simulate tx5 before committing tx2 changes. Modifies and then Reads the key changed by tx2 and writes a new key
+	// tx5: Update/Read ns1:key1
 	s5, _ := txMgr.NewTxSimulator()
 	s5.SetState("ns1", "key1", []byte("new_value"))
 	s5.GetState("ns1", "key1")
 	s5.Done()
 
 	// simulate tx6 before committing tx2 changes. Only writes a new key, does not reads/writes a key changed by tx2
+	// tx6: Update ns1:new_key
 	s6, _ := txMgr.NewTxSimulator()
 	s6.SetState("ns1", "new_key", []byte("new_value"))
 	s6.Done()
 
+	// Summary of simulated transactions
+	// tx2: Read/Update ns1:key1, Delete ns2:key3.
+	// tx3: Read/Update ns1:key1
+	// tx4: Read/Delete ns2:key3
+	// tx5: Update/Read ns1:key1
+	// tx6: Update ns1:new_key
+
 	// validate and commit RWset for tx2
 	txRWSet2, _ := s2.GetTxSimulationResults()
 	txMgrHelper.validateAndCommitRWSet(txRWSet2)
-	//TODO re-enable after adding couch version wrapper
-	/*
-		//RWSet for tx3 and tx4 should not be invalid now
-		txRWSet3, _ := s3.GetTxSimulationResults()
-		txMgrHelper.checkRWsetInvalid(txRWSet3)
 
-		txRWSet4, _ := s4.GetTxSimulationResults()
-		txMgrHelper.checkRWsetInvalid(txRWSet4)
+	//RWSet for tx3 and tx4 and tx5 should be invalid now due to read conflicts
+	txRWSet3, _ := s3.GetTxSimulationResults()
+	txMgrHelper.checkRWsetInvalid(txRWSet3)
 
-		//tx5 shold still be valid as it over-writes the key first and then reads
-		txRWSet5, _ := s5.GetTxSimulationResults()
-		txMgrHelper.validateAndCommitRWSet(txRWSet5)
+	txRWSet4, _ := s4.GetTxSimulationResults()
+	txMgrHelper.checkRWsetInvalid(txRWSet4)
 
-		// tx6 should still be valid as it only writes a new key
-		txRWSet6, _ := s6.GetTxSimulationResults()
-		txMgrHelper.validateAndCommitRWSet(txRWSet6)
-	*/
+	txRWSet5, _ := s5.GetTxSimulationResults()
+	txMgrHelper.checkRWsetInvalid(txRWSet5)
+
+	// tx6 should still be valid as it only writes a new key
+	txRWSet6, _ := s6.GetTxSimulationResults()
+	txMgrHelper.validateAndCommitRWSet(txRWSet6)
+}
+
+func TestTxPhantomValidation(t *testing.T) {
+	for _, testEnv := range testEnvs {
+		t.Logf("Running test for TestEnv = %s", testEnv.getName())
+		testLedgerID := "testtxphantomvalidation"
+		testEnv.init(t, testLedgerID)
+		testTxPhantomValidation(t, testEnv)
+		testEnv.cleanup()
+	}
+}
+
+func testTxPhantomValidation(t *testing.T, env testEnv) {
+	txMgr := env.getTxMgr()
+	txMgrHelper := newTxMgrTestHelper(t, txMgr)
+	// simulate tx1
+	s1, _ := txMgr.NewTxSimulator()
+	s1.SetState("ns", "key1", []byte("value1"))
+	s1.SetState("ns", "key2", []byte("value2"))
+	s1.SetState("ns", "key3", []byte("value3"))
+	s1.SetState("ns", "key4", []byte("value4"))
+	s1.SetState("ns", "key5", []byte("value5"))
+	s1.SetState("ns", "key6", []byte("value6"))
+	s1.Done()
+	// validate and commit RWset
+	txRWSet1, _ := s1.GetTxSimulationResults()
+	txMgrHelper.validateAndCommitRWSet(txRWSet1)
+
+	// simulate tx2
+	s2, _ := txMgr.NewTxSimulator()
+	itr2, _ := s2.GetStateRangeScanIterator("ns", "key2", "key5")
+	for {
+		if result, _ := itr2.Next(); result == nil {
+			break
+		}
+	}
+	s2.DeleteState("ns", "key3")
+	s2.Done()
+	txRWSet2, _ := s2.GetTxSimulationResults()
+
+	// simulate tx3
+	s3, _ := txMgr.NewTxSimulator()
+	itr3, _ := s3.GetStateRangeScanIterator("ns", "key2", "key5")
+	for {
+		if result, _ := itr3.Next(); result == nil {
+			break
+		}
+	}
+	s3.SetState("ns", "key3", []byte("value3_new"))
+	s3.Done()
+	txRWSet3, _ := s3.GetTxSimulationResults()
+
+	// simulate tx4
+	s4, _ := txMgr.NewTxSimulator()
+	itr4, _ := s4.GetStateRangeScanIterator("ns", "key4", "key6")
+	for {
+		if result, _ := itr4.Next(); result == nil {
+			break
+		}
+	}
+	s4.SetState("ns", "key3", []byte("value3_new"))
+	s4.Done()
+	txRWSet4, _ := s4.GetTxSimulationResults()
+
+	// txRWSet2 should be valid
+	txMgrHelper.validateAndCommitRWSet(txRWSet2)
+	// txRWSet2 makes txRWSet3 invalid as it deletes a key in the range
+	txMgrHelper.checkRWsetInvalid(txRWSet3)
+	// txRWSet4 should be valid as it iterates over a different range
+	txMgrHelper.validateAndCommitRWSet(txRWSet4)
 }
 
 func TestIterator(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testEnv.init(t)
+
+		testLedgerID := "testiterator_1"
+		testEnv.init(t, testLedgerID)
 		testIterator(t, testEnv, 10, 2, 7)
 		testEnv.cleanup()
 
-		testEnv.init(t)
+		testLedgerID = "testiterator_2"
+		testEnv.init(t, testLedgerID)
 		testIterator(t, testEnv, 10, 1, 11)
 		testEnv.cleanup()
 
-		testEnv.init(t)
+		testLedgerID = "testiterator_3"
+		testEnv.init(t, testLedgerID)
 		testIterator(t, testEnv, 10, 0, 0)
 		testEnv.cleanup()
 
-		testEnv.init(t)
+		testLedgerID = "testiterator_4"
+		testEnv.init(t, testLedgerID)
 		testIterator(t, testEnv, 10, 5, 0)
 		testEnv.cleanup()
 
-		testEnv.init(t)
+		testLedgerID = "testiterator_5"
+		testEnv.init(t, testLedgerID)
 		testIterator(t, testEnv, 10, 0, 5)
 		testEnv.cleanup()
 	}
@@ -271,7 +360,8 @@ func testIterator(t *testing.T, env testEnv, numKeys int, startKeyNum int, endKe
 func TestIteratorWithDeletes(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testEnv.init(t)
+		testLedgerID := "testiteratorwithdeletes"
+		testEnv.init(t, testLedgerID)
 		testIteratorWithDeletes(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -305,15 +395,15 @@ func testIteratorWithDeletes(t *testing.T, env testEnv) {
 	defer itr.Close()
 	kv, _ := itr.Next()
 	testutil.AssertEquals(t, kv.(*ledger.KV).Key, createTestKey(3))
-	//TODO re-enable after adding couch delete function
-	//kv, _ = itr.Next()
-	//testutil.AssertEquals(t, kv.(*ledger.KV).Key, createTestKey(5))
+	kv, _ = itr.Next()
+	testutil.AssertEquals(t, kv.(*ledger.KV).Key, createTestKey(5))
 }
 
 func TestTxValidationWithItr(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testEnv.init(t)
+		testLedgerID := "testtxvalidationwithitr"
+		testEnv.init(t, testLedgerID)
 		testTxValidationWithItr(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -364,12 +454,9 @@ func testTxValidationWithItr(t *testing.T, env testEnv) {
 	txRWSet4, _ := s4.GetTxSimulationResults()
 	txMgrHelper.validateAndCommitRWSet(txRWSet4)
 
-	//TODO re-enable after adding couch version wrapper
-	/*
-		//RWSet tx3 should not be invalid now
-		txRWSet3, _ := s3.GetTxSimulationResults()
-		txMgrHelper.checkRWsetInvalid(txRWSet3)
-	*/
+	//RWSet tx3 should be invalid now
+	txRWSet3, _ := s3.GetTxSimulationResults()
+	txMgrHelper.checkRWsetInvalid(txRWSet3)
 
 	// tx2 should still be valid
 	txRWSet2, _ := s2.GetTxSimulationResults()
@@ -380,7 +467,8 @@ func testTxValidationWithItr(t *testing.T, env testEnv) {
 func TestGetSetMultipeKeys(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testEnv.init(t)
+		testLedgerID := "testgetsetmultipekeys"
+		testEnv.init(t, testLedgerID)
 		testGetSetMultipeKeys(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -438,18 +526,15 @@ func createTestValue(i int) []byte {
 //TestExecuteQueryQuery is only tested on the CouchDB testEnv
 func TestExecuteQuery(t *testing.T) {
 
-	// Query is only tested on the CouchDB testEnv
-	if ledgerconfig.IsCouchDBEnabled() == true {
-		testEnvs = []testEnv{&couchDBLockBasedEnv{}}
-	} else {
-		testEnvs = []testEnv{}
-	}
-
 	for _, testEnv := range testEnvs {
-		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testEnv.init(t)
-		testExecuteQuery(t, testEnv)
-		testEnv.cleanup()
+		// Query is only supported and tested on the CouchDB testEnv
+		if testEnv.getName() == couchDBtestEnvName {
+			t.Logf("Running test for TestEnv = %s", testEnv.getName())
+			testLedgerID := "testexecutequery"
+			testEnv.init(t, testLedgerID)
+			testExecuteQuery(t, testEnv)
+			testEnv.cleanup()
+		}
 	}
 }
 
@@ -494,7 +579,8 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 	queryExecuter, _ := txMgr.NewQueryExecutor()
 	queryString := "{\"selector\":{\"owner\": {\"$eq\": \"bob\"}},\"limit\": 10,\"skip\": 0}"
 
-	itr, _ := queryExecuter.ExecuteQuery(queryString)
+	itr, err := queryExecuter.ExecuteQuery("ns1", queryString)
+	testutil.AssertNoError(t, err, "Error upon ExecuteQuery()")
 
 	counter := 0
 	for {
@@ -505,7 +591,7 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 
 		//Unmarshal the document to Asset structure
 		assetResp := &Asset{}
-		json.Unmarshal(queryRecord.(*ledger.QueryRecord).Record, &assetResp)
+		json.Unmarshal(queryRecord.(*ledger.KV).Value, &assetResp)
 
 		//Verify the owner retrieved matches
 		testutil.AssertEquals(t, assetResp.Owner, "bob")

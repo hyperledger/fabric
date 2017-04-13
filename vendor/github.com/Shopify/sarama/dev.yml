@@ -1,7 +1,8 @@
 name: sarama
 
 up:
-  - go: 1.6.2
+  - go:
+      version: '1.8'
 
 commands:
   test:

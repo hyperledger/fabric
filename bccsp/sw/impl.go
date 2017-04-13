@@ -18,7 +18,6 @@ package sw
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"encoding/asn1"
 	"errors"
 	"fmt"
 	"math/big"
@@ -48,7 +47,7 @@ var (
 // NewDefaultSecurityLevel returns a new instance of the software-based BCCSP
 // at security level 256, hash family SHA2 and using FolderBasedKeyStore as KeyStore.
 func NewDefaultSecurityLevel(keyStorePath string) (bccsp.BCCSP, error) {
-	ks := &FileBasedKeyStore{}
+	ks := &fileBasedKeyStore{}
 	if err := ks.Init(nil, keyStorePath, false); err != nil {
 		return nil, fmt.Errorf("Failed initializing key store [%s]", err)
 	}
@@ -226,6 +225,61 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 
 	// Derive key
 	switch k.(type) {
+	case *ecdsaPublicKey:
+		// Validate opts
+		if opts == nil {
+			return nil, errors.New("Invalid Opts parameter. It must not be nil.")
+		}
+
+		ecdsaK := k.(*ecdsaPublicKey)
+
+		switch opts.(type) {
+
+		// Re-randomized an ECDSA private key
+		case *bccsp.ECDSAReRandKeyOpts:
+			reRandOpts := opts.(*bccsp.ECDSAReRandKeyOpts)
+			tempSK := &ecdsa.PublicKey{
+				Curve: ecdsaK.pubKey.Curve,
+				X:     new(big.Int),
+				Y:     new(big.Int),
+			}
+
+			var k = new(big.Int).SetBytes(reRandOpts.ExpansionValue())
+			var one = new(big.Int).SetInt64(1)
+			n := new(big.Int).Sub(ecdsaK.pubKey.Params().N, one)
+			k.Mod(k, n)
+			k.Add(k, one)
+
+			// Compute temporary public key
+			tempX, tempY := ecdsaK.pubKey.ScalarBaseMult(k.Bytes())
+			tempSK.X, tempSK.Y = tempSK.Add(
+				ecdsaK.pubKey.X, ecdsaK.pubKey.Y,
+				tempX, tempY,
+			)
+
+			// Verify temporary public key is a valid point on the reference curve
+			isOn := tempSK.Curve.IsOnCurve(tempSK.X, tempSK.Y)
+			if !isOn {
+				return nil, errors.New("Failed temporary public key IsOnCurve check.")
+			}
+
+			reRandomizedKey := &ecdsaPublicKey{tempSK}
+
+			// If the key is not Ephemeral, store it.
+			if !opts.Ephemeral() {
+				// Store the key
+				err = csp.ks.StoreKey(reRandomizedKey)
+				if err != nil {
+					return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
+				}
+			}
+
+			return reRandomizedKey, nil
+
+		default:
+			return nil, fmt.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
+
+		}
 	case *ecdsaPrivateKey:
 		// Validate opts
 		if opts == nil {
@@ -268,7 +322,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 			// Verify temporary public key is a valid point on the reference curve
 			isOn := tempSK.Curve.IsOnCurve(tempSK.PublicKey.X, tempSK.PublicKey.Y)
 			if !isOn {
-				return nil, errors.New("Failed temporary public key IsOnCurve check. This is an foreign key.")
+				return nil, errors.New("Failed temporary public key IsOnCurve check.")
 			}
 
 			reRandomizedKey := &ecdsaPrivateKey{tempSK}
@@ -603,7 +657,7 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 	// Check key type
 	switch k.(type) {
 	case *ecdsaPrivateKey:
-		return k.(*ecdsaPrivateKey).privKey.Sign(rand.Reader, digest, nil)
+		return csp.signECDSA(k.(*ecdsaPrivateKey).privKey, digest, opts)
 	case *rsaPrivateKey:
 		if opts == nil {
 			return nil, errors.New("Invalid options. Nil.")
@@ -631,21 +685,9 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 	// Check key type
 	switch k.(type) {
 	case *ecdsaPrivateKey:
-		ecdsaSignature := new(ecdsaSignature)
-		_, err := asn1.Unmarshal(signature, ecdsaSignature)
-		if err != nil {
-			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
-		}
-
-		return ecdsa.Verify(&(k.(*ecdsaPrivateKey).privKey.PublicKey), digest, ecdsaSignature.R, ecdsaSignature.S), nil
+		return csp.verifyECDSA(&(k.(*ecdsaPrivateKey).privKey.PublicKey), signature, digest, opts)
 	case *ecdsaPublicKey:
-		ecdsaSignature := new(ecdsaSignature)
-		_, err := asn1.Unmarshal(signature, ecdsaSignature)
-		if err != nil {
-			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
-		}
-
-		return ecdsa.Verify(k.(*ecdsaPublicKey).pubKey, digest, ecdsaSignature.R, ecdsaSignature.S), nil
+		return csp.verifyECDSA(k.(*ecdsaPublicKey).pubKey, signature, digest, opts)
 	case *rsaPrivateKey:
 		if opts == nil {
 			return false, errors.New("Invalid options. It must not be nil.")

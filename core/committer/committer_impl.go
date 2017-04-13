@@ -19,8 +19,8 @@ package committer
 import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
 
@@ -39,30 +39,39 @@ func init() {
 // it keeps the reference to the ledger to commit blocks and retreive
 // chain information
 type LedgerCommitter struct {
-	ledger    ledger.ValidatedLedger
+	ledger    ledger.PeerLedger
 	validator txvalidator.Validator
 }
 
 // NewLedgerCommitter is a factory function to create an instance of the committer
-func NewLedgerCommitter(ledger ledger.ValidatedLedger, validator txvalidator.Validator) *LedgerCommitter {
+func NewLedgerCommitter(ledger ledger.PeerLedger, validator txvalidator.Validator) *LedgerCommitter {
 	return &LedgerCommitter{ledger: ledger, validator: validator}
 }
 
-// CommitBlock commits block to into the ledger
-func (lc *LedgerCommitter) CommitBlock(block *common.Block) error {
+// Commit commits block to into the ledger
+// Note, it is important that this always be called serially
+func (lc *LedgerCommitter) Commit(block *common.Block) error {
 	// Validate and mark invalid transactions
 	logger.Debug("Validating block")
-	lc.validator.Validate(block)
+	if err := lc.validator.Validate(block); err != nil {
+		return err
+	}
 
 	if err := lc.ledger.Commit(block); err != nil {
 		return err
 	}
+
+	// send block event *after* the block has been committed
+	if err := producer.SendProducerBlockEvent(block); err != nil {
+		logger.Errorf("Error publishing block %d, because: %v", block.Header.Number, err)
+	}
+
 	return nil
 }
 
 // LedgerHeight returns recently committed block sequence number
 func (lc *LedgerCommitter) LedgerHeight() (uint64, error) {
-	var info *pb.BlockchainInfo
+	var info *common.BlockchainInfo
 	var err error
 	if info, err = lc.ledger.GetBlockchainInfo(); err != nil {
 		logger.Errorf("Cannot get blockchain info, %s\n", info)

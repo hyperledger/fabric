@@ -19,59 +19,56 @@ package commontests
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
 )
 
+const (
+	testFilesystemPath = "/tmp/fabric/ledgertests/kvledger/txmgmt/txmgr/commontests"
+)
+
 type testEnv interface {
-	init(t *testing.T)
+	init(t *testing.T, testLedgerID string)
 	getName() string
 	getTxMgr() txmgr.TxMgr
 	getVDB() statedb.VersionedDB
 	cleanup()
 }
 
-var testEnvs = []testEnv{}
+// Tests will be run against each environment in this array
+// For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
+var testEnvs = []testEnv{&levelDBLockBasedEnv{}, &couchDBLockBasedEnv{}}
 
-func init() {
-	//call a helper method to load the core.yaml so that we can detect whether couch is configured
-	testutil.SetupCoreYAMLConfig("./../../../../../../peer")
+///////////// LevelDB Environment //////////////
 
-	//Only run the tests if CouchDB is explitily enabled in the code,
-	//otherwise CouchDB may not be installed and all the tests would fail
-	if ledgerconfig.IsCouchDBEnabled() == true {
-		testEnvs = []testEnv{&levelDBLockBasedEnv{}, &couchDBLockBasedEnv{}}
-	} else {
-		testEnvs = []testEnv{&levelDBLockBasedEnv{}}
-	}
-
-}
+const levelDBtestEnvName = "levelDB_LockBasedTxMgr"
 
 type levelDBLockBasedEnv struct {
-	testDBEnv *stateleveldb.TestVDBEnv
-	testDB    statedb.VersionedDB
-	txmgr     txmgr.TxMgr
+	testLedgerID string
+	testDBEnv    *stateleveldb.TestVDBEnv
+	testDB       statedb.VersionedDB
+	txmgr        txmgr.TxMgr
 }
 
 func (env *levelDBLockBasedEnv) getName() string {
-	return "levelDB_LockBasedTxMgr"
+	return levelDBtestEnvName
 }
 
-func (env *levelDBLockBasedEnv) init(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests")
+func (env *levelDBLockBasedEnv) init(t *testing.T, testLedgerID string) {
+	viper.Set("peer.fileSystemPath", testFilesystemPath)
 	testDBEnv := stateleveldb.NewTestVDBEnv(t)
-	testDB, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
+	testDB, err := testDBEnv.DBProvider.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
 
 	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB)
+	env.testLedgerID = testLedgerID
 	env.testDBEnv = testDBEnv
 	env.testDB = testDB
 	env.txmgr = txMgr
@@ -90,24 +87,31 @@ func (env *levelDBLockBasedEnv) cleanup() {
 	defer env.testDBEnv.Cleanup()
 }
 
+///////////// CouchDB Environment //////////////
+
+const couchDBtestEnvName = "couchDB_LockBasedTxMgr"
+
 type couchDBLockBasedEnv struct {
-	testDBEnv *statecouchdb.TestVDBEnv
-	testDB    statedb.VersionedDB
-	txmgr     txmgr.TxMgr
+	testLedgerID string
+	testDBEnv    *statecouchdb.TestVDBEnv
+	testDB       statedb.VersionedDB
+	txmgr        txmgr.TxMgr
 }
 
 func (env *couchDBLockBasedEnv) getName() string {
-	return "couchDB_LockBasedTxMgr"
+	return couchDBtestEnvName
 }
 
-func (env *couchDBLockBasedEnv) init(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests")
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "127.0.0.1:5984")
+func (env *couchDBLockBasedEnv) init(t *testing.T, testLedgerID string) {
+	viper.Set("peer.fileSystemPath", testFilesystemPath)
+	// both vagrant and CI have couchdb configured at host "couchdb"
+	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
 	testDBEnv := statecouchdb.NewTestVDBEnv(t)
-	testDB, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
+	testDB, err := testDBEnv.DBProvider.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
 
 	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB)
+	env.testLedgerID = testLedgerID
 	env.testDBEnv = testDBEnv
 	env.testDB = testDB
 	env.txmgr = txMgr
@@ -123,8 +127,10 @@ func (env *couchDBLockBasedEnv) getVDB() statedb.VersionedDB {
 
 func (env *couchDBLockBasedEnv) cleanup() {
 	defer env.txmgr.Shutdown()
-	defer env.testDBEnv.Cleanup()
+	defer env.testDBEnv.Cleanup(env.testLedgerID)
 }
+
+//////////// txMgrTestHelper /////////////
 
 type txMgrTestHelper struct {
 	t     *testing.T
@@ -140,10 +146,10 @@ func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet []byte) {
 	block := h.bg.NextBlock([][]byte{txRWSet}, false)
 	err := h.txMgr.ValidateAndPrepare(block, true)
 	testutil.AssertNoError(h.t, err, "")
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			invalidTxNum++
 		}
 	}
@@ -156,10 +162,10 @@ func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet []byte) {
 	block := h.bg.NextBlock([][]byte{txRWSet}, false)
 	err := h.txMgr.ValidateAndPrepare(block, true)
 	testutil.AssertNoError(h.t, err, "")
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			invalidTxNum++
 		}
 	}

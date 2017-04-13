@@ -7,7 +7,7 @@ option go_package = "github.com/hyperledger/fabric/orderer/sbft/backend";
 import "simplebft/simplebft.proto";
 
 service consensus {
-    rpc consensus(handshake) returns (stream simplebft.Msg) {}
+    rpc consensus(handshake) returns (stream simplebft.MultiChainMsg) {}
 }
 
 message handshake {

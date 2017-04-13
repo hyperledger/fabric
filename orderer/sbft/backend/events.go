@@ -40,26 +40,29 @@ func (t *Timer) Execute(backend *Backend) {
 }
 
 type msgEvent struct {
-	msg *s.Msg
-	src uint64
+	chainId string
+	msg     *s.Msg
+	src     uint64
 }
 
 func (m *msgEvent) Execute(backend *Backend) {
-	backend.consensus.Receive(m.msg, m.src)
+	backend.consensus[m.chainId].Receive(m.msg, m.src)
 }
 
 type requestEvent struct {
-	req []byte
+	chainId string
+	req     []byte
 }
 
 func (r *requestEvent) Execute(backend *Backend) {
-	backend.consensus.Request(r.req)
+	backend.consensus[r.chainId].Request(r.req)
 }
 
 type connectionEvent struct {
-	peerid uint64
+	chainID string
+	peerid  uint64
 }
 
 func (c *connectionEvent) Execute(backend *Backend) {
-	backend.consensus.Connection(c.peerid)
+	backend.consensus[c.chainID].Connection(c.peerid)
 }

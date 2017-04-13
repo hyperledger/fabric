@@ -14,62 +14,52 @@
 # limitations under the License.
 #
 
-import os
-import re
 import time
-import subprocess
-import devops_pb2
-import fabric_pb2
-import chaincode_pb2
 
 import orderer_util
-from grpc.framework.interfaces.face.face import NetworkError
-from grpc.beta.interfaces import StatusCode
-
-from grpc.beta import implementations
 
 @given(u'user "{enrollId}" is an authorized user of the ordering service')
 def step_impl(context, enrollId):
-	secretMsg = {
-		"enrollId": enrollId,
-		"enrollSecret" : enrollId
-	}
-	orderer_util.registerUser(context, secretMsg, "N/A")
+    secretMsg = {
+        "enrollId": enrollId,
+        "enrollSecret" : enrollId
+    }
+    orderer_util.registerUser(context, secretMsg, "N/A")
 
 
 @when(u'user "{enrollId}" broadcasts "{numMsgsToBroadcast}" unique messages on "{composeService}"')
 def step_impl(context, enrollId, numMsgsToBroadcast, composeService):
-	userRegistration = orderer_util.getUserRegistration(context, enrollId)
-	userRegistration.broadcastMessages(context, numMsgsToBroadcast, composeService)
+    userRegistration = orderer_util.getUserRegistration(context, enrollId)
+    userRegistration.broadcastMessages(context, numMsgsToBroadcast, composeService)
 
 
 @when(u'user "{enrollId}" connects to deliver function on "{composeService}"')
 def step_impl(context, enrollId, composeService):
-	# First get the properties
-	assert 'table' in context, "table (Start | End) not found in context"
-	userRegistration = orderer_util.getUserRegistration(context, enrollId)
-	streamHelper = userRegistration.connectToDeliverFunction(context, composeService)
+    # First get the properties
+    assert 'table' in context, "table (Start | End) not found in context"
+    userRegistration = orderer_util.getUserRegistration(context, enrollId)
+    streamHelper = userRegistration.connectToDeliverFunction(context, composeService)
 
 
 @when(u'user "{enrollId}" waits "{waitTime}" seconds')
 def step_impl(context, enrollId, waitTime):
-	time.sleep(float(waitTime))
+    time.sleep(float(waitTime))
 
 
 @then(u'user "{enrollId}" should get a delivery from "{composeService}" of "{expectedBlocks}" blocks with "{numMsgsToBroadcast}" messages within "{batchTimeout}" seconds')
 def step_impl(context, enrollId, expectedBlocks, numMsgsToBroadcast, batchTimeout, composeService):
-	userRegistration = orderer_util.getUserRegistration(context, enrollId)
-	streamHelper = userRegistration.getDelivererStreamHelper(context, composeService)
-	blocks = streamHelper.getBlocks()
-	# Verify block count
-	assert len(blocks) == int(expectedBlocks), "Expected {0} blocks, received {1}".format(expectedBlocks, len(blocks))
+    userRegistration = orderer_util.getUserRegistration(context, enrollId)
+    streamHelper = userRegistration.getDelivererStreamHelper(context, composeService)
+    blocks = streamHelper.getBlocks()
+    # Verify block count
+    assert len(blocks) == int(expectedBlocks), "Expected {0} blocks, received {1}".format(expectedBlocks, len(blocks))
 
 
 @when(u'user "{enrollId}" sends deliver a seek request on "{composeService}" with properties')
 def step_impl(context, enrollId, composeService):
-	row = context.table.rows[0]
-	start, end, = orderer_util.convertSeek(row['Start']), orderer_util.convertSeek(row['End'])
+    row = context.table.rows[0]
+    start, end, = orderer_util.convertSeek(row['Start']), orderer_util.convertSeek(row['End'])
 
-	userRegistration = orderer_util.getUserRegistration(context, enrollId)
-	streamHelper = userRegistration.getDelivererStreamHelper(context, composeService)
-        streamHelper.seekToRange(start = start, end = end)
+    userRegistration = orderer_util.getUserRegistration(context, enrollId)
+    streamHelper = userRegistration.getDelivererStreamHelper(context, composeService)
+    streamHelper.seekToRange(start = start, end = end)

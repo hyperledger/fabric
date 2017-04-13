@@ -22,10 +22,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -43,10 +44,10 @@ func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient, chainID strin
 func (s *broadcastClient) broadcast(transaction []byte) error {
 	payload, err := proto.Marshal(&cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				ChainID: s.chainID,
-			},
-			SignatureHeader: &cb.SignatureHeader{},
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelId: s.chainID,
+			}),
+			SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 		},
 		Data: transaction,
 	})

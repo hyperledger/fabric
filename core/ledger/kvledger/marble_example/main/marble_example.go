@@ -37,7 +37,7 @@ const (
 
 var logger = logging.MustGetLogger("main")
 
-var finalLedger ledger.ValidatedLedger
+var peerLedger ledger.PeerLedger
 var marbleApp *example.MarbleApp
 var committer *example.Committer
 var consenter *example.Consenter
@@ -55,12 +55,12 @@ func init() {
 	cleanup()
 	ledgermgmt.Initialize()
 	var err error
-	finalLedger, err = ledgermgmt.CreateLedger(ledgerID)
+	peerLedger, err = ledgermgmt.CreateLedger(ledgerID)
 	if err != nil {
 		panic(fmt.Errorf("Error in NewKVLedger(): %s", err))
 	}
-	marbleApp = example.ConstructMarbleAppInstance(finalLedger)
-	committer = example.ConstructCommitter(finalLedger)
+	marbleApp = example.ConstructMarbleAppInstance(peerLedger)
+	committer = example.ConstructCommitter(peerLedger)
 	consenter = example.ConstructConsenter()
 }
 
@@ -82,7 +82,7 @@ func initApp() {
 	tx, err := marbleApp.CreateMarble(marble)
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx)
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
 }
@@ -92,18 +92,18 @@ func transferMarble() {
 	tx1, err := marbleApp.TransferMarble([]string{"marble1", "jerry"})
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx1)
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
 }
 
 func printBlocksInfo(block *common.Block) {
 	// Read invalid transactions filter
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	numOfInvalid := 0
 	// Count how many transaction indeed invalid
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			numOfInvalid++
 		}
 	}

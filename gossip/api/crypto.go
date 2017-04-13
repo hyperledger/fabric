@@ -25,11 +25,14 @@ import "github.com/hyperledger/fabric/gossip/common"
 type MessageCryptoService interface {
 
 	// GetPKIidOfCert returns the PKI-ID of a peer's identity
+	// If any error occurs, the method return nil
+	// This method does not validate peerIdentity.
+	// This validation is supposed to be done appropriately during the execution flow.
 	GetPKIidOfCert(peerIdentity PeerIdentityType) common.PKIidType
 
 	// VerifyBlock returns nil if the block is properly signed,
 	// else returns error
-	VerifyBlock(signedBlock SignedBlock) error
+	VerifyBlock(chainID common.ChainID, signedBlock []byte) error
 
 	// Sign signs msg with this peer's signing key and outputs
 	// the signature if no error occurred.
@@ -37,8 +40,14 @@ type MessageCryptoService interface {
 
 	// Verify checks that signature is a valid signature of message under a peer's verification key.
 	// If the verification succeeded, Verify returns nil meaning no error occurred.
-	// If peerCert is nil, then the signature is verified against this peer's verification key.
+	// If peerIdentity is nil, then the verification fails.
 	Verify(peerIdentity PeerIdentityType, signature, message []byte) error
+
+	// VerifyByChannel checks that signature is a valid signature of message
+	// under a peer's verification key, but also in the context of a specific channel.
+	// If the verification succeeded, Verify returns nil meaning no error occurred.
+	// If peerIdentity is nil, then the verification fails.
+	VerifyByChannel(chainID common.ChainID, peerIdentity PeerIdentityType, signature, message []byte) error
 
 	// ValidateIdentity validates the identity of a remote peer.
 	// If the identity is invalid, revoked, expired it returns an error.
@@ -48,8 +57,3 @@ type MessageCryptoService interface {
 
 // PeerIdentityType is the peer's certificate
 type PeerIdentityType []byte
-
-// SignedBlock represents a fabric block that is signed according
-// to the latest block verification policy known to the peer
-type SignedBlock interface {
-}

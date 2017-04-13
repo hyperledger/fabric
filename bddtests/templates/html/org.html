@@ -1,0 +1,7 @@
+<div id="{{ org.name }}">
+    <h4>Created new organization {{ org.name }} with <a href="{{ cert_href }}">public cert</a></h4>
+    <code>{{ org.getCertAsPEM() }}</code>
+{% if path_to_cert %}
+    {% include 'html/org-py.html' %}
+{% endif %}
+</div>

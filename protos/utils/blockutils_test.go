@@ -22,6 +22,7 @@ import (
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/protos/common"
+	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -67,4 +68,19 @@ func TestGetBlockFromBlockBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get block from block bytes: %s", err)
 	}
+}
+
+func TestGetMetadataFromNewBlock(t *testing.T) {
+	block := common.NewBlock(0, nil)
+	md, err := utils.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
+	if err != nil {
+		t.Fatal("Expected no error when extracting metadata from new block")
+	}
+	if md.Value != nil {
+		t.Fatal("Expected metadata field value to be nil, got", md.Value)
+	}
+	if len(md.Value) > 0 {
+		t.Fatal("Expected length of metadata field value to be 0, got", len(md.Value))
+	}
+
 }

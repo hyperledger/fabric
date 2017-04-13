@@ -18,12 +18,8 @@ package utils
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 
 	"github.com/golang/protobuf/proto"
-
-	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -42,10 +38,15 @@ func GetChainIDFromBlock(block *cb.Block) (string, error) {
 		return "", fmt.Errorf("Error reconstructing payload(%s)", err)
 	}
 
-	return payload.Header.ChainHeader.ChainID, nil
+	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return "", err
+	}
+
+	return chdr.ChannelId, nil
 }
 
-// GetMetadataFromBlock retrieves metadata at the specified index
+// GetMetadataFromBlock retrieves metadata at the specified index.
 func GetMetadataFromBlock(block *cb.Block, index cb.BlockMetadataIndex) (*cb.Metadata, error) {
 	md := &cb.Metadata{}
 	err := proto.Unmarshal(block.Metadata.Metadata[index], md)
@@ -55,18 +56,36 @@ func GetMetadataFromBlock(block *cb.Block, index cb.BlockMetadataIndex) (*cb.Met
 	return md, nil
 }
 
-// GetLastConfigurationIndexFromBlock retrieves the index of the last configuration block as encoded in the block metadata
-func GetLastConfigurationIndexFromBlock(block *cb.Block) (uint64, error) {
-	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIGURATION)
+// GetMetadataFromBlockOrPanic retrieves metadata at the specified index, or panics on error.
+func GetMetadataFromBlockOrPanic(block *cb.Block, index cb.BlockMetadataIndex) *cb.Metadata {
+	md, err := GetMetadataFromBlock(block, index)
+	if err != nil {
+		panic(err)
+	}
+	return md
+}
+
+// GetLastConfigIndexFromBlock retrieves the index of the last config block as encoded in the block metadata
+func GetLastConfigIndexFromBlock(block *cb.Block) (uint64, error) {
+	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIG)
 	if err != nil {
 		return 0, err
 	}
-	lc := &cb.LastConfiguration{}
+	lc := &cb.LastConfig{}
 	err = proto.Unmarshal(md.Value, lc)
 	if err != nil {
 		return 0, err
 	}
 	return lc.Index, nil
+}
+
+// GetLastConfigIndexFromBlockOrPanic retrieves the index of the last config block as encoded in the block metadata, or panics on error.
+func GetLastConfigIndexFromBlockOrPanic(block *cb.Block) uint64 {
+	index, err := GetLastConfigIndexFromBlock(block)
+	if err != nil {
+		panic(err)
+	}
+	return index
 }
 
 // GetBlockFromBlockBytes marshals the bytes into Block
@@ -93,74 +112,4 @@ func InitBlockMetadata(block *cb.Block) {
 			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}
-}
-
-const (
-	epoch                           = uint64(0)
-	messageVersion                  = int32(1)
-	lastModified                    = uint64(0)
-	mspKey                          = "MSP"
-	XXX_DefaultModificationPolicyID = "DefaultModificationPolicy" // Break an import cycle during work to remove the below configtx construction methods
-)
-
-func createConfigItem(chainID string,
-	configItemKey string,
-	configItemValue []byte,
-	modPolicy string) *cb.ConfigurationItem {
-
-	ciChainHeader := MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM,
-		messageVersion, chainID, epoch)
-	configItem := MakeConfigurationItem(ciChainHeader,
-		cb.ConfigurationItem_Orderer, lastModified, modPolicy,
-		configItemKey, configItemValue)
-
-	return configItem
-}
-
-func createSignedConfigItem(chainID string,
-	configItemKey string,
-	configItemValue []byte,
-	modPolicy string) *cb.SignedConfigurationItem {
-	configItem := createConfigItem(chainID, configItemKey, configItemValue, modPolicy)
-	return &cb.SignedConfigurationItem{
-		ConfigurationItem: MarshalOrPanic(configItem),
-		Signatures:        nil}
-}
-
-// This function is needed to locate the MSP test configuration when running
-// in CI build env or local with "make unit-test". A better way to manage this
-// is to define a config path in yaml that may point to test or production
-// location of the config
-func getTESTMSPConfigPath() string {
-	cfgPath := os.Getenv("PEER_CFG_PATH") + "/msp/sampleconfig/"
-	if _, err := ioutil.ReadDir(cfgPath); err != nil {
-		cfgPath = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
-	return cfgPath
-}
-
-// EncodeMSPUnsigned gets the unsigned configuration item with the default MSP
-func EncodeMSPUnsigned(testChainID string) *cb.ConfigurationItem {
-	cfgPath := getTESTMSPConfigPath()
-	conf, err := msp.GetLocalMspConfig(cfgPath)
-	if err != nil {
-		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
-	}
-	return createConfigItem(testChainID,
-		mspKey,
-		MarshalOrPanic(conf),
-		XXX_DefaultModificationPolicyID)
-}
-
-// EncodeMSP gets the signed configuration item with the default MSP
-func EncodeMSP(testChainID string) *cb.SignedConfigurationItem {
-	cfgPath := getTESTMSPConfigPath()
-	conf, err := msp.GetLocalMspConfig(cfgPath)
-	if err != nil {
-		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
-	}
-	return createSignedConfigItem(testChainID,
-		mspKey,
-		MarshalOrPanic(conf),
-		XXX_DefaultModificationPolicyID)
 }

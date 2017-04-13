@@ -19,9 +19,11 @@ package chaincode
 import (
 	"context"
 
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/peer"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // ccProviderFactory implements the ccprovider.ChaincodeProviderFactory
@@ -47,11 +49,11 @@ type ccProviderImpl struct {
 
 // ccProviderContextImpl contains the state that is passed around to calls to methods of ccProviderImpl
 type ccProviderContextImpl struct {
-	ctx *CCContext
+	ctx *ccprovider.CCContext
 }
 
 // GetContext returns a context for the supplied ledger, with the appropriate tx simulator
-func (c *ccProviderImpl) GetContext(ledger ledger.ValidatedLedger) (context.Context, error) {
+func (c *ccProviderImpl) GetContext(ledger ledger.PeerLedger) (context.Context, error) {
 	var err error
 	// get context for the chaincode execution
 	c.txsim, err = ledger.NewTxSimulator()
@@ -65,30 +67,53 @@ func (c *ccProviderImpl) GetContext(ledger ledger.ValidatedLedger) (context.Cont
 // GetCCContext returns an interface that encapsulates a
 // chaincode context; the interface is required to avoid
 // referencing the chaincode package from the interface definition
-func (c *ccProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, prop *peer.Proposal) interface{} {
-	ctx := NewCCContext(cid, name, version, txid, syscc, prop)
+func (c *ccProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) interface{} {
+	ctx := ccprovider.NewCCContext(cid, name, version, txid, syscc, signedProp, prop)
 	return &ccProviderContextImpl{ctx: ctx}
 }
 
-// GetVSCCFromLCCC returns the VSCC listed in LCCC for the supplied chaincode
-func (c *ccProviderImpl) GetVSCCFromLCCC(ctxt context.Context, txid string, prop *peer.Proposal, chainID string, chaincodeID string) (string, error) {
-	data, err := GetChaincodeDataFromLCCC(ctxt, txid, prop, chainID, chaincodeID)
+// GetCCValidationInfoFromLCCC returns the VSCC and the policy listed in LCCC for the supplied chaincode
+func (c *ccProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
+	// LCCC does not have any notion about its own
+	// endorsing policy - we should never call this
+	// function with lccc as the chaincodeID
+	if chaincodeID == "lccc" {
+		panic("GetCCValidationInfoFromLCCC invoke for LCCC")
+	}
+
+	data, err := GetChaincodeDataFromLCCC(ctxt, txid, signedProp, prop, chainID, chaincodeID)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	vscc := "vscc"
-	// Check whenever VSCC defined for chaincode data
-	if data != nil && data.Vscc != "" {
-		vscc = data.Vscc
+	if data == nil || data.Vscc == "" || data.Policy == nil {
+		return "", nil, fmt.Errorf("Incorrect validation info in LCCC")
 	}
 
-	return vscc, nil
+	return data.Vscc, data.Policy, nil
 }
 
 // ExecuteChaincode executes the chaincode specified in the context with the specified arguments
-func (c *ccProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) ([]byte, *peer.ChaincodeEvent, error) {
+func (c *ccProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
 	return ExecuteChaincode(ctxt, cccid.(*ccProviderContextImpl).ctx, args)
+}
+
+// Execute executes the chaincode given context and spec (invocation or deploy)
+func (c *ccProviderImpl) Execute(ctxt context.Context, cccid interface{}, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
+	return Execute(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
+}
+
+// ExecuteWithErrorFilder executes the chaincode given context and spec and returns payload
+func (c *ccProviderImpl) ExecuteWithErrorFilter(ctxt context.Context, cccid interface{}, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
+	return ExecuteWithErrorFilter(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
+}
+
+// ExecuteWithErrorFilder executes the chaincode given context and spec and returns payload
+func (c *ccProviderImpl) Stop(ctxt context.Context, cccid interface{}, spec *pb.ChaincodeDeploymentSpec) error {
+	if theChaincodeSupport != nil {
+		return theChaincodeSupport.Stop(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
+	}
+	panic("ChaincodeSupport not initialized")
 }
 
 // ReleaseContext frees up resources held by the context

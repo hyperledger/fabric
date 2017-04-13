@@ -17,23 +17,17 @@ package pkcs11
 
 import (
 	"crypto/ecdsa"
-	"crypto/rand"
-	"encoding/asn1"
-	"errors"
-	"fmt"
-	"math/big"
-
-	"crypto/rsa"
-
-	"hash"
-
-	"crypto/x509"
-
-	"crypto/hmac"
-
 	"crypto/elliptic"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/x509"
+	"errors"
+	"fmt"
+	"hash"
+	"math/big"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
@@ -42,7 +36,7 @@ import (
 )
 
 var (
-	logger = logging.MustGetLogger("SW_BCCSP")
+	logger = logging.MustGetLogger("PKCS11_BCCSP")
 )
 
 // NewDefaultSecurityLevel returns a new instance of the software-based BCCSP
@@ -93,31 +87,35 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		return nil, errors.New("Invalid Opts parameter. It must not be nil.")
 	}
 
+	pkcs11Stored := false
+
 	// Parse algorithm
 	switch opts.(type) {
 	case *bccsp.ECDSAKeyGenOpts:
-		lowLevelKey, err := ecdsa.GenerateKey(csp.conf.ellipticCurve, rand.Reader)
+		ski, pub, err := generateECKey(csp.conf.ellipticCurve, opts.Ephemeral())
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating ECDSA key [%s]", err)
 		}
-
-		k = &ecdsaPrivateKey{lowLevelKey}
+		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
+		pkcs11Stored = true
 
 	case *bccsp.ECDSAP256KeyGenOpts:
-		lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		ski, pub, err := generateECKey(oidNamedCurveP256, opts.Ephemeral())
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating ECDSA P256 key [%s]", err)
 		}
 
-		k = &ecdsaPrivateKey{lowLevelKey}
+		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
+		pkcs11Stored = true
 
 	case *bccsp.ECDSAP384KeyGenOpts:
-		lowLevelKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		ski, pub, err := generateECKey(oidNamedCurveP384, opts.Ephemeral())
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating ECDSA P384 key [%s]", err)
 		}
 
-		k = &ecdsaPrivateKey{lowLevelKey}
+		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
+		pkcs11Stored = true
 
 	case *bccsp.AESKeyGenOpts:
 		lowLevelKey, err := GetRandomBytes(csp.conf.aesBitLength)
@@ -204,8 +202,8 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		return nil, fmt.Errorf("Unrecognized KeyGenOpts provided [%s]", opts.Algorithm())
 	}
 
-	// If the key is not Ephemeral, store it.
-	if !opts.Ephemeral() {
+	// If the key is not Ephemeral, store it. EC Keys now in HSM, no need to store
+	if !pkcs11Stored && !opts.Ephemeral() {
 		// Store the key
 		err = csp.ks.StoreKey(k)
 		if err != nil {
@@ -226,6 +224,63 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 
 	// Derive key
 	switch k.(type) {
+	case *ecdsaPublicKey:
+		// Validate opts
+		if opts == nil {
+			return nil, errors.New("Invalid Opts parameter. It must not be nil.")
+		}
+
+		ecdsaK := k.(*ecdsaPublicKey)
+
+		switch opts.(type) {
+
+		// Re-randomized an ECDSA public key
+		case *bccsp.ECDSAReRandKeyOpts:
+			pubKey := ecdsaK.pub
+			reRandOpts := opts.(*bccsp.ECDSAReRandKeyOpts)
+			tempSK := &ecdsa.PublicKey{
+				Curve: pubKey.Curve,
+				X:     new(big.Int),
+				Y:     new(big.Int),
+			}
+
+			var k = new(big.Int).SetBytes(reRandOpts.ExpansionValue())
+			var one = new(big.Int).SetInt64(1)
+			n := new(big.Int).Sub(pubKey.Params().N, one)
+			k.Mod(k, n)
+			k.Add(k, one)
+
+			// Compute temporary public key
+			tempX, tempY := pubKey.ScalarBaseMult(k.Bytes())
+			tempSK.X, tempSK.Y = tempSK.Add(
+				pubKey.X, pubKey.Y,
+				tempX, tempY,
+			)
+
+			// Verify temporary public key is a valid point on the reference curve
+			isOn := tempSK.Curve.IsOnCurve(tempSK.X, tempSK.Y)
+			if !isOn {
+				return nil, errors.New("Failed temporary public key IsOnCurve check.")
+			}
+
+			ecPt := elliptic.Marshal(tempSK.Curve, tempSK.X, tempSK.Y)
+			oid, ok := oidFromNamedCurve(tempSK.Curve)
+			if !ok {
+				return nil, errors.New("Do not know OID for this Curve.")
+			}
+
+			ski, err := importECKey(oid, nil, ecPt, opts.Ephemeral(), isPublicKey)
+			if err != nil {
+				return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+			}
+			reRandomizedKey := &ecdsaPublicKey{ski, tempSK}
+
+			return reRandomizedKey, nil
+
+		default:
+			return nil, fmt.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
+
+		}
 	case *ecdsaPrivateKey:
 		// Validate opts
 		if opts == nil {
@@ -239,9 +294,16 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 		// Re-randomized an ECDSA private key
 		case *bccsp.ECDSAReRandKeyOpts:
 			reRandOpts := opts.(*bccsp.ECDSAReRandKeyOpts)
+			pubKey := ecdsaK.pub.pub
+			secret := getSecretValue(ecdsaK.ski)
+			if secret == nil {
+				return nil, errors.New("Could not obtain EC Private Key")
+			}
+			bigSecret := new(big.Int).SetBytes(secret)
+
 			tempSK := &ecdsa.PrivateKey{
 				PublicKey: ecdsa.PublicKey{
-					Curve: ecdsaK.privKey.Curve,
+					Curve: pubKey.Curve,
 					X:     new(big.Int),
 					Y:     new(big.Int),
 				},
@@ -250,37 +312,33 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 
 			var k = new(big.Int).SetBytes(reRandOpts.ExpansionValue())
 			var one = new(big.Int).SetInt64(1)
-			n := new(big.Int).Sub(ecdsaK.privKey.Params().N, one)
+			n := new(big.Int).Sub(pubKey.Params().N, one)
 			k.Mod(k, n)
 			k.Add(k, one)
 
-			tempSK.D.Add(ecdsaK.privKey.D, k)
-			tempSK.D.Mod(tempSK.D, ecdsaK.privKey.PublicKey.Params().N)
+			tempSK.D.Add(bigSecret, k)
+			tempSK.D.Mod(tempSK.D, pubKey.Params().N)
 
 			// Compute temporary public key
-			tempX, tempY := ecdsaK.privKey.PublicKey.ScalarBaseMult(k.Bytes())
-			tempSK.PublicKey.X, tempSK.PublicKey.Y =
-				tempSK.PublicKey.Add(
-					ecdsaK.privKey.PublicKey.X, ecdsaK.privKey.PublicKey.Y,
-					tempX, tempY,
-				)
+			tempSK.PublicKey.X, tempSK.PublicKey.Y = pubKey.ScalarBaseMult(tempSK.D.Bytes())
 
 			// Verify temporary public key is a valid point on the reference curve
 			isOn := tempSK.Curve.IsOnCurve(tempSK.PublicKey.X, tempSK.PublicKey.Y)
 			if !isOn {
-				return nil, errors.New("Failed temporary public key IsOnCurve check. This is an foreign key.")
+				return nil, errors.New("Failed temporary public key IsOnCurve check.")
 			}
 
-			reRandomizedKey := &ecdsaPrivateKey{tempSK}
-
-			// If the key is not Ephemeral, store it.
-			if !opts.Ephemeral() {
-				// Store the key
-				err = csp.ks.StoreKey(reRandomizedKey)
-				if err != nil {
-					return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-				}
+			ecPt := elliptic.Marshal(tempSK.Curve, tempSK.X, tempSK.Y)
+			oid, ok := oidFromNamedCurve(tempSK.Curve)
+			if !ok {
+				return nil, errors.New("Do not know OID for this Curve.")
 			}
+
+			ski, err := importECKey(oid, tempSK.D.Bytes(), ecPt, opts.Ephemeral(), isPrivateKey)
+			if err != nil {
+				return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+			}
+			reRandomizedKey := &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, &tempSK.PublicKey}}
 
 			return reRandomizedKey, nil
 
@@ -424,17 +482,18 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			return nil, errors.New("Failed casting to ECDSA public key. Invalid raw material.")
 		}
 
-		k = &ecdsaPublicKey{ecdsaPK}
-
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(k)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-			}
+		ecPt := elliptic.Marshal(ecdsaPK.Curve, ecdsaPK.X, ecdsaPK.Y)
+		oid, ok := oidFromNamedCurve(ecdsaPK.Curve)
+		if !ok {
+			return nil, errors.New("Do not know OID for this Curve.")
 		}
 
+		ski, err := importECKey(oid, nil, ecPt, opts.Ephemeral(), isPublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+		}
+
+		k = &ecdsaPublicKey{ski, ecdsaPK}
 		return k, nil
 
 	case *bccsp.ECDSAPrivateKeyImportOpts:
@@ -457,17 +516,18 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			return nil, errors.New("Failed casting to ECDSA public key. Invalid raw material.")
 		}
 
-		k = &ecdsaPrivateKey{ecdsaSK}
-
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(k)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-			}
+		ecPt := elliptic.Marshal(ecdsaSK.Curve, ecdsaSK.X, ecdsaSK.Y)
+		oid, ok := oidFromNamedCurve(ecdsaSK.Curve)
+		if !ok {
+			return nil, errors.New("Do not know OID for this Curve.")
 		}
 
+		ski, err := importECKey(oid, ecdsaSK.D.Bytes(), ecPt, opts.Ephemeral(), isPrivateKey)
+		if err != nil {
+			return nil, fmt.Errorf("Failed getting importing EC Private Key [%s]", err)
+		}
+
+		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, &ecdsaSK.PublicKey}}
 		return k, nil
 
 	case *bccsp.ECDSAGoPublicKeyImportOpts:
@@ -476,17 +536,18 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			return nil, errors.New("[ECDSAGoPublicKeyImportOpts] Invalid raw material. Expected *ecdsa.PublicKey.")
 		}
 
-		k = &ecdsaPublicKey{lowLevelKey}
-
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(k)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-			}
+		ecPt := elliptic.Marshal(lowLevelKey.Curve, lowLevelKey.X, lowLevelKey.Y)
+		oid, ok := oidFromNamedCurve(lowLevelKey.Curve)
+		if !ok {
+			return nil, errors.New("Do not know OID for this Curve.")
 		}
 
+		ski, err := importECKey(oid, nil, ecPt, opts.Ephemeral(), isPublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+		}
+
+		k = &ecdsaPublicKey{ski, lowLevelKey}
 		return k, nil
 
 	case *bccsp.RSAGoPublicKeyImportOpts:
@@ -533,6 +594,14 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 // GetKey returns the key this CSP associates to
 // the Subject Key Identifier ski.
 func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
+	pubKey, isPriv, err := getECKey(ski)
+	if err == nil {
+		if isPriv {
+			return &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pubKey}}, nil
+		} else {
+			return &ecdsaPublicKey{ski, pubKey}, nil
+		}
+	}
 	return csp.ks.GetKey(ski)
 }
 
@@ -603,7 +672,7 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 	// Check key type
 	switch k.(type) {
 	case *ecdsaPrivateKey:
-		return k.(*ecdsaPrivateKey).privKey.Sign(rand.Reader, digest, nil)
+		return csp.signECDSA(*k.(*ecdsaPrivateKey), digest, opts)
 	case *rsaPrivateKey:
 		if opts == nil {
 			return nil, errors.New("Invalid options. Nil.")
@@ -631,21 +700,9 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 	// Check key type
 	switch k.(type) {
 	case *ecdsaPrivateKey:
-		ecdsaSignature := new(ecdsaSignature)
-		_, err := asn1.Unmarshal(signature, ecdsaSignature)
-		if err != nil {
-			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
-		}
-
-		return ecdsa.Verify(&(k.(*ecdsaPrivateKey).privKey.PublicKey), digest, ecdsaSignature.R, ecdsaSignature.S), nil
+		return csp.verifyECDSA(k.(*ecdsaPrivateKey).pub, signature, digest, opts)
 	case *ecdsaPublicKey:
-		ecdsaSignature := new(ecdsaSignature)
-		_, err := asn1.Unmarshal(signature, ecdsaSignature)
-		if err != nil {
-			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
-		}
-
-		return ecdsa.Verify(k.(*ecdsaPublicKey).pubKey, digest, ecdsaSignature.R, ecdsaSignature.S), nil
+		return csp.verifyECDSA(*k.(*ecdsaPublicKey), signature, digest, opts)
 	case *rsaPrivateKey:
 		if opts == nil {
 			return false, errors.New("Invalid options. It must not be nil.")

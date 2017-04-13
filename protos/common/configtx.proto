@@ -1,0 +1,115 @@
+/*
+Copyright IBM Corp. 2017 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+                 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+import "common/common.proto";
+import "common/policies.proto";
+
+option go_package = "github.com/hyperledger/fabric/protos/common";
+option java_package = "org.hyperledger.fabric.protos.common";
+
+package common;
+
+// ConfigEnvelope is designed to contain _all_ configuration for a chain with no dependency
+// on previous configuration transactions.
+//
+// It is generated with the following scheme:
+//   1. Retrieve the existing configuration
+//   2. Note the config properties (ConfigValue, ConfigPolicy, ConfigGroup) to be modified
+//   3. Add any intermediate ConfigGroups to the ConfigUpdate.read_set (sparsely)
+//   4. Add any additional desired dependencies to ConfigUpdate.read_set (sparsely)
+//   5. Modify the config properties, incrementing each version by 1, set them in the ConfigUpdate.write_set
+//      Note: any element not modified but specified should already be in the read_set, so may be specified sparsely
+//   6. Create ConfigUpdate message and marshal it into ConfigUpdateEnvelope.update and encode the required signatures
+//     a) Each signature is of type ConfigSignature
+//     b) The ConfigSignature signature is over the concatenation of signature_header and the ConfigUpdate bytes (which includes a ChainHeader)
+//   5. Submit new Config for ordering in Envelope signed by submitter
+//     a) The Envelope Payload has data set to the marshaled ConfigEnvelope
+//     b) The Envelope Payload has a header of type Header.Type.CONFIG_UPDATE
+//
+// The configuration manager will verify:
+//   1. All items in the read_set exist at the read versions
+//   2. All items in the write_set at a different version than, or not in, the read_set have been appropriately signed according to their mod_policy
+//   3. The new configuration satisfies the ConfigSchema
+message ConfigEnvelope {
+    Config config = 1;        // A marshaled Config structure
+    Envelope last_update = 2; // The last CONFIG_UPDATE message which generated this current configuration
+                              // Note that CONFIG_UPDATE has a Payload.Data of a Marshaled ConfigUpdate
+}
+
+message ConfigGroupSchema {
+    map<string, ConfigGroupSchema> groups = 1;
+    map<string, ConfigValueSchema> values = 2;
+    map<string, ConfigPolicySchema> policies = 3;
+}
+
+message ConfigValueSchema {}
+
+message ConfigPolicySchema {}
+
+// Config represents the config for a particular channel
+message Config {
+    uint64 sequence = 1;
+    ConfigGroup channel_group = 2;
+}
+
+message ConfigUpdateEnvelope {
+    bytes config_update = 1;                 // A marshaled ConfigUpdate structure
+    repeated ConfigSignature signatures = 2; // Signatures over the config_update
+}
+
+// ConfigUpdate is used to submit a subset of config and to have the orderer apply to Config
+// it is always submitted inside a ConfigUpdateEnvelope which allows the addition of signatures
+// resulting in a new total configuration.  The update is applied as follows:
+// 1. The versions from all of the elements in the read_set is verified against the versions in the existing config.
+//    If there is a mismatch in the read versions, then the config update fails and is rejected.
+// 2. Any elements in the write_set with the same version as the read_set are ignored.
+// 3. The corresponding mod_policy for every remaining element in the write_set is collected.
+// 4. Each policy is checked against the signatures from the ConfigUpdateEnvelope, any failing to verify are rejected
+// 5. The write_set is applied to the Config and the ConfigGroupSchema verifies that the updates were legal
+message ConfigUpdate {
+    string channel_id = 1;     // Which channel this config update is for
+    ConfigGroup read_set = 2;  // ReadSet explicitly lists the portion of the config which was read, this should be sparse with only Version set
+    ConfigGroup write_set = 3; // WriteSet lists the portion of the config which was written, this should included updated Versions
+}
+
+// ConfigGroup is the hierarchical data structure for holding config
+message ConfigGroup {
+    uint64 version = 1;
+    map<string,ConfigGroup> groups = 2;
+    map<string,ConfigValue> values = 3;
+    map<string,ConfigPolicy> policies = 4;
+    string mod_policy = 5;
+}
+
+// ConfigValue represents an individual piece of config data
+message ConfigValue {
+    uint64 version = 1;
+    bytes value = 2;
+    string mod_policy = 3;
+}
+
+message ConfigPolicy {
+    uint64 version = 1;
+    Policy policy = 2;
+    string mod_policy = 3;
+}
+
+message ConfigSignature {
+    bytes signature_header = 1; // A marshaled SignatureHeader
+    bytes signature = 2;        // Signature over the concatenation signatureHeader bytes and config bytes
+}

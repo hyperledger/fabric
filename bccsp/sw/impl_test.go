@@ -58,8 +58,8 @@ type testConfig struct {
 }
 
 func TestMain(m *testing.M) {
-	ks := &FileBasedKeyStore{}
-	if err := ks.Init(nil, os.TempDir(), false); err != nil {
+	ks, err := NewFileBasedKeyStore(nil, os.TempDir(), false)
+	if err != nil {
 		fmt.Printf("Failed initiliazing KeyStore [%s]", err)
 		os.Exit(-1)
 	}
@@ -589,19 +589,43 @@ func TestECDSAKeyReRand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed generating ECDSA key [%s]", err)
 	}
+	if k == nil {
+		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
+	}
 
 	reRandomizedKey, err := currentBCCSP.KeyDeriv(k, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
 	if err != nil {
 		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
-	}
-	if k == nil {
-		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
 	}
 	if !reRandomizedKey.Private() {
 		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key should be private")
 	}
 	if reRandomizedKey.Symmetric() {
 		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key should be asymmetric")
+	}
+
+	k2, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public ECDSA key from private [%s]", err)
+	}
+	if k2 == nil {
+		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
+	}
+
+	reRandomizedKey2, err := currentBCCSP.KeyDeriv(k2, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
+	if err != nil {
+		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
+	}
+
+	if reRandomizedKey2.Private() {
+		t.Fatal("Re-randomized public Key must remain public")
+	}
+	if reRandomizedKey2.Symmetric() {
+		t.Fatal("Re-randomized ECDSA asymmetric key must remain asymmetric")
+	}
+
+	if false == bytes.Equal(reRandomizedKey.SKI(), reRandomizedKey2.SKI()) {
+		t.Fatal("Re-randomized ECDSA Private- or Public-Keys must end up having the same SKI")
 	}
 }
 
@@ -1011,6 +1035,106 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 	}
 	if !valid {
 		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
+	}
+}
+
+func TestECDSASignatureEncoding(t *testing.T) {
+	v := []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0xff, 0xf1}
+	_, err := asn1.Unmarshal(v, &ecdsaSignature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0x00, 0x01}
+	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x01}
+	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x8F}
+	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x0A, 0x02, 0x01, 0x8F, 0x02, 0x05, 0x00, 0x00, 0x00, 0x00, 0x8F}
+	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+}
+
+func TestECDSALowS(t *testing.T) {
+	// Ensure that signature with low-S are generated
+	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA key [%s]", err)
+	}
+
+	msg := []byte("Hello World")
+
+	digest, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := currentBCCSP.Sign(k, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA signature [%s]", err)
+	}
+
+	R, S, err := unmarshalECDSASignature(signature)
+	if err != nil {
+		t.Fatalf("Failed unmarshalling signature [%s]", err)
+	}
+
+	if S.Cmp(curveHalfOrders[k.(*ecdsaPrivateKey).privKey.Curve]) >= 0 {
+		t.Fatal("Invalid signature. It must have low-S")
+	}
+
+	valid, err := currentBCCSP.Verify(k, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
+	}
+
+	// Ensure that signature with high-S are rejected.
+	for {
+		R, S, err = ecdsa.Sign(rand.Reader, k.(*ecdsaPrivateKey).privKey, digest)
+		if err != nil {
+			t.Fatalf("Failed generating signature [%s]", err)
+		}
+
+		if S.Cmp(curveHalfOrders[k.(*ecdsaPrivateKey).privKey.Curve]) > 0 {
+			break
+		}
+	}
+
+	sig, err := marshalECDSASignature(R, S)
+	if err != nil {
+		t.Fatalf("Failing unmarshalling signature [%s]", err)
+	}
+
+	valid, err = currentBCCSP.Verify(k, sig, digest, nil)
+	if err == nil {
+		t.Fatal("Failed verifying ECDSA signature. It must fail for a signature with high-S")
+	}
+	if valid {
+		t.Fatal("Failed verifying ECDSA signature. It must fail for a signature with high-S")
 	}
 }
 

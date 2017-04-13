@@ -17,31 +17,27 @@ package pkcs11
 
 import (
 	"bytes"
-	"os"
-	"testing"
-
 	"crypto"
-	"crypto/rsa"
-
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"fmt"
+	"hash"
 	"math/big"
 	"net"
+	"os"
+	"testing"
 	"time"
-
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/sha256"
-
-	"fmt"
-
-	"crypto/sha512"
-	"hash"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"golang.org/x/crypto/sha3"
 )
@@ -49,6 +45,7 @@ import (
 var (
 	currentKS         bccsp.KeyStore
 	currentBCCSP      bccsp.BCCSP
+	currentSWBCCSP    bccsp.BCCSP
 	currentTestConfig testConfig
 )
 
@@ -65,6 +62,17 @@ func TestMain(m *testing.M) {
 	}
 	currentKS = ks
 
+	lib, pin, label := findPKCS11Lib()
+	if enablePKCS11tests {
+		err := InitPKCS11(lib, pin, label)
+		if err != nil {
+			fmt.Printf("Failed initializing PKCS11 library [%s]", err)
+			os.Exit(-1)
+		}
+	} else {
+		fmt.Printf("No PKCS11 library found, skipping PKCS11 tests")
+	}
+
 	tests := []testConfig{
 		{256, "SHA2"},
 		{256, "SHA3"},
@@ -76,6 +84,12 @@ func TestMain(m *testing.M) {
 		var err error
 		currentTestConfig = config
 		currentBCCSP, err = New(config.securityLevel, config.hashFamily, currentKS)
+		if err != nil {
+			fmt.Printf("Failed initiliazing BCCSP at [%d, %s]: [%s]", config.securityLevel, config.hashFamily, err)
+			os.Exit(-1)
+		}
+
+		currentSWBCCSP, err = sw.New(config.securityLevel, config.hashFamily, sw.NewDummyKeyStore())
 		if err != nil {
 			fmt.Printf("Failed initiliazing BCCSP at [%d, %s]: [%s]", config.securityLevel, config.hashFamily, err)
 			os.Exit(-1)
@@ -165,15 +179,9 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 		t.Fatal("Failed generating ECDSA P256 key. Key should be asymmetric")
 	}
 
-	ecdsaKey := k.(*ecdsaPrivateKey).privKey
-	if !elliptic.P256().IsOnCurve(ecdsaKey.X, ecdsaKey.Y) {
-		t.Fatal("P256 generated key in invalid. The public key must be on the P256 curve.")
-	}
-	if elliptic.P256() != ecdsaKey.Curve {
+	ecdsaKey := k.(*ecdsaPrivateKey).pub
+	if elliptic.P256() != ecdsaKey.pub.Curve {
 		t.Fatal("P256 generated key in invalid. The curve must be P256.")
-	}
-	if ecdsaKey.D.Cmp(big.NewInt(0)) == 0 {
-		t.Fatal("P256 generated key in invalid. Private key must be different from 0.")
 	}
 
 	// Curve P384
@@ -191,17 +199,10 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 		t.Fatal("Failed generating ECDSA P384 key. Key should be asymmetric")
 	}
 
-	ecdsaKey = k.(*ecdsaPrivateKey).privKey
-	if !elliptic.P384().IsOnCurve(ecdsaKey.X, ecdsaKey.Y) {
-		t.Fatal("P256 generated key in invalid. The public key must be on the P384 curve.")
-	}
-	if elliptic.P384() != ecdsaKey.Curve {
+	ecdsaKey = k.(*ecdsaPrivateKey).pub
+	if elliptic.P384() != ecdsaKey.pub.Curve {
 		t.Fatal("P256 generated key in invalid. The curve must be P384.")
 	}
-	if ecdsaKey.D.Cmp(big.NewInt(0)) == 0 {
-		t.Fatal("P256 generated key in invalid. Private key must be different from 0.")
-	}
-
 }
 
 func TestKeyGenRSAOpts(t *testing.T) {
@@ -589,19 +590,43 @@ func TestECDSAKeyReRand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed generating ECDSA key [%s]", err)
 	}
+	if k == nil {
+		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
+	}
 
 	reRandomizedKey, err := currentBCCSP.KeyDeriv(k, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
 	if err != nil {
 		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
-	}
-	if k == nil {
-		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
 	}
 	if !reRandomizedKey.Private() {
 		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key should be private")
 	}
 	if reRandomizedKey.Symmetric() {
 		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key should be asymmetric")
+	}
+
+	k2, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public ECDSA key from private [%s]", err)
+	}
+	if k2 == nil {
+		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
+	}
+
+	reRandomizedKey2, err := currentBCCSP.KeyDeriv(k2, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
+	if err != nil {
+		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
+	}
+
+	if reRandomizedKey2.Private() {
+		t.Fatal("Re-randomized public Key must remain public")
+	}
+	if reRandomizedKey2.Symmetric() {
+		t.Fatal("Re-randomized ECDSA asymmetric key must remain asymmetric")
+	}
+
+	if false == bytes.Equal(reRandomizedKey.SKI(), reRandomizedKey2.SKI()) {
+		t.Fatal("Re-randomized ECDSA Private- or Public-Keys must end up having the same SKI")
 	}
 }
 
@@ -644,7 +669,7 @@ func TestECDSAVerify(t *testing.T) {
 
 	signature, err := currentBCCSP.Sign(k, digest, nil)
 	if err != nil {
-		t.Fatalf("Failed generating ECDSA signature [%s]", err)
+		t.Fatalf("Failed generating ECDSA signature  [%s]", err)
 	}
 
 	valid, err := currentBCCSP.Verify(k, signature, digest, nil)
@@ -668,13 +693,19 @@ func TestECDSAVerify(t *testing.T) {
 		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
 	}
 
+	// Import the exported public key
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting ECDSA raw public key [%s]", err)
+	}
+
 	// Store public key
-	err = currentKS.StoreKey(pk)
+	_, err = currentBCCSP.KeyImport(pkRaw, &bccsp.ECDSAPKIXPublicKeyImportOpts{Temporary: false})
 	if err != nil {
 		t.Fatalf("Failed storing corresponding public key [%s]", err)
 	}
 
-	pk2, err := currentKS.GetKey(pk.SKI())
+	pk2, err := currentBCCSP.GetKey(pk.SKI())
 	if err != nil {
 		t.Fatalf("Failed retrieving corresponding public key [%s]", err)
 	}
@@ -1011,6 +1042,106 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 	}
 	if !valid {
 		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
+	}
+}
+
+func TestECDSASignatureEncoding(t *testing.T) {
+	v := []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0xff, 0xf1}
+	_, err := asn1.Unmarshal(v, &ecdsaSignature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0x00, 0x01}
+	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x01}
+	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x8F}
+	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x0A, 0x02, 0x01, 0x8F, 0x02, 0x05, 0x00, 0x00, 0x00, 0x00, 0x8F}
+	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+}
+
+func TestECDSALowS(t *testing.T) {
+	// Ensure that signature with low-S are generated
+	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA key [%s]", err)
+	}
+
+	msg := []byte("Hello World")
+
+	digest, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := currentBCCSP.Sign(k, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA signature [%s]", err)
+	}
+
+	R, S, err := unmarshalECDSASignature(signature)
+	if err != nil {
+		t.Fatalf("Failed unmarshalling signature [%s]", err)
+	}
+
+	if S.Cmp(curveHalfOrders[k.(*ecdsaPrivateKey).pub.pub.Curve]) >= 0 {
+		t.Fatal("Invalid signature. It must have low-S")
+	}
+
+	valid, err := currentBCCSP.Verify(k, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
+	}
+
+	// Ensure that signature with high-S are rejected.
+	for {
+		R, S, err = signECDSA(k.SKI(), digest)
+		if err != nil {
+			t.Fatalf("Failed generating signature [%s]", err)
+		}
+
+		if S.Cmp(curveHalfOrders[k.(*ecdsaPrivateKey).pub.pub.Curve]) > 0 {
+			break
+		}
+	}
+
+	sig, err := marshalECDSASignature(R, S)
+	if err != nil {
+		t.Fatalf("Failing unmarshalling signature [%s]", err)
+	}
+
+	valid, err = currentBCCSP.Verify(k, sig, digest, nil)
+	if err == nil {
+		t.Fatal("Failed verifying ECDSA signature. It must fail for a signature with high-S")
+	}
+	if valid {
+		t.Fatal("Failed verifying ECDSA signature. It must fail for a signature with high-S")
 	}
 }
 
@@ -1795,4 +1926,37 @@ func getCryptoHashIndex(t *testing.T) crypto.Hash {
 	}
 
 	return crypto.SHA3_256
+}
+
+var enablePKCS11tests = false
+
+func findPKCS11Lib() (lib, pin, label string) {
+	//FIXME: Till we workout the configuration piece, look for the libraries in the familiar places
+	lib = os.Getenv("PKCS11_LIB")
+	if lib == "" {
+		pin = "98765432"
+		label = "ForFabric"
+		possibilities := []string{
+			"/usr/lib/softhsm/libsofthsm2.so",                            //Debian
+			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so",           //Ubuntu
+			"/usr/lib/s390x-linux-gnu/softhsm/libsofthsm2.so",            //Ubuntu
+			"/usr/lib/powerpc64le-linux-gnu/softhsm/libsofthsm2.so",      //Power
+			"/usr/local/Cellar/softhsm/2.1.0/lib/softhsm/libsofthsm2.so", //MacOS
+		}
+		for _, path := range possibilities {
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				lib = path
+				enablePKCS11tests = true
+				break
+			}
+		}
+		if lib == "" {
+			enablePKCS11tests = false
+		}
+	} else {
+		enablePKCS11tests = true
+		pin = os.Getenv("PKCS11_PIN")
+		label = os.Getenv("PKCS11_LABEL")
+	}
+	return lib, pin, label
 }

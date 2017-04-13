@@ -26,8 +26,8 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-var acceptAllPolicy []byte
-var rejectAllPolicy []byte
+var acceptAllPolicy *cb.Policy
+var rejectAllPolicy *cb.Policy
 
 func init() {
 	acceptAllPolicy = makePolicySource(true)
@@ -43,31 +43,28 @@ func marshalOrPanic(msg proto.Message) []byte {
 	return data
 }
 
-func makePolicySource(policyResult bool) []byte {
+func makePolicySource(policyResult bool) *cb.Policy {
 	var policyData *cb.SignaturePolicyEnvelope
 	if policyResult {
 		policyData = AcceptAllPolicy
 	} else {
 		policyData = RejectAllPolicy
 	}
-	marshaledPolicy := marshalOrPanic(&cb.Policy{
+	return &cb.Policy{
 		Type:   int32(cb.Policy_SIGNATURE),
 		Policy: marshalOrPanic(policyData),
-	})
-	return marshaledPolicy
+	}
 }
 
-func addPolicy(manager *policies.ManagerImpl, id string, policy []byte) {
-	manager.BeginConfig()
-	err := manager.ProposeConfig(&cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Policy,
-		Key:   id,
-		Value: policy,
+func addPolicy(manager policies.Proposer, id string, policy *cb.Policy) {
+	manager.BeginPolicyProposals(id, nil)
+	_, err := manager.ProposePolicy(id, id, &cb.ConfigPolicy{
+		Policy: policy,
 	})
 	if err != nil {
 		panic(err)
 	}
-	manager.CommitConfig()
+	manager.CommitProposals(id)
 }
 
 func providerMap() map[int32]policies.Provider {
@@ -78,7 +75,7 @@ func providerMap() map[int32]policies.Provider {
 
 func TestAccept(t *testing.T) {
 	policyID := "policyID"
-	m := policies.NewManagerImpl(providerMap())
+	m := policies.NewManagerImpl("test", providerMap())
 	addPolicy(m, policyID, acceptAllPolicy)
 	policy, ok := m.GetPolicy(policyID)
 	if !ok {
@@ -92,7 +89,7 @@ func TestAccept(t *testing.T) {
 
 func TestReject(t *testing.T) {
 	policyID := "policyID"
-	m := policies.NewManagerImpl(providerMap())
+	m := policies.NewManagerImpl("test", providerMap())
 	addPolicy(m, policyID, rejectAllPolicy)
 	policy, ok := m.GetPolicy(policyID)
 	if !ok {
@@ -105,7 +102,7 @@ func TestReject(t *testing.T) {
 }
 
 func TestRejectOnUnknown(t *testing.T) {
-	m := policies.NewManagerImpl(providerMap())
+	m := policies.NewManagerImpl("test", providerMap())
 	policy, ok := m.GetPolicy("FakePolicyID")
 	if ok {
 		t.Error("Should not have found policy which was never added, but did")

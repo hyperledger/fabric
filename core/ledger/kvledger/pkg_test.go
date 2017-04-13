@@ -29,7 +29,7 @@ type testEnv struct {
 }
 
 func newTestEnv(t testing.TB) *testEnv {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests")
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger")
 	env := &testEnv{t}
 	env.cleanup()
 	return env

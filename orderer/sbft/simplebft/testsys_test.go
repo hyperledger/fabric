@@ -30,22 +30,33 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 )
 
-type testSystemAdapter struct {
-	id       uint64
-	sys      *testSystem
-	receiver Receiver
+const defaultMaxReqCount = uint64(5)
 
-	batches     []*Batch
-	arrivals    map[uint64]time.Duration
+var maxReqCount uint64
+
+type testSystemAdapter struct {
+	id  uint64
+	sys *testSystem
+
+	// chainId to instance mapping
+	receivers   map[string]Receiver
+	batches     map[string][]*Batch
 	persistence map[string][]byte
+
+	arrivals map[uint64]time.Duration
+	reqs     []*Request
 
 	key *ecdsa.PrivateKey
 }
 
-func (t *testSystemAdapter) SetReceiver(recv Receiver) {
-	if t.receiver != nil {
+func (t *testSystemAdapter) AddReceiver(chainId string, recv Receiver) {
+	if t.receivers == nil {
+		t.receivers = make(map[string]Receiver)
+	}
+	if t.receivers[chainId] != nil {
 		// remove all events for us
 		t.sys.queue.filter(func(e testElem) bool {
 			switch e := e.ev.(type) {
@@ -62,7 +73,7 @@ func (t *testSystemAdapter) SetReceiver(recv Receiver) {
 		})
 	}
 
-	t.receiver = recv
+	t.receivers[chainId] = recv
 }
 
 func (t *testSystemAdapter) getArrival(dest uint64) time.Duration {
@@ -81,13 +92,14 @@ func (t *testSystemAdapter) getArrival(dest uint64) time.Duration {
 	return arr
 }
 
-func (t *testSystemAdapter) Send(msg *Msg, dest uint64) {
+func (t *testSystemAdapter) Send(chainId string, msg *Msg, dest uint64) {
 	arr := t.getArrival(dest)
 	ev := &testMsgEvent{
 		inflight: arr,
 		src:      t.id,
 		dst:      dest,
 		msg:      msg,
+		chainId:  chainId,
 	}
 	// simulate time for marshalling (and unmarshalling)
 	bytes, _ := proto.Marshal(msg)
@@ -100,6 +112,7 @@ type testMsgEvent struct {
 	inflight time.Duration
 	src, dst uint64
 	msg      *Msg
+	chainId  string
 }
 
 func (ev *testMsgEvent) Exec(t *testSystem) {
@@ -108,7 +121,7 @@ func (ev *testMsgEvent) Exec(t *testSystem) {
 		testLog.Errorf("message to non-existing %s", ev)
 		return
 	}
-	r.receiver.Receive(ev.msg, ev.src)
+	r.receivers[ev.chainId].Receive(ev.msg, ev.src)
 }
 
 func (ev *testMsgEvent) String() string {
@@ -145,24 +158,51 @@ func (t *testSystemAdapter) Timer(d time.Duration, tf func()) Canceller {
 	return tt
 }
 
-func (t *testSystemAdapter) Deliver(batch *Batch) {
-	t.batches = append(t.batches, batch)
+func (t *testSystemAdapter) Deliver(chainId string, batch *Batch, committer []filter.Committer) {
+	if t.batches == nil {
+		t.batches = make(map[string][]*Batch)
+	}
+	if t.batches[chainId] == nil {
+		t.batches[chainId] = make([]*Batch, 0, 1)
+	}
+	t.batches[chainId] = append(t.batches[chainId], batch)
 }
 
-func (t *testSystemAdapter) Persist(key string, data proto.Message) {
+func (t *testSystemAdapter) Validate(chainID string, req *Request) ([][]*Request, [][]filter.Committer, bool) {
+	r := t.reqs
+	if t.reqs == nil || uint64(len(t.reqs)) == maxReqCount-uint64(1) {
+		t.reqs = make([]*Request, 0, maxReqCount-1)
+	}
+	if uint64(len(r)) == maxReqCount-uint64(1) {
+		c := [][]filter.Committer{{}}
+		return [][]*Request{append(r, req)}, c, true
+	}
+	t.reqs = append(t.reqs, req)
+	return nil, nil, true
+}
+
+func (t *testSystemAdapter) Cut(chainID string) ([]*Request, []filter.Committer) {
+	r := t.reqs
+	t.reqs = make([]*Request, 0, maxReqCount)
+	return r, []filter.Committer{}
+}
+
+func (t *testSystemAdapter) Persist(chainId string, key string, data proto.Message) {
+	compk := fmt.Sprintf("chain-%s-%s", chainId, key)
 	if data == nil {
-		delete(t.persistence, key)
+		delete(t.persistence, compk)
 	} else {
 		bytes, err := proto.Marshal(data)
 		if err != nil {
 			panic(err)
 		}
-		t.persistence[key] = bytes
+		t.persistence[compk] = bytes
 	}
 }
 
-func (t *testSystemAdapter) Restore(key string, out proto.Message) bool {
-	val, ok := t.persistence[key]
+func (t *testSystemAdapter) Restore(chainId string, key string, out proto.Message) bool {
+	compk := fmt.Sprintf("chain-%s-%s", chainId, key)
+	val, ok := t.persistence[compk]
 	if !ok {
 		return false
 	}
@@ -170,11 +210,11 @@ func (t *testSystemAdapter) Restore(key string, out proto.Message) bool {
 	return (err == nil)
 }
 
-func (t *testSystemAdapter) LastBatch() *Batch {
-	if len(t.batches) == 0 {
-		return t.receiver.(*SBFT).makeBatch(0, nil, nil)
+func (t *testSystemAdapter) LastBatch(chainId string) *Batch {
+	if len(t.batches[chainId]) == 0 {
+		return t.receivers[chainId].(*SBFT).makeBatch(0, nil, nil)
 	}
-	return t.batches[len(t.batches)-1]
+	return t.batches[chainId][len(t.batches[chainId])-1]
 }
 
 func (t *testSystemAdapter) Sign(data []byte) []byte {
@@ -207,7 +247,7 @@ func (t *testSystemAdapter) CheckSig(data []byte, src uint64, sig []byte) error 
 	return nil
 }
 
-func (t *testSystemAdapter) Reconnect(replica uint64) {
+func (t *testSystemAdapter) Reconnect(chainId string, replica uint64) {
 	testLog.Infof("dropping connection from %d to %d", replica, t.id)
 	t.sys.queue.filter(func(e testElem) bool {
 		switch e := e.ev.(type) {
@@ -221,7 +261,7 @@ func (t *testSystemAdapter) Reconnect(replica uint64) {
 	arr := t.sys.adapters[replica].arrivals[t.id] * 10
 	t.sys.enqueue(arr, &testTimer{id: t.id, tf: func() {
 		testLog.Infof("reconnecting %d to %d", replica, t.id)
-		t.sys.adapters[replica].receiver.Connection(t.id)
+		t.sys.adapters[replica].receivers[chainId].Connection(t.id)
 	}})
 }
 
@@ -252,19 +292,28 @@ func (t testElem) String() string {
 }
 
 func newTestSystem(n uint64) *testSystem {
-	return &testSystem{
-		rand:     rand.New(rand.NewSource(0)),
-		adapters: make(map[uint64]*testSystemAdapter),
-		queue:    newCalendarQueue(time.Millisecond/time.Duration(n*n), int(n*n)),
-	}
+	return newTestSystemWithBatchSize(n, defaultMaxReqCount)
+}
+
+func newTestSystemWithBatchSize(n uint64, batchSize uint64) *testSystem {
+	return newTestSystemWithParams(n, batchSize, false)
 }
 
 func newTestSystemWOTimers(n uint64) *testSystem {
+	return newTestSystemWithParams(n, defaultMaxReqCount, true)
+}
+
+func newTestSystemWOTimersWithBatchSize(n uint64, batchSize uint64) *testSystem {
+	return newTestSystemWithParams(n, batchSize, true)
+}
+
+func newTestSystemWithParams(n uint64, batchSize uint64, disableTimers bool) *testSystem {
+	maxReqCount = batchSize
 	return &testSystem{
 		rand:          rand.New(rand.NewSource(0)),
 		adapters:      make(map[uint64]*testSystemAdapter),
 		queue:         newCalendarQueue(time.Millisecond/time.Duration(n*n), int(n*n)),
-		disableTimers: true,
+		disableTimers: disableTimers,
 	}
 }
 

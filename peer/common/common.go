@@ -21,11 +21,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/errors"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 )
@@ -60,14 +61,15 @@ func InitConfig(cmdRoot string) error {
 }
 
 //InitCrypto initializes crypto for this peer
-func InitCrypto(mspMgrConfigDir string) error {
-	// FIXME: when this peer joins a chain, it should get the
-	// config for that chain with the list of MSPs that the
-	// chain uses; however this is not yet implemented.
-	// Additionally, we might always want to have an MSP for
-	// the local test chain so that we can run tests with the
-	// peer CLI. This is why we create this fake setup here for now
-	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+func InitCrypto(mspMgrConfigDir string, localMSPID string) error {
+	// Init the BCCSP
+	var bccspConfig *factory.FactoryOpts
+	err := viper.UnmarshalKey("peer.BCCSP", &bccspConfig)
+	if err != nil {
+		return fmt.Errorf("Could not parse YAML config [%s]", err)
+	}
+
+	err = mspmgmt.LoadLocalMsp(mspMgrConfigDir, bccspConfig, localMSPID)
 	if err != nil {
 		return fmt.Errorf("Fatal error when setting up MSP from directory %s: err %s\n", mspMgrConfigDir, err)
 	}
@@ -79,7 +81,7 @@ func InitCrypto(mspMgrConfigDir string) error {
 func GetEndorserClient() (pb.EndorserClient, error) {
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
-		err = errors.ErrorWithCallstack(errors.Peer, errors.PeerConnectionError, err.Error())
+		err = errors.ErrorWithCallstack("Peer", "ConnectionError", "Error trying to connect to local peer: %s", err.Error())
 		return nil, err
 	}
 	endorserClient := pb.NewEndorserClient(clientConn)
@@ -90,19 +92,21 @@ func GetEndorserClient() (pb.EndorserClient, error) {
 func GetAdminClient() (pb.AdminClient, error) {
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
-		err = errors.ErrorWithCallstack(errors.Peer, errors.PeerConnectionError, err.Error())
+		err = errors.ErrorWithCallstack("Peer", "ConnectionError", "Error trying to connect to local peer: %s", err.Error())
 		return nil, err
 	}
 	adminClient := pb.NewAdminClient(clientConn)
 	return adminClient, nil
 }
 
-// SetErrorLoggingLevel sets the 'error' module's logger to the value in
+// SetLogLevelFromViper sets the log level for 'module' logger to the value in
 // core.yaml
-func SetErrorLoggingLevel() error {
-	viperErrorLoggingLevel := viper.GetString("logging.error")
-	_, err := flogging.SetModuleLevel("error", viperErrorLoggingLevel)
-
+func SetLogLevelFromViper(module string) error {
+	var err error
+	if module != "" {
+		logLevelFromViper := viper.GetString("logging." + module)
+		_, err = flogging.SetModuleLevel(module, logLevelFromViper)
+	}
 	return err
 }
 

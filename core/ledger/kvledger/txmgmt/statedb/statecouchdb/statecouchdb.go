@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2016, 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -34,7 +36,12 @@ var logger = logging.MustGetLogger("statecouchdb")
 
 var compositeKeySep = []byte{0x00}
 var lastKeyIndicator = byte(0x01)
-var savePointKey = []byte{0x00}
+
+var binaryWrapper = "valueBytes"
+
+//TODO querySkip is implemented for future use by query paging
+//currently defaulted to 0 and is not used
+var querySkip = 0
 
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
@@ -60,12 +67,6 @@ func NewVersionedDBProvider() (*VersionedDBProvider, error) {
 func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.VersionedDB, error) {
 	provider.mux.Lock()
 	defer provider.mux.Unlock()
-
-	//TODO determine if couch db naming restrictions should apply to all ledger names
-	//TODO enforce all naming rules
-	// Only lowercase characters (a-z), digits (0-9), and any of the characters _, $, (, ), +, -, and / are allowed. Must begin with a letter.
-	// For now, we'll just lowercase the name within the couch versioned db.
-	dbName = strings.ToLower(dbName)
 
 	vdb := provider.databases[dbName]
 	if vdb == nil {
@@ -117,26 +118,67 @@ func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.Version
 
 	compositeKey := constructCompositeKey(namespace, key)
 
-	docBytes, _, err := vdb.db.ReadDoc(string(compositeKey))
+	couchDoc, _, err := vdb.db.ReadDoc(string(compositeKey))
 	if err != nil {
 		return nil, err
 	}
-	if docBytes == nil {
+	if couchDoc == nil {
 		return nil, nil
 	}
 
-	// trace the first 200 bytes of value only, in case it is huge
-	if docBytes != nil && logger.IsEnabledFor(logging.DEBUG) {
-		if len(docBytes) < 200 {
-			logger.Debugf("getCommittedValueAndVersion() Read docBytes %s", docBytes)
-		} else {
-			logger.Debugf("getCommittedValueAndVersion() Read docBytes %s...", docBytes[0:200])
+	//remove the data wrapper and return the value and version
+	returnValue, returnVersion := removeDataWrapper(couchDoc.JSONValue, couchDoc.Attachments)
+
+	return &statedb.VersionedValue{Value: returnValue, Version: &returnVersion}, nil
+}
+
+func removeDataWrapper(wrappedValue []byte, attachments []*couchdb.Attachment) ([]byte, version.Height) {
+
+	//initialize the return value
+	returnValue := []byte{} // TODO: empty byte or nil
+
+	//initialize a default return version
+	returnVersion := version.NewHeight(0, 0)
+
+	//create a generic map for the json
+	jsonResult := make(map[string]interface{})
+
+	//unmarshal the selected json into the generic map
+	decoder := json.NewDecoder(bytes.NewBuffer(wrappedValue))
+	decoder.UseNumber()
+	_ = decoder.Decode(&jsonResult)
+
+	// handle binary or json data
+	if jsonResult[dataWrapper] == nil && attachments != nil { // binary attachment
+		// get binary data from attachment
+		for _, attachment := range attachments {
+			if attachment.Name == binaryWrapper {
+				returnValue = attachment.AttachmentBytes
+			}
 		}
+	} else {
+		//place the result json in the data key
+		returnMap := jsonResult[dataWrapper]
+
+		//marshal the mapped data.   this wrappers the result in a key named "data"
+		returnValue, _ = json.Marshal(returnMap)
+
 	}
 
-	ver := version.NewHeight(1, 1) //TODO - version hardcoded to 1 is a temporary value for the prototype
+	//create an array containing the blockNum and txNum
+	versionArray := strings.Split(fmt.Sprintf("%s", jsonResult["version"]), ":")
 
-	return &statedb.VersionedValue{Value: docBytes, Version: ver}, nil
+	//convert the blockNum from String to unsigned int
+	blockNum, _ := strconv.ParseUint(versionArray[0], 10, 64)
+
+	//convert the txNum from String to unsigned int
+	txNum, _ := strconv.ParseUint(versionArray[1], 10, 64)
+
+	//create the version based on the blockNum and txNum
+	returnVersion = version.NewHeight(blockNum, txNum)
+
+	return returnValue, *returnVersion
+
 }
 
 // GetStateMultipleKeys implements method in VersionedDB interface
@@ -159,12 +201,15 @@ func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 // endKey is exclusive
 func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
 
+	//Get the querylimit from core.yaml
+	queryLimit := ledgerconfig.GetQueryLimit()
+
 	compositeStartKey := constructCompositeKey(namespace, startKey)
 	compositeEndKey := constructCompositeKey(namespace, endKey)
 	if endKey == "" {
 		compositeEndKey[len(compositeEndKey)-1] = lastKeyIndicator
 	}
-	queryResult, err := vdb.db.ReadDocRange(string(compositeStartKey), string(compositeEndKey), 1000, 0)
+	queryResult, err := vdb.db.ReadDocRange(string(compositeStartKey), string(compositeEndKey), queryLimit, querySkip)
 	if err != nil {
 		logger.Debugf("Error calling ReadDocRange(): %s\n", err.Error())
 		return nil, err
@@ -175,12 +220,18 @@ func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey str
 }
 
 // ExecuteQuery implements method in VersionedDB interface
-func (vdb *VersionedDB) ExecuteQuery(query string) (statedb.ResultsIterator, error) {
+func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIterator, error) {
 
-	//TODO - limit is currently set at 1000,  eventually this will need to be changed
-	//to reflect a config option and potentially return an exception if the threshold is exceeded
-	// skip (paging) is not utilized by fabric
-	queryResult, err := vdb.db.QueryDocuments(query, 1000, 0)
+	//Get the querylimit from core.yaml
+	queryLimit := ledgerconfig.GetQueryLimit()
+
+	queryString, err := ApplyQueryWrapper(namespace, query, queryLimit, 0)
+	if err != nil {
+		logger.Debugf("Error calling ApplyQueryWrapper(): %s\n", err.Error())
+		return nil, err
+	}
+
+	queryResult, err := vdb.db.QueryDocuments(queryString)
 	if err != nil {
 		logger.Debugf("Error calling QueryDocuments(): %s\n", err.Error())
 		return nil, err
@@ -192,51 +243,48 @@ func (vdb *VersionedDB) ExecuteQuery(query string) (statedb.ResultsIterator, err
 // ApplyUpdates implements method in VersionedDB interface
 func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
 
-	for ck, vv := range batch.KVs {
-		compositeKey := constructCompositeKey(ck.Namespace, ck.Key)
-		logger.Debugf("applying key=%#v, versionedValue=%#v", ck, vv)
+	namespaces := batch.GetUpdatedNamespaces()
+	for _, ns := range namespaces {
+		updates := batch.GetUpdates(ns)
+		for k, vv := range updates {
+			compositeKey := constructCompositeKey(ns, k)
+			logger.Debugf("Channel [%s]: Applying key=[%#v]", vdb.dbName, compositeKey)
 
-		// TODO add delete logic for couch using this approach from stateleveldb - convert nils to deletes
-		/*		if vv.Value == nil {
-					levelBatch.Delete(compositeKey)
-				} else {
-					levelBatch.Put(compositeKey, encodeValue(vv.Value, vv.Version))
+			//convert nils to deletes
+			if vv.Value == nil {
+
+				vdb.db.DeleteDoc(string(compositeKey), "")
+
+			} else {
+				couchDoc := &couchdb.CouchDoc{}
+
+				//Check to see if the value is a valid JSON
+				//If this is not a valid JSON, then store as an attachment
+				if couchdb.IsJSON(string(vv.Value)) {
+					// Handle it as json
+					couchDoc.JSONValue = addVersionAndChainCodeID(vv.Value, ns, vv.Version)
+				} else { // if the data is not JSON, save as binary attachment in Couch
+
+					attachment := &couchdb.Attachment{}
+					attachment.AttachmentBytes = vv.Value
+					attachment.ContentType = "application/octet-stream"
+					attachment.Name = binaryWrapper
+					attachments := append([]*couchdb.Attachment{}, attachment)
+
+					couchDoc.Attachments = attachments
+					couchDoc.JSONValue = addVersionAndChainCodeID(nil, ns, vv.Version)
 				}
-		*/
 
-		if couchdb.IsJSON(string(vv.Value)) {
-
-			// SaveDoc using couchdb client and use JSON format
-			rev, err := vdb.db.SaveDoc(string(compositeKey), "", vv.Value, nil)
-			if err != nil {
-				logger.Errorf("Error during Commit(): %s\n", err.Error())
-				return err
+				// SaveDoc using couchdb client and use attachment to persist the binary data
+				rev, err := vdb.db.SaveDoc(string(compositeKey), "", couchDoc)
+				if err != nil {
+					logger.Errorf("Error during Commit(): %s\n", err.Error())
+					return err
+				}
+				if rev != "" {
+					logger.Debugf("Saved document revision number: %s\n", rev)
+				}
 			}
-			if rev != "" {
-				logger.Debugf("Saved document revision number: %s\n", rev)
-			}
-
-		} else { // if the data is not JSON, save as binary attachment in Couch
-
-			//Create an attachment structure and load the bytes
-			attachment := &couchdb.Attachment{}
-			attachment.AttachmentBytes = vv.Value
-			attachment.ContentType = "application/octet-stream"
-			attachment.Name = "valueBytes"
-
-			attachments := []couchdb.Attachment{}
-			attachments = append(attachments, *attachment)
-
-			// SaveDoc using couchdb client and use attachment to persist the binary data
-			rev, err := vdb.db.SaveDoc(string(compositeKey), "", nil, attachments)
-			if err != nil {
-				logger.Errorf("Error during Commit(): %s\n", err.Error())
-				return err
-			}
-			if rev != "" {
-				logger.Debugf("Saved document revision number: %s\n", rev)
-			}
-
 		}
 	}
 
@@ -248,6 +296,33 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 	}
 
 	return nil
+}
+
+//addVersionAndChainCodeID adds keys for version and chaincodeID to the JSON value
+func addVersionAndChainCodeID(value []byte, chaincodeID string, version *version.Height) []byte {
+
+	//create a version mapping
+	jsonMap := map[string]interface{}{"version": fmt.Sprintf("%v:%v", version.BlockNum, version.TxNum)}
+
+	//add the chaincodeID
+	jsonMap["chaincodeid"] = chaincodeID
+
+	//Add the wrapped data if the value is not null
+	if value != nil {
+
+		//create a new genericMap
+		rawJSON := (*json.RawMessage)(&value)
+
+		//add the rawJSON to the map
+		jsonMap[dataWrapper] = rawJSON
+
+	}
+
+	//marshal the data to a byte array
+	returnJSON, _ := json.Marshal(jsonMap)
+
+	return returnJSON
+
 }
 
 // Savepoint docid (key) for couchdb
@@ -292,7 +367,7 @@ func (vdb *VersionedDB) recordSavepoint(height *version.Height) error {
 	}
 
 	// SaveDoc using couchdb client and use JSON format
-	_, err = vdb.db.SaveDoc(savepointDocID, "", savepointDocJSON, nil)
+	_, err = vdb.db.SaveDoc(savepointDocID, "", &couchdb.CouchDoc{JSONValue: savepointDocJSON, Attachments: nil})
 	if err != nil {
 		logger.Errorf("Failed to save the savepoint to DB %s\n", err.Error())
 		return err
@@ -311,22 +386,22 @@ func (vdb *VersionedDB) recordSavepoint(height *version.Height) error {
 func (vdb *VersionedDB) GetLatestSavePoint() (*version.Height, error) {
 
 	var err error
-	savepointJSON, _, err := vdb.db.ReadDoc(savepointDocID)
+	couchDoc, _, err := vdb.db.ReadDoc(savepointDocID)
 	if err != nil {
 		logger.Errorf("Failed to read savepoint data %s\n", err.Error())
-		return &version.Height{BlockNum: 0, TxNum: 0}, err
+		return nil, err
 	}
 
-	// ReadDoc() not found (404) will result in nil response, in these cases return height 0
-	if savepointJSON == nil {
-		return &version.Height{BlockNum: 0, TxNum: 0}, nil
+	// ReadDoc() not found (404) will result in nil response, in these cases return height nil
+	if couchDoc == nil || couchDoc.JSONValue == nil {
+		return nil, nil
 	}
 
 	savepointDoc := &couchSavepointData{}
-	err = json.Unmarshal(savepointJSON, &savepointDoc)
+	err = json.Unmarshal(couchDoc.JSONValue, &savepointDoc)
 	if err != nil {
 		logger.Errorf("Failed to unmarshal savepoint data %s\n", err.Error())
-		return &version.Height{BlockNum: 0, TxNum: 0}, err
+		return nil, err
 	}
 
 	return &version.Height{BlockNum: savepointDoc.BlockNum, TxNum: savepointDoc.TxNum}, nil
@@ -366,10 +441,12 @@ func (scanner *kvScanner) Next() (statedb.QueryResult, error) {
 
 	_, key := splitCompositeKey([]byte(selectedKV.ID))
 
-	//TODO - change hardcoded version (1,1) when version header is available in CouchDB
+	//remove the data wrapper and return the value and version
+	returnValue, returnVersion := removeDataWrapper(selectedKV.Value, selectedKV.Attachments)
+
 	return &statedb.VersionedKV{
 		CompositeKey:   statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
-		VersionedValue: statedb.VersionedValue{Value: selectedKV.Value, Version: version.NewHeight(1, 1)}}, nil
+		VersionedValue: statedb.VersionedValue{Value: returnValue, Version: &returnVersion}}, nil
 }
 
 func (scanner *kvScanner) Close() {
@@ -397,12 +474,12 @@ func (scanner *queryScanner) Next() (statedb.QueryResult, error) {
 
 	namespace, key := splitCompositeKey([]byte(selectedResultRecord.ID))
 
-	//TODO - change hardcoded version (1,1) when version support is available in CouchDB
-	return &statedb.VersionedQueryRecord{
-		Namespace: namespace,
-		Key:       key,
-		Version:   version.NewHeight(1, 1),
-		Record:    selectedResultRecord.Value}, nil
+	//remove the data wrapper and return the value and version
+	returnValue, returnVersion := removeDataWrapper(selectedResultRecord.Value, selectedResultRecord.Attachments)
+
+	return &statedb.VersionedKV{
+		CompositeKey:   statedb.CompositeKey{Namespace: namespace, Key: key},
+		VersionedValue: statedb.VersionedValue{Value: returnValue, Version: &returnVersion}}, nil
 }
 
 func (scanner *queryScanner) Close() {

@@ -21,28 +21,28 @@ package simplebft
 // On connection, we send our latest (weak) checkpoint, and we expect
 // to receive one from replica.
 func (s *SBFT) Connection(replica uint64) {
-	batch := *s.sys.LastBatch()
+	batch := *s.sys.LastBatch(s.chainId)
 	batch.Payloads = nil // don't send the big payload
 	hello := &Hello{Batch: &batch}
 	if s.isPrimary() && s.activeView && s.lastNewViewSent != nil {
 		hello.NewView = s.lastNewViewSent
 	}
-	s.sys.Send(&Msg{&Msg_Hello{hello}}, replica)
+	s.sys.Send(s.chainId, &Msg{&Msg_Hello{hello}}, replica)
 
 	svc := s.replicaState[s.id].signedViewchange
 	if svc != nil {
-		s.sys.Send(&Msg{&Msg_ViewChange{svc}}, replica)
+		s.sys.Send(s.chainId, &Msg{&Msg_ViewChange{svc}}, replica)
 	}
 
 	// A reconnecting replica can play forward its blockchain to
-	// the batch listed in the hello message.  However, the
-	// currently in-flight batch will not be reflected in the
+	// the batches listed in the hello message.  However, the
+	// currently in-flight batches will not be reflected in the
 	// Hello message, nor will all messages be present to actually
-	// commit the in-flight batch at the reconnecting replica.
+	// commit the in-flight batches at the reconnecting replica.
 	//
 	// Therefore we also send the most recent (pre)prepare,
 	// commit, checkpoint so that the reconnecting replica can
-	// catch up on the in-flight batch.
+	// catch up on the in-flight batches.
 
 	batchheader, err := s.checkBatch(&batch, false, true)
 	if err != nil {
@@ -51,31 +51,36 @@ func (s *SBFT) Connection(replica uint64) {
 
 	if s.cur.subject.Seq.Seq > batchheader.Seq && s.activeView {
 		if s.isPrimary() {
-			s.sys.Send(&Msg{&Msg_Preprepare{s.cur.preprep}}, replica)
+			s.sys.Send(s.chainId, &Msg{&Msg_Preprepare{s.cur.preprep}}, replica)
 		} else {
-			s.sys.Send(&Msg{&Msg_Prepare{&s.cur.subject}}, replica)
+			s.sys.Send(s.chainId, &Msg{&Msg_Prepare{&s.cur.subject}}, replica)
 		}
 		if s.cur.prepared {
-			s.sys.Send(&Msg{&Msg_Commit{&s.cur.subject}}, replica)
+			s.sys.Send(s.chainId, &Msg{&Msg_Commit{&s.cur.subject}}, replica)
 		}
 		if s.cur.committed {
-			s.sys.Send(&Msg{&Msg_Checkpoint{s.makeCheckpoint()}}, replica)
+			s.sys.Send(s.chainId, &Msg{&Msg_Checkpoint{s.makeCheckpoint()}}, replica)
 		}
 	}
 }
 
 func (s *SBFT) handleHello(h *Hello, src uint64) {
 	bh, err := s.checkBatch(h.Batch, false, true)
-	log.Debugf("replica %d: got hello for batch %d from replica %d", s.id, bh.Seq, src)
+	log.Debugf("replica %d: got hello for batches %d from replica %d", s.id, bh.Seq, src)
 
 	if err != nil {
-		log.Warningf("replica %d: invalid hello batch from %d: %s", s.id, src, err)
+		log.Warningf("replica %d: invalid hello batches from %d: %s", s.id, src, err)
 		return
 	}
 
-	if s.sys.LastBatch().DecodeHeader().Seq < bh.Seq {
-		log.Debugf("replica %d: delivering batch %d after hello from replica %d", s.id, bh.Seq, src)
-		s.deliverBatch(h.Batch)
+	if s.sys.LastBatch(s.chainId).DecodeHeader().Seq < bh.Seq {
+		log.Debugf("replica %d: delivering batches %d after hello from replica %d", s.id, bh.Seq, src)
+		blockOK, committers := s.getCommittersFromBatch(h.Batch)
+		if blockOK {
+			s.deliverBatch(h.Batch, committers)
+		} else {
+			log.Debugf("replica %d: we got a hello from %d with an erroneous block", s.id, src)
+		}
 	}
 
 	s.handleNewView(h.NewView, src)

@@ -87,7 +87,7 @@ func (mp *mockProducerImpl) init(cp ChainPartition, offset int64) {
 		// on that chain partition gives you blob #offset.
 		mp.testFillWithBlocks(cp, offset-1)
 	} else {
-		panic(fmt.Errorf("Out of range offset (seek number) given to producer: %d", offset))
+		logger.Panicf("Out of range offset (seek number) given to producer: %d", offset)
 	}
 }
 

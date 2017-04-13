@@ -20,16 +20,24 @@ import (
 	"fmt"
 	"testing"
 
+	"os"
+
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/spf13/viper"
 )
+
+func TestMain(m *testing.M) {
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/ledgermgmt")
+	os.Exit(m.Run())
+}
 
 func TestLedgerMgmt(t *testing.T) {
 	InitializeTestEnv()
 	defer CleanupTestEnv()
 
 	numLedgers := 10
-	ledgers := make([]ledger.ValidatedLedger, 10)
+	ledgers := make([]ledger.PeerLedger, 10)
 	for i := 0; i < numLedgers; i++ {
 		l, _ := CreateLedger(constructTestLedgerID(i))
 		ledgers[i] = l

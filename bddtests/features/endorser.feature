@@ -3,9 +3,7 @@
 #
 # Tags that can be used and will affect test internals:
 #  @doNotDecompose will NOT decompose the named compose_yaml after scenario ends.  Useful for setting up environment and reviewing after scenario.
-#  @chaincodeImagesUpToDate use this if all scenarios chaincode images are up to date, and do NOT require building.  BE SURE!!!
 
-#@chaincodeImagesUpToDate
 @endorser
 Feature: Endorser
     As a application developer

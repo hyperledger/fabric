@@ -17,8 +17,8 @@ limitations under the License.
 package blockcutter
 
 import (
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/op/go-logging"
@@ -29,11 +29,22 @@ var logger = logging.MustGetLogger("orderer/common/blockcutter")
 // Receiver defines a sink for the ordered broadcast messages
 type Receiver interface {
 	// Ordered should be invoked sequentially as messages are ordered
-	// If the message is a valid normal message and does not fill the batch, nil, nil, true is returned
-	// If the message is a valid normal message and fills a batch, the batch, committers, true is returned
-	// If the message is a valid special message (like a config message) it terminates the current batch
-	// and returns the current batch and committers (if it is not empty), plus a second batch containing the special transaction and commiter, and true
-	// If the ordered message is determined to be invalid, then nil, nil, false is returned
+	// If the current message valid, and no batches need to be cut:
+	//   - Ordered will return nil, nil, and true (indicating ok).
+	// If the current message valid, and batches need to be cut:
+	//   - Ordered will return 1 or 2 batches of messages, 1 or 2 batches of committers, and true (indicating ok).
+	// If the current message is invalid:
+	//   - Ordered will return nil, nil, and false (to indicate not ok).
+	//
+	// Given a valid message, if the current message needs to be isolated (as determined during filtering).
+	//   - Ordered will return:
+	//     * The pending batch of (if not empty), and a second batch containing only the isolated message.
+	//     * The corresponding batches of committers.
+	//     * true (indicating ok).
+	// Otherwise, given a valid message, the pending batch, if not empty, will be cut and returned if:
+	//   - The current message needs to be isolated (as determined during filtering).
+	//   - The current message will cause the pending batch size in bytes to exceed BatchSize.PreferredMaxBytes.
+	//   - After adding the current message to the pending batch, the message count has reached BatchSize.MaxMessageCount.
 	Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Committer, bool)
 
 	// Cut returns the current batch and starts a new one
@@ -41,14 +52,15 @@ type Receiver interface {
 }
 
 type receiver struct {
-	sharedConfigManager sharedconfig.Manager
-	filters             *filter.RuleSet
-	curBatch            []*cb.Envelope
-	batchComs           []filter.Committer
+	sharedConfigManager   config.Orderer
+	filters               *filter.RuleSet
+	pendingBatch          []*cb.Envelope
+	pendingBatchSizeBytes uint32
+	pendingCommitters     []filter.Committer
 }
 
-// NewReceiverImpl creates a Receiver implementation based on the given sharedconfig manager and filters
-func NewReceiverImpl(sharedConfigManager sharedconfig.Manager, filters *filter.RuleSet) Receiver {
+// NewReceiverImpl creates a Receiver implementation based on the given configtxorderer manager and filters
+func NewReceiverImpl(sharedConfigManager config.Orderer, filters *filter.RuleSet) Receiver {
 	return &receiver{
 		sharedConfigManager: sharedConfigManager,
 		filters:             filters,
@@ -56,11 +68,22 @@ func NewReceiverImpl(sharedConfigManager sharedconfig.Manager, filters *filter.R
 }
 
 // Ordered should be invoked sequentially as messages are ordered
-// If the message is a valid normal message and does not fill the batch, nil, nil, true is returned
-// If the message is a valid normal message and fills a batch, the batch, committers, true is returned
-// If the message is a valid special message (like a config message) it terminates the current batch
-// and returns the current batch and committers (if it is not empty), plus a second batch containing the special transaction and commiter, and true
-// If the ordered message is determined to be invalid, then nil, nil, false is returned
+// If the current message valid, and no batches need to be cut:
+//   - Ordered will return nil, nil, and true (indicating ok).
+// If the current message valid, and batches need to be cut:
+//   - Ordered will return 1 or 2 batches of messages, 1 or 2 batches of committers, and true (indicating ok).
+// If the current message is invalid:
+//   - Ordered will return nil, nil, and false (to indicate not ok).
+//
+// Given a valid message, if the current message needs to be isolated (as determined during filtering).
+//   - Ordered will return:
+//     * The pending batch of (if not empty), and a second batch containing only the isolated message.
+//     * The corresponding batches of committers.
+//     * true (indicating ok).
+// Otherwise, given a valid message, the pending batch, if not empty, will be cut and returned if:
+//   - The current message needs to be isolated (as determined during filtering).
+//   - The current message will cause the pending batch size in bytes to exceed BatchSize.PreferredMaxBytes.
+//   - After adding the current message to the pending batch, the message count has reached BatchSize.MaxMessageCount.
 func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Committer, bool) {
 	// The messages must be filtered a second time in case configuration has changed since the message was received
 	committer, err := r.filters.Apply(msg)
@@ -69,39 +92,77 @@ func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Commi
 		return nil, nil, false
 	}
 
-	if committer.Isolated() {
-		logger.Debugf("Found message which requested to be isolated, cutting into its own block")
-		firstBatch := r.curBatch
-		r.curBatch = nil
-		firstComs := r.batchComs
-		r.batchComs = nil
-		secondBatch := []*cb.Envelope{msg}
-		if firstBatch == nil {
-			return [][]*cb.Envelope{secondBatch}, [][]filter.Committer{[]filter.Committer{committer}}, true
+	messageSizeBytes := messageSizeBytes(msg)
+
+	if committer.Isolated() || messageSizeBytes > r.sharedConfigManager.BatchSize().PreferredMaxBytes {
+
+		if committer.Isolated() {
+			logger.Debugf("Found message which requested to be isolated, cutting into its own batch")
+		} else {
+			logger.Debugf("The current message, with %v bytes, is larger than the preferred batch size of %v bytes and will be isolated.", messageSizeBytes, r.sharedConfigManager.BatchSize().PreferredMaxBytes)
 		}
-		return [][]*cb.Envelope{firstBatch, secondBatch}, [][]filter.Committer{firstComs, []filter.Committer{committer}}, true
+
+		messageBatches := [][]*cb.Envelope{}
+		committerBatches := [][]filter.Committer{}
+
+		// cut pending batch, if it has any messages
+		if len(r.pendingBatch) > 0 {
+			messageBatch, committerBatch := r.Cut()
+			messageBatches = append(messageBatches, messageBatch)
+			committerBatches = append(committerBatches, committerBatch)
+		}
+
+		// create new batch with single message
+		messageBatches = append(messageBatches, []*cb.Envelope{msg})
+		committerBatches = append(committerBatches, []filter.Committer{committer})
+
+		return messageBatches, committerBatches, true
+	}
+
+	messageBatches := [][]*cb.Envelope{}
+	committerBatches := [][]filter.Committer{}
+
+	messageWillOverflowBatchSizeBytes := r.pendingBatchSizeBytes+messageSizeBytes > r.sharedConfigManager.BatchSize().PreferredMaxBytes
+
+	if messageWillOverflowBatchSizeBytes {
+		logger.Debugf("The current message, with %v bytes, will overflow the pending batch of %v bytes.", messageSizeBytes, r.pendingBatchSizeBytes)
+		logger.Debugf("Pending batch would overflow if current message is added, cutting batch now.")
+		messageBatch, committerBatch := r.Cut()
+		messageBatches = append(messageBatches, messageBatch)
+		committerBatches = append(committerBatches, committerBatch)
 	}
 
 	logger.Debugf("Enqueuing message into batch")
-	r.curBatch = append(r.curBatch, msg)
-	r.batchComs = append(r.batchComs, committer)
+	r.pendingBatch = append(r.pendingBatch, msg)
+	r.pendingBatchSizeBytes += messageSizeBytes
+	r.pendingCommitters = append(r.pendingCommitters, committer)
 
-	if uint32(len(r.curBatch)) < r.sharedConfigManager.BatchSize().MaxMessageCount {
+	if uint32(len(r.pendingBatch)) >= r.sharedConfigManager.BatchSize().MaxMessageCount {
+		logger.Debugf("Batch size met, cutting batch")
+		messageBatch, committerBatch := r.Cut()
+		messageBatches = append(messageBatches, messageBatch)
+		committerBatches = append(committerBatches, committerBatch)
+	}
+
+	// return nils instead of empty slices
+	if len(messageBatches) == 0 {
 		return nil, nil, true
 	}
 
-	logger.Debugf("Batch size met, creating block")
-	newBatch := r.curBatch
-	newComs := r.batchComs
-	r.curBatch = nil
-	return [][]*cb.Envelope{newBatch}, [][]filter.Committer{newComs}, true
+	return messageBatches, committerBatches, true
+
 }
 
 // Cut returns the current batch and starts a new one
 func (r *receiver) Cut() ([]*cb.Envelope, []filter.Committer) {
-	batch := r.curBatch
-	r.curBatch = nil
-	committers := r.batchComs
-	r.batchComs = nil
+	batch := r.pendingBatch
+	r.pendingBatch = nil
+	committers := r.pendingCommitters
+	r.pendingCommitters = nil
+	r.pendingBatchSizeBytes = 0
 	return batch, committers
+}
+
+func messageSizeBytes(message *cb.Envelope) uint32 {
+	return uint32(len(message.Payload) + len(message.Signature))
 }

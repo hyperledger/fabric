@@ -17,6 +17,7 @@ limitations under the License.
 package statecouchdb
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -24,40 +25,38 @@ import (
 )
 
 //Basic setup to test couch
-var connectURL = "localhost:5984"
-var badConnectURL = "localhost:5990"
+var connectURL = "couchdb:5984"
+var badConnectURL = "couchdb:5990"
 var username = ""
 var password = ""
 
-// TestVDBEnv provides a level db backed versioned db for testing
+// TestVDBEnv provides a couch db backed versioned db for testing
 type TestVDBEnv struct {
 	t          testing.TB
 	DBProvider statedb.VersionedDBProvider
 }
 
-// NewTestVDBEnv instantiates and new level db backed TestVDB
+// NewTestVDBEnv instantiates and new couch db backed TestVDB
 func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 	t.Logf("Creating new TestVDBEnv")
 
 	dbProvider, _ := NewVersionedDBProvider()
 	testVDBEnv := &TestVDBEnv{t, dbProvider}
-	testVDBEnv.Cleanup()
+	// No cleanup for new test environment.  Need to cleanup per test for each DB used in the test.
 	return testVDBEnv
 }
 
 // Cleanup drops the test couch databases and closes the db provider
-func (env *TestVDBEnv) Cleanup() {
+func (env *TestVDBEnv) Cleanup(dbName string) {
 	env.t.Logf("Cleaningup TestVDBEnv")
-	cleanupDB("testdb")
-	cleanupDB("testdb1")
-	cleanupDB("testdb2")
+	cleanupDB(strings.ToLower(dbName))
 	env.DBProvider.Close()
 
 }
 func cleanupDB(dbName string) {
 	//create a new connection
 	couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password)
-	db, _ := couchdb.CreateCouchDatabase(*couchInstance, dbName)
+	db := couchdb.CouchDatabase{CouchInstance: *couchInstance, DBName: dbName}
 	//drop the test database
 	db.DropDatabase()
 }

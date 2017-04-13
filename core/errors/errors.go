@@ -18,9 +18,9 @@ package errors
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	logging "github.com/op/go-logging"
@@ -28,12 +28,6 @@ import (
 
 // MaxCallStackLength is the maximum length of the stored call stack
 const MaxCallStackLength = 30
-
-// ComponentCode shows the originating component/module
-type ComponentCode string
-
-// ReasonCode for low level error description
-type ReasonCode string
 
 var errorLogger = logging.MustGetLogger("error")
 
@@ -43,27 +37,9 @@ type CallStackError interface {
 	error
 	GetStack() string
 	GetErrorCode() string
-	GetComponentCode() ComponentCode
-	GetReasonCode() ReasonCode
+	GetComponentCode() string
+	GetReasonCode() string
 	Message() string
-	MessageIn(string) string
-}
-
-type errormap map[string]map[string]map[string]string
-
-var emap errormap
-
-const language string = "en"
-
-func init() {
-	initErrors()
-}
-
-func initErrors() {
-	e := json.Unmarshal([]byte(errorMapping), &emap)
-	if e != nil {
-		panic(e)
-	}
 }
 
 type callstack []uintptr
@@ -75,8 +51,9 @@ type callstack []uintptr
 // create something more useful
 type hlError struct {
 	stack         callstack
-	componentcode ComponentCode
-	reasoncode    ReasonCode
+	componentcode string
+	reasoncode    string
+	message       string
 	args          []interface{}
 	stackGetter   func(callstack) string
 }
@@ -90,8 +67,9 @@ func newHLError(debug bool) *hlError {
 }
 
 func setupHLError(e *hlError, debug bool) {
-	e.componentcode = Utility
-	e.reasoncode = UtilityUnknownError
+	e.componentcode = "UTILITY"
+	e.reasoncode = "UNKNOWNERROR"
+	e.message = "An unknown error occurred."
 	if !debug {
 		e.stackGetter = noopGetStack
 		return
@@ -113,59 +91,71 @@ func (h *hlError) GetStack() string {
 	return h.stackGetter(h.stack)
 }
 
-// GetComponentCode returns the Return code
-func (h *hlError) GetComponentCode() ComponentCode {
+// GetComponentCode returns the component name
+func (h *hlError) GetComponentCode() string {
 	return h.componentcode
 }
 
-// GetReasonCode returns the Reason code
-func (h *hlError) GetReasonCode() ReasonCode {
+// GetReasonCode returns the reason code - i.e. why the error occurred
+func (h *hlError) GetReasonCode() string {
 	return h.reasoncode
 }
 
 // GetErrorCode returns a formatted error code string
 func (h *hlError) GetErrorCode() string {
-	return fmt.Sprintf("%s-%s", h.componentcode, h.reasoncode)
+	return fmt.Sprintf("%s_%s", h.componentcode, h.reasoncode)
 }
 
 // Message returns the corresponding error message for this error in default
 // language.
-// TODO - figure out the best way to read in system language instead of using
-// hard-coded default language
 func (h *hlError) Message() string {
-	// initialize logging level for errors from core.yaml. it can also be set
-	// for code running on the peer dynamically via CLI using
-	// "peer logging setlevel error <log-level>"
-	errorLogLevelString, _ := flogging.GetModuleLevel("error")
-	if errorLogLevelString == logging.DEBUG.String() {
-		messageWithCallStack := fmt.Sprintf(emap[fmt.Sprintf("%s", h.componentcode)][fmt.Sprintf("%s", h.reasoncode)][language], h.args...) + "\n" + h.GetStack()
-		return messageWithCallStack
+	message := h.GetErrorCode() + " - " + fmt.Sprintf(h.message, h.args...)
+
+	// check that the error has a callstack before proceeding
+	if h.GetStack() != "" {
+		// initialize logging level for errors from core.yaml. it can also be set
+		// for code running on the peer dynamically via CLI using
+		// "peer logging setlevel error <log-level>"
+		errorLogLevelString := flogging.GetModuleLevel("error")
+
+		if errorLogLevelString == logging.DEBUG.String() {
+			message = appendCallStack(message, h.GetStack())
+		}
 	}
-	return fmt.Sprintf(emap[fmt.Sprintf("%s", h.componentcode)][fmt.Sprintf("%s", h.reasoncode)][language], h.args...)
+
+	return message
 }
 
-// MessageIn returns the corresponding error message for this error in 'language'
-func (h *hlError) MessageIn(language string) string {
-	return fmt.Sprintf(emap[fmt.Sprintf("%s", h.componentcode)][fmt.Sprintf("%s", h.reasoncode)][language], h.args...)
+func appendCallStack(message string, callstack string) string {
+	messageWithCallStack := message + "\n" + callstack
+
+	return messageWithCallStack
 }
 
 // Error creates a CallStackError using a specific Component Code and
 // Reason Code (no callstack is recorded)
-func Error(componentcode ComponentCode, reasoncode ReasonCode, args ...interface{}) CallStackError {
-	return newCustomError(componentcode, reasoncode, false, args...)
+func Error(componentcode string, reasoncode string, message string, args ...interface{}) CallStackError {
+	return newCustomError(componentcode, reasoncode, message, false, args...)
 }
 
 // ErrorWithCallstack creates a CallStackError using a specific Component Code and
 // Reason Code and fills its callstack
-func ErrorWithCallstack(componentcode ComponentCode, reasoncode ReasonCode, args ...interface{}) CallStackError {
-	return newCustomError(componentcode, reasoncode, true, args...)
+func ErrorWithCallstack(componentcode string, reasoncode string, message string, args ...interface{}) CallStackError {
+	return newCustomError(componentcode, reasoncode, message, true, args...)
 }
 
-func newCustomError(componentcode ComponentCode, reasoncode ReasonCode, generateStack bool, args ...interface{}) CallStackError {
+func newCustomError(componentcode string, reasoncode string, message string, generateStack bool, args ...interface{}) CallStackError {
 	e := &hlError{}
 	setupHLError(e, generateStack)
-	e.componentcode = componentcode
-	e.reasoncode = reasoncode
+	if componentcode != "" {
+		e.componentcode = strings.ToUpper(componentcode)
+	}
+	if reasoncode != "" {
+		e.reasoncode = strings.ToUpper(reasoncode)
+	}
+	if message != "" {
+		e.message = message
+	}
 	e.args = args
 	return e
 }

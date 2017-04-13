@@ -7,4 +7,4 @@ services:
             file: docker-compose-orderer-base.yml
             service: ordererBase
         environment:
-            - ORDERER_GENESIS_ORDERERTYPE=solo
+            - CONFIGTX_ORDERER_ORDERERTYPE=solo

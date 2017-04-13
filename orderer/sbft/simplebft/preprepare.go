@@ -19,9 +19,11 @@ package simplebft
 import (
 	"bytes"
 	"time"
+
+	"github.com/hyperledger/fabric/orderer/common/filter"
 )
 
-func (s *SBFT) sendPreprepare(batch []*Request) {
+func (s *SBFT) sendPreprepare(batch []*Request, committers []filter.Committer) {
 	seq := s.nextSeq()
 
 	data := make([][]byte, len(batch))
@@ -29,16 +31,17 @@ func (s *SBFT) sendPreprepare(batch []*Request) {
 		data[i] = req.Payload
 	}
 
-	lasthash := hash(s.sys.LastBatch().Header)
+	lasthash := hash(s.sys.LastBatch(s.chainId).Header)
 
 	m := &Preprepare{
 		Seq:   &seq,
 		Batch: s.makeBatch(seq.Seq, lasthash, data),
 	}
 
-	s.sys.Persist(preprepared, m)
+	s.sys.Persist(s.chainId, preprepared, m)
 	s.broadcast(&Msg{&Msg_Preprepare{m}})
-	s.handleCheckedPreprepare(m)
+	log.Infof("replica %d: sendPreprepare", s.id)
+	s.handleCheckedPreprepare(m, committers)
 }
 
 func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
@@ -60,30 +63,37 @@ func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
 		return
 	}
 	if pp.Batch == nil {
-		log.Infof("replica %d: preprepare without batch", s.id)
+		log.Infof("replica %d: preprepare without batches", s.id)
 		return
 	}
 
 	batchheader, err := s.checkBatch(pp.Batch, true, false)
 	if err != nil || batchheader.Seq != pp.Seq.Seq {
-		log.Infof("replica %d: preprepare %v batch head inconsistent from %d: %s", s.id, pp.Seq, src, err)
+		log.Infof("replica %d: preprepare %v batches head inconsistent from %d: %s", s.id, pp.Seq, src, err)
 		return
 	}
 
-	prevhash := s.sys.LastBatch().Hash()
+	prevhash := s.sys.LastBatch(s.chainId).Hash()
 	if !bytes.Equal(batchheader.PrevHash, prevhash) {
-		log.Infof("replica %d: preprepare batch prev hash does not match expected %s, got %s", s.id, hash2str(batchheader.PrevHash), hash2str(prevhash))
+		log.Infof("replica %d: preprepare batches prev hash does not match expected %s, got %s", s.id, hash2str(batchheader.PrevHash), hash2str(prevhash))
 		return
 	}
 
-	s.handleCheckedPreprepare(pp)
+	blockOK, committers := s.getCommittersFromBatch(pp.Batch)
+	if !blockOK {
+		log.Debugf("Replica %d found Byzantine block in preprepare, Seq: %d View: %d", s.id, pp.Seq.Seq, pp.Seq.View)
+		s.sendViewChange()
+		return
+	}
+	log.Infof("replica %d: handlePrepare", s.id)
+	s.handleCheckedPreprepare(pp, committers)
 }
 
-func (s *SBFT) acceptPreprepare(pp *Preprepare) {
+func (s *SBFT) acceptPreprepare(pp *Preprepare, committers []filter.Committer) {
 	sub := Subject{Seq: pp.Seq, Digest: pp.Batch.Hash()}
 
 	log.Infof("replica %d: accepting preprepare for %v, %x", s.id, sub.Seq, sub.Digest)
-	s.sys.Persist(preprepared, pp)
+	s.sys.Persist(s.chainId, preprepared, pp)
 
 	s.cur = reqInfo{
 		subject:    sub,
@@ -92,11 +102,12 @@ func (s *SBFT) acceptPreprepare(pp *Preprepare) {
 		prep:       make(map[uint64]*Subject),
 		commit:     make(map[uint64]*Subject),
 		checkpoint: make(map[uint64]*Checkpoint),
+		committers: committers,
 	}
 }
 
-func (s *SBFT) handleCheckedPreprepare(pp *Preprepare) {
-	s.acceptPreprepare(pp)
+func (s *SBFT) handleCheckedPreprepare(pp *Preprepare, committers []filter.Committer) {
+	s.acceptPreprepare(pp, committers)
 	if !s.isPrimary() {
 		s.sendPrepare()
 		s.processBacklog()

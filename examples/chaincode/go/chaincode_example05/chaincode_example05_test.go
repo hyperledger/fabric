@@ -33,9 +33,9 @@ func jsonResponse(name string, value string) string {
 }
 
 func checkInit(t *testing.T, stub *shim.MockStub, args [][]byte) {
-	_, err := stub.MockInit("1", args)
-	if err != nil {
-		fmt.Println("Init failed", err)
+	res := stub.MockInit("1", args)
+	if res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
 	}
 }
@@ -53,25 +53,25 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, expect string) {
 }
 
 func checkQuery(t *testing.T, stub *shim.MockStub, args [][]byte, expect string) {
-	bytes, err := stub.MockInvoke("1", args)
-	if err != nil {
-		fmt.Println("Query", args, "failed", err)
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		fmt.Println("Query", args, "failed", string(res.Message))
 		t.FailNow()
 	}
-	if bytes == nil {
+	if res.Payload == nil {
 		fmt.Println("Query", args, "failed to get result")
 		t.FailNow()
 	}
-	if string(bytes) != expect {
-		fmt.Println("Query result ", string(bytes), "was not", expect, "as expected")
+	if string(res.Payload) != expect {
+		fmt.Println("Query result ", string(res.Payload), "was not", expect, "as expected")
 		t.FailNow()
 	}
 }
 
 func checkInvoke(t *testing.T, stub *shim.MockStub, args [][]byte) {
-	_, err := stub.MockInvoke("1", args)
-	if err != nil {
-		fmt.Println("Invoke", args, "failed", err)
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.FailNow()
 	}
 }

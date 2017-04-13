@@ -32,7 +32,10 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	ccutil "github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	logging "github.com/op/go-logging"
 )
+
+var logger = logging.MustGetLogger("java/hash")
 
 func getCodeFromHTTP(path string) (codegopath string, err error) {
 
@@ -59,20 +62,15 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 //NOTE: for dev mode, user builds and runs chaincode manually. The name provided
 //by the user is equivalent to the path. This method will treat the name
 //as codebytes and compute the hash from it. ie, user cannot run the chaincode
-//with the same (name, ctor, args)
+//with the same (name, input, args)
 func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	if spec == nil {
 		return "", errors.New("Cannot collect chaincode files from nil spec")
 	}
 
-	chaincodeID := spec.ChaincodeID
+	chaincodeID := spec.ChaincodeId
 	if chaincodeID == nil || chaincodeID.Path == "" {
 		return "", errors.New("Cannot collect chaincode files from empty chaincode path")
-	}
-
-	ctor := spec.CtorMsg
-	if ctor == nil || len(ctor.Args) == 0 {
-		return "", errors.New("Cannot collect chaincode files from empty ctor")
 	}
 
 	codepath := chaincodeID.Path
@@ -103,11 +101,18 @@ func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, erro
 		return "", fmt.Errorf("code does not exist %s", err)
 	}
 
-	ctorbytes, err := proto.Marshal(ctor)
-	if err != nil {
-		return "", fmt.Errorf("Error marshalling constructor: %s", err)
+	var hash []byte
+
+	//install will not have inputs and we don't have to collect hash for it
+	if spec.Input == nil || len(spec.Input.Args) == 0 {
+		logger.Debugf("not using input for hash computation for %v ", chaincodeID)
+	} else {
+		inputbytes, err2 := proto.Marshal(spec.Input)
+		if err2 != nil {
+			return "", fmt.Errorf("Error marshalling constructor: %s", err)
+		}
+		hash = util.GenerateHashFromSignature(codepath, inputbytes)
 	}
-	hash := util.GenerateHashFromSignature(codepath, ctorbytes)
 
 	hash, err = ccutil.HashFilesInDir("", codepath, hash, tw)
 	if err != nil {

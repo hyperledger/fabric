@@ -27,10 +27,16 @@
 			"revisionTime": "2016-08-07T16:35:39Z"
 		},
 		{
-			"checksumSHA1": "a/iaWA9b8WJcVD1sN4fHUDRf0Uk=",
+			"checksumSHA1": "BG0cnhTKUG9+WsLTySEeV6eiNyo=",
+			"path": "github.com/Knetic/govaluate",
+			"revision": "3cc7c7de92e74a87c657e957e003600723db32f6",
+			"revisionTime": "2016-12-26T20:32:30Z"
+		},
+		{
+			"checksumSHA1": "lMwkVVL8s9jMaeUXb/4FaIpUfAk=",
 			"path": "github.com/Shopify/sarama",
-			"revision": "af0513c4d97979eb876d201391fac6475ec08268",
-			"revisionTime": "2016-09-21T18:20:11Z",
+			"revision": "3efb95dad8fbcd194d3c06f7b9c40eabeb719b36",
+			"revisionTime": "2017-03-12T22:14:04Z",
 			"tree": true
 		},
 		{
@@ -276,9 +282,21 @@
 			"revisionTime": "2015-07-31T22:42:12+02:00"
 		},
 		{
+			"checksumSHA1": "rdXfB1cKQi3dvOggO/w9QgPK01w=",
+			"path": "github.com/manudrijvers/amcl/go",
+			"revision": "765b9c1a68e0d5b22dc09dc7fa7bb46b69b700a8",
+			"revisionTime": "2017-01-30T13:11:20Z"
+		},
+		{
 			"path": "github.com/mattn/go-sqlite3",
 			"revision": "5651a9d9d49ec25811d08220ee972080378d52ea",
 			"revisionTime": "2015-11-06T23:54:04+09:00"
+		},
+		{
+			"checksumSHA1": "yOED17cgEIwsqkhg16Y0xiTHiZ0=",
+			"path": "github.com/miekg/pkcs11",
+			"revision": "2c6cdd29253e84b5f0f1bec7d77cce36f12d15bd",
+			"revisionTime": "2016-12-07T19:14:20Z"
 		},
 		{
 			"path": "github.com/mitchellh/mapstructure",
@@ -295,6 +313,18 @@
 			"path": "github.com/opencontainers/runc/libcontainer/user",
 			"revision": "8033a839758ab9a4ed4fb590d1bb005a1c5a164e",
 			"revisionTime": "2016-07-26T03:30:17Z"
+		},
+		{
+			"checksumSHA1": "WmrPO1ovmQ7t7hs9yZGbr2SAoM4=",
+			"path": "github.com/pierrec/lz4",
+			"revision": "90290f74b1b4d9c097f0a3b3c7eba2ef3875c699",
+			"revisionTime": "2017-02-26T14:26:21Z"
+		},
+		{
+			"checksumSHA1": "IT4sX58d+e8osXHV5U6YCSdB/uE=",
+			"path": "github.com/pierrec/xxHash/xxHash32",
+			"revision": "5a004441f897722c627870a981d02b29924215fa",
+			"revisionTime": "2016-01-12T16:53:51Z"
 		},
 		{
 			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
@@ -549,9 +579,10 @@
 			"revision": ""
 		},
 		{
+			"checksumSHA1": "0KwOlQV1dNUh9X8t+5s7nX5bqfk=",
 			"path": "gopkg.in/yaml.v2",
-			"revision": "7ad95dd0798a40da1ccdff6dff35fd177b5edf40",
-			"revisionTime": "2015-06-24T11:29:02+01:00"
+			"revision": "a3f3340b5840cee44f372bddb5880fcbc419b46a",
+			"revisionTime": "2017-02-08T14:18:51Z"
 		}
 	],
 	"rootPath": "github.com/hyperledger/fabric"

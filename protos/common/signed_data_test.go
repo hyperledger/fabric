@@ -32,22 +32,22 @@ func marshalOrPanic(msg proto.Message) []byte {
 	return data
 }
 
-func TestNilSignedConfigurationItemAsSignedData(t *testing.T) {
-	var sci *SignedConfigurationItem
-	_, err := sci.AsSignedData()
+func TestNilConfigEnvelopeAsSignedData(t *testing.T) {
+	var ce *ConfigUpdateEnvelope
+	_, err := ce.AsSignedData()
 	if err == nil {
-		t.Fatalf("Should have errored trying to convert a nil signed configuration item to signed data")
+		t.Fatalf("Should have errored trying to convert a nil signed config item to signed data")
 	}
 }
 
-func TestSignedConfigurationItemAsSignedData(t *testing.T) {
-	configItemBytes := []byte("Foo")
+func TestConfigEnvelopeAsSignedData(t *testing.T) {
+	configBytes := []byte("Foo")
 	signatures := [][]byte{[]byte("Signature1"), []byte("Signature2")}
 	identities := [][]byte{[]byte("Identity1"), []byte("Identity2")}
 
-	configSignatures := make([]*ConfigurationSignature, len(signatures))
+	configSignatures := make([]*ConfigSignature, len(signatures))
 	for i := range configSignatures {
-		configSignatures[i] = &ConfigurationSignature{
+		configSignatures[i] = &ConfigSignature{
 			SignatureHeader: marshalOrPanic(&SignatureHeader{
 				Creator: identities[i],
 			}),
@@ -55,12 +55,12 @@ func TestSignedConfigurationItemAsSignedData(t *testing.T) {
 		}
 	}
 
-	sci := &SignedConfigurationItem{
-		ConfigurationItem: configItemBytes,
-		Signatures:        configSignatures,
+	ce := &ConfigUpdateEnvelope{
+		ConfigUpdate: configBytes,
+		Signatures:   configSignatures,
 	}
 
-	signedData, err := sci.AsSignedData()
+	signedData, err := ce.AsSignedData()
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -69,7 +69,7 @@ func TestSignedConfigurationItemAsSignedData(t *testing.T) {
 		if !bytes.Equal(sigData.Identity, identities[i]) {
 			t.Errorf("Expected identity to match at index %d", i)
 		}
-		if !bytes.Equal(sigData.Data, append(configItemBytes, configSignatures[i].SignatureHeader...)) {
+		if !bytes.Equal(sigData.Data, append(configSignatures[i].SignatureHeader, configBytes...)) {
 			t.Errorf("Expected signature over concatenation of config item bytes and signature header")
 		}
 		if !bytes.Equal(sigData.Signature, signatures[i]) {
@@ -89,12 +89,16 @@ func TestNilEnvelopeAsSignedData(t *testing.T) {
 func TestEnvelopeAsSignedData(t *testing.T) {
 	identity := []byte("Foo")
 	signature := []byte("Bar")
+
+	shdrbytes, err := proto.Marshal(&SignatureHeader{Creator: identity})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	env := &Envelope{
 		Payload: marshalOrPanic(&Payload{
 			Header: &Header{
-				SignatureHeader: &SignatureHeader{
-					Creator: identity,
-				},
+				SignatureHeader: shdrbytes,
 			},
 		}),
 		Signature: signature,

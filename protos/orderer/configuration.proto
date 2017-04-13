@@ -16,9 +16,8 @@ limitations under the License.
 
 syntax = "proto3";
 
-import "common/common.proto";
-
 option go_package = "github.com/hyperledger/fabric/protos/orderer";
+option java_package = "org.hyperledger.fabric.protos.orderer";
 
 package orderer;
 
@@ -40,6 +39,9 @@ message BatchSize {
     // The byte count of the serialized messages in a batch cannot
     // exceed this value.
     uint32 absoluteMaxBytes = 2;
+    // The byte count of the serialized messages in a batch should not
+    // exceed this value.
+    uint32 preferredMaxBytes = 3;
 }
 
 message BatchTimeout {
@@ -59,25 +61,13 @@ message CreationPolicy {
     // The name of the policy which should be used to validate the creation of
     // this chain
     string policy = 1;
-
-    // The hash of the concatenation of remaining configuration item bytes
-    bytes digest = 2;
 }
 
-// IngressPolicy is the name of the policy which incoming Broadcast messages are filtered against
-message IngressPolicy {
-    string name = 1;
-}
-
-// EgressPolicy is the name of the policy which incoming Deliver messages are filtered against
-message EgressPolicy {
-    string name = 1;
-}
-
-message ChainCreators {
-    // A list of policies, any of which may be specified as the chain creation
-    // policy in a chain creation request
-    repeated string policies = 1;
+// ChainCreationPolicyNames is the set of policies which may be invoked for chain creation
+message ChainCreationPolicyNames {
+    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
+    // because implementing referential policies in a general way is difficult, and dangerous
+    repeated string names = 1;
 }
 
 // Carries a list of bootstrap brokers, i.e. this is not the exclusive set of
@@ -86,4 +76,9 @@ message KafkaBrokers {
     // Each broker here should be identified using the (IP|host):port notation,
     // e.g. 127.0.0.1:7050, or localhost:7050 are valid entries
     repeated string brokers = 1;
+}
+
+// ChannelRestrictions is the mssage which conveys restrictions on channel creation for an orderer
+message ChannelRestrictions {
+    uint64 max_count = 1; // The max count of channels to allow to be created, a value of 0 indicates no limit
 }

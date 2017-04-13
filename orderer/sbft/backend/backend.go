@@ -40,7 +40,9 @@ import (
 	"encoding/gob"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/orderer/rawledger"
+	"github.com/hyperledger/fabric/orderer/common/filter"
+	commonfilter "github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"
 	"github.com/hyperledger/fabric/orderer/sbft/persist"
 	s "github.com/hyperledger/fabric/orderer/sbft/simplebft"
@@ -55,24 +57,30 @@ const metadataLen = 2
 var logger = logging.MustGetLogger("backend")
 
 type Backend struct {
-	consensus s.Receiver
-	conn      *connection.Manager
+	conn        *connection.Manager
+	lock        sync.Mutex
+	peers       map[uint64]chan<- *s.MultiChainMsg
+	queue       chan Executable
+	persistence *persist.Persist
 
-	lock  sync.Mutex
-	peers map[uint64]chan<- *s.Msg
-
-	self     *PeerInfo
+	self *PeerInfo
+	// address to PeerInfo mapping
 	peerInfo map[string]*PeerInfo
 
-	queue chan Executable
-
-	persistence *persist.Persist
-	ledger      rawledger.ReadWriter
-
-	lastBatch *s.Batch
+	// chainId to instance mapping
+	consensus   map[string]s.Receiver
+	lastBatches map[string]*s.Batch
+	supports    map[string]multichain.ConsenterSupport
 }
 
 type consensusConn Backend
+
+type StackConfig struct {
+	ListenAddr string
+	CertFile   string
+	KeyFile    string
+	DataDir    string
+}
 
 type PeerInfo struct {
 	info connection.PeerInfo
@@ -93,12 +101,14 @@ func (pi peerInfoSlice) Swap(i, j int) {
 	pi[i], pi[j] = pi[j], pi[i]
 }
 
-func NewBackend(peers map[string][]byte, conn *connection.Manager, rl rawledger.ReadWriter, persist *persist.Persist) (*Backend, error) {
+func NewBackend(peers map[string][]byte, conn *connection.Manager, persist *persist.Persist) (*Backend, error) {
 	c := &Backend{
-		conn:     conn,
-		peers:    make(map[uint64]chan<- *s.Msg),
-		peerInfo: make(map[string]*PeerInfo),
-		ledger:   rl,
+		conn:        conn,
+		peers:       make(map[uint64]chan<- *s.MultiChainMsg),
+		peerInfo:    make(map[string]*PeerInfo),
+		supports:    make(map[string]multichain.ConsenterSupport),
+		consensus:   make(map[string]s.Receiver),
+		lastBatches: make(map[string]*s.Batch),
 	}
 
 	var peerInfo []*PeerInfo
@@ -135,17 +145,27 @@ func NewBackend(peers map[string][]byte, conn *connection.Manager, rl rawledger.
 	}
 	RegisterConsensusServer(conn.Server, (*consensusConn)(c))
 	c.persistence = persist
-	c.lastBatch = &s.Batch{Header: nil, Signatures: nil, Payloads: [][]byte{}}
 	c.queue = make(chan Executable)
 	go c.run()
 	return c, nil
 }
 
-func (c *Backend) GetMyId() uint64 {
-	return c.self.id
+// GetMyId returns the ID of the backend in the SFTT network (1..N)
+func (b *Backend) GetMyId() uint64 {
+	return b.self.id
 }
 
-func (c *Backend) connectWorker(peer *PeerInfo) {
+// Enqueue enqueues an Envelope for a chainId for ordering, marshalling it first
+func (b *Backend) Enqueue(chainID string, env *cb.Envelope) bool {
+	requestbytes, err := proto.Marshal(env)
+	if err != nil {
+		return false
+	}
+	b.enqueueRequest(chainID, requestbytes)
+	return true
+}
+
+func (b *Backend) connectWorker(peer *PeerInfo) {
 	timeout := 1 * time.Second
 
 	delay := time.After(0)
@@ -157,7 +177,7 @@ func (c *Backend) connectWorker(peer *PeerInfo) {
 		delay = time.After(timeout)
 
 		logger.Infof("connecting to replica %d (%s)", peer.id, peer.info)
-		conn, err := c.conn.DialPeer(peer.info, grpc.WithBlock(), grpc.WithTimeout(timeout))
+		conn, err := b.conn.DialPeer(peer.info, grpc.WithBlock(), grpc.WithTimeout(timeout))
 		if err != nil {
 			logger.Warningf("could not connect to replica %d (%s): %s", peer.id, peer.info, err)
 			continue
@@ -182,26 +202,26 @@ func (c *Backend) connectWorker(peer *PeerInfo) {
 				logger.Warningf("consensus stream with replica %d (%s) broke: %v", peer.id, peer.info, err)
 				break
 			}
-			c.enqueueForReceive(msg, peer.id)
+			b.enqueueForReceive(msg.ChainID, msg.Msg, peer.id)
 		}
 	}
 }
 
-func (b *Backend) enqueueConnection(peerid uint64) {
+func (b *Backend) enqueueConnection(chainID string, peerid uint64) {
 	go func() {
-		b.queue <- &connectionEvent{peerid: peerid}
+		b.queue <- &connectionEvent{chainID: chainID, peerid: peerid}
 	}()
 }
 
-func (b *Backend) enqueueRequest(request []byte) {
+func (b *Backend) enqueueRequest(chainID string, request []byte) {
 	go func() {
-		b.queue <- &requestEvent{req: request}
+		b.queue <- &requestEvent{chainId: chainID, req: request}
 	}()
 }
 
-func (b *Backend) enqueueForReceive(msg *s.Msg, src uint64) {
+func (b *Backend) enqueueForReceive(chainID string, msg *s.Msg, src uint64) {
 	go func() {
-		b.queue <- &msgEvent{msg: msg, src: src}
+		b.queue <- &msgEvent{chainId: chainID, msg: msg, src: src}
 	}()
 }
 
@@ -221,7 +241,58 @@ func (b *Backend) run() {
 	}
 }
 
-// gRPC interface
+// AddSbftPeer adds a new SBFT peer for the given chainId using the given support and configuration
+func (b *Backend) AddSbftPeer(chainID string, support multichain.ConsenterSupport, config *s.Config) (*s.SBFT, error) {
+	b.supports[chainID] = support
+	return s.New(b.GetMyId(), chainID, config, b)
+}
+
+func (b *Backend) Validate(chainID string, req *s.Request) ([][]*s.Request, [][]filter.Committer, bool) {
+	// ([][]*cb.Envelope, [][]filter.Committer, bool) {
+	// If the message is a valid normal message and fills a batch, the batch, committers, true is returned
+	// If the message is a valid special message (like a config message) it terminates the current batch
+	// and returns the current batch and committers (if it is not empty), plus a second batch containing the special transaction and commiter, and true
+	env := &cb.Envelope{}
+	err := proto.Unmarshal(req.Payload, env)
+	if err != nil {
+		logger.Panicf("Request format error: %s", err)
+	}
+	envbatch, committers, accepted := b.supports[chainID].BlockCutter().Ordered(env)
+	if accepted {
+		if len(envbatch) == 1 {
+			rb1 := toRequestBatch(envbatch[0])
+			return [][]*s.Request{rb1}, committers, true
+		}
+		if len(envbatch) == 2 {
+			rb1 := toRequestBatch(envbatch[0])
+			rb2 := toRequestBatch(envbatch[1])
+			return [][]*s.Request{rb1, rb2}, committers, true
+		}
+
+		return nil, nil, true
+	}
+	return nil, nil, false
+}
+
+func (b *Backend) Cut(chainID string) ([]*s.Request, []filter.Committer) {
+	envbatch, committers := b.supports[chainID].BlockCutter().Cut()
+	return toRequestBatch(envbatch), committers
+}
+
+func toRequestBatch(envelopes []*cb.Envelope) []*s.Request {
+	rqs := make([]*s.Request, 0, len(envelopes))
+	for _, e := range envelopes {
+		requestbytes, err := proto.Marshal(e)
+		if err != nil {
+			logger.Panicf("Cannot marshal envelope: %s", err)
+		}
+		rq := &s.Request{Payload: requestbytes}
+		rqs = append(rqs, rq)
+	}
+	return rqs
+}
+
+// Consensus implements the SBFT consensus gRPC interface
 func (c *consensusConn) Consensus(_ *Handshake, srv Consensus_ConsensusServer) error {
 	pi := connection.GetPeerInfo(srv)
 	peer, ok := c.peerInfo[pi.Fingerprint()]
@@ -232,7 +303,7 @@ func (c *consensusConn) Consensus(_ *Handshake, srv Consensus_ConsensusServer) e
 	}
 	logger.Infof("connection from replica %d (%s)", peer.id, pi)
 
-	ch := make(chan *s.Msg)
+	ch := make(chan *s.MultiChainMsg)
 	c.lock.Lock()
 	if oldch, ok := c.peers[peer.id]; ok {
 		logger.Debugf("replacing connection from replica %d", peer.id)
@@ -240,7 +311,10 @@ func (c *consensusConn) Consensus(_ *Handshake, srv Consensus_ConsensusServer) e
 	}
 	c.peers[peer.id] = ch
 	c.lock.Unlock()
-	((*Backend)(c)).enqueueConnection(peer.id)
+
+	for chainID, _ := range c.supports {
+		((*Backend)(c)).enqueueConnection(chainID, peer.id)
+	}
 
 	var err error
 	for msg := range ch {
@@ -257,49 +331,55 @@ func (c *consensusConn) Consensus(_ *Handshake, srv Consensus_ConsensusServer) e
 	return err
 }
 
-func (c *Backend) Broadcast(msg *s.Msg) error {
-	c.lock.Lock()
-	for _, ch := range c.peers {
+// Unicast sends to all external SBFT peers
+func (b *Backend) Broadcast(msg *s.MultiChainMsg) error {
+	b.lock.Lock()
+	for _, ch := range b.peers {
 		ch <- msg
 	}
-	c.lock.Unlock()
+	b.lock.Unlock()
 	return nil
 }
 
-func (c *Backend) Unicast(msg *s.Msg, dest uint64) error {
-	c.lock.Lock()
-	ch, ok := c.peers[dest]
-	c.lock.Unlock()
+// Unicast sends to a specific external SBFT peer identified by chainId and dest
+func (b *Backend) Unicast(chainID string, msg *s.Msg, dest uint64) error {
+	b.lock.Lock()
+	ch, ok := b.peers[dest]
+	b.lock.Unlock()
 
 	if !ok {
 		err := fmt.Errorf("peer not found: %v", dest)
 		logger.Debug(err)
 		return err
 	}
-	ch <- msg
+	ch <- &s.MultiChainMsg{Msg: msg, ChainID: chainID}
 	return nil
 }
 
-func (t *Backend) SetReceiver(recv s.Receiver) {
-	t.consensus = recv
+// AddReceiver adds a receiver instance for a given chainId
+func (b *Backend) AddReceiver(chainId string, recv s.Receiver) {
+	b.consensus[chainId] = recv
+	b.lastBatches[chainId] = &s.Batch{Header: nil, Signatures: nil, Payloads: [][]byte{}}
 }
 
-func (t *Backend) Send(msg *s.Msg, dest uint64) {
-	if dest == t.self.id {
-		t.enqueueForReceive(msg, t.self.id)
+// Send sends to a specific SBFT peer identified by chainId and dest
+func (b *Backend) Send(chainID string, msg *s.Msg, dest uint64) {
+	if dest == b.self.id {
+		b.enqueueForReceive(chainID, msg, b.self.id)
 		return
 	}
-	t.Unicast(msg, dest)
+	b.Unicast(chainID, msg, dest)
 }
 
-func (t *Backend) Timer(d time.Duration, tf func()) s.Canceller {
+// Timer starts a timer
+func (b *Backend) Timer(d time.Duration, tf func()) s.Canceller {
 	tm := &Timer{tf: tf, execute: true}
-	t.initTimer(tm, d)
+	b.initTimer(tm, d)
 	return tm
 }
 
-// Deliver writes the ledger
-func (t *Backend) Deliver(batch *s.Batch) {
+// Deliver writes a block
+func (b *Backend) Deliver(chainId string, batch *s.Batch, committers []commonfilter.Committer) {
 	blockContents := make([]*cb.Envelope, 0, len(batch.Payloads))
 	for _, p := range batch.Payloads {
 		envelope := &cb.Envelope{}
@@ -310,29 +390,37 @@ func (t *Backend) Deliver(batch *s.Batch) {
 			logger.Warningf("Payload cannot be unmarshalled.")
 		}
 	}
-	block := rawledger.CreateNextBlock(t.ledger, blockContents)
+	block := b.supports[chainId].CreateNextBlock(blockContents)
+
+	// TODO SBFT needs to use Rawledger's structures and signatures over the Block.
 	// This a quick and dirty solution to make it work.
-	// SBFT needs to use Rawledger's structures and signatures over the Block.
-	block.Metadata.Metadata[headerIndex] = batch.Header
-	block.Metadata.Metadata[signaturesIndex] = encodeSignatures(batch.Signatures)
-	t.lastBatch = batch
-	t.ledger.Append(block)
+	block.Metadata = &cb.BlockMetadata{}
+	metadata := make([][]byte, metadataLen)
+	metadata[headerIndex] = batch.Header
+	metadata[signaturesIndex] = encodeSignatures(batch.Signatures)
+	block.Metadata.Metadata = metadata
+	b.lastBatches[chainId] = batch
+	b.supports[chainId].WriteBlock(block, committers, nil)
 }
 
-func (t *Backend) Persist(key string, data proto.Message) {
+// Persist persists data identified by a chainId and a key
+func (b *Backend) Persist(chainId string, key string, data proto.Message) {
+	compk := fmt.Sprintf("chain-%s-%s", chainId, key)
 	if data == nil {
-		t.persistence.DelState(key)
+		b.persistence.DelState(compk)
 	} else {
 		bytes, err := proto.Marshal(data)
 		if err != nil {
 			panic(err)
 		}
-		t.persistence.StoreState(key, bytes)
+		b.persistence.StoreState(compk, bytes)
 	}
 }
 
-func (t *Backend) Restore(key string, out proto.Message) bool {
-	val, err := t.persistence.ReadState(key)
+// Restore loads persisted data identified by chainId and key
+func (b *Backend) Restore(chainId string, key string, out proto.Message) bool {
+	compk := fmt.Sprintf("chain-%s-%s", chainId, key)
+	val, err := b.persistence.ReadState(compk)
 	if err != nil {
 		return false
 	}
@@ -340,26 +428,31 @@ func (t *Backend) Restore(key string, out proto.Message) bool {
 	return (err == nil)
 }
 
-func (t *Backend) LastBatch() *s.Batch {
-	return t.lastBatch
+// LastBatch returns the last batch for a given chain identified by its ID
+func (b *Backend) LastBatch(chainId string) *s.Batch {
+	return b.lastBatches[chainId]
 }
 
-func (t *Backend) Sign(data []byte) []byte {
-	return Sign(t.conn.Cert.PrivateKey, data)
+// Sign signs a given data
+func (b *Backend) Sign(data []byte) []byte {
+	return Sign(b.conn.Cert.PrivateKey, data)
 }
 
-func (t *Backend) CheckSig(data []byte, src uint64, sig []byte) error {
-	leaf := t.conn.Cert.Leaf
+// CheckSig checks a signature
+func (b *Backend) CheckSig(data []byte, src uint64, sig []byte) error {
+	leaf := b.conn.Cert.Leaf
 	if leaf == nil {
 		panic("No public key found: certificate leaf is nil.")
 	}
 	return CheckSig(leaf.PublicKey, data, sig)
 }
 
-func (t *Backend) Reconnect(replica uint64) {
-	t.enqueueConnection(replica)
+// Reconnect requests connection to a replica identified by its ID and chainId
+func (b *Backend) Reconnect(chainId string, replica uint64) {
+	b.enqueueConnection(chainId, replica)
 }
 
+// Sign signs a given data
 func Sign(privateKey crypto.PrivateKey, data []byte) []byte {
 	var err error
 	var encsig []byte
@@ -385,6 +478,7 @@ func Sign(privateKey crypto.PrivateKey, data []byte) []byte {
 	return encsig
 }
 
+// CheckSig checks a signature
 func CheckSig(publicKey crypto.PublicKey, data []byte, sig []byte) error {
 	hash := sha256.Sum256(data)
 	switch p := publicKey.(type) {
@@ -408,20 +502,6 @@ func CheckSig(publicKey crypto.PublicKey, data []byte, sig []byte) error {
 	default:
 		return fmt.Errorf("Unsupported public key type.")
 	}
-}
-
-func getHeader(metadata *cb.BlockMetadata) []byte {
-	if metadata == nil || len(metadata.Metadata) < metadataLen {
-		return nil
-	}
-	return metadata.Metadata[headerIndex]
-}
-
-func getEncodedSignatures(metadata *cb.BlockMetadata) []byte {
-	if metadata == nil || len(metadata.Metadata) < metadataLen {
-		return nil
-	}
-	return metadata.Metadata[signaturesIndex]
 }
 
 func encodeSignatures(signatures map[uint64][]byte) []byte {

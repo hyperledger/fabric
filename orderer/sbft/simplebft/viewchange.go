@@ -38,7 +38,8 @@ func (s *SBFT) sendViewChange() {
 		q = append(q, &s.cur.subject)
 	}
 
-	checkpoint := *s.sys.LastBatch()
+	// TODO fix batches synchronization as we send no payload here
+	checkpoint := *s.sys.LastBatch(s.chainId)
 	checkpoint.Payloads = nil // don't send the big payload
 
 	vc := &ViewChange{
@@ -51,7 +52,7 @@ func (s *SBFT) sendViewChange() {
 	s.viewChangeTimer.Cancel()
 	s.cur.timeout.Cancel()
 
-	s.sys.Persist(viewchange, svc)
+	s.sys.Persist(s.chainId, viewchange, svc)
 	s.broadcast(&Msg{&Msg_ViewChange{svc}})
 }
 

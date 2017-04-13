@@ -20,9 +20,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/crypto/primitives"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/crypto"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -46,7 +45,7 @@ func TestNonceLength(t *testing.T) {
 		t.Fatal(err)
 	}
 	actual := len(n)
-	expected := primitives.NonceSize
+	expected := crypto.NonceSize
 	if actual != expected {
 		t.Fatalf("Expected nonce to be of size %d, got %d instead", expected, actual)
 	}
@@ -115,8 +114,10 @@ func TestExtractPayloadOrPanic(t *testing.T) {
 
 func testPayload() *cb.Payload {
 	return &cb.Payload{
-		Header: MakePayloadHeader(MakeChainHeader(cb.HeaderType_MESSAGE, int32(1), "test", 0), nil),
-		Data:   []byte("test"),
+		Header: MakePayloadHeader(
+			MakeChannelHeader(cb.HeaderType_MESSAGE, int32(1), "test", 0),
+			MakeSignatureHeader([]byte("creator"), []byte("nonce"))),
+		Data: []byte("test"),
 	}
 }
 

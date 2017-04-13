@@ -36,7 +36,7 @@ const (
 	ledgerID = "Default"
 )
 
-var finalLedger ledger.ValidatedLedger
+var peerLedger ledger.PeerLedger
 var app *example.App
 var committer *example.Committer
 var consenter *example.Consenter
@@ -54,12 +54,12 @@ func init() {
 	cleanup()
 	ledgermgmt.Initialize()
 	var err error
-	finalLedger, err = ledgermgmt.CreateLedger(ledgerID)
+	peerLedger, err = ledgermgmt.CreateLedger(ledgerID)
 	if err != nil {
 		panic(fmt.Errorf("Error in NewKVLedger(): %s", err))
 	}
-	app = example.ConstructAppInstance(finalLedger)
-	committer = example.ConstructCommitter(finalLedger)
+	app = example.ConstructAppInstance(peerLedger)
+	committer = example.ConstructCommitter(peerLedger)
 	consenter = example.ConstructConsenter()
 }
 
@@ -102,7 +102,7 @@ func initApp() {
 		accounts[3]: 100})
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx)
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
 	logger.Debug("Exiting initApp()")
@@ -119,7 +119,7 @@ func transferFunds() {
 	rawBlock := consenter.ConstructBlock(tx1, tx2)
 
 	// act as committing peer to commit the Raw Block
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
 	logger.Debug("Exiting transferFunds")
@@ -139,7 +139,7 @@ func tryDoubleSpend() {
 	tx2, err := app.TransferFunds("account1", "account4", 50)
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx1, tx2)
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
 	logger.Debug("Exiting tryDoubleSpend()")
@@ -148,11 +148,11 @@ func tryDoubleSpend() {
 func printBlocksInfo(block *common.Block) {
 	logger.Debug("Entering printBlocksInfo()")
 	// Read invalid transactions filter
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	numOfInvalid := 0
 	// Count how many transaction indeed invalid
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			numOfInvalid++
 		}
 	}

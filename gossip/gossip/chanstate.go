@@ -19,17 +19,13 @@ package gossip
 import (
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
-	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
-	"github.com/hyperledger/fabric/gossip/gossip/pull"
-	"github.com/hyperledger/fabric/gossip/proto"
-	"github.com/hyperledger/fabric/gossip/util"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
 type channelState struct {
@@ -94,19 +90,18 @@ func (ga *gossipAdapterImpl) GetConf() channel.Config {
 }
 
 // Gossip gossips a message
-func (ga *gossipAdapterImpl) Gossip(msg *proto.GossipMessage) {
+func (ga *gossipAdapterImpl) Gossip(msg *proto.SignedGossipMessage) {
 	ga.gossipServiceImpl.emitter.Add(msg)
+}
+
+func (ga *gossipAdapterImpl) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
+	ga.gossipServiceImpl.comm.Send(msg, peers...)
 }
 
 // ValidateStateInfoMessage returns error if a message isn't valid
 // nil otherwise
-func (ga *gossipAdapterImpl) ValidateStateInfoMessage(msg *proto.GossipMessage) error {
-	return ga.gossipServiceImpl.validateStateInfoMsg(msg.GetStateInfo())
-}
-
-// OrgByPeerIdentity extracts the organization identifier from a peer's identity
-func (ga *gossipAdapterImpl) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {
-	return ga.gossipServiceImpl.secAdvisor.OrgByPeerIdentity(identity)
+func (ga *gossipAdapterImpl) ValidateStateInfoMessage(msg *proto.SignedGossipMessage) error {
+	return ga.gossipServiceImpl.validateStateInfoMsg(msg)
 }
 
 // GetOrgOfPeer returns the organization identifier of a certain peer
@@ -114,52 +109,12 @@ func (ga *gossipAdapterImpl) GetOrgOfPeer(PKIID common.PKIidType) api.OrgIdentit
 	return ga.gossipServiceImpl.getOrgOfPeer(PKIID)
 }
 
-// Adapter enables the gossipChannel
-// to communicate with gossipServiceImpl.
-
-// Adapter connects a GossipChannel to the gossip implementation
-type Adapter interface {
-
-	// GetConf returns the configuration
-	// of the GossipChannel
-	GetConf() Config
-
-	// Gossip gossips a message
-	Gossip(*proto.GossipMessage)
-
-	// DeMultiplex publishes a message to subscribers
-	DeMultiplex(interface{})
-
-	// GetMembership returns the peers that are considered alive
-	GetMembership() []discovery.NetworkMember
-
-	// Send sends a message to a list of peers
-	Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer)
-
-	// ValidateStateInfoMessage returns error if a message isn't valid
-	// nil otherwise
-	ValidateStateInfoMessage(*proto.GossipMessage) error
-
-	// OrgByPeerIdentity extracts the organization identifier from a peer's identity
-	OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType
-
-	// GetOrgOfPeer returns the organization identifier of a certain peer
-	GetOrgOfPeer(common.PKIidType) api.OrgIdentityType
-}
-
-type gossipChannel struct {
-	Adapter
-	sync.RWMutex
-	shouldGossipStateInfo     int32
-	stopChan                  chan struct{}
-	stateInfoMsg              *proto.GossipMessage
-	orgs                      []api.OrgIdentityType
-	joinMsg                   api.JoinChannelMessage
-	blockMsgStore             msgstore.MessageStore
-	stateInfoMsgStore         msgstore.MessageStore
-	chainID                   common.ChainID
-	blocksPuller              pull.Mediator
-	logger                    *util.Logger
-	stateInfoPublishScheduler *time.Ticker
-	stateInfoRequestScheduler *time.Ticker
+// GetIdentityByPKIID returns an identity of a peer with a certain
+// pkiID, or nil if not found
+func (ga *gossipAdapterImpl) GetIdentityByPKIID(pkiID common.PKIidType) api.PeerIdentityType {
+	identity, err := ga.idMapper.Get(pkiID)
+	if err != nil {
+		return nil
+	}
+	return identity
 }

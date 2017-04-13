@@ -40,14 +40,14 @@ type Signable interface {
 	AsSignedData() ([]*SignedData, error)
 }
 
-// AsSignedData returns the set of signatures for the SignedCOnfigurationItem as SignedData or an error indicating why this was not possible
-func (sci *SignedConfigurationItem) AsSignedData() ([]*SignedData, error) {
-	if sci == nil {
-		return nil, fmt.Errorf("No signatures for nil SignedConfigurationItem")
+// AsSignedData returns the set of signatures for the ConfigUpdateEnvelope as SignedData or an error indicating why this was not possible
+func (ce *ConfigUpdateEnvelope) AsSignedData() ([]*SignedData, error) {
+	if ce == nil {
+		return nil, fmt.Errorf("No signatures for nil SignedConfigItem")
 	}
 
-	result := make([]*SignedData, len(sci.Signatures))
-	for i, configSig := range sci.Signatures {
+	result := make([]*SignedData, len(ce.Signatures))
+	for i, configSig := range ce.Signatures {
 		sigHeader := &SignatureHeader{}
 		err := proto.Unmarshal(configSig.SignatureHeader, sigHeader)
 		if err != nil {
@@ -55,7 +55,7 @@ func (sci *SignedConfigurationItem) AsSignedData() ([]*SignedData, error) {
 		}
 
 		result[i] = &SignedData{
-			Data:      util.ConcatenateBytes(sci.ConfigurationItem, configSig.SignatureHeader),
+			Data:      util.ConcatenateBytes(configSig.SignatureHeader, ce.ConfigUpdate),
 			Identity:  sigHeader.Creator,
 			Signature: configSig.Signature,
 		}
@@ -77,13 +77,19 @@ func (env *Envelope) AsSignedData() ([]*SignedData, error) {
 		return nil, err
 	}
 
-	if payload.Header == nil || payload.Header.SignatureHeader == nil {
-		return nil, fmt.Errorf("Missing Header or SignatureHeader")
+	if payload.Header == nil /* || payload.Header.SignatureHeader == nil */ {
+		return nil, fmt.Errorf("Missing Header")
+	}
+
+	shdr := &SignatureHeader{}
+	err = proto.Unmarshal(payload.Header.SignatureHeader, shdr)
+	if err != nil {
+		return nil, fmt.Errorf("GetSignatureHeaderFromBytes failed, err %s", err)
 	}
 
 	return []*SignedData{&SignedData{
 		Data:      env.Payload,
-		Identity:  payload.Header.SignatureHeader.Creator,
+		Identity:  shdr.Creator,
 		Signature: env.Signature,
 	}}, nil
 }

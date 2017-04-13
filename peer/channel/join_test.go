@@ -43,12 +43,10 @@ func TestJoin(t *testing.T) {
 
 	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		EndorserClient:  mockEndorerClient,
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
+		EndorserClient:   mockEndorerClient,
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
 	}
 
 	cmd := joinCmd(mockCF)
@@ -60,7 +58,7 @@ func TestJoin(t *testing.T) {
 
 	if err := cmd.Execute(); err != nil {
 		t.Fail()
-		t.Errorf("expected join command to succeed")
+		t.Error("expected join command to succeed")
 	}
 }
 
@@ -79,12 +77,10 @@ func TestJoinNonExistentBlock(t *testing.T) {
 
 	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		EndorserClient:  mockEndorerClient,
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
+		EndorserClient:   mockEndorerClient,
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
 	}
 
 	cmd := joinCmd(mockCF)
@@ -96,10 +92,10 @@ func TestJoinNonExistentBlock(t *testing.T) {
 
 	if err := cmd.Execute(); err == nil {
 		t.Fail()
-		t.Errorf("expected join command to fail")
+		t.Error("expected join command to fail")
 	} else if err, _ = err.(GBFileNotFoundErr); err == nil {
 		t.Fail()
-		t.Errorf("expected file not found error")
+		t.Error("expected file not found error")
 	}
 }
 
@@ -121,12 +117,10 @@ func TestBadProposalResponse(t *testing.T) {
 
 	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		EndorserClient:  mockEndorerClient,
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
+		EndorserClient:   mockEndorerClient,
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
 	}
 
 	cmd := joinCmd(mockCF)
@@ -138,9 +132,9 @@ func TestBadProposalResponse(t *testing.T) {
 
 	if err := cmd.Execute(); err == nil {
 		t.Fail()
-		t.Errorf("expected join command to fail")
+		t.Error("expected join command to fail")
 	} else if err, _ = err.(ProposalFailedErr); err == nil {
 		t.Fail()
-		t.Errorf("expected proposal failure error")
+		t.Error("expected proposal failure error")
 	}
 }

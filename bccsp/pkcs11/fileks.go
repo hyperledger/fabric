@@ -16,24 +16,22 @@ limitations under the License.
 package pkcs11
 
 import (
-	"io/ioutil"
-	"os"
-	"sync"
-
-	"errors"
-	"strings"
-
-	"crypto/ecdsa"
+	"bytes"
 	"crypto/rsa"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
 )
 
-// FileBasedKeyStore is a folder-based KeyStore.
+// fileBasedKeyStore is a folder-based KeyStore.
 // Each key is stored in a separated file whose name contains the key's SKI
 // and flags to identity the key's type. All the keys are stored in
 // a folder whose path is provided at initialization time.
@@ -127,8 +125,6 @@ func (ks *FileBasedKeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
 		}
 
 		switch key.(type) {
-		case *ecdsa.PrivateKey:
-			return &ecdsaPrivateKey{key.(*ecdsa.PrivateKey)}, nil
 		case *rsa.PrivateKey:
 			return &rsaPrivateKey{key.(*rsa.PrivateKey)}, nil
 		default:
@@ -142,15 +138,13 @@ func (ks *FileBasedKeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
 		}
 
 		switch key.(type) {
-		case *ecdsa.PublicKey:
-			return &ecdsaPublicKey{key.(*ecdsa.PublicKey)}, nil
 		case *rsa.PublicKey:
 			return &rsaPublicKey{key.(*rsa.PublicKey)}, nil
 		default:
 			return nil, errors.New("Public key type not recognized")
 		}
 	default:
-		return nil, errors.New("Key type not recognized")
+		return ks.searchKeystoreForSKI(ski)
 	}
 }
 
@@ -165,22 +159,6 @@ func (ks *FileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 		return errors.New("Invalid key. It must be different from nil.")
 	}
 	switch k.(type) {
-	case *ecdsaPrivateKey:
-		kk := k.(*ecdsaPrivateKey)
-
-		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.privKey)
-		if err != nil {
-			return fmt.Errorf("Failed storing ECDSA private key [%s]", err)
-		}
-
-	case *ecdsaPublicKey:
-		kk := k.(*ecdsaPublicKey)
-
-		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
-		if err != nil {
-			return fmt.Errorf("Failed storing ECDSA public key [%s]", err)
-		}
-
 	case *rsaPrivateKey:
 		kk := k.(*rsaPrivateKey)
 
@@ -210,6 +188,36 @@ func (ks *FileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	}
 
 	return
+}
+
+func (ks *FileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err error) {
+
+	files, _ := ioutil.ReadDir(ks.path)
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		raw, err := ioutil.ReadFile(filepath.Join(ks.path, f.Name()))
+
+		key, err := utils.PEMtoPrivateKey(raw, ks.pwd)
+		if err != nil {
+			continue
+		}
+
+		switch key.(type) {
+		case *rsa.PrivateKey:
+			k = &rsaPrivateKey{key.(*rsa.PrivateKey)}
+		default:
+			continue
+		}
+
+		if !bytes.Equal(k.SKI(), ski) {
+			continue
+		}
+
+		return k, nil
+	}
+	return nil, errors.New("Key type not recognized")
 }
 
 func (ks *FileBasedKeyStore) getSuffix(alias string) string {
@@ -352,9 +360,10 @@ func (ks *FileBasedKeyStore) createKeyStoreIfNotExists() error {
 	// Check keystore directory
 	ksPath := ks.path
 	missing, err := utils.DirMissingOrEmpty(ksPath)
-	logger.Infof("KeyStore path [%s] missing [%t]: [%s]", ksPath, missing, utils.ErrToString(err))
 
 	if missing {
+		logger.Debugf("KeyStore path [%s] missing [%t]: [%s]", ksPath, missing, utils.ErrToString(err))
+
 		err := ks.createKeyStore()
 		if err != nil {
 			logger.Errorf("Failed creating KeyStore At [%s]: [%s]", ksPath, err.Error())

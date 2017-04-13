@@ -47,7 +47,7 @@ func mockNewBroker(t *testing.T, cp ChainPartition) (Broker, error) {
 
 	broker := sarama.NewBroker(mockBroker.Addr())
 	if err := broker.Open(nil); err != nil {
-		return nil, fmt.Errorf("Cannot connect to mock broker: %s", err)
+		return nil, fmt.Errorf("cannot connect to mock broker: %s", err)
 	}
 
 	return &mockBrockerImpl{

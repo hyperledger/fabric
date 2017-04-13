@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -102,10 +102,10 @@ func updateReceiver(resultch chan byte, errorch chan error, client ab.AtomicBroa
 	dstream.Send(&cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChainHeader: &cb.ChainHeader{
-					ChainID: provisional.TestChainID,
-				},
-				SignatureHeader: &cb.SignatureHeader{},
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId: provisional.TestChainID,
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
 			Data: utils.MarshalOrPanic(&ab.SeekInfo{
 				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
@@ -149,9 +149,9 @@ func broadcastSender(resultch chan byte, errorch chan error, client ab.AtomicBro
 	bs := []byte{0, 1, 2, 3}
 	pl := &cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				ChainID: provisional.TestChainID,
-			},
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelId: provisional.TestChainID,
+			}),
 		},
 		Data: bs,
 	}

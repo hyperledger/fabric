@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"golang.org/x/net/context"
@@ -47,17 +48,19 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 
 	url := "github.com/hyperledger/fabric/examples/ccchecker/chaincodes/newkeyperinvoke"
 
-	chaincodeID := &pb.ChaincodeID{Name: "nkpi", Path: url}
+	chaincodeID := &pb.ChaincodeID{Name: "nkpi", Path: url, Version: "0"}
 
 	args := util.ToChaincodeArgs("init", "")
 
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: args}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
-	cccid := NewCCContext(chainID, "nkpi", "0", "", false, nil)
+	cccid := ccprovider.NewCCContext(chainID, "nkpi", "0", "", false, nil, nil)
 
 	defer theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 
-	_, err = deploy(ctxt, cccid, spec)
+	var nextBlockNumber uint64
+	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
+	nextBlockNumber++
 	if err != nil {
 		t.Fail()
 		t.Logf("Error initializing chaincode %s(%s)", chaincodeID, err)
@@ -84,10 +87,10 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 			args = util.ToChaincodeArgs("get", newkey)
 		}
 
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: args}}
+		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 		//start with a new background
-		_, _, results[qnum], err = invoke(context.Background(), chainID, spec)
+		_, _, results[qnum], err = invoke(context.Background(), chainID, spec, nextBlockNumber)
 
 		if err != nil {
 			errs[qnum] = fmt.Errorf("Error executing <%s>: %s", chaincodeID.Name, err)

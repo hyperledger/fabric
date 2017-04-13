@@ -1,12 +1,12 @@
 version: '2'
 services:
   zookeeper:
-    # Offical Apache ZooKeeper image. See https://hub.docker.com/_/zookeeper/
-    image: zookeeper:3.4.9
+    image: hyperledger/fabric-zookeeper
 
   kafka:
-    build: .
+    image: hyperledger/fabric-kafka
     environment:
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
     depends_on:
       - zookeeper

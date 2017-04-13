@@ -22,15 +22,48 @@ import (
 	"os"
 	"testing"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/localmsp"
+	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/deliverservice"
+	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
+	"github.com/hyperledger/fabric/core/mocks/ccprovider"
+	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/peer/gossip/mcs"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
-
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/mocks/ccprovider"
-	"github.com/hyperledger/fabric/gossip/service"
 )
+
+type mockDeliveryClient struct {
+}
+
+// StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
+// to channel peers.
+func (ds *mockDeliveryClient) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+	return nil
+}
+
+// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
+// to channel peers.
+func (ds *mockDeliveryClient) StopDeliverForChannel(chainID string) error {
+	return nil
+}
+
+// Stop terminates delivery service and closes the connection
+func (*mockDeliveryClient) Stop() {
+
+}
+
+type mockDeliveryClientFactory struct {
+}
+
+func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
+	return &mockDeliveryClient{}, nil
+}
 
 func TestInitialize(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
@@ -57,7 +90,12 @@ func TestCreateChainFromBlock(t *testing.T) {
 	assert.NoError(t, err)
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
-	service.InitGossipService("localhost:13611", grpcServer)
+
+	msptesttools.LoadMSPSetupForTesting("../../msp/sampleconfig")
+
+	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
+	messageCryptoService := mcs.New(&mcs.MockChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
+	service.InitGossipServiceCustomDeliveryFactory(identity, "localhost:13611", grpcServer, &mockDeliveryClientFactory{}, messageCryptoService)
 
 	err = CreateChainFromBlock(block)
 	if err != nil {
@@ -92,6 +130,11 @@ func TestCreateChainFromBlock(t *testing.T) {
 	Initialize(nil)
 
 	SetCurrConfigBlock(block, testChainID)
+
+	channels := GetChannelsInfo()
+	if len(channels) != 1 {
+		t.Fatalf("incorrect number of channels")
+	}
 }
 
 func TestNewPeerClientConnection(t *testing.T) {
