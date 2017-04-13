@@ -1,7 +1,7 @@
 Identity Management (Membership Service)
 ----------------------------------------
 
-* What is unique about the fabric's Membership Service module? 
+* What is unique about the fabric's Membership Service module?
 
 One of the things that makes the Membership Service module stand out from
 the pack is our implementation of the latest advances in cryptography.

@@ -11,19 +11,19 @@ languages such as Go or Java. It is installed and instantiated through
 an SDK or CLI onto a network of Hyperledger Fabric peer nodes, enabling
 interaction with that network's shared ledger.
 
-There are three aspects to chaincode development: 
+There are three aspects to chaincode development:
 
 * Chaincode Interfaces
-* APIs 
+* APIs
 * Chaincode Responses
 
 Chaincode interfaces
 --------------------
 
 A chaincode implements the Chaincode Interface that supports two
-methods: 
+methods:
 
-* ``Init`` 
+* ``Init``
 * ``Invoke``
 
 Init()
@@ -45,10 +45,10 @@ Dependencies
 ------------
 
 The import statement lists a few dependencies for the chaincode to
-compile successfully. 
+compile successfully.
 
 * fmt – contains ``Println`` for debugging/logging.
-* errors – standard go error format. 
+* errors – standard go error format.
 * `shim <https://github.com/hyperledger/fabric/tree/master/core/chaincode/shim>`__ – contains the definitions for the chaincode interface and the chaincode stub, which are required to interact with the ledger.
 
 Chaincode APIs
@@ -80,7 +80,7 @@ The chaincode response comes in the form of a protobuffer.
 
 .. code:: go
 
-    message Response {  
+    message Response {
 
         // A status code that should follow the HTTP status codes.
         int32 status = 1;
@@ -98,22 +98,22 @@ events.
 
 .. code:: go
 
-    messageEvent {  
+    messageEvent {
 
         oneof Event {
 
-        //Register consumer sent event  
+        //Register consumer sent event
         Register register = 1;
 
-        //producer events common.  
-        Block block = 2;  
-        ChaincodeEvent chaincodeEvent = 3;  
+        //producer events common.
+        Block block = 2;
+        ChaincodeEvent chaincodeEvent = 3;
         Rejection rejection = 4;
 
-        //Unregister consumer sent events  
-        Unregister unregister = 5;  
+        //Unregister consumer sent events
+        Unregister unregister = 5;
 
-        }  
+        }
 
     }
 
@@ -121,9 +121,9 @@ events.
 
     messageChaincodeEvent {
 
-        string chaincodeID = 1;  
-        string txID = 2;  
-        string eventName = 3;  
+        string chaincodeID = 1;
+        string txID = 2;
+        string eventName = 3;
         bytes payload = 4;
 
     }

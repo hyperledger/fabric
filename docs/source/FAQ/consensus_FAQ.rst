@@ -1,7 +1,7 @@
 Consensus Algorithm
 -------------------
 
-Which Consensus Algorithm is used in Fabric? 
+Which Consensus Algorithm is used in Fabric?
 
 The fabric is built on a pluggable architecture such that developers can configure
 their deployment with the consensus module that best suits their needs.

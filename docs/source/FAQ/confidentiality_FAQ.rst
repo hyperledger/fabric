@@ -19,7 +19,7 @@ known only to their originators, validators, and authorized auditors.
 Only holders of the secret keys can interpret transaction contents.
 
 * What if none of the stakeholders of a business contract are
-validators? 
+validators?
 
 In some business scenarios, full confidentiality of contract
 logic may be required – such that only contract counterparties and

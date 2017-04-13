@@ -1,7 +1,7 @@
 Coding guidelines
 -----------------
 
-Coding Golang 
+Coding Golang
 ~~~~~~~~~~~~~~
 
 We code in Go™ and strictly follow the `best
@@ -12,7 +12,7 @@ code and fix all errors and warnings: -
 vet <https://golang.org/cmd/vet/>`__ -
 `goimports <https://godoc.org/golang.org/x/tools/cmd/goimports>`__
 
-Generating gRPC code 
+Generating gRPC code
 ---------------------
 
 If you modify any ``.proto`` files, run the following command to
