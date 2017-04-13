@@ -276,41 +276,49 @@ release: $(patsubst %,release/%, $(shell go env GOOS)-$(shell go env GOARCH))
 release-all: $(patsubst %,release/%, $(RELEASE_PLATFORMS))
 
 release/windows-amd64: GOOS=windows
-release/windows-amd64: GOARCH=amd64
 release/windows-amd64: GO_TAGS+= nopkcs11
-release/windows-amd64: $(patsubst %,release/windows-amd64/%, $(RELEASE_PKGS))
+release/windows-amd64: $(patsubst %,release/windows-amd64/bin/%, $(RELEASE_PKGS)) release/windows-amd64/install
 
 release/darwin-amd64: GOOS=darwin
-release/darwin-amd64: GOARCH=amd64
 release/darwin-amd64: GO_TAGS+= nopkcs11
-release/darwin-amd64: $(patsubst %,release/darwin-amd64/%, $(RELEASE_PKGS))
+release/darwin-amd64: $(patsubst %,release/darwin-amd64/bin/%, $(RELEASE_PKGS)) release/darwin-amd64/install
 
 release/linux-amd64: GOOS=linux
-release/linux-amd64: GOARCH=amd64
 release/linux-amd64: GO_TAGS+= nopkcs11
-release/linux-amd64: $(patsubst %,release/linux-amd64/%, $(RELEASE_PKGS))
+release/linux-amd64: $(patsubst %,release/linux-amd64/bin/%, $(RELEASE_PKGS)) release/linux-amd64/install
 
-release/linux-ppc64le: GOOS=linux
+release/%-amd64: DOCKER_ARCH=x86_64
+release/%-amd64: GOARCH=amd64
+release/linux-%: GOOS=linux
+
 release/linux-ppc64le: GOARCH=ppc64le
+release/linux-ppc64le: DOCKER_ARCH=ppc64le
 release/linux-ppc64le: GO_TAGS+= nopkcs11
-release/linux-ppc64le: $(patsubst %,release/linux-ppc64le/%, $(RELEASE_PKGS))
+release/linux-ppc64le: $(patsubst %,release/linux-ppc64le/bin/%, $(RELEASE_PKGS)) release/linux-ppc64le/install
 
-release/linux-s390x: GOOS=linux
 release/linux-s390x: GOARCH=s390x
+release/linux-s390x: DOCKER_ARCH=s390x
 release/linux-s390x: GO_TAGS+= nopkcs11
-release/linux-s390x: $(patsubst %,release/linux-s390x/%, $(RELEASE_PKGS))
+release/linux-s390x: $(patsubst %,release/linux-s390x/bin/%, $(RELEASE_PKGS)) release/linux-s390x/install
 
-release/%/configtxgen: $(PROJECT_FILES)
+release/%/bin/configtxgen: $(PROJECT_FILES)
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
 	mkdir -p $(@D)
 	$(CGO_FLAGS) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(abspath $@) -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
-	@touch $@
 
-release/%/cryptogen: $(PROJECT_FILES)
+release/%/bin/cryptogen: $(PROJECT_FILES)
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
 	mkdir -p $(@D)
 	$(CGO_FLAGS) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(abspath $@) -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
-	@touch $@
+
+release/%/install: $(PROJECT_FILES)
+	mkdir -p $@
+	@cat $@/../../templates/get-docker-images.in \
+		| sed -e 's/_NS_/$(DOCKER_NS)/g' \
+		| sed -e 's/_ARCH_/$(DOCKER_ARCH)/g' \
+		| sed -e 's/_VERSION_/$(PROJECT_VERSION)/g' \
+		> $@/get-docker-images.sh
+		@chmod +x $@/get-docker-images.sh
 
 .PHONY: protos
 protos: buildenv
@@ -331,9 +339,11 @@ clean: docker-clean unit-test-clean
 dist-clean: clean gotools-clean
 	-@rm -rf /var/hyperledger/* ||:
 
-.PHONY: release-clean
-release-clean:
-	-@rm -rf release
+%-release-clean:
+	$(eval TARGET = ${patsubst %-release-clean,%,${@}})
+	-@rm -rf release/$(TARGET)
+
+release-clean: $(patsubst %,%-release-clean, $(RELEASE_PLATFORMS))
 
 .PHONY: unit-test-clean
 unit-test-clean:
