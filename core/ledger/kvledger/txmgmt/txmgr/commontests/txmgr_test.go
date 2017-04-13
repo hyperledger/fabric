@@ -30,7 +30,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	ledgertestutil.SetupCoreYAMLConfig("./../../../../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig()
 	os.Exit(m.Run())
 }
 

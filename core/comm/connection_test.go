@@ -52,7 +52,7 @@ VQQLDAtIeXBlcmxlZGdlcjESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0C
 `
 
 func TestConnection_Correct(t *testing.T) {
-	testutil.SetupTestConfig("./../../peer")
+	testutil.SetupTestConfig()
 	viper.Set("ledger.blockchain.deploy-system-chaincode", "false")
 	peerAddress := GetPeerTestingAddress("7051")
 	var tmpConn *grpc.ClientConn
@@ -69,7 +69,7 @@ func TestConnection_Correct(t *testing.T) {
 }
 
 func TestConnection_WrongAddress(t *testing.T) {
-	testutil.SetupTestConfig("./../../peer")
+	testutil.SetupTestConfig()
 	viper.Set("ledger.blockchain.deploy-system-chaincode", "false")
 	peerAddress := GetPeerTestingAddress("7052")
 	var tmpConn *grpc.ClientConn

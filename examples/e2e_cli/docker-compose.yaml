@@ -48,15 +48,15 @@ services:
       - CORE_PEER_ADDRESS=peer0:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0:7051
       - CORE_PEER_LOCALMSPID=Org0MSP
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer0Signer.pem
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer0Signer.pem
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/cacerts/peerOrg0.pem
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/signcerts/peer0Signer.pem
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/keystore/peer0Signer.pem
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/cacerts/peerOrg0.pem
       # - CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0
       # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
     volumes:
         - /var/run/:/host/var/run/
-        - ./crypto/peer/peer0/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+        - ./crypto/peer/peer0/localMspConfig:/etc/hyperledger/fabric/msp
     ports:
       - 7051:7051
       - 7053:7053
@@ -83,15 +83,15 @@ services:
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1:7051
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
       - CORE_PEER_LOCALMSPID=Org0MSP
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer1Signer.pem
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer1Signer.pem
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/cacerts/peerOrg0.pem
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/signcerts/peer1Signer.pem
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/keystore/peer1Signer.pem
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/cacerts/peerOrg0.pem
       # - CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer1
       # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb1:5984
     volumes:
         - /var/run/:/host/var/run/
-        - ./crypto/peer/peer1/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+        - ./crypto/peer/peer1/localMspConfig:/etc/hyperledger/fabric/msp
     ports:
       - 8051:7051
       - 8053:7053
@@ -119,15 +119,15 @@ services:
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer2:7051
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer2:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer2Signer.pem
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer2Signer.pem
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/admincerts/peerOrg1.pem
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/signcerts/peer2Signer.pem
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/keystore/peer2Signer.pem
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/admincerts/peerOrg1.pem
       #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer2
       # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb2:5984
     volumes:
         - /var/run/:/host/var/run/
-        - ./crypto/peer/peer2/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+        - ./crypto/peer/peer2/localMspConfig:/etc/hyperledger/fabric/msp
     ports:
       - 9051:7051
       - 9053:7053
@@ -156,15 +156,15 @@ services:
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer3:7051
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer2:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer3Signer.pem
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer3Signer.pem
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/cacerts/peerOrg1.pem
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/signcerts/peer3Signer.pem
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/keystore/peer3Signer.pem
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/cacerts/peerOrg1.pem
       # - CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer3
       # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb3:5984
     volumes:
         - /var/run/:/host/var/run/
-        - ./crypto/peer/peer3/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+        - ./crypto/peer/peer3/localMspConfig:/etc/hyperledger/fabric/msp
     ports:
       - 10051:7051
       - 10053:7053

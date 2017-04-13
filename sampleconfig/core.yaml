@@ -195,15 +195,16 @@ peer:
     tls:
         enabled:  false
         cert:
-            file: testdata/server1.pem
+            file: peer/tls.crt
         key:
-            file: testdata/server1.key
+            file: peer/tls.key
     # Root cert file for selfsigned certificates
     # This represents a self-signed x509 cert that was used to sign the cert.file,
     # this is sent to client to validate the recived certificate from server when
     # establishing TLS connection
         rootcert:
-            file: testdata/server1.pem
+            file: peer/tls.crt
+            
         # The server name use to verify the hostname returned by TLS handshake
         serverhostoverride:
 
@@ -223,10 +224,11 @@ peer:
             # Location of Key Store, can be subdirectory of SbftLocal.DataDir
             FileKeyStore:
                 # If "", defaults to 'mspConfigPath'/keystore
+                # TODO: Ensure this is read with fabric/core/config.GetPath() once ready
                 KeyStore:
 
     # Path on the file system where peer will find MSP local configurations
-    mspConfigPath: msp/sampleconfig
+    mspConfigPath: msp
 
     # Identifier of the local MSP
     # ----!!!!IMPORTANT!!!-!!!IMPORTANT!!!-!!!IMPORTANT!!!!----
@@ -260,12 +262,12 @@ vm:
     docker:
         tls:
             enabled: false
-            cert:
-                file: /path/to/server.pem
             ca:
-                file: /path/to/ca.pem
+                file: docker/ca.crt
+            cert:
+                file: docker/tls.crt
             key:
-                file: /path/to/server-key.pem
+                file: docker/tls.key
 
         # Enables/disables the standard out/err from chaincode containers for debugging purposes
         attachStdout: false

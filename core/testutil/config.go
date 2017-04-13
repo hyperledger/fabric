@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -59,7 +60,7 @@ func SetupTestLogging() {
 }
 
 // SetupTestConfig setup the config during test execution
-func SetupTestConfig(pathToOpenchainYaml string) {
+func SetupTestConfig() {
 	flag.Parse()
 
 	// Now set the configuration file
@@ -67,10 +68,14 @@ func SetupTestConfig(pathToOpenchainYaml string) {
 	viper.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
-	viper.SetConfigName("core")              // name of config file (without extension)
-	viper.AddConfigPath(pathToOpenchainYaml) // path to look for the config file in
-	err := viper.ReadInConfig()              // Find and read the config file
-	if err != nil {                          // Handle errors reading the config file
+	viper.SetConfigName("core") // name of config file (without extension)
+	err := config.AddDevConfigPath(nil)
+	if err != nil {
+		panic(fmt.Errorf("Fatal error adding DevConfigPath: %s \n", err))
+	}
+
+	err = viper.ReadInConfig() // Find and read the config file
+	if err != nil {            // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
 

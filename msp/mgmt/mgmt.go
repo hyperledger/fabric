@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	configvaluesmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/flogging"
-
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 )
 
@@ -41,6 +41,16 @@ func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) er
 	}
 
 	return GetLocalMSP().Setup(conf)
+}
+
+// Loads the development local MSP for use in testing.  Not valid for production/runtime context
+func LoadDevMsp() error {
+	mspDir, err := config.GetDevMspDir()
+	if err != nil {
+		return err
+	}
+
+	return LoadLocalMsp(mspDir, nil, "DEFAULT")
 }
 
 // FIXME: AS SOON AS THE CHAIN MANAGEMENT CODE IS COMPLETE,

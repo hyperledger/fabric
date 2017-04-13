@@ -50,7 +50,7 @@ func init() {
 	logger.Debugf("Marble Example main init()")
 
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../../../peer")
+	testutil.SetupCoreYAMLConfig()
 
 	cleanup()
 	ledgermgmt.Initialize()

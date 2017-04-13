@@ -126,7 +126,7 @@ sign/verify/authenticate capabilities.
 Manually generate the artifacts (optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In your vagrant environment, navigate to the ``/common/configtx/tool``
+In your vagrant environment, navigate to the ``/sampleconfig``
 directory and replace the ``configtx.yaml`` file with the supplied yaml
 file in the ``/e2e_cli`` directory. Then return to the ``/e2e_cli``
 directory.

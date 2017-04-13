@@ -73,7 +73,7 @@ func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []s
 }
 
 func TestMain(m *testing.M) {
-	msptesttools.LoadMSPSetupForTesting("../../../msp/sampleconfig")
+	msptesttools.LoadMSPSetupForTesting()
 
 	os.Exit(m.Run())
 }

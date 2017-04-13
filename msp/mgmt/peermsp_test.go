@@ -16,24 +16,10 @@ limitations under the License.
 
 package mgmt
 
-import (
-	"io/ioutil"
-	"os"
-	"testing"
-)
-
-// getTestMSPConfigPath returns the path to sampleconfig for unit tests
-func getTestMSPConfigPath() string {
-	cfgPath := os.Getenv("PEER_CFG_PATH") + "/msp/sampleconfig/"
-	if _, err := ioutil.ReadDir(cfgPath); err != nil {
-		cfgPath = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
-	return cfgPath
-}
+import "testing"
 
 func TestLocalMSP(t *testing.T) {
-	testMSPConfigPath := getTestMSPConfigPath()
-	err := LoadLocalMsp(testMSPConfigPath, nil, "DEFAULT")
+	err := LoadDevMsp()
 
 	if err != nil {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)

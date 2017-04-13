@@ -19,7 +19,6 @@ package chaincode
 import (
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 
@@ -36,20 +35,9 @@ func InitMSP() {
 }
 
 func initMSP() {
-	// TODO: determine the location of this config file
-	var alternativeCfgPath = os.Getenv("PEER_CFG_PATH")
-	var mspMgrConfigDir string
-	if alternativeCfgPath != "" {
-		mspMgrConfigDir = alternativeCfgPath + "/msp/sampleconfig/"
-	} else if _, err := os.Stat("./msp/sampleconfig/"); err == nil {
-		mspMgrConfigDir = "./msp/sampleconfig/"
-	} else {
-		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
-
-	err := msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
+	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
-		panic(fmt.Errorf("Fatal error when reading MSP config file %s: err %s\n", mspMgrConfigDir, err))
+		panic(fmt.Errorf("Fatal error when reading MSP config: %s\n", err))
 	}
 }
 

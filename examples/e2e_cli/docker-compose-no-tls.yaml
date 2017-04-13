@@ -29,7 +29,7 @@ services:
       - CORE_PEER_LOCALMSPID=Org0MSP
     volumes:
         - /var/run/:/host/var/run/
-        - ./crypto/peer/peer0/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+        - ./crypto/peer/peer0/localMspConfig:/etc/hyperledger/fabric/msp
     ports:
       - 7051:7051
       - 7053:7053
@@ -47,7 +47,7 @@ services:
       - CORE_PEER_LOCALMSPID=Org0MSP
     volumes:
         - /var/run/:/host/var/run/
-        - ./crypto/peer/peer1/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+        - ./crypto/peer/peer1/localMspConfig:/etc/hyperledger/fabric/msp
     ports:
       - 8051:7051
       - 8053:7053
@@ -66,7 +66,7 @@ services:
       - CORE_PEER_LOCALMSPID=Org1MSP
     volumes:
         - /var/run/:/host/var/run/
-        - ./crypto/peer/peer2/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+        - ./crypto/peer/peer2/localMspConfig:/etc/hyperledger/fabric/msp
     ports:
       - 9051:7051
       - 9053:7053
@@ -86,7 +86,7 @@ services:
       - CORE_PEER_LOCALMSPID=Org1MSP
     volumes:
         - /var/run/:/host/var/run/
-        - ./crypto/peer/peer3/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
+        - ./crypto/peer/peer3/localMspConfig:/etc/hyperledger/fabric/msp
     ports:
       - 10051:7051
       - 10053:7053

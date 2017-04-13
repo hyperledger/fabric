@@ -91,7 +91,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	msptesttools.LoadMSPSetupForTesting("../../msp/sampleconfig")
+	msptesttools.LoadMSPSetupForTesting()
 
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	messageCryptoService := mcs.New(&mcs.MockChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())

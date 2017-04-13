@@ -33,8 +33,7 @@ import (
 func TestMain(m *testing.M) {
 
 	// Read the core.yaml file for default config.
-	ledgertestutil.SetupCoreYAMLConfig("./../../../../../../peer")
-
+	ledgertestutil.SetupCoreYAMLConfig()
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/statedb/statecouchdb")
 
 	// Switch to CouchDB

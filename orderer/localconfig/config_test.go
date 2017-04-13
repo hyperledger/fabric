@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/viperutil"
+	cf "github.com/hyperledger/fabric/core/config"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +40,7 @@ func TestGoodConfig(t *testing.T) {
 func TestBadConfig(t *testing.T) {
 	config := viper.New()
 	config.SetConfigName("orderer")
-	config.AddConfigPath("../")
+	cf.AddDevConfigPath(config)
 
 	err := config.ReadInConfig()
 	if err != nil {
@@ -82,6 +83,8 @@ func TestEnvInnerVar(t *testing.T) {
 	}
 }
 
+const DummyPath = "/dummy/path"
+
 func TestKafkaTLSConfig(t *testing.T) {
 	testCases := []struct {
 		name        string
@@ -97,9 +100,9 @@ func TestKafkaTLSConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			uconf := &TopLevel{Kafka: Kafka{TLS: tc.tls}}
 			if tc.shouldPanic {
-				assert.Panics(t, func() { uconf.completeInitialization() }, "should panic")
+				assert.Panics(t, func() { uconf.completeInitialization(DummyPath) }, "should panic")
 			} else {
-				assert.NotPanics(t, func() { uconf.completeInitialization() }, "should not panic")
+				assert.NotPanics(t, func() { uconf.completeInitialization(DummyPath) }, "should not panic")
 			}
 		})
 	}

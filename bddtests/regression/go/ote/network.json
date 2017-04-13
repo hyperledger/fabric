@@ -65,9 +65,6 @@
                  "zookeeper",
                  "kafka0"
             ],
-            "volumes": [
-                 "/opt/gopath/src/github.com/hyperledger/fabric/msp/sampleconfig:/etc/hyperledger/msp/sampleconfig"
-            ],
             "container_name": "orderer0",
             "networks": [
                  "bridge"
@@ -110,7 +107,6 @@
             },
             "working_dir": "/opt/gopath/src/github.com/hyperledger/fabric/peer",
             "volumes": [
-                  "/opt/gopath/src/github.com/hyperledger/fabric/msp/sampleconfig:/etc/hyperledger/msp/sampleconfig",
                   "/var/run:/host/var/run/"
             ],
             "command": "peer node start",

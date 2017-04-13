@@ -22,6 +22,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/metadata"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
 )
 
@@ -30,9 +31,9 @@ func NewDockerClient() (client *docker.Client, err error) {
 	endpoint := viper.GetString("vm.endpoint")
 	tlsenabled := viper.GetBool("vm.docker.tls.enabled")
 	if tlsenabled {
-		cert := viper.GetString("vm.docker.tls.cert.file")
-		key := viper.GetString("vm.docker.tls.key.file")
-		ca := viper.GetString("vm.docker.tls.ca.file")
+		cert := config.GetPath("vm.docker.tls.cert.file")
+		key := config.GetPath("vm.docker.tls.key.file")
+		ca := config.GetPath("vm.docker.tls.ca.file")
 		client, err = docker.NewTLSClient(endpoint, cert, key, ca)
 	} else {
 		client, err = docker.NewClient(endpoint)

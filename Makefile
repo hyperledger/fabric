@@ -75,7 +75,6 @@ K := $(foreach exec,$(EXECUTABLES),\
 GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
-MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*)
 PROJECT_FILES = $(shell git ls-files)
 IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka couchdb
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s390x
@@ -208,21 +207,14 @@ build/image/javaenv/payload:    build/javashim.tar.bz2 \
 				build/protos.tar.bz2 \
 				settings.gradle
 build/image/peer/payload:       build/docker/bin/peer \
-				peer/core.yaml \
-				build/msp-sampleconfig.tar.bz2 \
-				common/configtx/tool/configtx.yaml
+				build/sampleconfig.tar.bz2
 build/image/orderer/payload:    build/docker/bin/orderer \
-				build/msp-sampleconfig.tar.bz2 \
-				orderer/orderer.yaml \
-				common/configtx/tool/configtx.yaml
+				build/sampleconfig.tar.bz2
 build/image/buildenv/payload:   build/gotools.tar.bz2 \
 				build/docker/gotools/bin/protoc-gen-go
 build/image/testenv/payload:    build/docker/bin/orderer \
-				orderer/orderer.yaml \
-				common/configtx/tool/configtx.yaml \
 				build/docker/bin/peer \
-				peer/core.yaml \
-				build/msp-sampleconfig.tar.bz2 \
+				build/sampleconfig.tar.bz2 \
 				images/testenv/install-softhsm2.sh
 build/image/zookeeper/payload:  images/zookeeper/docker-entrypoint.sh
 build/image/kafka/payload:      images/kafka/docker-entrypoint.sh \
@@ -261,9 +253,11 @@ build/goshim.tar.bz2: $(GOSHIM_DEPS)
 	@echo "Creating $@"
 	@tar -jhc -C $(GOPATH)/src $(patsubst $(GOPATH)/src/%,%,$(GOSHIM_DEPS)) > $@
 
+build/sampleconfig.tar.bz2:
+	(cd sampleconfig && tar -jc *) > $@
+
 build/javashim.tar.bz2: $(JAVASHIM_DEPS)
 build/protos.tar.bz2: $(PROTOS)
-build/msp-sampleconfig.tar.bz2: $(MSP_SAMPLECONFIG)
 
 build/%.tar.bz2:
 	@echo "Creating $@"

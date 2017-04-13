@@ -26,18 +26,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// 1. Determine MSP configuration
-	var mspMgrConfigDir string
-	var alternativeCfgPath = os.Getenv("ORDERER_CFG_PATH")
-	if alternativeCfgPath != "" {
-		mspMgrConfigDir = alternativeCfgPath + "/msp/sampleconfig/"
-	} else if _, err := os.Stat("./msp/sampleconfig/"); err == nil {
-		mspMgrConfigDir = "./msp/sampleconfig/"
-	} else {
-		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
-
-	if err := mspmgmt.LoadLocalMsp(mspMgrConfigDir, nil, "DEFAULT"); err != nil {
+	if err := mspmgmt.LoadDevMsp(); err != nil {
 		os.Exit(-1)
 	}
 

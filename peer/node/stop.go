@@ -25,16 +25,16 @@ import (
 	"syscall"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
 
 func stopCmd() *cobra.Command {
 	nodeStopCmd.Flags().StringVar(&stopPidFile, "stop-peer-pid-file",
-		viper.GetString("peer.fileSystemPath"),
+		config.GetPath("peer.fileSystemPath"),
 		"Location of peer pid local file, for forces kill")
 
 	return nodeStopCmd

@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
+	"github.com/hyperledger/fabric/core/config"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
@@ -82,10 +83,10 @@ func getPeerTLSCert() ([]byte, error) {
 	}
 	var path string
 	// first we check for the rootcert
-	path = viper.GetString("peer.tls.rootcert.file")
+	path = config.GetPath("peer.tls.rootcert.file")
 	if path == "" {
 		// check for tls cert
-		path = viper.GetString("peer.tls.cert.file")
+		path = config.GetPath("peer.tls.cert.file")
 	}
 	// this should not happen if the peer is running with TLS enabled
 	if _, err := os.Stat(path); err != nil {

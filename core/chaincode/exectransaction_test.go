@@ -37,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -70,7 +71,7 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
-		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
+		creds, err := credentials.NewServerTLSFromFile(config.GetPath("peer.tls.cert.file"), config.GetPath("peer.tls.key.file"))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to generate credentials %v", err)
 		}
@@ -124,7 +125,7 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 		closeListenerAndSleep(lis)
 	}
 	ledgermgmt.CleanupTestEnv()
-	ledgerPath := viper.GetString("peer.fileSystemPath")
+	ledgerPath := config.GetPath("peer.fileSystemPath")
 	os.RemoveAll(ledgerPath)
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))
 
@@ -1740,9 +1741,7 @@ func TestChaincodeInitializeInitError(t *testing.T) {
 func TestMain(m *testing.M) {
 	var err error
 
-	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigDir := "../../msp/sampleconfig/"
-	msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
+	msptesttools.LoadMSPSetupForTesting()
 	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		os.Exit(-1)

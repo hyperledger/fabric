@@ -311,8 +311,7 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 }
 
 func TestMain(m *testing.M) {
-	mspMgrConfigDir := "../../../msp/sampleconfig/"
-	msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
+	msptesttools.LoadMSPSetupForTesting()
 
 	os.Exit(m.Run())
 }

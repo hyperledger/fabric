@@ -84,8 +84,8 @@ Check your Docker and Docker-Compose versions with the following commands:
 ```
 
 ### Environment Variables for configuration
-Find default values of all variables in hyperledger/fabric/orderer/orderer.yaml
-and hyperledger/fabric/peer/core.yaml.
+Find default values of all variables in hyperledger/fabric/sampleconfig/orderer.yaml
+and hyperledger/fabric/sampleconfig/core.yaml.
 ```
   CONFIGTX_ORDERER_ORDERERTYPE                 solo
   CONFIGTX_ORDERER_BATCHSIZE_MAXMESSAGECOUNT   10

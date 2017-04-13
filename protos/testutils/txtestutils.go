@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"os"
 
-	"path/filepath"
-
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -37,13 +35,7 @@ var (
 func init() {
 	var err error
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigDir, err := getMSPMgrConfigDir()
-	if err != nil {
-		fmt.Printf("Could not get location of msp manager config file")
-		os.Exit(-1)
-		return
-	}
-	err = msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
+	err = msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
 		fmt.Printf("Could not load msp config, err %s", err)
 		os.Exit(-1)
@@ -55,27 +47,6 @@ func init() {
 		fmt.Printf("Could not initialize msp/signer")
 		return
 	}
-}
-
-func getMSPMgrConfigDir() (string, error) {
-	var pwd string
-	var err error
-	if pwd, err = os.Getwd(); err != nil {
-		return "", err
-	}
-	path := pwd
-	dir := ""
-	for {
-		path, dir = filepath.Split(path)
-		path = filepath.Clean(path)
-		fmt.Printf("path=%s, dir=%s\n", path, dir)
-		if dir == "fabric" {
-			break
-		}
-	}
-	filePath := filepath.Join(path, "fabric/msp/sampleconfig/")
-	fmt.Printf("filePath=%s\n", filePath)
-	return filePath, nil
 }
 
 // ConstructSingedTxEnvWithDefaultSigner constructs a transaction envelop for tests with a default signer.

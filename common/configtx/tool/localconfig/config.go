@@ -18,8 +18,7 @@ package localconfig
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+
 	"strings"
 	"time"
 
@@ -28,7 +27,10 @@ import (
 
 	"github.com/spf13/viper"
 
+	"path/filepath"
+
 	bccsp "github.com/hyperledger/fabric/bccsp/factory"
+	cf "github.com/hyperledger/fabric/core/config"
 )
 
 var logger = flogging.MustGetLogger("configtx/tool/localconfig")
@@ -42,16 +44,6 @@ const (
 	// Prefix identifies the prefix for the configtxgen-related ENV vars.
 	Prefix string = "CONFIGTX"
 )
-
-var (
-	configName     string
-	configFileName string
-)
-
-func init() {
-	configName = strings.ToLower(Prefix)
-	configFileName = configName + ".yaml"
-}
 
 // TopLevel consists of the structs used by the configtxgen tool.
 type TopLevel struct {
@@ -137,7 +129,7 @@ var genesisDefaults = TopLevel{
 	},
 }
 
-func (p *Profile) completeInitialization() {
+func (p *Profile) initDefaults() {
 	for {
 		switch {
 		case p.Orderer.OrdererType == "":
@@ -167,46 +159,29 @@ func (p *Profile) completeInitialization() {
 	}
 }
 
+func translatePaths(configDir string, org *Organization) {
+	cf.TranslatePathInPlace(configDir, &org.MSPDir)
+	cf.TranslatePathInPlace(configDir, &org.BCCSP.SwOpts.FileKeystore.KeyStorePath)
+}
+
+func (p *Profile) completeInitialization(configDir string) {
+	p.initDefaults()
+
+	// Fix up any relative paths
+	for _, org := range p.Application.Organizations {
+		translatePaths(configDir, org)
+	}
+
+	for _, org := range p.Orderer.Organizations {
+		translatePaths(configDir, org)
+	}
+}
+
 // Load returns the orderer/application config combination that corresponds to a given profile.
 func Load(profile string) *Profile {
 	config := viper.New()
 
-	config.SetConfigName(configName)
-	var cfgPath string
-
-	// Candidate paths to look for the config file in, based on GOPATH
-	searchPath := []string{
-		os.Getenv("ORDERER_CFG_PATH"),
-		os.Getenv("PEER_CFG_PATH"),
-	}
-
-	for _, p := range filepath.SplitList(os.Getenv("GOPATH")) {
-		searchPath = append(searchPath, filepath.Join(p, "src/github.com/hyperledger/fabric/common/configtx/tool/"))
-	}
-
-	for _, path := range searchPath {
-		if len(path) == 0 {
-			// No point printing a "checking for" message below for an empty path
-			continue
-		}
-		logger.Infof("Looking for %s in: %s", configFileName, path)
-		if _, err := os.Stat(filepath.Join(path, configFileName)); err != nil {
-			// The YAML file does not exist in this component of the path
-			continue
-		}
-		cfgPath = path
-		logger.Infof("Found %s there", configFileName)
-		break
-	}
-
-	if cfgPath == "" {
-		logger.Fatalf("Could not find %s in paths of %s."+
-			"Try setting ORDERER_CFG_PATH, PEER_CFG_PATH, or GOPATH correctly.",
-			configFileName, searchPath)
-	}
-
-	// Path to look for the config file in
-	config.AddConfigPath(cfgPath)
+	cf.InitViper(config, "configtx")
 
 	// For environment variables
 	config.SetEnvPrefix(Prefix)
@@ -217,7 +192,7 @@ func Load(profile string) *Profile {
 
 	err := config.ReadInConfig()
 	if err != nil {
-		logger.Panicf("Error reading configuration from %s in %s: %s", configFileName, cfgPath, err)
+		logger.Panicf("Error reading configuration: %s", err)
 	}
 
 	var uconf TopLevel
@@ -231,7 +206,7 @@ func Load(profile string) *Profile {
 		logger.Panicf("Could not find profile %s", profile)
 	}
 
-	result.completeInitialization()
+	result.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
 
 	return result
 }

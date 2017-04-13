@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -566,12 +567,12 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
 	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
 
-	// Check if the properties in the config file (peer/core.yaml)
+	// Check if the properties in the config file (core.yaml)
 	// are set to the desired duration.
 	viper.Reset()
 	viper.SetConfigName("core")
 	viper.SetEnvPrefix("CORE")
-	viper.AddConfigPath("./../../../peer")
+	config.AddDevConfigPath(nil)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()

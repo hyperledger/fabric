@@ -391,8 +391,7 @@ var signerSerialized []byte
 
 func TestMain(m *testing.M) {
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigFile := "../../msp/sampleconfig/"
-	err := msptesttools.LoadMSPSetupForTesting(mspMgrConfigFile)
+	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not initialize msp")

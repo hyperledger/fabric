@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -387,7 +388,7 @@ func TestConfigFromFile(t *testing.T) {
 	viper.Reset()
 	viper.SetConfigName("core")
 	viper.SetEnvPrefix("CORE")
-	viper.AddConfigPath("./../../peer")
+	config.AddDevConfigPath(nil)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()

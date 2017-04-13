@@ -29,6 +29,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/channel"
 	"github.com/hyperledger/fabric/peer/clilogging"
@@ -106,7 +107,7 @@ func main() {
 	flogging.InitBackend(flogging.SetFormat(viper.GetString("logging.format")), logOutput)
 
 	// Init the MSP
-	var mspMgrConfigDir = viper.GetString("peer.mspConfigPath")
+	var mspMgrConfigDir = config.GetPath("peer.mspConfigPath")
 	var mspID = viper.GetString("peer.localMspId")
 	err = common.InitCrypto(mspMgrConfigDir, mspID)
 	if err != nil { // Handle errors reading the config file

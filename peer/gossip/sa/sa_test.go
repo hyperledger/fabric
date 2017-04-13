@@ -30,8 +30,7 @@ import (
 
 func TestMain(m *testing.M) {
 	// Setup the MSP manager so that we can sign/verify
-	mspMgrConfigDir := "./../../../msp/sampleconfig/"
-	err := msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
+	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
 		fmt.Printf("Failed LoadFakeSetupWithLocalMspAndTestChainMsp [%s]", err)
 		os.Exit(-1)

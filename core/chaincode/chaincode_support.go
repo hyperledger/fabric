@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -120,7 +121,7 @@ func (chaincodeSupport *ChaincodeSupport) chaincodeHasBeenLaunched(chaincode str
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance
 func NewChaincodeSupport(getPeerEndpoint func() (*pb.PeerEndpoint, error), userrunsCC bool, ccstartuptimeout time.Duration) *ChaincodeSupport {
-	ccprovider.SetChaincodesPath(viper.GetString("peer.fileSystemPath") + string(filepath.Separator) + "chaincodes")
+	ccprovider.SetChaincodesPath(config.GetPath("peer.fileSystemPath") + string(filepath.Separator) + "chaincodes")
 
 	pnid := viper.GetString("peer.networkId")
 	pid := viper.GetString("peer.id")
@@ -148,8 +149,8 @@ func NewChaincodeSupport(getPeerEndpoint func() (*pb.PeerEndpoint, error), userr
 
 	theChaincodeSupport.peerTLS = viper.GetBool("peer.tls.enabled")
 	if theChaincodeSupport.peerTLS {
-		theChaincodeSupport.peerTLSCertFile = viper.GetString("peer.tls.cert.file")
-		theChaincodeSupport.peerTLSKeyFile = viper.GetString("peer.tls.key.file")
+		theChaincodeSupport.peerTLSCertFile = config.GetPath("peer.tls.cert.file")
+		theChaincodeSupport.peerTLSKeyFile = config.GetPath("peer.tls.key.file")
 		theChaincodeSupport.peerTLSSvrHostOrd = viper.GetString("peer.tls.serverhostoverride")
 	}
 

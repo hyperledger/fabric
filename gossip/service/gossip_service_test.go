@@ -53,7 +53,7 @@ func TestInitGossipService(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	msptesttools.LoadMSPSetupForTesting("../../msp/sampleconfig")
+	msptesttools.LoadMSPSetupForTesting()
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 
 	wg := sync.WaitGroup{}

@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/spf13/viper"
@@ -764,7 +765,7 @@ func TestConfigFromFile(t *testing.T) {
 	aliveExpirationCheckInterval = 0 * time.Second
 	viper.SetConfigName("core")
 	viper.SetEnvPrefix("CORE")
-	viper.AddConfigPath("./../../peer")
+	config.AddDevConfigPath(nil)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()

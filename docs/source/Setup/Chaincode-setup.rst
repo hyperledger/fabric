@@ -340,7 +340,7 @@ Terminal 3 (CLI or REST API)
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The default REST interface port is ``7050``. It can be configured in
-`core.yaml <https://github.com/hyperledger/fabric/blob/master/peer/core.yaml>`__
+`core.yaml <https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml>`__
 using the ``rest.address`` property. If using Vagrant, the REST port
 mapping is defined in
 `Vagrantfile <https://github.com/hyperledger/fabric/blob/master/devenv/Vagrantfile>`__.

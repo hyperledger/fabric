@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
@@ -47,7 +48,7 @@ func TestNewGossipCryptoService(t *testing.T) {
 	endpoint2 := "localhost:5612"
 	endpoint3 := "localhost:5613"
 
-	msptesttools.LoadMSPSetupForTesting("../../msp/sampleconfig")
+	msptesttools.LoadMSPSetupForTesting()
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 
 	cryptSvc := &cryptoService{}
@@ -72,7 +73,7 @@ func TestNewGossipCryptoService(t *testing.T) {
 func setupTestEnv() {
 	viper.SetConfigName("core")
 	viper.SetEnvPrefix("CORE")
-	viper.AddConfigPath("./../../peer")
+	config.AddDevConfigPath(nil)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()

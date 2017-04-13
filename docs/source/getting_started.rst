@@ -237,7 +237,7 @@ material and network endpoint information.
           the ``generateCfgTrx.sh`` script.  Open the script and inspect the syntax for the
           two commands.  If you do elect to pursue this route, you must
           replace the default ``configtx.yaml`` in the fabric source tree.  Navigate to the
-          ``common/configtx/tool`` directory and replace the ``configtx.yaml`` file with
+          ``sampleconfig`` directory and replace the ``configtx.yaml`` file with
           the supplied yaml file in the ``e2e_cli`` directory. Then return to the ``fabric``
           directory to execute the commands (you will run these manual commands from ``fabric``,
           NOT from ``e2e_cli``).  Be sure to remove any existing artifacts from

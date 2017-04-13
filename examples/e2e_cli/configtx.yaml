@@ -41,7 +41,7 @@ Organizations:
         ID: OrdererMSP
 
         # MSPDir is the filesystem path which contains the MSP configuration
-        MSPDir: examples/e2e_cli/crypto/orderer/localMspConfig
+        MSPDir: crypto/orderer/localMspConfig
 
         # BCCSP (Blockchain crypto provider): Select which crypto implementation or
         # library to use
@@ -63,7 +63,7 @@ Organizations:
         # ID to load the MSP definition as
         ID: Org0MSP
 
-        MSPDir: examples/e2e_cli/crypto/peer/peer0/localMspConfig
+        MSPDir: crypto/peer/peer0/localMspConfig
 
         # BCCSP (Blockchain crypto provider): Select which crypto implementation or
         # library to use
@@ -92,7 +92,7 @@ Organizations:
         # ID to load the MSP definition as
         ID: Org1MSP
 
-        MSPDir: examples/e2e_cli/crypto/peer/peer2/localMspConfig
+        MSPDir: crypto/peer/peer2/localMspConfig
 
         # BCCSP (Blockchain crypto provider): Select which crypto implementation or
         # library to use

@@ -34,7 +34,7 @@ import (
 )
 
 func init() {
-	msptesttools.LoadMSPSetupForTesting("../../msp/sampleconfig")
+	msptesttools.LoadMSPSetupForTesting()
 }
 
 const (

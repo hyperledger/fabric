@@ -84,5 +84,5 @@ func TestIsHistoryDBEnabledFalse(t *testing.T) {
 
 func setUpCoreYAMLConfig() {
 	//call a helper method to load the core.yaml
-	ledgertestutil.SetupCoreYAMLConfig("./../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig()
 }

@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
 )
 
@@ -174,9 +175,9 @@ func InitTLSForPeer() credentials.TransportCredentials {
 		sn = viper.GetString("peer.tls.serverhostoverride")
 	}
 	var creds credentials.TransportCredentials
-	if viper.GetString("peer.tls.rootcert.file") != "" {
+	if config.GetPath("peer.tls.rootcert.file") != "" {
 		var err error
-		creds, err = credentials.NewClientTLSFromFile(viper.GetString("peer.tls.rootcert.file"), sn)
+		creds, err = credentials.NewClientTLSFromFile(config.GetPath("peer.tls.rootcert.file"), sn)
 		if err != nil {
 			grpclog.Fatalf("Failed to create TLS credentials %v", err)
 		}

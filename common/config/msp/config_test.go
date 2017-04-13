@@ -19,13 +19,16 @@ package msp
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMSPConfigManager(t *testing.T) {
-	conf, err := msp.GetLocalMspConfig("../../../msp/sampleconfig/", nil, "DEFAULT")
+	mspDir, err := config.GetDevMspDir()
+	assert.NoError(t, err)
+	conf, err := msp.GetLocalMspConfig(mspDir, nil, "DEFAULT")
 	assert.NoError(t, err)
 
 	// test success:

@@ -101,7 +101,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 }
 
 func TestKVLedgerDBRecovery(t *testing.T) {
-	ledgertestutil.SetupCoreYAMLConfig("./../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig()
 	env := newTestEnv(t)
 	defer env.cleanup()
 	provider, _ := NewProvider()
@@ -432,7 +432,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 
 	//call a helper method to load the core.yaml
-	ledgertestutil.SetupCoreYAMLConfig("./../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig()
 
 	logger.Debugf("TestLedgerWithCouchDbEnabledWithBinaryAndJSONData  IsCouchDBEnabled()value: %v , IsHistoryDBEnabled()value: %v\n",
 		ledgerconfig.IsCouchDBEnabled(), ledgerconfig.IsHistoryDBEnabled())

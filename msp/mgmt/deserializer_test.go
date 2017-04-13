@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	msp2 "github.com/hyperledger/fabric/common/config/msp"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/stretchr/testify/assert"
 )
@@ -67,8 +68,14 @@ func TestMspDeserializersManager_GetLocalDeserializer(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	var err error
-	testConf, err := msp.GetLocalMspConfig("../sampleconfig/", nil, "DEFAULT")
+
+	mspDir, err := config.GetDevMspDir()
+	if err != nil {
+		fmt.Printf("Error getting DevMspDir: %s", err)
+		os.Exit(-1)
+	}
+
+	testConf, err := msp.GetLocalMspConfig(mspDir, nil, "DEFAULT")
 	if err != nil {
 		fmt.Printf("Setup should have succeeded, got err %s instead", err)
 		os.Exit(-1)

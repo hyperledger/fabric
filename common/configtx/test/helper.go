@@ -17,9 +17,6 @@ limitations under the License.
 package test
 
 import (
-	"os"
-	"path/filepath"
-
 	"github.com/hyperledger/fabric/common/config"
 	configtxmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -27,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
+	cf "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspproto "github.com/hyperledger/fabric/protos/msp"
@@ -39,33 +37,13 @@ const (
 	AcceptAllPolicyKey = "AcceptAllPolicy"
 )
 
-func dirExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
 func getConfigDir() string {
-	mspSampleConfig := "/msp/sampleconfig"
-	peerPath := filepath.Join(os.Getenv("PEER_CFG_PATH"), mspSampleConfig)
-	ordererPath := filepath.Join(os.Getenv("ORDERER_CFG_PATH"), mspSampleConfig)
-	switch {
-	case dirExists(peerPath):
-		return peerPath
-	case dirExists(ordererPath):
-		return ordererPath
+	mspDir, err := cf.GetDevMspDir()
+	if err != nil {
+		logger.Panicf("Could not find genesis.yaml, try setting GOPATH correctly")
 	}
 
-	gopath := os.Getenv("GOPATH")
-	for _, p := range filepath.SplitList(gopath) {
-		samplePath := filepath.Join(p, "src/github.com/hyperledger/fabric", mspSampleConfig)
-		if !dirExists(samplePath) {
-			continue
-		}
-		return samplePath
-	}
-
-	logger.Panicf("Could not find genesis.yaml, try setting PEER_CFG_PATH, ORDERER_CFG_PATH, or GOPATH correctly")
-	return ""
+	return mspDir
 }
 
 // MakeGenesisBlock creates a genesis block using the test templates for the given chainID

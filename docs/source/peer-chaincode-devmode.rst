@@ -19,7 +19,7 @@ Start the orderer
     orderer
 
 The above starts the orderer in the local environment using default
-orderer configuration as defined in ``orderer/orderer.yaml``.
+orderer configuration as defined in ``sampleconfig/orderer.yaml``.
 
 Start the peer in dev mode
 --------------------------
@@ -28,7 +28,7 @@ Start the peer in dev mode
 
     peer node start --peer-defaultchain=false --peer-chaincodedev=true
 
-The above command starts the peer using the default ``msp/sampleconfig``
+The above command starts the peer using the default ``sampleconfig/msp``
 MSP. The ``--peer-chaincodedev=true`` puts it in “dev” mode.
 
 Create channels ch1 and ch2

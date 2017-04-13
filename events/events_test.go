@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/events/consumer"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
@@ -333,7 +334,7 @@ func TestMain(m *testing.M) {
 	SetupTestConfig()
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
-		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
+		creds, err := credentials.NewServerTLSFromFile(config.GetPath("peer.tls.cert.file"), config.GetPath("peer.tls.key.file"))
 		if err != nil {
 			grpclog.Fatalf("Failed to generate credentials %v", err)
 		}

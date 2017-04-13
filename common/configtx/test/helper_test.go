@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	logging "github.com/op/go-logging"
 )
@@ -43,10 +44,15 @@ func TestMakeGenesisBlock(t *testing.T) {
 
 func TestMakeGenesisBlockFromMSPs(t *testing.T) {
 
+	mspDir, err := config.GetDevMspDir()
+	if err != nil {
+		t.Fatalf("Error getting DevMspDir: %s", err)
+	}
+
 	ordererOrgID := "TestOrdererOrg"
 	appOrgID := "TestAppOrg"
-	appMSPConf, err := msp.GetLocalMspConfig("msp/sampleconfig", nil, appOrgID)
-	ordererMSPConf, err := msp.GetLocalMspConfig("msp/sampleconfig", nil, ordererOrgID)
+	appMSPConf, err := msp.GetLocalMspConfig(mspDir, nil, appOrgID)
+	ordererMSPConf, err := msp.GetLocalMspConfig(mspDir, nil, ordererOrgID)
 	if err != nil {
 		t.Fatalf("Error making genesis block from MSPs: %s", err)
 	}

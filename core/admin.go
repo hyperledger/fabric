@@ -19,11 +19,11 @@ package core
 import (
 	"os"
 
-	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/config"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -58,7 +58,7 @@ func (*ServerAdmin) StopServer(context.Context, *empty.Empty) (*pb.ServerStatus,
 	status := &pb.ServerStatus{Status: pb.ServerStatus_STOPPED}
 	log.Debugf("returning status: %s", status)
 
-	pidFile := viper.GetString("peer.fileSystemPath") + "/peer.pid"
+	pidFile := config.GetPath("peer.fileSystemPath") + "/peer.pid"
 	log.Debugf("Remove pid file  %s", pidFile)
 	os.Remove(pidFile)
 	defer os.Exit(0)

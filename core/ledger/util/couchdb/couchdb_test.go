@@ -65,7 +65,7 @@ var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owne
 
 func TestMain(m *testing.M) {
 	// Read the core.yaml file for default config.
-	ledgertestutil.SetupCoreYAMLConfig("./../../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig()
 
 	// Switch to CouchDB
 	viper.Set("ledger.state.stateDatabase", "CouchDB")

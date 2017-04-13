@@ -19,24 +19,12 @@ package msptesttools
 import (
 	"testing"
 
-	"io/ioutil"
-	"os"
-
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp/mgmt"
 )
 
-func getTESTMSPConfigPath() string {
-	cfgPath := os.Getenv("PEER_CFG_PATH") + "/msp/sampleconfig/"
-	if _, err := ioutil.ReadDir(cfgPath); err != nil {
-		cfgPath = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
-	return cfgPath
-}
-
 func TestFakeSetup(t *testing.T) {
-	testMSPConfigPath := getTESTMSPConfigPath()
-	err := LoadMSPSetupForTesting(testMSPConfigPath)
+	err := LoadMSPSetupForTesting()
 	if err != nil {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)
 	}

@@ -159,8 +159,7 @@ func createCCUpgradeEnvelope(chainID, chaincodeName, chaincodeVersion string, si
 
 func TestGetTxCCInstance(t *testing.T) {
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigDir := "../../../msp/sampleconfig/"
-	err := msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
+	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
 		t.Fatalf("Could not initialize msp, err: %s", err)
 	}

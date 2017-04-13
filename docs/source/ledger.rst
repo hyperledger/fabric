@@ -104,6 +104,6 @@ default embedded LevelDB, and move to CouchDB if you require the additional comp
 It is a good practice to model chaincode asset data as JSON, so that you have the option to perform
 complex rich queries if needed in the future.
 
-To enable CouchDB as the state database, configure the /fabric/peer/core.yaml ``stateDatabase``
+To enable CouchDB as the state database, configure the /fabric/sampleconfig/core.yaml ``stateDatabase``
 section.
 

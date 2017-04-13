@@ -36,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -187,7 +188,7 @@ func serve(args []string) error {
 		func() {
 			defer func() {
 				if err := recover(); err != nil {
-					logger.Fatalf("Peer configured to start with the default test chain, but supporting configuration files did not match.  Please ensure that configtx.yaml contains the unmodified SampleSingleMSPSolo profile and that msp/sampleconfig is present.\n%s", err)
+					logger.Fatalf("Peer configured to start with the default test chain, but supporting configuration files did not match.  Please ensure that configtx.yaml contains the unmodified SampleSingleMSPSolo profile and that sampleconfig/msp is present.\n%s", err)
 				}
 			}()
 
@@ -240,7 +241,7 @@ func serve(args []string) error {
 		serve <- grpcErr
 	}()
 
-	if err := writePid(viper.GetString("peer.fileSystemPath")+"/peer.pid", os.Getpid()); err != nil {
+	if err := writePid(config.GetPath("peer.fileSystemPath")+"/peer.pid", os.Getpid()); err != nil {
 		return err
 	}
 

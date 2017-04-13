@@ -31,6 +31,7 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/localmsp"
+	cf "github.com/hyperledger/fabric/core/config"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/ledger"
 	"github.com/hyperledger/fabric/orderer/ledger/ram"
@@ -87,6 +88,11 @@ func TestSbftPeer(t *testing.T) {
 	skipInShortMode(t)
 	logging.SetLevel(logging.DEBUG, "")
 
+	mspDir, err := cf.GetDevMspDir()
+	if err != nil {
+		panic("could not get DevMspDir")
+	}
+
 	// Start SBFT
 	dataTmpDir, err := ioutil.TempDir("", "sbft_test")
 	if err != nil {
@@ -114,7 +120,7 @@ func TestSbftPeer(t *testing.T) {
 	// Start GRPC
 	logger.Info("Creating a GRPC server.")
 	conf := config.Load()
-	conf.General.LocalMSPDir = pwd + "/../msp/sampleconfig"
+	conf.General.LocalMSPDir = mspDir
 	conf.General.LocalMSPID = "DEFAULT"
 	lf := newRAMLedgerFactory()
 	consenters := make(map[string]multichain.Consenter)

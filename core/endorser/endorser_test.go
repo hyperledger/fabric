@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/peer"
 	syscc "github.com/hyperledger/fabric/core/scc"
@@ -63,7 +64,7 @@ func initPeer(chainID string) (*testEnvironment, error) {
 	// finitPeer(nil)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
-		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
+		creds, err := credentials.NewServerTLSFromFile(config.GetPath("peer.tls.cert.file"), config.GetPath("peer.tls.key.file"))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to generate credentials %v", err)
 		}
@@ -310,7 +311,7 @@ func invokeWithOverride(txid string, chainID string, spec *pb.ChaincodeSpec, non
 }
 
 func deleteChaincodeOnDisk(chaincodeID string) {
-	os.RemoveAll(filepath.Join(viper.GetString("peer.fileSystemPath"), "chaincodes", chaincodeID))
+	os.RemoveAll(filepath.Join(config.GetPath("peer.fileSystemPath"), "chaincodes", chaincodeID))
 }
 
 //begin tests. Note that we rely upon the system chaincode and peer to be created
@@ -661,8 +662,7 @@ func TestMain(m *testing.M) {
 	endorserServer = NewEndorserServer()
 
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigDir := "../../msp/sampleconfig/"
-	err = msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
+	err = msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
 		fmt.Printf("Could not initialize msp/signer, err %s", err)
 		finitPeer(tev)

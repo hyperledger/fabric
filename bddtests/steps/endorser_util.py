@@ -157,7 +157,7 @@ def getExample02ChaincodeSpec():
 def _createDeploymentSpecAsFile(ccSpec, outputPath):
     '''peer chaincode package -n myCC -c '{"Args":["init","a","100","b","200"]}' -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 --logging-level=DEBUG test.file'''
     myEnv = os.environ.copy()
-    myEnv['CORE_PEER_MSPCONFIGPATH'] = "./../msp/sampleconfig"
+    myEnv['CORE_PEER_MSPCONFIGPATH'] = "./../sampleconfig/msp"
     nameArgs = ["-n", ccSpec.chaincode_id.name]
     ctorArgs = ["-c", json.dumps({'Args' : [item for item in ccSpec.input.args]})]
     pathArgs = ["-p", ccSpec.chaincode_id.path]

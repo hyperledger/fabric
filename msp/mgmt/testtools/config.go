@@ -17,35 +17,17 @@ limitations under the License.
 package msptesttools
 
 import (
-	"os"
-	"path/filepath"
-
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 )
 
-func getConfigPath(dir string) (string, error) {
-	// Try to read the dir
-	if _, err := os.Stat(dir); err != nil {
-		cfg := os.Getenv("PEER_CFG_PATH")
-		if cfg != "" {
-			dir = filepath.Join(cfg, dir)
-		} else {
-			dir = filepath.Join(os.Getenv("GOPATH"), "/src/github.com/hyperledger/fabric/msp/sampleconfig/")
-		}
-		if _, err := os.Stat(dir); err != nil {
-			return "", err
-		}
-	}
-	return dir, nil
-}
-
 // LoadTestMSPSetup sets up the local MSP
 // and a chain MSP for the default chain
-func LoadMSPSetupForTesting(dir string) error {
-	var err error
-	if dir, err = getConfigPath(dir); err != nil {
+func LoadMSPSetupForTesting() error {
+	dir, err := config.GetDevMspDir()
+	if err != nil {
 		return err
 	}
 	conf, err := msp.GetLocalMspConfig(dir, nil, "DEFAULT")

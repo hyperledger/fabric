@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -68,13 +69,18 @@ func SetupTestConfig() {
 }
 
 // SetupCoreYAMLConfig sets up configurations for testing
-func SetupCoreYAMLConfig(coreYamlPath string) {
+func SetupCoreYAMLConfig() {
 	viper.SetConfigName("core")
 	viper.SetEnvPrefix("CORE")
-	viper.AddConfigPath(coreYamlPath)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
-	err := viper.ReadInConfig()
+
+	err := config.AddDevConfigPath(nil)
+	if err != nil {
+		panic(fmt.Errorf("Fatal error adding dev dir: %s \n", err))
+	}
+
+	err = viper.ReadInConfig()
 	if err != nil { // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}

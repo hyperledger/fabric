@@ -134,8 +134,7 @@ func TestMain(m *testing.M) {
 	var err error
 
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigDir := "../../../msp/sampleconfig/"
-	msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
+	msptesttools.LoadMSPSetupForTesting()
 
 	id, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {

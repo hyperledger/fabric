@@ -5,7 +5,6 @@ vp:
     - 7051
   environment:
     - CORE_PEER_ADDRESSAUTODETECT=true
-    - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp/sampleconfig
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
 

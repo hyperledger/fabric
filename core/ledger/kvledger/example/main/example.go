@@ -46,7 +46,7 @@ var accounts = []string{"account1", "account2", "account3", "account4"}
 func init() {
 
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../../../peer")
+	testutil.SetupCoreYAMLConfig()
 
 	// Initialization will get a handle to the ledger at the specified path
 	// Note, if subledgers are supported in the future,

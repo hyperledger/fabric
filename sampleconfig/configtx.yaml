@@ -60,7 +60,7 @@ Organizations:
         ID: DEFAULT
 
         # MSPDir is the filesystem path which contains the MSP configuration.
-        MSPDir: msp/sampleconfig
+        MSPDir: msp
 
         # BCCSP: Select which crypto implementation or library to use for the
         # blockchain crypto service provider.

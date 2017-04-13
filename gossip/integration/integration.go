@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/identity"
@@ -40,7 +41,7 @@ func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string
 
 	var cert *tls.Certificate
 	if viper.GetBool("peer.tls.enabled") {
-		certTmp, err := tls.LoadX509KeyPair(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
+		certTmp, err := tls.LoadX509KeyPair(config.GetPath("peer.tls.cert.file"), config.GetPath("peer.tls.key.file"))
 		if err != nil {
 			panic(err)
 		}

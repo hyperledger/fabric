@@ -235,16 +235,11 @@ var signerSerialized []byte
 
 func TestMain(m *testing.M) {
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigFile := "../../msp/sampleconfig/"
-	err := msptesttools.LoadMSPSetupForTesting(mspMgrConfigFile)
+	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
-		//be docker friendly
-		mspMgrConfigFile = "/etc/hyperledger/fabric/msp/sampleconfig"
-		if err = msptesttools.LoadMSPSetupForTesting(mspMgrConfigFile); err != nil {
-			os.Exit(-1)
-			fmt.Printf("Could not initialize msp")
-			return
-		}
+		os.Exit(-1)
+		fmt.Printf("Could not initialize msp")
+		return
 	}
 	localmsp = mspmgmt.GetLocalMSP()
 	if localmsp == nil {
