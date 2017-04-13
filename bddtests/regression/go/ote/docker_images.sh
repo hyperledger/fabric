@@ -12,7 +12,7 @@ echo "Ca Images"
 CA_REPO_NAME=fabric-ca
 cd  $GOPATH/src/github.com/hyperledger/
 if [ ! -d "$CA_REPO_NAME" ]; then
-git clone --depth=1 https://github.com/hyperledger/$CA_REPO_NAME.git 
+git clone --depth=1 https://github.com/hyperledger/$CA_REPO_NAME.git
 #CA_COMMIT=$(git log -1 --pretty=format:"%h")
 fi
 cd $CA_REPO_NAME
