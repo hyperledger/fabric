@@ -49,7 +49,7 @@ BCCSP:
     PKCS11:
         Hash: SHA3
         Security: 256
-        
+
         Library: %s
         Pin:     '%s'
         Label:   %s

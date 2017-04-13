@@ -453,7 +453,7 @@ func startProducer(serverAddr string, chainID string, ordererIndex int, channelI
                 b.broadcast([]byte(fmt.Sprintf("Testing %v", time.Now())))
                 err = b.getAck()
                 if err == nil {
-                        (*txSentCntrP)++ 
+                        (*txSentCntrP)++
                         if printProgressLogs && (*txSentCntrP)%printLogCnt == 0 {
                                 mult++
                                 if debugflag1 {
