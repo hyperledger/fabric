@@ -32,15 +32,15 @@ abstract class HandlerHelper {
                 .setPayload(payload)
                 .build();
     }
-    
+
     static ChaincodeMessage newGetStateEventMessage(final String txid, final String key) {
         return newEventMessage(GET_STATE, txid, ByteString.copyFromUtf8(key));
     }
-    
+
     static ChaincodeMessage newErrorEventMessage(final String txid, final Response payload) {
         return newEventMessage(ERROR, txid, payload.toByteString());
     }
-    
+
     static ChaincodeMessage newErrorEventMessage(final String txid, final Throwable throwable) {
         return newErrorEventMessage(txid, ChaincodeHelper.newInternalServerErrorResponse(throwable));
     }

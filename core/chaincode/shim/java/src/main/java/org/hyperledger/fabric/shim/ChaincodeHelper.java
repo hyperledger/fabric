@@ -33,7 +33,7 @@ import com.google.protobuf.ByteString;
 
 public abstract class ChaincodeHelper {
     public static final int UNKNOWN_VALUE = 0;
-    
+
     public static Response newResponse(Status status, String message, byte[] payload) {
         final Builder builder = Response.newBuilder();
         builder.setStatus(status.getNumber());
@@ -45,15 +45,15 @@ public abstract class ChaincodeHelper {
         }
         return builder.build();
     }
-    
+
     public static Response newSuccessResponse(String message, byte[] payload) {
         return newResponse(SUCCESS, message, payload);
     }
-    
+
     public static Response newSuccessResponse() {
     	return newSuccessResponse(null, null);
     }
-    
+
     public static Response newSuccessResponse(String message) {
         return newSuccessResponse(message, null);
     }
@@ -65,11 +65,11 @@ public abstract class ChaincodeHelper {
     public static Response newBadRequestResponse(String message, byte[] payload) {
         return newResponse(BAD_REQUEST, message, payload);
     }
-    
+
     public static Response newBadRequestResponse() {
     	return newBadRequestResponse(null, null);
     }
-    
+
     public static Response newBadRequestResponse(String message) {
         return newBadRequestResponse(message, null);
     }
@@ -85,11 +85,11 @@ public abstract class ChaincodeHelper {
     public static Response newForbiddenResponse(String message, byte[] payload) {
         return newResponse(FORBIDDEN, message, payload);
     }
-    
+
     public static Response newForbiddenResponse() {
     	return newForbiddenResponse(null, null);
     }
-    
+
     public static Response newForbiddenResponse(String message) {
         return newForbiddenResponse(message, null);
     }
@@ -97,11 +97,11 @@ public abstract class ChaincodeHelper {
     public static Response newNotFoundResponse(String message, byte[] payload) {
         return newResponse(NOT_FOUND, message, payload);
     }
-    
+
     public static Response newNotFoundResponse() {
     	return newNotFoundResponse(null, null);
     }
-    
+
     public static Response newNotFoundResponse(String message) {
         return newNotFoundResponse(message, null);
     }
@@ -109,15 +109,15 @@ public abstract class ChaincodeHelper {
     public static Response newNotFoundResponse(byte[] payload) {
         return newNotFoundResponse(null, payload);
     }
-     
+
     public static Response newRequestEntityTooLargeResponse(String message, byte[] payload) {
         return newResponse(REQUEST_ENTITY_TOO_LARGE, message, payload);
     }
-    
+
     public static Response newRequestEntityTooLargeResponse() {
     	return newRequestEntityTooLargeResponse(null, null);
     }
-    
+
     public static Response newRequestEntityTooLargeResponse(String message) {
         return newRequestEntityTooLargeResponse(message, null);
     }
@@ -125,15 +125,15 @@ public abstract class ChaincodeHelper {
     public static Response newRequestEntityTooLargeResponse(byte[] payload) {
         return newRequestEntityTooLargeResponse(null, payload);
     }
-    
+
     public static Response newInternalServerErrorResponse(String message, byte[] payload) {
         return newResponse(INTERNAL_SERVER_ERROR, message, payload);
     }
-    
+
     public static Response newInternalServerErrorResponse() {
     	return newInternalServerErrorResponse(null, null);
     }
-    
+
     public static Response newInternalServerErrorResponse(String message) {
         return newInternalServerErrorResponse(message, null);
     }
@@ -141,19 +141,19 @@ public abstract class ChaincodeHelper {
     public static Response newInternalServerErrorResponse(byte[] payload) {
         return newInternalServerErrorResponse(null, payload);
     }
-     
+
     public static Response newInternalServerErrorResponse(Throwable throwable) {
         return newInternalServerErrorResponse(throwable.getMessage(), printStackTrace(throwable));
     }
-     
+
     public static Response newServiceUnavailableErrorResponse(String message, byte[] payload) {
         return newResponse(SERVICE_UNAVAILABLE, message, payload);
     }
-    
+
     public static Response newServiceUnavailableErrorResponse() {
     	return newServiceUnavailableErrorResponse(null, null);
     }
-    
+
     public static Response newServiceUnavailableErrorResponse(String message) {
         return newServiceUnavailableErrorResponse(message, null);
     }
@@ -168,5 +168,5 @@ public abstract class ChaincodeHelper {
         throwable.printStackTrace(new PrintWriter(buffer));
         return buffer.toString().getBytes(StandardCharsets.UTF_8);
     }
-    
+
 }
