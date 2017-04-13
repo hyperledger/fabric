@@ -65,7 +65,7 @@ limitations under the License.
             </configuration>
           </execution>
         </executions>
-  </plugin>  
+  </plugin>
    </plugins>
   </build>
   <dependencies>

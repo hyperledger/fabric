@@ -35,7 +35,7 @@ import org.hyperledger.fabric.shim.ChaincodeStub;
 /**
  * <h1>Classic "transfer" sample chaincode</h1> (java implementation of <A href=
  * "https://github.com/hyperledger/fabric/blob/master/examples/chaincode/go/chaincode_example02/chaincode_example02.go">chaincode_example02.go</A>)
- * 
+ *
  * @author Sergey Pomytkin spomytkin@gmail.com
  *
  */

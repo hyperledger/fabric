@@ -235,22 +235,22 @@ extern "C" {
 
 void _wrap_Swig_free_consensus_0731991c73947514(void *_swig_go_0) {
   void *arg1 = (void *) 0 ;
-  
-  arg1 = *(void **)&_swig_go_0; 
-  
+
+  arg1 = *(void **)&_swig_go_0;
+
   Swig_free(arg1);
-  
+
 }
 
 
 intgo _wrap_verify_result_eval_false_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_eval_false;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -258,11 +258,11 @@ intgo _wrap_verify_result_eval_false_consensus_0731991c73947514() {
 intgo _wrap_verify_result_eval_true_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_eval_true;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -270,11 +270,11 @@ intgo _wrap_verify_result_eval_true_consensus_0731991c73947514() {
 intgo _wrap_verify_result_script_size_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_script_size;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -282,11 +282,11 @@ intgo _wrap_verify_result_script_size_consensus_0731991c73947514() {
 intgo _wrap_verify_result_push_size_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_push_size;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -294,11 +294,11 @@ intgo _wrap_verify_result_push_size_consensus_0731991c73947514() {
 intgo _wrap_verify_result_op_count_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_op_count;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -306,11 +306,11 @@ intgo _wrap_verify_result_op_count_consensus_0731991c73947514() {
 intgo _wrap_verify_result_stack_size_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_stack_size;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -318,11 +318,11 @@ intgo _wrap_verify_result_stack_size_consensus_0731991c73947514() {
 intgo _wrap_verify_result_sig_count_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_sig_count;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -330,11 +330,11 @@ intgo _wrap_verify_result_sig_count_consensus_0731991c73947514() {
 intgo _wrap_verify_result_pubkey_count_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_pubkey_count;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -342,11 +342,11 @@ intgo _wrap_verify_result_pubkey_count_consensus_0731991c73947514() {
 intgo _wrap_verify_result_verify_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_verify;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -354,11 +354,11 @@ intgo _wrap_verify_result_verify_consensus_0731991c73947514() {
 intgo _wrap_verify_result_equalverify_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_equalverify;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -366,11 +366,11 @@ intgo _wrap_verify_result_equalverify_consensus_0731991c73947514() {
 intgo _wrap_verify_result_checkmultisigverify_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_checkmultisigverify;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -378,11 +378,11 @@ intgo _wrap_verify_result_checkmultisigverify_consensus_0731991c73947514() {
 intgo _wrap_verify_result_checksigverify_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_checksigverify;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -390,11 +390,11 @@ intgo _wrap_verify_result_checksigverify_consensus_0731991c73947514() {
 intgo _wrap_verify_result_numequalverify_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_numequalverify;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -402,11 +402,11 @@ intgo _wrap_verify_result_numequalverify_consensus_0731991c73947514() {
 intgo _wrap_verify_result_bad_opcode_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_bad_opcode;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -414,11 +414,11 @@ intgo _wrap_verify_result_bad_opcode_consensus_0731991c73947514() {
 intgo _wrap_verify_result_disabled_opcode_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_disabled_opcode;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -426,11 +426,11 @@ intgo _wrap_verify_result_disabled_opcode_consensus_0731991c73947514() {
 intgo _wrap_verify_result_invalid_stack_operation_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_invalid_stack_operation;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -438,11 +438,11 @@ intgo _wrap_verify_result_invalid_stack_operation_consensus_0731991c73947514() {
 intgo _wrap_verify_result_invalid_altstack_operation_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_invalid_altstack_operation;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -450,11 +450,11 @@ intgo _wrap_verify_result_invalid_altstack_operation_consensus_0731991c73947514(
 intgo _wrap_verify_result_unbalanced_conditional_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_unbalanced_conditional;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -462,11 +462,11 @@ intgo _wrap_verify_result_unbalanced_conditional_consensus_0731991c73947514() {
 intgo _wrap_verify_result_sig_hashtype_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_sig_hashtype;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -474,11 +474,11 @@ intgo _wrap_verify_result_sig_hashtype_consensus_0731991c73947514() {
 intgo _wrap_verify_result_sig_der_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_sig_der;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -486,11 +486,11 @@ intgo _wrap_verify_result_sig_der_consensus_0731991c73947514() {
 intgo _wrap_verify_result_minimaldata_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_minimaldata;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -498,11 +498,11 @@ intgo _wrap_verify_result_minimaldata_consensus_0731991c73947514() {
 intgo _wrap_verify_result_sig_pushonly_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_sig_pushonly;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -510,11 +510,11 @@ intgo _wrap_verify_result_sig_pushonly_consensus_0731991c73947514() {
 intgo _wrap_verify_result_sig_high_s_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_sig_high_s;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -522,11 +522,11 @@ intgo _wrap_verify_result_sig_high_s_consensus_0731991c73947514() {
 intgo _wrap_verify_result_sig_nulldummy_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_sig_nulldummy;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -534,11 +534,11 @@ intgo _wrap_verify_result_sig_nulldummy_consensus_0731991c73947514() {
 intgo _wrap_verify_result_pubkeytype_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_pubkeytype;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -546,11 +546,11 @@ intgo _wrap_verify_result_pubkeytype_consensus_0731991c73947514() {
 intgo _wrap_verify_result_cleanstack_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_cleanstack;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -558,11 +558,11 @@ intgo _wrap_verify_result_cleanstack_consensus_0731991c73947514() {
 intgo _wrap_verify_result_discourage_upgradable_nops_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_discourage_upgradable_nops;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -570,11 +570,11 @@ intgo _wrap_verify_result_discourage_upgradable_nops_consensus_0731991c73947514(
 intgo _wrap_verify_result_op_return_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_op_return;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -582,11 +582,11 @@ intgo _wrap_verify_result_op_return_consensus_0731991c73947514() {
 intgo _wrap_verify_result_unknown_error_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_unknown_error;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -594,11 +594,11 @@ intgo _wrap_verify_result_unknown_error_consensus_0731991c73947514() {
 intgo _wrap_verify_result_tx_invalid_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_tx_invalid;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -606,11 +606,11 @@ intgo _wrap_verify_result_tx_invalid_consensus_0731991c73947514() {
 intgo _wrap_verify_result_tx_size_invalid_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_tx_size_invalid;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -618,11 +618,11 @@ intgo _wrap_verify_result_tx_size_invalid_consensus_0731991c73947514() {
 intgo _wrap_verify_result_tx_input_invalid_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_tx_input_invalid;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -630,11 +630,11 @@ intgo _wrap_verify_result_tx_input_invalid_consensus_0731991c73947514() {
 intgo _wrap_verify_result_negative_locktime_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_negative_locktime;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -642,11 +642,11 @@ intgo _wrap_verify_result_negative_locktime_consensus_0731991c73947514() {
 intgo _wrap_verify_result_unsatisfied_locktime_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_result_unsatisfied_locktime;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -654,11 +654,11 @@ intgo _wrap_verify_result_unsatisfied_locktime_consensus_0731991c73947514() {
 intgo _wrap_verify_flags_none_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_none;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -666,11 +666,11 @@ intgo _wrap_verify_flags_none_consensus_0731991c73947514() {
 intgo _wrap_verify_flags_p2sh_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_p2sh;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -678,11 +678,11 @@ intgo _wrap_verify_flags_p2sh_consensus_0731991c73947514() {
 intgo _wrap_verify_flags_strictenc_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_strictenc;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -690,11 +690,11 @@ intgo _wrap_verify_flags_strictenc_consensus_0731991c73947514() {
 intgo _wrap_verify_flags_dersig_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_dersig;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -702,11 +702,11 @@ intgo _wrap_verify_flags_dersig_consensus_0731991c73947514() {
 intgo _wrap_verify_flags_low_s_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_low_s;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -714,11 +714,11 @@ intgo _wrap_verify_flags_low_s_consensus_0731991c73947514() {
 intgo _wrap_verify_flags_nulldummy_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_nulldummy;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -726,11 +726,11 @@ intgo _wrap_verify_flags_nulldummy_consensus_0731991c73947514() {
 intgo _wrap_verify_flags_sigpushonly_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_sigpushonly;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -738,11 +738,11 @@ intgo _wrap_verify_flags_sigpushonly_consensus_0731991c73947514() {
 intgo _wrap_verify_flags_minimaldata_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_minimaldata;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -750,11 +750,11 @@ intgo _wrap_verify_flags_minimaldata_consensus_0731991c73947514() {
 intgo _wrap_verify_flags_discourage_upgradable_nops_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_discourage_upgradable_nops;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -762,11 +762,11 @@ intgo _wrap_verify_flags_discourage_upgradable_nops_consensus_0731991c73947514()
 intgo _wrap_verify_flags_cleanstack_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_cleanstack;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -774,11 +774,11 @@ intgo _wrap_verify_flags_cleanstack_consensus_0731991c73947514() {
 intgo _wrap_verify_flags_checklocktimeverify_consensus_0731991c73947514() {
   libbitcoin::consensus::verify_flags_type result;
   intgo _swig_go_result;
-  
-  
+
+
   result = libbitcoin::consensus::verify_flags_checklocktimeverify;
-  
-  _swig_go_result = (intgo)result; 
+
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
@@ -792,16 +792,16 @@ intgo _wrap_verify_script_consensus_0731991c73947514(char *_swig_go_0, long long
   unsigned int arg6 ;
   libbitcoin::consensus::verify_result_type result;
   intgo _swig_go_result;
-  
-  arg1 = *(unsigned char **)&_swig_go_0; 
-  arg2 = (size_t)_swig_go_1; 
-  arg3 = *(unsigned char **)&_swig_go_2; 
-  arg4 = (size_t)_swig_go_3; 
-  arg5 = (unsigned int)_swig_go_4; 
-  arg6 = (unsigned int)_swig_go_5; 
-  
+
+  arg1 = *(unsigned char **)&_swig_go_0;
+  arg2 = (size_t)_swig_go_1;
+  arg3 = *(unsigned char **)&_swig_go_2;
+  arg4 = (size_t)_swig_go_3;
+  arg5 = (unsigned int)_swig_go_4;
+  arg6 = (unsigned int)_swig_go_5;
+
   result = (libbitcoin::consensus::verify_result_type)libbitcoin::consensus::verify_script((unsigned char const *)arg1,arg2,(unsigned char const *)arg3,arg4,arg5,arg6);
-  _swig_go_result = (intgo)result; 
+  _swig_go_result = (intgo)result;
   return _swig_go_result;
 }
 
