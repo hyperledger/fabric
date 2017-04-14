@@ -31,20 +31,24 @@ const (
 	epoch        = 0
 )
 
+// Factory facilitates the creation of genesis blocks.
 type Factory interface {
-	Block(chainID string) (*cb.Block, error)
+	// Block returns a genesis block for a given channel ID.
+	Block(channelID string) (*cb.Block, error)
 }
 
 type factory struct {
 	template configtx.Template
 }
 
+// NewFactoryImpl creates a new Factory.
 func NewFactoryImpl(template configtx.Template) Factory {
 	return &factory{template: template}
 }
 
-func (f *factory) Block(chainID string) (*cb.Block, error) {
-	configEnv, err := f.template.Envelope(chainID)
+// Block constructs and returns a genesis block for a given channel ID.
+func (f *factory) Block(channelID string) (*cb.Block, error) {
+	configEnv, err := f.template.Envelope(channelID)
 	if err != nil {
 		return nil, err
 	}
@@ -55,8 +59,9 @@ func (f *factory) Block(chainID string) (*cb.Block, error) {
 		return nil, err
 	}
 
-	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG, msgVersion, chainID, epoch)
+	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG, msgVersion, channelID, epoch)
 	payloadSignatureHeader := utils.MakeSignatureHeader(nil, utils.CreateNonceOrPanic())
+	utils.SetTxID(payloadChannelHeader, payloadSignatureHeader)
 	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
 	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: configUpdate.WriteSet}})}
 	envelope := &cb.Envelope{Payload: utils.MarshalOrPanic(payload), Signature: nil}
