@@ -250,14 +250,29 @@ func (cccid *CCContext) GetCanonicalName() string {
 	return cccid.canonicalName
 }
 
+//-------- ChaincodeData is stored on the LCCC -------
+
 //ChaincodeData defines the datastructure for chaincodes to be serialized by proto
+//Type provides an additional check by directing to use a specific package after instantiation
+//Data is Type specifc (see CDSPackage and SignedCDSPackage)
 type ChaincodeData struct {
-	Name    string `protobuf:"bytes,1,opt,name=name"`
+	//Name of the chaincode
+	Name string `protobuf:"bytes,1,opt,name=name"`
+
+	//Version of the chaincode
 	Version string `protobuf:"bytes,2,opt,name=version"`
-	DepSpec []byte `protobuf:"bytes,3,opt,name=depSpec,proto3"`
-	Escc    string `protobuf:"bytes,4,opt,name=escc"`
-	Vscc    string `protobuf:"bytes,5,opt,name=vscc"`
-	Policy  []byte `protobuf:"bytes,6,opt,name=policy"`
+
+	//Escc for the chaincode instance
+	Escc string `protobuf:"bytes,3,opt,name=escc"`
+
+	//Vscc for the chaincode instance
+	Vscc string `protobuf:"bytes,4,opt,name=vscc"`
+
+	//Policy endorsement policy for the chaincode instance
+	Policy []byte `protobuf:"bytes,5,opt,name=policy,proto3"`
+
+	//Data data specific to the package
+	Data []byte `protobuf:"bytes,6,opt,name=data,proto3"`
 }
 
 //implement functions needed from proto.Message for proto's mar/unmarshal functions
