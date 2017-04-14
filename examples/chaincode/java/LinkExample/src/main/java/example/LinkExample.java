@@ -1,5 +1,5 @@
 /*
-Copyright DTCC 2016 All Rights Reserved.
+Copyright DTCC, IBM 2016, 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,47 +16,65 @@ limitations under the License.
 
 package example;
 
-import com.google.protobuf.ByteString;
+import static java.lang.String.format;
+import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
+import static org.hyperledger.fabric.shim.ChaincodeHelper.newInternalServerErrorResponse;
+import static org.hyperledger.fabric.shim.ChaincodeHelper.newSuccessResponse;
+
+import java.util.List;
+
+import org.hyperledger.fabric.protos.common.Common.Status;
+import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
 import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
-import java.nio.charset.StandardCharsets;
-import java.util.LinkedList;
-import java.util.List;
-
 public class LinkExample extends ChaincodeBase {
 
-	//Default name for map chaincode in dev mode
-	//Can be set to a hash location via init or setMap
-	private String mapChaincode = "map";
+    /** Default name for map chaincode in dev mode. Can be set to a hash location via init or setMap */
+    private static final String DEFAULT_MAP_CHAINCODE_NAME = "map";
+    
+	private String mapChaincodeName = DEFAULT_MAP_CHAINCODE_NAME;
 
 	@Override
-	public String run(ChaincodeStub stub, String function, String[] args) {
-		switch (function) {
-		case "init":
-		case "setMap":
-			mapChaincode = args[0];
-			break;
-		case "put":
-			stub.invokeChaincode(mapChaincode, function, toByteStringList(args), "");
-		default:
-			break;
-		}
-		return null;
+	public Response init(ChaincodeStub stub) {
+	    return invoke(stub);
 	}
-
+	
 	@Override
-	public String query(ChaincodeStub stub, String function, String[] args) {
-		String tmp = stub.queryChaincode("map", function, toByteStringList(args));
-		if (tmp.isEmpty()) tmp = "NULL";
-		else tmp = "\"" + tmp + "\"";
-		tmp += " (queried from map chaincode)";
-		return tmp;
+	public Response invoke(ChaincodeStub stub) {
+        try {
+            final List<String> argList = stub.getArgsAsStrings();
+            final String function = argList.get(0);
+            final List<String> args = argList.subList(0, argList.size());
+            
+            switch (function) {
+            case "init":
+            case "setMap":
+                this.mapChaincodeName = args.get(0);
+                return newSuccessResponse();
+            case "put":
+                stub.invokeChaincodeWithStringArgs(this.mapChaincodeName, args);
+            case "query":
+                return doQuery(stub, args);
+            default:
+                return newBadRequestResponse(format("Unknown function: %s", function));
+            }
+        } catch (Throwable e) {
+            return newInternalServerErrorResponse(e);
+        }
+	}
+	
+	private Response doQuery(ChaincodeStub stub, List<String> args) {
+		final Response response = stub.invokeChaincodeWithStringArgs(this.mapChaincodeName, args);
+		if(response.getStatus() == Status.SUCCESS_VALUE) {
+		    return newSuccessResponse(String.format("\"%s\" (queried from %s chaincode)", response.getPayload().toStringUtf8(), this.mapChaincodeName));
+		} else {
+		    return response;
+		}
 	}
 
 	public static void main(String[] args) throws Exception {
 		new LinkExample().start(args);
-		//new Example().start();
 	}
 
 	@Override
@@ -64,11 +82,4 @@ public class LinkExample extends ChaincodeBase {
 		return "link";
 	}
 
-	private List<ByteString> toByteStringList(String[] args) {
-		LinkedList<ByteString> result = new LinkedList();
-		for (int i=0; i<args.length; ++i) {
-			result.add(ByteString.copyFrom(args[i].getBytes(StandardCharsets.UTF_8)));
-		}
-		return result;
-	}
 }
