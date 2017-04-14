@@ -95,12 +95,12 @@ func generateChaincode(cmd *cobra.Command, chaincodeName, chaincodeVersion strin
 		return nil, fmt.Errorf("chaincode %s:%s exists", chaincodeName, chaincodeVersion)
 	}
 
-	spec, err := getChaincodeSpecification(cmd)
+	spec, err := getChaincodeSpec(cmd)
 	if err != nil {
 		return nil, err
 	}
 
-	cds, err := getChaincodeBytes(spec, true)
+	cds, err := getChaincodeDeploymentSpec(spec, true)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
 	}
