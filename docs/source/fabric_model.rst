@@ -92,8 +92,9 @@ governed on the broader network and on channel levels.  This "permissioned" noti
 of Fabric, coupled with the existence and capabilities of channels, helps address
 scenarios where privacy and confidentiality are paramount concerns.
 
-See the Fabric CA section to better understand cryptographic
-implementations, and the sign, verify, authenticate approach used in Fabric.
+See the 'Fabric CA <https://hyperledger-fabric.readthedocs.io/en/latest/Setup/ca-setup.html>`__
+section to better understand cryptographic implementations, and the sign, verify,
+authenticate approach used in Fabric.
 
 .. _Consensus:
 
