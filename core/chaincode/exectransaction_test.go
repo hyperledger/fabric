@@ -624,9 +624,11 @@ func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContex
 }
 
 const (
-	chaincodeExample02GolangPath = "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	chaincodeExample02JavaPath   = "../../examples/chaincode/java/chaincode_example02"
-	chaincodeExample06JavaPath   = "../../examples/chaincode/java/chaincode_example06"
+	chaincodeExample02GolangPath   = "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	chaincodeEventSenderGolangPath = "github.com/hyperledger/fabric/examples/chaincode/go/eventsender"
+	chaincodeExample02JavaPath     = "../../examples/chaincode/java/chaincode_example02"
+	chaincodeExample06JavaPath     = "../../examples/chaincode/java/chaincode_example06"
+	chaincodeEventSenderJavaPath   = "../../examples/chaincode/java/eventsender"
 )
 
 func runChaincodeInvokeChaincode(t *testing.T, chainID1 string, chainID2 string, _ string) (err error) {
@@ -1307,7 +1309,17 @@ func TestQueries(t *testing.T) {
 }
 
 func TestGetEvent(t *testing.T) {
+
+	testCases := []struct {
+		chaincodeType pb.ChaincodeSpec_Type
+		chaincodePath string
+	}{
+		{pb.ChaincodeSpec_GOLANG, chaincodeEventSenderGolangPath},
+		{pb.ChaincodeSpec_JAVA, chaincodeEventSenderJavaPath},
+	}
+
 	chainID := util.GetTestChainID()
+	var nextBlockNumber uint64
 
 	lis, err := initPeer(chainID)
 	if err != nil {
@@ -1315,58 +1327,68 @@ func TestGetEvent(t *testing.T) {
 		t.Logf("Error creating peer: %s", err)
 	}
 
+	nextBlockNumber++
+
 	defer finitPeer(lis, chainID)
 
-	var ctxt = context.Background()
+	for _, tc := range testCases {
+		t.Run(tc.chaincodeType.String(), func(t *testing.T) {
 
-	url := "github.com/hyperledger/fabric/examples/chaincode/go/eventsender"
+			if tc.chaincodeType == pb.ChaincodeSpec_JAVA && runtime.GOARCH != "amd64" {
+				t.Skip("No Java chaincode support yet on non-x86_64.")
+			}
 
-	cID := &pb.ChaincodeID{Name: "esender", Path: url, Version: "0"}
-	f := "init"
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(f)}}
+			var ctxt = context.Background()
 
-	cccid := ccprovider.NewCCContext(chainID, "esender", "0", "", false, nil, nil)
-	var nextBlockNumber uint64 = 1
-	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
-	nextBlockNumber++
-	ccID := spec.ChaincodeId.Name
-	if err != nil {
-		t.Fail()
-		t.Logf("Error initializing chaincode %s(%s)", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
+			cID := &pb.ChaincodeID{Name: generateChaincodeName(tc.chaincodeType), Path: tc.chaincodePath, Version: "0"}
+			f := "init"
+			spec := &pb.ChaincodeSpec{Type: tc.chaincodeType, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(f)}}
+
+			cccid := ccprovider.NewCCContext(chainID, cID.Name, cID.Version, "", false, nil, nil)
+			_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
+			nextBlockNumber++
+			ccID := spec.ChaincodeId.Name
+			if err != nil {
+				t.Fail()
+				t.Logf("Error initializing chaincode %s(%s)", ccID, err)
+				theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+				return
+			}
+
+			time.Sleep(time.Second)
+
+			args := util.ToChaincodeArgs("invoke", "i", "am", "satoshi")
+
+			spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+
+			var ccevt *pb.ChaincodeEvent
+			ccevt, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
+			nextBlockNumber++
+
+			if err != nil {
+				t.Logf("Error invoking chaincode %s(%s)", ccID, err)
+				t.Fail()
+			}
+
+			if ccevt == nil {
+				t.Logf("Error ccevt is nil %s(%s)", ccID, err)
+				t.Fail()
+			}
+
+			if ccevt.ChaincodeId != ccID {
+				t.Logf("Error ccevt id(%s) != cid(%s)", ccevt.ChaincodeId, ccID)
+				t.Fail()
+			}
+
+			if strings.Index(string(ccevt.Payload), "i,am,satoshi") < 0 {
+				t.Logf("Error expected event not found (%s)", string(ccevt.Payload))
+				t.Fail()
+			}
+
+			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		})
 	}
 
-	time.Sleep(time.Second)
-
-	args := util.ToChaincodeArgs("invoke", "i", "am", "satoshi")
-
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-
-	var ccevt *pb.ChaincodeEvent
-	ccevt, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-
-	if err != nil {
-		t.Logf("Error invoking chaincode %s(%s)", ccID, err)
-		t.Fail()
-	}
-
-	if ccevt == nil {
-		t.Logf("Error ccevt is nil %s(%s)", ccID, err)
-		t.Fail()
-	}
-
-	if ccevt.ChaincodeId != ccID {
-		t.Logf("Error ccevt id(%s) != cid(%s)", ccevt.ChaincodeId, ccID)
-		t.Fail()
-	}
-
-	if strings.Index(string(ccevt.Payload), "i,am,satoshi") < 0 {
-		t.Logf("Error expected event not found (%s)", string(ccevt.Payload))
-		t.Fail()
-	}
-
-	theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 // Test the execution of a chaincode that queries another chaincode

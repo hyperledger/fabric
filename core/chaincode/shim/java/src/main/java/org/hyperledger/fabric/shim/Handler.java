@@ -214,24 +214,17 @@ public class Handler {
 				// Create the ChaincodeStub which the chaincode can use to callback
 				final ChaincodeStub stub = new ChaincodeStub(message.getTxid(), this, input.getArgsList());
 				
-				// Call chaincode's Run
+				// Call chaincode's init
 				final Response result = chaincode.init(stub);
-				logger.debug(String.format(String.format("[%s]Init succeeded. Sending %s", shortID(message), COMPLETED)));
 				
 				if(result.getStatus() == Status.SUCCESS_VALUE) {
 					// Send COMPLETED with entire result as payload
-					triggerNextState(ChaincodeMessage.newBuilder()
-							.setType(COMPLETED)
-							.setPayload(result.toByteString())
-							.setTxid(message.getTxid())
-							.build(), true);
+					logger.debug(String.format(String.format("[%s]Init succeeded. Sending %s", shortID(message), COMPLETED)));
+					triggerNextState(newCompletedEventMessage(message.getTxid(), result, stub.getEvent()), true);
 				} else {
 					// Send ERROR with entire result.Message as payload
-					triggerNextState(ChaincodeMessage.newBuilder()
-							.setType(ERROR)
-							.setPayload(result.getMessageBytes())
-							.setTxid(message.getTxid())
-							.build(), true);
+					logger.error(String.format("[%s]Init failed. Sending %s", shortID(message), ERROR));
+					triggerNextState(newErrorEventMessage(message.getTxid(), result.getMessage(), stub.getEvent()), true);
 				}
 			
 			} catch (InvalidProtocolBufferException | RuntimeException e) {
@@ -265,58 +258,46 @@ public class Handler {
 
 	// handleTransaction Handles request to execute a transaction.
 	public void handleTransaction(ChaincodeMessage message) {
-		// The defer followed by triggering a go routine dance is needed to ensure that the previous state transition
-		// is completed before the next one is triggered. The previous state transition is deemed complete only when
-		// the beforeInit function is exited. Interesting bug fix!!
-		Runnable task = () -> {
-			//better not be nil
-			ChaincodeMessage nextStatemessage = null;
-			boolean send = true;
-
-			//Defer
+		new Thread(() -> {
 			try {
+				
 				// Get the function and args from Payload
-				ChaincodeInput input;
-				try {
-					input = ChaincodeInput.parseFrom(message.getPayload());
-				} catch (InvalidProtocolBufferException e) {
-				    logger.error(String.format("[%s]Incorrect payload format", shortID(message)), e);
-					logger.debug(String.format("[%s]Incorrect payload format. Sending %s", shortID(message), ERROR));
-					// Send ERROR message to chaincode support and change state
-					nextStatemessage = newErrorEventMessage(message.getTxid(), e);
-					return;
-				}
-
+				final ChaincodeInput input = ChaincodeInput.parseFrom(message.getPayload());
+					
 				// Mark as a transaction (allow put/del state)
 				markIsTransaction(message.getTxid(), true);
-
+				
 				// Create the ChaincodeStub which the chaincode can use to callback
 				final ChaincodeStub stub = new ChaincodeStub(message.getTxid(), this, input.getArgsList());
-
-				// Call chaincode's Run
-				Response response;
-				try {
-					response = chaincode.invoke(stub);
-				} catch (Throwable throwable) {
-					// Send ERROR message to chaincode support and change state
-					logger.error(String.format("[%s]Error running chaincode. Transaction execution failed. Sending %s", shortID(message), ERROR));
-					nextStatemessage = newErrorEventMessage(message.getTxid(), throwable);
-					return;
-				} finally {
-					deleteIsTransaction(message.getTxid());
+				
+				// Call chaincode's invoke
+				final Response result = chaincode.invoke(stub);
+				
+				if(result.getStatus() == Status.SUCCESS_VALUE) {
+					// Send COMPLETED with entire result as payload
+					logger.debug(String.format(String.format("[%s]Invoke succeeded. Sending %s", shortID(message), COMPLETED)));
+					triggerNextState(newCompletedEventMessage(message.getTxid(), result, stub.getEvent()), true);
+				} else {
+					// Send ERROR with entire result.Message as payload
+					logger.error(String.format("[%s]Invoke failed. Sending %s", shortID(message), ERROR));
+					triggerNextState(newErrorEventMessage(message.getTxid(), result.getMessage(), stub.getEvent()), true);
 				}
-
-				logger.info(String.format("[%s]Transaction completed. Sending %s", shortID(message), COMPLETED));
-				logger.info(String.format("[%s] Response ='%s'", shortID(message), response));
-
-				// Send COMPLETED message to chaincode support and change state
-				nextStatemessage = newCompletedEventMessage(message.getTxid(), response);
+			
+			} catch (InvalidProtocolBufferException | RuntimeException e) {
+				logger.error(String.format("[%s]Invoke failed. Sending %s", shortID(message), ERROR), e);
+				triggerNextState(ChaincodeMessage.newBuilder()
+						.setType(ERROR)
+						.setPayload(Response.newBuilder()
+							.setStatus(Status.INTERNAL_SERVER_ERROR_VALUE)
+							.setPayload(ByteString.copyFromUtf8(e.toString()))
+							.build().toByteString())
+						.setTxid(message.getTxid())
+						.build(), true);
 			} finally {
-				triggerNextState(nextStatemessage, send);
+				// delete isTransaction entry
+				deleteIsTransaction(message.getTxid());
 			}
-		};
-
-		new Thread(task).start();
+		}).start();
 	}
 
     // enterTransactionState will execute chaincode's Run if coming from a TRANSACTION event.
