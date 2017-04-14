@@ -21,13 +21,13 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func TestMain(m *testing.M) {
-	config.SetupTestConfig("../../../../../peer")
+	testutil.SetupTestConfig("../../../../../peer")
 	os.Exit(m.Run())
 }
 

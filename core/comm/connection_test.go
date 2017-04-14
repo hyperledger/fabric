@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/core/testutil"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -52,7 +52,7 @@ VQQLDAtIeXBlcmxlZGdlcjESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0C
 `
 
 func TestConnection_Correct(t *testing.T) {
-	config.SetupTestConfig("./../../peer")
+	testutil.SetupTestConfig("./../../peer")
 	viper.Set("ledger.blockchain.deploy-system-chaincode", "false")
 	peerAddress := GetPeerTestingAddress("7051")
 	var tmpConn *grpc.ClientConn
@@ -69,7 +69,7 @@ func TestConnection_Correct(t *testing.T) {
 }
 
 func TestConnection_WrongAddress(t *testing.T) {
-	config.SetupTestConfig("./../../peer")
+	testutil.SetupTestConfig("./../../peer")
 	viper.Set("ledger.blockchain.deploy-system-chaincode", "false")
 	peerAddress := GetPeerTestingAddress("7052")
 	var tmpConn *grpc.ClientConn
