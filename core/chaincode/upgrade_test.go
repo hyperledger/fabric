@@ -80,6 +80,9 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 		}
 	}()
 
+	//ignore existence errors
+	ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
+
 	sysCCVers := util.GetSysCCVersion()
 	lcccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, nil, nil)
 

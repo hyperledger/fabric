@@ -65,7 +65,7 @@ func TestPutCDSCC(t *testing.T) {
 		return
 	}
 
-	if _, err = ccpack.ValidateCC(cd); err != nil {
+	if err = ccpack.ValidateCC(cd); err != nil {
 		t.Fatalf("error validating package %s", err)
 		return
 	}
@@ -84,7 +84,7 @@ func TestPutCDSErrorPaths(t *testing.T) {
 	}
 
 	//validate with invalid name
-	if _, err = ccpack.ValidateCC(&ChaincodeData{Name: "invalname", Version: "0"}); err == nil {
+	if err = ccpack.ValidateCC(&ChaincodeData{Name: "invalname", Version: "0"}); err == nil {
 		t.Fatalf("expected error validating package")
 		return
 	}
@@ -169,7 +169,7 @@ func TestCDSSwitchChaincodes(t *testing.T) {
 		return
 	}
 
-	if _, err = badccpack.ValidateCC(goodcd); err == nil {
+	if err = badccpack.ValidateCC(goodcd); err == nil {
 		t.Fatalf("expected goodcd to fail against bad package but succeeded!")
 		return
 	}
