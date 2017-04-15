@@ -19,29 +19,35 @@ package comm
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/proto"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
 // ReceivedMessageImpl is an implementation of ReceivedMessage
 type ReceivedMessageImpl struct {
-	*proto.GossipMessage
-	lock sync.Locker
-	conn *connection
+	*proto.SignedGossipMessage
+	lock     sync.Locker
+	conn     *connection
+	connInfo *proto.ConnectionInfo
+}
+
+// GetSourceEnvelope Returns the Envelope the ReceivedMessage was
+// constructed with
+func (m *ReceivedMessageImpl) GetSourceEnvelope() *proto.Envelope {
+	return m.Envelope
 }
 
 // Respond sends a msg to the source that sent the ReceivedMessageImpl
 func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
-	m.conn.send(msg, func(e error) {})
+	m.conn.send(msg.NoopSign(), func(e error) {})
 }
 
 // GetGossipMessage returns the inner GossipMessage
-func (m *ReceivedMessageImpl) GetGossipMessage() *proto.GossipMessage {
-	return m.GossipMessage
+func (m *ReceivedMessageImpl) GetGossipMessage() *proto.SignedGossipMessage {
+	return m.SignedGossipMessage
 }
 
-// GetPKIID returns the PKI-ID of the remote peer
-// that sent the message
-func (m *ReceivedMessageImpl) GetPKIID() common.PKIidType {
-	return m.conn.pkiID
+// GetConnectionInfo returns information about the remote peer
+// that send the message
+func (m *ReceivedMessageImpl) GetConnectionInfo() *proto.ConnectionInfo {
+	return m.connInfo
 }

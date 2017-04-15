@@ -1,4 +1,4 @@
-FROM hyperledger/fabric-baseimage:_BASE_TAG_
+FROM _BASE_NS_/fabric-baseimage:_BASE_TAG_
 
 ENV SCALA_VERSION=2.11 \
     KAFKA_VERSION=0.9.0.1 \
@@ -15,6 +15,7 @@ ADD payload/kafka-run-class.sh /opt/kafka/bin/kafka-run-class.sh
 ADD payload/docker-entrypoint.sh /docker-entrypoint.sh
 
 EXPOSE 9092
+EXPOSE 9093
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["/opt/kafka/bin/kafka-server-start.sh"]

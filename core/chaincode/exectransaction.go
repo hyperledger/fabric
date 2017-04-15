@@ -19,7 +19,6 @@ package chaincode
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -35,79 +34,68 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 	var err error
 	var cds *pb.ChaincodeDeploymentSpec
 	var ci *pb.ChaincodeInvocationSpec
+
+	//init will call the Init method of a on a chain
+	cctyp := pb.ChaincodeMessage_INIT
 	if cds, _ = spec.(*pb.ChaincodeDeploymentSpec); cds == nil {
 		if ci, _ = spec.(*pb.ChaincodeInvocationSpec); ci == nil {
 			panic("Execute should be called with deployment or invocation spec")
 		}
+		cctyp = pb.ChaincodeMessage_TRANSACTION
 	}
 
-	if cds != nil {
-		_, err := theChaincodeSupport.Deploy(ctxt, cccid, cds)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
-		}
+	cID, cMsg, err := theChaincodeSupport.Launch(ctxt, cccid, spec)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s", err)
+	}
 
-		_, _, err = theChaincodeSupport.Launch(ctxt, cccid, cds)
-		if err != nil {
-			return nil, nil, fmt.Errorf("%s", err)
-		}
-	} else {
-		//will launch if necessary (and wait for ready)
-		cID, cMsg, err := theChaincodeSupport.Launch(ctxt, cccid, ci)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to launch chaincode spec(%s)", err)
-		}
+	//this should work because it worked above...
+	chaincode := cID.Name
 
-		//this should work because it worked above...
-		chaincode := cID.Name
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to stablish stream to container %s", chaincode)
+	}
 
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to stablish stream to container %s", chaincode)
-		}
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to retrieve chaincode spec(%s)", err)
+	}
 
-		// TODO: Need to comment next line and uncomment call to getTimeout, when transaction blocks are being created
-		timeout := time.Duration(30000) * time.Millisecond
+	var ccMsg *pb.ChaincodeMessage
+	ccMsg, err = createCCMessage(cctyp, cccid.TxID, cMsg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to transaction message(%s)", err)
+	}
 
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to retrieve chaincode spec(%s)", err)
-		}
+	resp, err := theChaincodeSupport.Execute(ctxt, cccid, ccMsg, theChaincodeSupport.executetimeout)
+	if err != nil {
+		// Rollback transaction
+		return nil, nil, fmt.Errorf("Failed to execute transaction (%s)", err)
+	} else if resp == nil {
+		// Rollback transaction
+		return nil, nil, fmt.Errorf("Failed to receive a response for (%s)", cccid.TxID)
+	}
 
-		var ccMsg *pb.ChaincodeMessage
-		ccMsg, err = createTransactionMessage(cccid.TxID, cMsg)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to transaction message(%s)", err)
-		}
+	if resp.ChaincodeEvent != nil {
+		resp.ChaincodeEvent.ChaincodeId = cccid.Name
+		resp.ChaincodeEvent.TxId = cccid.TxID
+	}
 
-		resp, err := theChaincodeSupport.Execute(ctxt, cccid, ccMsg, timeout)
-		if err != nil {
-			// Rollback transaction
-			return nil, nil, fmt.Errorf("Failed to execute transaction (%s)", err)
-		} else if resp == nil {
-			// Rollback transaction
-			return nil, nil, fmt.Errorf("Failed to receive a response for (%s)", cccid.TxID)
-		}
+	if resp.Type == pb.ChaincodeMessage_COMPLETED {
 		res := &pb.Response{}
 		unmarshalErr := proto.Unmarshal(resp.Payload, res)
 		if unmarshalErr != nil {
 			return nil, nil, fmt.Errorf("Failed to unmarshal response for (%s): %s", cccid.TxID, unmarshalErr)
-		} else {
-			if resp.ChaincodeEvent != nil {
-				resp.ChaincodeEvent.ChaincodeID = cccid.Name
-				resp.ChaincodeEvent.TxID = cccid.TxID
-			}
-
-			if resp.Type == pb.ChaincodeMessage_COMPLETED {
-				// Success
-				return res, resp.ChaincodeEvent, nil
-			} else if resp.Type == pb.ChaincodeMessage_ERROR {
-				// Rollback transaction
-				return nil, resp.ChaincodeEvent, fmt.Errorf("Transaction returned with failure: %s", string(resp.Payload))
-			}
-			return res, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", cccid.TxID, resp.Type)
 		}
 
+		// Success
+		return res, resp.ChaincodeEvent, nil
+	} else if resp.Type == pb.ChaincodeMessage_ERROR {
+		// Rollback transaction
+		return nil, resp.ChaincodeEvent, fmt.Errorf("Transaction returned with failure: %s", string(resp.Payload))
 	}
-	return &pb.Response{Status: shim.OK, Payload: nil}, nil, err
+
+	//TODO - this should never happen ... a panic is more appropriate but will save that for future
+	return nil, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", cccid.TxID, resp.Type)
 }
 
 // ExecuteWithErrorFilter is similar to Execute, but filters error contained in chaincode response and returns Payload of response only.

@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
 
@@ -63,7 +64,8 @@ func (m *mockB) Recv() (*cb.Envelope, error) {
 }
 
 type mockSupportManager struct {
-	chains map[string]*mockSupport
+	chains     map[string]*mockSupport
+	ProcessVal *cb.Envelope
 }
 
 func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
@@ -71,16 +73,11 @@ func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 	return chain, ok
 }
 
-func (mm *mockSupportManager) ProposeChain(configTx *cb.Envelope) cb.Status {
-	payload := utils.ExtractPayloadOrPanic(configTx)
-
-	mm.chains[string(payload.Header.ChainHeader.ChainID)] = &mockSupport{
-		filters: filter.NewRuleSet([]filter.Rule{
-			filter.EmptyRejectRule,
-			filter.AcceptRule,
-		}),
+func (mm *mockSupportManager) Process(configTx *cb.Envelope) (*cb.Envelope, error) {
+	if mm.ProcessVal == nil {
+		return nil, fmt.Errorf("Nil result implies error")
 	}
-	return cb.Status_SUCCESS
+	return mm.ProcessVal, nil
 }
 
 type mockSupport struct {
@@ -99,12 +96,12 @@ func (ms *mockSupport) Enqueue(env *cb.Envelope) bool {
 
 func makeConfigMessage(chainID string) *cb.Envelope {
 	payload := &cb.Payload{
-		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{}),
+		Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{}),
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				ChainID: chainID,
-				Type:    int32(cb.HeaderType_CONFIGURATION_TRANSACTION),
-			},
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelId: chainID,
+				Type:      int32(cb.HeaderType_CONFIG_UPDATE),
+			}),
 		},
 	}
 	return &cb.Envelope{
@@ -116,9 +113,9 @@ func makeMessage(chainID string, data []byte) *cb.Envelope {
 	payload := &cb.Payload{
 		Data: data,
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				ChainID: chainID,
-			},
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelId: chainID,
+			}),
 		},
 	}
 	return &cb.Envelope{
@@ -198,7 +195,7 @@ func TestEmptyEnvelope(t *testing.T) {
 	}
 }
 
-func TestBadChainID(t *testing.T) {
+func TestBadChannelId(t *testing.T) {
 	mm, _ := getMockSupportManager()
 	bh := NewHandlerImpl(mm)
 	m := newMockB()
@@ -222,27 +219,28 @@ func TestBadChainID(t *testing.T) {
 	}
 }
 
-func TestNewChainID(t *testing.T) {
+func TestGoodConfigUpdate(t *testing.T) {
+	mm, _ := getMockSupportManager()
+	mm.ProcessVal = &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: systemChain})}})}
+	bh := NewHandlerImpl(mm)
+	m := newMockB()
+	defer close(m.recvChan)
+	go bh.Handle(m)
+	newChannelId := "New Chain"
+
+	m.recvChan <- makeConfigMessage(newChannelId)
+	reply := <-m.sendChan
+	assert.Equal(t, cb.Status_SUCCESS, reply.Status, "Should have allowed a good CONFIG_UPDATE")
+}
+
+func TestBadConfigUpdate(t *testing.T) {
 	mm, _ := getMockSupportManager()
 	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
 	go bh.Handle(m)
-	newChainID := "New Chain"
 
-	m.recvChan <- makeConfigMessage(newChainID)
+	m.recvChan <- makeConfigMessage(systemChain)
 	reply := <-m.sendChan
-	if reply.Status != cb.Status_SUCCESS {
-		t.Fatalf("Should have created a new chain, got %d", reply.Status)
-	}
-
-	if len(mm.chains) != 2 {
-		t.Fatalf("Should have created a new chain")
-	}
-
-	m.recvChan <- makeMessage(newChainID, []byte("Some bytes"))
-	reply = <-m.sendChan
-	if reply.Status != cb.Status_SUCCESS {
-		t.Fatalf("Should have successfully sent message to new chain, got %v", reply)
-	}
+	assert.NotEqual(t, cb.Status_SUCCESS, reply.Status, "Should have rejected CONFIG_UPDATE")
 }

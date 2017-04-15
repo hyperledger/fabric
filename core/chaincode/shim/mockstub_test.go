@@ -43,26 +43,72 @@ func TestMockStateRangeQueryIterator(t *testing.T) {
 
 	fmt.Println("Running loop")
 	for i := 0; i < 2; i++ {
-		key, value, err := rqi.Next()
-		fmt.Println("Loop", i, "got", key, value, err)
-		if expectKeys[i] != key {
-			fmt.Println("Expected key", expectKeys[i], "got", key)
+		response, err := rqi.Next()
+		fmt.Println("Loop", i, "got", response.Key, response.Value, err)
+		if expectKeys[i] != response.Key {
+			fmt.Println("Expected key", expectKeys[i], "got", response.Key)
 			t.FailNow()
 		}
-		if expectValues[i][0] != value[0] {
-			fmt.Println("Expected value", expectValues[i], "got", value)
+		if expectValues[i][0] != response.Value[0] {
+			fmt.Println("Expected value", expectValues[i], "got", response.Value)
 		}
 	}
 }
 
-// TestSetChaincodeLoggingLevel uses the utlity function defined in chaincode.go to
-// set the chaincodeLogger's logging level
-func TestSetChaincodeLoggingLevel(t *testing.T) {
+// TestMockStateRangeQueryIterator_openEnded tests running an open-ended query
+// for all keys on the MockStateRangeQueryIterator
+func TestMockStateRangeQueryIterator_openEnded(t *testing.T) {
+	stub := NewMockStub("rangeTest", nil)
+	stub.MockTransactionStart("init")
+	stub.PutState("1", []byte{61})
+	stub.PutState("0", []byte{62})
+	stub.PutState("5", []byte{65})
+	stub.PutState("3", []byte{63})
+	stub.PutState("4", []byte{64})
+	stub.PutState("6", []byte{66})
+	stub.MockTransactionEnd("init")
+
+	rqi := NewMockStateRangeQueryIterator(stub, "", "")
+
+	count := 0
+	for rqi.HasNext() {
+		rqi.Next()
+		count++
+	}
+
+	if count != rqi.Stub.Keys.Len() {
+		t.FailNow()
+	}
+}
+
+// TestSetupChaincodeLogging uses the utlity function defined in chaincode.go to
+// set the chaincodeLogger's logging format and level
+func TestSetupChaincodeLogging_blankLevel(t *testing.T) {
+	// set log level to a non-default level
+	testLogLevelString := ""
+	testLogFormat := "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
+
+	viper.Set("chaincode.logLevel", testLogLevelString)
+	viper.Set("chaincode.logFormat", testLogFormat)
+
+	SetupChaincodeLogging()
+
+	if !IsEnabledForLogLevel("info") {
+		t.FailNow()
+	}
+}
+
+// TestSetupChaincodeLogging uses the utlity function defined in chaincode.go to
+// set the chaincodeLogger's logging format and level
+func TestSetupChaincodeLogging(t *testing.T) {
 	// set log level to a non-default level
 	testLogLevelString := "debug"
-	viper.Set("logging.chaincode", testLogLevelString)
+	testLogFormat := "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
 
-	SetChaincodeLoggingLevel()
+	viper.Set("chaincode.logLevel", testLogLevelString)
+	viper.Set("chaincode.logFormat", testLogFormat)
+
+	SetupChaincodeLogging()
 
 	if !IsEnabledForLogLevel(testLogLevelString) {
 		t.FailNow()
@@ -89,8 +135,8 @@ func jsonBytesEqual(expected []byte, actual []byte) bool {
 	return reflect.DeepEqual(infActual, infExpected)
 }
 
-func TestPartialCompositeKeyQuery(t *testing.T) {
-	stub := NewMockStub("PartialCompositeKeyQueryTest", nil)
+func TestGetStateByPartialCompositeKey(t *testing.T) {
+	stub := NewMockStub("GetStateByPartialCompositeKeyTest", nil)
 	stub.MockTransactionStart("init")
 
 	marble1 := &Marble{"marble", "set-1", "red", 5, "tom"}
@@ -111,20 +157,21 @@ func TestPartialCompositeKeyQuery(t *testing.T) {
 	stub.PutState(compositeKey3, marbleJSONBytes3)
 
 	stub.MockTransactionEnd("init")
-	expectKeys := []string{compositeKey1, compositeKey2}
-	expectKeysAttributes := [][]string{{"set-1", "red"}, {"set-1", "blue"}}
-	expectValues := [][]byte{marbleJSONBytes1, marbleJSONBytes2}
+	// should return in sorted order of attributes
+	expectKeys := []string{compositeKey2, compositeKey1}
+	expectKeysAttributes := [][]string{{"set-1", "blue"}, {"set-1", "red"}}
+	expectValues := [][]byte{marbleJSONBytes2, marbleJSONBytes1}
 
-	rqi, _ := stub.PartialCompositeKeyQuery("marble", []string{"set-1"})
+	rqi, _ := stub.GetStateByPartialCompositeKey("marble", []string{"set-1"})
 	fmt.Println("Running loop")
 	for i := 0; i < 2; i++ {
-		key, value, err := rqi.Next()
-		fmt.Println("Loop", i, "got", key, value, err)
-		if expectKeys[i] != key {
-			fmt.Println("Expected key", expectKeys[i], "got", key)
+		response, err := rqi.Next()
+		fmt.Println("Loop", i, "got", response.Key, response.Value, err)
+		if expectKeys[i] != response.Key {
+			fmt.Println("Expected key", expectKeys[i], "got", response.Key)
 			t.FailNow()
 		}
-		objectType, attributes, _ := stub.SplitCompositeKey(key)
+		objectType, attributes, _ := stub.SplitCompositeKey(response.Key)
 		if objectType != "marble" {
 			fmt.Println("Expected objectType", "marble", "got", objectType)
 			t.FailNow()
@@ -136,9 +183,51 @@ func TestPartialCompositeKeyQuery(t *testing.T) {
 				t.FailNow()
 			}
 		}
-		if jsonBytesEqual(expectValues[i], value) != true {
-			fmt.Println("Expected value", expectValues[i], "got", value)
+		if jsonBytesEqual(expectValues[i], response.Value) != true {
+			fmt.Println("Expected value", expectValues[i], "got", response.Value)
 			t.FailNow()
 		}
 	}
+}
+
+func TestGetStateByPartialCompositeKeyCollision(t *testing.T) {
+	stub := NewMockStub("GetStateByPartialCompositeKeyCollisionTest", nil)
+	stub.MockTransactionStart("init")
+
+	vehicle1Bytes := []byte("vehicle1")
+	compositeKeyVehicle1, _ := stub.CreateCompositeKey("Vehicle", []string{"VIN_1234"})
+	stub.PutState(compositeKeyVehicle1, vehicle1Bytes)
+
+	vehicleListing1Bytes := []byte("vehicleListing1")
+	compositeKeyVehicleListing1, _ := stub.CreateCompositeKey("VehicleListing", []string{"LIST_1234"})
+	stub.PutState(compositeKeyVehicleListing1, vehicleListing1Bytes)
+
+	stub.MockTransactionEnd("init")
+
+	// Only the single "Vehicle" object should be returned, not the "VehicleListing" object
+	rqi, _ := stub.GetStateByPartialCompositeKey("Vehicle", []string{})
+	i := 0
+	fmt.Println("Running loop")
+	for rqi.HasNext() {
+		i++
+		response, err := rqi.Next()
+		fmt.Println("Loop", i, "got", response.Key, response.Value, err)
+	}
+	// Only the single "Vehicle" object should be returned, not the "VehicleListing" object
+	if i != 1 {
+		fmt.Println("Expected 1, got", i)
+		t.FailNow()
+	}
+}
+
+func TestGetTxTimestamp(t *testing.T) {
+	stub := NewMockStub("GetTxTimestamp", nil)
+	stub.MockTransactionStart("init")
+
+	timestamp, err := stub.GetTxTimestamp()
+	if timestamp == nil || err != nil {
+		t.FailNow()
+	}
+
+	stub.MockTransactionEnd("init")
 }

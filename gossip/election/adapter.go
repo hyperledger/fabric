@@ -18,15 +18,13 @@ package election
 
 import (
 	"bytes"
-	"strconv"
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/gossip/util"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
 )
 
@@ -34,8 +32,8 @@ type msgImpl struct {
 	msg *proto.GossipMessage
 }
 
-func (mi *msgImpl) SenderID() string {
-	return string(mi.msg.GetLeadershipMsg().GetMembership().PkiID)
+func (mi *msgImpl) SenderID() peerID {
+	return mi.msg.GetLeadershipMsg().PkiId
 }
 
 func (mi *msgImpl) IsProposal() bool {
@@ -43,16 +41,15 @@ func (mi *msgImpl) IsProposal() bool {
 }
 
 func (mi *msgImpl) IsDeclaration() bool {
-	isDeclaration, _ := strconv.ParseBool(string(mi.msg.GetLeadershipMsg().GetMembership().Metadata))
-	return isDeclaration
+	return mi.msg.GetLeadershipMsg().IsDeclaration
 }
 
 type peerImpl struct {
-	member *discovery.NetworkMember
+	member discovery.NetworkMember
 }
 
-func (pi *peerImpl) ID() string {
-	return string(pi.member.PKIid)
+func (pi *peerImpl) ID() peerID {
+	return peerID(pi.member.PKIid)
 }
 
 type gossip interface {
@@ -63,34 +60,18 @@ type gossip interface {
 	// If passThrough is false, the messages are processed by the gossip layer beforehand.
 	// If passThrough is true, the gossip layer doesn't intervene and the messages
 	// can be used to send a reply back to the sender
-	Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan comm.ReceivedMessage)
+	Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage)
 
 	// Gossip sends a message to other peers to the network
 	Gossip(msg *proto.GossipMessage)
 }
 
-// MsgCrypto used to sign messages and verify received messages signatures
-type MsgCrypto interface {
-	// Sign signs a message, returns a signed message on success
-	// or an error on failure
-	Sign(msg []byte) ([]byte, error)
-
-	// Verify verifies a signed message
-	Verify(vkID, signature, message []byte) error
-
-	// Get returns the identity of a given pkiID, or error if such an identity
-	// isn't found
-	Get(pkiID common.PKIidType) (api.PeerIdentityType, error)
-}
-
 type adapterImpl struct {
-	gossip gossip
-	self   *discovery.NetworkMember
+	gossip    gossip
+	selfPKIid common.PKIidType
 
 	incTime uint64
 	seqNum  uint64
-
-	mcs MsgCrypto
 
 	channel common.ChainID
 
@@ -101,19 +82,17 @@ type adapterImpl struct {
 }
 
 // NewAdapter creates new leader election adapter
-func NewAdapter(gossip gossip, self *discovery.NetworkMember, mcs MsgCrypto, channel common.ChainID) LeaderElectionAdapter {
+func NewAdapter(gossip gossip, pkiid common.PKIidType, channel common.ChainID) LeaderElectionAdapter {
 	return &adapterImpl{
-		gossip: gossip,
-		self:   self,
+		gossip:    gossip,
+		selfPKIid: pkiid,
 
 		incTime: uint64(time.Now().UnixNano()),
 		seqNum:  uint64(0),
 
-		mcs: mcs,
-
 		channel: channel,
 
-		logger: logging.MustGetLogger("LeaderElectionAdapter"),
+		logger: util.GetLogger(util.LoggingElectionModule, ""),
 
 		doneCh:   make(chan struct{}),
 		stopOnce: &sync.Once{},
@@ -127,28 +106,9 @@ func (ai *adapterImpl) Gossip(msg Msg) {
 func (ai *adapterImpl) Accept() <-chan Msg {
 	adapterCh, _ := ai.gossip.Accept(func(message interface{}) bool {
 		// Get only leadership org and channel messages
-		validMsg := message.(*proto.GossipMessage).Tag == proto.GossipMessage_CHAN_AND_ORG &&
+		return message.(*proto.GossipMessage).Tag == proto.GossipMessage_CHAN_AND_ORG &&
 			message.(*proto.GossipMessage).IsLeadershipMsg() &&
 			bytes.Equal(message.(*proto.GossipMessage).Channel, ai.channel)
-		if validMsg {
-			leadershipMsg := message.(*proto.GossipMessage).GetLeadershipMsg()
-
-			verifier := func(identity []byte, signature, message []byte) error {
-				return ai.mcs.Verify(identity, signature, message)
-			}
-			identity, err := ai.mcs.Get(leadershipMsg.GetMembership().PkiID)
-			if err != nil {
-				ai.logger.Error("Failed verify, can't get identity", leadershipMsg, ":", err)
-				return false
-			}
-
-			if err := message.(*proto.GossipMessage).Verify(identity, verifier); err != nil {
-				ai.logger.Error("Failed verify", leadershipMsg, ":", err)
-				return false
-			}
-			return true
-		}
-		return false
 	}, false)
 
 	msgCh := make(chan Msg)
@@ -174,15 +134,9 @@ func (ai *adapterImpl) CreateMessage(isDeclaration bool) Msg {
 	ai.seqNum++
 	seqNum := ai.seqNum
 
-	metadata := []byte{}
-	metadata = strconv.AppendBool(metadata, isDeclaration)
-
 	leadershipMsg := &proto.LeadershipMessage{
-		Membership: &proto.Member{
-			PkiID:    ai.self.PKIid,
-			Endpoint: ai.self.Endpoint,
-			Metadata: metadata,
-		},
+		PkiId:         ai.selfPKIid,
+		IsDeclaration: isDeclaration,
 		Timestamp: &proto.PeerTime{
 			IncNumber: ai.incTime,
 			SeqNum:    seqNum,
@@ -195,12 +149,6 @@ func (ai *adapterImpl) CreateMessage(isDeclaration bool) Msg {
 		Content: &proto.GossipMessage_LeadershipMsg{LeadershipMsg: leadershipMsg},
 		Channel: ai.channel,
 	}
-
-	signer := func(msg []byte) ([]byte, error) {
-		return ai.mcs.Sign(msg)
-	}
-
-	msg.Sign(signer)
 	return &msgImpl{msg}
 }
 
@@ -209,7 +157,7 @@ func (ai *adapterImpl) Peers() []Peer {
 
 	var res []Peer
 	for _, peer := range peers {
-		res = append(res, &peerImpl{&peer})
+		res = append(res, &peerImpl{peer})
 	}
 
 	return res

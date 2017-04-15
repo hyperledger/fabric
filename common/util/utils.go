@@ -18,7 +18,6 @@ package util
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"math/big"
@@ -26,8 +25,9 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metadata"
-	"golang.org/x/crypto/sha3"
 )
 
 type alg struct {
@@ -40,10 +40,21 @@ var availableIDgenAlgs = map[string]alg{
 	defaultAlg: {GenerateIDfromTxSHAHash},
 }
 
-// ComputeCryptoHash should be used in openchain code so that we can change the actual algo used for crypto-hash at one place
-func ComputeCryptoHash(data []byte) (hash []byte) {
-	hash = make([]byte, 64)
-	sha3.ShakeSum256(hash, data)
+// ComputeSHA256 returns SHA2-256 on data
+func ComputeSHA256(data []byte) (hash []byte) {
+	hash, err := factory.GetDefault().Hash(data, &bccsp.SHA256Opts{})
+	if err != nil {
+		panic(fmt.Errorf("Failed computing SHA256 on [% x]", data))
+	}
+	return
+}
+
+// ComputeSHA3256 returns SHA3-256 on data
+func ComputeSHA3256(data []byte) (hash []byte) {
+	hash, err := factory.GetDefault().Hash(data, &bccsp.SHA3_256Opts{})
+	if err != nil {
+		panic(fmt.Errorf("Failed computing SHA3_256 on [% x]", data))
+	}
 	return
 }
 
@@ -87,12 +98,12 @@ func CreateUtcTimestamp() *timestamp.Timestamp {
 
 //GenerateHashFromSignature returns a hash of the combined parameters
 func GenerateHashFromSignature(path string, args []byte) []byte {
-	return ComputeCryptoHash(args)
+	return ComputeSHA256(args)
 }
 
 // GenerateIDfromTxSHAHash generates SHA256 hash using Tx payload
 func GenerateIDfromTxSHAHash(payload []byte) string {
-	return fmt.Sprintf("%x", sha256.Sum256(payload))
+	return fmt.Sprintf("%x", ComputeSHA256(payload))
 }
 
 // GenerateIDWithAlg generates an ID using a custom algorithm

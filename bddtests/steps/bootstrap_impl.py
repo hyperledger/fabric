@@ -13,21 +13,12 @@
 # limitations under the License.
 #
 
-import bdd_grpc_util
+from behave import *
 import endorser_util
-import bdd_test_util
 import bootstrap_util
 import orderer_util
+import compose
 import time
-
-class ChannelCreationInfo:
-    'Used to store the information needed to construct Config TX for orderer broadcast to create a new channel'
-    def __init__(self, channelId, channelCreationPolicyName, signedConfigEnvelope):
-        self.channelId = channelId
-        self.channelCreationPolicyName = channelCreationPolicyName
-        self.signedConfigEnvelope = signedConfigEnvelope
-
-
 
 @given(u'the orderer network has organizations')
 def step_impl(context):
@@ -67,20 +58,26 @@ def step_impl(context):
     # Simply create the user
     bootstrap_util.getOrdererBootstrapAdmin(context, shouldCreate=True)
 
-@given(u'the ordererBootstrapAdmin creates the genesis block for chain "{ordererSystemChainIdName}" for network config policy "{networkConfigPolicy}" and consensus "{consensusType}" using chain creators policies')
-def step_impl(context, ordererSystemChainIdName, networkConfigPolicy, consensusType):
+@given(u'the ordererBootstrapAdmin using cert alias "{certAlias}" creates the genesis block "{ordererGenesisBlockName}" for chain "{ordererSystemChainIdName}" for network config policy "{networkConfigPolicy}" and consensus "{consensusType}" using chain creators policies')
+def step_impl(context, certAlias, ordererGenesisBlockName, ordererSystemChainIdName, networkConfigPolicy, consensusType):
+    directory = bootstrap_util.getDirectory(context=context)
     ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
     ordererSystemChainIdGUUID = ordererBootstrapAdmin.tags[ordererSystemChainIdName]
     # Now collect the named signed config items
-    signedConfigItems =[]
+    configGroups =[]
     for row in context.table.rows:
-        signedConfigItemName = row['SignedConfigItemsName']
-        signedConfigItems += ordererBootstrapAdmin.tags[signedConfigItemName]
-
+        configGroupName = row['ConfigGroup Names']
+        configGroups += ordererBootstrapAdmin.tags[configGroupName]
     # Concatenate signedConfigItems
 
     # Construct block
-    (genesisBlock,envelope) = bootstrap_util.createGenesisBlock(context, ordererSystemChainIdGUUID, consensusType, signedConfigItems=signedConfigItems)
+    nodeAdminTuple = ordererBootstrapAdmin.tags[certAlias]
+    bootstrapCert = directory.findCertForNodeAdminTuple(nodeAdminTuple=nodeAdminTuple)
+    (genesisBlock, envelope) = bootstrap_util.createGenesisBlock(context, ordererSystemChainIdGUUID, consensusType,
+                                                                 nodeAdminTuple=nodeAdminTuple,
+                                                                 signedConfigItems=configGroups)
+    ordererBootstrapAdmin.setTagValue(ordererGenesisBlockName, genesisBlock)
+    ordererBootstrapAdmin.setTagValue("ConsensusType", consensusType)
     bootstrap_util.OrdererGensisBlockCompositionCallback(context, genesisBlock)
     bootstrap_util.PeerCompositionCallback(context)
 
@@ -97,7 +94,7 @@ def step_impl(context, chainId):
 def step_impl(context, ordererSystemChainId):
     directory = bootstrap_util.getDirectory(context)
     ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
-    ordererBootstrapAdmin.tags[ordererSystemChainId] = bootstrap_util.GetUUID()
+    ordererBootstrapAdmin.setTagValue(ordererSystemChainId, bootstrap_util.GetUUID())
 
 
 @given(u'the ordererBootstrapAdmin creates a chain creators policy "{chainCreatePolicyName}" (network name) for peer orgs who wish to form a network using orderer system chain "{ordererSystemChainId}"')
@@ -115,7 +112,7 @@ def step_impl(context, chainCreatePolicyName, ordererSystemChainId):
     chainCreatorsOrgsPolicySignedConfigItem = \
         bootstrap_util.createChainCreatorsPolicy(context=context, chainCreatePolicyName=chainCreatePolicyName, chaindId=ordererSystemChainIdGuuid, orgNames=orgNames)
 
-    ordererBootstrapAdmin.tags[chainCreatePolicyName] = [chainCreatorsOrgsPolicySignedConfigItem]
+    ordererBootstrapAdmin.setTagValue(chainCreatePolicyName, [chainCreatorsOrgsPolicySignedConfigItem])
 
 
 @given(u'the ordererBootstrapAdmin runs the channel template tool to create the orderer configuration template "{templateName}" for application developers using orderer "{ordererComposeService}"')
@@ -133,10 +130,10 @@ def step_impl(context, userName, templateName, chainCreatePolicyName):
     ' At the moment, only really defining MSP Config Items (NOT SIGNED)'
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName)
-    user.tags[templateName] = [directory.getOrganization(row['Organization']) for row in context.table.rows]
+    user.setTagValue(templateName, [directory.getOrganization(row['Organization']) for row in context.table.rows])
 
 
-@given(u'the user "{userName}" creates a signedConfigEnvelope "{createChannelSignedConfigEnvelope}"')
+@given(u'the user "{userName}" creates a ConfigUpdateEnvelope "{createChannelSignedConfigEnvelope}"')
 def step_impl(context, userName, createChannelSignedConfigEnvelope):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName)
@@ -148,65 +145,89 @@ def step_impl(context, userName, createChannelSignedConfigEnvelope):
     templateName = context.table.rows[0]["Template"]
     # Loop through templates referenced orgs
     mspOrgNames = [org.name for org in user.tags[templateName]]
-    signedMspConfigItems = bootstrap_util.getSignedMSPConfigItems(context=context, chainId=channelID, orgNames=mspOrgNames)
+    signedMspConfigItems = bootstrap_util.getSignedMSPConfigItems(context=context, orgNames=mspOrgNames)
 
     # Add the anchors signed config Items
     anchorSignedConfigItemsName = context.table.rows[0]["Anchors"]
     signedAnchorsConfigItems = user.tags[anchorSignedConfigItemsName]
 
     # Intermediate step until template tool is ready
-    signedConfigItems = bootstrap_util.createSignedConfigItems(context, channelID, "solo", signedConfigItems=signedMspConfigItems + signedAnchorsConfigItems)
+    consensus_type = ordererBootstrapAdmin.tags["ConsensusType"]
+    channel_config_groups = bootstrap_util.createSignedConfigItems(directory=directory,
+                                                                   consensus_type=consensus_type,
+                                                                   configGroups=signedMspConfigItems + signedAnchorsConfigItems)
+
+    # bootstrap_util.setMetaPolicy(channelId=channelID, channgel_config_groups=channgel_config_groups)
 
     #NOTE: Conidered passing signing key for appDeveloper, but decided that the peer org signatures they need to collect subsequently should be proper way
-    signedConfigEnvelope = bootstrap_util.signInitialChainConfig(signedConfigItems=signedConfigItems, chainId=channelID, chainCreationPolicyName=chainCreationPolicyName)
+    config_update_envelope = bootstrap_util.createConfigUpdateEnvelope(channelConfigGroup=channel_config_groups, chainId=channelID, chainCreationPolicyName=chainCreationPolicyName)
 
-    user.tags[createChannelSignedConfigEnvelope] =  ChannelCreationInfo(channelID, chainCreationPolicyName, signedConfigEnvelope)
+    user.setTagValue(createChannelSignedConfigEnvelope, config_update_envelope)
 
     # Construct TX Config Envelope, broadcast, expect success, and then connect to deliver to revtrieve block.
     # Make sure the blockdata exactly the TxConfigEnvelope I submitted.
     # txConfigEnvelope = bootstrap_util.createConfigTxEnvelope(chainId=channelID, signedConfigEnvelope=signedConfigEnvelope)
 
 
-@given(u'the following application developers are defined for peer organizations')
+@given(u'the following application developers are defined for peer organizations and each saves their cert as alias')
 def step_impl(context):
     assert 'table' in context, "Expected table with triplet of Developer/ChainCreationPolicyName/Organization"
     directory = bootstrap_util.getDirectory(context)
     for row in context.table.rows:
-        directory.registerOrdererAdminTuple(row['Developer'], row['ChainCreationPolicyName'], row['Organization'])
+        userName = row['Developer']
+        nodeAdminNamedTuple = directory.registerOrdererAdminTuple(userName, row['ChainCreationPolicyName'], row['Organization'])
+        user = directory.getUser(userName)
+        user.setTagValue(row['AliasSavedUnder'], nodeAdminNamedTuple)
 
-@given(u'the user "{userName}" collects signatures for signedConfigEnvelope "{createChannelSignedConfigEnvelopeName}" from peer orgs')
+@given(u'the user "{userName}" collects signatures for ConfigUpdateEnvelope "{createChannelSignedConfigEnvelopeName}" from peer orgs')
 def step_impl(context, userName, createChannelSignedConfigEnvelopeName):
     assert 'table' in context, "Expected table of peer organizations"
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
-    # Get the ChannelCreationInfo object that holds the signedConfigEnvelope
-    channelCreationInfo = user.tags[createChannelSignedConfigEnvelopeName]
-    signedConfigEnvelope = channelCreationInfo.signedConfigEnvelope
+    config_update_envelope = user.tags[createChannelSignedConfigEnvelopeName]
     for row in context.table.rows:
         org = directory.getOrganization(row['Organization'])
         assert bootstrap_util.Network.Peer in org.networks, "Organization '{0}' not in Peer network".format(org.name)
-        bootstrap_util.BootstrapHelper.addSignatureToSignedConfigItem(signedConfigEnvelope.Items[0], (org, org.getSelfSignedCert()))
+        bootstrap_util.BootstrapHelper.addSignatureToSignedConfigItem(config_update_envelope, (org, org.getSelfSignedCert()))
     # print("Signatures for signedConfigEnvelope:\n {0}\n".format(signedConfigEnvelope.Items[0]))
 
-@given(u'the user "{userName}" creates config Tx "{configTxName}" using signedConfigEnvelope "{createChannelSignedConfigEnvelopeName}"')
-def step_impl(context, userName, configTxName, createChannelSignedConfigEnvelopeName):
+@given(u'the user "{userName}" creates a ConfigUpdate Tx "{configUpdateTxName}" using cert alias "{certAlias}" using signed ConfigUpdateEnvelope "{createChannelSignedConfigEnvelopeName}"')
+def step_impl(context, userName, certAlias, configUpdateTxName, createChannelSignedConfigEnvelopeName):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
-    channelCreationInfo = user.tags[createChannelSignedConfigEnvelopeName]
-    user.tags[configTxName] = bootstrap_util.createConfigTxEnvelope(channelCreationInfo.channelId, channelCreationInfo.signedConfigEnvelope)
+    namedAdminTuple = user.tags[certAlias]
+    cert = directory.findCertForNodeAdminTuple(namedAdminTuple)
+    config_update_envelope = user.tags[createChannelSignedConfigEnvelopeName]
+    config_update = bootstrap_util.getChannelIdFromConfigUpdateEnvelope(config_update_envelope)
+    envelope_for_config_update = bootstrap_util.createEnvelopeForMsg(directory=directory,
+                                                                     nodeAdminTuple=namedAdminTuple,
+                                                                     chainId=config_update.channel_id,
+                                                                     msg=config_update_envelope,
+                                                                     typeAsString="CONFIG_UPDATE")
+    user.setTagValue(configUpdateTxName, envelope_for_config_update)
 
-@given(u'the user "{userName}" broadcasts config Tx "{configTxName}" to orderer "{orderer}" to create channel "{channelId}"')
-def step_impl(context, userName, configTxName, orderer, channelId):
+@given(u'the user "{userName}" using cert alias "{certAlias}" broadcasts ConfigUpdate Tx "{configTxName}" to orderer "{orderer}" to create channel "{channelId}"')
+def step_impl(context, userName, certAlias, configTxName, orderer, channelId):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
     configTxEnvelope = user.tags[configTxName]
-    bootstrap_util.broadcastCreateChannelConfigTx(context=context, composeService=orderer, chainId=channelId, user=user, configTxEnvelope=configTxEnvelope)
+    bootstrap_util.broadcastCreateChannelConfigTx(context=context,certAlias=certAlias, composeService=orderer, chainId=channelId, user=user, configTxEnvelope=configTxEnvelope)
 
-@when(u'user "{userName}" connects to deliver function on orderer "{composeService}"')
-def step_impl(context, userName, composeService):
+@when(u'the user "{userName}" broadcasts transaction "{transactionAlias}" to orderer "{orderer}" on channel "{channelId}"')
+def step_impl(context, userName, transactionAlias, orderer, channelId):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
-    user.connectToDeliverFunction(context, composeService)
+    transaction = user.tags[transactionAlias]
+    bootstrap_util.broadcastCreateChannelConfigTx(context=context, certAlias=None, composeService=orderer, chainId=channelId, user=user, configTxEnvelope=transaction)
+
+
+@when(u'user "{userName}" using cert alias "{certAlias}" connects to deliver function on orderer "{composeService}"')
+def step_impl(context, userName, certAlias, composeService):
+    directory = bootstrap_util.getDirectory(context)
+    user = directory.getUser(userName=userName)
+    nodeAdminTuple = user.tags[certAlias]
+    cert = directory.findCertForNodeAdminTuple(nodeAdminTuple)
+    user.connectToDeliverFunction(context, composeService, certAlias, nodeAdminTuple=nodeAdminTuple)
 
 @when(u'user "{userName}" sends deliver a seek request on orderer "{composeService}" with properties')
 def step_impl(context, userName, composeService):
@@ -215,7 +236,8 @@ def step_impl(context, userName, composeService):
     row = context.table.rows[0]
     chainID = row['ChainId']
     start, end, = orderer_util.convertSeek(row['Start']), orderer_util.convertSeek(row['End'])
-
+    print("Start and end = {0}/{1}".format(start, end))
+    print("")
     streamHelper = user.getDelivererStreamHelper(context, composeService)
     streamHelper.seekToRange(chainID=chainID, start = start, end = end)
 
@@ -229,60 +251,96 @@ def step_impl(context, userName, deliveryName, composeService, expectedBlocks, n
 
     # Verify block count
     assert len(blocks) == int(expectedBlocks), "Expected {0} blocks, received {1}".format(expectedBlocks, len(blocks))
-    user.tags[deliveryName] = blocks
+    user.setTagValue(deliveryName, blocks)
 
-@when(u'user "{userName}" request to join channel using genesis block "{genisisBlockName}" on peer "{composeService}" with result "{joinChannelResult}"')
-def step_impl(context, userName, genisisBlockName, composeService, joinChannelResult):
+@when(u'user "{userName}" using cert alias "{certAlias}" requests to join channel using genesis block "{genisisBlockName}" on peers with result "{joinChannelResult}"')
+def step_impl(context, userName, certAlias, genisisBlockName, joinChannelResult):
     timeout = 10
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName)
-    # Collect the cert tuple information
-    row = context.table.rows[0]
-    signersCert = directory.findCertByTuple(row['Developer'], row['ChainCreationPolicyName'], row['Organization'])
+    nodeAdminTuple = user.tags[certAlias]
+    # Find the cert using the cert tuple information saved for the user under certAlias
+    signersCert = directory.findCertForNodeAdminTuple(nodeAdminTuple)
 
     # Retrieve the genesis block from the returned value of deliver (Will be list with first block as genesis block)
     genesisBlock = user.tags[genisisBlockName][0]
     ccSpec = endorser_util.getChaincodeSpec("GOLANG", "", "cscc", ["JoinChain", genesisBlock.SerializeToString()])
-    proposal = endorser_util.createInvokeProposalForBDD(ccSpec=ccSpec, chainID="",signersCert=signersCert, Mspid="DEFAULT")
+    proposal = endorser_util.createInvokeProposalForBDD(context, ccSpec=ccSpec, chainID="",signersCert=signersCert, Mspid=user.tags[certAlias].organization, type="CONFIG")
     signedProposal = endorser_util.signProposal(proposal=proposal, entity=user, signersCert=signersCert)
 
     # Send proposal to each specified endorser, waiting 'timeout' seconds for response/error
-    endorsers = [composeService]
-    proposalResponseFutures = [endorserStub.ProcessProposal.future(signedProposal, int(timeout)) for endorserStub in endorser_util.getEndorserStubs(context, endorsers)]
+    endorsers = [row['Peer'] for row in context.table.rows]
+    proposalResponseFutures = [endorserStub.ProcessProposal.future(signedProposal, int(timeout)) for endorserStub in endorser_util.getEndorserStubs(context,composeServices=endorsers, directory=directory, nodeAdminTuple=nodeAdminTuple)]
     resultsDict =  dict(zip(endorsers, [respFuture.result() for respFuture in proposalResponseFutures]))
-    user.tags[joinChannelResult] = resultsDict
+    user.setTagValue(joinChannelResult, resultsDict)
 
 
 
-@given(u'the ordererBoostrapAdmin creates MSP Configuration Items "{mspConfigItemsName}" for orderer system chain "{ordererSystemChainIdName}" for every MSP referenced by the policies')
+@given(u'the ordererBoostrapAdmin creates MSP configuration "{mspConfigItemsName}" for orderer system chain "{ordererSystemChainIdName}" for every MSP referenced by the policies')
 def step_impl(context, ordererSystemChainIdName, mspConfigItemsName):
     assert 'table' in context, "Expected table of policy names"
     directory = bootstrap_util.getDirectory(context)
     ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
     ordererSystemChainIdGUUID = ordererBootstrapAdmin.tags[ordererSystemChainIdName]
-    mspSignedConfigItems = bootstrap_util.getMspConfigItemsForPolicyNames(context, chainId=ordererSystemChainIdGUUID, policyNames=[row['PolicyName'] for row in context.table.rows])
-    ordererBootstrapAdmin.tags[mspConfigItemsName] = mspSignedConfigItems
+    mspSignedConfigItems = bootstrap_util.getMspConfigItemsForPolicyNames(context, policyNames=[row['PolicyName'] for row in context.table.rows])
+    ordererBootstrapAdmin.setTagValue(mspConfigItemsName, mspSignedConfigItems)
 
-@given(u'the ordererBoostrapAdmin creates the chain creation policy names "{chainCreationPolicyNames}" signedConfigurationItem for orderer system chain "{ordererSystemChainIdName}" with policies')
+@given(u'the ordererBoostrapAdmin creates the chain creation policy names "{chainCreationPolicyNames}" for orderer system chain "{ordererSystemChainIdName}" with policies')
 def step_impl(context, chainCreationPolicyNames, ordererSystemChainIdName):
     ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
     ordererSystemChainIdGUUID = ordererBootstrapAdmin.tags[ordererSystemChainIdName]
     policyNames = [row['PolicyName'] for row in context.table.rows]
     chainCreationPolicyNamesConfigItem = bootstrap_util.createChainCreationPolicyNames(context, chainCreationPolicyNames=policyNames, chaindId=ordererSystemChainIdGUUID)
-    ordererBootstrapAdmin.tags[chainCreationPolicyNames] = [chainCreationPolicyNamesConfigItem]
+    ordererBootstrapAdmin.setTagValue(chainCreationPolicyNames, [chainCreationPolicyNamesConfigItem])
 
-@then(u'user "{userName}" expects result code for "{proposalResponseName}" of "{proposalResponseResultCode}"')
+@then(u'user "{userName}" expects result code for "{proposalResponseName}" of "{proposalResponseResultCode}" from peers')
 def step_impl(context, userName, proposalResponseName, proposalResponseResultCode):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
-    proposalResponse = user.tags[proposalResponseName]
+    peerToProposalResponseDict = user.tags[proposalResponseName]
+    unexpectedResponses = [(composeService,proposalResponse) for composeService, proposalResponse in peerToProposalResponseDict.items() if proposalResponse.response.payload != proposalResponseResultCode]
     print("ProposalResponse: \n{0}\n".format(proposalResponse))
     print("")
-    raise NotImplementedError(u'STEP: Then user "dev0Org0" expects result code for "joinChannelResult" of "200"')
 
 @given(u'the user "{userName}" creates an peer anchor set "{anchorSetName}" for channel "{channelName}" for orgs')
 def step_impl(context, userName, anchorSetName, channelName):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
     nodeAdminTuples = [directory.findNodeAdminTuple(row['User'], row['Peer'], row['Organization']) for row in context.table.rows]
-    user.tags[anchorSetName] = bootstrap_util.getSignedAnchorConfigItems(context=context, chainId=channelName, nodeAdminTuples=nodeAdminTuples)
+    user.setTagValue(anchorSetName, bootstrap_util.getAnchorPeersConfigGroup(context=context, nodeAdminTuples=nodeAdminTuples))
+
+@given(u'we compose "{composeYamlFile}"')
+def step_impl(context, composeYamlFile):
+    # time.sleep(10)              # Should be replaced with a definitive interlock guaranteeing that all peers/membersrvc are ready
+    composition = compose.Composition(context, composeYamlFile)
+    context.compose_containers = composition.containerDataList
+    context.composition = composition
+
+@given(u'I wait "{seconds}" seconds')
+def step_impl(context, seconds):
+    time.sleep(float(seconds))
+
+@when(u'I wait "{seconds}" seconds')
+def step_impl(context, seconds):
+    time.sleep(float(seconds))
+
+@then(u'I wait "{seconds}" seconds')
+def step_impl(context, seconds):
+    time.sleep(float(seconds))
+
+@given(u'user "{userNameSource}" gives "{objectAlias}" to user "{userNameTarget}"')
+def step_impl(context, userNameSource, objectAlias, userNameTarget):
+    directory = bootstrap_util.getDirectory(context)
+    userSource = directory.getUser(userName=userNameSource)
+    userTarget = directory.getUser(userName=userNameTarget)
+    userTarget.setTagValue(objectAlias, userSource.tags[objectAlias])
+
+@given(u'the ordererBootstrapAdmin creates a cert alias "{certAlias}" for orderer network bootstrap purposes for organizations')
+def step_impl(context, certAlias):
+    assert "table" in context, "Expected table of Organizations"
+    directory = bootstrap_util.getDirectory(context)
+    ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
+    assert len(context.table.rows) == 1, "Only support single orderer orgnaization at moment"
+    for row in context.table.rows:
+        nodeAdminNamedTuple = directory.registerOrdererAdminTuple(ordererBootstrapAdmin.name, "ordererBootstrapAdmin", row['Organization'])
+        ordererBootstrapAdmin.setTagValue(certAlias, nodeAdminNamedTuple)

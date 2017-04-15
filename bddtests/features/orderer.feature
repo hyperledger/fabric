@@ -24,9 +24,9 @@ Feature: Orderer
 
     Examples: Solo Orderer
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |
-        |   docker-compose-orderer-solo.yml    |       20              |         2          |       10       |     .5     |      0     |
-        |   docker-compose-orderer-solo.yml    |       40              |         4          |       10       |     .5     |      0     |
-        |   docker-compose-orderer-solo.yml    |       60              |         6          |       10       |     .5     |      0     |
+        |   docker-compose-orderer-solo.yml    |       20              |         2          |       10       |     .5     |     .5     |
+        |   docker-compose-orderer-solo.yml    |       40              |         4          |       10       |     .5     |     .5     |
+        |   docker-compose-orderer-solo.yml    |       60              |         6          |       10       |     .5     |     .5     |
 
     Examples: 1 Kafka Orderer and 1 Kafka Broker
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |
@@ -60,9 +60,9 @@ Feature: Orderer
 
     Examples: Solo Orderer
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |
-        |   docker-compose-orderer-solo.yml    |       20              |         2          |       10       |     .5     |      0     |
-        |   docker-compose-orderer-solo.yml    |       40              |         4          |       10       |     .5     |      0     |
-        |   docker-compose-orderer-solo.yml    |       60              |         6          |       10       |     .5     |      0     |
+        |   docker-compose-orderer-solo.yml    |       20              |         2          |       10       |     .5     |     .5     |
+        |   docker-compose-orderer-solo.yml    |       40              |         4          |       10       |     .5     |     .5     |
+        |   docker-compose-orderer-solo.yml    |       60              |         6          |       10       |     .5     |     .5     |
 
     Examples: 1 Kafka Orderer and 1 Kafka Broker
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |
@@ -93,7 +93,7 @@ Feature: Orderer
 
     Examples: Solo Orderer
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |
-        |   docker-compose-orderer-solo.yml    |       20              |         3          |       10       |     .5     |      0     |
+        |   docker-compose-orderer-solo.yml    |       20              |         3          |       10       |     .5     |     .5     |
 
     Examples: 1 Kafka Orderer and 1 Kafka Broker
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |

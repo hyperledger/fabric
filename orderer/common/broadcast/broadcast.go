@@ -25,9 +25,18 @@ import (
 	"io"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 var logger = logging.MustGetLogger("orderer/common/broadcast")
+
+// ConfigUpdateProcessor is used to transform CONFIG_UPDATE transactions which are used to generate other envelope
+// message types with preprocessing by the orderer
+type ConfigUpdateProcessor interface {
+	// Process takes in an envelope of type CONFIG_UPDATE and proceses it
+	// to transform it either into another envelope type
+	Process(envConfigUpdate *cb.Envelope) (*cb.Envelope, error)
+}
 
 // Handler defines an interface which handles broadcasts
 type Handler interface {
@@ -37,13 +46,10 @@ type Handler interface {
 
 // SupportManager provides a way for the Handler to look up the Support for a chain
 type SupportManager interface {
-	// GetChain gets the chain support for a given ChainID
-	GetChain(chainID string) (Support, bool)
+	ConfigUpdateProcessor
 
-	// ProposeChain accepts a configuration transaction for a chain which does not already exists
-	// The status returned is whether the proposal is accepted for consideration, only after consensus
-	// occurs will the proposal be committed or rejected
-	ProposeChain(env *cb.Envelope) cb.Status
+	// GetChain gets the chain support for a given ChannelId
+	GetChain(chainID string) (Support, bool)
 }
 
 // Support provides the backing resources needed to support broadcast on a chain
@@ -79,45 +85,83 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 
 		payload := &cb.Payload{}
 		err = proto.Unmarshal(msg.Payload, payload)
-		if payload.Header == nil || payload.Header.ChainHeader == nil || payload.Header.ChainHeader.ChainID == "" {
-			logger.Debugf("Received malformed message, dropping connection")
+		if err != nil {
+			if logger.IsEnabledFor(logging.WARNING) {
+				logger.Warningf("Received malformed message, dropping connection: %s", err)
+			}
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
-		support, ok := bh.sm.GetChain(payload.Header.ChainHeader.ChainID)
-		if !ok {
-			// Chain not found, maybe create one?
-			if payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
-				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
+		if payload.Header == nil {
+			logger.Warningf("Received malformed message, with missing header, dropping connection")
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+		}
+
+		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		if err != nil {
+			if logger.IsEnabledFor(logging.WARNING) {
+				logger.Warningf("Received malformed message (bad channel header), dropping connection: %s", err)
+			}
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+		}
+
+		if chdr.Type == int32(cb.HeaderType_CONFIG_UPDATE) {
+			logger.Debugf("Preprocessing CONFIG_UPDATE")
+			msg, err = bh.sm.Process(msg)
+			if err != nil {
+				if logger.IsEnabledFor(logging.WARNING) {
+					logger.Warningf("Rejecting CONFIG_UPDATE because: %s", err)
+				}
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 			}
 
-			logger.Debugf("Proposing new chain")
-			err = srv.Send(&ab.BroadcastResponse{Status: bh.sm.ProposeChain(msg)})
-			if err != nil {
-				return err
+			err = proto.Unmarshal(msg.Payload, payload)
+			if err != nil || payload.Header == nil {
+				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing")
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
 			}
-			continue
+
+			chdr, err = utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+			if err != nil {
+				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing (bad channel header): %s", err)
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
+			}
+
+			if chdr.ChannelId == "" {
+				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing (empty channel ID)")
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
+			}
+		}
+
+		support, ok := bh.sm.GetChain(chdr.ChannelId)
+		if !ok {
+			if logger.IsEnabledFor(logging.WARNING) {
+				logger.Warningf("Rejecting broadcast because channel %s was not found", chdr.ChannelId)
+			}
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast is filtering message for chain %s", payload.Header.ChainHeader.ChainID)
+			logger.Debugf("Broadcast is filtering message of type %d for channel %s", chdr.Type, chdr.ChannelId)
 		}
 
 		// Normal transaction for existing chain
 		_, filterErr := support.Filters().Apply(msg)
 
 		if filterErr != nil {
-			logger.Debugf("Rejecting broadcast message")
+			if logger.IsEnabledFor(logging.WARNING) {
+				logger.Warningf("Rejecting broadcast message because of filter error: %s", filterErr)
+			}
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
 		if !support.Enqueue(msg) {
-			logger.Debugf("Consenter instructed us to shut down")
+			logger.Infof("Consenter instructed us to shut down")
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast is successfully enqueued message for chain %s", payload.Header.ChainHeader.ChainID)
+			logger.Debugf("Broadcast has successfully enqueued message of type %d for chain %s", chdr.Type, chdr.ChannelId)
 		}
 
 		err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -37,32 +38,22 @@ var (
 	testTimePadding = 200 * time.Millisecond
 )
 
-var testConf = &config.TopLevel{
-	General: config.General{
-		LedgerType:    "ram",
-		QueueSize:     100,
-		MaxWindowSize: 100,
-		ListenAddress: "127.0.0.1",
-		ListenPort:    7050,
-		GenesisMethod: "provisional",
+var testGenesisConf = &genesisconfig.TopLevel{
+	Orderer: &genesisconfig.Orderer{
+		Kafka: genesisconfig.Kafka{
+			Brokers: []string{"127.0.0.1:9092"},
+		},
 	},
+}
+
+var testConf = &config.TopLevel{
 	Kafka: config.Kafka{
-		Brokers: []string{"127.0.0.1:9092"},
 		Retry: config.Retry{
 			Period: 3 * time.Second,
 			Stop:   60 * time.Second,
 		},
 		Verbose: false,
 		Version: sarama.V0_9_0_1,
-	},
-	Genesis: config.Genesis{
-		OrdererType:  "kafka",
-		BatchTimeout: 500 * time.Millisecond,
-		BatchSize: config.BatchSize{
-			MaxMessageCount:   100,
-			AbsoluteMaxBytes:  10 * 1024 * 1024,
-			PreferredMaxBytes: 512 * 1024,
-		},
 	},
 }
 

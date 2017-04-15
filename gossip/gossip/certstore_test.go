@@ -23,12 +23,11 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
-	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/identity"
-	"github.com/hyperledger/fabric/gossip/proto"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -46,19 +45,25 @@ type pullerMock struct {
 }
 
 type sentMsg struct {
-	msg *proto.GossipMessage
+	msg *proto.SignedGossipMessage
 	mock.Mock
+}
+
+// GetSourceEnvelope Returns the SignedGossipMessage the ReceivedMessage was
+// constructed with
+func (s *sentMsg) GetSourceEnvelope() *proto.Envelope {
+	return nil
 }
 
 func (s *sentMsg) Respond(msg *proto.GossipMessage) {
 	s.Called(msg)
 }
 
-func (s *sentMsg) GetGossipMessage() *proto.GossipMessage {
+func (s *sentMsg) GetGossipMessage() *proto.SignedGossipMessage {
 	return s.msg
 }
 
-func (s *sentMsg) GetPKIID() common.PKIidType {
+func (s *sentMsg) GetConnectionInfo() *proto.ConnectionInfo {
 	return nil
 }
 
@@ -66,7 +71,7 @@ type senderMock struct {
 	mock.Mock
 }
 
-func (s *senderMock) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
+func (s *senderMock) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	s.Called(msg, peers)
 }
 
@@ -80,7 +85,7 @@ func (m *membershipSvcMock) GetMembership() []discovery.NetworkMember {
 }
 
 func TestCertStoreBadSignature(t *testing.T) {
-	badSignature := func(nonce uint64) comm.ReceivedMessage {
+	badSignature := func(nonce uint64) proto.ReceivedMessage {
 		return createUpdateMessage(nonce, createBadlySignedUpdateMessage())
 	}
 
@@ -88,7 +93,7 @@ func TestCertStoreBadSignature(t *testing.T) {
 }
 
 func TestCertStoreMismatchedIdentity(t *testing.T) {
-	mismatchedIdentity := func(nonce uint64) comm.ReceivedMessage {
+	mismatchedIdentity := func(nonce uint64) proto.ReceivedMessage {
 		return createUpdateMessage(nonce, createMismatchedUpdateMessage())
 	}
 
@@ -96,21 +101,21 @@ func TestCertStoreMismatchedIdentity(t *testing.T) {
 }
 
 func TestCertStoreShouldSucceed(t *testing.T) {
-	totallyFineIdentity := func(nonce uint64) comm.ReceivedMessage {
+	totallyFineIdentity := func(nonce uint64) proto.ReceivedMessage {
 		return createUpdateMessage(nonce, createValidUpdateMessage())
 	}
 
 	testCertificateUpdate(t, totallyFineIdentity, true)
 }
 
-func testCertificateUpdate(t *testing.T, updateFactory func(uint64) comm.ReceivedMessage, shouldSucceed bool) {
+func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.ReceivedMessage, shouldSucceed bool) {
 	config := pull.PullConfig{
-		MsgType:           proto.PullMsgType_IdentityMsg,
+		MsgType:           proto.PullMsgType_IDENTITY_MSG,
 		PeerCountToSelect: 1,
 		PullInterval:      time.Millisecond * 500,
 		Tag:               proto.GossipMessage_EMPTY,
 		Channel:           nil,
-		Id:                "id1",
+		ID:                "id1",
 	}
 	sender := &senderMock{}
 	memberSvc := &membershipSvcMock{}
@@ -119,8 +124,8 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) comm.Receive
 	pullMediator := pull.NewPullMediator(config,
 		sender,
 		memberSvc,
-		func(msg *proto.GossipMessage) string { return string(msg.GetPeerIdentity().PkiID) },
-		func(msg *proto.GossipMessage) {})
+		func(msg *proto.SignedGossipMessage) string { return string(msg.GetPeerIdentity().PkiId) },
+		func(msg *proto.SignedGossipMessage) {})
 	certStore := newCertStore(&pullerMock{
 		Mediator: pullMediator,
 	}, identity.NewIdentityMapper(&naiveCryptoService{}), api.PeerIdentityType("SELF"), &naiveCryptoService{})
@@ -133,7 +138,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) comm.Receive
 	sentDataReq := false
 	l := sync.Mutex{}
 	sender.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
-		msg := arg.Get(0).(*proto.GossipMessage)
+		msg := arg.Get(0).(*proto.SignedGossipMessage)
 		l.Lock()
 		defer l.Unlock()
 
@@ -151,17 +156,17 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) comm.Receive
 	wg.Wait()
 
 	hello := &sentMsg{
-		msg: &proto.GossipMessage{
+		msg: (&proto.GossipMessage{
 			Channel: []byte(""),
 			Tag:     proto.GossipMessage_EMPTY,
 			Content: &proto.GossipMessage_Hello{
 				Hello: &proto.GossipHello{
 					Nonce:    0,
 					Metadata: nil,
-					MsgType:  proto.PullMsgType_IdentityMsg,
+					MsgType:  proto.PullMsgType_IDENTITY_MSG,
 				},
 			},
-		},
+		}).NoopSign(),
 	}
 	responseChan := make(chan *proto.GossipMessage, 1)
 	hello.On("Respond", mock.Anything).Run(func(arg mock.Arguments) {
@@ -178,15 +183,15 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) comm.Receive
 			assert.Len(t, msg.GetDataDig().Digests, 1, "Mismatched identity has been injected into certStore")
 		}
 	case <-time.After(time.Second):
-		t.Fatalf("Didn't respond with a digest message in a timely manner")
+		t.Fatal("Didn't respond with a digest message in a timely manner")
 	}
 }
 
-func createMismatchedUpdateMessage() *proto.GossipMessage {
+func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
 		// This PKI-ID is different than the cert, and the mapping between
 		// certificate to PKI-ID in this test is simply the identity function.
-		PkiID: []byte("A"),
+		PkiId: []byte("A"),
 		Cert:  []byte("D"),
 	}
 
@@ -201,15 +206,16 @@ func createMismatchedUpdateMessage() *proto.GossipMessage {
 			PeerIdentity: identity,
 		},
 	}
-
-	m.Sign(signer)
-
-	return m
+	sMsg := &proto.SignedGossipMessage{
+		GossipMessage: m,
+	}
+	sMsg.Sign(signer)
+	return sMsg
 }
 
-func createBadlySignedUpdateMessage() *proto.GossipMessage {
+func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
-		PkiID: []byte("C"),
+		PkiId: []byte("C"),
 		Cert:  []byte("C"),
 	}
 
@@ -225,20 +231,22 @@ func createBadlySignedUpdateMessage() *proto.GossipMessage {
 			PeerIdentity: identity,
 		},
 	}
-	m.Sign(signer)
-	// This would simulate a bad sig
-	if m.Signature[0] == 0 {
-		m.Signature[0] = 1
-	} else {
-		m.Signature[0] = 0
+	sMsg := &proto.SignedGossipMessage{
+		GossipMessage: m,
 	}
-
-	return m
+	sMsg.Sign(signer)
+	// This would simulate a bad sig
+	if sMsg.Envelope.Signature[0] == 0 {
+		sMsg.Envelope.Signature[0] = 1
+	} else {
+		sMsg.Envelope.Signature[0] = 0
+	}
+	return sMsg
 }
 
-func createValidUpdateMessage() *proto.GossipMessage {
+func createValidUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
-		PkiID: []byte("B"),
+		PkiId: []byte("B"),
 		Cert:  []byte("B"),
 	}
 
@@ -253,34 +261,37 @@ func createValidUpdateMessage() *proto.GossipMessage {
 			PeerIdentity: identity,
 		},
 	}
-	m.Sign(signer)
-	return m
+	sMsg := &proto.SignedGossipMessage{
+		GossipMessage: m,
+	}
+	sMsg.Sign(signer)
+	return sMsg
 }
 
-func createUpdateMessage(nonce uint64, idMsg *proto.GossipMessage) comm.ReceivedMessage {
+func createUpdateMessage(nonce uint64, idMsg *proto.SignedGossipMessage) proto.ReceivedMessage {
 	update := &proto.GossipMessage{
 		Tag: proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataUpdate{
 			DataUpdate: &proto.DataUpdate{
-				MsgType: proto.PullMsgType_IdentityMsg,
+				MsgType: proto.PullMsgType_IDENTITY_MSG,
 				Nonce:   nonce,
-				Data:    []*proto.GossipMessage{idMsg},
+				Data:    []*proto.Envelope{idMsg.Envelope},
 			},
 		},
 	}
-	return &sentMsg{msg: update}
+	return &sentMsg{msg: update.NoopSign()}
 }
 
-func createDigest(nonce uint64) comm.ReceivedMessage {
+func createDigest(nonce uint64) proto.ReceivedMessage {
 	digest := &proto.GossipMessage{
 		Tag: proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataDig{
 			DataDig: &proto.DataDigest{
 				Nonce:   nonce,
-				MsgType: proto.PullMsgType_IdentityMsg,
+				MsgType: proto.PullMsgType_IDENTITY_MSG,
 				Digests: []string{"A", "C"},
 			},
 		},
 	}
-	return &sentMsg{msg: digest}
+	return &sentMsg{msg: digest.NoopSign()}
 }

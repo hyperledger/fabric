@@ -17,15 +17,15 @@ limitations under the License.
 package config
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"reflect"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/viperutil"
+
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGoodConfig(t *testing.T) {
@@ -48,117 +48,7 @@ func TestBadConfig(t *testing.T) {
 
 	var uconf struct{}
 
-	err = ExactWithDateUnmarshal(config, &uconf)
-	if err == nil {
-		t.Fatalf("Should have failed to unmarshal")
-	}
-}
-
-type testSlice struct {
-	Inner struct {
-		Slice []string
-	}
-}
-
-func TestEnvSlice(t *testing.T) {
-	envVar := "ORDERER_INNER_SLICE"
-	envVal := "[a, b, c]"
-	os.Setenv(envVar, envVal)
-	defer os.Unsetenv(envVar)
-	config := viper.New()
-	config.SetEnvPrefix(Prefix)
-	config.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	config.SetEnvKeyReplacer(replacer)
-	config.SetConfigType("yaml")
-
-	data := "---\nInner:\n    Slice: [d,e,f]"
-
-	err := config.ReadConfig(bytes.NewReader([]byte(data)))
-
-	if err != nil {
-		t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
-	}
-
-	var uconf testSlice
-
-	err = ExactWithDateUnmarshal(config, &uconf)
-	if err != nil {
-		t.Fatalf("Failed to unmarshal with: %s", err)
-	}
-
-	expected := []string{"a", "b", "c"}
-	if !reflect.DeepEqual(uconf.Inner.Slice, expected) {
-		t.Fatalf("Did not get back the right slice, expeced: %v got %v", expected, uconf.Inner.Slice)
-	}
-}
-
-type testByteSize struct {
-	Inner struct {
-		ByteSize uint32
-	}
-}
-
-func TestByteSize(t *testing.T) {
-	config := viper.New()
-	config.SetConfigType("yaml")
-
-	testCases := []struct {
-		data     string
-		expected uint32
-	}{
-		{"", 0},
-		{"42", 42},
-		{"42k", 42 * 1024},
-		{"42kb", 42 * 1024},
-		{"42K", 42 * 1024},
-		{"42KB", 42 * 1024},
-		{"42 K", 42 * 1024},
-		{"42 KB", 42 * 1024},
-		{"42m", 42 * 1024 * 1024},
-		{"42mb", 42 * 1024 * 1024},
-		{"42M", 42 * 1024 * 1024},
-		{"42MB", 42 * 1024 * 1024},
-		{"42 M", 42 * 1024 * 1024},
-		{"42 MB", 42 * 1024 * 1024},
-		{"3g", 3 * 1024 * 1024 * 1024},
-		{"3gb", 3 * 1024 * 1024 * 1024},
-		{"3G", 3 * 1024 * 1024 * 1024},
-		{"3GB", 3 * 1024 * 1024 * 1024},
-		{"3 G", 3 * 1024 * 1024 * 1024},
-		{"3 GB", 3 * 1024 * 1024 * 1024},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.data, func(t *testing.T) {
-			data := fmt.Sprintf("---\nInner:\n    ByteSize: %s", tc.data)
-			err := config.ReadConfig(bytes.NewReader([]byte(data)))
-			if err != nil {
-				t.Fatalf("Error reading config: %s", err)
-			}
-			var uconf testByteSize
-			err = ExactWithDateUnmarshal(config, &uconf)
-			if err != nil {
-				t.Fatalf("Failed to unmarshal with: %s", err)
-			}
-			if uconf.Inner.ByteSize != tc.expected {
-				t.Fatalf("Did not get back the right byte size, expeced: %v got %v", tc.expected, uconf.Inner.ByteSize)
-			}
-		})
-	}
-}
-
-func TestByteSizeOverflow(t *testing.T) {
-	config := viper.New()
-	config.SetConfigType("yaml")
-
-	data := "---\nInner:\n    ByteSize: 4GB"
-	err := config.ReadConfig(bytes.NewReader([]byte(data)))
-	if err != nil {
-		t.Fatalf("Error reading config: %s", err)
-	}
-	var uconf testByteSize
-	err = ExactWithDateUnmarshal(config, &uconf)
+	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
 	if err == nil {
 		t.Fatalf("Should have failed to unmarshal")
 	}
@@ -189,5 +79,28 @@ func TestEnvInnerVar(t *testing.T) {
 	v2, _ := time.ParseDuration(envVal2)
 	if config.Kafka.Retry.Period != v2 {
 		t.Fatalf("Environmental override of inner config test 2 did not work")
+	}
+}
+
+func TestKafkaTLSConfig(t *testing.T) {
+	testCases := []struct {
+		name        string
+		tls         TLS
+		shouldPanic bool
+	}{
+		{"Disabled", TLS{Enabled: false}, false},
+		{"EnabledNoPrivateKey", TLS{Enabled: true, Certificate: "public.key"}, true},
+		{"EnabledNoPublicKey", TLS{Enabled: true, PrivateKey: "private.key"}, true},
+		{"EnabledNoTrustedRoots", TLS{Enabled: true, PrivateKey: "private.key", Certificate: "public.key"}, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			uconf := &TopLevel{Kafka: Kafka{TLS: tc.tls}}
+			if tc.shouldPanic {
+				assert.Panics(t, func() { uconf.completeInitialization() }, "should panic")
+			} else {
+				assert.NotPanics(t, func() { uconf.completeInitialization() }, "should not panic")
+			}
+		})
 	}
 }

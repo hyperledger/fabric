@@ -17,88 +17,50 @@ limitations under the License.
 package multichain
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/chainconfig"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
-	mockchainconfig "github.com/hyperledger/fabric/common/mocks/chainconfig"
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
-	coreutil "github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
-	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/stretchr/testify/assert"
 )
 
-type mockPolicy struct {
-	err error
-}
-
-func (mp *mockPolicy) Evaluate(sd []*cb.SignedData) error {
-	return mp.err
-}
-
-type mockPolicyManager struct {
-	mp *mockPolicy
-}
-
-func (mpm *mockPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
-	return mpm.mp, mpm.mp != nil
-}
-
 type mockSupport struct {
-	mpm         *mockPolicyManager
-	msc         *mocksharedconfig.Manager
-	chainID     string
-	queue       []*cb.Envelope
-	chainConfig *mockchainconfig.Descriptor
+	mpm *mockpolicies.Manager
+	msc *mockconfigvaluesorderer.SharedConfig
 }
 
 func newMockSupport(chainID string) *mockSupport {
 	return &mockSupport{
-		mpm:         &mockPolicyManager{},
-		msc:         &mocksharedconfig.Manager{},
-		chainID:     chainID,
-		chainConfig: &mockchainconfig.Descriptor{},
+		mpm: &mockpolicies.Manager{},
+		msc: &mockconfigvaluesorderer.SharedConfig{},
 	}
-}
-
-func (ms *mockSupport) Enqueue(msg *cb.Envelope) bool {
-	ms.queue = append(ms.queue, msg)
-	return true
-}
-
-func (ms *mockSupport) ChainID() string {
-	return ms.chainID
 }
 
 func (ms *mockSupport) PolicyManager() policies.Manager {
 	return ms.mpm
 }
 
-func (ms *mockSupport) SharedConfig() sharedconfig.Manager {
+func (ms *mockSupport) SharedConfig() config.Orderer {
 	return ms.msc
-}
-
-func (ms *mockSupport) ChainConfig() chainconfig.Descriptor {
-	return ms.chainConfig
 }
 
 type mockChainCreator struct {
 	newChains []*cb.Envelope
 	ms        *mockSupport
-	sysChain  *systemChain
 }
 
 func newMockChainCreator() *mockChainCreator {
 	mcc := &mockChainCreator{
 		ms: newMockSupport(provisional.TestChainID),
 	}
-	mcc.sysChain = newSystemChain(mcc.ms)
 	return mcc
 }
 
@@ -106,8 +68,8 @@ func (mcc *mockChainCreator) newChain(configTx *cb.Envelope) {
 	mcc.newChains = append(mcc.newChains, configTx)
 }
 
-func (mcc *mockChainCreator) systemChain() *systemChain {
-	return mcc.sysChain
+func (mcc *mockChainCreator) channelsCount() int {
+	return len(mcc.newChains)
 }
 
 func TestGoodProposal(t *testing.T) {
@@ -115,84 +77,44 @@ func TestGoodProposal(t *testing.T) {
 
 	mcc := newMockChainCreator()
 	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
-	mcc.ms.mpm.mp = &mockPolicy{}
+	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
 
-	chainCreateTx := &cb.ConfigurationItem{
-		Header: &cb.ChainHeader{
-			ChainID: newChainID,
-			Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
-		},
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigurationItem_Orderer,
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-			Digest: mcc.ms.ChainConfig().HashingAlgorithm()([]byte{}),
-		}),
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtxtest.CompositeTemplate()).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
-	status := mcc.sysChain.proposeChain(ingressTx)
-	if status != cb.Status_SUCCESS {
-		t.Fatalf("Should have successfully proposed chain")
-	}
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
-	expected := 1
-	if len(mcc.ms.queue) != expected {
-		t.Fatalf("Expected %d creation txs in the chain, but found %d", expected, len(mcc.ms.queue))
-	}
-
-	wrapped := mcc.ms.queue[0]
-	payload := utils.UnmarshalPayloadOrPanic(wrapped.Payload)
-	if payload.Header.ChainHeader.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
-		t.Fatalf("Wrapped transaction should be of type ORDERER_TRANSACTION")
-	}
-	envelope := utils.UnmarshalEnvelopeOrPanic(payload.Data)
-	if !reflect.DeepEqual(envelope, ingressTx) {
-		t.Fatalf("Received different configtx than ingressed into the system")
-	}
-
-	sysFilter := newSystemChainFilter(mcc)
+	sysFilter := newSystemChainFilter(mcc.ms, mcc)
 	action, committer := sysFilter.Apply(wrapped)
 
-	if action != filter.Accept {
-		t.Fatalf("Should have accepted the transaction, as it was already validated")
-	}
-
-	if !committer.Isolated() {
-		t.Fatalf("Chain creation transactions should be isolated on commit")
-	}
+	assert.EqualValues(t, action, filter.Accept, "Did not accept valid transaction")
+	assert.True(t, committer.Isolated(), "Channel creation belong in its own block")
 
 	committer.Commit()
-	if len(mcc.newChains) != 1 {
-		t.Fatalf("Proposal should only have created 1 new chain")
-	}
+	assert.Len(t, mcc.newChains, 1, "Proposal should only have created 1 new chain")
 
-	if !reflect.DeepEqual(mcc.newChains[0], ingressTx) {
-		t.Fatalf("New chain should have been created with ingressTx")
-	}
+	assert.Equal(t, ingressTx, mcc.newChains[0], "New chain should have been created with ingressTx")
 }
 
 func TestProposalWithBadPolicy(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.mpm.mp = &mockPolicy{}
+	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
 
-	chainCreateTx := &cb.ConfigurationItem{
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigurationItem_Orderer,
-
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-			Digest: coreutil.ComputeCryptoHash([]byte{}),
-		}),
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
-	status := mcc.sysChain.proposeChain(ingressTx)
+	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	action, _ := sysFilter.Apply(wrapped)
 
-	if status == cb.Status_SUCCESS {
-		t.Fatalf("Should not have validated the transaction with no authorized chain creation policies")
-	}
+	assert.EqualValues(t, action, filter.Reject, "Transaction creation policy was not authorized")
 }
 
 func TestProposalWithMissingPolicy(t *testing.T) {
@@ -201,43 +123,37 @@ func TestProposalWithMissingPolicy(t *testing.T) {
 	mcc := newMockChainCreator()
 	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
 
-	chainCreateTx := &cb.ConfigurationItem{
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigurationItem_Orderer,
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-			Digest: coreutil.ComputeCryptoHash([]byte{}),
-		}),
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
-	status := mcc.sysChain.proposeChain(ingressTx)
+	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	action, _ := sysFilter.Apply(wrapped)
 
-	if status == cb.Status_SUCCESS {
-		t.Fatalf("Should not have validated the transaction with missing policy")
-	}
+	assert.EqualValues(t, filter.Reject, action, "Transaction had missing policy")
 }
 
-func TestProposalWithBadDigest(t *testing.T) {
+func TestNumChainsExceeded(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.mpm.mp = &mockPolicy{}
 	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
+	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
+	mcc.ms.msc.MaxChannelsCountVal = 1
+	mcc.newChains = make([]*cb.Envelope, 2)
 
-	chainCreateTx := &cb.ConfigurationItem{
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigurationItem_Orderer,
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-			Digest: coreutil.ComputeCryptoHash([]byte("BAD_DIGEST")),
-		}),
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
-	status := mcc.sysChain.proposeChain(ingressTx)
+	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	action, _ := sysFilter.Apply(wrapped)
 
-	if status == cb.Status_SUCCESS {
-		t.Fatalf("Should not have validated the transaction with missing policy")
-	}
+	assert.EqualValues(t, filter.Reject, action, "Transaction had created too many channels")
 }

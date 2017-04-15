@@ -20,41 +20,45 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/util"
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/config"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	ab "github.com/hyperledger/fabric/protos/orderer"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func verifyItemsResult(t *testing.T, template Template, count int) {
 	newChainID := "foo"
 
-	result, err := template.Items(newChainID)
+	configEnv, err := template.Envelope(newChainID)
 	if err != nil {
-		t.Fatalf("Should not have errored")
+		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	if len(result) != count {
-		t.Errorf("Expected %d items, but got %d", count, len(result))
+	configNext, err := UnmarshalConfigUpdate(configEnv.ConfigUpdate)
+	if err != nil {
+		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	for i, signedItem := range result {
-		item := utils.UnmarshalConfigurationItemOrPanic(signedItem.ConfigurationItem)
-		assert.Equal(t, newChainID, item.Header.ChainID, "Should have appropriately set new chainID")
-		expected := fmt.Sprintf("%d", i)
-		assert.Equal(t, expected, string(item.Value), "Expected %s but got %s", expected, item.Value)
-		assert.Equal(t, int32(cb.HeaderType_CONFIGURATION_ITEM), item.Header.Type)
+	assert.Equal(t, len(configNext.WriteSet.Values), count, "Not the right number of config values")
+
+	for i := 0; i < len(configNext.WriteSet.Values); i++ {
+		_, ok := configNext.WriteSet.Values[fmt.Sprintf("%d", i)]
+		assert.True(t, ok, "Expected %d but did not find it", i)
 	}
 }
 
+func simpleGroup(index int) *cb.ConfigGroup {
+	group := cb.NewConfigGroup()
+	group.Values[fmt.Sprintf("%d", index)] = &cb.ConfigValue{}
+	return group
+}
+
 func TestSimpleTemplate(t *testing.T) {
-	hdr := &cb.ChainHeader{
-		ChainID: "foo",
-		Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
-	}
 	simple := NewSimpleTemplate(
-		&cb.ConfigurationItem{Value: []byte("0"), Header: hdr},
-		&cb.ConfigurationItem{Value: []byte("1"), Header: hdr},
+		simpleGroup(0),
+		simpleGroup(1),
 	)
 	verifyItemsResult(t, simple, 2)
 }
@@ -62,49 +66,77 @@ func TestSimpleTemplate(t *testing.T) {
 func TestCompositeTemplate(t *testing.T) {
 	composite := NewCompositeTemplate(
 		NewSimpleTemplate(
-			&cb.ConfigurationItem{Value: []byte("0")},
-			&cb.ConfigurationItem{Value: []byte("1")},
+			simpleGroup(0),
+			simpleGroup(1),
 		),
 		NewSimpleTemplate(
-			&cb.ConfigurationItem{Value: []byte("2")},
+			simpleGroup(2),
 		),
 	)
 
 	verifyItemsResult(t, composite, 3)
 }
 
+func TestModPolicySettingTemplate(t *testing.T) {
+	subGroup := "group"
+	input := cb.NewConfigGroup()
+	input.Groups[subGroup] = cb.NewConfigGroup()
+
+	policyName := "policy"
+	valueName := "value"
+	for _, group := range []*cb.ConfigGroup{input, input.Groups[subGroup]} {
+		group.Values[valueName] = &cb.ConfigValue{}
+		group.Policies[policyName] = &cb.ConfigPolicy{}
+	}
+
+	modPolicyName := "foo"
+	mpst := NewModPolicySettingTemplate(modPolicyName, NewSimpleTemplate(input))
+	output, err := mpst.Envelope("bar")
+	assert.NoError(t, err, "Creating envelope")
+
+	configUpdate := UnmarshalConfigUpdateOrPanic(output.ConfigUpdate)
+
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Values[valueName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Policies[policyName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].Values[valueName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].Policies[policyName].ModPolicy)
+}
+
 func TestNewChainTemplate(t *testing.T) {
 	simple := NewSimpleTemplate(
-		&cb.ConfigurationItem{Value: []byte("1")},
-		&cb.ConfigurationItem{Value: []byte("2")},
+		simpleGroup(0),
+		simpleGroup(1),
 	)
 
 	creationPolicy := "Test"
-	nct := NewChainCreationTemplate(creationPolicy, util.ComputeCryptoHash, simple)
+	nct := NewChainCreationTemplate(creationPolicy, simple)
 
 	newChainID := "foo"
-	items, err := nct.Items(newChainID)
+	configEnv, err := nct.Envelope(newChainID)
 	if err != nil {
-		t.Fatalf("Error creation a chain creation configuration")
+		t.Fatalf("Error creation a chain creation config")
 	}
 
-	if expected := 3; len(items) != expected {
-		t.Fatalf("Expected %d items, but got %d", expected, len(items))
+	configNext, err := UnmarshalConfigUpdate(configEnv.ConfigUpdate)
+	if err != nil {
+		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	for i, signedItem := range items {
-		item := utils.UnmarshalConfigurationItemOrPanic(signedItem.ConfigurationItem)
-		if item.Header.ChainID != newChainID {
-			t.Errorf("Should have appropriately set new chainID")
-		}
-		if i == 0 {
-			if item.Key != CreationPolicyKey {
-				t.Errorf("First item should have been the creation policy")
-			}
-		} else {
-			if expected := fmt.Sprintf("%d", i); string(item.Value) != expected {
-				t.Errorf("Expected %s but got %s", expected, item.Value)
-			}
-		}
+	assert.Equal(t, len(configNext.WriteSet.Values), 2, "Not the right number of config values")
+
+	for i := 0; i < 2; i++ {
+		_, ok := configNext.WriteSet.Values[fmt.Sprintf("%d", i)]
+		assert.True(t, ok, "Expected to find %d but did not", i)
 	}
+
+	configValue, ok := configNext.WriteSet.Groups[config.OrdererGroupKey].Values[CreationPolicyKey]
+	assert.True(t, ok, "Did not find creation policy")
+
+	creationPolicyMessage := new(ab.CreationPolicy)
+	if err := proto.Unmarshal(configValue.Value, creationPolicyMessage); err != nil {
+		t.Fatal("Should not have errored:", err)
+	}
+	assert.Equal(t, creationPolicy, creationPolicyMessage.Policy, "Policy names don't match")
 }

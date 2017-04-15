@@ -1,10 +1,10 @@
 import subprocess
-import os
-import glob
 
+from steps.docgen import DocumentGenerator
 from steps.bdd_test_util import cli_call
-
+from steps.contexthelper import ContextHelper
 from steps.coverage import saveCoverageFiles, createCoverageAggregate
+from steps.bootstrap_util import getDirectory
 
 def coverageEnabled(context):
     return context.config.userdata.get("coverage", "false") == "true"
@@ -17,7 +17,26 @@ def getDockerComposeFileArgsFromYamlFile(compose_yaml):
         args = args + ["-f"] + [part]
     return args
 
+def before_step(context, step):
+    contextHelper = ContextHelper.GetHelper(context=context)
+    contextHelper.before_step(step)
+
+def after_step(context, step):
+    contextHelper = ContextHelper.GetHelper(context=context)
+    contextHelper.after_step(step)
+
+
+def before_scenario(context, scenario):
+    contextHelper = ContextHelper.GetHelper(context=context)
+    contextHelper.before_scenario(scenario)
+    if 'generateDocs' in scenario.tags:
+        DocumentGenerator(contextHelper=contextHelper, scenario=scenario)
+
+
 def after_scenario(context, scenario):
+    contextHelper = ContextHelper.GetHelper(context=context)
+    contextHelper.after_scenario(scenario)
+
     get_logs = context.config.userdata.get("logs", "N")
     if get_logs.lower() == "force" or (scenario.status == "failed" and get_logs.lower() == "y" and "compose_containers" in context):
         print("Scenario {0} failed. Getting container logs".format(scenario.name))
@@ -48,11 +67,12 @@ def after_scenario(context, scenario):
             containerNames = [containerData.containerName for  containerData in context.compose_containers]
             saveCoverageFiles("coverage", scenario.name.replace(" ", "_"), containerNames, "cov")
         context.composition.decompose()
-
+    # Ask the directory to cleanup
+    getDirectory(context).cleanup()
 
 # stop any running peer that could get in the way before starting the tests
 def before_all(context):
-        cli_call(["../build/bin/peer", "node", "stop"], expect_success=False)
+    pass
 
 # stop any running peer that could get in the way before starting the tests
 def after_all(context):

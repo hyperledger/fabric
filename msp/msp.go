@@ -17,7 +17,6 @@ limitations under the License.
 package msp
 
 import (
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 )
 
@@ -25,8 +24,8 @@ import (
 // FIXME: we need better comments on the interfaces!!
 // FIXME: we need better comments on the interfaces!!
 
-//Common is implemented by both MSPManger and MSP
-type Common interface {
+// IdentityDeserializer is implemented by both MSPManger and MSP
+type IdentityDeserializer interface {
 	// DeserializeIdentity deserializes an identity.
 	// Deserialization will fail if the identity is associated to
 	// an msp that is different from this one that is performing
@@ -55,11 +54,11 @@ type Common interface {
 // This object is immutable, it is initialized once and never changed.
 type MSPManager interface {
 
-	// Common interface needs to be implemented by MSPManager
-	Common
+	// IdentityDeserializer interface needs to be implemented by MSPManager
+	IdentityDeserializer
 
 	// Setup the MSP manager instance according to configuration information
-	Setup(msps []*msp.MSPConfig) error
+	Setup(msps []MSP) error
 
 	// GetMSPs Provides a list of Membership Service providers
 	GetMSPs() (map[string]MSP, error)
@@ -69,8 +68,8 @@ type MSPManager interface {
 // to accommodate peer functionality
 type MSP interface {
 
-	// Common interface needs to be implemented by MSP
-	Common
+	// IdentityDeserializer interface needs to be implemented by MSP
+	IdentityDeserializer
 
 	// Setup the MSP instance according to configuration information
 	Setup(config *msp.MSPConfig) error
@@ -87,6 +86,12 @@ type MSP interface {
 	// GetDefaultSigningIdentity returns the default signing identity
 	GetDefaultSigningIdentity() (SigningIdentity, error)
 
+	// GetRootCerts returns the root certificates for this MSP
+	GetRootCerts() []Identity
+
+	// GetIntermediateCerts returns the intermediate root certificates for this MSP
+	GetIntermediateCerts() []Identity
+
 	// Validate checks whether the supplied identity is valid
 	Validate(id Identity) error
 
@@ -94,7 +99,7 @@ type MSP interface {
 	// the description supplied in MSPPrincipal. The check may
 	// involve a byte-by-byte comparison (if the principal is
 	// a serialized identity) or may require MSP validation
-	SatisfiesPrincipal(id Identity, principal *common.MSPPrincipal) error
+	SatisfiesPrincipal(id Identity, principal *msp.MSPPrincipal) error
 }
 
 // From this point on, there are interfaces that are shared within the peer and client API
@@ -119,22 +124,20 @@ type Identity interface {
 	// authority.
 	Validate() error
 
-	// TODO: Fix this comment
-	// GetOrganizationUnits returns the participant this identity is related to
-	// as long as this is public information. In certain implementations
-	// this could be implemented by certain attributes that are publicly
-	// associated to that identity, or the identifier of the root certificate
-	// authority that has provided signatures on this certificate.
+	// GetOrganizationalUnits returns zero or more organization units or
+	// divisions this identity is related to as long as this is public
+	// information. Certain MSP implementations may use attributes
+	// that are publicly associated to this identity, or the identifier of
+	// the root certificate authority that has provided signatures on this
+	// certificate.
 	// Examples:
-	//  - ParticipantID of a fabric-tcert that was signed by TCA under name
-	//    "Organization 1", would be "Organization 1".
-	//  - ParticipantID of an alternative implementation of tcert signed by a public
-	//    CA used by organization "Organization 1", could be provided in the clear
-	//    as part of that tcert structure that this call would be able to return.
-	// TODO: check if we need a dedicated type for participantID properly namespaced by the associated provider identifier.
-	GetOrganizationUnits() string
-
-	// TODO: Discuss GetOU() further.
+	//  - if the identity is an x.509 certificate, this function returns one
+	//    or more string which is encoded in the Subject's Distinguished Name
+	//    of the type OU
+	// TODO: For X.509 based identities, check if we need a dedicated type
+	//       for OU where the Certificate OU is properly namespaced by the
+	//       signer's identity
+	GetOrganizationalUnits() []msp.FabricOUIdentifier
 
 	// Verify a signature over some message using this identity as reference
 	Verify(msg []byte, sig []byte) error
@@ -152,7 +155,7 @@ type Identity interface {
 	// the description supplied in MSPPrincipal. The check may
 	// involve a byte-by-byte comparison (if the principal is
 	// a serialized identity) or may require MSP validation
-	SatisfiesPrincipal(principal *common.MSPPrincipal) error
+	SatisfiesPrincipal(principal *msp.MSPPrincipal) error
 }
 
 // SigningIdentity is an extension of Identity to cover signing capabilities.
@@ -242,7 +245,7 @@ type IdentityIdentifier struct {
 // ProviderType indicates the type of an identity provider
 type ProviderType int
 
-// The ProviderTYpe of a member relative to the member API
+// The ProviderType of a member relative to the member API
 const (
 	FABRIC ProviderType = iota // MSP is of FABRIC type
 	OTHER                      // MSP is of OTHER TYPE

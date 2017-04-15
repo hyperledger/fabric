@@ -26,7 +26,6 @@ import (
 	"github.com/DATA-DOG/godog/gherkin"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/container"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
@@ -55,12 +54,9 @@ func (b *BDDContext) build(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec,
 		return nil, err
 	}
 
-	vm, err := container.NewVM()
-	if err != nil {
-		return nil, fmt.Errorf("Error getting vm")
-	}
-
-	codePackageBytes, err = vm.BuildChaincodeContainer(spec)
+	// FIXME: This only returns a deployment spec...the chaincode is not compiled.
+	// Is compilation needed?
+	codePackageBytes, err := platforms.GetDeploymentPayload(spec)
 	if err != nil {
 		return nil, err
 	}

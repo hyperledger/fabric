@@ -19,27 +19,41 @@ package validation
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/configtx/test"
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/util"
+	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func TestValidateConfigTx(t *testing.T) {
 	chainID := util.GetTestChainID()
-	oTemplate := test.GetOrdererTemplate()
-	mspcfg := configtx.NewSimpleTemplate(utils.EncodeMSPUnsigned(chainID))
-	chainCfg := configtx.NewSimpleTemplate(chainconfig.DefaultHashingAlgorithm())
-	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspcfg, chainCfg)
-	chCrtEnv, err := configtx.MakeChainCreationTransaction(test.AcceptAllPolicyKey, chainID, signer, chCrtTemp)
+	chCrtEnv, err := configtx.MakeChainCreationTransaction(configtxtest.AcceptAllPolicyKey, chainID, signer, configtxtest.CompositeTemplate())
 	if err != nil {
 		t.Fatalf("MakeChainCreationTransaction failed, err %s", err)
 		return
 	}
 
-	_, err = ValidateTransaction(chCrtEnv)
-	if err != nil {
+	updateResult := &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				Type:      int32(cb.HeaderType_CONFIG),
+				ChannelId: chainID,
+			}),
+			SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{
+				Creator: signerSerialized,
+				Nonce:   utils.CreateNonceOrPanic(),
+			}),
+		},
+			Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
+				LastUpdate: chCrtEnv,
+			}),
+		}),
+	}
+	updateResult.Signature, _ = signer.Sign(updateResult.Payload)
+	_, txResult := ValidateTransaction(updateResult)
+	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
 	}

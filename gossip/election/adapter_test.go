@@ -17,6 +17,7 @@ limitations under the License.
 package election
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"sync"
@@ -24,10 +25,9 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/proto"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
 func TestNewAdapter(t *testing.T) {
@@ -41,7 +41,7 @@ func TestNewAdapter(t *testing.T) {
 	peersCluster := newClusterOfPeers("0")
 	peersCluster.addPeer("peer0", mockGossip)
 
-	NewAdapter(mockGossip, selfNetworkMember, &mockMsgCrypto{}, []byte("channel0"))
+	NewAdapter(mockGossip, selfNetworkMember.PKIid, []byte("channel0"))
 }
 
 func TestAdapterImpl_CreateMessage(t *testing.T) {
@@ -52,7 +52,7 @@ func TestAdapterImpl_CreateMessage(t *testing.T) {
 	}
 	mockGossip := newGossip("peer0", selfNetworkMember)
 
-	adapter := NewAdapter(mockGossip, selfNetworkMember, &mockMsgCrypto{}, []byte("channel0"))
+	adapter := NewAdapter(mockGossip, selfNetworkMember.PKIid, []byte("channel0"))
 	msg := adapter.CreateMessage(true)
 
 	if !msg.(*msgImpl).msg.IsLeadershipMsg() {
@@ -92,7 +92,7 @@ func TestAdapterImpl_Peers(t *testing.T) {
 		}
 
 		for _, peer := range peers {
-			if _, exist := peersPKIDs[peer.ID()]; !exist {
+			if _, exist := peersPKIDs[string(peer.ID())]; !exist {
 				t.Errorf("Peer %s PKID not found", peer.(*peerImpl).member.Endpoint)
 			}
 		}
@@ -118,8 +118,8 @@ func TestAdapterImpl_Gossip(t *testing.T) {
 
 	channels := make(map[string]<-chan Msg)
 
-	for peerId, adapter := range adapters {
-		channels[peerId] = adapter.Accept()
+	for peerID, adapter := range adapters {
+		channels[peerID] = adapter.Accept()
 	}
 
 	sender := adapters[fmt.Sprintf("Peer%d", 0)]
@@ -142,7 +142,7 @@ func TestAdapterImpl_Gossip(t *testing.T) {
 		case msg := <-channels[fmt.Sprintf("Peer%d", 1)]:
 			if !msg.IsDeclaration() {
 				t.Error("Msg should be declaration")
-			} else if strings.Compare(msg.SenderID(), string(sender.self.PKIid)) != 0 {
+			} else if !bytes.Equal(msg.SenderID(), sender.selfPKIid) {
 				t.Error("Msg Sender is wrong")
 			} else {
 				totalMsg++
@@ -150,7 +150,7 @@ func TestAdapterImpl_Gossip(t *testing.T) {
 		case msg := <-channels[fmt.Sprintf("Peer%d", 2)]:
 			if !msg.IsDeclaration() {
 				t.Error("Msg should be declaration")
-			} else if strings.Compare(msg.SenderID(), string(sender.self.PKIid)) != 0 {
+			} else if !bytes.Equal(msg.SenderID(), sender.selfPKIid) {
 				t.Error("Msg Sender is wrong")
 			} else {
 				totalMsg++
@@ -216,7 +216,7 @@ func (g *peerMockGossip) Peers() []discovery.NetworkMember {
 	return res
 }
 
-func (g *peerMockGossip) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan comm.ReceivedMessage) {
+func (g *peerMockGossip) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
 	ch := make(chan *proto.GossipMessage, 100)
 	g.acceptorLock.Lock()
 	g.acceptors = append(g.acceptors, &mockAcceptor{
@@ -308,7 +308,7 @@ func createCluster(peers ...int) (*clusterOfPeers, map[string]*adapterImpl) {
 		}
 
 		mockGossip := newGossip(peerEndpoint, peerMember)
-		adapter := NewAdapter(mockGossip, peerMember, &mockMsgCrypto{}, []byte("channel0"))
+		adapter := NewAdapter(mockGossip, peerMember.PKIid, []byte("channel0"))
 		adapters[peerEndpoint] = adapter.(*adapterImpl)
 		cluster.addPeer(peerEndpoint, mockGossip)
 	}

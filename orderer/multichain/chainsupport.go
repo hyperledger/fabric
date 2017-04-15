@@ -17,17 +17,17 @@ limitations under the License.
 package multichain
 
 import (
-	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
+	"github.com/hyperledger/fabric/orderer/common/configtxfilter"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/common/sigfilter"
 	"github.com/hyperledger/fabric/orderer/common/sizefilter"
-	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	"github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -66,10 +66,11 @@ type Chain interface {
 type ConsenterSupport interface {
 	crypto.LocalSigner
 	BlockCutter() blockcutter.Receiver
-	SharedConfig() sharedconfig.Manager
+	SharedConfig() config.Orderer
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
 	WriteBlock(block *cb.Block, committers []filter.Committer, encodedMetadataValue []byte) *cb.Block
 	ChainID() string // ChainID returns the chain ID this specific consenter instance is associated with
+	Height() uint64  // Returns the number of blocks on the chain this specific consenter instance is associated with
 }
 
 // ChainSupport provides a wrapper for the resources backing a chain
@@ -77,24 +78,27 @@ type ChainSupport interface {
 	// This interface is actually the union with the deliver.Support but because of a golang
 	// limitation https://github.com/golang/go/issues/6977 the methods must be explicitly declared
 
-	// PolicyManager returns the current policy manager as specified by the chain configuration
+	// PolicyManager returns the current policy manager as specified by the chain config
 	PolicyManager() policies.Manager
 
 	// Reader returns the chain Reader for the chain
-	Reader() ordererledger.Reader
+	Reader() ledger.Reader
 
 	broadcast.Support
 	ConsenterSupport
+
+	// ProposeConfigUpdate applies a CONFIG_UPDATE to an existing config to produce a *cb.ConfigEnvelope
+	ProposeConfigUpdate(env *cb.Envelope) (*cb.ConfigEnvelope, error)
 }
 
 type chainSupport struct {
 	*ledgerResources
-	chain             Chain
-	cutter            blockcutter.Receiver
-	filters           *filter.RuleSet
-	signer            crypto.LocalSigner
-	lastConfiguration uint64
-	lastConfigSeq     uint64
+	chain         Chain
+	cutter        blockcutter.Receiver
+	filters       *filter.RuleSet
+	signer        crypto.LocalSigner
+	lastConfig    uint64
+	lastConfigSeq uint64
 }
 
 func newChainSupport(
@@ -120,18 +124,18 @@ func newChainSupport(
 
 	var err error
 
-	lastBlock := ordererledger.GetBlock(cs.Reader(), cs.Reader().Height()-1)
+	lastBlock := ledger.GetBlock(cs.Reader(), cs.Reader().Height()-1)
 	metadata, err := utils.GetMetadataFromBlock(lastBlock, cb.BlockMetadataIndex_ORDERER)
 	// Assuming a block created with cb.NewBlock(), this should not
 	// error even if the orderer metadata is an empty byte slice
 	if err != nil {
-		logger.Fatalf("Error extracting orderer metadata for chain %x: %s", cs.ChainID(), err)
+		logger.Fatalf("[channel: %s] Error extracting orderer metadata: %s", cs.ChainID(), err)
 	}
-	logger.Debugf("Retrieved metadata for tip of chain (block #%d): %+v", cs.Reader().Height()-1, metadata)
+	logger.Debugf("[channel: %s] Retrieved metadata for tip of chain (block #%d): %+v", cs.ChainID(), cs.Reader().Height()-1, metadata)
 
 	cs.chain, err = consenter.HandleChain(cs, metadata)
 	if err != nil {
-		logger.Fatalf("Error creating consenter for chain %x: %s", ledgerResources.ChainID(), err)
+		logger.Fatalf("[channel: %s] Error creating consenter: %s", cs.ChainID(), err)
 	}
 
 	return cs
@@ -142,8 +146,8 @@ func createStandardFilters(ledgerResources *ledgerResources) *filter.RuleSet {
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
 		sizefilter.MaxBytesRule(ledgerResources.SharedConfig().BatchSize().AbsoluteMaxBytes),
-		sigfilter.New(ledgerResources.SharedConfig().IngressPolicyNames, ledgerResources.PolicyManager()),
-		configtx.NewFilter(ledgerResources),
+		sigfilter.New(policies.ChannelWriters, ledgerResources.PolicyManager()),
+		configtxfilter.NewFilter(ledgerResources),
 		filter.AcceptRule,
 	})
 
@@ -154,9 +158,9 @@ func createSystemChainFilters(ml *multiLedger, ledgerResources *ledgerResources)
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
 		sizefilter.MaxBytesRule(ledgerResources.SharedConfig().BatchSize().AbsoluteMaxBytes),
-		sigfilter.New(ledgerResources.SharedConfig().IngressPolicyNames, ledgerResources.PolicyManager()),
-		newSystemChainFilter(ml),
-		configtx.NewFilter(ledgerResources),
+		sigfilter.New(policies.ChannelWriters, ledgerResources.PolicyManager()),
+		newSystemChainFilter(ledgerResources, ml),
+		configtxfilter.NewFilter(ledgerResources),
 		filter.AcceptRule,
 	})
 }
@@ -181,7 +185,7 @@ func (cs *chainSupport) BlockCutter() blockcutter.Receiver {
 	return cs.cutter
 }
 
-func (cs *chainSupport) Reader() ordererledger.Reader {
+func (cs *chainSupport) Reader() ledger.Reader {
 	return cs.ledger
 }
 
@@ -190,7 +194,7 @@ func (cs *chainSupport) Enqueue(env *cb.Envelope) bool {
 }
 
 func (cs *chainSupport) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
-	return ordererledger.CreateNextBlock(cs.ledger, messages)
+	return ledger.CreateNextBlock(cs.ledger, messages)
 }
 
 func (cs *chainSupport) addBlockSignature(block *cb.Block) {
@@ -218,7 +222,7 @@ func (cs *chainSupport) addBlockSignature(block *cb.Block) {
 func (cs *chainSupport) addLastConfigSignature(block *cb.Block) {
 	configSeq := cs.Sequence()
 	if configSeq > cs.lastConfigSeq {
-		cs.lastConfiguration = block.Header.Number
+		cs.lastConfig = block.Header.Number
 		cs.lastConfigSeq = configSeq
 	}
 
@@ -226,11 +230,11 @@ func (cs *chainSupport) addLastConfigSignature(block *cb.Block) {
 		SignatureHeader: utils.MarshalOrPanic(utils.NewSignatureHeaderOrPanic(cs.signer)),
 	}
 
-	lastConfigValue := utils.MarshalOrPanic(&cb.LastConfiguration{Index: cs.lastConfiguration})
+	lastConfigValue := utils.MarshalOrPanic(&cb.LastConfig{Index: cs.lastConfig})
 
 	lastConfigSignature.Signature = utils.SignOrPanic(cs.signer, util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
 
-	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{
+	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&cb.Metadata{
 		Value: lastConfigValue,
 		Signatures: []*cb.MetadataSignature{
 			lastConfigSignature,
@@ -251,7 +255,11 @@ func (cs *chainSupport) WriteBlock(block *cb.Block, committers []filter.Committe
 
 	err := cs.ledger.Append(block)
 	if err != nil {
-		logger.Panicf("Could not append block: %s", err)
+		logger.Panicf("[channel: %s] Could not append block: %s", cs.ChainID(), err)
 	}
 	return block
+}
+
+func (cs *chainSupport) Height() uint64 {
+	return cs.Reader().Height()
 }

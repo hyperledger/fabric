@@ -17,168 +17,223 @@ limitations under the License.
 package configtx
 
 import (
+	"fmt"
+
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 
-	"fmt"
-
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/msp"
 )
 
 const (
+	// CreationPolicyKey defines the config key used in the channel
+	// config, under which the creation policy is defined.
 	CreationPolicyKey = "CreationPolicy"
 	msgVersion        = int32(0)
 	epoch             = 0
 )
 
-// Template can be used to faciliate creation of configuration transactions
+// Template can be used to faciliate creation of config transactions
 type Template interface {
-	// Items returns a set of SignedConfigurationItems for the given chainID
-	Items(chainID string) ([]*cb.SignedConfigurationItem, error)
+	// Envelope returns a ConfigUpdateEnvelope for the given chainID
+	Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error)
 }
 
 type simpleTemplate struct {
-	items []*cb.ConfigurationItem
+	configGroup *cb.ConfigGroup
 }
 
-// NewSimpleTemplate creates a Template using the supplied items
-func NewSimpleTemplate(items ...*cb.ConfigurationItem) Template {
-	return &simpleTemplate{items: items}
-}
-
-// Items returns a set of SignedConfigurationItems for the given chainID, and errors only on marshaling errors
-func (st *simpleTemplate) Items(chainID string) ([]*cb.SignedConfigurationItem, error) {
-	signedItems := make([]*cb.SignedConfigurationItem, len(st.items))
-	for i := range st.items {
-		st.items[i].Header = &cb.ChainHeader{ChainID: chainID, Type: int32(cb.HeaderType_CONFIGURATION_ITEM)}
-		mItem, err := proto.Marshal(st.items[i])
-		if err != nil {
-			return nil, err
+// NewSimpleTemplate creates a Template using the supplied ConfigGroups
+func NewSimpleTemplate(configGroups ...*cb.ConfigGroup) Template {
+	sts := make([]Template, len(configGroups))
+	for i, group := range configGroups {
+		sts[i] = &simpleTemplate{
+			configGroup: group,
 		}
-		signedItems[i] = &cb.SignedConfigurationItem{ConfigurationItem: mItem}
+	}
+	return NewCompositeTemplate(sts...)
+}
+
+// Envelope returns a ConfigUpdateEnvelope for the given chainID
+func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error) {
+	config, err := proto.Marshal(&cb.ConfigUpdate{
+		ChannelId: chainID,
+		WriteSet:  st.configGroup,
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	return signedItems, nil
+	return &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: config,
+	}, nil
 }
 
 type compositeTemplate struct {
 	templates []Template
 }
 
-// NewSimpleTemplate creates a Template using the source Templates
+// NewCompositeTemplate creates a Template using the source Templates
 func NewCompositeTemplate(templates ...Template) Template {
 	return &compositeTemplate{templates: templates}
 }
 
-// Items returns a set of SignedConfigurationItems for the given chainID, and errors only on marshaling errors
-func (ct *compositeTemplate) Items(chainID string) ([]*cb.SignedConfigurationItem, error) {
-	items := make([][]*cb.SignedConfigurationItem, len(ct.templates))
-	var err error
+func copyGroup(source *cb.ConfigGroup, target *cb.ConfigGroup) error {
+	for key, value := range source.Values {
+		_, ok := target.Values[key]
+		if ok {
+			return fmt.Errorf("Duplicate key: %s", key)
+		}
+		target.Values[key] = value
+	}
+
+	for key, policy := range source.Policies {
+		_, ok := target.Policies[key]
+		if ok {
+			return fmt.Errorf("Duplicate policy: %s", key)
+		}
+		target.Policies[key] = policy
+	}
+
+	for key, group := range source.Groups {
+		_, ok := target.Groups[key]
+		if !ok {
+			target.Groups[key] = cb.NewConfigGroup()
+		}
+
+		err := copyGroup(group, target.Groups[key])
+		if err != nil {
+			return fmt.Errorf("Error copying group %s: %s", key, err)
+		}
+	}
+	return nil
+}
+
+// Envelope returns a ConfigUpdateEnvelope for the given chainID
+func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error) {
+	channel := cb.NewConfigGroup()
+
 	for i := range ct.templates {
-		items[i], err = ct.templates[i].Items(chainID)
+		configEnv, err := ct.templates[i].Envelope(chainID)
+		if err != nil {
+			return nil, err
+		}
+		config, err := UnmarshalConfigUpdate(configEnv.ConfigUpdate)
+		if err != nil {
+			return nil, err
+		}
+		err = copyGroup(config.WriteSet, channel)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return join(items...), nil
-}
-
-type newChainTemplate struct {
-	creationPolicy string
-	hash           func([]byte) []byte
-	template       Template
-}
-
-// NewChainCreationTemplate takes a CreationPolicy and a Template to produce a Template which outputs an appropriately
-// constructed list of SignedConfigurationItem including an appropriate digest.  Note, using this Template in
-// a CompositeTemplate will invalidate the CreationPolicy
-func NewChainCreationTemplate(creationPolicy string, hash func([]byte) []byte, template Template) Template {
-	return &newChainTemplate{
-		creationPolicy: creationPolicy,
-		hash:           hash,
-		template:       template,
-	}
-}
-
-// Items returns a set of SignedConfigurationItems for the given chainID, and errors only on marshaling errors
-func (nct *newChainTemplate) Items(chainID string) ([]*cb.SignedConfigurationItem, error) {
-	items, err := nct.template.Items(chainID)
+	marshaledConfig, err := proto.Marshal(&cb.ConfigUpdate{
+		ChannelId: chainID,
+		WriteSet:  channel,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	creationPolicy := &cb.SignedConfigurationItem{
-		ConfigurationItem: utils.MarshalOrPanic(&cb.ConfigurationItem{
-			Header: utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, chainID, epoch),
-			Type:   cb.ConfigurationItem_Orderer,
-			Key:    CreationPolicyKey,
-			Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-				Policy: nct.creationPolicy,
-				Digest: HashItems(items, nct.hash),
-			}),
+	return &cb.ConfigUpdateEnvelope{ConfigUpdate: marshaledConfig}, nil
+}
+
+type modPolicySettingTemplate struct {
+	modPolicy string
+	template  Template
+}
+
+// NewModPolicySettingTemplate wraps another template and sets the ModPolicy of
+// every ConfigGroup/ConfigValue/ConfigPolicy to modPolicy
+func NewModPolicySettingTemplate(modPolicy string, template Template) Template {
+	return &modPolicySettingTemplate{
+		modPolicy: modPolicy,
+		template:  template,
+	}
+}
+
+func setGroupModPolicies(modPolicy string, group *cb.ConfigGroup) {
+	group.ModPolicy = modPolicy
+
+	for _, value := range group.Values {
+		value.ModPolicy = modPolicy
+	}
+
+	for _, policy := range group.Policies {
+		policy.ModPolicy = modPolicy
+	}
+
+	for _, nextGroup := range group.Groups {
+		setGroupModPolicies(modPolicy, nextGroup)
+	}
+}
+
+func (mpst *modPolicySettingTemplate) Envelope(channelID string) (*cb.ConfigUpdateEnvelope, error) {
+	configUpdateEnv, err := mpst.template.Envelope(channelID)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	if err != nil {
+		return nil, err
+	}
+
+	setGroupModPolicies(mpst.modPolicy, config.WriteSet)
+	configUpdateEnv.ConfigUpdate = utils.MarshalOrPanic(config)
+	return configUpdateEnv, nil
+}
+
+type channelCreationTemplate struct {
+	consortiumName string
+	orgs           []string
+}
+
+// NewChainCreationTemplate takes a CreationPolicy and a Template to produce a
+// Template which outputs an appropriately constructed list of ConfigUpdateEnvelopes.
+func NewChainCreationTemplate(creationPolicy string, template Template) Template {
+	result := cb.NewConfigGroup()
+	result.Groups[config.OrdererGroupKey] = cb.NewConfigGroup()
+	result.Groups[config.OrdererGroupKey].Values[CreationPolicyKey] = &cb.ConfigValue{
+		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
+			Policy: creationPolicy,
 		}),
 	}
-
-	return join([]*cb.SignedConfigurationItem{creationPolicy}, items), nil
-}
-
-// HashItems is a utility method for computing the hash of the concatenation of the marshaled ConfigurationItems
-// in a []*cb.SignedConfigurationItem
-func HashItems(items []*cb.SignedConfigurationItem, hash func([]byte) []byte) []byte {
-	sourceBytes := make([][]byte, len(items))
-	for i := range items {
-		sourceBytes[i] = items[i].ConfigurationItem
-	}
-	return hash(util.ConcatenateBytes(sourceBytes...))
-}
-
-// join takes a number of SignedConfigurationItem slices and produces a single item
-func join(sets ...[]*cb.SignedConfigurationItem) []*cb.SignedConfigurationItem {
-	total := 0
-	for _, set := range sets {
-		total += len(set)
-	}
-	result := make([]*cb.SignedConfigurationItem, total)
-	last := 0
-	for _, set := range sets {
-		for i := range set {
-			result[i+last] = set[i]
-		}
-		last += len(set)
-	}
-
-	return result
+	return NewCompositeTemplate(NewSimpleTemplate(result), template)
 }
 
 // MakeChainCreationTransaction is a handy utility function for creating new chain transactions using the underlying Template framework
 func MakeChainCreationTransaction(creationPolicy string, chainID string, signer msp.SigningIdentity, templates ...Template) (*cb.Envelope, error) {
-	composite := NewCompositeTemplate(templates...)
-	items, err := composite.Items(chainID)
-	if err != nil {
-		return nil, err
-	}
-
-	manager, err := NewManagerImpl(&cb.ConfigurationEnvelope{Items: items}, NewInitializer(), nil)
-
-	newChainTemplate := NewChainCreationTemplate(creationPolicy, manager.ChainConfig().HashingAlgorithm(), composite)
-	signedConfigItems, err := newChainTemplate.Items(chainID)
-	if err != nil {
-		return nil, err
-	}
-
 	sSigner, err := signer.Serialize()
 	if err != nil {
 		return nil, fmt.Errorf("Serialization of identity failed, err %s", err)
 	}
 
-	payloadChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, msgVersion, chainID, epoch)
+	newChainTemplate := NewChainCreationTemplate(creationPolicy, NewCompositeTemplate(templates...))
+	newConfigUpdateEnv, err := newChainTemplate.Envelope(chainID)
+	if err != nil {
+		return nil, err
+	}
+	newConfigUpdateEnv.Signatures = []*cb.ConfigSignature{&cb.ConfigSignature{
+		SignatureHeader: utils.MarshalOrPanic(utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())),
+	}}
+
+	newConfigUpdateEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigUpdateEnv.Signatures[0].SignatureHeader, newConfigUpdateEnv.ConfigUpdate))
+	if err != nil {
+		return nil, err
+	}
+
+	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, msgVersion, chainID, epoch)
 	payloadSignatureHeader := utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())
-	payloadHeader := utils.MakePayloadHeader(payloadChainHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(utils.MakeConfigurationEnvelope(signedConfigItems...))}
+	utils.SetTxID(payloadChannelHeader, payloadSignatureHeader)
+	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
+	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(newConfigUpdateEnv)}
 	paylBytes := utils.MarshalOrPanic(payload)
 
 	// sign the payload

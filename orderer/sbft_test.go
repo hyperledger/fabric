@@ -28,9 +28,10 @@ import (
 	"bytes"
 
 	"github.com/golang/protobuf/proto"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/localmsp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/ledger"
 	"github.com/hyperledger/fabric/orderer/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/localconfig"
@@ -46,6 +47,24 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
+
+var genesisBlock *cb.Block
+var pwd string
+
+func init() {
+	var err error
+	pwd, err = os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	os.Chdir("..")
+
+	genConf := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	genConf.Orderer.OrdererType = sbftName
+	genesisBlock = provisional.New(genConf).GenesisBlock()
+
+	os.Chdir(pwd)
+}
 
 const update byte = 0
 const sent byte = 1
@@ -63,10 +82,6 @@ type item struct {
 }
 
 func TestSbftPeer(t *testing.T) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
 
 	t.Parallel()
 	skipInShortMode(t)
@@ -91,7 +106,7 @@ func TestSbftPeer(t *testing.T) {
 	keyFile := "sbft/testdata/key.pem"
 	cons := &simplebft.Config{N: 1, F: 0, BatchDurationNsec: 1000, BatchSizeBytes: 1000000000, RequestTimeoutNsec: 1000000000}
 	c := &sbft.ConsensusConfig{Consensus: cons, Peers: peers}
-	sc := &backend.StackConfig{listenAddr, certFile, keyFile, dataTmpDir}
+	sc := &backend.StackConfig{ListenAddr: listenAddr, CertFile: certFile, KeyFile: keyFile, DataDir: dataTmpDir}
 	sbftConsenter := sbft.New(c, sc)
 	<-time.After(5 * time.Second)
 	// End SBFT
@@ -99,20 +114,20 @@ func TestSbftPeer(t *testing.T) {
 	// Start GRPC
 	logger.Info("Creating a GRPC server.")
 	conf := config.Load()
-	conf.Genesis.OrdererType = sbftName
 	conf.General.LocalMSPDir = pwd + "/../msp/sampleconfig"
-	lf := newRAMLedgerFactory(conf)
+	conf.General.LocalMSPID = "DEFAULT"
+	lf := newRAMLedgerFactory()
 	consenters := make(map[string]multichain.Consenter)
 	consenters[sbftName] = sbftConsenter
 
-	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir)
+	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
 	if err != nil { // Handle errors reading the config file
 		panic(fmt.Errorf("Failed initializing crypto [%s]", err))
 	}
 	signer := localmsp.NewSigner()
 	manager := multichain.NewManagerImpl(lf, consenters, signer)
 
-	server := NewServer(manager, int(conf.General.QueueSize), int(conf.General.MaxWindowSize))
+	server := NewServer(manager, signer)
 	grpcServer := grpc.NewServer()
 	grpcAddr := fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)
 	lis, err := net.Listen("tcp", grpcAddr)
@@ -195,10 +210,10 @@ func updateReceiver(t *testing.T, resultch chan item, errorch chan error, client
 	err = dstream.Send(&cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChainHeader: &cb.ChainHeader{
-					ChainID: provisional.TestChainID,
-				},
-				SignatureHeader: &cb.SignatureHeader{},
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId: provisional.TestChainID,
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
 			Data: utils.MarshalOrPanic(&ab.SeekInfo{
 				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
@@ -248,7 +263,9 @@ func broadcastSender(t *testing.T, resultch chan item, errorch chan error, clien
 		errorch <- fmt.Errorf("Failed to get broadcast stream: %s", err)
 		return
 	}
-	h := &cb.Header{ChainHeader: &cb.ChainHeader{ChainID: provisional.TestChainID}, SignatureHeader: &cb.SignatureHeader{}}
+	h := &cb.Header{
+		ChannelHeader:   utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: provisional.TestChainID}),
+		SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{})}
 	bs := testData
 	pl := &cb.Payload{Data: bs, Header: h}
 	mpl, err := proto.Marshal(pl)
@@ -261,9 +278,8 @@ func broadcastSender(t *testing.T, resultch chan item, errorch chan error, clien
 	resultch <- item{itemtype: sent, payload: mpl}
 }
 
-func newRAMLedgerFactory(conf *config.TopLevel) ordererledger.Factory {
+func newRAMLedgerFactory() ledger.Factory {
 	rlf := ramledger.New(10)
-	genesisBlock := provisional.New(conf).GenesisBlock()
 	rl, err := rlf.GetOrCreate(provisional.TestChainID)
 	if err != nil {
 		panic(err)

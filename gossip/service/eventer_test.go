@@ -20,19 +20,34 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
 const testChainID = "foo"
 
+type applicationOrgs []*peer.AnchorPeer
+
+func (ao applicationOrgs) AnchorPeers() []*peer.AnchorPeer {
+	return ao
+}
+
+func (ao applicationOrgs) MSPID() string {
+	panic("Unimplimented")
+}
+
+func (ao applicationOrgs) Name() string {
+	panic("Unimplimented")
+}
+
 type mockReceiver struct {
-	anchorPeers []*peer.AnchorPeer
-	sequence    uint64
+	orgs     map[string]config.ApplicationOrg
+	sequence uint64
 }
 
 func (mr *mockReceiver) configUpdated(config Config) {
-	logger.Debugf("[TEST] Setting config to %d %v", config.Sequence(), config.AnchorPeers())
-	mr.anchorPeers = config.AnchorPeers()
+	logger.Debugf("[TEST] Setting config to %d %v", config.Sequence(), config.Organizations())
+	mr.orgs = config.Organizations()
 	mr.sequence = config.Sequence()
 }
 
@@ -42,21 +57,25 @@ func (mc *mockConfig) Sequence() uint64 {
 	return mc.sequence
 }
 
-func (mc *mockConfig) AnchorPeers() []*peer.AnchorPeer {
-	return mc.anchorPeers
+func (mc *mockConfig) Organizations() map[string]config.ApplicationOrg {
+	return mc.orgs
 }
 
 func (mc *mockConfig) ChainID() string {
 	return testChainID
 }
 
+const testOrgID = "testID"
+
 func TestInitialUpdate(t *testing.T) {
 	mc := &mockConfig{
 		sequence: 7,
-		anchorPeers: []*peer.AnchorPeer{
-			&peer.AnchorPeer{
-				Port: 9,
-			},
+		orgs: map[string]config.ApplicationOrg{
+			testOrgID: applicationOrgs([]*peer.AnchorPeer{
+				&peer.AnchorPeer{
+					Port: 9,
+				},
+			}),
 		},
 	}
 
@@ -73,10 +92,12 @@ func TestInitialUpdate(t *testing.T) {
 func TestSecondUpdate(t *testing.T) {
 	mc := &mockConfig{
 		sequence: 7,
-		anchorPeers: []*peer.AnchorPeer{
-			&peer.AnchorPeer{
-				Port: 9,
-			},
+		orgs: map[string]config.ApplicationOrg{
+			testOrgID: applicationOrgs([]*peer.AnchorPeer{
+				&peer.AnchorPeer{
+					Port: 9,
+				},
+			}),
 		},
 	}
 
@@ -86,10 +107,12 @@ func TestSecondUpdate(t *testing.T) {
 	ce.ProcessConfigUpdate(mc)
 
 	mc.sequence = 8
-	mc.anchorPeers = []*peer.AnchorPeer{
-		&peer.AnchorPeer{
-			Port: 10,
-		},
+	mc.orgs = map[string]config.ApplicationOrg{
+		testOrgID: applicationOrgs([]*peer.AnchorPeer{
+			&peer.AnchorPeer{
+				Port: 10,
+			},
+		}),
 	}
 
 	ce.ProcessConfigUpdate(mc)
@@ -102,10 +125,12 @@ func TestSecondUpdate(t *testing.T) {
 func TestSecondSameUpdate(t *testing.T) {
 	mc := &mockConfig{
 		sequence: 7,
-		anchorPeers: []*peer.AnchorPeer{
-			&peer.AnchorPeer{
-				Port: 9,
-			},
+		orgs: map[string]config.ApplicationOrg{
+			testOrgID: applicationOrgs([]*peer.AnchorPeer{
+				&peer.AnchorPeer{
+					Port: 9,
+				},
+			}),
 		},
 	}
 
@@ -114,14 +139,14 @@ func TestSecondSameUpdate(t *testing.T) {
 	ce := newConfigEventer(mr)
 	ce.ProcessConfigUpdate(mc)
 	mr.sequence = 0
-	mr.anchorPeers = nil
+	mr.orgs = nil
 	ce.ProcessConfigUpdate(mc)
 
 	if mr.sequence != 0 {
 		t.Errorf("Should not have updated sequence when reprocessing same config")
 	}
 
-	if mr.anchorPeers != nil {
+	if mr.orgs != nil {
 		t.Errorf("Should not have updated anchor peers when reprocessing same config")
 	}
 }
@@ -129,10 +154,12 @@ func TestSecondSameUpdate(t *testing.T) {
 func TestUpdatedSeqOnly(t *testing.T) {
 	mc := &mockConfig{
 		sequence: 7,
-		anchorPeers: []*peer.AnchorPeer{
-			&peer.AnchorPeer{
-				Port: 9,
-			},
+		orgs: map[string]config.ApplicationOrg{
+			testOrgID: applicationOrgs([]*peer.AnchorPeer{
+				&peer.AnchorPeer{
+					Port: 9,
+				},
+			}),
 		},
 	}
 
@@ -147,7 +174,7 @@ func TestUpdatedSeqOnly(t *testing.T) {
 		t.Errorf("Should not have updated sequence when reprocessing same config")
 	}
 
-	if !reflect.DeepEqual(mr.anchorPeers, mc.anchorPeers) {
+	if !reflect.DeepEqual(mr.orgs, mc.orgs) {
 		t.Errorf("Should not have cleared anchor peers when reprocessing newer config with higher sequence")
 	}
 }

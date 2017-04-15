@@ -17,6 +17,8 @@ limitations under the License.
 syntax = "proto3";
 
 option go_package = "github.com/hyperledger/fabric/protos/peer";
+option java_package = "org.hyperledger.fabric.protos.peer";
+option java_outer_classname = "ProposalResponsePackage";
 
 package protos;
 
@@ -87,7 +89,7 @@ message ProposalResponsePayload {
 	// nothing from the payload can be hashed. The PayloadVisibility field in the
 	// Header's extension controls to which extent the proposal payload is
 	// "visible" in the sense that was just explained.
-	bytes proposalHash = 1;
+	bytes proposal_hash = 1;
 
 	// Extension should be unmarshaled to a type-specific message. The type of
 	// the extension in any proposal response depends on the type of the proposal

@@ -16,8 +16,12 @@ limitations under the License.
 
 package historydb
 
-import "github.com/hyperledger/fabric/protos/common"
-import "github.com/hyperledger/fabric/core/ledger"
+import (
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/protos/common"
+)
 
 // HistoryDBProvider provides an instance of a history DB
 type HistoryDBProvider interface {
@@ -29,7 +33,9 @@ type HistoryDBProvider interface {
 
 // HistoryDB - an interface that a history database should implement
 type HistoryDB interface {
-	NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error)
+	NewHistoryQueryExecutor(blockStore blkstorage.BlockStore) (ledger.HistoryQueryExecutor, error)
 	Commit(block *common.Block) error
-	GetBlockNumFromSavepoint() (uint64, error)
+	GetLastSavepoint() (*version.Height, error)
+	ShouldRecover(lastAvailableBlock uint64) (bool, uint64, error)
+	CommitLostBlock(block *common.Block) error
 }

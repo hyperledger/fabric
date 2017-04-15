@@ -17,7 +17,14 @@ limitations under the License.
 package kafka
 
 import (
-	logging "github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("orderer/kafka")
+const pkgLogID = "orderer/kafka"
+
+var logger *logging.Logger
+
+func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
+}

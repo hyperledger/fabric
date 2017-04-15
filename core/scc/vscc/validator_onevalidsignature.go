@@ -69,7 +69,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		return shim.Error("No policy supplied")
 	}
 
-	logger.Infof("VSCC invoked")
+	logger.Debugf("VSCC invoked")
 
 	// get the envelope...
 	env, err := utils.GetEnvelopeFromBlock(args[1])
@@ -85,19 +85,24 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		return shim.Error(err.Error())
 	}
 
+	chdr, err := utils.UnmarshalChannelHeader(payl.Header.ChannelHeader)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
 	// get the policy
-	mgr := mspmgmt.GetManagerForChain(payl.Header.ChainHeader.ChainID)
+	mgr := mspmgmt.GetManagerForChain(chdr.ChannelId)
 	pProvider := cauthdsl.NewPolicyProvider(mgr)
-	policy, err := pProvider.NewPolicy(args[2])
+	policy, _, err := pProvider.NewPolicy(args[2])
 	if err != nil {
 		logger.Errorf("VSCC error: pProvider.NewPolicy failed, err %s", err)
 		return shim.Error(err.Error())
 	}
 
 	// validate the payload type
-	if common.HeaderType(payl.Header.ChainHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION {
-		logger.Errorf("Only Endorser Transactions are supported, provided type %d", payl.Header.ChainHeader.Type)
-		return shim.Error(fmt.Sprintf("Only Endorser Transactions are supported, provided type %d", payl.Header.ChainHeader.Type))
+	if common.HeaderType(chdr.Type) != common.HeaderType_ENDORSER_TRANSACTION {
+		logger.Errorf("Only Endorser Transactions are supported, provided type %d", chdr.Type)
+		return shim.Error(fmt.Sprintf("Only Endorser Transactions are supported, provided type %d", chdr.Type))
 	}
 
 	// ...and the transaction...
@@ -139,7 +144,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		}
 	}
 
-	logger.Infof("VSCC exists successfully")
+	logger.Debugf("VSCC exists successfully")
 
 	return shim.Success(nil)
 }

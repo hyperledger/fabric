@@ -75,7 +75,7 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 
 	if s.sys.LastBatch(s.chainId).DecodeHeader().Seq < bh.Seq {
 		log.Debugf("replica %d: delivering batches %d after hello from replica %d", s.id, bh.Seq, src)
-		blockOK, committers := s.getCommittersFromBlockCutter(h.Batch)
+		blockOK, committers := s.getCommittersFromBatch(h.Batch)
 		if blockOK {
 			s.deliverBatch(h.Batch, committers)
 		} else {

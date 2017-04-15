@@ -23,11 +23,11 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
 	mockmultichain "github.com/hyperledger/fabric/orderer/mocks/multichain"
-	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -36,8 +36,8 @@ import (
 
 var cp = newChainPartition(provisional.TestChainID, rawPartition)
 
-func newMockSharedConfigManager() *mocksharedconfig.Manager {
-	return &mocksharedconfig.Manager{KafkaBrokersVal: testConf.Kafka.Brokers}
+func newMockSharedConfigManager() *mockconfigvaluesorderer.SharedConfig {
+	return &mockconfigvaluesorderer.SharedConfig{KafkaBrokersVal: testGenesisConf.Orderer.Kafka.Brokers}
 }
 
 type mockConsenterImpl struct {
@@ -51,14 +51,16 @@ func mockNewConsenter(t *testing.T, kafkaVersion sarama.KafkaVersion, retryOptio
 	prodDisk := make(chan *ab.KafkaMessage)
 	consDisk := make(chan *ab.KafkaMessage)
 
+	mockTLS := config.TLS{Enabled: false}
+
 	mockBfValue := func(brokers []string, cp ChainPartition) (Broker, error) {
 		return mockNewBroker(t, cp)
 	}
-	mockPfValue := func(brokers []string, kafkaVersion sarama.KafkaVersion, retryOptions config.Retry) Producer {
+	mockPfValue := func(brokers []string, kafkaVersion sarama.KafkaVersion, retryOptions config.Retry, tls config.TLS) Producer {
 		// The first Send on this producer will return a blob with offset #nextProducedOffset
 		return mockNewProducer(t, cp, nextProducedOffset, prodDisk)
 	}
-	mockCfValue := func(brokers []string, kafkaVersion sarama.KafkaVersion, cp ChainPartition, lastPersistedOffset int64) (Consumer, error) {
+	mockCfValue := func(brokers []string, kafkaVersion sarama.KafkaVersion, tls config.TLS, cp ChainPartition, lastPersistedOffset int64) (Consumer, error) {
 		if lastPersistedOffset != nextProducedOffset {
 			panic(fmt.Errorf("Mock objects about to be set up incorrectly (consumer to seek to %d, producer to post %d)", lastPersistedOffset, nextProducedOffset))
 		}
@@ -67,11 +69,12 @@ func mockNewConsenter(t *testing.T, kafkaVersion sarama.KafkaVersion, retryOptio
 
 	return &mockConsenterImpl{
 		consenterImpl: consenterImpl{
-			kv: kafkaVersion,
-			ro: retryOptions,
-			bf: mockBfValue,
-			pf: mockPfValue,
-			cf: mockCfValue,
+			kv:  kafkaVersion,
+			ro:  retryOptions,
+			tls: mockTLS,
+			bf:  mockBfValue,
+			pf:  mockPfValue,
+			cf:  mockCfValue,
 		},
 		prodDisk: prodDisk,
 		consDisk: consDisk,
@@ -129,7 +132,7 @@ func TestKafkaConsenterEmptyBatch(t *testing.T) {
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: testTimePadding},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: testTimePadding},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -164,7 +167,7 @@ func TestKafkaConsenterBatchTimer(t *testing.T) {
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -216,7 +219,7 @@ func TestKafkaConsenterTimerHaltOnFilledBatch(t *testing.T) {
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -276,7 +279,7 @@ func TestKafkaConsenterConfigStyleMultiBatch(t *testing.T) {
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: testTimePadding},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: testTimePadding},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -326,7 +329,7 @@ func TestKafkaConsenterTimeToCutForced(t *testing.T) {
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -383,7 +386,7 @@ func TestKafkaConsenterTimeToCutDuplicate(t *testing.T) {
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -472,7 +475,7 @@ func TestKafkaConsenterTimeToCutStale(t *testing.T) {
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -531,7 +534,7 @@ func TestKafkaConsenterTimeToCutLarger(t *testing.T) {
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -590,7 +593,7 @@ func TestKafkaConsenterTimeToCutLarger(t *testing.T) {
 
 func TestGetLastOffsetPersistedEmpty(t *testing.T) {
 	expected := sarama.OffsetOldest - 1
-	actual := getLastOffsetPersisted(&cb.Metadata{})
+	actual := getLastOffsetPersisted(&cb.Metadata{}, "")
 	if actual != expected {
 		t.Fatalf("Expected last offset %d, got %d", expected, actual)
 	}
@@ -598,7 +601,7 @@ func TestGetLastOffsetPersistedEmpty(t *testing.T) {
 
 func TestGetLastOffsetPersistedRight(t *testing.T) {
 	expected := int64(100)
-	actual := getLastOffsetPersisted(&cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: expected})})
+	actual := getLastOffsetPersisted(&cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: expected})}, "")
 	if actual != expected {
 		t.Fatalf("Expected last offset %d, got %d", expected, actual)
 	}
@@ -613,7 +616,7 @@ func TestKafkaConsenterRestart(t *testing.T) {
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -652,7 +655,7 @@ func TestKafkaConsenterRestart(t *testing.T) {
 		logger.Fatalf("Error extracting orderer metadata for chain %x: %s", cs.ChainIDVal, err)
 	}
 
-	lastPersistedOffset = getLastOffsetPersisted(metadata)
+	lastPersistedOffset = getLastOffsetPersisted(metadata, ch.support.ChainID())
 	nextProducedOffset = lastPersistedOffset + 1
 
 	co = mockNewConsenter(t, testConf.Kafka.Version, testConf.Kafka.Retry, nextProducedOffset)

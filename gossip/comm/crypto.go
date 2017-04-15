@@ -20,7 +20,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -29,6 +28,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/hyperledger/fabric/common/util"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -75,9 +75,7 @@ func certHashFromRawCert(rawCert []byte) []byte {
 	if len(rawCert) == 0 {
 		return nil
 	}
-	hash := sha256.New()
-	hash.Write(rawCert)
-	return hash.Sum(nil)
+	return util.ComputeSHA256(rawCert)
 }
 
 // ExtractCertificateHash extracts the hash of the certificate from the stream

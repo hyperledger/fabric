@@ -247,7 +247,7 @@ func (b *Backend) AddSbftPeer(chainID string, support multichain.ConsenterSuppor
 	return s.New(b.GetMyId(), chainID, config, b)
 }
 
-func (b *Backend) Ordered(chainID string, req *s.Request) ([][]*s.Request, [][]filter.Committer, bool) {
+func (b *Backend) Validate(chainID string, req *s.Request) ([][]*s.Request, [][]filter.Committer, bool) {
 	// ([][]*cb.Envelope, [][]filter.Committer, bool) {
 	// If the message is a valid normal message and fills a batch, the batch, committers, true is returned
 	// If the message is a valid special message (like a config message) it terminates the current batch

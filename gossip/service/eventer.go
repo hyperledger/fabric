@@ -19,6 +19,8 @@ package service
 import (
 	"reflect"
 
+	"github.com/hyperledger/fabric/common/config"
+
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -27,8 +29,8 @@ type Config interface {
 	// ChainID returns the chainID for this channel
 	ChainID() string
 
-	// AnchorPeers should return the current list of anchor peers
-	AnchorPeers() []*peer.AnchorPeer
+	// Organizations returns a map of org ID to ApplicationOrgConfig
+	Organizations() map[string]config.ApplicationOrg
 
 	// Sequence should return the sequence number of the current configuration
 	Sequence() uint64
@@ -42,6 +44,7 @@ type ConfigProcessor interface {
 
 type configStore struct {
 	anchorPeers []*peer.AnchorPeer
+	orgMap      map[string]config.ApplicationOrg
 }
 
 type configEventReceiver interface {
@@ -64,27 +67,24 @@ func newConfigEventer(receiver configEventReceiver) *configEventer {
 // but only if the configuration value actually changed
 // Note, that a changing sequence number is ignored as changing configuration
 func (ce *configEventer) ProcessConfigUpdate(config Config) {
-	logger.Debugf("Processing new config for chain %s", config.ChainID())
+	logger.Debugf("Processing new config for channel %s", config.ChainID())
 
-	changed := false
-
-	newAnchorPeers := config.AnchorPeers()
-
-	if ce.lastConfig != nil {
-		if !reflect.DeepEqual(newAnchorPeers, ce.lastConfig.anchorPeers) {
-			changed = true
-		}
-	} else {
-		changed = true
+	if ce.lastConfig != nil && reflect.DeepEqual(ce.lastConfig.orgMap, config.Organizations()) {
+		logger.Debugf("Ignoring new config for channel %s because it contained no anchor peer updates", config.ChainID())
+		return
 	}
 
-	if changed {
-		newConfig := &configStore{
-			anchorPeers: config.AnchorPeers(),
-		}
-		ce.lastConfig = newConfig
-
-		logger.Debugf("Calling out because config was updated for chain %s", config.ChainID())
-		ce.receiver.configUpdated(config)
+	var newAnchorPeers []*peer.AnchorPeer
+	for _, group := range config.Organizations() {
+		newAnchorPeers = append(newAnchorPeers, group.AnchorPeers()...)
 	}
+
+	newConfig := &configStore{
+		orgMap:      config.Organizations(),
+		anchorPeers: newAnchorPeers,
+	}
+	ce.lastConfig = newConfig
+
+	logger.Debugf("Calling out because config was updated for channel %s", config.ChainID())
+	ce.receiver.configUpdated(config)
 }

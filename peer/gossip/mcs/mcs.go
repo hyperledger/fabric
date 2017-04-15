@@ -17,15 +17,21 @@ limitations under the License.
 package mcs
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	pcommon "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 )
 
@@ -40,23 +46,31 @@ var logger = logging.MustGetLogger("peer/gossip/mcs")
 //
 // A similar mechanism needs to be in place to update the local MSP, as well.
 // This implementation assumes that these mechanisms are all in place and working.
-//
-// TODO: The code currently does not validate an identity against the channel
-// read policy for the channel related gossip message.
 type mspMessageCryptoService struct {
+	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter
+	localSigner                crypto.LocalSigner
+	deserializer               mgmt.DeserializersManager
 }
 
-// NewMessageCryptoService creates a new instance of mspMessageCryptoService
-// that implements MessageCryptoService
-func NewMessageCryptoService() api.MessageCryptoService {
-	return &mspMessageCryptoService{}
+// New creates a new instance of mspMessageCryptoService
+// that implements MessageCryptoService.
+// The method takes in input:
+// 1. a policies.ChannelPolicyManagerGetter that gives access to the policy manager of a given channel via the Manager method.
+// 2. an instance of crypto.LocalSigner
+// 3. an identity deserializer manager
+func New(channelPolicyManagerGetter policies.ChannelPolicyManagerGetter, localSigner crypto.LocalSigner, deserializer mgmt.DeserializersManager) api.MessageCryptoService {
+	return &mspMessageCryptoService{channelPolicyManagerGetter: channelPolicyManagerGetter, localSigner: localSigner, deserializer: deserializer}
 }
 
 // ValidateIdentity validates the identity of a remote peer.
 // If the identity is invalid, revoked, expired it returns an error.
 // Else, returns nil
 func (s *mspMessageCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
-	_, err := s.getValidatedIdentity(peerIdentity)
+	// As prescibed by the contract of method,
+	// here we check only that peerIdentity is not
+	// invalid, revoked or expired.
+
+	_, _, err := s.getValidatedIdentity(peerIdentity)
 	return err
 }
 
@@ -74,8 +88,22 @@ func (s *mspMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 		return nil
 	}
 
+	sid, err := s.deserializer.Deserialize(peerIdentity)
+	if err != nil {
+		logger.Errorf("Failed getting validated identity from peer identity [% x]: [%s]", peerIdentity, err)
+
+		return nil
+	}
+
+	// concatenate msp-id and idbytes
+	// idbytes is the low-level representation of an identity.
+	// it is supposed to be already in its minimal representation
+
+	mspIdRaw := []byte(sid.Mspid)
+	raw := append(mspIdRaw, sid.IdBytes...)
+
 	// Hash
-	digest, err := factory.GetDefaultOrPanic().Hash(peerIdentity, &bccsp.SHA256Opts{})
+	digest, err := factory.GetDefault().Hash(raw, &bccsp.SHA256Opts{})
 	if err != nil {
 		logger.Errorf("Failed computing digest of serialized identity [% x]: [%s]", peerIdentity, err)
 
@@ -87,34 +115,108 @@ func (s *mspMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (s *mspMessageCryptoService) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
-	// TODO: to be implemented
-	// Steps:
-	// 1. Check that the block is related to chainID
-	// 2. Verify that the block is properly signed
-	//    using the policy associated to chainID
+func (s *mspMessageCryptoService) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
+	// - Convert signedBlock to common.Block.
+	block, err := utils.GetBlockFromBlockBytes(signedBlock)
+	if err != nil {
+		return fmt.Errorf("Failed unmarshalling block bytes on channel [%s]: [%s]", chainID, err)
+	}
 
-	return nil
+	if block.Header == nil {
+		return fmt.Errorf("Invalid Block on channel [%s]. Header must be different from nil.", chainID)
+	}
+
+	// - Extract channelID and compare with chainID
+	channelID, err := utils.GetChainIDFromBlock(block)
+	if err != nil {
+		return fmt.Errorf("Failed getting channel id from block with id [%d] on channel [%s]: [%s]", block.Header.Number, chainID, err)
+	}
+
+	if channelID != string(chainID) {
+		return fmt.Errorf("Invalid block's channel id. Expected [%s]. Given [%s]", chainID, channelID)
+	}
+
+	// - Unmarshal medatada
+	if block.Metadata == nil || len(block.Metadata.Metadata) == 0 {
+		return fmt.Errorf("Block with id [%d] on channel [%s] does not have metadata. Block not valid.", block.Header.Number, chainID)
+	}
+
+	metadata, err := utils.GetMetadataFromBlock(block, pcommon.BlockMetadataIndex_SIGNATURES)
+	if err != nil {
+		return fmt.Errorf("Failed unmarshalling medatata for signatures [%s]", err)
+	}
+
+	// - Verify that Header.DataHash is equal to the hash of block.Data
+	// This is to ensure that the header is consistent with the data carried by this block
+	if !bytes.Equal(block.Data.Hash(), block.Header.DataHash) {
+		return fmt.Errorf("Header.DataHash is different from Hash(block.Data) for block with id [%d] on channel [%s]", block.Header.Number, chainID)
+	}
+
+	// - Get Policy for block validation
+
+	// Get the policy manager for channelID
+	cpm, ok := s.channelPolicyManagerGetter.Manager(channelID)
+	if cpm == nil {
+		return fmt.Errorf("Could not acquire policy manager for channel %s", channelID)
+	}
+	// ok is true if it was the manager requested, or false if it is the default manager
+	logger.Debugf("Got policy manager for channel [%s] with flag [%s]", channelID, ok)
+
+	// Get block validation policy
+	policy, ok := cpm.GetPolicy(policies.BlockValidation)
+	// ok is true if it was the policy requested, or false if it is the default policy
+	logger.Debugf("Got block validation policy for channel [%s] with flag [%s]", channelID, ok)
+
+	// - Prepare SignedData
+	signatureSet := []*pcommon.SignedData{}
+	for _, metadataSignature := range metadata.Signatures {
+		shdr, err := utils.GetSignatureHeader(metadataSignature.SignatureHeader)
+		if err != nil {
+			return fmt.Errorf("Failed unmarshalling signature header for block with id [%d] on channel [%s]: [%s]", block.Header.Number, chainID, err)
+		}
+		signatureSet = append(
+			signatureSet,
+			&pcommon.SignedData{
+				Identity:  shdr.Creator,
+				Data:      util.ConcatenateBytes(metadata.Value, metadataSignature.SignatureHeader, block.Header.Bytes()),
+				Signature: metadataSignature.Signature,
+			},
+		)
+	}
+
+	// - Evaluate policy
+	return policy.Evaluate(signatureSet)
 }
 
 // Sign signs msg with this peer's signing key and outputs
 // the signature if no error occurred.
 func (s *mspMessageCryptoService) Sign(msg []byte) ([]byte, error) {
-	return mgmt.GetLocalSigningIdentityOrPanic().Sign(msg)
+	return s.localSigner.Sign(msg)
 }
 
 // Verify checks that signature is a valid signature of message under a peer's verification key.
 // If the verification succeeded, Verify returns nil meaning no error occurred.
 // If peerIdentity is nil, then the verification fails.
 func (s *mspMessageCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
-	identity, err := s.getValidatedIdentity(peerIdentity)
+	identity, chainID, err := s.getValidatedIdentity(peerIdentity)
 	if err != nil {
 		logger.Errorf("Failed getting validated identity from peer identity [%s]", err)
 
 		return err
 	}
 
-	return identity.Verify(message, signature)
+	if len(chainID) == 0 {
+		// At this stage, this means that peerIdentity
+		// belongs to this peer's LocalMSP.
+		// The signature is validated directly
+		return identity.Verify(message, signature)
+	}
+
+	// At this stage, the signature must be validated
+	// against the reader policy of the channel
+	// identified by chainID
+
+	return s.VerifyByChannel(chainID, peerIdentity, signature, message)
 }
 
 // VerifyByChannel checks that signature is a valid signature of message
@@ -127,36 +229,30 @@ func (s *mspMessageCryptoService) VerifyByChannel(chainID common.ChainID, peerId
 		return errors.New("Invalid Peer Identity. It must be different from nil.")
 	}
 
-	// Notice that peerIdentity is assumed to be the serialization of an identity.
-	// So, first step is the identity deserialization, then identity verification and
-	// finally signature verification.
-	mspManager := mgmt.GetManagerForChainIfExists(string(chainID))
-	if mspManager == nil {
-		return fmt.Errorf("Failed getting manager for chain [%s]. It does not exists.", chainID)
+	// Get the policy manager for channel chainID
+	cpm, flag := s.channelPolicyManagerGetter.Manager(string(chainID))
+	if cpm == nil {
+		return fmt.Errorf("Could not acquire policy manager for channel %s", string(chainID))
 	}
+	logger.Debugf("Got policy manager for channel [%s] with flag [%s]", string(chainID), flag)
 
-	// Deserialize identity
-	identity, err := mspManager.DeserializeIdentity([]byte(peerIdentity))
-	if err != nil {
-		return fmt.Errorf("Failed deserializing identity [%s]: [%s]", chainID, err)
-	}
+	// Get channel reader policy
+	policy, flag := cpm.GetPolicy(policies.ChannelApplicationReaders)
+	logger.Debugf("Got reader policy for channel [%s] with flag [%s]", string(chainID), flag)
 
-	// Check identity validity
-	if err := identity.Validate(); err != nil {
-		return fmt.Errorf("Failed validating identity [%s][%s]: [%s]", chainID, identity, err)
-	}
-
-	// TODO: check that this identity is a reader of the channel
-
-	// Verify signature
-	logger.Debugf("Veryfining on [%s] signature [% x]", chainID, signature)
-	return identity.Verify(message, signature)
+	return policy.Evaluate(
+		[]*pcommon.SignedData{{
+			Data:      message,
+			Identity:  []byte(peerIdentity),
+			Signature: signature,
+		}},
+	)
 }
 
-func (s *mspMessageCryptoService) getValidatedIdentity(peerIdentity api.PeerIdentityType) (msp.Identity, error) {
+func (s *mspMessageCryptoService) getValidatedIdentity(peerIdentity api.PeerIdentityType) (msp.Identity, common.ChainID, error) {
 	// Validate arguments
 	if len(peerIdentity) == 0 {
-		return nil, errors.New("Invalid Peer Identity. It must be different from nil.")
+		return nil, nil, errors.New("Invalid Peer Identity. It must be different from nil.")
 	}
 
 	// Notice that peerIdentity is assumed to be the serialization of an identity.
@@ -166,27 +262,31 @@ func (s *mspMessageCryptoService) getValidatedIdentity(peerIdentity api.PeerIden
 	// If the peerIdentity is in the same organization of this node then
 	// the local MSP is required to take the final decision on the validity
 	// of the signature.
-	identity, err := mgmt.GetLocalMSP().DeserializeIdentity([]byte(peerIdentity))
-	if err != nil {
-		// peerIdentity is NOT in the same organization of this node
-		logger.Debugf("LocalMSP failed deserializing peer identity [% x]: [%s]", []byte(peerIdentity), err)
-	} else {
+	identity, err := s.deserializer.GetLocalDeserializer().DeserializeIdentity([]byte(peerIdentity))
+	if err == nil {
+		// No error means that the local MSP successfully deserialized the identity.
+		// We now check additional properties.
+
 		// TODO: The following check will be replaced by a check on the organizational units
 		// when we allow the gossip network to have organization unit (MSP subdivisions)
 		// scoped messages.
 		// The following check is consistent with the SecurityAdvisor#OrgByPeerIdentity
 		// implementation.
-		// TODO: Notice that the followin check saves us from the fact
+		// TODO: Notice that the following check saves us from the fact
 		// that DeserializeIdentity does not yet enforce MSP-IDs consistency.
 		// This check can be removed once DeserializeIdentity will be fixed.
-		if identity.GetMSPIdentifier() == mgmt.GetLocalSigningIdentityOrPanic().GetMSPIdentifier() {
+		if identity.GetMSPIdentifier() == s.deserializer.GetLocalMSPIdentifier() {
 			// Check identity validity
-			return identity, identity.Validate()
+
+			// Notice that at this stage we don't have to check the identity
+			// against any channel's policies.
+			// This will be done by the caller function, if needed.
+			return identity, nil, identity.Validate()
 		}
 	}
 
 	// Check against managers
-	for chainID, mspManager := range mgmt.GetManagers() {
+	for chainID, mspManager := range s.deserializer.GetChannelDeserializers() {
 		// Deserialize identity
 		identity, err := mspManager.DeserializeIdentity([]byte(peerIdentity))
 		if err != nil {
@@ -195,17 +295,19 @@ func (s *mspMessageCryptoService) getValidatedIdentity(peerIdentity api.PeerIden
 		}
 
 		// Check identity validity
+		// Notice that at this stage we don't have to check the identity
+		// against any channel's policies.
+		// This will be done by the caller function, if needed.
+
 		if err := identity.Validate(); err != nil {
 			logger.Debugf("Failed validating identity [% x] on [%s]: [%s]", peerIdentity, chainID, err)
 			continue
 		}
 
-		// TODO: check that this identity is a reader of the channel
+		logger.Debugf("Validation succeeded [% x] on [%s]", peerIdentity, chainID)
 
-		logger.Debugf("Validation succesed  [% x] on [%s]", peerIdentity, chainID)
-
-		return identity, nil
+		return identity, common.ChainID(chainID), nil
 	}
 
-	return nil, fmt.Errorf("Peer Identity [% x] cannot be validated. No MSP found able to do that.", peerIdentity)
+	return nil, nil, fmt.Errorf("Peer Identity [% x] cannot be validated. No MSP found able to do that.", peerIdentity)
 }

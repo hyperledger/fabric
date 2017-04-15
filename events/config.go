@@ -19,11 +19,15 @@ package events
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"runtime"
 	"strings"
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+
+	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/msp"
 )
 
 // Config the config wrapper structure
@@ -64,4 +68,23 @@ func SetupTestConfig() {
 	}
 
 	SetupTestLogging()
+
+	// Init the BCCSP
+	var bccspConfig *factory.FactoryOpts
+	err = viper.UnmarshalKey("peer.BCCSP", &bccspConfig)
+	if err != nil {
+		bccspConfig = nil
+	}
+
+	tmpKeyStore, err := ioutil.TempDir("/tmp", "msp-keystore")
+	if err != nil {
+		panic(fmt.Errorf("Could not create temporary directory: %s\n", tmpKeyStore))
+	}
+
+	msp.SetupBCCSPKeystoreConfig(bccspConfig, tmpKeyStore)
+
+	err = factory.InitFactories(bccspConfig)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 }

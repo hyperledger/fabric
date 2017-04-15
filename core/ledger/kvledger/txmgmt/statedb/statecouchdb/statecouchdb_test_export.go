@@ -25,8 +25,8 @@ import (
 )
 
 //Basic setup to test couch
-var connectURL = "localhost:5984"
-var badConnectURL = "localhost:5990"
+var connectURL = "couchdb:5984"
+var badConnectURL = "couchdb:5990"
 var username = ""
 var password = ""
 
@@ -56,7 +56,7 @@ func (env *TestVDBEnv) Cleanup(dbName string) {
 func cleanupDB(dbName string) {
 	//create a new connection
 	couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password)
-	db, _ := couchdb.CreateCouchDatabase(*couchInstance, dbName)
+	db := couchdb.CouchDatabase{CouchInstance: *couchInstance, DBName: dbName}
 	//drop the test database
 	db.DropDatabase()
 }

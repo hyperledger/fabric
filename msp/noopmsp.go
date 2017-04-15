@@ -17,7 +17,6 @@ limitations under the License.
 package msp
 
 import (
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 )
 
@@ -53,6 +52,16 @@ func (msp *noopmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
 	return id, nil
 }
 
+// GetRootCerts returns the root certificates for this MSP
+func (msp *noopmsp) GetRootCerts() []Identity {
+	return nil
+}
+
+// GetIntermediateCerts returns the intermediate root certificates for this MSP
+func (msp *noopmsp) GetIntermediateCerts() []Identity {
+	return nil
+}
+
 func (msp *noopmsp) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	mspLogger.Infof("Obtaining identity for %s", string(serializedID))
 	id, _ := newNoopIdentity()
@@ -63,7 +72,7 @@ func (msp *noopmsp) Validate(id Identity) error {
 	return nil
 }
 
-func (msp *noopmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrincipal) error {
+func (msp *noopmsp) SatisfiesPrincipal(id Identity, principal *msp.MSPPrincipal) error {
 	return nil
 }
 
@@ -75,7 +84,7 @@ func newNoopIdentity() (Identity, error) {
 	return &noopidentity{}, nil
 }
 
-func (id *noopidentity) SatisfiesPrincipal(*common.MSPPrincipal) error {
+func (id *noopidentity) SatisfiesPrincipal(*msp.MSPPrincipal) error {
 	return nil
 }
 
@@ -92,8 +101,8 @@ func (id *noopidentity) Validate() error {
 	return nil
 }
 
-func (id *noopidentity) GetOrganizationUnits() string {
-	return "dunno"
+func (id *noopidentity) GetOrganizationalUnits() []msp.FabricOUIdentifier {
+	return nil
 }
 
 func (id *noopidentity) Verify(msg []byte, sig []byte) error {

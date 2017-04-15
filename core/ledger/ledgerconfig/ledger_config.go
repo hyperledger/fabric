@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// TODO remove all these config variables, they are never used as defaults
 var stateDatabase = "goleveldb"
 var couchDBAddress = "127.0.0.1:5984"
 var username = ""
@@ -68,9 +69,9 @@ func GetHistoryLevelDBPath() string {
 	return filepath.Join(GetRootPath(), "historyLeveldb")
 }
 
-// GetBlockStorePath returns the filesystem path that is used by the block store
+// GetBlockStorePath returns the filesystem path that is used for the chain block stores
 func GetBlockStorePath() string {
-	return filepath.Join(GetRootPath(), "blocks")
+	return filepath.Join(GetRootPath(), "chains")
 }
 
 // GetMaxBlockfileSize returns maximum size of the block file
@@ -88,7 +89,30 @@ func GetCouchDBDefinition() *CouchDBDef {
 	return &CouchDBDef{couchDBAddress, username, password}
 }
 
+//GetQueryLimit exposes the queryLimit variable
+func GetQueryLimit() int {
+	queryLimit := viper.GetInt("ledger.state.queryLimit")
+	// if queryLimit was unset, default to 10000
+	if queryLimit == 0 {
+		queryLimit = 10000
+	}
+	return queryLimit
+}
+
 //IsHistoryDBEnabled exposes the historyDatabase variable
 func IsHistoryDBEnabled() bool {
 	return viper.GetBool("ledger.state.historyDatabase")
+}
+
+// IsQueryReadsHashingEnabled enables or disables computing of hash
+// of range query results for phantom item validation
+func IsQueryReadsHashingEnabled() bool {
+	return true
+}
+
+// GetMaxDegreeQueryReadsHashing return the maximum degree of the merkle tree for hashes of
+// of range query results for phantom item validation
+// For more details - see description in kvledger/txmgmt/rwset/query_results_helper.go
+func GetMaxDegreeQueryReadsHashing() uint32 {
+	return 50
 }

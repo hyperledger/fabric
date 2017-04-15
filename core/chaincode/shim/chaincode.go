@@ -20,20 +20,24 @@ package shim
 
 import (
 	"bytes"
+	"encoding/gob"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/flogging"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -42,15 +46,27 @@ import (
 
 // Logger for the shim package.
 var chaincodeLogger = logging.MustGetLogger("shim")
+var logOutput = os.Stderr
+
+const (
+	minUnicodeRuneValue = 0            //U+0000
+	maxUnicodeRuneValue = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
+)
 
 // ChaincodeStub is an object passed to chaincode for shim side handling of
 // APIs.
 type ChaincodeStub struct {
-	TxID            string
-	proposalContext *pb.ChaincodeProposalContext
-	chaincodeEvent  *pb.ChaincodeEvent
-	args            [][]byte
-	handler         *Handler
+	TxID           string
+	chaincodeEvent *pb.ChaincodeEvent
+	args           [][]byte
+	handler        *Handler
+	signedProposal *pb.SignedProposal
+	proposal       *pb.Proposal
+
+	// Additional fields extracted from the signedProposal
+	creator   []byte
+	transient map[string][]byte
+	binding   []byte
 }
 
 // Peer address derived from command line or env var
@@ -61,12 +77,12 @@ var peerAddress string
 func Start(cc Chaincode) error {
 	// If Start() is called, we assume this is a standalone chaincode and set
 	// up formatted logging.
-	format := logging.MustStringFormatter("%{time:15:04:05.000} [%{module}] %{level:.4s} : %{message}")
-	backend := logging.NewLogBackend(os.Stderr, "", 0)
-	backendFormatter := logging.NewBackendFormatter(backend, format)
-	logging.SetBackend(backendFormatter).SetLevel(logging.Level(shimLoggingLevel), "shim")
+	SetupChaincodeLogging()
 
-	SetChaincodeLoggingLevel()
+	err := factory.InitFactories(&factory.DefaultOpts)
+	if err != nil {
+		return fmt.Errorf("Internal error, BCCSP could not be initialized with default options: %s", err)
+	}
 
 	flag.StringVar(&peerAddress, "peer.address", "", "peer address")
 
@@ -107,18 +123,24 @@ func IsEnabledForLogLevel(logLevel string) bool {
 	return chaincodeLogger.IsEnabledFor(lvl)
 }
 
-// SetChaincodeLoggingLevel sets the chaincode logging level to the value
-// of CORE_LOGGING_CHAINCODE set from core.yaml by chaincode_support.go
-func SetChaincodeLoggingLevel() {
+// SetupChaincodeLogging sets the chaincode logging format and the level
+// to the values of CORE_CHAINCODE_LOGFORMAT and CORE_CHAINCODE_LOGLEVEL set
+// from core.yaml by chaincode_support.go
+func SetupChaincodeLogging() {
 	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 
-	chaincodeLogLevelString := viper.GetString("logging.chaincode")
+	// setup system-wide logging backend
+	logFormat := flogging.SetFormat(viper.GetString("chaincode.logFormat"))
+	flogging.InitBackend(logFormat, logOutput)
+
+	chaincodeLogLevelString := viper.GetString("chaincode.logLevel")
 	if chaincodeLogLevelString == "" {
 		shimLogLevelDefault := logging.Level(shimLoggingLevel)
 		chaincodeLogger.Infof("Chaincode log level not provided; defaulting to: %s", shimLogLevelDefault)
+		SetLoggingLevel(shimLoggingLevel)
 	} else {
 		chaincodeLogLevel, err := LogLevel(chaincodeLogLevelString)
 		if err == nil {
@@ -248,15 +270,13 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 			}
 
 			//keepalive messages are PONGs to the fabric's PINGs
-			if (nsInfo != nil && nsInfo.sendToCC) || (in.Type == pb.ChaincodeMessage_KEEPALIVE) {
-				if in.Type == pb.ChaincodeMessage_KEEPALIVE {
-					chaincodeLogger.Debug("Sending KEEPALIVE response")
-					//ignore any errors, maybe next KEEPALIVE will work
-					handler.serialSendAsync(in, nil)
-				} else {
-					chaincodeLogger.Debugf("[%s]send state message %s", shorttxid(in.Txid), in.Type.String())
-					handler.serialSendAsync(in, errc)
-				}
+			if in.Type == pb.ChaincodeMessage_KEEPALIVE {
+				chaincodeLogger.Debug("Sending KEEPALIVE response")
+				//ignore any errors, maybe next KEEPALIVE will work
+				handler.serialSendAsync(in, nil)
+			} else if nsInfo != nil && nsInfo.sendToCC {
+				chaincodeLogger.Debugf("[%s]send state message %s", shorttxid(in.Txid), in.Type.String())
+				handler.serialSendAsync(in, errc)
 			}
 		}
 	}()
@@ -267,20 +287,36 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 // -- init stub ---
 // ChaincodeInvocation functionality
 
-func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.ChaincodeInput, proposalContext *pb.ChaincodeProposalContext) {
+func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.ChaincodeInput, signedProposal *pb.SignedProposal) error {
 	stub.TxID = txid
 	stub.args = input.Args
 	stub.handler = handler
-	stub.proposalContext = proposalContext
-}
+	stub.signedProposal = signedProposal
 
-// InitTestStub initializes an appropriate stub for testing chaincode
-func InitTestStub(funargs ...string) *ChaincodeStub {
-	stub := ChaincodeStub{}
-	allargs := util.ToChaincodeArgs(funargs...)
-	newCI := &pb.ChaincodeInput{Args: allargs}
-	stub.init(&Handler{}, "TEST-txid", newCI, nil) // TODO: add msg.ProposalContext
-	return &stub
+	// TODO: sanity check: verify that every call to init with a nil
+	// signedProposal is a legitimate one, meaning it is an internal call
+	// to system chaincodes.
+	if signedProposal != nil {
+		var err error
+
+		stub.proposal, err = utils.GetProposal(signedProposal.ProposalBytes)
+		if err != nil {
+			return fmt.Errorf("Failed extracting signedProposal from signed signedProposal. [%s]", err)
+		}
+
+		// Extract creator, transient, binding...
+		stub.creator, stub.transient, err = utils.GetChaincodeProposalContext(stub.proposal)
+		if err != nil {
+			return fmt.Errorf("Failed extracting signedProposal fields. [%s]", err)
+		}
+
+		stub.binding, err = utils.ComputeProposalBinding(stub.proposal)
+		if err != nil {
+			return fmt.Errorf("Failed computing binding from signedProposal. [%s]", err)
+		}
+	}
+
+	return nil
 }
 
 // GetTxID returns the transaction ID
@@ -321,26 +357,45 @@ func (stub *ChaincodeStub) DelState(key string) error {
 	return stub.handler.handleDelState(key, stub.TxID)
 }
 
-// StateQueryIterator allows a chaincode to iterate over a set of
+// CommonIterator allows a chaincode to iterate over a set of
 // key/value pairs in the state.
-type StateQueryIterator struct {
+type CommonIterator struct {
 	handler    *Handler
 	uuid       string
-	response   *pb.QueryStateResponse
+	response   *pb.QueryResponse
 	currentLoc int
 }
 
-// RangeQueryState function can be invoked by a chaincode to query of a range
+//GeneralQueryIterator allows a chaincode to iterate the result
+//of range and execute query.
+type StateQueryIterator struct {
+	*CommonIterator
+}
+
+//GeneralQueryIterator allows a chaincode to iterate the result
+//of history query.
+type HistoryQueryIterator struct {
+	*CommonIterator
+}
+
+type resultType uint8
+
+const (
+	STATE_QUERY_RESULT resultType = iota + 1
+	HISTORY_QUERY_RESULT
+)
+
+// GetStateByRange function can be invoked by a chaincode to query of a range
 // of keys in the state. Assuming the startKey and endKey are in lexical order,
 // an iterator will be returned that can be used to iterate over all keys
 // between the startKey and endKey, inclusive. The order in which keys are
 // returned by the iterator is random.
-func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateQueryIteratorInterface, error) {
-	response, err := stub.handler.handleRangeQueryState(startKey, endKey, stub.TxID)
+func (stub *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryIteratorInterface, error) {
+	response, err := stub.handler.handleGetStateByRange(startKey, endKey, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
 // GetQueryResult function can be invoked by a chaincode to perform a
@@ -349,103 +404,166 @@ func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateQueryI
 // state database. An iterator is returned which can be used to iterate (next) over
 // the query result set
 func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInterface, error) {
-	response, err := stub.handler.handleExecuteQueryState(query, stub.TxID)
+	response, err := stub.handler.handleGetQueryResult(query, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
+}
 
+// GetHistoryForKey function can be invoked by a chaincode to return a history of
+// key values across time. GetHistoryForKey is intended to be used for read-only queries.
+func (stub *ChaincodeStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error) {
+	response, err := stub.handler.handleGetHistoryForKey(key, stub.TxID)
+	if err != nil {
+		return nil, err
+	}
+	return &HistoryQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
 //CreateCompositeKey combines the given attributes to form a composite key.
 func (stub *ChaincodeStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
-	return createCompositeKey(stub, objectType, attributes)
-}
-
-func createCompositeKey(stub ChaincodeStubInterface, objectType string, attributes []string) (string, error) {
-	var compositeKey bytes.Buffer
-	replacer := strings.NewReplacer("\x1E", "\x1E\x1E", "\x1F", "\x1E\x1F")
-	compositeKey.WriteString(replacer.Replace(objectType))
-	for _, attribute := range attributes {
-		compositeKey.WriteString("\x1F" + strconv.Itoa(len(attribute)) + "\x1F")
-		compositeKey.WriteString(replacer.Replace(attribute))
-	}
-	return compositeKey.String(), nil
+	return createCompositeKey(objectType, attributes)
 }
 
 //SplitCompositeKey splits the key into attributes on which the composite key was formed.
 func (stub *ChaincodeStub) SplitCompositeKey(compositeKey string) (string, []string, error) {
-	return splitCompositeKey(stub, compositeKey)
+	return splitCompositeKey(compositeKey)
 }
 
-func splitCompositeKey(stub ChaincodeStubInterface, compositeKey string) (string, []string, error) {
-	re := regexp.MustCompile("\x1F[0-9]+\x1F")
-	splittedKey := re.Split(compositeKey, -1)
-	attributes := make([]string, 0)
-	replacer := strings.NewReplacer("\x1E\x1F", "\x1F", "\x1E\x1E", "\x1E")
-	objectType := replacer.Replace(splittedKey[0])
-	for _, attr := range splittedKey[1:] {
-		attributes = append(attributes, replacer.Replace(attr))
+func createCompositeKey(objectType string, attributes []string) (string, error) {
+	if err := validateCompositeKeyAttribute(objectType); err != nil {
+		return "", err
 	}
-	return objectType, attributes, nil
+	ck := objectType + string(minUnicodeRuneValue)
+	for _, att := range attributes {
+		if err := validateCompositeKeyAttribute(att); err != nil {
+			return "", err
+		}
+		ck += att + string(minUnicodeRuneValue)
+	}
+	return ck, nil
 }
 
-//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+func splitCompositeKey(compositeKey string) (string, []string, error) {
+	componentIndex := 0
+	components := []string{}
+	for i := 0; i < len(compositeKey); i++ {
+		if compositeKey[i] == minUnicodeRuneValue {
+			components = append(components, compositeKey[componentIndex:i])
+			componentIndex = i + 1
+		}
+	}
+	return components[0], components[1:], nil
+}
+
+func validateCompositeKeyAttribute(str string) error {
+	if !utf8.ValidString(str) {
+		return fmt.Errorf("Not a valid utf8 string: [%x]", str)
+	}
+	for index, runeValue := range str {
+		if runeValue == minUnicodeRuneValue || runeValue == maxUnicodeRuneValue {
+			return fmt.Errorf(`Input contain unicode %#U starting at position [%d]. %#U and %#U are not allowed in the input attribute of a composite key`,
+				runeValue, index, minUnicodeRuneValue, maxUnicodeRuneValue)
+		}
+	}
+	return nil
+}
+
+//GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
 //state based on a given partial composite key. This function returns an
 //iterator which can be used to iterate over all composite keys whose prefix
 //matches the given partial composite key. This function should be used only for
 //a partial composite key. For a full composite key, an iter with empty response
 //would be returned.
-func (stub *ChaincodeStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
-	return partialCompositeKeyQuery(stub, objectType, attributes)
+func (stub *ChaincodeStub) GetStateByPartialCompositeKey(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
+	return getStateByPartialCompositeKey(stub, objectType, attributes)
 }
 
-func partialCompositeKeyQuery(stub ChaincodeStubInterface, objectType string, attributes []string) (StateQueryIteratorInterface, error) {
+func getStateByPartialCompositeKey(stub ChaincodeStubInterface, objectType string, attributes []string) (StateQueryIteratorInterface, error) {
 	partialCompositeKey, _ := stub.CreateCompositeKey(objectType, attributes)
-	keysIter, err := stub.RangeQueryState(partialCompositeKey, partialCompositeKey+"\xFF")
+	keysIter, err := stub.GetStateByRange(partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue))
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching rows: %s", err)
 	}
 	return keysIter, nil
 }
 
+func (iter *StateQueryIterator) Next() (*ledger.KV, error) {
+	result, err := next(iter.CommonIterator, STATE_QUERY_RESULT)
+	return result.(*ledger.KV), err
+}
+
+func (iter *HistoryQueryIterator) Next() (*ledger.KeyModification, error) {
+	result, err := next(iter.CommonIterator, HISTORY_QUERY_RESULT)
+	return result.(*ledger.KeyModification), err
+}
+
 // HasNext returns true if the range query iterator contains additional keys
 // and values.
-func (iter *StateQueryIterator) HasNext() bool {
-	if iter.currentLoc < len(iter.response.KeysAndValues) || iter.response.HasMore {
+func (iter *CommonIterator) HasNext() bool {
+	if iter.currentLoc < len(iter.response.Results) || iter.response.HasMore {
 		return true
 	}
 	return false
 }
 
-// Next returns the next key and value in the range query iterator.
-func (iter *StateQueryIterator) Next() (string, []byte, error) {
-	if iter.currentLoc < len(iter.response.KeysAndValues) {
-		keyValue := iter.response.KeysAndValues[iter.currentLoc]
-		iter.currentLoc++
-		return keyValue.Key, keyValue.Value, nil
-	} else if !iter.response.HasMore {
-		return "", nil, errors.New("No such key")
-	} else {
-		response, err := iter.handler.handleQueryStateNext(iter.response.ID, iter.uuid)
+func getResultFromBytes(queryResultBytes *pb.QueryResultBytes, iter *CommonIterator,
+	rType resultType) (commonledger.QueryResult, error) {
 
-		if err != nil {
-			return "", nil, err
+	decoder := gob.NewDecoder(bytes.NewBuffer(queryResultBytes.ResultBytes))
+
+	if rType == STATE_QUERY_RESULT {
+		var stateQueryResult ledger.KV
+		if err := decoder.Decode(&stateQueryResult); err != nil {
+			return nil, err
 		}
-
-		iter.currentLoc = 0
-		iter.response = response
-		keyValue := iter.response.KeysAndValues[iter.currentLoc]
 		iter.currentLoc++
-		return keyValue.Key, keyValue.Value, nil
+		return &stateQueryResult, nil
+
+	} else if rType == HISTORY_QUERY_RESULT {
+		var historyQueryResult ledger.KeyModification
+		if err := decoder.Decode(&historyQueryResult); err != nil {
+			return nil, err
+		}
+		iter.currentLoc++
+		return &historyQueryResult, nil
 
 	}
+	return nil, errors.New("Wrong result type")
+}
+
+func fetchRemainingQueryResult(iter *CommonIterator) error {
+	response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.uuid)
+
+	if err != nil {
+		return err
+	}
+
+	iter.currentLoc = 0
+	iter.response = response
+	return nil
+}
+
+// Next returns the next key and value in the state or history query iterator.
+func next(iter *CommonIterator, rType resultType) (commonledger.QueryResult, error) {
+
+	if iter.currentLoc < len(iter.response.Results) {
+		return getResultFromBytes(iter.response.Results[iter.currentLoc], iter, rType)
+	} else if !iter.response.HasMore {
+		return nil, errors.New("No such key")
+	}
+	if err := fetchRemainingQueryResult(iter); err != nil {
+		return nil, err
+	}
+	return getResultFromBytes(iter.response.Results[iter.currentLoc], iter, rType)
+
 }
 
 // Close closes the range query iterator. This should be called when done
 // reading from the iterator to free up resources.
-func (iter *StateQueryIterator) Close() error {
-	_, err := iter.handler.handleQueryStateClose(iter.response.ID, iter.uuid)
+func (iter *CommonIterator) Close() error {
+	_, err := iter.handler.handleQueryStateClose(iter.response.Id, iter.uuid)
 	return err
 }
 
@@ -477,40 +595,55 @@ func (stub *ChaincodeStub) GetFunctionAndParameters() (function string, params [
 	return
 }
 
-// GetCallerCertificate returns caller certificate
-func (stub *ChaincodeStub) GetCallerCertificate() ([]byte, error) {
-	if stub.proposalContext != nil {
-		return stub.proposalContext.Transient, nil
-	}
-
-	return nil, errors.New("Creator field not set.")
+// GetCreator returns SignatureHeader.Creator of the signedProposal
+// this Stub refers to.
+func (stub *ChaincodeStub) GetCreator() ([]byte, error) {
+	return stub.creator, nil
 }
 
-// GetCallerMetadata returns caller metadata
-func (stub *ChaincodeStub) GetCallerMetadata() ([]byte, error) {
-	if stub.proposalContext != nil {
-		return stub.proposalContext.Transient, nil
-	}
-
-	return nil, errors.New("Transient field not set.")
+// GetTransient returns the ChaincodeProposalPayload.transient field.
+// It is a map that contains data (e.g. cryptographic material)
+// that might be used to implement some form of application-level confidentiality. The contents
+// of this field, as prescribed by ChaincodeProposalPayload, are supposed to always
+// be omitted from the transaction and excluded from the ledger.
+func (stub *ChaincodeStub) GetTransient() (map[string][]byte, error) {
+	return stub.transient, nil
 }
 
 // GetBinding returns the transaction binding
 func (stub *ChaincodeStub) GetBinding() ([]byte, error) {
-	return nil, nil
+	return stub.binding, nil
 }
 
-// GetPayload returns transaction payload, which is a `ChaincodeSpec` defined
-// in fabric/protos/chaincode.proto
-func (stub *ChaincodeStub) GetPayload() ([]byte, error) {
-	return nil, nil
+// GetSignedProposal return the signed signedProposal this stub refers to.
+func (stub *ChaincodeStub) GetSignedProposal() (*pb.SignedProposal, error) {
+	return stub.signedProposal, nil
 }
 
-// GetTxTimestamp returns transaction created timestamp, which is currently
-// taken from the peer receiving the transaction. Note that this timestamp
-// may not be the same with the other peers' time.
+// GetArgsSlice returns the arguments to the stub call as a byte array
+func (stub *ChaincodeStub) GetArgsSlice() ([]byte, error) {
+	args := stub.GetArgs()
+	res := []byte{}
+	for _, barg := range args {
+		res = append(res, barg...)
+	}
+	return res, nil
+}
+
+// GetTxTimestamp returns the timestamp when the transaction was created. This
+// is taken from the transaction ChannelHeader, so it will be the same across
+// all endorsers.
 func (stub *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
-	return nil, nil
+	hdr, err := utils.GetHeader(stub.proposal.Header)
+	if err != nil {
+		return nil, err
+	}
+	chdr, err := utils.UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	return chdr.GetTimestamp(), nil
 }
 
 // ------------- ChaincodeEvent API ----------------------
@@ -568,7 +701,7 @@ const (
 	LogCritical = LoggingLevel(logging.CRITICAL)
 )
 
-var shimLoggingLevel = LogDebug // Necessary for correct initialization; See Start()
+var shimLoggingLevel = LogInfo // Necessary for correct initialization; See Start()
 
 // SetLoggingLevel allows a Go language chaincode to set the logging level of
 // its shim.

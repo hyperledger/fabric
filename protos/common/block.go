@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 )
 
@@ -72,15 +71,18 @@ func (b *BlockHeader) Bytes() []byte {
 // Hash returns the hash of the block header.
 // XXX This method will be removed shortly to allow for confgurable hashing algorithms
 func (b *BlockHeader) Hash() []byte {
-	return util.ComputeCryptoHash(b.Bytes())
+	return util.ComputeSHA256(b.Bytes())
+}
+
+// Bytes returns a deterministically serialized version of the BlockData
+// eventually, this should be replaced with a true Merkle tree construction,
+// but for the moment, we assume a Merkle tree of infinite width (uint32_max)
+// which degrades to a flat hash
+func (b *BlockData) Bytes() []byte {
+	return util.ConcatenateBytes(b.Data...)
 }
 
 // Hash returns the hash of the marshaled representation of the block data.
 func (b *BlockData) Hash() []byte {
-	data, err := proto.Marshal(b) // XXX this is wrong, protobuf is not the right mechanism to serialize for a hash, AND, it is not a MerkleTree hash
-	if err != nil {
-		panic("This should never fail and is generally irrecoverable")
-	}
-
-	return util.ComputeCryptoHash(data)
+	return util.ComputeSHA256(b.Bytes())
 }

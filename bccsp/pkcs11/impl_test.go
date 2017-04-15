@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 
 	lib, pin, label := findPKCS11Lib()
 	if enablePKCS11tests {
-		err := initPKCS11(lib, pin, label)
+		err := InitPKCS11(lib, pin, label)
 		if err != nil {
 			fmt.Printf("Failed initializing PKCS11 library [%s]", err)
 			os.Exit(-1)
@@ -89,7 +89,7 @@ func TestMain(m *testing.M) {
 			os.Exit(-1)
 		}
 
-		currentSWBCCSP, err = sw.New(config.securityLevel, config.hashFamily, &sw.DummyKeyStore{})
+		currentSWBCCSP, err = sw.New(config.securityLevel, config.hashFamily, sw.NewDummyKeyStore())
 		if err != nil {
 			fmt.Printf("Failed initiliazing BCCSP at [%d, %s]: [%s]", config.securityLevel, config.hashFamily, err)
 			os.Exit(-1)
@@ -1940,6 +1940,7 @@ func findPKCS11Lib() (lib, pin, label string) {
 			"/usr/lib/softhsm/libsofthsm2.so",                            //Debian
 			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so",           //Ubuntu
 			"/usr/lib/s390x-linux-gnu/softhsm/libsofthsm2.so",            //Ubuntu
+			"/usr/lib/powerpc64le-linux-gnu/softhsm/libsofthsm2.so",      //Power
 			"/usr/local/Cellar/softhsm/2.1.0/lib/softhsm/libsofthsm2.so", //MacOS
 		}
 		for _, path := range possibilities {

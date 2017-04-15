@@ -15,6 +15,7 @@ limitations under the License.
 */
 syntax = "proto3";
 
+option java_package = "org.hyperledger.fabric.protos.peer";
 option go_package = "github.com/hyperledger/fabric/protos/peer";
 
 package protos;
@@ -27,21 +28,9 @@ message PeerID {
 }
 
 message PeerEndpoint {
-    PeerID ID = 1;
+    PeerID id = 1;
     string address = 2;
 }
-
-// Contains information about the blockchain ledger such as height, current
-// block hash, and previous block hash.
-message BlockchainInfo {
-
-    uint64 height = 1;
-    bytes currentBlockHash = 2;
-    bytes previousBlockHash = 3;
-
-}
-
-//-------- the Endorser service ------------
 
 service Endorser {
 	rpc ProcessProposal(SignedProposal) returns (ProposalResponse) {}

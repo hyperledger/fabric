@@ -19,9 +19,17 @@ package multichain
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
+	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+)
+
+const (
+	msgVersion = int32(0)
+	epoch      = uint64(0)
 )
 
 type mockConsenter struct {
@@ -80,44 +88,50 @@ func (mlw *mockLedgerWriter) Append(blockContents []*cb.Envelope, metadata [][]b
 }
 
 func makeConfigTx(chainID string, i int) *cb.Envelope {
-	return makeConfigTxWithItems(chainID, &cb.ConfigurationItem{
+	group := cb.NewConfigGroup()
+	group.Groups[config.OrdererGroupKey] = cb.NewConfigGroup()
+	group.Groups[config.OrdererGroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
 		Value: []byte(fmt.Sprintf("%d", i)),
-	})
+	}
+	configTemplate := configtx.NewSimpleTemplate(group)
+	configEnv, err := configTemplate.Envelope(chainID)
+	if err != nil {
+		panic(err)
+	}
+	return makeConfigTxFromConfigUpdateEnvelope(chainID, configEnv)
 }
 
-func makeConfigTxWithItems(chainID string, items ...*cb.ConfigurationItem) *cb.Envelope {
-	signedItems := make([]*cb.SignedConfigurationItem, len(items))
-	for i, item := range items {
-		signedItems[i] = &cb.SignedConfigurationItem{
-			ConfigurationItem: utils.MarshalOrPanic(item),
-		}
+func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
+	result, err := utils.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, provisional.TestChainID, mockCrypto(), env, msgVersion, epoch)
+	if err != nil {
+		panic(err)
 	}
+	return result
+}
 
-	payload := &cb.Payload{
-		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				Type:    int32(cb.HeaderType_CONFIGURATION_TRANSACTION),
-				ChainID: chainID,
-			},
-			SignatureHeader: &cb.SignatureHeader{},
-		},
-		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{
-			Items: signedItems,
-		}),
+func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
+	configUpdateTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, msgVersion, epoch)
+	if err != nil {
+		panic(err)
 	}
-	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(payload),
+	configTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
+		Config:     &cb.Config{ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
+		LastUpdate: configUpdateTx},
+		msgVersion, epoch)
+	if err != nil {
+		panic(err)
 	}
+	return configTx
 }
 
 func makeNormalTx(chainID string, i int) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				Type:    int32(cb.HeaderType_ENDORSER_TRANSACTION),
-				ChainID: chainID,
-			},
-			SignatureHeader: &cb.SignatureHeader{},
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				Type:      int32(cb.HeaderType_ENDORSER_TRANSACTION),
+				ChannelId: chainID,
+			}),
+			SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 		},
 		Data: []byte(fmt.Sprintf("%d", i)),
 	}
@@ -129,10 +143,10 @@ func makeNormalTx(chainID string, i int) *cb.Envelope {
 func makeSignaturelessTx(chainID string, i int) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				Type:    int32(cb.HeaderType_ENDORSER_TRANSACTION),
-				ChainID: chainID,
-			},
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				Type:      int32(cb.HeaderType_ENDORSER_TRANSACTION),
+				ChannelId: chainID,
+			}),
 		},
 		Data: []byte(fmt.Sprintf("%d", i)),
 	}

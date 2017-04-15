@@ -14,134 +14,16 @@
 # limitations under the License.
 #
 
-import os
-import re
-import subprocess
-import devops_pb2
-import fabric_pb2
-import chaincode_pb2
+import grpc
 
-import bdd_test_util
-
-from grpc.beta import implementations
-
-def getSecretForUserRegistration(userRegistration):
-    return devops_pb2.Secret(enrollId=userRegistration.secretMsg['enrollId'],enrollSecret=userRegistration.secretMsg['enrollSecret'])
-
-def getTxResult(context, enrollId):
-    '''Returns the TransactionResult using the enrollId supplied'''
-    assert 'users' in context, "users not found in context. Did you register a user?"
-    assert 'compose_containers' in context, "compose_containers not found in context"
-
-    (channel, userRegistration) = getGRPCChannelAndUser(context, enrollId)
-    stub = devops_pb2.beta_create_Devops_stub(channel)
-
-    txRequest = devops_pb2.TransactionRequest(transactionUuid = context.transactionID)
-    response = stub.GetTransactionResult(txRequest, 2)
-    assert response.status == fabric_pb2.Response.SUCCESS, 'Failure getting Transaction Result from {0}, for user "{1}":  {2}'.format(userRegistration.composeService,enrollId, response.msg)
-    # Now grab the TransactionResult from the Msg bytes
-    txResult = fabric_pb2.TransactionResult()
-    txResult.ParseFromString(response.msg)
-    return txResult
-
-def getGRPCChannel(ipAddress):
-    channel = implementations.insecure_channel(ipAddress, 7051)
+def getGRPCChannel(ipAddress, port, root_certificates, ssl_target_name_override):
+    # channel = grpc.insecure_channel("{0}:{1}".format(ipAddress, 7051), options = [('grpc.max_message_length', 100*1024*1024)])
+    # creds = grpc.ssl_channel_credentials(root_certificates=root_certificates, private_key=private_key, certificate_chain=certificate_chain)
+    creds = grpc.ssl_channel_credentials(root_certificates=root_certificates)
+    channel = grpc.secure_channel("{0}:{1}".format(ipAddress, port), creds,
+                                  options=(('grpc.ssl_target_name_override', ssl_target_name_override,),('grpc.default_authority', ssl_target_name_override,),))
     print("Returning GRPC for address: {0}".format(ipAddress))
     return channel
-
-def getGRPCChannelAndUser(context, enrollId):
-    '''Returns a tuple of GRPC channel and UserRegistration instance.  The channel is open to the composeService that the user registered with.'''
-    userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
-
-    # Get the IP address of the server that the user registered on
-    ipAddress = bdd_test_util.ipFromContainerNamePart(userRegistration.composeService, context.compose_containers)
-
-    channel = getGRPCChannel(ipAddress)
-
-    return (channel, userRegistration)
-
-
-def getDeployment(context, ccAlias):
-    '''Return a deployment with chaincode alias from prior deployment, or None if not found'''
-    deployment = None
-    if 'deployments' in context:
-        pass
-    else:
-        context.deployments = {}
-    if ccAlias in context.deployments:
-        deployment = context.deployments[ccAlias]
-    # else:
-    #     raise Exception("Deployment alias not found: '{0}'.  Are you sure you have deployed a chaincode with this alias?".format(ccAlias))
-    return deployment
-
-def deployChaincode(context, enrollId, chaincodePath, ccAlias, ctor):
-    '''Deploy a chaincode with the specified alias for the specfied enrollId'''
-    (channel, userRegistration) = getGRPCChannelAndUser(context, enrollId)
-    stub = devops_pb2.beta_create_Devops_stub(channel)
-
-    # Make sure deployment alias does NOT already exist
-    assert getDeployment(context, ccAlias) == None, "Deployment alias already exists: '{0}'.".format(ccAlias)
-
-    args = getArgsFromContextForUser(context, enrollId)
-    ccSpec = chaincode_pb2.ChaincodeSpec(type = chaincode_pb2.ChaincodeSpec.GOLANG,
-        chaincodeID = chaincode_pb2.ChaincodeID(name="",path=chaincodePath),
-        ctorMsg = chaincode_pb2.ChaincodeInput(function = ctor, args = args))
-    ccSpec.secureContext = userRegistration.getUserName()
-    if 'metadata' in context:
-        ccSpec.metadata = context.metadata
-    try:
-        ccDeploymentSpec = stub.Deploy(ccSpec, 60)
-        ccSpec.chaincodeID.name = ccDeploymentSpec.chaincodeSpec.chaincodeID.name
-        context.grpcChaincodeSpec = ccSpec
-        context.deployments[ccAlias] = ccSpec
-    except:
-        del stub
-        raise
-
-def invokeChaincode(context, enrollId, ccAlias, functionName):
-    # Get the deployment for the supplied chaincode alias
-    deployedCcSpec = getDeployment(context, ccAlias)
-    assert deployedCcSpec != None, "Deployment NOT found for chaincode alias '{0}'".format(ccAlias)
-
-    # Create a new ChaincodeSpec by copying the deployed one
-    newChaincodeSpec = chaincode_pb2.ChaincodeSpec()
-    newChaincodeSpec.CopyFrom(deployedCcSpec)
-
-    # Update hte chaincodeSpec ctorMsg for invoke
-    args = getArgsFromContextForUser(context, enrollId)
-
-    chaincodeInput = chaincode_pb2.ChaincodeInput(function = functionName, args = args )
-    newChaincodeSpec.ctorMsg.CopyFrom(chaincodeInput)
-
-    ccInvocationSpec = chaincode_pb2.ChaincodeInvocationSpec(chaincodeSpec = newChaincodeSpec)
-
-    (channel, userRegistration) = getGRPCChannelAndUser(context, enrollId)
-
-    stub = devops_pb2.beta_create_Devops_stub(channel)
-    response = stub.Invoke(ccInvocationSpec,2)
-    return response
-
-def getArgsFromContextForUser(context, enrollId):
-    # Update the chaincodeSpec ctorMsg for invoke
-    args = []
-    if 'table' in context:
-        if context.table:
-            # There are function arguments
-            userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
-            # Allow the user to specify expressions referencing tags in the args list
-            pattern = re.compile('\{(.*)\}$')
-            for arg in context.table[0].cells:
-                m = pattern.match(arg)
-                if m:
-                    # tagName reference found in args list
-                    tagName = m.groups()[0]
-                    # make sure the tagName is found in the users tags
-                    assert tagName in userRegistration.tags, "TagName '{0}' not found for user '{1}'".format(tagName, userRegistration.getUserName())
-                    args.append(userRegistration.tags[tagName])
-                else:
-                    #No tag referenced, pass the arg
-                    args.append(arg)
-    return args
 
 def toStringArray(items):
     itemsAsStr = []

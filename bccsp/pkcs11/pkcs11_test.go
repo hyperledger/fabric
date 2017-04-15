@@ -54,18 +54,18 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 
 	key, pubKey, err := generateECKey(oid, true)
 	if err != nil {
-		t.Fatal("Failed generating Key [%s]", err)
+		t.Fatalf("Failed generating Key [%s]", err)
 	}
 
 	R, S, err := signECDSA(key, hash1)
 
 	if err != nil {
-		t.Fatal("Failed signing message [%s]", err)
+		t.Fatalf("Failed signing message [%s]", err)
 	}
 
 	pass, err := verifyECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
-		t.Fatal("Error verifying message 1 [%s]", err)
+		t.Fatalf("Error verifying message 1 [%s]", err)
 	}
 	if pass == false {
 		t.Fatal("Signature should match!")
@@ -78,7 +78,7 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 
 	pass, err = verifyECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
-		t.Fatal("Error verifying message 2 [%s]", err)
+		t.Fatalf("Error verifying message 2 [%s]", err)
 	}
 
 	if pass != false {
@@ -126,7 +126,7 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 	R, S, err := signECDSA(ski, hash1)
 
 	if err != nil {
-		t.Fatal("Failed signing message [%s]", err)
+		t.Fatalf("Failed signing message [%s]", err)
 	}
 
 	pass, err := verifyECDSA(ski, hash1, R, S, currentTestConfig.securityLevel/8)
@@ -144,7 +144,7 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 
 	pass, err = verifyECDSA(ski, hash2, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
-		t.Fatal("Error verifying message 2 [%s]", err)
+		t.Fatalf("Error verifying message 2 [%s]", err)
 	}
 
 	if pass != false {
@@ -176,7 +176,7 @@ func TestPKCS11ECKeyExport(t *testing.T) {
 
 	key, pubKey, err := generateECKey(oid, false)
 	if err != nil {
-		t.Fatal("Failed generating Key [%s]", err)
+		t.Fatalf("Failed generating Key [%s]", err)
 	}
 
 	secret := getSecretValue(key)
@@ -221,7 +221,7 @@ func TestPKCS11ECKeyExport(t *testing.T) {
 
 	pass, err = verifyECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
-		t.Fatal("Error verifying message 3 [%s]", err)
+		t.Fatalf("Error verifying message 3 [%s]", err)
 	}
 
 	if pass != false {

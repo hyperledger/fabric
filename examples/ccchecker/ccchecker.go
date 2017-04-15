@@ -90,9 +90,9 @@ func CCCheckerInit() {
 }
 
 //CCCheckerRun main loops that will run the tests and cleanup
-func CCCheckerRun(report bool, verbose bool) error {
+func CCCheckerRun(orderingEndpoint string, report bool, verbose bool) error {
 	//connect with Broadcast client
-	bc, err := common.GetBroadcastClient()
+	bc, err := common.GetBroadcastClient(orderingEndpoint, false, "")
 	if err != nil {
 		return err
 	}

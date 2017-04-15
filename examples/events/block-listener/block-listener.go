@@ -17,10 +17,12 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/events/consumer"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -28,14 +30,12 @@ import (
 )
 
 type adapter struct {
-	notfy              chan *pb.Event_Block
-	rejected           chan *pb.Event_Rejection
-	listenToRejections bool
+	notfy chan *pb.Event_Block
 }
 
 //GetInterestedEvents implements consumer.EventAdapter interface for registering interested events
 func (a *adapter) GetInterestedEvents() ([]*pb.Interest, error) {
-	return []*pb.Interest{{EventType: pb.EventType_BLOCK}, {EventType: pb.EventType_REJECTION}}, nil
+	return []*pb.Interest{{EventType: pb.EventType_BLOCK}}, nil
 }
 
 //Recv implements consumer.EventAdapter interface for receiving events
@@ -44,27 +44,20 @@ func (a *adapter) Recv(msg *pb.Event) (bool, error) {
 		a.notfy <- o
 		return true, nil
 	}
-	if o, e := msg.Event.(*pb.Event_Rejection); e {
-		if a.listenToRejections {
-			a.rejected <- o
-		}
-		return true, nil
-	}
 	return false, fmt.Errorf("Receive unkown type event: %v", msg)
 }
 
 //Disconnected implements consumer.EventAdapter interface for disconnecting
 func (a *adapter) Disconnected(err error) {
-	fmt.Printf("Disconnected...exiting\n")
+	fmt.Print("Disconnected...exiting\n")
 	os.Exit(1)
 }
 
-func createEventClient(eventAddress string, listenToRejections bool, cid string) *adapter {
+func createEventClient(eventAddress string, _ string) *adapter {
 	var obcEHClient *consumer.EventsClient
 
 	done := make(chan *pb.Event_Block)
-	reject := make(chan *pb.Event_Rejection)
-	adapter := &adapter{notfy: done, rejected: reject, listenToRejections: listenToRejections}
+	adapter := &adapter{notfy: done}
 	obcEHClient, _ = consumer.NewEventsClient(eventAddress, 5, adapter)
 	if err := obcEHClient.Start(); err != nil {
 		fmt.Printf("could not start chat %s\n", err)
@@ -74,15 +67,32 @@ func createEventClient(eventAddress string, listenToRejections bool, cid string)
 
 	return adapter
 }
+func getTxPayload(tdata []byte) (*common.Payload, error) {
+	if tdata == nil {
+		return nil, errors.New("Cannot extract payload from nil transaction")
+	}
+
+	if env, err := utils.GetEnvelopeFromBlock(tdata); err != nil {
+		return nil, fmt.Errorf("Error getting tx from block(%s)", err)
+	} else if env != nil {
+		// get the payload from the envelope
+		payload, err := utils.GetPayload(env)
+		if err != nil {
+			return nil, fmt.Errorf("Could not extract payload from envelope, err %s", err)
+		}
+		return payload, nil
+	}
+	return nil, nil
+}
 
 // getChainCodeEvents parses block events for chaincode events associated with individual transactions
 func getChainCodeEvents(tdata []byte) (*pb.ChaincodeEvent, error) {
 	if tdata == nil {
-		return nil, fmt.Errorf("Cannot extract payload from nil transaction")
+		return nil, errors.New("Cannot extract payload from nil transaction")
 	}
 
 	if env, err := utils.GetEnvelopeFromBlock(tdata); err != nil {
-		return nil, fmt.Errorf("Error getting tx from block(%s)\n", err)
+		return nil, fmt.Errorf("Error getting tx from block(%s)", err)
 	} else if env != nil {
 		// get the payload from the envelope
 		payload, err := utils.GetPayload(env)
@@ -90,7 +100,12 @@ func getChainCodeEvents(tdata []byte) (*pb.ChaincodeEvent, error) {
 			return nil, fmt.Errorf("Could not extract payload from envelope, err %s", err)
 		}
 
-		if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		if err != nil {
+			return nil, fmt.Errorf("Could not extract channel header from envelope, err %s", err)
+		}
+
+		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 			tx, err := utils.GetTransaction(payload.Data)
 			if err != nil {
 				return nil, fmt.Errorf("Error unmarshalling transaction payload for block event: %s", err)
@@ -114,51 +129,60 @@ func getChainCodeEvents(tdata []byte) (*pb.ChaincodeEvent, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("No events found")
+	return nil, errors.New("No events found")
 }
 
 func main() {
 	var eventAddress string
-	var listenToRejections bool
 	var chaincodeID string
 	flag.StringVar(&eventAddress, "events-address", "0.0.0.0:7053", "address of events server")
-	flag.BoolVar(&listenToRejections, "listen-to-rejections", false, "whether to listen to rejection events")
 	flag.StringVar(&chaincodeID, "events-from-chaincode", "", "listen to events from given chaincode")
 	flag.Parse()
 
 	fmt.Printf("Event Address: %s\n", eventAddress)
 
-	a := createEventClient(eventAddress, listenToRejections, chaincodeID)
+	a := createEventClient(eventAddress, chaincodeID)
 	if a == nil {
-		fmt.Printf("Error creating event client\n")
+		fmt.Println("Error creating event client")
 		return
 	}
 
 	for {
 		select {
 		case b := <-a.notfy:
-			fmt.Printf("\n")
-			fmt.Printf("\n")
-			fmt.Printf("Received block\n")
-			fmt.Printf("--------------\n")
-			for _, r := range b.Block.Data.Data {
-				fmt.Printf("Transaction:\n\t[%v]\n", r)
-				if event, err := getChainCodeEvents(r); err == nil {
-					if event.ChaincodeID == chaincodeID {
-						fmt.Printf("Received chaincode event\n")
-						fmt.Printf("------------------------\n")
-						fmt.Printf("Chaincode Event:%+v\n", event)
+			fmt.Println("")
+			fmt.Println("")
+			fmt.Println("Received block")
+			fmt.Println("--------------")
+			txsFltr := util.TxValidationFlags(b.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+			for i, r := range b.Block.Data.Data {
+				tx, _ := getTxPayload(r)
+				if tx != nil {
+					chdr, err := utils.UnmarshalChannelHeader(tx.Header.ChannelHeader)
+					if err != nil {
+						fmt.Print("Error extracting channel header\n")
+						return
+					}
+					if txsFltr.IsInvalid(i) {
+						fmt.Println("")
+						fmt.Println("")
+						fmt.Printf("Received invalid transaction from channel %s\n", chdr.ChannelId)
+						fmt.Println("--------------")
+						fmt.Printf("Transaction invalid: TxID: %s\n", chdr.TxId)
+					} else {
+						fmt.Printf("Received transaction from channel %s: \n\t[%v]\n", chdr.ChannelId, tx)
+						if event, err := getChainCodeEvents(r); err == nil {
+							if len(chaincodeID) != 0 && event.ChaincodeId == chaincodeID {
+								fmt.Println("")
+								fmt.Println("")
+								fmt.Printf("Received chaincode event from channel %s\n", chdr.ChannelId)
+								fmt.Println("------------------------")
+								fmt.Printf("Chaincode Event:%+v\n", event)
+							}
+						}
 					}
 				}
 			}
-		case r := <-a.rejected:
-			fmt.Printf("\n")
-			fmt.Printf("\n")
-			fmt.Printf("Received rejected transaction\n")
-			fmt.Printf("--------------\n")
-			//TODO get TxID from pb.ChaincodeHeader from TransactionAction's Header
-			//fmt.Printf("Transaction error:\n%s\t%s\n", r.Rejection.Tx.Txid, r.Rejection.ErrorMsg)
-			fmt.Printf("Transaction error:\n%s\n", r.Rejection.ErrorMsg)
 		}
 	}
 }

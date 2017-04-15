@@ -18,13 +18,19 @@ package lccc
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
+	"regexp"
+	"sort"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/protos/common"
+	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 )
 
@@ -43,6 +49,9 @@ const (
 
 	//chaincode lifecyle commands
 
+	//INSTALL install command
+	INSTALL = "install"
+
 	//DEPLOY deploy command
 	DEPLOY = "deploy"
 
@@ -58,17 +67,24 @@ const (
 	//GETCCDATA get ChaincodeData
 	GETCCDATA = "getccdata"
 
-	//characters used in chaincodenamespace
-	specialChars = "/:[]${}"
+	//GETCHAINCODES gets the instantiated chaincodes on a channel
+	GETCHAINCODES = "getchaincodes"
 
-	// chaincode version when deploy
-	startVersion = "0"
+	//GETINSTALLEDCHAINCODES gets the installed chaincodes on a peer
+	GETINSTALLEDCHAINCODES = "getinstalledchaincodes"
+
+	allowedCharsChaincodeName = "[A-Za-z0-9_-]+"
+	allowedCharsVersion       = "[A-Za-z0-9_.-]+"
 )
 
 //---------- the LCCC -----------------
 
 // LifeCycleSysCC implements chaincode lifecycle and policies aroud it
 type LifeCycleSysCC struct {
+	// sccprovider is the interface with which we call
+	// methods of the system chaincode package without
+	// import cycles
+	sccprovider sysccprovider.SystemChaincodeProvider
 }
 
 //----------------errors---------------
@@ -119,21 +135,21 @@ func (t TXNotFoundErr) Error() string {
 type InvalidDeploymentSpecErr string
 
 func (f InvalidDeploymentSpecErr) Error() string {
-	return fmt.Sprintf("Invalid deployment spec : %s", string(f))
+	return fmt.Sprintf("invalid deployment spec : %s", string(f))
 }
 
 //ExistsErr chaincode exists error
 type ExistsErr string
 
 func (t ExistsErr) Error() string {
-	return fmt.Sprintf("Chaincode exists %s", string(t))
+	return fmt.Sprintf("chaincode exists %s", string(t))
 }
 
 //NotFoundErr chaincode not registered with LCCC error
 type NotFoundErr string
 
 func (t NotFoundErr) Error() string {
-	return fmt.Sprintf("chaincode not found %s", string(t))
+	return fmt.Sprintf("could not find chaincode with name '%s'", string(t))
 }
 
 //InvalidChainNameErr invalid chain name error
@@ -147,7 +163,28 @@ func (f InvalidChainNameErr) Error() string {
 type InvalidChaincodeNameErr string
 
 func (f InvalidChaincodeNameErr) Error() string {
-	return fmt.Sprintf("invalid chain code name %s", string(f))
+	return fmt.Sprintf("invalid chaincode name '%s'. Names can only consist of alphanumerics, '_', and '-'", string(f))
+}
+
+//EmptyChaincodeNameErr trying to upgrade to same version of Chaincode
+type EmptyChaincodeNameErr string
+
+func (f EmptyChaincodeNameErr) Error() string {
+	return fmt.Sprint("chaincode name not provided")
+}
+
+//InvalidVersionErr invalid version error
+type InvalidVersionErr string
+
+func (f InvalidVersionErr) Error() string {
+	return fmt.Sprintf("invalid chaincode version '%s'. Versions can only consist of alphanumerics, '_',  '-', and '.'", string(f))
+}
+
+//EmptyVersionErr empty version error
+type EmptyVersionErr string
+
+func (f EmptyVersionErr) Error() string {
+	return fmt.Sprintf("version not provided for chaincode with name '%s'", string(f))
 }
 
 //MarshallErr error marshaling/unmarshalling
@@ -157,20 +194,35 @@ func (m MarshallErr) Error() string {
 	return fmt.Sprintf("error while marshalling %s", string(m))
 }
 
+//IdenticalVersionErr trying to upgrade to same version of Chaincode
+type IdenticalVersionErr string
+
+func (f IdenticalVersionErr) Error() string {
+	return fmt.Sprintf("version already exists for chaincode with name '%s'", string(f))
+}
+
 //-------------- helper functions ------------------
 //create the chaincode on the given chain
-func (lccc *LifeCycleSysCC) createChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string, cccode []byte) (*ccprovider.ChaincodeData, error) {
-	return lccc.putChaincodeData(stub, chainname, ccname, startVersion, cccode)
+func (lccc *LifeCycleSysCC) createChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string, version string, cccode []byte, policy []byte, escc []byte, vscc []byte) (*ccprovider.ChaincodeData, error) {
+	return lccc.putChaincodeData(stub, chainname, ccname, version, cccode, policy, escc, vscc)
 }
 
 //upgrade the chaincode on the given chain
-func (lccc *LifeCycleSysCC) upgradeChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string, version string, cccode []byte) (*ccprovider.ChaincodeData, error) {
-	return lccc.putChaincodeData(stub, chainname, ccname, version, cccode)
+func (lccc *LifeCycleSysCC) upgradeChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string, version string, cccode []byte, policy []byte, escc []byte, vscc []byte) (*ccprovider.ChaincodeData, error) {
+	return lccc.putChaincodeData(stub, chainname, ccname, version, cccode, policy, escc, vscc)
 }
 
 //create the chaincode on the given chain
-func (lccc *LifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, chainname string, ccname string, version string, cccode []byte) (*ccprovider.ChaincodeData, error) {
-	cd := &ccprovider.ChaincodeData{Name: ccname, Version: version, DepSpec: cccode}
+func (lccc *LifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, chainname string, ccname string, version string, cccode []byte, policy []byte, escc []byte, vscc []byte) (*ccprovider.ChaincodeData, error) {
+	// check that escc and vscc are real system chaincodes
+	if !lccc.sccprovider.IsSysCC(string(escc)) {
+		return nil, fmt.Errorf("%s is not a valid endorsement system chaincode", string(escc))
+	}
+	if !lccc.sccprovider.IsSysCC(string(vscc)) {
+		return nil, fmt.Errorf("%s is not a valid validation system chaincode", string(vscc))
+	}
+
+	cd := &ccprovider.ChaincodeData{Name: ccname, Version: version, DepSpec: cccode, Policy: policy, Escc: string(escc), Vscc: string(vscc)}
 	cdbytes, err := proto.Marshal(cd)
 	if err != nil {
 		return nil, err
@@ -186,7 +238,7 @@ func (lccc *LifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, c
 }
 
 //checks for existence of chaincode on the given chain
-func (lccc *LifeCycleSysCC) getChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string) (*ccprovider.ChaincodeData, []byte, error) {
+func (lccc *LifeCycleSysCC) getChaincode(stub shim.ChaincodeStubInterface, ccname string, checkFS bool) (*ccprovider.ChaincodeData, []byte, error) {
 	cdbytes, err := stub.GetState(ccname)
 	if err != nil {
 		return nil, nil, err
@@ -199,22 +251,83 @@ func (lccc *LifeCycleSysCC) getChaincode(stub shim.ChaincodeStubInterface, chain
 			return nil, nil, MarshallErr(ccname)
 		}
 
+		if checkFS {
+			cd.DepSpec, _, err = ccprovider.GetChaincodeFromFS(ccname, cd.Version)
+			if err != nil {
+				return cd, nil, InvalidDeploymentSpecErr(err.Error())
+			}
+		}
+
 		return cd, cdbytes, nil
 	}
 
 	return nil, nil, NotFoundErr(ccname)
 }
 
-//getChaincodeDeploymentSpec returns a ChaincodeDeploymentSpec given args
-func (lccc *LifeCycleSysCC) getChaincodeDeploymentSpec(code []byte) (*pb.ChaincodeDeploymentSpec, error) {
-	cds := &pb.ChaincodeDeploymentSpec{}
+// getChaincodes returns all chaincodes instantiated on this LCCC's channel
+func (lccc *LifeCycleSysCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.Response {
+	// get all rows from LCCC
+	itr, err := stub.GetStateByRange("", "")
 
-	err := proto.Unmarshal(code, cds)
 	if err != nil {
-		return nil, InvalidDeploymentSpecErr(err.Error())
+		return shim.Error(err.Error())
+	}
+	defer itr.Close()
+
+	// array to store metadata for all chaincode entries from LCCC
+	var ccInfoArray []*pb.ChaincodeInfo
+
+	for itr.HasNext() {
+		response, err := itr.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		ccdata := &ccprovider.ChaincodeData{}
+		if err = proto.Unmarshal(response.Value, ccdata); err != nil {
+			return shim.Error(err.Error())
+		}
+
+		ccdepspec := &pb.ChaincodeDeploymentSpec{}
+		if err = proto.Unmarshal(ccdata.DepSpec, ccdepspec); err != nil {
+			return shim.Error(err.Error())
+		}
+
+		path := ccdepspec.GetChaincodeSpec().ChaincodeId.Path
+		input := ccdepspec.GetChaincodeSpec().Input.String()
+
+		ccInfo := &pb.ChaincodeInfo{Name: ccdata.Name, Version: ccdata.Version, Path: path, Input: input, Escc: ccdata.Escc, Vscc: ccdata.Vscc}
+
+		// add this specific chaincode's metadata to the array of all chaincodes
+		ccInfoArray = append(ccInfoArray, ccInfo)
+	}
+	// add array with info about all instantiated chaincodes to the query
+	// response proto
+	cqr := &pb.ChaincodeQueryResponse{Chaincodes: ccInfoArray}
+
+	cqrbytes, err := proto.Marshal(cqr)
+	if err != nil {
+		return shim.Error(err.Error())
 	}
 
-	return cds, nil
+	return shim.Success(cqrbytes)
+}
+
+// getInstalledChaincodes returns all chaincodes installed on the peer
+func (lccc *LifeCycleSysCC) getInstalledChaincodes() pb.Response {
+	// get chaincode query response proto which contains information about all
+	// installed chaincodes
+	cqr, err := ccprovider.GetInstalledChaincodes()
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	cqrbytes, err := proto.Marshal(cqr)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(cqrbytes)
 }
 
 //do access control
@@ -231,50 +344,108 @@ func (lccc *LifeCycleSysCC) isValidChainName(chainname string) bool {
 	return true
 }
 
-//check validity of chaincode name
-func (lccc *LifeCycleSysCC) isValidChaincodeName(chaincodename string) bool {
-	//TODO we probably need more checks
-	if chaincodename == "" {
-		return false
+// isValidChaincodeName checks the validity of chaincode name. Chaincode names
+// should never be blank and should only consist of alphanumerics, '_', and '-'
+func (lccc *LifeCycleSysCC) isValidChaincodeName(chaincodeName string) error {
+	if chaincodeName == "" {
+		return EmptyChaincodeNameErr("")
 	}
 
-	//do not allow special characters in chaincode name
-	if strings.ContainsAny(chaincodename, specialChars) {
+	if !isValidCCNameOrVersion(chaincodeName, allowedCharsChaincodeName) {
+		return InvalidChaincodeNameErr(chaincodeName)
+	}
+
+	return nil
+}
+
+// isValidChaincodeVersion checks the validity of chaincode version. Versions
+// should never be blank and should only consist of alphanumerics, '_',  '-',
+// and '.'
+func (lccc *LifeCycleSysCC) isValidChaincodeVersion(chaincodeName string, version string) error {
+	if version == "" {
+		return EmptyVersionErr(chaincodeName)
+	}
+
+	if !isValidCCNameOrVersion(version, allowedCharsVersion) {
+		return InvalidVersionErr(version)
+	}
+
+	return nil
+}
+
+func isValidCCNameOrVersion(ccNameOrVersion string, regExp string) bool {
+	re, _ := regexp.Compile(regExp)
+
+	matched := re.FindString(ccNameOrVersion)
+	if len(matched) != len(ccNameOrVersion) {
 		return false
 	}
 
 	return true
 }
 
-//this implements "deploy" Invoke transaction
-func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chainname string, code []byte) error {
-	cds, err := lccc.getChaincodeDeploymentSpec(code)
+// executeInstall implements the "install" Invoke transaction
+func (lccc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccbytes []byte) error {
+	ccpack, err := ccprovider.GetCCPackage(ccbytes)
+	if err != nil {
+		return err
+	}
+
+	cds := ccpack.GetDepSpec()
+
+	if cds == nil {
+		return fmt.Errorf("nil deployment spec from from the CC package")
+	}
+
+	if err = lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
+		return err
+	}
+
+	if err = lccc.isValidChaincodeVersion(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
+		return err
+	}
+
+	//everything checks out..lets write the package to the FS
+	if err = ccpack.PutChaincodeToFS(); err != nil {
+		return fmt.Errorf("Error installing chaincode code %s:%s(%s)", cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, err)
+	}
+
+	return err
+}
+
+// executeDeploy implements the "instantiate" Invoke transaction
+func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chainname string, depSpec []byte, policy []byte, escc []byte, vscc []byte) error {
+	cds, err := utils.GetChaincodeDeploymentSpec(depSpec)
 
 	if err != nil {
 		return err
 	}
 
-	if !lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeID.Name) {
-		return InvalidChaincodeNameErr(cds.ChaincodeSpec.ChaincodeID.Name)
+	if err = lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
+		return err
+	}
+
+	if err = lccc.isValidChaincodeVersion(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
+		return err
 	}
 
 	if err = lccc.acl(stub, chainname, cds); err != nil {
 		return err
 	}
 
-	cd, _, err := lccc.getChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name)
+	cd, _, err := lccc.getChaincode(stub, cds.ChaincodeSpec.ChaincodeId.Name, true)
 	if cd != nil {
-		return ExistsErr(cds.ChaincodeSpec.ChaincodeID.Name)
+		return ExistsErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
-	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name, code)
+	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, depSpec, policy, escc, vscc)
 
 	return err
 }
 
-//this implements "upgrade" Invoke transaction
-func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName string, code []byte) ([]byte, error) {
-	cds, err := lccc.getChaincodeDeploymentSpec(code)
+// executeUpgrade implements the "upgrade" Invoke transaction.
+func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName string, depSpec []byte, policy []byte, escc []byte, vscc []byte) ([]byte, error) {
+	cds, err := utils.GetChaincodeDeploymentSpec(depSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -283,36 +454,28 @@ func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 		return nil, err
 	}
 
-	chaincodeName := cds.ChaincodeSpec.ChaincodeID.Name
-	if !lccc.isValidChaincodeName(chaincodeName) {
-		return nil, InvalidChaincodeNameErr(chaincodeName)
+	chaincodeName := cds.ChaincodeSpec.ChaincodeId.Name
+	if err = lccc.isValidChaincodeName(chaincodeName); err != nil {
+		return nil, err
+	}
+
+	if err = lccc.isValidChaincodeVersion(chaincodeName, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
+		return nil, err
 	}
 
 	// check for existence of chaincode
-	cd, _, err := lccc.getChaincode(stub, chainName, chaincodeName)
+	cd, _, err := lccc.getChaincode(stub, chaincodeName, true)
 	if cd == nil {
 		return nil, NotFoundErr(chainName)
 	}
 
-	// if (ever) we allow users to specify a "deployed" version, this will have to change so
-	// accept that. We might then require that users provide an "upgrade" version too. In
-	// that case we'd replace the increment below with a uniqueness check. For now we will
-	// assume Version is internal and is a number.
-	//
-	// NOTE - system chaincodes use the fabric's version and hence are not numbers.
-	// As they cannot be "upgraded" via LCCC, that's not an issue. But they do help illustrate
-	// the kind of issues we will have if we allow users to specify version.
-	v, err := strconv.ParseInt(cd.Version, 10, 32)
-
-	//This should never happen as long we don't expose version as version is computed internally
-	//so panic till we find a need to relax
-	if err != nil {
-		panic(fmt.Sprintf("invalid version %s/%s [err: %s]", chaincodeName, chainName, err))
+	if cd.Version == cds.ChaincodeSpec.ChaincodeId.Version {
+		return nil, IdenticalVersionErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
-	// replace the ChaincodeDeploymentSpec using the next version
-	newVersion := fmt.Sprintf("%d", (v + 1))
-	newCD, err := lccc.upgradeChaincode(stub, chainName, chaincodeName, newVersion, code)
+	ver := cds.ChaincodeSpec.ChaincodeId.Version
+
+	newCD, err := lccc.upgradeChaincode(stub, chainName, chaincodeName, ver, depSpec, policy, escc, vscc)
 	if err != nil {
 		return nil, err
 	}
@@ -322,9 +485,38 @@ func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 
 //-------------- the chaincode stub interface implementation ----------
 
-//Init does nothing
+//Init only initializes the system chaincode provider
 func (lccc *LifeCycleSysCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
+	lccc.sccprovider = sysccprovider.GetSystemChaincodeProvider()
 	return shim.Success(nil)
+}
+
+// getDefaultEndorsementPolicy returns the default
+// endorsement policy for the specified chain; it
+// is used in case the deployer has not specified a
+// custom one
+func (lccc *LifeCycleSysCC) getDefaultEndorsementPolicy(chain string) []byte {
+	// we create an array of principals, one principal
+	// per application MSP defined on this chain
+	ids := peer.GetMSPIDs(chain)
+	sort.Strings(ids)
+	principals := make([]*mspprotos.MSPPrincipal, len(ids))
+	sigspolicy := make([]*common.SignaturePolicy, len(ids))
+	for i, id := range ids {
+		principals[i] = &mspprotos.MSPPrincipal{
+			PrincipalClassification: mspprotos.MSPPrincipal_ROLE,
+			Principal:               utils.MarshalOrPanic(&mspprotos.MSPRole{Role: mspprotos.MSPRole_MEMBER, MspIdentifier: id})}
+		sigspolicy[i] = cauthdsl.SignedBy(int32(i))
+	}
+
+	// create the policy: it requires exactly 1 signature from any of the principals
+	p := &common.SignaturePolicyEnvelope{
+		Version:    0,
+		Policy:     cauthdsl.NOutOf(1, sigspolicy),
+		Identities: principals,
+	}
+
+	return utils.MarshalOrPanic(p)
 }
 
 // Invoke implements lifecycle functions "deploy", "start", "stop", "upgrade".
@@ -341,8 +533,20 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 	function := string(args[0])
 
 	switch function {
+	case INSTALL:
+		if len(args) < 2 {
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
+		}
+
+		depSpec := args[1]
+
+		err := lccc.executeInstall(stub, depSpec)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		return shim.Success([]byte("OK"))
 	case DEPLOY:
-		if len(args) != 3 {
+		if len(args) < 3 || len(args) > 6 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 
@@ -354,16 +558,40 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			return shim.Error(InvalidChainNameErr(chainname).Error())
 		}
 
-		//bytes corresponding to deployment spec
-		code := args[2]
+		depSpec := args[2]
 
-		err := lccc.executeDeploy(stub, chainname, code)
+		// optional arguments here (they can each be nil and may or may not be present)
+		// args[3] is a marshalled SignaturePolicyEnvelope representing the endorsement policy
+		// args[4] is the name of escc
+		// args[5] is the name of vscc
+		var policy []byte
+		if len(args) > 3 && len(args[3]) > 0 {
+			policy = args[3]
+		} else {
+			policy = lccc.getDefaultEndorsementPolicy(chainname)
+		}
+
+		var escc []byte
+		if len(args) > 4 && args[4] != nil {
+			escc = args[4]
+		} else {
+			escc = []byte("escc")
+		}
+
+		var vscc []byte
+		if len(args) > 5 && args[5] != nil {
+			vscc = args[5]
+		} else {
+			vscc = []byte("vscc")
+		}
+
+		err := lccc.executeDeploy(stub, chainname, depSpec, policy, escc, vscc)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
 		return shim.Success(nil)
 	case UPGRADE:
-		if len(args) != 3 {
+		if len(args) < 3 || len(args) > 6 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 
@@ -372,8 +600,34 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			return shim.Error(InvalidChainNameErr(chainname).Error())
 		}
 
-		code := args[2]
-		verBytes, err := lccc.executeUpgrade(stub, chainname, code)
+		depSpec := args[2]
+
+		// optional arguments here (they can each be nil and may or may not be present)
+		// args[3] is a marshalled SignaturePolicyEnvelope representing the endorsement policy
+		// args[4] is the name of escc
+		// args[5] is the name of vscc
+		var policy []byte
+		if len(args) > 3 && len(args[3]) > 0 {
+			policy = args[3]
+		} else {
+			policy = lccc.getDefaultEndorsementPolicy(chainname)
+		}
+
+		var escc []byte
+		if len(args) > 4 && args[4] != nil {
+			escc = args[4]
+		} else {
+			escc = []byte("escc")
+		}
+
+		var vscc []byte
+		if len(args) > 5 && args[5] != nil {
+			vscc = args[5]
+		} else {
+			vscc = []byte("vscc")
+		}
+
+		verBytes, err := lccc.executeUpgrade(stub, chainname, depSpec, policy, escc, vscc)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -385,20 +639,37 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 
 		chain := string(args[1])
 		ccname := string(args[2])
-		//get chaincode given <chain, name>
 
-		cd, cdbytes, _ := lccc.getChaincode(stub, chain, ccname)
+		//check the FS only for deployment spec
+		//other calls are looking for LCCC entries only
+		checkFS := false
+		if function == GETDEPSPEC {
+			checkFS = true
+		}
+		cd, cdbytes, err := lccc.getChaincode(stub, ccname, checkFS)
 		if cd == nil || cdbytes == nil {
-			logger.Debugf("ChaincodeID: %s does not exist on channel: %s ", ccname, chain)
+			logger.Errorf("ChaincodeId: %s does not exist on channel: %s(err:%s)", ccname, chain, err)
 			return shim.Error(TXNotFoundErr(ccname + "/" + chain).Error())
 		}
 
-		if function == GETCCINFO {
+		switch function {
+		case GETCCINFO:
 			return shim.Success([]byte(cd.Name))
-		} else if function == GETCCDATA {
+		case GETCCDATA:
 			return shim.Success(cdbytes)
+		default:
+			return shim.Success(cd.DepSpec)
 		}
-		return shim.Success(cd.DepSpec)
+	case GETCHAINCODES:
+		if len(args) != 1 {
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
+		}
+		return lccc.getChaincodes(stub)
+	case GETINSTALLEDCHAINCODES:
+		if len(args) != 1 {
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
+		}
+		return lccc.getInstalledChaincodes()
 	}
 
 	return shim.Error(InvalidFunctionErr(function).Error())

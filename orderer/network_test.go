@@ -27,13 +27,15 @@ import (
 	"math/big"
 	"os"
 	"os/exec"
+	"runtime"
 	"testing"
 	"time"
 
 	"encoding/json"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -41,6 +43,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
+
+const ppc64 = "ppc64le"
 
 const keyfile = "sbft/testdata/key.pem"
 const maindir = "github.com/hyperledger/fabric/orderer"
@@ -105,7 +109,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestTwoReplicasBroadcastAndDeliverUsingTheSame(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	startingPort := 2000
 	skipInShortMode(t)
 	peers := InitPeers(2, startingPort)
@@ -128,7 +132,7 @@ func TestTwoReplicasBroadcastAndDeliverUsingTheSame(t *testing.T) {
 }
 
 func TestTwoReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	logging.SetLevel(logging.DEBUG, "sbft")
 	startingPort := 2500
 	skipInShortMode(t)
@@ -152,7 +156,7 @@ func TestTwoReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
 }
 
 func TestTenReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	startingPort := 3000
 	skipInShortMode(t)
 	peers := InitPeers(10, startingPort)
@@ -175,7 +179,7 @@ func TestTenReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
 }
 
 func TestFourReplicasBombedWithBroadcasts(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	startingPort := 4000
 	skipInShortMode(t)
 	// Add for debug mode:
@@ -204,7 +208,7 @@ func TestFourReplicasBombedWithBroadcasts(t *testing.T) {
 }
 
 func TestTenReplicasBombedWithBroadcasts(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	startingPort := 5000
 	skipInShortMode(t)
 	broadcastCount := 15
@@ -231,7 +235,7 @@ func TestTenReplicasBombedWithBroadcasts(t *testing.T) {
 }
 
 func TestTenReplicasBombedWithBroadcastsIfLedgersConsistent(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	startingPort := 6000
 	skipInShortMode(t)
 	broadcastCount := 15
@@ -269,6 +273,12 @@ func TestTenReplicasBombedWithBroadcastsIfLedgersConsistent(t *testing.T) {
 	}
 }
 
+func parallelIfNotPpc64(t *testing.T) {
+	if runtime.GOARCH != ppc64 {
+		t.Parallel()
+	}
+}
+
 func InitPeers(num uint64, startingPort int) []*Peer {
 	peers := make([]*Peer, 0, num)
 	certFiles := make([]string, 0, num)
@@ -291,6 +301,9 @@ func InitPeers(num uint64, startingPort int) []*Peer {
 func StartPeers(peers []*Peer) {
 	for _, p := range peers {
 		p.start()
+		if runtime.GOARCH == ppc64 {
+			time.Sleep(3 * time.Second)
+		}
 	}
 }
 
@@ -305,19 +318,21 @@ func generateConfigEnv(peerNum uint64, grpcPort int, peerCommPort string, certFi
 	panicOnError(err)
 	envs := []string{}
 	envs = append(envs, fmt.Sprintf("ORDERER_CFG_PATH=%s", ordererDir))
-	envs = append(envs, fmt.Sprintf("ORDERER_GENESIS_ORDERERTYPE=%s", "sbft"))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENERAL_LOCALMSPDIR=%s", ordererDir+"/../msp/sampleconfig"))
 	envs = append(envs, fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", grpcPort))
-	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_PEERCOMMADDR=%s", peerCommPort))
-	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_CERTFILE=%s", certFile))
-	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_KEYFILE=%s", keyfile))
-	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_DATADIR=%s", tempDir))
-	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_BATCHDURATIONNSEC=%d", 1000))
-	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_BATCHSIZEBYTES=%d", 1000000000))
-	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_REQUESTTIMEOUTNSEC=%d", 1000000000))
-	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_N=%d", peerNum))
-	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_F=%d", (peerNum-1)/3))
+	envs = append(envs, fmt.Sprintf("CONFIGTX_ORDERER_ORDERERTYPE=%s", "sbft"))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENERAL_GENESISPROFILE=%s", genesisconfig.SampleInsecureProfile))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENESIS_DEPRECATEDBATCHTIMEOUT=%d", 1000))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENESIS_DEPRECATED=%d", 1000000000))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENESIS_SBFTSHARED_REQUESTTIMEOUTNSEC=%d", 1000000000))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENESIS_SBFTSHARED_N=%d", peerNum))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENESIS_SBFTSHARED_F=%d", (peerNum-1)/3))
 	js, _ := json.Marshal(peersWithCerts)
-	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_PEERS=%s", js))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENESIS_SBFTSHARED_PEERS=%s", js))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFTLOCAL_PEERCOMMADDR=%s", peerCommPort))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFTLOCAL_CERTFILE=%s", certFile))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFTLOCAL_KEYFILE=%s", keyfile))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFTLOCAL_DATADIR=%s", tempDir))
 	return envs
 }
 
@@ -356,7 +371,9 @@ func Broadcast(p *Peer, startingPort int, bytes []byte) error {
 	if err != nil {
 		return err
 	}
-	h := &cb.Header{ChainHeader: &cb.ChainHeader{ChainID: provisional.TestChainID}, SignatureHeader: &cb.SignatureHeader{}}
+	h := &cb.Header{
+		ChannelHeader:   utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: provisional.TestChainID}),
+		SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{})}
 	pl := &cb.Payload{Data: bytes, Header: h}
 	mpl, err := proto.Marshal(pl)
 	panicOnError(err)
@@ -388,10 +405,10 @@ func Receive(p *Peer, startingPort int) (*Receiver, error) {
 	dstream.Send(&cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChainHeader: &cb.ChainHeader{
-					ChainID: provisional.TestChainID,
-				},
-				SignatureHeader: &cb.SignatureHeader{},
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId: provisional.TestChainID,
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
 
 			Data: utils.MarshalOrPanic(&ab.SeekInfo{

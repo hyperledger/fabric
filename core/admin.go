@@ -81,17 +81,24 @@ func (*ServerAdmin) StopServer(context.Context, *empty.Empty) (*pb.ServerStatus,
 }
 
 // GetModuleLogLevel gets the current logging level for the specified module
+// TODO Modify the signature so as to remove the error return - it's always been nil
 func (*ServerAdmin) GetModuleLogLevel(ctx context.Context, request *pb.LogLevelRequest) (*pb.LogLevelResponse, error) {
-	logLevelString, err := flogging.GetModuleLevel(request.LogModule)
+	logLevelString := flogging.GetModuleLevel(request.LogModule)
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: logLevelString}
-
-	return logResponse, err
+	return logResponse, nil
 }
 
 // SetModuleLogLevel sets the logging level for the specified module
 func (*ServerAdmin) SetModuleLogLevel(ctx context.Context, request *pb.LogLevelRequest) (*pb.LogLevelResponse, error) {
 	logLevelString, err := flogging.SetModuleLevel(request.LogModule, request.LogLevel)
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: logLevelString}
-
 	return logResponse, err
+}
+
+// RevertLogLevels reverts the log levels for all modules to the level
+// defined at the end of peer startup.
+func (*ServerAdmin) RevertLogLevels(context.Context, *empty.Empty) (*empty.Empty, error) {
+	err := flogging.RevertToPeerStartupLevels()
+
+	return &empty.Empty{}, err
 }

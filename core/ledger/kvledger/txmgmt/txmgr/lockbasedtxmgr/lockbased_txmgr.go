@@ -46,14 +46,10 @@ func NewLockBasedTxMgr(db statedb.VersionedDB) *LockBasedTxMgr {
 	return &LockBasedTxMgr{db: db, validator: statebasedval.NewValidator(db)}
 }
 
-// GetBlockNumFromSavepoint returns the block num recorded in savepoint,
+// GetLastSavepoint returns the block num recorded in savepoint,
 // returns 0 if NO savepoint is found
-func (txmgr *LockBasedTxMgr) GetBlockNumFromSavepoint() (uint64, error) {
-	height, err := txmgr.db.GetLatestSavePoint()
-	if err != nil || height == nil {
-		return 0, err
-	}
-	return height.BlockNum, nil
+func (txmgr *LockBasedTxMgr) GetLastSavepoint() (*version.Height, error) {
+	return txmgr.db.GetLatestSavePoint()
 }
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
@@ -109,4 +105,29 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 // Rollback implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Rollback() {
 	txmgr.batch = nil
+}
+
+// ShouldRecover implements method in interface kvledger.Recoverer
+func (txmgr *LockBasedTxMgr) ShouldRecover(lastAvailableBlock uint64) (bool, uint64, error) {
+	savepoint, err := txmgr.GetLastSavepoint()
+	if err != nil {
+		return false, 0, err
+	}
+	if savepoint == nil {
+		return true, 0, nil
+	}
+	return savepoint.BlockNum != lastAvailableBlock, savepoint.BlockNum + 1, nil
+}
+
+// CommitLostBlock implements method in interface kvledger.Recoverer
+func (txmgr *LockBasedTxMgr) CommitLostBlock(block *common.Block) error {
+	logger.Debugf("Constructing updateSet for the block %d", block.Header.Number)
+	if err := txmgr.ValidateAndPrepare(block, false); err != nil {
+		return err
+	}
+	logger.Debugf("Committing block %d to state database", block.Header.Number)
+	if err := txmgr.Commit(); err != nil {
+		return err
+	}
+	return nil
 }

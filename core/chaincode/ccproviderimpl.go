@@ -19,6 +19,8 @@ package chaincode
 import (
 	"context"
 
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -65,25 +67,30 @@ func (c *ccProviderImpl) GetContext(ledger ledger.PeerLedger) (context.Context, 
 // GetCCContext returns an interface that encapsulates a
 // chaincode context; the interface is required to avoid
 // referencing the chaincode package from the interface definition
-func (c *ccProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, prop *pb.Proposal) interface{} {
-	ctx := ccprovider.NewCCContext(cid, name, version, txid, syscc, prop)
+func (c *ccProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) interface{} {
+	ctx := ccprovider.NewCCContext(cid, name, version, txid, syscc, signedProp, prop)
 	return &ccProviderContextImpl{ctx: ctx}
 }
 
 // GetCCValidationInfoFromLCCC returns the VSCC and the policy listed in LCCC for the supplied chaincode
-func (c *ccProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
-	data, err := GetChaincodeDataFromLCCC(ctxt, txid, prop, chainID, chaincodeID)
+func (c *ccProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
+	// LCCC does not have any notion about its own
+	// endorsing policy - we should never call this
+	// function with lccc as the chaincodeID
+	if chaincodeID == "lccc" {
+		panic("GetCCValidationInfoFromLCCC invoke for LCCC")
+	}
+
+	data, err := GetChaincodeDataFromLCCC(ctxt, txid, signedProp, prop, chainID, chaincodeID)
 	if err != nil {
 		return "", nil, err
 	}
 
-	vscc := "vscc"
-	// Check whenever VSCC defined for chaincode data
-	if data != nil && data.Vscc != "" {
-		vscc = data.Vscc
+	if data == nil || data.Vscc == "" || data.Policy == nil {
+		return "", nil, fmt.Errorf("Incorrect validation info in LCCC")
 	}
 
-	return vscc, data.Policy, nil
+	return data.Vscc, data.Policy, nil
 }
 
 // ExecuteChaincode executes the chaincode specified in the context with the specified arguments

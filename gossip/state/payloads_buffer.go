@@ -22,7 +22,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/gossip/util"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
 )
 
@@ -53,9 +54,9 @@ type PayloadsBuffer interface {
 // PayloadsBufferImpl structure to implement PayloadsBuffer interface
 // store inner state of available payloads and sequence numbers
 type PayloadsBufferImpl struct {
-	buf map[uint64]*proto.Payload
-
 	next uint64
+
+	buf map[uint64]*proto.Payload
 
 	readyChan chan struct{}
 
@@ -66,12 +67,11 @@ type PayloadsBufferImpl struct {
 
 // NewPayloadsBuffer is factory function to create new payloads buffer
 func NewPayloadsBuffer(next uint64) PayloadsBuffer {
-	logger, _ := logging.GetLogger("GossipStateProvider")
 	return &PayloadsBufferImpl{
 		buf:       make(map[uint64]*proto.Payload),
 		readyChan: make(chan struct{}, 0),
 		next:      next,
-		logger:    logger,
+		logger:    util.GetLogger(util.LoggingStateModule, ""),
 	}
 }
 

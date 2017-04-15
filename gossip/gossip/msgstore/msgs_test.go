@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"sync"
+
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/stretchr/testify/assert"
 )
@@ -49,6 +51,16 @@ func compareInts(this interface{}, that interface{}) common.InvalidationResult {
 	}
 
 	return common.MessageInvalidated
+}
+
+func nonReplaceInts(this interface{}, that interface{}) common.InvalidationResult {
+	a := this.(int)
+	b := that.(int)
+	if a == b {
+		return common.MessageInvalidated
+	}
+
+	return common.MessageNoAction
 }
 
 func TestSize(t *testing.T) {
@@ -108,6 +120,7 @@ func TestNewMessagesInvalidated(t *testing.T) {
 }
 
 func TestConcurrency(t *testing.T) {
+	t.Parallel()
 	stopFlag := int32(0)
 	msgStore := NewMessageStore(compareInts, noopTrigger)
 	looper := func(f func()) func() {
@@ -140,4 +153,132 @@ func TestConcurrency(t *testing.T) {
 	time.Sleep(time.Duration(3) * time.Second)
 
 	atomic.CompareAndSwapInt32(&stopFlag, 0, 1)
+}
+
+func TestExpiration(t *testing.T) {
+	t.Parallel()
+	expired := make([]int, 0)
+	msgTTL := time.Second * 3
+
+	msgStore := NewMessageStoreExpirable(nonReplaceInts, noopTrigger, msgTTL, nil, nil, func(m interface{}) {
+		expired = append(expired, m.(int))
+	})
+
+	for i := 0; i < 10; i++ {
+		assert.True(t, msgStore.Add(i), "Adding", i)
+	}
+
+	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
+
+	time.Sleep(time.Second * 2)
+
+	for i := 0; i < 10; i++ {
+		assert.False(t, msgStore.CheckValid(i))
+		assert.False(t, msgStore.Add(i))
+	}
+
+	for i := 10; i < 20; i++ {
+		assert.True(t, msgStore.CheckValid(i))
+		assert.True(t, msgStore.Add(i))
+		assert.False(t, msgStore.CheckValid(i))
+	}
+	assert.Equal(t, 20, msgStore.Size(), "Wrong number of items in store - second batch")
+
+	time.Sleep(time.Second * 2)
+
+	for i := 0; i < 20; i++ {
+		assert.False(t, msgStore.Add(i))
+	}
+
+	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration")
+	assert.Equal(t, 10, len(expired), "Wrong number of expired msgs - after first batch expiration")
+
+	time.Sleep(time.Second * 4)
+
+	assert.Equal(t, 0, msgStore.Size(), "Wrong number of items in store - after second batch expiration")
+	assert.Equal(t, 20, len(expired), "Wrong number of expired msgs - after second batch expiration")
+
+	for i := 0; i < 10; i++ {
+		assert.True(t, msgStore.CheckValid(i))
+		assert.True(t, msgStore.Add(i))
+		assert.False(t, msgStore.CheckValid(i))
+	}
+
+	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after second batch expiration and first banch re-added")
+
+}
+
+func TestExpirationConcurrency(t *testing.T) {
+	t.Parallel()
+	expired := make([]int, 0)
+	msgTTL := time.Second * 3
+	lock := &sync.RWMutex{}
+
+	msgStore := NewMessageStoreExpirable(nonReplaceInts, noopTrigger, msgTTL,
+		func() {
+			lock.Lock()
+		},
+		func() {
+			lock.Unlock()
+		},
+		func(m interface{}) {
+			expired = append(expired, m.(int))
+		})
+
+	lock.Lock()
+	for i := 0; i < 10; i++ {
+		assert.True(t, msgStore.Add(i), "Adding", i)
+	}
+	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
+	lock.Unlock()
+
+	time.Sleep(time.Second * 2)
+
+	lock.Lock()
+	time.Sleep(time.Second * 2)
+
+	for i := 0; i < 10; i++ {
+		assert.False(t, msgStore.Add(i))
+	}
+
+	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration, external lock taken")
+	assert.Equal(t, 0, len(expired), "Wrong number of expired msgs - after first batch expiration, external lock taken")
+	lock.Unlock()
+
+	time.Sleep(time.Second * 1)
+
+	lock.Lock()
+	for i := 0; i < 10; i++ {
+		assert.False(t, msgStore.Add(i))
+	}
+
+	assert.Equal(t, 0, msgStore.Size(), "Wrong number of items in store - after first batch expiration, expiration should run")
+	assert.Equal(t, 10, len(expired), "Wrong number of expired msgs - after first batch expiration, expiration should run")
+
+	lock.Unlock()
+}
+
+func TestStop(t *testing.T) {
+	t.Parallel()
+	expired := make([]int, 0)
+	msgTTL := time.Second * 3
+
+	msgStore := NewMessageStoreExpirable(nonReplaceInts, noopTrigger, msgTTL, nil, nil, func(m interface{}) {
+		expired = append(expired, m.(int))
+	})
+
+	for i := 0; i < 10; i++ {
+		assert.True(t, msgStore.Add(i), "Adding", i)
+	}
+
+	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
+
+	msgStore.Stop()
+
+	time.Sleep(time.Second * 4)
+
+	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration, but store was stopped, so no expiration")
+	assert.Equal(t, 0, len(expired), "Wrong number of expired msgs - after first batch expiration, but store was stopped, so no expiration")
+
+	msgStore.Stop()
 }

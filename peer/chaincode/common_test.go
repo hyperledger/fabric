@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +30,7 @@ func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
 	chaincodePath = "some/path"
 	chaincodeName = "somename"
 	require := require.New(t)
-	result := checkChaincodeCmdParams(nil)
+	result := checkChaincodeCmdParams(&cobra.Command{})
 
 	require.Nil(result)
 }
@@ -39,7 +40,7 @@ func TestCheckChaincodeCmdParamsWithOldCallingSchema(t *testing.T) {
 	chaincodePath = "some/path"
 	chaincodeName = "somename"
 	require := require.New(t)
-	result := checkChaincodeCmdParams(nil)
+	result := checkChaincodeCmdParams(&cobra.Command{})
 
 	require.Nil(result)
 }
@@ -49,7 +50,7 @@ func TestCheckChaincodeCmdParamsWithoutName(t *testing.T) {
 	chaincodePath = "some/path"
 	chaincodeName = ""
 	require := require.New(t)
-	result := checkChaincodeCmdParams(nil)
+	result := checkChaincodeCmdParams(&cobra.Command{})
 
 	require.Error(result)
 }
@@ -59,7 +60,7 @@ func TestCheckChaincodeCmdParamsWithFunctionOnly(t *testing.T) {
 	chaincodePath = "some/path"
 	chaincodeName = "somename"
 	require := require.New(t)
-	result := checkChaincodeCmdParams(nil)
+	result := checkChaincodeCmdParams(&cobra.Command{})
 
 	require.Error(result)
 }
@@ -69,7 +70,7 @@ func TestCheckChaincodeCmdParamsEmptyCtor(t *testing.T) {
 	chaincodePath = "some/path"
 	chaincodeName = "somename"
 	require := require.New(t)
-	result := checkChaincodeCmdParams(nil)
+	result := checkChaincodeCmdParams(&cobra.Command{})
 
 	require.Error(result)
 }

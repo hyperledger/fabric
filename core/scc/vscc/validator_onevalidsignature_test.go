@@ -26,17 +26,16 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func createTx() (*common.Envelope, error) {
-	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeID: &peer.ChaincodeID{Name: "foo"}}}
+	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: &peer.ChaincodeID{Name: "foo"}}}
 
-	uuid := util.GenerateUUID()
-
-	prop, err := utils.CreateProposalFromCIS(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
+	prop, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +135,7 @@ func TestMain(m *testing.M) {
 
 	// setup the MSP manager so that we can sign/verify
 	mspMgrConfigDir := "../../../msp/sampleconfig/"
-	mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
 
 	id, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
