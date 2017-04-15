@@ -26,7 +26,6 @@ services:
       service: peer-base
     environment:
       - CORE_PEER_ID=peer0
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_LOCALMSPID=Org0MSP
     volumes:
         - /var/run/:/host/var/run/
@@ -45,7 +44,6 @@ services:
     environment:
       - CORE_PEER_ID=peer1
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_LOCALMSPID=Org0MSP
     volumes:
         - /var/run/:/host/var/run/
@@ -65,7 +63,6 @@ services:
     environment:
       - CORE_PEER_ID=peer2
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_LOCALMSPID=Org1MSP
     volumes:
         - /var/run/:/host/var/run/
@@ -86,7 +83,6 @@ services:
     environment:
       - CORE_PEER_ID=peer3
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_LOCALMSPID=Org1MSP
     volumes:
         - /var/run/:/host/var/run/
@@ -112,7 +108,6 @@ services:
       - CORE_NEXT=true
       - CORE_PEER_ID=cli
       - CORE_PEER_ENDORSER_ENABLED=true
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_ADDRESS=peer0:7051
       - CORE_PEER_GOSSIP_IGNORESECURITY=true
       - CORE_PEER_LOCALMSPID=Org0MSP
