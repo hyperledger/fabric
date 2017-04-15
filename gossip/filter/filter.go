@@ -27,6 +27,16 @@ import (
 // selected for be given a message
 type RoutingFilter func(discovery.NetworkMember) bool
 
+// SelectNonePolicy selects an empty set of members
+var SelectNonePolicy = func(discovery.NetworkMember) bool {
+	return false
+}
+
+// SelectAllPolicy selects all members given
+var SelectAllPolicy = func(discovery.NetworkMember) bool {
+	return true
+}
+
 // CombineRoutingFilters returns the logical AND of given routing filters
 func CombineRoutingFilters(filters ...RoutingFilter) RoutingFilter {
 	return func(member discovery.NetworkMember) bool {
@@ -39,11 +49,11 @@ func CombineRoutingFilters(filters ...RoutingFilter) RoutingFilter {
 	}
 }
 
-// SelectPeers returns a slice of peers that match a list of routing filters
-func SelectPeers(k int, peerPool []discovery.NetworkMember, filters ...RoutingFilter) []*comm.RemotePeer {
+// SelectPeers returns a slice of peers that match the routing filter
+func SelectPeers(k int, peerPool []discovery.NetworkMember, filter RoutingFilter) []*comm.RemotePeer {
 	var filteredPeers []*comm.RemotePeer
 	for _, peer := range peerPool {
-		if CombineRoutingFilters(filters...)(peer) {
+		if filter(peer) {
 			filteredPeers = append(filteredPeers, &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.PreferredEndpoint()})
 		}
 	}
