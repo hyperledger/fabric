@@ -73,6 +73,13 @@ to craft a PoC for your own business network.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Get the Code
+
+   releases
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Getting Started
 
    getting_started
 
