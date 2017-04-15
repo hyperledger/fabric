@@ -386,8 +386,12 @@ ledger:
        couchDBAddress: 127.0.0.1:5984
        username:
        password:
+       # Number of retries for CouchDB errors
        maxRetries: 3
+       # Number of retries for CouchDB errors during peer startup
        maxRetriesOnStartup: 10
+       # CouchDB request timeout (unit: duration, e.g. 20s)
+       requestTimeout: 20s
 
     # historyDatabase - options are true or false
     # Indicates if the history of key updates should be stored in goleveldb

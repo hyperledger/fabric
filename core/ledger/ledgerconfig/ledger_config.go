@@ -18,6 +18,7 @@ package ledgerconfig
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -29,6 +30,7 @@ type CouchDBDef struct {
 	Password            string
 	MaxRetries          int
 	MaxRetriesOnStartup int
+	RequestTimeout      time.Duration
 }
 
 //IsCouchDBEnabled exposes the useCouchDB variable
@@ -80,8 +82,9 @@ func GetCouchDBDefinition() *CouchDBDef {
 	password := viper.GetString("ledger.state.couchDBConfig.password")
 	maxRetries := viper.GetInt("ledger.state.couchDBConfig.maxRetries")
 	maxRetriesOnStartup := viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup")
+	requestTimeout := viper.GetDuration("ledger.state.couchDBConfig.requestTimeout")
 
-	return &CouchDBDef{couchDBAddress, username, password, maxRetries, maxRetriesOnStartup}
+	return &CouchDBDef{couchDBAddress, username, password, maxRetries, maxRetriesOnStartup, requestTimeout}
 }
 
 //GetQueryLimit exposes the queryLimit variable

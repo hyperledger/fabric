@@ -129,6 +129,7 @@ type CouchConnectionDef struct {
 	Password            string
 	MaxRetries          int
 	MaxRetriesOnStartup int
+	RequestTimeout      time.Duration
 }
 
 //CouchInstance represents a CouchDB instance
@@ -205,12 +206,10 @@ type Base64Attachment struct {
 }
 
 //CreateConnectionDefinition for a new client connection
-func CreateConnectionDefinition(couchDBAddress, username, password string, maxRetries, maxRetriesOnStartup int) (*CouchConnectionDef, error) {
+func CreateConnectionDefinition(couchDBAddress, username, password string, maxRetries,
+	maxRetriesOnStartup int, requestTimeout time.Duration) (*CouchConnectionDef, error) {
 
 	logger.Debugf("Entering CreateConnectionDefinition()")
-
-	//connectURL := fmt.Sprintf("%s//%s", "http:", couchDBAddress)
-	//connectURL := couchDBAddress
 
 	connectURL := &url.URL{
 		Host:   couchDBAddress,
@@ -228,7 +227,9 @@ func CreateConnectionDefinition(couchDBAddress, username, password string, maxRe
 	logger.Debugf("Exiting CreateConnectionDefinition()")
 
 	//return an object containing the connection information
-	return &CouchConnectionDef{finalURL.String(), username, password, maxRetries, maxRetriesOnStartup}, nil
+	return &CouchConnectionDef{finalURL.String(), username, password, maxRetries,
+		maxRetriesOnStartup, requestTimeout}, nil
+
 }
 
 //CreateDatabaseIfNotExist method provides function to create database
@@ -1140,7 +1141,8 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 }
 
 //handleRequest method is a generic http request handler
-func (couchInstance *CouchInstance) handleRequest(method, connectURL string, data []byte, rev string, multipartBoundary string, maxRetries int) (*http.Response, *DBReturn, error) {
+func (couchInstance *CouchInstance) handleRequest(method, connectURL string, data []byte, rev string,
+	multipartBoundary string, maxRetries int) (*http.Response, *DBReturn, error) {
 
 	logger.Debugf("Entering handleRequest()  method=%s  url=%v", method, connectURL)
 
@@ -1151,6 +1153,9 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 
 	//set initial wait duration for retries
 	waitDuration := retryWaitTime * time.Millisecond
+
+	//get the connection timeout
+	requestTimeout := couchInstance.conf.RequestTimeout
 
 	//attempt the http request for the max number of retries
 	for attempts := 0; attempts < maxRetries; attempts++ {
@@ -1205,7 +1210,7 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 		}
 
 		//Create the http client
-		client := &http.Client{}
+		client := &http.Client{Timeout: requestTimeout}
 
 		transport := &http.Transport{Proxy: http.ProxyFromEnvironment}
 		transport.DisableCompression = false

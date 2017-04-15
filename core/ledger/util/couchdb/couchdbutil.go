@@ -21,15 +21,18 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var validNamePattern = `^[a-z][a-z0-9_$(),+/-]+`
 var maxLength = 249
 
 //CreateCouchInstance creates a CouchDB instance
-func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries, maxRetriesOnStartup int) (*CouchInstance, error) {
+func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
+	maxRetriesOnStartup int, connectionTimeout time.Duration) (*CouchInstance, error) {
+
 	couchConf, err := CreateConnectionDefinition(couchDBConnectURL,
-		id, pw, maxRetries, maxRetriesOnStartup)
+		id, pw, maxRetries, maxRetriesOnStartup, connectionTimeout)
 	if err != nil {
 		logger.Errorf("Error during CouchDB CreateConnectionDefinition(): %s\n", err.Error())
 		return nil, err

@@ -56,7 +56,7 @@ func NewVersionedDBProvider() (*VersionedDBProvider, error) {
 	logger.Debugf("constructing CouchDB VersionedDBProvider")
 	couchDBDef := ledgerconfig.GetCouchDBDefinition()
 	couchInstance, err := couchdb.CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup)
+		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
 	if err != nil {
 		return nil, err
 	}
