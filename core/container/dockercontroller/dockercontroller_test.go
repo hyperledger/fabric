@@ -25,11 +25,11 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/config"
+	coreutil "github.com/hyperledger/fabric/core/testutil"
 )
 
 func TestHostConfig(t *testing.T) {
-	config.SetupTestConfig("./../../../peer")
+	coreutil.SetupTestConfig("./../../../peer")
 	var hostConfig = new(docker.HostConfig)
 	err := viper.UnmarshalKey("vm.docker.hostConfig", hostConfig)
 	if err != nil {
@@ -44,7 +44,7 @@ func TestHostConfig(t *testing.T) {
 func TestGetDockerHostConfig(t *testing.T) {
 	os.Setenv("HYPERLEDGER_VM_DOCKER_HOSTCONFIG_NETWORKMODE", "overlay")
 	os.Setenv("HYPERLEDGER_VM_DOCKER_HOSTCONFIG_CPUSHARES", fmt.Sprint(1024*1024*1024*2))
-	config.SetupTestConfig("./../../../peer")
+	coreutil.SetupTestConfig("./../../../peer")
 	hostConfig := getDockerHostConfig()
 	testutil.AssertNotNil(t, hostConfig)
 	testutil.AssertEquals(t, hostConfig.NetworkMode, "overlay")
