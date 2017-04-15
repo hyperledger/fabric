@@ -47,7 +47,6 @@ services:
       - CORE_PEER_ID=peer0
       - CORE_PEER_ADDRESS=peer0:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0:7051
-      # - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_LOCALMSPID=Org0MSP
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer0Signer.pem
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer0Signer.pem
@@ -83,7 +82,6 @@ services:
       - CORE_PEER_ADDRESS=peer1:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1:7051
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
-      # - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_LOCALMSPID=Org0MSP
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer1Signer.pem
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer1Signer.pem
@@ -120,7 +118,6 @@ services:
       - CORE_PEER_ADDRESS=peer2:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer2:7051
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer2:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_LOCALMSPID=Org1MSP
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer2Signer.pem
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer2Signer.pem
@@ -158,7 +155,6 @@ services:
       - CORE_PEER_ADDRESS=peer3:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer3:7051
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
-      # - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_LOCALMSPID=Org1MSP
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer3Signer.pem
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer3Signer.pem
@@ -191,7 +187,6 @@ services:
       - CORE_NEXT=true
       - CORE_PEER_ID=cli
       - CORE_PEER_ENDORSER_ENABLED=true
-      # - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_ADDRESS=peer0:7051
       - CORE_PEER_LOCALMSPID=Org0MSP
       - CORE_PEER_TLS_ENABLED=true
