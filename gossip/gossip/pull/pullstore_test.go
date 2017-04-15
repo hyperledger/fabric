@@ -18,6 +18,7 @@ package pull
 
 import (
 	"fmt"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -106,6 +107,10 @@ func (p *pullInstance) wrapPullMsg(msg *proto.SignedGossipMessage) proto.Receive
 }
 
 func createPullInstance(endpoint string, peer2PullInst map[string]*pullInstance) *pullInstance {
+	return createPullInstanceWithFilters(endpoint, peer2PullInst, nil)
+}
+
+func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pullInstance, df DigestFilter) *pullInstance {
 	inst := &pullInstance{
 		items:         util.NewSet(),
 		stopChan:      make(chan struct{}),
@@ -137,7 +142,14 @@ func createPullInstance(endpoint string, peer2PullInst map[string]*pullInstance)
 	blockConsumer := func(msg *proto.SignedGossipMessage) {
 		inst.items.Add(msg.GetDataMsg().Payload.SeqNum)
 	}
-	inst.mediator = NewPullMediator(conf, inst, inst, seqNumFromMsg, blockConsumer)
+	adapter := PullAdapter{
+		Sndr:        inst,
+		MemSvc:      inst,
+		IdExtractor: seqNumFromMsg,
+		MsgCons:     blockConsumer,
+		DigFilter:   df,
+	}
+	inst.mediator = NewPullMediator(conf, adapter)
 	go func() {
 		for {
 			select {
@@ -180,6 +192,41 @@ func TestRegisterMsgHook(t *testing.T) {
 	// Ensure all message types are received
 	waitUntilOrFail(t, func() bool { return len(receivedMsgTypes.ToArray()) == 4 })
 
+}
+
+func TestFilter(t *testing.T) {
+	t.Parallel()
+	peer2pullInst := make(map[string]*pullInstance)
+
+	eq := func(a interface{}, b interface{}) bool {
+		return a == b
+	}
+	df := func(msg proto.ReceivedMessage) func(string) bool {
+		if msg.GetGossipMessage().IsDataReq() {
+			req := msg.GetGossipMessage().GetDataReq()
+			return func(item string) bool {
+				return util.IndexInSlice(req.Digests, item, eq) != -1
+			}
+		}
+		return func(digestItem string) bool {
+			n, _ := strconv.ParseInt(digestItem, 10, 64)
+			return n%2 == 0
+		}
+	}
+	inst1 := createPullInstanceWithFilters("localhost:5611", peer2pullInst, df)
+	inst2 := createPullInstance("localhost:5612", peer2pullInst)
+	defer inst1.stop()
+	defer inst2.stop()
+
+	inst1.mediator.Add(dataMsg(0))
+	inst1.mediator.Add(dataMsg(1))
+	inst1.mediator.Add(dataMsg(2))
+	inst1.mediator.Add(dataMsg(3))
+
+	waitUntilOrFail(t, func() bool { return inst2.items.Exists(uint64(0)) })
+	waitUntilOrFail(t, func() bool { return inst2.items.Exists(uint64(2)) })
+	assert.False(t, inst2.items.Exists(uint64(1)))
+	assert.False(t, inst2.items.Exists(uint64(3)))
 }
 
 func TestAddAndRemove(t *testing.T) {

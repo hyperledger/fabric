@@ -69,6 +69,10 @@ func SetResponseWaitTime(time time.Duration) {
 	viper.Set("peer.gossip.responseWaitTime", time)
 }
 
+// DigestFilter filters digests to be sent to a remote peer that
+// sent a hello or a request, based on its messages's context
+type DigestFilter func(context interface{}) func(digestItem string) bool
+
 // PullAdapter is needed by the PullEngine in order to
 // send messages to the remote PullEngine instances.
 // The PullEngine expects to be invoked with
@@ -109,11 +113,12 @@ type PullEngine struct {
 	lock               sync.Mutex
 	outgoingNONCES     *util.Set
 	incomingNONCES     *util.Set
+	digFilter          DigestFilter
 }
 
-// NewPullEngine creates an instance of a PullEngine with a certain sleep time
-// between pull initiations
-func NewPullEngine(participant PullAdapter, sleepTime time.Duration) *PullEngine {
+// NewPullEngineWithFilter creates an instance of a PullEngine with a certain sleep time
+// between pull initiations, and uses the given filters when sending digests and responses
+func NewPullEngineWithFilter(participant PullAdapter, sleepTime time.Duration, df DigestFilter) *PullEngine {
 	engine := &PullEngine{
 		PullAdapter:        participant,
 		stopFlag:           int32(0),
@@ -125,6 +130,7 @@ func NewPullEngine(participant PullAdapter, sleepTime time.Duration) *PullEngine
 		acceptingResponses: int32(0),
 		incomingNONCES:     util.NewSet(),
 		outgoingNONCES:     util.NewSet(),
+		digFilter:          df,
 	}
 
 	go func() {
@@ -140,8 +146,19 @@ func NewPullEngine(participant PullAdapter, sleepTime time.Duration) *PullEngine
 	return engine
 }
 
+// NewPullEngine creates an instance of a PullEngine with a certain sleep time
+// between pull initiations
+func NewPullEngine(participant PullAdapter, sleepTime time.Duration) *PullEngine {
+	acceptAllFilter := func(_ interface{}) func(string) bool {
+		return func(_ string) bool {
+			return true
+		}
+	}
+	return NewPullEngineWithFilter(participant, sleepTime, acceptAllFilter)
+}
+
 func (engine *PullEngine) toDie() bool {
-	return (atomic.LoadInt32(&(engine.stopFlag)) == int32(1))
+	return atomic.LoadInt32(&(engine.stopFlag)) == int32(1)
 }
 
 func (engine *PullEngine) acceptResponses() {
@@ -275,8 +292,13 @@ func (engine *PullEngine) OnHello(nonce uint64, context interface{}) {
 
 	a := engine.state.ToArray()
 	digest := make([]string, len(a))
+	filter := engine.digFilter(context)
 	for i, item := range a {
-		digest[i] = item.(string)
+		dig := item.(string)
+		if !filter(dig) {
+			continue
+		}
+		digest[i] = dig
 	}
 	engine.SendDigest(digest, nonce, context)
 }
@@ -288,9 +310,10 @@ func (engine *PullEngine) OnReq(items []string, nonce uint64, context interface{
 	}
 	engine.lock.Lock()
 
+	filter := engine.digFilter(context)
 	var items2Send []string
 	for _, item := range items {
-		if engine.state.Exists(item) {
+		if engine.state.Exists(item) && filter(item) {
 			items2Send = append(items2Send, item)
 		}
 	}

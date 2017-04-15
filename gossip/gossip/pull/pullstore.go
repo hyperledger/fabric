@@ -55,6 +55,19 @@ type MembershipService interface {
 	GetMembership() []discovery.NetworkMember
 }
 
+// DigestFilter filters digests to be sent to a remote peer, that
+// sent a hello with the following message
+type DigestFilter func(helloMsg proto.ReceivedMessage) func(digestItem string) bool
+
+// byContext converts this DigestFilter to an algo.DigestFilter
+func (df DigestFilter) byContext() algo.DigestFilter {
+	return func(context interface{}) func(digestItem string) bool {
+		return func(digestItem string) bool {
+			return df(context.(proto.ReceivedMessage))(digestItem)
+		}
+	}
+}
+
 // PullConfig defines the configuration of the pull mediator
 type PullConfig struct {
 	ID                string
@@ -63,6 +76,16 @@ type PullConfig struct {
 	Tag               proto.GossipMessage_Tag
 	Channel           common.ChainID
 	MsgType           proto.PullMsgType
+}
+
+// PullAdapter defines methods of the pullStore to interact
+// with various modules of gossip
+type PullAdapter struct {
+	Sndr        Sender
+	MemSvc      MembershipService
+	IdExtractor proto.IdentifierExtractor
+	MsgCons     proto.MsgConsumer
+	DigFilter   DigestFilter
 }
 
 // Mediator is a component wrap a PullEngine and provides the methods
@@ -103,18 +126,31 @@ type pullMediatorImpl struct {
 }
 
 // NewPullMediator returns a new Mediator
-func NewPullMediator(config PullConfig, sndr Sender, memSvc MembershipService, idExtractor proto.IdentifierExtractor, msgCons proto.MsgConsumer) Mediator {
+func NewPullMediator(config PullConfig, adapter PullAdapter) Mediator {
+	digFilter := adapter.DigFilter
+
+	acceptAllFilter := func(_ proto.ReceivedMessage) func(string) bool {
+		return func(_ string) bool {
+			return true
+		}
+	}
+
+	if digFilter == nil {
+		digFilter = acceptAllFilter
+	}
+
 	p := &pullMediatorImpl{
-		msgCons:      msgCons,
+		msgCons:      adapter.MsgCons,
 		msgType2Hook: make(map[PullMsgType][]MessageHook),
-		idExtractor:  idExtractor,
+		idExtractor:  adapter.IdExtractor,
 		config:       config,
 		logger:       util.GetLogger(util.LoggingPullModule, config.ID),
 		itemID2Msg:   make(map[string]*proto.SignedGossipMessage),
-		memBvc:       memSvc,
-		Sender:       sndr,
+		memBvc:       adapter.MemSvc,
+		Sender:       adapter.Sndr,
 	}
-	p.engine = algo.NewPullEngine(p, config.PullInterval)
+
+	p.engine = algo.NewPullEngineWithFilter(p, config.PullInterval, digFilter.byContext())
 	return p
 }
 

@@ -929,7 +929,13 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 		g.logger.Info("Learned of a new certificate:", idMsg.Cert)
 
 	}
-	return pull.NewPullMediator(conf, g.comm, g.disc, pkiIDFromMsg, certConsumer)
+	adapter := pull.PullAdapter{
+		Sndr:        g.comm,
+		MemSvc:      g.disc,
+		IdExtractor: pkiIDFromMsg,
+		MsgCons:     certConsumer,
+	}
+	return pull.NewPullMediator(conf, adapter)
 }
 
 func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID) (*proto.SignedGossipMessage, error) {

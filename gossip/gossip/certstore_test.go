@@ -120,12 +120,17 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 	sender := &senderMock{}
 	memberSvc := &membershipSvcMock{}
 	memberSvc.On("GetMembership").Return([]discovery.NetworkMember{{PKIid: []byte("bla bla"), Endpoint: "localhost:5611"}})
+	adapter := pull.PullAdapter{
+		Sndr:   sender,
+		MemSvc: memberSvc,
+		IdExtractor: func(msg *proto.SignedGossipMessage) string {
+			return string(msg.GetPeerIdentity().PkiId)
+		},
+		MsgCons: func(msg *proto.SignedGossipMessage) {
 
-	pullMediator := pull.NewPullMediator(config,
-		sender,
-		memberSvc,
-		func(msg *proto.SignedGossipMessage) string { return string(msg.GetPeerIdentity().PkiId) },
-		func(msg *proto.SignedGossipMessage) {})
+		},
+	}
+	pullMediator := pull.NewPullMediator(config, adapter)
 	certStore := newCertStore(&pullerMock{
 		Mediator: pullMediator,
 	}, identity.NewIdentityMapper(&naiveCryptoService{}), api.PeerIdentityType("SELF"), &naiveCryptoService{})
