@@ -76,7 +76,7 @@ func (*mockMCS) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
 
 func TestNewDeliverService(t *testing.T) {
 	defer ensureNoGoroutineLeak(t)()
-	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
+	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64, 1)}
 	factory := &struct{ mockBlocksDelivererFactory }{}
 
 	blocksDeliverer := &mocks.MockBlocksDeliverer{}
@@ -110,7 +110,7 @@ func TestNewDeliverService(t *testing.T) {
 	assert.Error(t, service.StopDeliverForChannel("TEST_CHAINID2"), "can't stop delivery")
 
 	// Let it try to simulate a few recv -> gossip rounds
-	time.Sleep(time.Duration(10) * time.Millisecond)
+	time.Sleep(time.Second)
 	assert.NoError(t, service.StopDeliverForChannel("TEST_CHAINID"))
 	time.Sleep(time.Duration(10) * time.Millisecond)
 	// Make sure to stop all blocks providers
