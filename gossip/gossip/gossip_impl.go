@@ -938,15 +938,42 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 			g.logger.Warning("Failed associating PKI-ID with certificate:", err)
 		}
 		g.logger.Info("Learned of a new certificate:", idMsg.Cert)
-
 	}
 	adapter := pull.PullAdapter{
 		Sndr:        g.comm,
 		MemSvc:      g.disc,
 		IdExtractor: pkiIDFromMsg,
 		MsgCons:     certConsumer,
+		DigFilter:   g.sameOrgOrOurOrgPullFilter,
 	}
 	return pull.NewPullMediator(conf, adapter)
+}
+
+func (g *gossipServiceImpl) sameOrgOrOurOrgPullFilter(msg proto.ReceivedMessage) func(string) bool {
+	peersOrg := g.secAdvisor.OrgByPeerIdentity(msg.GetConnectionInfo().Identity)
+	if len(peersOrg) == 0 {
+		g.logger.Warning("Failed determining organization of", msg.GetConnectionInfo())
+		return func(_ string) bool {
+			return false
+		}
+	}
+
+	// If the peer is from our org, gossip all identities
+	if bytes.Equal(g.selfOrg, peersOrg) {
+		return func(_ string) bool {
+			return true
+		}
+	}
+	return func(item string) bool {
+		pkiID := common.PKIidType(item)
+		msgsOrg := g.getOrgOfPeer(pkiID)
+		if len(msgsOrg) == 0 {
+			g.logger.Warning("Failed determining organization of", pkiID)
+			return false
+		}
+		// Peer from our org or identity from our org or identity from peer's org
+		return bytes.Equal(msgsOrg, g.selfOrg) || bytes.Equal(msgsOrg, peersOrg)
+	}
 }
 
 func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID) (*proto.SignedGossipMessage, error) {
