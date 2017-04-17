@@ -154,7 +154,7 @@ services:
       - CORE_PEER_ID=peer3
       - CORE_PEER_ADDRESS=peer3:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer3:7051
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer2:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer3Signer.pem
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer3Signer.pem
