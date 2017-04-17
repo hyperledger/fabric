@@ -537,10 +537,10 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 		var depPayload []byte
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
-		//this will also validate the ID from the LCCC
-		depPayload, err = GetCDSFromLCCC(context, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, cID.Name)
+		//this will also validate the ID from the LSCC
+		depPayload, err = GetCDSFromLSCC(context, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, cID.Name)
 		if err != nil {
-			return cID, cMsg, fmt.Errorf("Could not get deployment transaction from LCCC for %s - %s", canName, err)
+			return cID, cMsg, fmt.Errorf("Could not get deployment transaction from LSCC for %s - %s", canName, err)
 		}
 		if depPayload == nil {
 			return cID, cMsg, fmt.Errorf("failed to get deployment payload %s - %s", canName, err)
@@ -559,15 +559,15 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 
 	//launch container if it is a System container or not in dev mode
 	if (!chaincodeSupport.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) && (chrte == nil || chrte.handler == nil) {
-		//NOTE-We need to streamline code a bit so the data from LCCC gets passed to this thus
+		//NOTE-We need to streamline code a bit so the data from LSCC gets passed to this thus
 		//avoiding the need to go to the FS. In particular, we should use cdsfs completely. It is
 		//just a vestige of old protocol that we continue to use ChaincodeDeploymentSpec for
 		//anything other than Install. In particular, instantiate, invoke, upgrade should be using
 		//just some form of ChaincodeInvocationSpec.
 		//
-		//But for now, if we are invoking we have gone through the LCCC path above. If  instantiating
+		//But for now, if we are invoking we have gone through the LSCC path above. If  instantiating
 		//or upgrading currently we send a CDS with nil CodePackage. In this case the codepath
-		//in the endorser has gone through LCCC validation. Just get the code from the FS.
+		//in the endorser has gone through LSCC validation. Just get the code from the FS.
 		if cds.CodePackage == nil {
 			//no code bytes for these situations
 			if !(chaincodeSupport.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) {

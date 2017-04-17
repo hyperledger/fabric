@@ -124,12 +124,12 @@ def signProposal(proposal, entity, signersCert):
 
 
 def createDeploymentChaincodeSpecForBDD(ccDeploymentSpec, chainID):
-    lc_chaincode_spec = getChaincodeSpec(ccType="GOLANG", path="", name="lccc",
+    lc_chaincode_spec = getChaincodeSpec(ccType="GOLANG", path="", name="lscc",
                                          args=['deploy', chainID, ccDeploymentSpec.SerializeToString()])
     return lc_chaincode_spec
 
 def createInstallChaincodeSpecForBDD(ccDeploymentSpec, chainID):
-    lc_chaincode_spec = getChaincodeSpec(ccType="GOLANG", path="", name="lccc",
+    lc_chaincode_spec = getChaincodeSpec(ccType="GOLANG", path="", name="lscc",
                                          args=['install', ccDeploymentSpec.SerializeToString()])
     return lc_chaincode_spec
 

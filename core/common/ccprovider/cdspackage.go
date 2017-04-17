@@ -32,7 +32,7 @@ import (
 
 //----- CDSData ------
 
-//CDSData is data stored in the LCCC on instantiation of a CC
+//CDSData is data stored in the LSCC on instantiation of a CC
 //for CDSPackage.  This needs to be serialized for ChaincodeData
 //hence the protobuf format
 type CDSData struct {

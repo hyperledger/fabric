@@ -34,7 +34,7 @@ import (
 
 //----- SignedCDSData ------
 
-//SignedCDSData is data stored in the LCCC on instantiation of a CC
+//SignedCDSData is data stored in the LSCC on instantiation of a CC
 //for SignedCDSPackage. This needs to be serialized for ChaincodeData
 //hence the protobuf format
 type SignedCDSData struct {

@@ -42,7 +42,7 @@ func createProposalForChaincode(ccChaincodeDeploymentSpec *pb.ChaincodeDeploymen
 		return nil, fmt.Errorf("Error creating proposal from ChaincodeDeploymentSpec:  %s", err)
 	}
 	lcChaincodeSpec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
-		ChaincodeId: &pb.ChaincodeID{Name: "lccc"},
+		ChaincodeId: &pb.ChaincodeID{Name: "lscc"},
 		Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), ccDeploymentSpecBytes}}}
 	lcChaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: lcChaincodeSpec}
 

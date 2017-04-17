@@ -51,8 +51,8 @@ func (c *mockCcProviderImpl) GetCCContext(cid, name, version, txid string, syscc
 	return &mockCcProviderContextImpl{}
 }
 
-// GetCCValidationInfoFromLCCC does nothing
-func (c *mockCcProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, signedProp *peer.SignedProposal, prop *peer.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
+// GetCCValidationInfoFromLSCC does nothing
+func (c *mockCcProviderImpl) GetCCValidationInfoFromLSCC(ctxt context.Context, txid string, signedProp *peer.SignedProposal, prop *peer.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
 	return "vscc", nil, nil
 }
 

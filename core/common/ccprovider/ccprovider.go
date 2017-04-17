@@ -156,7 +156,7 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 		return nil, err
 	}
 
-	// array to store info for all chaincode entries from LCCC
+	// array to store info for all chaincode entries from LSCC
 	var ccInfoArray []*pb.ChaincodeInfo
 
 	for _, file := range files {
@@ -262,7 +262,7 @@ func (cccid *CCContext) GetCanonicalName() string {
 	return cccid.canonicalName
 }
 
-//-------- ChaincodeData is stored on the LCCC -------
+//-------- ChaincodeData is stored on the LSCC -------
 
 //ChaincodeData defines the datastructure for chaincodes to be serialized by proto
 //Type provides an additional check by directing to use a specific package after instantiation
@@ -312,8 +312,8 @@ type ChaincodeProvider interface {
 	GetContext(ledger ledger.PeerLedger) (context.Context, error)
 	// GetCCContext returns an opaque chaincode context
 	GetCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) interface{}
-	// GetCCValidationInfoFromLCCC returns the VSCC and the policy listed by LCCC for the supplied chaincode
-	GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error)
+	// GetCCValidationInfoFromLSCC returns the VSCC and the policy listed by LSCC for the supplied chaincode
+	GetCCValidationInfoFromLSCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error)
 	// ExecuteChaincode executes the chaincode given context and args
 	ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Execute executes the chaincode given context and spec (invocation or deploy)

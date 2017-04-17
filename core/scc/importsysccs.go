@@ -20,7 +20,7 @@ import (
 	//import system chain codes here
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/escc"
-	"github.com/hyperledger/fabric/core/scc/lccc"
+	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/qscc"
 	"github.com/hyperledger/fabric/core/scc/vscc"
 )
@@ -36,10 +36,10 @@ var systemChaincodes = []*SystemChaincode{
 	},
 	{
 		Enabled:   true,
-		Name:      "lccc",
-		Path:      "github.com/hyperledger/fabric/core/scc/lccc",
+		Name:      "lscc",
+		Path:      "github.com/hyperledger/fabric/core/scc/lscc",
 		InitArgs:  [][]byte{[]byte("")},
-		Chaincode: &lccc.LifeCycleSysCC{},
+		Chaincode: &lscc.LifeCycleSysCC{},
 	},
 	{
 		Enabled:   true,

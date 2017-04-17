@@ -121,7 +121,7 @@ func shorttxid(txid string) string {
 //This is needed for the "one-instance-per-chain" model when
 //starting up the chaincode for each chain. It will still
 //work for the "one-instance-for-all-chains" as the version
-//and suffix will just be absent (also note that LCCC reserves
+//and suffix will just be absent (also note that LSCC reserves
 //"/:[]${}" as special chars mainly for such namespace uses)
 func (handler *Handler) decomposeRegisteredName(cid *pb.ChaincodeID) {
 	handler.ccCompParts = chaincodeIDParts(cid.Name)
@@ -1300,20 +1300,20 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			ctxt = context.WithValue(ctxt, HistoryQueryExecutorKey, historyQueryExecutor)
 
 			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
-				chaincodeLogger.Debugf("[%s] calling lccc to get chaincode data for %s on channel %s",
+				chaincodeLogger.Debugf("[%s] calling lscc to get chaincode data for %s on channel %s",
 					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix)
 			}
 
-			//Call LCCC to get the called chaincode artifacts
+			//Call LSCC to get the called chaincode artifacts
 
 			//is the chaincode a system chaincode ?
 			isscc := sysccprovider.GetSystemChaincodeProvider().IsSysCC(calledCcParts.name)
 
 			var cd *ccprovider.ChaincodeData
 			if !isscc {
-				//if its a user chaincode, get the details from LCCC
-				//Call LCCC to get the called chaincode artifacts
-				cd, err = GetChaincodeDataFromLCCC(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcParts.suffix, calledCcParts.name)
+				//if its a user chaincode, get the details from LSCC
+				//Call LSCC to get the called chaincode artifacts
+				cd, err = GetChaincodeDataFromLSCC(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcParts.suffix, calledCcParts.name)
 				if err != nil {
 					payload := []byte(err.Error())
 					chaincodeLogger.Debugf("[%s]Failed to get chaincoed data (%s) for invoked chaincode. Sending %s",

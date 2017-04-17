@@ -578,15 +578,15 @@ func createProposalFromCDS(chainID string, msg proto.Message, creator []byte, po
 		ccinp = &peer.ChaincodeInput{Args: [][]byte{[]byte(propType), b}}
 	}
 
-	//wrap the deployment in an invocation spec to lccc...
-	lcccSpec := &peer.ChaincodeInvocationSpec{
+	//wrap the deployment in an invocation spec to lscc...
+	lsccSpec := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			Type:        peer.ChaincodeSpec_GOLANG,
-			ChaincodeId: &peer.ChaincodeID{Name: "lccc"},
+			ChaincodeId: &peer.ChaincodeID{Name: "lscc"},
 			Input:       ccinp}}
 
 	//...and get the proposal for it
-	return CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, chainID, lcccSpec, creator)
+	return CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, chainID, lsccSpec, creator)
 }
 
 // ComputeProposalTxID computes TxID as the Hash computed

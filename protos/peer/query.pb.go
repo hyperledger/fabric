@@ -14,7 +14,7 @@ var _ = fmt.Errorf
 var _ = math.Inf
 
 // ChaincodeQueryResponse returns information about each chaincode that pertains
-// to a query in lccc.go, such as GetChaincodes (returns all chaincodes
+// to a query in lscc.go, such as GetChaincodes (returns all chaincodes
 // instantiated on a channel), and GetInstalledChaincodes (returns all chaincodes
 // installed on a peer)
 type ChaincodeQueryResponse struct {
@@ -57,7 +57,7 @@ func (*ChaincodeInfo) ProtoMessage()               {}
 func (*ChaincodeInfo) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{1} }
 
 // ChannelQueryResponse returns information about each channel that pertains
-// to a query in lccc.go, such as GetChannels (returns all channels for a
+// to a query in lscc.go, such as GetChannels (returns all channels for a
 // given peer)
 type ChannelQueryResponse struct {
 	Channels []*ChannelInfo `protobuf:"bytes,1,rep,name=channels" json:"channels,omitempty"`

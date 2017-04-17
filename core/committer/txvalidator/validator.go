@@ -226,21 +226,21 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		return err
 	}
 
-	// LCCC should not undergo standard VSCC type of
+	// LSCC should not undergo standard VSCC type of
 	// validation. It should instead go through system
 	// policy validation to determine whether the issuer
 	// is entitled to deploy a chaincode on our chain
 	// VSCCValidateTx should
-	if hdrExt.ChaincodeId.Name == "lccc" {
+	if hdrExt.ChaincodeId.Name == "lscc" {
 		// TODO: until FAB-1934 is in, we need to stop here
-		logger.Debugf("Invocation of LCCC detected, no further VSCC validation necessary")
+		logger.Debugf("Invocation of LSCC detected, no further VSCC validation necessary")
 		return nil
 	}
 
-	// obtain name of the VSCC and the policy from LCCC
-	vscc, policy, err := v.ccprovider.GetCCValidationInfoFromLCCC(ctxt, txid, nil, nil, chainID, hdrExt.ChaincodeId.Name)
+	// obtain name of the VSCC and the policy from LSCC
+	vscc, policy, err := v.ccprovider.GetCCValidationInfoFromLSCC(ctxt, txid, nil, nil, chainID, hdrExt.ChaincodeId.Name)
 	if err != nil {
-		logger.Errorf("Unable to get chaincode data from LCCC for txid %s, due to %s", txid, err)
+		logger.Errorf("Unable to get chaincode data from LSCC for txid %s, due to %s", txid, err)
 		return err
 	}
 
