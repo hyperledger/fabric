@@ -21,6 +21,8 @@
 #   - configtxgen - builds a native configtxgen binary
 #   - peer - builds a native fabric peer binary
 #   - orderer - builds a native fabric orderer binary
+#   - release - builds release packages for the host platform
+#   - release-all - builds release packages for all target platforms
 #   - unit-test - runs the go-test based unit tests
 #   - test-cmd - generates a "go test" string suitable for manual customization
 #   - behave - runs the behave test
