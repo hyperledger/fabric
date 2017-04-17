@@ -50,7 +50,6 @@ import (
 )
 
 var endorserServer pb.EndorserServer
-var mspInstance msp.MSP
 var signer msp.SigningIdentity
 
 type testEnvironment struct {
