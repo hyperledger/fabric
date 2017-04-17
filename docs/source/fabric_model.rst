@@ -55,7 +55,7 @@ channel. Each peer maintains a copy of the ledger for each channel of which they
 - Prior to appending a block, a versioning check is performed to ensure that states for assets that were read have not changed since chaincode execution time
 - There is immutability once a transaction is validated and committed
 - A channel's ledger contains a configuration block defining policies, access control lists, and other pertinent information
-- Channel's contain :ref:`MSP`s allowing crypto materials to be derived from different certificate authorities
+- Channel's contain :ref:`MSP` instances allowing for crypto materials to be derived from different certificate authorities
 
 See the :doc:`ledger` topic for a deeper dive on the databases, storage structure, and "query-ability."
 
@@ -77,7 +77,7 @@ Chaincode gets installed only on peers that need to access the asset states
 to perform reads and writes (in other words, if a chaincode is not installed on
 a peer, it will not be able to properly interface with the ledger).  To further
 obfuscate the data, values within chaincode can be encrypted (in part or in total) using common
-cryptographic algorithms such as SHA0-256, etc. before appending to the ledger.
+cryptographic algorithms such as SHA-256 before appending to the ledger.
 
 .. _Security-Membership-Services:
 
@@ -92,9 +92,8 @@ governed on the broader network and on channel levels.  This "permissioned" noti
 of Fabric, coupled with the existence and capabilities of channels, helps address
 scenarios where privacy and confidentiality are paramount concerns.
 
-See the 'Fabric CA <https://hyperledger-fabric.readthedocs.io/en/latest/Setup/ca-setup.html>`__
-section to better understand cryptographic implementations, and the sign, verify,
-authenticate approach used in Fabric.
+See the :doc:`Fabric CA <Setup/ca-setup>` section to better understand cryptographic
+implementations, and the sign, verify, authenticate approach used in Fabric.
 
 .. _Consensus:
 
