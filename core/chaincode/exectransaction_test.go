@@ -1167,6 +1167,34 @@ func TestQueries(t *testing.T) {
 		return
 	}
 
+	// querying for all simple key. This query should return exactly 101 simple keys (one
+	// call to Next()) no composite keys.
+	//The following open ended range query for "" to "" should return 101 marbles
+	f = "keys"
+	args = util.ToChaincodeArgs(f, "", "")
+
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
+	nextBlockNumber++
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID, err)
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	//unmarshal the results
+	err = json.Unmarshal(retval, &keys)
+
+	//check to see if there are 101 values
+	//default query limit of 10000 is used, this query is effectively unlimited
+	if len(keys) != 101 {
+		t.Fail()
+		t.Logf("Error detected with the range query, should have returned 101 but returned %v", len(keys))
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
 	// ExecuteQuery supported only for CouchDB and
 	// query limits apply for CouchDB range and rich queries only
 	if ledgerconfig.IsCouchDBEnabled() == true {
@@ -1251,7 +1279,7 @@ func TestQueries(t *testing.T) {
 		//default query limit of 10000 is used, this query is effectively unlimited
 		if len(keys) != 50 {
 			t.Fail()
-			t.Logf("Error detected with the rich query, should have returned 9 but returned %v", len(keys))
+			t.Logf("Error detected with the rich query, should have returned 50 but returned %v", len(keys))
 			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}

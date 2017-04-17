@@ -47,8 +47,10 @@ var chaincodeLogger = logging.MustGetLogger("shim")
 var logOutput = os.Stderr
 
 const (
-	minUnicodeRuneValue = 0            //U+0000
-	maxUnicodeRuneValue = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
+	minUnicodeRuneValue   = 0            //U+0000
+	maxUnicodeRuneValue   = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
+	compositeKeyNamespace = "\x00"
+	emptyKeySubstitute    = "\x01"
 )
 
 // ChaincodeStub is an object passed to chaincode for shim side handling of
@@ -349,7 +351,14 @@ func (stub *ChaincodeStub) GetState(key string) ([]byte, error) {
 }
 
 // PutState writes the specified `value` and `key` into the ledger.
+// Simple keys must not be an empty string and must not start with null
+// character (0x00), in order to avoid range query collisions with
+// composite keys, which internally get prefixed with 0x00 as composite
+// key namespace.
 func (stub *ChaincodeStub) PutState(key string, value []byte) error {
+	if key == "" {
+		return fmt.Errorf("key must not be an empty string")
+	}
 	return stub.handler.handlePutState(key, value, stub.TxID)
 }
 
@@ -389,9 +398,17 @@ const (
 // GetStateByRange function can be invoked by a chaincode to query of a range
 // of keys in the state. Assuming the startKey and endKey are in lexical order,
 // an iterator will be returned that can be used to iterate over all keys
-// between the startKey and endKey, inclusive. The order in which keys are
-// returned by the iterator is random.
+// between the startKey and endKey. The startKey is inclusive whereas the endKey
+// is exclusive. The keys are returned by the iterator in lexical order. Note
+// that startKey and endKey can be empty string, which implies unbounded range
+// query on start or end.
 func (stub *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryIteratorInterface, error) {
+	if startKey == "" {
+		startKey = emptyKeySubstitute
+	}
+	if err := validateSimpleKeys(startKey, endKey); err != nil {
+		return nil, err
+	}
 	response, err := stub.handler.handleGetStateByRange(startKey, endKey, stub.TxID)
 	if err != nil {
 		return nil, err
@@ -436,7 +453,7 @@ func createCompositeKey(objectType string, attributes []string) (string, error) 
 	if err := validateCompositeKeyAttribute(objectType); err != nil {
 		return "", err
 	}
-	ck := objectType + string(minUnicodeRuneValue)
+	ck := compositeKeyNamespace + objectType + string(minUnicodeRuneValue)
 	for _, att := range attributes {
 		if err := validateCompositeKeyAttribute(att); err != nil {
 			return "", err
@@ -447,9 +464,9 @@ func createCompositeKey(objectType string, attributes []string) (string, error) 
 }
 
 func splitCompositeKey(compositeKey string) (string, []string, error) {
-	componentIndex := 0
+	componentIndex := 1
 	components := []string{}
-	for i := 0; i < len(compositeKey); i++ {
+	for i := 1; i < len(compositeKey); i++ {
 		if compositeKey[i] == minUnicodeRuneValue {
 			components = append(components, compositeKey[componentIndex:i])
 			componentIndex = i + 1
@@ -471,6 +488,19 @@ func validateCompositeKeyAttribute(str string) error {
 	return nil
 }
 
+//To ensure that simple keys do not go into composite key namespace,
+//we validate simplekey to check whether the key starts with 0x00 (which
+//is the namespace for compositeKey). This helps in avoding simple/composite
+//key collisions.
+func validateSimpleKeys(simpleKeys ...string) error {
+	for _, key := range simpleKeys {
+		if len(key) > 0 && key[0] == compositeKeyNamespace[0] {
+			return fmt.Errorf(`First character of the key [%s] contains a null character which is not allowed`, key)
+		}
+	}
+	return nil
+}
+
 //GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
 //state based on a given partial composite key. This function returns an
 //iterator which can be used to iterate over all composite keys whose prefix
@@ -478,16 +508,15 @@ func validateCompositeKeyAttribute(str string) error {
 //a partial composite key. For a full composite key, an iter with empty response
 //would be returned.
 func (stub *ChaincodeStub) GetStateByPartialCompositeKey(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
-	return getStateByPartialCompositeKey(stub, objectType, attributes)
-}
-
-func getStateByPartialCompositeKey(stub ChaincodeStubInterface, objectType string, attributes []string) (StateQueryIteratorInterface, error) {
-	partialCompositeKey, _ := stub.CreateCompositeKey(objectType, attributes)
-	keysIter, err := stub.GetStateByRange(partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue))
+	partialCompositeKey, err := stub.CreateCompositeKey(objectType, attributes)
 	if err != nil {
-		return nil, fmt.Errorf("Error fetching rows: %s", err)
+		return nil, err
 	}
-	return keysIter, nil
+	response, err := stub.handler.handleGetStateByRange(partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue), stub.TxID)
+	if err != nil {
+		return nil, err
+	}
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
 func (iter *StateQueryIterator) Next() (*queryresult.KV, error) {
