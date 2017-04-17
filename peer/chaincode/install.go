@@ -43,8 +43,8 @@ const install_desc = "Package the specified chaincode into a deployment spec and
 func installCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeInstallCmd = &cobra.Command{
 		Use:       "install",
-		Short:     fmt.Sprintf(install_desc),
-		Long:      fmt.Sprintf(install_desc),
+		Short:     fmt.Sprint(install_desc),
+		Long:      fmt.Sprint(install_desc),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ccpackfile string
