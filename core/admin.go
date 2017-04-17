@@ -18,7 +18,6 @@ package core
 
 import (
 	"os"
-	"runtime"
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -39,19 +38,6 @@ func NewAdminServer() *ServerAdmin {
 
 // ServerAdmin implementation of the Admin service for the Peer
 type ServerAdmin struct {
-}
-
-func worker(id int, die chan struct{}) {
-	for {
-		select {
-		case <-die:
-			log.Debugf("worker %d terminating", id)
-			return
-		default:
-			log.Debugf("%d is working...", id)
-			runtime.Gosched()
-		}
-	}
 }
 
 // GetStatus reports the status of the server
