@@ -23,6 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/errors"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
@@ -64,7 +65,7 @@ func InitConfig(cmdRoot string) error {
 func InitCrypto(mspMgrConfigDir string, localMSPID string) error {
 	// Init the BCCSP
 	var bccspConfig *factory.FactoryOpts
-	err := viper.UnmarshalKey("peer.BCCSP", &bccspConfig)
+	err := viperutil.EnhancedExactUnmarshalKey("peer.BCCSP", &bccspConfig)
 	if err != nil {
 		return fmt.Errorf("Could not parse YAML config [%s]", err)
 	}

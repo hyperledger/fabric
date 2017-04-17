@@ -41,7 +41,7 @@ var (
 	// Factories' Initialization Error
 	factoriesInitError error
 
-	logger = logging.MustGetLogger("BCCSP_FACTORY")
+	logger = logging.MustGetLogger("bccsp")
 )
 
 // BCCSPFactory is used to get instances of the BCCSP interface.

@@ -41,7 +41,7 @@ import (
 )
 
 var (
-	logger = logging.MustGetLogger("SW_BCCSP")
+	logger = logging.MustGetLogger("bccsp_sw")
 )
 
 // NewDefaultSecurityLevel returns a new instance of the software-based BCCSP

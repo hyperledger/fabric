@@ -36,11 +36,13 @@ import (
 
 var logger = logging.MustGetLogger("viperutil")
 
-func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interface{}) map[string]interface{} {
+type viperGetter func(key string) interface{}
+
+func getKeysRecursively(base string, getKey viperGetter, nodeKeys map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
 	for key := range nodeKeys {
 		fqKey := base + key
-		val := v.Get(fqKey)
+		val := getKey(fqKey)
 		if m, ok := val.(map[interface{}]interface{}); ok {
 			logger.Debugf("Found map[interface{}]interface{} value for %s", fqKey)
 			tmp := make(map[string]interface{})
@@ -51,17 +53,17 @@ func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interfa
 				}
 				tmp[cik] = iv
 			}
-			result[key] = getKeysRecursively(fqKey+".", v, tmp)
+			result[key] = getKeysRecursively(fqKey+".", getKey, tmp)
 		} else if m, ok := val.(map[string]interface{}); ok {
 			logger.Debugf("Found map[string]interface{} value for %s", fqKey)
-			result[key] = getKeysRecursively(fqKey+".", v, m)
+			result[key] = getKeysRecursively(fqKey+".", getKey, m)
 		} else if m, ok := unmarshalJSON(val); ok {
 			logger.Debugf("Found real value for %s setting to map[string]string %v", fqKey, m)
 			result[key] = m
 		} else {
 			if val == nil {
 				fileSubKey := fqKey + ".File"
-				fileVal := v.Get(fileSubKey)
+				fileVal := getKey(fileSubKey)
 				if fileVal != nil {
 					result[key] = map[string]interface{}{"File": fileVal}
 					continue
@@ -256,8 +258,10 @@ func pemBlocksFromFileDecodeHook() mapstructure.DecodeHookFunc {
 // producing error when extraneous variables are introduced and supporting
 // the time.Duration type
 func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
-	baseKeys := v.AllSettings() // AllKeys doesn't actually return all keys, it only returns the base ones
-	leafKeys := getKeysRecursively("", v, baseKeys)
+	// AllKeys doesn't actually return all keys, it only returns the base ones
+	baseKeys := v.AllSettings()
+	getterWithClass := func(key string) interface{} { return v.Get(key) } // hide receiver
+	leafKeys := getKeysRecursively("", getterWithClass, baseKeys)
 
 	logger.Debugf("%+v", leafKeys)
 	config := &mapstructure.DecoderConfig{
@@ -278,4 +282,14 @@ func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
 		return err
 	}
 	return decoder.Decode(leafKeys)
+}
+
+// EnhancedExactUnmarshalKey is intended to unmarshal a config file subtreee into a structure
+func EnhancedExactUnmarshalKey(baseKey string, output interface{}) error {
+	m := make(map[string]interface{})
+	m[baseKey] = nil
+	leafKeys := getKeysRecursively("", viper.Get, m)
+
+	logger.Debugf("%+v", leafKeys)
+	return mapstructure.Decode(leafKeys[baseKey], output)
 }

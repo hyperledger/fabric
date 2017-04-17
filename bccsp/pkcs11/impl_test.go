@@ -32,12 +32,12 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"golang.org/x/crypto/sha3"
 )
@@ -45,13 +45,14 @@ import (
 var (
 	currentKS         bccsp.KeyStore
 	currentBCCSP      bccsp.BCCSP
-	currentSWBCCSP    bccsp.BCCSP
 	currentTestConfig testConfig
 )
 
 type testConfig struct {
 	securityLevel int
 	hashFamily    string
+	softVerify    bool
+	noKeyImport   bool
 }
 
 func TestMain(m *testing.M) {
@@ -62,41 +63,43 @@ func TestMain(m *testing.M) {
 	}
 	currentKS = ks
 
-	lib, pin, label := findPKCS11Lib()
-	if enablePKCS11tests {
-		err := InitPKCS11(lib, pin, label)
-		if err != nil {
-			fmt.Printf("Failed initializing PKCS11 library [%s]", err)
-			os.Exit(-1)
-		}
-	} else {
-		fmt.Printf("No PKCS11 library found, skipping PKCS11 tests")
-	}
-
+	lib, pin, label := FindPKCS11Lib()
 	tests := []testConfig{
-		{256, "SHA2"},
-		{256, "SHA3"},
-		{384, "SHA2"},
-		{384, "SHA3"},
+		{256, "SHA2", true, true},
+		{256, "SHA3", false, true},
+		{384, "SHA2", false, true},
+		{384, "SHA3", false, true},
+		{384, "SHA3", true, true},
 	}
 
+	if strings.Contains(lib, "softhsm") {
+		tests = append(tests, []testConfig{
+			{256, "SHA2", true, false},
+		}...)
+	}
+
+	opts := PKCS11Opts{
+		Library: lib,
+		Label:   label,
+		Pin:     pin,
+	}
 	for _, config := range tests {
 		var err error
 		currentTestConfig = config
-		currentBCCSP, err = New(config.securityLevel, config.hashFamily, currentKS)
+
+		opts.HashFamily = config.hashFamily
+		opts.SecLevel = config.securityLevel
+		opts.SoftVerify = config.softVerify
+		opts.Sensitive = config.noKeyImport
+		currentBCCSP, err = New(opts, currentKS)
 		if err != nil {
-			fmt.Printf("Failed initiliazing BCCSP at [%d, %s]: [%s]", config.securityLevel, config.hashFamily, err)
+			fmt.Printf("Failed initiliazing BCCSP at [%+v]: [%s]", opts, err)
 			os.Exit(-1)
 		}
 
-		currentSWBCCSP, err = sw.New(config.securityLevel, config.hashFamily, sw.NewDummyKeyStore())
-		if err != nil {
-			fmt.Printf("Failed initiliazing BCCSP at [%d, %s]: [%s]", config.securityLevel, config.hashFamily, err)
-			os.Exit(-1)
-		}
 		ret := m.Run()
 		if ret != 0 {
-			fmt.Printf("Failed testing at [%d, %s]", config.securityLevel, config.hashFamily)
+			fmt.Printf("Failed testing at [%+v]", opts)
 			os.Exit(-1)
 		}
 	}
@@ -104,7 +107,18 @@ func TestMain(m *testing.M) {
 }
 
 func TestInvalidNewParameter(t *testing.T) {
-	r, err := New(0, "SHA2", currentKS)
+	lib, pin, label := FindPKCS11Lib()
+	opts := PKCS11Opts{
+		Library:    lib,
+		Label:      label,
+		Pin:        pin,
+		SoftVerify: true,
+		Sensitive:  true,
+	}
+
+	opts.HashFamily = "SHA2"
+	opts.SecLevel = 0
+	r, err := New(opts, currentKS)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}
@@ -112,7 +126,9 @@ func TestInvalidNewParameter(t *testing.T) {
 		t.Fatal("Return value should be equal to nil in this case")
 	}
 
-	r, err = New(256, "SHA8", currentKS)
+	opts.HashFamily = "SHA8"
+	opts.SecLevel = 256
+	r, err = New(opts, currentKS)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}
@@ -120,7 +136,9 @@ func TestInvalidNewParameter(t *testing.T) {
 		t.Fatal("Return value should be equal to nil in this case")
 	}
 
-	r, err = New(256, "SHA2", nil)
+	opts.HashFamily = "SHA2"
+	opts.SecLevel = 256
+	r, err = New(opts, nil)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}
@@ -128,15 +146,9 @@ func TestInvalidNewParameter(t *testing.T) {
 		t.Fatal("Return value should be equal to nil in this case")
 	}
 
-	r, err = New(0, "SHA3", nil)
-	if err == nil {
-		t.Fatal("Error should be different from nil in this case")
-	}
-	if r != nil {
-		t.Fatal("Return value should be equal to nil in this case")
-	}
-
-	r, err = NewDefaultSecurityLevel("")
+	opts.HashFamily = "SHA3"
+	opts.SecLevel = 0
+	r, err = New(opts, nil)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}
@@ -586,6 +598,10 @@ func TestECDSAPublicKeySKI(t *testing.T) {
 
 func TestECDSAKeyReRand(t *testing.T) {
 
+	if currentBCCSP.(*impl).noPrivImport {
+		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
+	}
+
 	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
 		t.Fatalf("Failed generating ECDSA key [%s]", err)
@@ -720,6 +736,10 @@ func TestECDSAVerify(t *testing.T) {
 }
 
 func TestECDSAKeyDeriv(t *testing.T) {
+
+	if currentBCCSP.(*impl).noPrivImport {
+		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
+	}
 
 	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {
@@ -858,6 +878,9 @@ func TestECDSAKeyImportFromECDSAPublicKey(t *testing.T) {
 }
 
 func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
+	if currentBCCSP.(*impl).noPrivImport {
+		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
+	}
 
 	// Generate an ECDSA key, default is P256
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -1121,7 +1144,7 @@ func TestECDSALowS(t *testing.T) {
 
 	// Ensure that signature with high-S are rejected.
 	for {
-		R, S, err = signECDSA(k.SKI(), digest)
+		R, S, err = currentBCCSP.(*impl).signP11ECDSA(k.SKI(), digest)
 		if err != nil {
 			t.Fatalf("Failed generating signature [%s]", err)
 		}
@@ -1926,37 +1949,4 @@ func getCryptoHashIndex(t *testing.T) crypto.Hash {
 	}
 
 	return crypto.SHA3_256
-}
-
-var enablePKCS11tests = false
-
-func findPKCS11Lib() (lib, pin, label string) {
-	//FIXME: Till we workout the configuration piece, look for the libraries in the familiar places
-	lib = os.Getenv("PKCS11_LIB")
-	if lib == "" {
-		pin = "98765432"
-		label = "ForFabric"
-		possibilities := []string{
-			"/usr/lib/softhsm/libsofthsm2.so",                            //Debian
-			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so",           //Ubuntu
-			"/usr/lib/s390x-linux-gnu/softhsm/libsofthsm2.so",            //Ubuntu
-			"/usr/lib/powerpc64le-linux-gnu/softhsm/libsofthsm2.so",      //Power
-			"/usr/local/Cellar/softhsm/2.1.0/lib/softhsm/libsofthsm2.so", //MacOS
-		}
-		for _, path := range possibilities {
-			if _, err := os.Stat(path); !os.IsNotExist(err) {
-				lib = path
-				enablePKCS11tests = true
-				break
-			}
-		}
-		if lib == "" {
-			enablePKCS11tests = false
-		}
-	} else {
-		enablePKCS11tests = true
-		pin = os.Getenv("PKCS11_PIN")
-		label = os.Getenv("PKCS11_LABEL")
-	}
-	return lib, pin, label
 }

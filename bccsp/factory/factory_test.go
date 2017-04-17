@@ -23,12 +23,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/spf13/viper"
 )
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	lib, pin, label, enable := findPKCS11Lib()
+	lib, pin, label := pkcs11.FindPKCS11Lib()
 
 	var jsonBCCSP, yamlBCCSP *FactoryOpts
 	jsonCFG := []byte(
@@ -55,7 +56,7 @@ BCCSP:
         Label:   %s
         `, lib, pin, label)
 
-	if !enable {
+	if lib == "" {
 		fmt.Printf("Could not find PKCS11 libraries, running without\n")
 		yamlCFG = `
 BCCSP:
@@ -120,35 +121,4 @@ func TestGetBCCSP(t *testing.T) {
 	if bccsp == nil {
 		t.Fatal("Failed Software BCCSP. Nil instance.")
 	}
-}
-
-func findPKCS11Lib() (lib, pin, label string, enablePKCS11tests bool) {
-	//FIXME: Till we workout the configuration piece, look for the libraries in the familiar places
-	lib = os.Getenv("PKCS11_LIB")
-	if lib == "" {
-		pin = "98765432"
-		label = "ForFabric"
-		possibilities := []string{
-			"/usr/lib/softhsm/libsofthsm2.so",                            //Debian
-			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so",           //Ubuntu
-			"/usr/lib/s390x-linux-gnu/softhsm/libsofthsm2.so",            //Ubuntu
-			"/usr/lib/powerpc64le-linux-gnu/softhsm/libsofthsm2.so",      //Power
-			"/usr/local/Cellar/softhsm/2.1.0/lib/softhsm/libsofthsm2.so", //MacOS
-		}
-		for _, path := range possibilities {
-			if _, err := os.Stat(path); !os.IsNotExist(err) {
-				lib = path
-				enablePKCS11tests = true
-				break
-			}
-		}
-		if lib == "" {
-			enablePKCS11tests = false
-		}
-	} else {
-		enablePKCS11tests = true
-		pin = os.Getenv("PKCS11_PIN")
-		label = os.Getenv("PKCS11_LABEL")
-	}
-	return lib, pin, label, enablePKCS11tests
 }

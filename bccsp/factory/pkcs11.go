@@ -21,12 +21,13 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/pkcs11"
 )
 
 type FactoryOpts struct {
-	ProviderName string      `mapstructure:"default" json:"default" yaml:"Default"`
-	SwOpts       *SwOpts     `mapstructure:"SW,omitempty" json:"SW,omitempty" yaml:"SwOpts"`
-	Pkcs11Opts   *PKCS11Opts `mapstructure:"PKCS11,omitempty" json:"PKCS11,omitempty" yaml:"PKCS11"`
+	ProviderName string             `mapstructure:"default" json:"default" yaml:"Default"`
+	SwOpts       *SwOpts            `mapstructure:"SW,omitempty" json:"SW,omitempty" yaml:"SwOpts"`
+	Pkcs11Opts   *pkcs11.PKCS11Opts `mapstructure:"PKCS11,omitempty" json:"PKCS11,omitempty" yaml:"PKCS11"`
 }
 
 // InitFactories must be called before using factory interfaces
@@ -77,4 +78,21 @@ func InitFactories(config *FactoryOpts) error {
 	})
 
 	return factoriesInitError
+}
+
+// GetBCCSPFromOpts returns a BCCSP created according to the options passed in input.
+func GetBCCSPFromOpts(config *FactoryOpts) (bccsp.BCCSP, error) {
+	var f BCCSPFactory
+	switch config.ProviderName {
+	case "SW":
+		f = &SWFactory{}
+	case "PKCS11":
+		f = &PKCS11Factory{}
+	}
+
+	csp, err := f.Get(config)
+	if err != nil {
+		return nil, fmt.Errorf("Could not initialize BCCSP %s [%s]", f.Name(), err)
+	}
+	return csp, nil
 }
