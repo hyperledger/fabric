@@ -100,6 +100,14 @@ func (ccpack *SignedCDSPackage) GetDepSpec() *pb.ChaincodeDeploymentSpec {
 	return ccpack.depSpec
 }
 
+// GetInstantiationPolicy gets the instantiation policy from the package
+func (ccpack *SignedCDSPackage) GetInstantiationPolicy() []byte {
+	if ccpack.sDepSpec == nil {
+		panic("GetInstantiationPolicy called on uninitialized package")
+	}
+	return ccpack.sDepSpec.InstantiationPolicy
+}
+
 // GetDepSpecBytes gets the serialized ChaincodeDeploymentSpec from the package
 func (ccpack *SignedCDSPackage) GetDepSpecBytes() []byte {
 	//this has to be after creating a package and initializing it
