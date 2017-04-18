@@ -128,21 +128,21 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 
 	//per doc anything < 500 can be sent as TX.
 	//fabric errors will always be >= 500 (ie, unambiguous errors )
-	//"lccc" will respond with status 200 or >=500 (ie, unambiguous OK or ERROR)
+	//"lscc" will respond with status 200 or >=500 (ie, unambiguous OK or ERROR)
 	//This leaves all < 500 errors to user chaincodes
 	if res.Status >= shim.ERROR {
 		return nil, nil, fmt.Errorf(string(res.Message))
 	}
 
-	//----- BEGIN -  SECTION THAT MAY NEED TO BE DONE IN LCCC ------
+	//----- BEGIN -  SECTION THAT MAY NEED TO BE DONE IN LSCC ------
 	//if this a call to deploy a chaincode, We need a mechanism
-	//to pass TxSimulator into LCCC. Till that is worked out this
+	//to pass TxSimulator into LSCC. Till that is worked out this
 	//special code does the actual deploy, upgrade here so as to collect
 	//all state under one TxSimulator
 	//
 	//NOTE that if there's an error all simulation, including the chaincode
-	//table changes in lccc will be thrown away
-	if cid.Name == "lccc" && len(cis.ChaincodeSpec.Input.Args) >= 3 && (string(cis.ChaincodeSpec.Input.Args[0]) == "deploy" || string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade") {
+	//table changes in lscc will be thrown away
+	if cid.Name == "lscc" && len(cis.ChaincodeSpec.Input.Args) >= 3 && (string(cis.ChaincodeSpec.Input.Args[0]) == "deploy" || string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade") {
 		var cds *pb.ChaincodeDeploymentSpec
 		cds, err = putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[2])
 		if err != nil {
@@ -186,7 +186,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	//default it to a system CC
 	version := util.GetSysCCVersion()
 	if !syscc.IsSysCC(cid.Name) {
-		cd, err = e.getCDSFromLCCC(ctx, chainID, txid, signedProp, prop, cid.Name, txsim)
+		cd, err = e.getCDSFromLSCC(ctx, chainID, txid, signedProp, prop, cid.Name, txsim)
 		if err != nil {
 			return nil, nil, nil, nil, fmt.Errorf("failed to obtain cds for %s - %s", cid.Name, err)
 		}
@@ -211,13 +211,13 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	return cd, res, simResult, ccevent, nil
 }
 
-func (e *Endorser) getCDSFromLCCC(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (*ccprovider.ChaincodeData, error) {
+func (e *Endorser) getCDSFromLSCC(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (*ccprovider.ChaincodeData, error) {
 	ctxt := ctx
 	if txsim != nil {
 		ctxt = context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
 	}
 
-	return chaincode.GetChaincodeDataFromLCCC(ctxt, txid, signedProp, prop, chainID, chaincodeID)
+	return chaincode.GetChaincodeDataFromLSCC(ctxt, txid, signedProp, prop, chainID, chaincodeID)
 }
 
 //endorse the proposal by calling the ESCC
@@ -226,15 +226,15 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 
 	// 1) extract the name of the escc that is requested to endorse this chaincode
 	var escc string
-	//ie, not "lccc" or system chaincodes
+	//ie, not "lscc" or system chaincodes
 	if cd != nil {
 		escc = cd.Escc
-		if escc == "" { // this should never happen, LCCC always fills this field
+		if escc == "" { // this should never happen, LSCC always fills this field
 			panic("No ESCC specified in ChaincodeData")
 		}
 	} else {
-		// FIXME: getCDSFromLCCC seems to fail for lccc - not sure this is expected?
-		// TODO: who should endorse a call to LCCC?
+		// FIXME: getCDSFromLSCC seems to fail for lscc - not sure this is expected?
+		// TODO: who should endorse a call to LSCC?
 		escc = "escc"
 	}
 

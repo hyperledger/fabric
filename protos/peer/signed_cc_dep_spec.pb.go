@@ -20,7 +20,7 @@ type SignedChaincodeDeploymentSpec struct {
 	// This is the instantiation policy which is identical in structure
 	// to endorsement policy.  This policy is checked by the VSCC at commit
 	// time on the instantiation (all peers will get the same policy as it
-	// will be part of the LCCC instantation record and will be part of the
+	// will be part of the LSCC instantation record and will be part of the
 	// hash as well)
 	InstantiationPolicy []byte `protobuf:"bytes,2,opt,name=instantiation_policy,json=instantiationPolicy,proto3" json:"instantiation_policy,omitempty"`
 	// The endorsements of the above deployment spec, the owner's signature over

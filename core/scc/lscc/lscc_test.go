@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package lccc
+package lscc
 
 import (
 	"fmt"
@@ -35,7 +35,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-var lccctestpath = "/tmp/lccctest"
+var lscctestpath = "/tmp/lscctest"
 
 type mocksccProviderFactory struct {
 }
@@ -99,7 +99,7 @@ func TestInstall(t *testing.T) {
 
 func testInstall(t *testing.T, ccname string, version string, path string, expectedErrorMsg string) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -119,7 +119,7 @@ func testInstall(t *testing.T, ccname string, version string, path string, expec
 	args := [][]byte{[]byte(INSTALL), b}
 
 	if expectedErrorMsg == "" {
-		defer os.Remove(lccctestpath + "/" + ccname + "." + version)
+		defer os.Remove(lscctestpath + "/" + ccname + "." + version)
 		if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 			t.FailNow()
 		}
@@ -165,7 +165,7 @@ func testInstall(t *testing.T, ccname string, version string, path string, expec
 //TestReinstall tests the install function
 func TestReinstall(t *testing.T) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -177,7 +177,7 @@ func TestReinstall(t *testing.T) {
 	if err != nil {
 		t.FailNow()
 	}
-	defer os.Remove(lccctestpath + "/example02.0")
+	defer os.Remove(lscctestpath + "/example02.0")
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -193,7 +193,7 @@ func TestReinstall(t *testing.T) {
 //TestInvalidCodeDeploy tests the deploy function with invalid code package
 func TestInvalidCodeDeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -231,7 +231,7 @@ func TestDeploy(t *testing.T) {
 
 func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, expectedErrorMsg string) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		t.Logf("Init failed: %s", string(res.Message))
@@ -242,7 +242,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 	if err != nil {
 		t.FailNow()
 	}
-	defer os.Remove(lccctestpath + "/" + ccname + "." + version)
+	defer os.Remove(lscctestpath + "/" + ccname + "." + version)
 	if forceBlankCCName {
 		cds.ChaincodeSpec.ChaincodeId.Name = ""
 	}
@@ -308,7 +308,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 //TestRedeploy tests the redeploying will fail function(and fail with "exists" error)
 func TestRedeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -319,7 +319,7 @@ func TestRedeploy(t *testing.T) {
 	if err != nil {
 		t.FailNow()
 	}
-	defer os.Remove(lccctestpath + "/example02.0")
+	defer os.Remove(lscctestpath + "/example02.0")
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -341,7 +341,7 @@ func TestRedeploy(t *testing.T) {
 //TestMultipleDeploy tests deploying multiple chaincodeschaincodes
 func TestMultipleDeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -353,7 +353,7 @@ func TestMultipleDeploy(t *testing.T) {
 	if err != nil {
 		t.FailNow()
 	}
-	defer os.Remove(lccctestpath + "/example02.0")
+	defer os.Remove(lscctestpath + "/example02.0")
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -374,7 +374,7 @@ func TestMultipleDeploy(t *testing.T) {
 	if err != nil {
 		t.FailNow()
 	}
-	defer os.Remove(lccctestpath + "/example01.0")
+	defer os.Remove(lscctestpath + "/example01.0")
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
 	}
@@ -411,7 +411,7 @@ func TestMultipleDeploy(t *testing.T) {
 //TestRetryFailedDeploy tests re-deploying after a failure
 func TestRetryFailedDeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -423,7 +423,7 @@ func TestRetryFailedDeploy(t *testing.T) {
 	if err != nil {
 		t.FailNow()
 	}
-	defer os.Remove(lccctestpath + "/example02.0")
+	defer os.Remove(lscctestpath + "/example02.0")
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -458,7 +458,7 @@ func TestRetryFailedDeploy(t *testing.T) {
 //TestTamperChaincode modifies the chaincode on the FS after deploy
 func TestTamperChaincode(t *testing.T) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -472,7 +472,7 @@ func TestTamperChaincode(t *testing.T) {
 		t.FailNow()
 	}
 
-	defer os.Remove(lccctestpath + "/example01.0")
+	defer os.Remove(lscctestpath + "/example01.0")
 
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -493,7 +493,7 @@ func TestTamperChaincode(t *testing.T) {
 		t.FailNow()
 	}
 
-	defer os.Remove(lccctestpath + "/example02.0")
+	defer os.Remove(lscctestpath + "/example02.0")
 
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -507,16 +507,16 @@ func TestTamperChaincode(t *testing.T) {
 	}
 
 	//remove the old file...
-	os.Remove(lccctestpath + "/example02.0")
+	os.Remove(lscctestpath + "/example02.0")
 
 	//read 01 and ...
-	if b, err = ioutil.ReadFile(lccctestpath + "/example01.0"); err != nil {
+	if b, err = ioutil.ReadFile(lscctestpath + "/example01.0"); err != nil {
 		t.Logf("Could not read back example01.0")
 		t.FailNow()
 	}
 
 	//...brute force replace 02 with bytes from 01
-	if err = ioutil.WriteFile(lccctestpath+"/example02.0", b, 0644); err != nil {
+	if err = ioutil.WriteFile(lscctestpath+"/example02.0", b, 0644); err != nil {
 		t.Logf("Could not write to example02.0")
 		t.FailNow()
 	}
@@ -551,7 +551,7 @@ func TestUpgrade(t *testing.T) {
 
 func testUpgrade(t *testing.T, ccname string, version string, newccname string, newversion string, path string, expectedErrorMsg string) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -562,7 +562,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 	if err != nil {
 		t.FailNow()
 	}
-	defer os.Remove(lccctestpath + "/" + ccname + "." + version)
+	defer os.Remove(lscctestpath + "/" + ccname + "." + version)
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.Fatalf("Marshal DeploymentSpec failed")
@@ -584,7 +584,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 	if err != nil {
 		t.FailNow()
 	}
-	defer os.Remove(lccctestpath + "/" + newccname + "." + newversion)
+	defer os.Remove(lscctestpath + "/" + newccname + "." + newversion)
 	var newb []byte
 	if newb, err = proto.Marshal(newCds); err != nil || newb == nil {
 		t.Fatalf("Marshal DeploymentSpec failed")
@@ -620,7 +620,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 //ledger but not on FS
 func TestGetAPIsWithoutInstall(t *testing.T) {
 	scc := new(LifeCycleSysCC)
-	stub := shim.NewMockStub("lccc", scc)
+	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		fmt.Println("Init failed", string(res.Message))
@@ -640,7 +640,7 @@ func TestGetAPIsWithoutInstall(t *testing.T) {
 	}
 
 	//Force remove CC
-	os.Remove(lccctestpath + "/example02.0")
+	os.Remove(lscctestpath + "/example02.0")
 
 	//GETCCINFO should still work
 	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
@@ -701,7 +701,7 @@ func TestGetAPIsWithoutInstall(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	ccprovider.SetChaincodesPath(lccctestpath)
+	ccprovider.SetChaincodesPath(lscctestpath)
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&mocksccProviderFactory{})
 	os.Exit(m.Run())
 }

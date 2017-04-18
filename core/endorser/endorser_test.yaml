@@ -407,7 +407,7 @@ chaincode:
     # system chaincodes whitelist. To add system chaincode "myscc" to the
     # whitelist, add "myscc: enable" to the list
     system:
-        lccc: enable
+        lscc: enable
         escc: enable
         vscc: enable
 

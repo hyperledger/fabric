@@ -247,8 +247,8 @@ func getDeploymentSpec(_ context.Context, spec *pb.ChaincodeSpec) (*pb.Chaincode
 	return cdDeploymentSpec, nil
 }
 
-//getDeployLCCCSpec gets the spec for the chaincode deployment to be sent to LCCC
-func getDeployLCCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeInvocationSpec, error) {
+//getDeployLSCCSpec gets the spec for the chaincode deployment to be sent to LSCC
+func getDeployLSCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeInvocationSpec, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
@@ -256,10 +256,10 @@ func getDeployLCCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec) (*pb.Cha
 
 	sysCCVers := util.GetSysCCVersion()
 
-	//wrap the deployment in an invocation spec to lccc...
-	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lccc", Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(chainID), b}}}}
+	//wrap the deployment in an invocation spec to lscc...
+	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(chainID), b}}}}
 
-	return lcccSpec, nil
+	return lsccSpec, nil
 }
 
 // Deploy a chaincode - i.e., build and initialize.
@@ -274,9 +274,9 @@ func deploy(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.Chaincode
 }
 
 func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec, blockNumber uint64) (b []byte, err error) {
-	cis, err := getDeployLCCCSpec(cccid.ChainID, chaincodeDeploymentSpec)
+	cis, err := getDeployLSCCSpec(cccid.ChainID, chaincodeDeploymentSpec)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating lccc spec : %s\n", err)
+		return nil, fmt.Errorf("Error creating lscc spec : %s\n", err)
 	}
 
 	ctx, txsim, err := startTxSimulation(ctx, cccid.ChainID)
@@ -303,10 +303,10 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 	ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
 
 	sysCCVers := util.GetSysCCVersion()
-	lcccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, nil, nil)
+	lsccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, nil, nil)
 
-	//write to lccc
-	if _, _, err = ExecuteWithErrorFilter(ctx, lcccid, cis); err != nil {
+	//write to lscc
+	if _, _, err = ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode: %s", err)
 	}
 
@@ -1473,7 +1473,7 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 }
 
 // Test the execution of a chaincode that invokes system chaincode
-// uses the "pthru" chaincode to query "lccc" for the "pthru" chaincode
+// uses the "pthru" chaincode to query "lscc" for the "pthru" chaincode
 func TestChaincodeInvokesSystemChaincode(t *testing.T) {
 	chainID := util.GetTestChainID()
 
@@ -1512,9 +1512,9 @@ func TestChaincodeInvokesSystemChaincode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	//send an invoke to pass thru to query "lccc" system chaincode on chainID to get
+	//send an invoke to pass thru to query "lscc" system chaincode on chainID to get
 	//information about "pthru"
-	args = util.ToChaincodeArgs("lccc/"+chainID, "getid", chainID, "pthru")
+	args = util.ToChaincodeArgs("lscc/"+chainID, "getid", chainID, "pthru")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
 	// Invoke chaincode
@@ -1529,7 +1529,7 @@ func TestChaincodeInvokesSystemChaincode(t *testing.T) {
 
 	if string(retval) != "pthru" {
 		t.Fail()
-		t.Logf("Expected to get back \"pthru\" from lccc but got back %s", string(retval))
+		t.Logf("Expected to get back \"pthru\" from lscc but got back %s", string(retval))
 		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}

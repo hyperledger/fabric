@@ -403,7 +403,7 @@ chaincode:
     # whitelist, add "myscc: enable" to the list
     system:
         cscc: enable
-        lccc: enable
+        lscc: enable
         escc: enable
         vscc: enable
 
