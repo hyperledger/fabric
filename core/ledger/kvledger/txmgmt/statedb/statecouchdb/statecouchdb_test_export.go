@@ -29,6 +29,8 @@ var connectURL = "couchdb:5984"
 var badConnectURL = "couchdb:5990"
 var username = ""
 var password = ""
+var maxRetries = 3
+var maxRetriesOnStartup = 10
 
 // TestVDBEnv provides a couch db backed versioned db for testing
 type TestVDBEnv struct {
@@ -55,7 +57,7 @@ func (env *TestVDBEnv) Cleanup(dbName string) {
 }
 func cleanupDB(dbName string) {
 	//create a new connection
-	couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password)
+	couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password, maxRetries, maxRetriesOnStartup)
 	db := couchdb.CouchDatabase{CouchInstance: *couchInstance, DBName: dbName}
 	//drop the test database
 	db.DropDatabase()

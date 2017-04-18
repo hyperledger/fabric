@@ -125,8 +125,10 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 		connectURL := viper.GetString("ledger.state.couchDBConfig.couchDBAddress")
 		username := viper.GetString("ledger.state.couchDBConfig.username")
 		password := viper.GetString("ledger.state.couchDBConfig.password")
+		maxRetries := viper.GetInt("ledger.state.couchDBConfig.maxRetries")
+		maxRetriesOnStartup := viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup")
 
-		couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password)
+		couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password, maxRetries, maxRetriesOnStartup)
 		db, _ := couchdb.CreateCouchDatabase(*couchInstance, chainID)
 		//drop the test database
 		db.DropDatabase()
