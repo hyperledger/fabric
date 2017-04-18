@@ -201,11 +201,11 @@ func serve(args []string) error {
 
 		//this creates testchainid and sets up gossip
 		if err = peer.CreateChainFromBlock(block); err == nil {
-			fmt.Printf("create chain [%s]", chainID)
+			logger.Infof("create chain [%s]", chainID)
 			scc.DeploySysCCs(chainID)
 			logger.Infof("Deployed system chaincodes on %s", chainID)
 		} else {
-			fmt.Printf("create default chain [%s] failed with %s", chainID, err)
+			logger.Errorf("create default chain [%s] failed with %s", chainID, err)
 		}
 	}
 
@@ -226,8 +226,7 @@ func serve(args []string) error {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
-		fmt.Println()
-		fmt.Println(sig)
+		logger.Debugf("sig: %s", sig)
 		serve <- nil
 	}()
 
@@ -290,7 +289,7 @@ func registerChaincodeSupport(grpcServer *grpc.Server) {
 	//get chaincode startup timeout
 	tOut, err := strconv.Atoi(viper.GetString("chaincode.startuptimeout"))
 	if err != nil { //what went wrong ?
-		fmt.Printf("could not retrive timeout var...setting to 5secs\n")
+		logger.Warning("could not retrieve timeout var...setting to 5secs")
 		tOut = 5000
 	}
 	ccStartupTimeout := time.Duration(tOut) * time.Millisecond
@@ -313,7 +312,7 @@ func createEventHubServer(secureConfig comm.SecureServerConfig) (comm.GRPCServer
 
 	grpcServer, err := comm.NewGRPCServerFromListener(lis, secureConfig)
 	if err != nil {
-		fmt.Println("Failed to return new GRPC server: ", err)
+		logger.Errorf("Failed to return new GRPC server: %s", err)
 		return nil, err
 	}
 	ehServer := producer.NewEventsServer(
