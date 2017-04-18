@@ -69,7 +69,7 @@ func TestIsHistoryDBEnabledDefault(t *testing.T) {
 func TestIsHistoryDBEnabledTrue(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defer ledgertestutil.ResetConfigToDefaultValues()
-	viper.Set("ledger.state.historyDatabase", true)
+	viper.Set("ledger.history.enableHistoryDatabase", true)
 	updatedValue := IsHistoryDBEnabled()
 	testutil.AssertEquals(t, updatedValue, true) //test config returns true
 }
@@ -77,7 +77,7 @@ func TestIsHistoryDBEnabledTrue(t *testing.T) {
 func TestIsHistoryDBEnabledFalse(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defer ledgertestutil.ResetConfigToDefaultValues()
-	viper.Set("ledger.state.historyDatabase", false)
+	viper.Set("ledger.history.enableHistoryDatabase", false)
 	updatedValue := IsHistoryDBEnabled()
 	testutil.AssertEquals(t, updatedValue, false) //test config returns false
 }

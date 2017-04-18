@@ -45,7 +45,7 @@ type levelDBLockBasedHistoryEnv struct {
 
 func NewTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 
-	viper.Set("ledger.state.historyDatabase", "true")
+	viper.Set("ledger.history.enableHistoryDatabase", "true")
 
 	blockStorageTestEnv := newBlockStorageTestEnv(t)
 

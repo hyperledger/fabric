@@ -99,7 +99,7 @@ func GetQueryLimit() int {
 
 //IsHistoryDBEnabled exposes the historyDatabase variable
 func IsHistoryDBEnabled() bool {
-	return viper.GetBool("ledger.state.historyDatabase")
+	return viper.GetBool("ledger.history.enableHistoryDatabase")
 }
 
 // IsQueryReadsHashingEnabled enables or disables computing of hash
