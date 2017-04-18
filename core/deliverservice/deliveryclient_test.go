@@ -37,7 +37,13 @@ func init() {
 	msptesttools.LoadMSPSetupForTesting("../../msp/sampleconfig")
 }
 
-var lock = sync.Mutex{}
+const (
+	goRoutineTestWaitTimeout = time.Second * 10
+)
+
+var (
+	lock = sync.Mutex{}
+)
 
 type mockBlocksDelivererFactory struct {
 	mockCreate func() (blocksprovider.BlocksDeliverer, error)
@@ -349,7 +355,14 @@ func assertBlockDissemination(expectedSeq uint64, ch chan uint64, t *testing.T) 
 func ensureNoGoroutineLeak(t *testing.T) func() {
 	goroutineCountAtStart := runtime.NumGoroutine()
 	return func() {
-		time.Sleep(time.Second)
+		start := time.Now()
+		timeLimit := start.Add(goRoutineTestWaitTimeout)
+		for time.Now().Before(timeLimit) {
+			time.Sleep(time.Millisecond * 500)
+			if goroutineCountAtStart == runtime.NumGoroutine() {
+				return
+			}
+		}
 		assert.Equal(t, goroutineCountAtStart, runtime.NumGoroutine(), "Some goroutine(s) didn't finish: %s", getStackTrace())
 	}
 }
