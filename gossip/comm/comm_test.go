@@ -295,65 +295,44 @@ func TestGetConnectionInfo(t *testing.T) {
 	}
 }
 
-func TestBlackListPKIid(t *testing.T) {
+func TestCloseConn(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(1611, naiveSec)
-	comm2, _ := newCommInstance(1612, naiveSec)
-	comm3, _ := newCommInstance(1613, naiveSec)
-	comm4, _ := newCommInstance(1614, naiveSec)
 	defer comm1.Stop()
-	defer comm2.Stop()
-	defer comm3.Stop()
-	defer comm4.Stop()
+	acceptChan := comm1.Accept(acceptAll)
 
-	reader := func(instance string, out chan uint64, in <-chan proto.ReceivedMessage) {
-		for {
-			msg := <-in
-			if msg == nil {
-				return
-			}
-			out <- msg.GetGossipMessage().Nonce
-		}
+	err := generateCertificates("key.pem", "cert.pem")
+	defer os.Remove("cert.pem")
+	defer os.Remove("key.pem")
+	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+	tlsCfg := &tls.Config{
+		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{cert},
 	}
+	ta := credentials.NewTLS(tlsCfg)
 
-	out1 := make(chan uint64, 4)
-	out2 := make(chan uint64, 4)
-	out3 := make(chan uint64, 4)
-	out4 := make(chan uint64, 4)
-
-	go reader("comm1", out1, comm1.Accept(acceptAll))
-	go reader("comm2", out2, comm2.Accept(acceptAll))
-	go reader("comm3", out3, comm3.Accept(acceptAll))
-	go reader("comm4", out4, comm4.Accept(acceptAll))
-
-	// have comm1 BL comm3
-	comm1.BlackListPKIid([]byte("localhost:1613"))
-
-	// make comm3 send to 1 and 2
-	comm3.Send(createGossipMsg(), remotePeer(1612)) // out2++
-	comm3.Send(createGossipMsg(), remotePeer(1611))
-
-	waitForMessages(t, out2, 1, "comm2 should have received 1 message")
-
-	// make comm1 and comm2 send to comm3
-	comm1.Send(createGossipMsg(), remotePeer(1613))
-	comm2.Send(createGossipMsg(), remotePeer(1613)) // out3++
-	waitForMessages(t, out3, 1, "comm3 should have received 1 message")
-
-	// make comm1 and comm2 send to comm4 which is not blacklisted		// out4 += 4
-	comm1.Send(createGossipMsg(), remotePeer(1614))
-	comm2.Send(createGossipMsg(), remotePeer(1614))
-	comm1.Send(createGossipMsg(), remotePeer(1614))
-	comm2.Send(createGossipMsg(), remotePeer(1614))
-
-	// blacklist comm3 by comm2
-	comm2.BlackListPKIid([]byte("localhost:1613"))
-
-	// send from comm1 and comm2 to comm3 again
-	comm1.Send(createGossipMsg(), remotePeer(1613)) // shouldn't have an effect
-	comm2.Send(createGossipMsg(), remotePeer(1613)) // shouldn't have an effect
-
-	waitForMessages(t, out4, 4, "comm1 should have received 4 messages")
+	conn, err := grpc.Dial("localhost:1611", grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}), grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	assert.NoError(t, err, "%v", err)
+	cl := proto.NewGossipClient(conn)
+	stream, err := cl.GossipStream(context.Background())
+	assert.NoError(t, err, "%v", err)
+	c := &commImpl{}
+	hash := certHashFromRawCert(tlsCfg.Certificates[0].Certificate[0])
+	connMsg := c.createConnectionMsg(common.PKIidType("pkiID"), hash, api.PeerIdentityType("pkiID"), func(msg []byte) ([]byte, error) {
+		mac := hmac.New(sha256.New, hmacKey)
+		mac.Write(msg)
+		return mac.Sum(nil), nil
+	})
+	assert.NoError(t, stream.Send(connMsg.Envelope))
+	stream.Send(createGossipMsg().Envelope)
+	select {
+	case <-acceptChan:
+	case <-time.After(time.Second):
+		assert.Fail(t, "Didn't receive a message within a timely period")
+	}
+	comm1.CloseConn(&RemotePeer{PKIID: common.PKIidType("pkiID")})
+	time.Sleep(time.Second * 10)
+	assert.Error(t, stream.Send(createGossipMsg().Envelope), "Should have failed because connection is closed")
 }
 
 func TestParallelSend(t *testing.T) {

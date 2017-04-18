@@ -86,22 +86,21 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 	}
 
 	commInst := &commImpl{
-		selfCertHash:      certHash,
-		PKIID:             idMapper.GetPKIidOfCert(peerIdentity),
-		idMapper:          idMapper,
-		logger:            util.GetLogger(util.LoggingCommModule, fmt.Sprintf("%d", port)),
-		peerIdentity:      peerIdentity,
-		opts:              dialOpts,
-		port:              port,
-		lsnr:              ll,
-		gSrv:              s,
-		msgPublisher:      NewChannelDemultiplexer(),
-		lock:              &sync.RWMutex{},
-		deadEndpoints:     make(chan common.PKIidType, 100),
-		stopping:          int32(0),
-		exitChan:          make(chan struct{}, 1),
-		subscriptions:     make([]chan proto.ReceivedMessage, 0),
-		blackListedPKIIDs: make([]common.PKIidType, 0),
+		selfCertHash:  certHash,
+		PKIID:         idMapper.GetPKIidOfCert(peerIdentity),
+		idMapper:      idMapper,
+		logger:        util.GetLogger(util.LoggingCommModule, fmt.Sprintf("%d", port)),
+		peerIdentity:  peerIdentity,
+		opts:          dialOpts,
+		port:          port,
+		lsnr:          ll,
+		gSrv:          s,
+		msgPublisher:  NewChannelDemultiplexer(),
+		lock:          &sync.RWMutex{},
+		deadEndpoints: make(chan common.PKIidType, 100),
+		stopping:      int32(0),
+		exitChan:      make(chan struct{}, 1),
+		subscriptions: make([]chan proto.ReceivedMessage, 0),
 	}
 	commInst.connStore = newConnStore(commInst, commInst.logger)
 	commInst.idMapper.Put(idMapper.GetPKIidOfCert(peerIdentity), peerIdentity)
@@ -145,25 +144,24 @@ func NewCommInstance(s *grpc.Server, cert *tls.Certificate, idStore identity.Map
 }
 
 type commImpl struct {
-	skipHandshake     bool
-	selfCertHash      []byte
-	peerIdentity      api.PeerIdentityType
-	idMapper          identity.Mapper
-	logger            *logging.Logger
-	opts              []grpc.DialOption
-	connStore         *connectionStore
-	PKIID             []byte
-	port              int
-	deadEndpoints     chan common.PKIidType
-	msgPublisher      *ChannelDeMultiplexer
-	lock              *sync.RWMutex
-	lsnr              net.Listener
-	gSrv              *grpc.Server
-	exitChan          chan struct{}
-	stopping          int32
-	stopWG            sync.WaitGroup
-	subscriptions     []chan proto.ReceivedMessage
-	blackListedPKIIDs []common.PKIidType
+	skipHandshake bool
+	selfCertHash  []byte
+	peerIdentity  api.PeerIdentityType
+	idMapper      identity.Mapper
+	logger        *logging.Logger
+	opts          []grpc.DialOption
+	connStore     *connectionStore
+	PKIID         []byte
+	port          int
+	deadEndpoints chan common.PKIidType
+	msgPublisher  *ChannelDeMultiplexer
+	lock          *sync.RWMutex
+	lsnr          net.Listener
+	gSrv          *grpc.Server
+	exitChan      chan struct{}
+	stopping      int32
+	stopWG        sync.WaitGroup
+	subscriptions []chan proto.ReceivedMessage
 }
 
 func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
@@ -236,28 +234,6 @@ func (c *commImpl) Send(msg *proto.SignedGossipMessage, peers ...*RemotePeer) {
 			c.sendToEndpoint(peer, msg)
 		}(peer, msg)
 	}
-}
-
-func (c *commImpl) BlackListPKIid(PKIID common.PKIidType) {
-	c.logger.Info("Entering", PKIID)
-	defer c.logger.Info("Exiting")
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.connStore.closeByPKIid(PKIID)
-	c.blackListedPKIIDs = append(c.blackListedPKIIDs, PKIID)
-}
-
-func (c *commImpl) isPKIblackListed(p common.PKIidType) bool {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	for _, pki := range c.blackListedPKIIDs {
-		if bytes.Equal(pki, p) {
-			c.logger.Debug(p, ":", true)
-			return true
-		}
-	}
-	c.logger.Debug(p, ":", false)
-	return false
 }
 
 func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.SignedGossipMessage) {
@@ -464,10 +440,6 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 		return nil, fmt.Errorf("%s didn't send a pkiID", remoteAddress)
 	}
 
-	if c.isPKIblackListed(receivedMsg.PkiId) {
-		c.logger.Warning("Connection attempt from", remoteAddress, "but it is black-listed")
-		return nil, errors.New("Black-listed")
-	}
 	c.logger.Debug("Received", receivedMsg, "from", remoteAddress)
 	err = c.idMapper.Put(receivedMsg.PkiId, receivedMsg.Cert)
 	if err != nil {

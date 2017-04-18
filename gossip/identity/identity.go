@@ -18,9 +18,8 @@ package identity
 
 import (
 	"bytes"
-	"sync"
-
 	"errors"
+	"sync"
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -46,6 +45,10 @@ type Mapper interface {
 
 	// GetPKIidOfCert returns the PKI-ID of a certificate
 	GetPKIidOfCert(api.PeerIdentityType) common.PKIidType
+
+	// ListRevokedPeers returns a list of PKI-IDs that their corresponding
+	// peer identities have been revoked
+	ListRevokedPeers(isSuspected api.PeerSuspector) []common.PKIidType
 }
 
 // identityMapperImpl is a struct that implements Mapper
@@ -118,4 +121,32 @@ func (is *identityMapperImpl) Verify(vkID, signature, message []byte) error {
 // GetPKIidOfCert returns the PKI-ID of a certificate
 func (is *identityMapperImpl) GetPKIidOfCert(identity api.PeerIdentityType) common.PKIidType {
 	return is.mcs.GetPKIidOfCert(identity)
+}
+
+func (is *identityMapperImpl) ListRevokedPeers(isSuspected api.PeerSuspector) []common.PKIidType {
+	revokedIds := is.getRevokedCerts(isSuspected)
+	if len(revokedIds) == 0 {
+		return nil
+	}
+	is.Lock()
+	defer is.Unlock()
+	for _, pkiID := range revokedIds {
+		delete(is.pkiID2Cert, string(pkiID))
+	}
+	return revokedIds
+}
+
+func (is *identityMapperImpl) getRevokedCerts(isSuspected api.PeerSuspector) []common.PKIidType {
+	is.RLock()
+	defer is.RUnlock()
+	var revokedIds []common.PKIidType
+	for pkiID, cert := range is.pkiID2Cert {
+		if !isSuspected(cert) {
+			continue
+		}
+		if err := is.mcs.ValidateIdentity(cert); err != nil {
+			revokedIds = append(revokedIds, common.PKIidType(pkiID))
+		}
+	}
+	return revokedIds
 }

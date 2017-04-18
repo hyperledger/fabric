@@ -57,3 +57,7 @@ type MessageCryptoService interface {
 
 // PeerIdentityType is the peer's certificate
 type PeerIdentityType []byte
+
+// PeerSuspector returns whether a peer with a given identity is suspected
+// as being revoked, or its CA is revoked
+type PeerSuspector func(identity PeerIdentityType) bool
