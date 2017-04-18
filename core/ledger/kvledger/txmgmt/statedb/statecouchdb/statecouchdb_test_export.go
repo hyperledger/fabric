@@ -19,6 +19,7 @@ package statecouchdb
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
@@ -31,6 +32,7 @@ var username = ""
 var password = ""
 var maxRetries = 3
 var maxRetriesOnStartup = 10
+var connectionTimeout = time.Second * 60
 
 // TestVDBEnv provides a couch db backed versioned db for testing
 type TestVDBEnv struct {
@@ -57,7 +59,7 @@ func (env *TestVDBEnv) Cleanup(dbName string) {
 }
 func cleanupDB(dbName string) {
 	//create a new connection
-	couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password, maxRetries, maxRetriesOnStartup)
+	couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password, maxRetries, maxRetriesOnStartup, connectionTimeout)
 	db := couchdb.CouchDatabase{CouchInstance: *couchInstance, DBName: dbName}
 	//drop the test database
 	db.DropDatabase()
