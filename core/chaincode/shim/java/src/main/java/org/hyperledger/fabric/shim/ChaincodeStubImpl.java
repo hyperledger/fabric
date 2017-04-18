@@ -93,19 +93,19 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	}
 
 	/* (non-Javadoc)
-	 * @see org.hyperledger.fabric.shim.ChaincodeStub#getState(java.lang.String)
+	 * @see org.hyperledger.fabric.shim.ChaincodeStub#getState(String)
 	 */
 	@Override
-	public String getState(String key) {
-		return handler.handleGetState(key, txid).toStringUtf8();
+	public byte[] getState(String key) {
+		return handler.handleGetState(key, txid).toByteArray();
 	}
 
 	/* (non-Javadoc)
-	 * @see org.hyperledger.fabric.shim.ChaincodeStub#putState(java.lang.String, java.lang.String)
+	 * @see org.hyperledger.fabric.shim.ChaincodeStub#putRawState(java.lang.String, com.google.protobuf.ByteString)
 	 */
 	@Override
-	public void putState(String key, String value) {
-		handler.handlePutState(key, ByteString.copyFromUtf8(value), txid);
+	public void putState(String key, byte[] value) {
+		handler.handlePutState(key, ByteString.copyFrom(value), txid);
 	}
 
 	/* (non-Javadoc)
@@ -141,24 +141,6 @@ class ChaincodeStubImpl implements ChaincodeStub {
 			compositeName = chaincodeName;
 		}
 		return handler.handleInvokeChaincode(compositeName, args, this.txid);
-	}
-
-	// ------RAW CALLS------
-
-	/* (non-Javadoc)
-	 * @see org.hyperledger.fabric.shim.ChaincodeStub#getRawState(java.lang.String)
-	 */
-	@Override
-	public ByteString getRawState(String key) {
-		return handler.handleGetState(key, txid);
-	}
-
-	/* (non-Javadoc)
-	 * @see org.hyperledger.fabric.shim.ChaincodeStub#putRawState(java.lang.String, com.google.protobuf.ByteString)
-	 */
-	@Override
-	public void putRawState(String key, ByteString value) {
-		handler.handlePutState(key, value, txid);
 	}
 
 }
