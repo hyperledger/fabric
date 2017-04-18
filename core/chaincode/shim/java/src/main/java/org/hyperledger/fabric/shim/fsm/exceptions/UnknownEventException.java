@@ -14,20 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.fsm.exceptions;
+package org.hyperledger.fabric.shim.fsm.exceptions;
 
-public class CancelledException extends Exception {
+public class UnknownEventException extends Exception {
 
-	public final Exception error;
+	public final String event;
 	
-	public CancelledException() {
-		this(null);
-	}
-	
-	public CancelledException(Exception error) {
-		super("The transition was cancelled" + error == null ?
-				"" : " with error " + error.toString());
-		this.error = error;
+	public UnknownEventException(String event) {
+		super("Event '" + event + "' does not exist");
+		this.event = event;
 	}
 	
 }

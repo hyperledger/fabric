@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.shim;
+package org.hyperledger.fabric.shim;
 
 import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.COMPLETED;
 import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.DEL_STATE;
@@ -27,10 +27,10 @@ import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.
 import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.REGISTERED;
 import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.RESPONSE;
 import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.TRANSACTION;
-import static org.hyperledger.java.fsm.CallbackType.AFTER_EVENT;
-import static org.hyperledger.java.fsm.CallbackType.BEFORE_EVENT;
-import static org.hyperledger.java.shim.HandlerHelper.newCompletedEventMessage;
-import static org.hyperledger.java.shim.HandlerHelper.newErrorEventMessage;
+import static org.hyperledger.fabric.shim.HandlerHelper.newCompletedEventMessage;
+import static org.hyperledger.fabric.shim.HandlerHelper.newErrorEventMessage;
+import static org.hyperledger.fabric.shim.fsm.CallbackType.AFTER_EVENT;
+import static org.hyperledger.fabric.shim.fsm.CallbackType.BEFORE_EVENT;
 
 import java.util.HashMap;
 import java.util.List;
@@ -45,13 +45,13 @@ import org.hyperledger.fabric.protos.peer.Chaincode.ChaincodeSpec;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.PutStateInfo;
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
-import org.hyperledger.java.fsm.CBDesc;
-import org.hyperledger.java.fsm.Event;
-import org.hyperledger.java.fsm.EventDesc;
-import org.hyperledger.java.fsm.FSM;
-import org.hyperledger.java.fsm.exceptions.CancelledException;
-import org.hyperledger.java.fsm.exceptions.NoTransitionException;
-import org.hyperledger.java.helper.Channel;
+import org.hyperledger.fabric.shim.fsm.CBDesc;
+import org.hyperledger.fabric.shim.fsm.Event;
+import org.hyperledger.fabric.shim.fsm.EventDesc;
+import org.hyperledger.fabric.shim.fsm.FSM;
+import org.hyperledger.fabric.shim.fsm.exceptions.CancelledException;
+import org.hyperledger.fabric.shim.fsm.exceptions.NoTransitionException;
+import org.hyperledger.fabric.shim.helper.Channel;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -729,7 +729,7 @@ public class Handler {
 		}
 	}
 
-	// handleMessage message handles loop for org.hyperledger.java.shim side of chaincode/validator stream.
+	// handleMessage message handles loop for org.hyperledger.fabric.shim side of chaincode/validator stream.
 	public synchronized void handleMessage(ChaincodeMessage message) throws Exception {
 
 		if (message.getType() == ChaincodeMessage.Type.KEEPALIVE){
@@ -743,7 +743,7 @@ public class Handler {
 		logger.debug(String.format("[%s]Handling ChaincodeMessage of type: %s(state:%s)", shortID(message), message.getType(), fsm.current()));
 
 		if (fsm.eventCannotOccur(message.getType().toString())) {
-			String errStr = String.format("[%s]Chaincode handler org.hyperledger.java.fsm cannot handle message (%s) with payload size (%d) while in state: %s",
+			String errStr = String.format("[%s]Chaincode handler org.hyperledger.fabric.shim.fsm cannot handle message (%s) with payload size (%d) while in state: %s",
 					message.getTxid(), message.getType(), message.getPayload().size(), fsm.current());
 			serialSend(newErrorEventMessage(message.getTxid(), errStr));
 			throw new RuntimeException(errStr);

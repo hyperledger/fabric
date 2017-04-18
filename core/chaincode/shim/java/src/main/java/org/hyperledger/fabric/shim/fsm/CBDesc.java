@@ -14,10 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.fsm;
+package org.hyperledger.fabric.shim.fsm;
 
-public interface Callback {
+public class CBDesc {
 
-	public void run(Event event);
+	public final CallbackType type;
+	public final String trigger;
+	public final Callback callback;
 	
+	/**
+	 * 
+	 * @param type
+	 * @param trigger
+	 * @param callback
+	 */
+	public CBDesc(CallbackType type, String trigger, Callback callback) {
+		this.type = type;
+		this.trigger = trigger;
+		this.callback = callback;
+	}
+
 }

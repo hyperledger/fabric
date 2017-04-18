@@ -14,18 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.fsm;
+package org.hyperledger.fabric.shim.fsm;
 
 import java.util.HashMap;
 import java.util.HashSet;
 
-import org.hyperledger.java.fsm.exceptions.AsyncException;
-import org.hyperledger.java.fsm.exceptions.CancelledException;
-import org.hyperledger.java.fsm.exceptions.InTrasistionException;
-import org.hyperledger.java.fsm.exceptions.InvalidEventException;
-import org.hyperledger.java.fsm.exceptions.NoTransitionException;
-import org.hyperledger.java.fsm.exceptions.NotInTransitionException;
-import org.hyperledger.java.fsm.exceptions.UnknownEventException;
+import org.hyperledger.fabric.shim.fsm.exceptions.AsyncException;
+import org.hyperledger.fabric.shim.fsm.exceptions.CancelledException;
+import org.hyperledger.fabric.shim.fsm.exceptions.InTrasistionException;
+import org.hyperledger.fabric.shim.fsm.exceptions.InvalidEventException;
+import org.hyperledger.fabric.shim.fsm.exceptions.NoTransitionException;
+import org.hyperledger.fabric.shim.fsm.exceptions.NotInTransitionException;
+import org.hyperledger.fabric.shim.fsm.exceptions.UnknownEventException;
 
 public class FSM {
 

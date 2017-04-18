@@ -14,14 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.fsm;
+package org.hyperledger.fabric.shim.fsm;
 
-public enum CallbackType {
+import org.hyperledger.fabric.shim.fsm.exceptions.NotInTransitionException;
+
+public class Transitioner {
 	
-	NONE,
-	BEFORE_EVENT,
-	LEAVE_STATE,
-	ENTER_STATE,
-	AFTER_EVENT;
+	public void transition(FSM fsm) throws NotInTransitionException {
+		if (fsm.transition == null) {
+			throw new NotInTransitionException();
+		}
+		fsm.transition.run();
+		fsm.transition = null;
+	}
 	
 }

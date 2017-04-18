@@ -18,9 +18,9 @@ package example;
 
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hyperledger.java.shim.ChaincodeHelper.newBadRequestResponse;
-import static org.hyperledger.java.shim.ChaincodeHelper.newInternalServerErrorResponse;
-import static org.hyperledger.java.shim.ChaincodeHelper.newSuccessResponse;
+import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
+import static org.hyperledger.fabric.shim.ChaincodeHelper.newInternalServerErrorResponse;
+import static org.hyperledger.fabric.shim.ChaincodeHelper.newSuccessResponse;
 
 import java.util.List;
 
@@ -29,8 +29,8 @@ import javax.json.Json;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
-import org.hyperledger.java.shim.ChaincodeBase;
-import org.hyperledger.java.shim.ChaincodeStub;
+import org.hyperledger.fabric.shim.ChaincodeBase;
+import org.hyperledger.fabric.shim.ChaincodeStub;
 
 public class Example02 extends ChaincodeBase {
 	

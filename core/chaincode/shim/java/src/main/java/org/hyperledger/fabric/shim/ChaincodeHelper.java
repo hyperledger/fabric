@@ -11,7 +11,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.hyperledger.java.shim;
+package org.hyperledger.fabric.shim;
 
 import static org.hyperledger.fabric.protos.common.Common.Status.BAD_REQUEST;
 import static org.hyperledger.fabric.protos.common.Common.Status.FORBIDDEN;

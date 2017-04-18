@@ -14,24 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.java.fsm;
+package org.hyperledger.fabric.shim;
 
-public class CBDesc {
+import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage;
 
-	public final CallbackType type;
-	public final String trigger;
-	public final Callback callback;
+public class NextStateInfo {
+
+	public ChaincodeMessage message;
+	public boolean sendToCC;
 	
-	/**
-	 * 
-	 * @param type
-	 * @param trigger
-	 * @param callback
-	 */
-	public CBDesc(CallbackType type, String trigger, Callback callback) {
-		this.type = type;
-		this.trigger = trigger;
-		this.callback = callback;
+	public NextStateInfo(ChaincodeMessage message, boolean sendToCC) {
+		this.message = message;
+		this.sendToCC = sendToCC;
 	}
-
+	
 }
