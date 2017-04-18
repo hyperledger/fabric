@@ -32,7 +32,6 @@ import static org.hyperledger.java.fsm.CallbackType.BEFORE_EVENT;
 import static org.hyperledger.java.shim.HandlerHelper.newCompletedEventMessage;
 import static org.hyperledger.java.shim.HandlerHelper.newErrorEventMessage;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -208,15 +207,15 @@ public class Handler {
 				
 				// Get the function and args from Payload
 				final ChaincodeInput input = ChaincodeInput.parseFrom(message.getPayload());
-				
+					
 				// Mark as a transaction (allow put/del state)
 				markIsTransaction(message.getTxid(), true);
 				
 				// Create the ChaincodeStub which the chaincode can use to callback
-				final ChaincodeStub stub = new ChaincodeStub(message.getTxid(), this);
+				final ChaincodeStub stub = new ChaincodeStub(message.getTxid(), this, input.getArgsList());
 				
 				// Call chaincode's Run
-				final Response result = chaincode.run(stub, getFunction(input.getArgsList()), getParameters(input.getArgsList()));
+				final Response result = chaincode.init(stub);
 				logger.debug(String.format(String.format("[%s]Init succeeded. Sending %s", shortID(message), COMPLETED)));
 				
 				if(result.getStatus() == Status.SUCCESS_VALUE) {
@@ -250,19 +249,6 @@ public class Handler {
 				deleteIsTransaction(message.getTxid());
 			}
 		}).start();
-	}
-
-	private String getFunction(List<ByteString> args) {
-		return (args.size() > 0) ? args.get(0).toStringUtf8() : "";
-	}
-
-	private String[] getParameters(List<ByteString> args) {
-	    	final ArrayList<String> results = new ArrayList<>();
-	    	// skip arg[0], that is the function name
-	    	for(int i = 1; i < args.size(); i++) {
-	    	    results.add(args.get(i).toStringUtf8());
-	    	}
-		return results.toArray(new String[results.size()]);
 	}
 
 	// enterInitState will initialize the chaincode if entering init from established.
@@ -305,12 +291,12 @@ public class Handler {
 				markIsTransaction(message.getTxid(), true);
 
 				// Create the ChaincodeStub which the chaincode can use to callback
-				final ChaincodeStub stub = new ChaincodeStub(message.getTxid(), this);
+				final ChaincodeStub stub = new ChaincodeStub(message.getTxid(), this, input.getArgsList());
 
 				// Call chaincode's Run
 				Response response;
 				try {
-					response = chaincode.run(stub, getFunction(input.getArgsList()), getParameters(input.getArgsList()));
+					response = chaincode.invoke(stub);
 				} catch (Throwable throwable) {
 					// Send ERROR message to chaincode support and change state
 					logger.error(String.format("[%s]Error running chaincode. Transaction execution failed. Sending %s", shortID(message), ERROR));

@@ -42,14 +42,23 @@ import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import io.netty.handler.ssl.SslContext;
 
-public abstract class ChaincodeBase {
+public abstract class ChaincodeBase implements Chaincode {
 
+	/* (non-Javadoc)
+	 * @see org.hyperledger.java.shim.Chaincode#init(org.hyperledger.java.shim.ChaincodeStub)
+	 */
+	@Override
+	public abstract Response init(ChaincodeStub stub);
+	
+	/* (non-Javadoc)
+	 * @see org.hyperledger.java.shim.Chaincode#invoke(org.hyperledger.java.shim.ChaincodeStub)
+	 */
+	@Override
+	public abstract Response invoke(ChaincodeStub stub);
+	
     private static Log logger = LogFactory.getLog(ChaincodeBase.class);
-
-    public abstract Response run(ChaincodeStub stub, String function, String[] args);
-
+    
     public abstract String getChaincodeID();
-
     public static final String DEFAULT_HOST = "127.0.0.1";
     public static final int DEFAULT_PORT = 7051;
 

@@ -22,6 +22,8 @@ import static org.hyperledger.java.shim.ChaincodeHelper.newBadRequestResponse;
 import static org.hyperledger.java.shim.ChaincodeHelper.newInternalServerErrorResponse;
 import static org.hyperledger.java.shim.ChaincodeHelper.newSuccessResponse;
 
+import java.util.List;
+
 import javax.json.Json;
 
 import org.apache.commons.logging.Log;
@@ -35,11 +37,33 @@ public class Example02 extends ChaincodeBase {
 	private static Log log = LogFactory.getLog(Example02.class);
 
 	@Override
-	public Response run(ChaincodeStub stub, String function, String[] args) {
+	public Response init(ChaincodeStub stub) {
 		try {
-			switch (function) {
+			final List<String> args = stub.getArgsAsStrings();
+			switch (args.get(0)) {
 			case "init":
-				return init(stub, args);
+				return init(stub, args.stream().skip(1).toArray(String[]::new));
+			default:
+				return newBadRequestResponse(format("Unknown function: %s", args.get(0)));
+			}
+		} catch (NumberFormatException e) {
+			return newBadRequestResponse(e.toString());
+		} catch (IllegalArgumentException e) {
+			return newBadRequestResponse(e.getMessage());
+		} catch (Throwable e) {
+			return newInternalServerErrorResponse(e);
+		}
+	}
+	
+	@Override
+	public Response invoke(ChaincodeStub stub) {
+
+		try {
+			final List<String> argList = stub.getArgsAsStrings();
+			final String function = argList.get(0);
+			final String[] args = argList.stream().skip(1).toArray(String[]::new);
+			
+			switch (function) {
 			case "invoke":
 				return invoke(stub, args);
 			case "delete":
@@ -59,7 +83,7 @@ public class Example02 extends ChaincodeBase {
 
 	}
 
-	public Response init(ChaincodeStub stub, String[] args) {
+	private Response init(ChaincodeStub stub, String[] args) {
 		if (args.length != 4) throw new IllegalArgumentException("Incorrect number of arguments. Expecting: init(account1, amount1, account2, amount2)");
 
 		final String accountKey1 = args[0];
@@ -109,7 +133,7 @@ public class Example02 extends ChaincodeBase {
 		return newSuccessResponse(format("Successfully transferred %d assets from %s to %s.", transferAmount, fromKey, toKey));
 	}
 
-	public Response delete(ChaincodeStub stub, String args[]) {
+	private Response delete(ChaincodeStub stub, String args[]) {
 		if (args.length != 1)
 			throw new IllegalArgumentException("Incorrect number of arguments. Expecting: delete(account)");
 		
@@ -120,7 +144,7 @@ public class Example02 extends ChaincodeBase {
 		return newSuccessResponse();
 	}
 	
-	public Response query(ChaincodeStub stub, String[] args) {
+	private Response query(ChaincodeStub stub, String[] args) {
 		if (args.length != 1) throw new IllegalArgumentException("Incorrect number of arguments. Expecting: query(account)");
 
 		final String accountKey = args[0];
