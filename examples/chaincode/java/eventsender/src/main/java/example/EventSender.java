@@ -44,12 +44,11 @@ public class EventSender extends ChaincodeBase {
 	public Response invoke(ChaincodeStub stub) {
 
 		try {
-			final List<String> argList = stub.getArgsAsStrings();
-			final String function = argList.get(0);
+			final String function = stub.getFunction();
 
 			switch (function) {
 			case "invoke":
-				return doInvoke(stub, argList.stream().skip(1).collect(toList()));
+				return doInvoke(stub, stub.getParameters());
 			case "query":
 				return doQuery(stub);
 			default:
