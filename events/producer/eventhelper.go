@@ -22,21 +22,17 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 )
-
-var logger *logging.Logger // package-level logger
-
-func init() {
-	logger = logging.MustGetLogger("eventhub_producer")
-}
 
 // SendProducerBlockEvent sends block event to clients
 func SendProducerBlockEvent(block *common.Block) error {
+	logger.Debugf("Entry")
+	defer logger.Debugf("Exit")
 	bevent := &common.Block{}
 	bevent.Header = block.Header
 	bevent.Metadata = block.Metadata
 	bevent.Data = &common.BlockData{}
+	var channelId string
 	for _, d := range block.Data.Data {
 		ebytes := d
 		if ebytes != nil {
@@ -53,8 +49,10 @@ func SendProducerBlockEvent(block *common.Block) error {
 				if err != nil {
 					return err
 				}
+				channelId = chdr.ChannelId
 
 				if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+					logger.Debugf("Channel [%s]: Block event for block number [%d] contains transaction id: %s", channelId, block.Header.Number, chdr.TxId)
 					tx, err := utils.GetTransaction(payload.Data)
 					if err != nil {
 						return fmt.Errorf("error unmarshalling transaction payload for block event: %s", err)
@@ -103,6 +101,9 @@ func SendProducerBlockEvent(block *common.Block) error {
 		}
 		bevent.Data.Data = append(bevent.Data.Data, ebytes)
 	}
+
+	logger.Infof("Channel [%s]: Sending event for block number [%d]", channelId, block.Header.Number)
+
 	return Send(CreateBlockEvent(bevent))
 }
 

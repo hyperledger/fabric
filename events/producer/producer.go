@@ -27,7 +27,7 @@ import (
 
 const defaultTimeout = time.Second * 3
 
-var producerLogger = logging.MustGetLogger("eventhub_producer")
+var logger = logging.MustGetLogger("eventhub_producer")
 
 // EventsServer implementation of the Peer service
 type EventsServer struct {
@@ -57,19 +57,18 @@ func (p *EventsServer) Chat(stream pb.Events_ChatServer) error {
 	for {
 		in, err := stream.Recv()
 		if err == io.EOF {
-			producerLogger.Debug("Received EOF, ending Chat")
+			logger.Debug("Received EOF, ending Chat")
 			return nil
 		}
 		if err != nil {
 			e := fmt.Errorf("error during Chat, stopping handler: %s", err)
-			producerLogger.Error(e.Error())
+			logger.Error(e.Error())
 			return e
 		}
 		err = handler.HandleMessage(in)
 		if err != nil {
-			producerLogger.Errorf("error handling message: %s", err)
+			logger.Errorf("Error handling message: %s", err)
 			return err
 		}
-
 	}
 }
