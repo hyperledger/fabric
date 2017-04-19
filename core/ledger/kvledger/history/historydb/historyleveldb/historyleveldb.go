@@ -103,13 +103,12 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 
 	// write each tran's write set to history db
 	for _, envBytes := range block.Data.Data {
-		tranNo++
 
 		// If the tran is marked as invalid, skip it
-		// Note, tranNo starts at 1 for height, while tranIndex starts at 0 for invalid array
-		if txsFilter.IsInvalid(int(tranNo) - 1) {
+		if txsFilter.IsInvalid(int(tranNo)) {
 			logger.Debugf("Channel [%s]: Skipping history write for invalid transaction number %d",
 				historyDB.dbName, tranNo)
+			tranNo++
 			continue
 		}
 
@@ -163,6 +162,7 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 		} else {
 			logger.Debugf("Skipping transaction [%d] since it is not an endorsement transaction\n", tranNo)
 		}
+		tranNo++
 	}
 
 	// add savepoint for recovery purpose

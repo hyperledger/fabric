@@ -127,7 +127,7 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 
 			//txRWSet != nil => t is valid
 			if txRWSet != nil {
-				committingTxHeight := version.NewHeight(block.Header.Number, uint64(txIndex+1))
+				committingTxHeight := version.NewHeight(block.Header.Number, uint64(txIndex))
 				addWriteSetToBatch(txRWSet, committingTxHeight, updates)
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_VALID)
 			}
