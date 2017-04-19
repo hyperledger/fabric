@@ -1,5 +1,6 @@
 /*
  Copyright Digital Asset Holdings, LLC 2016 All Rights Reserved.
+ Copyright IBM Corp. 2017 All Rights Reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -19,8 +20,8 @@ package errors
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"runtime"
-	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	logging "github.com/op/go-logging"
@@ -29,10 +30,13 @@ import (
 // MaxCallStackLength is the maximum length of the stored call stack
 const MaxCallStackLength = 30
 
-var errorLogger = logging.MustGetLogger("error")
+var (
+	errorLogger      = logging.MustGetLogger("error")
+	componentPattern = "[A-Za-z]{3}"
+	reasonPattern    = "[0-9]{3}"
+)
 
-// CallStackError is a general interface for
-// Fabric errors
+// CallStackError is a general interface for Fabric errors
 type CallStackError interface {
 	error
 	GetStack() string
@@ -40,124 +44,137 @@ type CallStackError interface {
 	GetComponentCode() string
 	GetReasonCode() string
 	Message() string
+	GenerateStack(bool) CallStackError
+	WrapError(error) CallStackError
 }
 
 type callstack []uintptr
 
-// the main idea is to have an error package
-// HLError is the 'super class' of all errors
-// It has a predefined, general error message
-// One has to create his own error in order to
-// create something more useful
-type hlError struct {
+// callError is the 'super class' of all errors
+type callError struct {
 	stack         callstack
 	componentcode string
 	reasoncode    string
 	message       string
 	args          []interface{}
 	stackGetter   func(callstack) string
+	prevErr       error
 }
 
-// newHLError creates a general HL error with a predefined message
-// and a stacktrace.
-func newHLError(debug bool) *hlError {
-	e := &hlError{}
-	setupHLError(e, debug)
-	return e
-}
-
-func setupHLError(e *hlError, debug bool) {
-	e.componentcode = "UTILITY"
-	e.reasoncode = "UNKNOWNERROR"
-	e.message = "An unknown error occurred."
-	if !debug {
+func setupCallError(e *callError, generateStack bool) {
+	if !generateStack {
 		e.stackGetter = noopGetStack
 		return
 	}
 	e.stackGetter = getStack
 	stack := make([]uintptr, MaxCallStackLength)
-	skipCallersAndSetupHL := 2
-	length := runtime.Callers(skipCallersAndSetupHL, stack[:])
+	skipCallersAndSetup := 2
+	length := runtime.Callers(skipCallersAndSetup, stack[:])
 	e.stack = stack[:length]
 }
 
 // Error comes from the error interface
-func (h *hlError) Error() string {
-	return h.Message()
+func (e *callError) Error() string {
+	return e.Message()
 }
 
 // GetStack returns the call stack as a string
-func (h *hlError) GetStack() string {
-	return h.stackGetter(h.stack)
+func (e *callError) GetStack() string {
+	return e.stackGetter(e.stack)
 }
 
 // GetComponentCode returns the component name
-func (h *hlError) GetComponentCode() string {
-	return h.componentcode
+func (e *callError) GetComponentCode() string {
+	return e.componentcode
 }
 
 // GetReasonCode returns the reason code - i.e. why the error occurred
-func (h *hlError) GetReasonCode() string {
-	return h.reasoncode
+func (e *callError) GetReasonCode() string {
+	return e.reasoncode
 }
 
 // GetErrorCode returns a formatted error code string
-func (h *hlError) GetErrorCode() string {
-	return fmt.Sprintf("%s_%s", h.componentcode, h.reasoncode)
+func (e *callError) GetErrorCode() string {
+	return fmt.Sprintf("%s:%s", e.componentcode, e.reasoncode)
 }
 
 // Message returns the corresponding error message for this error in default
 // language.
-func (h *hlError) Message() string {
-	message := h.GetErrorCode() + " - " + fmt.Sprintf(h.message, h.args...)
-
+func (e *callError) Message() string {
+	message := e.GetErrorCode() + " - " + fmt.Sprintf(e.message, e.args...)
 	// check that the error has a callstack before proceeding
-	if h.GetStack() != "" {
-		// initialize logging level for errors from core.yaml. it can also be set
-		// for code running on the peer dynamically via CLI using
-		// "peer logging setlevel error <log-level>"
-		errorLogLevelString := flogging.GetModuleLevel("error")
-
-		if errorLogLevelString == logging.DEBUG.String() {
-			message = appendCallStack(message, h.GetStack())
+	if e.GetStack() != "" {
+		// stacktrace is enabled when `logging.error` in core.yaml is set to
+		// DEBUG. it can also be toggled for code running on the peer dynamically
+		// via CLI using `peer logging setlevel error <log-level>`
+		errorLevel := flogging.GetModuleLevel("error")
+		if errorLevel == logging.DEBUG.String() {
+			message = appendCallStack(message, e.GetStack())
 		}
 	}
-
+	if e.prevErr != nil {
+		message += "\nCaused by: " + e.prevErr.Error()
+	}
 	return message
 }
 
 func appendCallStack(message string, callstack string) string {
-	messageWithCallStack := message + "\n" + callstack
-
-	return messageWithCallStack
+	return message + "\n" + callstack
 }
 
-// Error creates a CallStackError using a specific Component Code and
-// Reason Code (no callstack is recorded)
+// Error creates a CallStackError using a specific component code and reason
+// code (no callstack is generated)
 func Error(componentcode string, reasoncode string, message string, args ...interface{}) CallStackError {
-	return newCustomError(componentcode, reasoncode, message, false, args...)
+	return newError(componentcode, reasoncode, message, args...).GenerateStack(false)
 }
 
-// ErrorWithCallstack creates a CallStackError using a specific Component Code and
-// Reason Code and fills its callstack
+// ErrorWithCallstack creates a CallStackError using a specific component code
+// and reason code and generates its callstack
 func ErrorWithCallstack(componentcode string, reasoncode string, message string, args ...interface{}) CallStackError {
-	return newCustomError(componentcode, reasoncode, message, true, args...)
+	return newError(componentcode, reasoncode, message, args...).GenerateStack(true)
 }
 
-func newCustomError(componentcode string, reasoncode string, message string, generateStack bool, args ...interface{}) CallStackError {
-	e := &hlError{}
-	setupHLError(e, generateStack)
-	if componentcode != "" {
-		e.componentcode = strings.ToUpper(componentcode)
+func newError(componentcode string, reasoncode string, message string, args ...interface{}) CallStackError {
+	e := &callError{}
+	e.setErrorFields(componentcode, reasoncode, message, args...)
+	return e
+}
+
+// GenerateStack generates the callstack for a CallStackError
+func (e *callError) GenerateStack(flag bool) CallStackError {
+	setupCallError(e, flag)
+	return e
+}
+
+// WrapError wraps a previous error into a CallStackError
+func (e *callError) WrapError(prevErr error) CallStackError {
+	e.prevErr = prevErr
+	return e
+}
+
+func (e *callError) setErrorFields(componentcode string, reasoncode string, message string, args ...interface{}) {
+	if isValidComponentOrReasonCode(componentcode, componentPattern) {
+		e.componentcode = componentcode
 	}
-	if reasoncode != "" {
-		e.reasoncode = strings.ToUpper(reasoncode)
+	if isValidComponentOrReasonCode(reasoncode, reasonPattern) {
+		e.reasoncode = reasoncode
 	}
 	if message != "" {
 		e.message = message
 	}
 	e.args = args
-	return e
+}
+
+func isValidComponentOrReasonCode(componentOrReasonCode string, regExp string) bool {
+	if componentOrReasonCode == "" {
+		return false
+	}
+	re, _ := regexp.Compile(regExp)
+	matched := re.FindString(componentOrReasonCode)
+	if len(matched) != len(componentOrReasonCode) {
+		return false
+	}
+	return true
 }
 
 func getStack(stack callstack) string {
@@ -169,12 +186,15 @@ func getStack(stack callstack) string {
 	// are not useful for debugging
 	const firstNonErrorModuleCall int = 2
 	stack = stack[firstNonErrorModuleCall:]
-	for _, pc := range stack {
+	for i, pc := range stack {
 		f := runtime.FuncForPC(pc)
 		file, line := f.FileLine(pc)
-		buf.WriteString(fmt.Sprintf("%s:%d %s\n", file, line, f.Name()))
+		if i != len(stack)-1 {
+			buf.WriteString(fmt.Sprintf("%s:%d %s\n", file, line, f.Name()))
+		} else {
+			buf.WriteString(fmt.Sprintf("%s:%d %s", file, line, f.Name()))
+		}
 	}
-
 	return fmt.Sprintf("%s", buf.Bytes())
 }
 
