@@ -136,7 +136,7 @@ func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.Version
 func removeDataWrapper(wrappedValue []byte, attachments []*couchdb.Attachment) ([]byte, version.Height) {
 
 	//initialize the return value
-	returnValue := []byte{} // TODO: empty byte or nil
+	returnValue := []byte{}
 
 	//initialize a default return version
 	returnVersion := version.NewHeight(0, 0)
