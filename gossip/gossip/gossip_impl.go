@@ -483,8 +483,13 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*proto.SignedGossipMessage) {
 	}
 
 	// Finally, gossip the remaining messages
-	peers2Send = filter.SelectPeers(g.conf.PropagatePeerNum, g.disc.GetMembership())
 	for _, msg := range msgs {
+		if !msg.IsAliveMsg() {
+			g.logger.Error("Unknown message type", msg)
+			continue
+		}
+		selectByOriginOrg := g.peersByOriginOrgPolicy(discovery.NetworkMember{PKIid: msg.GetAliveMsg().Membership.PkiId})
+		peers2Send := filter.SelectPeers(g.conf.PropagatePeerNum, g.disc.GetMembership(), selectByOriginOrg)
 		g.sendAndFilterSecrets(msg, peers2Send...)
 	}
 }
@@ -1021,12 +1026,20 @@ func (g *gossipServiceImpl) disclosurePolicy(remotePeer *discovery.NetworkMember
 			}
 			org := g.getOrgOfPeer(msg.GetAliveMsg().Membership.PkiId)
 			if len(org) == 0 {
-				// Panic here, because we are somehow trying to send an AliveMessage
-				// without having its matching identity beforehand, and the message
-				// should have never reached this far- but should've been dropped
-				// at signature validation.
-				g.logger.Panic("Unable to determine org of message", msg.GossipMessage)
+				g.logger.Warning("Unable to determine org of message", msg.GossipMessage)
+				// Don't disseminate messages who's origin org is unknown
+				return false
 			}
+
+			// Target org and the message are from the same org
+			fromSameForeignOrg := bytes.Equal(remotePeerOrg, org)
+			// The message is from my org
+			fromMyOrg := bytes.Equal(g.selfOrg, org)
+			// Forward to target org only messages from our org, or from the target org itself.
+			if !(fromSameForeignOrg || fromMyOrg) {
+				return false
+			}
+
 			// Pass the alive message only if the alive message is in the same org as the remote peer
 			// or the message has an external endpoint, and the remote peer also has one
 			return bytes.Equal(org, remotePeerOrg) || msg.GetAliveMsg().Membership.Endpoint != "" && remotePeer.Endpoint != ""
@@ -1036,6 +1049,34 @@ func (g *gossipServiceImpl) disclosurePolicy(remotePeer *discovery.NetworkMember
 			}
 			return msg.Envelope
 		}
+}
+
+func (g *gossipServiceImpl) peersByOriginOrgPolicy(peer discovery.NetworkMember) filter.RoutingFilter {
+	peersOrg := g.getOrgOfPeer(peer.PKIid)
+	if len(peersOrg) == 0 {
+		g.logger.Warning("Unable to determine organization of peer", peer)
+		// Don't disseminate messages who's origin org is undetermined
+		return filter.SelectNonePolicy
+	}
+
+	if bytes.Equal(g.selfOrg, peersOrg) {
+		// Disseminate messages from our org to all known organizations.
+		// IMPORTANT: Currently a peer cannot un-join a channel, so the only way
+		// of making gossip stop talking to an organization is by having the MSP
+		// refuse validating messages from it.
+		return filter.SelectAllPolicy
+	}
+
+	// Else, select peers from the origin's organization,
+	// and also peers from our own organization
+	return func(member discovery.NetworkMember) bool {
+		memberOrg := g.getOrgOfPeer(member.PKIid)
+		if len(memberOrg) == 0 {
+			return false
+		}
+		isFromMyOrg := bytes.Equal(g.selfOrg, memberOrg)
+		return isFromMyOrg || bytes.Equal(memberOrg, peersOrg)
+	}
 }
 
 // partitionMessages receives a predicate and a slice of gossip messages
