@@ -39,7 +39,7 @@ var lastKeyIndicator = byte(0x01)
 
 var binaryWrapper = "valueBytes"
 
-//TODO querySkip is implemented for future use by query paging
+//querySkip is implemented for future use by query paging
 //currently defaulted to 0 and is not used
 var querySkip = 0
 
