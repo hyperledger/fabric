@@ -17,6 +17,7 @@ limitations under the License.
 package historyleveldb
 
 import (
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -27,10 +28,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	putils "github.com/hyperledger/fabric/protos/utils"
-	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("historyleveldb")
+var logger = flogging.MustGetLogger("historyleveldb")
 
 var compositeKeySep = []byte{0x00}
 var savePointKey = []byte{0x00}

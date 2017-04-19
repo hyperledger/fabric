@@ -20,15 +20,15 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/op/go-logging"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	goleveldbutil "github.com/syndtr/goleveldb/leveldb/util"
 )
 
-var logger = logging.MustGetLogger("leveldbhelper")
+var logger = flogging.MustGetLogger("leveldbhelper")
 
 type dbState int32
 

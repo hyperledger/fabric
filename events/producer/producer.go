@@ -21,13 +21,13 @@ import (
 	"io"
 	"time"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/op/go-logging"
 )
 
 const defaultTimeout = time.Second * 3
 
-var logger = logging.MustGetLogger("eventhub_producer")
+var logger = flogging.MustGetLogger("eventhub_producer")
 
 // EventsServer implementation of the Peer service
 type EventsServer struct {

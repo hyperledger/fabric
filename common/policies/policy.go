@@ -24,6 +24,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	logging "github.com/op/go-logging"
 )
 
@@ -59,7 +60,7 @@ const (
 	BlockValidation = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "BlockValidation"
 )
 
-var logger = logging.MustGetLogger("common/policies")
+var logger = flogging.MustGetLogger("common/policies")
 
 // Policy is used to determine if a signature is valid
 type Policy interface {

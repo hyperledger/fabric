@@ -22,14 +22,14 @@ import (
 
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("ledgermgmt")
+var logger = flogging.MustGetLogger("ledgermgmt")
 
 // ErrLedgerAlreadyOpened is thrown by a CreateLedger call if a ledger with the given id is already opened
 var ErrLedgerAlreadyOpened = errors.New("Ledger already opened")

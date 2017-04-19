@@ -24,9 +24,9 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	configvaluesmsp "github.com/hyperledger/fabric/common/config/msp"
+	"github.com/hyperledger/fabric/common/flogging"
 
 	"github.com/hyperledger/fabric/msp"
-	"github.com/op/go-logging"
 )
 
 // LoadLocalMsp loads the local MSP from the specified directory
@@ -51,7 +51,7 @@ func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) er
 var m sync.Mutex
 var localMsp msp.MSP
 var mspMap map[string]msp.MSPManager = make(map[string]msp.MSPManager)
-var mspLogger = logging.MustGetLogger("msp")
+var mspLogger = flogging.MustGetLogger("msp")
 
 // GetManagerForChain returns the msp manager for the supplied
 // chain; if no such manager exists, one is created

@@ -21,19 +21,19 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/peer"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-var sysccLogger = logging.MustGetLogger("sysccapi")
+var sysccLogger = flogging.MustGetLogger("sccapi")
 
 // SystemChaincode defines the metadata needed to initialize system chaincode
 // when the fabric comes up. SystemChaincodes are installed by adding an

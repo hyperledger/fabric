@@ -27,13 +27,13 @@ import (
 
 	"io/ioutil"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -47,7 +47,7 @@ type Platform interface {
 	GenerateDockerBuild(spec *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error
 }
 
-var logger = logging.MustGetLogger("chaincode-platform")
+var logger = flogging.MustGetLogger("chaincode-platform")
 
 // Find returns the platform interface for the given platform type
 func Find(chaincodeType pb.ChaincodeSpec_Type) (Platform, error) {

@@ -27,6 +27,7 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/peer"
@@ -35,7 +36,6 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 )
 
 // PeerConfiger implements the configuration handler for the peer. For every
@@ -45,7 +45,7 @@ type PeerConfiger struct {
 	policyChecker policy.PolicyChecker
 }
 
-var cnflogger = logging.MustGetLogger("chaincode")
+var cnflogger = flogging.MustGetLogger("cscc")
 
 // These are function names from Invoke first parameter
 const (

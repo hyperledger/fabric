@@ -23,17 +23,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/op/go-logging"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	ehpb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-var consumerLogger = logging.MustGetLogger("eventhub_consumer")
+var consumerLogger = flogging.MustGetLogger("eventhub_consumer")
 
 //EventsClient holds the stream and adapter for consumer to work with
 type EventsClient struct {

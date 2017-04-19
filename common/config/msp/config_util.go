@@ -23,10 +23,10 @@ import (
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/utils"
 
-	logging "github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 )
 
-var logger = logging.MustGetLogger("configvalues/msp")
+var logger = flogging.MustGetLogger("configvalues/msp")
 
 const (
 	// ReadersPolicyKey is the key used for the read policy

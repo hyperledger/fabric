@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/flogging"
 	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -90,7 +91,7 @@ var logger *logging.Logger // package-level logger
 
 func init() {
 	// Init logger with module name
-	logger = logging.MustGetLogger("txvalidator")
+	logger = flogging.MustGetLogger("txvalidator")
 }
 
 // NewTxValidator creates new transactions validator

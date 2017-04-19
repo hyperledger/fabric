@@ -25,14 +25,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
-	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("statecouchdb")
+var logger = flogging.MustGetLogger("statecouchdb")
 
 var compositeKeySep = []byte{0x00}
 var lastKeyIndicator = byte(0x01)

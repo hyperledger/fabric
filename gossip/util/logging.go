@@ -41,19 +41,9 @@ const (
 
 var loggersByModules = make(map[string]*logging.Logger)
 var lock = sync.Mutex{}
-var logger = logging.MustGetLogger("gossip/util")
-
-// defaultSpec is used to set the default logging level for all the
-// gossip modules.
-var defaultSpec = "WARNING"
+var logger = flogging.MustGetLogger("gossip/util")
 
 func init() {
-	// This make sure we get a "leveled" logging using the default
-	// format and output location defined in the flogging package,
-	// when the gossip module is not called from a peer process.
-	flogging.InitFromSpec(defaultSpec)
-	logger.Debugf("Setting default logging level to %s.", defaultSpec)
-
 	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
 }
 
@@ -71,7 +61,7 @@ func GetLogger(module string, peerID string) *logging.Logger {
 	}
 
 	// Logger doesn't exist, create a new one
-	lgr := logging.MustGetLogger(module)
+	lgr := flogging.MustGetLogger(module)
 	loggersByModules[module] = lgr
 	return lgr
 }

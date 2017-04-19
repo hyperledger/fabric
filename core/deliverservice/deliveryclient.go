@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -34,7 +35,7 @@ import (
 var logger *logging.Logger // package-level logger
 
 func init() {
-	logger = logging.MustGetLogger("deliveryClient")
+	logger = flogging.MustGetLogger("deliveryClient")
 }
 
 var (

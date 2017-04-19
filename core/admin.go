@@ -19,7 +19,6 @@ package core
 import (
 	"os"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 
@@ -28,7 +27,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-var log = logging.MustGetLogger("server")
+var log = flogging.MustGetLogger("server")
 
 // NewAdminServer creates and returns a Admin service instance.
 func NewAdminServer() *ServerAdmin {

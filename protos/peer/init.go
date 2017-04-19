@@ -16,11 +16,14 @@ limitations under the License.
 
 package peer
 
-import "github.com/op/go-logging"
+import (
+	"github.com/hyperledger/fabric/common/flogging"
+	logging "github.com/op/go-logging"
+)
 
 var logger *logging.Logger
 
 func init() {
 	// Create package logger.
-	logger = logging.MustGetLogger("protos")
+	logger = flogging.MustGetLogger("protos")
 }

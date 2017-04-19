@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -32,10 +33,9 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("peer/gossip/mcs")
+var logger = flogging.MustGetLogger("peer/gossip/mcs")
 
 // mspMessageCryptoService implements the MessageCryptoService interface
 // using the peer MSPs (local and channel-related)

@@ -19,16 +19,16 @@ package escc
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	putils "github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 )
 
-var logger = logging.MustGetLogger("escc")
+var logger = flogging.MustGetLogger("escc")
 
 // EndorserOneValidSignature implements the default endorsement policy, which is to
 // sign the proposal hash and the read-write set

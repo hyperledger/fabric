@@ -37,10 +37,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("couchdb")
+var logger = flogging.MustGetLogger("couchdb")
 
 //time between retry attempts in milliseconds
 const retryWaitTime = 125

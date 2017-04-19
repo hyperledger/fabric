@@ -19,13 +19,13 @@ package cauthdsl
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mb "github.com/hyperledger/fabric/protos/msp"
-	"github.com/op/go-logging"
 )
 
-var cauthdslLogger = logging.MustGetLogger("cauthdsl")
+var cauthdslLogger = flogging.MustGetLogger("cauthdsl")
 
 // compile recursively builds a go evaluatable function corresponding to the policy specified
 func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal, deserializer msp.IdentityDeserializer) (func([]*cb.SignedData, []bool) bool, error) {

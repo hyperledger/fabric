@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 )
 
 var (
@@ -41,7 +41,7 @@ var (
 	// Factories' Initialization Error
 	factoriesInitError error
 
-	logger = logging.MustGetLogger("bccsp")
+	logger = flogging.MustGetLogger("bccsp")
 )
 
 // BCCSPFactory is used to get instances of the BCCSP interface.

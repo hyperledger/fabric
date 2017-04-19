@@ -17,13 +17,13 @@ limitations under the License.
 package rwsetutil
 
 import (
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
-	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("rwset")
+var logger = flogging.MustGetLogger("rwset")
 
 type nsRWs struct {
 	readMap          map[string]*kvrwset.KVRead //for mvcc validation

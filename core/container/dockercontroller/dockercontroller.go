@@ -28,6 +28,7 @@ import (
 	"regexp"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/common/flogging"
 	container "github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -37,7 +38,7 @@ import (
 )
 
 var (
-	dockerLogger = logging.MustGetLogger("dockercontroller")
+	dockerLogger = flogging.MustGetLogger("dockercontroller")
 	hostConfig   *docker.HostConfig
 )
 
@@ -255,7 +256,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 			is := bufio.NewReader(r)
 
 			// Acquire a custom logger for our chaincode, inheriting the level from the peer
-			containerLogger := logging.MustGetLogger(containerID)
+			containerLogger := flogging.MustGetLogger(containerID)
 			logging.SetLevel(logging.GetLevel("peer"), containerID)
 
 			for {

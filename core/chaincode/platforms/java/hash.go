@@ -29,13 +29,13 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	ccutil "github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("java/hash")
+var logger = flogging.MustGetLogger("java/hash")
 
 func getCodeFromHTTP(path string) (codegopath string, err error) {
 

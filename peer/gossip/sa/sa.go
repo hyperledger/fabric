@@ -17,12 +17,12 @@ limitations under the License.
 package sa
 
 import (
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("peer/gossip/sa")
+var logger = flogging.MustGetLogger("peer/gossip/sa")
 
 // mspSecurityAdvisor implements the SecurityAdvisor interface
 // using peer's MSPs.

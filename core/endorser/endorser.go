@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 	"golang.org/x/net/context"
 
 	"errors"
@@ -40,7 +40,7 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
-var endorserLogger = logging.MustGetLogger("endorser")
+var endorserLogger = flogging.MustGetLogger("endorser")
 
 // The Jira issue that documents Endorser flow along with its relationship to
 // the lifecycle chaincode - https://jira.hyperledger.org/browse/FAB-181

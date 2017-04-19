@@ -16,12 +16,12 @@ limitations under the License.
 
 package core
 
-import "github.com/op/go-logging"
+import "github.com/hyperledger/fabric/common/flogging"
 
 // See fabric/core/peer/config.go for comments on the configuration caching
 // methodology.
 
-var coreLogger = logging.MustGetLogger("core")
+var coreLogger = flogging.MustGetLogger("core")
 
 var configurationCached bool
 var securityEnabled bool
