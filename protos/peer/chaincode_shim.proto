@@ -61,9 +61,21 @@ message ChaincodeMessage {
     ChaincodeEvent chaincode_event = 6;
 }
 
+message GetStateQueryInfo {
+    repeated string keys = 1;
+}
+ 
+message GetStateResultInfo {
+    repeated GetStateValue values = 1;
+}
+
+message GetStateValue {
+    bytes value = 1;
+}
+
 message PutStateInfo {
-    string key = 1;
-    bytes value = 2;
+    repeated string keys = 1;
+    repeated bytes values = 2;
 }
 
 message GetStateByRange {

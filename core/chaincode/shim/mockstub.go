@@ -151,6 +151,19 @@ func (stub *MockStub) GetState(key string) ([]byte, error) {
 	return value, nil
 }
 
+// GetState retrieves the value for a given key from the ledger
+func (stub *MockStub) GetStates(keys []string) (map[string][]byte, error) {
+
+	mapResult := make(map[string][]byte)
+	for _, key := range keys {
+		value := stub.State[key]
+		mapResult[key] = value
+		mockLogger.Debug("MockStub", stub.Name, "Getting", key, value)
+	}
+
+	return mapResult, nil
+}
+
 // PutState writes the specified `value` and `key` into the ledger.
 func (stub *MockStub) PutState(key string, value []byte) error {
 	if stub.TxID == "" {
@@ -191,6 +204,13 @@ func (stub *MockStub) PutState(key string, value []byte) error {
 		mockLogger.Debug("MockStub", stub.Name, "Key", key, "is first element in list")
 	}
 
+	return nil
+}
+
+func (stub *MockStub) PutStates(keyValues map[string][]byte) error {
+	for key, value := range keyValues {
+		stub.State[key] = value
+	}
 	return nil
 }
 

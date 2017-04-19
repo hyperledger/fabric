@@ -60,8 +60,14 @@ type ChaincodeStubInterface interface {
 	// GetState returns the byte array value specified by the `key`.
 	GetState(key string) ([]byte, error)
 
+	// GetStates returns the value specified by the `keys`.
+	GetStates(keys []string) (map[string][]byte, error)
+
 	// PutState writes the specified `value` and `key` into the ledger.
 	PutState(key string, value []byte) error
+
+	// PutState writes the specified `value` and `key` batch into the ledger.
+	PutStates(map[string][]byte) error
 
 	// DelState removes the specified `key` and its value from the ledger.
 	DelState(key string) error
