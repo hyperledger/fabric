@@ -13,7 +13,7 @@ Getting a Linux Foundation account
 
 In order to participate in the development of the Hyperledger Fabric
 project, you will need a `Linux Foundation
-account <Gerrit/lf-account.md>`__. You will need to use your LF ID to
+account <Gerrit/lf-account.rst>`__. You will need to use your LF ID to
 access to all the Hyperledger community development tools, including
 `Gerrit <https://gerrit.hyperledger.org>`__,
 `Jira <https://jira.hyperledger.org>`__ and the
@@ -25,7 +25,7 @@ Setting up your SSH key
 For Gerrit, before you can submit any change set for review, you will
 need to register your public SSH key. Login to
 `Gerrit <https://gerrit.hyperledger.org>`__ with your
-`LFID <Gerrit/lf-account.md>`__, and click on your name in the upper
+`LFID <Gerrit/lf-account.rst>`__, and click on your name in the upper
 right-hand corner of your browser window and then click 'Settings'. In
 the left-hand margin, you should see a link for 'SSH Public Keys'.
 Copy-n-paste your `public SSH
@@ -87,18 +87,18 @@ Working with a local clone and Gerrit
 We are using
 `Gerrit <https://gerrit.hyperledger.org/r/#/admin/projects/fabric>`__ to
 manage code contributions. If you are unfamiliar, please review this
-`document <Gerrit/gerrit.md>`__ before proceeding.
+`document <Gerrit/gerrit.rst>`__ before proceeding.
 
 After you have familiarized yourself with ``Gerrit``, and maybe played
 around with the ``lf-sandbox``
 `project <https://gerrit.hyperledger.org/r/#/admin/projects/lf-sandbox,branches>`__,
 you should be ready to set up your local development
-`environment <dev-setup/devenv.md>`__.
+`environment <dev-setup/devenv.rst>`__.
 
-Next, try `building the project <dev-setup/build.md>`__ in your local
+Next, try `building the project <dev-setup/build.rst>`__ in your local
 development environment to ensure that everything is set up correctly.
 
-`Logging control <Setup/logging-control.md>`__ describes how to tweak
+`Logging control <Setup/logging-control.rst>`__ describes how to tweak
 the logging levels of various components within the Fabric. Finally,
 every source file needs to include a `license
 header <dev-setup/headers.txt>`__: modified to include a copyright
@@ -186,7 +186,7 @@ Coding guidelines
 -----------------
 
 Be sure to check out the language-specific `style
-guides <Style-guides/go-style.md>`__ before making any changes. This
+guides <Style-guides/go-style.rst>`__ before making any changes. This
 will ensure a smoother review.
 
 Communication
@@ -202,7 +202,7 @@ list <http://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__.
 Maintainers
 -----------
 
-The project's `maintainers <MAINTAINERS.md>`__ are responsible for
+The project's `maintainers <MAINTAINERS.rst>`__ are responsible for
 reviewing and merging all patches submitted for review and they guide
 the over-all technical direction of the project within the guidelines
 established by the Hyperledger Project's Technical Steering Committee
@@ -218,7 +218,7 @@ designate an initial set of maintainers that will be approved by the
 top-level project's existing maintainers when the project is first
 approved. The project's maintainers will, from time-to-time, consider
 adding or removing a maintainer. An existing maintainer can submit a
-change set to the `MAINTAINERS.md <MAINTAINERS.md>`__ file. If there are
+change set to the `MAINTAINERS.rst <MAINTAINERS.rst>`__ file. If there are
 less than eight maintainers, a majority of the existing maintainers on
 that project are required to merge the change set. If there are more
 than eight existing maintainers, then if five or more of the maintainers

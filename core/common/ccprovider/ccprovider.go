@@ -47,19 +47,28 @@ type CCPackage interface {
 	// InitFromFS gets the chaincode from the filesystem (includes the raw bytes too)
 	InitFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error)
 
+	// PutChaincodeToFS writes the chaincode to the filesystem
+	PutChaincodeToFS() error
+
 	// GetDepSpec gets the ChaincodeDeploymentSpec from the package
 	GetDepSpec() *pb.ChaincodeDeploymentSpec
 
-	// PutChaincodeToFS writes the chaincode to the filesystem
-	PutChaincodeToFS() error
+	// GetDepSpecBytes gets the serialized ChaincodeDeploymentSpec from the package
+	GetDepSpecBytes() []byte
 
 	// ValidateCC validates and returns the chaincode deployment spec corresponding to
 	// ChaincodeData. The validation is based on the metadata from ChaincodeData
 	// One use of this method is to validate the chaincode before launching
-	ValidateCC(ccdata *ChaincodeData) (*pb.ChaincodeDeploymentSpec, error)
+	ValidateCC(ccdata *ChaincodeData) error
 
 	// GetPackageObject gets the object as a proto.Message
 	GetPackageObject() proto.Message
+
+	// GetChaincodeData gets the ChaincodeData
+	GetChaincodeData() *ChaincodeData
+
+	// GetId gets the fingerprint of the chaincode based on package computation
+	GetId() []byte
 }
 
 //SetChaincodesPath sets the chaincode path for this peer
@@ -91,19 +100,20 @@ func GetChaincodePackage(ccname string, ccversion string) ([]byte, error) {
 }
 
 // GetChaincodeFromFS this is a wrapper for hiding package implementation.
-func GetChaincodeFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
+func GetChaincodeFromFS(ccname string, ccversion string) (CCPackage, error) {
 	//try raw CDS
 	cccdspack := &CDSPackage{}
-	b, depSpec, err := cccdspack.InitFromFS(ccname, ccversion)
+	_, _, err := cccdspack.InitFromFS(ccname, ccversion)
 	if err != nil {
 		//try signed CDS
 		ccscdspack := &SignedCDSPackage{}
-		b, depSpec, err = ccscdspack.InitFromFS(ccname, ccversion)
+		_, _, err = ccscdspack.InitFromFS(ccname, ccversion)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
+		return ccscdspack, nil
 	}
-	return b, depSpec, nil
+	return cccdspack, nil
 }
 
 // PutChaincodeIntoFS is a wrapper for putting raw ChaincodeDeploymentSpec
@@ -146,7 +156,7 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 		return nil, err
 	}
 
-	// array to store info for all chaincode entries from LCCC
+	// array to store info for all chaincode entries from LSCC
 	var ccInfoArray []*pb.ChaincodeInfo
 
 	for _, file := range files {
@@ -158,13 +168,15 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 		if len(fileNameArray) == 2 {
 			ccname := fileNameArray[0]
 			ccversion := fileNameArray[1]
-			_, cdsfs, err := GetChaincodeFromFS(ccname, ccversion)
+			ccpack, err := GetChaincodeFromFS(ccname, ccversion)
 			if err != nil {
 				// either chaincode on filesystem has been tampered with or
 				// a non-chaincode file has been found in the chaincodes directory
 				ccproviderLogger.Errorf("Unreadable chaincode file found on filesystem: %s", file.Name())
 				continue
 			}
+
+			cdsfs := ccpack.GetDepSpec()
 
 			name := cdsfs.GetChaincodeSpec().GetChaincodeId().Name
 			version := cdsfs.GetChaincodeSpec().GetChaincodeId().Version
@@ -250,14 +262,34 @@ func (cccid *CCContext) GetCanonicalName() string {
 	return cccid.canonicalName
 }
 
+//-------- ChaincodeData is stored on the LSCC -------
+
 //ChaincodeData defines the datastructure for chaincodes to be serialized by proto
+//Type provides an additional check by directing to use a specific package after instantiation
+//Data is Type specifc (see CDSPackage and SignedCDSPackage)
 type ChaincodeData struct {
-	Name    string `protobuf:"bytes,1,opt,name=name"`
+	//Name of the chaincode
+	Name string `protobuf:"bytes,1,opt,name=name"`
+
+	//Version of the chaincode
 	Version string `protobuf:"bytes,2,opt,name=version"`
-	DepSpec []byte `protobuf:"bytes,3,opt,name=depSpec,proto3"`
-	Escc    string `protobuf:"bytes,4,opt,name=escc"`
-	Vscc    string `protobuf:"bytes,5,opt,name=vscc"`
-	Policy  []byte `protobuf:"bytes,6,opt,name=policy"`
+
+	//Escc for the chaincode instance
+	Escc string `protobuf:"bytes,3,opt,name=escc"`
+
+	//Vscc for the chaincode instance
+	Vscc string `protobuf:"bytes,4,opt,name=vscc"`
+
+	//Policy endorsement policy for the chaincode instance
+	Policy []byte `protobuf:"bytes,5,opt,name=policy,proto3"`
+
+	//Data data specific to the package
+	Data []byte `protobuf:"bytes,6,opt,name=data,proto3"`
+
+	//Id of the chaincode that's the unique fingerprint for the CC
+	//This is not currently used anywhere but serves as a good
+	//eyecatcher
+	Id []byte `protobuf:"bytes,7,opt,name=id,proto3"`
 }
 
 //implement functions needed from proto.Message for proto's mar/unmarshal functions
@@ -280,8 +312,8 @@ type ChaincodeProvider interface {
 	GetContext(ledger ledger.PeerLedger) (context.Context, error)
 	// GetCCContext returns an opaque chaincode context
 	GetCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) interface{}
-	// GetCCValidationInfoFromLCCC returns the VSCC and the policy listed by LCCC for the supplied chaincode
-	GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error)
+	// GetCCValidationInfoFromLSCC returns the VSCC and the policy listed by LSCC for the supplied chaincode
+	GetCCValidationInfoFromLSCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error)
 	// ExecuteChaincode executes the chaincode given context and args
 	ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Execute executes the chaincode given context and spec (invocation or deploy)

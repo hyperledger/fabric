@@ -122,8 +122,7 @@ func joinChain(blockBytes []byte) pb.Response {
 	peer.InitChain(chainID)
 
 	if err := producer.SendProducerBlockEvent(block); err != nil {
-		msg := fmt.Sprintf("Error sending block event %s", err)
-		return shim.Error(msg)
+		cnflogger.Errorf("Error sending block event %s", err)
 	}
 
 	return shim.Success(nil)
@@ -143,6 +142,7 @@ func updateConfigBlock(blockBytes []byte) pb.Response {
 	}
 
 	if err := peer.SetCurrConfigBlock(block, chainID); err != nil {
+
 		return shim.Error(err.Error())
 	}
 

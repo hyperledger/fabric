@@ -43,7 +43,7 @@ var (
 )
 
 // DeliverService used to communicate with orderers to obtain
-// new block and send the to the committer service
+// new blocks and send them to the committer service
 type DeliverService interface {
 	// StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
 	// to channel peers.

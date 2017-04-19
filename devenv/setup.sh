@@ -132,7 +132,7 @@ make clean gotools
 # Ensure permissions are set for GOPATH
 sudo chown -R ubuntu:ubuntu $GOPATH
 
-# Update limits.conf to increase nofiles for RocksDB
+# Update limits.conf to increase nofiles for LevelDB and network connections
 sudo cp /hyperledger/devenv/limits.conf /etc/security/limits.conf
 
 # Configure vagrant specific environment

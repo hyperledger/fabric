@@ -17,8 +17,8 @@ limitations under the License.
 package example;
 
 import com.google.protobuf.ByteString;
-import org.hyperledger.java.shim.ChaincodeBase;
-import org.hyperledger.java.shim.ChaincodeStub;
+import org.hyperledger.fabric.shim.ChaincodeBase;
+import org.hyperledger.fabric.shim.ChaincodeStub;
 
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;

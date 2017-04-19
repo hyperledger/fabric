@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	common_utils "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -115,6 +116,7 @@ type gossipChannel struct {
 	sync.RWMutex
 	shouldGossipStateInfo     int32
 	mcs                       api.MessageCryptoService
+	pkiID                     common.PKIidType
 	stopChan                  chan struct{}
 	stateInfoMsg              *proto.SignedGossipMessage
 	orgs                      []api.OrgIdentityType
@@ -147,8 +149,9 @@ func (mf *membershipFilter) GetMembership() []discovery.NetworkMember {
 }
 
 // NewGossipChannel creates a new GossipChannel
-func NewGossipChannel(mcs api.MessageCryptoService, chainID common.ChainID, adapter Adapter, joinMsg api.JoinChannelMessage) GossipChannel {
+func NewGossipChannel(pkiID common.PKIidType, mcs api.MessageCryptoService, chainID common.ChainID, adapter Adapter, joinMsg api.JoinChannelMessage) GossipChannel {
 	gc := &gossipChannel{
+		pkiID:                     pkiID,
 		mcs:                       mcs,
 		Adapter:                   adapter,
 		logger:                    util.GetLogger(util.LoggingChannelModule, adapter.GetConf().ID),
@@ -359,7 +362,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		return
 	}
 	if !gc.IsOrgInChannel(orgID) {
-		gc.logger.Warning("Point to point message came from", msg.GetConnectionInfo().ID, "but it's not eligible for the channel", msg.GetGossipMessage().Channel)
+		gc.logger.Warning("Point to point message came from", msg.GetConnectionInfo().ID, "but it's not eligible for the channel", string(gc.chainID))
 		return
 	}
 
@@ -405,7 +408,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 	}
 	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BLOCK_MSG {
 		if !gc.EligibleForChannel(discovery.NetworkMember{PKIid: msg.GetConnectionInfo().ID}) {
-			gc.logger.Warning(msg.GetConnectionInfo().ID, "isn't eligible for channel", gc.chainID)
+			gc.logger.Warning(msg.GetConnectionInfo().ID, "isn't eligible for channel", string(gc.chainID))
 			return
 		}
 		if m.IsDataUpdate() {
@@ -437,35 +440,42 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 }
 
 func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender common.PKIidType) {
+	chanName := string(gc.chainID)
 	for _, envelope := range m.GetStateSnapshot().Elements {
 		stateInf, err := envelope.ToGossipMessage()
 		if err != nil {
-			gc.logger.Warning("StateInfo snapshot contains an invalid message:", err)
+			gc.logger.Warning("Channel", chanName, ": StateInfo snapshot contains an invalid message:", err)
 			return
 		}
 		if !stateInf.IsStateInfoMsg() {
-			gc.logger.Warning("Element of StateInfoSnapshot isn't a StateInfoMessage:", stateInf, "message sent from", sender)
+			gc.logger.Warning("Channel", chanName, ": Element of StateInfoSnapshot isn't a StateInfoMessage:",
+				stateInf, "message sent from", sender)
 			return
 		}
-
-		orgID := gc.GetOrgOfPeer(stateInf.GetStateInfo().PkiId)
+		si := stateInf.GetStateInfo()
+		orgID := gc.GetOrgOfPeer(si.PkiId)
 		if orgID == nil {
-			gc.logger.Warning("Couldn't find org identity of peer", stateInf.GetStateInfo().PkiId, "message sent from", sender)
+			gc.logger.Warning("Channel", chanName, ": Couldn't find org identity of peer",
+				si.PkiId, "message sent from", sender)
 			return
 		}
 
 		if !gc.IsOrgInChannel(orgID) {
-			gc.logger.Warning("Peer", stateInf.GetStateInfo().PkiId, "is not in an eligible org, can't process a stateInfo from it, sent from", sender)
+			gc.logger.Warning("Channel", chanName, ": Peer", stateInf.GetStateInfo().PkiId,
+				"is not in an eligible org, can't process a stateInfo from it, sent from", sender)
 			return
 		}
 
-		if !bytes.Equal(stateInf.Channel, []byte(gc.chainID)) {
-			gc.logger.Warning("StateInfo message is of an invalid channel", stateInf, "sent from", sender)
+		expectedMAC := ChannelMAC(si.PkiId, gc.chainID)
+		if !bytes.Equal(si.ChannelMAC, expectedMAC) {
+			gc.logger.Warning("Channel", chanName, ": StateInfo message", stateInf,
+				", has an invalid MAC. Expected", expectedMAC, ", got", si.ChannelMAC, ", sent from", sender)
 			return
 		}
 		err = gc.ValidateStateInfoMessage(stateInf)
 		if err != nil {
-			gc.logger.Warning("Failed validating state info message:", stateInf, ":", err, "sent from", sender)
+			gc.logger.Warning("Channel", chanName, ": Failed validating state info message:",
+				stateInf, ":", err, "sent from", sender)
 			return
 		}
 		gc.stateInfoMsgStore.Add(stateInf)
@@ -524,6 +534,26 @@ func (gc *gossipChannel) verifyMsg(msg proto.ReceivedMessage) bool {
 		return false
 	}
 
+	if m.IsStateInfoMsg() {
+		si := m.GetStateInfo()
+		expectedMAC := ChannelMAC(si.PkiId, gc.chainID)
+		if !bytes.Equal(expectedMAC, si.ChannelMAC) {
+			gc.logger.Warning("Message contains wrong channel MAC(", si.ChannelMAC, "), expected", expectedMAC)
+			return false
+		}
+		return true
+	}
+
+	if m.IsStateInfoPullRequestMsg() {
+		sipr := m.GetStateInfoPullReq()
+		expectedMAC := ChannelMAC(msg.GetConnectionInfo().ID, gc.chainID)
+		if !bytes.Equal(expectedMAC, sipr.ChannelMAC) {
+			gc.logger.Warning("Message contains wrong channel MAC(", sipr.ChannelMAC, "), expected", expectedMAC)
+			return false
+		}
+		return true
+	}
+
 	if !bytes.Equal(m.Channel, []byte(gc.chainID)) {
 		gc.logger.Warning("Message contains wrong channel(", m.Channel, "), expected", gc.chainID)
 		return false
@@ -533,11 +563,12 @@ func (gc *gossipChannel) verifyMsg(msg proto.ReceivedMessage) bool {
 
 func (gc *gossipChannel) createStateInfoRequest() *proto.SignedGossipMessage {
 	return (&proto.GossipMessage{
-		Channel: gc.chainID,
-		Tag:     proto.GossipMessage_CHAN_OR_ORG,
-		Nonce:   0,
+		Tag:   proto.GossipMessage_CHAN_OR_ORG,
+		Nonce: 0,
 		Content: &proto.GossipMessage_StateInfoPullReq{
-			StateInfoPullReq: &proto.StateInfoPullRequest{},
+			StateInfoPullReq: &proto.StateInfoPullRequest{
+				ChannelMAC: ChannelMAC(gc.pkiID, gc.chainID),
+			},
 		},
 	}).NoopSign()
 }
@@ -585,4 +616,12 @@ func (cache *stateInfoCache) Add(msg *proto.SignedGossipMessage) bool {
 		cache.MembershipStore.Put(pkiID, msg)
 	}
 	return added
+}
+
+// ChannelMAC returns a byte slice that is derived from the peer's PKI-ID
+// and a channel name
+func ChannelMAC(pkiID common.PKIidType, channelID common.ChainID) []byte {
+	// Hash is computed on (PKI-ID || channel ID)
+	preImage := append([]byte(pkiID), []byte(channelID)...)
+	return common_utils.ComputeSHA256(preImage)
 }

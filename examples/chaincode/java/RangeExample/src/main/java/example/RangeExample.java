@@ -17,8 +17,8 @@ package example;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.hyperledger.java.shim.ChaincodeBase;
-import org.hyperledger.java.shim.ChaincodeStub;
+import org.hyperledger.fabric.shim.ChaincodeBase;
+import org.hyperledger.fabric.shim.ChaincodeStub;
 
 import java.util.Map;
 

@@ -23,13 +23,15 @@ To get started developing Java chaincode
 2. Ensure you have the Java 1.8 **JDK** installed. Also ensure Java's
    directory is on your path with ``java -version``
 
--  Additionally, you will need to have the
-   ```JAVA HOME`` <https://docs.oracle.com/cd/E19182-01/821-0917/6nluh6gq9/index.html>`__
-   variable set to your **JDK** installation in your system path
+-  Additionally, you will need to have the |JAVA_HOME|_ variable set to your
+   **JDK** installation in your system path
 
 3. From your command line terminal, move to the ``devenv`` subdirectory
    of your workspace environment. Log into a Vagrant terminal by
    executing the following command:
+
+.. |JAVA_HOME| replace:: ``JAVA_HOME``
+.. _JAVA_HOME: https://docs.oracle.com/cd/E19182-01/821-0917/6nluh6gq9/index.html
 
    ::
 
@@ -163,13 +165,15 @@ Developing new JAVA chaincode
 1. Create a new Java project structure.
 2. Use existing ``build.grade`` from any example JAVA Chaincode project
    like ``examples/chaincode/java/SimpleSample``.
-3. Make your main class extend ChaincodeBase class and implement the
+3. Make your main class extend ``ChaincodeBase`` class and implement the
    following methods from base class.
-4. ``public String run(ChaincodeStub stub, String function, String[] args)``
-5. ``public String query(ChaincodeStub stub, String function, String[] args)``
-6. ``public String getChaincodeID()``
-7. Modify the ``mainClassName`` in ``build.gradle`` to point to your new
+
+   - ``public Response init(ChaincodeStub stub)``
+   - ``public Response invoke(ChaincodeStub stub);``
+   - ``public String getChaincodeID()``
+
+4. Modify the ``mainClassName`` in ``build.gradle`` to point to your new
    class.
-8. Build this project using ``gradle -b build.gradle build``
-9. Run this chaincode after starting a peer in dev-mode as above using
+5. Build this project using ``gradle -b build.gradle build``
+6. Run this chaincode after starting a peer in dev-mode as above using
    ``gradle -b build.gradle run``

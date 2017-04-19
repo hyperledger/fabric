@@ -17,27 +17,35 @@ limitations under the License.
 package example;
 
 import static java.lang.String.format;
-import static org.hyperledger.java.shim.ChaincodeHelper.newBadRequestResponse;
+import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
 
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
-import org.hyperledger.java.shim.ChaincodeBase;
-import org.hyperledger.java.shim.ChaincodeStub;
+import org.hyperledger.fabric.shim.ChaincodeBase;
+import org.hyperledger.fabric.shim.ChaincodeStub;
 
 public class Example06 extends ChaincodeBase {
 	
 	@Override
-	public Response run(ChaincodeStub stub, String function, String[] args) {
-		switch (function) {
+	public Response init(ChaincodeStub stub) {
+		return invoke(stub);
+	}
+	
+	@Override
+	public Response invoke(ChaincodeStub stub) {
+		if(stub.getArgsAsStrings().isEmpty())
+			return newBadRequestResponse(format("No arguments specified."));
+		
+		switch (stub.getArgsAsStrings().get(0)) {
 		case "runtimeException":
 			throw new RuntimeException("Exception thrown as requested.");
 		default:
-			return newBadRequestResponse(format("Unknown function: %s", function));
+			return newBadRequestResponse(format("Invalid arguments specified"));
 		}
 	}
 	
 	@Override
 	public String getChaincodeID() {
-		return "Example03";
+		return "Example06";
 	}
 
 	public static void main(String[] args) throws Exception {

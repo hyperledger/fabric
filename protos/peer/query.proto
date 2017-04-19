@@ -22,7 +22,7 @@ option go_package = "github.com/hyperledger/fabric/protos/peer";
 package protos;
 
 // ChaincodeQueryResponse returns information about each chaincode that pertains
-// to a query in lccc.go, such as GetChaincodes (returns all chaincodes
+// to a query in lscc.go, such as GetChaincodes (returns all chaincodes
 // instantiated on a channel), and GetInstalledChaincodes (returns all chaincodes
 // installed on a peer)
 message ChaincodeQueryResponse {
@@ -48,7 +48,7 @@ message ChaincodeInfo {
 }
 
 // ChannelQueryResponse returns information about each channel that pertains
-// to a query in lccc.go, such as GetChannels (returns all channels for a
+// to a query in lscc.go, such as GetChannels (returns all channels for a
 // given peer)
 message ChannelQueryResponse {
   repeated ChannelInfo channels = 1;

@@ -44,7 +44,7 @@ const package_desc = "Package the specified chaincode into a deployment spec."
 type ccDepSpecFactory func(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error)
 
 func defaultCDSFactory(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
-	return getChaincodeBytes(spec, true)
+	return getChaincodeDeploymentSpec(spec, true)
 }
 
 // deployCmd returns the cobra command for Chaincode Deploy
@@ -153,7 +153,7 @@ func chaincodePackage(cmd *cobra.Command, args []string, cdsFact ccDepSpecFactor
 			return err
 		}
 	}
-	spec, err := getChaincodeSpecification(cmd)
+	spec, err := getChaincodeSpec(cmd)
 	if err != nil {
 		return err
 	}
