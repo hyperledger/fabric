@@ -1475,6 +1475,60 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 	theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 }
 
+// test that invoking a security-sensitive system chaincode fails
+func TestChaincodeInvokesForbiddenSystemChaincode(t *testing.T) {
+	chainID := util.GetTestChainID()
+
+	lis, err := initPeer(chainID)
+	if err != nil {
+		t.Fail()
+		t.Logf("Error creating peer: %s", err)
+	}
+
+	defer finitPeer(lis, chainID)
+
+	var ctxt = context.Background()
+
+	var nextBlockNumber uint64
+
+	// Deploy second chaincode
+	url := "github.com/hyperledger/fabric/examples/chaincode/go/passthru"
+
+	cID := &pb.ChaincodeID{Name: "pthru", Path: url, Version: "0"}
+	f := "init"
+	args := util.ToChaincodeArgs(f)
+
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+
+	cccid := ccprovider.NewCCContext(chainID, "pthru", "0", "", false, nil, nil)
+
+	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
+	nextBlockNumber++
+	ccID := spec.ChaincodeId.Name
+	if err != nil {
+		t.Fail()
+		t.Logf("Error initializing chaincode %s(%s)", ccID, err)
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	time.Sleep(time.Second)
+
+	// send an invoke to pass thru to invoke "escc" system chaincode
+	// this should fail
+	args = util.ToChaincodeArgs("escc/"+chainID, "getid", chainID, "pthru")
+
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	// Invoke chaincode
+	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber)
+	if err == nil {
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		t.Logf("invoking <%s> should have failed", ccID)
+		t.Fail()
+		return
+	}
+}
+
 // Test the execution of a chaincode that invokes system chaincode
 // uses the "pthru" chaincode to query "lscc" for the "pthru" chaincode
 func TestChaincodeInvokesSystemChaincode(t *testing.T) {

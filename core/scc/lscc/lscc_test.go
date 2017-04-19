@@ -51,6 +51,10 @@ func (c *mocksccProviderImpl) IsSysCC(name string) bool {
 	return true
 }
 
+func (c *mocksccProviderImpl) IsSysCCAndNotInvokableCC2CC(name string) bool {
+	return false
+}
+
 func register(stub *shim.MockStub, ccname string) error {
 	args := [][]byte{[]byte("register"), []byte(ccname)}
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK {

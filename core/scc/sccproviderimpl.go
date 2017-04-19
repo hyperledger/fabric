@@ -44,3 +44,9 @@ type sccProviderImpl struct {
 func (c *sccProviderImpl) IsSysCC(name string) bool {
 	return IsSysCC(name)
 }
+
+// IsSysCCAndNotInvokableCC2CC returns true if the supplied chaincode is
+// ia system chaincode and it NOT nvokable through a cc2cc invocation
+func (c *sccProviderImpl) IsSysCCAndNotInvokableCC2CC(name string) bool {
+	return IsSysCCAndNotInvokableCC2CC(name)
+}
