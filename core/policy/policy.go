@@ -184,3 +184,27 @@ func (p *policyChecker) CheckPolicyBySignedData(channelID, policyName string, sd
 
 	return nil
 }
+
+var pcFactory PolicyCheckerFactory
+
+// PolicyCheckerFactory defines a factory interface so
+// that the actual implementation can be injected
+type PolicyCheckerFactory interface {
+	NewPolicyChecker() PolicyChecker
+}
+
+// RegisterPolicyCheckerFactory is to be called once to set
+// the factory that will be used to obtain instances of PolicyChecker
+func RegisterPolicyCheckerFactory(f PolicyCheckerFactory) {
+	pcFactory = f
+}
+
+// GetPolicyChecker returns instances of PolicyChecker;
+// the actual implementation is controlled by the factory that
+// is registered via RegisterPolicyCheckerFactory
+func GetPolicyChecker() PolicyChecker {
+	if pcFactory == nil {
+		panic("The factory must be set first via RegisterPolicyCheckerFactory")
+	}
+	return pcFactory.NewPolicyChecker()
+}

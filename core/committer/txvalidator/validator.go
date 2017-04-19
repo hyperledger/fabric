@@ -403,11 +403,13 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		// of VSCC and of the policy that should be used
 
 		// obtain name of the VSCC and the policy from LSCC
-		vscc, policy, err = v.ccprovider.GetCCValidationInfoFromLSCC(ctxt, txid, nil, nil, chainID, hdrExt.ChaincodeId.Name)
+		cd, err := v.getCDataForCC(hdrExt.ChaincodeId.Name)
 		if err != nil {
-			logger.Errorf("Unable to get chaincode data from LSCC for txid %s, due to %s", txid, err)
+			logger.Errorf("Unable to get chaincode data from ledger for txid %s, due to %s", txid, err)
 			return err
 		}
+		vscc = cd.Vscc
+		policy = cd.Policy
 	} else {
 		// when we are validating LSCC, we use the default
 		// VSCC and a default policy that requires one signature
@@ -441,4 +443,42 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	}
 
 	return nil
+}
+
+func (v *vsccValidatorImpl) getCDataForCC(ccid string) (*ccprovider.ChaincodeData, error) {
+	l := v.support.Ledger()
+	if l == nil {
+		return nil, fmt.Errorf("nil ledger instance")
+	}
+
+	qe, err := l.NewQueryExecutor()
+	if err != nil {
+		return nil, fmt.Errorf("Could not retrieve QueryExecutor, error %s", err)
+	}
+	defer qe.Done()
+
+	bytes, err := qe.GetState("lscc", ccid)
+	if err != nil {
+		return nil, fmt.Errorf("Could not retrieve state for chaincode %s, error %s", ccid, err)
+	}
+
+	if bytes == nil {
+		return nil, fmt.Errorf("lscc's state for [%s] not found.", ccid)
+	}
+
+	cd := &ccprovider.ChaincodeData{}
+	err = proto.Unmarshal(bytes, cd)
+	if err != nil {
+		return nil, fmt.Errorf("Unmarshalling ChaincodeQueryResponse failed, error %s", err)
+	}
+
+	if cd.Vscc == "" {
+		return nil, fmt.Errorf("lscc's state for [%s] is invalid, vscc field must be set.", ccid)
+	}
+
+	if len(cd.Policy) == 0 {
+		return nil, fmt.Errorf("lscc's state for [%s] is invalid, policy field must be set.", ccid)
+	}
+
+	return cd, err
 }
