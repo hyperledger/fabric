@@ -125,7 +125,6 @@ type TxSimulator interface {
 	//   (at a later time on a different peer) during committing the transactions
 	// Different ledger implementation (or configurations of a single implementation) may want to represent the above two pieces
 	// of information in different way in order to support different data-models or optimize the information representations.
-	// TODO detailed illustration of a couple of representations.
 	GetTxSimulationResults() ([]byte, error)
 }
 
