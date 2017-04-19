@@ -43,8 +43,8 @@ const install_desc = "Package the specified chaincode into a deployment spec and
 func installCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeInstallCmd = &cobra.Command{
 		Use:       "install",
-		Short:     fmt.Sprintf(install_desc),
-		Long:      fmt.Sprintf(install_desc),
+		Short:     fmt.Sprint(install_desc),
+		Long:      fmt.Sprint(install_desc),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var ccpackfile string
@@ -95,12 +95,12 @@ func generateChaincode(cmd *cobra.Command, chaincodeName, chaincodeVersion strin
 		return nil, fmt.Errorf("chaincode %s:%s exists", chaincodeName, chaincodeVersion)
 	}
 
-	spec, err := getChaincodeSpecification(cmd)
+	spec, err := getChaincodeSpec(cmd)
 	if err != nil {
 		return nil, err
 	}
 
-	cds, err := getChaincodeBytes(spec, true)
+	cds, err := getChaincodeDeploymentSpec(spec, true)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
 	}
@@ -152,7 +152,7 @@ func getPackageFromFile(ccpackfile string) (proto.Message, *pb.ChaincodeDeployme
 	return o, cds, nil
 }
 
-// chaincodeInstall installs the chaincode. If remoteinstall, does it via a lccc call
+// chaincodeInstall installs the chaincode. If remoteinstall, does it via a lscc call
 func chaincodeInstall(cmd *cobra.Command, ccpackfile string, cf *ChaincodeCmdFactory) error {
 	var err error
 	if cf == nil {

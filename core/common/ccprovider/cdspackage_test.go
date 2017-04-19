@@ -17,6 +17,7 @@ limitations under the License.
 package ccprovider
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -34,27 +35,37 @@ func setupccdir() string {
 	return tempDir
 }
 
+func processCDS(cds *pb.ChaincodeDeploymentSpec, tofs bool) (*CDSPackage, []byte, *ChaincodeData, error) {
+	b := utils.MarshalOrPanic(cds)
+
+	ccpack := &CDSPackage{}
+	cd, err := ccpack.InitFromBuffer(b)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error owner creating package %s", err)
+	}
+
+	if tofs {
+		if err = ccpack.PutChaincodeToFS(); err != nil {
+			return nil, nil, nil, fmt.Errorf("error putting package on the FS %s", err)
+		}
+	}
+
+	return ccpack, b, cd, nil
+}
+
 func TestPutCDSCC(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
-	b := utils.MarshalOrPanic(cds)
-
-	ccpack := &CDSPackage{}
-	_, err := ccpack.InitFromBuffer(b)
+	ccpack, _, cd, err := processCDS(cds, true)
 	if err != nil {
-		t.Fatalf("error owner creating package %s", err)
+		t.Fatalf("error putting CDS to FS %s", err)
 		return
 	}
 
-	if err = ccpack.PutChaincodeToFS(); err != nil {
-		t.Fatalf("error putting package on the FS %s", err)
-		return
-	}
-
-	if _, err = ccpack.ValidateCC(&ChaincodeData{Name: "testcc", Version: "0"}); err != nil {
+	if err = ccpack.ValidateCC(cd); err != nil {
 		t.Fatalf("error validating package %s", err)
 		return
 	}
@@ -66,17 +77,14 @@ func TestPutCDSErrorPaths(t *testing.T) {
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
-	b := utils.MarshalOrPanic(cds)
-
-	ccpack := &CDSPackage{}
-	_, err := ccpack.InitFromBuffer(b)
+	ccpack, b, _, err := processCDS(cds, true)
 	if err != nil {
-		t.Fatalf("error owner creating package %s", err)
+		t.Fatalf("error putting CDS to FS %s", err)
 		return
 	}
 
 	//validate with invalid name
-	if _, err = ccpack.ValidateCC(&ChaincodeData{Name: "invalname", Version: "0"}); err == nil {
+	if err = ccpack.ValidateCC(&ChaincodeData{Name: "invalname", Version: "0"}); err == nil {
 		t.Fatalf("expected error validating package")
 		return
 	}
@@ -132,6 +140,37 @@ func TestCDSGetCCPackage(t *testing.T) {
 
 	if cds2.ChaincodeSpec.ChaincodeId.Name != cds.ChaincodeSpec.ChaincodeId.Name || cds2.ChaincodeSpec.ChaincodeId.Version != cds.ChaincodeSpec.ChaincodeId.Version {
 		t.Fatalf("dep spec in CDS CCPackage does not match %v != %v", cds, cds2)
+		return
+	}
+}
+
+//switch the chaincodes on the FS and validate
+func TestCDSSwitchChaincodes(t *testing.T) {
+	ccdir := setupccdir()
+	defer os.RemoveAll(ccdir)
+
+	//someone modified the code on the FS with "badcode"
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("badcode")}
+
+	//write the bad code to the fs
+	badccpack, _, _, err := processCDS(cds, true)
+	if err != nil {
+		t.Fatalf("error putting CDS to FS %s", err)
+		return
+	}
+
+	//mimic the good code ChaincodeData from the instantiate...
+	cds.CodePackage = []byte("goodcode")
+
+	//...and generate the CD for it (don't overwrite the bad code)
+	_, _, goodcd, err := processCDS(cds, false)
+	if err != nil {
+		t.Fatalf("error putting CDS to FS %s", err)
+		return
+	}
+
+	if err = badccpack.ValidateCC(goodcd); err == nil {
+		t.Fatalf("expected goodcd to fail against bad package but succeeded!")
 		return
 	}
 }

@@ -79,14 +79,15 @@ func (*gossipMock) Stop() {
 }
 
 type appOrgMock struct {
+	id string
 }
 
 func (*appOrgMock) Name() string {
 	panic("implement me")
 }
 
-func (*appOrgMock) MSPID() string {
-	panic("implement me")
+func (ao *appOrgMock) MSPID() string {
+	return ao.id
 }
 
 func (*appOrgMock) AnchorPeers() []*peer.AnchorPeer {
@@ -102,7 +103,7 @@ func (*configMock) ChainID() string {
 
 func (*configMock) Organizations() map[string]config.ApplicationOrg {
 	return map[string]config.ApplicationOrg{
-		"Org0": &appOrgMock{},
+		"Org0": &appOrgMock{"Org0"},
 	}
 }
 

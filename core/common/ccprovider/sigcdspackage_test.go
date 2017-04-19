@@ -17,6 +17,7 @@ limitations under the License.
 package ccprovider
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -26,33 +27,42 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
+func processSignedCDS(cds *pb.ChaincodeDeploymentSpec, policy *common.SignaturePolicyEnvelope, tofs bool) (*SignedCDSPackage, []byte, *ChaincodeData, error) {
+	env, err := ccpackage.OwnerCreateSignedCCDepSpec(cds, policy, nil)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("could not create package %s", err)
+	}
+
+	b := utils.MarshalOrPanic(env)
+
+	ccpack := &SignedCDSPackage{}
+	cd, err := ccpack.InitFromBuffer(b)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error owner creating package %s", err)
+	}
+
+	if tofs {
+		if err = ccpack.PutChaincodeToFS(); err != nil {
+			return nil, nil, nil, fmt.Errorf("error putting package on the FS %s", err)
+		}
+	}
+
+	return ccpack, b, cd, nil
+}
+
 func TestPutSigCDSCC(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
-	env, err := ccpackage.OwnerCreateSignedCCDepSpec(cds, &common.SignaturePolicyEnvelope{}, nil)
+	ccpack, _, cd, err := processSignedCDS(cds, &common.SignaturePolicyEnvelope{Version: 1}, true)
 	if err != nil {
-		t.Fatalf("cannot create package")
+		t.Fatalf("cannot create package %s", err)
 		return
 	}
 
-	b := utils.MarshalOrPanic(env)
-
-	ccpack := &SignedCDSPackage{}
-	_, err = ccpack.InitFromBuffer(b)
-	if err != nil {
-		t.Fatalf("error owner creating package %s", err)
-		return
-	}
-
-	if err = ccpack.PutChaincodeToFS(); err != nil {
-		t.Fatalf("error putting package on the FS %s", err)
-		return
-	}
-
-	if _, err = ccpack.ValidateCC(&ChaincodeData{Name: "testcc", Version: "0"}); err != nil {
+	if err = ccpack.ValidateCC(cd); err != nil {
 		t.Fatalf("error validating package %s", err)
 		return
 	}
@@ -64,23 +74,14 @@ func TestPutSignedCDSErrorPaths(t *testing.T) {
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
-	env, err := ccpackage.OwnerCreateSignedCCDepSpec(cds, &common.SignaturePolicyEnvelope{}, nil)
+	ccpack, b, _, err := processSignedCDS(cds, &common.SignaturePolicyEnvelope{Version: 1}, true)
 	if err != nil {
-		t.Fatalf("cannot create package")
-		return
-	}
-
-	b := utils.MarshalOrPanic(env)
-
-	ccpack := &SignedCDSPackage{}
-	_, err = ccpack.InitFromBuffer(b)
-	if err != nil {
-		t.Fatalf("error owner creating package %s", err)
+		t.Fatalf("cannot create package %s", err)
 		return
 	}
 
 	//validate with invalid name
-	if _, err = ccpack.ValidateCC(&ChaincodeData{Name: "invalname", Version: "0"}); err == nil {
+	if err = ccpack.ValidateCC(&ChaincodeData{Name: "invalname", Version: "0"}); err == nil {
 		t.Fatalf("expected error validating package")
 		return
 	}
@@ -115,7 +116,7 @@ func TestPutSignedCDSErrorPaths(t *testing.T) {
 func TestSigCDSGetCCPackage(t *testing.T) {
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
-	env, err := ccpackage.OwnerCreateSignedCCDepSpec(cds, &common.SignaturePolicyEnvelope{}, nil)
+	env, err := ccpackage.OwnerCreateSignedCCDepSpec(cds, &common.SignaturePolicyEnvelope{Version: 1}, nil)
 	if err != nil {
 		t.Fatalf("cannot create package")
 		return
@@ -167,6 +168,37 @@ func TestInvalidSigCDSGetCCPackage(t *testing.T) {
 	ccsignedcdspack, ok := ccpack.(*SignedCDSPackage)
 	if ok || ccsignedcdspack != nil {
 		t.Fatalf("expected failure to get Signed CDS CCPackage but succeeded")
+		return
+	}
+}
+
+//switch the chaincodes on the FS and validate
+func TestSignedCDSSwitchChaincodes(t *testing.T) {
+	ccdir := setupccdir()
+	defer os.RemoveAll(ccdir)
+
+	//someone modifyed the code on the FS with "badcode"
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("badcode")}
+
+	//write the bad code to the fs
+	badccpack, _, _, err := processSignedCDS(cds, &common.SignaturePolicyEnvelope{Version: 1}, true)
+	if err != nil {
+		t.Fatalf("error putting CDS to FS %s", err)
+		return
+	}
+
+	//mimic the good code ChaincodeData from the instantiate...
+	cds.CodePackage = []byte("goodcode")
+
+	//...and generate the CD for it (don't overwrite the bad code)
+	_, _, goodcd, err := processSignedCDS(cds, &common.SignaturePolicyEnvelope{Version: 1}, false)
+	if err != nil {
+		t.Fatalf("error putting CDS to FS %s", err)
+		return
+	}
+
+	if err = badccpack.ValidateCC(goodcd); err == nil {
+		t.Fatalf("expected goodcd to fail against bad package but succeeded!")
 		return
 	}
 }

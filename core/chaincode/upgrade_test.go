@@ -29,17 +29,17 @@ import (
 	"golang.org/x/net/context"
 )
 
-//getUpgradeLCCCSpec gets the spec for the chaincode upgrade to be sent to LCCC
-func getUpgradeLCCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeInvocationSpec, error) {
+//getUpgradeLSCCSpec gets the spec for the chaincode upgrade to be sent to LSCC
+func getUpgradeLSCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeInvocationSpec, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
 	}
 
-	//wrap the deployment in an invocation spec to lccc...
-	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lccc"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("upgrade"), []byte(chainID), b}}}}
+	//wrap the deployment in an invocation spec to lscc...
+	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("upgrade"), []byte(chainID), b}}}}
 
-	return lcccSpec, nil
+	return lsccSpec, nil
 }
 
 // upgrade a chaincode - i.e., build and initialize.
@@ -55,9 +55,9 @@ func upgrade(ctx context.Context, cccid *ccprovider.CCContext, spec *pb.Chaincod
 
 func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 	chaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec, blockNumber uint64) (newcccid *ccprovider.CCContext, err error) {
-	cis, err := getUpgradeLCCCSpec(cccid.ChainID, chaincodeDeploymentSpec)
+	cis, err := getUpgradeLSCCSpec(cccid.ChainID, chaincodeDeploymentSpec)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating lccc spec : %s\n", err)
+		return nil, fmt.Errorf("Error creating lscc spec : %s\n", err)
 	}
 
 	ctx, txsim, err := startTxSimulation(ctx, cccid.ChainID)
@@ -80,22 +80,30 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 		}
 	}()
 
+	//ignore existence errors
+	ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
+
 	sysCCVers := util.GetSysCCVersion()
-	lcccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, nil, nil)
+	lsccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, nil, nil)
 
-	var versionBytes []byte
-	//write to lccc
-	if versionBytes, _, err = ExecuteWithErrorFilter(ctx, lcccid, cis); err != nil {
-		return nil, fmt.Errorf("Error executing LCCC for upgrade: %s", err)
+	var cdbytes []byte
+	//write to lscc
+	if cdbytes, _, err = ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
+		return nil, fmt.Errorf("Error executing LSCC for upgrade: %s", err)
 	}
 
-	if versionBytes == nil {
-		return nil, fmt.Errorf("Expected version back from LCCC but got nil")
+	if cdbytes == nil {
+		return nil, fmt.Errorf("Expected ChaincodeData back from LSCC but got nil")
 	}
 
-	newVersion := string(versionBytes)
+	cd := &ccprovider.ChaincodeData{}
+	if err = proto.Unmarshal(cdbytes, cd); err != nil {
+		return nil, fmt.Errorf("getting  ChaincodeData failed")
+	}
+
+	newVersion := string(cd.Version)
 	if newVersion == cccid.Version {
-		return nil, fmt.Errorf("Expected new version from LCCC but got same %s(%s)", newVersion, cccid.Version)
+		return nil, fmt.Errorf("Expected new version from LSCC but got same %s(%s)", newVersion, cccid.Version)
 	}
 
 	newcccid = ccprovider.NewCCContext(cccid.ChainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, newVersion, uuid, false, nil, nil)
@@ -112,7 +120,7 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 //     upgrade to exampl02
 //     show the upgrade worked using the same query successfully
 //This test a variety of things in addition to basic upgrade
-//     uses next version from lccc
+//     uses next version from lscc
 //     re-initializtion of the same chaincode "mycc"
 //     upgrade when "mycc" is up and running (test version based namespace)
 func TestUpgradeCC(t *testing.T) {

@@ -51,8 +51,8 @@ func checkSpec(spec *pb.ChaincodeSpec) error {
 	return platform.ValidateSpec(spec)
 }
 
-// getChaincodeBytes get chaincode deployment spec given the chaincode spec
-func getChaincodeBytes(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.ChaincodeDeploymentSpec, error) {
+// getChaincodeDeploymentSpec get chaincode deployment spec given the chaincode spec
+func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.ChaincodeDeploymentSpec, error) {
 	var codePackageBytes []byte
 	if chaincode.IsDevMode() == false && crtPkg {
 		var err error
@@ -70,7 +70,8 @@ func getChaincodeBytes(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.ChaincodeDeploy
 	return chaincodeDeploymentSpec, nil
 }
 
-func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
+// getChaincodeSpec get chaincode spec from the cli cmd pramameters
+func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec := &pb.ChaincodeSpec{}
 	if err := checkChaincodeCmdParams(cmd); err != nil {
 		return spec, err
@@ -92,7 +93,7 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 }
 
 func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *ChaincodeCmdFactory) (err error) {
-	spec, err := getChaincodeSpecification(cmd)
+	spec, err := getChaincodeSpec(cmd)
 	if err != nil {
 		return err
 	}

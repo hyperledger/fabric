@@ -347,7 +347,6 @@ func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan proto.Received
 	go func() {
 		defer c.logger.Debug("Exiting Accept() loop")
 		defer func() {
-			c.logger.Warning("Recovered")
 			recover()
 		}()
 

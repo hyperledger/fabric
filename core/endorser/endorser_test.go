@@ -50,7 +50,6 @@ import (
 )
 
 var endorserServer pb.EndorserServer
-var mspInstance msp.MSP
 var signer msp.SigningIdentity
 
 type testEnvironment struct {
@@ -165,12 +164,12 @@ func getDeployOrUpgradeProposal(cds *pb.ChaincodeDeploymentSpec, chainID string,
 		propType = "deploy"
 	}
 	sccver := util.GetSysCCVersion()
-	//wrap the deployment in an invocation spec to lccc...
-	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lccc", Version: sccver}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b}}}}
+	//wrap the deployment in an invocation spec to lscc...
+	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sccver}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b}}}}
 
 	//...and get the proposal for it
 	var prop *pb.Proposal
-	if prop, _, err = getInvokeProposal(lcccSpec, chainID, creator); err != nil {
+	if prop, _, err = getInvokeProposal(lsccSpec, chainID, creator); err != nil {
 		return nil, err
 	}
 
@@ -622,6 +621,21 @@ func TestAdminACLFail(t *testing.T) {
 	t.Logf("TestATestAdminACLFailCLFail passed")
 
 	chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+}
+
+// TestInvokeSccFail makes sure that invoking a system chaincode fails
+func TestInvokeSccFail(t *testing.T) {
+	chainID := util.GetTestChainID()
+
+	chaincodeID := &pb.ChaincodeID{Name: "escc"}
+	args := util.ToChaincodeArgs("someFunc", "someArg")
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, _, _, err := invoke(chainID, spec)
+	if err == nil {
+		t.Logf("Invoking escc should have failed!")
+		t.Fail()
+		return
+	}
 }
 
 func newTempDir() string {

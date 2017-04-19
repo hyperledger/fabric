@@ -224,13 +224,14 @@ func (g *gossipServiceImpl) configUpdated(config Config) {
 		return
 	}
 	jcm := &joinChannelMessage{seqNum: config.Sequence(), members2AnchorPeers: map[string][]api.AnchorPeer{}}
-	for orgID, appOrg := range config.Organizations() {
+	for _, appOrg := range config.Organizations() {
+		logger.Debug(appOrg.MSPID(), "anchor peers:", appOrg.AnchorPeers())
 		for _, ap := range appOrg.AnchorPeers() {
 			anchorPeer := api.AnchorPeer{
 				Host: ap.Host,
 				Port: int(ap.Port),
 			}
-			jcm.members2AnchorPeers[orgID] = append(jcm.members2AnchorPeers[orgID], anchorPeer)
+			jcm.members2AnchorPeers[appOrg.MSPID()] = append(jcm.members2AnchorPeers[appOrg.MSPID()], anchorPeer)
 		}
 	}
 
@@ -305,8 +306,8 @@ func (g *gossipServiceImpl) onStatusChangeFactory(chainID string, committer bloc
 
 func orgListFromConfig(config Config) []string {
 	var orgList []string
-	for orgName := range config.Organizations() {
-		orgList = append(orgList, orgName)
+	for _, appOrg := range config.Organizations() {
+		orgList = append(orgList, appOrg.MSPID())
 	}
 	return orgList
 }

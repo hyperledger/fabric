@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -51,6 +52,7 @@ func init() {
 	algo.SetDigestWaitTime(shortenedWaitTime / 2)
 	algo.SetRequestWaitTime(shortenedWaitTime)
 	algo.SetResponseWaitTime(shortenedWaitTime)
+	factory.InitFactories(nil)
 }
 
 var (
@@ -60,6 +62,7 @@ var (
 	orgInChannelA             = api.OrgIdentityType("ORG1")
 	orgNotInChannelA          = api.OrgIdentityType("ORG2")
 	pkiIDInOrg1               = common.PKIidType("pkiIDInOrg1")
+	pkiIDnilOrg               = common.PKIidType("pkIDnilOrg")
 	pkiIDInOrg1ButNotEligible = common.PKIidType("pkiIDInOrg1ButNotEligible")
 	pkiIDinOrg2               = common.PKIidType("pkiIDinOrg2")
 )
@@ -212,6 +215,9 @@ func (ga *gossipAdapterMock) ValidateStateInfoMessage(msg *proto.SignedGossipMes
 
 func (ga *gossipAdapterMock) GetOrgOfPeer(PKIIID common.PKIidType) api.OrgIdentityType {
 	args := ga.Called(PKIIID)
+	if args.Get(0) == nil {
+		return nil
+	}
 	return args.Get(0).(api.OrgIdentityType)
 }
 
@@ -225,7 +231,25 @@ func configureAdapter(adapter *gossipAdapterMock, members ...discovery.NetworkMe
 	adapter.On("GetOrgOfPeer", pkiIDInOrg1).Return(orgInChannelA)
 	adapter.On("GetOrgOfPeer", pkiIDInOrg1ButNotEligible).Return(orgInChannelA)
 	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgNotInChannelA)
+	adapter.On("GetOrgOfPeer", pkiIDnilOrg).Return(nil)
 	adapter.On("GetOrgOfPeer", mock.Anything).Return(api.OrgIdentityType(nil))
+}
+
+func TestBadInput(t *testing.T) {
+	cs := &cryptoService{}
+	adapter := new(gossipAdapterMock)
+	configureAdapter(adapter)
+	adapter.On("Gossip", mock.Anything)
+	adapter.On("Send", mock.Anything, mock.Anything)
+	adapter.On("DeMultiplex", mock.Anything)
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{}).(*gossipChannel)
+	assert.False(t, gc.verifyMsg(nil))
+	assert.False(t, gc.verifyMsg(&receivedMsg{msg: nil, PKIID: nil}))
+
+	gc.UpdateStateInfo(createDataMsg(0, channelA).NoopSign())
+	gc.IsMemberInChan(discovery.NetworkMember{PKIid: pkiIDnilOrg})
+	gc.HandleMessage(&receivedMsg{msg: (&proto.GossipMessage{}).NoopSign()})
+	gc.HandleMessage(&receivedMsg{msg: createDataUpdateMsg(0), PKIID: pkiIDnilOrg})
 }
 
 func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
@@ -250,7 +274,7 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 		stateInfoReceptionChan <- msg
 	})
 
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	gc.UpdateStateInfo(createStateInfoMsg(ledgerHeight, pkiIDInOrg1, channelA))
 
 	var msg *proto.SignedGossipMessage
@@ -284,7 +308,7 @@ func TestChannelPull(t *testing.T) {
 		assert.True(t, msg.IsDataMsg())
 		receivedBlocksChan <- msg
 	})
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	go gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(100, pkiIDInOrg1, channelA)})
 
 	var wg sync.WaitGroup
@@ -313,7 +337,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 	adapter.On("Gossip", mock.Anything)
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 
 	// First thing, we test that blocks can only be received from peers that are in an org that's in the channel
 	// Empty PKI-ID, should drop the block
@@ -399,7 +423,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 
 	// Ensure we don't respond to a StateInfoRequest in the wrong channel from a peer in the right org
 	req2 := gc.(*gossipChannel).createStateInfoRequest()
-	req2.Channel = []byte("B") // Not channelA
+	req2.GetStateInfoPullReq().ChannelMAC = ChannelMAC(pkiIDInOrg1, common.ChainID("B"))
 	invalidReceivedMsg2 := &receivedMsg{
 		msg:   req2,
 		PKIID: pkiIDInOrg1,
@@ -408,7 +432,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 	gc.HandleMessage(invalidReceivedMsg2)
 	select {
 	case <-gossipMessagesSentFromChannel:
-		t.Fatal("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
+		t.Fatal("Responded with stateInfo request, but shouldn't have since it has the wrong MAC")
 	case <-time.After(time.Second * 1):
 	}
 }
@@ -420,7 +444,7 @@ func TestChannelIsInChannel(t *testing.T) {
 	cs.On("VerifyBlock", mock.Anything).Return(nil)
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	adapter.On("Gossip", mock.Anything)
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
@@ -439,7 +463,7 @@ func TestChannelIsSubscribed(t *testing.T) {
 	cs.On("VerifyBlock", mock.Anything).Return(nil)
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	adapter.On("Gossip", mock.Anything)
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
@@ -455,7 +479,7 @@ func TestChannelAddToMessageStore(t *testing.T) {
 	demuxedMsgs := make(chan *proto.SignedGossipMessage, 1)
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	adapter.On("Gossip", mock.Anything)
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything).Run(func(arg mock.Arguments) {
@@ -507,7 +531,7 @@ func TestChannelBadBlocks(t *testing.T) {
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
 	adapter.On("Gossip", mock.Anything)
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 
 	adapter.On("DeMultiplex", mock.Anything).Run(func(args mock.Arguments) {
 		receivedMessages <- args.Get(0).(*proto.SignedGossipMessage)
@@ -545,7 +569,7 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
 	adapter.On("DeMultiplex", mock.Anything)
 	adapter.On("Gossip", mock.Anything)
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
 
 	var wg sync.WaitGroup
@@ -571,7 +595,7 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 	adapter.On("Gossip", mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
-	gc = NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc = NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
 
 	var wg2 sync.WaitGroup
@@ -591,7 +615,7 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 	adapter.On("Gossip", mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
-	gc = NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc = NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
 
 	var wg3 sync.WaitGroup
@@ -614,7 +638,7 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 	adapter.On("Gossip", mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
-	gc = NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc = NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
 
 	var wg4 sync.WaitGroup
@@ -637,7 +661,7 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	cs.On("VerifyBlock", mock.Anything).Return(nil)
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	adapter.On("Gossip", mock.Anything)
 	sentMessages := make(chan *proto.GossipMessage, 10)
 	adapter.On("Send", mock.Anything, mock.Anything)
@@ -658,19 +682,53 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDinOrg2, msg: stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, channelA))})
 	assert.Empty(t, gc.GetPeers())
 
+	// Ensure we ignore stateInfo snapshots with StateInfo messages with wrong MACs
+	sim := createStateInfoMsg(4, pkiIDInOrg1, channelA)
+	sim.GetStateInfo().ChannelMAC = append(sim.GetStateInfo().ChannelMAC, 1)
+	sim = sim.NoopSign()
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, sim)})
+	assert.Empty(t, gc.GetPeers())
+
+	// Ensure we ignore stateInfo snapshots with correct StateInfo messages, BUT with wrong MACs
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, channelA))})
+
 	// Ensure we process stateInfo snapshots that are OK
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, channelA))})
 	assert.NotEmpty(t, gc.GetPeers())
 	assert.Equal(t, "4", string(gc.GetPeers()[0].Metadata))
 
-	// Check we can respond to stateInfoSnapshot requests
+	// Check we don't respond to stateInfoSnapshot requests with wrong MAC
 	snapshotReq := &receivedMsg{
 		PKIID: pkiIDInOrg1,
 		msg: (&proto.GossipMessage{
-			Channel: channelA,
-			Tag:     proto.GossipMessage_CHAN_OR_ORG,
+			Tag: proto.GossipMessage_CHAN_OR_ORG,
 			Content: &proto.GossipMessage_StateInfoPullReq{
-				StateInfoPullReq: &proto.StateInfoPullRequest{},
+				StateInfoPullReq: &proto.StateInfoPullRequest{
+					ChannelMAC: append(ChannelMAC(pkiIDInOrg1, channelA), 1),
+				},
+			},
+		}).NoopSign(),
+	}
+	snapshotReq.On("Respond", mock.Anything).Run(func(args mock.Arguments) {
+		sentMessages <- args.Get(0).(*proto.GossipMessage)
+	})
+
+	go gc.HandleMessage(snapshotReq)
+	select {
+	case <-time.After(time.Second):
+	case <-sentMessages:
+		assert.Fail(t, "Shouldn't have responded to this StateInfoSnapshot request because of bad MAC")
+	}
+
+	// Ensure we respond to stateInfoSnapshot requests with valid MAC
+	snapshotReq = &receivedMsg{
+		PKIID: pkiIDInOrg1,
+		msg: (&proto.GossipMessage{
+			Tag: proto.GossipMessage_CHAN_OR_ORG,
+			Content: &proto.GossipMessage_StateInfoPullReq{
+				StateInfoPullReq: &proto.StateInfoPullRequest{
+					ChannelMAC: ChannelMAC(pkiIDInOrg1, channelA),
+				},
 			},
 		}).NoopSign(),
 	}
@@ -712,7 +770,7 @@ func TestChannelStop(t *testing.T) {
 	adapter.On("Send", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
 		atomic.AddInt32(&sendCount, int32(1))
 	})
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	time.Sleep(time.Second)
 	gc.Stop()
 	oldCount := atomic.LoadInt32(&sendCount)
@@ -778,7 +836,7 @@ func TestChannelReconfigureChannel(t *testing.T) {
 		},
 	}
 
-	gc := NewGossipChannel(cs, channelA, adapter, api.JoinChannelMessage(newJoinChanMsg))
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, api.JoinChannelMessage(newJoinChanMsg))
 
 	// Just call it again, to make sure stuff don't crash
 	gc.ConfigureChannel(api.JoinChannelMessage(newJoinChanMsg))
@@ -846,7 +904,7 @@ func TestChannelNoAnchorPeers(t *testing.T) {
 		},
 	}
 
-	gc := NewGossipChannel(cs, channelA, adapter, api.JoinChannelMessage(jcm))
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, api.JoinChannelMessage(jcm))
 	assert.True(t, gc.IsOrgInChannel(orgInChannelA))
 }
 
@@ -870,7 +928,7 @@ func TestChannelGetPeers(t *testing.T) {
 		{PKIid: pkiIDinOrg2},
 	}
 	configureAdapter(adapter, members...)
-	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDinOrg2, channelA)})
 	assert.Len(t, gc.GetPeers(), 1)
@@ -879,6 +937,14 @@ func TestChannelGetPeers(t *testing.T) {
 	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1ButNotEligible, channelA), PKIID: pkiIDInOrg1ButNotEligible})
 	cs.On("VerifyByChannel", mock.Anything).Return(errors.New("Not eligible"))
 	cs.mocked = true
+	assert.Len(t, gc.GetPeers(), 0)
+
+	// Now recreate gc and corrupt the MAC
+	// and ensure that the StateInfo message doesn't count
+	gc = NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
+	msg := &receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)}
+	msg.GetGossipMessage().GetStateInfo().ChannelMAC = ChannelMAC(pkiIDinOrg2, channelA)
+	gc.HandleMessage(msg)
 	assert.Len(t, gc.GetPeers(), 0)
 }
 
@@ -931,13 +997,13 @@ func dataMsgOfChannel(seqnum uint64, channel common.ChainID) *proto.SignedGossip
 
 func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common.ChainID) *proto.SignedGossipMessage {
 	return (&proto.GossipMessage{
-		Channel: channel,
-		Tag:     proto.GossipMessage_CHAN_OR_ORG,
+		Tag: proto.GossipMessage_CHAN_OR_ORG,
 		Content: &proto.GossipMessage_StateInfo{
 			StateInfo: &proto.StateInfo{
-				Timestamp: &proto.PeerTime{IncNumber: uint64(time.Now().UnixNano()), SeqNum: 1},
-				Metadata:  []byte(fmt.Sprintf("%d", ledgerHeight)),
-				PkiId:     []byte(pkiID),
+				ChannelMAC: ChannelMAC(pkiID, channel),
+				Timestamp:  &proto.PeerTime{IncNumber: uint64(time.Now().UnixNano()), SeqNum: 1},
+				Metadata:   []byte(fmt.Sprintf("%d", ledgerHeight)),
+				PkiId:      []byte(pkiID),
 			},
 		},
 	}).NoopSign()

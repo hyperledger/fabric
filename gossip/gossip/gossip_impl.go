@@ -301,8 +301,9 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 	}
 
 	if msg.IsChannelRestricted() {
-		if gc := g.chanState.getGossipChannelByChainID(msg.Channel); gc == nil {
-			// If we're not in the channel but we should forward to peers of our org
+		if gc := g.chanState.lookupChannelForMsg(m); gc == nil {
+			// If we're not in the channel, we should still forward to peers of our org
+			// in case it's a StateInfo message
 			if g.isInMyorg(discovery.NetworkMember{PKIid: m.GetConnectionInfo().ID}) && msg.IsStateInfoMsg() {
 				if g.stateInfoMsgStore.Add(msg) {
 					g.emitter.Add(msg)
@@ -456,17 +457,23 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*proto.SignedGossipMessage) {
 		return filter.CombineRoutingFilters(gc.EligibleForChannel, gc.IsMemberInChan, g.isInMyorg)
 	})
 
-	// Gossip StateInfo messages
-	stateInfoMsgs, msgs = partitionMessages(isAStateInfoMsg, msgs)
-	g.gossipInChan(stateInfoMsgs, func(gc channel.GossipChannel) filter.RoutingFilter {
-		return gc.IsMemberInChan
-	})
-
 	// Gossip Leadership messages
 	leadershipMsgs, msgs = partitionMessages(isLeadershipMsg, msgs)
 	g.gossipInChan(leadershipMsgs, func(gc channel.GossipChannel) filter.RoutingFilter {
 		return filter.CombineRoutingFilters(gc.EligibleForChannel, gc.IsMemberInChan, g.isInMyorg)
 	})
+
+	// Gossip StateInfo messages
+	stateInfoMsgs, msgs = partitionMessages(isAStateInfoMsg, msgs)
+	for _, stateInfMsg := range stateInfoMsgs {
+		peerSelector := g.isInMyorg
+		gc := g.chanState.lookupChannelForGossipMsg(stateInfMsg.GossipMessage)
+		if gc != nil {
+			peerSelector = gc.IsMemberInChan
+		}
+		peers2Send := filter.SelectPeers(g.conf.PropagatePeerNum, g.disc.GetMembership(), peerSelector)
+		g.comm.Send(stateInfMsg, peers2Send...)
+	}
 
 	// Gossip messages restricted to our org
 	orgMsgs, msgs = partitionMessages(isOrgRestricted, msgs)
@@ -921,18 +928,19 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 }
 
 func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID) (*proto.SignedGossipMessage, error) {
+	pkiID := g.comm.GetPKIid()
 	stateInfMsg := &proto.StateInfo{
-		Metadata: metadata,
-		PkiId:    g.comm.GetPKIid(),
+		ChannelMAC: channel.ChannelMAC(pkiID, chainID),
+		Metadata:   metadata,
+		PkiId:      g.comm.GetPKIid(),
 		Timestamp: &proto.PeerTime{
 			IncNumber: uint64(g.incTime.UnixNano()),
 			SeqNum:    uint64(time.Now().UnixNano()),
 		},
 	}
 	m := &proto.GossipMessage{
-		Channel: chainID,
-		Nonce:   0,
-		Tag:     proto.GossipMessage_CHAN_OR_ORG,
+		Nonce: 0,
+		Tag:   proto.GossipMessage_CHAN_OR_ORG,
 		Content: &proto.GossipMessage_StateInfo{
 			StateInfo: stateInfMsg,
 		},

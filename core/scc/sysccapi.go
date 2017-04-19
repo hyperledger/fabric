@@ -54,6 +54,17 @@ type SystemChaincode struct {
 
 	// Chaincode is the actual chaincode object
 	Chaincode shim.Chaincode
+
+	// InvokableExternal keeps track of whether
+	// this system chaincode can be invoked
+	// through a proposal sent to this peer
+	InvokableExternal bool
+
+	// InvokableCC2CC keeps track of whether
+	// this system chaincode can be invoked
+	// by way of a chaincode-to-chaincode
+	// invocation
+	InvokableCC2CC bool
 }
 
 // RegisterSysCC registers the given system chaincode with the peer

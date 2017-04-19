@@ -88,3 +88,38 @@ func Test_writeGopathSrc(t *testing.T) {
 	//ioutil.WriteFile("/tmp/chaincode_deployment.tar", inputbuf.Bytes(), 0644)
 
 }
+
+func Test_decodeUrl(t *testing.T) {
+	cs := &pb.ChaincodeSpec{
+		ChaincodeId: &pb.ChaincodeID{
+			Name: "Test Chaincode",
+			Path: "http://github.com/hyperledger/fabric/examples/chaincode/go/map",
+		},
+	}
+
+	if _, err := decodeUrl(cs); err != nil {
+		t.Fail()
+		t.Logf("Error to decodeUrl unsuccessfully with valid path: %s, %s", cs.ChaincodeId.Path, err)
+	}
+
+	cs.ChaincodeId.Path = ""
+
+	if _, err := decodeUrl(cs); err == nil {
+		t.Fail()
+		t.Logf("Error to decodeUrl successfully with invalid path: %s", cs.ChaincodeId.Path)
+	}
+
+	cs.ChaincodeId.Path = "/"
+
+	if _, err := decodeUrl(cs); err == nil {
+		t.Fail()
+		t.Logf("Error to decodeUrl successfully with invalid path: %s", cs.ChaincodeId.Path)
+	}
+
+	cs.ChaincodeId.Path = "http:///"
+
+	if _, err := decodeUrl(cs); err == nil {
+		t.Fail()
+		t.Logf("Error to decodeUrl successfully with invalid path: %s", cs.ChaincodeId.Path)
+	}
+}

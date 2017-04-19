@@ -18,6 +18,7 @@ package ledgerconfig
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
@@ -54,6 +55,9 @@ func TestGetCouchDBDefinition(t *testing.T) {
 	testutil.AssertEquals(t, couchDBDef.URL, "127.0.0.1:5984")
 	testutil.AssertEquals(t, couchDBDef.Username, "")
 	testutil.AssertEquals(t, couchDBDef.Password, "")
+	testutil.AssertEquals(t, couchDBDef.MaxRetries, 3)
+	testutil.AssertEquals(t, couchDBDef.MaxRetriesOnStartup, 10)
+	testutil.AssertEquals(t, couchDBDef.RequestTimeout, time.Second*20)
 }
 
 func TestIsHistoryDBEnabledDefault(t *testing.T) {

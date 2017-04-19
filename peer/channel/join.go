@@ -68,12 +68,10 @@ func getJoinCCSpec() (*pb.ChaincodeSpec, error) {
 		return nil, GBFileNotFoundErr(err.Error())
 	}
 
-	spec := &pb.ChaincodeSpec{}
-
 	// Build the spec
 	input := &pb.ChaincodeInput{Args: [][]byte{[]byte(cscc.JoinChain), gb}}
 
-	spec = &pb.ChaincodeSpec{
+	spec := &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]),
 		ChaincodeId: &pb.ChaincodeID{Name: "cscc"},
 		Input:       input,
