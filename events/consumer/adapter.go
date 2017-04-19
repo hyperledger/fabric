@@ -17,13 +17,13 @@ limitations under the License.
 package consumer
 
 import (
-	ehpb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
-//EventAdapter is the interface by which a openchain event client registers interested events and
-//receives messages from the openchain event Server
+//EventAdapter is the interface by which a fabric event client registers interested events and
+//receives messages from the fabric event Server
 type EventAdapter interface {
-	GetInterestedEvents() ([]*ehpb.Interest, error)
-	Recv(msg *ehpb.Event) (bool, error)
+	GetInterestedEvents() ([]*peer.Interest, error)
+	Recv(msg *peer.Event) (bool, error)
 	Disconnected(err error)
 }

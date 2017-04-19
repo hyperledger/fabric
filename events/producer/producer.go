@@ -51,7 +51,7 @@ func NewEventsServer(bufferSize uint, timeout int) *EventsServer {
 func (p *EventsServer) Chat(stream pb.Events_ChatServer) error {
 	handler, err := newEventHandler(stream)
 	if err != nil {
-		return fmt.Errorf("Error creating handler during handleChat initiation: %s", err)
+		return fmt.Errorf("error creating handler during handleChat initiation: %s", err)
 	}
 	defer handler.Stop()
 	for {
@@ -61,13 +61,13 @@ func (p *EventsServer) Chat(stream pb.Events_ChatServer) error {
 			return nil
 		}
 		if err != nil {
-			e := fmt.Errorf("Error during Chat, stopping handler: %s", err)
+			e := fmt.Errorf("error during Chat, stopping handler: %s", err)
 			producerLogger.Error(e.Error())
 			return e
 		}
 		err = handler.HandleMessage(in)
 		if err != nil {
-			producerLogger.Errorf("Error handling message: %s", err)
+			producerLogger.Errorf("error handling message: %s", err)
 			return err
 		}
 

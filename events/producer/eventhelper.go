@@ -41,12 +41,12 @@ func SendProducerBlockEvent(block *common.Block) error {
 		ebytes := d
 		if ebytes != nil {
 			if env, err := utils.GetEnvelopeFromBlock(ebytes); err != nil {
-				logger.Errorf("Error getting tx from block(%s)\n", err)
+				logger.Errorf("error getting tx from block(%s)\n", err)
 			} else if env != nil {
 				// get the payload from the envelope
 				payload, err := utils.GetPayload(env)
 				if err != nil {
-					return fmt.Errorf("Could not extract payload from envelope, err %s", err)
+					return fmt.Errorf("could not extract payload from envelope, err %s", err)
 				}
 
 				chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
@@ -57,20 +57,20 @@ func SendProducerBlockEvent(block *common.Block) error {
 				if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 					tx, err := utils.GetTransaction(payload.Data)
 					if err != nil {
-						return fmt.Errorf("Error unmarshalling transaction payload for block event: %s", err)
+						return fmt.Errorf("error unmarshalling transaction payload for block event: %s", err)
 					}
 					chaincodeActionPayload, err := utils.GetChaincodeActionPayload(tx.Actions[0].Payload)
 					if err != nil {
-						return fmt.Errorf("Error unmarshalling transaction action payload for block event: %s", err)
+						return fmt.Errorf("error unmarshalling transaction action payload for block event: %s", err)
 					}
 					propRespPayload, err := utils.GetProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
 					if err != nil {
-						return fmt.Errorf("Error unmarshalling proposal response payload for block event: %s", err)
+						return fmt.Errorf("error unmarshalling proposal response payload for block event: %s", err)
 					}
 					//ENDORSER_ACTION, ProposalResponsePayload.Extension field contains ChaincodeAction
 					caPayload, err := utils.GetChaincodeAction(propRespPayload.Extension)
 					if err != nil {
-						return fmt.Errorf("Error unmarshalling chaincode action for block event: %s", err)
+						return fmt.Errorf("error unmarshalling chaincode action for block event: %s", err)
 					}
 					// Drop read write set from transaction before sending block event
 					// Performance issue with chaincode deploy txs and causes nodejs grpc
@@ -80,23 +80,23 @@ func SendProducerBlockEvent(block *common.Block) error {
 					caPayload.Results = nil
 					chaincodeActionPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(propRespPayload.ProposalHash, caPayload.Response, caPayload.Results, caPayload.Events)
 					if err != nil {
-						return fmt.Errorf("Error marshalling tx proposal payload for block event: %s", err)
+						return fmt.Errorf("error marshalling tx proposal payload for block event: %s", err)
 					}
 					tx.Actions[0].Payload, err = utils.GetBytesChaincodeActionPayload(chaincodeActionPayload)
 					if err != nil {
-						return fmt.Errorf("Error marshalling tx action payload for block event: %s", err)
+						return fmt.Errorf("error marshalling tx action payload for block event: %s", err)
 					}
 					payload.Data, err = utils.GetBytesTransaction(tx)
 					if err != nil {
-						return fmt.Errorf("Error marshalling payload for block event: %s", err)
+						return fmt.Errorf("error marshalling payload for block event: %s", err)
 					}
 					env.Payload, err = utils.GetBytesPayload(payload)
 					if err != nil {
-						return fmt.Errorf("Error marshalling tx envelope for block event: %s", err)
+						return fmt.Errorf("error marshalling tx envelope for block event: %s", err)
 					}
 					ebytes, err = utils.GetBytesEnvelope(env)
 					if err != nil {
-						return fmt.Errorf("Cannot marshal transaction %s", err)
+						return fmt.Errorf("cannot marshal transaction %s", err)
 					}
 				}
 			}

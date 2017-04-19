@@ -270,6 +270,26 @@ func GetSignedProposal(prop *peer.Proposal, signer msp.SigningIdentity) (*peer.S
 	return &peer.SignedProposal{ProposalBytes: propBytes, Signature: signature}, nil
 }
 
+// GetSignedEvent returns a signed event given an Event message and a signing identity
+func GetSignedEvent(evt *peer.Event, signer msp.SigningIdentity) (*peer.SignedEvent, error) {
+	// check for nil argument
+	if evt == nil || signer == nil {
+		return nil, errors.New("nil arguments")
+	}
+
+	evtBytes, err := proto.Marshal(evt)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := signer.Sign(evtBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &peer.SignedEvent{EventBytes: evtBytes, Signature: signature}, nil
+}
+
 // MockSignedEndorserProposalOrPanic creates a SignedProposal with the passed arguments
 func MockSignedEndorserProposalOrPanic(chainID string, cs *peer.ChaincodeSpec, creator, signature []byte) (*peer.SignedProposal, *peer.Proposal) {
 	prop, _, err := CreateChaincodeProposal(

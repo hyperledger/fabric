@@ -107,5 +107,5 @@ message Event {
 // Interface exported by the events server
 service Events {
     // event chatting using Event
-    rpc Chat(stream Event) returns (stream Event) {}
+    rpc Chat(stream SignedEvent) returns (stream Event) {}
 }

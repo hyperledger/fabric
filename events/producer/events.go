@@ -210,7 +210,7 @@ type eventProcessor struct {
 var gEventProcessor *eventProcessor
 
 func (ep *eventProcessor) start() {
-	producerLogger.Info("event processor started")
+	producerLogger.Info("Event processor started")
 	for {
 		//wait for event
 		e := <-ep.eventChannel
@@ -219,7 +219,7 @@ func (ep *eventProcessor) start() {
 		eType := getMessageType(e)
 		ep.Lock()
 		if hl, _ = ep.eventConsumers[eType]; hl == nil {
-			producerLogger.Errorf("Event of type %s does not exist", eType)
+			producerLogger.Errorf("event of type %s does not exist", eType)
 			ep.Unlock()
 			continue
 		}

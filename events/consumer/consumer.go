@@ -17,17 +17,23 @@ limitations under the License.
 package consumer
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"sync"
 	"time"
 
+	"github.com/op/go-logging"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"github.com/hyperledger/fabric/core/comm"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	ehpb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 )
+
+var consumerLogger = logging.MustGetLogger("eventhub_consumer")
 
 //EventsClient holds the stream and adapter for consumer to work with
 type EventsClient struct {
@@ -62,7 +68,24 @@ func newEventsClientConnectionWithAddress(peerAddress string) (*grpc.ClientConn,
 func (ec *EventsClient) send(emsg *ehpb.Event) error {
 	ec.Lock()
 	defer ec.Unlock()
-	return ec.stream.Send(emsg)
+
+	// obtain the default signing identity for this peer; it will be used to sign the event
+	localMsp := mspmgmt.GetLocalMSP()
+	if localMsp == nil {
+		return errors.New("nil local MSP manager")
+	}
+
+	signer, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		return fmt.Errorf("could not obtain the default signing identity, err %s", err)
+	}
+
+	signedEvt, err := utils.GetSignedEvent(emsg, signer)
+	if err != nil {
+		return fmt.Errorf("could not sign outgoing event, err %s", err)
+	}
+
+	return ec.stream.Send(signedEvt)
 }
 
 // RegisterAsync - registers interest in a event and doesn't wait for a response
@@ -196,7 +219,7 @@ func (ec *EventsClient) processEvents() error {
 func (ec *EventsClient) Start() error {
 	conn, err := newEventsClientConnectionWithAddress(ec.peerAddress)
 	if err != nil {
-		return fmt.Errorf("Could not create client conn to %s:%s", ec.peerAddress, err)
+		return fmt.Errorf("could not create client conn to %s:%s", ec.peerAddress, err)
 	}
 
 	ies, err := ec.adapter.GetInterestedEvents()
@@ -211,7 +234,7 @@ func (ec *EventsClient) Start() error {
 	serverClient := ehpb.NewEventsClient(conn)
 	ec.stream, err = serverClient.Chat(context.Background())
 	if err != nil {
-		return fmt.Errorf("Could not create client conn to %s:%s", ec.peerAddress, err)
+		return fmt.Errorf("could not create client conn to %s:%s", ec.peerAddress, err)
 	}
 
 	if err = ec.register(ies); err != nil {
