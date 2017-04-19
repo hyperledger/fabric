@@ -416,7 +416,7 @@ following.
          are accessible to all peers, such as the endorsement policy.
          Note that endorsement policies are not supplied with
          ``txPayload`` in a ``deploy`` transaction, but
-         ``txPayload of a``\ deploy\` contains endorsement policy ID and
+         ``txPayload`` of a ``deploy`` contains endorsement policy ID and
          its parameters (see Section 3).
 
 -  ``anchor`` contains *read version dependencies*, or more
@@ -829,4 +829,3 @@ also be combined:
       orderers.
 
 .. |Illustration of the transaction flow (common-case path).| image:: http://vukolic.com/hyperledger/blocks-3.png
-
