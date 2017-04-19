@@ -57,7 +57,7 @@ func getInterestKey(interest pb.Interest) string {
 	case pb.EventType_CHAINCODE:
 		key = "/" + strconv.Itoa(int(pb.EventType_CHAINCODE)) + "/" + interest.GetChaincodeRegInfo().ChaincodeId + "/" + interest.GetChaincodeRegInfo().EventName
 	default:
-		producerLogger.Errorf("unknown interest type %s", interest.EventType)
+		logger.Errorf("unknown interest type %s", interest.EventType)
 	}
 
 	return key
@@ -68,7 +68,7 @@ func (d *handler) register(iMsg []*pb.Interest) error {
 	// and only lock once for entire array here
 	for _, v := range iMsg {
 		if err := registerHandler(v, d); err != nil {
-			producerLogger.Errorf("could not register %s: %s", v, err)
+			logger.Errorf("could not register %s: %s", v, err)
 			continue
 		}
 		d.interestedEvents[getInterestKey(*v)] = v
@@ -80,7 +80,7 @@ func (d *handler) register(iMsg []*pb.Interest) error {
 func (d *handler) deregister(iMsg []*pb.Interest) error {
 	for _, v := range iMsg {
 		if err := deRegisterHandler(v, d); err != nil {
-			producerLogger.Errorf("could not deregister %s", v)
+			logger.Errorf("could not deregister %s", v)
 			continue
 		}
 		delete(d.interestedEvents, getInterestKey(*v))
@@ -91,7 +91,7 @@ func (d *handler) deregister(iMsg []*pb.Interest) error {
 func (d *handler) deregisterAll() {
 	for k, v := range d.interestedEvents {
 		if err := deRegisterHandler(v, d); err != nil {
-			producerLogger.Errorf("could not deregister %s", v)
+			logger.Errorf("could not deregister %s", v)
 			continue
 		}
 		delete(d.interestedEvents, k)
@@ -149,7 +149,7 @@ func (d *handler) SendMessage(msg *pb.Event) error {
 // minimally viable release. Eventually events will be made channel-specific, at which point this method
 // should be revisited
 func validateEventMessage(signedEvt *pb.SignedEvent) (*pb.Event, error) {
-	producerLogger.Debugf("ValidateEventMessage starts for signed event %p", signedEvt)
+	logger.Debugf("ValidateEventMessage starts for signed event %p", signedEvt)
 
 	// messages from the client for registering and unregistering must be signed
 	// and accompanied by the signing certificate in the "Creator" field
