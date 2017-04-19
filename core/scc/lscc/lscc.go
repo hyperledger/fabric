@@ -19,7 +19,6 @@ package lscc
 import (
 	"fmt"
 	"regexp"
-	"sort"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -27,8 +26,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/protos/common"
-	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -570,34 +567,6 @@ func (lscc *LifeCycleSysCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Success(nil)
 }
 
-// getDefaultEndorsementPolicy returns the default
-// endorsement policy for the specified chain; it
-// is used in case the deployer has not specified a
-// custom one
-func (lscc *LifeCycleSysCC) getDefaultEndorsementPolicy(chain string) []byte {
-	// we create an array of principals, one principal
-	// per application MSP defined on this chain
-	ids := peer.GetMSPIDs(chain)
-	sort.Strings(ids)
-	principals := make([]*mspprotos.MSPPrincipal, len(ids))
-	sigspolicy := make([]*common.SignaturePolicy, len(ids))
-	for i, id := range ids {
-		principals[i] = &mspprotos.MSPPrincipal{
-			PrincipalClassification: mspprotos.MSPPrincipal_ROLE,
-			Principal:               utils.MarshalOrPanic(&mspprotos.MSPRole{Role: mspprotos.MSPRole_MEMBER, MspIdentifier: id})}
-		sigspolicy[i] = cauthdsl.SignedBy(int32(i))
-	}
-
-	// create the policy: it requires exactly 1 signature from any of the principals
-	p := &common.SignaturePolicyEnvelope{
-		Version:    0,
-		Policy:     cauthdsl.NOutOf(1, sigspolicy),
-		Identities: principals,
-	}
-
-	return utils.MarshalOrPanic(p)
-}
-
 // Invoke implements lifecycle functions "deploy", "start", "stop", "upgrade".
 // Deploy's arguments -  {[]byte("deploy"), []byte(<chainname>), <unmarshalled pb.ChaincodeDeploymentSpec>}
 //
@@ -647,7 +616,7 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		if len(args) > 3 && len(args[3]) > 0 {
 			policy = args[3]
 		} else {
-			policy = lscc.getDefaultEndorsementPolicy(chainname)
+			policy = cauthdsl.SignedByAnyMember(peer.GetMSPIDs(chainname))
 		}
 
 		var escc []byte
@@ -693,7 +662,7 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		if len(args) > 3 && len(args[3]) > 0 {
 			policy = args[3]
 		} else {
-			policy = lscc.getDefaultEndorsementPolicy(chainname)
+			policy = cauthdsl.SignedByAnyMember(peer.GetMSPIDs(chainname))
 		}
 
 		var escc []byte

@@ -64,6 +64,10 @@ func (cs *chainSupport) Ledger() ledger.PeerLedger {
 	return cs.ledger
 }
 
+func (cs *chainSupport) GetMSPIDs(cid string) []string {
+	return GetMSPIDs(cid)
+}
+
 // chain is a local struct to manage objects in a chain
 type chain struct {
 	cs        *chainSupport
