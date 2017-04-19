@@ -21,7 +21,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net"
 	"os"
 	"reflect"
@@ -51,10 +50,6 @@ const (
 )
 
 var errSendOverflow = errors.New(sendOverflowErr)
-
-func init() {
-	rand.Seed(42)
-}
 
 // SetDialTimeout sets the dial timeout
 func SetDialTimeout(timeout time.Duration) {
@@ -604,8 +599,8 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, grpc.DialOption, []b
 	var serverOpts []grpc.ServerOption
 	var dialOpts grpc.DialOption
 
-	keyFileName := fmt.Sprintf("key.%d.pem", rand.Int63())
-	certFileName := fmt.Sprintf("cert.%d.pem", rand.Int63())
+	keyFileName := fmt.Sprintf("key.%d.pem", util.RandomUInt64())
+	certFileName := fmt.Sprintf("cert.%d.pem", util.RandomUInt64())
 
 	defer os.Remove(keyFileName)
 	defer os.Remove(certFileName)

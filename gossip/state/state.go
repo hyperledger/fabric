@@ -19,7 +19,6 @@ package state
 import (
 	"bytes"
 	"errors"
-	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -543,7 +542,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 // Generate state request message for given blocks in range [beginSeq...endSeq]
 func (s *GossipStateProviderImpl) stateRequestMessage(beginSeq uint64, endSeq uint64) *proto.GossipMessage {
 	return &proto.GossipMessage{
-		Nonce:   uint64(rand.Uint32())<<32 + uint64(rand.Uint32()),
+		Nonce:   util.RandomUInt64(),
 		Tag:     proto.GossipMessage_CHAN_OR_ORG,
 		Channel: []byte(s.chainID),
 		Content: &proto.GossipMessage_StateRequest{
@@ -566,7 +565,7 @@ func (s *GossipStateProviderImpl) selectPeerToRequestFrom(height uint64) (*comm.
 	}
 
 	// Select peers to ask for blocks
-	return peers[rand.Intn(n)], nil
+	return peers[util.RandomInt(n)], nil
 }
 
 // filterPeers return list of peers which aligns the predicate provided
