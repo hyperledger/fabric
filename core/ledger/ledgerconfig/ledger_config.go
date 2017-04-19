@@ -18,21 +18,10 @@ package ledgerconfig
 
 import (
 	"path/filepath"
-	"time"
 
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
 )
-
-// CouchDBDef contains parameters
-type CouchDBDef struct {
-	URL                 string
-	Username            string
-	Password            string
-	MaxRetries          int
-	MaxRetriesOnStartup int
-	RequestTimeout      time.Duration
-}
 
 //IsCouchDBEnabled exposes the useCouchDB variable
 func IsCouchDBEnabled() bool {
@@ -73,19 +62,6 @@ func GetBlockStorePath() string {
 // GetMaxBlockfileSize returns maximum size of the block file
 func GetMaxBlockfileSize() int {
 	return 64 * 1024 * 1024
-}
-
-//GetCouchDBDefinition exposes the useCouchDB variable
-func GetCouchDBDefinition() *CouchDBDef {
-
-	couchDBAddress := viper.GetString("ledger.state.couchDBConfig.couchDBAddress")
-	username := viper.GetString("ledger.state.couchDBConfig.username")
-	password := viper.GetString("ledger.state.couchDBConfig.password")
-	maxRetries := viper.GetInt("ledger.state.couchDBConfig.maxRetries")
-	maxRetriesOnStartup := viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup")
-	requestTimeout := viper.GetDuration("ledger.state.couchDBConfig.requestTimeout")
-
-	return &CouchDBDef{couchDBAddress, username, password, maxRetries, maxRetriesOnStartup, requestTimeout}
 }
 
 //GetQueryLimit exposes the queryLimit variable
