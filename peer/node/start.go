@@ -80,6 +80,10 @@ var nodeStartCmd = &cobra.Command{
 	Short: "Starts the node.",
 	Long:  `Starts a node that interacts with the network.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// initialize the log level for the "error" module to the value of
+		// `logging.error` in core.yaml. this is necessary to ensure that the stack
+		// is automatically appended to error messages (if set to debug)
+		common.SetLogLevelFromViper("error")
 		return serve(args)
 	},
 }
@@ -259,11 +263,18 @@ func serve(args []string) error {
 	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]",
 		peerEndpoint.Id, viper.GetString("peer.networkId"), peerEndpoint.Address)
 
-	// sets the logging level for the 'error' and 'msp' modules to the
-	// values from core.yaml. they can also be updated dynamically using
-	// "peer logging setlevel <module-name> <log-level>"
-	common.SetLogLevelFromViper("error")
-	common.SetLogLevelFromViper("msp")
+	// if CORE_LOGGING_LEVEL environment variable is not set, set the logging
+	// level for specific modules defined in core.yaml.
+	// TODO Add calls to set 'gossip' and 'ledger' once all other packages
+	// switch to `flogging.MustGetLogger` (from `logging.MustGetLogger`) as those
+	// modules need the regular expression capabilities enabled by the `flogging`
+	// package
+	if viper.GetString("logging_level") == "" {
+		err = common.SetLogLevelFromViper("msp")
+		if err != nil {
+			logger.Warningf("Error setting log level for module 'msp': %s", err.Error())
+		}
+	}
 
 	// TODO This check is here to preserve the old functionality until all
 	// other packages switch to `flogging.MustGetLogger` (from

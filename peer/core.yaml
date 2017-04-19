@@ -5,9 +5,8 @@
 ###############################################################################
 logging:
 
-    # Default logging levels are specified here for each of the three peer
-    # commands 'node', 'network' and 'chaincode'. For commands that have
-    # subcommands, the defaults also apply to all subcommands of the command.
+    # Default logging levels are specified here.
+
     # Valid logging levels are case-insensitive strings chosen from
 
     #     CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
@@ -21,21 +20,19 @@ logging:
     # 2. The environment variable CORE_LOGGING_LEVEL otherwise applies to
     #    all peer commands if defined as a non-empty string.
     #
-    # 3. The environment variables CORE_LOGGING_[NODE|NETWORK|CHAINCODE]
-    #    otherwise apply to the respective peer commands if defined as non-empty
-    #    strings.
-    #
-    # 4. Otherwise, the specifications below apply.
-    #
-    # Developers: Please see fabric/docs/Setup/logging-control.md for more
-    # options.
-    peer:       warning
-    node:       info
-    network:    warning
-    version:    warning
-    protoutils: debug
-    error:      warning
+    # 3. Otherwise, the specifications below apply.
+
+    # Default for all modules running within the scope of a peer
+    peer:       info
+
+    # Override levels for various 'peer' modules
+    gossip:     info
+    ledger:     info
     msp:        warning
+
+    # Error handling framework log level - when set to DEBUG, a callstack will
+    # be appended to all errors generated using the fabric/core/errors package
+    error:      debug
 
     format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
 

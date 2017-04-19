@@ -18,8 +18,8 @@ package clilogging
 
 import (
 	"github.com/hyperledger/fabric/core/errors"
+	"github.com/hyperledger/fabric/peer/common"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
 )
 
@@ -44,10 +44,7 @@ func checkLoggingCmdParams(cmd *cobra.Command, args []string) error {
 			err = errors.ErrorWithCallstack("LOG", "400", "No log level provided.")
 		} else {
 			// check that log level is valid. if not, err is set
-			_, err = logging.LogLevel(args[1])
-			if err != nil {
-				err = errors.ErrorWithCallstack("LOG", "400", "Invalid log level provided - %s", args[1])
-			}
+			err = common.CheckLogLevel(args[1])
 		}
 	}
 

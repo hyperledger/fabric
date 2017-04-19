@@ -49,7 +49,15 @@ const cmdRoot = "core"
 var mainCmd = &cobra.Command{
 	Use: "peer",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		flogging.InitFromSpec(viper.GetString("logging_level"))
+		// check for CORE_LOGGING_LEVEL environment variable, which should override
+		// all other log settings
+		loggingSpec := viper.GetString("logging_level")
+
+		if loggingSpec == "" {
+			// if CORE_LOGGING_LEVEL not set, use the value for 'peer' from core.yaml
+			loggingSpec = viper.GetString("logging.peer")
+		}
+		flogging.InitFromSpec(loggingSpec)
 
 		return core.CacheConfiguration()
 	},
