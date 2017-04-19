@@ -150,11 +150,6 @@ public class Example04 extends ChaincodeBase {
 		return response;
 	}
 
-	@Override
-	public String getChaincodeID() {
-		return "Example04";
-	}
-
 	public static void main(String[] args) throws Exception {
 		new Example04().start(args);
 	}

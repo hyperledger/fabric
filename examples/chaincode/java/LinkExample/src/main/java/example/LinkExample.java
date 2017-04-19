@@ -76,9 +76,4 @@ public class LinkExample extends ChaincodeBase {
 		new LinkExample().start(args);
 	}
 
-	@Override
-	public String getChaincodeID() {
-		return "link";
-	}
-
 }

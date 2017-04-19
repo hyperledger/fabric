@@ -142,11 +142,6 @@ public class SimpleSample extends ChaincodeBase {
 
 	}
 
-	@Override
-	public String getChaincodeID() {
-		return "SimpleSample";
-	}
-
 	public static void main(String[] args) throws Exception {
 		new SimpleSample().start(args);
 	}

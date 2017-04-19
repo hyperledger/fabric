@@ -58,7 +58,6 @@ public abstract class ChaincodeBase implements Chaincode {
 	
     private static Log logger = LogFactory.getLog(ChaincodeBase.class);
     
-    public abstract String getChaincodeID();
     public static final String DEFAULT_HOST = "127.0.0.1";
     public static final int DEFAULT_PORT = 7051;
 
@@ -69,7 +68,7 @@ public abstract class ChaincodeBase implements Chaincode {
     private String rootCertFile = "/etc/hyperledger/fabric/peer.crt";
 
     private Handler handler;
-    private String id = getChaincodeID();
+    private String id;
 
     private final static String CORE_CHAINCODE_ID_NAME = "CORE_CHAINCODE_ID_NAME";
     private final static String CORE_PEER_ADDRESS = "CORE_PEER_ADDRESS";
@@ -77,18 +76,24 @@ public abstract class ChaincodeBase implements Chaincode {
     private final static String CORE_PEER_TLS_SERVERHOSTOVERRIDE = "CORE_PEER_TLS_SERVERHOSTOVERRIDE";
     private static final String CORE_PEER_TLS_ROOTCERT_FILE = "CORE_PEER_TLS_ROOTCERT_FILE";
 
-    // Start entry point for chaincodes bootstrap.
-    public void start(String[] args) {
-	processEnvironmentOptions();
-	processCommandLineOptions(args);
-	new Thread(() -> {
-	    logger.trace("chaincode started");
-	    final ManagedChannel connection = newPeerClientConnection();
-	    logger.trace("connection created");
-	    chatWithPeer(connection);
-	    logger.trace("chatWithPeer DONE");
-	}).start();
-    }
+	/**
+	 * Start chaincode
+	 * @param args command line arguments
+	 */
+	public void start(String[] args) {
+		processEnvironmentOptions();
+		processCommandLineOptions(args);
+		if(this.id == null) {
+			logger.error(String.format("The chaincode id must be specified using either the -i or --i command line options or the %s environment variable.", CORE_CHAINCODE_ID_NAME));
+		}
+		new Thread(() -> {
+			logger.trace("chaincode started");
+			final ManagedChannel connection = newPeerClientConnection();
+			logger.trace("connection created");
+			chatWithPeer(connection);
+			logger.trace("chatWithPeer DONE");
+		}).start();
+	}
 
     private void processCommandLineOptions(String[] args) {
 	Options options = new Options();

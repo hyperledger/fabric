@@ -19,7 +19,6 @@ package example;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
 import static org.hyperledger.fabric.shim.ChaincodeHelper.newInternalServerErrorResponse;
 import static org.hyperledger.fabric.shim.ChaincodeHelper.newSuccessResponse;
@@ -80,11 +79,6 @@ public class EventSender extends ChaincodeBase {
 
 	private Response doQuery(ChaincodeStub stub) {
 		return newSuccessResponse(String.format("{\"NoEvents\":%d}", Integer.parseInt(stub.getStringState(EVENT_COUNT))));
-	}
-
-	@Override
-	public String getChaincodeID() {
-		return "EventSender";
 	}
 
 	public static void main(String[] args) throws Exception {
