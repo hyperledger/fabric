@@ -25,7 +25,7 @@ import "peer/proposal_response.proto";
 // SignedChaincodeDeploymentSpec carries the CDS along with endorsements
 message SignedChaincodeDeploymentSpec {
 
-	// This is the bytes of the ChaincodeDeploymentSpec 
+	// This is the bytes of the ChaincodeDeploymentSpec
 	bytes chaincode_deployment_spec = 1;
 
 	// This is the instantiation policy which is identical in structure
@@ -36,7 +36,7 @@ message SignedChaincodeDeploymentSpec {
 	bytes instantiation_policy = 2;
 
 	// The endorsements of the above deployment spec, the owner's signature over
-	// chaincode_deployment_spec and Endorsement.endorser. 
+	// chaincode_deployment_spec and Endorsement.endorser.
 	repeated Endorsement owner_endorsements = 3;
 }
 
