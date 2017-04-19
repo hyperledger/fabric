@@ -1,3 +1,5 @@
+Release Notes
+=============
 
 `v1.0.0-alpha <https://github.com/hyperledger/fabric/releases/tag/v1.0.0-alpha>`__
 March 16, 2017
