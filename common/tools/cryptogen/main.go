@@ -21,37 +21,44 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/msp"
 )
 
 const (
-	peerOrgBaseName  = "peerOrg"
-	peerBaseName     = "Peer"
-	userBaseName     = "User"
-	adminBaseName    = "Admin"
-	orderOrgBaseName = "ordererOrg"
-	ordererBaseName  = "Orderer"
+	peerOrgBaseName    = "peerOrg"
+	peerBaseName       = "Peer"
+	userBaseName       = "User"
+	adminBaseName      = "Admin"
+	ordererOrgBaseName = "ordererOrg"
+	ordererBaseName    = "Orderer"
+	numOrdererOrgs     = 1
 )
 
 //command line flags
 var (
 	numPeerOrgs = flag.Int("peerOrgs", 2,
-		"number of unique organizations with peers")
+		"number of unique organizations with peers, used if peerOrgNames is not specified")
+	peerOrgNames = flag.String("peerOrgNames", "",
+		"comma-separated list of peer organization names")
 	numPeers = flag.Int("peersPerOrg", 1,
 		"number of peers per organization")
 	numPeerOrgUsers = flag.Int("peerOrgUsers", 1,
 		"number of users per peer organization")
+
 	numOrderers = flag.Int("ordererNodes", 1,
-		"number of ordering service nodes")
+		"number of ordering service nodes per organization")
+	ordererOrgName = flag.String("ordererOrgName", "",
+		"orderer organization name")
+
 	baseDir = flag.String("baseDir", ".",
 		"directory in which to place artifacts")
 )
 
-var numOrdererOrgs = 1
-
 func main() {
+
 	flag.Parse()
 
 	if flag.NFlag() == 0 {
@@ -61,24 +68,22 @@ func main() {
 	}
 
 	genDir := filepath.Join(*baseDir, "crypto-config")
-	if *numPeerOrgs > 0 {
+	if *peerOrgNames != "" {
+		generatePeerOrgs(genDir, strings.Split(*peerOrgNames, ","))
+	} else if *numPeerOrgs > 0 {
 		fmt.Printf("Generating %d peer organization(s) each with %d peer(s) ...\n",
 			*numPeerOrgs, *numPeers)
-
-		// TODO: add ability to specify peer org names
-		// for name just use default base name
-		peerOrgNames := []string{}
-		for i := 1; i <= *numPeerOrgs; i++ {
-			peerOrgNames = append(peerOrgNames, fmt.Sprintf("%s%d", peerOrgBaseName, i))
-		}
-		generatePeerOrgs(genDir, peerOrgNames)
-
+		generatePeerOrgs(genDir, getOrgNames(peerOrgBaseName, *numPeerOrgs))
 	}
 
-	if *numOrderers > 0 {
+	if *ordererOrgName != "" {
+		fmt.Printf("Generating orderer organization %s with %d ordering node(s) ...\n",
+			*ordererOrgName, *numOrderers)
+		generateOrdererOrg(genDir, *ordererOrgName)
+	} else if numOrdererOrgs > 0 {
 		fmt.Printf("Generating %d orderer organization(s) and %d ordering node(s) ...\n",
 			numOrdererOrgs, *numOrderers)
-		generateOrdererOrg(genDir, fmt.Sprintf("%s1", orderOrgBaseName))
+		generateOrdererOrg(genDir, fmt.Sprintf("%s1", ordererOrgBaseName))
 	}
 
 }
@@ -136,6 +141,14 @@ func generatePeerOrgs(baseDir string, orgNames []string) {
 		}
 
 	}
+}
+
+func getOrgNames(baseName string, count int) []string {
+	orgNames := []string{}
+	for i := 1; i <= count; i++ {
+		orgNames = append(orgNames, fmt.Sprintf("%s%d", baseName, i))
+	}
+	return orgNames
 }
 
 func copyAdminCert(usersDir, adminCertsDir, adminUserName string) error {
