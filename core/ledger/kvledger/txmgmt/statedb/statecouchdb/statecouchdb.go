@@ -338,8 +338,9 @@ type couchSavepointData struct {
 
 // recordSavepoint Record a savepoint in statedb.
 // Couch parallelizes writes in cluster or sharded setup and ordering is not guaranteed.
-// Hence we need to fence the savepoint with sync. So ensure_full_commit is called before AND after writing savepoint document
-// TODO: Optimization - merge 2nd ensure_full_commit with savepoint by using X-Couch-Full-Commit header
+// Hence we need to fence the savepoint with sync. So ensure_full_commit is called before
+// savepoint to ensure all block writes are flushed. Savepoint itself does not need to be flushed,
+// it will get flushed with next block if not yet committed.
 func (vdb *VersionedDB) recordSavepoint(height *version.Height) error {
 	var err error
 	var savepointDoc couchSavepointData
@@ -374,12 +375,6 @@ func (vdb *VersionedDB) recordSavepoint(height *version.Height) error {
 		return err
 	}
 
-	// ensure full commit to flush savepoint to disk
-	dbResponse, err = vdb.db.EnsureFullCommit()
-	if err != nil || dbResponse.Ok != true {
-		logger.Errorf("Failed to perform full commit\n")
-		return errors.New("Failed to perform full commit")
-	}
 	return nil
 }
 
