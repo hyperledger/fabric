@@ -304,7 +304,7 @@ What happened behind the scenes?
 -  Now we have a channel consisting of four peers, and two
    organizations.
 
--  ``PEER0`` and ``PEER3`` belong to Org0; ``PEER1`` and ``PEER2``
+-  ``PEER0`` and ``PEER1`` belong to Org0; ``PEER2`` and ``PEER3``
    belong to Org1
 
 -  Recall that these relationships are defined in the ``configtx.yaml``
