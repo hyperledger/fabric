@@ -17,7 +17,6 @@ limitations under the License.
 package producer
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -102,7 +101,7 @@ func (d *handler) deregisterAll() {
 func (d *handler) HandleMessage(msg *pb.SignedEvent) error {
 	evt, err := validateEventMessage(msg)
 	if err != nil {
-		return errors.New("event message must be properly signed by an identitiy from a participating organization in any of the channels existing in the peer")
+		return fmt.Errorf("event message must be properly signed by an identity from the same organization as the peer: [%s]", err)
 	}
 
 	switch evt.Event.(type) {
