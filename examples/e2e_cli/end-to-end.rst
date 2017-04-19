@@ -695,7 +695,7 @@ Install, instantiate, invoke, and query *marbles02* chaincode by following the
 same general steps outlined above for *chaincode_example02* in the **Manually
 create the channel and join peers through CLI** section. After the **Join
 channel** step, use the following steps to interact with the *marbles02*
-chaincode: 
+chaincode:
 
 -  Install and instantiate the chaincode in ``peer0``:
 

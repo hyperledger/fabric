@@ -56,7 +56,7 @@ Notice error transaction in events client.
 # Tesing chaincode events
 Chaincode github.com/hyperledger/fabric/examples/chaincode/go/eventsender can be used to test event sender.
 ## Deploy eventsender chaincode
-Stop the event listener and restart it as follows  
+Stop the event listener and restart it as follows
 
 ```
 CORE_PEER_ADDRESS=172.17.0.2:7051 ./peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/eventsender -c '{"Function":"init", "Args":[]}'
