@@ -26,6 +26,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hyperledger.fabric.protos.peer.ChaincodeEventPackage.ChaincodeEvent;
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
+import org.hyperledger.fabric.shim.ledger.CompositeKey;
 
 import com.google.protobuf.ByteString;
 
@@ -133,17 +134,21 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	public void delState(String key) {
 		handler.handleDeleteState(key, txid);
 	}
+
 	/* (non-Javadoc)
 	 * @see org.hyperledger.fabric.shim.ChaincodeStub#createCompositeKey(java.lang.String, java.lang.String[])
 	 */
 	@Override
-	public String createCompositeKey(String objectType, String[] attributes) {
-		String compositeKey = new String();
-		compositeKey = compositeKey + objectType;
-		for (String attribute : attributes) {
-			compositeKey = compositeKey + attribute.length() + attribute;
-		}
-		return compositeKey;
+	public CompositeKey createCompositeKey(String objectType, String... attributes) {
+		return new CompositeKey(objectType, attributes);
+	}
+
+	/* (non-Javadoc)
+	 * @see org.hyperledger.fabric.shim.ChaincodeStub#splitCompositeKey(java.lang.String)
+	 */
+	@Override
+	public CompositeKey splitCompositeKey(String compositeKey) {
+		return CompositeKey.parseCompositeKey(compositeKey);
 	}
 
 	/* (non-Javadoc)

@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.hyperledger.fabric.protos.peer.ChaincodeEventPackage.ChaincodeEvent;
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
+import org.hyperledger.fabric.shim.ledger.CompositeKey;
 
 public interface ChaincodeStub {
 
@@ -43,7 +44,7 @@ public interface ChaincodeStub {
 	 * @return a list of arguments cast to UTF-8 strings
 	 */
 	List<String> getStringArgs();
-	
+
 	/**
 	 * A convenience method that returns the first argument of the chaincode
 	 * invocation for use as a function name.
@@ -53,7 +54,7 @@ public interface ChaincodeStub {
 	 * @return the function name
 	 */
 	String getFunction();
-	
+
 	/**
 	 * A convenience method that returns all except the first argument of the
 	 * chaincode invocation for use as the parameters to the function returned
@@ -117,14 +118,22 @@ public interface ChaincodeStub {
 	 *
 	 * @param objectType
 	 * @param attributes
-	 * @return
+	 * @return a composite key
 	 */
-	String createCompositeKey(String objectType, String[] attributes);
+	CompositeKey createCompositeKey(String objectType, String... attributes);
+
+	/**
+	 * Parses a composite key from a string.
+	 *
+	 * @param compositeKey a composite key string
+	 * @return a composite key
+	 */
+	CompositeKey splitCompositeKey(String compositeKey);
 
 	/**
 	 * Defines the CHAINCODE type event that will be posted to interested
 	 * clients when the chaincode's result is committed to the ledger.
-	 * 
+	 *
 	 * @param name
 	 *            Name of event. Cannot be null or empty string.
 	 * @param payload
