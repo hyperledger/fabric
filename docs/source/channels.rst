@@ -1,5 +1,5 @@
 Channels
---------
+========
 
 A Hyperledger Fabric **channel** is a private "subnet" of communication between
 two or more specific network members, for the purpose of conducting private and
@@ -16,6 +16,9 @@ This request creates a **genesis block** for the channel ledger, which stores co
 information about the channel policies, members and anchor peers. When adding a
 new member to an existing channel, either this genesis block, or if applicable,
 a more recent reconfiguration block, is shared with the new member.
+
+.. note:: See the :doc:`configtx` section for more more details on the properties
+          and proto structures of config transactions.
 
 The election of a **leading peer** for each member on a channel determines which
 peer communicates with the ordering service on behalf of the member. If no

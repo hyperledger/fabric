@@ -60,6 +60,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business <https
    best_practices
    configtx
    configtxgen
+   cc-packaging-and-signing
    Setup/logging-control
 
 .. toctree::
@@ -72,6 +73,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business <https
    endorsement-policies
    nodesdk
    orderingservice
+   channels
    ledger
    readwrite
    gossip
