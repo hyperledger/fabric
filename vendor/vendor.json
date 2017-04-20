@@ -46,6 +46,24 @@
 			"revisionTime": "2016-11-03T21:40:07Z"
 		},
 		{
+			"checksumSHA1": "KmjnydoAbofMieIWm+it5OWERaM=",
+			"path": "github.com/alecthomas/template",
+			"revision": "a0175ee3bccc567396460bf5acd36800cb10c49c",
+			"revisionTime": "2016-04-05T07:15:01Z"
+		},
+		{
+			"checksumSHA1": "3wt0pTXXeS+S93unwhGoLIyGX/Q=",
+			"path": "github.com/alecthomas/template/parse",
+			"revision": "a0175ee3bccc567396460bf5acd36800cb10c49c",
+			"revisionTime": "2016-04-05T07:15:01Z"
+		},
+		{
+			"checksumSHA1": "fCc3grA7vIxfBru7R3SqjcW+oLI=",
+			"path": "github.com/alecthomas/units",
+			"revision": "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a",
+			"revisionTime": "2015-10-22T06:55:26Z"
+		},
+		{
 			"path": "github.com/cpuguy83/go-md2man/md2man",
 			"revision": "71acacd42f85e5e82f70a55327789582a5200a90",
 			"revisionTime": "2015-08-03T11:35:22-04:00"
@@ -577,6 +595,12 @@
 		{
 			"path": "google/protobuf",
 			"revision": ""
+		},
+		{
+			"checksumSHA1": "ZvPW/nSYs/UeoZejaV2ZSm9+2Do=",
+			"path": "gopkg.in/alecthomas/kingpin.v2",
+			"revision": "7f0871f2e17818990e4eed73f9b5c2f429501228",
+			"revisionTime": "2017-03-28T23:38:35Z"
 		},
 		{
 			"checksumSHA1": "0KwOlQV1dNUh9X8t+5s7nX5bqfk=",
