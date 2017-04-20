@@ -78,7 +78,7 @@ type MockIdentityDeserializer struct {
 }
 
 func (d *MockIdentityDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
-	fmt.Printf("id : [%s], [%s]\n", string(serializedIdentity), string(d.Identity))
+	fmt.Printf("[DeserializeIdentity] id : [%s], [%s]\n", string(serializedIdentity), string(d.Identity))
 	if bytes.Equal(d.Identity, serializedIdentity) {
 		fmt.Printf("GOT : [%s], [%s]\n", string(serializedIdentity), string(d.Identity))
 		return &MockIdentity{identity: d.Identity, msg: d.Msg}, nil
@@ -93,6 +93,7 @@ type MockIdentity struct {
 }
 
 func (id *MockIdentity) SatisfiesPrincipal(p *mspproto.MSPPrincipal) error {
+	fmt.Printf("[SatisfiesPrincipal] id : [%s], [%s]\n", string(id.identity), string(p.Principal))
 	if !bytes.Equal(id.identity, p.Principal) {
 		return fmt.Errorf("Different identities [% x]!=[% x]", id.identity, p.Principal)
 	}

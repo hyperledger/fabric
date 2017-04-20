@@ -17,7 +17,6 @@ limitations under the License.
 package chaincode
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -25,10 +24,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"encoding/json"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
@@ -497,27 +498,6 @@ func _(chainID string, _ string) error {
 	return nil
 }
 
-// Test deploy of a transaction
-func TestExecuteDeployTransaction(t *testing.T) {
-	//chaincoe is deployed as part of many tests. No need for a separate one for this
-	t.Skip()
-	chainID := util.GetTestChainID()
-
-	executeDeployTransaction(t, chainID, "example01", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
-}
-
-// Test deploy of a transaction with a GOPATH with multiple elements
-func TestGopathExecuteDeployTransaction(t *testing.T) {
-	//this is no longer critical as chaincode is assembled in the client side (SDK)
-	t.Skip()
-	chainID := util.GetTestChainID()
-
-	// add a trailing slash to GOPATH
-	// and a couple of elements - it doesn't matter what they are
-	os.Setenv("GOPATH", os.Getenv("GOPATH")+string(os.PathSeparator)+string(os.PathListSeparator)+"/tmp/foo"+string(os.PathListSeparator)+"/tmp/bar")
-	executeDeployTransaction(t, chainID, "example01", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
-}
-
 // Disable this temporarily.
 // TODO: Need to enable this after update chaincode interface of chaincode repo.
 // Test deploy of a transaction with a chaincode over HTTP.
@@ -634,6 +614,118 @@ const (
 	chaincodeExample06JavaPath   = "../../examples/chaincode/java/chaincode_example06"
 )
 
+func runChaincodeInvokeChaincode(t *testing.T, chainID string, _ string) (err error) {
+	var ctxt = context.Background()
+
+	// Deploy first chaincode
+	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+
+	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1, Version: "0"}
+	f := "init"
+	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
+
+	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID1, Input: &pb.ChaincodeInput{Args: args}}
+
+	cccid1 := ccprovider.NewCCContext(chainID, "example02", "0", "", false, nil, nil)
+
+	var nextBlockNumber uint64
+
+	_, err = deploy(ctxt, cccid1, spec1, nextBlockNumber)
+	nextBlockNumber++
+	ccID1 := spec1.ChaincodeId.Name
+	if err != nil {
+		t.Fail()
+		t.Logf("Error initializing chaincode %s(%s)", ccID1, err)
+		theChaincodeSupport.Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
+		return
+	}
+
+	t.Logf("deployed chaincode_example02 got cID1:% s,\n ccID1:% s", cID1, ccID1)
+
+	time.Sleep(time.Second)
+
+	// Deploy second chaincode
+	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example04"
+
+	cID2 := &pb.ChaincodeID{Name: "example04", Path: url2, Version: "0"}
+	f = "init"
+	args = util.ToChaincodeArgs(f, "e", "0")
+
+	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID2, Input: &pb.ChaincodeInput{Args: args}}
+
+	cccid2 := ccprovider.NewCCContext(chainID, "example04", "0", "", false, nil, nil)
+
+	_, err = deploy(ctxt, cccid2, spec2, nextBlockNumber)
+	nextBlockNumber++
+	ccID2 := spec2.ChaincodeId.Name
+	if err != nil {
+		t.Fail()
+		t.Logf("Error initializing chaincode %s(%s)", ccID2, err)
+		theChaincodeSupport.Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
+		theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
+		return
+	}
+
+	time.Sleep(time.Second)
+
+	// Invoke second chaincode passing the first chaincode's name as first param,
+	// which will inturn invoke the first chaincode
+	f = "invoke"
+	cid := spec1.ChaincodeId.Name
+	args = util.ToChaincodeArgs(f, cid, "e", "1")
+
+	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID2, Input: &pb.ChaincodeInput{Args: args}}
+	// Invoke chaincode
+	var uuid string
+	_, uuid, _, err = invoke(ctxt, chainID, spec2, nextBlockNumber)
+
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID2, err)
+		theChaincodeSupport.Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
+		theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
+		return
+	}
+
+	cccid1.TxID = uuid
+
+	// Check the state in the ledger
+	err = checkFinalState(cccid1)
+	if err != nil {
+		t.Fail()
+		t.Logf("Incorrect final state after transaction for <%s>: %s", ccID1, err)
+		theChaincodeSupport.Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
+		theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
+		return
+	}
+
+	theChaincodeSupport.Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
+	theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
+
+	return
+}
+
+// Test deploy of a transaction
+func TestExecuteDeployTransaction(t *testing.T) {
+	//chaincoe is deployed as part of many tests. No need for a separate one for this
+	t.Skip()
+	chainID := util.GetTestChainID()
+
+	executeDeployTransaction(t, chainID, "example01", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
+}
+
+// Test deploy of a transaction with a GOPATH with multiple elements
+func TestGopathExecuteDeployTransaction(t *testing.T) {
+	//this is no longer critical as chaincode is assembled in the client side (SDK)
+	t.Skip()
+	chainID := util.GetTestChainID()
+
+	// add a trailing slash to GOPATH
+	// and a couple of elements - it doesn't matter what they are
+	os.Setenv("GOPATH", os.Getenv("GOPATH")+string(os.PathSeparator)+string(os.PathListSeparator)+"/tmp/foo"+string(os.PathListSeparator)+"/tmp/bar")
+	executeDeployTransaction(t, chainID, "example01", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
+}
+
 func TestExecuteInvokeTransaction(t *testing.T) {
 
 	testCases := []struct {
@@ -744,97 +836,6 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 	}
 
 	closeListenerAndSleep(lis)
-}
-
-func runChaincodeInvokeChaincode(t *testing.T, chainID string, _ string) (err error) {
-	var ctxt = context.Background()
-
-	// Deploy first chaincode
-	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-
-	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1, Version: "0"}
-	f := "init"
-	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
-
-	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID1, Input: &pb.ChaincodeInput{Args: args}}
-
-	cccid1 := ccprovider.NewCCContext(chainID, "example02", "0", "", false, nil, nil)
-
-	var nextBlockNumber uint64
-
-	_, err = deploy(ctxt, cccid1, spec1, nextBlockNumber)
-	nextBlockNumber++
-	ccID1 := spec1.ChaincodeId.Name
-	if err != nil {
-		t.Fail()
-		t.Logf("Error initializing chaincode %s(%s)", ccID1, err)
-		theChaincodeSupport.Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		return
-	}
-
-	t.Logf("deployed chaincode_example02 got cID1:% s,\n ccID1:% s", cID1, ccID1)
-
-	time.Sleep(time.Second)
-
-	// Deploy second chaincode
-	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example04"
-
-	cID2 := &pb.ChaincodeID{Name: "example04", Path: url2, Version: "0"}
-	f = "init"
-	args = util.ToChaincodeArgs(f, "e", "0")
-
-	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID2, Input: &pb.ChaincodeInput{Args: args}}
-
-	cccid2 := ccprovider.NewCCContext(chainID, "example04", "0", "", false, nil, nil)
-
-	_, err = deploy(ctxt, cccid2, spec2, nextBlockNumber)
-	nextBlockNumber++
-	ccID2 := spec2.ChaincodeId.Name
-	if err != nil {
-		t.Fail()
-		t.Logf("Error initializing chaincode %s(%s)", ccID2, err)
-		theChaincodeSupport.Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
-		return
-	}
-
-	time.Sleep(time.Second)
-
-	// Invoke second chaincode passing the first chaincode's name as first param,
-	// which will inturn invoke the first chaincode
-	f = "invoke"
-	cid := spec1.ChaincodeId.Name
-	args = util.ToChaincodeArgs(f, cid, "e", "1")
-
-	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID2, Input: &pb.ChaincodeInput{Args: args}}
-	// Invoke chaincode
-	var uuid string
-	_, uuid, _, err = invoke(ctxt, chainID, spec2, nextBlockNumber)
-
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID2, err)
-		theChaincodeSupport.Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
-		return
-	}
-
-	cccid1.TxID = uuid
-
-	// Check the state in the ledger
-	err = checkFinalState(cccid1)
-	if err != nil {
-		t.Fail()
-		t.Logf("Incorrect final state after transaction for <%s>: %s", ccID1, err)
-		theChaincodeSupport.Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-		theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
-		return
-	}
-
-	theChaincodeSupport.Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
-	theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
-
-	return
 }
 
 // Test the execution of a chaincode that invokes another chaincode with wrong parameters. Should receive error from
@@ -1647,6 +1648,23 @@ func TestChaincodeInitializeInitError(t *testing.T) {
 	}
 }
 
+func TestMain(m *testing.M) {
+	var err error
+
+	// setup the MSP manager so that we can sign/verify
+	mspMgrConfigDir := "../../msp/sampleconfig/"
+	msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
+	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	if err != nil {
+		os.Exit(-1)
+		fmt.Print("Could not initialize msp/signer")
+		return
+	}
+
+	SetupTestConfig()
+	os.Exit(m.Run())
+}
+
 func deployChaincode(ctx context.Context, chaincodeCtx *ccprovider.CCContext, chaincodeType pb.ChaincodeSpec_Type, path string, args [][]byte, nextBlockNumber uint64) ([]byte, error) {
 
 	chaincodeSpec := &pb.ChaincodeSpec{
@@ -1669,23 +1687,6 @@ func deployChaincode(ctx context.Context, chaincodeCtx *ccprovider.CCContext, ch
 }
 
 var signer msp.SigningIdentity
-
-func TestMain(m *testing.M) {
-	var err error
-
-	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigDir := "../../msp/sampleconfig/"
-	msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
-	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
-	if err != nil {
-		os.Exit(-1)
-		fmt.Print("Could not initialize msp/signer")
-		return
-	}
-
-	SetupTestConfig()
-	os.Exit(m.Run())
-}
 
 var rng *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 

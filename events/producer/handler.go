@@ -162,7 +162,7 @@ func validateEventMessage(signedEvt *pb.SignedEvent) (*pb.Event, error) {
 	principalGetter := mgmt.NewLocalMSPPrincipalGetter()
 
 	// Load MSPPrincipal for policy
-	principal, err := principalGetter.Get("member")
+	principal, err := principalGetter.Get(mgmt.Members)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting local MSP principal [member]: [%s]", err)
 	}
