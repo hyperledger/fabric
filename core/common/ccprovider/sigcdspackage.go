@@ -130,7 +130,19 @@ func (ccpack *SignedCDSPackage) GetChaincodeData() *ChaincodeData {
 	if ccpack.depSpec == nil || ccpack.datab == nil || ccpack.id == nil {
 		panic("GetChaincodeData called on uninitialized package")
 	}
-	return &ChaincodeData{Name: ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name, Version: ccpack.depSpec.ChaincodeSpec.ChaincodeId.Version, Data: ccpack.datab, Id: ccpack.id}
+
+	var instPolicy []byte
+	if ccpack.sDepSpec != nil {
+		instPolicy = ccpack.sDepSpec.InstantiationPolicy
+	}
+
+	return &ChaincodeData{
+		Name:                ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name,
+		Version:             ccpack.depSpec.ChaincodeSpec.ChaincodeId.Version,
+		Data:                ccpack.datab,
+		Id:                  ccpack.id,
+		InstantiationPolicy: instPolicy,
+	}
 }
 
 func (ccpack *SignedCDSPackage) getCDSData(scds *pb.SignedChaincodeDeploymentSpec) ([]byte, []byte, *SignedCDSData, error) {
