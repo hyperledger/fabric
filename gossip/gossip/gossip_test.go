@@ -46,6 +46,7 @@ var timeout = time.Second * time.Duration(180)
 var testWG = sync.WaitGroup{}
 
 func init() {
+	rand.Seed(int64(time.Now().Second()))
 	aliveTimeInterval := time.Duration(1000) * time.Millisecond
 	discovery.SetAliveTimeInterval(aliveTimeInterval)
 	discovery.SetAliveExpirationCheckInterval(aliveTimeInterval)
@@ -104,7 +105,9 @@ func (jcm *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer 
 }
 
 type naiveCryptoService struct {
+	sync.RWMutex
 	allowedPkiIDS map[string]struct{}
+	revokedPkiIDS map[string]struct{}
 }
 
 type orgCryptoService struct {
@@ -134,7 +137,15 @@ func (cs *naiveCryptoService) VerifyByChannel(_ common.ChainID, identity api.Pee
 	return errors.New("Forbidden")
 }
 
-func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+func (cs *naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+	cs.RLock()
+	defer cs.RUnlock()
+	if cs.revokedPkiIDS == nil {
+		return nil
+	}
+	if _, revoked := cs.revokedPkiIDS[string(cs.GetPKIidOfCert(peerIdentity))]; revoked {
+		return errors.New("revoked")
+	}
 	return nil
 }
 
@@ -166,6 +177,15 @@ func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, 
 		return fmt.Errorf("Wrong signature:%v, %v", signature, message)
 	}
 	return nil
+}
+
+func (cs *naiveCryptoService) revoke(pkiID common.PKIidType) {
+	cs.Lock()
+	defer cs.Unlock()
+	if cs.revokedPkiIDS == nil {
+		cs.revokedPkiIDS = map[string]struct{}{}
+	}
+	cs.revokedPkiIDS[string(pkiID)] = struct{}{}
 }
 
 func bootPeers(portPrefix int, ids ...int) []string {
@@ -961,6 +981,60 @@ func TestDisseminateAll2All(t *testing.T) {
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestDisseminateAll2All>>>")
 	testWG.Done()
+}
+
+func TestRevocation(t *testing.T) {
+	t.Parallel()
+	// Scenario: spawn 4 peers and revoke one of them.
+	// The rest of the peers should not be able to communicate with
+	// the revoked peer at all.
+
+	portPrefix := 7000
+	g1 := newGossipInstance(portPrefix, 0, 100)
+	g2 := newGossipInstance(portPrefix, 1, 100, 0)
+	g3 := newGossipInstance(portPrefix, 2, 100, 0)
+	g4 := newGossipInstance(portPrefix, 3, 100, 0)
+
+	peers := []Gossip{g1, g2, g3, g4}
+
+	seeAllNeighbors := func() bool {
+		for i := 0; i < 4; i++ {
+			neighborCount := len(peers[i].Peers())
+			if neighborCount != 3 {
+				return false
+			}
+		}
+		return true
+	}
+	waitUntilOrFail(t, seeAllNeighbors)
+	// Now revoke some peer
+	revokedPeerIndex := rand.Intn(4)
+	revokedPkiID := common.PKIidType(fmt.Sprintf("localhost:%d", portPrefix+int(revokedPeerIndex)))
+	for i, p := range peers {
+		if i == revokedPeerIndex {
+			continue
+		}
+		p.(*gossipServiceImpl).mcs.(*naiveCryptoService).revoke(revokedPkiID)
+		p.SuspectPeers(func(_ api.PeerIdentityType) bool {
+			return true
+		})
+	}
+	// Ensure that no one talks to the peer that is revoked
+	ensureRevokedPeerIsIgnored := func() bool {
+		for i := 0; i < 4; i++ {
+			neighborCount := len(peers[i].Peers())
+			expectedNeighborCount := 2
+			if i == revokedPeerIndex {
+				expectedNeighborCount = 0
+			}
+			if neighborCount != expectedNeighborCount {
+				return false
+			}
+		}
+		return true
+	}
+	waitUntilOrFail(t, ensureRevokedPeerIsIgnored)
+	stopPeers(peers)
 }
 
 func TestEndedGoroutines(t *testing.T) {

@@ -143,6 +143,10 @@ func (cs *certStore) createIdentityMessage() *proto.SignedGossipMessage {
 	return sMsg
 }
 
+func (cs *certStore) listRevokedPeers(isSuspected api.PeerSuspector) []common.PKIidType {
+	return cs.idMapper.ListRevokedPeers(isSuspected)
+}
+
 func (cs *certStore) stop() {
 	cs.pull.Stop()
 }

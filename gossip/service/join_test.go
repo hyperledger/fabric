@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/protos/gossip"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -42,7 +42,11 @@ type gossipMock struct {
 	mock.Mock
 }
 
-func (*gossipMock) Send(msg *gossip.GossipMessage, peers ...*comm.RemotePeer) {
+func (*gossipMock) SuspectPeers(s api.PeerSuspector) {
+	panic("implement me")
+}
+
+func (*gossipMock) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
 	panic("implement me")
 }
 
@@ -62,11 +66,11 @@ func (*gossipMock) UpdateChannelMetadata(metadata []byte, chainID common.ChainID
 	panic("implement me")
 }
 
-func (*gossipMock) Gossip(msg *gossip.GossipMessage) {
+func (*gossipMock) Gossip(msg *proto.GossipMessage) {
 	panic("implement me")
 }
 
-func (*gossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *gossip.GossipMessage, <-chan gossip.ReceivedMessage) {
+func (*gossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
 	panic("implement me")
 }
 

@@ -177,6 +177,14 @@ func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID com
 	}
 }
 
+// SuspectPeers makes the gossip instance validate identities of suspected peers, and close
+// any connections to peers with identities that are found invalid
+func (g *gossipServiceImpl) SuspectPeers(isSuspected api.PeerSuspector) {
+	for _, pkiID := range g.certStore.listRevokedPeers(isSuspected) {
+		g.comm.CloseConn(&comm.RemotePeer{PKIID: pkiID})
+	}
+}
+
 func (g *gossipServiceImpl) learnAnchorPeers(orgOfAnchorPeers api.OrgIdentityType, anchorPeers []api.AnchorPeer) {
 	for _, ap := range anchorPeers {
 		if ap.Host == "" {

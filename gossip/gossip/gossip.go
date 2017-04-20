@@ -61,6 +61,10 @@ type Gossip interface {
 	// JoinChan makes the Gossip instance join a channel
 	JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID)
 
+	// SuspectPeers makes the gossip instance validate identities of suspected peers, and close
+	// any connections to peers with identities that are found invalid
+	SuspectPeers(s api.PeerSuspector)
+
 	// Stop stops the gossip component
 	Stop()
 }

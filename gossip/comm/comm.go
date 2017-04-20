@@ -54,9 +54,6 @@ type Comm interface {
 
 	// Stop stops the module
 	Stop()
-
-	// BlackListPKIid prohibits the module communicating with the given PKIid
-	BlackListPKIid(PKIid common.PKIidType)
 }
 
 // RemotePeer defines a peer's endpoint and its PKIid
