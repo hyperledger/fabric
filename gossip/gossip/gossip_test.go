@@ -55,6 +55,7 @@ func init() {
 	discovery.SetReconnectInterval(aliveTimeInterval)
 	testWG.Add(7)
 	factory.InitFactories(nil)
+	identityExpirationCheckInterval = time.Second
 }
 
 var orgInChannelA = api.OrgIdentityType("ORG1")
@@ -984,11 +985,11 @@ func TestDisseminateAll2All(t *testing.T) {
 	testWG.Done()
 }
 
-func TestRevocation(t *testing.T) {
+func TestIdentityExpiration(t *testing.T) {
 	t.Parallel()
-	// Scenario: spawn 4 peers and revoke one of them.
-	// The rest of the peers should not be able to communicate with
-	// the revoked peer at all.
+	// Scenario: spawn 4 peers and make the MessageCryptoService revoke one of them.
+	// Eventually, the rest of the peers should not be able to communicate with
+	// the revoked peer at all because its identity would seem to them as expired
 
 	portPrefix := 7000
 	g1 := newGossipInstance(portPrefix, 0, 100)
@@ -1016,9 +1017,6 @@ func TestRevocation(t *testing.T) {
 			continue
 		}
 		p.(*gossipServiceImpl).mcs.(*naiveCryptoService).revoke(revokedPkiID)
-		p.SuspectPeers(func(_ api.PeerIdentityType) bool {
-			return true
-		})
 	}
 	// Ensure that no one talks to the peer that is revoked
 	ensureRevokedPeerIsIgnored := func() bool {

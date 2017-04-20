@@ -20,9 +20,18 @@ import (
 	"bytes"
 	"errors"
 	"sync"
+	"time"
+
+	"sync/atomic"
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
+)
+
+var (
+	// identityUsageThreshold sets the maximum time that an identity
+	// can not be used to verify some signature before it will be deleted
+	identityUsageThreshold = time.Hour
 )
 
 // Mapper holds mappings between pkiID
@@ -46,15 +55,16 @@ type Mapper interface {
 	// GetPKIidOfCert returns the PKI-ID of a certificate
 	GetPKIidOfCert(api.PeerIdentityType) common.PKIidType
 
-	// ListRevokedPeers returns a list of PKI-IDs that their corresponding
-	// peer identities have been revoked
-	ListRevokedPeers(isSuspected api.PeerSuspector) []common.PKIidType
+	// ListInvalidIdentities returns a list of PKI-IDs that their corresponding
+	// peer identities have been revoked, expired or haven't been used
+	// for a long time
+	ListInvalidIdentities(isSuspected api.PeerSuspector) []common.PKIidType
 }
 
 // identityMapperImpl is a struct that implements Mapper
 type identityMapperImpl struct {
 	mcs        api.MessageCryptoService
-	pkiID2Cert map[string]api.PeerIdentityType
+	pkiID2Cert map[string]*storedIdentity
 	sync.RWMutex
 }
 
@@ -62,7 +72,7 @@ type identityMapperImpl struct {
 func NewIdentityMapper(mcs api.MessageCryptoService) Mapper {
 	return &identityMapperImpl{
 		mcs:        mcs,
-		pkiID2Cert: make(map[string]api.PeerIdentityType),
+		pkiID2Cert: make(map[string]*storedIdentity),
 	}
 }
 
@@ -70,10 +80,10 @@ func NewIdentityMapper(mcs api.MessageCryptoService) Mapper {
 // in case the given pkiID doesn't match the identity
 func (is *identityMapperImpl) Put(pkiID common.PKIidType, identity api.PeerIdentityType) error {
 	if pkiID == nil {
-		return errors.New("PkiID is nil")
+		return errors.New("PKIID is nil")
 	}
 	if identity == nil {
-		return errors.New("Identity is nil")
+		return errors.New("identity is nil")
 	}
 
 	if err := is.mcs.ValidateIdentity(identity); err != nil {
@@ -82,12 +92,12 @@ func (is *identityMapperImpl) Put(pkiID common.PKIidType, identity api.PeerIdent
 
 	id := is.mcs.GetPKIidOfCert(identity)
 	if !bytes.Equal(pkiID, id) {
-		return errors.New("Identity doesn't match the computed pkiID")
+		return errors.New("identity doesn't match the computed pkiID")
 	}
 
 	is.Lock()
 	defer is.Unlock()
-	is.pkiID2Cert[string(id)] = identity
+	is.pkiID2Cert[string(id)] = newStoredIdentity(identity)
 	return nil
 }
 
@@ -96,11 +106,11 @@ func (is *identityMapperImpl) Put(pkiID common.PKIidType, identity api.PeerIdent
 func (is *identityMapperImpl) Get(pkiID common.PKIidType) (api.PeerIdentityType, error) {
 	is.RLock()
 	defer is.RUnlock()
-	identity, exists := is.pkiID2Cert[string(pkiID)]
+	storedIdentity, exists := is.pkiID2Cert[string(pkiID)]
 	if !exists {
-		return nil, errors.New("PkiID wasn't found")
+		return nil, errors.New("PKIID wasn't found")
 	}
-	return identity, nil
+	return storedIdentity.fetchIdentity(), nil
 }
 
 // Sign signs a message, returns a signed message on success
@@ -123,8 +133,11 @@ func (is *identityMapperImpl) GetPKIidOfCert(identity api.PeerIdentityType) comm
 	return is.mcs.GetPKIidOfCert(identity)
 }
 
-func (is *identityMapperImpl) ListRevokedPeers(isSuspected api.PeerSuspector) []common.PKIidType {
-	revokedIds := is.getRevokedCerts(isSuspected)
+// ListInvalidIdentities returns a list of PKI-IDs that their corresponding
+// peer identities have been revoked, expired or haven't been used
+// for a long time
+func (is *identityMapperImpl) ListInvalidIdentities(isSuspected api.PeerSuspector) []common.PKIidType {
+	revokedIds := is.validateIdentities(isSuspected)
 	if len(revokedIds) == 0 {
 		return nil
 	}
@@ -136,17 +149,45 @@ func (is *identityMapperImpl) ListRevokedPeers(isSuspected api.PeerSuspector) []
 	return revokedIds
 }
 
-func (is *identityMapperImpl) getRevokedCerts(isSuspected api.PeerSuspector) []common.PKIidType {
+// validateIdentities returns a list of identities that have been revoked, expired or haven't been
+// used for a long time
+func (is *identityMapperImpl) validateIdentities(isSuspected api.PeerSuspector) []common.PKIidType {
+	now := time.Now()
 	is.RLock()
 	defer is.RUnlock()
 	var revokedIds []common.PKIidType
-	for pkiID, cert := range is.pkiID2Cert {
-		if !isSuspected(cert) {
+	for pkiID, storedIdentity := range is.pkiID2Cert {
+		if storedIdentity.fetchLastAccessTime().Add(identityUsageThreshold).Before(now) {
+			revokedIds = append(revokedIds, common.PKIidType(pkiID))
 			continue
 		}
-		if err := is.mcs.ValidateIdentity(cert); err != nil {
+		if !isSuspected(storedIdentity.fetchIdentity()) {
+			continue
+		}
+		if err := is.mcs.ValidateIdentity(storedIdentity.fetchIdentity()); err != nil {
 			revokedIds = append(revokedIds, common.PKIidType(pkiID))
 		}
 	}
 	return revokedIds
+}
+
+type storedIdentity struct {
+	lastAccessTime int64
+	peerIdentity   api.PeerIdentityType
+}
+
+func newStoredIdentity(identity api.PeerIdentityType) *storedIdentity {
+	return &storedIdentity{
+		lastAccessTime: time.Now().UnixNano(),
+		peerIdentity:   identity,
+	}
+}
+
+func (si *storedIdentity) fetchIdentity() api.PeerIdentityType {
+	atomic.StoreInt64(&si.lastAccessTime, time.Now().UnixNano())
+	return si.peerIdentity
+}
+
+func (si *storedIdentity) fetchLastAccessTime() time.Time {
+	return time.Unix(0, atomic.LoadInt64(&si.lastAccessTime))
 }
