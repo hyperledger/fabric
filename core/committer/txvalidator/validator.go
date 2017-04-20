@@ -104,11 +104,22 @@ func (v *txValidator) chainExists(chain string) bool {
 	return true
 }
 
+// ChaincodeInstance is unique identifier of chaincode instance
+type ChaincodeInstance struct {
+	ChainID          string
+	ChaincodeName    string
+	ChaincodeVersion string
+}
+
 func (v *txValidator) Validate(block *common.Block) error {
 	logger.Debug("START Block Validation")
 	defer logger.Debug("END Block Validation")
 	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
 	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))
+	// txsChaincodeNames records all the invoked chaincodes by tx in a block
+	txsChaincodeNames := make(map[int]*ChaincodeInstance)
+	// upgradedChaincodes records all the chaincodes that are upgrded in a block
+	txsUpgradedChaincodes := make(map[int]*ChaincodeInstance)
 	for tIdx, d := range block.Data.Data {
 		if d != nil {
 			if env, err := utils.GetEnvelopeFromBlock(d); err != nil {
@@ -164,6 +175,18 @@ func (v *txValidator) Validate(block *common.Block) error {
 						txsfltr.SetFlag(tIdx, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
 						continue
 					}
+
+					invokeCC, upgradeCC, err := v.getTxCCInstance(payload)
+					if err != nil {
+						logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
+						txsfltr.SetFlag(tIdx, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+						continue
+					}
+					txsChaincodeNames[tIdx] = invokeCC
+					if upgradeCC != nil {
+						logger.Infof("Find chaincode upgrade transaction for chaincode %s on chain %s with new version %s", upgradeCC.ChaincodeName, upgradeCC.ChainID, upgradeCC.ChaincodeVersion)
+						txsUpgradedChaincodes[tIdx] = upgradeCC
+					}
 				} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
 					configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 					if err != nil {
@@ -193,12 +216,146 @@ func (v *txValidator) Validate(block *common.Block) error {
 			}
 		}
 	}
+
+	txsfltr = v.invalidTXsForUpgradeCC(txsChaincodeNames, txsUpgradedChaincodes, txsfltr)
+
 	// Initialize metadata structure
 	utils.InitBlockMetadata(block)
 
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr
 
 	return nil
+}
+
+// generateCCKey generates a unique identifier for chaincode in specific chain
+func (v *txValidator) generateCCKey(ccName, chainID string) string {
+	return fmt.Sprintf("%s/%s", ccName, chainID)
+}
+
+// invalidTXsForUpgradeCC invalid all txs that should be invalided because of chaincode upgrade txs
+func (v *txValidator) invalidTXsForUpgradeCC(txsChaincodeNames map[int]*ChaincodeInstance, txsUpgradedChaincodes map[int]*ChaincodeInstance, txsfltr ledgerUtil.TxValidationFlags) ledgerUtil.TxValidationFlags {
+	if len(txsUpgradedChaincodes) == 0 {
+		return txsfltr
+	}
+
+	// Invalid former cc upgrade txs if there're two or more txs upgrade the same cc
+	finalValidUpgradeTXs := make(map[string]int)
+	upgradedChaincodes := make(map[string]*ChaincodeInstance)
+	for tIdx, cc := range txsUpgradedChaincodes {
+		if cc == nil {
+			continue
+		}
+		upgradedCCKey := v.generateCCKey(cc.ChaincodeName, cc.ChainID)
+
+		if finalIdx, exist := finalValidUpgradeTXs[upgradedCCKey]; !exist {
+			finalValidUpgradeTXs[upgradedCCKey] = tIdx
+			upgradedChaincodes[upgradedCCKey] = cc
+		} else if finalIdx < tIdx {
+			logger.Infof("Invalid transaction with index %d: chaincode was upgraded by latter tx", finalIdx)
+			txsfltr.SetFlag(finalIdx, peer.TxValidationCode_EXPIRED_CHAINCODE)
+
+			// record latter cc upgrade tx info
+			finalValidUpgradeTXs[upgradedCCKey] = tIdx
+			upgradedChaincodes[upgradedCCKey] = cc
+		} else {
+			logger.Infof("Invalid transaction with index %d: chaincode was upgraded by latter tx", tIdx)
+			txsfltr.SetFlag(tIdx, peer.TxValidationCode_EXPIRED_CHAINCODE)
+		}
+	}
+
+	// invalid txs which invoke the upgraded chaincodes
+	for tIdx, cc := range txsChaincodeNames {
+		if cc == nil {
+			continue
+		}
+		ccKey := v.generateCCKey(cc.ChaincodeName, cc.ChainID)
+		if _, exist := upgradedChaincodes[ccKey]; exist {
+			if txsfltr.IsValid(tIdx) {
+				logger.Infof("Invalid transaction with index %d: chaincode was upgraded in the same block", tIdx)
+				txsfltr.SetFlag(tIdx, peer.TxValidationCode_EXPIRED_CHAINCODE)
+			}
+		}
+	}
+
+	return txsfltr
+}
+
+func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upgradeCCIns *ChaincodeInstance, err error) {
+	// This is duplicated unpacking work, but make test easier.
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Chain ID
+	chainID := chdr.ChannelId
+	if chainID == "" {
+		err := fmt.Errorf("transaction header does not contain an chain ID")
+		logger.Errorf("%s", err)
+		return nil, nil, err
+	}
+
+	// ChaincodeID
+	hdrExt, err := utils.GetChaincodeHeaderExtension(payload.Header)
+	if err != nil {
+		return nil, nil, err
+	}
+	invokeCC := hdrExt.ChaincodeId
+	invokeIns := &ChaincodeInstance{ChainID: chainID, ChaincodeName: invokeCC.Name, ChaincodeVersion: invokeCC.Version}
+
+	// Transaction
+	tx, err := utils.GetTransaction(payload.Data)
+	if err != nil {
+		logger.Errorf("GetTransaction failed: %s", err)
+		return invokeIns, nil, nil
+	}
+
+	// ChaincodeActionPayload
+	cap, err := utils.GetChaincodeActionPayload(tx.Actions[0].Payload)
+	if err != nil {
+		logger.Errorf("GetChaincodeActionPayload failed: %s", err)
+		return invokeIns, nil, nil
+	}
+
+	// ChaincodeProposalPayload
+	cpp, err := utils.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
+	if err != nil {
+		logger.Errorf("GetChaincodeProposalPayload failed: %s", err)
+		return invokeIns, nil, nil
+	}
+
+	// ChaincodeInvocationSpec
+	cis := &peer.ChaincodeInvocationSpec{}
+	err = proto.Unmarshal(cpp.Input, cis)
+	if err != nil {
+		logger.Errorf("GetChaincodeInvokeSpec failed: %s", err)
+		return invokeIns, nil, nil
+	}
+
+	if invokeCC.Name == "lscc" {
+		if string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade" {
+			upgradeIns, err := v.getUpgradeTxInstance(chainID, cis.ChaincodeSpec.Input.Args[2])
+			if err != nil {
+				return invokeIns, nil, nil
+			}
+			return invokeIns, upgradeIns, nil
+		}
+	}
+
+	return invokeIns, nil, nil
+}
+
+func (v *txValidator) getUpgradeTxInstance(chainID string, cdsBytes []byte) (*ChaincodeInstance, error) {
+	cds, err := utils.GetChaincodeDeploymentSpec(cdsBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ChaincodeInstance{
+		ChainID:          chainID,
+		ChaincodeName:    cds.ChaincodeSpec.ChaincodeId.Name,
+		ChaincodeVersion: cds.ChaincodeSpec.ChaincodeId.Version,
+	}, nil
 }
 
 func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) error {
