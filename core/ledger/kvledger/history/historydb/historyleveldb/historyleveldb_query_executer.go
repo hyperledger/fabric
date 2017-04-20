@@ -22,11 +22,11 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
@@ -93,7 +93,7 @@ func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 		return nil, err
 	}
 	logger.Debugf("Found historic key value for namespace:%s key:%s from transaction %s\n",
-		scanner.namespace, scanner.key, queryResult.(*ledger.KeyModification).TxID)
+		scanner.namespace, scanner.key, queryResult.(*queryresult.KeyModification).TxId)
 	return queryResult, nil
 }
 
@@ -143,7 +143,7 @@ func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string,
 			// got the correct namespace, now find the key write
 			for _, kvWrite := range nsRWSet.KvRwSet.Writes {
 				if kvWrite.Key == key {
-					return &ledger.KeyModification{TxID: txID, Value: kvWrite.Value,
+					return &queryresult.KeyModification{TxId: txID, Value: kvWrite.Value,
 						Timestamp: timestamp, IsDelete: kvWrite.IsDelete}, nil
 				}
 			} // end keys loop

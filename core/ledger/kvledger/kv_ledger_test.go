@@ -22,10 +22,10 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	ledgerpackage "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -183,7 +183,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 			if kmod == nil {
 				break
 			}
-			retrievedValue := kmod.(*ledgerpackage.KeyModification).Value
+			retrievedValue := kmod.(*queryresult.KeyModification).Value
 			count++
 			expectedValue := []byte("value1." + strconv.Itoa(count))
 			testutil.AssertEquals(t, retrievedValue, expectedValue)
@@ -228,7 +228,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 			if kmod == nil {
 				break
 			}
-			retrievedValue := kmod.(*ledgerpackage.KeyModification).Value
+			retrievedValue := kmod.(*queryresult.KeyModification).Value
 			count++
 			expectedValue := []byte("value1." + strconv.Itoa(count))
 			testutil.AssertEquals(t, retrievedValue, expectedValue)
@@ -295,7 +295,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 			if kmod == nil {
 				break
 			}
-			retrievedValue := kmod.(*ledgerpackage.KeyModification).Value
+			retrievedValue := kmod.(*queryresult.KeyModification).Value
 			count++
 			expectedValue := []byte("value1." + strconv.Itoa(count))
 			testutil.AssertEquals(t, retrievedValue, expectedValue)
@@ -328,7 +328,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 			if kmod == nil {
 				break
 			}
-			retrievedValue := kmod.(*ledgerpackage.KeyModification).Value
+			retrievedValue := kmod.(*queryresult.KeyModification).Value
 			count++
 			expectedValue := []byte("value1." + strconv.Itoa(count))
 			testutil.AssertEquals(t, retrievedValue, expectedValue)
@@ -395,7 +395,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 			if kmod == nil {
 				break
 			}
-			retrievedValue := kmod.(*ledgerpackage.KeyModification).Value
+			retrievedValue := kmod.(*queryresult.KeyModification).Value
 			count++
 			expectedValue := []byte("value1." + strconv.Itoa(count))
 			testutil.AssertEquals(t, retrievedValue, expectedValue)
@@ -520,7 +520,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 			if kmod == nil {
 				break
 			}
-			retrievedValue = kmod.(*ledgerpackage.KeyModification).Value
+			retrievedValue = kmod.(*queryresult.KeyModification).Value
 			count++
 		}
 		testutil.AssertEquals(t, count, 3)

@@ -18,11 +18,11 @@ package lockbasedtxmgr
 
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
@@ -169,7 +169,7 @@ func (itr *resultsItr) Next() (commonledger.QueryResult, error) {
 		return nil, nil
 	}
 	versionedKV := queryResult.(*statedb.VersionedKV)
-	return &ledger.KV{Key: versionedKV.Key, Value: versionedKV.Value}, nil
+	return &queryresult.KV{Key: versionedKV.Key, Value: versionedKV.Value}, nil
 }
 
 // updateRangeQueryInfo updates two attributes of the rangeQueryInfo
@@ -222,7 +222,7 @@ func (itr *queryResultsItr) Next() (commonledger.QueryResult, error) {
 	if itr.RWSetBuilder != nil {
 		itr.RWSetBuilder.AddToReadSet(versionedQueryRecord.Namespace, versionedQueryRecord.Key, versionedQueryRecord.Version)
 	}
-	return &ledger.KV{Key: versionedQueryRecord.Key, Value: versionedQueryRecord.Value}, nil
+	return &queryresult.KV{Key: versionedQueryRecord.Key, Value: versionedQueryRecord.Value}, nil
 }
 
 // Close implements method in interface ledger.ResultsIterator

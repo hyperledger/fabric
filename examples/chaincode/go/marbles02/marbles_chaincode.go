@@ -593,7 +593,7 @@ func (t *SimpleChaincode) getHistoryForMarble(stub shim.ChaincodeStubInterface, 
 		}
 		buffer.WriteString("{\"TxId\":")
 		buffer.WriteString("\"")
-		buffer.WriteString(response.TxID)
+		buffer.WriteString(response.TxId)
 		buffer.WriteString("\"")
 
 		buffer.WriteString(", \"Value\":")

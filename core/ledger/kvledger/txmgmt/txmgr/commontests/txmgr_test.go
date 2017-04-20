@@ -24,9 +24,9 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 )
 
 func TestMain(m *testing.M) {
@@ -350,8 +350,8 @@ func testIterator(t *testing.T, env testEnv, numKeys int, startKeyNum int, endKe
 			break
 		}
 		keyNum := begin + count
-		k := kv.(*ledger.KV).Key
-		v := kv.(*ledger.KV).Value
+		k := kv.(*queryresult.KV).Key
+		v := kv.(*queryresult.KV).Value
 		t.Logf("Retrieved k=%s, v=%s at count=%d start=%s end=%s", k, v, count, startKey, endKey)
 		testutil.AssertEquals(t, k, createTestKey(keyNum))
 		testutil.AssertEquals(t, v, createTestValue(keyNum))
@@ -397,9 +397,9 @@ func testIteratorWithDeletes(t *testing.T, env testEnv) {
 	itr, _ := queryExecuter.GetStateRangeScanIterator(cID, createTestKey(3), createTestKey(6))
 	defer itr.Close()
 	kv, _ := itr.Next()
-	testutil.AssertEquals(t, kv.(*ledger.KV).Key, createTestKey(3))
+	testutil.AssertEquals(t, kv.(*queryresult.KV).Key, createTestKey(3))
 	kv, _ = itr.Next()
-	testutil.AssertEquals(t, kv.(*ledger.KV).Key, createTestKey(5))
+	testutil.AssertEquals(t, kv.(*queryresult.KV).Key, createTestKey(5))
 }
 
 func TestTxValidationWithItr(t *testing.T) {
@@ -594,7 +594,7 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 
 		//Unmarshal the document to Asset structure
 		assetResp := &Asset{}
-		json.Unmarshal(queryRecord.(*ledger.KV).Value, &assetResp)
+		json.Unmarshal(queryRecord.(*queryresult.KV).Value, &assetResp)
 
 		//Verify the owner retrieved matches
 		testutil.AssertEquals(t, assetResp.Owner, "bob")

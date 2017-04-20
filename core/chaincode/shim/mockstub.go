@@ -26,7 +26,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
@@ -381,7 +381,7 @@ func (iter *MockStateRangeQueryIterator) HasNext() bool {
 }
 
 // Next returns the next key and value in the range query iterator.
-func (iter *MockStateRangeQueryIterator) Next() (*ledger.KV, error) {
+func (iter *MockStateRangeQueryIterator) Next() (*queryresult.KV, error) {
 	if iter.Closed == true {
 		mockLogger.Error("MockStateRangeQueryIterator.Next() called after Close()")
 		return nil, errors.New("MockStateRangeQueryIterator.Next() called after Close()")
@@ -401,7 +401,7 @@ func (iter *MockStateRangeQueryIterator) Next() (*ledger.KV, error) {
 			key := iter.Current.Value.(string)
 			value, err := iter.Stub.GetState(key)
 			iter.Current = iter.Current.Next()
-			return &ledger.KV{Key: key, Value: value}, err
+			return &queryresult.KV{Key: key, Value: value}, err
 		}
 		iter.Current = iter.Current.Next()
 	}
