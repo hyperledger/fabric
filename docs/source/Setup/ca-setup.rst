@@ -236,7 +236,7 @@ Fabric CA server's configuration file format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A configuration file can be provided to the server using the ``-c`` or ``--config``
-option. If the config option is used and the specified file doesn't exist,
+option. If the ``--config`` option is used and the specified file doesn't exist,
 a default configuration file (like the one shown below) will be created in the
 specified location. However, if no config option was used, it will be created in
 the server's home directory (see `Fabric CA Server <#server>`__ section more info).
@@ -371,7 +371,7 @@ the server's home directory (see `Fabric CA Server <#server>`__ section more inf
        cn: fabric-ca-server
        names:
           - C: US
-            ST: "North Carolina"
+            ST: North Carolina
             L:
             O: Hyperledger
             OU: Fabric
@@ -434,7 +434,7 @@ the client's home directory (see `Fabric CA Client <#client>`__ section more inf
       cn: <<<ENROLLMENT_ID>>>
       names:
         - C: US
-          ST: "North Carolina"
+          ST: North Carolina
           L:
           O: Hyperledger
           OU: Fabric
@@ -452,7 +452,7 @@ the client's home directory (see `Fabric CA Client <#client>`__ section more inf
       name:
       type:
       affiliation:
-      attributes:
+      attrs:
         - name:
           value:
 
@@ -1022,7 +1022,7 @@ file contains the following:
       name:
       type: user
       affiliation: org1.department1
-      attributes:
+      attrs:
         - name: hf.Revoker
           value: true
         - name: anotherAttrName
@@ -1111,51 +1111,63 @@ You can issue the reenroll command to renew your enrollment certificate as follo
 
 Revoking a certificate or identity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+An identity or a certificate can be revoked. Revoking an identity will revoke all
+the certificates owned by the identity and will also prevent the identity from getting
+any new certificates. Revoking a certificate will invalidate a single certificate.
 
-In order to revoke a certificate or user, the calling identity must have
-the ``hf.Revoker`` attribute.  The revoking identity can only revoke a
-certificate or user that has an affiliation that is equal to or prefixed
-by the revoking identity's affiliation.
+In order to revoke a certificate or an identity, the calling identity must have
+the ``hf.Revoker`` attribute. The revoking identity can only revoke a certificate
+or an identity that has an affiliation that is equal to or prefixed by the revoking
+identity's affiliation.
 
-For example, a revoker with affiliation bank.bank\_1 can revoke user
-with bank.bank1.dep1 but can't revoke bank.bank2.
+For example, a revoker with affiliation **orgs.org1** can revoke an identity
+affiliated with **orgs.org1** or **orgs.org1.department1** but can't revoke an
+identity affiliated with **orgs.org2**.
 
-You may revoke a specific certificate by specifying its AKI (Authority
-Key Identifier) and its serial number as follows:
-
-::
-
-    fabric-ca-client revoke -a xxx -s yyy -r <reason>
-
-The following command disables a user's identity and also revokes all of
-the certificates associated with the identity. All future requests
-received by the fabric-ca-server from this identity will be rejected.
+The following command disables an identity and revokes all of the certificates
+associated with the identity. All future requests received by the fabric-ca-server
+from this identity will be rejected.
 
 ::
 
     fabric-ca-client revoke -e <enrollment_id> -r <reason>
 
-The following are the supported reasons for revoking that can be
-specified using ``-r`` flag.
+The following are the supported reasons that can be specified using ``-r`` flag:
 
-| **Reasons:**
-| - unspecified
-| - keycompromise
-| - cacompromise
-| - affiliationchange
-| - superseded
-| - cessationofoperation
-| - certificatehold
-| - removefromcrl
-| - privilegewithdrawn
-| - aacompromise
+1. unspecified
+2. keycompromise
+3. cacompromise
+4. affiliationchange
+5. superseded
+6. cessationofoperation
+7. certificatehold
+8. removefromcrl
+9. privilegewithdrawn
+10. aacompromise
 
-The bootstrap admin can revoke **peer1**'s identity as follows:
+For example, the bootstrap admin who is associated with root of the affiliation tree
+can revoke **peer1**'s identity as follows:
 
 ::
 
     # export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin
     # fabric-ca-client revoke -e peer1
+
+An enrollment certificate that belongs to an identity can be revoked by
+specifying its AKI (Authority Key Identifier) and serial number as follows:
+
+::
+
+    fabric-ca-client revoke -a xxx -s yyy -r <reason>
+
+For example, you can get the AKI and the serial number of a certificate using the openssl command
+and pass them to the ``revoke`` command to revoke the said certificate as follows:
+
+::
+
+   serial=$(openssl x509 -in userecert.pem -serial -noout | cut -d "=" -f 2)
+   aki=$(openssl x509 -in userecert.pem -text | awk '/keyid/ {gsub(/ *keyid:|:/,"",$1);print tolower($0)}')
+   fabric-ca-client revoke -s $serial -a $aki -r affiliationchange
 
 Enabling TLS
 ~~~~~~~~~~~~
