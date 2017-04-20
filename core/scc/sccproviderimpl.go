@@ -17,7 +17,11 @@ limitations under the License.
 package scc
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/peer"
 )
 
 // sccProviderFactory implements the sysccprovider.SystemChaincodeProviderFactory
@@ -49,4 +53,13 @@ func (c *sccProviderImpl) IsSysCC(name string) bool {
 // ia system chaincode and it NOT nvokable through a cc2cc invocation
 func (c *sccProviderImpl) IsSysCCAndNotInvokableCC2CC(name string) bool {
 	return IsSysCCAndNotInvokableCC2CC(name)
+}
+
+func (c *sccProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
+	l := peer.GetLedger(cid)
+	if l == nil {
+		return nil, fmt.Errorf("Could not retrieve ledger for channel %s", cid)
+	}
+
+	return l.NewQueryExecutor()
 }

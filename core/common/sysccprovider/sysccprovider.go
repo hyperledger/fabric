@@ -16,7 +16,10 @@ limitations under the License.
 
 package sysccprovider
 
-import "github.com/golang/protobuf/proto"
+import (
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/ledger"
+)
 
 // SystemChaincodeProvider provides an abstraction layer that is
 // used for different packages to interact with code in the
@@ -29,6 +32,12 @@ type SystemChaincodeProvider interface {
 	// IsSysCCAndNotInvokableCC2CC returns true if the supplied chaincode
 	// is a system chaincode and is not invokable through a cc2cc invocation
 	IsSysCCAndNotInvokableCC2CC(name string) bool
+
+	// GetQueryExecutorForLedger returns a query executor for the
+	// ledger of the supplied channel.
+	// That's useful for system chaincodes that require unfettered
+	// access to the ledger
+	GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error)
 }
 
 var sccFactory SystemChaincodeProviderFactory

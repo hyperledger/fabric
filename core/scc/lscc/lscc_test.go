@@ -43,6 +43,7 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -65,6 +66,10 @@ func (c *mocksccProviderImpl) IsSysCC(name string) bool {
 
 func (c *mocksccProviderImpl) IsSysCCAndNotInvokableCC2CC(name string) bool {
 	return false
+}
+
+func (c *mocksccProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
+	return nil, nil
 }
 
 func register(stub *shim.MockStub, ccname string) error {

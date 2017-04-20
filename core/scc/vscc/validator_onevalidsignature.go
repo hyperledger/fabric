@@ -19,15 +19,20 @@ package vscc
 import (
 	"fmt"
 
+	"errors"
+
 	"github.com/golang/protobuf/proto"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -38,11 +43,16 @@ var logger = flogging.MustGetLogger("vscc")
 // which is to check the correctness of the read-write set and the endorsement
 // signatures
 type ValidatorOneValidSignature struct {
+	// sccprovider is the interface with which we call
+	// methods of the system chaincode package without
+	// import cycles
+	sccprovider sysccprovider.SystemChaincodeProvider
 }
 
 // Init is called once when the chaincode started the first time
 func (vscc *ValidatorOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Response {
-	// best practice to do nothing (or very little) in Init
+	vscc.sccprovider = sysccprovider.GetSystemChaincodeProvider()
+
 	return shim.Success(nil)
 }
 
@@ -157,7 +167,9 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 
 		// do some extra validation that is specific to lscc
 		if hdrExt.ChaincodeId.Name == "lscc" {
-			err = vscc.ValidateLSCCInvocation(cap)
+			logger.Debugf("VSCC info: doing special validation for LSCC")
+
+			err = vscc.ValidateLSCCInvocation(stub, chdr.ChannelId, env, cap)
 			if err != nil {
 				logger.Errorf("VSCC error: ValidateLSCCInvocation failed, err %s", err)
 				return shim.Error(err.Error())
@@ -180,7 +192,49 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 	return shim.Success(vodBytes)
 }
 
-func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(cap *pb.ChaincodeActionPayload) error {
+// checkInstantiationPolicy evaluates an instantiation policy against a signed proposal
+func (vscc *ValidatorOneValidSignature) checkInstantiationPolicy(chainName string, env *common.Envelope, instantiationPolicy []byte) error {
+	// create a policy object from the policy bytes
+	mgr := mspmgmt.GetManagerForChain(chainName)
+	if mgr == nil {
+		return fmt.Errorf("MSP manager for channel %s is nil, aborting", chainName)
+	}
+
+	npp := cauthdsl.NewPolicyProvider(mgr)
+	instPol, _, err := npp.NewPolicy(instantiationPolicy)
+	if err != nil {
+		return err
+	}
+
+	logger.Debugf("VSCC info: checkInstantiationPolicy starts, policy is %#v", instPol)
+
+	// get the payload
+	payl, err := utils.GetPayload(env)
+	if err != nil {
+		logger.Errorf("VSCC error: GetPayload failed, err %s", err)
+		return err
+	}
+
+	// get the signature header
+	shdr, err := utils.GetSignatureHeader(payl.Header.SignatureHeader)
+	if err != nil {
+		return err
+	}
+
+	// construct signed data we can evaluate the instantiation policy against
+	sd := []*common.SignedData{&common.SignedData{
+		Data:      env.Payload,
+		Identity:  shdr.Creator,
+		Signature: env.Signature,
+	}}
+	err = instPol.Evaluate(sd)
+	if err != nil {
+		return fmt.Errorf("chaincode instantiation policy violated, error %s", err)
+	}
+	return nil
+}
+
+func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.ChaincodeStubInterface, chid string, env *common.Envelope, cap *pb.ChaincodeActionPayload) error {
 	cpp, err := utils.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
 	if err != nil {
 		logger.Errorf("VSCC error: GetChaincodeProposalPayload failed, err %s", err)
@@ -194,8 +248,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(cap *pb.Chaincode
 		return err
 	}
 
-	if cis == nil ||
-		cis.ChaincodeSpec == nil ||
+	if cis.ChaincodeSpec == nil ||
 		cis.ChaincodeSpec.Input == nil ||
 		cis.ChaincodeSpec.Input.Args == nil {
 		logger.Errorf("VSCC error: committing invalid vscc invocation")
@@ -205,19 +258,194 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(cap *pb.Chaincode
 	lsccFunc := string(cis.ChaincodeSpec.Input.Args[0])
 	lsccArgs := cis.ChaincodeSpec.Input.Args[1:]
 
+	logger.Debugf("VSCC info: ValidateLSCCInvocation acting on %s %#v", lsccFunc, lsccArgs)
+
 	switch lsccFunc {
-	case lscc.DEPLOY:
-	case lscc.UPGRADE:
-		logger.Infof("VSCC info: validating invocation of lscc function %s on arguments %#v", lsccFunc, lsccArgs)
+	case lscc.UPGRADE, lscc.DEPLOY:
+		logger.Debugf("VSCC info: validating invocation of lscc function %s on arguments %#v", lsccFunc, lsccArgs)
 
-		// TODO: two more crs are expected to fill this gap, as explained in FAB-3155
-		// 1) check that the invocation complies with the InstantiationPolicy
-		// 2) check that the read/write set is appropriate
+		if len(lsccArgs) < 2 || len(lsccArgs) > 5 {
+			return fmt.Errorf("Wrong number of arguments for invocation lscc(%s): expected between 2 and 5, received %d", lsccFunc, len(lsccArgs))
+		}
 
+		cdsArgs, err := utils.GetChaincodeDeploymentSpec(lsccArgs[1])
+		if err != nil {
+			return fmt.Errorf("GetChaincodeDeploymentSpec error %s", err)
+		}
+
+		if cdsArgs == nil || cdsArgs.ChaincodeSpec == nil || cdsArgs.ChaincodeSpec.ChaincodeId == nil ||
+			cap.Action == nil || cap.Action.ProposalResponsePayload == nil {
+			return fmt.Errorf("VSCC error: invocation of lscc(%s) does not have appropriate arguments", lsccFunc)
+		}
+
+		// get the rwset
+		pRespPayload, err := utils.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
+		if err != nil {
+			return fmt.Errorf("GetProposalResponsePayload error %s", err)
+		}
+		if pRespPayload.Extension == nil {
+			return fmt.Errorf("nil pRespPayload.Extension")
+		}
+		respPayload, err := utils.GetChaincodeAction(pRespPayload.Extension)
+		if err != nil {
+			return fmt.Errorf("GetChaincodeAction error %s", err)
+		}
+		txRWSet := &rwsetutil.TxRwSet{}
+		if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+			return fmt.Errorf("txRWSet.FromProtoBytes error %s", err)
+		}
+
+		// extract the rwset for lscc
+		var lsccrwset *kvrwset.KVRWSet
+		for _, ns := range txRWSet.NsRwSets {
+			logger.Debugf("Namespace %s", ns.NameSpace)
+			if ns.NameSpace == "lscc" {
+				lsccrwset = ns.KvRwSet
+				break
+			}
+		}
+
+		// retrieve from the ledger the entry for the chaincode at hand
+		cdLedger, ccExistsOnLedger, err := vscc.getInstantiatedCC(chid, cdsArgs.ChaincodeSpec.ChaincodeId.Name)
+		if err != nil {
+			return err
+		}
+
+		/******************************************/
+		/* security check 0 - validation of rwset */
+		/******************************************/
+		// there has to be one
+		if lsccrwset == nil {
+			return errors.New("No read write set for lscc was found")
+		}
+		// there can only be a single one
+		if len(lsccrwset.Writes) != 1 {
+			return errors.New("LSCC can only issue a single putState upon deploy/upgrade")
+		}
+		// the key name must be the chaincode id
+		if lsccrwset.Writes[0].Key != cdsArgs.ChaincodeSpec.ChaincodeId.Name {
+			return fmt.Errorf("Expected key %s, found %s", cdsArgs.ChaincodeSpec.ChaincodeId.Name, lsccrwset.Writes[0].Key)
+		}
+		// the value must be a ChaincodeData struct
+		cdRWSet := &ccprovider.ChaincodeData{}
+		err = proto.Unmarshal(lsccrwset.Writes[0].Value, cdRWSet)
+		if err != nil {
+			return fmt.Errorf("Unmarhsalling of ChaincodeData failed, error %s", err)
+		}
+		// the name must match
+		if cdRWSet.Name != cdsArgs.ChaincodeSpec.ChaincodeId.Name {
+			return fmt.Errorf("Expected cc name %s, found %s", cdsArgs.ChaincodeSpec.ChaincodeId.Name, cdRWSet.Name)
+		}
+		// the version must match
+		if cdRWSet.Version != cdsArgs.ChaincodeSpec.ChaincodeId.Version {
+			return fmt.Errorf("Expected cc version %s, found %s", cdsArgs.ChaincodeSpec.ChaincodeId.Version, cdRWSet.Version)
+		}
+		// it must only write to 2 namespaces: LSCC's and the cc that we are deploying/upgrading
+		for _, ns := range txRWSet.NsRwSets {
+			if ns.NameSpace != "lscc" && ns.NameSpace != cdRWSet.Name && len(ns.KvRwSet.Writes) > 0 {
+				return fmt.Errorf("LSCC invocation is attempting to write to namespace %s", ns.NameSpace)
+			}
+		}
+
+		logger.Debugf("Validating %s for cc %s version %s", lsccFunc, cdRWSet.Name, cdRWSet.Version)
+
+		switch lsccFunc {
+		case lscc.DEPLOY:
+			/*****************************************************/
+			/* security check 1 - check the instantiation policy */
+			/*****************************************************/
+			pol := cdRWSet.InstantiationPolicy
+			if pol != nil {
+				err = vscc.checkInstantiationPolicy(chid, env, pol)
+				if err != nil {
+					return err
+				}
+			} else {
+				// FIXME: this is only temporary until default policies
+				// are specified. We can then fail here once that's done.
+				// FIXME: could we actually pull the cds package from the
+				// file system to verify whether the policy that is specified
+				// here is the same as the one on disk?
+				// PROS: we prevent attacks where the policy is replaced
+				// CONS: this would be a point of non-determinism
+				logger.Debugf("No installation policy was specified, skipping checks")
+			}
+
+			/******************************************************************/
+			/* security check 2 - cc not in the LCCC table of instantiated cc */
+			/******************************************************************/
+			if ccExistsOnLedger {
+				return fmt.Errorf("Chaincode %s is already instantiated", cdsArgs.ChaincodeSpec.ChaincodeId.Name)
+			}
+
+		case lscc.UPGRADE:
+			/**************************************************************/
+			/* security check 1 - cc in the LCCC table of instantiated cc */
+			/**************************************************************/
+			if !ccExistsOnLedger {
+				return fmt.Errorf("Upgrading non-existent chaincode %s", cdsArgs.ChaincodeSpec.ChaincodeId.Name)
+			}
+
+			/*****************************************************/
+			/* security check 2 - check the instantiation policy */
+			/*****************************************************/
+			pol := cdLedger.InstantiationPolicy
+			if pol != nil {
+				err = vscc.checkInstantiationPolicy(chid, env, pol)
+				if err != nil {
+					return err
+				}
+			} else {
+				// FIXME: this is only temporary until default policies
+				// are specified. We can then fail here once that's done.
+				// FIXME: could we actually pull the cds package from the
+				// file system to verify whether the policy that is specified
+				// here is the same as the one on disk?
+				// PROS: we prevent attacks where the policy is replaced
+				// CONS: this would be a point of non-determinism
+				logger.Debugf("No installation policy was specified, skipping checks")
+			}
+
+			/**********************************************************/
+			/* security check 3 - existing cc's version was different */
+			/**********************************************************/
+			if cdLedger.Version == cdsArgs.ChaincodeSpec.ChaincodeId.Version {
+				return fmt.Errorf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", cdsArgs.ChaincodeSpec.ChaincodeId.Version)
+			}
+		}
+
+		// all is good!
 		return nil
 	default:
 		return fmt.Errorf("VSCC error: committing an invocation of function %s of lscc is invalid", lsccFunc)
 	}
+}
 
-	return nil
+func (vscc *ValidatorOneValidSignature) getInstantiatedCC(chid, ccid string) (cd *ccprovider.ChaincodeData, exists bool, err error) {
+	qe, err := vscc.sccprovider.GetQueryExecutorForLedger(chid)
+	if err != nil {
+		err = fmt.Errorf("Could not retrieve QueryExecutor for channel %s, error %s", chid, err)
+		return
+	}
+	defer qe.Done()
+
+	bytes, err := qe.GetState("lscc", ccid)
+	if err != nil {
+		err = fmt.Errorf("Could not retrieve state for chaincode %s on channel %s, error %s", ccid, chid, err)
+		return
+	}
+
+	if bytes == nil {
+		return
+	}
+
+	cd = &ccprovider.ChaincodeData{}
+	err = proto.Unmarshal(bytes, cd)
+	if err != nil {
+		err = fmt.Errorf("Unmarshalling ChaincodeQueryResponse failed, error %s", err)
+		return
+	}
+
+	exists = true
+	return
 }
