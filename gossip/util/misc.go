@@ -151,7 +151,7 @@ func GetIntOrDefault(key string, defVal int) int {
 	return defVal
 }
 
-// GetIntOrDefault returns the Duration value from config if present otherwise default value
+// GetDurationOrDefault returns the Duration value from config if present otherwise default value
 func GetDurationOrDefault(key string, defVal time.Duration) time.Duration {
 	if val := viper.GetDuration(key); val != 0 {
 		return val

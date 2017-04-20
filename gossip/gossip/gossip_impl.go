@@ -912,7 +912,7 @@ func (sa *discoverySecurityAdapter) validateAliveMsgSignature(m *proto.SignedGos
 }
 
 func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
-	conf := pull.PullConfig{
+	conf := pull.Config{
 		MsgType:           proto.PullMsgType_IDENTITY_MSG,
 		Channel:           []byte(""),
 		ID:                g.conf.InternalEndpoint,
@@ -952,7 +952,7 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID) (*proto.SignedGossipMessage, error) {
 	pkiID := g.comm.GetPKIid()
 	stateInfMsg := &proto.StateInfo{
-		ChannelMAC: channel.ChannelMAC(pkiID, chainID),
+		ChannelMAC: channel.GenerateMAC(pkiID, chainID),
 		Metadata:   metadata,
 		PkiId:      g.comm.GetPKIid(),
 		Timestamp: &proto.PeerTime{

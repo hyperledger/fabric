@@ -109,7 +109,7 @@ func TestCertStoreShouldSucceed(t *testing.T) {
 }
 
 func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.ReceivedMessage, shouldSucceed bool) {
-	config := pull.PullConfig{
+	config := pull.Config{
 		MsgType:           proto.PullMsgType_IDENTITY_MSG,
 		PeerCountToSelect: 1,
 		PullInterval:      time.Millisecond * 500,

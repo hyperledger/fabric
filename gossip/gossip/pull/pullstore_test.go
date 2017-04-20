@@ -121,7 +121,7 @@ func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pu
 
 	peer2PullInst[endpoint] = inst
 
-	conf := PullConfig{
+	conf := Config{
 		MsgType:           proto.PullMsgType_BLOCK_MSG,
 		Channel:           []byte(""),
 		ID:                endpoint,
@@ -179,7 +179,7 @@ func TestRegisterMsgHook(t *testing.T) {
 
 	receivedMsgTypes := util.NewSet()
 
-	for _, msgType := range []PullMsgType{HelloMsgType, DigestMsgType, RequestMsgType, ResponseMsgType} {
+	for _, msgType := range []MsgType{HelloMsgType, DigestMsgType, RequestMsgType, ResponseMsgType} {
 		mType := msgType
 		inst1.mediator.RegisterMsgHook(mType, func(_ []string, items []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
 			receivedMsgTypes.Add(mType)

@@ -23,16 +23,19 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
+// MembershipStore struct which encapsulates
+// membership message store abstraction
 type MembershipStore struct {
 	m map[string]*proto.SignedGossipMessage
 	sync.RWMutex
 }
 
+// NewMembershipStore creates new membership store instance
 func NewMembershipStore() *MembershipStore {
 	return &MembershipStore{m: make(map[string]*proto.SignedGossipMessage)}
 }
 
-// msgByID returns a message stored by a certain ID, or nil
+// MsgByID returns a message stored by a certain ID, or nil
 // if such an ID isn't found
 func (m *MembershipStore) MsgByID(pkiID common.PKIidType) *proto.SignedGossipMessage {
 	m.RLock()
@@ -43,6 +46,7 @@ func (m *MembershipStore) MsgByID(pkiID common.PKIidType) *proto.SignedGossipMes
 	return nil
 }
 
+// Size of the membership store
 func (m *MembershipStore) Size() int {
 	m.RLock()
 	defer m.RUnlock()

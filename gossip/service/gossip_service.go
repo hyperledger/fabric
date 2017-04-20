@@ -125,7 +125,7 @@ func InitGossipService(peerIdentity []byte, endpoint string, s *grpc.Server, mcs
 	InitGossipServiceCustomDeliveryFactory(peerIdentity, endpoint, s, &deliveryFactoryImpl{}, mcs, bootPeers...)
 }
 
-// InitGossipService initialize gossip service with customize delivery factory
+// InitGossipServiceCustomDeliveryFactory initialize gossip service with customize delivery factory
 // implementation, might be useful for testing and mocking purposes
 func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string, s *grpc.Server, factory DeliveryServiceFactory, mcs api.MessageCryptoService, bootPeers ...string) {
 	once.Do(func() {

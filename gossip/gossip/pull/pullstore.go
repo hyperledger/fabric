@@ -31,14 +31,14 @@ import (
 
 // Constants go here.
 const (
-	HelloMsgType PullMsgType = iota
+	HelloMsgType MsgType = iota
 	DigestMsgType
 	RequestMsgType
 	ResponseMsgType
 )
 
-// PullMsgType defines the type of a message that is sent to the PullStore
-type PullMsgType int
+// MsgType defines the type of a message that is sent to the PullStore
+type MsgType int
 
 // MessageHook defines a function that will run after a certain pull message is received
 type MessageHook func(itemIDs []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage)
@@ -55,6 +55,16 @@ type MembershipService interface {
 	GetMembership() []discovery.NetworkMember
 }
 
+// Config defines the configuration of the pull mediator
+type Config struct {
+	ID                string
+	PullInterval      time.Duration // Duration between pull invocations
+	PeerCountToSelect int           // Number of peers to initiate pull with
+	Tag               proto.GossipMessage_Tag
+	Channel           common.ChainID
+	MsgType           proto.PullMsgType
+}
+
 // DigestFilter filters digests to be sent to a remote peer, that
 // sent a hello with the following message
 type DigestFilter func(helloMsg proto.ReceivedMessage) func(digestItem string) bool
@@ -66,16 +76,6 @@ func (df DigestFilter) byContext() algo.DigestFilter {
 			return df(context.(proto.ReceivedMessage))(digestItem)
 		}
 	}
-}
-
-// PullConfig defines the configuration of the pull mediator
-type PullConfig struct {
-	ID                string
-	PullInterval      time.Duration // Duration between pull invocations
-	PeerCountToSelect int           // Number of peers to initiate pull with
-	Tag               proto.GossipMessage_Tag
-	Channel           common.ChainID
-	MsgType           proto.PullMsgType
 }
 
 // PullAdapter defines methods of the pullStore to interact
@@ -99,7 +99,7 @@ type Mediator interface {
 	Stop()
 
 	// RegisterMsgHook registers a message hook to a specific type of pull message
-	RegisterMsgHook(PullMsgType, MessageHook)
+	RegisterMsgHook(MsgType, MessageHook)
 
 	// Add adds a GossipMessage to the Mediator
 	Add(*proto.SignedGossipMessage)
@@ -115,10 +115,10 @@ type Mediator interface {
 type pullMediatorImpl struct {
 	sync.RWMutex
 	Sender
-	msgType2Hook map[PullMsgType][]MessageHook
+	msgType2Hook map[MsgType][]MessageHook
 	idExtractor  proto.IdentifierExtractor
 	msgCons      proto.MsgConsumer
-	config       PullConfig
+	config       Config
 	logger       *logging.Logger
 	itemID2Msg   map[string]*proto.SignedGossipMessage
 	memBvc       MembershipService
@@ -126,7 +126,7 @@ type pullMediatorImpl struct {
 }
 
 // NewPullMediator returns a new Mediator
-func NewPullMediator(config PullConfig, adapter PullAdapter) Mediator {
+func NewPullMediator(config Config, adapter PullAdapter) Mediator {
 	digFilter := adapter.DigFilter
 
 	acceptAllFilter := func(_ proto.ReceivedMessage) func(string) bool {
@@ -141,7 +141,7 @@ func NewPullMediator(config PullConfig, adapter PullAdapter) Mediator {
 
 	p := &pullMediatorImpl{
 		msgCons:      adapter.MsgCons,
-		msgType2Hook: make(map[PullMsgType][]MessageHook),
+		msgType2Hook: make(map[MsgType][]MessageHook),
 		idExtractor:  adapter.IdExtractor,
 		config:       config,
 		logger:       util.GetLogger(util.LoggingPullModule, config.ID),
@@ -169,7 +169,7 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 
 	itemIDs := []string{}
 	items := []*proto.SignedGossipMessage{}
-	var pullMsgType PullMsgType
+	var pullMsgType MsgType
 
 	if helloMsg := msg.GetHello(); helloMsg != nil {
 		pullMsgType = HelloMsgType
@@ -216,7 +216,7 @@ func (p *pullMediatorImpl) Stop() {
 }
 
 // RegisterMsgHook registers a message hook to a specific type of pull message
-func (p *pullMediatorImpl) RegisterMsgHook(pullMsgType PullMsgType, hook MessageHook) {
+func (p *pullMediatorImpl) RegisterMsgHook(pullMsgType MsgType, hook MessageHook) {
 	p.Lock()
 	defer p.Unlock()
 	p.msgType2Hook[pullMsgType] = append(p.msgType2Hook[pullMsgType], hook)
@@ -348,7 +348,7 @@ func (p *pullMediatorImpl) peersWithEndpoints(endpoints ...string) []*comm.Remot
 	return peers
 }
 
-func (p *pullMediatorImpl) hooksByMsgType(msgType PullMsgType) []MessageHook {
+func (p *pullMediatorImpl) hooksByMsgType(msgType MsgType) []MessageHook {
 	p.RLock()
 	defer p.RUnlock()
 	returnedHooks := []MessageHook{}
