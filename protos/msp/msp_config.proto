@@ -80,6 +80,27 @@ message FabricMSPConfig {
     // fabric organizational unit identifiers that belong to
     // this MSP configuration
     repeated FabricOUIdentifier organizational_unit_identifiers = 7;
+
+    // FabricCryptoConfig contains the configuration parameters
+    // for the cryptographic algorithms used by this MSP
+    FabricCryptoConfig crypto_config = 8;
+}
+
+// FabricCryptoConfig contains configuration parameters
+// for the cryptographic algorithms used by the MSP
+// this configuration refers to
+message FabricCryptoConfig {
+
+    // SignatureHashFamily is a string representing the hash family to be used
+    // during sign and verify operations.
+    // Allowed values are "SHA2" and "SHA3".
+    string signature_hash_family = 1;
+
+    // IdentityIdentifierHashFunction is a string representing the hash function
+    // to be used during the computation of the identity identifier of an MSP identity.
+    // Allowed values are "SHA256", "SHA384" and "SHA3_256", "SHA3_384".
+    string identity_identifier_hash_function = 2;
+
 }
 
 // SigningIdentityInfo represents the configuration information
