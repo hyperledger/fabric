@@ -40,11 +40,13 @@ type msgMutator func(message *proto.Envelope)
 
 var conf = Config{
 	ID: "test",
-	PublishStateInfoInterval: time.Millisecond * 100,
-	MaxBlockCountToStore:     100,
-	PullPeerNum:              3,
-	PullInterval:             time.Second,
-	RequestStateInfoInterval: time.Millisecond * 100,
+	PublishStateInfoInterval:    time.Millisecond * 100,
+	MaxBlockCountToStore:        100,
+	PullPeerNum:                 3,
+	PullInterval:                time.Second,
+	RequestStateInfoInterval:    time.Millisecond * 100,
+	BlockExpirationInterval:     time.Second * 6,
+	StateInfoExpirationInterval: time.Second * 6,
 }
 
 func init() {
@@ -275,7 +277,8 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	})
 
 	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
-	gc.UpdateStateInfo(createStateInfoMsg(ledgerHeight, pkiIDInOrg1, channelA))
+	stateInfoMsg := createStateInfoMsg(ledgerHeight, pkiIDInOrg1, channelA)
+	gc.UpdateStateInfo(stateInfoMsg)
 
 	var msg *proto.SignedGossipMessage
 	select {
@@ -289,6 +292,14 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	height, err := strconv.ParseInt(string(md), 10, 64)
 	assert.NoError(t, err, "ReceivedMetadata is invalid")
 	assert.Equal(t, ledgerHeight, int(height), "Received different ledger height than expected")
+
+	// We will not update StateInfo in store, so store will become empty
+	time.Sleep(conf.StateInfoExpirationInterval + time.Second)
+	//Store is empty
+	assert.Equal(t, 0, gc.(*gossipChannel).stateInfoMsgStore.MessageStore.Size(), "StateInfo MessageStore should be empty")
+	assert.Equal(t, 0, gc.(*gossipChannel).stateInfoMsgStore.MembershipStore.Size(), "StateInfo MembershipStore should be empty")
+
+	gc.Stop()
 }
 
 func TestChannelPull(t *testing.T) {
@@ -523,6 +534,99 @@ func TestChannelAddToMessageStore(t *testing.T) {
 	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
 }
 
+func TestChannelAddToMessageStoreExpire(t *testing.T) {
+	t.Parallel()
+
+	cs := &cryptoService{}
+	cs.On("VerifyBlock", mock.Anything).Return(nil)
+	demuxedMsgs := make(chan *proto.SignedGossipMessage, 1)
+	adapter := new(gossipAdapterMock)
+	configureAdapter(adapter)
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
+	adapter.On("Gossip", mock.Anything)
+	adapter.On("Send", mock.Anything, mock.Anything)
+	adapter.On("DeMultiplex", mock.Anything).Run(func(arg mock.Arguments) {
+		demuxedMsgs <- arg.Get(0).(*proto.SignedGossipMessage)
+	})
+
+	respondedChan := make(chan *proto.GossipMessage, 1)
+	messageRelayer := func(arg mock.Arguments) {
+		msg := arg.Get(0).(*proto.GossipMessage)
+		respondedChan <- msg
+	}
+
+	// We make sure that if we get a new message it is de-multiplexed,
+	gc.HandleMessage(&receivedMsg{msg: dataMsgOfChannel(11, channelA), PKIID: pkiIDInOrg1})
+	select {
+	case <-time.After(time.Second):
+		t.Fatal("Haven't detected a demultiplexing within a time period")
+	case <-demuxedMsgs:
+	}
+
+	// Lets check digests and state info store
+	stateInfoMsg := createStateInfoMsg(10, pkiIDInOrg1, channelA)
+	gc.AddToMsgStore(stateInfoMsg)
+	helloMsg := createHelloMsg(pkiIDInOrg1)
+	helloMsg.On("Respond", mock.Anything).Run(messageRelayer)
+	gc.HandleMessage(helloMsg)
+	select {
+	case <-time.After(time.Second):
+		t.Fatal("Haven't responded to hello message within a time period")
+	case msg := <-respondedChan:
+		if msg.IsDigestMsg() {
+			assert.Equal(t, 1, len(msg.GetDataDig().Digests), "Number of digests returned by channel blockPuller incorrect")
+		} else {
+			t.Fatal("Not correct pull msg type in responce - expect digest")
+		}
+	}
+
+	time.Sleep(gc.(*gossipChannel).GetConf().BlockExpirationInterval + time.Second)
+
+	// message expired in store, but still isn't demultiplexed when we
+	// receive that message again
+	gc.HandleMessage(&receivedMsg{msg: dataMsgOfChannel(11, channelA), PKIID: pkiIDInOrg1})
+	select {
+	case <-time.After(time.Second):
+	case <-demuxedMsgs:
+		t.Fatal("Demultiplexing detected, even though it wasn't supposed to happen")
+	}
+
+	// Lets check digests and state info store - state info expired, its add will do nothing and digest should not be sent
+	gc.AddToMsgStore(stateInfoMsg)
+	gc.HandleMessage(helloMsg)
+	select {
+	case <-time.After(time.Second):
+	case <-respondedChan:
+		t.Fatal("No digest should be sent")
+	}
+
+	time.Sleep(gc.(*gossipChannel).GetConf().BlockExpirationInterval + time.Second)
+	// message removed from store, so it will be demultiplexed when we
+	// receive that message again
+	gc.HandleMessage(&receivedMsg{msg: dataMsgOfChannel(11, channelA), PKIID: pkiIDInOrg1})
+	select {
+	case <-time.After(time.Second):
+		t.Fatal("Haven't detected a demultiplexing within a time period")
+	case <-demuxedMsgs:
+	}
+
+	// Lets check digests and state info store - state info removed as well, so it will be added back and digest will be created
+	gc.AddToMsgStore(stateInfoMsg)
+	gc.HandleMessage(helloMsg)
+	select {
+	case <-time.After(time.Second):
+		t.Fatal("Haven't responded to hello message within a time period")
+	case msg := <-respondedChan:
+		if msg.IsDigestMsg() {
+			assert.Equal(t, 1, len(msg.GetDataDig().Digests), "Number of digests returned by channel blockPuller incorrect")
+		} else {
+			t.Fatal("Not correct pull msg type in responce - expect digest")
+		}
+	}
+
+	gc.Stop()
+}
+
 func TestChannelBadBlocks(t *testing.T) {
 	t.Parallel()
 	receivedMessages := make(chan *proto.SignedGossipMessage, 1)
@@ -693,7 +797,8 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, channelA))})
 
 	// Ensure we process stateInfo snapshots that are OK
-	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, channelA))})
+	stateInfoMsg := &receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, channelA))}
+	gc.HandleMessage(stateInfoMsg)
 	assert.NotEmpty(t, gc.GetPeers())
 	assert.Equal(t, "4", string(gc.GetPeers()[0].Metadata))
 
@@ -756,6 +861,41 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	// Ensure we don't crash if we got a stateInfoMessage from a peer that its org isn't known
 	invalidStateInfoSnapshot = stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, common.PKIidType("unknown"), channelA))
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: invalidStateInfoSnapshot})
+
+	// Lets expire msg in store
+	time.Sleep(gc.(*gossipChannel).GetConf().StateInfoExpirationInterval + time.Second)
+
+	// Lets check is state info store can't add expired msg but appear as empty to outside world
+	gc.HandleMessage(stateInfoMsg)
+	assert.Empty(t, gc.GetPeers())
+	// Lets see if snapshot now empty, after message in store expired
+	go gc.HandleMessage(snapshotReq)
+	select {
+	case <-time.After(time.Second):
+		t.Fatal("Haven't received a state info snapshot on time")
+	case msg := <-sentMessages:
+		elements := msg.GetStateSnapshot().Elements
+		assert.Len(t, elements, 0, "StateInfo snapshot should contain zero messages")
+	}
+
+	// Lets make sure msg removed from store
+	time.Sleep(gc.(*gossipChannel).GetConf().StateInfoExpirationInterval + time.Second)
+
+	// Lets check is state info store add just expired msg
+	gc.HandleMessage(stateInfoMsg)
+	assert.NotEmpty(t, gc.GetPeers())
+	// Lets see if snapshot is not empty now, after message was added back to store
+	go gc.HandleMessage(snapshotReq)
+	select {
+	case <-time.After(time.Second):
+		t.Fatal("Haven't received a state info snapshot on time")
+	case msg := <-sentMessages:
+		elements := msg.GetStateSnapshot().Elements
+		assert.Len(t, elements, 1)
+		sMsg, err := elements[0].ToGossipMessage()
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("4"), sMsg.GetStateInfo().Metadata)
+	}
 
 }
 

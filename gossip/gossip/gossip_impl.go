@@ -90,8 +90,10 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 		return nil
 	}
 
+	stateInfoExpirationInterval := conf.PublishStateInfoInterval * 100
+
 	g := &gossipServiceImpl{
-		stateInfoMsgStore:     channel.NewStateInfoMessageStore(),
+		stateInfoMsgStore:     channel.NewStateInfoMessageStore(stateInfoExpirationInterval),
 		selfOrg:               secAdvisor.OrgByPeerIdentity(selfIdentity),
 		secAdvisor:            secAdvisor,
 		selfIdentity:          selfIdentity,
@@ -641,6 +643,7 @@ func (g *gossipServiceImpl) Stop() {
 	g.toDieChan <- struct{}{}
 	g.emitter.Stop()
 	g.ChannelDeMultiplexer.Close()
+	g.stateInfoMsgStore.Stop()
 	g.stopSignal.Wait()
 	comWG.Wait()
 }

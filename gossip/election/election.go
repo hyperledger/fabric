@@ -418,3 +418,7 @@ func getLeadershipDeclarationInterval() time.Duration {
 func getLeaderElectionDuration() time.Duration {
 	return util.GetDurationOrDefault("peer.gossip.election.leaderElectionDuration", time.Second*5)
 }
+
+func GetMsgExpirationTimeout() time.Duration {
+	return getLeaderAliveThreshold() * 10
+}
