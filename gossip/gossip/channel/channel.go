@@ -251,6 +251,9 @@ func (gc *gossipChannel) publishStateInfo() {
 	stateInfoMsg := gc.stateInfoMsg
 	gc.RUnlock()
 	gc.Gossip(stateInfoMsg)
+	if len(gc.GetMembership()) > 0 {
+		atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(0))
+	}
 }
 
 func (gc *gossipChannel) createBlockPuller() pull.Mediator {

@@ -1088,6 +1088,67 @@ func TestChannelGetPeers(t *testing.T) {
 	assert.Len(t, gc.GetPeers(), 0)
 }
 
+func TestOnDemandGossip(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: update the metadata and ensure only 1 dissemination
+	// takes place when membership is not empty
+
+	cs := &cryptoService{}
+	adapter := new(gossipAdapterMock)
+	configureAdapter(adapter)
+
+	gossipedEvents := make(chan struct{})
+
+	conf := conf
+	conf.PublishStateInfoInterval = time.Millisecond * 200
+	adapter.On("GetConf").Return(conf)
+	adapter.On("GetMembership").Return([]discovery.NetworkMember{})
+	adapter.On("Gossip", mock.Anything).Run(func(mock.Arguments) {
+		gossipedEvents <- struct{}{}
+	})
+	gc := NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, api.JoinChannelMessage(&joinChanMsg{}))
+	defer gc.Stop()
+	select {
+	case <-gossipedEvents:
+		assert.Fail(t, "Should not have gossiped because metadata has not been updated yet")
+	case <-time.After(time.Millisecond * 500):
+	}
+	gc.UpdateStateInfo(createStateInfoMsg(0, pkiIDInOrg1, channelA))
+	select {
+	case <-gossipedEvents:
+	case <-time.After(time.Second):
+		assert.Fail(t, "Didn't gossip within a timely manner")
+	}
+	select {
+	case <-gossipedEvents:
+	case <-time.After(time.Second):
+		assert.Fail(t, "Should have gossiped a second time, because membership is empty")
+	}
+	adapter = new(gossipAdapterMock)
+	configureAdapter(adapter, []discovery.NetworkMember{{}}...)
+	adapter.On("Gossip", mock.Anything).Run(func(mock.Arguments) {
+		gossipedEvents <- struct{}{}
+	})
+	gc.(*gossipChannel).Adapter = adapter
+	select {
+	case <-gossipedEvents:
+	case <-time.After(time.Second):
+		assert.Fail(t, "Should have gossiped a third time")
+	}
+	select {
+	case <-gossipedEvents:
+		assert.Fail(t, "Should not have gossiped a fourth time, because dirty flag should have been turned off")
+	case <-time.After(time.Millisecond * 500):
+	}
+	gc.UpdateStateInfo(createStateInfoMsg(1, pkiIDInOrg1, channelA))
+	select {
+	case <-gossipedEvents:
+	case <-time.After(time.Second):
+		assert.Fail(t, "Should have gossiped a block now, because got a new StateInfo message")
+	}
+}
+
 func createDataUpdateMsg(nonce uint64) *proto.SignedGossipMessage {
 	return (&proto.GossipMessage{
 		Nonce:   0,
