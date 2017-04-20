@@ -103,6 +103,11 @@ task copyProtos(type:Copy){
             include 'common.proto'
         }
     }
+    into "ledger/queryresult", {
+        from ("${rootDir}/protos/ledger/queryresult"){
+            include 'kv_query_result.proto'
+        }
+    }
     into "${projectDir}/src/main/proto"
 }
 
@@ -119,6 +124,11 @@ task copyProtosFromDevEnv(type:Copy){
     into "common", {
         from ("../../../../protos/common"){
             include 'common.proto'
+        }
+    }
+    into "ledger/queryresult", {
+        from ("../../../../protos/ledger/queryresult"){
+            include 'kv_query_result.proto'
         }
     }
     into "${projectDir}/protos"
