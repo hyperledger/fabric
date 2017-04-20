@@ -1,5 +1,3 @@
-*Needs Review*
-
 The Fabric Model
 =================
 
