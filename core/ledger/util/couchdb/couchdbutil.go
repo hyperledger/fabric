@@ -18,6 +18,7 @@ package couchdb
 
 import (
 	"fmt"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -38,8 +39,17 @@ func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
 		return nil, err
 	}
 
+	// Create the http client once
+	// Clients and Transports are safe for concurrent use by multiple goroutines
+	// and for efficiency should only be created once and re-used.
+	client := &http.Client{Timeout: couchConf.RequestTimeout}
+
+	transport := &http.Transport{Proxy: http.ProxyFromEnvironment}
+	transport.DisableCompression = false
+	client.Transport = transport
+
 	//Create the CouchDB instance
-	couchInstance := &CouchInstance{conf: *couchConf}
+	couchInstance := &CouchInstance{conf: *couchConf, client: client}
 
 	connectInfo, retVal, verifyErr := couchInstance.VerifyCouchConfig()
 	if verifyErr != nil {
