@@ -68,3 +68,18 @@ func InitFactories(config *FactoryOpts) error {
 
 	return factoriesInitError
 }
+
+// GetBCCSPFromOpts returns a BCCSP created according to the options passed in input.
+func GetBCCSPFromOpts(config *FactoryOpts) (bccsp.BCCSP, error) {
+	var f BCCSPFactory
+	switch config.ProviderName {
+	case "SW":
+		f = &SWFactory{}
+	}
+
+	csp, err := f.Get(config)
+	if err != nil {
+		return nil, fmt.Errorf("Could not initialize BCCSP %s [%s]", f.Name(), err)
+	}
+	return csp, nil
+}

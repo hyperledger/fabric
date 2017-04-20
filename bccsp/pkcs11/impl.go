@@ -28,40 +28,26 @@ import (
 	"fmt"
 	"hash"
 	"math/big"
+	"os"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/miekg/pkcs11"
 	"github.com/op/go-logging"
 	"golang.org/x/crypto/sha3"
 )
 
 var (
-	logger = logging.MustGetLogger("PKCS11_BCCSP")
+	logger           = logging.MustGetLogger("bccsp_p11")
+	sessionCacheSize = 10
 )
-
-// NewDefaultSecurityLevel returns a new instance of the software-based BCCSP
-// at security level 256, hash family SHA2 and using FolderBasedKeyStore as KeyStore.
-func NewDefaultSecurityLevel(keyStorePath string) (bccsp.BCCSP, error) {
-	ks := &FileBasedKeyStore{}
-	if err := ks.Init(nil, keyStorePath, false); err != nil {
-		return nil, fmt.Errorf("Failed initializing key store [%s]", err)
-	}
-
-	return New(256, "SHA2", ks)
-}
-
-// NewDefaultSecurityLevel returns a new instance of the software-based BCCSP
-// at security level 256, hash family SHA2 and using the passed KeyStore.
-func NewDefaultSecurityLevelWithKeystore(keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
-	return New(256, "SHA2", keyStore)
-}
 
 // New returns a new instance of the software-based BCCSP
 // set at the passed security level, hash family and KeyStore.
-func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
+func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 	// Init config
 	conf := &config{}
-	err := conf.setSecurityLevel(securityLevel, hashFamily)
+	err := conf.setSecurityLevel(opts.SecLevel, opts.HashFamily)
 	if err != nil {
 		return nil, fmt.Errorf("Failed initializing configuration [%s]", err)
 	}
@@ -71,13 +57,32 @@ func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.B
 		return nil, errors.New("Invalid bccsp.KeyStore instance. It must be different from nil.")
 	}
 
-	return &impl{conf, keyStore}, nil
+	lib := opts.Library
+	pin := opts.Pin
+	label := opts.Label
+	ctx, slot, session, err := loadLib(lib, pin, label)
+	if err != nil {
+		return nil, fmt.Errorf("Failed initializing PKCS11 library %s %s [%s]",
+			lib, label, err)
+	}
+
+	sessions := make(chan pkcs11.SessionHandle, sessionCacheSize)
+	csp := &impl{conf, keyStore, ctx, sessions, slot, lib, opts.Sensitive, opts.SoftVerify}
+	csp.returnSession(*session)
+	return csp, nil
 }
 
-// SoftwareBasedBCCSP is the software-based implementation of the BCCSP.
 type impl struct {
 	conf *config
 	ks   bccsp.KeyStore
+
+	ctx      *pkcs11.Ctx
+	sessions chan pkcs11.SessionHandle
+	slot     uint
+
+	lib          string
+	noPrivImport bool
+	softVerify   bool
 }
 
 // KeyGen generates a key using opts.
@@ -92,7 +97,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	// Parse algorithm
 	switch opts.(type) {
 	case *bccsp.ECDSAKeyGenOpts:
-		ski, pub, err := generateECKey(csp.conf.ellipticCurve, opts.Ephemeral())
+		ski, pub, err := csp.generateECKey(csp.conf.ellipticCurve, opts.Ephemeral())
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating ECDSA key [%s]", err)
 		}
@@ -100,7 +105,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		pkcs11Stored = true
 
 	case *bccsp.ECDSAP256KeyGenOpts:
-		ski, pub, err := generateECKey(oidNamedCurveP256, opts.Ephemeral())
+		ski, pub, err := csp.generateECKey(oidNamedCurveP256, opts.Ephemeral())
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating ECDSA P256 key [%s]", err)
 		}
@@ -109,7 +114,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		pkcs11Stored = true
 
 	case *bccsp.ECDSAP384KeyGenOpts:
-		ski, pub, err := generateECKey(oidNamedCurveP384, opts.Ephemeral())
+		ski, pub, err := csp.generateECKey(oidNamedCurveP384, opts.Ephemeral())
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating ECDSA P384 key [%s]", err)
 		}
@@ -269,7 +274,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 				return nil, errors.New("Do not know OID for this Curve.")
 			}
 
-			ski, err := importECKey(oid, nil, ecPt, opts.Ephemeral(), isPublicKey)
+			ski, err := csp.importECKey(oid, nil, ecPt, opts.Ephemeral(), publicKeyFlag)
 			if err != nil {
 				return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
 			}
@@ -295,7 +300,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 		case *bccsp.ECDSAReRandKeyOpts:
 			reRandOpts := opts.(*bccsp.ECDSAReRandKeyOpts)
 			pubKey := ecdsaK.pub.pub
-			secret := getSecretValue(ecdsaK.ski)
+			secret := csp.getSecretValue(ecdsaK.ski)
 			if secret == nil {
 				return nil, errors.New("Could not obtain EC Private Key")
 			}
@@ -334,7 +339,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 				return nil, errors.New("Do not know OID for this Curve.")
 			}
 
-			ski, err := importECKey(oid, tempSK.D.Bytes(), ecPt, opts.Ephemeral(), isPrivateKey)
+			ski, err := csp.importECKey(oid, tempSK.D.Bytes(), ecPt, opts.Ephemeral(), privateKeyFlag)
 			if err != nil {
 				return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
 			}
@@ -488,15 +493,33 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			return nil, errors.New("Do not know OID for this Curve.")
 		}
 
-		ski, err := importECKey(oid, nil, ecPt, opts.Ephemeral(), isPublicKey)
-		if err != nil {
-			return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+		var ski []byte
+		if csp.noPrivImport {
+			// opencryptoki does not support public ec key imports. This is a sufficient
+			// workaround for now to use soft verify
+			hash := sha256.Sum256(ecPt)
+			ski = hash[:]
+		} else {
+			// Warn about potential future problems
+			if !csp.softVerify {
+				logger.Debugf("opencryptoki workaround warning: Importing public EC Key does not store out to pkcs11 store,\n" +
+					"so verify with this key will fail, unless key is already present in store. Enable 'softwareverify'\n" +
+					"in pkcs11 options, if suspect this issue.")
+			}
+			ski, err = csp.importECKey(oid, nil, ecPt, opts.Ephemeral(), publicKeyFlag)
+			if err != nil {
+				return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+			}
 		}
 
 		k = &ecdsaPublicKey{ski, ecdsaPK}
 		return k, nil
 
 	case *bccsp.ECDSAPrivateKeyImportOpts:
+		if csp.noPrivImport {
+			return nil, errors.New("[ECDSADERPrivateKeyImportOpts] PKCS11 options 'sensitivekeys' is set to true. Cannot import.")
+		}
+
 		der, ok := raw.([]byte)
 		if !ok {
 			return nil, errors.New("[ECDSADERPrivateKeyImportOpts] Invalid raw material. Expected byte array.")
@@ -522,7 +545,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			return nil, errors.New("Do not know OID for this Curve.")
 		}
 
-		ski, err := importECKey(oid, ecdsaSK.D.Bytes(), ecPt, opts.Ephemeral(), isPrivateKey)
+		ski, err := csp.importECKey(oid, ecdsaSK.D.Bytes(), ecPt, opts.Ephemeral(), privateKeyFlag)
 		if err != nil {
 			return nil, fmt.Errorf("Failed getting importing EC Private Key [%s]", err)
 		}
@@ -542,9 +565,23 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			return nil, errors.New("Do not know OID for this Curve.")
 		}
 
-		ski, err := importECKey(oid, nil, ecPt, opts.Ephemeral(), isPublicKey)
-		if err != nil {
-			return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+		var ski []byte
+		if csp.noPrivImport {
+			// opencryptoki does not support public ec key imports. This is a sufficient
+			// workaround for now to use soft verify
+			hash := sha256.Sum256(ecPt)
+			ski = hash[:]
+		} else {
+			// Warn about potential future problems
+			if !csp.softVerify {
+				logger.Debugf("opencryptoki workaround warning: Importing public EC Key does not store out to pkcs11 store,\n" +
+					"so verify with this key will fail, unless key is already present in store. Enable 'softwareverify'\n" +
+					"in pkcs11 options, if suspect this issue.")
+			}
+			ski, err = csp.importECKey(oid, nil, ecPt, opts.Ephemeral(), publicKeyFlag)
+			if err != nil {
+				return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+			}
 		}
 
 		k = &ecdsaPublicKey{ski, lowLevelKey}
@@ -594,7 +631,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 // GetKey returns the key this CSP associates to
 // the Subject Key Identifier ski.
 func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
-	pubKey, isPriv, err := getECKey(ski)
+	pubKey, isPriv, err := csp.getECKey(ski)
 	if err == nil {
 		if isPriv {
 			return &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pubKey}}, nil
@@ -680,7 +717,8 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 
 		return k.(*rsaPrivateKey).privKey.Sign(rand.Reader, digest, opts)
 	default:
-		return nil, fmt.Errorf("Key type not recognized [%s]", k)
+		//return nil, fmt.Errorf("Key type not recognized [%s]", k)
+		panic(fmt.Errorf("Key type not recognized - [%+v] [%#v] [%T] [%T]", k, k, k, k))
 	}
 }
 
@@ -782,4 +820,33 @@ func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpt
 	default:
 		return nil, fmt.Errorf("Key type not recognized [%s]", k)
 	}
+}
+
+// THIS IS ONLY USED FOR TESTING
+// This is a convenience function. Useful to self-configure, for tests where usual configuration is not
+// available
+func FindPKCS11Lib() (lib, pin, label string) {
+	//FIXME: Till we workout the configuration piece, look for the libraries in the familiar places
+	lib = os.Getenv("PKCS11_LIB")
+	if lib == "" {
+		pin = "98765432"
+		label = "ForFabric"
+		possibilities := []string{
+			"/usr/lib/softhsm/libsofthsm2.so",                            //Debian
+			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so",           //Ubuntu
+			"/usr/lib/s390x-linux-gnu/softhsm/libsofthsm2.so",            //Ubuntu
+			"/usr/lib/powerpc64le-linux-gnu/softhsm/libsofthsm2.so",      //Power
+			"/usr/local/Cellar/softhsm/2.1.0/lib/softhsm/libsofthsm2.so", //MacOS
+		}
+		for _, path := range possibilities {
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				lib = path
+				break
+			}
+		}
+	} else {
+		pin = os.Getenv("PKCS11_PIN")
+		label = os.Getenv("PKCS11_LABEL")
+	}
+	return lib, pin, label
 }

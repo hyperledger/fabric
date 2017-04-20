@@ -24,20 +24,46 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/miekg/pkcs11"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPKCS11GetSession(t *testing.T) {
-	if !enablePKCS11tests {
-		t.SkipNow()
+	var sessions []pkcs11.SessionHandle
+	for i := 0; i < 3*sessionCacheSize; i++ {
+		sessions = append(sessions, currentBCCSP.(*impl).getSession())
 	}
 
-	session := getSession()
-	defer returnSession(session)
+	// Return all sessions, should leave sessionCacheSize cached
+	for _, session := range sessions {
+		currentBCCSP.(*impl).returnSession(session)
+	}
+	sessions = nil
+
+	// Lets break OpenSession, so non-cached session cannot be opened
+	oldSlot := currentBCCSP.(*impl).slot
+	currentBCCSP.(*impl).slot = ^uint(0)
+
+	// Should be able to get sessionCacheSize cached sessions
+	for i := 0; i < sessionCacheSize; i++ {
+		sessions = append(sessions, currentBCCSP.(*impl).getSession())
+	}
+
+	// This one should fail
+	assert.Panics(t, func() {
+		currentBCCSP.(*impl).getSession()
+	}, "Should not been able to create another session")
+
+	// Cleanup
+	for _, session := range sessions {
+		currentBCCSP.(*impl).returnSession(session)
+	}
+	currentBCCSP.(*impl).slot = oldSlot
 }
 
 func TestPKCS11ECKeySignVerify(t *testing.T) {
-	if !enablePKCS11tests {
-		t.SkipNow()
+	if currentBCCSP.(*impl).noPrivImport {
+		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
 
 	msg1 := []byte("This is my very authentic message")
@@ -52,18 +78,18 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 		oid = oidNamedCurveP384
 	}
 
-	key, pubKey, err := generateECKey(oid, true)
+	key, pubKey, err := currentBCCSP.(*impl).generateECKey(oid, true)
 	if err != nil {
 		t.Fatalf("Failed generating Key [%s]", err)
 	}
 
-	R, S, err := signECDSA(key, hash1)
+	R, S, err := currentBCCSP.(*impl).signP11ECDSA(key, hash1)
 
 	if err != nil {
 		t.Fatalf("Failed signing message [%s]", err)
 	}
 
-	pass, err := verifyECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
+	pass, err := currentBCCSP.(*impl).verifyP11ECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 1 [%s]", err)
 	}
@@ -76,7 +102,7 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 		t.Fatal("Signature should match with software verification!")
 	}
 
-	pass, err = verifyECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
+	pass, err = currentBCCSP.(*impl).verifyP11ECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 2 [%s]", err)
 	}
@@ -92,8 +118,8 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 }
 
 func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
-	if !enablePKCS11tests {
-		t.SkipNow()
+	if currentBCCSP.(*impl).noPrivImport {
+		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
 
 	msg1 := []byte("This is my very authentic message")
@@ -118,18 +144,18 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 	}
 
 	ecPt := elliptic.Marshal(key.Curve, key.X, key.Y)
-	ski, err := importECKey(oid, key.D.Bytes(), ecPt, false, isPrivateKey)
+	ski, err := currentBCCSP.(*impl).importECKey(oid, key.D.Bytes(), ecPt, false, privateKeyFlag)
 	if err != nil {
 		t.Fatalf("Failed getting importing EC Public Key [%s]", err)
 	}
 
-	R, S, err := signECDSA(ski, hash1)
+	R, S, err := currentBCCSP.(*impl).signP11ECDSA(ski, hash1)
 
 	if err != nil {
 		t.Fatalf("Failed signing message [%s]", err)
 	}
 
-	pass, err := verifyECDSA(ski, hash1, R, S, currentTestConfig.securityLevel/8)
+	pass, err := currentBCCSP.(*impl).verifyP11ECDSA(ski, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 1 [%s]\n%s\n\n%s", err, hex.Dump(R.Bytes()), hex.Dump(S.Bytes()))
 	}
@@ -142,7 +168,7 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 		t.Fatal("Signature should match with software verification!")
 	}
 
-	pass, err = verifyECDSA(ski, hash2, R, S, currentTestConfig.securityLevel/8)
+	pass, err = currentBCCSP.(*impl).verifyP11ECDSA(ski, hash2, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 2 [%s]", err)
 	}
@@ -158,8 +184,8 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 }
 
 func TestPKCS11ECKeyExport(t *testing.T) {
-	if !enablePKCS11tests {
-		t.SkipNow()
+	if currentBCCSP.(*impl).noPrivImport {
+		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
 
 	msg1 := []byte("This is my very authentic message")
@@ -174,12 +200,12 @@ func TestPKCS11ECKeyExport(t *testing.T) {
 		oid = oidNamedCurveP384
 	}
 
-	key, pubKey, err := generateECKey(oid, false)
+	key, pubKey, err := currentBCCSP.(*impl).generateECKey(oid, false)
 	if err != nil {
 		t.Fatalf("Failed generating Key [%s]", err)
 	}
 
-	secret := getSecretValue(key)
+	secret := currentBCCSP.(*impl).getSecretValue(key)
 	x, y := pubKey.ScalarBaseMult(secret)
 
 	if 0 != x.Cmp(pubKey.X) {
@@ -191,14 +217,14 @@ func TestPKCS11ECKeyExport(t *testing.T) {
 	}
 
 	ecPt := elliptic.Marshal(pubKey.Curve, x, y)
-	key2, err := importECKey(oid, secret, ecPt, false, isPrivateKey)
+	key2, err := currentBCCSP.(*impl).importECKey(oid, secret, ecPt, false, privateKeyFlag)
 
-	R, S, err := signECDSA(key2, hash1)
+	R, S, err := currentBCCSP.(*impl).signP11ECDSA(key2, hash1)
 	if err != nil {
 		t.Fatalf("Failed signing message [%s]", err)
 	}
 
-	pass, err := verifyECDSA(key2, hash1, R, S, currentTestConfig.securityLevel/8)
+	pass, err := currentBCCSP.(*impl).verifyP11ECDSA(key2, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 1 [%s]", err)
 	}
@@ -206,7 +232,7 @@ func TestPKCS11ECKeyExport(t *testing.T) {
 		t.Fatal("Signature should match! [1]")
 	}
 
-	pass, err = verifyECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
+	pass, err = currentBCCSP.(*impl).verifyP11ECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 2 [%s]", err)
 	}
@@ -219,7 +245,7 @@ func TestPKCS11ECKeyExport(t *testing.T) {
 		t.Fatal("Signature should match with software verification!")
 	}
 
-	pass, err = verifyECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
+	pass, err = currentBCCSP.(*impl).verifyP11ECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 3 [%s]", err)
 	}
