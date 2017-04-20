@@ -18,6 +18,7 @@ package commontests
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -106,6 +107,13 @@ func (env *couchDBLockBasedEnv) init(t *testing.T, testLedgerID string) {
 	viper.Set("peer.fileSystemPath", testFilesystemPath)
 	// both vagrant and CI have couchdb configured at host "couchdb"
 	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
+	// Replace with correct username/password such as
+	// admin/admin if user security is enabled on couchdb.
+	viper.Set("ledger.state.couchDBConfig.username", "")
+	viper.Set("ledger.state.couchDBConfig.password", "")
+	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
+	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 10)
+	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*20)
 	testDBEnv := statecouchdb.NewTestVDBEnv(t)
 	testDB, err := testDBEnv.DBProvider.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
