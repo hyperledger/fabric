@@ -109,7 +109,7 @@ little bit of setup needed:
 
 Recall that we are using ``Gerrit`` for source control, which has its
 own internal git repositories. Hence, we will need to clone from
-`Gerrit <../Gerrit/gerrit.md#Working-with-a-local-clone-of-the-repository>`__.
+:doc:`Gerrit <../Gerrit/gerrit>`.
 For brevity, the command is as follows:
 
 ::
@@ -117,10 +117,10 @@ For brevity, the command is as follows:
     git clone ssh://LFID@gerrit.hyperledger.org:29418/fabric && scp -p -P 29418 LFID@gerrit.hyperledger.org:hooks/commit-msg fabric/.git/hooks/
 
 **Note:** Of course, you would want to replace ``LFID`` with your own
-`Linux Foundation ID <../Gerrit/lf-account.md>`__.
+:doc:`Linux Foundation ID <../Gerrit/lf-account>`.
 
-Boostrapping the VM using Vagrant
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Bootstrapping the VM using Vagrant
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you are planning on using the Vagrant developer environment, the
 following steps apply. **Again, we recommend against its use except for
@@ -147,7 +147,7 @@ Building the fabric
 ~~~~~~~~~~~~~~~~~~~
 
 Once you have all the dependencies installed, and have cloned the
-repository, you can proceed to `build and test <build.md>`__ the fabric.
+repository, you can proceed to :doc:`build and test <build>` the fabric.
 
 Notes
 ~~~~~
