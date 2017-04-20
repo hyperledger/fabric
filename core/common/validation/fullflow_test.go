@@ -42,6 +42,75 @@ func getProposal() (*peer.Proposal, error) {
 	return proposal, err
 }
 
+func createSignedTxTwoActions(proposal *peer.Proposal, signer msp.SigningIdentity, resps ...*peer.ProposalResponse) (*common.Envelope, error) {
+	if len(resps) == 0 {
+		return nil, fmt.Errorf("At least one proposal response is necessary")
+	}
+
+	// the original header
+	hdr, err := utils.GetHeader(proposal.Header)
+	if err != nil {
+		return nil, fmt.Errorf("Could not unmarshal the proposal header")
+	}
+
+	// the original payload
+	pPayl, err := utils.GetChaincodeProposalPayload(proposal.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("Could not unmarshal the proposal payload")
+	}
+
+	// fill endorsements
+	endorsements := make([]*peer.Endorsement, len(resps))
+	for n, r := range resps {
+		endorsements[n] = r.Endorsement
+	}
+
+	// create ChaincodeEndorsedAction
+	cea := &peer.ChaincodeEndorsedAction{ProposalResponsePayload: resps[0].Payload, Endorsements: endorsements}
+
+	// obtain the bytes of the proposal payload that will go to the transaction
+	propPayloadBytes, err := utils.GetBytesProposalPayloadForTx(pPayl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// serialize the chaincode action payload
+	cap := &peer.ChaincodeActionPayload{ChaincodeProposalPayload: propPayloadBytes, Action: cea}
+	capBytes, err := utils.GetBytesChaincodeActionPayload(cap)
+	if err != nil {
+		return nil, err
+	}
+
+	// create a transaction
+	taa := &peer.TransactionAction{Header: hdr.SignatureHeader, Payload: capBytes}
+	taas := make([]*peer.TransactionAction, 2)
+	taas[0] = taa
+	taas[1] = taa
+	tx := &peer.Transaction{Actions: taas}
+
+	// serialize the tx
+	txBytes, err := utils.GetBytesTransaction(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	// create the payload
+	payl := &common.Payload{Header: hdr, Data: txBytes}
+	paylBytes, err := utils.GetBytesPayload(payl)
+	if err != nil {
+		return nil, err
+	}
+
+	// sign the payload
+	sig, err := signer.Sign(paylBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// here's the envelope
+	return &common.Envelope{Payload: paylBytes, Signature: sig}, nil
+}
+
 func TestGoodPath(t *testing.T) {
 	// get a toy proposal
 	prop, err := getProposal()
@@ -112,6 +181,39 @@ func TestGoodPath(t *testing.T) {
 	// compare it to the original action and expect it to be equal
 	if string(simRes) != string(simResBack.Results) {
 		t.Fatal("Simulation results are different")
+		return
+	}
+}
+
+func TestTXWithTwoActionsRejected(t *testing.T) {
+	// get a toy proposal
+	prop, err := getProposal()
+	if err != nil {
+		t.Fatalf("getProposal failed, err %s", err)
+		return
+	}
+
+	response := &peer.Response{Status: 200}
+	simRes := []byte("simulation_result")
+
+	// endorse it to get a proposal response
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, nil, signer)
+	if err != nil {
+		t.Fatalf("CreateProposalResponse failed, err %s", err)
+		return
+	}
+
+	// assemble a transaction from that proposal and endorsement
+	tx, err := createSignedTxTwoActions(prop, signer, presp)
+	if err != nil {
+		t.Fatalf("CreateSignedTx failed, err %s", err)
+		return
+	}
+
+	// validate the transaction
+	_, txResult := ValidateTransaction(tx)
+	if txResult == peer.TxValidationCode_VALID {
+		t.Fatalf("ValidateTransaction should have failed")
 		return
 	}
 }

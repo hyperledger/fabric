@@ -286,8 +286,9 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 
 	// TODO: validate ChaincodeHeaderExtension
 
-	if len(tx.Actions) == 0 {
-		return errors.New("At least one TransactionAction is required")
+	// hlf version 1 only supports a single action per transaction
+	if len(tx.Actions) != 1 {
+		return fmt.Errorf("Only one action per transaction is supported (tx contains %d)", len(tx.Actions))
 	}
 
 	putilsLogger.Debugf("validateEndorserTransaction info: there are %d actions", len(tx.Actions))
