@@ -284,7 +284,13 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 		}
 		gc.DeMultiplex(msg)
 	}
-	return pull.NewPullMediator(conf, gc, gc.memFilter, seqNumFromMsg, blockConsumer)
+	adapter := pull.PullAdapter{
+		Sndr:        gc,
+		MemSvc:      gc.memFilter,
+		IdExtractor: seqNumFromMsg,
+		MsgCons:     blockConsumer,
+	}
+	return pull.NewPullMediator(conf, adapter)
 }
 
 // IsMemberInChan checks whether the given member is eligible to be in the channel
