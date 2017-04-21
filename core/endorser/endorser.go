@@ -210,18 +210,19 @@ func (e *Endorser) getCDSFromLSCC(ctx context.Context, chainID string, txid stri
 func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd *ccprovider.ChaincodeData) (*pb.ProposalResponse, error) {
 	endorserLogger.Debugf("endorseProposal starts for chainID %s, ccid %s", chainID, ccid)
 
+	isSysCC := cd == nil
 	// 1) extract the name of the escc that is requested to endorse this chaincode
 	var escc string
 	//ie, not "lscc" or system chaincodes
-	if cd != nil {
+	if isSysCC {
+		// FIXME: getCDSFromLSCC seems to fail for lscc - not sure this is expected?
+		// TODO: who should endorse a call to LSCC?
+		escc = "escc"
+	} else {
 		escc = cd.Escc
 		if escc == "" { // this should never happen, LSCC always fills this field
 			panic("No ESCC specified in ChaincodeData")
 		}
-	} else {
-		// FIXME: getCDSFromLSCC seems to fail for lscc - not sure this is expected?
-		// TODO: who should endorse a call to LSCC?
-		escc = "escc"
 	}
 
 	endorserLogger.Debugf("endorseProposal info: escc for cid %s is %s", ccid, escc)
@@ -241,16 +242,31 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 		return nil, fmt.Errorf("failed to marshal response bytes - %s", err)
 	}
 
+	// set version of executing chaincode
+	if isSysCC {
+		// if we want to allow mixed fabric levels we should
+		// set syscc version to ""
+		ccid.Version = util.GetSysCCVersion()
+	} else {
+		ccid.Version = cd.Version
+	}
+
+	ccidBytes, err := putils.Marshal(ccid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal ChaincodeID - %s", err)
+	}
+
 	// 3) call the ESCC we've identified
 	// arguments:
 	// args[0] - function name (not used now)
 	// args[1] - serialized Header object
 	// args[2] - serialized ChaincodeProposalPayload object
-	// args[3] - result of executing chaincode
-	// args[4] - binary blob of simulation results
-	// args[5] - serialized events
-	// args[6] - payloadVisibility
-	args := [][]byte{[]byte(""), proposal.Header, proposal.Payload, resBytes, simRes, eventBytes, visibility}
+	// args[3] - ChaincodeID of executing chaincode
+	// args[4] - result of executing chaincode
+	// args[5] - binary blob of simulation results
+	// args[6] - serialized events
+	// args[7] - payloadVisibility
+	args := [][]byte{[]byte(""), proposal.Header, proposal.Payload, ccidBytes, resBytes, simRes, eventBytes, visibility}
 	version := util.GetSysCCVersion()
 	ecccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: escc}, Input: &pb.ChaincodeInput{Args: args}}}
 	res, _, err := e.callChaincode(ctx, chainID, version, txid, signedProp, proposal, ecccis, &pb.ChaincodeID{Name: escc}, txsim)

@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	ptestutils "github.com/hyperledger/fabric/protos/testutils"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -75,15 +76,18 @@ func (bg *BlockGenerator) NextTestBlocks(numBlocks int) []*common.Block {
 
 // ConstructTransaction constructs a transaction for testing
 func ConstructTransaction(_ *testing.T, simulationResults []byte, sign bool) (*common.Envelope, string, error) {
-	ccName := "foo"
+	ccid := &pb.ChaincodeID{
+		Name:    "foo",
+		Version: "v1",
+	}
 	//response := &pb.Response{Status: 200}
 	var txID string
 	var txEnv *common.Envelope
 	var err error
 	if sign {
-		txEnv, txID, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GetTestChainID(), ccName, nil, simulationResults, nil, nil)
+		txEnv, txID, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GetTestChainID(), ccid, nil, simulationResults, nil, nil)
 	} else {
-		txEnv, txID, err = ptestutils.ConstructUnsingedTxEnv(util.GetTestChainID(), ccName, nil, simulationResults, nil, nil)
+		txEnv, txID, err = ptestutils.ConstructUnsingedTxEnv(util.GetTestChainID(), ccid, nil, simulationResults, nil, nil)
 	}
 	return txEnv, txID, err
 }

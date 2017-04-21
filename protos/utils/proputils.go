@@ -382,8 +382,8 @@ func CreateChaincodeProposalWithTxIDNonceAndTransient(txid string, typ common.He
 }
 
 // GetBytesProposalResponsePayload gets proposal response payload
-func GetBytesProposalResponsePayload(hash []byte, response *peer.Response, result []byte, event []byte) ([]byte, error) {
-	cAct := &peer.ChaincodeAction{Events: event, Results: result, Response: response}
+func GetBytesProposalResponsePayload(hash []byte, response *peer.Response, result []byte, event []byte, ccid *peer.ChaincodeID) ([]byte, error) {
+	cAct := &peer.ChaincodeAction{Events: event, Results: result, Response: response, ChaincodeId: ccid}
 	cActBytes, err := proto.Marshal(cAct)
 	if err != nil {
 		return nil, err

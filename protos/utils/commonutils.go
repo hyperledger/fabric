@@ -21,6 +21,7 @@ import (
 	"time"
 
 	cb "github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"errors"
 
@@ -246,4 +247,15 @@ func UnmarshalChannelHeader(bytes []byte) (*cb.ChannelHeader, error) {
 	}
 
 	return chdr, nil
+}
+
+// UnmarshalChaincodeID returns a ChaincodeID from bytes
+func UnmarshalChaincodeID(bytes []byte) (*pb.ChaincodeID, error) {
+	ccid := &pb.ChaincodeID{}
+	err := proto.Unmarshal(bytes, ccid)
+	if err != nil {
+		return nil, fmt.Errorf("UnmarshalChaincodeID failed, err %s", err)
+	}
+
+	return ccid, nil
 }

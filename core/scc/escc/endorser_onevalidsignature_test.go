@@ -22,6 +22,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/validation"
@@ -50,6 +51,13 @@ func TestInvoke(t *testing.T) {
 	failResponse := &pb.Response{Status: 500, Message: "error"}
 	successRes, _ := putils.GetBytesResponse(successResponse)
 	failRes, _ := putils.GetBytesResponse(failResponse)
+	ccid := &pb.ChaincodeID{Name: "foo", Version: "v1"}
+	ccidBytes, err := proto.Marshal(ccid)
+	if err != nil {
+		t.Fail()
+		t.Fatalf("couldn't marshal ChaincodeID: err %s", err)
+		return
+	}
 
 	// Initialize ESCC supplying the identity of the signer
 	args := [][]byte{[]byte("DEFAULT"), []byte("PEER")}
@@ -82,36 +90,42 @@ func TestInvoke(t *testing.T) {
 		t.Fatalf("escc invoke should have failed with invalid number of args: %v", args)
 	}
 
+	// Failed path: Not enough parameters
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), []byte("test"), []byte("test")}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("escc invoke should have failed with invalid number of args: %v", args)
+	}
+
 	// Failed path: header is null
-	args = [][]byte{[]byte("test"), nil, []byte("test"), successRes, []byte("test")}
+	args = [][]byte{[]byte("test"), nil, []byte("test"), ccidBytes, successRes, []byte("test")}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null header.  args: %v", args)
 	}
 
 	// Failed path: payload is null
-	args = [][]byte{[]byte("test"), []byte("test"), nil, successRes, []byte("test")}
+	args = [][]byte{[]byte("test"), []byte("test"), nil, ccidBytes, successRes, []byte("test")}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null payload.  args: %v", args)
 	}
 
 	// Failed path: response is null
-	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), nil, []byte("test")}
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), ccidBytes, nil, []byte("test")}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null response.  args: %v", args)
 	}
 
 	// Failed path: action struct is null
-	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), successRes, nil}
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), ccidBytes, successRes, nil}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null action struct.  args: %v", args)
 	}
 
 	// Failed path: status code >=500
-	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), failRes, []byte("test")}
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), ccidBytes, failRes, []byte("test")}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null response.  args: %v", args)
@@ -119,7 +133,7 @@ func TestInvoke(t *testing.T) {
 
 	// Successful path - create a proposal
 	cs := &pb.ChaincodeSpec{
-		ChaincodeId: &pb.ChaincodeID{Name: "foo"},
+		ChaincodeId: ccid,
 		Type:        pb.ChaincodeSpec_GOLANG,
 		Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("some"), []byte("args")}}}
 
@@ -149,7 +163,7 @@ func TestInvoke(t *testing.T) {
 	// success test 1: invocation with mandatory args only
 	simRes := []byte("simulation_result")
 
-	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, successRes, simRes}
+	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, ccidBytes, successRes, simRes}
 	res := stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
 		t.Fail()
@@ -157,7 +171,7 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	err = validateProposalResponse(res.Payload, proposal, nil, successResponse, simRes, nil)
+	err = validateProposalResponse(res.Payload, proposal, cs.ChaincodeId, nil, successResponse, simRes, nil)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("%s", err)
@@ -167,7 +181,7 @@ func TestInvoke(t *testing.T) {
 	// success test 2: invocation with mandatory args + events
 	events := []byte("events")
 
-	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, successRes, simRes, events}
+	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, ccidBytes, successRes, simRes, events}
 	res = stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
 		t.Fail()
@@ -175,7 +189,7 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	err = validateProposalResponse(res.Payload, proposal, nil, successResponse, simRes, events)
+	err = validateProposalResponse(res.Payload, proposal, cs.ChaincodeId, nil, successResponse, simRes, events)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("%s", err)
@@ -183,7 +197,7 @@ func TestInvoke(t *testing.T) {
 	}
 
 	// success test 3: invocation with mandatory args + events and visibility
-	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, successRes, simRes, events, nil}
+	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, ccidBytes, successRes, simRes, events, nil}
 	res = stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
 		t.Fail()
@@ -191,7 +205,7 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	err = validateProposalResponse(res.Payload, proposal, []byte{}, successResponse, simRes, events)
+	err = validateProposalResponse(res.Payload, proposal, cs.ChaincodeId, []byte{}, successResponse, simRes, events)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("%s", err)
@@ -199,7 +213,7 @@ func TestInvoke(t *testing.T) {
 	}
 }
 
-func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility []byte, response *pb.Response, simRes []byte, events []byte) error {
+func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, ccid *pb.ChaincodeID, visibility []byte, response *pb.Response, simRes []byte, events []byte) error {
 	if visibility == nil {
 		// TODO: set visibility to the default visibility mode once modes are defined
 	}
@@ -268,6 +282,17 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 	// validate that the events match
 	if bytes.Compare(cact.Events, events) != 0 {
 		return errors.New("events do not match")
+	}
+
+	// validate that the ChaincodeID match
+	if cact.ChaincodeId.Name != ccid.Name {
+		return errors.New("ChaincodeID name do not match")
+	}
+	if cact.ChaincodeId.Version != ccid.Version {
+		return errors.New("ChaincodeID version do not match")
+	}
+	if cact.ChaincodeId.Path != ccid.Path {
+		return errors.New("ChaincodeID path do not match")
 	}
 
 	// get the identity of the endorser

@@ -76,7 +76,7 @@ func SendProducerBlockEvent(block *common.Block) error {
 					// Dropping the read write set may cause issues for security and
 					// we will need to revist when event security is addressed
 					caPayload.Results = nil
-					chaincodeActionPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(propRespPayload.ProposalHash, caPayload.Response, caPayload.Results, caPayload.Events)
+					chaincodeActionPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(propRespPayload.ProposalHash, caPayload.Response, caPayload.Results, caPayload.Events, caPayload.ChaincodeId)
 					if err != nil {
 						return fmt.Errorf("error marshalling tx proposal payload for block event: %s", err)
 					}
