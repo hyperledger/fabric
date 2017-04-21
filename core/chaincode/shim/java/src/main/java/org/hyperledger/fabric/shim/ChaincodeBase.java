@@ -31,6 +31,8 @@ import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type;
 import org.hyperledger.fabric.protos.peer.ChaincodeSupportGrpc;
 import org.hyperledger.fabric.protos.peer.ChaincodeSupportGrpc.ChaincodeSupportStub;
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
+import org.hyperledger.fabric.shim.impl.Handler;
+import org.hyperledger.fabric.shim.impl.NextStateInfo;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
@@ -49,15 +51,15 @@ public abstract class ChaincodeBase implements Chaincode {
 	 */
 	@Override
 	public abstract Response init(ChaincodeStub stub);
-	
+
 	/* (non-Javadoc)
 	 * @see org.hyperledger.fabric.shim.Chaincode#invoke(org.hyperledger.fabric.shim.ChaincodeStub)
 	 */
 	@Override
 	public abstract Response invoke(ChaincodeStub stub);
-	
+
     private static Log logger = LogFactory.getLog(ChaincodeBase.class);
-    
+
     public static final String DEFAULT_HOST = "127.0.0.1";
     public static final int DEFAULT_PORT = 7051;
 
@@ -181,8 +183,8 @@ public abstract class ChaincodeBase implements Chaincode {
 		public void onNext(ChaincodeMessage message) {
 		    logger.debug("Got message from peer: " + toJsonString(message));
 		    try {
-			logger.debug(String.format("[%s]Received message %s from org.hyperledger.fabric.shim",
-				Handler.shortID(message.getTxid()), message.getType()));
+			logger.debug(String.format("[%-8s]Received message %s from org.hyperledger.fabric.shim",
+				message.getTxid(), message.getType()));
 			handler.handleMessage(message);
 		    } catch (Exception e) {
 			e.printStackTrace();
@@ -233,8 +235,8 @@ public abstract class ChaincodeBase implements Chaincode {
 		    if (message.getType() == Type.KEEPALIVE) {
 			logger.info("Sending KEEPALIVE response");
 		    } else {
-			logger.info(
-				"[" + Handler.shortID(message.getTxid()) + "]Send state message " + message.getType());
+			logger.info(String.format(
+				"[%-8s]Send state message %s", message.getTxid(), message.getType()));
 		    }
 		    handler.serialSend(message);
 		}

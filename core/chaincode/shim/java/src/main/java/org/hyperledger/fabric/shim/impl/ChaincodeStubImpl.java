@@ -14,21 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package org.hyperledger.fabric.shim;
+package org.hyperledger.fabric.shim.impl;
 
 import static java.util.stream.Collectors.toList;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.hyperledger.fabric.protos.ledger.queryresult.KvQueryResult.KV;
 import org.hyperledger.fabric.protos.peer.ChaincodeEventPackage.ChaincodeEvent;
+import org.hyperledger.fabric.protos.peer.ChaincodeShim.QueryResultBytes;
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
+import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
+import org.hyperledger.fabric.shim.ledger.KeyValue;
+import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 
 class ChaincodeStubImpl implements ChaincodeStub {
 
@@ -39,7 +46,7 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	private final List<ByteString> args;
 	private ChaincodeEvent event;
 
-	public ChaincodeStubImpl(String uuid, Handler handler, List<ByteString> args) {
+	ChaincodeStubImpl(String uuid, Handler handler, List<ByteString> args) {
 		this.txid = uuid;
 		this.handler = handler;
 		this.args = Collections.unmodifiableList(args);
@@ -133,6 +140,35 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	@Override
 	public void delState(String key) {
 		handler.handleDeleteState(key, txid);
+	}
+
+	/* (non-Javadoc)
+	 * @see org.hyperledger.fabric.shim.ChaincodeStub#getStateByRange(java.lang.String, java.lang.String)
+	 */
+	@Override
+	public QueryResultsIterator<KeyValue> getStateByRange(String startKey, String endKey) {
+		return new QueryResultsIteratorImpl<KeyValue>(this.handler, getTxId(),
+				handler.handleGetStateByRange(getTxId(), startKey, endKey),
+				queryResultBytesToKv.andThen(KeyValueImpl::new)
+				);
+	}
+
+	private Function<QueryResultBytes, KV> queryResultBytesToKv = new Function<QueryResultBytes, KV>() {
+		public KV apply(QueryResultBytes queryResultBytes) {
+			try {
+				return KV.parseFrom(queryResultBytes.getResultBytes());
+			} catch (InvalidProtocolBufferException e) {
+				throw new RuntimeException(e);
+			}
+		};
+	};
+
+	/* (non-Javadoc)
+	 * @see org.hyperledger.fabric.shim.ChaincodeStub#getStateByPartialCompositeKey(java.lang.String)
+	 */
+	@Override
+	public QueryResultsIterator<KeyValue> getStateByPartialCompositeKey(String compositeKey) {
+		return getStateByRange(compositeKey, compositeKey + "\udbff\udfff");
 	}
 
 	/* (non-Javadoc)
