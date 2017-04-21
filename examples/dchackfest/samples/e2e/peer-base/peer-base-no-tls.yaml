@@ -1,0 +1,17 @@
+version: '2'
+services:
+  peer-base:
+    image: hyperledger/fabric-peer:${ARCH_TAG}-1.0.0-alpha
+    environment:
+      - CORE_PEER_ADDRESSAUTODETECT=true
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=e2e_default
+      - CORE_LOGGING_LEVEL=ERROR
+      #- CORE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_TLS_ENABLED=false
+      - CORE_PEER_ENDORSER_ENABLED=true
+      - CORE_PEER_GOSSIP_ORGLEADER=false
+      - CORE_PEER_GOSSIP_USELEADERELECTION=true
+      - CORE_PEER_PROFILE_ENABLED=true
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start --peer-defaultchain=false
