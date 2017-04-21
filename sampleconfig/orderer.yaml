@@ -14,7 +14,7 @@ General:
     #  - json: A simple file ledger that writes blocks to disk in JSON format.
     # Only one production ledger type is provided:
     #  - file: A production file-based ledger.
-    LedgerType: ram
+    LedgerType: file
 
     # Listen address: The IP on which to bind to listen.
     ListenAddress: 127.0.0.1
@@ -85,19 +85,6 @@ General:
 
 ################################################################################
 #
-#   SECTION: RAM Ledger
-#
-#   - This section applies to the configuration of the RAM ledger.
-#
-################################################################################
-RAMLedger:
-
-    # History Size: The number of blocks that the RAM ledger is set to retain.
-    HistorySize: 1000
-
-
-################################################################################
-#
 #   SECTION: File Ledger
 #
 #   - This section applies to the configuration of the file or json ledgers
@@ -108,11 +95,23 @@ FileLedger:
     # Location: The directory to store the blocks in.
     # NOTE: If this is unset, a temporary location will be chosen using
     # the prefix specified by Prefix.
-    Location:
+    Location: /var/hyperledger/production/orderer
 
     # The prefix to use when generating a ledger directory in temporary space.
     # Otherwise, this value is ignored.
     Prefix: hyperledger-fabric-ordererledger
+
+################################################################################
+#
+#   SECTION: RAM Ledger
+#
+#   - This section applies to the configuration of the RAM ledger.
+#
+################################################################################
+RAMLedger:
+
+    # History Size: The number of blocks that the RAM ledger is set to retain.
+    HistorySize: 1000
 
 ################################################################################
 #
