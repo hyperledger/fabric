@@ -84,7 +84,7 @@ func SetupCoreYAMLConfig(coreYamlPath string) {
 func ResetConfigToDefaultValues() {
 	//reset to defaults
 	viper.Set("ledger.state.stateDatabase", "goleveldb")
-	viper.Set("ledger.state.historyDatabase", false)
+	viper.Set("ledger.history.enableHistoryDatabase", false)
 }
 
 // SetLogLevel sets up log level

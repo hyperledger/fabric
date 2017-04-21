@@ -391,9 +391,10 @@ ledger:
        # CouchDB request timeout (unit: duration, e.g. 20s)
        requestTimeout: 20s
 
-    # historyDatabase - options are true or false
-    # Indicates if the history of key updates should be stored in goleveldb
-    historyDatabase: true
-
     # Limit on the number of records to return per query
     queryLimit: 10000
+
+  history:
+    # enableHistoryDatabase - options are true or false
+    # Indicates if the history of key updates should be stored in goleveldb
+    enableHistoryDatabase: true

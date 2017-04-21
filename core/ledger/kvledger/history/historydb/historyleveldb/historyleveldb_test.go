@@ -195,7 +195,7 @@ func TestHistoryDisabled(t *testing.T) {
 	env := NewTestHistoryEnv(t)
 	defer env.cleanup()
 
-	viper.Set("ledger.state.historyDatabase", "false")
+	viper.Set("ledger.history.enableHistoryDatabase", "false")
 
 	//no need to pass blockstore into history executore, it won't be used in this test
 	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(nil)
