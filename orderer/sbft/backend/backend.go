@@ -468,7 +468,7 @@ func Sign(privateKey crypto.PrivateKey, data []byte) []byte {
 		if err != nil {
 			panic(err)
 		}
-		encsig, err = asn1.Marshal(struct{ R, S *big.Int }{r, s})
+		encsig, _ = asn1.Marshal(struct{ R, S *big.Int }{r, s})
 	default:
 		panic("Unsupported private key type given.")
 	}
