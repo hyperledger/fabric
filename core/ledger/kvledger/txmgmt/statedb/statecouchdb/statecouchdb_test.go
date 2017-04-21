@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 	viper.Set("ledger.state.couchDBConfig.password", "")
 	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
 	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 10)
-	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*20)
+	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
 
 	//run the actual test
 	result := m.Run()

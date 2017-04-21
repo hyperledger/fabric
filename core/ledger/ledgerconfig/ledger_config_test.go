@@ -57,7 +57,7 @@ func TestGetCouchDBDefinition(t *testing.T) {
 	testutil.AssertEquals(t, couchDBDef.Password, "")
 	testutil.AssertEquals(t, couchDBDef.MaxRetries, 3)
 	testutil.AssertEquals(t, couchDBDef.MaxRetriesOnStartup, 10)
-	testutil.AssertEquals(t, couchDBDef.RequestTimeout, time.Second*20)
+	testutil.AssertEquals(t, couchDBDef.RequestTimeout, time.Second*35)
 }
 
 func TestIsHistoryDBEnabledDefault(t *testing.T) {
