@@ -348,6 +348,17 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 			orgName, err)
 		os.Exit(1)
 	}
+
+	// copy the admin cert to each of the org's peer's MSP admincerts
+	for _, peerName := range peerNames {
+		err = copyAdminCert(usersDir, filepath.Join(peersDir, peerName,
+			"admincerts"), adminUserName)
+		if err != nil {
+			fmt.Printf("Error copying admin cert for org %s peer %s:\n%v\n",
+				orgName, peerName, err)
+			os.Exit(1)
+		}
+	}
 }
 
 func copyAdminCert(usersDir, adminCertsDir, adminUserName string) error {
@@ -429,6 +440,17 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 		fmt.Printf("Error copying admin cert for org %s:\n%v\n",
 			orgName, err)
 		os.Exit(1)
+	}
+
+	// copy the admin cert to each of the org's orderers's MSP admincerts
+	for _, ordererName := range ordererNames {
+		err = copyAdminCert(usersDir, filepath.Join(orderersDir, ordererName,
+			"admincerts"), adminUserName)
+		if err != nil {
+			fmt.Printf("Error copying admin cert for org %s orderer %s:\n%v\n",
+				orgName, ordererName, err)
+			os.Exit(1)
+		}
 	}
 
 }
