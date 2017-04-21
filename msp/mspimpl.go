@@ -61,6 +61,9 @@ type bccspmsp struct {
 
 	// list of certificate revocation lists
 	CRL []*pkix.CertificateList
+
+	// list of OUs
+	ouIdentifiers []*m.FabricOUIdentifier
 }
 
 // NewBccspMsp returns an MSP instance backed up by a BCCSP
@@ -341,6 +344,15 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 		msp.CRL[i] = crl
 	}
 
+	// setup the OUs
+	msp.ouIdentifiers = make([]*m.FabricOUIdentifier, len(conf.OrganizationalUnitIdentifiers))
+	for i, ou := range conf.OrganizationalUnitIdentifiers {
+		msp.ouIdentifiers[i] = &m.FabricOUIdentifier{
+			CertifiersIdentifier:         ou.CertifiersIdentifier,
+			OrganizationalUnitIdentifier: ou.OrganizationalUnitIdentifier,
+		}
+	}
+
 	return nil
 }
 
@@ -445,6 +457,27 @@ func (msp *bccspmsp) Validate(id Identity) error {
 						return errors.New("The certificate has been revoked")
 					}
 				}
+			}
+		}
+
+		// Check that the identity's OUs are compatible with those recognized by this MSP,
+		// meaning that the intersection is not empty.
+		if len(msp.ouIdentifiers) > 0 {
+			found := false
+			for _, ou := range msp.ouIdentifiers {
+				for _, OU := range id.GetOrganizationalUnits() {
+					if bytes.Equal(ou.CertifiersIdentifier, OU.CertifiersIdentifier) &&
+						ou.OrganizationalUnitIdentifier == OU.OrganizationalUnitIdentifier {
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("None of the identity's organizational units [%v] are in MSP %s", id.GetOrganizationalUnits(), msp.name)
 			}
 		}
 

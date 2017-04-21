@@ -24,6 +24,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
@@ -259,6 +260,24 @@ func TestGetOU(t *testing.T) {
 	assert.Equal(t, "COP", id.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier)
 }
 
+func TestCertificationIdentifierComputation(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	chain, err := localMsp.(*bccspmsp).getCertificationChain(id.GetPublicVersion())
+	assert.NoError(t, err)
+
+	// Hash the chain
+	hf, err := localMsp.(*bccspmsp).bccsp.GetHash(&bccsp.SHA256Opts{})
+	assert.NoError(t, err)
+	for i := 0; i < len(chain); i++ {
+		hf.Write(chain[i].Raw)
+	}
+	sum := hf.Sum(nil)
+
+	assert.Equal(t, sum, id.GetOrganizationalUnits()[0].CertifiersIdentifier)
+}
+
 func TestOUPolicyPrincipal(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
@@ -366,6 +385,39 @@ func TestIdentityPolicyPrincipal(t *testing.T) {
 
 	err = id.SatisfiesPrincipal(principal)
 	assert.NoError(t, err)
+}
+
+func TestMSPOus(t *testing.T) {
+	// Set the OUIdentifiers
+	backup := localMsp.(*bccspmsp).ouIdentifiers
+	defer func() { localMsp.(*bccspmsp).ouIdentifiers = backup }()
+
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	localMsp.(*bccspmsp).ouIdentifiers = []*msp.FabricOUIdentifier{
+		&msp.FabricOUIdentifier{
+			OrganizationalUnitIdentifier: "COP",
+			CertifiersIdentifier:         id.GetOrganizationalUnits()[0].CertifiersIdentifier,
+		},
+	}
+	assert.NoError(t, localMsp.Validate(id.GetPublicVersion()))
+
+	localMsp.(*bccspmsp).ouIdentifiers = []*msp.FabricOUIdentifier{
+		&msp.FabricOUIdentifier{
+			OrganizationalUnitIdentifier: "COP2",
+			CertifiersIdentifier:         id.GetOrganizationalUnits()[0].CertifiersIdentifier,
+		},
+	}
+	assert.Error(t, localMsp.Validate(id.GetPublicVersion()))
+
+	localMsp.(*bccspmsp).ouIdentifiers = []*msp.FabricOUIdentifier{
+		&msp.FabricOUIdentifier{
+			OrganizationalUnitIdentifier: "COP",
+			CertifiersIdentifier:         []byte{0, 1, 2, 3, 4},
+		},
+	}
+	assert.Error(t, localMsp.Validate(id.GetPublicVersion()))
 }
 
 const othercert = `-----BEGIN CERTIFICATE-----
