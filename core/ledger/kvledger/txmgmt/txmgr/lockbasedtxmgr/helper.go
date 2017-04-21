@@ -87,24 +87,27 @@ func (h *queryHelper) done() {
 	if h.doneInvoked {
 		return
 	}
-	defer h.txmgr.commitRWLock.RUnlock()
-	h.doneInvoked = true
+
+	defer func() {
+		h.txmgr.commitRWLock.RUnlock()
+		h.doneInvoked = true
+		for _, itr := range h.itrs {
+			itr.Close()
+		}
+	}()
+
 	for _, itr := range h.itrs {
-		itr.Close()
 		if h.rwsetBuilder != nil {
 			results, hash, err := itr.rangeQueryResultsHelper.Done()
+			if err != nil {
+				h.err = err
+				return
+			}
 			if results != nil {
 				itr.rangeQueryInfo.SetRawReads(results)
 			}
 			if hash != nil {
 				itr.rangeQueryInfo.SetMerkelSummary(hash)
-			}
-			// TODO Change the method signature of done() to return error. However, this will have
-			// repercurssions in the chaincode package, so deferring to a separate changeset.
-			// For now, capture the first error that is encountered
-			// during final processing and return the error when the caller retrieves the simulation results.
-			if h.err == nil {
-				h.err = err
 			}
 			h.rwsetBuilder.AddToRangeQuerySet(itr.ns, itr.rangeQueryInfo)
 		}
