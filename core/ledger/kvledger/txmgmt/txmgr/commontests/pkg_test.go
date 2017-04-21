@@ -113,7 +113,7 @@ func (env *couchDBLockBasedEnv) init(t *testing.T, testLedgerID string) {
 	viper.Set("ledger.state.couchDBConfig.password", "")
 	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
 	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 10)
-	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*20)
+	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
 	testDBEnv := statecouchdb.NewTestVDBEnv(t)
 	testDB, err := testDBEnv.DBProvider.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
