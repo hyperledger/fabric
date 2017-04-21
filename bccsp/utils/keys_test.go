@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
@@ -271,4 +272,100 @@ func TestECDSAKeys(t *testing.T) {
 	if err == nil {
 		t.Fatal("PEMtoPublicKey should fail on nil PEM and wrong password")
 	}
+
+	// Public Key DER format
+	der, err = PublicKeyToDER(&key.PublicKey)
+	assert.NoError(t, err)
+	keyFromDER, err = DERToPublicKey(der)
+	assert.NoError(t, err)
+	ecdsaPkFromPEM = keyFromDER.(*ecdsa.PublicKey)
+	// TODO: check the curve
+	if key.X.Cmp(ecdsaPkFromPEM.X) != 0 {
+		t.Fatal("Failed converting PEM to private key. Invalid X coordinate.")
+	}
+	if key.Y.Cmp(ecdsaPkFromPEM.Y) != 0 {
+		t.Fatal("Failed converting PEM to private key. Invalid Y coordinate.")
+	}
+}
+
+func TestAESKey(t *testing.T) {
+	k := []byte{0, 1, 2, 3, 4, 5}
+	pem := AEStoPEM(k)
+
+	k2, err := PEMtoAES(pem, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, k, k2)
+
+	pem, err = AEStoEncryptedPEM(k, k)
+	assert.NoError(t, err)
+
+	k2, err = PEMtoAES(pem, k)
+	assert.NoError(t, err)
+	assert.Equal(t, k, k2)
+}
+
+func TestDERToPublicKey(t *testing.T) {
+	_, err := DERToPublicKey(nil)
+	assert.Error(t, err)
+}
+
+func TestNil(t *testing.T) {
+	_, err := PrivateKeyToEncryptedPEM(nil, nil)
+	assert.Error(t, err)
+
+	_, err = PEMtoAES(nil, nil)
+	assert.Error(t, err)
+
+	_, err = AEStoEncryptedPEM(nil, nil)
+	assert.Error(t, err)
+
+	_, err = PublicKeyToPEM(nil, nil)
+	assert.Error(t, err)
+	_, err = PublicKeyToPEM(nil, []byte("hello world"))
+	assert.Error(t, err)
+
+	_, err = PublicKeyToPEM("hello world", nil)
+	assert.Error(t, err)
+	_, err = PublicKeyToPEM("hello world", []byte("hello world"))
+	assert.Error(t, err)
+
+	_, err = PublicKeyToDER(nil)
+	assert.Error(t, err)
+	_, err = PublicKeyToDER("hello world")
+	assert.Error(t, err)
+
+	_, err = PublicKeyToEncryptedPEM(nil, nil)
+	assert.Error(t, err)
+	_, err = PublicKeyToEncryptedPEM("hello world", nil)
+	assert.Error(t, err)
+	_, err = PublicKeyToEncryptedPEM("hello world", []byte("Hello world"))
+	assert.Error(t, err)
+
+}
+
+func TestPrivateKeyToPEM(t *testing.T) {
+	_, err := PrivateKeyToPEM(nil, nil)
+	assert.Error(t, err)
+
+	_, err = PrivateKeyToPEM("hello world", nil)
+	assert.Error(t, err)
+
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	assert.NoError(t, err)
+	pem, err := PrivateKeyToPEM(key, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, pem)
+	key2, err := PEMtoPrivateKey(pem, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, key2)
+	assert.Equal(t, key.D, key2.(*rsa.PrivateKey).D)
+
+	pem, err = PublicKeyToPEM(&key.PublicKey, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, pem)
+	key3, err := PEMtoPublicKey(pem, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, key2)
+	assert.Equal(t, key.PublicKey.E, key3.(*rsa.PublicKey).E)
+	assert.Equal(t, key.PublicKey.N, key3.(*rsa.PublicKey).N)
 }
