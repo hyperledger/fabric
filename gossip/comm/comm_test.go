@@ -296,6 +296,7 @@ func TestGetConnectionInfo(t *testing.T) {
 }
 
 func TestCloseConn(t *testing.T) {
+	t.Skip()
 	t.Parallel()
 	comm1, _ := newCommInstance(1611, naiveSec)
 	defer comm1.Stop()
