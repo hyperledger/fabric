@@ -192,7 +192,7 @@ func TestViperConfig(t *testing.T) {
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
 	if err != nil { // Handle errors reading the config file
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+		panic(fmt.Errorf("fatal error config file: %s", err))
 	}
 
 	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.connTimeout", 0))

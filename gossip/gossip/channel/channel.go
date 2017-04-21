@@ -257,7 +257,7 @@ func (gc *gossipChannel) publishStateInfo() {
 }
 
 func (gc *gossipChannel) createBlockPuller() pull.Mediator {
-	conf := pull.PullConfig{
+	conf := pull.Config{
 		MsgType:           proto.PullMsgType_BLOCK_MSG,
 		Channel:           []byte(gc.chainID),
 		ID:                gc.GetConf().ID,
@@ -491,7 +491,7 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 			return
 		}
 
-		expectedMAC := ChannelMAC(si.PkiId, gc.chainID)
+		expectedMAC := GenerateMAC(si.PkiId, gc.chainID)
 		if !bytes.Equal(si.ChannelMAC, expectedMAC) {
 			gc.logger.Warning("Channel", chanName, ": StateInfo message", stateInf,
 				", has an invalid MAC. Expected", expectedMAC, ", got", si.ChannelMAC, ", sent from", sender)
@@ -561,7 +561,7 @@ func (gc *gossipChannel) verifyMsg(msg proto.ReceivedMessage) bool {
 
 	if m.IsStateInfoMsg() {
 		si := m.GetStateInfo()
-		expectedMAC := ChannelMAC(si.PkiId, gc.chainID)
+		expectedMAC := GenerateMAC(si.PkiId, gc.chainID)
 		if !bytes.Equal(expectedMAC, si.ChannelMAC) {
 			gc.logger.Warning("Message contains wrong channel MAC(", si.ChannelMAC, "), expected", expectedMAC)
 			return false
@@ -571,7 +571,7 @@ func (gc *gossipChannel) verifyMsg(msg proto.ReceivedMessage) bool {
 
 	if m.IsStateInfoPullRequestMsg() {
 		sipr := m.GetStateInfoPullReq()
-		expectedMAC := ChannelMAC(msg.GetConnectionInfo().ID, gc.chainID)
+		expectedMAC := GenerateMAC(msg.GetConnectionInfo().ID, gc.chainID)
 		if !bytes.Equal(expectedMAC, sipr.ChannelMAC) {
 			gc.logger.Warning("Message contains wrong channel MAC(", sipr.ChannelMAC, "), expected", expectedMAC)
 			return false
@@ -592,7 +592,7 @@ func (gc *gossipChannel) createStateInfoRequest() *proto.SignedGossipMessage {
 		Nonce: 0,
 		Content: &proto.GossipMessage_StateInfoPullReq{
 			StateInfoPullReq: &proto.StateInfoPullRequest{
-				ChannelMAC: ChannelMAC(gc.pkiID, gc.chainID),
+				ChannelMAC: GenerateMAC(gc.pkiID, gc.chainID),
 			},
 		},
 	}).NoopSign()
@@ -658,9 +658,9 @@ func (cache *stateInfoCache) Add(msg *proto.SignedGossipMessage) bool {
 	return added
 }
 
-// ChannelMAC returns a byte slice that is derived from the peer's PKI-ID
+// GenerateMAC returns a byte slice that is derived from the peer's PKI-ID
 // and a channel name
-func ChannelMAC(pkiID common.PKIidType, channelID common.ChainID) []byte {
+func GenerateMAC(pkiID common.PKIidType, channelID common.ChainID) []byte {
 	// Hash is computed on (PKI-ID || channel ID)
 	preImage := append([]byte(pkiID), []byte(channelID)...)
 	return common_utils.ComputeSHA256(preImage)

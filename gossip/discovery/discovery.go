@@ -90,11 +90,11 @@ func (n *NetworkMember) String() string {
 // PreferredEndpoint computes the endpoint to connect to,
 // while preferring internal endpoint over the standard
 // endpoint
-func (nm NetworkMember) PreferredEndpoint() string {
-	if nm.InternalEndpoint != "" {
-		return nm.InternalEndpoint
+func (n NetworkMember) PreferredEndpoint() string {
+	if n.InternalEndpoint != "" {
+		return n.InternalEndpoint
 	}
-	return nm.Endpoint
+	return n.Endpoint
 }
 
 // Discovery is the interface that represents a discovery module

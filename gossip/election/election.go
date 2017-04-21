@@ -383,18 +383,25 @@ func (le *leaderElectionSvcImpl) Stop() {
 	le.stopWG.Wait()
 }
 
+// SetStartupGracePeriod configures startup grace period interval,
+// the period of time to wait until election algorithm will start
 func SetStartupGracePeriod(t time.Duration) {
 	viper.Set("peer.gossip.election.startupGracePeriod", t)
 }
 
+// SetMembershipSampleInterval setups/initializes the frequency the
+// membership view should be checked
 func SetMembershipSampleInterval(t time.Duration) {
 	viper.Set("peer.gossip.election.membershipSampleInterval", t)
 }
 
+// SetLeaderAliveThreshold configures leader election alive threshold
 func SetLeaderAliveThreshold(t time.Duration) {
 	viper.Set("peer.gossip.election.leaderAliveThreshold", t)
 }
 
+// SetLeaderElectionDuration configures expected leadership election duration,
+// interval to wait until leader election will be completed
 func SetLeaderElectionDuration(t time.Duration) {
 	viper.Set("peer.gossip.election.leaderElectionDuration", t)
 }
@@ -419,6 +426,7 @@ func getLeaderElectionDuration() time.Duration {
 	return util.GetDurationOrDefault("peer.gossip.election.leaderElectionDuration", time.Second*5)
 }
 
+// GetMsgExpirationTimeout return leadership message expiration timeout
 func GetMsgExpirationTimeout() time.Duration {
 	return getLeaderAliveThreshold() * 10
 }

@@ -434,7 +434,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 
 	// Ensure we don't respond to a StateInfoRequest in the wrong channel from a peer in the right org
 	req2 := gc.(*gossipChannel).createStateInfoRequest()
-	req2.GetStateInfoPullReq().ChannelMAC = ChannelMAC(pkiIDInOrg1, common.ChainID("B"))
+	req2.GetStateInfoPullReq().ChannelMAC = GenerateMAC(pkiIDInOrg1, common.ChainID("B"))
 	invalidReceivedMsg2 := &receivedMsg{
 		msg:   req2,
 		PKIID: pkiIDInOrg1,
@@ -809,7 +809,7 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 			Tag: proto.GossipMessage_CHAN_OR_ORG,
 			Content: &proto.GossipMessage_StateInfoPullReq{
 				StateInfoPullReq: &proto.StateInfoPullRequest{
-					ChannelMAC: append(ChannelMAC(pkiIDInOrg1, channelA), 1),
+					ChannelMAC: append(GenerateMAC(pkiIDInOrg1, channelA), 1),
 				},
 			},
 		}).NoopSign(),
@@ -832,7 +832,7 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 			Tag: proto.GossipMessage_CHAN_OR_ORG,
 			Content: &proto.GossipMessage_StateInfoPullReq{
 				StateInfoPullReq: &proto.StateInfoPullRequest{
-					ChannelMAC: ChannelMAC(pkiIDInOrg1, channelA),
+					ChannelMAC: GenerateMAC(pkiIDInOrg1, channelA),
 				},
 			},
 		}).NoopSign(),
@@ -1083,7 +1083,7 @@ func TestChannelGetPeers(t *testing.T) {
 	// and ensure that the StateInfo message doesn't count
 	gc = NewGossipChannel(pkiIDInOrg1, cs, channelA, adapter, &joinChanMsg{})
 	msg := &receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)}
-	msg.GetGossipMessage().GetStateInfo().ChannelMAC = ChannelMAC(pkiIDinOrg2, channelA)
+	msg.GetGossipMessage().GetStateInfo().ChannelMAC = GenerateMAC(pkiIDinOrg2, channelA)
 	gc.HandleMessage(msg)
 	assert.Len(t, gc.GetPeers(), 0)
 }
@@ -1201,7 +1201,7 @@ func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common
 		Tag: proto.GossipMessage_CHAN_OR_ORG,
 		Content: &proto.GossipMessage_StateInfo{
 			StateInfo: &proto.StateInfo{
-				ChannelMAC: ChannelMAC(pkiID, channel),
+				ChannelMAC: GenerateMAC(pkiID, channel),
 				Timestamp:  &proto.PeerTime{IncNumber: uint64(time.Now().UnixNano()), SeqNum: 1},
 				Metadata:   []byte(fmt.Sprintf("%d", ledgerHeight)),
 				PkiId:      []byte(pkiID),

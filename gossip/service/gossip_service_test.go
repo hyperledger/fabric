@@ -449,12 +449,12 @@ func (jmc *joinChanMsg) SequenceNumber() uint64 {
 }
 
 // Members returns the organizations of the channel
-func (jcm *joinChanMsg) Members() []api.OrgIdentityType {
+func (jmc *joinChanMsg) Members() []api.OrgIdentityType {
 	return []api.OrgIdentityType{orgInChannelA}
 }
 
 // AnchorPeersOf returns the anchor peers of the given organization
-func (jcm *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer {
+func (jmc *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer {
 	return []api.AnchorPeer{}
 }
 

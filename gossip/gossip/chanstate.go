@@ -86,7 +86,7 @@ func (cs *channelState) getGossipChannelByMAC(receivedMAC []byte, pkiID common.P
 	cs.RLock()
 	defer cs.RUnlock()
 	for chanName, gc := range cs.channels {
-		mac := channel.ChannelMAC(pkiID, common.ChainID(chanName))
+		mac := channel.GenerateMAC(pkiID, common.ChainID(chanName))
 		if bytes.Equal(mac, receivedMAC) {
 			return gc
 		}

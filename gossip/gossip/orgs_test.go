@@ -61,7 +61,7 @@ func (c *configurableCryptoService) OrgByPeerIdentity(identity api.PeerIdentityT
 
 // VerifyByChannel verifies a peer's signature on a message in the context
 // of a specific channel
-func (cs *configurableCryptoService) VerifyByChannel(_ common.ChainID, identity api.PeerIdentityType, _, _ []byte) error {
+func (c *configurableCryptoService) VerifyByChannel(_ common.ChainID, identity api.PeerIdentityType, _, _ []byte) error {
 	return nil
 }
 

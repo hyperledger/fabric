@@ -562,7 +562,7 @@ func (s *GossipStateProviderImpl) selectPeerToRequestFrom(height uint64) (*comm.
 
 	n := len(peers)
 	if n == 0 {
-		return nil, errors.New("There are no peers to ask for missing blocks from.")
+		return nil, errors.New("there are no peers to ask for missing blocks from")
 	}
 
 	// Select peers to ask for blocks
