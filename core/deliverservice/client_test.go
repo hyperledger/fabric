@@ -82,9 +82,6 @@ var blockDelivererConsumerWithSend = func(bd blocksprovider.BlocksDeliverer) err
 	return bd.Send(&common.Envelope{})
 }
 
-type atomicBroadcastBroadcastClient struct {
-}
-
 type abc struct {
 	shouldFail bool
 	grpc.ClientStream
