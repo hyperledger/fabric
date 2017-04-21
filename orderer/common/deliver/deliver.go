@@ -128,7 +128,7 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Received seekInfo (%p)  %v for chain %s", seekInfo, seekInfo, chdr.ChannelId)
+			logger.Debugf("Received seekInfo (%p) %v for chain %s", seekInfo, seekInfo, chdr.ChannelId)
 		}
 
 		cursor, number := chain.Reader().Iterator(seekInfo.Start)
