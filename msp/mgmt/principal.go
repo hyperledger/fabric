@@ -48,7 +48,6 @@ func (m *localMSPPrincipalGetter) Get(role string) (*msp.MSPPrincipal, error) {
 		return nil, fmt.Errorf("Could not extract local msp identifier [%s]", err)
 	}
 
-	// TODO: put the constants in some more appropriate place
 	switch role {
 	case Admins:
 		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: mspid})
