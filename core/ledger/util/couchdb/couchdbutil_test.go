@@ -26,7 +26,7 @@ import (
 
 //Unit test of couch db util functionality
 func TestCreateCouchDBConnectionAndDB(t *testing.T) {
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() {
 
 		database := "testcreatecouchdbconnectionanddb"
 		cleanup(database)
@@ -42,6 +42,46 @@ func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 
 }
 
+//Unit test of couch db util functionality
+func TestCreateCouchDBSystemDBs(t *testing.T) {
+	if ledgerconfig.IsCouchDBEnabled() {
+
+		database := "testcreatecouchdbsystemdb"
+		cleanup(database)
+		defer cleanup(database)
+
+		//create a new connection
+		couchInstance, err := CreateCouchInstance(connectURL, "", "", maxRetries,
+			maxRetriesOnStartup, requestTimeout)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchInstance"))
+
+		err = CreateSystemDatabasesIfNotExist(*couchInstance)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create system databases"))
+
+		db := CouchDatabase{CouchInstance: *couchInstance, DBName: "_users"}
+
+		//Retrieve the info for the new database and make sure the name matches
+		dbResp, _, errdb := db.GetDatabaseInfo()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve _users database information"))
+		testutil.AssertEquals(t, dbResp.DbName, "_users")
+
+		db = CouchDatabase{CouchInstance: *couchInstance, DBName: "_replicator"}
+
+		//Retrieve the info for the new database and make sure the name matches
+		dbResp, _, errdb = db.GetDatabaseInfo()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve _replicator database information"))
+		testutil.AssertEquals(t, dbResp.DbName, "_replicator")
+
+		db = CouchDatabase{CouchInstance: *couchInstance, DBName: "_global_changes"}
+
+		//Retrieve the info for the new database and make sure the name matches
+		dbResp, _, errdb = db.GetDatabaseInfo()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve _global_changes database information"))
+		testutil.AssertEquals(t, dbResp.DbName, "_global_changes")
+
+	}
+
+}
 func TestDatabaseMapping(t *testing.T) {
 
 	//create a new instance and database object using a database name mixed case
