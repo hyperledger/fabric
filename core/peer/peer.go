@@ -264,9 +264,6 @@ func MockCreateChain(cid string) error {
 		return err
 	}
 
-	chains.Lock()
-	defer chains.Unlock()
-
 	// Here we need to mock also the policy manager
 	// in order for the ACL to be checked
 	initializer := mockconfigtx.Initializer{
@@ -282,10 +279,12 @@ func MockCreateChain(cid string) error {
 			Transactional: mockconfigtx.Transactional{},
 		},
 	}
-
 	manager := &mockconfigtx.Manager{
 		Initializer: initializer,
 	}
+
+	chains.Lock()
+	defer chains.Unlock()
 
 	chains.list[cid] = &chain{
 		cs: &chainSupport{

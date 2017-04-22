@@ -163,7 +163,7 @@ func TestUpgradeCC(t *testing.T) {
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: qArgs}}
 
 	//Do not increment block number here because, the block will not be committted because of error
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber)
+	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
 	if err == nil {
 		t.Fail()
 		t.Logf("querying chaincode exampl01 should fail transaction: %s", err)
@@ -200,7 +200,7 @@ func TestUpgradeCC(t *testing.T) {
 	//go back and do the same query now
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: qArgs}}
 	nextBlockNumber++
-	_, _, _, err = invokeWithVersion(ctxt, chainID, cccid2.Version, spec, nextBlockNumber)
+	_, _, _, err = invokeWithVersion(ctxt, chainID, cccid2.Version, spec, nextBlockNumber, nil)
 
 	if err != nil {
 		t.Fail()

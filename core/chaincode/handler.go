@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -32,6 +33,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/policy"
+	"github.com/hyperledger/fabric/msp/mgmt"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/looplab/fsm"
 	logging "github.com/op/go-logging"
@@ -85,6 +88,10 @@ type ccParts struct {
 	suffix  string //for now just the chain name
 }
 
+func (p *ccParts) String() string {
+	return p.suffix + "." + p.name + "#" + p.version
+}
+
 // Handler responsbile for management of Peer's side of chaincode stream
 type Handler struct {
 	sync.RWMutex
@@ -106,6 +113,8 @@ type Handler struct {
 
 	// used to do Send after making sure the state transition is complete
 	nextState chan *nextStateInfo
+
+	policyChecker policy.PolicyChecker
 }
 
 func shorttxid(txid string) string {
@@ -251,7 +260,17 @@ func (handler *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Pro
 	// - an application chaincode (and we still need to determine
 	//   whether the invoker can invoke it)
 
-	return nil
+	if sysccprovider.GetSystemChaincodeProvider().IsSysCC(calledCC.name) {
+		// Allow this call
+		return nil
+	}
+
+	// A Nil signedProp will be rejected for non-system chaincodes
+	if signedProp == nil {
+		return fmt.Errorf("Signed Proposal must not be nil from caller [%s]", calledCC.String())
+	}
+
+	return handler.policyChecker.CheckPolicy(calledCC.suffix, policies.ChannelApplicationWriters, signedProp)
 }
 
 //THIS CAN BE REMOVED ONCE WE FULL SUPPORT (Invoke) CONFIDENTIALITY WITH CC-CALLING-CC
@@ -454,6 +473,12 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 			"enter_" + readystate:                                       func(e *fsm.Event) { v.enterReadyState(e, v.FSM.Current()) },
 			"enter_" + endstate:                                         func(e *fsm.Event) { v.enterEndState(e, v.FSM.Current()) },
 		},
+	)
+
+	v.policyChecker = policy.NewPolicyChecker(
+		peer.NewChannelPolicyManagerGetter(),
+		mgmt.GetLocalMSP(),
+		mgmt.NewLocalMSPPrincipalGetter(),
 	)
 
 	return v
