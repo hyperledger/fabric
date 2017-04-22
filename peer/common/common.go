@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
-	"github.com/hyperledger/fabric/core/errors"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"

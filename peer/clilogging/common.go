@@ -17,7 +17,7 @@ limitations under the License.
 package clilogging
 
 import (
-	"github.com/hyperledger/fabric/core/errors"
+	"github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/peer/common"
 
 	"github.com/spf13/cobra"
