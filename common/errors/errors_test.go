@@ -118,7 +118,7 @@ func TestErrorWithCallstackMessage(t *testing.T) {
 
 	// check that the error message contains this part of the stack trace, which
 	// is non-platform specific
-	if !strings.Contains(e.Error(), "github.com/hyperledger/fabric/core/errors.TestErrorWithCallstackMessage") {
+	if !strings.Contains(e.Error(), "github.com/hyperledger/fabric/common/errors.TestErrorWithCallstackMessage") {
 		t.Fatalf("Error message does not have stack trace appended.")
 	}
 }
@@ -136,7 +136,7 @@ func TestErrorWithCallstackMessage_wrapped(t *testing.T) {
 
 	// check that the error message contains this part of the stack trace, which
 	// is non-platform specific
-	if !strings.Contains(e.Error(), "github.com/hyperledger/fabric/core/errors.TestErrorWithCallstackMessage_wrapped") {
+	if !strings.Contains(e.Error(), "github.com/hyperledger/fabric/common/errors.TestErrorWithCallstackMessage_wrapped") {
 		t.Fatalf("Error message does not have stack trace appended.")
 	}
 
@@ -148,7 +148,7 @@ func TestErrorWithCallstackMessage_wrapped(t *testing.T) {
 
 	// check that the error message contains this part of the stack trace, which
 	// is non-platform specific
-	if !strings.Contains(e2.Error(), "github.com/hyperledger/fabric/core/errors.TestErrorWithCallstackMessage_wrapped") {
+	if !strings.Contains(e2.Error(), "github.com/hyperledger/fabric/common/errors.TestErrorWithCallstackMessage_wrapped") {
 		t.Fatalf("Error message does not have stack trace appended.")
 	}
 }

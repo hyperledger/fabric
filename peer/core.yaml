@@ -31,7 +31,7 @@ logging:
     msp:        warning
 
     # Error handling framework log level - when set to DEBUG, a callstack will
-    # be appended to all errors generated using the fabric/core/errors package
+    # be appended to all errors generated using the fabric/common/errors package
     error:      debug
 
     format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
