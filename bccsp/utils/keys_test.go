@@ -4,8 +4,84 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
+	"encoding/asn1"
+	"encoding/pem"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
+
+func TestOidFromNamedCurve(t *testing.T) {
+
+	var (
+		oidNamedCurveP224 = asn1.ObjectIdentifier{1, 3, 132, 0, 33}
+		oidNamedCurveP256 = asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}
+		oidNamedCurveP384 = asn1.ObjectIdentifier{1, 3, 132, 0, 34}
+		oidNamedCurveP521 = asn1.ObjectIdentifier{1, 3, 132, 0, 35}
+	)
+
+	type result struct {
+		oid asn1.ObjectIdentifier
+		ok  bool
+	}
+
+	var tests = []struct {
+		name     string
+		curve    elliptic.Curve
+		expected result
+	}{
+		{
+			name:  "P224",
+			curve: elliptic.P224(),
+			expected: result{
+				oid: oidNamedCurveP224,
+				ok:  true,
+			},
+		},
+		{
+			name:  "P256",
+			curve: elliptic.P256(),
+			expected: result{
+				oid: oidNamedCurveP256,
+				ok:  true,
+			},
+		},
+		{
+			name:  "P384",
+			curve: elliptic.P384(),
+			expected: result{
+				oid: oidNamedCurveP384,
+				ok:  true,
+			},
+		},
+		{
+			name:  "P521",
+			curve: elliptic.P521(),
+			expected: result{
+				oid: oidNamedCurveP521,
+				ok:  true,
+			},
+		},
+		{
+			name:  "T-1000",
+			curve: &elliptic.CurveParams{Name: "T-1000"},
+			expected: result{
+				oid: nil,
+				ok:  false,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			oid, ok := oidFromNamedCurve(test.curve)
+			assert.Equal(t, oid, test.expected.oid)
+			assert.Equal(t, ok, test.expected.ok)
+		})
+	}
+
+}
 
 func TestECDSAKeys(t *testing.T) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -35,11 +111,19 @@ func TestECDSAKeys(t *testing.T) {
 	}
 
 	// Private Key PEM format
-	pem, err := PrivateKeyToPEM(key, nil)
+	rawPEM, err := PrivateKeyToPEM(key, nil)
 	if err != nil {
 		t.Fatalf("Failed converting private key to PEM [%s]", err)
 	}
-	keyFromPEM, err := PEMtoPrivateKey(pem, nil)
+	pemBlock, _ := pem.Decode(rawPEM)
+	if pemBlock.Type != "PRIVATE KEY" {
+		t.Fatalf("Expected type 'PRIVATE KEY' but found '%s'", pemBlock.Type)
+	}
+	_, err = x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
+	if err != nil {
+		t.Fatalf("Failed to parse PKCS#8 private key [%s]", err)
+	}
+	keyFromPEM, err := PEMtoPrivateKey(rawPEM, nil)
 	if err != nil {
 		t.Fatalf("Failed converting DER to private key [%s]", err)
 	}
@@ -108,11 +192,15 @@ func TestECDSAKeys(t *testing.T) {
 	}
 
 	// Public Key PEM format
-	pem, err = PublicKeyToPEM(&key.PublicKey, nil)
+	rawPEM, err = PublicKeyToPEM(&key.PublicKey, nil)
 	if err != nil {
 		t.Fatalf("Failed converting public key to PEM [%s]", err)
 	}
-	keyFromPEM, err = PEMtoPublicKey(pem, nil)
+	pemBlock, _ = pem.Decode(rawPEM)
+	if pemBlock.Type != "PUBLIC KEY" {
+		t.Fatalf("Expected type 'PUBLIC KEY' but found '%s'", pemBlock.Type)
+	}
+	keyFromPEM, err = PEMtoPublicKey(rawPEM, nil)
 	if err != nil {
 		t.Fatalf("Failed converting DER to public key [%s]", err)
 	}

@@ -18,13 +18,52 @@ package utils
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
 )
+
+// struct to hold info required for PKCS#8
+type pkcs8Info struct {
+	Version             int
+	PrivateKeyAlgorithm []asn1.ObjectIdentifier
+	PrivateKey          []byte
+}
+
+type ecPrivateKey struct {
+	Version       int
+	PrivateKey    []byte
+	NamedCurveOID asn1.ObjectIdentifier `asn1:"optional,explicit,tag:0"`
+	PublicKey     asn1.BitString        `asn1:"optional,explicit,tag:1"`
+}
+
+var (
+	oidNamedCurveP224 = asn1.ObjectIdentifier{1, 3, 132, 0, 33}
+	oidNamedCurveP256 = asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}
+	oidNamedCurveP384 = asn1.ObjectIdentifier{1, 3, 132, 0, 34}
+	oidNamedCurveP521 = asn1.ObjectIdentifier{1, 3, 132, 0, 35}
+)
+
+var oidPublicKeyECDSA = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
+
+func oidFromNamedCurve(curve elliptic.Curve) (asn1.ObjectIdentifier, bool) {
+	switch curve {
+	case elliptic.P224():
+		return oidNamedCurveP224, true
+	case elliptic.P256():
+		return oidNamedCurveP256, true
+	case elliptic.P384():
+		return oidNamedCurveP384, true
+	case elliptic.P521():
+		return oidNamedCurveP521, true
+	}
+	return nil, false
+}
 
 // PrivateKeyToDER marshals a private key to der
 func PrivateKeyToDER(privateKey *ecdsa.PrivateKey) ([]byte, error) {
@@ -35,7 +74,9 @@ func PrivateKeyToDER(privateKey *ecdsa.PrivateKey) ([]byte, error) {
 	return x509.MarshalECPrivateKey(privateKey)
 }
 
-// PrivateKeyToPEM converts a private key to PEM
+// PrivateKeyToPEM converts the private key to PEM format.
+// EC private keys are converted to PKCS#8 format.
+// RSA private keys are converted to PKCS#1 format.
 func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 	// Validate inputs
 	if len(pwd) != 0 {
@@ -48,16 +89,42 @@ func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 			return nil, errors.New("Invalid ecdsa private key. It must be different from nil.")
 		}
 
-		raw, err := x509.MarshalECPrivateKey(k)
-
-		if err != nil {
-			return nil, err
+		// get the oid for the curve
+		oidNamedCurve, ok := oidFromNamedCurve(k.Curve)
+		if !ok {
+			return nil, errors.New("unknown elliptic curve")
 		}
 
+		// based on https://golang.org/src/crypto/x509/sec1.go
+		privateKeyBytes := k.D.Bytes()
+		paddedPrivateKey := make([]byte, (k.Curve.Params().N.BitLen()+7)/8)
+		copy(paddedPrivateKey[len(paddedPrivateKey)-len(privateKeyBytes):], privateKeyBytes)
+		// omit NamedCurveOID for compatibility as it's optional
+		asn1Bytes, err := asn1.Marshal(ecPrivateKey{
+			Version:    1,
+			PrivateKey: paddedPrivateKey,
+			PublicKey:  asn1.BitString{Bytes: elliptic.Marshal(k.Curve, k.X, k.Y)},
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling EC key to asn1 [%s]", err)
+		}
+
+		var pkcs8Key pkcs8Info
+		pkcs8Key.Version = 1
+		pkcs8Key.PrivateKeyAlgorithm = make([]asn1.ObjectIdentifier, 2)
+		pkcs8Key.PrivateKeyAlgorithm[0] = oidPublicKeyECDSA
+		pkcs8Key.PrivateKeyAlgorithm[1] = oidNamedCurve
+		pkcs8Key.PrivateKey = asn1Bytes
+
+		pkcs8Bytes, err := asn1.Marshal(pkcs8Key)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling EC key to asn1 [%s]", err)
+		}
 		return pem.EncodeToMemory(
 			&pem.Block{
-				Type:  "ECDSA PRIVATE KEY",
-				Bytes: raw,
+				Type:  "PRIVATE KEY",
+				Bytes: pkcs8Bytes,
 			},
 		), nil
 	case *rsa.PrivateKey:
@@ -94,7 +161,7 @@ func PrivateKeyToEncryptedPEM(privateKey interface{}, pwd []byte) ([]byte, error
 
 		block, err := x509.EncryptPEMBlock(
 			rand.Reader,
-			"ECDSA PRIVATE KEY",
+			"PRIVATE KEY",
 			raw,
 			pwd,
 			x509.PEMCipherAES256)
@@ -241,7 +308,7 @@ func PublicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 
 		return pem.EncodeToMemory(
 			&pem.Block{
-				Type:  "ECDSA PUBLIC KEY",
+				Type:  "PUBLIC KEY",
 				Bytes: PubASN1,
 			},
 		), nil
@@ -302,7 +369,7 @@ func PublicKeyToEncryptedPEM(publicKey interface{}, pwd []byte) ([]byte, error) 
 
 		block, err := x509.EncryptPEMBlock(
 			rand.Reader,
-			"ECDSA PUBLIC KEY",
+			"PUBLIC KEY",
 			raw,
 			pwd,
 			x509.PEMCipherAES256)
