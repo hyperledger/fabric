@@ -242,8 +242,8 @@ message LeadershipMessage {
 
 // PeerTime defines the logical time of a peer's life
 message PeerTime {
-    uint64 inc_number = 1;
-    uint64 seq_num    = 2;
+    uint64 inc_num = 1;
+    uint64 seq_num = 2;
 }
 
 // MembershipRequest is used to ask membership information

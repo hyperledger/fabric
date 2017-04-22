@@ -116,14 +116,14 @@ func leaderInvalidationPolicy(thisMsg *LeadershipMessage, thatMsg *LeadershipMes
 }
 
 func compareTimestamps(thisTS *PeerTime, thatTS *PeerTime) common.InvalidationResult {
-	if thisTS.IncNumber == thatTS.IncNumber {
+	if thisTS.IncNum == thatTS.IncNum {
 		if thisTS.SeqNum > thatTS.SeqNum {
 			return common.MessageInvalidates
 		}
 
 		return common.MessageInvalidated
 	}
-	if thisTS.IncNumber < thatTS.IncNumber {
+	if thisTS.IncNum < thatTS.IncNum {
 		return common.MessageInvalidated
 	}
 	return common.MessageInvalidates
