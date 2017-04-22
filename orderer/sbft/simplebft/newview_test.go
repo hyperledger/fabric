@@ -118,7 +118,7 @@ func TestXsetByz0(t *testing.T) {
 		},
 	}
 
-	xset, _, ok := s.makeXset(vcs)
+	_, _, ok := s.makeXset(vcs)
 	if ok {
 		t.Error("should not have received an xset")
 	}
@@ -131,7 +131,7 @@ func TestXsetByz0(t *testing.T) {
 		Checkpoint: s.makeBatch(2, []byte("prev"), nil),
 	})
 
-	xset, _, ok = s.makeXset(vcs)
+	xset, _, ok := s.makeXset(vcs)
 	if !ok {
 		t.Error("no xset")
 	}
@@ -164,7 +164,7 @@ func TestXsetByz2(t *testing.T) {
 		},
 	}
 
-	xset, _, ok := s.makeXset(vcs)
+	_, _, ok := s.makeXset(vcs)
 	if ok {
 		t.Error("should not have received an xset")
 	}
@@ -176,7 +176,7 @@ func TestXsetByz2(t *testing.T) {
 		Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 	})
 
-	xset, _, ok = s.makeXset(vcs)
+	xset, _, ok := s.makeXset(vcs)
 	if !ok {
 		t.Error("no xset")
 	}

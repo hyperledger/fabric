@@ -56,7 +56,7 @@ func New(addr string, certFile string, keyFile string) (_ *Manager, err error) {
 	}
 
 	c.Cert = &cert
-	c.Self, err = NewPeerInfo("", cert.Certificate[0])
+	c.Self, _ = NewPeerInfo("", cert.Certificate[0])
 
 	c.tlsConfig = &tls.Config{
 		Certificates:       []tls.Certificate{cert},
