@@ -107,7 +107,14 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	case JoinChain:
 		// 2. check local MSP Admins policy
 		if err = e.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
-			return shim.Error(fmt.Sprintf("\"JoinChain\" request failed authorization check for channel [%s]: [%s]", args[1], err))
+			cid, e := utils.GetChainIDFromBlockBytes(args[1])
+			errorString := fmt.Sprintf("\"JoinChain\" request failed authorization check "+
+				"for channel [%s]: [%s]", cid, err)
+			if e != nil {
+				errorString = fmt.Sprintf("\"JoinChain\" request failed authorization [%s] and unable "+
+					"to extract channel id from the block due to [%s]", err, e)
+			}
+			return shim.Error(errorString)
 		}
 
 		return joinChain(args[1])
@@ -127,7 +134,7 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	case GetChannels:
 		// 2. check local MSP Members policy
 		if err = e.policyChecker.CheckPolicyNoChannel(mgmt.Members, sp); err != nil {
-			return shim.Error(fmt.Sprintf("\"GetChannels\" request failed authorization check for channel [%s]: [%s]", args[1], err))
+			return shim.Error(fmt.Sprintf("\"GetChannels\" request failed authorization check: [%s]", err))
 		}
 
 		return getChannels()

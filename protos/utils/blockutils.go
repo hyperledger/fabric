@@ -23,6 +23,16 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
+// GetChainIDFromBlockBytes returns chain ID given byte array which represents the block
+func GetChainIDFromBlockBytes(bytes []byte) (string, error) {
+	block, err := GetBlockFromBlockBytes(bytes)
+	if err != nil {
+		return "", err
+	}
+
+	return GetChainIDFromBlock(block)
+}
+
 // GetChainIDFromBlock returns chain ID in the block
 func GetChainIDFromBlock(block *cb.Block) (string, error) {
 	if block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
