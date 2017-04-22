@@ -82,6 +82,9 @@ func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 	if len(pwd) != 0 {
 		return PrivateKeyToEncryptedPEM(privateKey, pwd)
 	}
+	if privateKey == nil {
+		return nil, errors.New("Invalid key. It must be different from nil.")
+	}
 
 	switch k := privateKey.(type) {
 	case *ecdsa.PrivateKey:
@@ -131,7 +134,6 @@ func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 		if k == nil {
 			return nil, errors.New("Invalid rsa private key. It must be different from nil.")
 		}
-
 		raw := x509.MarshalPKCS1PrivateKey(k)
 
 		return pem.EncodeToMemory(
@@ -147,12 +149,15 @@ func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 
 // PrivateKeyToEncryptedPEM converts a private key to an encrypted PEM
 func PrivateKeyToEncryptedPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
+	if privateKey == nil {
+		return nil, errors.New("Invalid private key. It must be different from nil.")
+	}
+
 	switch k := privateKey.(type) {
 	case *ecdsa.PrivateKey:
 		if k == nil {
 			return nil, errors.New("Invalid ecdsa private key. It must be different from nil.")
 		}
-
 		raw, err := x509.MarshalECPrivateKey(k)
 
 		if err != nil {
@@ -295,12 +300,15 @@ func PublicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 		return PublicKeyToEncryptedPEM(publicKey, pwd)
 	}
 
+	if publicKey == nil {
+		return nil, errors.New("Invalid public key. It must be different from nil.")
+	}
+
 	switch k := publicKey.(type) {
 	case *ecdsa.PublicKey:
 		if k == nil {
 			return nil, errors.New("Invalid ecdsa public key. It must be different from nil.")
 		}
-
 		PubASN1, err := x509.MarshalPKIXPublicKey(k)
 		if err != nil {
 			return nil, err
@@ -316,7 +324,6 @@ func PublicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 		if k == nil {
 			return nil, errors.New("Invalid rsa public key. It must be different from nil.")
 		}
-
 		PubASN1, err := x509.MarshalPKIXPublicKey(k)
 		if err != nil {
 			return nil, err
@@ -336,12 +343,15 @@ func PublicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 
 // PublicKeyToDER marshals a public key to the der format
 func PublicKeyToDER(publicKey interface{}) ([]byte, error) {
+	if publicKey == nil {
+		return nil, errors.New("Invalid public key. It must be different from nil.")
+	}
+
 	switch k := publicKey.(type) {
 	case *ecdsa.PublicKey:
 		if k == nil {
 			return nil, errors.New("Invalid ecdsa public key. It must be different from nil.")
 		}
-
 		PubASN1, err := x509.MarshalPKIXPublicKey(k)
 		if err != nil {
 			return nil, err
@@ -356,13 +366,19 @@ func PublicKeyToDER(publicKey interface{}) ([]byte, error) {
 
 // PublicKeyToEncryptedPEM converts a public key to encrypted pem
 func PublicKeyToEncryptedPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
+	if publicKey == nil {
+		return nil, errors.New("Invalid public key. It must be different from nil.")
+	}
+	if len(pwd) == 0 {
+		return nil, errors.New("Invalid password. It must be different from nil.")
+	}
+
 	switch k := publicKey.(type) {
 	case *ecdsa.PublicKey:
 		if k == nil {
 			return nil, errors.New("Invalid ecdsa public key. It must be different from nil.")
 		}
 		raw, err := x509.MarshalPKIXPublicKey(k)
-
 		if err != nil {
 			return nil, err
 		}
