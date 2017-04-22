@@ -19,14 +19,15 @@ package clilogging
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/peer/common"
-	"github.com/op/go-logging"
+
 	"github.com/spf13/cobra"
 )
 
 const loggingFuncName = "logging"
 
-var logger = logging.MustGetLogger("cli/logging")
+var logger = flogging.MustGetLogger("cli/logging")
 
 // Cmd returns the cobra command for Logging
 func Cmd() *cobra.Command {

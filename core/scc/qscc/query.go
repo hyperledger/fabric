@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/op/go-logging"
 
 	"github.com/hyperledger/fabric/common/policies"
@@ -41,7 +42,7 @@ type LedgerQuerier struct {
 	policyChecker policy.PolicyChecker
 }
 
-var qscclogger = logging.MustGetLogger("qscc")
+var qscclogger = flogging.MustGetLogger("qscc")
 
 // These are function names from Invoke first parameter
 const (

@@ -31,11 +31,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	ccutil "github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -47,7 +47,7 @@ var includeFileTypes = map[string]bool{
 	".json": true,
 }
 
-var logger = logging.MustGetLogger("golang-platform")
+var logger = flogging.MustGetLogger("golang-platform")
 
 func getCodeFromHTTP(path string) (codegopath string, err error) {
 	codegopath = ""

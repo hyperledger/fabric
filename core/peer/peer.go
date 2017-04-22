@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/flogging"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
@@ -43,12 +44,11 @@ import (
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
-var peerLogger = logging.MustGetLogger("peer")
+var peerLogger = flogging.MustGetLogger("peer")
 
 var peerServer comm.GRPCServer
 

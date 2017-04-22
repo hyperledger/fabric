@@ -25,15 +25,14 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspproto "github.com/hyperledger/fabric/protos/msp"
-
-	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("common/configtx/test")
+var logger = flogging.MustGetLogger("common/configtx/test")
 
 const (
 	// AcceptAllPolicyKey is the key of the AcceptAllPolicy.

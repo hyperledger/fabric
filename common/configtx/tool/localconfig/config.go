@@ -23,15 +23,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
 	bccsp "github.com/hyperledger/fabric/bccsp/factory"
 )
 
-var logger = logging.MustGetLogger("configtx/tool/localconfig")
+var logger = flogging.MustGetLogger("configtx/tool/localconfig")
 
 const (
 	// SampleInsecureProfile references the sample profile which does not include any MSPs and uses solo for ordering.

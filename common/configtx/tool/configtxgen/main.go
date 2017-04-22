@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -35,7 +36,7 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("common/configtx/tool")
+var logger = flogging.MustGetLogger("common/configtx/tool")
 
 func doOutputBlock(pgen provisional.Generator, channelID string, outputBlock string) error {
 	logger.Info("Generating genesis block")

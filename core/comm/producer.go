@@ -21,11 +21,11 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 	"google.golang.org/grpc"
 )
 
-var logger = logging.MustGetLogger("ConnProducer")
+var logger = flogging.MustGetLogger("ConnProducer")
 
 // ConnectionFactory creates a connection to a certain endpoint
 type ConnectionFactory func(endpoint string) (*grpc.ClientConn, error)

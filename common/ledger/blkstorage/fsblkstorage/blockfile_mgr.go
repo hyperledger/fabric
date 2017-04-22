@@ -23,16 +23,16 @@ import (
 	"sync/atomic"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	putil "github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("kvledger")
+var logger = flogging.MustGetLogger("kvledger")
 
 const (
 	blockfilePrefix = "blockfile_"

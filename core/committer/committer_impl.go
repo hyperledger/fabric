@@ -17,6 +17,7 @@ limitations under the License.
 package committer
 
 import (
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/events/producer"
@@ -32,7 +33,7 @@ import (
 var logger *logging.Logger // package-level logger
 
 func init() {
-	logger = logging.MustGetLogger("committer")
+	logger = flogging.MustGetLogger("committer")
 }
 
 // LedgerCommitter is the implementation of  Committer interface

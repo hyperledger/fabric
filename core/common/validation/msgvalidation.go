@@ -21,14 +21,14 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 )
 
-var putilsLogger = logging.MustGetLogger("protoutils")
+var putilsLogger = flogging.MustGetLogger("protoutils")
 
 // validateChaincodeProposalMessage checks the validity of a Proposal message of type CHAINCODE
 func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*pb.ChaincodeHeaderExtension, error) {

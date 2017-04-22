@@ -17,6 +17,7 @@ limitations under the License.
 package statebasedval
 
 import (
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -25,10 +26,9 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
-	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("statevalidator")
+var logger = flogging.MustGetLogger("statevalidator")
 
 // Validator validates a tx against the latest committed state
 // and preceding valid transactions with in the same block

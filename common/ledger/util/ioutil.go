@@ -23,10 +23,10 @@ import (
 	"path"
 	"strings"
 
-	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 )
 
-var logger = logging.MustGetLogger("kvledger.util")
+var logger = flogging.MustGetLogger("kvledger.util")
 
 // CreateDirIfMissing creates a dir for dirPath if not already exists. If the dir is empty it returns true
 func CreateDirIfMissing(dirPath string) (bool, error) {

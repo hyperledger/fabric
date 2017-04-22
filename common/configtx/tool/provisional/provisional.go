@@ -26,6 +26,7 @@ import (
 	configvaluesmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -33,11 +34,9 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
-
-	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("common/configtx/tool/provisional")
+var logger = flogging.MustGetLogger("common/configtx/tool/provisional")
 
 // Generator can either create an orderer genesis block or config template
 type Generator interface {

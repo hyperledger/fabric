@@ -25,13 +25,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
-
-	logging "github.com/op/go-logging"
 )
 
-var ccproviderLogger = logging.MustGetLogger("ccprovider")
+var ccproviderLogger = flogging.MustGetLogger("ccprovider")
 
 var chaincodeInstallPath string
 

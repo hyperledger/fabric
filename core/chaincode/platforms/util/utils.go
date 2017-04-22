@@ -11,12 +11,12 @@ import (
 	"io"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
-	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("util")
+var logger = flogging.MustGetLogger("util")
 
 //ComputeHash computes contents hash based on previous hash
 func ComputeHash(contents []byte, hash []byte) []byte {

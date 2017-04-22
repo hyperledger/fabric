@@ -36,12 +36,12 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
-	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 	"golang.org/x/crypto/sha3"
 )
 
 var (
-	logger = logging.MustGetLogger("bccsp_sw")
+	logger = flogging.MustGetLogger("bccsp_sw")
 )
 
 // NewDefaultSecurityLevel returns a new instance of the software-based BCCSP

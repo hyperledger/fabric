@@ -28,13 +28,15 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/msp"
+
+	"github.com/hyperledger/fabric/common/flogging"
 )
 
 // Config the config wrapper structure
 type Config struct {
 }
 
-var configLogger = logging.MustGetLogger("config")
+var configLogger = flogging.MustGetLogger("config")
 
 func init() {
 

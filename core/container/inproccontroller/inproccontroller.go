@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	container "github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/op/go-logging"
 
 	"golang.org/x/net/context"
 )
@@ -38,7 +38,7 @@ type inprocContainer struct {
 }
 
 var (
-	inprocLogger = logging.MustGetLogger("inproccontroller")
+	inprocLogger = flogging.MustGetLogger("inproccontroller")
 	typeRegistry = make(map[string]*inprocContainer)
 	instRegistry = make(map[string]*inprocContainer)
 )

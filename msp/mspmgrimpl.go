@@ -19,13 +19,13 @@ package msp
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/msp"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/op/go-logging"
 )
 
-var mspLogger = logging.MustGetLogger("msp")
+var mspLogger = flogging.MustGetLogger("msp")
 
 type mspManagerImpl struct {
 	// map that contains all MSPs that we have setup or otherwise added

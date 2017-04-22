@@ -23,10 +23,10 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/op/go-logging"
 )
 
 // VM implemenation of VM management functionality.
@@ -44,7 +44,7 @@ func NewVM() (*VM, error) {
 	return VM, nil
 }
 
-var vmLogger = logging.MustGetLogger("container")
+var vmLogger = flogging.MustGetLogger("container")
 
 // ListImages list the images available
 func (vm *VM) ListImages(context context.Context) error {

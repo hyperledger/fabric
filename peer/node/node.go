@@ -19,7 +19,7 @@ package node
 import (
 	"fmt"
 
-	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +28,7 @@ const nodeFuncName = "node"
 var (
 	stopPidFile string
 )
-var logger = logging.MustGetLogger("nodeCmd")
+var logger = flogging.MustGetLogger("nodeCmd")
 
 // Cmd returns the cobra command for Node
 func Cmd() *cobra.Command {

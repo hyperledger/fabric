@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -30,10 +31,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("kvledger")
+var logger = flogging.MustGetLogger("kvledger")
 
 // KVLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model

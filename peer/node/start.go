@@ -270,18 +270,16 @@ func serve(args []string) error {
 	// modules need the regular expression capabilities enabled by the `flogging`
 	// package
 	if viper.GetString("logging_level") == "" {
-		err = common.SetLogLevelFromViper("msp")
-		if err != nil {
-			logger.Warningf("Error setting log level for module 'msp': %s", err.Error())
+		overrideLogModules := []string{"msp"}
+		for _, module := range overrideLogModules {
+			err = common.SetLogLevelFromViper(module)
+			if err != nil {
+				logger.Warningf("Error setting log level for module '%s': %s", module, err.Error())
+			}
 		}
 	}
 
-	// TODO This check is here to preserve the old functionality until all
-	// other packages switch to `flogging.MustGetLogger` (from
-	// `logging.MustGetLogger`).
-	if flogging.IsSetLevelByRegExpEnabled {
-		flogging.SetPeerStartupModulesMap()
-	}
+	flogging.SetPeerStartupModulesMap()
 
 	// Block until grpc server exits
 	return <-serve

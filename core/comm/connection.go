@@ -28,13 +28,13 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
 
-	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/spf13/viper"
 )
 
 const defaultTimeout = time.Second * 3
 
-var commLogger = logging.MustGetLogger("comm")
+var commLogger = flogging.MustGetLogger("comm")
 var caSupport *CASupport
 var once sync.Once
 

@@ -32,13 +32,14 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/miekg/pkcs11"
-	"github.com/op/go-logging"
+
 	"golang.org/x/crypto/sha3"
 )
 
 var (
-	logger           = logging.MustGetLogger("bccsp_p11")
+	logger           = flogging.MustGetLogger("bccsp_p11")
 	sessionCacheSize = 10
 )
 

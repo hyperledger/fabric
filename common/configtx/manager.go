@@ -22,13 +22,12 @@ import (
 	"regexp"
 
 	"github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-
-	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("common/configtx")
+var logger = flogging.MustGetLogger("common/configtx")
 
 // Constraints for valid chain IDs
 var (

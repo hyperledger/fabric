@@ -20,15 +20,15 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	logging "github.com/op/go-logging"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
-var logger = logging.MustGetLogger("stateleveldb")
+var logger = flogging.MustGetLogger("stateleveldb")
 
 var compositeKeySep = []byte{0x00}
 var lastKeyIndicator = byte(0x01)

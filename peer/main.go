@@ -22,7 +22,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -38,7 +37,7 @@ import (
 	"github.com/hyperledger/fabric/peer/version"
 )
 
-var logger = logging.MustGetLogger("main")
+var logger = flogging.MustGetLogger("main")
 var logOutput = os.Stderr
 
 // Constants go here.

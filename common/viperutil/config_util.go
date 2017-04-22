@@ -29,12 +29,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/mitchellh/mapstructure"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
-var logger = logging.MustGetLogger("viperutil")
+var logger = flogging.MustGetLogger("viperutil")
 
 type viperGetter func(key string) interface{}
 

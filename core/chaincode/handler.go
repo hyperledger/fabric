@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -49,7 +50,7 @@ const (
 
 )
 
-var chaincodeLogger = logging.MustGetLogger("chaincode")
+var chaincodeLogger = flogging.MustGetLogger("chaincode")
 
 // MessageHandler interface for handling chaincode messages (common between Peer chaincode support and chaincode)
 type MessageHandler interface {
