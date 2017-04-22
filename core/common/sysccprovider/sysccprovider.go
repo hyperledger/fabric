@@ -16,6 +16,8 @@ limitations under the License.
 
 package sysccprovider
 
+import "github.com/golang/protobuf/proto"
+
 // SystemChaincodeProvider provides an abstraction layer that is
 // used for different packages to interact with code in the
 // system chaincode package without importing it; more methods
@@ -52,3 +54,27 @@ func GetSystemChaincodeProvider() SystemChaincodeProvider {
 	}
 	return sccFactory.NewSystemChaincodeProvider()
 }
+
+// ChaincodeInstance is unique identifier of chaincode instance
+type ChaincodeInstance struct {
+	ChainID          string
+	ChaincodeName    string
+	ChaincodeVersion string
+}
+
+// VsccOutputData contains all the data returned from vscc.
+type VsccOutputData struct {
+	// ProposalResponse bytes array validated by vscc
+	ProposalResponseData [][]byte `protobuf:"bytes,1,rep,name=proposalResponseData,proto3"`
+}
+
+//implement functions needed from proto.Message for proto's mar/unmarshal functions
+
+//Reset resets
+func (vod *VsccOutputData) Reset() { *vod = VsccOutputData{} }
+
+//String convers to string
+func (vod *VsccOutputData) String() string { return proto.CompactTextString(vod) }
+
+//ProtoMessage just exists to make proto happy
+func (*VsccOutputData) ProtoMessage() {}

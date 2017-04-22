@@ -20,9 +20,11 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
@@ -114,6 +116,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		return shim.Error(err.Error())
 	}
 
+	prespBytesData := [][]byte{}
 	// loop through each of the actions within
 	for _, act := range tx.Actions {
 		cap, err := utils.GetChaincodeActionPayload(act.Payload)
@@ -124,6 +127,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 
 		// this is the first part of the signed message
 		prespBytes := cap.Action.ProposalResponsePayload
+
 		// build the signature set for the evaluation
 		signatureSet := make([]*common.SignedData, len(cap.Action.Endorsements))
 
@@ -159,11 +163,21 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 				return shim.Error(err.Error())
 			}
 		}
+
+		prespBytesData = append(prespBytesData, prespBytes)
+	}
+
+	vsccOutputData := &sysccprovider.VsccOutputData{
+		ProposalResponseData: prespBytesData,
+	}
+	vodBytes, err := utils.Marshal(vsccOutputData)
+	if err != nil {
+		return shim.Error(err.Error())
 	}
 
 	logger.Debugf("VSCC exists successfully")
 
-	return shim.Success(nil)
+	return shim.Success(vodBytes)
 }
 
 func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(cap *pb.ChaincodeActionPayload) error {

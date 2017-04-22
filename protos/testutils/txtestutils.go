@@ -49,6 +49,26 @@ func init() {
 	}
 }
 
+// ConstractBytesProposalResponsePayload constructs a ProposalResponsePayload byte for tests with a default signer.
+func ConstractBytesProposalResponsePayload(chainID string, ccid *pb.ChaincodeID, pResponse *pb.Response, simulationResults []byte) ([]byte, error) {
+	ss, err := signer.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
+	prop, _, err := putils.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccid}}, ss)
+	if err != nil {
+		return nil, err
+	}
+
+	presp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, ccid, nil, signer)
+	if err != nil {
+		return nil, err
+	}
+
+	return presp.Payload, nil
+}
+
 // ConstructSingedTxEnvWithDefaultSigner constructs a transaction envelop for tests with a default signer.
 // This method helps other modules to construct a transaction with supplied parameters
 func ConstructSingedTxEnvWithDefaultSigner(chainID string, ccid *pb.ChaincodeID, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, string, error) {
