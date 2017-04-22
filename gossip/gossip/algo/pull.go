@@ -291,14 +291,17 @@ func (engine *PullEngine) OnHello(nonce uint64, context interface{}) {
 	})
 
 	a := engine.state.ToArray()
-	digest := make([]string, len(a))
+	var digest []string
 	filter := engine.digFilter(context)
-	for i, item := range a {
+	for _, item := range a {
 		dig := item.(string)
 		if !filter(dig) {
 			continue
 		}
-		digest[i] = dig
+		digest = append(digest, dig)
+	}
+	if len(digest) == 0 {
+		return
 	}
 	engine.SendDigest(digest, nonce, context)
 }
@@ -309,6 +312,7 @@ func (engine *PullEngine) OnReq(items []string, nonce uint64, context interface{
 		return
 	}
 	engine.lock.Lock()
+	defer engine.lock.Unlock()
 
 	filter := engine.digFilter(context)
 	var items2Send []string
@@ -318,7 +322,9 @@ func (engine *PullEngine) OnReq(items []string, nonce uint64, context interface{
 		}
 	}
 
-	engine.lock.Unlock()
+	if len(items2Send) == 0 {
+		return
+	}
 
 	go engine.SendRes(items2Send, context, nonce)
 }
