@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
@@ -83,11 +84,17 @@ func TestRevocation(t *testing.T) {
 
 	sigid := &msp.SigningIdentityInfo{PublicSigner: []byte(signcertrev), PrivateSigner: keyinfo}
 
+	cryptoConfig := &msp.FabricCryptoConfig{
+		SignatureHashFamily:            bccsp.SHA2,
+		IdentityIdentifierHashFunction: bccsp.SHA256,
+	}
+
 	fmspconf := &msp.FabricMSPConfig{
 		RootCerts:       [][]byte{[]byte(cacertrev)},
 		RevocationList:  [][]byte{[]byte(crlrev)},
 		SigningIdentity: sigid,
-		Name:            "DEFAULT"}
+		Name:            "DEFAULT",
+		CryptoConfig:    cryptoConfig}
 
 	fmpsjs, _ := proto.Marshal(fmspconf)
 

@@ -14,6 +14,7 @@ It has these top-level messages:
 	SerializedIdentity
 	MSPConfig
 	FabricMSPConfig
+	FabricCryptoConfig
 	SigningIdentityInfo
 	KeyInfo
 	FabricOUIdentifier

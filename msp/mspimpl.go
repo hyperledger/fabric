@@ -64,6 +64,9 @@ type bccspmsp struct {
 
 	// list of OUs
 	ouIdentifiers []*m.FabricOUIdentifier
+
+	// cryptoConfig contains
+	cryptoConfig *m.FabricCryptoConfig
 }
 
 // NewBccspMsp returns an MSP instance backed up by a BCCSP
@@ -82,7 +85,7 @@ func NewBccspMsp() (MSP, error) {
 
 func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, bccsp.Key, error) {
 	if idBytes == nil {
-		return nil, nil, fmt.Errorf("getIdentityFromBytes error: nil idBytes")
+		return nil, nil, fmt.Errorf("getIdentityFromConf error: nil idBytes")
 	}
 
 	// Decode the pem bytes
@@ -105,7 +108,12 @@ func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, bccsp.Key, e
 	}
 
 	// Use the hash of the identity's certificate as id in the IdentityIdentifier
-	digest, err := factory.GetDefault().Hash(cert.Raw, &bccsp.SHA256Opts{})
+	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
+	if err != nil {
+		return nil, nil, fmt.Errorf("getIdentityFromConf failed getting hash function options [%s]", err)
+	}
+
+	digest, err := msp.bccsp.Hash(cert.Raw, hashOpt)
 	if err != nil {
 		return nil, nil, fmt.Errorf("getIdentityFromConf failed hashing raw certificate to compute the id of the IdentityIdentifier [%s]", err)
 	}
@@ -152,7 +160,12 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) 
 	}
 
 	// Use the hash of the identity's certificate as id in the IdentityIdentifier
-	digest, err := factory.GetDefault().Hash(idPub.(*identity).cert.Raw, &bccsp.SHA256Opts{})
+	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
+	if err != nil {
+		return nil, fmt.Errorf("getIdentityFromBytes failed getting hash function options [%s]", err)
+	}
+
+	digest, err := msp.bccsp.Hash(idPub.(*identity).cert.Raw, hashOpt)
 	if err != nil {
 		return nil, fmt.Errorf("Failed hashing raw certificate to compute the id of the IdentityIdentifier [%s]", err)
 	}
@@ -262,6 +275,25 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	// set the name for this msp
 	msp.name = conf.Name
 	mspLogger.Debugf("Setting up MSP instance %s", msp.name)
+
+	// setup crypto config
+	msp.cryptoConfig = conf.CryptoConfig
+	if msp.cryptoConfig == nil {
+		// Move to defaults
+		msp.cryptoConfig = &m.FabricCryptoConfig{
+			SignatureHashFamily:            bccsp.SHA2,
+			IdentityIdentifierHashFunction: bccsp.SHA256,
+		}
+		mspLogger.Debugf("CryptoConfig was nil. Move to defaults.")
+	}
+	if msp.cryptoConfig.SignatureHashFamily == "" {
+		msp.cryptoConfig.SignatureHashFamily = bccsp.SHA2
+		mspLogger.Debugf("CryptoConfig.SignatureHashFamily was nil. Move to defaults.")
+	}
+	if msp.cryptoConfig.IdentityIdentifierHashFunction == "" {
+		msp.cryptoConfig.IdentityIdentifierHashFunction = bccsp.SHA256
+		mspLogger.Debugf("CryptoConfig.IdentityIdentifierHashFunction was nil. Move to defaults.")
+	}
 
 	// make and fill the set of admin certs (if present)
 	msp.admins = make([]Identity, len(conf.Admins))
@@ -526,7 +558,12 @@ func (msp *bccspmsp) deserializeIdentityInternal(serializedIdentity []byte) (Ide
 	// (yet) to encode the MSP ID into the x.509 body of a cert
 
 	// Use the hash of the identity's certificate as id in the IdentityIdentifier
-	digest, err := factory.GetDefault().Hash(cert.Raw, &bccsp.SHA256Opts{})
+	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
+	if err != nil {
+		return nil, fmt.Errorf("Failed getting hash function options [%s]", err)
+	}
+
+	digest, err := msp.bccsp.Hash(cert.Raw, hashOpt)
 	if err != nil {
 		return nil, fmt.Errorf("Failed hashing raw certificate to compute the id of the IdentityIdentifier [%s]", err)
 	}

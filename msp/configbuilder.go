@@ -25,6 +25,7 @@ import (
 	"encoding/pem"
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/protos/msp"
 )
@@ -161,12 +162,20 @@ func getMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string, sigid
 	intermediatecert, _ := getPemMaterialFromDir(intermediatecertsDir)
 	// intermediate certs are not mandatory
 
+	// Load FabricCryptoConfig
+	cryptoConfig := &msp.FabricCryptoConfig{
+		SignatureHashFamily:            bccsp.SHA2,
+		IdentityIdentifierHashFunction: bccsp.SHA256,
+	}
+
+	// Compose FabricMSPConfig
 	fmspconf := &msp.FabricMSPConfig{
 		Admins:            admincert,
 		RootCerts:         cacerts,
 		IntermediateCerts: intermediatecert,
 		SigningIdentity:   sigid,
-		Name:              ID}
+		Name:              ID,
+		CryptoConfig:      cryptoConfig}
 
 	fmpsjs, _ := proto.Marshal(fmspconf)
 
