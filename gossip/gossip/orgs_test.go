@@ -19,11 +19,10 @@ package gossip
 import (
 	"bytes"
 	"fmt"
-	"testing"
-	"time"
-
 	"sync"
 	"sync/atomic"
+	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -271,6 +270,12 @@ func TestConfidentiality(t *testing.T) {
 	peersInOrg := 3
 	externalEndpointsInOrg := 2
 
+	// orgA: {12610, 12611, 12612}
+	// orgB: {12613, 12614, 12615}
+	// orgC: {12616, 12617, 12618}
+	// orgD: {12619, 12620, 12621}
+	peersWithExternalEndpoints := map[string]struct{}{}
+
 	orgs := []string{"A", "B", "C", "D"}
 	channels := []string{"C0", "C1", "C2", "C3"}
 	isOrgInChan := func(org string, channel string) bool {
@@ -315,10 +320,12 @@ func TestConfidentiality(t *testing.T) {
 			externalEndpoint := ""
 			if j < externalEndpointsInOrg { // The first peers of each org would have an external endpoint
 				externalEndpoint = endpoint
+				peersWithExternalEndpoints[string(endpoint)] = struct{}{}
 			}
 			peer := newGossipInstanceWithExternalEndpoint(portPrefix, id, cs, externalEndpoint)
 			peers = append(peers, peer)
 			orgs2Peers[org] = append(orgs2Peers[org], peer)
+			t.Log(endpoint, "id:", id, "externalEndpoint:", externalEndpoint)
 			// The first peer of the org will be used as the anchor peer
 			if j == 0 {
 				anchorPeersByOrg[org] = api.AnchorPeer{
@@ -331,19 +338,20 @@ func TestConfidentiality(t *testing.T) {
 
 	msgs2Inspect := make(chan *msg, 3000)
 	defer close(msgs2Inspect)
-	go inspectMsgs(t, msgs2Inspect, cs)
+	go inspectMsgs(t, msgs2Inspect, cs, peersWithExternalEndpoints)
 	finished := int32(0)
 	var wg sync.WaitGroup
 
-	membershipMsgs := func(o interface{}) bool {
+	msgSelector := func(o interface{}) bool {
 		msg := o.(proto.ReceivedMessage).GetGossipMessage()
-		return msg.IsAliveMsg() || msg.GetMemRes() != nil
+		identitiesPull := msg.IsPullMsg() && msg.GetPullMsgType() == proto.PullMsgType_IDENTITY_MSG
+		return msg.IsAliveMsg() || msg.IsStateInfoMsg() || msg.IsStateInfoSnapshot() || msg.GetMemRes() != nil || identitiesPull
 	}
 	// Listen to all peers membership messages and forward them to the inspection channel
 	// where they will be inspected, and the test would fail if a confidentiality violation is found
 	for _, p := range peers {
 		wg.Add(1)
-		_, msgs := p.Accept(membershipMsgs, true)
+		_, msgs := p.Accept(msgSelector, true)
 		peerNetMember := p.(*gossipServiceImpl).selfNetworkMember()
 		targetORg := string(cs.OrgByPeerIdentity(api.PeerIdentityType(peerNetMember.InternalEndpoint)))
 		go func(targetOrg string, msgs <-chan proto.ReceivedMessage) {
@@ -380,10 +388,20 @@ func TestConfidentiality(t *testing.T) {
 			if isOrgInChan(org, ch) {
 				for _, p := range peers {
 					p.JoinChan(joinChanMsgsByChan[ch], common.ChainID(ch))
+					p.UpdateChannelMetadata([]byte{}, common.ChainID(ch))
+					go func(p Gossip) {
+						for i := 0; i < 5; i++ {
+							time.Sleep(time.Second)
+							p.UpdateChannelMetadata([]byte{}, common.ChainID(ch))
+						}
+					}(p)
 				}
 			}
 		}
 	}
+
+	// Sleep a bit, to let peers gossip with each other
+	time.Sleep(time.Second * 7)
 
 	assertMembership := func() bool {
 		for _, org := range orgs {
@@ -448,13 +466,43 @@ func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []str
 	if msg.IsAliveMsg() {
 		return []string{string(sec.OrgByPeerIdentity(api.PeerIdentityType(msg.GetAliveMsg().Membership.PkiId)))}
 	}
+
 	orgs := map[string]struct{}{}
-	alive := msg.GetMemRes().Alive
-	dead := msg.GetMemRes().Dead
-	for _, envp := range append(alive, dead...) {
-		msg, _ := envp.ToGossipMessage()
-		orgs[string(sec.OrgByPeerIdentity(api.PeerIdentityType(msg.GetAliveMsg().Membership.PkiId)))] = struct{}{}
+
+	if msg.IsPullMsg() {
+		if msg.IsDigestMsg() || msg.IsDataReq() {
+			var digests []string
+			if msg.IsDigestMsg() {
+				digests = msg.GetDataDig().Digests
+			} else {
+				digests = msg.GetDataReq().Digests
+			}
+
+			for _, dig := range digests {
+				org := sec.OrgByPeerIdentity(api.PeerIdentityType(dig))
+				orgs[string(org)] = struct{}{}
+			}
+		}
+
+		if msg.IsDataUpdate() {
+			for _, identityMsg := range msg.GetDataUpdate().Data {
+				gMsg, _ := identityMsg.ToGossipMessage()
+				id := string(gMsg.GetPeerIdentity().Cert)
+				org := sec.OrgByPeerIdentity(api.PeerIdentityType(id))
+				orgs[string(org)] = struct{}{}
+			}
+		}
 	}
+
+	if msg.GetMemRes() != nil {
+		alive := msg.GetMemRes().Alive
+		dead := msg.GetMemRes().Dead
+		for _, envp := range append(alive, dead...) {
+			msg, _ := envp.ToGossipMessage()
+			orgs[string(sec.OrgByPeerIdentity(api.PeerIdentityType(msg.GetAliveMsg().Membership.PkiId)))] = struct{}{}
+		}
+	}
+
 	res := []string{}
 	for org := range orgs {
 		res = append(res, org)
@@ -462,11 +510,15 @@ func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []str
 	return res
 }
 
-func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor) {
+func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor, peersWithExternalEndpoints map[string]struct{}) {
 	for msg := range msgChan {
 		// If the destination org is the same as the source org,
 		// the message can contain any organizations
 		if msg.src == msg.dst {
+			continue
+		}
+		if msg.IsStateInfoMsg() || msg.IsStateInfoSnapshot() {
+			inspectStateInfoMsg(t, msg, peersWithExternalEndpoints)
 			continue
 		}
 		// Else, it's a cross-organizational message.
@@ -485,6 +537,36 @@ func inspectMsgs(t *testing.T, msgChan chan *msg, sec api.SecurityAdvisor) {
 		if msg.dst == "A" || msg.dst == "C" {
 			assert.NotContains(t, "D", orgs)
 		}
+
+		// If this is an identity snapshot, make sure that only identities of peers
+		// with external endpoints pass between the organizations.
+		isIdentityPull := msg.IsPullMsg() && msg.GetPullMsgType() == proto.PullMsgType_IDENTITY_MSG
+		if !(isIdentityPull && msg.IsDataUpdate()) {
+			continue
+		}
+		for _, envp := range msg.GetDataUpdate().Data {
+			identityMsg, _ := envp.ToGossipMessage()
+			pkiID := identityMsg.GetPeerIdentity().PkiId
+			_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
+			assert.True(t, hasExternalEndpoint,
+				"Peer %s doesn't have an external endpoint but its identity was gossiped", string(pkiID))
+		}
+	}
+}
+
+func inspectStateInfoMsg(t *testing.T, m *msg, peersWithExternalEndpoints map[string]struct{}) {
+	if m.IsStateInfoMsg() {
+		pkiID := m.GetStateInfo().PkiId
+		_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
+		assert.True(t, hasExternalEndpoint, "peer %s has no external endpoint but crossed an org", string(pkiID))
+		return
+	}
+
+	for _, envp := range m.GetStateSnapshot().Elements {
+		msg, _ := envp.ToGossipMessage()
+		pkiID := msg.GetStateInfo().PkiId
+		_, hasExternalEndpoint := peersWithExternalEndpoints[string(pkiID)]
+		assert.True(t, hasExternalEndpoint, "peer %s has no external endpoint but crossed an org", string(pkiID))
 	}
 }
 

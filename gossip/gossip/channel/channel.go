@@ -100,6 +100,9 @@ type Adapter interface {
 	// GetMembership returns the known alive peers and their information
 	GetMembership() []discovery.NetworkMember
 
+	// Lookup returns a network member, or nil if not found
+	Lookup(PKIID common.PKIidType) *discovery.NetworkMember
+
 	// Send sends a message to a list of peers
 	Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer)
 
@@ -121,6 +124,7 @@ type gossipChannel struct {
 	shouldGossipStateInfo     int32
 	mcs                       api.MessageCryptoService
 	pkiID                     common.PKIidType
+	selfOrg                   api.OrgIdentityType
 	stopChan                  chan struct{}
 	stateInfoMsg              *proto.SignedGossipMessage
 	orgs                      []api.OrgIdentityType
@@ -153,8 +157,10 @@ func (mf *membershipFilter) GetMembership() []discovery.NetworkMember {
 }
 
 // NewGossipChannel creates a new GossipChannel
-func NewGossipChannel(pkiID common.PKIidType, mcs api.MessageCryptoService, chainID common.ChainID, adapter Adapter, joinMsg api.JoinChannelMessage) GossipChannel {
+func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.MessageCryptoService,
+	chainID common.ChainID, adapter Adapter, joinMsg api.JoinChannelMessage) GossipChannel {
 	gc := &gossipChannel{
+		selfOrg:                   org,
 		pkiID:                     pkiID,
 		mcs:                       mcs,
 		Adapter:                   adapter,
@@ -382,8 +388,8 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		return
 	}
 	orgID := gc.GetOrgOfPeer(msg.GetConnectionInfo().ID)
-	if orgID == nil {
-		gc.logger.Warning("Couldn't find org identity of peer", msg.GetConnectionInfo().ID)
+	if len(orgID) == 0 {
+		gc.logger.Debug("Couldn't find org identity of peer", msg.GetConnectionInfo().ID)
 		return
 	}
 	if !gc.IsOrgInChannel(orgID) {
@@ -392,7 +398,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 	}
 
 	if m.IsStateInfoPullRequestMsg() {
-		msg.Respond(gc.createStateInfoSnapshot())
+		msg.Respond(gc.createStateInfoSnapshot(orgID))
 		return
 	}
 
@@ -480,8 +486,8 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 		si := stateInf.GetStateInfo()
 		orgID := gc.GetOrgOfPeer(si.PkiId)
 		if orgID == nil {
-			gc.logger.Warning("Channel", chanName, ": Couldn't find org identity of peer",
-				si.PkiId, "message sent from", sender)
+			gc.logger.Debug("Channel", chanName, ": Couldn't find org identity of peer",
+				string(si.PkiId), "message sent from", string(sender))
 			return
 		}
 
@@ -524,11 +530,25 @@ func (gc *gossipChannel) verifyBlock(msg *proto.GossipMessage, sender common.PKI
 	return true
 }
 
-func (gc *gossipChannel) createStateInfoSnapshot() *proto.GossipMessage {
+func (gc *gossipChannel) createStateInfoSnapshot(requestersOrg api.OrgIdentityType) *proto.GossipMessage {
+	sameOrg := bytes.Equal(gc.selfOrg, requestersOrg)
 	rawElements := gc.stateInfoMsgStore.Get()
-	elements := make([]*proto.Envelope, len(rawElements))
-	for i, rawEl := range rawElements {
-		elements[i] = rawEl.(*proto.SignedGossipMessage).Envelope
+	elements := []*proto.Envelope{}
+	for _, rawEl := range rawElements {
+		msg := rawEl.(*proto.SignedGossipMessage)
+		orgOfCurrentMsg := gc.GetOrgOfPeer(msg.GetStateInfo().PkiId)
+		// If we're in the same org as the requester, or the message belongs to a foreign org
+		// don't do any filtering
+		if sameOrg || !bytes.Equal(orgOfCurrentMsg, gc.selfOrg) {
+			elements = append(elements, msg.Envelope)
+			continue
+		}
+		// Else, the requester is in a different org, so disclose only StateInfo messages that their
+		// corresponding AliveMessages have external endpoints
+		if netMember := gc.Lookup(msg.GetStateInfo().PkiId); netMember == nil || netMember.Endpoint == "" {
+			continue
+		}
+		elements = append(elements, msg.Envelope)
 	}
 
 	return &proto.GossipMessage{
