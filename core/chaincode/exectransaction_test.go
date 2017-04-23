@@ -42,6 +42,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -92,6 +93,9 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 
 	ccStartupTimeout := time.Duration(chaincodeStartupTimeoutDefault) * time.Millisecond
 	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
+
+	// Mock policy checker
+	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
 
 	scc.RegisterSysCCs()
 
@@ -313,15 +317,16 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 	ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
 
 	sysCCVers := util.GetSysCCVersion()
-	lsccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, nil, nil)
+	sprop, prop := putils.MockSignedEndorserProposalOrPanic(cccid.ChainID, cis.ChaincodeSpec, []byte("Admin"), []byte("msg1"))
+	lsccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, sprop, prop)
 
 	//write to lscc
 	if _, _, err = ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
-		return nil, fmt.Errorf("Error deploying chaincode: %s", err)
+		return nil, fmt.Errorf("Error deploying chaincode (1): %s", err)
 	}
 
 	if b, _, err = ExecuteWithErrorFilter(ctx, cccid, chaincodeDeploymentSpec); err != nil {
-		return nil, fmt.Errorf("Error deploying chaincode: %s", err)
+		return nil, fmt.Errorf("Error deploying chaincode(2): %s", err)
 	}
 
 	return b, nil
@@ -356,7 +361,10 @@ func invokeWithVersion(ctx context.Context, chainID string, version string, spec
 		}
 	}()
 
-	sprop, prop := putils.MockSignedEndorserProposalOrPanic(util.GetTestChainID(), spec, creator, nil)
+	if len(creator) == 0 {
+		creator = []byte("Admin")
+	}
+	sprop, prop := putils.MockSignedEndorserProposalOrPanic(chainID, spec, creator, []byte("msg1"))
 	cccid := ccprovider.NewCCContext(chainID, cdInvocationSpec.ChaincodeSpec.ChaincodeId.Name, version, uuid, false, sprop, prop)
 	retval, ccevt, err = ExecuteWithErrorFilter(ctx, cccid, cdInvocationSpec)
 	if err != nil {
@@ -1796,4 +1804,14 @@ func (c *CreatorPolicy) Evaluate(signatureSet []*common.SignedData) error {
 		}
 	}
 	return fmt.Errorf("Creator not recognized [%s]", string(signatureSet[0].Identity))
+}
+
+type mockPolicyCheckerFactory struct{}
+
+func (f *mockPolicyCheckerFactory) NewPolicyChecker() policy.PolicyChecker {
+	return policy.NewPolicyChecker(
+		peer.NewChannelPolicyManagerGetter(),
+		&policy.MockIdentityDeserializer{[]byte("Admin"), []byte("msg1")},
+		&policy.MockMSPPrincipalGetter{Principal: []byte("Admin")},
+	)
 }

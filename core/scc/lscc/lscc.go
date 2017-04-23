@@ -23,10 +23,14 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/policy"
+	"github.com/hyperledger/fabric/core/policyprovider"
+	"github.com/hyperledger/fabric/msp/mgmt"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -82,6 +86,10 @@ type LifeCycleSysCC struct {
 	// methods of the system chaincode package without
 	// import cycles
 	sccprovider sysccprovider.SystemChaincodeProvider
+
+	// policyChecker is the interface used to perform
+	// access control
+	policyChecker policy.PolicyChecker
 }
 
 //----------------errors---------------
@@ -564,6 +572,10 @@ func (lscc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 //Init only initializes the system chaincode provider
 func (lscc *LifeCycleSysCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	lscc.sccprovider = sysccprovider.GetSystemChaincodeProvider()
+
+	// Init policy checker for access control
+	lscc.policyChecker = policyprovider.GetPolicyChecker()
+
 	return shim.Success(nil)
 }
 
@@ -580,10 +592,22 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 
 	function := string(args[0])
 
+	// Handle ACL:
+	// 1. get the signed proposal
+	sp, err := stub.GetSignedProposal()
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed retrieving signed proposal on executing %s with error %s", function, err))
+	}
+
 	switch function {
 	case INSTALL:
 		if len(args) < 2 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
+		}
+
+		// 2. check local MSP Admins policy
+		if err = lscc.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
+			return shim.Error(fmt.Sprintf("Authorization for INSTALL on %s has been denied with error %s", args[1], err))
 		}
 
 		depSpec := args[1]
@@ -597,6 +621,9 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		if len(args) < 3 || len(args) > 6 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
+
+		// TODO: add access control check
+		// once the instantiation process will be completed.
 
 		//chain the chaincode shoud be associated with. It
 		//should be created with a register call
@@ -652,6 +679,9 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			return shim.Error(InvalidChainNameErr(chainname).Error())
 		}
 
+		// TODO: add access control check
+		// once the instantiation process will be completed.
+
 		depSpec := args[2]
 
 		// optional arguments here (they can each be nil and may or may not be present)
@@ -696,6 +726,13 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		chain := string(args[1])
 		ccname := string(args[2])
 
+		// 2. check local Channel Readers policy
+		// Notice that this information are already available on the ledger
+		// therefore we enforce here that the caller is reader of the channel.
+		if err = lscc.policyChecker.CheckPolicy(chain, policies.ChannelApplicationReaders, sp); err != nil {
+			return shim.Error(fmt.Sprintf("Authorization for %s on channel %s has been denied with error %s", function, args[1], err))
+		}
+
 		cdbytes, err := lscc.getCCInstance(stub, ccname)
 		if err != nil {
 			logger.Errorf("error getting chaincode %s on channel: %s(err:%s)", ccname, chain, err)
@@ -722,11 +759,23 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		if len(args) != 1 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
+
+		// 2. check local MSP Admins policy
+		if err = lscc.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
+			return shim.Error(fmt.Sprintf("Authorization for GETCHAINCODES on channel %s has been denied with error %s", args[0], err))
+		}
+
 		return lscc.getChaincodes(stub)
 	case GETINSTALLEDCHAINCODES:
 		if len(args) != 1 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
+
+		// 2. check local MSP Admins policy
+		if err = lscc.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
+			return shim.Error(fmt.Sprintf("Authorization for GETINSTALLEDCHAINCODES on channel %s has been denied with error %s", args[0], err))
+		}
+
 		return lscc.getInstalledChaincodes()
 	}
 
