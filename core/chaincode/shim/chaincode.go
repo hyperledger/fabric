@@ -147,7 +147,10 @@ func SetupChaincodeLogging() {
 			chaincodeLogger.Warningf("Error: %s for chaincode log level: %s", err, chaincodeLogLevelString)
 		}
 	}
-
+	//now that logging is setup, print build level. This will help making sure
+	//chaincode is matched with peer.
+	buildLevel := viper.GetString("chaincode.buildlevel")
+	chaincodeLogger.Infof("Chaincode (build level: %s) starting up ...", buildLevel)
 }
 
 // StartInProc is an entry point for system chaincodes bootstrap. It is not an
