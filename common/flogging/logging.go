@@ -86,7 +86,6 @@ func GetModuleLevel(module string) string {
 	// Otherwise, it returns the default logging level, as set by
 	// `flogging/logging.go`.
 	level := logging.GetLevel(module).String()
-	logger.Debugf("Module '%s' logger set to '%s' log level", module, level)
 	return level
 }
 
