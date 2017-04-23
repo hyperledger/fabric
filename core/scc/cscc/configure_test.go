@@ -17,12 +17,10 @@ package cscc
 
 import (
 	"fmt"
-	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
-
-	"strings"
 
 	"github.com/golang/protobuf/proto"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
@@ -45,7 +43,6 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
 )
 
 type mockDeliveryClient struct {
@@ -91,22 +88,6 @@ func TestConfigerInit(t *testing.T) {
 	}
 }
 
-func setupEndpoint(t *testing.T) {
-	peerAddress := peer.GetLocalIP()
-	if peerAddress == "" {
-		peerAddress = "0.0.0.0"
-	}
-	peerAddress = peerAddress + ":21213"
-	t.Logf("Local peer IP address: %s", peerAddress)
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
-	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
-		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "cscctestpeer"}, Address: peerAddress}, nil
-	}
-	ccStartupTimeout := time.Duration(30000) * time.Millisecond
-	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
-}
-
 func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/hyperledgertest/")
 	os.Mkdir("/tmp/hyperledgertest", 0755)
@@ -120,7 +101,6 @@ func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
 		t.FailNow()
 	}
 
-	setupEndpoint(t)
 	// Failed path: Not enough parameters
 	args := [][]byte{[]byte("JoinChain")}
 	if res := stub.MockInvoke("2", args); res.Status == shim.OK {
@@ -141,8 +121,6 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 		t.FailNow()
 	}
 
-	setupEndpoint(t)
-
 	// Failed path: wrong parameter type
 	args := [][]byte{[]byte("JoinChain"), []byte("action")}
 	if res := stub.MockInvoke("2", args); res.Status == shim.OK {
@@ -152,6 +130,7 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/hyperledgertest/")
+	viper.Set("chaincode.executetimeout", "3000")
 	os.Mkdir("/tmp/hyperledgertest", 0755)
 
 	peer.MockInitialize()
@@ -161,6 +140,13 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
+
+	peerEndpoint := "localhost:13611"
+	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
+		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "cscctestpeer"}, Address: peerEndpoint}, nil
+	}
+	ccStartupTimeout := time.Duration(30000) * time.Millisecond
+	chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout)
 
 	// Init the policy checker
 	policyManagerGetter := &policy.MockChannelPolicyManagerGetter{
@@ -177,18 +163,9 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		&policy.MockMSPPrincipalGetter{Principal: []byte("Alice")},
 	)
 
-	setupEndpoint(t)
-
-	// Initialize gossip service
-	grpcServer := grpc.NewServer()
-	socket, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 13611))
-	assert.NoError(t, err)
-	go grpcServer.Serve(socket)
-	defer grpcServer.Stop()
-
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	messageCryptoService := mcs.New(&mcs.MockChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
-	service.InitGossipServiceCustomDeliveryFactory(identity, "localhost:13611", grpcServer, &mockDeliveryClientFactory{}, messageCryptoService)
+	service.InitGossipServiceCustomDeliveryFactory(identity, peerEndpoint, nil, &mockDeliveryClientFactory{}, messageCryptoService)
 
 	// Successful path for JoinChain
 	blockBytes := mockConfigBlock()
@@ -261,8 +238,6 @@ func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
 		identityDeserializer,
 		&policy.MockMSPPrincipalGetter{Principal: []byte("Alice")},
 	)
-
-	setupEndpoint(t)
 
 	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	identityDeserializer.Msg = sProp.ProposalBytes
