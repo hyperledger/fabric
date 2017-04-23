@@ -20,7 +20,12 @@ import (
 	"testing"
 
 	"github.com/docker/docker/pkg/testutil/assert"
+	"github.com/hyperledger/fabric/gossip/util"
 )
+
+func init() {
+	util.SetupTestLogging()
+}
 
 func TestNewNodeMetastate(t *testing.T) {
 	metastate := NewNodeMetastate(0)

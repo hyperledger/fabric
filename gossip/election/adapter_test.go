@@ -27,8 +27,13 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
+
+func init() {
+	util.SetupTestLogging()
+}
 
 func TestNewAdapter(t *testing.T) {
 	selfNetworkMember := &discovery.NetworkMember{

@@ -44,6 +44,7 @@ import (
 )
 
 func init() {
+	util.SetupTestLogging()
 	rand.Seed(time.Now().UnixNano())
 	factory.InitFactories(nil)
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
@@ -34,6 +35,10 @@ type channelState struct {
 	sync.RWMutex
 	channels map[string]channel.GossipChannel
 	g        *gossipServiceImpl
+}
+
+func init() {
+	util.SetupTestLogging()
 }
 
 func (cs *channelState) stop() {

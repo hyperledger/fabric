@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -50,6 +51,7 @@ var conf = Config{
 }
 
 func init() {
+	util.SetupTestLogging()
 	shortenedWaitTime := time.Millisecond * 300
 	algo.SetDigestWaitTime(shortenedWaitTime / 2)
 	algo.SetRequestWaitTime(shortenedWaitTime)

@@ -46,6 +46,7 @@ var timeout = time.Second * time.Duration(180)
 var testWG = sync.WaitGroup{}
 
 func init() {
+	util.SetupTestLogging()
 	rand.Seed(int64(time.Now().Second()))
 	aliveTimeInterval := time.Duration(1000) * time.Millisecond
 	discovery.SetAliveTimeInterval(aliveTimeInterval)

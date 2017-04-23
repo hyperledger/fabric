@@ -31,6 +31,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +43,7 @@ import (
 var timeout = time.Second * time.Duration(15)
 
 func init() {
+	util.SetupTestLogging()
 	aliveTimeInterval := time.Duration(time.Millisecond * 100)
 	SetAliveTimeInterval(aliveTimeInterval)
 	SetAliveExpirationTimeout(10 * aliveTimeInterval)

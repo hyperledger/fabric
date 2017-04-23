@@ -32,6 +32,7 @@ import (
 )
 
 func init() {
+	util.SetupTestLogging()
 	SetDigestWaitTime(time.Duration(100) * time.Millisecond)
 	SetRequestWaitTime(time.Duration(200) * time.Millisecond)
 	SetResponseWaitTime(time.Duration(200) * time.Millisecond)

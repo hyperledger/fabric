@@ -44,6 +44,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+func init() {
+	util.SetupTestLogging()
+}
+
 func TestInitGossipService(t *testing.T) {
 	// Test whenever gossip service is indeed singleton
 	grpcServer := grpc.NewServer()

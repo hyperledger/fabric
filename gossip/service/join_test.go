@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
@@ -32,6 +33,10 @@ import (
 )
 
 type secAdvMock struct {
+}
+
+func init() {
+	util.SetupTestLogging()
 }
 
 func (s *secAdvMock) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {

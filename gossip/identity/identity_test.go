@@ -24,6 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,6 +32,10 @@ var msgCryptoService = &naiveCryptoService{revokedIdentities: map[string]struct{
 
 type naiveCryptoService struct {
 	revokedIdentities map[string]struct{}
+}
+
+func init() {
+	util.SetupTestLogging()
 }
 
 func (cs *naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {

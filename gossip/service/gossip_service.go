@@ -122,6 +122,10 @@ var logger = util.GetLogger(util.LoggingServiceModule, "")
 
 // InitGossipService initialize gossip service
 func InitGossipService(peerIdentity []byte, endpoint string, s *grpc.Server, mcs api.MessageCryptoService, bootPeers ...string) {
+	// TODO: Remove this.
+	// TODO: This is a temporary work-around to make the gossip leader election module load its logger at startup
+	// TODO: in order for the flogging package to register this logger in time so it can set the log levels as requested in the config
+	util.GetLogger(util.LoggingElectionModule, "")
 	InitGossipServiceCustomDeliveryFactory(peerIdentity, endpoint, s, &deliveryFactoryImpl{}, mcs, bootPeers...)
 }
 

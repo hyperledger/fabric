@@ -25,10 +25,12 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
+	util.SetupTestLogging()
 	rand.Seed(time.Now().UnixNano())
 }
 

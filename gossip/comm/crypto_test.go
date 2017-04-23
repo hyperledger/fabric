@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -38,6 +39,10 @@ type gossipTestServer struct {
 	selfCertHash   []byte
 	ll             net.Listener
 	s              *grpc.Server
+}
+
+func init() {
+	util.SetupTestLogging()
 }
 
 func createTestServer(t *testing.T, cert *tls.Certificate) *gossipTestServer {

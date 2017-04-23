@@ -24,6 +24,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func init() {
+	SetupTestLogging()
+}
+
 func TestMembershipStore(t *testing.T) {
 	membershipStore := NewMembershipStore()
 

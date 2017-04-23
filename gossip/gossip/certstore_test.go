@@ -27,12 +27,14 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func init() {
+	util.SetupTestLogging()
 	shortenedWaitTime := time.Millisecond * 300
 	algo.SetDigestWaitTime(shortenedWaitTime / 2)
 	algo.SetRequestWaitTime(shortenedWaitTime)

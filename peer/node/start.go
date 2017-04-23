@@ -264,19 +264,13 @@ func serve(args []string) error {
 	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]",
 		peerEndpoint.Id, viper.GetString("peer.networkId"), peerEndpoint.Address)
 
-	// if CORE_LOGGING_LEVEL environment variable is not set, set the logging
-	// level for specific modules defined in core.yaml.
-	// TODO Add calls to set 'gossip' and 'ledger' once all other packages
-	// switch to `flogging.MustGetLogger` (from `logging.MustGetLogger`) as those
-	// modules need the regular expression capabilities enabled by the `flogging`
-	// package
-	if viper.GetString("logging_level") == "" {
-		overrideLogModules := []string{"msp"}
-		for _, module := range overrideLogModules {
-			err = common.SetLogLevelFromViper(module)
-			if err != nil {
-				logger.Warningf("Error setting log level for module '%s': %s", module, err.Error())
-			}
+	// set the logging level for specific modules defined in core.yaml.
+	// TODO Add calls to set 'ledger' module loggers
+	overrideLogModules := []string{"msp", "gossip"}
+	for _, module := range overrideLogModules {
+		err = common.SetLogLevelFromViper(module)
+		if err != nil {
+			logger.Warningf("Error setting log level for module '%s': %s", module, err.Error())
 		}
 	}
 

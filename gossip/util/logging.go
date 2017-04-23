@@ -41,7 +41,9 @@ const (
 
 var loggersByModules = make(map[string]*logging.Logger)
 var lock = sync.Mutex{}
-var logger = flogging.MustGetLogger("gossip/util")
+
+// defaultTestSpec is the default logging level for gossip tests
+var defaultTestSpec = "WARNING"
 
 func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
@@ -64,4 +66,9 @@ func GetLogger(module string, peerID string) *logging.Logger {
 	lgr := flogging.MustGetLogger(module)
 	loggersByModules[module] = lgr
 	return lgr
+}
+
+// SetupTestLogging sets the default log levels for gossip unit tests
+func SetupTestLogging() {
+	flogging.InitFromSpec(defaultTestSpec)
 }

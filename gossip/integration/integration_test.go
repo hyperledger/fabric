@@ -27,11 +27,16 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
+
+func init() {
+	util.SetupTestLogging()
+}
 
 // This is just a test that shows how to instantiate a gossip component
 func TestNewGossipCryptoService(t *testing.T) {

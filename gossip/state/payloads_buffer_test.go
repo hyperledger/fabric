@@ -24,9 +24,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	util.SetupTestLogging()
+}
 
 func uuid() (string, error) {
 	uuid := make([]byte, 16)

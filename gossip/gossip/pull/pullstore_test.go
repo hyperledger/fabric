@@ -35,6 +35,7 @@ var pullInterval time.Duration
 var timeoutInterval = 20 * time.Second
 
 func init() {
+	util.SetupTestLogging()
 	pullInterval = time.Duration(500) * time.Millisecond
 	algo.SetDigestWaitTime(pullInterval / 5)
 	algo.SetRequestWaitTime(pullInterval)

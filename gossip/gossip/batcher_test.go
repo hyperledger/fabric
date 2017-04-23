@@ -22,8 +22,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	util.SetupTestLogging()
+}
 
 func TestBatchingEmitterAddAndSize(t *testing.T) {
 	emitter := newBatchingEmitter(1, 10, time.Second, func(a []interface{}) {})

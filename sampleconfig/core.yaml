@@ -26,7 +26,7 @@ logging:
     peer:       info
 
     # Override levels for various 'peer' modules
-    gossip:     info
+    gossip:     warning
     ledger:     info
     msp:        warning
 

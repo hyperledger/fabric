@@ -21,12 +21,17 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/config"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
 const testChainID = "foo"
 
 type applicationOrgs []*peer.AnchorPeer
+
+func init() {
+	util.SetupTestLogging()
+}
 
 func (ao applicationOrgs) AnchorPeers() []*peer.AnchorPeer {
 	return ao

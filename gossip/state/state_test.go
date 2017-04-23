@@ -36,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/identity"
+	gutil "github.com/hyperledger/fabric/gossip/util"
 	pcomm "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/spf13/viper"
@@ -55,6 +56,10 @@ var noopPeerIdentityAcceptor = func(identity api.PeerIdentityType) error {
 }
 
 type joinChanMsg struct {
+}
+
+func init() {
+	gutil.SetupTestLogging()
 }
 
 // SequenceNumber returns the sequence number of the block that the message

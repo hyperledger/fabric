@@ -29,11 +29,13 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
+	util.SetupTestLogging()
 	aliveTimeInterval := time.Duration(1000) * time.Millisecond
 	discovery.SetAliveTimeInterval(aliveTimeInterval)
 	discovery.SetAliveExpirationCheckInterval(aliveTimeInterval)
