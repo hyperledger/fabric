@@ -27,65 +27,53 @@ import (
 
 func GenerateLocalMSP(baseDir, name string, rootCA *ca.CA) error {
 
+	var response error
 	// create folder structure
 	err := createFolderStructure(baseDir)
-	if err != nil {
-		return err
+	response = err
+	if err == nil {
+		// generate private key
+		priv, _, err := csp.GeneratePrivateKey(filepath.Join(baseDir, "keystore"))
+		response = err
+		if err == nil {
+			// get public signing certificate
+			ecPubKey, err := csp.GetECPublicKey(priv)
+			response = err
+			if err == nil {
+				err = rootCA.SignCertificate(filepath.Join(baseDir, "signcerts"),
+					name, ecPubKey)
+				response = err
+				if err == nil {
+					// write root cert to folders
+					folders := []string{"admincerts", "cacerts"}
+					for _, folder := range folders {
+						err = x509ToFile(filepath.Join(baseDir, folder), rootCA.Name, rootCA.SignCert)
+						if err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
 	}
-
-	// generate private key
-	priv, _, err := csp.GeneratePrivateKey(filepath.Join(baseDir, "keystore"))
-	if err != nil {
-		return err
-	}
-
-	// get public signing certificate
-	ecPubKey, err := csp.GetECPublicKey(priv)
-	if err != nil {
-		return err
-	}
-	err = rootCA.SignCertificate(filepath.Join(baseDir, "signcerts"),
-		name, ecPubKey)
-	if err != nil {
-		return err
-	}
-
-	// write root cert to folders
-	err = x509ToFile(filepath.Join(baseDir, "admincerts"), rootCA.Name, rootCA.SignCert)
-	if err != nil {
-		return err
-	}
-	err = x509ToFile(filepath.Join(baseDir, "cacerts"), rootCA.Name, rootCA.SignCert)
-	if err != nil {
-		return err
-	}
-	return nil
-
+	return response
 }
 
 func GenerateVerifyingMSP(baseDir string, rootCA *ca.CA) error {
 
 	// create folder structure
 	err := createFolderStructure(baseDir)
-	if err != nil {
-		return err
+	if err == nil {
+		// write public cert to appropriate folders
+		folders := []string{"admincerts", "cacerts", "signcerts"}
+		for _, folder := range folders {
+			err = x509ToFile(filepath.Join(baseDir, folder), rootCA.Name, rootCA.SignCert)
+			if err != nil {
+				return err
+			}
+		}
 	}
-
-	// write public cert to appropriate folders
-	err = x509ToFile(filepath.Join(baseDir, "admincerts"), rootCA.Name, rootCA.SignCert)
-	if err != nil {
-		return err
-	}
-	err = x509ToFile(filepath.Join(baseDir, "cacerts"), rootCA.Name, rootCA.SignCert)
-	if err != nil {
-		return err
-	}
-	err = x509ToFile(filepath.Join(baseDir, "signcerts"), rootCA.Name, rootCA.SignCert)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func createFolderStructure(rootDir string) error {
@@ -118,10 +106,7 @@ func x509ToFile(baseDir, name string, cert *x509.Certificate) error {
 	//pem encode the cert
 	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 	certFile.Close()
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 
 }

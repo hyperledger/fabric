@@ -31,30 +31,27 @@ func GeneratePrivateKey(keystorePath string) (bccsp.Key,
 	crypto.Signer, error) {
 
 	csp := factory.GetDefault()
+	var response error
+	var priv bccsp.Key
+	signer := &signer.CryptoSigner{}
 
 	// generate a key
 	priv, err := csp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: true})
-	if err != nil {
-		return nil, nil, err
+	response = err
+	if err == nil {
+		// write it to the keystore
+		ks, err := sw.NewFileBasedKeyStore(nil, keystorePath, false)
+		response = err
+		if err == nil {
+			err = ks.StoreKey(priv)
+			response = err
+			if err == nil {
+				// create a crypto.Signer
+				err = signer.Init(csp, priv)
+			}
+		}
 	}
-	// write it to the keystore
-	ks, err := sw.NewFileBasedKeyStore(nil, keystorePath, false)
-	if err != nil {
-		return nil, nil, err
-	}
-	err = ks.StoreKey(priv)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// create a crypto.Signer
-	signer := &signer.CryptoSigner{}
-	err = signer.Init(csp, priv)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return priv, signer, nil
+	return priv, signer, response
 
 }
 

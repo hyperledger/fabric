@@ -16,6 +16,7 @@ limitations under the License.
 package ca_test
 
 import (
+	"crypto/ecdsa"
 	"crypto/x509"
 	"os"
 	"path/filepath"
@@ -53,7 +54,7 @@ func TestNewCA(t *testing.T) {
 
 }
 
-func TestGenerateSignedCertificate(t *testing.T) {
+func TestGenerateSignCertificate(t *testing.T) {
 
 	caDir := filepath.Join(testDir, "ca")
 	certDir := filepath.Join(testDir, "certs")
@@ -77,6 +78,17 @@ func TestGenerateSignedCertificate(t *testing.T) {
 	pemFile := filepath.Join(certDir, testName+"-cert.pem")
 	assert.Equal(t, true, checkForFile(pemFile),
 		"Expected to find file "+pemFile)
+
+	err = rootCA.SignCertificate(certDir, "empty/CA", ecPubKey)
+	assert.Error(t, err, "Bad name should fail")
+
+	// use an empty CA to test error path
+	badCA := &ca.CA{
+		Name:     "badCA",
+		SignCert: &x509.Certificate{},
+	}
+	err = badCA.SignCertificate(certDir, testName, &ecdsa.PublicKey{})
+	assert.Error(t, err, "Empty CA should not be able to sign")
 	cleanup(testDir)
 
 }

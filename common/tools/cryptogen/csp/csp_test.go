@@ -18,13 +18,42 @@ package csp_test
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 	"github.com/stretchr/testify/assert"
 )
+
+// mock implementation of bccsp.Key interface
+type mockKey struct {
+	pubKeyErr error
+	bytesErr  error
+	pubKey    bccsp.Key
+}
+
+func (mk *mockKey) Bytes() ([]byte, error) {
+	if mk.bytesErr != nil {
+		return nil, mk.bytesErr
+	}
+	return []byte{1, 2, 3, 4}, nil
+}
+
+func (mk *mockKey) PublicKey() (bccsp.Key, error) {
+	if mk.pubKeyErr != nil {
+		return nil, mk.pubKeyErr
+	}
+	return mk.pubKey, nil
+}
+
+func (mk *mockKey) SKI() []byte { return []byte{1, 2, 3, 4} }
+
+func (mk *mockKey) Symmetric() bool { return false }
+
+func (mk *mockKey) Private() bool { return false }
 
 var testDir = filepath.Join(os.TempDir(), "csp-test")
 
@@ -52,6 +81,32 @@ func TestGetECPublicKey(t *testing.T) {
 	assert.NoError(t, err, "Failed to get public key from private key")
 	assert.IsType(t, &ecdsa.PublicKey{}, ecPubKey,
 		"Failed to return an ecdsa.PublicKey")
+
+	// force errors using mockKey
+	priv = &mockKey{
+		pubKeyErr: nil,
+		bytesErr:  nil,
+		pubKey:    &mockKey{},
+	}
+	_, err = csp.GetECPublicKey(priv)
+	assert.Error(t, err, "Expected an error with a invalid pubKey bytes")
+	priv = &mockKey{
+		pubKeyErr: nil,
+		bytesErr:  nil,
+		pubKey: &mockKey{
+			bytesErr: errors.New("bytesErr"),
+		},
+	}
+	_, err = csp.GetECPublicKey(priv)
+	assert.EqualError(t, err, "bytesErr", "Expected bytesErr")
+	priv = &mockKey{
+		pubKeyErr: errors.New("pubKeyErr"),
+		bytesErr:  nil,
+		pubKey:    &mockKey{},
+	}
+	_, err = csp.GetECPublicKey(priv)
+	assert.EqualError(t, err, "pubKeyErr", "Expected pubKeyErr")
+
 	cleanup(testDir)
 }
 
