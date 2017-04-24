@@ -1,4 +1,4 @@
-License 
+License
 ========
 
 The Hyperledger Project uses the `Apache License Version

@@ -3,8 +3,8 @@ Transaction Flow
 
 This document outlines the transactional mechanics that take place during a standard asset
 exchange.  The scenario includes two clients, A and B, who are buying and selling
-radishes.  They each have a peer on the network through which they send their 
-transactions and interact with the ledger.  
+radishes.  They each have a peer on the network through which they send their
+transactions and interact with the ledger.
 
 .. image:: images/step0.png
 
@@ -27,16 +27,16 @@ any transaction.
 1. **Client A initiates a transaction**
 
 What's happening? - Client A is sending a request to purchase radishes.  The
-request targets ``peerA`` and ``peerB``, who are respectively representative of 
-Client A and Client B. The endorsement policy states that both peers must endorse 
+request targets ``peerA`` and ``peerB``, who are respectively representative of
+Client A and Client B. The endorsement policy states that both peers must endorse
 any transaction, therefore the request goes to ``peerA`` and ``peerB``.
 
 Next, the transaction proposal is constructed.  An application leveraging a supported
 SDK (node, java, python) utilizes one of the available API's which generates a
 transaction proposal.  The proposal is a request to invoke a chaincode function
 so that data can be read and/or written to the ledger (i.e. write new key value
-pairs for the assets).  The SDK serves as a shim to package the transaction proposal 
-into the properly architected format (protocol buffer over gRPC) and takes the user’s 
+pairs for the assets).  The SDK serves as a shim to package the transaction proposal
+into the properly architected format (protocol buffer over gRPC) and takes the user’s
 cryptographic credentials to produce a unique signature for this transaction proposal.
 
 .. image:: images/step2.png
@@ -102,5 +102,5 @@ notify the client application that the transaction (invocation) has been
 immutably appended to the chain, as well as notification of whether the
 transaction was validated or invalidated.
 
-**Note**: See the :ref:`swimlane` diagram to better understand the server side flow and the 
+**Note**: See the :ref:`swimlane` diagram to better understand the server side flow and the
 protobuffers.

@@ -12,4 +12,4 @@ OR
 Refer to the
 `fabric-sdk-node <https://github.com/hyperledger/fabric-sdk-node>`__
 repository in the Hyperledger community.  The README will take you through
-a simple setup to build HTML output for the API classes and methods.  
+a simple setup to build HTML output for the API classes and methods.

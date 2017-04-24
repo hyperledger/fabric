@@ -10,7 +10,7 @@ Steps to enable TLS for all sever (ECA , ACA , TLSCA , TCA) and between ACA clie
           serverhostoverride:
           tls_enabled: false
           client:
-        cert:  
+        cert:
          file:
 
    To enable TLS between the ACA client and the rest of the CA Services
@@ -45,7 +45,7 @@ output of the form:
             Subject Public Key Info:
                 Public Key Algorithm: id-ecPublicKey
                 EC Public Key:
-                    pub: 
+                    pub:
                         04:38:d2:62:75:4a:18:d9:f7:fe:6a:e7:df:32:e2:
                         15:0f:01:9c:1b:4f:dc:ff:22:97:5c:2a:d9:5c:c3:
                         a3:ef:e3:90:3b:3c:8a:d2:45:b1:60:11:94:5e:a7:
@@ -55,16 +55,16 @@ output of the form:
             X509v3 extensions:
                 X509v3 Key Usage: critical
                     Digital Signature, Key Encipherment
-                X509v3 Extended Key Usage: 
+                X509v3 Extended Key Usage:
                     TLS Web Server Authentication
                 X509v3 Basic Constraints: critical
                     CA:FALSE
-                X509v3 Subject Key Identifier: 
+                X509v3 Subject Key Identifier:
                     E8:9C:86:81:59:D4:D7:76:43:C7:2E:92:88:30:1B:30:A5:B3:A4:5C
-                X509v3 Authority Key Identifier: 
+                X509v3 Authority Key Identifier:
                     keyid:5E:33:AC:E0:9D:B9:F9:71:5F:1F:96:B5:84:85:35:BE:89:8C:35:C2
 
-                X509v3 Subject Alternative Name: 
+                X509v3 Subject Alternative Name:
                     DNS:www.example.com
         Signature Algorithm: ecdsa-with-SHA256
             30:45:02:21:00:9f:7e:93:93:af:3d:cf:7b:77:f0:55:2d:57:

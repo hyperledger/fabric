@@ -1,7 +1,7 @@
 Usage
 -----
 
-* What are the expected performance figures for the fabric? 
+* What are the expected performance figures for the fabric?
 
 The performance of any chain network depends on several factors: proximity
 of the validating nodes, number of validators, encryption method,
@@ -15,7 +15,7 @@ continuously improving the performance and the scalability of the
 system.
 
 * Do I have to own a validating node to transact on a chain
-network? 
+network?
 
 No. You can still transact on a chain network by owning a
 non-validating node (NV-node).
@@ -32,7 +32,7 @@ In addition, NV-nodes retain full copies of the ledger, enabling local
 queries of the ledger data.
 
 * What does the error string "state may be inconsistent, cannot
-query" as a query result mean? 
+query" as a query result mean?
 
 Sometimes, a validating peer will be out
 of sync with the rest of the network. Although determining this

@@ -11,7 +11,7 @@ executed and validated by chain validators together during the consensus
 process. Developers can use chaincodes to develop business contracts,
 asset definitions, and collectively-managed decentralized applications.
 
-* How do I create a business contract using the fabric? 
+* How do I create a business contract using the fabric?
 
 There are generally two ways to develop business contracts: the first way is to
 code individual contracts into standalone instances of chaincode; the
@@ -20,7 +20,7 @@ create decentralized applications that manage the life cycle of one or
 multiple types of business contracts, and let end users instantiate
 instances of contracts within these applications.
 
-* How do I create assets using the fabric? 
+* How do I create assets using the fabric?
 
 Users can use chaincode (for business rules) and membership service (for digital tokens) to
 design assets, as well as the logic that manages them.
@@ -35,7 +35,7 @@ fabric does not advocate either one over the other. Instead, one of our
 first requirements was to ensure that both approaches can be easily
 implemented with tools available in the fabric.
 
-* Which languages are supported for writing chaincode? 
+* Which languages are supported for writing chaincode?
 
 Chaincode can be written in any programming language and executed in containers
 inside the fabric context layer. We are also looking into developing a
@@ -49,7 +49,7 @@ additional languages and the development of a fabric-specific templating
 language have been discussed, and more details will be released in the
 near future.
 
-* Does the fabric have native currency? 
+* Does the fabric have native currency?
 
 No. However, if you really need a native currency for your chain network, you can develop your own
 native currency with chaincode. One common attribute of native currency

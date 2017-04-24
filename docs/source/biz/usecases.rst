@@ -188,7 +188,7 @@ Key Components
    interrogate the chaincode that defines an asset type. If an asset
    represents shares of publicly traded companies, then the view access
    right must be granted to every entity on the network.
-   
+
 
 One Trade, One Contract
 -----------------------
