@@ -278,7 +278,6 @@ func (d *gossipDiscoveryImpl) handlePresumedDeadPeers() {
 			if d.isAlive(deadPeer) {
 				d.expireDeadMembers([]common.PKIidType{deadPeer})
 			}
-			break
 		case s := <-d.toDieChan:
 			d.toDieChan <- s
 			return
@@ -304,7 +303,6 @@ func (d *gossipDiscoveryImpl) handleMessages() {
 			return
 		case m := <-in:
 			d.handleMsgFromComm(m)
-			break
 		}
 	}
 }
@@ -501,7 +499,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.SignedGossipMessage) {
 	}
 
 	d.lock.RLock()
-	lastAliveTS, isAlive := d.aliveLastTS[string(pkiID)]
+	_, isAlive := d.aliveLastTS[string(pkiID)]
 	lastDeadTS, isDead := d.deadLastTS[string(pkiID)]
 	d.lock.RUnlock()
 
@@ -526,7 +524,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.SignedGossipMessage) {
 	}
 
 	d.lock.RLock()
-	lastAliveTS, isAlive = d.aliveLastTS[string(pkiID)]
+	lastAliveTS, isAlive := d.aliveLastTS[string(pkiID)]
 	d.lock.RUnlock()
 
 	if isAlive {

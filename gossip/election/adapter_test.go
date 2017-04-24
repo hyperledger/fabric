@@ -107,10 +107,9 @@ func TestAdapterImpl_Peers(t *testing.T) {
 
 func TestAdapterImpl_Stop(t *testing.T) {
 	_, adapters := createCluster(0, 1, 2, 3, 4, 5)
-	var ch []<-chan Msg
 
 	for _, adapter := range adapters {
-		ch = append(ch, adapter.Accept())
+		adapter.Accept()
 	}
 
 	for _, adapter := range adapters {

@@ -309,7 +309,6 @@ func (conn *connection) writeToStream() {
 				go m.onErr(err)
 				return
 			}
-			break
 		case stop := <-conn.stopChan:
 			conn.logger.Debug("Closing writing to stream")
 			conn.stopChan <- stop
