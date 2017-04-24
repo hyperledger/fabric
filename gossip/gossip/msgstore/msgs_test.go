@@ -29,7 +29,7 @@ import (
 )
 
 func init() {
-	rand.Seed(42)
+	rand.Seed(time.Now().UnixNano())
 }
 
 func alwaysNoAction(this interface{}, that interface{}) common.InvalidationResult {

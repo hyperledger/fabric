@@ -17,7 +17,6 @@ limitations under the License.
 package algo
 
 import (
-	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -43,10 +42,6 @@ import (
 	/ \	--------- Response <[item3, item8], NONCE>------->     / \
 
 */
-
-func init() {
-	rand.Seed(42)
-}
 
 const (
 	defDigestWaitTime   = time.Duration(1) * time.Second
@@ -214,7 +209,7 @@ func (engine *PullEngine) processIncomingDigests() {
 	requestMapping := make(map[string][]string)
 	for n, sources := range engine.item2owners {
 		// select a random source
-		source := sources[rand.Intn(len(sources))]
+		source := sources[util.RandomInt(len(sources))]
 		if _, exists := requestMapping[source]; !exists {
 			requestMapping[source] = make([]string, 0)
 		}
@@ -341,7 +336,7 @@ func (engine *PullEngine) OnRes(items []string, nonce uint64) {
 func (engine *PullEngine) newNONCE() uint64 {
 	n := uint64(0)
 	for {
-		n = uint64(rand.Int63())
+		n = util.RandomUInt64()
 		if !engine.outgoingNONCES.Exists(n) {
 			return n
 		}
