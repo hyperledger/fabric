@@ -48,6 +48,14 @@ func TestGetIdentities(t *testing.T) {
 	}
 }
 
+func TestValidateDefaultSigningIdentity(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	err = localMsp.Validate(id.GetPublicVersion())
+	assert.NoError(t, err)
+}
+
 func TestSerializeIdentities(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
@@ -244,9 +252,14 @@ func TestCertificationIdentifierComputation(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Hash the chain
-	hf, err := localMsp.(*bccspmsp).bccsp.GetHash(&bccsp.SHA256Opts{})
+	// Use the hash of the identity's certificate as id in the IdentityIdentifier
+	hashOpt, err := bccsp.GetHashOpt(localMsp.(*bccspmsp).cryptoConfig.IdentityIdentifierHashFunction)
 	assert.NoError(t, err)
-	for i := 0; i < len(chain); i++ {
+
+	hf, err := localMsp.(*bccspmsp).bccsp.GetHash(hashOpt)
+	assert.NoError(t, err)
+	// Skipping first cert because it belongs to the identity
+	for i := 1; i < len(chain); i++ {
 		hf.Write(chain[i].Raw)
 	}
 	sum := hf.Sum(nil)
@@ -371,27 +384,18 @@ func TestMSPOus(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 
-	localMsp.(*bccspmsp).ouIdentifiers = []*msp.FabricOUIdentifier{
-		&msp.FabricOUIdentifier{
-			OrganizationalUnitIdentifier: "COP",
-			CertifiersIdentifier:         id.GetOrganizationalUnits()[0].CertifiersIdentifier,
-		},
+	localMsp.(*bccspmsp).ouIdentifiers = map[string][][]byte{
+		"COP": {id.GetOrganizationalUnits()[0].CertifiersIdentifier},
 	}
 	assert.NoError(t, localMsp.Validate(id.GetPublicVersion()))
 
-	localMsp.(*bccspmsp).ouIdentifiers = []*msp.FabricOUIdentifier{
-		&msp.FabricOUIdentifier{
-			OrganizationalUnitIdentifier: "COP2",
-			CertifiersIdentifier:         id.GetOrganizationalUnits()[0].CertifiersIdentifier,
-		},
+	localMsp.(*bccspmsp).ouIdentifiers = map[string][][]byte{
+		"COP2": {id.GetOrganizationalUnits()[0].CertifiersIdentifier},
 	}
 	assert.Error(t, localMsp.Validate(id.GetPublicVersion()))
 
-	localMsp.(*bccspmsp).ouIdentifiers = []*msp.FabricOUIdentifier{
-		&msp.FabricOUIdentifier{
-			OrganizationalUnitIdentifier: "COP",
-			CertifiersIdentifier:         []byte{0, 1, 2, 3, 4},
-		},
+	localMsp.(*bccspmsp).ouIdentifiers = map[string][][]byte{
+		"COP": {{0, 1, 2, 3, 4}},
 	}
 	assert.Error(t, localMsp.Validate(id.GetPublicVersion()))
 }

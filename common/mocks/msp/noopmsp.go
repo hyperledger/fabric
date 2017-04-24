@@ -97,7 +97,7 @@ func (id *noopidentity) Validate() error {
 	return nil
 }
 
-func (id *noopidentity) GetOrganizationalUnits() []msp.FabricOUIdentifier {
+func (id *noopidentity) GetOrganizationalUnits() []*m.OUIdentifier {
 	return nil
 }
 

@@ -30,7 +30,17 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/protos/msp"
+	"gopkg.in/yaml.v2"
 )
+
+type OrganizationalUnitIdentifiersConfiguration struct {
+	Certificate                  string `yaml:"Certificate,omitempty"`
+	OrganizationalUnitIdentifier string `yaml:"OrganizationalUnitIdentifier,omitempty"`
+}
+
+type Configuration struct {
+	OrganizationalUnitIdentifiers []*OrganizationalUnitIdentifiersConfiguration `yaml:"OrganizationalUnitIdentifiers,omitempty"`
+}
 
 func readFile(file string) ([]byte, error) {
 	fileCont, err := ioutil.ReadFile(file)
@@ -96,6 +106,7 @@ const (
 	keystore          = "keystore"
 	intermediatecerts = "intermediatecerts"
 	crlsfolder        = "crls"
+	configfilename    = "config.yaml"
 )
 
 func SetupBCCSPKeystoreConfig(bccspConfig *factory.FactoryOpts, keystoreDir string) {
@@ -153,6 +164,7 @@ func getMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string, sigid
 	admincertDir := filepath.Join(dir, admincerts)
 	intermediatecertsDir := filepath.Join(dir, intermediatecerts)
 	crlsDir := filepath.Join(dir, crlsfolder)
+	configFile := filepath.Join(dir, configfilename)
 
 	cacerts, err := getPemMaterialFromDir(cacertDir)
 	if err != nil || len(cacerts) == 0 {
@@ -183,7 +195,45 @@ func getMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string, sigid
 		return nil, fmt.Errorf("Failed loading crls ca certs at [%s]: [%s]", intermediatecertsDir, err)
 	}
 
-	// Load FabricCryptoConfig
+	// Load configuration file
+	// if the configuration file is there then load it
+	// otherwise skip it
+	var ouis []*msp.FabricOUIdentifier
+	_, err = os.Stat(configFile)
+	if err == nil {
+		// load the file, if there is a failure in loading it then
+		// return an error
+		raw, err := ioutil.ReadFile(configFile)
+		if err != nil {
+			return nil, fmt.Errorf("Failed loading configuration file at [%s]: [%s]", configFile, err)
+		}
+
+		configuration := Configuration{}
+		err = yaml.Unmarshal(raw, &configuration)
+		if err != nil {
+			return nil, fmt.Errorf("Failed unmarshalling configuration file at [%s]: [%s]", configFile, err)
+		}
+
+		// Prepare OrganizationalUnitIdentifiers
+		if len(configuration.OrganizationalUnitIdentifiers) > 0 {
+			for _, ouID := range configuration.OrganizationalUnitIdentifiers {
+				f := filepath.Join(dir, ouID.Certificate)
+				raw, err = ioutil.ReadFile(f)
+				if err != nil {
+					return nil, fmt.Errorf("Failed loading OrganizationalUnit certificate at [%s]: [%s]", f, err)
+				}
+				oui := &msp.FabricOUIdentifier{
+					Certificate:                  raw,
+					OrganizationalUnitIdentifier: ouID.OrganizationalUnitIdentifier,
+				}
+				ouis = append(ouis, oui)
+			}
+		}
+	} else {
+		mspLogger.Infof("MSP configuration file not found at [%s]: [%s]", configFile, err)
+	}
+
+	// Set FabricCryptoConfig
 	cryptoConfig := &msp.FabricCryptoConfig{
 		SignatureHashFamily:            bccsp.SHA2,
 		IdentityIdentifierHashFunction: bccsp.SHA256,
@@ -196,8 +246,9 @@ func getMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string, sigid
 		IntermediateCerts: intermediatecert,
 		SigningIdentity:   sigid,
 		Name:              ID,
-		RevocationList:    crls,
-		CryptoConfig:      cryptoConfig}
+		OrganizationalUnitIdentifiers: ouis,
+		RevocationList:                crls,
+		CryptoConfig:                  cryptoConfig}
 
 	fmpsjs, _ := proto.Marshal(fmspconf)
 

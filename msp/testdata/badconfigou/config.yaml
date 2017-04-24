@@ -1,0 +1,3 @@
+OrganizationalUnitIdentifiers:
+  - Certificate: "cacerts/cacert.pem"
+    OrganizationalUnitIdentifier: "COP2"

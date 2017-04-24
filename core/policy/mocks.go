@@ -112,7 +112,7 @@ func (id *MockIdentity) Validate() error {
 	return nil
 }
 
-func (id *MockIdentity) GetOrganizationalUnits() []mspproto.FabricOUIdentifier {
+func (id *MockIdentity) GetOrganizationalUnits() []*msp.OUIdentifier {
 	return nil
 }
 

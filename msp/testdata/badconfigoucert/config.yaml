@@ -1,0 +1,3 @@
+OrganizationalUnitIdentifiers:
+  - Certificate: "signcerts/peer.pem"
+    OrganizationalUnitIdentifier: "COP2"
