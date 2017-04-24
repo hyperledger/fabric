@@ -58,7 +58,7 @@ After creating a configuration profile as desired, simply invoke
 
 ::
 
-    configtxgen -profile &lt;profile_name&gt;
+    configtxgen -profile <profile_name>
 
 This will produce a ``genesis.block`` file in the current directory. You
 may optionally specify another filename by passing in the ``-path``
@@ -77,7 +77,7 @@ The tool can also output a channel creation tx by executing
 
 ::
 
-    configtxgen -profile <profile_name> -outputCreateChannelTx <output.txname>
+    configtxgen -profile <profile_name> -channelID <channel_name> -outputCreateChannelTx <tx_filename>
 
 This will output a marshaled ``Envelope`` message which may be sent to
 broadcast to create a channel.
