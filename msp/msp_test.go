@@ -23,6 +23,8 @@ import (
 
 	"fmt"
 
+	"path/filepath"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/core/config"
@@ -116,6 +118,20 @@ func TestSerializeIdentities(t *testing.T) {
 		t.Fatalf("Identities should be equal (%s) (%s)", id, idBack)
 		return
 	}
+}
+
+func TestValidateCAIdentity(t *testing.T) {
+	caID := getIdentity(t, cacerts)
+
+	err := localMsp.Validate(caID)
+	assert.Error(t, err)
+}
+
+func TestValidateAdminIdentity(t *testing.T) {
+	caID := getIdentity(t, admincerts)
+
+	err := localMsp.Validate(caID)
+	assert.NoError(t, err)
 }
 
 func TestSerializeIdentitiesWithWrongMSP(t *testing.T) {
@@ -496,4 +512,17 @@ func TestMain(m *testing.M) {
 
 	retVal := m.Run()
 	os.Exit(retVal)
+}
+
+func getIdentity(t *testing.T, path string) Identity {
+	mspDir, err := config.GetDevMspDir()
+	assert.NoError(t, err)
+
+	pems, err := getPemMaterialFromDir(filepath.Join(mspDir, path))
+	assert.NoError(t, err)
+
+	id, _, err := localMsp.(*bccspmsp).getIdentityFromConf(pems[0])
+	assert.NoError(t, err)
+
+	return id
 }
