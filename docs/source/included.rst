@@ -3,12 +3,12 @@ What's Offered?
 
 The getting started example uses Docker images to generate the Fabric
 network components.  The scenario includes a consortium of three 
-members, each managing and maintaing a peer node, as well as a "SOLO"
+members, each managing and maintaining a peer node, as well as a "SOLO"
 :ref:`Ordering-Service` and a Certificate Authority (CA). The cryptographic identity
 material, based on standard PKI implementation, has been pre-generated
 and is used for signing + verification on both the server (peer + ordering service) 
 and client (SDK) sides.  The CA is the network entity responsible for issuing
-and maintaing this identity material, which is necessary for authentication by all 
+and maintaining this identity material, which is necessary for authentication by all 
 components and participants on the network.  This sample uses a single CA.  However,
 in enterprise scenarios each :ref:`Member` would likely have their own CA, with more
 complex security/identity measures implemented - e.g. cross-signing certificates, etc.
