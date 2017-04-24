@@ -297,7 +297,6 @@ func TestGetConnectionInfo(t *testing.T) {
 }
 
 func TestCloseConn(t *testing.T) {
-	t.Skip()
 	t.Parallel()
 	comm1, _ := newCommInstance(1611, naiveSec)
 	defer comm1.Stop()
@@ -334,7 +333,20 @@ func TestCloseConn(t *testing.T) {
 	}
 	comm1.CloseConn(&RemotePeer{PKIID: common.PKIidType("pkiID")})
 	time.Sleep(time.Second * 10)
-	assert.Error(t, stream.Send(createGossipMsg().Envelope), "Should have failed because connection is closed")
+	gotErr := false
+	msg2Send := createGossipMsg()
+	msg2Send.GetDataMsg().Payload = &proto.Payload{
+		Data: make([]byte, 1024*1024),
+	}
+	msg2Send.NoopSign()
+	for i := 0; i < defRecvBuffSize; i++ {
+		err := stream.Send(msg2Send.Envelope)
+		if err != nil {
+			gotErr = true
+			break
+		}
+	}
+	assert.True(t, gotErr, "Should have failed because connection is closed")
 }
 
 func TestParallelSend(t *testing.T) {
