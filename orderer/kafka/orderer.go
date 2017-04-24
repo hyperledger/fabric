@@ -292,7 +292,7 @@ func (ch *chainImpl) loop() {
 					continue
 				}
 				batches, committers, ok := ch.support.BlockCutter().Ordered(env)
-				logger.Debugf("[channel: %s] Ordering results: batches: %v, ok: %v", ch.support.ChainID(), batches, ok)
+				logger.Debugf("[channel: %s] Ordering results: items in batch = %v, ok = %v", ch.support.ChainID(), batches, ok)
 				if ok && len(batches) == 0 && timer == nil {
 					timer = time.After(ch.batchTimeout)
 					logger.Debugf("[channel: %s] Just began %s batch timer", ch.support.ChainID(), ch.batchTimeout.String())
