@@ -36,11 +36,13 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/state/mocks"
 	gutil "github.com/hyperledger/fabric/gossip/util"
 	pcomm "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var (
@@ -163,6 +165,32 @@ func (node *peerNode) shutdown() {
 	node.g.Stop()
 }
 
+type mockCommitter struct {
+	mock.Mock
+}
+
+func (mc *mockCommitter) Commit(block *pcomm.Block) error {
+	mc.Called(block)
+	return nil
+}
+
+func (mc *mockCommitter) LedgerHeight() (uint64, error) {
+	if mc.Called().Get(1) == nil {
+		return mc.Called().Get(0).(uint64), nil
+	}
+	return mc.Called().Get(0).(uint64), mc.Called().Get(1).(error)
+}
+
+func (mc *mockCommitter) GetBlocks(blockSeqs []uint64) []*pcomm.Block {
+	if mc.Called(blockSeqs).Get(0) == nil {
+		return nil
+	}
+	return mc.Called(blockSeqs).Get(0).([]*pcomm.Block)
+}
+
+func (*mockCommitter) Close() {
+}
+
 // Default configuration to be used for gossip and communication modules
 func newGossipConfig(id int, boot ...int) *gossip.Config {
 	port := id + portPrefix
@@ -199,10 +227,12 @@ func newCommitter(id int) committer.Committer {
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
-func newPeerNode(config *gossip.Config, committer committer.Committer, acceptor peerIdentityAcceptor) *peerNode {
+func newPeerNodeWithGossip(config *gossip.Config, committer committer.Committer, acceptor peerIdentityAcceptor, g gossip.Gossip) *peerNode {
 	cs := &cryptoServiceMock{acceptor: acceptor}
 	// Gossip component based on configuration provided and communication module
-	g := newGossipInstance(config, &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor})
+	if g == nil {
+		g = newGossipInstance(config, &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor})
+	}
 
 	logger.Debug("Joinning channel", util.GetTestChainID())
 	g.JoinChan(&joinChanMsg{}, common.ChainID(util.GetTestChainID()))
@@ -210,12 +240,119 @@ func newPeerNode(config *gossip.Config, committer committer.Committer, acceptor 
 	// Initialize pseudo peer simulator, which has only three
 	// basic parts
 
+	sp := NewGossipStateProvider(util.GetTestChainID(), g, committer, cs)
+	if sp == nil {
+		return nil
+	}
+
 	return &peerNode{
 		port:   config.BindPort,
 		g:      g,
-		s:      NewGossipStateProvider(util.GetTestChainID(), g, committer, cs),
+		s:      sp,
 		commit: committer,
 		cs:     cs,
+	}
+}
+
+// Constructing pseudo peer node, simulating only gossip and state transfer part
+func newPeerNode(config *gossip.Config, committer committer.Committer, acceptor peerIdentityAcceptor) *peerNode {
+	return newPeerNodeWithGossip(config, committer, acceptor, nil)
+}
+
+func TestNilDirectMsg(t *testing.T) {
+	mc := &mockCommitter{}
+	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+	g := &mocks.GossipMock{}
+	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
+	g.On("Accept", mock.Anything, true).Return(nil, make(<-chan proto.ReceivedMessage))
+	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	defer p.shutdown()
+	p.s.(*GossipStateProviderImpl).handleStateRequest(nil)
+	p.s.(*GossipStateProviderImpl).directMessage(nil)
+	req := &comm.ReceivedMessageImpl{
+		SignedGossipMessage: p.s.(*GossipStateProviderImpl).stateRequestMessage(uint64(10), uint64(8)).NoopSign(),
+	}
+	p.s.(*GossipStateProviderImpl).directMessage(req)
+}
+
+func TestFailures(t *testing.T) {
+	mc := &mockCommitter{}
+	mc.On("LedgerHeight", mock.Anything).Return(uint64(0), nil)
+	g := &mocks.GossipMock{}
+	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
+	g.On("Accept", mock.Anything, true).Return(nil, make(<-chan proto.ReceivedMessage))
+	assert.Panics(t, func() {
+		newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	})
+	// Reprogram mock
+	mc.Mock = mock.Mock{}
+	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), errors.New("Failed accessing ledger"))
+	assert.Nil(t, newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g))
+	// Reprogram mock
+	mc.Mock = mock.Mock{}
+	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+	mc.On("GetBlocks", mock.Anything).Return(nil)
+	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	assert.Nil(t, p.s.GetBlock(uint64(1)))
+}
+
+func TestGossipReception(t *testing.T) {
+	signalChan := make(chan struct{})
+	rawblock := &pcomm.Block{
+		Header: &pcomm.BlockHeader{
+			Number: uint64(1),
+		},
+		Data: &pcomm.BlockData{
+			Data: [][]byte{},
+		},
+	}
+	b, _ := pb.Marshal(rawblock)
+
+	createChan := func(signalChan chan struct{}) <-chan *proto.GossipMessage {
+		c := make(chan *proto.GossipMessage)
+		gMsg := &proto.GossipMessage{
+			Channel: []byte("AAA"),
+			Content: &proto.GossipMessage_DataMsg{
+				DataMsg: &proto.DataMessage{
+					Payload: &proto.Payload{
+						SeqNum: 1,
+						Data:   b,
+					},
+				},
+			},
+		}
+		go func(c chan *proto.GossipMessage) {
+			// Wait for Accept() to be called
+			<-signalChan
+			// Simulate a message reception from the gossip component with an invalid channel
+			c <- gMsg
+			gMsg.Channel = []byte(util.GetTestChainID())
+			// Simulate a message reception from the gossip component
+			c <- gMsg
+		}(c)
+		return c
+	}
+
+	g := &mocks.GossipMock{}
+	rmc := createChan(signalChan)
+	g.On("Accept", mock.Anything, false).Return(rmc, nil).Run(func(_ mock.Arguments) {
+		signalChan <- struct{}{}
+	})
+	g.On("Accept", mock.Anything, true).Return(nil, make(<-chan proto.ReceivedMessage))
+	mc := &mockCommitter{}
+	receivedChan := make(chan struct{})
+	mc.On("Commit", mock.Anything).Run(func(arguments mock.Arguments) {
+		block := arguments.Get(0).(*pcomm.Block)
+		assert.Equal(t, uint64(1), block.Header.Number)
+		receivedChan <- struct{}{}
+	})
+	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	defer p.shutdown()
+	select {
+	case <-receivedChan:
+	case <-time.After(time.Second * 15):
+		assert.Fail(t, "Didn't commit a block within a timely manner")
 	}
 }
 

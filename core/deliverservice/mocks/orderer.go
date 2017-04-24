@@ -77,7 +77,6 @@ func (o *Orderer) SendBlock(seq uint64) {
 func (o *Orderer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) error {
 	envlp, err := stream.Recv()
 	if err != nil {
-		fmt.Println(err)
 		return nil
 	}
 	payload := &common.Payload{}

@@ -330,6 +330,35 @@ func bootPeer(port int) string {
 	return fmt.Sprintf("localhost:%d", port)
 }
 
+func TestToString(t *testing.T) {
+	nm := NetworkMember{
+		Endpoint:         "a",
+		InternalEndpoint: "b",
+	}
+	assert.Equal(t, "b", nm.PreferredEndpoint())
+	nm = NetworkMember{
+		Endpoint: "a",
+	}
+	assert.Equal(t, "a", nm.PreferredEndpoint())
+
+	now := time.Now()
+	ts := &timestamp{
+		incTime: now,
+		seqNum:  uint64(42),
+	}
+	assert.Equal(t, fmt.Sprintf("%d, %d", now.UnixNano(), 42), fmt.Sprint(ts))
+}
+
+func TestBadInput(t *testing.T) {
+	inst := createDiscoveryInstance(2048, fmt.Sprintf("d%d", 0), []string{})
+	inst.Discovery.(*gossipDiscoveryImpl).handleMsgFromComm(nil)
+	inst.Discovery.(*gossipDiscoveryImpl).handleMsgFromComm((&proto.GossipMessage{
+		Content: &proto.GossipMessage_DataMsg{
+			DataMsg: &proto.DataMessage{},
+		},
+	}).NoopSign())
+}
+
 func TestConnect(t *testing.T) {
 	t.Parallel()
 	nodeNum := 10

@@ -259,13 +259,14 @@ func TestHandshake(t *testing.T) {
 	case <-time.After(time.Second * 10):
 		assert.Fail(t, "skipHandshake flag should have authorized the authentication")
 	}
-
 }
 
 func TestBasic(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(2000, naiveSec)
 	comm2, _ := newCommInstance(3000, naiveSec)
+	comm1.(*commImpl).SetDialOpts()
+	comm2.(*commImpl).SetDialOpts()
 	defer comm1.Stop()
 	defer comm2.Stop()
 	m1 := comm1.Accept(acceptAll)
@@ -283,6 +284,49 @@ func TestBasic(t *testing.T) {
 	waitForMessages(t, out, 2, "Didn't receive 2 messages")
 }
 
+func TestProdConstructor(t *testing.T) {
+	t.Parallel()
+	keyFileName := fmt.Sprintf("key.%d.pem", util.RandomUInt64())
+	certFileName := fmt.Sprintf("cert.%d.pem", util.RandomUInt64())
+
+	generateCertificates(keyFileName, certFileName)
+	cert, _ := tls.LoadX509KeyPair(certFileName, keyFileName)
+	os.Remove(keyFileName)
+	os.Remove(certFileName)
+	srv, lsnr, dialOpts, certHash := createGRPCLayer(20000)
+	defer srv.Stop()
+	defer lsnr.Close()
+	comm1, _ := NewCommInstance(srv, &cert, identity.NewIdentityMapper(naiveSec), []byte("localhost:20000"), dialOpts)
+	comm1.(*commImpl).selfCertHash = certHash
+	go srv.Serve(lsnr)
+
+	generateCertificates(keyFileName, certFileName)
+	cert, _ = tls.LoadX509KeyPair(certFileName, keyFileName)
+	os.Remove(keyFileName)
+	os.Remove(certFileName)
+	srv, lsnr, dialOpts, certHash = createGRPCLayer(30000)
+	defer srv.Stop()
+	defer lsnr.Close()
+	comm2, _ := NewCommInstance(srv, &cert, identity.NewIdentityMapper(naiveSec), []byte("localhost:30000"), dialOpts)
+	comm2.(*commImpl).selfCertHash = certHash
+	go srv.Serve(lsnr)
+	defer comm1.Stop()
+	defer comm2.Stop()
+	m1 := comm1.Accept(acceptAll)
+	m2 := comm2.Accept(acceptAll)
+	out := make(chan uint64, 2)
+	reader := func(ch <-chan proto.ReceivedMessage) {
+		m := <-ch
+		out <- m.GetGossipMessage().Nonce
+	}
+	go reader(m1)
+	go reader(m2)
+	comm1.Send(createGossipMsg(), remotePeer(30000))
+	time.Sleep(time.Second)
+	comm2.Send(createGossipMsg(), remotePeer(20000))
+	waitForMessages(t, out, 2, "Didn't receive 2 messages")
+}
+
 func TestGetConnectionInfo(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(6000, naiveSec)
@@ -296,6 +340,7 @@ func TestGetConnectionInfo(t *testing.T) {
 		t.Fatal("Didn't receive a message in time")
 	case msg := <-m1:
 		assert.Equal(t, comm2.GetPKIid(), msg.GetConnectionInfo().ID)
+		assert.NotNil(t, msg.GetSourceEnvelope())
 	}
 }
 

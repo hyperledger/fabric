@@ -21,7 +21,6 @@ import (
 	"net"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -31,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
 
@@ -38,41 +38,50 @@ func init() {
 	util.SetupTestLogging()
 }
 
+var (
+	cryptSvc = &cryptoService{}
+	secAdv   = &secAdviser{}
+)
+
 // This is just a test that shows how to instantiate a gossip component
 func TestNewGossipCryptoService(t *testing.T) {
 	setupTestEnv()
 	s1 := grpc.NewServer()
 	s2 := grpc.NewServer()
 	s3 := grpc.NewServer()
-
 	ll1, _ := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5611))
 	ll2, _ := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5612))
 	ll3, _ := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5613))
-
 	endpoint1 := "localhost:5611"
 	endpoint2 := "localhost:5612"
 	endpoint3 := "localhost:5613"
-
 	msptesttools.LoadMSPSetupForTesting()
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
-
-	cryptSvc := &cryptoService{}
-	secAdv := &secAdviser{}
-
 	idMapper := identity.NewIdentityMapper(cryptSvc)
 
 	g1 := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc, idMapper, []grpc.DialOption{grpc.WithInsecure()})
 	g2 := NewGossipComponent(peerIdentity, endpoint2, s2, secAdv, cryptSvc, idMapper, []grpc.DialOption{grpc.WithInsecure()}, endpoint1)
 	g3 := NewGossipComponent(peerIdentity, endpoint3, s3, secAdv, cryptSvc, idMapper, []grpc.DialOption{grpc.WithInsecure()}, endpoint1)
+	defer g1.Stop()
+	defer g2.Stop()
+	defer g3.Stop()
 	go s1.Serve(ll1)
 	go s2.Serve(ll2)
 	go s3.Serve(ll3)
+}
 
-	time.Sleep(time.Second * 5)
-	fmt.Println(g1.Peers())
-	fmt.Println(g2.Peers())
-	fmt.Println(g3.Peers())
-	time.Sleep(time.Second)
+func TestBadInitialization(t *testing.T) {
+	msptesttools.LoadMSPSetupForTesting()
+	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
+	s1 := grpc.NewServer()
+	idMapper := identity.NewIdentityMapper(cryptSvc)
+	assert.Panics(t, func() {
+		newConfig("anEndpointWithoutAPort", "anEndpointWithoutAPort")
+	})
+	assert.Panics(t, func() {
+		viper.Set("peer.tls.enabled", true)
+		NewGossipComponent(peerIdentity, "localhost:5000", s1, secAdv, cryptSvc, idMapper, []grpc.DialOption{grpc.WithInsecure()})
+	})
 }
 
 func setupTestEnv() {

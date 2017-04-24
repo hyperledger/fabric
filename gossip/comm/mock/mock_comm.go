@@ -192,8 +192,3 @@ func (mock *commMock) Stop() {
 	logger.Debug("[XXX]: Sending done signal to close the module.")
 	mock.done <- struct{}{}
 }
-
-// BlackListPKIid prohibits the module communicating with the given PKIid
-func (mock *commMock) BlackListPKIid(PKIid common.PKIidType) {
-	// NOOP
-}

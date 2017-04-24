@@ -19,12 +19,11 @@ package discovery
 import (
 	"bytes"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"strconv"
-	"strings"
 
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
@@ -616,17 +615,6 @@ func (d *gossipDiscoveryImpl) createMembershipRequest(includeInternalEndpoint bo
 			MemReq: req,
 		},
 	}).NoopSign()
-}
-
-func (d *gossipDiscoveryImpl) getKnownPeers() [][]byte {
-	d.lock.RLock()
-	defer d.lock.RUnlock()
-
-	peers := [][]byte{}
-	for id := range d.id2Member {
-		peers = append(peers, common.PKIidType(id))
-	}
-	return peers
 }
 
 func (d *gossipDiscoveryImpl) copyLastSeen(lastSeenMap map[string]*timestamp) []NetworkMember {
