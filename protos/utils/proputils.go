@@ -381,26 +381,6 @@ func CreateChaincodeProposalWithTxIDNonceAndTransient(txid string, typ common.He
 	return &peer.Proposal{Header: hdrBytes, Payload: ccPropPayloadBytes}, txid, nil
 }
 
-// GetChaincodeIDFromBytesProposalResponsePayload gets ChaincodeID from given ProposalResponsePayload bytes.
-// Only proposalresponse bytes from ENDORSER_TRANSACTION should be passed in (we don't have info to check that).
-func GetChaincodeIDFromBytesProposalResponsePayload(prpBytes []byte) (*peer.ChaincodeID, error) {
-	prp, err := GetProposalResponsePayload(prpBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	cact, err := GetChaincodeAction(prp.Extension)
-	if err != nil {
-		return nil, err
-	}
-
-	if cact.ChaincodeId == nil {
-		return nil, fmt.Errorf("Empty ChaincodeID")
-	}
-
-	return cact.ChaincodeId, nil
-}
-
 // GetBytesProposalResponsePayload gets proposal response payload
 func GetBytesProposalResponsePayload(hash []byte, response *peer.Response, result []byte, event []byte, ccid *peer.ChaincodeID) ([]byte, error) {
 	cAct := &peer.ChaincodeAction{Events: event, Results: result, Response: response, ChaincodeId: ccid}

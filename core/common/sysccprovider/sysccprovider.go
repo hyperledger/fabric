@@ -17,7 +17,6 @@ limitations under the License.
 package sysccprovider
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
@@ -32,6 +31,10 @@ type SystemChaincodeProvider interface {
 	// IsSysCCAndNotInvokableCC2CC returns true if the supplied chaincode
 	// is a system chaincode and is not invokable through a cc2cc invocation
 	IsSysCCAndNotInvokableCC2CC(name string) bool
+
+	// IsSysCCAndNotInvokable returns true if the supplied chaincode
+	// is a system chaincode and is not invokable through a proposal
+	IsSysCCAndNotInvokableExternal(name string) bool
 
 	// GetQueryExecutorForLedger returns a query executor for the
 	// ledger of the supplied channel.
@@ -74,20 +77,3 @@ type ChaincodeInstance struct {
 func (ci *ChaincodeInstance) String() string {
 	return ci.ChainID + "." + ci.ChaincodeName + "#" + ci.ChaincodeVersion
 }
-
-// VsccOutputData contains all the data returned from vscc.
-type VsccOutputData struct {
-	// ProposalResponse bytes array validated by vscc
-	ProposalResponseData [][]byte `protobuf:"bytes,1,rep,name=proposalResponseData,proto3"`
-}
-
-//implement functions needed from proto.Message for proto's mar/unmarshal functions
-
-//Reset resets
-func (vod *VsccOutputData) Reset() { *vod = VsccOutputData{} }
-
-//String convers to string
-func (vod *VsccOutputData) String() string { return proto.CompactTextString(vod) }
-
-//ProtoMessage just exists to make proto happy
-func (*VsccOutputData) ProtoMessage() {}

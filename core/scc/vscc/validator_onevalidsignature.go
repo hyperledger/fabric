@@ -126,7 +126,6 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		return shim.Error(err.Error())
 	}
 
-	prespBytesData := [][]byte{}
 	// loop through each of the actions within
 	for _, act := range tx.Actions {
 		cap, err := utils.GetChaincodeActionPayload(act.Payload)
@@ -175,21 +174,11 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 				return shim.Error(err.Error())
 			}
 		}
-
-		prespBytesData = append(prespBytesData, prespBytes)
-	}
-
-	vsccOutputData := &sysccprovider.VsccOutputData{
-		ProposalResponseData: prespBytesData,
-	}
-	vodBytes, err := utils.Marshal(vsccOutputData)
-	if err != nil {
-		return shim.Error(err.Error())
 	}
 
 	logger.Debugf("VSCC exists successfully")
 
-	return shim.Success(vodBytes)
+	return shim.Success(nil)
 }
 
 // checkInstantiationPolicy evaluates an instantiation policy against a signed proposal

@@ -55,6 +55,7 @@ func (c *sccProviderImpl) IsSysCCAndNotInvokableCC2CC(name string) bool {
 	return IsSysCCAndNotInvokableCC2CC(name)
 }
 
+// GetQueryExecutorForLedger returns a query executor for the specified channel
 func (c *sccProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
 	l := peer.GetLedger(cid)
 	if l == nil {
@@ -62,4 +63,11 @@ func (c *sccProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExe
 	}
 
 	return l.NewQueryExecutor()
+}
+
+// IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
+// ia system chaincode and it NOT nvokable
+func (c *sccProviderImpl) IsSysCCAndNotInvokableExternal(name string) bool {
+	// call the static method of the same name
+	return IsSysCCAndNotInvokableExternal(name)
 }

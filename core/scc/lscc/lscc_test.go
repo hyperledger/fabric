@@ -34,6 +34,7 @@ import (
 	"bytes"
 	"compress/gzip"
 
+	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/msp"
@@ -43,42 +44,11 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 
 	cutil "github.com/hyperledger/fabric/core/container/util"
-	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
 var lscctestpath = "/tmp/lscctest"
-
-type mocksccProviderFactory struct {
-}
-
-func (c *mocksccProviderFactory) NewSystemChaincodeProvider() sysccprovider.SystemChaincodeProvider {
-	return &mocksccProviderImpl{}
-}
-
-type mocksccProviderImpl struct {
-}
-
-func (c *mocksccProviderImpl) IsSysCC(name string) bool {
-	return true
-}
-
-func (c *mocksccProviderImpl) IsSysCCAndNotInvokableCC2CC(name string) bool {
-	return false
-}
-
-func (c *mocksccProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
-	return nil, nil
-}
-
-func register(stub *shim.MockStub, ccname string) error {
-	args := [][]byte{[]byte("register"), []byte(ccname)}
-	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
-		return fmt.Errorf(string(res.Message))
-	}
-	return nil
-}
 
 func constructDeploymentSpec(name string, path string, version string, initArgs [][]byte, createFS bool) (*pb.ChaincodeDeploymentSpec, error) {
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: name, Path: path, Version: version}, Input: &pb.ChaincodeInput{Args: initArgs}}
@@ -1244,7 +1214,8 @@ var chainid string = util.GetTestChainID()
 
 func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(lscctestpath)
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&mocksccProviderFactory{})
+	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{})
+
 	var err error
 
 	// setup the MSP manager so that we can sign/verify

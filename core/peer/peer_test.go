@@ -24,7 +24,9 @@ import (
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/localmsp"
+	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/mocks/ccprovider"
@@ -71,6 +73,7 @@ func TestInitialize(t *testing.T) {
 
 	// we mock this because we can't import the chaincode package lest we create an import cycle
 	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{})
+	sysccprovider.RegisterSystemChaincodeProviderFactory(&mscc.MocksccProviderFactory{})
 
 	Initialize(nil)
 }
