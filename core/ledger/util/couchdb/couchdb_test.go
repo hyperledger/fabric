@@ -209,15 +209,12 @@ func TestDBBadDatabaseName(t *testing.T) {
 
 func TestDBBadConnection(t *testing.T) {
 
-	// TestDBBadConnectionDef skipped since retry logic stalls the unit tests for two minutes.
-	// TODO Re-enable once configurable retry logic is introduced
-	t.Skip()
-
 	if ledgerconfig.IsCouchDBEnabled() {
 
 		//create a new instance and database object
+		//Limit the maxRetriesOnStartup to 3 in order to reduce time for the failure
 		_, err := CreateCouchInstance(badConnectURL, couchDBDef.Username, couchDBDef.Password,
-			couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
+			couchDBDef.MaxRetries, 3, couchDBDef.RequestTimeout)
 		testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for a bad connection"))
 	}
 }
