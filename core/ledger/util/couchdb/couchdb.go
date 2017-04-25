@@ -770,9 +770,8 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 
 //ReadDocRange method provides function to a range of documents based on the start and end keys
 //startKey and endKey can also be empty strings.  If startKey and endKey are empty, all documents are returned
-//TODO This function provides a limit option to specify the max number of entries.   This will
-//need to be added to configuration options.  Skip will not be used by Fabric since a consistent
-//result set is required
+//This function provides a limit option to specify the max number of entries and is supplied by config.
+//Skip is reserved for possible future future use.
 func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip int) (*[]QueryResult, error) {
 
 	logger.Debugf("Entering ReadDocRange()  startKey=%s, endKey=%s", startKey, endKey)
