@@ -37,7 +37,7 @@ The package is created and signed using the command
 
 ::
 
-    peer chaincode package -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -v 0 -s -S ccpack.out
+    peer chaincode package -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -v 0 -s -S -i "AND('OrgA.admin')" ccpack.out
 
 where ``-s`` specifies creating the package as opposed to generating raw
 ChaincodeDeploymentSpec ``-S`` specifies instructs to sign the package
@@ -47,6 +47,13 @@ using the Local MSP (as defined by ``localMspid`` property in
 The ``-S`` option is optional. However if a package is created without a
 signature, it cannot be signed by any other owner using the
 ``signpackage`` command in the next section.
+
+The ``-i`` option is optional. It allows specifying an instantiation policy
+for the chaincode. The instantiation policy has the same format as an
+endorsement policy and specifies who can instantiate the chaincode. In the
+example above, only the admin of OrgA is allowed to instantiate the chaincode.
+If no policy is provided, the default policy is used, which only allows the
+admin of the peer's MSP to instantiate chaincode.
 
 Package signing
 ---------------
