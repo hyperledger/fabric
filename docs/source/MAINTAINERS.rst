@@ -8,6 +8,8 @@ Maintainers
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
 | Chris Ferris              | ChristopherFerris   | christo4ferris   | cbf            | chris.ferris@gmail.com         |
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
+| Dave Enyart               | denyeart            | denyeart         | dave.enyeart   | enyeart@us.ibm.com         |
++---------------------------+---------------------+------------------+----------------+--------------------------------+
 | Gabor Hosszu              | hgabre              | gabre            | hgabor         | gabor@digitalasset.com         |
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
 | Gari Singh                | mastersingh24       | mastersingh24    | garisingh      | gari.r.singh@gmail.com         |
