@@ -18,7 +18,6 @@ package ledgerconfig
 
 import (
 	"testing"
-	"time"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
@@ -45,19 +44,6 @@ func TestIsCouchDBEnabled(t *testing.T) {
 	viper.Set("ledger.state.stateDatabase", "CouchDB")
 	updatedValue := IsCouchDBEnabled()
 	testutil.AssertEquals(t, updatedValue, true) //test config returns true
-}
-
-func TestGetCouchDBDefinition(t *testing.T) {
-	setUpCoreYAMLConfig()
-	defer ledgertestutil.ResetConfigToDefaultValues()
-	viper.Set("ledger.state.stateDatabase", "CouchDB")
-	couchDBDef := GetCouchDBDefinition()
-	testutil.AssertEquals(t, couchDBDef.URL, "127.0.0.1:5984")
-	testutil.AssertEquals(t, couchDBDef.Username, "")
-	testutil.AssertEquals(t, couchDBDef.Password, "")
-	testutil.AssertEquals(t, couchDBDef.MaxRetries, 3)
-	testutil.AssertEquals(t, couchDBDef.MaxRetriesOnStartup, 10)
-	testutil.AssertEquals(t, couchDBDef.RequestTimeout, time.Second*35)
 }
 
 func TestIsHistoryDBEnabledDefault(t *testing.T) {

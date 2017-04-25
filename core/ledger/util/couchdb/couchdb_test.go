@@ -35,7 +35,7 @@ const badConnectURL = "couchdb:5990"
 const updateDocumentConflictError = "conflict"
 const updateDocumentConflictReason = "Document update conflict."
 
-var couchDBDef *ledgerconfig.CouchDBDef
+var couchDBDef *CouchDBDef
 
 func cleanup(database string) error {
 	//create a new connection
@@ -81,7 +81,7 @@ func TestMain(m *testing.M) {
 	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
 
 	// Create CouchDB definition from config parameters
-	couchDBDef = ledgerconfig.GetCouchDBDefinition()
+	couchDBDef = GetCouchDBDefinition()
 
 	//run the tests
 	result := m.Run()

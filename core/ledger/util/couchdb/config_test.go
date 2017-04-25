@@ -14,6 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package statecouchdb
+package couchdb
 
-//TODO - Move couch config from ledger_config to here
+import (
+	"testing"
+	"time"
+
+	"github.com/hyperledger/fabric/common/ledger/testutil"
+)
+
+func TestGetCouchDBDefinition(t *testing.T) {
+	couchDBDef := GetCouchDBDefinition()
+	testutil.AssertEquals(t, couchDBDef.URL, "couchdb:5984")
+	testutil.AssertEquals(t, couchDBDef.Username, "")
+	testutil.AssertEquals(t, couchDBDef.Password, "")
+	testutil.AssertEquals(t, couchDBDef.MaxRetries, 3)
+	testutil.AssertEquals(t, couchDBDef.MaxRetriesOnStartup, 10)
+	testutil.AssertEquals(t, couchDBDef.RequestTimeout, time.Second*35)
+}

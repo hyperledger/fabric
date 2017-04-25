@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 )
 
@@ -52,7 +51,7 @@ func (env *TestVDBEnv) Cleanup(dbName string) {
 }
 func cleanupDB(dbName string) {
 	//create a new connection
-	couchDBDef := ledgerconfig.GetCouchDBDefinition()
+	couchDBDef := couchdb.GetCouchDBDefinition()
 	couchInstance, _ := couchdb.CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
 		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
 	db := couchdb.CouchDatabase{CouchInstance: *couchInstance, DBName: dbName}
