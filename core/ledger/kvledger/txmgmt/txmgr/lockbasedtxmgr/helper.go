@@ -172,7 +172,7 @@ func (itr *resultsItr) Next() (commonledger.QueryResult, error) {
 		return nil, nil
 	}
 	versionedKV := queryResult.(*statedb.VersionedKV)
-	return &queryresult.KV{Key: versionedKV.Key, Value: versionedKV.Value}, nil
+	return &queryresult.KV{Namespace: versionedKV.Namespace, Key: versionedKV.Key, Value: versionedKV.Value}, nil
 }
 
 // updateRangeQueryInfo updates two attributes of the rangeQueryInfo
@@ -225,7 +225,7 @@ func (itr *queryResultsItr) Next() (commonledger.QueryResult, error) {
 	if itr.RWSetBuilder != nil {
 		itr.RWSetBuilder.AddToReadSet(versionedQueryRecord.Namespace, versionedQueryRecord.Key, versionedQueryRecord.Version)
 	}
-	return &queryresult.KV{Key: versionedQueryRecord.Key, Value: versionedQueryRecord.Value}, nil
+	return &queryresult.KV{Namespace: versionedQueryRecord.Namespace, Key: versionedQueryRecord.Key, Value: versionedQueryRecord.Value}, nil
 }
 
 // Close implements method in interface ledger.ResultsIterator

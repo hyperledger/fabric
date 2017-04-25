@@ -26,8 +26,9 @@ import "google/protobuf/timestamp.proto";
 
 // KV -- QueryResult for range/execute query. Holds a key and corresponding value.
 message KV {
-    string key = 1;
-    bytes value = 2;
+    string namespace = 1;
+    string key = 2;
+    bytes value = 3;
 }
 
 // KeyModification -- QueryResult for history query. Holds a transaction ID, value,
