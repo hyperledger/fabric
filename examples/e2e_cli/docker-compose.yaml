@@ -177,10 +177,9 @@ services:
 
   cli:
     container_name: cli
-    image: hyperledger/fabric-peer
+    image: hyperledger/fabric-testenv
     tty: true
     environment:
-      - GOPATH=/opt/gopath
       - CORE_PEER_ADDRESSAUTODETECT=true
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
       - CORE_LOGGING_LEVEL=DEBUG
