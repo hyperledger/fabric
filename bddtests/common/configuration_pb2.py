@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='common/configuration.proto',
   package='common',
   syntax='proto3',
-  serialized_pb=_b('\n\x1a\x63ommon/configuration.proto\x12\x06\x63ommon\" \n\x10HashingAlgorithm\x12\x0c\n\x04name\x18\x01 \x01(\t\"*\n\x19\x42lockDataHashingStructure\x12\r\n\x05width\x18\x01 \x01(\r\"%\n\x10OrdererAddresses\x12\x11\n\taddresses\x18\x01 \x03(\tBS\n$org.hyperledger.fabric.protos.commonZ+github.com/hyperledger/fabric/protos/commonb\x06proto3')
+  serialized_pb=_b('\n\x1a\x63ommon/configuration.proto\x12\x06\x63ommon\" \n\x10HashingAlgorithm\x12\x0c\n\x04name\x18\x01 \x01(\t\"*\n\x19\x42lockDataHashingStructure\x12\r\n\x05width\x18\x01 \x01(\r\"%\n\x10OrdererAddresses\x12\x11\n\taddresses\x18\x01 \x03(\t\"\x1a\n\nConsortium\x12\x0c\n\x04name\x18\x01 \x01(\tBS\n$org.hyperledger.fabric.protos.commonZ+github.com/hyperledger/fabric/protos/commonb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -118,9 +118,41 @@ _ORDERERADDRESSES = _descriptor.Descriptor(
   serialized_end=153,
 )
 
+
+_CONSORTIUM = _descriptor.Descriptor(
+  name='Consortium',
+  full_name='common.Consortium',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='common.Consortium.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=155,
+  serialized_end=181,
+)
+
 DESCRIPTOR.message_types_by_name['HashingAlgorithm'] = _HASHINGALGORITHM
 DESCRIPTOR.message_types_by_name['BlockDataHashingStructure'] = _BLOCKDATAHASHINGSTRUCTURE
 DESCRIPTOR.message_types_by_name['OrdererAddresses'] = _ORDERERADDRESSES
+DESCRIPTOR.message_types_by_name['Consortium'] = _CONSORTIUM
 
 HashingAlgorithm = _reflection.GeneratedProtocolMessageType('HashingAlgorithm', (_message.Message,), dict(
   DESCRIPTOR = _HASHINGALGORITHM,
@@ -142,6 +174,13 @@ OrdererAddresses = _reflection.GeneratedProtocolMessageType('OrdererAddresses', 
   # @@protoc_insertion_point(class_scope:common.OrdererAddresses)
   ))
 _sym_db.RegisterMessage(OrdererAddresses)
+
+Consortium = _reflection.GeneratedProtocolMessageType('Consortium', (_message.Message,), dict(
+  DESCRIPTOR = _CONSORTIUM,
+  __module__ = 'common.configuration_pb2'
+  # @@protoc_insertion_point(class_scope:common.Consortium)
+  ))
+_sym_db.RegisterMessage(Consortium)
 
 
 DESCRIPTOR.has_options = True

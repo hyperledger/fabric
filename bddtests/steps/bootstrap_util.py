@@ -52,6 +52,7 @@ NodeAdminTuple = namedtuple("NodeAdminTuple", ['user', 'nodeName', 'organization
 
 ApplicationGroup = "Application"
 OrdererGroup     = "Orderer"
+ConsortiumsGroup = "Consortiums"
 MSPKey           = "MSP"
 toValue = lambda message: message.SerializeToString()
 
@@ -392,6 +393,9 @@ class BootstrapHelper:
     KEY_CONSENSUS_TYPE = "ConsensusType"
     KEY_ORDERER_KAFKA_BROKERS = "KafkaBrokers"
     KEY_CHAIN_CREATION_POLICY_NAMES = "ChainCreationPolicyNames"
+    KEY_CHANNEL_CREATION_POLICY = "ChannelCreationPolicy"
+    KEY_CHANNEL_RESTRICTIONS = "ChannelRestrictions"
+    KEY_CONSORTIUM = "Consortium"
     KEY_ACCEPT_ALL_POLICY = "AcceptAllPolicy"
     KEY_HASHING_ALGORITHM = "HashingAlgorithm"
     KEY_BLOCKDATA_HASHING_STRUCTURE = "BlockDataHashingStructure"
@@ -424,8 +428,8 @@ class BootstrapHelper:
         return rand.bytes(BootstrapHelper.DEFAULT_NONCE_SIZE)
 
     @classmethod
-    def addSignatureToSignedConfigItem(cls, configUpdateEnvelope, (entity, cert)):
-        serializedIdentity = identities_pb2.SerializedIdentity(mspid=entity.name, id_bytes=crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+    def addSignatureToSignedConfigItem(cls, configUpdateEnvelope, (entity, mspId, cert)):
+        serializedIdentity = identities_pb2.SerializedIdentity(mspid=mspId, id_bytes=crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
         sigHeader = common_dot_common_pb2.SignatureHeader(creator=serializedIdentity.SerializeToString(),
                                                           nonce=BootstrapHelper.getNonce())
         sigHeaderBytes = sigHeader.SerializeToString()
@@ -479,105 +483,8 @@ class BootstrapHelper:
             value=value)
         return configItem
 
-    def encodeAnchorInfo(self, ciValue):
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("PEER"),
-            key=BootstrapHelper.KEY_ANCHOR_PEERS,
-            value=ciValue.SerializeToString())
-        return self.signConfigItem(configItem)
-
-    def encodeMspInfo(self, mspUniqueId, ciValue):
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("MSP"),
-            key=mspUniqueId,
-            value=ciValue.SerializeToString())
-        return self.signConfigItem(configItem)
-
-    def encodeHashingAlgorithm(self, hashingAlgorithm="SHAKE256"):
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("CHAIN"),
-            key=BootstrapHelper.KEY_HASHING_ALGORITHM,
-            value=common_dot_configuration_pb2.HashingAlgorithm(name=hashingAlgorithm).SerializeToString())
-        return self.signConfigItem(configItem)
-
-    def encodeBatchSize(self):
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("ORDERER"),
-            key=BootstrapHelper.KEY_BATCH_SIZE,
-            value=orderer_dot_configuration_pb2.BatchSize(maxMessageCount=self.batchSize,
-                                                          absoluteMaxBytes=self.absoluteMaxBytes,
-                                                          preferredMaxBytes=self.preferredMaxBytes).SerializeToString())
-        return self.signConfigItem(configItem)
-
-    def encodeBatchTimeout(self):
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("ORDERER"),
-            key=BootstrapHelper.KEY_BATCH_TIMEOUT,
-            value=orderer_dot_configuration_pb2.BatchTimeout(timeout=self.batchTimeout).SerializeToString())
-        return self.signConfigItem(configItem)
-
-    def encodeChainCreators(self, ciValue=orderer_dot_configuration_pb2.ChainCreationPolicyNames(
-        names=DEFAULT_CHAIN_CREATORS).SerializeToString()):
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("ORDERER"),
-            key=BootstrapHelper.KEY_CHAIN_CREATION_POLICY_NAMES,
-            value=ciValue)
-        return self.signConfigItem(configItem)
-
-    def encodePolicy(self, key, policy=common_dot_policies_pb2.Policy(
-        type=common_dot_policies_pb2.Policy.PolicyType.Value("SIGNATURE"),
-        policy=AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(0, []), identities=[]).SerializeToString())):
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("POLICY"),
-            key=key,
-            value=policy.SerializeToString())
-        return self.signConfigItem(configItem)
-
-    def encodeAcceptAllPolicy(self):
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("POLICY"),
-            key=BootstrapHelper.KEY_ACCEPT_ALL_POLICY,
-            value=common_dot_policies_pb2.Policy(type=1, policy=AuthDSLHelper.Envelope(
-                signaturePolicy=AuthDSLHelper.NOutOf(0, []), identities=[]).SerializeToString()).SerializeToString())
-        return self.signConfigItem(configItem)
-
-    def lockDefaultModificationPolicy(self):
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("POLICY"),
-            key=BootstrapHelper.KEY_NEW_CONFIGURATION_ITEM_POLICY,
-            value=common_dot_policies_pb2.Policy(type=1, policy=AuthDSLHelper.Envelope(
-                signaturePolicy=AuthDSLHelper.NOutOf(1, []), identities=[]).SerializeToString()).SerializeToString())
-        return self.signConfigItem(configItem)
-
     def computeBlockDataHash(self, blockData):
         return computeCryptoHash(blockData.SerializeToString())
-
-    def signInitialChainConfig(self, signedConfigItems, chainCreationPolicyName):
-        'Create a signedConfigItem using previous config items'
-        # Create byte array to store concatenated bytes
-        # concatenatedConfigItemsBytes = bytearray()
-        # for sci in signedConfigItems:
-        #     concatenatedConfigItemsBytes = concatenatedConfigItemsBytes + bytearray(sci.ConfigurationItem)
-        # hash = computeCryptoHash(concatenatedConfigItemsBytes)
-        # data = ''
-        # for sci in signedConfigItems:
-        #     data = data + sci.ConfigurationItem
-        # # Compute hash over concatenated bytes
-        # hash = computeCryptoHash(data)
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("ORDERER"),
-            key=BootstrapHelper.KEY_CREATIONPOLICY,
-            value=orderer_dot_configuration_pb2.CreationPolicy(policy=chainCreationPolicyName).SerializeToString())
-        return [self.signConfigItem(configItem)] + signedConfigItems
-
-
-def createConfigUpdateEnvelope(channelConfigGroup, chainId, chainCreationPolicyName):
-    # Returns a list prepended with a signedConfiguration
-    channelConfigGroup.groups[OrdererGroup].values[BootstrapHelper.KEY_CREATIONPOLICY].value = toValue(
-        orderer_dot_configuration_pb2.CreationPolicy(policy=chainCreationPolicyName))
-    config_update_envelope = createNewConfigUpdateEnvelope(channelConfig=channelConfigGroup, chainId=chainId)
-    return config_update_envelope
-
 
 def getDirectory(context):
     if 'bootstrapDirectory' not in context:
@@ -612,14 +519,35 @@ def getOrdererBootstrapAdminOrgReferences(context):
     return ordererBootstrapAdmin.tags['OrgReferences']
 
 
-def getSignedMSPConfigItems(context, orgNames):
+def getSignedMSPConfigItems(context, orgNames, channel_version=0, application_group_version=0, application_group_policy_version=0):
     directory = getDirectory(context)
     orgs = [directory.getOrganization(orgName) for orgName in orgNames]
 
     channel = common_dot_configtx_pb2.ConfigGroup()
+    channel.version=channel_version
+    channel.groups[ApplicationGroup].version=application_group_version
     for org in orgs:
-        channel.groups[ApplicationGroup].groups[org.name].values[BootstrapHelper.KEY_MSP_INFO].value = toValue(
-            org.getMSPConfig())
+        channel.groups[ApplicationGroup].groups[org.name].version = application_group_version
+        channel.groups[ApplicationGroup].groups[org.name]
+
+    # For now, setting same policies for each 'Non-Org' group
+    typeImplicitMeta = common_dot_policies_pb2.Policy.PolicyType.Value("IMPLICIT_META")
+    Policy = common_dot_policies_pb2.Policy
+    IMP = common_dot_policies_pb2.ImplicitMetaPolicy
+    ruleAny = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("ANY")
+    ruleMajority = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("MAJORITY")
+    for group in [channel.groups[ApplicationGroup]]:
+        group.policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
+            rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_READERS).SerializeToString()))
+        group.policies[BootstrapHelper.KEY_POLICY_WRITERS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
+            rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
+        group.policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
+            rule=ruleMajority, sub_policy=BootstrapHelper.KEY_POLICY_ADMINS).SerializeToString()))
+    for group in [channel.groups[ApplicationGroup]]:
+        group.policies[BootstrapHelper.KEY_POLICY_READERS].version=application_group_policy_version
+        group.policies[BootstrapHelper.KEY_POLICY_WRITERS].version=application_group_policy_version
+        group.policies[BootstrapHelper.KEY_POLICY_ADMINS].version=application_group_policy_version
+
     return [channel]
 
 
@@ -637,50 +565,54 @@ def getAnchorPeersConfigGroup(context, nodeAdminTuples):
         config_group.groups[ApplicationGroup].groups[orgName].values[BootstrapHelper.KEY_ANCHOR_PEERS].value=toValue(anchorPeers)
     return [config_group]
 
-
-def getMspConfigItemsForPolicyNames(context, policyNames):
-    policyNameToOrgNamesDict = getOrdererBootstrapAdminOrgReferences(context)
-    # Get unique set of org names and return set of signed MSP ConfigItems
-    orgNamesReferenced = list(
-        set([orgName for policyName in policyNames for orgName in policyNameToOrgNamesDict[policyName]]))
-    orgNamesReferenced.sort()
-    return getSignedMSPConfigItems(context=context, orgNames=orgNamesReferenced)
-
-
-def createSignedConfigItems(directory, consensus_type, configGroups=[]):
-
-    channelConfig = createChannelConfigGroup(directory=directory, consensusType=consensus_type)
-    #TODO: Once jyellicks latest updates come through, will NOT need base orderer config
-    # channelConfig = common_dot_configtx_pb2.ConfigGroup()
+def createSignedConfigItems(directory, consensus_type, consortium_name, version=1, channel_version=0, channel_consortium_version=0, configGroups=[]):
+    channelConfig = common_dot_configtx_pb2.ConfigGroup()
+    channelConfig.values[BootstrapHelper.KEY_CONSORTIUM].version=channel_consortium_version
+    channelConfig.values[BootstrapHelper.KEY_CONSORTIUM].value=toValue(common_dot_configuration_pb2.Consortium(name=consortium_name))
+    channelConfig.version = channel_version
+    channelConfig.groups[ApplicationGroup].version = version
     for configGroup in configGroups:
         mergeConfigGroups(channelConfig, configGroup)
     return channelConfig
 
-def setMetaPolicy(channelId, channgel_config_groups):
-    #New meta policy info
-    typeImplicitMeta = common_dot_policies_pb2.Policy.PolicyType.Value("IMPLICIT_META")
-    P = common_dot_policies_pb2.Policy
-    IMP=common_dot_policies_pb2.ImplicitMetaPolicy
-    ruleAny = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("ANY")
-    ruleMajority = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("MAJORITY")
-    channgel_config_groups.groups[channelId].groups[ApplicationGroup].policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(
-        P(type=typeImplicitMeta, policy=IMP(
-            rule=ruleAny).SerializeToString()))
-    channgel_config_groups.groups[channelId].groups[ApplicationGroup].policies[BootstrapHelper.KEY_POLICY_WRITERS].policy.CopyFrom(
-        P(type=typeImplicitMeta, policy=IMP(
-            rule=ruleAny).SerializeToString()))
-    channgel_config_groups.groups[channelId].groups[ApplicationGroup].policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(
-        P(type=typeImplicitMeta, policy=IMP(
-            rule=ruleAny).SerializeToString()))
+
+def setDefaultPoliciesForOrgs(channel, orgs, group_name, version=0, policy_version=0):
+    for org in orgs:
+        groupName = group_name
+        channel.groups[groupName].groups[org.name].version=version
+        mspPrincipalForMemberRole = org.getMspPrincipalAsRole(mspRoleTypeAsString='MEMBER')
+        signedBy = AuthDSLHelper.SignedBy(0)
+
+        memberSignaturePolicyEnvelope = AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(1, [signedBy]), identities=[mspPrincipalForMemberRole])
+        memberPolicy = common_dot_policies_pb2.Policy(
+            type=common_dot_policies_pb2.Policy.PolicyType.Value("SIGNATURE"),
+            policy=memberSignaturePolicyEnvelope.SerializeToString())
+        channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_READERS].version=policy_version
+        channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(memberPolicy)
+        channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_WRITERS].version=policy_version
+        channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_WRITERS].policy.CopyFrom(memberPolicy)
+
+        mspPrincipalForAdminRole = org.getMspPrincipalAsRole(mspRoleTypeAsString='ADMIN')
+        adminSignaturePolicyEnvelope = AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(1, [signedBy]), identities=[mspPrincipalForAdminRole])
+        adminPolicy = common_dot_policies_pb2.Policy(
+            type=common_dot_policies_pb2.Policy.PolicyType.Value("SIGNATURE"),
+            policy=adminSignaturePolicyEnvelope.SerializeToString())
+        channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_ADMINS].version=policy_version
+        channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(adminPolicy)
+
+        for pKey, pVal in channel.groups[groupName].groups[org.name].policies.iteritems():
+            pVal.mod_policy = BootstrapHelper.KEY_POLICY_ADMINS
+
+        # signaturePolicyEnvelope = AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.SignedBy(0), identities=[mspPrincipal])
 
 
 
-def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType="solo", batchTimeout="1s", batchSizeMaxMessageCount=10, batchSizeAbsoluteMaxBytes=100000000, batchSizePreferredMaxBytes=512 * 1024):
+def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType="solo", batchTimeout="1s", batchSizeMaxMessageCount=10, batchSizeAbsoluteMaxBytes=100000000, batchSizePreferredMaxBytes=512 * 1024, channel_max_count=0):
 
     channel = common_dot_configtx_pb2.ConfigGroup()
     # channel.groups[ApplicationGroup] = common_dot_configtx_pb2.ConfigGroup()
     # channel.groups[OrdererGroup] = common_dot_configtx_pb2.ConfigGroup()
-    channel.groups[ApplicationGroup]
+    # channel.groups[ApplicationGroup]
     channel.groups[OrdererGroup]
     # v = common_dot_configtx_pb2.ConfigItem.ConfigType.Value
     # configItems.append(bootstrapHelper.encodeHashingAlgorithm())
@@ -694,10 +626,12 @@ def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType=
     channel.groups[OrdererGroup].values[BootstrapHelper.KEY_BATCH_SIZE].value = toValue(orderer_dot_configuration_pb2.BatchSize(maxMessageCount=batchSizeMaxMessageCount,absoluteMaxBytes=batchSizeAbsoluteMaxBytes,preferredMaxBytes=batchSizePreferredMaxBytes))
     channel.groups[OrdererGroup].values[BootstrapHelper.KEY_BATCH_TIMEOUT].value = toValue(orderer_dot_configuration_pb2.BatchTimeout(timeout=batchTimeout))
     channel.groups[OrdererGroup].values[BootstrapHelper.KEY_CONSENSUS_TYPE].value = toValue(orderer_dot_configuration_pb2.ConsensusType(type=consensusType))
+    channel.groups[OrdererGroup].values[BootstrapHelper.KEY_CHANNEL_RESTRICTIONS].value = toValue(orderer_dot_configuration_pb2.ChannelRestrictions(max_count=channel_max_count))
+
 
     acceptAllPolicy = common_dot_policies_pb2.Policy(type=1, policy=AuthDSLHelper.Envelope(
         signaturePolicy=AuthDSLHelper.NOutOf(0, []), identities=[]).SerializeToString())
-    channel.policies[BootstrapHelper.KEY_ACCEPT_ALL_POLICY].policy.CopyFrom(acceptAllPolicy)
+    # channel.policies[BootstrapHelper.KEY_ACCEPT_ALL_POLICY].policy.CopyFrom(acceptAllPolicy)
 
     # For now, setting same policies for each 'Non-Org' group
     typeImplicitMeta = common_dot_policies_pb2.Policy.PolicyType.Value("IMPLICIT_META")
@@ -705,54 +639,42 @@ def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType=
     IMP = common_dot_policies_pb2.ImplicitMetaPolicy
     ruleAny = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("ANY")
     ruleMajority = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("MAJORITY")
-    for group in [channel, channel.groups[ApplicationGroup], channel.groups[OrdererGroup]]:
+    for group in [channel, channel.groups[OrdererGroup]]:
         group.policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
             rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_READERS).SerializeToString()))
         group.policies[BootstrapHelper.KEY_POLICY_WRITERS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
             rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
         group.policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
             rule=ruleMajority, sub_policy=BootstrapHelper.KEY_POLICY_ADMINS).SerializeToString()))
+        for pKey, pVal in group.policies.iteritems():
+            pVal.mod_policy = BootstrapHelper.KEY_POLICY_ADMINS
+
     # Setting block validation policy for the orderer group
     channel.groups[OrdererGroup].policies[BootstrapHelper.KEY_POLICY_BLOCK_VALIDATION].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
         rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
+    channel.groups[OrdererGroup].policies[BootstrapHelper.KEY_POLICY_BLOCK_VALIDATION].mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
 
     # Add the orderer org groups MSPConfig info
     for ordererOrg in [org for org in directory.getOrganizations().values() if Network.Orderer in org.networks]:
         channel.groups[OrdererGroup].groups[ordererOrg.name].values[BootstrapHelper.KEY_MSP_INFO].value = toValue(
             ordererOrg.getMSPConfig())
-
+        channel.groups[OrdererGroup].groups[ordererOrg.name].values[BootstrapHelper.KEY_MSP_INFO].mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
     # #Kafka specific
     # matchingNATs = [nat for nat in directory.getNamedCtxTuples() if (("orderer" in nat.user) and ("Signer" in nat.user) and ((compose_service in nat.nodeName)))]
     # for broker in [org for org in directory.getOrganizations().values() if Network.Orderer in org.networks]:
     #     channel.groups[OrdererGroup].groups[ordererOrg.name].values[BootstrapHelper.KEY_MSP_INFO].value = toValue(
     #         ordererOrg.getMSPConfig())
-    channel.groups[OrdererGroup].values[BootstrapHelper.KEY_ORDERER_KAFKA_BROKERS].value = toValue(orderer_dot_configuration_pb2.KafkaBrokers(brokers=["kafka0:9092"]))
+    # channel.groups[OrdererGroup].values[BootstrapHelper.KEY_ORDERER_KAFKA_BROKERS].value = toValue(orderer_dot_configuration_pb2.KafkaBrokers(brokers=["kafka0:9092"]))
+
+    for vKey, vVal in channel.groups[OrdererGroup].values.iteritems():
+        vVal.mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
 
 
 
     # Now set policies for each org group (Both peer and orderer)
     #TODO: Revisit after Jason does a bit more refactoring on chain creation policy enforcement
-    groupNameDict = {Network.Peer : ApplicationGroup, Network.Orderer : OrdererGroup}
-    for org in directory.getOrganizations().values():
-        for network in org.networks:
-            groupName = groupNameDict[network]
-            mspPrincipalForMemberRole = org.getMspPrincipalAsRole(mspRoleTypeAsString='MEMBER')
-            memberSignaturePolicyEnvelope = AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.SignedBy(0), identities=[mspPrincipalForMemberRole])
-            memberPolicy = common_dot_policies_pb2.Policy(
-                type=common_dot_policies_pb2.Policy.PolicyType.Value("SIGNATURE"),
-                policy=memberSignaturePolicyEnvelope.SerializeToString())
-            channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(memberPolicy)
-            channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_WRITERS].policy.CopyFrom(memberPolicy)
-
-            mspPrincipalForAdminRole = org.getMspPrincipalAsRole(mspRoleTypeAsString='ADMIN')
-            adminSignaturePolicyEnvelope = AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.SignedBy(0), identities=[mspPrincipalForAdminRole])
-            adminPolicy = common_dot_policies_pb2.Policy(
-                type=common_dot_policies_pb2.Policy.PolicyType.Value("SIGNATURE"),
-                policy=adminSignaturePolicyEnvelope.SerializeToString())
-            channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(adminPolicy)
-
-            # signaturePolicyEnvelope = AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.SignedBy(0), identities=[mspPrincipal])
-
+    ordererOrgs = [o for o in directory.getOrganizations().values() if Network.Orderer in o.networks]
+    setDefaultPoliciesForOrgs(channel, ordererOrgs , OrdererGroup, version=0, policy_version=0)
 
     #New OrdererAddress
     ordererAddress = common_dot_configuration_pb2.OrdererAddresses()
@@ -761,6 +683,12 @@ def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType=
         ordererAddress.addresses.append("{0}:7050".format(ordererNodeTuple.nodeName))
     assert len(ordererAddress.addresses) > 0, "No orderer nodes were found while trying to create channel ConfigGroup"
     channel.values[BootstrapHelper.KEY_ORDERER_ADDRESSES].value = toValue(ordererAddress)
+
+
+    for pKey, pVal in channel.values.iteritems():
+        pVal.mod_policy = BootstrapHelper.KEY_POLICY_ADMINS
+
+
     return channel
 
 def createEnvelopeForMsg(directory, nodeAdminTuple, chainId, msg, typeAsString):
@@ -792,8 +720,16 @@ def createEnvelopeForMsg(directory, nodeAdminTuple, chainId, msg, typeAsString):
 
     return configEnvelope
 
-def createNewConfigUpdateEnvelope(channelConfig, chainId):
+
+def createNewConfigUpdateEnvelope(channelConfig, chainId, readset_version=0):
+    read_set = common_dot_configtx_pb2.ConfigGroup()
+    read_set.values[BootstrapHelper.KEY_CONSORTIUM].version=readset_version
+    read_set.values[BootstrapHelper.KEY_CONSORTIUM].value=channelConfig.values[BootstrapHelper.KEY_CONSORTIUM].value
+    read_set.groups[ApplicationGroup].version=readset_version
+    for key, _ in channelConfig.groups['Application'].groups.iteritems():
+        read_set.groups[ApplicationGroup].groups[key]
     configUpdate = common_dot_configtx_pb2.ConfigUpdate(channel_id=chainId,
+                                                        read_set=read_set,
                                                         write_set=channelConfig)
     configUpdateEnvelope = common_dot_configtx_pb2.ConfigUpdateEnvelope(config_update=configUpdate.SerializeToString(), signatures =[])
     return configUpdateEnvelope
@@ -863,7 +799,7 @@ def createGenesisBlock(context, chainId, consensusType, nodeAdminTuple, signedCo
         # print("UserCert for orderer genesis:\n{0}\n".format(certAsPEM))
         # print("")
 
-    return (block, envelope)
+    return (block, envelope, channelConfig)
 
 
 class PathType(Enum):
@@ -948,6 +884,13 @@ class CallbackHelper:
             user = directory.getUser(pnt.user, shouldCreate=False)
             with open("{0}/keystore/{1}.pem".format(localMspConfigPath, pnt.user), "w") as f:
                 f.write(user.ecdsaSigningKey.to_pem())
+
+        # Find the peer admin Tuple for this peer and add to admincerts folder
+        for pnt, cert in [(peerNodeTuple, cert) for peerNodeTuple, cert in directory.ordererAdminTuples.items() if
+                          compose_service in peerNodeTuple.user and "admin" in peerNodeTuple.user.lower()]:
+            # Put the PEM file in the signcerts folder
+            with open("{0}/admincerts/{1}.pem".format(localMspConfigPath, pnt.user), "w") as f:
+                f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
 
     def _writeTLSFiles(self, directory , composition, compose_service, network):
         localTLSConfigPath = self.getLocalTLSConfigPath(composition, compose_service)
@@ -1049,7 +992,7 @@ class PeerCompositionCallback(compose.CompositionCallback, CallbackHelper):
         # First figure out which organization provided the signer cert for this
         for peerService in self.getPeerList(composition):
             localMspConfigPath = self.getLocalMspConfigPath(composition, peerService, pathType=PathType.Container)
-            env["{0}_CORE_PEER_MSPCFGPATH".format(peerService.upper())] = localMspConfigPath
+            env["{0}_CORE_PEER_MSPCONFIGPATH".format(peerService.upper())] = localMspConfigPath
             env["{0}_CORE_PEER_LOCALMSPID".format(peerService.upper())] = self._getMspId(compose_service=peerService, directory=directory)
             # TLS Settings
             # env["{0}_CORE_PEER_TLS_ENABLED".format(peerService.upper())] = self._getMspId(compose_service=peerService, directory=directory)
@@ -1062,41 +1005,29 @@ class PeerCompositionCallback(compose.CompositionCallback, CallbackHelper):
             env["{0}_CORE_PEER_TLS_SERVERHOSTOVERRIDE".format(peerService.upper())] = peerService
 
 
-def createChainCreationPolicyNames(context, chainCreationPolicyNames, chaindId):
+def createConsortium(context, consortium_name, org_names):
     channel = common_dot_configtx_pb2.ConfigGroup()
-    channel.groups[OrdererGroup].values[BootstrapHelper.KEY_CHAIN_CREATION_POLICY_NAMES].value = toValue(
-        orderer_dot_configuration_pb2.ChainCreationPolicyNames(
-            names=chainCreationPolicyNames))
+    directory = getDirectory(context=context)
+    # Add the orderer org groups MSPConfig info to consortiums group
+    for consortium_org in [org for org in directory.getOrganizations().values() if org.name in org_names]:
+        # channel.groups[ConsortiumsGroup].groups[consortium_name].groups[consortium_org.name].mod_policy = BootstrapHelper.KEY_POLICY_ADMINS
+        channel.groups[ConsortiumsGroup].groups[consortium_name].groups[consortium_org.name].values[BootstrapHelper.KEY_MSP_INFO].value = toValue(
+            consortium_org.getMSPConfig())
+        channel.groups[ConsortiumsGroup].groups[consortium_name].groups[consortium_org.name].values[BootstrapHelper.KEY_MSP_INFO].mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
+    typeImplicitMeta = common_dot_policies_pb2.Policy.PolicyType.Value("IMPLICIT_META")
+    Policy = common_dot_policies_pb2.Policy
+    IMP = common_dot_policies_pb2.ImplicitMetaPolicy
+    ruleAny = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("ANY")
+    ruleAll = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("ALL")
+    ruleMajority = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("MAJORITY")
+    channel.groups[ConsortiumsGroup].groups[consortium_name].values[BootstrapHelper.KEY_CHANNEL_CREATION_POLICY].value = toValue(
+        Policy(type=typeImplicitMeta, policy=IMP(
+            rule=ruleAll, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
+    channel.groups[ConsortiumsGroup].groups[consortium_name].values[BootstrapHelper.KEY_CHANNEL_CREATION_POLICY].mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
+    # For now, setting same policies for each 'Non-Org' group
+    orgs = [directory.getOrganization(orgName) for orgName in org_names]
+    setDefaultPoliciesForOrgs(channel.groups[ConsortiumsGroup], orgs, consortium_name, version=0, policy_version=0)
     return channel
-
-
-def createChainCreatorsPolicy(context, chainCreatePolicyName, chaindId, orgNames):
-    'Creates the chain Creator Policy with name'
-    directory = getDirectory(context)
-    bootstrapHelper = BootstrapHelper(chainId=chaindId)
-
-    # This represents the domain of organization which can create channels for the orderer
-    # First create org MSPPrincicpal
-
-    # Collect the orgs from the table
-    mspPrincipalList = []
-    for org in [directory.getOrganization(orgName) for orgName in orgNames]:
-        mspPrincipalList.append(msp_principal_pb2.MSPPrincipal(
-            principal_classification=msp_principal_pb2.MSPPrincipal.Classification.Value("IDENTITY"),
-            principal=crypto.dump_certificate(crypto.FILETYPE_ASN1, org.getSelfSignedCert())))
-    policy = common_dot_policies_pb2.Policy(
-        type=common_dot_policies_pb2.Policy.PolicyType.Value("SIGNATURE"),
-        policy=AuthDSLHelper.Envelope(
-            signaturePolicy=AuthDSLHelper.NOutOf(
-                0, []),
-            identities=mspPrincipalList).SerializeToString())
-    channel = common_dot_configtx_pb2.ConfigGroup()
-    channel.policies[chainCreatePolicyName].policy.CopyFrom(policy)
-
-    # print("signed Config Item:\n{0}\n".format(chainCreationPolicyNamesSignedConfigItem))
-    # print("chain Creation orgs signed Config Item:\n{0}\n".format(chainCreatorsOrgsPolicySignedConfigItem))
-    return channel
-
 
 def setOrdererBootstrapGenesisBlock(genesisBlock):
     'Responsible for setting the GensisBlock for the Orderer nodes upon composition'
