@@ -3786,6 +3786,10 @@ of two sections:
    two figures code-info in both transactions are encrypted ultimately
    using the chain-specific symmetric key Kchain.
 
+This `URL <https://lists.hyperledger.org/pipermail/hyperledger-fabric/attachments/20170420/1a591429/attachment-0001.jpeg>` 
+has an interaction diagram showing the security related workflows happen 
+at various entities.
+
 5. Byzantine Consensus
 ----------------------
 
