@@ -23,7 +23,10 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	//"github.com/hyperledger/fabric/core/container"
@@ -32,8 +35,14 @@ import (
 	"compress/gzip"
 
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/policy"
+	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/protos/common"
+	putils "github.com/hyperledger/fabric/protos/utils"
+
+	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -73,7 +82,7 @@ func constructDeploymentSpec(name string, path string, version string, initArgs 
 	gz := gzip.NewWriter(codePackageBytes)
 	tw := tar.NewWriter(gz)
 
-	err := util.WriteBytesToPackage("src/garbage.go", []byte(name+path+version), tw)
+	err := cutil.WriteBytesToPackage("src/garbage.go", []byte(name+path+version), tw)
 	if err != nil {
 		return nil, err
 	}
@@ -627,6 +636,101 @@ func TestTamperChaincode(t *testing.T) {
 	}
 }
 
+//TestIPolDeploy tests chaincode deploy with an instantiation policy
+func TestIPolDeploy(t *testing.T) {
+	// default policy, this should succeed
+	testIPolDeploy(t, "", true)
+	// policy involving an unknown ORG, this should fail
+	testIPolDeploy(t, "AND('ORG.admin')", false)
+}
+
+func testIPolDeploy(t *testing.T, iPol string, successExpected bool) {
+	scc := new(LifeCycleSysCC)
+	stub := shim.NewMockStub("lscc", scc)
+
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		t.Fatalf("Init failed [%s]", string(res.Message))
+	}
+
+	// Init the policy checker
+	identityDeserializer := &policy.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
+	policyManagerGetter := &policy.MockChannelPolicyManagerGetter{
+		Managers: map[string]policies.Manager{
+			chainid: &policy.MockChannelPolicyManager{MockPolicy: &policy.MockPolicy{Deserializer: identityDeserializer}},
+		},
+	}
+	scc.policyChecker = policy.NewPolicyChecker(
+		policyManagerGetter,
+		identityDeserializer,
+		&policy.MockMSPPrincipalGetter{Principal: []byte("Alice")},
+	)
+	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	identityDeserializer.Msg = sProp.ProposalBytes
+	sProp.Signature = sProp.ProposalBytes
+
+	// create deployment spec, don't write to disk, just marshal it to be used in a signed dep spec
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
+	if err != nil {
+		t.Fatalf("Error creating deployment spec: [%s]", err)
+	}
+	// create an instantiation policy
+	var ip *common.SignaturePolicyEnvelope
+	ip = cauthdsl.SignedByMspAdmin(mspid)
+	if iPol != "" {
+		ip, err = cauthdsl.FromString(iPol)
+		if err != nil {
+			t.Fatalf("Error creating instantiation policy %s: [%s]", iPol, err)
+		}
+	}
+	// create signed dep spec
+	cdsbytes, err := proto.Marshal(cds)
+	if err != nil {
+		t.Fatalf("Marshalling CDS failed: [%s]", err)
+	}
+	objToWrite, err := ccpackage.OwnerCreateSignedCCDepSpec(cds, ip, nil)
+	if err != nil {
+		t.Fatalf("Failed to create Signed CDS envelope %s", err)
+	}
+	// write it to disk
+	bytesToWrite, err := proto.Marshal(objToWrite)
+	if err != nil {
+		t.Fatalf("Failed to marshal Signed CDS envelope %s", err)
+	}
+	fileToWrite := lscctestpath + "/example02.0"
+	err = ioutil.WriteFile(fileToWrite, bytesToWrite, 0700)
+	if err != nil {
+		t.Fatalf("Failed to write Signed CDS envelope to disk: %s", err)
+	}
+	defer os.Remove(lscctestpath + "/example02.0")
+
+	// invoke deploy with a signed proposal that will be evaluated based on the policy
+	prop, _, err := putils.CreateChaincodeProposal(
+		common.HeaderType_ENDORSER_TRANSACTION,
+		chainid,
+		&pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{}},
+		sid)
+	if err != nil {
+		t.Fatalf("Error creating signed CC proposal [%s]", err)
+	}
+	sProp2, err := putils.GetSignedProposal(prop, id)
+	if err != nil {
+		t.Fatalf("Error getting signed proposal [%s]", err)
+	}
+	args := [][]byte{[]byte(DEPLOY), []byte(chainid), cdsbytes}
+	if res := stub.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
+		if successExpected {
+			t.Fatalf("Deploy failed %s", res)
+		}
+	}
+
+	args = [][]byte{[]byte(GETCCINFO), []byte(chainid), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK {
+		if successExpected {
+			t.Fatalf("GetCCInfo failed %s", res)
+		}
+	}
+}
+
 // TestUpgrade tests the upgrade function with various inputs for basic use cases
 func TestUpgrade(t *testing.T) {
 	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
@@ -703,6 +807,134 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 		if string(res.Message) != expectedErrorMsg {
 			t.Logf("Received error message: %s", res.Message)
 			t.FailNow()
+		}
+	}
+}
+
+//TestIPolUpgrade tests chaincode deploy with an instantiation policy
+func TestIPolUpgrade(t *testing.T) {
+	// default policy, this should succeed
+	testIPolUpgrade(t, "", true)
+	// policy involving an unknown ORG, this should fail
+	testIPolUpgrade(t, "AND('ORG.admin')", false)
+}
+
+func testIPolUpgrade(t *testing.T, iPol string, successExpected bool) {
+	// deploy version 0 with a default instantiation policy, this should succeed in any case
+	scc := new(LifeCycleSysCC)
+	stub := shim.NewMockStub("lscc", scc)
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+	// Init the policy checker
+	identityDeserializer := &policy.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
+	policyManagerGetter := &policy.MockChannelPolicyManagerGetter{
+		Managers: map[string]policies.Manager{
+			chainid: &policy.MockChannelPolicyManager{MockPolicy: &policy.MockPolicy{Deserializer: identityDeserializer}},
+		},
+	}
+	scc.policyChecker = policy.NewPolicyChecker(
+		policyManagerGetter,
+		identityDeserializer,
+		&policy.MockMSPPrincipalGetter{Principal: []byte("Alice")},
+	)
+	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	identityDeserializer.Msg = sProp.ProposalBytes
+	sProp.Signature = sProp.ProposalBytes
+	// create deployment spec, don't write to disk, just marshal it to be used in a signed dep spec
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
+	if err != nil {
+		t.Fatalf("Error creating deployment spec: [%s]", err)
+	}
+	// create an instantiation policy
+	ip := cauthdsl.SignedByMspAdmin(mspid)
+	// create signed dep spec
+	cdsbytes, err := proto.Marshal(cds)
+	if err != nil {
+		t.Fatalf("Marshalling CDS failed: [%s]", err)
+	}
+	objToWrite, err := ccpackage.OwnerCreateSignedCCDepSpec(cds, ip, nil)
+	if err != nil {
+		t.Fatalf("Failed to create Signed CDS envelope %s", err)
+	}
+	// write it to disk
+	bytesToWrite, err := proto.Marshal(objToWrite)
+	if err != nil {
+		t.Fatalf("Failed to marshal Signed CDS envelope %s", err)
+	}
+	fileToWrite := lscctestpath + "/example02.0"
+	err = ioutil.WriteFile(fileToWrite, bytesToWrite, 0700)
+	if err != nil {
+		t.Fatalf("Failed to write CC to disk: %s", err)
+	}
+	defer os.Remove(lscctestpath + "/example02.0")
+	// invoke deploy with a signed proposal that will be evaluated based on the policy
+	prop, _, err := putils.CreateChaincodeProposal(
+		common.HeaderType_ENDORSER_TRANSACTION,
+		chainid,
+		&pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{}},
+		sid)
+	if err != nil {
+		t.Fatalf("Error creating signed CC proposal [%s]", err)
+	}
+	sProp2, err := putils.GetSignedProposal(prop, id)
+	if err != nil {
+		t.Fatalf("Error getting signed proposal [%s]", err)
+	}
+	args := [][]byte{[]byte(DEPLOY), []byte(chainid), cdsbytes}
+	if res := stub.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
+		t.Fatalf("Deploy failed %s", res)
+	}
+	args = [][]byte{[]byte(GETCCINFO), []byte(chainid), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK {
+		t.Fatalf("GetCCInfo after deploy failed %s", res)
+	}
+
+	// here starts the interesting part for upgrade
+	// create deployment spec
+	cds, err = constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "1", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
+	if err != nil {
+		t.Fatalf("Error creating deployment spec: [%s]", err)
+	}
+	cdsbytes, err = proto.Marshal(cds)
+	if err != nil {
+		t.Fatalf("Marshalling CDS failed: [%s]", err)
+	}
+	// create the instantiation policy
+	if iPol != "" {
+		ip, err = cauthdsl.FromString(iPol)
+		if err != nil {
+			t.Fatalf("Error creating instantiation policy %s: [%s]", iPol, err)
+		}
+	}
+	// create the signed ccpackage of the new version
+	objToWrite, err = ccpackage.OwnerCreateSignedCCDepSpec(cds, ip, nil)
+	if err != nil {
+		t.Fatalf("Failed to create Signed CDS envelope %s", err)
+	}
+	bytesToWrite, err = proto.Marshal(objToWrite)
+	if err != nil {
+		t.Fatalf("Failed to marshal Signed CDS envelope %s", err)
+	}
+	fileToWrite = lscctestpath + "/example02.1"
+	err = ioutil.WriteFile(fileToWrite, bytesToWrite, 0700)
+	if err != nil {
+		t.Fatalf("Failed to write CC to disk: %s", err)
+	}
+	defer os.Remove(lscctestpath + "/example02.1")
+
+	// invoke upgrade with a signed proposal that will be evaluated based on the policy
+	args = [][]byte{[]byte(UPGRADE), []byte(chainid), cdsbytes}
+	if res := stub.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
+		if successExpected {
+			t.Fatalf("Upgrade failed %s", res)
+		}
+	}
+	args = [][]byte{[]byte(GETCCINFO), []byte(chainid), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK {
+		if successExpected {
+			t.Fatalf("GetCCInfo failed")
 		}
 	}
 }
@@ -1000,8 +1232,52 @@ func TestGetCCAccessRights(t *testing.T) {
 	}
 }
 
+var id msp.SigningIdentity
+var sid []byte
+var mspid string
+var chainid string = util.GetTestChainID()
+
 func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(lscctestpath)
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&mocksccProviderFactory{})
+	var err error
+
+	// setup the MSP manager so that we can sign/verify
+	msptesttools.LoadMSPSetupForTesting()
+
+	id, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	if err != nil {
+		fmt.Printf("GetSigningIdentity failed with err %s", err)
+		os.Exit(-1)
+	}
+
+	sid, err = id.Serialize()
+	if err != nil {
+		fmt.Printf("Serialize failed with err %s", err)
+		os.Exit(-1)
+	}
+
+	// determine the MSP identifier for the first MSP in the default chain
+	var msp msp.MSP
+	mspMgr := mspmgmt.GetManagerForChain(chainid)
+	msps, err := mspMgr.GetMSPs()
+	if err != nil {
+		fmt.Printf("Could not retrieve the MSPs for the chain manager, err %s", err)
+		os.Exit(-1)
+	}
+	if len(msps) == 0 {
+		fmt.Printf("At least one MSP was expected")
+		os.Exit(-1)
+	}
+	for _, m := range msps {
+		msp = m
+		break
+	}
+	mspid, err = msp.GetIdentifier()
+	if err != nil {
+		fmt.Printf("Failure getting the msp identifier, err %s", err)
+		os.Exit(-1)
+	}
+
 	os.Exit(m.Run())
 }
