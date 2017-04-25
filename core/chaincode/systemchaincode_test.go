@@ -104,7 +104,8 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 	args := util.ToChaincodeArgs(f, "greeting", "hey there")
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
-	var nextBlockNumber uint64
+	// the ledger is created with genesis block. Start block number 1 onwards
+	var nextBlockNumber uint64 = 1
 	_, _, _, err := invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber, nil)
 	nextBlockNumber++
 

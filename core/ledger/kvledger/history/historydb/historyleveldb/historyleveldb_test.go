@@ -46,20 +46,23 @@ func TestSavepoint(t *testing.T) {
 	testutil.AssertNoError(t, err, "Error upon historyDatabase.GetLastSavepoint()")
 	testutil.AssertNil(t, savepoint)
 
-	// create the first block (block 0)
-	simulator, _ := env.txmgr.NewTxSimulator()
-	simulator.SetState("ns1", "key1", []byte("value1"))
-	simulator.Done()
-	simRes, _ := simulator.GetTxSimulationResults()
-	bg := testutil.NewBlockGenerator(t)
-	block1 := bg.NextBlock([][]byte{simRes}, false)
-	err = env.testHistoryDB.Commit(block1)
-	testutil.AssertNoError(t, err, "")
-
+	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	testutil.AssertNoError(t, env.testHistoryDB.Commit(gb), "")
 	// read the savepoint, it should now exist and return a Height object with BlockNum 0
 	savepoint, err = env.testHistoryDB.GetLastSavepoint()
 	testutil.AssertNoError(t, err, "Error upon historyDatabase.GetLastSavepoint()")
 	testutil.AssertEquals(t, savepoint.BlockNum, uint64(0))
+
+	// create the next block (block 1)
+	simulator, _ := env.txmgr.NewTxSimulator()
+	simulator.SetState("ns1", "key1", []byte("value1"))
+	simulator.Done()
+	simRes, _ := simulator.GetTxSimulationResults()
+	block1 := bg.NextBlock([][]byte{simRes})
+	testutil.AssertNoError(t, env.testHistoryDB.Commit(block1), "")
+	savepoint, err = env.testHistoryDB.GetLastSavepoint()
+	testutil.AssertNoError(t, err, "Error upon historyDatabase.GetLastSavepoint()")
+	testutil.AssertEquals(t, savepoint.BlockNum, uint64(1))
 }
 
 func TestHistory(t *testing.T) {
@@ -67,9 +70,14 @@ func TestHistory(t *testing.T) {
 	env := NewTestHistoryEnv(t)
 	defer env.cleanup()
 	provider := env.testBlockStorageEnv.provider
-	store1, err := provider.OpenBlockStore("ledger1")
+	ledger1id := "ledger1"
+	store1, err := provider.OpenBlockStore(ledger1id)
 	testutil.AssertNoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
+
+	bg, gb := testutil.NewBlockGenerator(t, ledger1id, false)
+	testutil.AssertNoError(t, store1.AddBlock(gb), "")
+	testutil.AssertNoError(t, env.testHistoryDB.Commit(gb), "")
 
 	//block1
 	simulator, _ := env.txmgr.NewTxSimulator()
@@ -77,8 +85,7 @@ func TestHistory(t *testing.T) {
 	simulator.SetState("ns1", "key7", value1)
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
-	bg := testutil.NewBlockGenerator(t)
-	block1 := bg.NextBlock([][]byte{simRes}, false)
+	block1 := bg.NextBlock([][]byte{simRes})
 	err = store1.AddBlock(block1)
 	testutil.AssertNoError(t, err, "")
 	err = env.testHistoryDB.Commit(block1)
@@ -99,7 +106,7 @@ func TestHistory(t *testing.T) {
 	simulator2.Done()
 	simRes2, _ := simulator2.GetTxSimulationResults()
 	simulationResults = append(simulationResults, simRes2)
-	block2 := bg.NextBlock(simulationResults, false)
+	block2 := bg.NextBlock(simulationResults)
 	err = store1.AddBlock(block2)
 	testutil.AssertNoError(t, err, "")
 	err = env.testHistoryDB.Commit(block2)
@@ -110,7 +117,7 @@ func TestHistory(t *testing.T) {
 	simulator.DeleteState("ns1", "key7")
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
-	block3 := bg.NextBlock([][]byte{simRes}, false)
+	block3 := bg.NextBlock([][]byte{simRes})
 	err = store1.AddBlock(block3)
 	testutil.AssertNoError(t, err, "")
 	err = env.testHistoryDB.Commit(block3)
@@ -155,9 +162,14 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	env := NewTestHistoryEnv(t)
 	defer env.cleanup()
 	provider := env.testBlockStorageEnv.provider
-	store1, err := provider.OpenBlockStore("ledger1")
+	ledger1id := "ledger1"
+	store1, err := provider.OpenBlockStore(ledger1id)
 	testutil.AssertNoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
+
+	bg, gb := testutil.NewBlockGenerator(t, ledger1id, false)
+	testutil.AssertNoError(t, store1.AddBlock(gb), "")
+	testutil.AssertNoError(t, env.testHistoryDB.Commit(gb), "")
 
 	//block1
 	simulator, _ := env.txmgr.NewTxSimulator()
@@ -165,8 +177,7 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	simulator.SetState("ns1", "key7", value1)
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
-	bg := testutil.NewBlockGenerator(t)
-	block1 := bg.NextBlock([][]byte{simRes}, false)
+	block1 := bg.NextBlock([][]byte{simRes})
 
 	//for this invalid tran test, set the transaction to invalid
 	txsFilter := util.TxValidationFlags(block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])

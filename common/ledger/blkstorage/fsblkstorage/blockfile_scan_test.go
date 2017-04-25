@@ -31,8 +31,8 @@ func TestBlockFileScanSmallTxOnly(t *testing.T) {
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
-	bg := testutil.NewBlockGenerator(t)
-	blocks := []*common.Block{}
+	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
+	blocks := []*common.Block{gb}
 	blocks = append(blocks, bg.NextTestBlock(0, 0))
 	blocks = append(blocks, bg.NextTestBlock(0, 0))
 	blocks = append(blocks, bg.NextTestBlock(0, 0))
@@ -54,8 +54,8 @@ func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
-	bg := testutil.NewBlockGenerator(t)
-	blocks := []*common.Block{}
+	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
+	blocks := []*common.Block{gb}
 	blocks = append(blocks, bg.NextTestBlock(0, 0))
 	blocks = append(blocks, bg.NextTestBlock(0, 0))
 	blocks = append(blocks, bg.NextTestBlock(0, 0))

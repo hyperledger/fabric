@@ -25,7 +25,7 @@ import (
 )
 
 func TestBlockSerialization(t *testing.T) {
-	block := testutil.ConstructTestBlock(t, 10, 100)
+	block := testutil.ConstructTestBlock(t, 1, 10, 100)
 	bb, _, err := serializeBlock(block)
 	testutil.AssertNoError(t, err, "")
 	deserializedBlock, err := deserializeBlock(bb)
@@ -42,7 +42,7 @@ func TestExtractTxid(t *testing.T) {
 }
 
 func TestSerializedBlockInfo(t *testing.T) {
-	block := testutil.ConstructTestBlock(t, 10, 100)
+	block := testutil.ConstructTestBlock(t, 1, 10, 100)
 	bb, info, err := serializeBlock(block)
 	testutil.AssertNoError(t, err, "")
 	infoFromBB, err := extractSerializedBlockInfo(bb)

@@ -146,7 +146,7 @@ func TestUpgradeCC(t *testing.T) {
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 	cccid := ccprovider.NewCCContext(chainID, ccName, "0", "", false, nil, nil)
-	var nextBlockNumber uint64
+	var nextBlockNumber uint64 = 1
 	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
 
 	if err != nil {

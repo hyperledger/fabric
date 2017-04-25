@@ -217,7 +217,7 @@ func checkValidation(t *testing.T, validator *Validator, rwsets []*rwsetutil.TxR
 		testutil.AssertNoError(t, err, "")
 		simulationResults = append(simulationResults, sr)
 	}
-	block := testutil.ConstructBlock(t, simulationResults, false)
+	block := testutil.ConstructBlock(t, 1, []byte("dummyPreviousHash"), simulationResults, false)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = util.NewTxValidationFlags(len(block.Data.Data))
 	_, err := validator.ValidateAndPrepareBatch(block, true)
 	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])

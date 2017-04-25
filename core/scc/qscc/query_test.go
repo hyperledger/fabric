@@ -123,10 +123,10 @@ func TestQueryGetBlockByNumber(t *testing.T) {
 		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
 	}
-
-	args := [][]byte{[]byte(GetBlockByNumber), []byte("mytestchainid5"), []byte("0")}
+	// block number 0 (genesis block) would already be present in the ledger
+	args := [][]byte{[]byte(GetBlockByNumber), []byte("mytestchainid5"), []byte("1")}
 	if res := stub.MockInvoke("2", args); res.Status == shim.OK {
-		t.Fatal("qscc GetBlockByNumber should have failed with invalid number: 0")
+		t.Fatal("qscc GetBlockByNumber should have failed with invalid number: 1")
 	}
 }
 

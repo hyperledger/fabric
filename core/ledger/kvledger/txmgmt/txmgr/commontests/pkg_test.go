@@ -147,11 +147,12 @@ type txMgrTestHelper struct {
 }
 
 func newTxMgrTestHelper(t *testing.T, txMgr txmgr.TxMgr) *txMgrTestHelper {
-	return &txMgrTestHelper{t, txMgr, testutil.NewBlockGenerator(t)}
+	bg, _ := testutil.NewBlockGenerator(t, "testLedger", false)
+	return &txMgrTestHelper{t, txMgr, bg}
 }
 
 func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet []byte) {
-	block := h.bg.NextBlock([][]byte{txRWSet}, false)
+	block := h.bg.NextBlock([][]byte{txRWSet})
 	err := h.txMgr.ValidateAndPrepare(block, true)
 	testutil.AssertNoError(h.t, err, "")
 	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
@@ -167,7 +168,7 @@ func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet []byte) {
 }
 
 func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet []byte) {
-	block := h.bg.NextBlock([][]byte{txRWSet}, false)
+	block := h.bg.NextBlock([][]byte{txRWSet})
 	err := h.txMgr.ValidateAndPrepare(block, true)
 	testutil.AssertNoError(h.t, err, "")
 	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])

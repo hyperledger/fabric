@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
@@ -103,12 +104,12 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	return provider, nil
 }
 
-// CreateWithGenesisBlock implements the corresponding method from interface ledger.PeerLedgerProvider
+// Create implements the corresponding method from interface ledger.PeerLedgerProvider
 // This functions sets a under construction flag before doing any thing related to ledger creation and
 // upon a successful ledger creation with the committed genesis block, removes the flag and add entry into
 // created ledgers list (atomically). If a crash happens in between, the 'recoverUnderConstructionLedger'
 // function is invoked before declaring the provider to be usable
-func (provider *Provider) CreateWithGenesisBlock(genesisBlock *common.Block) (ledger.PeerLedger, error) {
+func (provider *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger, error) {
 	ledgerID, err := utils.GetChainIDFromBlock(genesisBlock)
 	if err != nil {
 		return nil, err
@@ -134,27 +135,7 @@ func (provider *Provider) CreateWithGenesisBlock(genesisBlock *common.Block) (le
 		ledger.Close()
 		return nil, err
 	}
-	panicOnErr(provider.idStore.createLedgerID(ledgerID), "Error while marking ledger as created")
-	return ledger, nil
-}
-
-// Create implements the corresponding method from interface ledger.PeerLedgerProvider
-func (provider *Provider) Create(ledgerID string) (ledger.PeerLedger, error) {
-	exists, err := provider.idStore.ledgerIDExists(ledgerID)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, ErrLedgerIDExists
-	}
-	ledger, err := provider.openInternal(ledgerID)
-	if err != nil {
-		return nil, err
-	}
-	if err = provider.idStore.createLedgerID(ledgerID); err != nil {
-		ledger.Close()
-		return nil, err
-	}
+	panicOnErr(provider.idStore.createLedgerID(ledgerID, genesisBlock), "Error while marking ledger as created")
 	return ledger, nil
 }
 
@@ -244,7 +225,9 @@ func (provider *Provider) recoverUnderConstructionLedger() {
 		panicOnErr(provider.idStore.unsetUnderConstructionFlag(), "Error while unsetting under construction flag")
 	case 1:
 		logger.Infof("Genesis block was committed. Hence, marking the peer ledger as created")
-		panicOnErr(provider.idStore.createLedgerID(ledgerID), "Error while adding ledgerID [%s] to created list", ledgerID)
+		genesisBlock, err := ledger.GetBlockByNumber(0)
+		panicOnErr(err, "Error while retrieving genesis block from blockchain for ledger [%s]", ledgerID)
+		panicOnErr(provider.idStore.createLedgerID(ledgerID, genesisBlock), "Error while adding ledgerID [%s] to created list", ledgerID)
 	default:
 		panic(fmt.Errorf(
 			"Data inconsistency: under construction flag is set for ledger [%s] while the height of the blockchain is [%d]",
@@ -301,10 +284,13 @@ func (s *idStore) getUnderConstructionFlag() (string, error) {
 	return string(val), nil
 }
 
-func (s *idStore) createLedgerID(ledgerID string) error {
+func (s *idStore) createLedgerID(ledgerID string, gb *common.Block) error {
 	key := s.encodeLedgerKey(ledgerID)
-	val := []byte{}
-	err := error(nil)
+	var val []byte
+	var err error
+	if val, err = proto.Marshal(gb); err != nil {
+		return err
+	}
 	if val, err = s.db.Get(key); err != nil {
 		return err
 	}

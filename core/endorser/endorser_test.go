@@ -395,7 +395,7 @@ func TestDeployAndInvoke(t *testing.T) {
 		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
-	var nextBlockNumber uint64 // first block
+	var nextBlockNumber uint64 = 1 // first block needs to be block number = 1. Genesis block is block 0
 	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp, nextBlockNumber)
 	if err != nil {
 		t.Fail()
@@ -485,7 +485,7 @@ func TestDeployAndUpgrade(t *testing.T) {
 		return
 	}
 
-	var nextBlockNumber uint64 = 2 // something above created block 0
+	var nextBlockNumber uint64 = 3 // something above created block 0
 	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp, nextBlockNumber)
 	if err != nil {
 		t.Fail()

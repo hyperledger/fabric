@@ -109,9 +109,9 @@ func testTxSimulatorWithExistingData(t *testing.T, env testEnv) {
 
 	// verify the versions of keys in persistence
 	vv, _ := env.getVDB().GetState("ns1", "key1")
-	testutil.AssertEquals(t, vv.Version, version.NewHeight(1, 0))
+	testutil.AssertEquals(t, vv.Version, version.NewHeight(2, 0))
 	vv, _ = env.getVDB().GetState("ns1", "key2")
-	testutil.AssertEquals(t, vv.Version, version.NewHeight(0, 0))
+	testutil.AssertEquals(t, vv.Version, version.NewHeight(1, 0))
 }
 
 func TestTxValidation(t *testing.T) {
