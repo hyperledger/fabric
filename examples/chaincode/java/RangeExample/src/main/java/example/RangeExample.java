@@ -26,54 +26,54 @@ import java.util.Map;
  * Created by cadmin on 6/30/16.
  */
 public class RangeExample extends ChaincodeBase {
-    private static Log log = LogFactory.getLog(RangeExample.class);
-    @java.lang.Override
-    public String run(ChaincodeStub stub, String function, String[] args) {
-        log.info("In run, function:"+function);
-        switch (function) {
-            case "put":
-                for (int i = 0; i < args.length; i += 2)
-                    stub.putState(args[i], args[i + 1]);
-                break;
-            case "del":
-                for (String arg : args)
-                    stub.delState(arg);
-                break;
-            default:
-                log.error("No matching case for function:"+function);
+	private static Log log = LogFactory.getLog(RangeExample.class);
 
-        }
-        return null;
-    }
+	@java.lang.Override
+	public String run(ChaincodeStub stub, String function, String[] args) {
+		log.info("In run, function:" + function);
+		switch (function) {
+		case "put":
+			for (int i = 0; i < args.length; i += 2)
+				stub.putState(args[i], args[i + 1]);
+			break;
+		case "del":
+			for (String arg : args)
+				stub.delState(arg);
+			break;
+		default:
+			log.error("No matching case for function:" + function);
 
+		}
+		return null;
+	}
 
-    @java.lang.Override
-    public String query(ChaincodeStub stub, String function, String[] args) {
-        log.info("query");
-        switch (function){
-            case "get": {
-                return stub.getState(args[0]);
-            }
-            case "keys":{
-                Map<String, String> keysIter = null;
-                if (args.length >= 2) {
-                    keysIter = stub.getStateByRange(args[0], args[1]);
-                }else{
-                    keysIter = stub.getStateByRange("","");
-                }
+	@java.lang.Override
+	public String query(ChaincodeStub stub, String function, String[] args) {
+		log.info("query");
+		switch (function) {
+		case "get": {
+			return stub.getState(args[0]);
+		}
+		case "keys": {
+			Map<String, String> keysIter = null;
+			if (args.length >= 2) {
+				keysIter = stub.getStateByRange(args[0], args[1]);
+			} else {
+				keysIter = stub.getStateByRange("", "");
+			}
 
-                return keysIter.keySet().toString();
-                }
-        default:
-            log.error("No matching case for function:"+function);
-            return "";
-        }
+			return keysIter.keySet().toString();
+		}
+		default:
+			log.error("No matching case for function:" + function);
+			return "";
+		}
 
-    }
+	}
 
-    public static void main(String[] args) throws Exception {
-        log.info("starting");
-        new RangeExample().start(args);
-    }
+	public static void main(String[] args) throws Exception {
+		log.info("starting");
+		new RangeExample().start(args);
+	}
 
 }

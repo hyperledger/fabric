@@ -24,17 +24,17 @@ import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
 public class Example06 extends ChaincodeBase {
-	
+
 	@Override
 	public Response init(ChaincodeStub stub) {
 		return invoke(stub);
 	}
-	
+
 	@Override
 	public Response invoke(ChaincodeStub stub) {
-		if(stub.getArgs().isEmpty())
+		if (stub.getArgs().isEmpty())
 			return newBadRequestResponse(format("No arguments specified."));
-		
+
 		switch (stub.getStringArgs().get(0)) {
 		case "runtimeException":
 			throw new RuntimeException("Exception thrown as requested.");

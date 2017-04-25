@@ -49,7 +49,7 @@ abstract class HandlerHelper {
 	static ChaincodeMessage newCompletedEventMessage(final String txid, final Response response, final ChaincodeEvent event) {
 		return newEventMessage(COMPLETED, txid, response.toByteString(), event);
 	}
-	
+
 	static ChaincodeMessage newInvokeChaincodeMessage(final String txid, final ByteString payload) {
 		return newEventMessage(INVOKE_CHAINCODE, txid, payload, null);
 	}

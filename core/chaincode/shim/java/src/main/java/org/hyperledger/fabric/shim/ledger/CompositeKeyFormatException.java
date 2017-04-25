@@ -17,7 +17,7 @@ package org.hyperledger.fabric.shim.ledger;
 
 class CompositeKeyFormatException extends IllegalArgumentException {
 	private static final long serialVersionUID = 1L;
-	
+
 	private CompositeKeyFormatException() {
 		super();
 	}

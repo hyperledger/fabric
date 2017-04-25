@@ -46,46 +46,42 @@ import io.netty.handler.ssl.SslContext;
 
 public abstract class ChaincodeBase implements Chaincode {
 
-	/* (non-Javadoc)
-	 * @see org.hyperledger.fabric.shim.Chaincode#init(org.hyperledger.fabric.shim.ChaincodeStub)
-	 */
 	@Override
 	public abstract Response init(ChaincodeStub stub);
 
-	/* (non-Javadoc)
-	 * @see org.hyperledger.fabric.shim.Chaincode#invoke(org.hyperledger.fabric.shim.ChaincodeStub)
-	 */
 	@Override
 	public abstract Response invoke(ChaincodeStub stub);
 
-    private static Log logger = LogFactory.getLog(ChaincodeBase.class);
+	private static Log logger = LogFactory.getLog(ChaincodeBase.class);
 
-    public static final String DEFAULT_HOST = "127.0.0.1";
-    public static final int DEFAULT_PORT = 7051;
+	public static final String DEFAULT_HOST = "127.0.0.1";
+	public static final int DEFAULT_PORT = 7051;
 
-    private String host = DEFAULT_HOST;
-    private int port = DEFAULT_PORT;
-    private String hostOverrideAuthority = "";
-    private boolean tlsEnabled = false;
-    private String rootCertFile = "/etc/hyperledger/fabric/peer.crt";
+	private String host = DEFAULT_HOST;
+	private int port = DEFAULT_PORT;
+	private String hostOverrideAuthority = "";
+	private boolean tlsEnabled = false;
+	private String rootCertFile = "/etc/hyperledger/fabric/peer.crt";
 
-    private Handler handler;
-    private String id;
+	private Handler handler;
+	private String id;
 
-    private final static String CORE_CHAINCODE_ID_NAME = "CORE_CHAINCODE_ID_NAME";
-    private final static String CORE_PEER_ADDRESS = "CORE_PEER_ADDRESS";
-    private final static String CORE_PEER_TLS_ENABLED = "CORE_PEER_TLS_ENABLED";
-    private final static String CORE_PEER_TLS_SERVERHOSTOVERRIDE = "CORE_PEER_TLS_SERVERHOSTOVERRIDE";
-    private static final String CORE_PEER_TLS_ROOTCERT_FILE = "CORE_PEER_TLS_ROOTCERT_FILE";
+	private final static String CORE_CHAINCODE_ID_NAME = "CORE_CHAINCODE_ID_NAME";
+	private final static String CORE_PEER_ADDRESS = "CORE_PEER_ADDRESS";
+	private final static String CORE_PEER_TLS_ENABLED = "CORE_PEER_TLS_ENABLED";
+	private final static String CORE_PEER_TLS_SERVERHOSTOVERRIDE = "CORE_PEER_TLS_SERVERHOSTOVERRIDE";
+	private static final String CORE_PEER_TLS_ROOTCERT_FILE = "CORE_PEER_TLS_ROOTCERT_FILE";
 
 	/**
 	 * Start chaincode
-	 * @param args command line arguments
+	 * 
+	 * @param args
+	 *            command line arguments
 	 */
 	public void start(String[] args) {
 		processEnvironmentOptions();
 		processCommandLineOptions(args);
-		if(this.id == null) {
+		if (this.id == null) {
 			logger.error(String.format("The chaincode id must be specified using either the -i or --i command line options or the %s environment variable.", CORE_CHAINCODE_ID_NAME));
 		}
 		new Thread(() -> {
@@ -97,160 +93,160 @@ public abstract class ChaincodeBase implements Chaincode {
 		}).start();
 	}
 
-    private void processCommandLineOptions(String[] args) {
-	Options options = new Options();
-	options.addOption("a", "peerAddress", true, "Address of peer to connect to");
-	options.addOption("s", "securityEnabled", false, "Present if security is enabled");
-	options.addOption("i", "id", true, "Identity of chaincode");
-	options.addOption("o", "hostNameOverride", true, "Hostname override for server certificate");
-	try {
-	    CommandLine cl = new DefaultParser().parse(options, args);
-	    if (cl.hasOption('a')) {
-		host = cl.getOptionValue('a');
-		port = new Integer(host.split(":")[1]);
-		host = host.split(":")[0];
-	    }
-	    if (cl.hasOption('s')) {
-		tlsEnabled = true;
-		logger.info("TLS enabled");
-		if (cl.hasOption('o')) {
-		    hostOverrideAuthority = cl.getOptionValue('o');
-		    logger.info("server host override given " + hostOverrideAuthority);
+	private void processCommandLineOptions(String[] args) {
+		Options options = new Options();
+		options.addOption("a", "peerAddress", true, "Address of peer to connect to");
+		options.addOption("s", "securityEnabled", false, "Present if security is enabled");
+		options.addOption("i", "id", true, "Identity of chaincode");
+		options.addOption("o", "hostNameOverride", true, "Hostname override for server certificate");
+		try {
+			CommandLine cl = new DefaultParser().parse(options, args);
+			if (cl.hasOption('a')) {
+				host = cl.getOptionValue('a');
+				port = new Integer(host.split(":")[1]);
+				host = host.split(":")[0];
+			}
+			if (cl.hasOption('s')) {
+				tlsEnabled = true;
+				logger.info("TLS enabled");
+				if (cl.hasOption('o')) {
+					hostOverrideAuthority = cl.getOptionValue('o');
+					logger.info("server host override given " + hostOverrideAuthority);
+				}
+			}
+			if (cl.hasOption('i')) {
+				id = cl.getOptionValue('i');
+			}
+		} catch (Exception e) {
+			logger.warn("cli parsing failed with exception", e);
+
 		}
-	    }
-	    if (cl.hasOption('i')) {
-		id = cl.getOptionValue('i');
-	    }
-	} catch (Exception e) {
-	    logger.warn("cli parsing failed with exception", e);
-
 	}
-    }
 
-    private void processEnvironmentOptions() {
-        if (System.getenv().containsKey(CORE_CHAINCODE_ID_NAME)) {
-            this.id = System.getenv(CORE_CHAINCODE_ID_NAME);
-        }
-        if (System.getenv().containsKey(CORE_PEER_ADDRESS)) {
-            this.host = System.getenv(CORE_PEER_ADDRESS);
-        }
-        if (System.getenv().containsKey(CORE_PEER_TLS_ENABLED)) {
-            this.tlsEnabled = Boolean.parseBoolean(System.getenv(CORE_PEER_TLS_ENABLED));
-            if (System.getenv().containsKey(CORE_PEER_TLS_SERVERHOSTOVERRIDE)) {
-                this.hostOverrideAuthority = System.getenv(CORE_PEER_TLS_SERVERHOSTOVERRIDE);
-            }
-            if (System.getenv().containsKey(CORE_PEER_TLS_ROOTCERT_FILE)) {
-                this.rootCertFile = System.getenv(CORE_PEER_TLS_ROOTCERT_FILE);
-            }
-        }
-    }
-
-    public ManagedChannel newPeerClientConnection() {
-	final NettyChannelBuilder builder = NettyChannelBuilder.forAddress(host, port);
-	logger.info("Configuring channel connection to peer.");
-
-	if (tlsEnabled) {
-	    logger.info("TLS is enabled");
-	    try {
-		final SslContext sslContext = GrpcSslContexts.forClient().trustManager(new File(this.rootCertFile)).build();
-		builder.negotiationType(NegotiationType.TLS);
-		if (!hostOverrideAuthority.equals("")) {
-		    logger.info("Host override " + hostOverrideAuthority);
-		    builder.overrideAuthority(hostOverrideAuthority);
+	private void processEnvironmentOptions() {
+		if (System.getenv().containsKey(CORE_CHAINCODE_ID_NAME)) {
+			this.id = System.getenv(CORE_CHAINCODE_ID_NAME);
 		}
-		builder.sslContext(sslContext);
-		logger.info("TLS context built: " + sslContext);
-	    } catch (SSLException e) {
-		logger.error("failed connect to peer with SSLException", e);
-	    }
-	} else {
-	    builder.usePlaintext(true);
+		if (System.getenv().containsKey(CORE_PEER_ADDRESS)) {
+			this.host = System.getenv(CORE_PEER_ADDRESS);
+		}
+		if (System.getenv().containsKey(CORE_PEER_TLS_ENABLED)) {
+			this.tlsEnabled = Boolean.parseBoolean(System.getenv(CORE_PEER_TLS_ENABLED));
+			if (System.getenv().containsKey(CORE_PEER_TLS_SERVERHOSTOVERRIDE)) {
+				this.hostOverrideAuthority = System.getenv(CORE_PEER_TLS_SERVERHOSTOVERRIDE);
+			}
+			if (System.getenv().containsKey(CORE_PEER_TLS_ROOTCERT_FILE)) {
+				this.rootCertFile = System.getenv(CORE_PEER_TLS_ROOTCERT_FILE);
+			}
+		}
 	}
-	return builder.build();
-    }
 
-    public void chatWithPeer(ManagedChannel connection) {
-	// Establish stream with validating peer
-	ChaincodeSupportStub stub = ChaincodeSupportGrpc.newStub(connection);
+	public ManagedChannel newPeerClientConnection() {
+		final NettyChannelBuilder builder = NettyChannelBuilder.forAddress(host, port);
+		logger.info("Configuring channel connection to peer.");
 
-	logger.info("Connecting to peer.");
+		if (tlsEnabled) {
+			logger.info("TLS is enabled");
+			try {
+				final SslContext sslContext = GrpcSslContexts.forClient().trustManager(new File(this.rootCertFile)).build();
+				builder.negotiationType(NegotiationType.TLS);
+				if (!hostOverrideAuthority.equals("")) {
+					logger.info("Host override " + hostOverrideAuthority);
+					builder.overrideAuthority(hostOverrideAuthority);
+				}
+				builder.sslContext(sslContext);
+				logger.info("TLS context built: " + sslContext);
+			} catch (SSLException e) {
+				logger.error("failed connect to peer with SSLException", e);
+			}
+		} else {
+			builder.usePlaintext(true);
+		}
+		return builder.build();
+	}
 
-	StreamObserver<ChaincodeMessage> requestObserver = null;
-	try {
-	    requestObserver = stub.register(new StreamObserver<ChaincodeMessage>() {
+	public void chatWithPeer(ManagedChannel connection) {
+		// Establish stream with validating peer
+		ChaincodeSupportStub stub = ChaincodeSupportGrpc.newStub(connection);
 
-		@Override
-		public void onNext(ChaincodeMessage message) {
-		    logger.debug("Got message from peer: " + toJsonString(message));
-		    try {
-			logger.debug(String.format("[%-8s]Received message %s from org.hyperledger.fabric.shim",
-				message.getTxid(), message.getType()));
-			handler.handleMessage(message);
-		    } catch (Exception e) {
-			e.printStackTrace();
+		logger.info("Connecting to peer.");
+
+		StreamObserver<ChaincodeMessage> requestObserver = null;
+		try {
+			requestObserver = stub.register(new StreamObserver<ChaincodeMessage>() {
+
+				@Override
+				public void onNext(ChaincodeMessage message) {
+					logger.debug("Got message from peer: " + toJsonString(message));
+					try {
+						logger.debug(String.format("[%-8s]Received message %s from org.hyperledger.fabric.shim", message.getTxid(), message.getType()));
+						handler.handleMessage(message);
+					} catch (Exception e) {
+						e.printStackTrace();
+						System.exit(-1);
+					}
+				}
+
+				@Override
+				public void onError(Throwable e) {
+					logger.error("Unable to connect to peer server: " + e.getMessage());
+					System.exit(-1);
+				}
+
+				@Override
+				public void onCompleted() {
+					connection.shutdown();
+					handler.nextState.close();
+				}
+			});
+		} catch (Exception e) {
+			logger.error("Unable to connect to peer server");
 			System.exit(-1);
-		    }
 		}
 
-		@Override
-		public void onError(Throwable e) {
-		    logger.error("Unable to connect to peer server: " + e.getMessage());
-		    System.exit(-1);
-		}
+		// Create the org.hyperledger.fabric.shim handler responsible for all
+		// control logic
+		handler = new Handler(requestObserver, this);
 
-		@Override
-		public void onCompleted() {
-		    connection.shutdown();
-		    handler.nextState.close();
+		// Send the ChaincodeID during register.
+		ChaincodeID chaincodeID = ChaincodeID.newBuilder().setName(id)// TODO
+				// params.get("chaincode.id.name"))
+				.build();
+
+		ChaincodeMessage payload = ChaincodeMessage.newBuilder()
+				.setPayload(chaincodeID.toByteString())
+				.setType(Type.REGISTER)
+				.build();
+
+		// Register on the stream
+		logger.info(String.format("Registering as '%s' ... sending %s", id, Type.REGISTER));
+		handler.serialSend(payload);
+
+		while (true) {
+			try {
+				NextStateInfo nsInfo = handler.nextState.take();
+				ChaincodeMessage message = nsInfo.message;
+				handler.handleMessage(message);
+				// keepalive messages are PONGs to the fabric's PINGs
+				if (nsInfo.sendToCC || message.getType() == Type.KEEPALIVE) {
+					if (message.getType() == Type.KEEPALIVE) {
+						logger.info("Sending KEEPALIVE response");
+					} else {
+						logger.info(String.format("[%-8s]Send state message %s", message.getTxid(), message.getType()));
+					}
+					handler.serialSend(message);
+				}
+			} catch (Exception e) {
+				break;
+			}
 		}
-	    });
-	} catch (Exception e) {
-	    logger.error("Unable to connect to peer server");
-	    System.exit(-1);
 	}
 
-	// Create the org.hyperledger.fabric.shim handler responsible for all
-	// control logic
-	handler = new Handler(requestObserver, this);
-
-	// Send the ChaincodeID during register.
-	ChaincodeID chaincodeID = ChaincodeID.newBuilder().setName(id)// TODO
-								      // params.get("chaincode.id.name"))
-		.build();
-
-	ChaincodeMessage payload = ChaincodeMessage.newBuilder().setPayload(chaincodeID.toByteString())
-		.setType(Type.REGISTER).build();
-
-	// Register on the stream
-	logger.info(String.format("Registering as '%s' ... sending %s", id, Type.REGISTER));
-	handler.serialSend(payload);
-
-	while (true) {
-	    try {
-		NextStateInfo nsInfo = handler.nextState.take();
-		ChaincodeMessage message = nsInfo.message;
-		handler.handleMessage(message);
-		// keepalive messages are PONGs to the fabric's PINGs
-		if (nsInfo.sendToCC || message.getType() == Type.KEEPALIVE) {
-		    if (message.getType() == Type.KEEPALIVE) {
-			logger.info("Sending KEEPALIVE response");
-		    } else {
-			logger.info(String.format(
-				"[%-8s]Send state message %s", message.getTxid(), message.getType()));
-		    }
-		    handler.serialSend(message);
+	static String toJsonString(ChaincodeMessage message) {
+		try {
+			return JsonFormat.printer().print(message);
+		} catch (InvalidProtocolBufferException e) {
+			return String.format("{ Type: %s, TxId: %s }", message.getType(), message.getTxid());
 		}
-	    } catch (Exception e) {
-		break;
-	    }
 	}
-    }
-
-    static String toJsonString(ChaincodeMessage message) {
-        try {
-    	return JsonFormat.printer().print(message);
-        } catch(InvalidProtocolBufferException e) {
-    	return String.format("{ Type: %s, TxId: %s }", message.getType(), message.getTxid());
-        }
-    }
 }

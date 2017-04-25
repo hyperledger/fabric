@@ -129,20 +129,19 @@ public class Handler {
 	}
 
 	private void triggerNextState(ChaincodeMessage message, boolean send) {
-		if(logger.isTraceEnabled())logger.trace("triggerNextState for message "+message);
+		if (logger.isTraceEnabled()) logger.trace("triggerNextState for message " + message);
 		nextState.add(new NextStateInfo(message, send));
 	}
 
 	public synchronized void serialSend(ChaincodeMessage message) {
-	    logger.debug("Sending message to peer: " + toJsonString(message));
+		logger.debug("Sending message to peer: " + toJsonString(message));
 		try {
 			chatStream.onNext(message);
 		} catch (Exception e) {
-			logger.error(String.format("[%s]Error sending %s: %s",
-					shortID(message), message.getType(), e));
+			logger.error(String.format("[%s]Error sending %s: %s", shortID(message), message.getType(), e));
 			throw new RuntimeException(String.format("Error sending %s: %s", message.getType(), e));
 		}
-		if(logger.isTraceEnabled())logger.trace("serialSend complete for message "+message);
+		if (logger.isTraceEnabled()) logger.trace("serialSend complete for message " + message);
 	}
 
 	private synchronized Channel<ChaincodeMessage> createChannel(String uuid) {
@@ -152,7 +151,7 @@ public class Handler {
 
 		Channel<ChaincodeMessage> channel = new Channel<ChaincodeMessage>();
 		responseChannel.put(uuid, channel);
-		if(logger.isTraceEnabled())logger.trace("channel created with uuid "+uuid);
+		if (logger.isTraceEnabled()) logger.trace("channel created with uuid " + uuid);
 
 		return channel;
 	}
@@ -173,8 +172,8 @@ public class Handler {
 		} catch (InterruptedException e) {
 			logger.debug("channel.take() failed with InterruptedException");
 
-			//Channel has been closed?
-			//TODO
+			// Channel has been closed?
+			// TODO
 			return null;
 		}
 	}
@@ -185,13 +184,16 @@ public class Handler {
 			channel.close();
 		}
 
-		if(logger.isTraceEnabled())logger.trace("deleteChannel done with uuid "+uuid);
+		if (logger.isTraceEnabled()) logger.trace("deleteChannel done with uuid " + uuid);
 	}
 
 	/**
 	 * Marks a UUID as either a transaction or a query
-	 * @param uuid ID to be marked
-	 * @param isTransaction true for transaction, false for query
+	 * 
+	 * @param uuid
+	 *            ID to be marked
+	 * @param isTransaction
+	 *            true for transaction, false for query
 	 * @return whether or not the UUID was successfully marked
 	 */
 	private synchronized boolean markIsTransaction(String uuid, boolean isTransaction) {
@@ -214,7 +216,9 @@ public class Handler {
 
 	/**
 	 * Handles requests to initialize chaincode
-	 * @param message chaincode to be initialized
+	 * 
+	 * @param message
+	 *            chaincode to be initialized
 	 */
 	private void handleInit(ChaincodeMessage message) {
 		new Thread(() -> {
@@ -226,13 +230,14 @@ public class Handler {
 				// Mark as a transaction (allow put/del state)
 				markIsTransaction(message.getTxid(), true);
 
-				// Create the ChaincodeStub which the chaincode can use to callback
+				// Create the ChaincodeStub which the chaincode can use to
+				// callback
 				final ChaincodeStub stub = new ChaincodeStubImpl(message.getTxid(), this, input.getArgsList());
 
 				// Call chaincode's init
 				final Response result = chaincode.init(stub);
 
-				if(result.getStatus() == Status.SUCCESS_VALUE) {
+				if (result.getStatus() == Status.SUCCESS_VALUE) {
 					// Send COMPLETED with entire result as payload
 					logger.debug(String.format(String.format("[%s]Init succeeded. Sending %s", shortID(message), COMPLETED)));
 					triggerNextState(newCompletedEventMessage(message.getTxid(), result, stub.getEvent()), true);
@@ -261,7 +266,7 @@ public class Handler {
 
 	// enterInitState will initialize the chaincode if entering init from established.
 	private void beforeInit(Event event) {
-    	logger.debug(String.format("Before %s event.", event.name));
+		logger.debug(String.format("Before %s event.", event.name));
 		logger.debug(String.format("Current state %s", fsm.current()));
 		final ChaincodeMessage message = extractMessageFromEvent(event);
 		logger.debug(String.format("[%s]Received %s, initializing chaincode", shortID(message), message.getType()));
@@ -282,13 +287,14 @@ public class Handler {
 				// Mark as a transaction (allow put/del state)
 				markIsTransaction(message.getTxid(), true);
 
-				// Create the ChaincodeStub which the chaincode can use to callback
+				// Create the ChaincodeStub which the chaincode can use to
+				// callback
 				final ChaincodeStub stub = new ChaincodeStubImpl(message.getTxid(), this, input.getArgsList());
 
 				// Call chaincode's invoke
 				final Response result = chaincode.invoke(stub);
 
-				if(result.getStatus() == Status.SUCCESS_VALUE) {
+				if (result.getStatus() == Status.SUCCESS_VALUE) {
 					// Send COMPLETED with entire result as payload
 					logger.debug(String.format(String.format("[%s]Invoke succeeded. Sending %s", shortID(message), COMPLETED)));
 					triggerNextState(newCompletedEventMessage(message.getTxid(), result, stub.getEvent()), true);
@@ -315,11 +321,10 @@ public class Handler {
 		}).start();
 	}
 
-    // enterTransactionState will execute chaincode's Run if coming from a TRANSACTION event.
+	// enterTransactionState will execute chaincode's Run if coming from a TRANSACTION event.
 	private void beforeTransaction(Event event) {
 		ChaincodeMessage message = extractMessageFromEvent(event);
-		logger.debug(String.format("[%s]Received %s, invoking transaction on chaincode(src:%s, dst:%s)",
-				shortID(message), message.getType().toString(), event.src, event.dst));
+		logger.debug(String.format("[%s]Received %s, invoking transaction on chaincode(src:%s, dst:%s)", shortID(message), message.getType().toString(), event.src, event.dst));
 		if (message.getType() == TRANSACTION) {
 			// Call the chaincode's Run function to invoke transaction
 			handleTransaction(message);
@@ -342,44 +347,50 @@ public class Handler {
 		ChaincodeMessage message = extractMessageFromEvent(event);
 		try {
 			sendChannel(message);
-			logger.debug(String.format("[%s]Received %s, communicated (state:%s)",
-					shortID(message), message.getType(), fsm.current()));
+			logger.debug(String.format("[%s]Received %s, communicated (state:%s)", shortID(message), message.getType(), fsm.current()));
 		} catch (Exception e) {
-			logger.error(String.format("[%s]error sending %s (state:%s): %s", shortID(message),
-					message.getType(), fsm.current(), e));
+			logger.error(String.format("[%s]error sending %s (state:%s): %s", shortID(message), message.getType(), fsm.current(), e));
 		}
 	}
 
 	private ChaincodeMessage extractMessageFromEvent(Event event) {
-	    try {
-		return (ChaincodeMessage) event.args[0];
-	    } catch (ClassCastException | ArrayIndexOutOfBoundsException e) {
-		final RuntimeException error = new RuntimeException("No chaincode message found in event.", e);
-		event.cancel(error);
-		throw error;
-	    }
+		try {
+			return (ChaincodeMessage) event.args[0];
+		} catch (ClassCastException | ArrayIndexOutOfBoundsException e) {
+			final RuntimeException error = new RuntimeException("No chaincode message found in event.", e);
+			event.cancel(error);
+			throw error;
+		}
 	}
 
 	private void afterError(Event event) {
 		ChaincodeMessage message = extractMessageFromEvent(event);
-		/* TODO- revisit. This may no longer be needed with the serialized/streamlined messaging model
-		 * There are two situations in which the ERROR event can be triggered:
-		 * 1. When an error is encountered within handleInit or handleTransaction - some issue at the chaincode side; In this case there will be no responseChannel and the message has been sent to the validator.
-		 * 2. The chaincode has initiated a request (get/put/del state) to the validator and is expecting a response on the responseChannel; If ERROR is received from validator, this needs to be notified on the responseChannel.
+		/*
+		 * TODO- revisit. This may no longer be needed with the
+		 * serialized/streamlined messaging model There are two situations in
+		 * which the ERROR event can be triggered:
+		 * 
+		 * 1. When an error is encountered within handleInit or
+		 * handleTransaction - some issue at the chaincode side; In this case
+		 * there will be no responseChannel and the message has been sent to the
+		 * validator.
+		 * 
+		 * 2. The chaincode has initiated a request (get/put/del state) to the
+		 * validator and is expecting a response on the responseChannel; If
+		 * ERROR is received from validator, this needs to be notified on the
+		 * responseChannel.
 		 */
 		try {
 			sendChannel(message);
 		} catch (Exception e) {
-			logger.debug(String.format("[%s]Error received from validator %s, communicated(state:%s)",
-					shortID(message), message.getType(), fsm.current()));
+			logger.debug(String.format("[%s]Error received from validator %s, communicated(state:%s)", shortID(message), message.getType(), fsm.current()));
 		}
 	}
 
 	// handleGetState communicates with the validator to fetch the requested state information from the ledger.
 	ByteString handleGetState(String key, String uuid) {
 		try {
-			//TODO Implement method to get and put entire state map and not one key at a time?
-			// Create the channel on which to communicate the response from validating peer
+			// TODO Implement method to get and put entire state map and not one key at a time?
 			// Create the channel on which to communicate the response from validating peer
 			Channel<ChaincodeMessage> responseChannel;
 			try {
@@ -426,8 +437,7 @@ public class Handler {
 			}
 
 			// Incorrect chaincode message received
-			logger.error(String.format("[%s]Incorrect chaincode message %s received. Expecting %s or %s",
-					shortID(response.getTxid()), response.getType(), RESPONSE, ERROR));
+			logger.error(String.format("[%s]Incorrect chaincode message %s received. Expecting %s or %s", shortID(response.getTxid()), response.getType(), RESPONSE, ERROR));
 			throw new RuntimeException("Incorrect chaincode message received");
 		} finally {
 			deleteChannel(uuid);
@@ -440,7 +450,7 @@ public class Handler {
 
 	void handlePutState(String key, ByteString value, String uuid) {
 		// Check if this is a transaction
-		logger.debug("["+ shortID(uuid)+"]Inside putstate (\""+key+"\":\""+value+"\"), isTransaction = "+isTransaction(uuid));
+		logger.debug("[" + shortID(uuid) + "]Inside putstate (\"" + key + "\":\"" + value + "\"), isTransaction = " + isTransaction(uuid));
 
 		if (!isTransaction(uuid)) {
 			throw new IllegalStateException("Cannot put state in query context");
@@ -451,7 +461,8 @@ public class Handler {
 				.setValue(value)
 				.build();
 
-		// Create the channel on which to communicate the response from validating peer
+		// Create the channel on which to communicate the response from
+		// validating peer
 		Channel<ChaincodeMessage> responseChannel;
 		try {
 			responseChannel = createChannel(uuid);
@@ -460,7 +471,7 @@ public class Handler {
 			throw e;
 		}
 
-		//Defer
+		// Defer
 		try {
 			// Send PUT_STATE message to validator chaincode support
 			ChaincodeMessage message = ChaincodeMessage.newBuilder()
@@ -483,7 +494,7 @@ public class Handler {
 			try {
 				response = receiveChannel(responseChannel);
 			} catch (Exception e) {
-				//TODO figure out how to get uuid of receive channel
+				// TODO figure out how to get uuid of receive channel
 				logger.error(String.format("[%s]Received unexpected message type", e));
 				throw e;
 			}
@@ -501,8 +512,7 @@ public class Handler {
 			}
 
 			// Incorrect chaincode message received
-			logger.error(String.format("[%s]Incorrect chaincode message %s received. Expecting %s or %s",
-					shortID(response.getTxid()), response.getType(), RESPONSE, ERROR));
+			logger.error(String.format("[%s]Incorrect chaincode message %s received. Expecting %s or %s", shortID(response.getTxid()), response.getType(), RESPONSE, ERROR));
 
 			throw new RuntimeException("Incorrect chaincode message received");
 		} catch (Exception e) {
@@ -518,17 +528,17 @@ public class Handler {
 			throw new RuntimeException("Cannot del state in query context");
 		}
 
-		// Create the channel on which to communicate the response from validating peer
+		// Create the channel on which to communicate the response from
+		// validating peer
 		Channel<ChaincodeMessage> responseChannel;
 		try {
 			responseChannel = createChannel(uuid);
 		} catch (Exception e) {
-			logger.error(String.format("[%s]Another state request pending for this Uuid."
-					+ " Cannot process create createChannel.", shortID(uuid)));
+			logger.error(String.format("[%s]Another state request pending for this Uuid." + " Cannot process create createChannel.", shortID(uuid)));
 			throw e;
 		}
 
-		//Defer
+		// Defer
 		try {
 			// Send DEL_STATE message to validator chaincode support
 			ChaincodeMessage message = ChaincodeMessage.newBuilder()
@@ -566,8 +576,7 @@ public class Handler {
 			}
 
 			// Incorrect chaincode message received
-			logger.error(String.format("[%s]Incorrect chaincode message %s received. Expecting %s or %s",
-					shortID(response.getTxid()), response.getType(), RESPONSE, ERROR));
+			logger.error(String.format("[%s]Incorrect chaincode message %s received. Expecting %s or %s", shortID(response.getTxid()), response.getType(), RESPONSE, ERROR));
 			throw new RuntimeException("Incorrect chaincode message received");
 		} finally {
 			deleteChannel(uuid);
@@ -607,8 +616,7 @@ public class Handler {
 
 	private QueryResponse invokeQueryResponseMessage(String txId, ChaincodeMessage.Type type, ByteString payload) {
 		try {
-			return QueryResponse.parseFrom(invokeChaincodeSupport(txId, type, payload)
-			);
+			return QueryResponse.parseFrom(invokeChaincodeSupport(txId, type, payload));
 		} catch (InvalidProtocolBufferException e) {
 			logger.error(String.format("[%-8s]unmarshall error", txId));
 			throw new RuntimeException("Error unmarshalling QueryResponse.", e);
@@ -617,7 +625,8 @@ public class Handler {
 
 	private ByteString invokeChaincodeSupport(String txId, Type messageType, ByteString payload) {
 
-		// Create the channel on which to communicate the response from validating peer
+		// Create the channel on which to communicate the response from
+		// validating peer
 		final Channel<ChaincodeMessage> responseChannel;
 		try {
 			responseChannel = createChannel(txId);
@@ -636,7 +645,7 @@ public class Handler {
 			logger.debug(String.format("[%s]Sending %s", shortID(message), messageType));
 			try {
 				serialSend(message);
-			} catch (Exception e){
+			} catch (Exception e) {
 				logger.error(String.format("[%s]error sending %s", shortID(message), messageType));
 				throw new RuntimeException("could not send message");
 			}
@@ -658,8 +667,7 @@ public class Handler {
 
 			if (response.getType() == ERROR) {
 				// Error response
-				logger.error(String.format("[%s]Received %s",
-						shortID(response.getTxid()), ERROR));
+				logger.error(String.format("[%s]Received %s", shortID(response.getTxid()), ERROR));
 				throw new RuntimeException(response.getPayload().toStringUtf8());
 			}
 
@@ -684,7 +692,8 @@ public class Handler {
 				.build();
 
 		try {
-			// create the channel on which to communicate the response from validating peer
+			// create the channel on which to communicate the response from
+			// validating peer
 			final Channel<ChaincodeMessage> responseChannel = createChannel(txid);
 
 			// Send INVOKE_CHAINCODE message to validator chaincode support
@@ -695,7 +704,7 @@ public class Handler {
 			// wait for response chaincode message
 			final ChaincodeMessage outerResponseMessage = receiveChannel(responseChannel);
 
-			if(outerResponseMessage == null) {
+			if (outerResponseMessage == null) {
 				return ChaincodeHelper.newInternalServerErrorResponse("chaincode invoke returned null");
 			}
 
@@ -703,11 +712,12 @@ public class Handler {
 
 			switch (outerResponseMessage.getType()) {
 			case RESPONSE:
-				// response message payload should be yet another chaincode message (the actual response message)
+				// response message payload should be yet another chaincode
+				// message (the actual response message)
 				final ChaincodeMessage responseMessage = ChaincodeMessage.parseFrom(outerResponseMessage.getPayload());
 				// the actual response message must be of type COMPLETED
 				logger.debug(String.format("[%s]Received %s.", shortID(responseMessage.getTxid()), responseMessage.getType()));
-				if(responseMessage.getType() == COMPLETED) {
+				if (responseMessage.getType() == COMPLETED) {
 					// success
 					return Response.parseFrom(responseMessage.getPayload());
 				} else {
@@ -720,7 +730,7 @@ public class Handler {
 				return ChaincodeHelper.newInternalServerErrorResponse(outerResponseMessage.getPayload().toByteArray());
 			default:
 				// Incorrect chaincode message received
-				logger.debug(String.format("[%s]Incorrect chaincode message %s received. Expecting %s or %s",shortID(outerResponseMessage.getTxid()), outerResponseMessage.getType(), RESPONSE, ERROR));
+				logger.debug(String.format("[%s]Incorrect chaincode message %s received. Expecting %s or %s", shortID(outerResponseMessage.getTxid()), outerResponseMessage.getType(), RESPONSE, ERROR));
 				return ChaincodeHelper.newInternalServerErrorResponse("Incorrect chaincode message received.", outerResponseMessage.toByteArray());
 			}
 		} catch (InvalidProtocolBufferException e) {
@@ -732,22 +742,21 @@ public class Handler {
 		}
 	}
 
-	// handleMessage message handles loop for org.hyperledger.fabric.shim side of chaincode/validator stream.
+	// handleMessage message handles loop for org.hyperledger.fabric.shim side
+	// of chaincode/validator stream.
 	public synchronized void handleMessage(ChaincodeMessage message) throws Exception {
 
-		if (message.getType() == ChaincodeMessage.Type.KEEPALIVE){
-			logger.debug(String.format("[%s] Recieved KEEPALIVE message, do nothing",
-					shortID(message)));
-			// Received a keep alive message, we don't do anything with it for now
-			// and it does not touch the state machine
-				return;
+		if (message.getType() == ChaincodeMessage.Type.KEEPALIVE) {
+			logger.debug(String.format("[%s] Recieved KEEPALIVE message, do nothing", shortID(message)));
+			// Received a keep alive message, we don't do anything with it for
+			// now and it does not touch the state machine
+			return;
 		}
 
 		logger.debug(String.format("[%s]Handling ChaincodeMessage of type: %s(state:%s)", shortID(message), message.getType(), fsm.current()));
 
 		if (fsm.eventCannotOccur(message.getType().toString())) {
-			String errStr = String.format("[%s]Chaincode handler org.hyperledger.fabric.shim.fsm cannot handle message (%s) with payload size (%d) while in state: %s",
-					message.getTxid(), message.getType(), message.getPayload().size(), fsm.current());
+			String errStr = String.format("[%s]Chaincode handler org.hyperledger.fabric.shim.fsm cannot handle message (%s) with payload size (%d) while in state: %s", message.getTxid(), message.getType(), message.getPayload().size(), fsm.current());
 			serialSend(newErrorEventMessage(message.getTxid(), errStr));
 			throw new RuntimeException(errStr);
 		}
@@ -758,10 +767,10 @@ public class Handler {
 			fsm.raiseEvent(message.getType().toString(), message);
 		} catch (NoTransitionException e) {
 			if (e.error != null) throw e;
-			logger.debug("["+ shortID(message)+"]Ignoring NoTransitionError");
+			logger.debug("[" + shortID(message) + "]Ignoring NoTransitionError");
 		} catch (CancelledException e) {
 			if (e.error != null) throw e;
-			logger.debug("["+ shortID(message)+"]Ignoring CanceledError");
+			logger.debug("[" + shortID(message) + "]Ignoring CanceledError");
 		}
 	}
 
