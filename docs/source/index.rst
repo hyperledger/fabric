@@ -33,7 +33,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business <https
    :maxdepth: 2
    :caption: Getting Started
 
-   getting_started
+   getting_startedv2
 
 .. toctree::
    :maxdepth: 2
