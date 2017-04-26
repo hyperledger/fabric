@@ -43,6 +43,7 @@ type configSet struct {
 	channelID string
 	sequence  uint64
 	configMap map[string]comparable
+	configEnv *cb.ConfigEnvelope
 }
 
 type configManager struct {
@@ -113,6 +114,7 @@ func NewManagerImpl(envConfig *cb.Envelope, initializer api.Initializer, callOnU
 			sequence:  configEnv.Config.Sequence,
 			configMap: configMap,
 			channelID: header.ChannelId,
+			configEnv: configEnv,
 		},
 		callOnUpdate: callOnUpdate,
 	}
@@ -142,12 +144,12 @@ func (cm *configManager) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 func (cm *configManager) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
 	configUpdateEnv, err := envelopeToConfigUpdate(configtx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error converting envelope to config update: %s", err)
 	}
 
 	configMap, err := cm.authorizeUpdate(configUpdateEnv)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error authorizing update: %s", err)
 	}
 
 	channelGroup, err := configMapToConfig(configMap)
@@ -157,7 +159,7 @@ func (cm *configManager) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 
 	result, err := cm.processConfig(channelGroup)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error processing updated config: %s", err)
 	}
 
 	result.rollback()
@@ -231,13 +233,15 @@ func (cm *configManager) Apply(configEnv *cb.ConfigEnvelope) error {
 	}
 
 	result.commit()
-	cm.commitCallbacks()
 
 	cm.current = &configSet{
 		configMap: configMap,
 		channelID: cm.current.channelID,
 		sequence:  configEnv.Config.Sequence,
+		configEnv: configEnv,
 	}
+
+	cm.commitCallbacks()
 
 	return nil
 }
@@ -250,4 +254,9 @@ func (cm *configManager) ChainID() string {
 // Sequence returns the current sequence number of the config
 func (cm *configManager) Sequence() uint64 {
 	return cm.current.sequence
+}
+
+// ConfigEnvelope returns the current config envelope
+func (cm *configManager) ConfigEnvelope() *cb.ConfigEnvelope {
+	return cm.current.configEnv
 }

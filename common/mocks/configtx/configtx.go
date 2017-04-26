@@ -39,6 +39,9 @@ type Resources struct {
 	// ApplicationConfigVal is returned as the result of ApplicationConfig()
 	ApplicationConfigVal config.Application
 
+	// ConsortiumsConfigVal is returned as the result of ConsortiumsConfig()
+	ConsortiumsConfigVal config.Consortiums
+
 	// MSPManagerVal is returned as the result of MSPManager()
 	MSPManagerVal msp.MSPManager
 }
@@ -61,6 +64,10 @@ func (r *Resources) OrdererConfig() config.Orderer {
 // Returns the ApplicationConfigVal
 func (r *Resources) ApplicationConfig() config.Application {
 	return r.ApplicationConfigVal
+}
+
+func (r *Resources) ConsortiumsConfig() config.Consortiums {
+	return r.ConsortiumsConfigVal
 }
 
 // Returns the MSPManagerVal
@@ -172,11 +179,14 @@ type Manager struct {
 
 	// ProposeConfigUpdateVal is returns as the value for ProposeConfigUpdate
 	ProposeConfigUpdateVal *cb.ConfigEnvelope
+
+	// ConfigEnvelopeVal is returned as the value for ConfigEnvelope()
+	ConfigEnvelopeVal *cb.ConfigEnvelope
 }
 
-// ConfigEnvelope is currently unimplemented
+// ConfigEnvelope returns the ConfigEnvelopeVal
 func (cm *Manager) ConfigEnvelope() *cb.ConfigEnvelope {
-	panic("Unimplemented")
+	return cm.ConfigEnvelopeVal
 }
 
 // ConsensusType returns the ConsensusTypeVal

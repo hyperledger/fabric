@@ -14,67 +14,49 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sharedconfig
+package config
 
-import ab "github.com/hyperledger/fabric/protos/orderer"
-import "time"
+import (
+	"time"
 
-// SharedConfig is a mock implementation of sharedconfig.SharedConfig
-type SharedConfig struct {
+	ab "github.com/hyperledger/fabric/protos/orderer"
+)
+
+// Orderer is a mock implementation of config.Orderer
+type Orderer struct {
 	// ConsensusTypeVal is returned as the result of ConsensusType()
 	ConsensusTypeVal string
 	// BatchSizeVal is returned as the result of BatchSize()
 	BatchSizeVal *ab.BatchSize
 	// BatchTimeoutVal is returned as the result of BatchTimeout()
 	BatchTimeoutVal time.Duration
-	// ChainCreationPolicyNamesVal is returned as the result of ChainCreationPolicyNames()
-	ChainCreationPolicyNamesVal []string
 	// KafkaBrokersVal is returned as the result of KafkaBrokers()
 	KafkaBrokersVal []string
-	// IngressPolicyNamesVal is returned as the result of IngressPolicyNames()
-	IngressPolicyNamesVal []string
-	// EgressPolicyNamesVal is returned as the result of EgressPolicyNames()
-	EgressPolicyNamesVal []string
 	// MaxChannelsCountVal is returns as the result of MaxChannelsCount()
 	MaxChannelsCountVal uint64
 }
 
 // ConsensusType returns the ConsensusTypeVal
-func (scm *SharedConfig) ConsensusType() string {
+func (scm *Orderer) ConsensusType() string {
 	return scm.ConsensusTypeVal
 }
 
 // BatchSize returns the BatchSizeVal
-func (scm *SharedConfig) BatchSize() *ab.BatchSize {
+func (scm *Orderer) BatchSize() *ab.BatchSize {
 	return scm.BatchSizeVal
 }
 
 // BatchTimeout returns the BatchTimeoutVal
-func (scm *SharedConfig) BatchTimeout() time.Duration {
+func (scm *Orderer) BatchTimeout() time.Duration {
 	return scm.BatchTimeoutVal
 }
 
-// ChainCreationPolicyNames returns the ChainCreationPolicyNamesVal
-func (scm *SharedConfig) ChainCreationPolicyNames() []string {
-	return scm.ChainCreationPolicyNamesVal
-}
-
 // KafkaBrokers returns the KafkaBrokersVal
-func (scm *SharedConfig) KafkaBrokers() []string {
+func (scm *Orderer) KafkaBrokers() []string {
 	return scm.KafkaBrokersVal
 }
 
 // MaxChannelsCount returns the MaxChannelsCountVal
-func (scm *SharedConfig) MaxChannelsCount() uint64 {
+func (scm *Orderer) MaxChannelsCount() uint64 {
 	return scm.MaxChannelsCountVal
-}
-
-// IngressPolicyNames returns the IngressPolicyNamesVal
-func (scm *SharedConfig) IngressPolicyNames() []string {
-	return scm.IngressPolicyNamesVal
-}
-
-// EgressPolicyNames returns the EgressPolicyNamesVal
-func (scm *SharedConfig) EgressPolicyNames() []string {
-	return scm.EgressPolicyNamesVal
 }

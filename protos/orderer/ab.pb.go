@@ -21,8 +21,6 @@ It has these top-level messages:
 	ConsensusType
 	BatchSize
 	BatchTimeout
-	CreationPolicy
-	ChainCreationPolicyNames
 	KafkaBrokers
 	ChannelRestrictions
 	KafkaMessage

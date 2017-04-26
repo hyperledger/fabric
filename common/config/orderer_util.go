@@ -46,11 +46,6 @@ func TemplateBatchTimeout(batchTimeout string) *cb.ConfigGroup {
 	return ordererConfigGroup(BatchTimeoutKey, utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: batchTimeout}))
 }
 
-// TemplateChainCreationPolicyNames creates a headerless configuraiton item representing the chain creation policy names
-func TemplateChainCreationPolicyNames(names []string) *cb.ConfigGroup {
-	return ordererConfigGroup(ChainCreationPolicyNamesKey, utils.MarshalOrPanic(&ab.ChainCreationPolicyNames{Names: names}))
-}
-
 // TemplateChannelRestrictions creates a config group with ChannelRestrictions specified
 func TemplateChannelRestrictions(maxChannels uint64) *cb.ConfigGroup {
 	return ordererConfigGroup(ChannelRestrictionsKey, utils.MarshalOrPanic(&ab.ChannelRestrictions{MaxCount: maxChannels}))

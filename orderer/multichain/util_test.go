@@ -27,11 +27,6 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-const (
-	msgVersion = int32(0)
-	epoch      = uint64(0)
-)
-
 type mockConsenter struct {
 }
 
@@ -115,7 +110,7 @@ func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.Co
 		panic(err)
 	}
 	configTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
-		Config:     &cb.Config{ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
+		Config:     &cb.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
 		LastUpdate: configUpdateTx},
 		msgVersion, epoch)
 	if err != nil {

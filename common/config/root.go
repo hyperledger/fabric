@@ -87,3 +87,7 @@ func (r *Root) Orderer() *OrdererGroup {
 func (r *Root) Application() *ApplicationGroup {
 	return r.channel.ApplicationConfig()
 }
+
+func (r *Root) Consortiums() *ConsortiumsGroup {
+	return r.channel.ConsortiumsConfig()
+}

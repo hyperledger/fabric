@@ -21,6 +21,19 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
+// ImplicitMetaPolicyWithSubPolicy creates an implicitmeta policy
+func ImplicitMetaPolicyWithSubPolicy(subPolicyName string, rule cb.ImplicitMetaPolicy_Rule) *cb.ConfigPolicy {
+	return &cb.ConfigPolicy{
+		Policy: &cb.Policy{
+			Type: int32(cb.Policy_IMPLICIT_META),
+			Policy: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+				Rule:      rule,
+				SubPolicy: subPolicyName,
+			}),
+		},
+	}
+}
+
 // TemplateImplicitMetaPolicy creates a policy at the specified path with the given policyName and subPolicyName
 func TemplateImplicitMetaPolicyWithSubPolicy(path []string, policyName string, subPolicyName string, rule cb.ImplicitMetaPolicy_Rule) *cb.ConfigGroup {
 	root := cb.NewConfigGroup()
@@ -30,15 +43,7 @@ func TemplateImplicitMetaPolicyWithSubPolicy(path []string, policyName string, s
 		group = group.Groups[element]
 	}
 
-	group.Policies[policyName] = &cb.ConfigPolicy{
-		Policy: &cb.Policy{
-			Type: int32(cb.Policy_IMPLICIT_META),
-			Policy: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
-				Rule:      rule,
-				SubPolicy: subPolicyName,
-			}),
-		},
-	}
+	group.Policies[policyName] = ImplicitMetaPolicyWithSubPolicy(subPolicyName, rule)
 	return root
 }
 

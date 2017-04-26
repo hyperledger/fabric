@@ -24,12 +24,15 @@ import (
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/config"
+	mspconfig "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
@@ -38,7 +41,8 @@ import (
 
 var logger = flogging.MustGetLogger("common/configtx/tool")
 
-func doOutputBlock(pgen provisional.Generator, channelID string, outputBlock string) error {
+func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock string) error {
+	pgen := provisional.New(config)
 	logger.Info("Generating genesis block")
 	genesisBlock := pgen.GenesisBlockForChannel(channelID)
 	logger.Info("Writing genesis block")
@@ -49,14 +53,22 @@ func doOutputBlock(pgen provisional.Generator, channelID string, outputBlock str
 	return nil
 }
 
-func doOutputChannelCreateTx(pgen provisional.Generator, channelID string, outputChannelCreateTx string) error {
+func doOutputChannelCreateTx(conf *genesisconfig.Profile, channelID string, outputChannelCreateTx string) error {
 	logger.Info("Generating new channel configtx")
 	// TODO, use actual MSP eventually
 	signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
 	if err != nil {
 		return fmt.Errorf("Error getting signing identity: %s", err)
 	}
-	configtx, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, channelID, signer, pgen.ChannelTemplate())
+
+	// XXX we ignore the non-application org names here, once the tool supports configuration updates
+	// we should come up with a cleaner way to handle this, but leaving as is for the moment to not break
+	// backwards compatibility
+	var orgNames []string
+	for _, org := range conf.Application.Organizations {
+		orgNames = append(orgNames, org.Name)
+	}
+	configtx, err := configtx.MakeChainCreationTransaction(channelID, conf.Consortium, signer, orgNames...)
 	if err != nil {
 		return fmt.Errorf("Error generating configtx: %s", err)
 	}
@@ -64,6 +76,79 @@ func doOutputChannelCreateTx(pgen provisional.Generator, channelID string, outpu
 	err = ioutil.WriteFile(outputChannelCreateTx, utils.MarshalOrPanic(configtx), 0644)
 	if err != nil {
 		return fmt.Errorf("Error writing channel create tx: %s", err)
+	}
+	return nil
+}
+
+func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, outputAnchorPeersUpdate string, asOrg string) error {
+	logger.Info("Generating anchor peer update")
+	if asOrg == "" {
+		return fmt.Errorf("Must specify an organization to update the anchor peer for")
+	}
+
+	var org *genesisconfig.Organization
+	for _, iorg := range conf.Application.Organizations {
+		if iorg.Name == asOrg {
+			org = iorg
+		}
+	}
+
+	if org == nil {
+		return fmt.Errorf("No org matching: %s", asOrg)
+	}
+
+	anchorPeers := make([]*pb.AnchorPeer, len(org.AnchorPeers))
+	for i, anchorPeer := range org.AnchorPeers {
+		anchorPeers[i] = &pb.AnchorPeer{
+			Host: anchorPeer.Host,
+			Port: int32(anchorPeer.Port),
+		}
+	}
+
+	configGroup := config.TemplateAnchorPeers(org.Name, anchorPeers)
+	configUpdate := &cb.ConfigUpdate{
+		ChannelId: channelID,
+		WriteSet:  configGroup,
+		ReadSet:   cb.NewConfigGroup(),
+	}
+
+	// Add all the existing config to the readset
+	configUpdate.ReadSet.Groups[config.ApplicationGroupKey] = cb.NewConfigGroup()
+	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].Version = 1
+	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].Groups[org.Name] = cb.NewConfigGroup()
+	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Values[config.MSPKey] = &cb.ConfigValue{}
+	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.ReadersPolicyKey] = &cb.ConfigPolicy{}
+	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.WritersPolicyKey] = &cb.ConfigPolicy{}
+	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.AdminsPolicyKey] = &cb.ConfigPolicy{}
+
+	// Add all the existing at the same versions to the writeset
+	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Version = 1
+	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Version = 1
+	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Values[config.MSPKey] = &cb.ConfigValue{}
+	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.ReadersPolicyKey] = &cb.ConfigPolicy{}
+	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.WritersPolicyKey] = &cb.ConfigPolicy{}
+	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.AdminsPolicyKey] = &cb.ConfigPolicy{}
+
+	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: utils.MarshalOrPanic(configUpdate),
+	}
+
+	update := &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId: channelID,
+					Type:      int32(cb.HeaderType_CONFIG_UPDATE),
+				}),
+			},
+			Data: utils.MarshalOrPanic(configUpdateEnvelope),
+		}),
+	}
+
+	logger.Info("Writing anchor peer update")
+	err := ioutil.WriteFile(outputAnchorPeersUpdate, utils.MarshalOrPanic(update), 0644)
+	if err != nil {
+		return fmt.Errorf("Error writing channel anchor peer update: %s", err)
 	}
 	return nil
 }
@@ -168,25 +253,27 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 		return fmt.Errorf("ConfigUpdateEnvelope was for different channel than envelope: %s vs %s", configUpdate.ChannelId, header.ChannelId)
 	}
 
-	configResult, err := configtx.NewConfigResult(configUpdate.WriteSet, configtx.NewInitializer())
-	if err != nil {
-		return fmt.Errorf("Error parsing configuration: %s", err)
+	if configUpdate.WriteSet == nil {
+		return fmt.Errorf("Empty WriteSet")
 	}
 
-	buffer := &bytes.Buffer{}
-	err = json.Indent(buffer, []byte(configResult.JSON()), "", "    ")
-	if err != nil {
-		return fmt.Errorf("Error in output JSON (usually a programming bug): %s", err)
+	if configUpdate.WriteSet.Groups[config.ApplicationGroupKey] == nil {
+		return fmt.Errorf("Empty Application group")
 	}
 
-	fmt.Printf("Config for channel: %s\n", header.ChannelId)
+	var orgs []string
 
-	fmt.Println(buffer.String())
+	for name := range configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups {
+		orgs = append(orgs, name)
+	}
+
+	fmt.Printf("\nChannel creation for channel: %s with orgs %v\n\n", header.ChannelId, orgs)
+
 	return nil
 }
 
 func main() {
-	var outputBlock, outputChannelCreateTx, profile, channelID, inspectBlock, inspectChannelCreateTx string
+	var outputBlock, outputChannelCreateTx, profile, channelID, inspectBlock, inspectChannelCreateTx, outputAnchorPeersUpdate, asOrg string
 
 	flag.StringVar(&outputBlock, "outputBlock", "", "The path to write the genesis block to (if set)")
 	flag.StringVar(&channelID, "channelID", provisional.TestChainID, "The channel ID to use in the configtx")
@@ -194,6 +281,8 @@ func main() {
 	flag.StringVar(&profile, "profile", genesisconfig.SampleInsecureProfile, "The profile from configtx.yaml to use for generation.")
 	flag.StringVar(&inspectBlock, "inspectBlock", "", "Prints the configuration contained in the block at the specified path")
 	flag.StringVar(&inspectChannelCreateTx, "inspectChannelCreateTx", "", "Prints the configuration contained in the transaction at the specified path")
+	flag.StringVar(&outputAnchorPeersUpdate, "outputAnchorPeersUpdate", "", "Creates an config update to update an anchor peer (works only with the default channel creation, and only for the first update)")
+	flag.StringVar(&asOrg, "asOrg", "", "Performs the config generation as a particular organization, only including values in the write set that org (likely) has privilege to set")
 
 	flag.Parse()
 
@@ -202,16 +291,15 @@ func main() {
 	logger.Info("Loading configuration")
 	factory.InitFactories(nil)
 	config := genesisconfig.Load(profile)
-	pgen := provisional.New(config)
 
 	if outputBlock != "" {
-		if err := doOutputBlock(pgen, channelID, outputBlock); err != nil {
+		if err := doOutputBlock(config, channelID, outputBlock); err != nil {
 			logger.Fatalf("Error on outputBlock: %s", err)
 		}
 	}
 
 	if outputChannelCreateTx != "" {
-		if err := doOutputChannelCreateTx(pgen, channelID, outputChannelCreateTx); err != nil {
+		if err := doOutputChannelCreateTx(config, channelID, outputChannelCreateTx); err != nil {
 			logger.Fatalf("Error on outputChannelCreateTx: %s", err)
 		}
 	}
@@ -228,4 +316,9 @@ func main() {
 		}
 	}
 
+	if outputAnchorPeersUpdate != "" {
+		if err := doOutputAnchorPeersUpdate(config, channelID, outputAnchorPeersUpdate, asOrg); err != nil {
+			logger.Fatalf("Error on inspectChannelCreateTx: %s", err)
+		}
+	}
 }

@@ -17,35 +17,29 @@ limitations under the License.
 package multichain
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
-	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
-	"github.com/hyperledger/fabric/common/policies"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
+	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/stretchr/testify/assert"
 )
 
 type mockSupport struct {
-	mpm *mockpolicies.Manager
-	msc *mockconfigvaluesorderer.SharedConfig
+	msc *mockconfig.Orderer
 }
 
-func newMockSupport(chainID string) *mockSupport {
+func newMockSupport() *mockSupport {
 	return &mockSupport{
-		mpm: &mockpolicies.Manager{},
-		msc: &mockconfigvaluesorderer.SharedConfig{},
+		msc: &mockconfig.Orderer{},
 	}
-}
-
-func (ms *mockSupport) PolicyManager() policies.Manager {
-	return ms.mpm
 }
 
 func (ms *mockSupport) SharedConfig() config.Orderer {
@@ -53,13 +47,14 @@ func (ms *mockSupport) SharedConfig() config.Orderer {
 }
 
 type mockChainCreator struct {
-	newChains []*cb.Envelope
-	ms        *mockSupport
+	ms                  *mockSupport
+	newChains           []*cb.Envelope
+	NewChannelConfigErr error
 }
 
 func newMockChainCreator() *mockChainCreator {
 	mcc := &mockChainCreator{
-		ms: newMockSupport(provisional.TestChainID),
+		ms: newMockSupport(),
 	}
 	return mcc
 }
@@ -72,14 +67,32 @@ func (mcc *mockChainCreator) channelsCount() int {
 	return len(mcc.newChains)
 }
 
+func (mcc *mockChainCreator) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error) {
+	if mcc.NewChannelConfigErr != nil {
+		return nil, mcc.NewChannelConfigErr
+	}
+	confUpdate := configtx.UnmarshalConfigUpdateOrPanic(configtx.UnmarshalConfigUpdateEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(envConfigUpdate.Payload).Data).ConfigUpdate)
+	return &mockconfigtx.Manager{
+		ConfigEnvelopeVal: &cb.ConfigEnvelope{
+			Config:     &cb.Config{Sequence: 1, ChannelGroup: confUpdate.WriteSet},
+			LastUpdate: envConfigUpdate,
+		},
+	}, nil
+}
+
 func TestGoodProposal(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
-	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
 
-	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtxtest.CompositeTemplate()).Envelope(newChainID)
+	configEnv, err := configtx.NewCompositeTemplate(
+		configtx.NewSimpleTemplate(
+			config.DefaultHashingAlgorithm(),
+			config.DefaultBlockDataHashingStructure(),
+			config.TemplateOrdererAddresses([]string{"foo"}),
+		),
+		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
+	).Envelope(newChainID)
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
 	}
@@ -98,13 +111,20 @@ func TestGoodProposal(t *testing.T) {
 	assert.Equal(t, ingressTx, mcc.newChains[0], "New chain should have been created with ingressTx")
 }
 
-func TestProposalWithBadPolicy(t *testing.T) {
+func TestProposalRejectedByConfig(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
+	mcc.NewChannelConfigErr = fmt.Errorf("Error creating channel")
 
-	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	configEnv, err := configtx.NewCompositeTemplate(
+		configtx.NewSimpleTemplate(
+			config.DefaultHashingAlgorithm(),
+			config.DefaultBlockDataHashingStructure(),
+			config.TemplateOrdererAddresses([]string{"foo"}),
+		),
+		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
+	).Envelope(newChainID)
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
 	}
@@ -114,38 +134,25 @@ func TestProposalWithBadPolicy(t *testing.T) {
 	sysFilter := newSystemChainFilter(mcc.ms, mcc)
 	action, _ := sysFilter.Apply(wrapped)
 
-	assert.EqualValues(t, action, filter.Reject, "Transaction creation policy was not authorized")
-}
-
-func TestProposalWithMissingPolicy(t *testing.T) {
-	newChainID := "NewChainID"
-
-	mcc := newMockChainCreator()
-	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
-
-	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
-	if err != nil {
-		t.Fatalf("Error constructing configtx")
-	}
-	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
-	wrapped := wrapConfigTx(ingressTx)
-
-	sysFilter := newSystemChainFilter(mcc.ms, mcc)
-	action, _ := sysFilter.Apply(wrapped)
-
-	assert.EqualValues(t, filter.Reject, action, "Transaction had missing policy")
+	assert.EqualValues(t, action, filter.Reject, "Did not accept valid transaction")
+	assert.Len(t, mcc.newChains, 0, "Proposal should not have created a new chain")
 }
 
 func TestNumChainsExceeded(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
-	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
 	mcc.ms.msc.MaxChannelsCountVal = 1
 	mcc.newChains = make([]*cb.Envelope, 2)
 
-	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	configEnv, err := configtx.NewCompositeTemplate(
+		configtx.NewSimpleTemplate(
+			config.DefaultHashingAlgorithm(),
+			config.DefaultBlockDataHashingStructure(),
+			config.TemplateOrdererAddresses([]string{"foo"}),
+		),
+		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
+	).Envelope(newChainID)
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
 	}

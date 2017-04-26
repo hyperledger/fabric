@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"testing"
 
-	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
+	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -83,7 +83,7 @@ func TestNormalBatch(t *testing.T) {
 	maxMessageCount := uint32(2)
 	absoluteMaxBytes := uint32(1000)
 	preferredMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mockconfigtxorderer.SharedConfig{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
+	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(goodTx)
 
@@ -112,7 +112,7 @@ func TestBadMessageInBatch(t *testing.T) {
 	maxMessageCount := uint32(2)
 	absoluteMaxBytes := uint32(1000)
 	preferredMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mockconfigtxorderer.SharedConfig{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
+	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(badTx)
 
@@ -150,7 +150,7 @@ func TestUnmatchedMessageInBatch(t *testing.T) {
 	maxMessageCount := uint32(2)
 	absoluteMaxBytes := uint32(1000)
 	preferredMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mockconfigtxorderer.SharedConfig{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
+	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(unmatchedTx)
 
@@ -188,7 +188,7 @@ func TestIsolatedEmptyBatch(t *testing.T) {
 	maxMessageCount := uint32(2)
 	absoluteMaxBytes := uint32(1000)
 	preferredMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mockconfigtxorderer.SharedConfig{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
+	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(isolatedTx)
 
@@ -214,7 +214,7 @@ func TestIsolatedPartialBatch(t *testing.T) {
 	maxMessageCount := uint32(2)
 	absoluteMaxBytes := uint32(1000)
 	preferredMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mockconfigtxorderer.SharedConfig{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
+	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(goodTx)
 
@@ -264,7 +264,7 @@ func TestBatchSizePreferredMaxBytesOverflow(t *testing.T) {
 	// set message count > 9
 	maxMessageCount := uint32(20)
 
-	r := NewReceiverImpl(&mockconfigtxorderer.SharedConfig{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: preferredMaxBytes * 2, PreferredMaxBytes: preferredMaxBytes}}, filters)
+	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: preferredMaxBytes * 2, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	// enqueue 9 messages
 	for i := 0; i < 9; i++ {
@@ -319,7 +319,7 @@ func TestBatchSizePreferredMaxBytesOverflowNoPending(t *testing.T) {
 	// set message count > 1
 	maxMessageCount := uint32(20)
 
-	r := NewReceiverImpl(&mockconfigtxorderer.SharedConfig{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: preferredMaxBytes * 3, PreferredMaxBytes: preferredMaxBytes}}, filters)
+	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: preferredMaxBytes * 3, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	// submit large message
 	batches, committers, ok := r.Ordered(goodTxLarge)

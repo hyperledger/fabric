@@ -24,6 +24,8 @@ import (
 	"google.golang.org/grpc"
 
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -31,6 +33,7 @@ import (
 
 var conf *config.TopLevel
 var genConf *genesisconfig.Profile
+var signer msp.SigningIdentity
 
 type broadcastClient struct {
 	ab.AtomicBroadcast_BroadcastClient
@@ -70,6 +73,18 @@ type argsImpl struct {
 func init() {
 	conf = config.Load()
 	genConf = genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+
+	// Load local MSP
+	err := mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
+	if err != nil {
+		panic(fmt.Errorf("Failed to initialize local MSP: %s", err))
+	}
+
+	msp := mspmgmt.GetLocalMSP()
+	signer, err = msp.GetDefaultSigningIdentity()
+	if err != nil {
+		panic(fmt.Errorf("Failed to initialize get default signer: %s", err))
+	}
 }
 
 func main() {

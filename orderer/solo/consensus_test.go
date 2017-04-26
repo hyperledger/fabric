@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
+	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
 	mockmultichain "github.com/hyperledger/fabric/orderer/mocks/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -59,7 +59,7 @@ func TestEmptyBatch(t *testing.T) {
 	support := &mockmultichain.ConsenterSupport{
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
@@ -80,7 +80,7 @@ func TestBatchTimer(t *testing.T) {
 	support := &mockmultichain.ConsenterSupport{
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
@@ -115,7 +115,7 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 	support := &mockmultichain.ConsenterSupport{
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
 
@@ -158,7 +158,7 @@ func TestConfigStyleMultiBatch(t *testing.T) {
 	support := &mockmultichain.ConsenterSupport{
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)

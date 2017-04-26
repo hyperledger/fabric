@@ -28,6 +28,9 @@ import (
 
 // Channel config keys
 const (
+	// ConsortiumKey is the key for the cb.ConfigValue for the Consortium message
+	ConsortiumKey = "Consortium"
+
 	// HashingAlgorithmKey is the cb.ConfigItem type key name for the HashingAlgorithm message
 	HashingAlgorithmKey = "HashingAlgorithm"
 
@@ -60,6 +63,7 @@ type ChannelProtos struct {
 	HashingAlgorithm          *cb.HashingAlgorithm
 	BlockDataHashingStructure *cb.BlockDataHashingStructure
 	OrdererAddresses          *cb.OrdererAddresses
+	Consortium                *cb.Consortium
 }
 
 type channelConfigSetter struct {
@@ -105,6 +109,11 @@ func (cg *ChannelGroup) ApplicationConfig() *ApplicationGroup {
 	return cg.ChannelConfig.appConfig
 }
 
+// ConsortiumsConfig returns the consortium config associated with this channel if it exists
+func (cg *ChannelGroup) ConsortiumsConfig() *ConsortiumsGroup {
+	return cg.ChannelConfig.consortiumsConfig
+}
+
 // NewGroup instantiates either a new application or orderer config
 func (cg *ChannelGroup) NewGroup(group string) (ValueProposer, error) {
 	switch group {
@@ -112,6 +121,8 @@ func (cg *ChannelGroup) NewGroup(group string) (ValueProposer, error) {
 		return NewApplicationGroup(cg.mspConfigHandler), nil
 	case OrdererGroupKey:
 		return NewOrdererGroup(cg.mspConfigHandler), nil
+	case ConsortiumsGroupKey:
+		return NewConsortiumsGroup(), nil
 	default:
 		return nil, fmt.Errorf("Disallowed channel group: %s", group)
 	}
@@ -124,8 +135,9 @@ type ChannelConfig struct {
 
 	hashingAlgorithm func(input []byte) []byte
 
-	appConfig     *ApplicationGroup
-	ordererConfig *OrdererGroup
+	appConfig         *ApplicationGroup
+	ordererConfig     *OrdererGroup
+	consortiumsConfig *ConsortiumsGroup
 }
 
 // NewChannelConfig creates a new ChannelConfig
@@ -157,6 +169,11 @@ func (cc *ChannelConfig) OrdererAddresses() []string {
 	return cc.protos.OrdererAddresses.Addresses
 }
 
+// ConsortiumName returns the name of the consortium this channel was created under
+func (cc *ChannelConfig) ConsortiumName() string {
+	return cc.protos.Consortium.Name
+}
+
 // Validate inspects the generated configuration protos, ensures that the values are correct, and
 // sets the ChannelConfig fields that may be referenced after Commit
 func (cc *ChannelConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
@@ -182,6 +199,11 @@ func (cc *ChannelConfig) Validate(tx interface{}, groups map[string]ValuePropose
 			cc.ordererConfig, ok = value.(*OrdererGroup)
 			if !ok {
 				return fmt.Errorf("Orderer group was not Orderer config")
+			}
+		case ConsortiumsGroupKey:
+			cc.consortiumsConfig, ok = value.(*ConsortiumsGroup)
+			if !ok {
+				return fmt.Errorf("Consortiums group was no Consortium config")
 			}
 		default:
 			return fmt.Errorf("Disallowed channel group: %s", key)

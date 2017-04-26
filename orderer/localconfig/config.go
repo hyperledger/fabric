@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	pkgLogID = "orderer/config"
+	pkgLogID = "orderer/localconfig"
 
 	// Prefix identifies the prefix for the orderer-related ENV vars.
 	Prefix = "ORDERER"
@@ -44,8 +44,7 @@ const (
 var (
 	logger *logging.Logger
 
-	configName     string
-	configFileName string
+	configName string
 )
 
 func init() {
@@ -53,7 +52,20 @@ func init() {
 	flogging.SetModuleLevel(pkgLogID, "error")
 
 	configName = strings.ToLower(Prefix)
-	configFileName = configName + ".yaml"
+}
+
+// TopLevel directly corresponds to the orderer config YAML.
+// Note, for non 1-1 mappings, you may append
+// something like `mapstructure:"weirdFoRMat"` to
+// modify the default mapping, see the "Unmarshal"
+// section of https://github.com/spf13/viper for more info
+type TopLevel struct {
+	General    General
+	FileLedger FileLedger
+	RAMLedger  RAMLedger
+	Kafka      Kafka
+	Genesis    Genesis
+	SbftLocal  SbftLocal
 }
 
 // General contains config which should be common among all orderer types.
@@ -82,25 +94,10 @@ type TLS struct {
 	ClientRootCAs     []string
 }
 
-// Genesis is a deprecated structure which was used to put
-// values into the genesis block, but this is now handled elsewhere.
-// SBFT did not reference these values via the genesis block however
-// so it is being left here for backwards compatibility purposes.
-type Genesis struct {
-	DeprecatedBatchTimeout time.Duration
-	DeprecatedBatchSize    uint32
-	SbftShared             SbftShared
-}
-
 // Profile contains configuration for Go pprof profiling.
 type Profile struct {
 	Enabled bool
 	Address string
-}
-
-// RAMLedger contains configuration for the RAM ledger.
-type RAMLedger struct {
-	HistorySize uint
 }
 
 // FileLedger contains configuration for the file-based ledger.
@@ -109,12 +106,33 @@ type FileLedger struct {
 	Prefix   string
 }
 
+// RAMLedger contains configuration for the RAM ledger.
+type RAMLedger struct {
+	HistorySize uint
+}
+
 // Kafka contains configuration for the Kafka-based orderer.
 type Kafka struct {
 	Retry   Retry
 	Verbose bool
 	Version sarama.KafkaVersion // TODO Move this to global config
 	TLS     TLS
+}
+
+// Retry contains config for the reconnection attempts to the Kafka brokers.
+type Retry struct {
+	Period time.Duration
+	Stop   time.Duration
+}
+
+// Genesis is a deprecated structure which was used to put
+// values into the genesis block, but this is now handled elsewhere.
+// SBFT did not reference these values via the genesis block however
+// so it is being left here for backwards compatibility purposes.
+type Genesis struct {
+	DeprecatedBatchTimeout time.Duration
+	DeprecatedBatchSize    uint32
+	SbftShared             SbftShared
 }
 
 // SbftLocal contains configuration for the SBFT peer/replica.
@@ -131,26 +149,6 @@ type SbftShared struct {
 	F                  uint64
 	RequestTimeoutNsec uint64
 	Peers              map[string]string // Address to Cert mapping
-}
-
-// Retry contains config for the reconnection attempts to the Kafka brokers.
-type Retry struct {
-	Period time.Duration
-	Stop   time.Duration
-}
-
-// TopLevel directly corresponds to the orderer config YAML.
-// Note, for non 1-1 mappings, you may append
-// something like `mapstructure:"weirdFoRMat"` to
-// modify the default mapping, see the "Unmarshal"
-// section of https://github.com/spf13/viper for more info
-type TopLevel struct {
-	General    General
-	RAMLedger  RAMLedger
-	FileLedger FileLedger
-	Kafka      Kafka
-	Genesis    Genesis
-	SbftLocal  SbftLocal
 }
 
 var defaults = TopLevel{
@@ -204,7 +202,44 @@ var defaults = TopLevel{
 	},
 }
 
-func (c *TopLevel) initDefaults() {
+// Load parses the orderer.yaml file and environment, producing a struct suitable for config use
+func Load() *TopLevel {
+	config := viper.New()
+	cf.InitViper(config, configName)
+
+	// for environment variables
+	config.SetEnvPrefix(Prefix)
+	config.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	config.SetEnvKeyReplacer(replacer)
+
+	err := config.ReadInConfig()
+	if err != nil {
+		logger.Panic("Error reading configuration:", err)
+	}
+
+	var uconf TopLevel
+	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
+	if err != nil {
+		logger.Panic("Error unmarshaling config into struct:", err)
+	}
+
+	uconf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
+
+	return &uconf
+}
+
+func (c *TopLevel) completeInitialization(configDir string) {
+	defer func() {
+		// Translate any paths
+		c.General.TLS.RootCAs = translateCAs(configDir, c.General.TLS.RootCAs)
+		c.General.TLS.ClientRootCAs = translateCAs(configDir, c.General.TLS.ClientRootCAs)
+		cf.TranslatePathInPlace(configDir, &c.General.TLS.PrivateKey)
+		cf.TranslatePathInPlace(configDir, &c.General.TLS.Certificate)
+		cf.TranslatePathInPlace(configDir, &c.General.GenesisFile)
+		cf.TranslatePathInPlace(configDir, &c.General.LocalMSPDir)
+	}()
+
 	for {
 		switch {
 		case c.General.LedgerType == "":
@@ -259,55 +294,10 @@ func (c *TopLevel) initDefaults() {
 }
 
 func translateCAs(configDir string, certificateAuthorities []string) []string {
-
 	results := make([]string, 0)
-
 	for _, ca := range certificateAuthorities {
 		result := cf.TranslatePath(configDir, ca)
 		results = append(results, result)
 	}
-
 	return results
-}
-
-func (c *TopLevel) completeInitialization(configDir string) {
-	defer logger.Infof("Validated configuration to: %+v", c)
-	c.initDefaults()
-
-	// Translate any paths
-	c.General.TLS.RootCAs = translateCAs(configDir, c.General.TLS.RootCAs)
-	c.General.TLS.ClientRootCAs = translateCAs(configDir, c.General.TLS.ClientRootCAs)
-	cf.TranslatePathInPlace(configDir, &c.General.TLS.PrivateKey)
-	cf.TranslatePathInPlace(configDir, &c.General.TLS.Certificate)
-
-	cf.TranslatePathInPlace(configDir, &c.General.GenesisFile)
-	cf.TranslatePathInPlace(configDir, &c.General.LocalMSPDir)
-}
-
-// Load parses the orderer.yaml file and environment, producing a struct suitable for config use
-func Load() *TopLevel {
-	config := viper.New()
-
-	cf.InitViper(config, configName)
-
-	// for environment variables
-	config.SetEnvPrefix(Prefix)
-	config.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	config.SetEnvKeyReplacer(replacer)
-
-	err := config.ReadInConfig()
-	if err != nil {
-		logger.Panicf("Error reading configuration %s: %s", configFileName, err)
-	}
-
-	var uconf TopLevel
-	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
-	if err != nil {
-		logger.Panicf("Error unmarshaling config into struct: %s", err)
-	}
-
-	uconf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
-
-	return &uconf
 }

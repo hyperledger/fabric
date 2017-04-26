@@ -21,6 +21,7 @@ package config
 import (
 	"time"
 
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -62,6 +63,18 @@ type Channel interface {
 	OrdererAddresses() []string
 }
 
+// Consortiums represents the set of consortiums serviced by an ordering service
+type Consortiums interface {
+	// Consortiums returns the set of consortiums
+	Consortiums() map[string]Consortium
+}
+
+// Consortium represents a group of orgs which may create channels together
+type Consortium interface {
+	// ChannelCreationPolicy returns the policy to check when instantiating a channel for this consortium
+	ChannelCreationPolicy() *cb.Policy
+}
+
 // Orderer stores the common shared orderer config
 type Orderer interface {
 	// ConsensusType returns the configured consensus type
@@ -72,10 +85,6 @@ type Orderer interface {
 
 	// BatchTimeout returns the amount of time to wait before creating a batch
 	BatchTimeout() time.Duration
-
-	// ChainCreationPolicyNames returns the policy names which are allowed for chain creation
-	// This field is only set for the system ordering chain
-	ChainCreationPolicyNames() []string
 
 	// MaxChannelsCount returns the maximum count of channels to allow for an ordering network
 	MaxChannelsCount() uint64

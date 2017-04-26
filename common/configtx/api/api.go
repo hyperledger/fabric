@@ -41,6 +41,9 @@ type Manager interface {
 	// ChainID retrieves the chain ID associated with this manager
 	ChainID() string
 
+	// ConfigEnvelope returns the current config envelope
+	ConfigEnvelope() *cb.ConfigEnvelope
+
 	// Sequence returns the current sequence number of the config
 	Sequence() uint64
 }
@@ -52,11 +55,14 @@ type Resources interface {
 	// PolicyManager returns the policies.Manager for the channel
 	PolicyManager() policies.Manager
 
-	// ChannelConfig returns the ChannelConfig for the chain
+	// ChannelConfig returns the config.Channel for the chain
 	ChannelConfig() config.Channel
 
-	// OrdererConfig returns the configtxorderer.SharedConfig for the channel
+	// OrdererConfig returns the config.Orderer for the channel
 	OrdererConfig() config.Orderer
+
+	// ConsortiumsConfig() returns the config.Consortiums for the channel
+	ConsortiumsConfig() config.Consortiums
 
 	// ApplicationConfig returns the configtxapplication.SharedConfig for the channel
 	ApplicationConfig() config.Application

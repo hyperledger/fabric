@@ -34,10 +34,14 @@ func configGroup(key string, value []byte) *cb.ConfigGroup {
 	return result
 }
 
+// TemplateConsortiumName creates a ConfigGroup representing the ConsortiumName
+func TemplateConsortium(name string) *cb.ConfigGroup {
+	return configGroup(ConsortiumKey, utils.MarshalOrPanic(&cb.Consortium{Name: name}))
+}
+
 // TemplateHashingAlgorithm creates a ConfigGroup representing the HashingAlgorithm
 func TemplateHashingAlgorithm(name string) *cb.ConfigGroup {
 	return configGroup(HashingAlgorithmKey, utils.MarshalOrPanic(&cb.HashingAlgorithm{Name: name}))
-
 }
 
 // DefaultHashingAlgorithm creates a headerless config item for the default hashing algorithm

@@ -18,7 +18,7 @@ package multichain
 
 import (
 	"github.com/hyperledger/fabric/common/config"
-	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
+	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
@@ -34,7 +34,7 @@ var logger = logging.MustGetLogger("orderer/mocks/multichain")
 // Whenever a block is written, it writes to the Batches channel to allow for synchronization
 type ConsenterSupport struct {
 	// SharedConfigVal is the value returned by SharedConfig()
-	SharedConfigVal *mockconfigtxorderer.SharedConfig
+	SharedConfigVal *mockconfig.Orderer
 
 	// BlockCutterVal is the value returned by BlockCutter()
 	BlockCutterVal *mockblockcutter.Receiver

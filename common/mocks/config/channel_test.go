@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package channel
+package config
 
 import (
 	"testing"
@@ -22,6 +22,6 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 )
 
-func TestChainConfigInterface(t *testing.T) {
-	_ = config.Channel(&SharedConfig{})
+func TestChannelConfigInterface(t *testing.T) {
+	_ = config.Channel(&Channel{})
 }

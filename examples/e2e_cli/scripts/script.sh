@@ -34,8 +34,8 @@ setGlobals () {
 }
 
 createChannel() {
-	CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig
-	CORE_PEER_LOCALMSPID="OrdererMSP"
+	CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig
+	CORE_PEER_LOCALMSPID="Org0MSP"
 
         if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
 		peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/channel.tx >&log.txt
@@ -46,6 +46,22 @@ createChannel() {
 	cat log.txt
 	verifyResult $res "Channel creation failed"
 	echo "===================== Channel \"$CHANNEL_NAME\" is created successfully ===================== "
+	echo
+}
+
+updateAnchorPeers() {
+        PEER=$1
+        setGlobals $PEER
+
+        if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
+		peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/${CORE_PEER_LOCALMSPID}anchors.tx >&log.txt
+	else
+		peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/${CORE_PEER_LOCALMSPID}anchors.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
+	fi
+	res=$?
+	cat log.txt
+	verifyResult $res "Anchor peer update failed"
+	echo "===================== Anchor peers for org \"$CORE_PEER_LOCALMSPID}\" on \"$CHANNEL_NAME\" is updated successfully ===================== "
 	echo
 }
 
@@ -149,6 +165,9 @@ createChannel
 ## Join all the peers to the channel
 joinChannel
 
+## Set the anchor peers for each org in the channel
+updateAnchorPeers 0
+updateAnchorPeers 2
 
 ## Install chaincode on Peer0/Org0 and Peer2/Org1
 installChaincode 0
