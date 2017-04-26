@@ -264,9 +264,9 @@ func serve(args []string) error {
 	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]",
 		peerEndpoint.Id, viper.GetString("peer.networkId"), peerEndpoint.Address)
 
-	// set the logging level for specific modules defined in core.yaml.
-	// TODO Add calls to set 'ledger' module loggers
-	overrideLogModules := []string{"msp", "gossip"}
+	// set the logging level for specific modules defined via environment
+	// variables or core.yaml
+	overrideLogModules := []string{"msp", "gossip", "ledger"}
 	for _, module := range overrideLogModules {
 		err = common.SetLogLevelFromViper(module)
 		if err != nil {
