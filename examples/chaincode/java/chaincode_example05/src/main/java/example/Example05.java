@@ -16,15 +16,11 @@ package example;
 
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
-import static org.hyperledger.fabric.shim.ChaincodeHelper.newInternalServerErrorResponse;
-import static org.hyperledger.fabric.shim.ChaincodeHelper.newSuccessResponse;
+import static org.hyperledger.fabric.shim.Chaincode.Response.Status.INTERNAL_SERVER_ERROR;
 
 import java.util.Arrays;
 import java.util.List;
 
-import org.hyperledger.fabric.protos.common.Common.Status;
-import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
 import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
@@ -37,7 +33,7 @@ public class Example05 extends ChaincodeBase {
 
 			final List<String> args = stub.getStringArgs();
 			if (args.size() != 3) {
-				return newBadRequestResponse("Incorrect number of arguments. Expecting \"init\" plus 2 more.");
+				return newErrorResponse("Incorrect number of arguments. Expecting \"init\" plus 2 more.");
 			}
 
 			final String key = args.get(1);
@@ -45,9 +41,9 @@ public class Example05 extends ChaincodeBase {
 			stub.putStringState(key, String.valueOf(value));
 
 		} catch (NumberFormatException e) {
-			return newBadRequestResponse("Expecting integer value for sum");
+			return newErrorResponse("Expecting integer value for sum");
 		} catch (Throwable t) {
-			return newInternalServerErrorResponse(t);
+			return newErrorResponse(t);
 		}
 
 		return newSuccessResponse();
@@ -66,24 +62,20 @@ public class Example05 extends ChaincodeBase {
 			case "query":
 				return doQuery(stub, args);
 			default:
-				return newBadRequestResponse(format("Unknown function: %s", function));
+				return newErrorResponse(format("Unknown function: %s", function));
 			}
-		} catch (NumberFormatException e) {
-			return newBadRequestResponse(e.toString());
-		} catch (AssertionError e) {
-			return newBadRequestResponse(e.getMessage());
 		} catch (Throwable e) {
-			return newInternalServerErrorResponse(e);
+			return newErrorResponse(e);
 		}
 	}
 
 	private Response doQuery(ChaincodeStub stub, String[] args) {
 		// query is the same as invoke, but with response payload wrapped in json
 		final Response result = doInvoke(stub, args);
-		if (result.getStatus() == Status.SUCCESS_VALUE) {
-			return newSuccessResponse(format("{\"Name\":\"%s\",\"Value\":%s}", args[0], result.getPayload().toStringUtf8()));
-		} else {
+		if (result.getStatus().getCode() >= INTERNAL_SERVER_ERROR.getCode()) {
 			return result;
+		} else {
+			return newSuccessResponse(format("{\"Name\":\"%s\",\"Value\":%s}", args[0], result.getStringPayload()));
 		}
 	}
 
@@ -100,23 +92,23 @@ public class Example05 extends ChaincodeBase {
 		final Response queryResponseA = stub.invokeChaincodeWithStringArgs(chaincodeName, Arrays.asList(new String[] { "query", "a" }));
 
 		// check for error
-		if (queryResponseA.getStatus() != Status.SUCCESS_VALUE) {
-			return newInternalServerErrorResponse("Failed to query chaincode.", queryResponseA.getPayload().toByteArray());
+		if (queryResponseA.getStatus().getCode() >= INTERNAL_SERVER_ERROR.getCode()) {
+			return newErrorResponse(format("Failed to query chaincode: %s", queryResponseA.getMessage()), queryResponseA.getPayload());
 		}
 
 		// parse response
-		final int a = Integer.parseInt(queryResponseA.getPayload().toStringUtf8());
+		final int a = Integer.parseInt(queryResponseA.getStringPayload());
 
 		// query other chaincode for value of key "b"
 		final Response queryResponseB = stub.invokeChaincodeWithStringArgs(chaincodeName, "query", "b");
 
 		// check for error
-		if (queryResponseB.getStatus() != Status.SUCCESS_VALUE) {
-			return newInternalServerErrorResponse("Failed to query chaincode.", queryResponseB.getPayload().toByteArray());
+		if (queryResponseB.getStatus().getCode() >= INTERNAL_SERVER_ERROR.getCode()) {
+			return newErrorResponse(format("Failed to query chaincode: %s", queryResponseB.getMessage()), queryResponseB.getPayload());
 		}
 
 		// parse response
-		final int b = Integer.parseInt(queryResponseB.getPayload().toStringUtf8());
+		final int b = Integer.parseInt(queryResponseB.getStringPayload());
 
 		// calculate sum
 		final int sum = a + b;

@@ -16,7 +16,13 @@ limitations under the License.
 
 package org.hyperledger.fabric.shim;
 
+import static org.hyperledger.fabric.shim.Chaincode.Response.Status.INTERNAL_SERVER_ERROR;
+import static org.hyperledger.fabric.shim.Chaincode.Response.Status.SUCCESS;
+
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 
 import javax.net.ssl.SSLException;
 
@@ -30,7 +36,6 @@ import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type;
 import org.hyperledger.fabric.protos.peer.ChaincodeSupportGrpc;
 import org.hyperledger.fabric.protos.peer.ChaincodeSupportGrpc.ChaincodeSupportStub;
-import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
 import org.hyperledger.fabric.shim.impl.Handler;
 import org.hyperledger.fabric.shim.impl.NextStateInfo;
 
@@ -209,8 +214,8 @@ public abstract class ChaincodeBase implements Chaincode {
 		handler = new Handler(requestObserver, this);
 
 		// Send the ChaincodeID during register.
-		ChaincodeID chaincodeID = ChaincodeID.newBuilder().setName(id)// TODO
-				// params.get("chaincode.id.name"))
+		ChaincodeID chaincodeID = ChaincodeID.newBuilder()
+				.setName(id)
 				.build();
 
 		ChaincodeMessage payload = ChaincodeMessage.newBuilder()
@@ -240,6 +245,49 @@ public abstract class ChaincodeBase implements Chaincode {
 				break;
 			}
 		}
+	}
+
+	protected static Response newSuccessResponse(String message, byte[] payload) {
+		return new Response(SUCCESS, message, payload);
+	}
+
+	protected static Response newSuccessResponse() {
+		return newSuccessResponse(null, null);
+	}
+
+	protected static Response newSuccessResponse(String message) {
+		return newSuccessResponse(message, null);
+	}
+
+	protected static Response newSuccessResponse(byte[] payload) {
+		return newSuccessResponse(null, payload);
+	}
+
+	protected static Response newErrorResponse(String message, byte[] payload) {
+		return new Response(INTERNAL_SERVER_ERROR, message, payload);
+	}
+
+	protected static Response newErrorResponse() {
+		return newErrorResponse(null, null);
+	}
+
+	protected static Response newErrorResponse(String message) {
+		return newErrorResponse(message, null);
+	}
+
+	protected static Response newErrorResponse(byte[] payload) {
+		return newErrorResponse(null, payload);
+	}
+
+	protected static Response newErrorResponse(Throwable throwable) {
+		return newErrorResponse(throwable.getMessage(), printStackTrace(throwable));
+	}
+
+	private static byte[] printStackTrace(Throwable throwable) {
+		if (throwable == null) return null;
+		final StringWriter buffer = new StringWriter();
+		throwable.printStackTrace(new PrintWriter(buffer));
+		return buffer.toString().getBytes(StandardCharsets.UTF_8);
 	}
 
 	static String toJsonString(ChaincodeMessage message) {

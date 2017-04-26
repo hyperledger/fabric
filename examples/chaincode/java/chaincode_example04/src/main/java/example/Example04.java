@@ -16,17 +16,13 @@ package example;
 
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
-import static org.hyperledger.fabric.shim.ChaincodeHelper.newInternalServerErrorResponse;
-import static org.hyperledger.fabric.shim.ChaincodeHelper.newSuccessResponse;
+import static org.hyperledger.fabric.shim.Chaincode.Response.Status.INTERNAL_SERVER_ERROR;
 
 import java.util.Arrays;
 import java.util.List;
 
 import javax.json.Json;
 
-import org.hyperledger.fabric.protos.common.Common.Status;
-import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
 import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
@@ -39,7 +35,7 @@ public class Example04 extends ChaincodeBase {
 
 			final List<String> args = stub.getStringArgs();
 			if (args.size() != 3) {
-				return newBadRequestResponse("Incorrect number of arguments. Expecting \"init\" plus 2 more.");
+				return newErrorResponse("Incorrect number of arguments. Expecting \"init\" plus 2 more.");
 			}
 
 			final String key = args.get(1);
@@ -47,9 +43,9 @@ public class Example04 extends ChaincodeBase {
 			stub.putStringState(key, String.valueOf(value));
 
 		} catch (NumberFormatException e) {
-			return newBadRequestResponse("Expecting integer value for sum");
+			return newErrorResponse("Expecting integer value for sum");
 		} catch (Throwable t) {
-			return newInternalServerErrorResponse(t);
+			return newErrorResponse(t);
 		}
 
 		return newSuccessResponse();
@@ -68,14 +64,10 @@ public class Example04 extends ChaincodeBase {
 			case "query":
 				return doQuery(stub, args);
 			default:
-				return newBadRequestResponse(format("Unknown function: %s", function));
+				return newErrorResponse(format("Unknown function: %s", function));
 			}
-		} catch (NumberFormatException e) {
-			return newBadRequestResponse(e.toString());
-		} catch (AssertionError e) {
-			return newBadRequestResponse(e.getMessage());
 		} catch (Throwable e) {
-			return newInternalServerErrorResponse(e);
+			return newErrorResponse(e);
 		}
 	}
 
@@ -102,12 +94,12 @@ public class Example04 extends ChaincodeBase {
 			final Response response = stub.invokeChaincodeWithStringArgs(chaincodeToCall, Arrays.asList(new String[] { "query", key }), channel);
 
 			// check for error
-			if (response.getStatus() != Status.SUCCESS_VALUE) {
+			if (response.getStatus().getCode() >= INTERNAL_SERVER_ERROR.getCode()) {
 				return response;
 			}
 
 			// return payload
-			return newSuccessResponse(response.getPayload().toByteArray());
+			return newSuccessResponse(response.getPayload());
 		}
 		default:
 			throw new AssertionError("Incorrect number of arguments. Expecting 1 or 4.");
@@ -138,8 +130,8 @@ public class Example04 extends ChaincodeBase {
 		final Response response = stub.invokeChaincodeWithStringArgs(nameOfChaincodeToCall, Arrays.asList("invoke", "a", "b", "10"), channel);
 
 		// check for error
-		if (response.getStatus() != Status.SUCCESS_VALUE) {
-			return newInternalServerErrorResponse("Failed to query chaincode.", response.getPayload().toByteArray());
+		if (response.getStatus().getCode() >= INTERNAL_SERVER_ERROR.getCode()) {
+			return newErrorResponse(format("Failed to query chaincode: %s", response.getMessage()), response.getPayload());
 		}
 
 		// update the ledger to indicate a successful invoke

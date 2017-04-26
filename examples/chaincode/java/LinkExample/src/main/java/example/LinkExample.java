@@ -17,14 +17,10 @@ limitations under the License.
 package example;
 
 import static java.lang.String.format;
-import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
-import static org.hyperledger.fabric.shim.ChaincodeHelper.newInternalServerErrorResponse;
-import static org.hyperledger.fabric.shim.ChaincodeHelper.newSuccessResponse;
+import static org.hyperledger.fabric.shim.Chaincode.Response.Status.INTERNAL_SERVER_ERROR;
 
 import java.util.List;
 
-import org.hyperledger.fabric.protos.common.Common.Status;
-import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
 import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
@@ -59,19 +55,19 @@ public class LinkExample extends ChaincodeBase {
 			case "query":
 				return doQuery(stub, args);
 			default:
-				return newBadRequestResponse(format("Unknown function: %s", function));
+				return newErrorResponse(format("Unknown function: %s", function));
 			}
 		} catch (Throwable e) {
-			return newInternalServerErrorResponse(e);
+			return newErrorResponse(e);
 		}
 	}
 
 	private Response doQuery(ChaincodeStub stub, List<String> args) {
 		final Response response = stub.invokeChaincodeWithStringArgs(this.mapChaincodeName, args);
-		if (response.getStatus() == Status.SUCCESS_VALUE) {
-			return newSuccessResponse(String.format("\"%s\" (queried from %s chaincode)", response.getPayload().toStringUtf8(), this.mapChaincodeName));
-		} else {
+		if (response.getStatus().getCode() >= INTERNAL_SERVER_ERROR.getCode()) {
 			return response;
+		} else {
+			return newSuccessResponse(String.format("\"%s\" (queried from %s chaincode)", response.getPayload(), this.mapChaincodeName));
 		}
 	}
 

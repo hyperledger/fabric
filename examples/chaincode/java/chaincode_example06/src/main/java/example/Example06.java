@@ -17,9 +17,7 @@ limitations under the License.
 package example;
 
 import static java.lang.String.format;
-import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
 
-import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
 import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
@@ -33,13 +31,13 @@ public class Example06 extends ChaincodeBase {
 	@Override
 	public Response invoke(ChaincodeStub stub) {
 		if (stub.getArgs().isEmpty())
-			return newBadRequestResponse(format("No arguments specified."));
+			return newErrorResponse(format("No arguments specified."));
 
 		switch (stub.getStringArgs().get(0)) {
 		case "runtimeException":
 			throw new RuntimeException("Exception thrown as requested.");
 		default:
-			return newBadRequestResponse(format("Invalid arguments specified"));
+			return newErrorResponse(format("Invalid arguments specified"));
 		}
 	}
 
