@@ -17,6 +17,10 @@ import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.
 import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.ERROR;
 import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.GET_STATE;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
+import org.hyperledger.fabric.protos.peer.ChaincodeEventPackage.ChaincodeEvent;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type;
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
@@ -25,37 +29,52 @@ import com.google.protobuf.ByteString;
 
 abstract class HandlerHelper {
 
-    private static ChaincodeMessage newEventMessage(final Type type, final String txid, final ByteString payload) {
-        return ChaincodeMessage.newBuilder()
-                .setType(type)
-                .setTxid(txid)
-                .setPayload(payload)
-                .build();
-    }
+	static ChaincodeMessage newGetStateEventMessage(final String txid, final String key) {
+		return newEventMessage(GET_STATE, txid, ByteString.copyFromUtf8(key));
+	}
 
-    static ChaincodeMessage newGetStateEventMessage(final String txid, final String key) {
-        return newEventMessage(GET_STATE, txid, ByteString.copyFromUtf8(key));
-    }
+	static ChaincodeMessage newErrorEventMessage(final String txid, final Throwable throwable) {
+		return newErrorEventMessage(txid, printStackTrace(throwable));
+	}
 
-    static ChaincodeMessage newErrorEventMessage(final String txid, final Response payload) {
-        return newEventMessage(ERROR, txid, payload.toByteString());
-    }
+	static ChaincodeMessage newErrorEventMessage(final String txid, final String message) {
+		return newErrorEventMessage(txid, message, null);
+	}
 
-    static ChaincodeMessage newErrorEventMessage(final String txid, final Throwable throwable) {
-        return newErrorEventMessage(txid, ChaincodeHelper.newInternalServerErrorResponse(throwable));
-    }
+	static ChaincodeMessage newErrorEventMessage(final String txid, final String message, final ChaincodeEvent event) {
+		return newEventMessage(ERROR, txid, ByteString.copyFromUtf8(message), event);
+	}
 
-    static ChaincodeMessage newErrorEventMessage(final String txid, final String message) {
-        return newErrorEventMessage(txid, ChaincodeHelper.newInternalServerErrorResponse(message));
-    }
+	static ChaincodeMessage newCompletedEventMessage(final String txid, final Response response, final ChaincodeEvent event) {
+		return newEventMessage(COMPLETED, txid, response.toByteString(), event);
+	}
 
-    static ChaincodeMessage newCompletedEventMessage(final String txid, Response response) {
-        return ChaincodeMessage.newBuilder()
-                .setType(COMPLETED)
-                .setTxid(txid)
-                .setPayload(response.toByteString())
-                .build();
-    }
+	private static ChaincodeMessage newEventMessage(final Type type, final String txid, final ByteString payload) {
+		return newEventMessage(type, txid, payload, null);
+	}
 
+	private static ChaincodeMessage newEventMessage(final Type type, final String txid, final ByteString payload, final ChaincodeEvent event) {
+		if (event == null) {
+			return ChaincodeMessage.newBuilder()
+					.setType(type)
+					.setTxid(txid)
+					.setPayload(payload)
+					.build();
+		} else {
+			return ChaincodeMessage.newBuilder()
+					.setType(type)
+					.setTxid(txid)
+					.setPayload(payload)
+					.setChaincodeEvent(event)
+					.build();
+		}
+	}
+
+	private static String printStackTrace(Throwable throwable) {
+		if (throwable == null) return null;
+		final StringWriter buffer = new StringWriter();
+		throwable.printStackTrace(new PrintWriter(buffer));
+		return buffer.toString();
+	}
 
 }

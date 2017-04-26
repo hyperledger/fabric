@@ -174,9 +174,9 @@ public abstract class ChaincodeBase implements Chaincode {
 
 		@Override
 		public void onNext(ChaincodeMessage message) {
-		    logger.info("Got message from peer: " + toJsonString(message));
+		    logger.debug("Got message from peer: " + toJsonString(message));
 		    try {
-			logger.info(String.format("[%s]Received message %s from org.hyperledger.fabric.shim",
+			logger.debug(String.format("[%s]Received message %s from org.hyperledger.fabric.shim",
 				Handler.shortID(message.getTxid()), message.getType()));
 			handler.handleMessage(message);
 		    } catch (Exception e) {
