@@ -31,7 +31,7 @@ type consensusStack struct {
 	backend *backend.Backend
 }
 
-var logger = logging.MustGetLogger("orderer/main")
+var logger = logging.MustGetLogger("orderer/sbft")
 
 // Consenter interface implementation for new main application
 type consenter struct {
