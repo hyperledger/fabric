@@ -20,6 +20,8 @@ Maintainers
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
 | Jonathan Levi             | JonathanLevi        | JonathanLevi     | JonathanLevi   | jonathan@hacera.com            |
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
+| Keith Smith               | smithbk             | smithbk          | smithbk        | bksmith@us.ibm.com             |
++---------------------------+---------------------+------------------+----------------+--------------------------------+
 | Kostas Christidis         | kchristidis         | kchristidis      | kostas         | kostas@gmail.com               |
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
 | Sheehan Anderson          | sheehan             | srderson         | sheehan        | sranderson@gmail.com           |
