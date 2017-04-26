@@ -26,9 +26,11 @@ logging:
     peer:       info
 
     # Override levels for various 'peer' modules
+    cauthdsl:   warning
     gossip:     warning
     ledger:     info
     msp:        warning
+    policies:     warning
 
     # Error handling framework log level - when set to DEBUG, a callstack will
     # be appended to all errors generated using the fabric/common/errors package
@@ -204,7 +206,7 @@ peer:
     # establishing TLS connection
         rootcert:
             file: peer/tls.crt
-            
+
         # The server name use to verify the hostname returned by TLS handshake
         serverhostoverride:
 
