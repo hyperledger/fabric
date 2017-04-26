@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestCBCPKCS7EncryptCBCPKCS7Decrypt encrypts using CBCPKCS7Encrypt and decrypts using CBCPKCS7Decrypt.
@@ -288,8 +289,7 @@ func TestCBCEncrypt_EmptyPlaintext(t *testing.T) {
 	t.Log("Message length: ", len(emptyPlaintext))
 
 	ciphertext, encErr := aesCBCEncrypt(key, emptyPlaintext)
-	if encErr != nil {
-	}
+	assert.NoError(t, encErr)
 
 	t.Log("Ciphertext length: ", len(ciphertext))
 
