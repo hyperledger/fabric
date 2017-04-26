@@ -19,6 +19,7 @@ package couchdb
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -32,6 +33,7 @@ import (
 )
 
 const badConnectURL = "couchdb:5990"
+const badParseConnectURL = "http://host.com|5432"
 const updateDocumentConflictError = "conflict"
 const updateDocumentConflictReason = "Document update conflict."
 
@@ -103,9 +105,86 @@ func TestDBConnectionDef(t *testing.T) {
 func TestDBBadConnectionDef(t *testing.T) {
 
 	//create a new connection
-	_, err := CreateConnectionDefinition("^^^localhost:5984", couchDBDef.Username, couchDBDef.Password,
+	_, err := CreateConnectionDefinition(badParseConnectURL, couchDBDef.Username, couchDBDef.Password,
 		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
 	testutil.AssertError(t, err, fmt.Sprintf("Did not receive error when trying to create database connection definition with a bad hostname"))
+
+}
+
+func TestBadCouchDBInstance(t *testing.T) {
+
+	//TODO continue changes to return and removal of sprintf in followon changes
+	if !ledgerconfig.IsCouchDBEnabled() {
+		t.Skip("CouchDB is not enabled")
+		return
+	}
+	//Create a bad connection definition
+	badConnectDef := CouchConnectionDef{URL: badParseConnectURL, Username: "", Password: "",
+		MaxRetries: 3, MaxRetriesOnStartup: 10, RequestTimeout: time.Second * 30}
+
+	client := &http.Client{}
+
+	//Create a bad couchdb instance
+	badCouchDBInstance := CouchInstance{badConnectDef, client}
+
+	//Create a bad CouchDatabase
+	badDB := CouchDatabase{badCouchDBInstance, "baddb"}
+
+	//Test CreateCouchDatabase with bad connection
+	_, err := CreateCouchDatabase(badCouchDBInstance, "baddbtest")
+	testutil.AssertError(t, err, "Error should have been thrown with CreateCouchDatabase and invalid connection")
+
+	//Test CreateSystemDatabasesIfNotExist with bad connection
+	err = CreateSystemDatabasesIfNotExist(badCouchDBInstance)
+	testutil.AssertError(t, err, "Error should have been thrown with CreateSystemDatabasesIfNotExist and invalid connection")
+
+	//Test CreateDatabaseIfNotExist with bad connection
+	_, err = badDB.CreateDatabaseIfNotExist()
+	testutil.AssertError(t, err, "Error should have been thrown with CreateDatabaseIfNotExist and invalid connection")
+
+	//Test GetDatabaseInfo with bad connection
+	_, _, err = badDB.GetDatabaseInfo()
+	testutil.AssertError(t, err, "Error should have been thrown with GetDatabaseInfo and invalid connection")
+
+	//Test VerifyCouchConfig with bad connection
+	_, _, err = badCouchDBInstance.VerifyCouchConfig()
+	testutil.AssertError(t, err, "Error should have been thrown with VerifyCouchConfig and invalid connection")
+
+	//Test EnsureFullCommit with bad connection
+	_, err = badDB.EnsureFullCommit()
+	testutil.AssertError(t, err, "Error should have been thrown with EnsureFullCommit and invalid connection")
+
+	//Test DropDatabase with bad connection
+	_, err = badDB.DropDatabase()
+	testutil.AssertError(t, err, "Error should have been thrown with DropDatabase and invalid connection")
+
+	//Test ReadDoc with bad connection
+	_, _, err = badDB.ReadDoc("1")
+	testutil.AssertError(t, err, "Error should have been thrown with ReadDoc and invalid connection")
+
+	//Test SaveDoc with bad connection
+	_, err = badDB.SaveDoc("1", "1", nil)
+	testutil.AssertError(t, err, "Error should have been thrown with SaveDoc and invalid connection")
+
+	//Test DeleteDoc with bad connection
+	err = badDB.DeleteDoc("1", "1")
+	testutil.AssertError(t, err, "Error should have been thrown with DeleteDoc and invalid connection")
+
+	//Test ReadDocRange with bad connection
+	_, err = badDB.ReadDocRange("1", "2", 1000, 0)
+	testutil.AssertError(t, err, "Error should have been thrown with ReadDocRange and invalid connection")
+
+	//Test QueryDocuments with bad connection
+	_, err = badDB.QueryDocuments("1")
+	testutil.AssertError(t, err, "Error should have been thrown with QueryDocuments and invalid connection")
+
+	//Test BatchRetrieveIDRevision with bad connection
+	_, err = badDB.BatchRetrieveIDRevision(nil)
+	testutil.AssertError(t, err, "Error should have been thrown with BatchRetrieveIDRevision and invalid connection")
+
+	//Test BatchUpdateDocuments with bad connection
+	_, err = badDB.BatchUpdateDocuments(nil)
+	testutil.AssertError(t, err, "Error should have been thrown with BatchUpdateDocuments and invalid connection")
 
 }
 
@@ -304,6 +383,15 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 			//Retrieve the info for the new database and make sure the name matches
 			_, _, errdbinfo := db.GetDatabaseInfo()
 			testutil.AssertError(t, errdbinfo, fmt.Sprintf("Error should have been thrown for missing database"))
+
+			//Attempt to save the document with an invalid id
+			_, saveerr = db.SaveDoc(string([]byte{0xff, 0xfe, 0xfd}), "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
+			testutil.AssertError(t, saveerr, fmt.Sprintf("Error should have been thrown when saving a document with an invalid ID"))
+
+			//Attempt to read a document with an invalid id
+			_, _, readerr := db.ReadDoc(string([]byte{0xff, 0xfe, 0xfd}))
+			testutil.AssertError(t, readerr, fmt.Sprintf("Error should have been thrown when reading a document with an invalid ID"))
+
 		}
 	}
 
@@ -433,6 +521,7 @@ func TestPrefixScan(t *testing.T) {
 		//Retrieve the info for the new database and make sure the name matches
 		_, _, errdbinfo := db.GetDatabaseInfo()
 		testutil.AssertError(t, errdbinfo, fmt.Sprintf("Error should have been thrown for missing database"))
+
 	}
 }
 
@@ -830,6 +919,12 @@ func TestRichQuery(t *testing.T) {
 
 			//There should be 2 results for owner="tom" with a limit of 2
 			testutil.AssertEquals(t, len(*queryResult), 2)
+
+			//Test query with invalid index  -------------------------------------------------------------------
+			queryString = "{\"selector\":{\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\",\"indexOwner\"]}"
+
+			_, err = db.QueryDocuments(queryString)
+			testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for an invalid index"))
 
 		}
 	}
