@@ -1,10 +1,16 @@
 Getting Started
 ===============
 
+.. note:: These instructions have been verified to work against the "alpha" tagged docker
+          images and the pre-compiled binaries within the supplied tarball file.
+          If you run these commands with images or tools from the current master
+          branch, you will see configuration and panic errors.
+
 The getting started scenario provisions a sample Fabric network consisting of
 two organizations, each maintaining two peers, and a "solo" ordering service.
 
 Prior to launching the network, we will demonstrate the usage of two fundamental tools:
+
 - cryptogen - generates the x509 certificates used to identify and authenticate
   the various components in the network.
 - configtxgen - generates the requisite configuration artifacts for orderer
@@ -33,14 +39,14 @@ Curl the artifacts and binaries
 
 .. code:: bash
 
-  mkdir -p <my_dev_workspace>/dchackfest
-  cd <my_dev_workspace>/dchackfest
+  mkdir fabric-sample
+  cd fabric-sample
 
 Next, execute the following command:
 
 .. code:: bash
 
-  curl -L https://logs.hyperledger.org/sandbox/vex-yul-hyp-jenkins-2/fabric-verify-x86_64_1/5/release.tar.gz -o release.tar.gz 2> /dev/null;  tar -xvf release.tar.gz
+  curl -L https://logs.hyperledger.org/sandbox/vex-yul-hyp-jenkins-2/fabric-binaries/release.tar.gz -o release.tar.gz 2> /dev/null;  tar -xvf release.tar.gz
 
 This command pulls and extracts all of the necessary artifacts to set up your
 network and places them into a folder titled ``release``.  It also retrieves the
@@ -95,7 +101,7 @@ comprise our Fabric network.
 Using the cryptogen tool
 ------------------------
 
-First, lets set the environment variable for our platform.  This command
+First, let's set the environment variable for our platform.  This command
 will detect your OS and use the appropriate binaries for the subsequent steps:
 
 .. code:: bash
@@ -104,6 +110,12 @@ will detect your OS and use the appropriate binaries for the subsequent steps:
   os_arch=$(echo "$(uname -s)-$(uname -m)" | awk '{print tolower($0)}')
   # for linux, osx or windows
   os_arch=$(echo "$(uname -s)-amd64" | awk '{print tolower($0)}')
+
+Check to make sure the ``$os_arch`` variable is properly set:
+
+.. code:: bash
+
+  echo $os_arch
 
 Ok now for the fun stuff - generating the crypto material.  Pop into the ``e2e`` folder:
 
@@ -142,7 +154,7 @@ the tool to generate our two artifacts.
 .. note:: The ``configtx.yaml`` file contains the definitions for our sample
           network and presents the topology of the network components - three members
           (OrdererOrg, Org0 & Org1), and the anchor peers for each PeerOrg
-          (peer0 and peer2).  You will notice
+          (peer0.org1 and peer0.org2).  You will notice
           that it is structured similarly to the ``crypto-config.yaml`` that we
           just passed to generate our certs.  The main difference is that we can
           now point to the locations of those certs.  You'll recall that in the
@@ -187,15 +199,10 @@ Still in your ``e2e`` folder execute the following:
 
 .. code:: bash
 
-
   # replace the <CHANNEL_NAME> parm with a name of your choosing
   ./../../$os_arch/bin/configtxgen -profile TwoOrgs -outputCreateChannelTx channel.tx -channelID <CHANNEL_NAME>
 
 The channel configuration artifact - ``channel.tx`` - is output into the ``e2e`` directory.
-
-.. note:: Our configtx.yaml only contains one profile, therefore our channel and
-          our network are the same.  However, this file could have multiple profiles
-          allowing channel creation to be scoped more granularly.
 
 Start the network (No TLS)
 --------------------------
@@ -203,7 +210,7 @@ Start the network (No TLS)
 We will leverage a docker-compose script to spin up our network.  The docker-compose
 points to the images that we have already downloaded, and bootstraps the orderer
 with our previously generated ``orderer.block``.  Before launching the network,
-open the docker-compose file and comment out the ``script.sh`` in the CLI container.
+open the docker-compose file and comment out the script.sh in the CLI container.
 Your docker-compose should look like this:
 
 .. code:: bash
@@ -255,9 +262,12 @@ Recall that we used the configtxgen tool to generate a channel configuration
 artifact - ``channel.tx``.  We are going to pass in this artifact to the
 orderer as part of the create channel request.
 
-.. note:: For this command we don't need to pass in any MSP or crypto material
-          attached to our peer.  We do, however, need to pass in the MSP info
-          for our orderer.
+.. note:: For this to work, we must pass in the path of the orderer's local MSP in order to sign
+          this create channel call.  Recall that we bootstrapped the orderer
+          with the root certificates (ca certs) for all the members of our
+          network.  As a result, the orderer can verify the digital signature
+          of the submitting client.  This call will also work if we pass in the
+          local MSP for Org0 or Org1.
 
 The following environment variables for the orderer must be passed:
 
@@ -282,7 +292,7 @@ So our command in its entirety would be:
 This command returns a genesis block - ``mychannel.block`` - which we will use
 to join the channel.
 
-Environment Variables
+Environment variables
 ~~~~~~~~~~~~~~~~~~~~~
 
 You can see the syntax for all commands by inspecting the ``script.sh`` file in the ``scripts`` directory.
@@ -301,7 +311,7 @@ the values accordingly when calling commands against other peers and the orderer
 
 These environment variables for each peer are defined in the supplied docker-compose file.
 
-.. note:: In these examples, we are use the default ``mychannel`` for all CHANNEL_NAME arguments.
+.. note:: In these examples, we are using the default ``mychannel`` for all CHANNEL_NAME arguments.
           If you elect to create a uniquely named channel, be conscious to modify
           your strings accordingly.
 
@@ -327,7 +337,7 @@ entirety would be:
 Install
 ^^^^^^^
 
-Now we will install the chaincode source on the peer's filesystem.  The syntax
+Now we will install the chaincode source onto the peer's filesystem.  The syntax
 is as follows:
 
 .. code:: bash
@@ -350,16 +360,23 @@ syntax for instantiate is as follows:
 
     peer chaincode instantiate -o <ORDERER_NAME>:7050 -C <CHANNEL_NAME> -n <CHAINCODE_NAME> -v <VERSION> -c '{"Args":["init","key","value"]}' -P "OR/AND (CHAINCODE_POLICY)"
 
+Take note of the ``-P`` argument.  This is our policy where we specify the
+required level of endorsement for a transaction against this chaincode to be
+validated.  In the command below you'll notice that we specify our policy as
+``-P "OR ('Org0MSP.member','Org1MSP.member')"``.  This means that we need
+"endorsement" from a peer belonging to Org0 **OR** Org1 (i.e. only one endorsement).
+If we changed the syntax to ``AND`` then we would need two endorsements.
+
 This command in its entirety would be:
 
 .. code:: bash
 
-    # we instantiate with the following key value pairs "a","100","b","200"
+    # we instantiate with the following key value pairs: "a","100","b","200"
     CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com CORE_PEER_ADDRESS=peer0.org1.example.com:7051 CORE_PEER_LOCALMSPID="Org0MSP" CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/cacerts/org1.example.com-cert.pem peer chaincode instantiate -o orderer.example.com:7050 -C mychannel -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "OR ('Org0MSP.member','Org1MSP.member')"
 
 .. note::   The above command will only start a single chaincode container.  If
             you want to interact with different peers, you must first install
-            the source code on that peer's filesystem.  You can then send
+            the source code onto that peer's filesystem.  You can then send
             an invoke or query to the peer.  You needn't instantiate twice, this
             command will propagate to the entire channel.
 
@@ -379,9 +396,6 @@ This command in its entirety would be:
 
     CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com CORE_PEER_ADDRESS=peer0.org1.example.com:7051 CORE_PEER_LOCALMSPID="Org0MSP" CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/cacerts/org1.example.com-cert.pem peer chaincode query -C mychannel -n mycc -c '{"Args":["query","a"]}'
 
-Recall that we initialized our key value pairs as - "a","100","b","200" - therefore,
-a query against key "a" should return the value of "100".
-
 Invoke
 ^^^^^^
 
@@ -391,6 +405,8 @@ and update the state DB.  The syntax for invoke is as follows:
 .. code:: bash
 
     peer chaincode invoke -o <ORDERER_NAME>:7050 -C <CHANNEL_NAME> -n <CHAINCODE_NAME> -c '{"Args":["invoke","key","key","value"]}'
+
+This command in its entirety would be:
 
 .. code:: bash
 
@@ -403,20 +419,21 @@ Lets confirm that our previous invocation executed properly.  We initialized the
 key "a" with a value of "100".  Therefore, removing "10" should return a value
 of "90" when we query "a".  The syntax for query is outlined above.
 
+This query command in its entirety would be:
+
 .. code:: bash
 
     CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com CORE_PEER_ADDRESS=peer0.org1.example.com:7051 CORE_PEER_LOCALMSPID="Org0MSP" CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/cacerts/org1.example.com-cert.pem peer chaincode query -C mychannel -n mycc -c '{"Args":["query","a"]}'
-
 
 Start the network (TLS enabled)
 ------------------------------
 
 Use the ``script.sh`` to see the exact syntax for TLS-enabled CLI commands.
 
-Before starting, we need to modify our docker-compose file to reflect the
-appropriate private keys for the orderer and peers.
+Before starting, we need to modify our docker-compose file to reflect the appropriate private keys for
+the orderer and peers.
 
-From your ``e2e`` directory enter the following:
+From your ``e2e`` directory execute the following:
 
 .. code:: bash
 
@@ -441,7 +458,9 @@ entirety of the heavy lifting.
 Clean up
 ^^^^^^^^
 
-Lets clean things up before continuing.  First, kill your containers:
+Let's clean things up before continuing.  This command will remove both the
+active and exited containers:
+
 
 .. code:: bash
 
@@ -459,18 +478,23 @@ Next, execute a ``docker images`` command in your terminal to view the
 
 Remove these images:
 
-  .. code:: bash
+.. code:: bash
 
-      docker rmi <IMAGE ID> <IMAGE ID> <IMAGE ID>
+     docker rmi <IMAGE ID> <IMAGE ID> <IMAGE ID>
 
 For example:
 
-  .. code:: bash
+.. code:: bash
 
-      docker rmi -f 13f e27 111
+     docker rmi -f 13f e27 111
 
 Lastly, remove the `crypto-config`` folder and the two artifacts - ``channel.tx``
 & ``orderer.block``.
+
+.. code:: bash
+
+    # from the e2e directory
+    rm -rf channel.tx orderer.block crypto-config
 
 All in one
 ^^^^^^^^^^
@@ -483,6 +507,18 @@ This script will do it all for you!  From the ``e2e`` directory:
 
 .. note:: If you choose not to pass a channel_name value, then the default
           ``mychannel`` will be used.
+
+Now shut down your network and remove the chaincode images and artifacts:
+
+.. code:: bash
+
+    ./network_setup.sh down
+
+If you want to restart:
+
+.. code:: bash
+
+    ./network_setup.sh restart
 
 APIs only
 ^^^^^^^^^
@@ -500,7 +536,6 @@ in your terminal:
   ===================== Query on PEER3 on channel 'mychannel' is successful =====================
 
   ===================== All GOOD, End-2-End execution completed =====================
-
 
 Using CouchDB
 -------------
@@ -522,7 +557,7 @@ container with a CouchDB container:
        # make sure you are in the fabric directory
        make couchdb
 
--  Open the ``fabric/examples/e2e_cli/docker-compose.yaml`` and un-comment
+-  Open the ``release/samples/e2e/docker-compose.yaml`` and un-comment
    all commented statements relating to CouchDB containers and peer container
    use of CouchDB. These instructions are are also outlined in the
    same ``docker-compose.yaml`` file. Search the file for 'couchdb' (case insensitive) references.
@@ -540,7 +575,7 @@ You can use **chaincode_example02** chaincode against the CouchDB state database
 using the steps outlined above, however in order to exercise the query
 capabilities you will need to use a chaincode that has data modeled as JSON,
 (e.g. **marbles02**). You can locate the **marbles02** chaincode in the
-``fabric/examples/chaincode/go`` directory.
+``release/samples/chaincodes/go`` directory.
 
 Install, instantiate, invoke, and query **marbles02** chaincode by following the
 same general steps outlined above for **chaincode_example02** in the
@@ -656,7 +691,7 @@ container specification:
 Troubleshooting
 ---------------
 
--  Ensure you clear the file system after each run
+-  Ensure you clear the file system after each run.
 
 -  If you see docker errors, remove your containers and start again.
 
@@ -665,7 +700,12 @@ Troubleshooting
        docker rm -f $(docker ps -aq)
 
 - If you elect to run the "All in one" option, be sure you have deleted your
-  crypto directory and the two artifacts.
+  crypto directory and the two artifacts.  This can be achieved with the following
+  command:
+
+.. code:: bash
+
+      ./network_setup.sh down
 
 -  If you see the below error:
 
@@ -680,10 +720,30 @@ from prior runs. Remove them and try again.
 
     docker rmi -f $(docker images | grep peer[0-9]-peer[0-9] | awk '{print $3}')
 
--  To cleanup the network, use the ``down`` option:
+- If you see connectivity or communication errors, try restarting your Docker process.
+
+- If you see something similar to the following:
 
 .. code:: bash
 
-       ./network_setup.sh down
+  Error connecting: rpc error: code = 14 desc = grpc: RPC failed fast due to transport failure
+  Error: rpc error: code = 14 desc = grpc: RPC failed fast due to transport failure
+
+Make sure you are using the supplied binaries in the tarball file, and running
+your backend against "alpha" images.
+
+If you see the below error:
+
+.. code:: bash
+
+  [configtx/tool/localconfig] Load -> CRIT 002 Error reading configuration: Unsupported Config Type ""
+  panic: Error reading configuration: Unsupported Config Type ""
+
+Then you have an environment variable - ``ORDERER_CFG_PATH`` that is no longer
+in use.  You can manually change this value in the scripts, or re-download
+the tarball file.
+
+- If you continue to see errors, share your logs on the **# fabric-questions**
+channel on `Hyperledger Rocket Chat <https://chat.hyperledger.org/home>`__.
 
 -------------------------------------------------------------------------------
