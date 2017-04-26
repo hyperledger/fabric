@@ -305,7 +305,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 		return
 	}
 
-	if batchSize < 0 {
+	if request.StartSeqNum > request.EndSeqNum {
 		logger.Errorf("Invalid sequence interval [%d...%d], ignoring request...", request.StartSeqNum, request.EndSeqNum)
 		return
 	}

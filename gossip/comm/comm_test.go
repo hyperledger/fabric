@@ -112,9 +112,11 @@ func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte, mutualTLS bool) <-chan proto.ReceivedMessage {
 	c := &commImpl{}
 	err := generateCertificates("key.pem", "cert.pem")
+	assert.NoError(t, err, "%v", err)
 	defer os.Remove("cert.pem")
 	defer os.Remove("key.pem")
 	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+	assert.NoError(t, err, "%v", err)
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
 	}
@@ -304,9 +306,11 @@ func TestCloseConn(t *testing.T) {
 	acceptChan := comm1.Accept(acceptAll)
 
 	err := generateCertificates("key.pem", "cert.pem")
+	assert.NoError(t, err, "%v", err)
 	defer os.Remove("cert.pem")
 	defer os.Remove("key.pem")
 	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+	assert.NoError(t, err, "%v", err)
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
 		Certificates:       []tls.Certificate{cert},
@@ -383,10 +387,8 @@ func TestParallelSend(t *testing.T) {
 			if c == messages2Send {
 				waiting = false
 			}
-			break
 		case <-ticker.C:
 			waiting = false
-			break
 		}
 	}
 	assert.Equal(t, messages2Send, c)
@@ -615,10 +617,8 @@ func waitForMessages(t *testing.T, msgChan chan uint64, count int, errMsg string
 			if c == count {
 				waiting = false
 			}
-			break
 		case <-ticker.C:
 			waiting = false
-			break
 		}
 	}
 	assert.Equal(t, count, c, errMsg)

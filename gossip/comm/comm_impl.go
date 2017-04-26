@@ -101,8 +101,8 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 	commInst.idMapper.Put(idMapper.GetPKIidOfCert(peerIdentity), peerIdentity)
 
 	if port > 0 {
+		commInst.stopWG.Add(1)
 		go func() {
-			commInst.stopWG.Add(1)
 			defer commInst.stopWG.Done()
 			s.Serve(ll)
 		}()
@@ -328,7 +328,6 @@ func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan proto.Received
 			select {
 			case msg := <-genericChan:
 				specificChan <- msg.(*ReceivedMessageImpl)
-				break
 			case s := <-c.exitChan:
 				c.exitChan <- s
 				return

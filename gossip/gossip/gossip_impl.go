@@ -238,7 +238,6 @@ func (g *gossipServiceImpl) handlePresumedDead() {
 			return
 		case deadEndpoint := <-g.comm.PresumedDead():
 			g.presumedDead <- deadEndpoint
-			break
 		}
 	}
 }
@@ -286,7 +285,6 @@ func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan proto.ReceivedMessage)
 			return
 		case msg := <-incMsgs:
 			g.handleMessage(msg)
-			break
 		}
 	}
 }
@@ -696,7 +694,6 @@ func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor, passThrough 
 					return
 				}
 				outCh <- m.(*proto.SignedGossipMessage).GossipMessage
-				break
 			}
 		}
 	}()

@@ -93,7 +93,6 @@ func newPushPullTestInstance(name string, peers map[string]*pullTestInstance) *p
 				return
 			case m := <-inst.msgQueue:
 				inst.handleMessage(m)
-				break
 			}
 		}
 	}()
