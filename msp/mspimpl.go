@@ -629,7 +629,7 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) 
 		}
 
 		if bytes.Equal(id.(*identity).cert.Raw, principalId.(*identity).cert.Raw) {
-			return nil
+			return principalId.Validate()
 		}
 
 		return errors.New("The identities do not match")
