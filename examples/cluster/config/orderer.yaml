@@ -1,0 +1,202 @@
+---
+################################################################################
+#
+#   Orderer Configuration
+#
+#   - This controls the type and configuration of the orderer.
+#
+################################################################################
+General:
+
+    # Ledger Type: The ledger type to provide to the orderer.
+    # Two non-production ledger types are provided for test purposes only:
+    #  - ram: An in-memory ledger whose contents are lost on restart.
+    #  - json: A simple file ledger that writes blocks to disk in JSON format.
+    # Only one production ledger type is provided:
+    #  - file: A production file-based ledger.
+    LedgerType: file
+
+    # Listen address: The IP on which to bind to listen.
+    ListenAddress: 0.0.0.0
+
+    # Listen port: The port on which to bind to listen.
+    ListenPort: 7050
+
+    # TLS: TLS settings for the GRPC server.
+    TLS:
+        Enabled: true
+        PrivateKey: tls/server.key
+        Certificate: tls/server.crt
+        RootCAs:
+          - tls/ca.crt
+        ClientAuthEnabled: false
+        ClientRootCAs:
+
+    # Log Level: The level at which to log. This accepts logging specifications
+    # per: fabric/docs/Setup/logging-control.md
+    LogLevel: debug
+
+    # Genesis method: The method by which to retrieve/generate the genesis
+    # block. Available values are "provisional", "file". Provisional utilizes
+    # the parameters in the Genesis section to dynamically generate a new
+    # genesis block. File uses the file provided by GenesisFile as the genesis
+    # block.
+    GenesisMethod: file
+
+    # Genesis profile: The profile to use when using the provisional
+    # GenesisMethod, See the configtx.yaml file for the descriptions of the
+    # available profiles.
+    GenesisProfile: SampleSingleMSPSolo
+
+    # Genesis file: The file containing the genesis block. Used by the orderer
+    # when GenesisMethod is set to "file".
+    GenesisFile: genesis.block
+
+    # LocalMSPDir is where to find the crypto material needed for signing in the
+    # orderer. It is set relative here as a default for dev environments but
+    # should be changed to the real location in production.
+    LocalMSPDir: msp
+
+    # LocalMSPID is the identity to register the local MSP material with the MSP
+    # manager. IMPORTANT: Deployers need to change the value of the localMspId
+    # string. In particular, the name of the local MSP ID of an orderer needs to
+    # match the name of one of the MSPs in the ordering system channel.
+    LocalMSPID: OrdererMSP
+
+    # Enable an HTTP service for Go "pprof" profiling as documented at:
+    # https://golang.org/pkg/net/http/pprof
+    Profile:
+        Enabled: false
+        Address: 0.0.0.0:6060
+
+    # BCCSP: Select which crypto implementation or library to use for the
+    # blockchain crypto service provider.
+    BCCSP:
+        Default: SW
+        SW:
+            # TODO: The default Hash and Security level needs refactoring to be
+            # fully configurable. Changing these defaults requires coordination
+            # SHA2 is hardcoded in several places, not only BCCSP
+            Hash: SHA2
+            Security: 256
+            # Location of key store. If this is unset, a location will be
+            # chosen using: 'LocalMSPDir'/keystore
+            FileKeyStore:
+                KeyStore:
+
+################################################################################
+#
+#   SECTION: RAM Ledger
+#
+#   - This section applies to the configuration of the RAM ledger.
+#
+################################################################################
+RAMLedger:
+
+    # History Size: The number of blocks that the RAM ledger is set to retain.
+    HistorySize: 1000
+
+
+################################################################################
+#
+#   SECTION: File Ledger
+#
+#   - This section applies to the configuration of the file or json ledgers
+#
+################################################################################
+FileLedger:
+
+    # Location: The directory to store the blocks in.
+    # NOTE: If this is unset, a temporary location will be chosen using
+    # the prefix specified by Prefix.
+    Location: /var/hyperledger/fabric/orderer
+
+    # The prefix to use when generating a ledger directory in temporary space.
+    # Otherwise, this value is ignored.
+    Prefix: hyperledger-fabric-ordererledger
+
+################################################################################
+#
+#   SECTION: Kafka
+#
+#   - This section applies to the configuration of the Kafka-based orderer.
+#
+################################################################################
+Kafka:
+
+    # Retry: What to do if none of the Kafka brokers are available.
+    Retry:
+        # The producer should attempt to reconnect every <Period>
+        Period: 3s
+        # Panic if <Stop> has elapsed and no connection has been established
+        Stop: 60s
+
+    # Verbose: Turn on logging for sarama, the client library that we use to
+    # interact with the Kafka cluster.
+    Verbose: false
+
+    # TLS: TLS settings for the Kafka client
+    TLS:
+
+      # Enabled: set to true enable TLS
+      Enabled: false
+
+      # PrivateKey: PEM-encoded private key orderer will use for authentication.
+      PrivateKey:
+        #File: uncomment to read PrivateKey from a file
+
+      # Certificate: PEM-encoded signed public key vertificate orderer will use
+      # for authentication.
+      Certificate:
+        #File: uncomment to read Certificate from a file
+
+      # RootCAs: PEM encoded trusted signer certificates used to validate
+      # certificates from the Kafka cluster.
+      RootCAs:
+        #File: uncomment to read Certificate from a file
+
+################################################################################
+#
+#   SECTION: SBFT Local
+#
+#   - This section applies to the configuration of the SBFT-based orderer.
+#
+################################################################################
+SbftLocal:
+
+    # Address to use for SBFT internal communication
+    PeerCommAddr: ":6101"
+    CertFile: "sbft/testdata/cert1.pem"
+    KeyFile: "sbft/testdata/key.pem"
+    # Directory for SBFT data (persistence)
+    DataDir: "/tmp"
+
+################################################################################
+#
+#   SECTION: Genesis
+#
+#   - This section is pending removal but is left to support SBFT
+#     to be migrated to configtx.yaml.
+#
+################################################################################
+Genesis:
+
+    # Deprecated Batch Timeout: The amount of time to wait before creating a
+    # batch.
+    DeprecatedBatchTimeout: 10s
+
+    # DeprecatedBatchSize: The absolute maximum number of bytes allowed for
+    # the serialized messages in a batch.
+    DeprecatedBatchSize: 99 MB
+
+    # Defines the SBFT parameters when 'sbft' is specified as the 'OrdererType'
+    SbftShared:
+        # Number of peers
+        "N": 1
+        # Fault tolerance
+        F: 0
+        # Timeout of requests (seconds)
+        RequestTimeoutNsec: 1000000000
+        # Peers (PeerCommAddr) with the path of their cert
+        Peers:
+            ":6101": "sbft/testdata/cert1.pem"

@@ -1,0 +1,14 @@
+version: '2'
+services:
+  peer-base:
+    image: hyperledger/fabric-peer
+    dns_search: .
+    environment:
+      - CORE_PEER_TLS_ENABLED=${TLS_ENABLED}
+      - CORE_LOGGING_LEVEL=DEBUG
+      - CORE_NEXT=true
+      - CORE_PEER_ENDORSER_ENABLED=true
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer1:7051
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: peer node start --peer-defaultchain=false
