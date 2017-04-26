@@ -23,6 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
@@ -40,6 +41,12 @@ func init() {
 	algo.SetRequestWaitTime(shortenedWaitTime)
 	algo.SetResponseWaitTime(shortenedWaitTime)
 }
+
+var (
+	cs = &naiveCryptoService{
+		revokedPkiIDS: make(map[string]struct{}),
+	}
+)
 
 type pullerMock struct {
 	mock.Mock
@@ -90,8 +97,9 @@ func TestCertStoreBadSignature(t *testing.T) {
 	badSignature := func(nonce uint64) proto.ReceivedMessage {
 		return createUpdateMessage(nonce, createBadlySignedUpdateMessage())
 	}
-
-	testCertificateUpdate(t, badSignature, false)
+	pm, cs, _ := createObjects(badSignature, nil)
+	defer pm.Stop()
+	testCertificateUpdate(t, false, cs)
 }
 
 func TestCertStoreMismatchedIdentity(t *testing.T) {
@@ -99,7 +107,9 @@ func TestCertStoreMismatchedIdentity(t *testing.T) {
 		return createUpdateMessage(nonce, createMismatchedUpdateMessage())
 	}
 
-	testCertificateUpdate(t, mismatchedIdentity, false)
+	pm, cs, _ := createObjects(mismatchedIdentity, nil)
+	defer pm.Stop()
+	testCertificateUpdate(t, false, cs)
 }
 
 func TestCertStoreShouldSucceed(t *testing.T) {
@@ -107,61 +117,115 @@ func TestCertStoreShouldSucceed(t *testing.T) {
 		return createUpdateMessage(nonce, createValidUpdateMessage())
 	}
 
-	testCertificateUpdate(t, totallyFineIdentity, true)
+	pm, cs, _ := createObjects(totallyFineIdentity, nil)
+	defer pm.Stop()
+	testCertificateUpdate(t, true, cs)
 }
 
-func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.ReceivedMessage, shouldSucceed bool) {
-	config := pull.Config{
-		MsgType:           proto.PullMsgType_IDENTITY_MSG,
-		PeerCountToSelect: 1,
-		PullInterval:      time.Millisecond * 500,
-		Tag:               proto.GossipMessage_EMPTY,
-		Channel:           nil,
-		ID:                "id1",
+func TestCertExpiration(t *testing.T) {
+	identityExpCheckInterval := identityExpirationCheckInterval
+	defer func() {
+		identityExpirationCheckInterval = identityExpCheckInterval
+		cs.revokedPkiIDS = map[string]struct{}{}
+	}()
+
+	identityExpirationCheckInterval = time.Second
+
+	totallyFineIdentity := func(nonce uint64) proto.ReceivedMessage {
+		return createUpdateMessage(nonce, createValidUpdateMessage())
 	}
-	sender := &senderMock{}
-	memberSvc := &membershipSvcMock{}
-	memberSvc.On("GetMembership").Return([]discovery.NetworkMember{{PKIid: []byte("bla bla"), Endpoint: "localhost:5611"}})
-	adapter := pull.PullAdapter{
-		Sndr:   sender,
-		MemSvc: memberSvc,
-		IdExtractor: func(msg *proto.SignedGossipMessage) string {
-			return string(msg.GetPeerIdentity().PkiId)
-		},
-		MsgCons: func(msg *proto.SignedGossipMessage) {
 
-		},
-	}
-	pullMediator := pull.NewPullMediator(config, adapter)
-	certStore := newCertStore(&pullerMock{
-		Mediator: pullMediator,
-	}, identity.NewIdentityMapper(&naiveCryptoService{}), api.PeerIdentityType("SELF"), &naiveCryptoService{})
+	askedForIdentity := make(chan struct{}, 1)
 
-	defer pullMediator.Stop()
+	pm, cStore, sender := createObjects(totallyFineIdentity, func(message *proto.SignedGossipMessage) {
+		askedForIdentity <- struct{}{}
+	})
+	defer pm.Stop()
+	testCertificateUpdate(t, true, cStore)
+	// Should have asked for an identity for the first time
+	assert.Len(t, askedForIdentity, 1)
+	// Drain channel
+	<-askedForIdentity
+	// Now it's 0
+	assert.Len(t, askedForIdentity, 0)
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
 	sentHello := false
-	sentDataReq := false
 	l := sync.Mutex{}
-	sender.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
+	senderMock := mock.Mock{}
+	senderMock.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
 		msg := arg.Get(0).(*proto.SignedGossipMessage)
 		l.Lock()
 		defer l.Unlock()
 
 		if hello := msg.GetHello(); hello != nil && !sentHello {
 			sentHello = true
-			go certStore.handleMessage(createDigest(hello.Nonce))
+			dig := &proto.GossipMessage{
+				Tag: proto.GossipMessage_EMPTY,
+				Content: &proto.GossipMessage_DataDig{
+					DataDig: &proto.DataDigest{
+						Nonce:   hello.Nonce,
+						MsgType: proto.PullMsgType_IDENTITY_MSG,
+						Digests: []string{"B"},
+					},
+				},
+			}
+			go cStore.handleMessage(&sentMsg{msg: dig.NoopSign()})
 		}
 
-		if dataReq := msg.GetDataReq(); dataReq != nil && !sentDataReq {
-			sentDataReq = true
-			certStore.handleMessage(updateFactory(dataReq.Nonce))
-			wg.Done()
+		if dataReq := msg.GetDataReq(); dataReq != nil {
+			askedForIdentity <- struct{}{}
 		}
 	})
-	wg.Wait()
+	sender.Mock = senderMock
+	testCertificateUpdate(t, true, cStore)
+	// Shouldn't have asked, because already got identity
+	select {
+	case <-time.After(time.Second * 3):
+	case <-askedForIdentity:
+		assert.Fail(t, "Shouldn't have asked for an identity, becase we already have it")
+	}
+	assert.Len(t, askedForIdentity, 0)
+	// Revoke the identity
+	cs.revoke(common.PKIidType("B"))
+	cStore.listRevokedPeers(func(id api.PeerIdentityType) bool {
+		return string(id) == "B"
+	})
+	sentHello = false
+	l = sync.Mutex{}
+	senderMock = mock.Mock{}
+	senderMock.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
+		msg := arg.Get(0).(*proto.SignedGossipMessage)
+		l.Lock()
+		defer l.Unlock()
 
+		if hello := msg.GetHello(); hello != nil && !sentHello {
+			sentHello = true
+			dig := &proto.GossipMessage{
+				Tag: proto.GossipMessage_EMPTY,
+				Content: &proto.GossipMessage_DataDig{
+					DataDig: &proto.DataDigest{
+						Nonce:   hello.Nonce,
+						MsgType: proto.PullMsgType_IDENTITY_MSG,
+						Digests: []string{"B"},
+					},
+				},
+			}
+			go cStore.handleMessage(&sentMsg{msg: dig.NoopSign()})
+		}
+
+		if dataReq := msg.GetDataReq(); dataReq != nil {
+			askedForIdentity <- struct{}{}
+		}
+	})
+
+	select {
+	case <-time.After(time.Second * 5):
+		assert.Fail(t, "Didn't ask for identity, but should have. Looks like identity hasn't expired")
+	case <-askedForIdentity:
+	}
+}
+
+func testCertificateUpdate(t *testing.T, shouldSucceed bool, certStore *certStore) {
 	hello := &sentMsg{
 		msg: (&proto.GossipMessage{
 			Channel: []byte(""),
@@ -301,4 +365,62 @@ func createDigest(nonce uint64) proto.ReceivedMessage {
 		},
 	}
 	return &sentMsg{msg: digest.NoopSign()}
+}
+
+func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons proto.MsgConsumer) (pull.Mediator, *certStore, *senderMock) {
+	if msgCons == nil {
+		msgCons = func(_ *proto.SignedGossipMessage) {}
+	}
+	config := pull.Config{
+		MsgType:           proto.PullMsgType_IDENTITY_MSG,
+		PeerCountToSelect: 1,
+		PullInterval:      time.Millisecond * 500,
+		Tag:               proto.GossipMessage_EMPTY,
+		Channel:           nil,
+		ID:                "id1",
+	}
+	sender := &senderMock{}
+	memberSvc := &membershipSvcMock{}
+	memberSvc.On("GetMembership").Return([]discovery.NetworkMember{{PKIid: []byte("bla bla"), Endpoint: "localhost:5611"}})
+
+	var certStore *certStore
+	adapter := pull.PullAdapter{
+		Sndr: sender,
+		MsgCons: func(msg *proto.SignedGossipMessage) {
+			certStore.idMapper.Put(msg.GetPeerIdentity().PkiId, msg.GetPeerIdentity().Cert)
+			msgCons(msg)
+		},
+		IdExtractor: func(msg *proto.SignedGossipMessage) string {
+			return string(msg.GetPeerIdentity().PkiId)
+		},
+		MemSvc: memberSvc,
+	}
+	pullMediator := pull.NewPullMediator(config, adapter)
+	certStore = newCertStore(&pullerMock{
+		Mediator: pullMediator,
+	}, identity.NewIdentityMapper(cs), api.PeerIdentityType("SELF"), cs)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	sentHello := false
+	sentDataReq := false
+	l := sync.Mutex{}
+	sender.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
+		msg := arg.Get(0).(*proto.SignedGossipMessage)
+		l.Lock()
+		defer l.Unlock()
+
+		if hello := msg.GetHello(); hello != nil && !sentHello {
+			sentHello = true
+			go certStore.handleMessage(createDigest(hello.Nonce))
+		}
+
+		if dataReq := msg.GetDataReq(); dataReq != nil && !sentDataReq {
+			sentDataReq = true
+			certStore.handleMessage(updateFactory(dataReq.Nonce))
+			wg.Done()
+		}
+	})
+	wg.Wait()
+	return pullMediator, certStore, sender
 }

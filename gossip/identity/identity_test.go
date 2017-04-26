@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"testing"
 
+	"time"
+
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -120,9 +122,10 @@ func TestVerify(t *testing.T) {
 	assert.Error(t, idStore.Verify(pkiID2, signed, []byte("bla bla")))
 }
 
-func TestListRevokedPeers(t *testing.T) {
+func TestListInvalidIdentities(t *testing.T) {
 	idStore := NewIdentityMapper(msgCryptoService)
 	identity := []byte("yacovm")
+	// Test for a revoked identity
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
 	assert.NoError(t, idStore.Put(pkiID, api.PeerIdentityType(identity)))
 	cert, err := idStore.Get(pkiID)
@@ -130,10 +133,59 @@ func TestListRevokedPeers(t *testing.T) {
 	assert.NotNil(t, cert)
 	// Revoke the certificate
 	msgCryptoService.revokedIdentities[string(pkiID)] = struct{}{}
-	idStore.ListRevokedPeers(func(_ api.PeerIdentityType) bool {
+	idStore.ListInvalidIdentities(func(_ api.PeerIdentityType) bool {
 		return true
 	})
+	// Make sure it is not found anymore
 	cert, err = idStore.Get(pkiID)
 	assert.Error(t, err)
 	assert.Nil(t, cert)
+
+	// Clean the MCS revocation mock
+	msgCryptoService.revokedIdentities = map[string]struct{}{}
+	// Now, test for a certificate that has not been used
+	// for a long time
+
+	// Add back the identity
+	pkiID = msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
+	assert.NoError(t, idStore.Put(pkiID, api.PeerIdentityType(identity)))
+	// set the time-based expiration time limit to something small
+	identityUsageThreshold = time.Millisecond * 500
+	idStore.ListInvalidIdentities(func(_ api.PeerIdentityType) bool {
+		return false
+	})
+	// Check it exists in the meantime
+	cert, err = idStore.Get(pkiID)
+	assert.NoError(t, err)
+	assert.NotNil(t, cert)
+	time.Sleep(time.Second * 3)
+	idStore.ListInvalidIdentities(func(_ api.PeerIdentityType) bool {
+		return false
+	})
+	// Make sure it has expired
+	cert, err = idStore.Get(pkiID)
+	assert.Error(t, err)
+	assert.Nil(t, cert)
+
+	// Now test that an identity that is frequently used doesn't expire
+	// Add back the identity
+	pkiID = msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
+	assert.NoError(t, idStore.Put(pkiID, api.PeerIdentityType(identity)))
+	stopChan := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stopChan:
+				return
+			case <-time.After(time.Millisecond * 10):
+				idStore.Get(pkiID)
+			}
+		}
+	}()
+	time.Sleep(time.Second * 3)
+	// Ensure it hasn't expired even though time has passed
+	cert, err = idStore.Get(pkiID)
+	assert.NoError(t, err)
+	assert.NotNil(t, cert)
+	stopChan <- struct{}{}
 }

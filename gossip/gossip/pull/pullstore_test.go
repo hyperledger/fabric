@@ -251,8 +251,8 @@ func TestAddAndRemove(t *testing.T) {
 	waitUntilOrFail(t, func() bool { return len(inst2.items.ToArray()) == msgCount })
 
 	// Remove message 0 from both instances
-	inst2.mediator.Remove(dataMsg(0))
-	inst1.mediator.Remove(dataMsg(0))
+	inst2.mediator.Remove("0")
+	inst1.mediator.Remove("0")
 	inst2.items.Remove(uint64(0))
 
 	// Add a message to inst1

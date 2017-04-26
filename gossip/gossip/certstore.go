@@ -61,7 +61,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 	}
 
 	puller.Add(certStore.createIdentityMessage())
-	puller.RegisterMsgHook(pull.ResponseMsgType, func(_ []string, msgs []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
 		for _, msg := range msgs {
 			pkiID := common.PKIidType(msg.GetPeerIdentity().PkiId)
 			cert := api.PeerIdentityType(msg.GetPeerIdentity().Cert)
@@ -144,7 +144,11 @@ func (cs *certStore) createIdentityMessage() *proto.SignedGossipMessage {
 }
 
 func (cs *certStore) listRevokedPeers(isSuspected api.PeerSuspector) []common.PKIidType {
-	return cs.idMapper.ListRevokedPeers(isSuspected)
+	revokedPeers := cs.idMapper.ListInvalidIdentities(isSuspected)
+	for _, pkiID := range revokedPeers {
+		cs.pull.Remove(string(pkiID))
+	}
+	return revokedPeers
 }
 
 func (cs *certStore) stop() {

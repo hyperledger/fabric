@@ -104,8 +104,9 @@ type Mediator interface {
 	// Add adds a GossipMessage to the Mediator
 	Add(*proto.SignedGossipMessage)
 
-	// Remove removes a GossipMessage from the Mediator
-	Remove(*proto.SignedGossipMessage)
+	// Remove removes a GossipMessage from the Mediator with a matching digest,
+	// if such a message exits
+	Remove(digest string)
 
 	// HandleMessage handles a message from some remote peer
 	HandleMessage(msg proto.ReceivedMessage)
@@ -232,13 +233,13 @@ func (p *pullMediatorImpl) Add(msg *proto.SignedGossipMessage) {
 	p.engine.Add(itemID)
 }
 
-// Remove removes a GossipMessage from the store
-func (p *pullMediatorImpl) Remove(msg *proto.SignedGossipMessage) {
+// Remove removes a GossipMessage from the Mediator with a matching digest,
+// if such a message exits
+func (p *pullMediatorImpl) Remove(digest string) {
 	p.Lock()
 	defer p.Unlock()
-	itemID := p.idExtractor(msg)
-	delete(p.itemID2Msg, itemID)
-	p.engine.Remove(itemID)
+	delete(p.itemID2Msg, digest)
+	p.engine.Remove(digest)
 }
 
 // SelectPeers returns a slice of peers which the engine will initiate the protocol with
