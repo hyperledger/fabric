@@ -19,137 +19,106 @@ package errors
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/stretchr/testify/assert"
 )
 
+type testCase struct {
+	name               string
+	errorArgs          []string
+	messageArgs        []string
+	wrappedErrorArgs   []string
+	wrappedMessageArgs []string
+	generateStack      []bool
+}
+
 func TestError(t *testing.T) {
-	e := Error("UNK", "404", "An unknown error occurred.")
-	s := e.GetStack()
-	if s != "" {
-		t.Fatalf("No error stack should have been recorded.")
-	}
-}
+	var tc []testCase
 
-// TestErrorWithArg tests creating an error with a message argument
-func TestErrorWithArg(t *testing.T) {
-	e := Error("UNK", "405", "An error occurred: %s", "arg1")
-	s := e.GetStack()
-	if s != "" {
-		t.Fatalf("No error stack should have been recorded.")
-	}
-}
+	tc = append(tc,
+		testCase{"UnknownErrorWithCallstack", []string{"UNK", "404", "An unknown error occurred."}, nil, nil, nil, []bool{true}},
+		testCase{"UnknownError", []string{"UNK", "404", "An unknown error occurred."}, nil, nil, nil, []bool{false}},
+		testCase{"UnknownErrorWithCallstackAndArg", []string{"UNK", "405", "An error occurred: %s"}, []string{"arg1"}, nil, nil, []bool{true}},
+		testCase{"UnknownErrorWithArg", []string{"UNK", "405", "An error occurred: %s"}, []string{"arg1"}, nil, nil, []bool{false}},
+		testCase{"CallStackErrorWrappedCallstackError", []string{"CHA", "404", "An unknown error occurred."}, nil, []string{"UNK", "404", "An unknown error occurred."}, nil, []bool{true, true}},
+		testCase{"ErrorWrappedError", []string{"CHA", "404", "An unknown error occurred."}, nil, []string{"UNK", "404", "An unknown error occurred."}, nil, []bool{false, false}},
+		testCase{"CallStackErrorWrappedError", []string{"CHA", "404", "An unknown error occurred."}, nil, []string{"UNK", "404", "An unknown error occurred."}, nil, []bool{true, false}},
+		testCase{"ErrorWrappedCallStackError", []string{"CHA", "404", "An unknown error occurred."}, nil, []string{"UNK", "404", "An unknown error occurred."}, nil, []bool{false, true}},
+		testCase{"ErrorWrappedStandardError", []string{"CHA", "404", "An unknown error occurred."}, nil, []string{"grpc timed out: %s"}, []string{"failed to connect to server"}, []bool{false, true}},
+	)
 
-func TestErrorWithCallstack(t *testing.T) {
-	e := ErrorWithCallstack("UNK", "404", "An unknown error occurred.")
-	s := e.GetStack()
-	if s == "" {
-		t.Fatalf("No error stack was recorded.")
-	}
-}
+	assert := assert.New(t)
 
-func TestErrorWithCallstack_wrapped(t *testing.T) {
-	e := ErrorWithCallstack("UNK", "404", "An unknown error occurred.")
-	s := e.GetStack()
-	if s == "" {
-		t.Fatalf("No error stack was recorded.")
-	}
+	for i := 0; i < len(tc); i++ {
+		t.Run(tc[i].name, func(t *testing.T) {
+			var err, wrappedErr CallStackError
+			var wrappedStandardError error
 
-	e2 := ErrorWithCallstack("CHA", "404", "An unknown error occurred.").WrapError(e)
-	s2 := e2.GetStack()
-	if s2 == "" {
-		t.Fatalf("No error stack was recorded.")
-	}
-}
+			// generate callstack
+			if tc[i].generateStack[0] {
+				if tc[i].messageArgs != nil {
+					err = ErrorWithCallstack(tc[i].errorArgs[0], tc[i].errorArgs[1], tc[i].errorArgs[2], tc[i].messageArgs)
+				} else {
+					err = ErrorWithCallstack(tc[i].errorArgs[0], tc[i].errorArgs[1], tc[i].errorArgs[2])
+				}
+				assert.NotEqual("", err.GetStack(), "Test case '%s' failed", tc[i].name)
+				assert.Contains(err.Error(), "github.com/hyperledger/fabric/common/errors", "Test case '%s' failed", tc[i].name)
+			} else {
+				if tc[i].messageArgs != nil {
+					err = Error(tc[i].errorArgs[0], tc[i].errorArgs[1], tc[i].errorArgs[2], tc[i].messageArgs)
+				} else {
+					err = Error(tc[i].errorArgs[0], tc[i].errorArgs[1], tc[i].errorArgs[2])
+				}
+				assert.Equal("", err.GetStack(), "Test case '%s' failed", tc[i].name)
+				assert.NotContains(err.Error(), "github.com/hyperledger/fabric/common/errors", "Test case '%s' failed", tc[i].name)
+			}
+			assert.Equal(tc[i].errorArgs[0], err.GetComponentCode(), "Test case '%s' failed", tc[i].name)
+			assert.Equal(tc[i].errorArgs[1], err.GetReasonCode(), "Test case '%s' failed", tc[i].name)
+			if tc[i].messageArgs != nil {
+				assert.Contains(err.Error(), fmt.Sprintf(tc[i].errorArgs[2], tc[i].messageArgs), "Test case '%s' failed", tc[i].name)
+			} else {
+				assert.Contains(err.Error(), tc[i].errorArgs[2], "Test case '%s' failed", tc[i].name)
+			}
+			assert.NotContains(err.Message(), "github.com/hyperledger/fabric/common/errors", "Test case '%s' failed", tc[i].name)
 
-// TestErrorWithCallstackAndArg tests creating an error with a callstack and
-// message argument
-func TestErrorWithCallstackAndArg(t *testing.T) {
-	e := ErrorWithCallstack("UNK", "405", "An error occurred: %s", "arg1")
-	s := e.GetStack()
-	if s == "" {
-		t.Fatalf("No error stack was recorded.")
-	}
-}
+			if tc[i].wrappedErrorArgs != nil {
+				if len(tc[i].wrappedErrorArgs) == 3 {
+					if tc[i].generateStack[1] {
+						if tc[i].wrappedMessageArgs != nil {
+							wrappedErr = ErrorWithCallstack(tc[i].wrappedErrorArgs[0], tc[i].wrappedErrorArgs[1], tc[i].wrappedErrorArgs[2], tc[i].wrappedMessageArgs)
+						} else {
+							wrappedErr = ErrorWithCallstack(tc[i].wrappedErrorArgs[0], tc[i].wrappedErrorArgs[1], tc[i].wrappedErrorArgs[2])
+						}
+						assert.NotEqual("", wrappedErr.GetStack(), "Test case '%s' failed", tc[i].name)
+						assert.Contains(wrappedErr.Error(), "github.com/hyperledger/fabric/common/errors", "Test case '%s' failed", tc[i].name)
+					} else {
+						if tc[i].wrappedMessageArgs != nil {
+							wrappedErr = Error(tc[i].wrappedErrorArgs[0], tc[i].wrappedErrorArgs[1], tc[i].wrappedErrorArgs[2], tc[i].wrappedMessageArgs)
+						} else {
+							wrappedErr = Error(tc[i].wrappedErrorArgs[0], tc[i].wrappedErrorArgs[1], tc[i].wrappedErrorArgs[2])
+						}
+						assert.Equal("", wrappedErr.GetStack(), "Test case '%s' failed", tc[i].name)
+						assert.NotContains(wrappedErr.Error(), "github.com/hyperledger/fabric/common/errors", "Test case '%s' failed", tc[i].name)
+					}
+					assert.Equal(tc[i].wrappedErrorArgs[0], wrappedErr.GetComponentCode(), "Test case '%s' failed", tc[i].name)
+					assert.Equal(tc[i].wrappedErrorArgs[1], wrappedErr.GetReasonCode(), "Test case '%s' failed", tc[i].name)
+					err = err.WrapError(wrappedErr)
+					if tc[i].wrappedMessageArgs != nil {
+						assert.Contains(err.Error(), fmt.Sprintf(tc[i].wrappedErrorArgs[2], tc[i].wrappedMessageArgs), "Test case '%s' failed", tc[i].name)
+					} else {
+						assert.Contains(err.Error(), tc[i].wrappedErrorArgs[2], "Test case '%s' failed", tc[i].name)
+					}
+				} else {
+					wrappedStandardError = fmt.Errorf(tc[i].wrappedErrorArgs[0], tc[i].wrappedMessageArgs)
+					err = err.WrapError(wrappedStandardError)
+					assert.Contains(err.Error(), fmt.Sprintf(tc[i].wrappedErrorArgs[0], tc[i].wrappedMessageArgs), "Test case '%s' failed", tc[i].name)
 
-func TestErrorWithCallstackAndArg_wrappedNoCallstack(t *testing.T) {
-	e := Error("UNK", "405", "An error occurred: %s", "arg1")
-	s := e.GetStack()
-	if s != "" {
-		t.Fatalf("No error stack should have been recorded.")
-	}
-
-	e2 := ErrorWithCallstack("CHA", "404", "An error occurred: %s", "anotherarg1").WrapError(e)
-	s2 := e2.GetStack()
-	if s2 == "" {
-		t.Fatalf("No error stack was recorded.")
-	}
-}
-
-func TestError_wrappedWithCallstackAndArg(t *testing.T) {
-	e := ErrorWithCallstack("UNK", "405", "An error occurred: %s", "arg1")
-	s := e.GetStack()
-	if s == "" {
-		t.Fatalf("No error stack should have been recorded.")
-	}
-
-	e2 := Error("CHA", "404", "An error occurred: %s", "anotherarg1").WrapError(e)
-	s2 := e2.GetStack()
-	if s2 != "" {
-		t.Fatalf("No error stack was recorded.")
-	}
-}
-
-// TestErrorWithCallstackMessage tests the output for a logging error where
-// and an invalid log level has been provided and the stack trace should be
-// displayed with the error message
-func TestErrorWithCallstackMessage(t *testing.T) {
-	// when the 'error' module is set to debug, the callstack will be appended
-	// to the error message
-	flogging.SetModuleLevel("error", "debug")
-
-	e := ErrorWithCallstack("UNK", "405", "An unknown error occurred.")
-	s := e.GetStack()
-	if s == "" {
-		t.Fatalf("No error stack was recorded.")
-	}
-
-	// check that the error message contains this part of the stack trace, which
-	// is non-platform specific
-	if !strings.Contains(e.Error(), "github.com/hyperledger/fabric/common/errors.TestErrorWithCallstackMessage") {
-		t.Fatalf("Error message does not have stack trace appended.")
-	}
-}
-
-func TestErrorWithCallstackMessage_wrapped(t *testing.T) {
-	// when the 'error' module is set to debug, the callstack will be appended
-	// to the error message
-	flogging.SetModuleLevel("error", "debug")
-
-	e := ErrorWithCallstack("UNK", "405", "An error occurred: %s", "arg1")
-	s := e.GetStack()
-	if s == "" {
-		t.Fatalf("No error stack was recorded.")
-	}
-
-	// check that the error message contains this part of the stack trace, which
-	// is non-platform specific
-	if !strings.Contains(e.Error(), "github.com/hyperledger/fabric/common/errors.TestErrorWithCallstackMessage_wrapped") {
-		t.Fatalf("Error message does not have stack trace appended.")
-	}
-
-	e2 := ErrorWithCallstack("CHA", "405", "A chaincode error occurred: %s", "ccarg1").WrapError(e)
-	s2 := e2.GetStack()
-	if s2 == "" {
-		t.Fatalf("No error stack was recorded.")
-	}
-
-	// check that the error message contains this part of the stack trace, which
-	// is non-platform specific
-	if !strings.Contains(e2.Error(), "github.com/hyperledger/fabric/common/errors.TestErrorWithCallstackMessage_wrapped") {
-		t.Fatalf("Error message does not have stack trace appended.")
+				}
+				assert.Contains(err.Error(), "Caused by:", "Test case '%s' failed", tc[i].name)
+				assert.NotContains(err.Message(), "github.com/hyperledger/fabric/common/errors", "Test case '%s' failed", tc[i].name)
+			}
+		})
 	}
 }
 
@@ -182,179 +151,4 @@ func TestIsValidComponentOrReasonCode(t *testing.T) {
 		}
 	}
 
-}
-
-func ExampleError() {
-	// when the 'error' module is set to anything but debug, the callstack will
-	// not be appended to the error message
-	flogging.SetModuleLevel("error", "warning")
-
-	err := Error("UNK", "404", "An unknown error occurred.")
-
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		fmt.Printf("%s\n", err.GetErrorCode())
-		fmt.Printf("%s\n", err.GetComponentCode())
-		fmt.Printf("%s\n", err.GetReasonCode())
-		fmt.Printf("%s\n", err.Message())
-		// Output:
-		// UNK:404 - An unknown error occurred.
-		// UNK:404
-		// UNK
-		// 404
-		// UNK:404 - An unknown error occurred.
-	}
-}
-
-func ExampleErrorWithCallstack() {
-	// when the 'error' module is set to anything but debug, the callstack will
-	// not be appended to the error message
-	flogging.SetModuleLevel("error", "warning")
-
-	err := ErrorWithCallstack("UNK", "404", "An unknown error occurred.")
-
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		fmt.Printf("%s\n", err.GetErrorCode())
-		fmt.Printf("%s\n", err.GetComponentCode())
-		fmt.Printf("%s\n", err.GetReasonCode())
-		fmt.Printf("%s\n", err.Message())
-		// Output:
-		// UNK:404 - An unknown error occurred.
-		// UNK:404
-		// UNK
-		// 404
-		// UNK:404 - An unknown error occurred.
-	}
-}
-
-// Example_utilityErrorWithArg tests the output for a sample error with a message
-// argument
-func Example_utilityErrorWithArg() {
-	// when the 'error' module is set to anything but debug, the callstack will
-	// not be appended to the error message
-	flogging.SetModuleLevel("error", "warning")
-
-	err := ErrorWithCallstack("UNK", "405", "An error occurred: %s", "arg1")
-
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		fmt.Printf("%s\n", err.GetErrorCode())
-		fmt.Printf("%s\n", err.GetComponentCode())
-		fmt.Printf("%s\n", err.GetReasonCode())
-		fmt.Printf("%s\n", err.Message())
-		// Output:
-		// UNK:405 - An error occurred: arg1
-		// UNK:405
-		// UNK
-		// 405
-		// UNK:405 - An error occurred: arg1
-	}
-}
-
-// Example_wrappedUtilityErrorWithArg tests the output for a CallStackError
-// with message argument that is wrapped into another error.
-func Example_wrappedUtilityErrorWithArg() {
-	// when the 'error' module is set to anything but debug, the callstack will
-	// not be appended to the error message
-	flogging.SetModuleLevel("error", "warning")
-
-	wrappedErr := ErrorWithCallstack("UNK", "405", "An error occurred: %s", "arg1")
-	err := ErrorWithCallstack("CHA", "500", "Utility error occurred: %s", "ccarg1").WrapError(wrappedErr)
-
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		fmt.Printf("%s\n", err.GetErrorCode())
-		fmt.Printf("%s\n", err.GetComponentCode())
-		fmt.Printf("%s\n", err.GetReasonCode())
-		fmt.Printf("%s\n", err.Message())
-		// Output:
-		// CHA:500 - Utility error occurred: ccarg1
-		// Caused by: UNK:405 - An error occurred: arg1
-		// CHA:500
-		// CHA
-		// 500
-		// CHA:500 - Utility error occurred: ccarg1
-		// Caused by: UNK:405 - An error occurred: arg1
-	}
-}
-
-// Example_wrappedStandardError tests the output for a standard error
-// with message argument that is wrapped into a CallStackError.
-func Example_wrappedStandardError() {
-	// when the 'error' module is set to anything but debug, the callstack will
-	// not be appended to the error message
-	flogging.SetModuleLevel("error", "warning")
-
-	wrappedErr := fmt.Errorf("grpc timed out: %s", "failed to connect to server")
-	err := ErrorWithCallstack("CHA", "500", "Error sending message: %s", "invoke").WrapError(wrappedErr)
-
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		fmt.Printf("%s\n", err.GetErrorCode())
-		fmt.Printf("%s\n", err.GetComponentCode())
-		fmt.Printf("%s\n", err.GetReasonCode())
-		fmt.Printf("%s\n", err.Message())
-		// Output:
-		// CHA:500 - Error sending message: invoke
-		// Caused by: grpc timed out: failed to connect to server
-		// CHA:500
-		// CHA
-		// 500
-		// CHA:500 - Error sending message: invoke
-		// Caused by: grpc timed out: failed to connect to server
-	}
-}
-
-// Example_wrappedStandardError2 tests the output for CallStackError wrapped
-// into a standard error with message argument that is wrapped into a
-// CallStackError.
-func Example_wrappedStandardError2() {
-	// when the 'error' module is set to anything but debug, the callstack will
-	// not be appended to the error message
-	flogging.SetModuleLevel("error", "warning")
-
-	wrappedErr := ErrorWithCallstack("CON", "500", "failed to connect to server")
-	wrappedErr2 := fmt.Errorf("grpc timed out: %s", wrappedErr)
-	err := ErrorWithCallstack("CHA", "500", "Error sending message: %s", "invoke").WrapError(wrappedErr2)
-
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		fmt.Printf("%s\n", err.GetErrorCode())
-		fmt.Printf("%s\n", err.GetComponentCode())
-		fmt.Printf("%s\n", err.GetReasonCode())
-		fmt.Printf("%s\n", err.Message())
-		// Output:
-		// CHA:500 - Error sending message: invoke
-		// Caused by: grpc timed out: CON:500 - failed to connect to server
-		// CHA:500
-		// CHA
-		// 500
-		// CHA:500 - Error sending message: invoke
-		// Caused by: grpc timed out: CON:500 - failed to connect to server
-	}
-}
-
-// Example_loggingInvalidLevel tests the output for a logging error where
-// and an invalid log level has been provided
-func Example_loggingInvalidLevel() {
-	// when the 'error' module is set to anything but debug, the callstack will
-	// not be appended to the error message
-	flogging.SetModuleLevel("error", "warning")
-
-	err := ErrorWithCallstack("LOG", "400", "Invalid log level provided - %s", "invalid")
-
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		fmt.Printf("%s\n", err.GetErrorCode())
-		fmt.Printf("%s\n", err.GetComponentCode())
-		fmt.Printf("%s\n", err.GetReasonCode())
-		fmt.Printf("%s\n", err.Message())
-		// Output:
-		// LOG:400 - Invalid log level provided - invalid
-		// LOG:400
-		// LOG
-		// 400
-		// LOG:400 - Invalid log level provided - invalid
-	}
 }

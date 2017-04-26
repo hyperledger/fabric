@@ -30,10 +30,6 @@ logging:
     ledger:     info
     msp:        warning
 
-    # Error handling framework log level - when set to DEBUG, a callstack will
-    # be appended to all errors generated using the fabric/common/errors package
-    error:      debug
-
     format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
 
 ###############################################################################
@@ -204,7 +200,7 @@ peer:
     # establishing TLS connection
         rootcert:
             file: peer/tls.crt
-            
+
         # The server name use to verify the hostname returned by TLS handshake
         serverhostoverride:
 

@@ -81,10 +81,6 @@ var nodeStartCmd = &cobra.Command{
 	Short: "Starts the node.",
 	Long:  `Starts a node that interacts with the network.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// initialize the log level for the "error" module to the value of
-		// `logging.error` in core.yaml. this is necessary to ensure that the stack
-		// is automatically appended to error messages (if set to debug)
-		common.SetLogLevelFromViper("error")
 		return serve(args)
 	},
 }
