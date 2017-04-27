@@ -201,7 +201,7 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 	simRes := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, nil, signer)
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, &peer.ChaincodeID{Name: "somename", Version: "someversion"}, nil, signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
