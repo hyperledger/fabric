@@ -25,6 +25,35 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 )
 
+// TestGetStateMultipleKeys tests read for given multiple keys
+func TestGetStateMultipleKeys(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db, err := dbProvider.GetDBHandle("testgetmultiplekeys")
+	testutil.AssertNoError(t, err, "")
+
+	// Test that savepoint is nil for a new state db
+	sp, err := db.GetLatestSavePoint()
+	testutil.AssertNoError(t, err, "Error upon GetLatestSavePoint()")
+	testutil.AssertNil(t, sp)
+
+	batch := statedb.NewUpdateBatch()
+	expectedValues := make([]*statedb.VersionedValue, 2)
+	vv1 := statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
+	expectedValues[0] = &vv1
+	vv2 := statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
+	expectedValues[1] = &vv2
+	vv3 := statedb.VersionedValue{Value: []byte("value3"), Version: version.NewHeight(1, 3)}
+	vv4 := statedb.VersionedValue{Value: []byte{}, Version: version.NewHeight(1, 4)}
+	batch.Put("ns1", "key1", vv1.Value, vv1.Version)
+	batch.Put("ns1", "key2", vv2.Value, vv2.Version)
+	batch.Put("ns2", "key3", vv3.Value, vv3.Version)
+	batch.Put("ns2", "key4", vv4.Value, vv4.Version)
+	savePoint := version.NewHeight(2, 5)
+	db.ApplyUpdates(batch, savePoint)
+
+	actualValues, _ := db.GetStateMultipleKeys("ns1", []string{"key1", "key2"})
+	testutil.AssertEquals(t, actualValues, expectedValues)
+}
+
 // TestBasicRW tests basic read-write
 func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	db, err := dbProvider.GetDBHandle("testbasicrw")
