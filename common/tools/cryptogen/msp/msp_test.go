@@ -44,7 +44,7 @@ func TestGenerateLocalMSP(t *testing.T) {
 	mspDir := filepath.Join(testDir, "msp")
 	rootCA, err := ca.NewCA(caDir, testCAName)
 	assert.NoError(t, err, "Error generating CA")
-	err = msp.GenerateLocalMSP(mspDir, testName, rootCA)
+	err = msp.GenerateLocalMSP(testDir, testName, rootCA)
 	assert.NoError(t, err, "Failed to generate local MSP")
 
 	// check to see that the right files were generated/saved
