@@ -18,9 +18,8 @@ package gossip
 
 import (
 	"bytes"
-	"fmt"
-
 	"errors"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/api"
