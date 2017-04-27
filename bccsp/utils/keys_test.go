@@ -146,6 +146,16 @@ func TestECDSAKeys(t *testing.T) {
 		t.Fatal("PublicKeyToPEM should fail on nil")
 	}
 
+	_, err = PrivateKeyToPEM((*ecdsa.PrivateKey)(nil), nil)
+	if err == nil {
+		t.Fatal("PrivateKeyToPEM should fail on nil")
+	}
+
+	_, err = PrivateKeyToPEM((*rsa.PrivateKey)(nil), nil)
+	if err == nil {
+		t.Fatal("PrivateKeyToPEM should fail on nil")
+	}
+
 	_, err = PEMtoPrivateKey(nil, nil)
 	if err == nil {
 		t.Fatal("PEMtoPublicKey should fail on nil")
@@ -176,6 +186,8 @@ func TestECDSAKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed converting private key to encrypted PEM [%s]", err)
 	}
+	_, err = PEMtoPrivateKey(encPEM, nil)
+	assert.Error(t, err)
 	encKeyFromPEM, err := PEMtoPrivateKey(encPEM, []byte("passwd"))
 	if err != nil {
 		t.Fatalf("Failed converting DER to private key [%s]", err)
@@ -235,6 +247,8 @@ func TestECDSAKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed converting private key to encrypted PEM [%s]", err)
 	}
+	_, err = PEMtoPublicKey(encPEM, nil)
+	assert.Error(t, err)
 	pkFromEncPEM, err := PEMtoPublicKey(encPEM, []byte("passwd"))
 	if err != nil {
 		t.Fatalf("Failed converting DER to private key [%s]", err)
@@ -302,6 +316,16 @@ func TestAESKey(t *testing.T) {
 	k2, err = PEMtoAES(pem, k)
 	assert.NoError(t, err)
 	assert.Equal(t, k, k2)
+
+	_, err = PEMtoAES(pem, nil)
+	assert.Error(t, err)
+
+	_, err = AEStoEncryptedPEM(k, nil)
+	assert.NoError(t, err)
+
+	k2, err = PEMtoAES(pem, k)
+	assert.NoError(t, err)
+	assert.Equal(t, k, k2)
 }
 
 func TestDERToPublicKey(t *testing.T) {
@@ -313,6 +337,12 @@ func TestNil(t *testing.T) {
 	_, err := PrivateKeyToEncryptedPEM(nil, nil)
 	assert.Error(t, err)
 
+	_, err = PrivateKeyToEncryptedPEM((*ecdsa.PrivateKey)(nil), nil)
+	assert.Error(t, err)
+
+	_, err = PrivateKeyToEncryptedPEM("Hello World", nil)
+	assert.Error(t, err)
+
 	_, err = PEMtoAES(nil, nil)
 	assert.Error(t, err)
 
@@ -320,6 +350,10 @@ func TestNil(t *testing.T) {
 	assert.Error(t, err)
 
 	_, err = PublicKeyToPEM(nil, nil)
+	assert.Error(t, err)
+	_, err = PublicKeyToPEM((*ecdsa.PublicKey)(nil), nil)
+	assert.Error(t, err)
+	_, err = PublicKeyToPEM((*rsa.PublicKey)(nil), nil)
 	assert.Error(t, err)
 	_, err = PublicKeyToPEM(nil, []byte("hello world"))
 	assert.Error(t, err)
@@ -331,10 +365,16 @@ func TestNil(t *testing.T) {
 
 	_, err = PublicKeyToDER(nil)
 	assert.Error(t, err)
+	_, err = PublicKeyToDER((*ecdsa.PublicKey)(nil))
+	assert.Error(t, err)
+	_, err = PublicKeyToDER((*rsa.PublicKey)(nil))
+	assert.Error(t, err)
 	_, err = PublicKeyToDER("hello world")
 	assert.Error(t, err)
 
 	_, err = PublicKeyToEncryptedPEM(nil, nil)
+	assert.Error(t, err)
+	_, err = PublicKeyToEncryptedPEM((*ecdsa.PublicKey)(nil), nil)
 	assert.Error(t, err)
 	_, err = PublicKeyToEncryptedPEM("hello world", nil)
 	assert.Error(t, err)
