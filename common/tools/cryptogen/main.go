@@ -70,6 +70,7 @@ type UsersSpec struct {
 type OrgSpec struct {
 	Name     string       `yaml:"Name"`
 	Domain   string       `yaml:"Domain"`
+	CA       NodeSpec     `yaml:"CA"`
 	Template NodeTemplate `yaml:"Template"`
 	Specs    []NodeSpec   `yaml:"Specs"`
 	Users    UsersSpec    `yaml:"Users"`
@@ -106,6 +107,15 @@ PeerOrgs:
   # ---------------------------------------------------------------------------
   - Name: Org1
     Domain: org1.example.com
+
+    # ---------------------------------------------------------------------------
+    # "CA"
+    # ---------------------------------------------------------------------------
+    # Uncomment this section to enable the explicit definition of the CA for this
+    # organization.  This entry is a Spec.  See "Specs" section below for details.
+    # ---------------------------------------------------------------------------
+    # CA:
+    #    Hostname: ca # implicitly ca.org1.example.com
 
     # ---------------------------------------------------------------------------
     # "Specs"
@@ -263,6 +273,15 @@ func parseTemplate(input, defaultInput string, data interface{}) (string, error)
 	return output.String(), nil
 }
 
+func renderCN(domain string, spec NodeSpec) (string, error) {
+	data := CommonNameData{
+		Hostname: spec.Hostname,
+		Domain:   domain,
+	}
+
+	return parseTemplate(spec.CommonName, defaultCNTemplate, data)
+}
+
 func generateNodeSpec(orgSpec *OrgSpec, prefix string) error {
 	// First process all of our templated nodes
 	for i := 0; i < orgSpec.Template.Count; i++ {
@@ -281,20 +300,25 @@ func generateNodeSpec(orgSpec *OrgSpec, prefix string) error {
 		orgSpec.Specs = append(orgSpec.Specs, spec)
 	}
 
-	// And finally touch up all specs to add the domain
+	// Touch up all general node-specs to add the domain
 	for idx, spec := range orgSpec.Specs {
-		data := CommonNameData{
-			Hostname: spec.Hostname,
-			Domain:   orgSpec.Domain,
-		}
-
-		finalCN, err := parseTemplate(spec.CommonName, defaultCNTemplate, data)
+		finalCN, err := renderCN(orgSpec.Domain, spec)
 		if err != nil {
 			return err
 		}
 
 		orgSpec.Specs[idx].CommonName = finalCN
 	}
+
+	// Process the CA node-spec in the same manner
+	if len(orgSpec.CA.Hostname) == 0 {
+		orgSpec.CA.Hostname = "ca"
+	}
+	finalCN, err := renderCN(orgSpec.Domain, orgSpec.CA)
+	if err != nil {
+		return err
+	}
+	orgSpec.CA.CommonName = finalCN
 
 	return nil
 }
@@ -311,7 +335,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	peersDir := filepath.Join(orgDir, "peers")
 	usersDir := filepath.Join(orgDir, "users")
 	adminCertsDir := filepath.Join(mspDir, "admincerts")
-	rootCA, err := ca.NewCA(caDir, orgName)
+	rootCA, err := ca.NewCA(caDir, orgName, orgSpec.CA.CommonName)
 	if err != nil {
 		fmt.Printf("Error generating CA for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
@@ -407,7 +431,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 	orderersDir := filepath.Join(orgDir, "orderers")
 	usersDir := filepath.Join(orgDir, "users")
 	adminCertsDir := filepath.Join(mspDir, "admincerts")
-	rootCA, err := ca.NewCA(caDir, orgName)
+	rootCA, err := ca.NewCA(caDir, orgName, orgSpec.CA.CommonName)
 	if err != nil {
 		fmt.Printf("Error generating CA for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
