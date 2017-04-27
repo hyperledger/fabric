@@ -21,6 +21,9 @@ import (
 	"errors"
 	"testing"
 
+	"time"
+
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -77,4 +80,51 @@ func TestGetRandomIntNoEntropy(t *testing.T) {
 	rand.Reader = r
 	// Make sure randomness still works even when we have no entropy
 	testHappyPath(t)
+}
+
+func TestRandomIndices(t *testing.T) {
+	assert.Nil(t, GetRandomIndices(10, 5))
+	GetRandomIndices(10, 9)
+	GetRandomIndices(10, 12)
+}
+
+func TestGetIntOrDefault(t *testing.T) {
+	viper.Set("N", 100)
+	n := GetIntOrDefault("N", 100)
+	assert.Equal(t, 100, n)
+	m := GetIntOrDefault("M", 101)
+	assert.Equal(t, 101, m)
+}
+
+func TestGetDurationOrDefault(t *testing.T) {
+	viper.Set("foo", time.Second)
+	foo := GetDurationOrDefault("foo", time.Second*2)
+	assert.Equal(t, time.Second, foo)
+	bar := GetDurationOrDefault("bar", time.Second*2)
+	assert.Equal(t, time.Second*2, bar)
+}
+
+func TestPrintStackTrace(t *testing.T) {
+	PrintStackTrace()
+}
+
+func TestGetLogger(t *testing.T) {
+	l1 := GetLogger("foo", "bar")
+	l2 := GetLogger("foo", "bar")
+	assert.Equal(t, l1, l2)
+}
+
+func TestSet(t *testing.T) {
+	s := NewSet()
+	assert.Len(t, s.ToArray(), 0)
+	assert.False(t, s.Exists(42))
+	s.Add(42)
+	assert.True(t, s.Exists(42))
+	assert.Len(t, s.ToArray(), 1)
+	s.Remove(42)
+	assert.False(t, s.Exists(42))
+	s.Add(42)
+	assert.True(t, s.Exists(42))
+	s.Clear()
+	assert.False(t, s.Exists(42))
 }

@@ -114,13 +114,9 @@ func (mock *MockBlocksDeliverer) Send(env *common.Envelope) error {
 	// Read starting position
 	switch t := seekInfo.Start.Type.(type) {
 	case *orderer.SeekPosition_Oldest:
-		{
-			mock.Pos = 0
-		}
+		mock.Pos = 0
 	case *orderer.SeekPosition_Specified:
-		{
-			mock.Pos = t.Specified.Number
-		}
+		mock.Pos = t.Specified.Number
 	}
 	return nil
 }

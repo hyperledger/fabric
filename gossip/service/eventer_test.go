@@ -38,7 +38,7 @@ func (ao applicationOrgs) AnchorPeers() []*peer.AnchorPeer {
 }
 
 func (ao applicationOrgs) MSPID() string {
-	panic("Unimplimented")
+	return "ORG1"
 }
 
 func (ao applicationOrgs) Name() string {

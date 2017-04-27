@@ -54,6 +54,7 @@ func TestMockComm(t *testing.T) {
 	msg := <-msgCh
 
 	assert.NotNil(t, msg.GetGossipMessage().GetStateRequest())
+	assert.Equal(t, "first", string(comm1.GetPKIid()))
 }
 
 func TestMockComm_PingPong(t *testing.T) {

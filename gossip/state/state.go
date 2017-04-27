@@ -296,6 +296,9 @@ func (s *GossipStateProviderImpl) processStateRequests() {
 // Handle state request message, validate batch size, read current leader state to
 // obtain required blocks, build response message and send it back
 func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) {
+	if msg == nil {
+		return
+	}
 	request := msg.GetGossipMessage().GetStateRequest()
 
 	batchSize := request.EndSeqNum - request.StartSeqNum
@@ -428,7 +431,6 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 					logger.Errorf("Error getting block with seqNum = %d due to (%s)...dropping block", payload.SeqNum, err)
 					continue
 				}
-
 				logger.Debug("New block with sequence number ", payload.SeqNum, " transactions num ", len(rawblock.Data.Data))
 				s.commitBlock(rawblock)
 			}
