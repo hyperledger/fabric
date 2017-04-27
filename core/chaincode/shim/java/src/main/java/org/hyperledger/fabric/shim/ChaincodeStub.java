@@ -16,6 +16,8 @@ limitations under the License.
 
 package org.hyperledger.fabric.shim;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hyperledger.fabric.protos.peer.ChaincodeEventPackage.ChaincodeEvent;
+import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
 
 import com.google.protobuf.ByteString;
 
@@ -195,13 +198,78 @@ public class ChaincodeStub {
 	}
 
 	/**
-	 * @param chaincodeName
-	 * @param function
-	 * @param args
+	 * Invoke another chaincode using the same transaction context.
+	 * 
+	 * @param chaincodeName Name of chaincode to be invoked.
+	 * @param args Arguments to pass on to the called chaincode.
+	 * @param channel If not specified, the caller's channel is assumed.  
 	 * @return
 	 */
-	public String invokeChaincode(String chaincodeName, String function, List<ByteString> args) {
-		return handler.handleInvokeChaincode(chaincodeName, function, args, uuid).toStringUtf8();
+	public Response invokeChaincode(final String chaincodeName, final List<byte[]> args, final String channel) {
+		// internally we handle chaincode name as a composite name
+		final String compositeName;
+		if(channel != null && channel.trim().length() > 0) {
+			compositeName = chaincodeName + "/" + channel;
+		} else {
+			compositeName = chaincodeName;
+		}
+		return handler.handleInvokeChaincode(compositeName, args, this.uuid);
+	}
+
+	/**
+	 * Invoke another chaincode using the same transaction context.
+	 * 
+	 * @param chaincodeName Name of chaincode to be invoked.
+	 * @param args Arguments to pass on to the called chaincode.
+	 * @return
+	 */
+	public Response invokeChaincode(final String chaincodeName, final List<byte[]> args) {
+		return invokeChaincode(chaincodeName, args, null);
+	}
+	
+	/**
+	 * Invoke another chaincode using the same transaction context.
+	 * 
+	 * This is a convenience version of {@link #invokeChaincode(String, List, String)}.
+	 * The string args will be encoded into as UTF-8 bytes. 
+	 * 
+	 * @param chaincodeName Name of chaincode to be invoked.
+	 * @param args Arguments to pass on to the called chaincode.
+	 * @param channel If not specified, the caller's channel is assumed.  
+	 * @return
+	 */
+	public Response invokeChaincodeWithStringArgs(final String chaincodeName, final List<String> args, final String channel) {
+		return invokeChaincode(chaincodeName, args.stream().map(x->x.getBytes(StandardCharsets.UTF_8)).collect(Collectors.toList()), channel);
+	}
+	
+	/**
+	 * Invoke another chaincode using the same transaction context.
+	 * 
+	 * This is a convenience version of {@link #invokeChaincode(String, List)}.
+	 * The string args will be encoded into as UTF-8 bytes. 
+	 * 
+	 * 
+	 * @param chaincodeName Name of chaincode to be invoked.
+	 * @param args Arguments to pass on to the called chaincode.
+	 * @return
+	 */
+	public Response invokeChaincodeWithStringArgs(final String chaincodeName, final List<String> args) {
+		return invokeChaincodeWithStringArgs(chaincodeName, args, null);
+	}
+
+	/**
+	 * Invoke another chaincode using the same transaction context.
+	 * 
+	 * This is a convenience version of {@link #invokeChaincode(String, List)}.
+	 * The string args will be encoded into as UTF-8 bytes. 
+	 * 
+	 * 
+	 * @param chaincodeName Name of chaincode to be invoked.
+	 * @param args Arguments to pass on to the called chaincode.
+	 * @return
+	 */
+	public Response invokeChaincodeWithStringArgs(final String chaincodeName, final String... args) {
+		return invokeChaincodeWithStringArgs(chaincodeName, Arrays.asList(args), null);
 	}
 
 	// ------RAW CALLS------
@@ -233,19 +301,4 @@ public class ChaincodeStub {
 //		return handler.handleGetStateByRange(startKey, endKey, limit, uuid);
 //	}
 
-	/**
-	 * Invokes the provided chaincode with the given function and arguments, and
-	 * returns the raw ByteString value that invocation generated.
-	 *
-	 * @param chaincodeName
-	 *            The name of the chaincode to invoke
-	 * @param function
-	 *            the function parameter to pass to the chaincode
-	 * @param args
-	 *            the arguments to be provided in the chaincode call
-	 * @return the value returned by the chaincode call
-	 */
-	public ByteString invokeRawChaincode(String chaincodeName, String function, List<ByteString> args) {
-		return handler.handleInvokeChaincode(chaincodeName, function, args, uuid);
-	}
 }

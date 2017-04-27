@@ -134,13 +134,13 @@ logging:
     #   info                                       - Set default to INFO
     #   warning:main,db=debug:chaincode=info       - Override default WARNING in main,db,chaincode
     #   chaincode=info:main=debug:db=debug:warning - Same as above
-    peer:      debug
-    crypto:    info
+    peer:      warning
+    crypto:    warning
     status:    warning
     stop:      warning
     login:     warning
-    vm:        debug
-    chaincode: debug
+    vm:        warning
+    chaincode: warning
 
 
 ###############################################################################

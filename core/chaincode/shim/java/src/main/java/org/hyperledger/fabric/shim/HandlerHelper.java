@@ -16,6 +16,7 @@ package org.hyperledger.fabric.shim;
 import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.COMPLETED;
 import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.ERROR;
 import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.GET_STATE;
+import static org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type.INVOKE_CHAINCODE;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -47,6 +48,10 @@ abstract class HandlerHelper {
 
 	static ChaincodeMessage newCompletedEventMessage(final String txid, final Response response, final ChaincodeEvent event) {
 		return newEventMessage(COMPLETED, txid, response.toByteString(), event);
+	}
+	
+	static ChaincodeMessage newInvokeChaincodeMessage(final String txid, final ByteString payload) {
+		return newEventMessage(INVOKE_CHAINCODE, txid, payload, null);
 	}
 
 	private static ChaincodeMessage newEventMessage(final Type type, final String txid, final ByteString payload) {

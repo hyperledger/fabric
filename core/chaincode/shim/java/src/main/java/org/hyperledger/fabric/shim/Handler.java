@@ -35,6 +35,7 @@ import static org.hyperledger.fabric.shim.fsm.CallbackType.BEFORE_EVENT;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -635,78 +636,64 @@ public class Handler {
 		}
 	}
 */
-	public ByteString handleInvokeChaincode(String chaincodeName, String function, List<ByteString> args, String uuid) {
-		// Check if this is a transaction
-		if (!isTransaction.containsKey(uuid)) {
-			throw new RuntimeException("Cannot invoke chaincode in query context");
-		}
+	public Response handleInvokeChaincode(String chaincodeName, List<byte[]> args, String txid) {
 
-		ChaincodeID id = ChaincodeID.newBuilder()
-				.setName(chaincodeName).build();
-		ChaincodeInput input = ChaincodeInput.newBuilder()
-				.addArgs(ByteString.copyFromUtf8(function))
-				.addAllArgs(args)
-				.build();
-		ChaincodeSpec payload = ChaincodeSpec.newBuilder()
-				.setChaincodeId(id)
-				.setInput(input)
+		// create invocation specification of the chaincode to invoke
+		final ChaincodeSpec invocationSpec = ChaincodeSpec.newBuilder()
+				.setChaincodeId(ChaincodeID.newBuilder()
+						.setName(chaincodeName)
+						.build())
+				.setInput(ChaincodeInput.newBuilder()
+						.addAllArgs(args.stream().map(ByteString::copyFrom).collect(Collectors.toList()))
+						.build())
 				.build();
 
-		// Create the channel on which to communicate the response from validating peer
-		Channel<ChaincodeMessage> responseChannel;
 		try {
-			responseChannel = createChannel(uuid);
-		} catch (Exception e) {
-			logger.error(String.format("[%s]Another state request pending for this Uuid. Cannot process.", shortID(uuid)));
-			throw e;
-		}
-
-		//Defer
-		try {
+			// create the channel on which to communicate the response from validating peer
+			final Channel<ChaincodeMessage> responseChannel = createChannel(txid);
+			
 			// Send INVOKE_CHAINCODE message to validator chaincode support
-			ChaincodeMessage message = ChaincodeMessage.newBuilder()
-					.setType(INVOKE_CHAINCODE)
-					.setPayload(payload.toByteString())
-					.setTxid(uuid)
-					.build();
+			final ChaincodeMessage message = HandlerHelper.newInvokeChaincodeMessage(txid, invocationSpec.toByteString());
+			logger.debug(String.format("[%s]Sending %s", shortID(message), INVOKE_CHAINCODE));
+			serialSend(message);
 
-			logger.debug(String.format("[%s]Sending %s",
-					shortID(message), INVOKE_CHAINCODE));
-
-			try {
-				serialSend(message);
-			} catch (Exception e) {
-				logger.error("["+ shortID(message)+"]Error sending "+INVOKE_CHAINCODE+": "+e.getMessage());
-				throw e;
+			// wait for response chaincode message
+			final ChaincodeMessage outerResponseMessage = receiveChannel(responseChannel);
+			
+			if(outerResponseMessage == null) {
+				return ChaincodeHelper.newInternalServerErrorResponse("chaincode invoke returned null");
 			}
+			
+			logger.debug(String.format("[%s]Received %s.", shortID(outerResponseMessage.getTxid()), outerResponseMessage.getType()));
 
-			// Wait on responseChannel for response
-			ChaincodeMessage response;
-			try {
-				response = receiveChannel(responseChannel);
-			} catch (Exception e) {
-				logger.error(String.format("[%s]Received unexpected message type", shortID(message)));
-				throw new RuntimeException("Received unexpected message type");
-			}
-
-			if (response.getType() == RESPONSE) {
-				// Success response
-				logger.debug(String.format("[%s]Received %s. Successfully invoked chaincode", shortID(response.getTxid()), RESPONSE));
-				return response.getPayload();
-			}
-
-			if (response.getType() == ERROR) {
+			switch (outerResponseMessage.getType()) {
+			case RESPONSE:
+				// response message payload should be yet another chaincode message (the actual response message)
+				final ChaincodeMessage responseMessage = ChaincodeMessage.parseFrom(outerResponseMessage.getPayload());
+				// the actual response message must be of type COMPLETED
+				logger.debug(String.format("[%s]Received %s.", shortID(responseMessage.getTxid()), responseMessage.getType()));
+				if(responseMessage.getType() == COMPLETED) {
+					// success
+					return Response.parseFrom(responseMessage.getPayload()); 
+				} else {
+					// error
+					return ChaincodeHelper.newInternalServerErrorResponse(responseMessage.getPayload().toByteArray());
+				}
+			case ERROR:
 				// Error response
-				logger.error(String.format("[%s]Received %s.", shortID(response.getTxid()), ERROR));
-				throw new RuntimeException(response.getPayload().toStringUtf8());
+				logger.error(String.format("[%s]Received %s.", shortID(outerResponseMessage.getTxid()), ERROR));
+				return ChaincodeHelper.newInternalServerErrorResponse(outerResponseMessage.getPayload().toByteArray());
+			default:
+				// Incorrect chaincode message received
+				logger.debug(String.format("[%s]Incorrect chaincode message %s received. Expecting %s or %s",shortID(outerResponseMessage.getTxid()), outerResponseMessage.getType(), RESPONSE, ERROR));
+				return ChaincodeHelper.newInternalServerErrorResponse("Incorrect chaincode message received.", outerResponseMessage.toByteArray());
 			}
-
-			// Incorrect chaincode message received
-			logger.debug(String.format("[%s]Incorrect chaincode message %s received. Expecting %s or %s",
-					shortID(response.getTxid()), response.getType(), RESPONSE, ERROR));
-			throw new RuntimeException("Incorrect chaincode message received");
+		} catch (InvalidProtocolBufferException e) {
+			return ChaincodeHelper.newInternalServerErrorResponse(e);
+		} catch (RuntimeException e) {
+			return ChaincodeHelper.newInternalServerErrorResponse(e);
 		} finally {
-			deleteChannel(uuid);
+			deleteChannel(txid);
 		}
 	}
 
