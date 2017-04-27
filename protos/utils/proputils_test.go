@@ -161,6 +161,10 @@ func TestProposalResponse(t *testing.T) {
 		EventName:   "EventName",
 		Payload:     []byte("EventPayload"),
 		TxId:        "TxID"}
+	ccid := &pb.ChaincodeID{
+		Name:    "ccid",
+		Version: "v1",
+	}
 
 	pHashBytes := []byte("proposal_hash")
 	pResponse := &pb.Response{Status: 200}
@@ -172,7 +176,7 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// get the bytes of the ProposalResponsePayload
-	prpBytes, err := utils.GetBytesProposalResponsePayload(pHashBytes, pResponse, results, eventBytes)
+	prpBytes, err := utils.GetBytesProposalResponsePayload(pHashBytes, pResponse, results, eventBytes, ccid)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
 		return
@@ -250,8 +254,9 @@ func TestEnvelope(t *testing.T) {
 
 	response := &pb.Response{Status: 200, Payload: []byte("payload")}
 	result := []byte("res")
+	ccid := &pb.ChaincodeID{Name: "foo", Version: "v1"}
 
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, result, nil, nil, signer)
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, result, nil, ccid, nil, signer)
 	if err != nil {
 		t.Fatalf("Could not create proposal response, err %s\n", err)
 		return

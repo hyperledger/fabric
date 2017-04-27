@@ -52,10 +52,12 @@ func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Re
 // args[0] - function name (not used now)
 // args[1] - serialized Header object
 // args[2] - serialized ChaincodeProposalPayload object
-// args[3] - result of executing chaincode
-// args[4] - binary blob of simulation results
-// args[5] - serialized events
-// args[6] - payloadVisibility
+// args[3] - ChaincodeID of executing chaincode
+// args[4] - result of executing chaincode
+// args[5] - binary blob of simulation results
+// args[6] - serialized events
+// args[7] - payloadVisibility
+
 //
 // NOTE: this chaincode is meant to sign another chaincode's simulation
 // results. It should not manipulate state as any state change will be
@@ -64,9 +66,9 @@ func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Re
 // definition can't be a state change of our own.
 func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	args := stub.GetArgs()
-	if len(args) < 5 {
+	if len(args) < 6 {
 		return shim.Error(fmt.Sprintf("Incorrect number of arguments (expected a minimum of 5, provided %d)", len(args)))
-	} else if len(args) > 7 {
+	} else if len(args) > 8 {
 		return shim.Error(fmt.Sprintf("Incorrect number of arguments (expected a maximum of 7, provided %d)", len(args)))
 	}
 
@@ -88,13 +90,23 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 
 	payl = args[2]
 
+	// handle ChaincodeID
+	if args[3] == nil {
+		return shim.Error("ChaincodeID is null")
+	}
+
+	ccid, err := putils.UnmarshalChaincodeID(args[3])
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
 	// handle executing chaincode result
 	// Status code < 500 can be endorsed
-	if args[3] == nil {
+	if args[4] == nil {
 		return shim.Error("Response of chaincode executing is null")
 	}
 
-	response, err := putils.GetResponse(args[3])
+	response, err := putils.GetResponse(args[4])
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get Response of executing chaincode: %s", err.Error()))
 	}
@@ -105,18 +117,18 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 
 	// handle simulation results
 	var results []byte
-	if args[4] == nil {
+	if args[5] == nil {
 		return shim.Error("simulation results are null")
 	}
 
-	results = args[4]
+	results = args[5]
 
 	// Handle serialized events if they have been provided
 	// they might be nil in case there's no events but there
 	// is a visibility field specified as the next arg
 	events := []byte("")
-	if len(args) > 5 && args[5] != nil {
-		events = args[5]
+	if len(args) > 6 && args[6] != nil {
+		events = args[6]
 	}
 
 	// Handle payload visibility (it's an optional argument)
@@ -128,8 +140,8 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 	// mechanisms that shall be encoded in this field (and handled
 	// appropriately by the peer)
 	var visibility []byte
-	if len(args) > 6 {
-		visibility = args[6]
+	if len(args) > 7 {
+		visibility = args[7]
 	}
 
 	// obtain the default signing identity for this peer; it will be used to sign this proposal response
@@ -144,7 +156,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 	}
 
 	// obtain a proposal response
-	presp, err := utils.CreateProposalResponse(hdr, payl, response, results, events, visibility, signingEndorser)
+	presp, err := utils.CreateProposalResponse(hdr, payl, response, results, events, ccid, visibility, signingEndorser)
 	if err != nil {
 		return shim.Error(err.Error())
 	}

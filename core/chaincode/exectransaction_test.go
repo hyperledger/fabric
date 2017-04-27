@@ -171,28 +171,36 @@ func endTxSimulationCDS(chainID string, _ string, txsim ledger.TxSimulator, payl
 	if err != nil {
 		return err
 	}
+
+	// get lscc ChaincodeID
+	lsccid := &pb.ChaincodeID{
+		Name:    "lscc",
+		Version: util.GetSysCCVersion(),
+	}
+
 	// get a proposal - we need it to get a transaction
 	prop, _, err := putils.CreateDeployProposalFromCDS(chainID, cds, ss, nil, nil, nil)
 	if err != nil {
 		return err
 	}
 
-	return endTxSimulation(chainID, txsim, payload, commit, prop, blockNumber)
+	return endTxSimulation(chainID, lsccid, txsim, payload, commit, prop, blockNumber)
 }
 
-func endTxSimulationCIS(chainID string, _ string, txsim ledger.TxSimulator, payload []byte, commit bool, cis *pb.ChaincodeInvocationSpec, blockNumber uint64) error {
+func endTxSimulationCIS(chainID string, ccid *pb.ChaincodeID, _ string, txsim ledger.TxSimulator, payload []byte, commit bool, cis *pb.ChaincodeInvocationSpec, blockNumber uint64) error {
 	// get serialized version of the signer
 	ss, err := signer.Serialize()
 	if err != nil {
 		return err
 	}
+
 	// get a proposal - we need it to get a transaction
 	prop, _, err := putils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, ss)
 	if err != nil {
 		return err
 	}
 
-	return endTxSimulation(chainID, txsim, payload, commit, prop, blockNumber)
+	return endTxSimulation(chainID, ccid, txsim, payload, commit, prop, blockNumber)
 }
 
 //getting a crash from ledger.Commit when doing concurrent invokes
@@ -205,7 +213,7 @@ func endTxSimulationCIS(chainID string, _ string, txsim ledger.TxSimulator, payl
 //concurrently (100 concurrent invokes followed by 100 concurrent queries)
 var _commitLock_ sync.Mutex
 
-func endTxSimulation(chainID string, txsim ledger.TxSimulator, _ []byte, commit bool, prop *pb.Proposal, blockNumber uint64) error {
+func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, _ []byte, commit bool, prop *pb.Proposal, blockNumber uint64) error {
 	txsim.Done()
 	if lgr := peer.GetLedger(chainID); lgr != nil {
 		if commit {
@@ -218,7 +226,7 @@ func endTxSimulation(chainID string, txsim ledger.TxSimulator, _ []byte, commit 
 			}
 
 			// assemble a (signed) proposal response message
-			resp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200}, txSimulationResults, nil, nil, signer)
+			resp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200}, txSimulationResults, nil, ccid, nil, signer)
 			if err != nil {
 				return err
 			}
@@ -355,10 +363,10 @@ func invokeWithVersion(ctx context.Context, chainID string, version string, spec
 		//no error, lets try commit
 		if err == nil {
 			//capture returned error from commit
-			err = endTxSimulationCIS(chainID, uuid, txsim, []byte("invoke"), true, cdInvocationSpec, blockNumber)
+			err = endTxSimulationCIS(chainID, spec.ChaincodeId, uuid, txsim, []byte("invoke"), true, cdInvocationSpec, blockNumber)
 		} else {
 			//there was an error, just close simulation and return that
-			endTxSimulationCIS(chainID, uuid, txsim, []byte("invoke"), false, cdInvocationSpec, blockNumber)
+			endTxSimulationCIS(chainID, spec.ChaincodeId, uuid, txsim, []byte("invoke"), false, cdInvocationSpec, blockNumber)
 		}
 	}()
 

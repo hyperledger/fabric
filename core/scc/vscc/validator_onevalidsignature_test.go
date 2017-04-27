@@ -33,14 +33,15 @@ import (
 )
 
 func createTx() (*common.Envelope, error) {
-	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: &peer.ChaincodeID{Name: "foo"}}}
+	ccid := &peer.ChaincodeID{Name: "foo", Version: "v1"}
+	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: ccid}}
 
 	prop, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
 	if err != nil {
 		return nil, err
 	}
 
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, []byte("res"), nil, nil, id)
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, []byte("res"), nil, ccid, nil, id)
 	if err != nil {
 		return nil, err
 	}

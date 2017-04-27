@@ -115,8 +115,12 @@ func (app *App) QueryBalances(accounts []string) ([]int, error) {
 }
 
 func constructTransaction(simulationResults []byte) *common.Envelope {
+	ccid := &pb.ChaincodeID{
+		Name:    "foo",
+		Version: "v1",
+	}
 	response := &pb.Response{Status: 200}
-	txEnv, _, _ := ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GetTestChainID(), "foo", response, simulationResults, nil, nil)
+	txEnv, _, _ := ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GetTestChainID(), ccid, response, simulationResults, nil, nil)
 	return txEnv
 }
 

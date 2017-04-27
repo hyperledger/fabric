@@ -102,6 +102,7 @@ func createTestBlock(t *testing.T) *common.Block {
 	taas := make([]*ehpb.TransactionAction, 1)
 	taas[0] = taa
 	tx := &ehpb.Transaction{Actions: taas}
+	ccid := &ehpb.ChaincodeID{Name: "ccid", Version: "v1"}
 
 	events := &ehpb.ChaincodeEvent{
 		ChaincodeId: "ccid",
@@ -116,7 +117,7 @@ func createTestBlock(t *testing.T) *common.Block {
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
 	}
-	ccaPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(pHashBytes, pResponse, results, eventBytes)
+	ccaPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(pHashBytes, pResponse, results, eventBytes, ccid)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
 	}

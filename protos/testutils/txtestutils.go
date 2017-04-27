@@ -51,23 +51,23 @@ func init() {
 
 // ConstructSingedTxEnvWithDefaultSigner constructs a transaction envelop for tests with a default signer.
 // This method helps other modules to construct a transaction with supplied parameters
-func ConstructSingedTxEnvWithDefaultSigner(chainID, ccName string, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, string, error) {
-	return ConstructSingedTxEnv(chainID, ccName, response, simulationResults, events, visibility, signer)
+func ConstructSingedTxEnvWithDefaultSigner(chainID string, ccid *pb.ChaincodeID, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, string, error) {
+	return ConstructSingedTxEnv(chainID, ccid, response, simulationResults, events, visibility, signer)
 }
 
 // ConstructSingedTxEnv constructs a transaction envelop for tests
-func ConstructSingedTxEnv(chainID string, ccName string, pResponse *pb.Response, simulationResults []byte, events []byte, visibility []byte, signer msp.SigningIdentity) (*common.Envelope, string, error) {
+func ConstructSingedTxEnv(chainID string, ccid *pb.ChaincodeID, pResponse *pb.Response, simulationResults []byte, events []byte, visibility []byte, signer msp.SigningIdentity) (*common.Envelope, string, error) {
 	ss, err := signer.Serialize()
 	if err != nil {
 		return nil, "", err
 	}
 
-	prop, txid, err := putils.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: ccName}}}, ss)
+	prop, txid, err := putils.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccid}}, ss)
 	if err != nil {
 		return nil, "", err
 	}
 
-	presp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, nil, signer)
+	presp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, ccid, nil, signer)
 	if err != nil {
 		return nil, "", err
 	}
@@ -83,11 +83,11 @@ var mspLcl msp.MSP
 var sigId msp.SigningIdentity
 
 // ConstructUnsingedTxEnv creates a Transaction envelope from given inputs
-func ConstructUnsingedTxEnv(chainID string, ccName string, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, string, error) {
+func ConstructUnsingedTxEnv(chainID string, ccid *pb.ChaincodeID, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, string, error) {
 	if mspLcl == nil {
 		mspLcl = msp.NewNoopMsp()
 		sigId, _ = mspLcl.GetDefaultSigningIdentity()
 	}
 
-	return ConstructSingedTxEnv(chainID, ccName, response, simulationResults, events, visibility, sigId)
+	return ConstructSingedTxEnv(chainID, ccid, response, simulationResults, events, visibility, sigId)
 }

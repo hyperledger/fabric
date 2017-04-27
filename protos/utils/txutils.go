@@ -210,7 +210,7 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 }
 
 // CreateProposalResponse creates a proposal response.
-func CreateProposalResponse(hdrbytes []byte, payl []byte, response *peer.Response, results []byte, events []byte, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
+func CreateProposalResponse(hdrbytes []byte, payl []byte, response *peer.Response, results []byte, events []byte, ccid *peer.ChaincodeID, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
 	hdr, err := GetHeader(hdrbytes)
 	if err != nil {
 		return nil, err
@@ -223,7 +223,7 @@ func CreateProposalResponse(hdrbytes []byte, payl []byte, response *peer.Respons
 	}
 
 	// get the bytes of the proposal response payload - we need to sign them
-	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, response, results, events)
+	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, response, results, events, ccid)
 	if err != nil {
 		return nil, errors.New("Failure while unmarshalling the ProposalResponsePayload")
 	}
