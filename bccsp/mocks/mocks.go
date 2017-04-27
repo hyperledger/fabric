@@ -16,26 +16,109 @@ limitations under the License.
 
 package mocks
 
-import "github.com/hyperledger/fabric/bccsp"
+import (
+	"crypto"
+	"errors"
+	"hash"
+	"reflect"
 
-type MockKey struct{}
+	"github.com/hyperledger/fabric/bccsp"
+)
 
-func (*MockKey) Bytes() ([]byte, error) {
+type MockBCCSP struct {
+	SignArgKey    bccsp.Key
+	SignDigestArg []byte
+	SignOptsArg   bccsp.SignerOpts
+
+	SignValue []byte
+	SignErr   error
+
+	VerifyValue bool
+	VerifyErr   error
+}
+
+func (*MockBCCSP) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	panic("implement me")
+}
+
+func (*MockBCCSP) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
+	panic("implement me")
+}
+
+func (*MockBCCSP) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+	panic("implement me")
+}
+
+func (*MockBCCSP) GetKey(ski []byte) (k bccsp.Key, err error) {
+	panic("implement me")
+}
+
+func (*MockBCCSP) Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error) {
+	panic("implement me")
+}
+
+func (*MockBCCSP) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
+	panic("implement me")
+}
+
+func (b *MockBCCSP) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
+	if !reflect.DeepEqual(b.SignArgKey, k) {
+		return nil, errors.New("invalid key")
+	}
+	if !reflect.DeepEqual(b.SignDigestArg, digest) {
+		return nil, errors.New("invalid digest")
+	}
+	if !reflect.DeepEqual(b.SignOptsArg, opts) {
+		return nil, errors.New("invalid opts")
+	}
+
+	return b.SignValue, b.SignErr
+}
+
+func (b *MockBCCSP) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
+	return b.VerifyValue, b.VerifyErr
+}
+
+func (*MockBCCSP) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) (ciphertext []byte, err error) {
+	panic("implement me")
+}
+
+func (*MockBCCSP) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) (plaintext []byte, err error) {
+	panic("implement me")
+}
+
+type MockKey struct {
+	BytesValue []byte
+	BytesErr   error
+	Symm       bool
+	PK         bccsp.Key
+	PKErr      error
+}
+
+func (m *MockKey) Bytes() ([]byte, error) {
+	return m.BytesValue, m.BytesErr
 }
 
 func (*MockKey) SKI() []byte {
 	panic("implement me")
 }
 
-func (*MockKey) Symmetric() bool {
-	panic("implement me")
+func (m *MockKey) Symmetric() bool {
+	return m.Symm
 }
 
 func (*MockKey) Private() bool {
 	panic("implement me")
 }
 
-func (*MockKey) PublicKey() (bccsp.Key, error) {
-	panic("implement me")
+func (m *MockKey) PublicKey() (bccsp.Key, error) {
+	return m.PK, m.PKErr
+}
+
+type SignerOpts struct {
+	HashFuncValue crypto.Hash
+}
+
+func (o *SignerOpts) HashFunc() crypto.Hash {
+	return o.HashFuncValue
 }

@@ -974,8 +974,7 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 		},
 	}
 
-	cryptoSigner := &signer.CryptoSigner{}
-	err = cryptoSigner.Init(currentBCCSP, k)
+	cryptoSigner, err := signer.New(currentBCCSP, k)
 	if err != nil {
 		t.Fatalf("Failed initializing CyrptoSigner [%s]", err)
 	}
@@ -1786,8 +1785,7 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 		},
 	}
 
-	cryptoSigner := &signer.CryptoSigner{}
-	err = cryptoSigner.Init(currentBCCSP, k)
+	cryptoSigner, err := signer.New(currentBCCSP, k)
 	if err != nil {
 		t.Fatalf("Failed initializing CyrptoSigner [%s]", err)
 	}
