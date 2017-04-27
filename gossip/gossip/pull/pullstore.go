@@ -115,19 +115,16 @@ type Mediator interface {
 // pullMediatorImpl is an implementation of Mediator
 type pullMediatorImpl struct {
 	sync.RWMutex
-	Sender
+	*PullAdapter
 	msgType2Hook map[MsgType][]MessageHook
-	idExtractor  proto.IdentifierExtractor
-	msgCons      proto.MsgConsumer
 	config       Config
 	logger       *logging.Logger
 	itemID2Msg   map[string]*proto.SignedGossipMessage
-	memBvc       MembershipService
 	engine       *algo.PullEngine
 }
 
 // NewPullMediator returns a new Mediator
-func NewPullMediator(config Config, adapter PullAdapter) Mediator {
+func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 	digFilter := adapter.DigFilter
 
 	acceptAllFilter := func(_ proto.ReceivedMessage) func(string) bool {
@@ -141,14 +138,11 @@ func NewPullMediator(config Config, adapter PullAdapter) Mediator {
 	}
 
 	p := &pullMediatorImpl{
-		msgCons:      adapter.MsgCons,
+		PullAdapter:  adapter,
 		msgType2Hook: make(map[MsgType][]MessageHook),
-		idExtractor:  adapter.IdExtractor,
 		config:       config,
 		logger:       util.GetLogger(util.LoggingPullModule, config.ID),
 		itemID2Msg:   make(map[string]*proto.SignedGossipMessage),
-		memBvc:       adapter.MemSvc,
-		Sender:       adapter.Sndr,
 	}
 
 	p.engine = algo.NewPullEngineWithFilter(p, config.PullInterval, digFilter.byContext())
@@ -196,8 +190,8 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 				p.logger.Warning("Data update contains an invalid message:", err)
 				return
 			}
-			p.msgCons(msg)
-			itemIDs[i] = p.idExtractor(msg)
+			p.MsgCons(msg)
+			itemIDs[i] = p.IdExtractor(msg)
 			items[i] = msg
 			p.Lock()
 			p.itemID2Msg[itemIDs[i]] = msg
@@ -228,7 +222,7 @@ func (p *pullMediatorImpl) RegisterMsgHook(pullMsgType MsgType, hook MessageHook
 func (p *pullMediatorImpl) Add(msg *proto.SignedGossipMessage) {
 	p.Lock()
 	defer p.Unlock()
-	itemID := p.idExtractor(msg)
+	itemID := p.IdExtractor(msg)
 	p.itemID2Msg[itemID] = msg
 	p.engine.Add(itemID)
 }
@@ -244,7 +238,7 @@ func (p *pullMediatorImpl) Remove(digest string) {
 
 // SelectPeers returns a slice of peers which the engine will initiate the protocol with
 func (p *pullMediatorImpl) SelectPeers() []string {
-	remotePeers := SelectEndpoints(p.config.PeerCountToSelect, p.memBvc.GetMembership())
+	remotePeers := SelectEndpoints(p.config.PeerCountToSelect, p.MemSvc.GetMembership())
 	endpoints := make([]string, len(remotePeers))
 	for i, peer := range remotePeers {
 		endpoints[i] = peer.Endpoint
@@ -269,7 +263,7 @@ func (p *pullMediatorImpl) Hello(dest string, nonce uint64) {
 	}
 
 	p.logger.Debug("Sending hello to", dest)
-	p.Send(helloMsg.NoopSign(), p.peersWithEndpoints(dest)...)
+	p.Sndr.Send(helloMsg.NoopSign(), p.peersWithEndpoints(dest)...)
 }
 
 // SendDigest sends a digest to a remote PullEngine.
@@ -307,7 +301,7 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 		},
 	}
 	p.logger.Debug("Sending", req, "to", dest)
-	p.Send(req.NoopSign(), p.peersWithEndpoints(dest)...)
+	p.Sndr.Send(req.NoopSign(), p.peersWithEndpoints(dest)...)
 }
 
 // SendRes sends an array of items to a remote PullEngine identified by a context.
@@ -339,7 +333,7 @@ func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce ui
 
 func (p *pullMediatorImpl) peersWithEndpoints(endpoints ...string) []*comm.RemotePeer {
 	peers := []*comm.RemotePeer{}
-	for _, member := range p.memBvc.GetMembership() {
+	for _, member := range p.MemSvc.GetMembership() {
 		for _, endpoint := range endpoints {
 			if member.PreferredEndpoint() == endpoint {
 				peers = append(peers, &comm.RemotePeer{Endpoint: member.PreferredEndpoint(), PKIID: member.PKIid})

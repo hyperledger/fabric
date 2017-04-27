@@ -384,7 +384,7 @@ func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons pro
 	memberSvc.On("GetMembership").Return([]discovery.NetworkMember{{PKIid: []byte("bla bla"), Endpoint: "localhost:5611"}})
 
 	var certStore *certStore
-	adapter := pull.PullAdapter{
+	adapter := &pull.PullAdapter{
 		Sndr: sender,
 		MsgCons: func(msg *proto.SignedGossipMessage) {
 			certStore.idMapper.Put(msg.GetPeerIdentity().PkiId, msg.GetPeerIdentity().Cert)
