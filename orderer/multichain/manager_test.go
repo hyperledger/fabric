@@ -34,6 +34,7 @@ import (
 
 	"errors"
 
+	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -46,7 +47,7 @@ func init() {
 	conf = genesisconfig.Load(genesisconfig.SampleInsecureProfile)
 	logging.SetLevel(logging.DEBUG, "")
 	genesisBlock = provisional.New(conf).GenesisBlock()
-	mockSigningIdentity, _ = msp.NewNoopMsp().GetDefaultSigningIdentity()
+	mockSigningIdentity, _ = mmsp.NewNoopMsp().GetDefaultSigningIdentity()
 }
 
 func mockCrypto() *mockCryptoHelper {

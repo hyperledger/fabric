@@ -32,47 +32,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNoopMSP(t *testing.T) {
-	noopmsp := NewNoopMsp()
-
-	id, err := noopmsp.GetDefaultSigningIdentity()
-	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded")
-		return
-	}
-
-	serializedID, err := id.Serialize()
-	if err != nil {
-		t.Fatalf("Serialize should have succeeded")
-		return
-	}
-
-	idBack, err := noopmsp.DeserializeIdentity(serializedID)
-	if err != nil {
-		t.Fatalf("DeserializeIdentity should have succeeded")
-		return
-	}
-
-	msg := []byte("foo")
-	sig, err := id.Sign(msg)
-	if err != nil {
-		t.Fatalf("Sign should have succeeded")
-		return
-	}
-
-	err = id.Verify(msg, sig)
-	if err != nil {
-		t.Fatalf("The signature should be valid")
-		return
-	}
-
-	err = idBack.Verify(msg, sig)
-	if err != nil {
-		t.Fatalf("The signature should be valid")
-		return
-	}
-}
-
 func TestMSPSetupBad(t *testing.T) {
 	_, err := GetLocalMspConfig("barf", nil, "DEFAULT")
 	if err == nil {

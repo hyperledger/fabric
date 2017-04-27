@@ -30,12 +30,12 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
+	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	logging "github.com/op/go-logging"
 )
 
@@ -56,7 +56,7 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 func doOutputChannelCreateTx(conf *genesisconfig.Profile, channelID string, outputChannelCreateTx string) error {
 	logger.Info("Generating new channel configtx")
 	// TODO, use actual MSP eventually
-	signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
+	signer, err := mmsp.NewNoopMsp().GetDefaultSigningIdentity()
 	if err != nil {
 		return fmt.Errorf("Error getting signing identity: %s", err)
 	}
