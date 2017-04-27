@@ -23,7 +23,6 @@ import (
 	"regexp"
 	"runtime"
 
-	"github.com/hyperledger/fabric/common/flogging"
 	logging "github.com/op/go-logging"
 )
 
@@ -73,9 +72,18 @@ func setupCallError(e *callError, generateStack bool) {
 	e.stack = stack[:length]
 }
 
-// Error comes from the error interface
+// Error comes from the error interface - it returns the error message and
+// appends the callstack, if available
 func (e *callError) Error() string {
-	return e.Message()
+	message := e.GetErrorCode() + " - " + fmt.Sprintf(e.message, e.args...)
+	// check that the error has a callstack before proceeding
+	if e.GetStack() != "" {
+		message = appendCallStack(message, e.GetStack())
+	}
+	if e.prevErr != nil {
+		message += "\nCaused by: " + e.prevErr.Error()
+	}
+	return message
 }
 
 // GetStack returns the call stack as a string
@@ -102,18 +110,14 @@ func (e *callError) GetErrorCode() string {
 // language.
 func (e *callError) Message() string {
 	message := e.GetErrorCode() + " - " + fmt.Sprintf(e.message, e.args...)
-	// check that the error has a callstack before proceeding
-	if e.GetStack() != "" {
-		// stacktrace is enabled when `logging.error` in core.yaml is set to
-		// DEBUG. it can also be toggled for code running on the peer dynamically
-		// via CLI using `peer logging setlevel error <log-level>`
-		errorLevel := flogging.GetModuleLevel("error")
-		if errorLevel == logging.DEBUG.String() {
-			message = appendCallStack(message, e.GetStack())
-		}
-	}
+
 	if e.prevErr != nil {
-		message += "\nCaused by: " + e.prevErr.Error()
+		switch previousError := e.prevErr.(type) {
+		case CallStackError:
+			message += "\nCaused by: " + previousError.Message()
+		default:
+			message += "\nCaused by: " + e.prevErr.Error()
+		}
 	}
 	return message
 }

@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/peer/common"
 
 	"github.com/spf13/cobra"
 )
@@ -39,18 +38,7 @@ func Cmd() *cobra.Command {
 }
 
 var loggingCmd = &cobra.Command{
-	Use: loggingFuncName,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// initialize the log level for the "error" module to the value of
-		// logging.error in core.yaml. this is necessary to ensure that these
-		// logging CLI commands, which execute outside of the peer, can
-		// automatically append the stack trace to the error message (if set to
-		// debug).
-		// note: for code running on the peer, this level is set during peer startup
-		// in peer/node/start.go and can be updated dynamically using
-		// "peer logging setlevel error <log-level>"
-		return common.SetLogLevelFromViper("error")
-	},
+	Use:   loggingFuncName,
 	Short: fmt.Sprintf("%s specific commands.", loggingFuncName),
 	Long:  fmt.Sprintf("%s specific commands.", loggingFuncName),
 }

@@ -94,14 +94,7 @@ func SetLogLevelFromViper(module string) error {
 		logLevelFromViper := viper.GetString("logging." + module)
 		err = CheckLogLevel(logLevelFromViper)
 		if err != nil {
-			if module == "error" {
-				// if 'logging.error' not found in core.yaml or an invalid level has
-				// been entered, set default to debug to ensure the callstack is
-				// appended to all CallStackErrors
-				logLevelFromViper = "debug"
-			} else {
-				return err
-			}
+			return err
 		}
 		_, err = flogging.SetModuleLevel(module, logLevelFromViper)
 	}
