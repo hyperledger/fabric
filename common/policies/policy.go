@@ -60,7 +60,7 @@ const (
 	BlockValidation = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "BlockValidation"
 )
 
-var logger = flogging.MustGetLogger("common/policies")
+var logger = flogging.MustGetLogger("policies")
 
 // Policy is used to determine if a signature is valid
 type Policy interface {
