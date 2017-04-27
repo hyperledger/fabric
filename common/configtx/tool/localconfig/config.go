@@ -194,6 +194,8 @@ func Load(profile string) *Profile {
 
 	result.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
 
+	logger.Infof("Loaded configuration: %s", config.ConfigFileUsed())
+
 	return result
 }
 
