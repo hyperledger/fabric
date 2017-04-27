@@ -213,7 +213,7 @@ public class Handler {
 				markIsTransaction(message.getTxid(), true);
 				
 				// Create the ChaincodeStub which the chaincode can use to callback
-				final ChaincodeStub stub = new ChaincodeStub(message.getTxid(), this, input.getArgsList());
+				final ChaincodeStub stub = new ChaincodeStubImpl(message.getTxid(), this, input.getArgsList());
 				
 				// Call chaincode's init
 				final Response result = chaincode.init(stub);
@@ -269,7 +269,7 @@ public class Handler {
 				markIsTransaction(message.getTxid(), true);
 				
 				// Create the ChaincodeStub which the chaincode can use to callback
-				final ChaincodeStub stub = new ChaincodeStub(message.getTxid(), this, input.getArgsList());
+				final ChaincodeStub stub = new ChaincodeStubImpl(message.getTxid(), this, input.getArgsList());
 				
 				// Call chaincode's invoke
 				final Response result = chaincode.invoke(stub);
