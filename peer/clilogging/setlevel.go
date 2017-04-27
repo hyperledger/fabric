@@ -19,41 +19,34 @@ package clilogging
 import (
 	"golang.org/x/net/context"
 
-	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/spf13/cobra"
 )
 
-func setLevelCmd() *cobra.Command {
+func setLevelCmd(cf *LoggingCmdFactory) *cobra.Command {
+	var loggingSetLevelCmd = &cobra.Command{
+		Use:   "setlevel <module> <log level>",
+		Short: "Sets the logging level of the requested module logger.",
+		Long:  `Sets the logging level of the requested module logger`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return setLevel(cf, cmd, args)
+		},
+	}
 	return loggingSetLevelCmd
 }
 
-var loggingSetLevelCmd = &cobra.Command{
-	Use:   "setlevel <module> <log level>",
-	Short: "Sets the logging level of the requested module logger.",
-	Long:  `Sets the logging level of the requested module logger`,
-	Run: func(cmd *cobra.Command, args []string) {
-		setLevel(cmd, args)
-	},
-}
-
-func setLevel(cmd *cobra.Command, args []string) (err error) {
+func setLevel(cf *LoggingCmdFactory, cmd *cobra.Command, args []string) (err error) {
 	err = checkLoggingCmdParams(cmd, args)
-
-	if err != nil {
-		logger.Warningf("Error: %s", err)
-	} else {
-		adminClient, err := common.GetAdminClient()
-		if err != nil {
-			logger.Warningf("%s", err)
-			return err
+	if err == nil {
+		if cf == nil {
+			cf, err = InitCmdFactory()
+			if err != nil {
+				return err
+			}
 		}
-
-		logResponse, err := adminClient.SetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: args[0], LogLevel: args[1]})
-
+		logResponse, err := cf.AdminClient.SetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: args[0], LogLevel: args[1]})
 		if err != nil {
-			logger.Warningf("%s", err)
 			return err
 		}
 		logger.Infof("Log level set for peer module '%s': %s", logResponse.LogModule, logResponse.LogLevel)

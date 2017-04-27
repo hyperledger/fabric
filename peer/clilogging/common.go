@@ -19,9 +19,30 @@ package clilogging
 import (
 	"github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/peer/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/spf13/cobra"
 )
+
+// LoggingCmdFactory holds the clients used by LoggingCmd
+type LoggingCmdFactory struct {
+	AdminClient pb.AdminClient
+}
+
+// InitCmdFactory init the LoggingCmdFactory with default admin client
+func InitCmdFactory() (*LoggingCmdFactory, error) {
+	var err error
+	var adminClient pb.AdminClient
+
+	adminClient, err = common.GetAdminClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return &LoggingCmdFactory{
+		AdminClient: adminClient,
+	}, nil
+}
 
 func checkLoggingCmdParams(cmd *cobra.Command, args []string) error {
 	var err error

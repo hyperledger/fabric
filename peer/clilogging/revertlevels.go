@@ -20,40 +20,33 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/hyperledger/fabric/peer/common"
 
 	"github.com/spf13/cobra"
 )
 
-func revertLevelsCmd() *cobra.Command {
+func revertLevelsCmd(cf *LoggingCmdFactory) *cobra.Command {
+	var loggingRevertLevelsCmd = &cobra.Command{
+		Use:   "revertlevels",
+		Short: "Reverts the logging levels to the levels at the end of peer startup.",
+		Long:  `Reverts the logging levels to the levels at the end of peer startup`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return revertLevels(cf, cmd, args)
+		},
+	}
 	return loggingRevertLevelsCmd
 }
 
-var loggingRevertLevelsCmd = &cobra.Command{
-	Use:   "revertlevels",
-	Short: "Reverts the logging levels to the levels at the end of peer startup.",
-	Long:  `Reverts the logging levels to the levels at the end of peer startup`,
-	Run: func(cmd *cobra.Command, args []string) {
-		revertLevels(cmd, args)
-	},
-}
-
-func revertLevels(cmd *cobra.Command, args []string) (err error) {
+func revertLevels(cf *LoggingCmdFactory, cmd *cobra.Command, args []string) (err error) {
 	err = checkLoggingCmdParams(cmd, args)
-
-	if err != nil {
-		logger.Warningf("Error: %s", err)
-	} else {
-		adminClient, err := common.GetAdminClient()
-		if err != nil {
-			logger.Warningf("%s", err)
-			return err
+	if err == nil {
+		if cf == nil {
+			cf, err = InitCmdFactory()
+			if err != nil {
+				return err
+			}
 		}
-
-		_, err = adminClient.RevertLogLevels(context.Background(), &empty.Empty{})
-
+		_, err = cf.AdminClient.RevertLogLevels(context.Background(), &empty.Empty{})
 		if err != nil {
-			logger.Warningf("%s", err)
 			return err
 		}
 		logger.Info("Log levels reverted to the levels at the end of peer startup.")
