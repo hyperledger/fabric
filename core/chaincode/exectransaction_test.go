@@ -107,6 +107,10 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 			return nil, err
 		}
 		scc.DeploySysCCs(id)
+		// any chain other than the default testchainid does not have a MSP set up -> create one
+		if id != util.GetTestChainID() {
+			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain(util.GetTestChainID()))
+		}
 	}
 
 	go grpcServer.Serve(lis)
@@ -326,14 +330,13 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 	ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
 
 	sysCCVers := util.GetSysCCVersion()
-	sprop, prop := putils.MockSignedEndorserProposalOrPanic(cccid.ChainID, cis.ChaincodeSpec, []byte("Admin"), []byte("msg1"))
+	sprop, prop := putils.MockSignedEndorserProposal2OrPanic(cccid.ChainID, cis.ChaincodeSpec, signer)
 	lsccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, sprop, prop)
 
 	//write to lscc
 	if _, _, err = ExecuteWithErrorFilter(ctx, lsccid, cis); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode (1): %s", err)
 	}
-
 	if b, _, err = ExecuteWithErrorFilter(ctx, cccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode(2): %s", err)
 	}
@@ -1748,8 +1751,8 @@ func TestMain(m *testing.M) {
 	msptesttools.LoadMSPSetupForTesting()
 	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
-		os.Exit(-1)
 		fmt.Print("Could not initialize msp/signer")
+		os.Exit(-1)
 		return
 	}
 
@@ -1758,7 +1761,6 @@ func TestMain(m *testing.M) {
 }
 
 func deployChaincode(ctx context.Context, name string, version string, chaincodeType pb.ChaincodeSpec_Type, path string, args [][]byte, creator []byte, channel string, nextBlockNumber uint64) ([]byte, *ccprovider.CCContext, error) {
-
 	chaincodeSpec := &pb.ChaincodeSpec{
 		ChaincodeId: &pb.ChaincodeID{
 			Name:    name,
@@ -1771,7 +1773,7 @@ func deployChaincode(ctx context.Context, name string, version string, chaincode
 		},
 	}
 
-	signedProposal, proposal := putils.MockSignedEndorserProposalOrPanic(channel, chaincodeSpec, creator, nil)
+	signedProposal, proposal := putils.MockSignedEndorserProposal2OrPanic(channel, chaincodeSpec, signer)
 
 	chaincodeCtx := ccprovider.NewCCContext(channel, name, version, "", false, signedProposal, proposal)
 
