@@ -31,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/integration"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/hyperledger/fabric/peer/gossip/sa"
+	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/spf13/viper"
@@ -141,7 +141,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}
 
-		secAdv := sa.NewSecurityAdvisor()
+		secAdv := peergossip.NewSecurityAdvisor()
 
 		if overrideEndpoint := viper.GetString("peer.gossip.endpoint"); overrideEndpoint != "" {
 			endpoint = overrideEndpoint

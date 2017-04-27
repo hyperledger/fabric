@@ -37,7 +37,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/hyperledger/fabric/peer/gossip/mcs"
+	peergossip "github.com/hyperledger/fabric/peer/gossip"
+	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -164,7 +165,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	)
 
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
-	messageCryptoService := mcs.New(&mcs.MockChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
+	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
 	service.InitGossipServiceCustomDeliveryFactory(identity, peerEndpoint, nil, &mockDeliveryClientFactory{}, messageCryptoService)
 
 	// Successful path for JoinChain

@@ -45,7 +45,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
-	"github.com/hyperledger/fabric/peer/gossip/mcs"
+	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
@@ -157,7 +157,7 @@ func serve(args []string) error {
 		logger.Panicf("Failed serializing self identity: %v", err)
 	}
 
-	messageCryptoService := mcs.New(
+	messageCryptoService := peergossip.NewMCS(
 		peer.NewChannelPolicyManagerGetter(),
 		localmsp.NewSigner(),
 		mgmt.NewDeserializersManager())
