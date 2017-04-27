@@ -76,6 +76,32 @@ func TestPKIidOfNil(t *testing.T) {
 	assert.Nil(t, pkid, "PKID must be nil")
 }
 
+func TestValidateIdentity(t *testing.T) {
+	deserializersManager := &mocks.DeserializersManager{
+		LocalDeserializer: &mocks.IdentityDeserializer{[]byte("Alice"), []byte("msg1")},
+		ChannelDeserializers: map[string]msp.IdentityDeserializer{
+			"A": &mocks.IdentityDeserializer{[]byte("Bob"), []byte("msg2")},
+		},
+	}
+	msgCryptoService := NewMCS(
+		&mocks.ChannelPolicyManagerGetterWithManager{},
+		&mockscrypto.LocalSigner{Identity: []byte("Charlie")},
+		deserializersManager,
+	)
+
+	err := msgCryptoService.ValidateIdentity([]byte("Alice"))
+	assert.NoError(t, err)
+
+	err = msgCryptoService.ValidateIdentity([]byte("Bob"))
+	assert.NoError(t, err)
+
+	err = msgCryptoService.ValidateIdentity([]byte("Charlie"))
+	assert.Error(t, err)
+
+	err = msgCryptoService.ValidateIdentity(nil)
+	assert.Error(t, err)
+}
+
 func TestSign(t *testing.T) {
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
@@ -127,6 +153,9 @@ func TestVerify(t *testing.T) {
 	err = msgCryptoService.Verify(api.PeerIdentityType("Dave"), sigma, msg)
 	assert.Error(t, err)
 	assert.Contains(t, fmt.Sprintf("%v", err), "Could not acquire policy manager")
+
+	// Check invalid args
+	assert.Error(t, msgCryptoService.Verify(nil, sigma, msg))
 }
 
 func TestVerifyBlock(t *testing.T) {
@@ -173,6 +202,10 @@ func TestVerifyBlock(t *testing.T) {
 
 	// - Verify block
 	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), blockRaw))
+
+	// Check invalid args
+	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), []byte{0, 1, 2, 3, 4}))
+	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), nil))
 }
 
 func mockBlock(t *testing.T, channel string, localSigner crypto.LocalSigner, dataHash []byte) ([]byte, []byte) {

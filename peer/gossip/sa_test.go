@@ -19,32 +19,22 @@ package gossip
 import (
 	"testing"
 
-	"fmt"
-	"os"
-
-	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMain(m *testing.M) {
-	// Setup the MSP manager so that we can sign/verify
-	err := msptesttools.LoadMSPSetupForTesting()
-	if err != nil {
-		fmt.Printf("Failed LoadFakeSetupWithLocalMspAndTestChainMsp [%s]", err)
-		os.Exit(-1)
-	}
-	os.Exit(m.Run())
-}
-
 func TestMspSecurityAdvisor_OrgByPeerIdentity(t *testing.T) {
-	id, err := mgmt.GetLocalMSP().GetDefaultSigningIdentity()
-	assert.NoError(t, err, "Failed getting local default signing identity")
-	identityRaw, err := id.Serialize()
-	assert.NoError(t, err, "Failed serializing local default signing identity")
+	dm := &mocks.DeserializersManager{
+		LocalDeserializer: &mocks.IdentityDeserializer{[]byte("Alice"), []byte("msg1")},
+		ChannelDeserializers: map[string]msp.IdentityDeserializer{
+			"A": &mocks.IdentityDeserializer{[]byte("Bob"), []byte("msg2")},
+		},
+	}
 
-	advisor := NewSecurityAdvisor()
-	orgIdentity := advisor.OrgByPeerIdentity(api.PeerIdentityType(identityRaw))
-	assert.NotNil(t, orgIdentity, "Organization for identity must be different from nil")
+	advisor := NewSecurityAdvisor(dm)
+	assert.NotNil(t, advisor.OrgByPeerIdentity([]byte("Alice")))
+	assert.NotNil(t, advisor.OrgByPeerIdentity([]byte("Bob")))
+	assert.Nil(t, advisor.OrgByPeerIdentity([]byte("Charlie")))
+	assert.Nil(t, advisor.OrgByPeerIdentity(nil))
 }

@@ -161,7 +161,9 @@ func serve(args []string) error {
 		peer.NewChannelPolicyManagerGetter(),
 		localmsp.NewSigner(),
 		mgmt.NewDeserializersManager())
-	service.InitGossipService(serializedIdentity, peerEndpoint.Address, peerServer.Server(), messageCryptoService, bootstrap...)
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+
+	service.InitGossipService(serializedIdentity, peerEndpoint.Address, peerServer.Server(), messageCryptoService, secAdv, bootstrap...)
 	defer service.GetGossipService().Stop()
 
 	//initialize system chaincodes
