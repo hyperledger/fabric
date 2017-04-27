@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mcs
+package gossip
 
 import (
 	"fmt"
@@ -33,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	protospeer "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -40,10 +41,10 @@ import (
 )
 
 func TestPKIidOfCert(t *testing.T) {
-	deserializersManager := &mockDeserializersManager{
-		localDeserializer: &mockIdentityDeserializer{[]byte("Alice"), []byte("msg1")},
+	deserializersManager := &mocks.DeserializersManager{
+		LocalDeserializer: &mocks.IdentityDeserializer{[]byte("Alice"), []byte("msg1")},
 	}
-	msgCryptoService := New(&mockChannelPolicyManagerGetter2{},
+	msgCryptoService := NewMCS(&mocks.ChannelPolicyManagerGetterWithManager{},
 		&mockscrypto.LocalSigner{Identity: []byte("Alice")},
 		deserializersManager,
 	)
@@ -68,7 +69,7 @@ func TestPKIidOfCert(t *testing.T) {
 }
 
 func TestPKIidOfNil(t *testing.T) {
-	msgCryptoService := New(&MockChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
+	msgCryptoService := NewMCS(&mocks.ChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
 
 	pkid := msgCryptoService.GetPKIidOfCert(nil)
 	// Check pkid is not nil
@@ -76,8 +77,8 @@ func TestPKIidOfNil(t *testing.T) {
 }
 
 func TestSign(t *testing.T) {
-	msgCryptoService := New(
-		&MockChannelPolicyManagerGetter{},
+	msgCryptoService := NewMCS(
+		&mocks.ChannelPolicyManagerGetter{},
 		&mockscrypto.LocalSigner{Identity: []byte("Alice")},
 		mgmt.NewDeserializersManager(),
 	)
@@ -89,21 +90,21 @@ func TestSign(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
-	msgCryptoService := New(
-		&mockChannelPolicyManagerGetter2{
+	msgCryptoService := NewMCS(
+		&mocks.ChannelPolicyManagerGetterWithManager{
 			map[string]policies.Manager{
-				"A": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Bob"), []byte("msg2")}}},
-				"B": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Charlie"), []byte("msg3")}}},
+				"A": &mocks.ChannelPolicyManager{&mocks.Policy{&mocks.IdentityDeserializer{[]byte("Bob"), []byte("msg2")}}},
+				"B": &mocks.ChannelPolicyManager{&mocks.Policy{&mocks.IdentityDeserializer{[]byte("Charlie"), []byte("msg3")}}},
 				"C": nil,
 			},
 		},
 		&mockscrypto.LocalSigner{Identity: []byte("Alice")},
-		&mockDeserializersManager{
-			localDeserializer: &mockIdentityDeserializer{[]byte("Alice"), []byte("msg1")},
-			channelDeserializers: map[string]msp.IdentityDeserializer{
-				"A": &mockIdentityDeserializer{[]byte("Bob"), []byte("msg2")},
-				"B": &mockIdentityDeserializer{[]byte("Charlie"), []byte("msg3")},
-				"C": &mockIdentityDeserializer{[]byte("Dave"), []byte("msg4")},
+		&mocks.DeserializersManager{
+			LocalDeserializer: &mocks.IdentityDeserializer{[]byte("Alice"), []byte("msg1")},
+			ChannelDeserializers: map[string]msp.IdentityDeserializer{
+				"A": &mocks.IdentityDeserializer{[]byte("Bob"), []byte("msg2")},
+				"B": &mocks.IdentityDeserializer{[]byte("Charlie"), []byte("msg3")},
+				"C": &mocks.IdentityDeserializer{[]byte("Dave"), []byte("msg4")},
 			},
 		},
 	)
@@ -130,36 +131,36 @@ func TestVerify(t *testing.T) {
 
 func TestVerifyBlock(t *testing.T) {
 	aliceSigner := &mockscrypto.LocalSigner{Identity: []byte("Alice")}
-	policyManagerGetter := &mockChannelPolicyManagerGetter2{
+	policyManagerGetter := &mocks.ChannelPolicyManagerGetterWithManager{
 		map[string]policies.Manager{
-			"A": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Bob"), []byte("msg2")}}},
-			"B": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Charlie"), []byte("msg3")}}},
-			"C": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
-			"D": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
+			"A": &mocks.ChannelPolicyManager{&mocks.Policy{&mocks.IdentityDeserializer{[]byte("Bob"), []byte("msg2")}}},
+			"B": &mocks.ChannelPolicyManager{&mocks.Policy{&mocks.IdentityDeserializer{[]byte("Charlie"), []byte("msg3")}}},
+			"C": &mocks.ChannelPolicyManager{&mocks.Policy{&mocks.IdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
+			"D": &mocks.ChannelPolicyManager{&mocks.Policy{&mocks.IdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
 		},
 	}
 
-	msgCryptoService := New(
+	msgCryptoService := NewMCS(
 		policyManagerGetter,
 		aliceSigner,
-		&mockDeserializersManager{
-			localDeserializer: &mockIdentityDeserializer{[]byte("Alice"), []byte("msg1")},
-			channelDeserializers: map[string]msp.IdentityDeserializer{
-				"A": &mockIdentityDeserializer{[]byte("Bob"), []byte("msg2")},
-				"B": &mockIdentityDeserializer{[]byte("Charlie"), []byte("msg3")},
+		&mocks.DeserializersManager{
+			LocalDeserializer: &mocks.IdentityDeserializer{[]byte("Alice"), []byte("msg1")},
+			ChannelDeserializers: map[string]msp.IdentityDeserializer{
+				"A": &mocks.IdentityDeserializer{[]byte("Bob"), []byte("msg2")},
+				"B": &mocks.IdentityDeserializer{[]byte("Charlie"), []byte("msg3")},
 			},
 		},
 	)
 
 	// - Prepare testing valid block, Alice signs it.
 	blockRaw, msg := mockBlock(t, "C", aliceSigner, nil)
-	policyManagerGetter.managers["C"].(*mockChannelPolicyManager).mockPolicy.(*mockPolicy).deserializer.(*mockIdentityDeserializer).msg = msg
+	policyManagerGetter.Managers["C"].(*mocks.ChannelPolicyManager).Policy.(*mocks.Policy).Deserializer.(*mocks.IdentityDeserializer).Msg = msg
 	blockRaw2, msg2 := mockBlock(t, "D", aliceSigner, nil)
-	policyManagerGetter.managers["D"].(*mockChannelPolicyManager).mockPolicy.(*mockPolicy).deserializer.(*mockIdentityDeserializer).msg = msg2
+	policyManagerGetter.Managers["D"].(*mocks.ChannelPolicyManager).Policy.(*mocks.Policy).Deserializer.(*mocks.IdentityDeserializer).Msg = msg2
 
 	// - Verify block
 	assert.NoError(t, msgCryptoService.VerifyBlock([]byte("C"), blockRaw))
-	delete(policyManagerGetter.managers, "D")
+	delete(policyManagerGetter.Managers, "D")
 	nilPolMgrErr := msgCryptoService.VerifyBlock([]byte("D"), blockRaw2)
 	assert.Contains(t, fmt.Sprintf("%v", nilPolMgrErr), "Could not acquire policy manager")
 	assert.Error(t, nilPolMgrErr)
@@ -168,7 +169,7 @@ func TestVerifyBlock(t *testing.T) {
 
 	// - Prepare testing invalid block (wrong data has), Alice signs it.
 	blockRaw, msg = mockBlock(t, "C", aliceSigner, []byte{0})
-	policyManagerGetter.managers["C"].(*mockChannelPolicyManager).mockPolicy.(*mockPolicy).deserializer.(*mockIdentityDeserializer).msg = msg
+	policyManagerGetter.Managers["C"].(*mocks.ChannelPolicyManager).Policy.(*mocks.Policy).Deserializer.(*mocks.IdentityDeserializer).Msg = msg
 
 	// - Verify block
 	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), blockRaw))
