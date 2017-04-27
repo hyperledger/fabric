@@ -162,7 +162,7 @@ From your ``e2e`` folder first execute the following:
 .. code:: bash
 
   # this command will not return a response
-  export ORDERER_CFG_PATH=$PWD
+  export FABRIC_CFG_PATH=$PWD
 
 Then use the tool:
 
