@@ -113,15 +113,6 @@ func GetDeserializers() map[string]msp.IdentityDeserializer {
 	return clone
 }
 
-// GetManagerForChainIfExists returns the MSPManager associated to ChainID
-// it it exists
-func GetManagerForChainIfExists(ChainID string) msp.MSPManager {
-	m.Lock()
-	defer m.Unlock()
-
-	return mspMap[ChainID]
-}
-
 // XXXSetMSPManager is a stopgap solution to transition from the custom MSP config block
 // parsing to the configtx.Manager interface, while preserving the problematic singleton
 // nature of the MSP manager

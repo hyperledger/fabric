@@ -21,6 +21,7 @@ import (
 
 	configvaluesmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetManagerForChains(t *testing.T) {
@@ -53,4 +54,17 @@ func TestGetManagerForChains_usingMSPConfigHandlers(t *testing.T) {
 	if msp2 == nil {
 		t.FailNow()
 	}
+}
+
+func TestGetIdentityDeserializer(t *testing.T) {
+	XXXSetMSPManager("baz", &configvaluesmsp.MSPConfigHandler{MSPManager: msp.NewMSPManager()})
+	ids := GetIdentityDeserializer("baz")
+	assert.NotNil(t, ids)
+	ids = GetIdentityDeserializer("")
+	assert.NotNil(t, ids)
+}
+
+func TestGetLocalSigningIdentityOrPanic(t *testing.T) {
+	sid := GetLocalSigningIdentityOrPanic()
+	assert.NotNil(t, sid)
 }
