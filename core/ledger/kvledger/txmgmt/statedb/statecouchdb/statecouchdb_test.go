@@ -142,3 +142,12 @@ func TestQuery(t *testing.T) {
 
 	}
 }
+
+func TestGetStateMultipleKeys(t *testing.T) {
+	if ledgerconfig.IsCouchDBEnabled() == true {
+		env := NewTestVDBEnv(t)
+		env.Cleanup("testgetmultiplekeys")
+		defer env.Cleanup("testgetmultiplekeys")
+		commontests.TestGetStateMultipleKeys(t, env.DBProvider)
+	}
+}
