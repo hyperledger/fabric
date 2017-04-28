@@ -19,10 +19,11 @@ package msp
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRevocation(t *testing.T) {
+func getRevocationMSP(t *testing.T) MSP {
 	// testdata/revocation
 	// 1) a key and a signcert (used to populate the default signing identity);
 	// 2) cacert is the CA that signed the intermediate;
@@ -36,10 +37,33 @@ func TestRevocation(t *testing.T) {
 	err = thisMSP.Setup(conf)
 	assert.NoError(t, err)
 
+	return thisMSP
+}
+
+func TestRevocation(t *testing.T) {
+	thisMSP := getRevocationMSP(t)
+
 	id, err := thisMSP.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 
 	// the certificate associated to this id is revoked and so validation should fail!
 	err = id.Validate()
+	assert.Error(t, err)
+}
+
+func TestIdentityPolicyPrincipalAgainstRevokedIdentity(t *testing.T) {
+	thisMSP := getRevocationMSP(t)
+
+	id, err := thisMSP.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	idSerialized, err := id.Serialize()
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
+		Principal:               idSerialized}
+
+	err = id.SatisfiesPrincipal(principal)
 	assert.Error(t, err)
 }
