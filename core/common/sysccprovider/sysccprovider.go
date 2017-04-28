@@ -62,6 +62,10 @@ type ChaincodeInstance struct {
 	ChaincodeVersion string
 }
 
+func (ci *ChaincodeInstance) String() string {
+	return ci.ChainID + "." + ci.ChaincodeName + "#" + ci.ChaincodeVersion
+}
+
 // VsccOutputData contains all the data returned from vscc.
 type VsccOutputData struct {
 	// ProposalResponse bytes array validated by vscc
