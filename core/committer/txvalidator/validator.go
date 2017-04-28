@@ -70,7 +70,6 @@ type Validator interface {
 // and vscc execution, in order to increase
 // testability of txValidator
 type vsccValidator interface {
-	//	VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) (*sysccprovider.VsccOutputData, error)
 	VSCCValidateTx(payload *common.Payload, envBytes []byte) (*sysccprovider.ChaincodeInstance, *sysccprovider.VsccOutputData, error)
 }
 

@@ -80,18 +80,6 @@ type nextStateInfo struct {
 	sendSync bool
 }
 
-//chaincode registered name is of the form
-//    <name>:<version>/<suffix>
-type ccParts struct {
-	name    string //the main name of the chaincode
-	version string //the version param if any (used for upgrade)
-	suffix  string //for now just the chain name
-}
-
-func (p *ccParts) String() string {
-	return p.suffix + "." + p.name + "#" + p.version
-}
-
 // Handler responsbile for management of Peer's side of chaincode stream
 type Handler struct {
 	sync.RWMutex
@@ -100,7 +88,7 @@ type Handler struct {
 	ChatStream  ccintf.ChaincodeStream
 	FSM         *fsm.FSM
 	ChaincodeID *pb.ChaincodeID
-	ccCompParts *ccParts
+	ccInstance  *sysccprovider.ChaincodeInstance
 
 	chaincodeSupport *ChaincodeSupport
 	registered       bool
@@ -124,7 +112,7 @@ func shorttxid(txid string) string {
 	return txid[0:8]
 }
 
-//gets component parts from the canonical name of the chaincode.
+//gets chaincode instance from the canonical name of the chaincode.
 //Called exactly once per chaincode when registering chaincode.
 //This is needed for the "one-instance-per-chain" model when
 //starting up the chaincode for each chain. It will still
@@ -132,18 +120,18 @@ func shorttxid(txid string) string {
 //and suffix will just be absent (also note that LSCC reserves
 //"/:[]${}" as special chars mainly for such namespace uses)
 func (handler *Handler) decomposeRegisteredName(cid *pb.ChaincodeID) {
-	handler.ccCompParts = chaincodeIDParts(cid.Name)
+	handler.ccInstance = getChaincodeInstance(cid.Name)
 }
 
-func chaincodeIDParts(ccName string) *ccParts {
+func getChaincodeInstance(ccName string) *sysccprovider.ChaincodeInstance {
 	b := []byte(ccName)
-	p := &ccParts{}
+	ci := &sysccprovider.ChaincodeInstance{}
 
 	//compute suffix (ie, chain name)
 	i := bytes.IndexByte(b, '/')
 	if i >= 0 {
 		if i < len(b)-1 {
-			p.suffix = string(b[i+1:])
+			ci.ChainID = string(b[i+1:])
 		}
 		b = b[:i]
 	}
@@ -152,18 +140,18 @@ func chaincodeIDParts(ccName string) *ccParts {
 	i = bytes.IndexByte(b, ':')
 	if i >= 0 {
 		if i < len(b)-1 {
-			p.version = string(b[i+1:])
+			ci.ChaincodeVersion = string(b[i+1:])
 		}
 		b = b[:i]
 	}
 	// remaining is the chaincode name
-	p.name = string(b)
+	ci.ChaincodeName = string(b)
 
-	return p
+	return ci
 }
 
 func (handler *Handler) getCCRootName() string {
-	return handler.ccCompParts.name
+	return handler.ccInstance.ChaincodeName
 }
 
 //serialSend serializes msgs so gRPC will be happy
@@ -246,11 +234,11 @@ func (handler *Handler) deleteQueryIterator(txContext *transactionContext, txid 
 }
 
 // Check if the transactor is allow to call this chaincode on this channel
-func (handler *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal, calledCC *ccParts) error {
+func (handler *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal, ccIns *sysccprovider.ChaincodeInstance) error {
 	// ensure that we don't invoke a system chaincode
 	// that is not invokable through a cc2cc invocation
-	if sysccprovider.GetSystemChaincodeProvider().IsSysCCAndNotInvokableCC2CC(calledCC.name) {
-		return fmt.Errorf("System chaincode %s cannot be invoked with a cc2cc invocation", calledCC.name)
+	if sysccprovider.GetSystemChaincodeProvider().IsSysCCAndNotInvokableCC2CC(ccIns.ChaincodeName) {
+		return fmt.Errorf("System chaincode %s cannot be invoked with a cc2cc invocation", ccIns.ChaincodeName)
 	}
 
 	// if we are here, all we know is that the invoked chaincode is either
@@ -260,17 +248,17 @@ func (handler *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Pro
 	// - an application chaincode (and we still need to determine
 	//   whether the invoker can invoke it)
 
-	if sysccprovider.GetSystemChaincodeProvider().IsSysCC(calledCC.name) {
+	if sysccprovider.GetSystemChaincodeProvider().IsSysCC(ccIns.ChaincodeName) {
 		// Allow this call
 		return nil
 	}
 
 	// A Nil signedProp will be rejected for non-system chaincodes
 	if signedProp == nil {
-		return fmt.Errorf("Signed Proposal must not be nil from caller [%s]", calledCC.String())
+		return fmt.Errorf("Signed Proposal must not be nil from caller [%s]", ccIns.String())
 	}
 
-	return handler.policyChecker.CheckPolicy(calledCC.suffix, policies.ChannelApplicationWriters, signedProp)
+	return handler.policyChecker.CheckPolicy(ccIns.ChainID, policies.ChannelApplicationWriters, signedProp)
 }
 
 //THIS CAN BE REMOVED ONCE WE FULL SUPPORT (Invoke) CONFIDENTIALITY WITH CC-CALLING-CC
@@ -1267,21 +1255,21 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			// Get the chaincodeID to invoke. The chaincodeID to be called may
 			// contain composite info like "chaincode-name:version/channel-name"
 			// We are not using version now but default to the latest
-			calledCcParts := chaincodeIDParts(chaincodeSpec.ChaincodeId.Name)
-			chaincodeSpec.ChaincodeId.Name = calledCcParts.name
-			if calledCcParts.suffix == "" {
+			calledCcIns := getChaincodeInstance(chaincodeSpec.ChaincodeId.Name)
+			chaincodeSpec.ChaincodeId.Name = calledCcIns.ChaincodeName
+			if calledCcIns.ChainID == "" {
 				// use caller's channel as the called chaincode is in the same channel
-				calledCcParts.suffix = txContext.chainID
+				calledCcIns.ChainID = txContext.chainID
 			}
 			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
 				chaincodeLogger.Debugf("[%s] C-call-C %s on channel %s",
-					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix)
+					shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID)
 			}
 
-			err := handler.checkACL(txContext.signedProp, txContext.proposal, calledCcParts)
+			err := handler.checkACL(txContext.signedProp, txContext.proposal, calledCcIns)
 			if err != nil {
 				chaincodeLogger.Errorf("[%s] C-call-C %s on channel %s failed check ACL [%v]: [%s]",
-					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix, txContext.signedProp, err)
+					shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID, txContext.signedProp, err)
 				triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR,
 					Payload: []byte(err.Error()), Txid: msg.Txid}
 				return
@@ -1292,10 +1280,10 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			ctxt := context.Background()
 			txsim := txContext.txsimulator
 			historyQueryExecutor := txContext.historyQueryExecutor
-			if calledCcParts.suffix != txContext.chainID {
-				lgr := peer.GetLedger(calledCcParts.suffix)
+			if calledCcIns.ChainID != txContext.chainID {
+				lgr := peer.GetLedger(calledCcIns.ChainID)
 				if lgr == nil {
-					payload := "Failed to find ledger for called channel " + calledCcParts.suffix
+					payload := "Failed to find ledger for called channel " + calledCcIns.ChainID
 					triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR,
 						Payload: []byte(payload), Txid: msg.Txid}
 					return
@@ -1314,19 +1302,19 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 
 			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
 				chaincodeLogger.Debugf("[%s] calling lscc to get chaincode data for %s on channel %s",
-					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix)
+					shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID)
 			}
 
 			//Call LSCC to get the called chaincode artifacts
 
 			//is the chaincode a system chaincode ?
-			isscc := sysccprovider.GetSystemChaincodeProvider().IsSysCC(calledCcParts.name)
+			isscc := sysccprovider.GetSystemChaincodeProvider().IsSysCC(calledCcIns.ChaincodeName)
 
 			var cd *ccprovider.ChaincodeData
 			if !isscc {
 				//if its a user chaincode, get the details from LSCC
 				//Call LSCC to get the called chaincode artifacts
-				cd, err = GetChaincodeDataFromLSCC(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcParts.suffix, calledCcParts.name)
+				cd, err = GetChaincodeDataFromLSCC(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcIns.ChainID, calledCcIns.ChaincodeName)
 				if err != nil {
 					payload := []byte(err.Error())
 					chaincodeLogger.Debugf("[%s]Failed to get chaincoed data (%s) for invoked chaincode. Sending %s",
@@ -1336,15 +1324,15 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 				}
 			} else {
 				//this is a system cc, just call it directly
-				cd = &ccprovider.ChaincodeData{Name: calledCcParts.name, Version: util.GetSysCCVersion()}
+				cd = &ccprovider.ChaincodeData{Name: calledCcIns.ChaincodeName, Version: util.GetSysCCVersion()}
 			}
 
-			cccid := ccprovider.NewCCContext(calledCcParts.suffix, calledCcParts.name, cd.Version, msg.Txid, false, txContext.signedProp, txContext.proposal)
+			cccid := ccprovider.NewCCContext(calledCcIns.ChainID, calledCcIns.ChaincodeName, cd.Version, msg.Txid, false, txContext.signedProp, txContext.proposal)
 
 			// Launch the new chaincode if not already running
 			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
 				chaincodeLogger.Debugf("[%s] launching chaincode %s on channel %s",
-					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix)
+					shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID)
 			}
 			cciSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(ctxt, cccid, cciSpec)
