@@ -345,12 +345,42 @@ func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte, 
 
 // GetState returns the byte array value specified by the `key`.
 func (stub *ChaincodeStub) GetState(key string) ([]byte, error) {
-	return stub.handler.handleGetState(key, stub.TxID)
+	stateValues, err := stub.handler.handleGetState([]string{key}, stub.TxID)
+	if err != nil {
+		return nil, err
+	} else {
+		return stateValues[0].Value, nil
+	}
+}
+
+// GetStates returns map[key]value which key map to the `keys`.
+func (stub *ChaincodeStub) GetStates(keys []string) (map[string][]byte, error) {
+	result := make(map[string][]byte, len(keys))
+	stateValues, err := stub.handler.handleGetState(keys, stub.TxID)
+	if err != nil {
+		return nil, err
+	} else {
+		for index, key := range keys {
+			result[key] = stateValues[index].Value
+		}
+		return result, nil
+	}
 }
 
 // PutState writes the specified `value` and `key` into the ledger.
 func (stub *ChaincodeStub) PutState(key string, value []byte) error {
-	return stub.handler.handlePutState(key, value, stub.TxID)
+	return stub.handler.handlePutState([]string{key}, [][]byte{value}, stub.TxID)
+}
+
+// PutState writes the specified `value` and `key` into the ledger.
+func (stub *ChaincodeStub) PutStates(keyValues map[string][]byte) error {
+	var keys []string
+	var values [][]byte
+	for key, value := range keyValues {
+		keys = append(keys, key)
+		values = append(values, value)
+	}
+	return stub.handler.handlePutState(keys, values, stub.TxID)
 }
 
 // DelState removes the specified `key` and its value from the ledger.

@@ -388,7 +388,7 @@ func (handler *Handler) afterError(e *fsm.Event) {
 
 // TODO: Implement method to get and put entire state map and not one key at a time?
 // handleGetState communicates with the validator to fetch the requested state information from the ledger.
-func (handler *Handler) handleGetState(key string, txid string) ([]byte, error) {
+func (handler *Handler) handleGetState(keys []string, txid string) ([]*pb.GetStateValue, error) {
 	// Create the channel on which to communicate the response from validating peer
 	respChan, uniqueReqErr := handler.createChannel(txid)
 	if uniqueReqErr != nil {
@@ -398,8 +398,13 @@ func (handler *Handler) handleGetState(key string, txid string) ([]byte, error) 
 
 	defer handler.deleteChannel(txid)
 
-	// Send GET_STATE message to validator chaincode support
-	payload := []byte(key)
+	getStates := &pb.GetStateQueryInfo{keys}
+	payload, err1 := proto.Marshal(getStates)
+	if err1 != nil {
+		chaincodeLogger.Errorf("[%s]error sending GET_STATE %s", shorttxid(txid), err1)
+		return nil, errors.New("getStates Marshal error")
+	}
+
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: payload, Txid: txid}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE)
 	responseMsg, err := handler.sendReceive(msg, respChan)
@@ -411,7 +416,18 @@ func (handler *Handler) handleGetState(key string, txid string) ([]byte, error) 
 	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
 		// Success response
 		chaincodeLogger.Debugf("[%s]GetState received payload %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
-		return responseMsg.Payload, nil
+		getStateResults := &pb.GetStateResultInfo{}
+		unmarshalErr := proto.Unmarshal(responseMsg.Payload, getStateResults)
+		if unmarshalErr != nil {
+			chaincodeLogger.Errorf("[%s]error unmarshalErr GET_STATE %s", shorttxid(txid), unmarshalErr)
+			return nil, errors.New("could not unmarshalErr msg")
+		}
+		if len(keys) != len(getStateResults.Values) {
+			chaincodeLogger.Errorf("[%s]error return number not equ GET_STATE %s", shorttxid(txid), unmarshalErr)
+			return nil, errors.New("return number not equ")
+		}
+
+		return getStateResults.Values, nil
 	}
 	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
 		// Error response
@@ -425,10 +441,10 @@ func (handler *Handler) handleGetState(key string, txid string) ([]byte, error) 
 }
 
 // handlePutState communicates with the validator to put state information into the ledger.
-func (handler *Handler) handlePutState(key string, value []byte, txid string) error {
+func (handler *Handler) handlePutState(keys []string, values [][]byte, txid string) error {
 	// Check if this is a transaction
 	chaincodeLogger.Debugf("[%s]Inside putstate", shorttxid(txid))
-	payload := &pb.PutStateInfo{Key: key, Value: value}
+	payload := &pb.PutStateInfo{Keys: keys, Values: values}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
 		return errors.New("Failed to process put state request")

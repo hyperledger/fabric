@@ -643,35 +643,59 @@ func (handler *Handler) handleGetState(msg *pb.ChaincodeMessage) {
 		if txContext == nil {
 			return
 		}
+		stateQueryInfo := &pb.GetStateQueryInfo{}
+		unmarshalErr := proto.Unmarshal(msg.Payload, stateQueryInfo)
 
-		key := string(msg.Payload)
+		if unmarshalErr != nil {
+			payload := []byte(unmarshalErr.Error())
+			chaincodeLogger.Errorf("Failed to unmarshall handleGetState. Sending %s", pb.ChaincodeMessage_ERROR)
+			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+			return
+		}
 		chaincodeID := handler.getCCRootName()
+		keys := stateQueryInfo.Keys
 		if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
-			chaincodeLogger.Debugf("[%s] getting state for chaincode %s, key %s, channel %s",
-				shorttxid(msg.Txid), chaincodeID, key, txContext.chainID)
+			chaincodeLogger.Debugf("[%s] getting state for chaincode %s, keys %v, channel %s",
+				shorttxid(msg.Txid), chaincodeID, keys, txContext.chainID)
 		}
 
-		var res []byte
-		var err error
-		res, err = txContext.txsimulator.GetState(chaincodeID, key)
+		var ress []*pb.GetStateValue
+		var errs []error
+		for _, key := range keys {
+			result, err := txContext.txsimulator.GetState(chaincodeID, key)
 
-		if err != nil {
-			// Send error msg back to chaincode. GetState will not trigger event
-			payload := []byte(err.Error())
-			chaincodeLogger.Errorf("[%s]Failed to get chaincode state(%s). Sending %s",
-				shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
-			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
-		} else if res == nil {
-			//The state object being requested does not exist
-			chaincodeLogger.Debugf("[%s]No state associated with key: %s. Sending %s with an empty payload",
-				shorttxid(msg.Txid), key, pb.ChaincodeMessage_RESPONSE)
-			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid}
-		} else {
-			// Send response msg back to chaincode. GetState will not trigger event
-			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
-				chaincodeLogger.Debugf("[%s]Got state. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_RESPONSE)
+			if err != nil {
+				errs = append(errs, err)
+				break
 			}
-			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid}
+			valueInfo := &pb.GetStateValue{result}
+			ress = append(ress, valueInfo)
+		}
+		getStateResultInfo := &pb.GetStateResultInfo{ress}
+		getStateResultBytes, errMar := proto.Marshal(getStateResultInfo)
+		if errMar != nil {
+			payload := []byte(errMar.Error())
+			chaincodeLogger.Errorf("Failed to marshall. Sending %s", pb.ChaincodeMessage_ERROR)
+			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+			return
+		}
+
+		if len(errs) >= 1 {
+			// Send error msg back to chaincode. GetState will not trigger event
+			payload := []byte(errs[0].Error())
+			chaincodeLogger.Errorf("[%s]Failed to get chaincode state(%s). Sending %s",
+				shorttxid(msg.Txid), errs[0].Error(), pb.ChaincodeMessage_ERROR)
+			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+		} else if len(ress) == len(keys) {
+			//The state object being requested does not exist
+			chaincodeLogger.Debugf("[%s]right for response: %s. Sending %s with an empty payload",
+				shorttxid(msg.Txid), keys, pb.ChaincodeMessage_RESPONSE)
+			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: getStateResultBytes, Txid: msg.Txid}
+		} else {
+
+			chaincodeLogger.Errorf("[%s]Got state. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_RESPONSE)
+			payload := []byte("unknown err for GetState")
+			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 		}
 
 	}()
@@ -1233,8 +1257,13 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 				triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 				return
 			}
+			for index, key := range putStateInfo.Keys {
+				err = txContext.txsimulator.SetState(chaincodeID, key, putStateInfo.Values[index])
+				if err != nil {
+					break
+				}
+			}
 
-			err = txContext.txsimulator.SetState(chaincodeID, putStateInfo.Key, putStateInfo.Value)
 		} else if msg.Type.String() == pb.ChaincodeMessage_DEL_STATE.String() {
 			// Invoke ledger to delete state
 			key := string(msg.Payload)
