@@ -16,7 +16,10 @@ limitations under the License.
 
 package validator
 
-import "github.com/hyperledger/fabric/protos/common"
+import (
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/protos/common"
+)
 
 // MockValidator implements a mock validation useful for testing
 type MockValidator struct {
@@ -29,9 +32,11 @@ func (m *MockValidator) Validate(block *common.Block) error {
 
 // MockVsccValidator is a mock implementation of the VSCC validation interface
 type MockVsccValidator struct {
+	CIns     *sysccprovider.ChaincodeInstance
+	RespPayl []byte
 }
 
 // VSCCValidateTx does nothing
-func (v *MockVsccValidator) VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) error {
-	return nil
+func (v *MockVsccValidator) VSCCValidateTx(payload *common.Payload, envBytes []byte) (*sysccprovider.ChaincodeInstance, *sysccprovider.VsccOutputData, error) {
+	return v.CIns, &sysccprovider.VsccOutputData{ProposalResponseData: [][]byte{v.RespPayl}}, nil
 }

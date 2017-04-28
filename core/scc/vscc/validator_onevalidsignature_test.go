@@ -18,12 +18,14 @@ package vscc
 import (
 	"testing"
 
+	"bytes"
 	"fmt"
 	"os"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -32,21 +34,26 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-func createTx() (*common.Envelope, error) {
+func createTx() (*common.Envelope, *peer.ProposalResponse, error) {
 	ccid := &peer.ChaincodeID{Name: "foo", Version: "v1"}
 	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: ccid}}
 
 	prop, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, []byte("res"), nil, ccid, nil, id)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return utils.CreateSignedTx(prop, id, presp)
+	env, err := utils.CreateSignedTx(prop, id, presp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return env, presp, err
 }
 
 func TestInit(t *testing.T) {
@@ -87,7 +94,7 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	tx, err := createTx()
+	tx, presp, err := createTx()
 	if err != nil {
 		t.Fatalf("createTx returned err %s", err)
 		return
@@ -99,6 +106,15 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
+	expectVod := &sysccprovider.VsccOutputData{
+		ProposalResponseData: [][]byte{presp.Payload},
+	}
+	expectVodBytes, err := utils.Marshal(expectVod)
+	if err != nil {
+		t.Fatalf("Marshal VsccOutputData failed, err %s", err)
+		return
+	}
+
 	// good path: signed by the right MSP
 	policy, err := getSignedByMSPMemberPolicy(mspid)
 	if err != nil {
@@ -107,8 +123,14 @@ func TestInvoke(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
 		t.Fatalf("vscc invoke returned err %s", err)
+		return
+	}
+
+	if bytes.Compare(expectVodBytes, res.Payload) != 0 {
+		t.Fatalf("vscc returned error payload")
 		return
 	}
 

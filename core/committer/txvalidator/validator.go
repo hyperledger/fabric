@@ -25,6 +25,7 @@ import (
 	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
@@ -69,7 +70,8 @@ type Validator interface {
 // and vscc execution, in order to increase
 // testability of txValidator
 type vsccValidator interface {
-	VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) error
+	//	VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) (*sysccprovider.VsccOutputData, error)
+	VSCCValidateTx(payload *common.Payload, envBytes []byte) (*sysccprovider.ChaincodeInstance, *sysccprovider.VsccOutputData, error)
 }
 
 // vsccValidator implementation which used to call
@@ -105,22 +107,15 @@ func (v *txValidator) chainExists(chain string) bool {
 	return true
 }
 
-// ChaincodeInstance is unique identifier of chaincode instance
-type ChaincodeInstance struct {
-	ChainID          string
-	ChaincodeName    string
-	ChaincodeVersion string
-}
-
 func (v *txValidator) Validate(block *common.Block) error {
 	logger.Debug("START Block Validation")
 	defer logger.Debug("END Block Validation")
 	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
 	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))
 	// txsChaincodeNames records all the invoked chaincodes by tx in a block
-	txsChaincodeNames := make(map[int]*ChaincodeInstance)
+	txsChaincodeNames := make(map[int]*sysccprovider.ChaincodeInstance)
 	// upgradedChaincodes records all the chaincodes that are upgrded in a block
-	txsUpgradedChaincodes := make(map[int]*ChaincodeInstance)
+	txsUpgradedChaincodes := make(map[int]*sysccprovider.ChaincodeInstance)
 	for tIdx, d := range block.Data.Data {
 		if d != nil {
 			if env, err := utils.GetEnvelopeFromBlock(d); err != nil {
@@ -138,7 +133,7 @@ func (v *txValidator) Validate(block *common.Block) error {
 				var txResult peer.TxValidationCode
 
 				if payload, txResult = validation.ValidateTransaction(env); txResult != peer.TxValidationCode_VALID {
-					logger.Errorf("Invalid transaction with index %d, error %s", tIdx, err)
+					logger.Errorf("Invalid transaction with index %d", tIdx)
 					txsfltr.SetFlag(tIdx, txResult)
 					continue
 				}
@@ -168,19 +163,27 @@ func (v *txValidator) Validate(block *common.Block) error {
 						continue
 					}
 
-					//the payload is used to get headers
+					// Validate tx with vscc and policy
 					logger.Debug("Validating transaction vscc tx validate")
-					if err = v.vscc.VSCCValidateTx(payload, d, env); err != nil {
+					txcc, vod, err := v.vscc.VSCCValidateTx(payload, d)
+					if err != nil {
 						txID := txID
 						logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
 						txsfltr.SetFlag(tIdx, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
 						continue
 					}
 
+					// Check chaincode version match the latest version in lscc
+					if err := v.validateChaincodeVersion(vod, txcc); err != nil {
+						logger.Errorf("Check chaincode version from transaction txId = %s returned error %s", txID, err)
+						txsfltr.SetFlag(tIdx, peer.TxValidationCode_EXPIRED_CHAINCODE)
+						continue
+					}
+
 					invokeCC, upgradeCC, err := v.getTxCCInstance(payload)
 					if err != nil {
-						logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
-						txsfltr.SetFlag(tIdx, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+						logger.Errorf("Get chaincode instance from transaction txId = %s returned error %s", txID, err)
+						txsfltr.SetFlag(tIdx, peer.TxValidationCode_INVALID_OTHER_REASON)
 						continue
 					}
 					txsChaincodeNames[tIdx] = invokeCC
@@ -234,14 +237,14 @@ func (v *txValidator) generateCCKey(ccName, chainID string) string {
 }
 
 // invalidTXsForUpgradeCC invalid all txs that should be invalided because of chaincode upgrade txs
-func (v *txValidator) invalidTXsForUpgradeCC(txsChaincodeNames map[int]*ChaincodeInstance, txsUpgradedChaincodes map[int]*ChaincodeInstance, txsfltr ledgerUtil.TxValidationFlags) ledgerUtil.TxValidationFlags {
+func (v *txValidator) invalidTXsForUpgradeCC(txsChaincodeNames map[int]*sysccprovider.ChaincodeInstance, txsUpgradedChaincodes map[int]*sysccprovider.ChaincodeInstance, txsfltr ledgerUtil.TxValidationFlags) ledgerUtil.TxValidationFlags {
 	if len(txsUpgradedChaincodes) == 0 {
 		return txsfltr
 	}
 
 	// Invalid former cc upgrade txs if there're two or more txs upgrade the same cc
 	finalValidUpgradeTXs := make(map[string]int)
-	upgradedChaincodes := make(map[string]*ChaincodeInstance)
+	upgradedChaincodes := make(map[string]*sysccprovider.ChaincodeInstance)
 	for tIdx, cc := range txsUpgradedChaincodes {
 		if cc == nil {
 			continue
@@ -253,14 +256,14 @@ func (v *txValidator) invalidTXsForUpgradeCC(txsChaincodeNames map[int]*Chaincod
 			upgradedChaincodes[upgradedCCKey] = cc
 		} else if finalIdx < tIdx {
 			logger.Infof("Invalid transaction with index %d: chaincode was upgraded by latter tx", finalIdx)
-			txsfltr.SetFlag(finalIdx, peer.TxValidationCode_EXPIRED_CHAINCODE)
+			txsfltr.SetFlag(finalIdx, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
 
 			// record latter cc upgrade tx info
 			finalValidUpgradeTXs[upgradedCCKey] = tIdx
 			upgradedChaincodes[upgradedCCKey] = cc
 		} else {
 			logger.Infof("Invalid transaction with index %d: chaincode was upgraded by latter tx", tIdx)
-			txsfltr.SetFlag(tIdx, peer.TxValidationCode_EXPIRED_CHAINCODE)
+			txsfltr.SetFlag(tIdx, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
 		}
 	}
 
@@ -273,7 +276,7 @@ func (v *txValidator) invalidTXsForUpgradeCC(txsChaincodeNames map[int]*Chaincod
 		if _, exist := upgradedChaincodes[ccKey]; exist {
 			if txsfltr.IsValid(tIdx) {
 				logger.Infof("Invalid transaction with index %d: chaincode was upgraded in the same block", tIdx)
-				txsfltr.SetFlag(tIdx, peer.TxValidationCode_EXPIRED_CHAINCODE)
+				txsfltr.SetFlag(tIdx, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
 			}
 		}
 	}
@@ -281,7 +284,7 @@ func (v *txValidator) invalidTXsForUpgradeCC(txsChaincodeNames map[int]*Chaincod
 	return txsfltr
 }
 
-func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upgradeCCIns *ChaincodeInstance, err error) {
+func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upgradeCCIns *sysccprovider.ChaincodeInstance, err error) {
 	// This is duplicated unpacking work, but make test easier.
 	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
@@ -302,7 +305,7 @@ func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 		return nil, nil, err
 	}
 	invokeCC := hdrExt.ChaincodeId
-	invokeIns := &ChaincodeInstance{ChainID: chainID, ChaincodeName: invokeCC.Name, ChaincodeVersion: invokeCC.Version}
+	invokeIns := &sysccprovider.ChaincodeInstance{ChainID: chainID, ChaincodeName: invokeCC.Name, ChaincodeVersion: invokeCC.Version}
 
 	// Transaction
 	tx, err := utils.GetTransaction(payload.Data)
@@ -346,24 +349,45 @@ func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 	return invokeIns, nil, nil
 }
 
-func (v *txValidator) getUpgradeTxInstance(chainID string, cdsBytes []byte) (*ChaincodeInstance, error) {
+func (v *txValidator) getUpgradeTxInstance(chainID string, cdsBytes []byte) (*sysccprovider.ChaincodeInstance, error) {
 	cds, err := utils.GetChaincodeDeploymentSpec(cdsBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ChaincodeInstance{
+	return &sysccprovider.ChaincodeInstance{
 		ChainID:          chainID,
 		ChaincodeName:    cds.ChaincodeSpec.ChaincodeId.Name,
 		ChaincodeVersion: cds.ChaincodeSpec.ChaincodeId.Version,
 	}, nil
 }
 
-func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) error {
+// validateChaincodeVersion check chaincode version in VsccOutputData returned by vscc match latest version in lscc
+// Parameters should be guaranteed not nil by caller.
+func (v *txValidator) validateChaincodeVersion(vod *sysccprovider.VsccOutputData, cIns *sysccprovider.ChaincodeInstance) error {
+	for _, prespBytes := range vod.ProposalResponseData {
+		// check chaincode version in ProposalResponse match latest version in lscc
+		cid, err := utils.GetChaincodeIDFromBytesProposalResponsePayload(prespBytes)
+		if err != nil {
+			logger.Errorf("Get ChaincodeID failed, err %s", err)
+			return err
+		}
+		if cid.Version != cIns.ChaincodeVersion {
+			err := fmt.Errorf("Chaincode %s:%s/%s didn't match %s:%s/%s in lscc", cid.Name, cid.Version, cIns.ChainID, cIns.ChaincodeName, cIns.ChaincodeVersion, cIns.ChainID)
+			logger.Errorf(err.Error())
+			return err
+		}
+	}
+
+	return nil
+}
+
+// GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, vscc and policy from lscc
+func (v *vsccValidatorImpl) GetInfoForValidate(payload *common.Payload) (*sysccprovider.ChaincodeInstance, *sysccprovider.ChaincodeInstance, []byte, error) {
 	// get channel header
 	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
 
 	// Chain ID
@@ -371,7 +395,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	if chainID == "" {
 		err := fmt.Errorf("transaction header does not contain an chain ID")
 		logger.Errorf("%s", err)
-		return err
+		return nil, nil, nil, err
 	}
 
 	// Get transaction id
@@ -379,23 +403,17 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	if txid == "" {
 		err := fmt.Errorf("transaction header does not contain transaction ID")
 		logger.Errorf("%s", err)
-		return err
+		return nil, nil, nil, err
 	}
-
-	ctxt, err := v.ccprovider.GetContext(v.support.Ledger())
-	if err != nil {
-		logger.Errorf("Cannot obtain context for txid=%s, err %s", txid, err)
-		return err
-	}
-	defer v.ccprovider.ReleaseContext()
 
 	// get header extensions so we have the visibility field
 	hdrExt, err := utils.GetChaincodeHeaderExtension(payload.Header)
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
 
-	var vscc string
+	cc := &sysccprovider.ChaincodeInstance{ChainID: chainID}
+	vscc := &sysccprovider.ChaincodeInstance{ChainID: chainID}
 	var policy []byte
 	if hdrExt.ChaincodeId.Name != "lscc" {
 		// when we are validating any chaincode other than
@@ -406,16 +424,56 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		cd, err := v.getCDataForCC(hdrExt.ChaincodeId.Name)
 		if err != nil {
 			logger.Errorf("Unable to get chaincode data from ledger for txid %s, due to %s", txid, err)
-			return err
+			return nil, nil, nil, err
 		}
-		vscc = cd.Vscc
+		cc.ChaincodeName = cd.Name
+		cc.ChaincodeVersion = cd.Version
+		vscc.ChaincodeName = cd.Vscc
 		policy = cd.Policy
 	} else {
 		// when we are validating LSCC, we use the default
 		// VSCC and a default policy that requires one signature
 		// from any of the members of the channel
-		vscc = "vscc"
+		cc.ChaincodeName = "lscc"
+		cc.ChaincodeVersion = coreUtil.GetSysCCVersion()
+		vscc.ChaincodeName = "vscc"
 		policy = cauthdsl.SignedByAnyMember(v.support.GetMSPIDs(chainID))
+	}
+
+	// Get vscc version
+	vscc.ChaincodeVersion = coreUtil.GetSysCCVersion()
+
+	return cc, vscc, policy, nil
+}
+
+// VSCCValidateTx validates tx with given vscc and policy, returns latest ChaincodeInstance in lscc and VsccOutputData if validate successfully.
+func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte) (*sysccprovider.ChaincodeInstance, *sysccprovider.VsccOutputData, error) {
+	// get channel header
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Get transaction id
+	txid := chdr.TxId
+	if txid == "" {
+		err := fmt.Errorf("transaction header does not contain transaction ID")
+		logger.Errorf("%s", err)
+		return nil, nil, err
+	}
+
+	ctxt, err := v.ccprovider.GetContext(v.support.Ledger())
+	if err != nil {
+		logger.Errorf("Cannot obtain context for txid=%s, err %s", txid, err)
+		return nil, nil, err
+	}
+	defer v.ccprovider.ReleaseContext()
+
+	// Get latest chaincode version, vscc and validate policy
+	txcc, vscc, policy, err := v.GetInfoForValidate(payload)
+	if err != nil {
+		logger.Errorf("GetInfoForValidate for txId = %s returned error %s", txid, err)
+		return nil, nil, err
 	}
 
 	// build arguments for VSCC invocation
@@ -425,24 +483,27 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	args := [][]byte{[]byte(""), envBytes, policy}
 
 	vscctxid := coreUtil.GenerateUUID()
-
-	// Get chaincode version
-	version := coreUtil.GetSysCCVersion()
-	cccid := v.ccprovider.GetCCContext(chainID, vscc, version, vscctxid, true, nil, nil)
+	vscccid := v.ccprovider.GetCCContext("", vscc.ChaincodeName, vscc.ChaincodeVersion, vscctxid, true, nil, nil)
 
 	// invoke VSCC
-	logger.Debug("Invoking VSCC txid", txid, "chaindID", chainID)
-	res, _, err := v.ccprovider.ExecuteChaincode(ctxt, cccid, args)
+	logger.Debug("Invoking VSCC txid", txid, "chaindID", vscc.ChainID)
+	res, _, err := v.ccprovider.ExecuteChaincode(ctxt, vscccid, args)
 	if err != nil {
 		logger.Errorf("Invoke VSCC failed for transaction txid=%s, error %s", txid, err)
-		return err
+		return nil, nil, err
 	}
 	if res.Status != shim.OK {
 		logger.Errorf("VSCC check failed for transaction txid=%s, error %s", txid, res.Message)
-		return fmt.Errorf("%s", res.Message)
+		return nil, nil, fmt.Errorf("%s", res.Message)
 	}
 
-	return nil
+	vod := &sysccprovider.VsccOutputData{}
+	err = proto.Unmarshal(res.Payload, vod)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Unmarshal VsccOutputdata for transaction txid=%s failed, error: %s", txid, err)
+	}
+
+	return txcc, vod, nil
 }
 
 func (v *vsccValidatorImpl) getCDataForCC(ccid string) (*ccprovider.ChaincodeData, error) {

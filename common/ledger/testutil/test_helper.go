@@ -125,6 +125,15 @@ func ConstructTestBlocks(t *testing.T, numBlocks int) []*common.Block {
 	return append(blocks, bg.NextTestBlocks(numBlocks-1)...)
 }
 
+// ConstructBytesProposalResponsePayload constructs a ProposalResponse byte with given chaincode version and simulationResults for testing
+func ConstructBytesProposalResponsePayload(version string, simulationResults []byte) ([]byte, error) {
+	ccid := &pb.ChaincodeID{
+		Name:    "foo",
+		Version: version,
+	}
+	return ptestutils.ConstractBytesProposalResponsePayload(util.GetTestChainID(), ccid, nil, simulationResults)
+}
+
 func newBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *common.Block {
 	block := common.NewBlock(blockNum, previousHash)
 	for i := 0; i < len(env); i++ {
