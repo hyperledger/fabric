@@ -56,7 +56,7 @@ type InvalidationResult int
 
 const (
 	// MessageNoAction means messages have no relation
-	MessageNoAction = iota
+	MessageNoAction InvalidationResult = iota
 	// MessageInvalidates means message invalidates the other message
 	MessageInvalidates
 	// MessageInvalidated means message is invalidated by the other message
