@@ -580,7 +580,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		}
 
 	default:
-		return nil, errors.New("Import Key Options not recognized")
+		return nil, fmt.Errorf("Unsupported 'KeyImportOptions' provided [%v]", opts)
 	}
 }
 
@@ -665,7 +665,7 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 
 		return k.(*rsaPrivateKey).privKey.Sign(rand.Reader, digest, opts)
 	default:
-		return nil, fmt.Errorf("Key type not recognized [%s]", k)
+		return nil, fmt.Errorf("Unsupported 'SignKey' provided [%v]", k)
 	}
 }
 
@@ -717,7 +717,7 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 			return false, fmt.Errorf("Opts type not recognized [%s]", opts)
 		}
 	default:
-		return false, fmt.Errorf("Key type not recognized [%s]", k)
+		return false, fmt.Errorf("Unsupported 'VerifyKey' provided [%v]", k)
 	}
 }
 
@@ -741,7 +741,7 @@ func (csp *impl) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts
 			return nil, fmt.Errorf("Mode not recognized [%s]", opts)
 		}
 	default:
-		return nil, fmt.Errorf("Key type not recognized [%s]", k)
+		return nil, fmt.Errorf("Unsupported 'EncryptKey' provided [%v]", k)
 	}
 }
 
@@ -765,6 +765,6 @@ func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpt
 			return nil, fmt.Errorf("Mode not recognized [%s]", opts)
 		}
 	default:
-		return nil, fmt.Errorf("Key type not recognized [%s]", k)
+		return nil, fmt.Errorf("Unsupported 'DecryptKey' provided [%v]", k)
 	}
 }

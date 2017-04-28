@@ -38,27 +38,27 @@ type MockBCCSP struct {
 }
 
 func (*MockBCCSP) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
-	panic("implement me")
+	panic("Not yet implemented")
 }
 
 func (*MockBCCSP) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
-	panic("implement me")
+	panic("Not yet implemented")
 }
 
 func (*MockBCCSP) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
-	panic("implement me")
+	panic("Not yet implemented")
 }
 
 func (*MockBCCSP) GetKey(ski []byte) (k bccsp.Key, err error) {
-	panic("implement me")
+	panic("Not yet implemented")
 }
 
 func (*MockBCCSP) Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error) {
-	panic("implement me")
+	panic("Not yet implemented")
 }
 
 func (*MockBCCSP) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
-	panic("implement me")
+	panic("Not yet implemented")
 }
 
 func (b *MockBCCSP) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
@@ -80,11 +80,11 @@ func (b *MockBCCSP) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Sig
 }
 
 func (*MockBCCSP) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) (ciphertext []byte, err error) {
-	panic("implement me")
+	panic("Not yet implemented")
 }
 
 func (*MockBCCSP) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) (plaintext []byte, err error) {
-	panic("implement me")
+	panic("Not yet implemented")
 }
 
 type MockKey struct {
@@ -100,7 +100,7 @@ func (m *MockKey) Bytes() ([]byte, error) {
 }
 
 func (*MockKey) SKI() []byte {
-	panic("implement me")
+	panic("Not yet implemented")
 }
 
 func (m *MockKey) Symmetric() bool {
@@ -108,7 +108,7 @@ func (m *MockKey) Symmetric() bool {
 }
 
 func (*MockKey) Private() bool {
-	panic("implement me")
+	panic("Not yet implemented")
 }
 
 func (m *MockKey) PublicKey() (bccsp.Key, error) {
@@ -121,4 +121,42 @@ type SignerOpts struct {
 
 func (o *SignerOpts) HashFunc() crypto.Hash {
 	return o.HashFuncValue
+}
+
+type KeyGenOpts struct{}
+
+func (*KeyGenOpts) Algorithm() string {
+	return "Mock KeyGenOpts"
+}
+
+func (*KeyGenOpts) Ephemeral() bool {
+	panic("Not yet implemented")
+}
+
+type KeyStore struct {
+	GetKeyValue bccsp.Key
+	GetKeyErr   error
+	StoreKeyErr error
+}
+
+func (*KeyStore) ReadOnly() bool {
+	panic("Not yet implemented")
+}
+
+func (ks *KeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
+	return ks.GetKeyValue, ks.GetKeyErr
+}
+
+func (ks *KeyStore) StoreKey(k bccsp.Key) (err error) {
+	return ks.StoreKeyErr
+}
+
+type KeyImportOpts struct{}
+
+func (*KeyImportOpts) Algorithm() string {
+	return "Mock KeyImportOpts"
+}
+
+func (*KeyImportOpts) Ephemeral() bool {
+	panic("Not yet implemented")
 }
