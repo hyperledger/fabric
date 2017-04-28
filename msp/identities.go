@@ -144,12 +144,12 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 
 func (id *identity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) error {
 	// TODO
-	return nil
+	return errors.New("This method is unimplemented")
 }
 
 func (id *identity) VerifyAttributes(proof []byte, spec *AttributeProofSpec) error {
 	// TODO
-	return nil
+	return errors.New("This method is unimplemented")
 }
 
 // Serialize returns a byte array representation of this identity
@@ -225,12 +225,12 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 
 func (id *signingidentity) SignOpts(msg []byte, opts SignatureOpts) ([]byte, error) {
 	// TODO
-	return nil, nil
+	return nil, errors.New("This method is unimplemented")
 }
 
 func (id *signingidentity) GetAttributeProof(spec *AttributeProofSpec) (proof []byte, err error) {
 	// TODO
-	return nil, nil
+	return nil, errors.New("This method is unimplemented")
 }
 
 func (id *signingidentity) GetPublicVersion() Identity {
@@ -239,5 +239,5 @@ func (id *signingidentity) GetPublicVersion() Identity {
 
 func (id *signingidentity) Renew() error {
 	// TODO
-	return nil
+	return errors.New("This method is unimplemented")
 }
