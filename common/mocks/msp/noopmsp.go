@@ -17,14 +17,15 @@ limitations under the License.
 package msp
 
 import (
+	m "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/msp"
 )
 
 type noopmsp struct {
 }
 
-func NewNoopMsp() MSP {
-	mspLogger.Infof("Creating no-op MSP instance")
+// NewNoopMsp returns a no-op implementation of the MSP inteface
+func NewNoopMsp() m.MSP {
 	return &noopmsp{}
 }
 
@@ -32,7 +33,7 @@ func (msp *noopmsp) Setup(*msp.MSPConfig) error {
 	return nil
 }
 
-func (msp *noopmsp) GetType() ProviderType {
+func (msp *noopmsp) GetType() m.ProviderType {
 	return 0
 }
 
@@ -40,47 +41,43 @@ func (msp *noopmsp) GetIdentifier() (string, error) {
 	return "NOOP", nil
 }
 
-func (msp *noopmsp) GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error) {
-	mspLogger.Infof("Obtaining signing identity for %s", identifier)
+func (msp *noopmsp) GetSigningIdentity(identifier *m.IdentityIdentifier) (m.SigningIdentity, error) {
 	id, _ := newNoopSigningIdentity()
 	return id, nil
 }
 
-func (msp *noopmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
-	mspLogger.Infof("Obtaining default signing identity")
+func (msp *noopmsp) GetDefaultSigningIdentity() (m.SigningIdentity, error) {
 	id, _ := newNoopSigningIdentity()
 	return id, nil
 }
 
 // GetRootCerts returns the root certificates for this MSP
-func (msp *noopmsp) GetRootCerts() []Identity {
+func (msp *noopmsp) GetRootCerts() []m.Identity {
 	return nil
 }
 
 // GetIntermediateCerts returns the intermediate root certificates for this MSP
-func (msp *noopmsp) GetIntermediateCerts() []Identity {
+func (msp *noopmsp) GetIntermediateCerts() []m.Identity {
 	return nil
 }
 
-func (msp *noopmsp) DeserializeIdentity(serializedID []byte) (Identity, error) {
-	mspLogger.Infof("Obtaining identity for %s", string(serializedID))
+func (msp *noopmsp) DeserializeIdentity(serializedID []byte) (m.Identity, error) {
 	id, _ := newNoopIdentity()
 	return id, nil
 }
 
-func (msp *noopmsp) Validate(id Identity) error {
+func (msp *noopmsp) Validate(id m.Identity) error {
 	return nil
 }
 
-func (msp *noopmsp) SatisfiesPrincipal(id Identity, principal *msp.MSPPrincipal) error {
+func (msp *noopmsp) SatisfiesPrincipal(id m.Identity, principal *msp.MSPPrincipal) error {
 	return nil
 }
 
 type noopidentity struct {
 }
 
-func newNoopIdentity() (Identity, error) {
-	mspLogger.Infof("Creating no-op identity instance")
+func newNoopIdentity() (m.Identity, error) {
 	return &noopidentity{}, nil
 }
 
@@ -88,8 +85,8 @@ func (id *noopidentity) SatisfiesPrincipal(*msp.MSPPrincipal) error {
 	return nil
 }
 
-func (id *noopidentity) GetIdentifier() *IdentityIdentifier {
-	return &IdentityIdentifier{Mspid: "NOOP", Id: "Bob"}
+func (id *noopidentity) GetIdentifier() *m.IdentityIdentifier {
+	return &m.IdentityIdentifier{Mspid: "NOOP", Id: "Bob"}
 }
 
 func (id *noopidentity) GetMSPIdentifier() string {
@@ -97,7 +94,6 @@ func (id *noopidentity) GetMSPIdentifier() string {
 }
 
 func (id *noopidentity) Validate() error {
-	mspLogger.Infof("Identity is valid")
 	return nil
 }
 
@@ -106,20 +102,18 @@ func (id *noopidentity) GetOrganizationalUnits() []msp.FabricOUIdentifier {
 }
 
 func (id *noopidentity) Verify(msg []byte, sig []byte) error {
-	mspLogger.Infof("Signature is valid")
 	return nil
 }
 
-func (id *noopidentity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) error {
+func (id *noopidentity) VerifyOpts(msg []byte, sig []byte, opts m.SignatureOpts) error {
 	return nil
 }
 
-func (id *noopidentity) VerifyAttributes(proof []byte, spec *AttributeProofSpec) error {
+func (id *noopidentity) VerifyAttributes(proof []byte, spec *m.AttributeProofSpec) error {
 	return nil
 }
 
 func (id *noopidentity) Serialize() ([]byte, error) {
-	mspLogger.Infof("Serialinzing identity")
 	return []byte("cert"), nil
 }
 
@@ -127,25 +121,23 @@ type noopsigningidentity struct {
 	noopidentity
 }
 
-func newNoopSigningIdentity() (SigningIdentity, error) {
-	mspLogger.Infof("Creating no-op signing identity instance")
+func newNoopSigningIdentity() (m.SigningIdentity, error) {
 	return &noopsigningidentity{}, nil
 }
 
 func (id *noopsigningidentity) Sign(msg []byte) ([]byte, error) {
-	mspLogger.Infof("signing message")
 	return []byte("signature"), nil
 }
 
-func (id *noopsigningidentity) SignOpts(msg []byte, opts SignatureOpts) ([]byte, error) {
+func (id *noopsigningidentity) SignOpts(msg []byte, opts m.SignatureOpts) ([]byte, error) {
 	return nil, nil
 }
 
-func (id *noopsigningidentity) GetAttributeProof(spec *AttributeProofSpec) (proof []byte, err error) {
+func (id *noopsigningidentity) GetAttributeProof(spec *m.AttributeProofSpec) (proof []byte, err error) {
 	return nil, nil
 }
 
-func (id *noopsigningidentity) GetPublicVersion() Identity {
+func (id *noopsigningidentity) GetPublicVersion() m.Identity {
 	return id
 }
 

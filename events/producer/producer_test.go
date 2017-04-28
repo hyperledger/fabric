@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -96,7 +97,7 @@ func TestSignedEvent(t *testing.T) {
 	}
 
 	// get a bad signing identity
-	badSigner, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
+	badSigner, err := mmsp.NewNoopMsp().GetDefaultSigningIdentity()
 	if err != nil {
 		t.Fatal("couldn't get noop signer")
 		return

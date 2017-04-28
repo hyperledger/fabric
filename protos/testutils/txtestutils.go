@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -105,7 +106,7 @@ var sigId msp.SigningIdentity
 // ConstructUnsingedTxEnv creates a Transaction envelope from given inputs
 func ConstructUnsingedTxEnv(chainID string, ccid *pb.ChaincodeID, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, string, error) {
 	if mspLcl == nil {
-		mspLcl = msp.NewNoopMsp()
+		mspLcl = mmsp.NewNoopMsp()
 		sigId, _ = mspLcl.GetDefaultSigningIdentity()
 	}
 
