@@ -160,3 +160,5 @@ func (*KeyImportOpts) Algorithm() string {
 func (*KeyImportOpts) Ephemeral() bool {
 	panic("Not yet implemented")
 }
+
+type EncrypterOpts struct{}

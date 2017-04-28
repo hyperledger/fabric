@@ -17,22 +17,18 @@ package sw
 
 import (
 	"crypto/ecdsa"
-	"crypto/rand"
-	"errors"
-	"fmt"
-	"math/big"
-
-	"crypto/rsa"
-
-	"hash"
-
-	"crypto/x509"
-
-	"crypto/hmac"
-
 	"crypto/elliptic"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/x509"
+	"errors"
+	"fmt"
+	"hash"
+	"math/big"
+	"reflect"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
@@ -76,13 +72,24 @@ func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.B
 		return nil, errors.New("Invalid bccsp.KeyStore instance. It must be different from nil.")
 	}
 
-	return &impl{conf, keyStore}, nil
+	// Set the encryptors
+	encryptors := make(map[reflect.Type]Encryptor)
+	encryptors[reflect.TypeOf(&aesPrivateKey{})] = &aescbcpkcs7Encryptor{}
+
+	// Set the decryptors
+	decryptors := make(map[reflect.Type]Decryptor)
+	decryptors[reflect.TypeOf(&aesPrivateKey{})] = &aescbcpkcs7Decryptor{}
+
+	return &impl{conf, keyStore, encryptors, decryptors}, nil
 }
 
 // SoftwareBasedBCCSP is the software-based implementation of the BCCSP.
 type impl struct {
 	conf *config
 	ks   bccsp.KeyStore
+
+	encryptors map[reflect.Type]Encryptor
+	decryptors map[reflect.Type]Decryptor
 }
 
 // KeyGen generates a key using opts.
@@ -729,20 +736,12 @@ func (csp *impl) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts
 		return nil, errors.New("Invalid Key. It must not be nil.")
 	}
 
-	// Check key type
-	switch k.(type) {
-	case *aesPrivateKey:
-		// check for mode
-		switch opts.(type) {
-		case *bccsp.AESCBCPKCS7ModeOpts, bccsp.AESCBCPKCS7ModeOpts:
-			// AES in CBC mode with PKCS7 padding
-			return AESCBCPKCS7Encrypt(k.(*aesPrivateKey).privKey, plaintext)
-		default:
-			return nil, fmt.Errorf("Mode not recognized [%s]", opts)
-		}
-	default:
+	encryptor, found := csp.encryptors[reflect.TypeOf(k)]
+	if !found {
 		return nil, fmt.Errorf("Unsupported 'EncryptKey' provided [%v]", k)
 	}
+
+	return encryptor.Encrypt(k, plaintext, opts)
 }
 
 // Decrypt decrypts ciphertext using key k.
@@ -753,18 +752,10 @@ func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpt
 		return nil, errors.New("Invalid Key. It must not be nil.")
 	}
 
-	// Check key type
-	switch k.(type) {
-	case *aesPrivateKey:
-		// check for mode
-		switch opts.(type) {
-		case *bccsp.AESCBCPKCS7ModeOpts, bccsp.AESCBCPKCS7ModeOpts:
-			// AES in CBC mode with PKCS7 padding
-			return AESCBCPKCS7Decrypt(k.(*aesPrivateKey).privKey, ciphertext)
-		default:
-			return nil, fmt.Errorf("Mode not recognized [%s]", opts)
-		}
-	default:
+	decryptor, found := csp.decryptors[reflect.TypeOf(k)]
+	if !found {
 		return nil, fmt.Errorf("Unsupported 'DecryptKey' provided [%v]", k)
 	}
+
+	return decryptor.Decrypt(k, ciphertext, opts)
 }
