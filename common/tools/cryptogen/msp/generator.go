@@ -29,7 +29,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 )
 
-func GenerateLocalMSP(baseDir, name string, rootCA *ca.CA) error {
+func GenerateLocalMSP(baseDir, name string, sans []string, rootCA *ca.CA) error {
 
 	// create folder structure
 	mspDir := filepath.Join(baseDir, "msp")
@@ -60,7 +60,7 @@ func GenerateLocalMSP(baseDir, name string, rootCA *ca.CA) error {
 		return err
 	}
 
-	cert, err := rootCA.SignCertificate(filepath.Join(mspDir, "signcerts"), name, ecPubKey)
+	cert, err := rootCA.SignCertificate(filepath.Join(mspDir, "signcerts"), name, sans, ecPubKey)
 	if err != nil {
 		return err
 	}

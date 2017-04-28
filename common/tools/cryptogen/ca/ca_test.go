@@ -71,7 +71,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 	rootCA, err := ca.NewCA(caDir, testCA2Name, testCA2Name)
 	assert.NoError(t, err, "Error generating CA")
 
-	_, err = rootCA.SignCertificate(certDir, testName, ecPubKey)
+	_, err = rootCA.SignCertificate(certDir, testName, nil, ecPubKey)
 	assert.NoError(t, err, "Failed to generate signed certificate")
 
 	// check to make sure the signed public key was stored
@@ -79,7 +79,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 	assert.Equal(t, true, checkForFile(pemFile),
 		"Expected to find file "+pemFile)
 
-	_, err = rootCA.SignCertificate(certDir, "empty/CA", ecPubKey)
+	_, err = rootCA.SignCertificate(certDir, "empty/CA", nil, ecPubKey)
 	assert.Error(t, err, "Bad name should fail")
 
 	// use an empty CA to test error path
@@ -87,7 +87,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 		Name:     "badCA",
 		SignCert: &x509.Certificate{},
 	}
-	_, err = badCA.SignCertificate(certDir, testName, &ecdsa.PublicKey{})
+	_, err = badCA.SignCertificate(certDir, testName, nil, &ecdsa.PublicKey{})
 	assert.Error(t, err, "Empty CA should not be able to sign")
 	cleanup(testDir)
 
