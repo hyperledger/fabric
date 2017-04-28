@@ -33,12 +33,13 @@ var saLogger = flogging.MustGetLogger("peer/gossip/sa")
 //
 // This implementation assumes that these mechanisms are all in place and working.
 type mspSecurityAdvisor struct {
+	deserializer mgmt.DeserializersManager
 }
 
 // NewSecurityAdvisor creates a new instance of mspSecurityAdvisor
 // that implements MessageCryptoService
-func NewSecurityAdvisor() api.SecurityAdvisor {
-	return &mspSecurityAdvisor{}
+func NewSecurityAdvisor(deserializer mgmt.DeserializersManager) api.SecurityAdvisor {
+	return &mspSecurityAdvisor{deserializer: deserializer}
 }
 
 // OrgByPeerIdentity returns the OrgIdentityType
@@ -64,13 +65,13 @@ func (advisor *mspSecurityAdvisor) OrgByPeerIdentity(peerIdentity api.PeerIdenti
 	// namely the identity's MSP identifier be returned (Identity.GetMSPIdentifier())
 
 	// First check against the local MSP.
-	identity, err := mgmt.GetLocalMSP().DeserializeIdentity([]byte(peerIdentity))
+	identity, err := advisor.deserializer.GetLocalDeserializer().DeserializeIdentity([]byte(peerIdentity))
 	if err == nil {
 		return []byte(identity.GetMSPIdentifier())
 	}
 
 	// Check against managers
-	for chainID, mspManager := range mgmt.GetDeserializers() {
+	for chainID, mspManager := range advisor.deserializer.GetChannelDeserializers() {
 		// Deserialize identity
 		identity, err := mspManager.DeserializeIdentity([]byte(peerIdentity))
 		if err != nil {

@@ -166,7 +166,8 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
-	service.InitGossipServiceCustomDeliveryFactory(identity, peerEndpoint, nil, &mockDeliveryClientFactory{}, messageCryptoService)
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	service.InitGossipServiceCustomDeliveryFactory(identity, peerEndpoint, nil, &mockDeliveryClientFactory{}, messageCryptoService, secAdv)
 
 	// Successful path for JoinChain
 	blockBytes := mockConfigBlock()
