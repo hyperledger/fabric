@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func getProposal() (*peer.Proposal, error) {
@@ -223,16 +224,6 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 	}
 }
 
-var r *rand.Rand
-
-func corrupt(bytes []byte) {
-	if r == nil {
-		r = rand.New(rand.NewSource(time.Now().Unix()))
-	}
-
-	bytes[r.Int31n(int32(len(bytes)))]--
-}
-
 func TestBadProp(t *testing.T) {
 	// get a toy proposal
 	prop, err := getProposal()
@@ -249,13 +240,17 @@ func TestBadProp(t *testing.T) {
 	}
 
 	// mess with the signature
-	corrupt(sProp.Signature)
-
-	// validate it - it should fail
-	_, _, _, err = ValidateProposalMessage(sProp)
-	if err == nil {
-		t.Fatal("ValidateProposalMessage should have failed")
-		return
+	sigOrig := sProp.Signature
+	for i := 0; i < len(sigOrig); i++ {
+		sigCopy := make([]byte, len(sigOrig))
+		copy(sigCopy, sigOrig)
+		sigCopy[i] = byte(int(sigCopy[i]+1) % 255)
+		// validate it - it should fail
+		_, _, _, err = ValidateProposalMessage(&peer.SignedProposal{ProposalBytes: sProp.ProposalBytes, Signature: sigCopy})
+		if err == nil {
+			t.Fatal("ValidateProposalMessage should have failed")
+			return
+		}
 	}
 
 	// sign it again
@@ -266,13 +261,17 @@ func TestBadProp(t *testing.T) {
 	}
 
 	// mess with the message
-	corrupt(sProp.ProposalBytes)
-
-	// validate it - it should fail
-	_, _, _, err = ValidateProposalMessage(sProp)
-	if err == nil {
-		t.Fatal("ValidateProposalMessage should have failed")
-		return
+	pbytesOrig := sProp.ProposalBytes
+	for i := 0; i < len(pbytesOrig); i++ {
+		pbytesCopy := make([]byte, len(pbytesOrig))
+		copy(pbytesCopy, pbytesOrig)
+		pbytesCopy[i] = byte(int(pbytesCopy[i]+1) % 255)
+		// validate it - it should fail
+		_, _, _, err = ValidateProposalMessage(&peer.SignedProposal{ProposalBytes: pbytesCopy, Signature: sProp.Signature})
+		if err == nil {
+			t.Fatal("ValidateProposalMessage should have failed")
+			return
+		}
 	}
 
 	// get a bad signing identity
@@ -295,6 +294,11 @@ func TestBadProp(t *testing.T) {
 		t.Fatal("ValidateProposalMessage should have failed")
 		return
 	}
+}
+
+func corrupt(bytes []byte) {
+	rand.Seed(time.Now().UnixNano())
+	bytes[rand.Intn(len(bytes))]--
 }
 
 func TestBadTx(t *testing.T) {
@@ -323,13 +327,17 @@ func TestBadTx(t *testing.T) {
 	}
 
 	// mess with the transaction payload
-	corrupt(tx.Payload)
-
-	// validate the transaction it should fail
-	_, txResult := ValidateTransaction(tx)
-	if txResult == peer.TxValidationCode_VALID {
-		t.Fatal("ValidateTransaction should have failed")
-		return
+	paylOrig := tx.Payload
+	for i := 0; i < len(paylOrig); i++ {
+		paylCopy := make([]byte, len(paylOrig))
+		copy(paylCopy, paylOrig)
+		paylCopy[i] = byte(int(paylCopy[i]+1) % 255)
+		// validate the transaction it should fail
+		_, txResult := ValidateTransaction(&common.Envelope{Signature: tx.Signature, Payload: paylCopy})
+		if txResult == peer.TxValidationCode_VALID {
+			t.Fatal("ValidateTransaction should have failed")
+			return
+		}
 	}
 
 	// assemble a transaction from that proposal and endorsement
@@ -343,7 +351,7 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Signature)
 
 	// validate the transaction it should fail
-	_, txResult = ValidateTransaction(tx)
+	_, txResult := ValidateTransaction(tx)
 	if txResult == peer.TxValidationCode_VALID {
 		t.Fatal("ValidateTransaction should have failed")
 		return
@@ -427,6 +435,35 @@ func Test2EndorsersDisagree(t *testing.T) {
 		t.Fatal("CreateSignedTx should have failed")
 		return
 	}
+}
+
+func TestInvocationsBadArgs(t *testing.T) {
+	_, code := ValidateTransaction(nil)
+	assert.Equal(t, code, peer.TxValidationCode_NIL_ENVELOPE)
+	err := validateEndorserTransaction(nil, nil)
+	assert.Error(t, err)
+	err = validateConfigTransaction(nil, nil)
+	assert.Error(t, err)
+	_, _, err = validateCommonHeader(nil)
+	assert.Error(t, err)
+	err = validateChannelHeader(nil)
+	assert.Error(t, err)
+	err = validateChannelHeader(&common.ChannelHeader{})
+	assert.Error(t, err)
+	err = validateSignatureHeader(nil)
+	assert.Error(t, err)
+	err = validateSignatureHeader(&common.SignatureHeader{})
+	assert.Error(t, err)
+	err = validateSignatureHeader(&common.SignatureHeader{Nonce: []byte("a")})
+	assert.Error(t, err)
+	err = checkSignatureFromCreator(nil, nil, nil, "")
+	assert.Error(t, err)
+	_, _, _, err = ValidateProposalMessage(nil)
+	assert.Error(t, err)
+	_, err = validateChaincodeProposalMessage(nil, nil)
+	assert.Error(t, err)
+	_, err = validateChaincodeProposalMessage(&peer.Proposal{}, &common.Header{[]byte("a"), []byte("a")})
+	assert.Error(t, err)
 }
 
 var signer msp.SigningIdentity
