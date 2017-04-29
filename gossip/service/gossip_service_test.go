@@ -740,7 +740,10 @@ func TestChannelConfig(t *testing.T) {
 	mc := &mockConfig{
 		sequence: 1,
 		orgs: map[string]config.ApplicationOrg{
-			testOrgID: applicationOrgs([]*peer.AnchorPeer{}),
+			string(orgInChannelA): &appGrp{
+				mspID:       string(orgInChannelA),
+				anchorPeers: []*peer.AnchorPeer{},
+			},
 		},
 	}
 	gService.JoinChan(jcm, gossipCommon.ChainID("A"))
