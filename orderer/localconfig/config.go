@@ -153,7 +153,7 @@ type SbftShared struct {
 
 var defaults = TopLevel{
 	General: General{
-		LedgerType:     "ram",
+		LedgerType:     "file",
 		ListenAddress:  "127.0.0.1",
 		ListenPort:     7050,
 		GenesisMethod:  "provisional",
@@ -172,7 +172,7 @@ var defaults = TopLevel{
 		HistorySize: 10000,
 	},
 	FileLedger: FileLedger{
-		Location: "",
+		Location: "/var/hyperledger/production/orderer",
 		Prefix:   "hyperledger-fabric-ordererledger",
 	},
 	Kafka: Kafka{

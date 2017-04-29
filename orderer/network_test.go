@@ -317,6 +317,7 @@ func generateConfigEnv(peerNum uint64, grpcPort int, peerCommPort string, certFi
 	tempDir, err := ioutil.TempDir("", "sbft_test_config")
 	panicOnError(err)
 	envs := []string{}
+	envs = append(envs, fmt.Sprintf("ORDERER_GENERAL_LEDGERTYPE=%s", "ram"))
 	envs = append(envs, fmt.Sprintf("ORDERER_GENERAL_LOCALMSPDIR=%s", ordererDir+"/../sampleconfig/msp"))
 	envs = append(envs, fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", grpcPort))
 	envs = append(envs, fmt.Sprintf("CONFIGTX_ORDERER_ORDERERTYPE=%s", "sbft"))
