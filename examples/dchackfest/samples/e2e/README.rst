@@ -40,7 +40,7 @@ Next, execute the following command:
 
 .. code:: bash
 
-  curl -L https://logs.hyperledger.org/sandbox/vex-yul-hyp-jenkins-2/fabric-verify-x86_64_1/4/release.tar.gz -o release.tar.gz 2> /dev/null;  tar -xvf release.tar.gz
+  curl -L https://logs.hyperledger.org/sandbox/vex-yul-hyp-jenkins-2/fabric-verify-x86_64_1/5/release.tar.gz -o release.tar.gz 2> /dev/null;  tar -xvf release.tar.gz
 
 This command pulls and extracts all of the necessary artifacts to set up your
 network and places them into a folder titled ``release``.  It also retrieves the
@@ -161,7 +161,7 @@ From your ``e2e`` folder first execute the following:
 .. code:: bash
 
   # this command will not return a response
-  export ORDERER_CFG_PATH=$PWD
+  export FABRIC_CFG_PATH=$PWD
 
 Then use the tool:
 
