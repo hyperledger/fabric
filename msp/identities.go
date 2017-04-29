@@ -17,6 +17,7 @@ limitations under the License.
 package msp
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/hex"
@@ -26,7 +27,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/op/go-logging"
 )
@@ -187,10 +187,10 @@ type signingidentity struct {
 	identity
 
 	// signer corresponds to the object that can produce signatures from this identity
-	signer *signer.CryptoSigner
+	signer crypto.Signer
 }
 
-func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer *signer.CryptoSigner, msp *bccspmsp) SigningIdentity {
+func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer crypto.Signer, msp *bccspmsp) SigningIdentity {
 	//mspLogger.Infof("Creating signing identity instance for ID %s", id)
 	return &signingidentity{identity{id: id, cert: cert, pk: pk, msp: msp}, signer}
 }
