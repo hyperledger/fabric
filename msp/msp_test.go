@@ -32,12 +32,118 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var notACert = `-----BEGIN X509 CRL-----
+MIIBYzCCAQgCAQEwCgYIKoZIzj0EAwIwfzELMAkGA1UEBhMCVVMxEzARBgNVBAgT
+CkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28xHzAdBgNVBAoTFklu
+dGVybmV0IFdpZGdldHMsIEluYy4xDDAKBgNVBAsTA1dXVzEUMBIGA1UEAxMLZXhh
+bXBsZS5jb20XDTE3MDEyMzIwNTYyMFoXDTE3MDEyNjIwNTYyMFowJzAlAhQERXCx
+LHROap1vM3CV40EHOghPTBcNMTcwMTIzMjA0NzMxWqAvMC0wHwYDVR0jBBgwFoAU
+F2dCPaqegj/ExR2fW8OZ0bWcSBAwCgYDVR0UBAMCAQgwCgYIKoZIzj0EAwIDSQAw
+RgIhAOTTpQYkGO+gwVe1LQOcNMD5fzFViOwBUraMrk6dRMlmAiEA8z2dpXKGwHrj
+FRBbKkDnSpaVcZgjns+mLdHV2JkF0gk=
+-----END X509 CRL-----`
+
+func TestMSPParsers(t *testing.T) {
+	_, _, err := localMsp.(*bccspmsp).getIdentityFromConf(nil)
+	assert.Error(t, err)
+	_, _, err = localMsp.(*bccspmsp).getIdentityFromConf([]byte("barf"))
+	assert.Error(t, err)
+	_, _, err = localMsp.(*bccspmsp).getIdentityFromConf([]byte(notACert))
+	assert.Error(t, err)
+
+	_, err = localMsp.(*bccspmsp).getSigningIdentityFromConf(nil)
+	assert.Error(t, err)
+
+	sigid := &msp.SigningIdentityInfo{PublicSigner: []byte("barf"), PrivateSigner: nil}
+	_, err = localMsp.(*bccspmsp).getSigningIdentityFromConf(sigid)
+
+	keyinfo := &msp.KeyInfo{KeyIdentifier: "PEER", KeyMaterial: nil}
+	sigid = &msp.SigningIdentityInfo{PublicSigner: []byte("barf"), PrivateSigner: keyinfo}
+	_, err = localMsp.(*bccspmsp).getSigningIdentityFromConf(sigid)
+	assert.Error(t, err)
+}
+
+func TestMSPSetupNoCryptoConf(t *testing.T) {
+	mspDir, err := config.GetDevMspDir()
+	if err != nil {
+		fmt.Printf("Errog getting DevMspDir: %s", err)
+		os.Exit(-1)
+	}
+
+	conf, err := GetLocalMspConfig(mspDir, nil, "DEFAULT")
+	if err != nil {
+		fmt.Printf("Setup should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	mspconf := &msp.FabricMSPConfig{}
+	err = proto.Unmarshal(conf.Config, mspconf)
+	assert.NoError(t, err)
+
+	// here we test the case of an MSP configuration
+	// where the hash function to be used to obtain
+	// the identity identifier is unspecified - a
+	// sane default should be picked
+	mspconf.CryptoConfig.IdentityIdentifierHashFunction = ""
+	b, err := proto.Marshal(mspconf)
+	assert.NoError(t, err)
+	conf.Config = b
+	newmsp, err := NewBccspMsp()
+	assert.NoError(t, err)
+	err = newmsp.Setup(conf)
+	assert.NoError(t, err)
+
+	// here we test the case of an MSP configuration
+	// where the hash function to be used to compute
+	// signatures is unspecified - a sane default
+	// should be picked
+	mspconf.CryptoConfig.SignatureHashFamily = ""
+	b, err = proto.Marshal(mspconf)
+	assert.NoError(t, err)
+	conf.Config = b
+	newmsp, err = NewBccspMsp()
+	assert.NoError(t, err)
+	err = newmsp.Setup(conf)
+	assert.NoError(t, err)
+
+	// here we test the case of an MSP configuration
+	// that has NO crypto configuration specified;
+	// the code will use appropriate defaults
+	mspconf.CryptoConfig = nil
+	b, err = proto.Marshal(mspconf)
+	assert.NoError(t, err)
+	conf.Config = b
+	newmsp, err = NewBccspMsp()
+	assert.NoError(t, err)
+	err = newmsp.Setup(conf)
+	assert.NoError(t, err)
+}
+
+func TestGetters(t *testing.T) {
+	typ := localMsp.GetType()
+	assert.Equal(t, typ, FABRIC)
+	assert.NotNil(t, localMsp.GetRootCerts())
+	assert.NotNil(t, localMsp.GetIntermediateCerts())
+}
+
 func TestMSPSetupBad(t *testing.T) {
 	_, err := GetLocalMspConfig("barf", nil, "DEFAULT")
 	if err == nil {
 		t.Fatalf("Setup should have failed on an invalid config file")
 		return
 	}
+
+	mgr := NewMSPManager()
+	err = mgr.Setup(nil)
+	assert.Error(t, err)
+	err = mgr.Setup([]MSP{})
+	assert.Error(t, err)
+}
+
+func TestDoubleSetup(t *testing.T) {
+	// note that we've already called setup once on this
+	err := mspMgr.Setup(nil)
+	assert.NoError(t, err)
 }
 
 func TestGetIdentities(t *testing.T) {
@@ -46,6 +152,47 @@ func TestGetIdentities(t *testing.T) {
 		t.Fatalf("GetDefaultSigningIdentity failed with err %s", err)
 		return
 	}
+}
+
+func TestDeserializeIdentityFails(t *testing.T) {
+	_, err := localMsp.DeserializeIdentity([]byte("barf"))
+	assert.Error(t, err)
+
+	id := &msp.SerializedIdentity{Mspid: "DEFAULT", IdBytes: []byte("barfr")}
+	b, err := proto.Marshal(id)
+	assert.NoError(t, err)
+	_, err = localMsp.DeserializeIdentity(b)
+	assert.Error(t, err)
+
+	id = &msp.SerializedIdentity{Mspid: "DEFAULT", IdBytes: []byte(notACert)}
+	b, err = proto.Marshal(id)
+	assert.NoError(t, err)
+	_, err = localMsp.DeserializeIdentity(b)
+	assert.Error(t, err)
+}
+
+func TestGetSigningIdentityFromVerifyingMSP(t *testing.T) {
+	mspDir, err := config.GetDevMspDir()
+	if err != nil {
+		fmt.Printf("Errog getting DevMspDir: %s", err)
+		os.Exit(-1)
+	}
+
+	conf, err = GetVerifyingMspConfig(mspDir, nil, "DEFAULT")
+	if err != nil {
+		fmt.Printf("Setup should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	newmsp, err := NewBccspMsp()
+	assert.NoError(t, err)
+	err = newmsp.Setup(conf)
+	assert.NoError(t, err)
+
+	_, err = newmsp.GetDefaultSigningIdentity()
+	assert.Error(t, err)
+	_, err = newmsp.GetSigningIdentity(nil)
+	assert.Error(t, err)
 }
 
 func TestSerializeIdentities(t *testing.T) {
@@ -148,6 +295,39 @@ func TestSerializeIdentitiesWithMSPManager(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestIdentitiesGetters(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		return
+	}
+
+	idid := id.GetIdentifier()
+	assert.NotNil(t, idid)
+	mspid := id.GetMSPIdentifier()
+	assert.NotNil(t, mspid)
+}
+
+func TestUnimplementedMethods(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		return
+	}
+
+	// these methods are currently unimplemented - we assert that they return an error
+	err = id.VerifyOpts(nil, nil, SignatureOpts{})
+	assert.Error(t, err)
+	err = id.VerifyAttributes(nil, nil)
+	assert.Error(t, err)
+	_, err = id.SignOpts(nil, SignatureOpts{})
+	assert.Error(t, err)
+	_, err = id.GetAttributeProof(nil)
+	assert.Error(t, err)
+	err = id.Renew()
+	assert.Error(t, err)
+}
+
 func TestSignAndVerify(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
@@ -185,6 +365,65 @@ func TestSignAndVerify(t *testing.T) {
 		t.Fatalf("The signature should be valid")
 		return
 	}
+
+	err = id.Verify(msg[1:], sig)
+	assert.Error(t, err)
+	err = id.Verify(msg, sig[1:])
+	assert.Error(t, err)
+}
+
+func TestSignAndVerifyFailures(t *testing.T) {
+	msg := []byte("foo")
+
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded")
+		return
+	}
+
+	hash := id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily
+	id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily = "barf"
+
+	sig, err := id.Sign(msg)
+	assert.Error(t, err)
+
+	id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily = hash
+
+	sig, err = id.Sign(msg)
+	if err != nil {
+		t.Fatalf("Sign should have succeeded")
+		return
+	}
+
+	id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily = "barf"
+
+	err = id.Verify(msg, sig)
+	assert.Error(t, err)
+
+	id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily = hash
+}
+
+func TestSignAndVerifyOtherHash(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded")
+		return
+	}
+
+	hash := id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily
+	id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily = bccsp.SHA3
+
+	msg := []byte("foo")
+	sig, err := id.Sign(msg)
+	if err != nil {
+		t.Fatalf("Sign should have succeeded")
+		return
+	}
+
+	err = id.Verify(msg, sig)
+	assert.NoError(t, err)
+
+	id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily = hash
 }
 
 func TestSignAndVerify_longMessage(t *testing.T) {
@@ -236,6 +475,28 @@ func TestGetOU(t *testing.T) {
 	assert.Equal(t, "COP", id.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier)
 }
 
+func TestGetOUFail(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded")
+		return
+	}
+
+	certTmp := id.(*signingidentity).cert
+	id.(*signingidentity).cert = nil
+	ou := id.GetOrganizationalUnits()
+	assert.Nil(t, ou)
+
+	id.(*signingidentity).cert = certTmp
+
+	opts := id.(*signingidentity).msp.opts
+	id.(*signingidentity).msp.opts = nil
+	ou = id.GetOrganizationalUnits()
+	assert.Nil(t, ou)
+
+	id.(*signingidentity).msp.opts = opts
+}
+
 func TestCertificationIdentifierComputation(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
@@ -278,6 +539,43 @@ func TestOUPolicyPrincipal(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestOUPolicyPrincipalBadPrincipal(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               []byte("barf"),
+	}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+}
+
+func TestOUPolicyPrincipalBadMSPID(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	cid, err := localMsp.(*bccspmsp).getCertificationChainIdentifier(id.GetPublicVersion())
+	assert.NoError(t, err)
+
+	ou := &msp.OrganizationUnit{
+		OrganizationalUnitIdentifier: "COP",
+		MspIdentifier:                "DEFAULTbarfbarf",
+		CertifiersIdentifier:         cid,
+	}
+	bytes, err := proto.Marshal(ou)
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               bytes,
+	}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+}
+
 func TestOUPolicyPrincipalBadPath(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
@@ -313,6 +611,66 @@ func TestOUPolicyPrincipalBadPath(t *testing.T) {
 
 	err = id.SatisfiesPrincipal(principal)
 	assert.Error(t, err)
+}
+
+func TestPolicyPrincipalBogusType(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: 35, MspIdentifier: "DEFAULT"})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: 35,
+		Principal:               principalBytes}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+}
+
+func TestPolicyPrincipalBogusRole(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: 35, MspIdentifier: "DEFAULT"})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+}
+
+func TestPolicyPrincipalWrongMSPID(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "DEFAULTBARFBARF"})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+}
+
+func TestMemberPolicyPrincipal(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "DEFAULT"})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.NoError(t, err)
 }
 
 func TestAdminPolicyPrincipal(t *testing.T) {
@@ -361,6 +719,18 @@ func TestIdentityPolicyPrincipal(t *testing.T) {
 
 	err = id.SatisfiesPrincipal(principal)
 	assert.NoError(t, err)
+}
+
+func TestIdentityPolicyPrincipalBadBytes(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
+		Principal:               []byte("barf")}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
 }
 
 func TestMSPOus(t *testing.T) {

@@ -424,7 +424,7 @@ func (msp *bccspmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
 // identity identified by the supplied identifier
 func (msp *bccspmsp) GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error) {
 	// TODO
-	return nil, nil
+	return nil, fmt.Errorf("No signing identity for %#v", identifier)
 }
 
 // Validate attempts to determine whether
