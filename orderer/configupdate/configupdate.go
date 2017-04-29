@@ -31,7 +31,7 @@ import (
 	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("orderer/multichain")
+var logger = logging.MustGetLogger("orderer/configupdate")
 
 const (
 	// These should eventually be derived from the channel support once enabled
