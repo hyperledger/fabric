@@ -26,6 +26,7 @@ import (
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
+	"github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -99,6 +100,14 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	// get the tran envelope from the retrieved ProcessedTransaction
 	retrievedTxEnv2 := processedTran2.TransactionEnvelope
 	testutil.AssertEquals(t, retrievedTxEnv2, txEnv2)
+
+	//  get the tran id from the 2nd block, then use it to test GetBlockByTxID
+	b1, _ = ledger.GetBlockByTxID(txID2)
+	testutil.AssertEquals(t, b1, block1)
+
+	// get the transaction validation code for this transaction id
+	validCode, _ := ledger.GetTxValidationCodeByTxID(txID2)
+	testutil.AssertEquals(t, validCode, peer.TxValidationCode_VALID)
 
 }
 
