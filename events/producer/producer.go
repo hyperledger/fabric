@@ -19,13 +19,10 @@ package producer
 import (
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
-
-const defaultTimeout = time.Second * 3
 
 var logger = flogging.MustGetLogger("eventhub_producer")
 

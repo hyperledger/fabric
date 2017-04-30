@@ -93,7 +93,7 @@ func (ec *EventsClient) RegisterAsync(ies []*ehpb.Interest) error {
 	emsg := &ehpb.Event{Event: &ehpb.Event_Register{Register: &ehpb.Register{Events: ies}}}
 	var err error
 	if err = ec.send(emsg); err != nil {
-		fmt.Printf("error on Register send %s\n", err)
+		consumerLogger.Errorf("error on Register send %s\n", err)
 	}
 	return err
 }
@@ -137,37 +137,6 @@ func (ec *EventsClient) UnregisterAsync(ies []*ehpb.Interest) error {
 		err = fmt.Errorf("error on unregister send %s\n", err)
 	}
 
-	return err
-}
-
-// unregister - unregisters interest in a event
-func (ec *EventsClient) unregister(ies []*ehpb.Interest) error {
-	var err error
-	if err = ec.UnregisterAsync(ies); err != nil {
-		return err
-	}
-
-	regChan := make(chan struct{})
-	go func() {
-		defer close(regChan)
-		in, inerr := ec.stream.Recv()
-		if inerr != nil {
-			err = inerr
-			return
-		}
-		switch in.Event.(type) {
-		case *ehpb.Event_Unregister:
-		case nil:
-			err = fmt.Errorf("invalid nil object for unregister")
-		default:
-			err = fmt.Errorf("invalid unregistration object")
-		}
-	}()
-	select {
-	case <-regChan:
-	case <-time.After(ec.regTimeout):
-		err = fmt.Errorf("timeout waiting for unregistration")
-	}
 	return err
 }
 
