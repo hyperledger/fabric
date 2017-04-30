@@ -343,7 +343,6 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 		response.Payloads = append(response.Payloads, &proto.Payload{
 			SeqNum: seqNum,
 			Data:   blockBytes,
-			Hash:   string(blocks[0].Header.Hash()),
 		})
 	}
 	// Sending back response with missing blocks

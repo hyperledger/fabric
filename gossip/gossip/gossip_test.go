@@ -330,7 +330,7 @@ func TestPull(t *testing.T) {
 	}
 
 	for i := 1; i <= msgsCount2Send; i++ {
-		boot.Gossip(createDataMsg(uint64(i), []byte{}, "", common.ChainID("A")))
+		boot.Gossip(createDataMsg(uint64(i), []byte{}, common.ChainID("A")))
 	}
 
 	waitUntilOrFail(t, knowAll)
@@ -564,7 +564,7 @@ func TestDissemination(t *testing.T) {
 	t.Log("Membership establishment took", time.Since(membershipTime))
 
 	for i := 1; i <= msgsCount2Send; i++ {
-		boot.Gossip(createDataMsg(uint64(i), []byte{}, "", common.ChainID("A")))
+		boot.Gossip(createDataMsg(uint64(i), []byte{}, common.ChainID("A")))
 	}
 
 	t2 := time.Now()
@@ -902,8 +902,8 @@ func TestDataLeakage(t *testing.T) {
 	}
 
 	t1 = time.Now()
-	peers[0].Gossip(createDataMsg(1, []byte{}, "", channels[0]))
-	peers[n/2].Gossip(createDataMsg(2, []byte{}, "", channels[1]))
+	peers[0].Gossip(createDataMsg(1, []byte{}, channels[0]))
+	peers[n/2].Gossip(createDataMsg(2, []byte{}, channels[1]))
 	waitUntilOrFailBlocking(t, gotMessages)
 	t.Log("Dissemination took", time.Since(t1))
 	stop := func() {
@@ -972,7 +972,7 @@ func TestDisseminateAll2All(t *testing.T) {
 			blockStartIndex := i * 10
 			for j := 0; j < 10; j++ {
 				blockSeq := uint64(j + blockStartIndex)
-				peers[i].Gossip(createDataMsg(blockSeq, []byte{}, "", common.ChainID("A")))
+				peers[i].Gossip(createDataMsg(blockSeq, []byte{}, common.ChainID("A")))
 			}
 		}(i)
 	}
@@ -1044,7 +1044,7 @@ func TestEndedGoroutines(t *testing.T) {
 	ensureGoroutineExit(t)
 }
 
-func createDataMsg(seqnum uint64, data []byte, hash string, channel common.ChainID) *proto.GossipMessage {
+func createDataMsg(seqnum uint64, data []byte, channel common.ChainID) *proto.GossipMessage {
 	return &proto.GossipMessage{
 		Channel: []byte(channel),
 		Nonce:   0,
@@ -1053,7 +1053,6 @@ func createDataMsg(seqnum uint64, data []byte, hash string, channel common.Chain
 			DataMsg: &proto.DataMessage{
 				Payload: &proto.Payload{
 					Data:   data,
-					Hash:   hash,
 					SeqNum: seqnum,
 				},
 			},

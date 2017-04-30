@@ -218,8 +218,7 @@ message DataMessage {
 // Payload contains a block
 message Payload {
     uint64  seq_num = 1;
-    string  hash    = 2;
-    bytes   data    = 3;
+    bytes   data    = 2;
 }
 
 

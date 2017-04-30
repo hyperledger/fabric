@@ -1393,7 +1393,6 @@ func dataMsgOfChannel(seqnum uint64, channel common.ChainID) *proto.SignedGossip
 			DataMsg: &proto.DataMessage{
 				Payload: &proto.Payload{
 					Data:   []byte{},
-					Hash:   "",
 					SeqNum: seqnum,
 				},
 			},
@@ -1441,7 +1440,6 @@ func createDataMsg(seqnum uint64, channel common.ChainID) *proto.SignedGossipMes
 			DataMsg: &proto.DataMessage{
 				Payload: &proto.Payload{
 					Data:   []byte{},
-					Hash:   "",
 					SeqNum: seqnum,
 				},
 			},
