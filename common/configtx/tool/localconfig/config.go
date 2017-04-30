@@ -177,19 +177,19 @@ func Load(profile string) *Profile {
 
 	err := config.ReadInConfig()
 	if err != nil {
-		logger.Panic("Error reading configuration:", err)
+		logger.Panic("Error reading configuration: ", err)
 	}
 	logger.Debugf("Using config file: %s", config.ConfigFileUsed())
 
 	var uconf TopLevel
 	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
 	if err != nil {
-		logger.Panic("Error unmarshaling config into struct:", err)
+		logger.Panic("Error unmarshaling config into struct: ", err)
 	}
 
 	result, ok := uconf.Profiles[profile]
 	if !ok {
-		logger.Panic("Could not find profile", profile)
+		logger.Panic("Could not find profile: ", profile)
 	}
 
 	result.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
