@@ -96,6 +96,34 @@ func TestInvoke(t *testing.T) {
 		t.Fatalf("escc invoke should have failed with invalid number of args: %v", args)
 	}
 
+	// Too many parameters
+	a := []byte("test")
+	args = [][]byte{a, a, a, a, a, a, a, a, a}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("escc invoke should have failed with invalid number of args: %v", args)
+	}
+
+	// Failed path: ccid is null
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), nil, successRes, []byte("test")}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
+		t.Fatalf("escc invoke should have failed with a null header.  args: %v", args)
+	}
+
+	// Failed path: ccid is bogus
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), []byte("barf"), successRes, []byte("test")}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
+		t.Fatalf("escc invoke should have failed with a null header.  args: %v", args)
+	}
+
+	// Failed path: response is bogus
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), ccidBytes, []byte("barf"), []byte("test")}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
+		t.Fatalf("escc invoke should have failed with a null header.  args: %v", args)
+	}
+
 	// Failed path: header is null
 	args = [][]byte{[]byte("test"), nil, []byte("test"), ccidBytes, successRes, []byte("test")}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
@@ -160,9 +188,16 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	// success test 1: invocation with mandatory args only
 	simRes := []byte("simulation_result")
 
+	// bogus header
+	args = [][]byte{[]byte(""), []byte("barf"), proposal.Payload, ccidBytes, successRes, simRes}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
+		t.Fatalf("escc invoke should have failed with a null response.  args: %v", args)
+	}
+
+	// success test 1: invocation with mandatory args only
 	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, ccidBytes, successRes, simRes}
 	res := stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
