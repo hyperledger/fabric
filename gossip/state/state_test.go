@@ -215,8 +215,8 @@ func newGossipConfig(id int, boot ...int) *gossip.Config {
 // Create gossip instance
 func newGossipInstance(config *gossip.Config, mcs api.MessageCryptoService) gossip.Gossip {
 	idMapper := identity.NewIdentityMapper(mcs)
-
-	return gossip.NewGossipServiceWithServer(config, &orgCryptoService{}, mcs, idMapper, []byte(config.InternalEndpoint))
+	return gossip.NewGossipServiceWithServer(config, &orgCryptoService{}, mcs,
+		idMapper, []byte(config.InternalEndpoint), nil)
 }
 
 // Create new instance of KVLedger to be used for testing

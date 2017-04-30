@@ -219,7 +219,8 @@ func newGossipInstanceWithCustomMCS(portPrefix int, id int, maxMsgCount int, mcs
 	}
 
 	idMapper := identity.NewIdentityMapper(mcs)
-	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, mcs, idMapper, api.PeerIdentityType(conf.InternalEndpoint))
+	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, mcs, idMapper,
+		api.PeerIdentityType(conf.InternalEndpoint), nil)
 
 	return g
 }
@@ -251,7 +252,8 @@ func newGossipInstanceWithOnlyPull(portPrefix int, id int, maxMsgCount int, boot
 	cryptoService := &naiveCryptoService{}
 	idMapper := identity.NewIdentityMapper(cryptoService)
 
-	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService, idMapper, api.PeerIdentityType(conf.InternalEndpoint))
+	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService, idMapper,
+		api.PeerIdentityType(conf.InternalEndpoint), nil)
 	return g
 }
 

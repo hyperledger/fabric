@@ -42,6 +42,11 @@ var (
 	cryptSvc = &cryptoService{}
 	secAdv   = &secAdviser{}
 )
+var defaultSecureDialOpts = func() []grpc.DialOption {
+	var dialOpts []grpc.DialOption
+	dialOpts = append(dialOpts, grpc.WithInsecure())
+	return dialOpts
+}
 
 // This is just a test that shows how to instantiate a gossip component
 func TestNewGossipCryptoService(t *testing.T) {
@@ -59,9 +64,12 @@ func TestNewGossipCryptoService(t *testing.T) {
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	idMapper := identity.NewIdentityMapper(cryptSvc)
 
-	g1 := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc, idMapper, []grpc.DialOption{grpc.WithInsecure()})
-	g2 := NewGossipComponent(peerIdentity, endpoint2, s2, secAdv, cryptSvc, idMapper, []grpc.DialOption{grpc.WithInsecure()}, endpoint1)
-	g3 := NewGossipComponent(peerIdentity, endpoint3, s3, secAdv, cryptSvc, idMapper, []grpc.DialOption{grpc.WithInsecure()}, endpoint1)
+	g1 := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc, idMapper,
+		defaultSecureDialOpts)
+	g2 := NewGossipComponent(peerIdentity, endpoint2, s2, secAdv, cryptSvc, idMapper,
+		defaultSecureDialOpts, endpoint1)
+	g3 := NewGossipComponent(peerIdentity, endpoint3, s3, secAdv, cryptSvc, idMapper,
+		defaultSecureDialOpts, endpoint1)
 	defer g1.Stop()
 	defer g2.Stop()
 	defer g3.Stop()
@@ -80,7 +88,8 @@ func TestBadInitialization(t *testing.T) {
 	})
 	assert.Panics(t, func() {
 		viper.Set("peer.tls.enabled", true)
-		NewGossipComponent(peerIdentity, "localhost:5000", s1, secAdv, cryptSvc, idMapper, []grpc.DialOption{grpc.WithInsecure()})
+		NewGossipComponent(peerIdentity, "localhost:5000", s1, secAdv, cryptSvc, idMapper,
+			defaultSecureDialOpts)
 	})
 }
 

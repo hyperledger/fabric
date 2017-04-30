@@ -111,6 +111,32 @@ func (cas *CASupport) GetDeliverServiceCredentials() credentials.TransportCreden
 	return creds
 }
 
+// GetPeerCredentials returns GRPC transport credentials for use by GRPC
+// clients which communicate with remote peer endpoints.
+func (cas *CASupport) GetPeerCredentials() credentials.TransportCredentials {
+	var creds credentials.TransportCredentials
+	var tlsConfig = &tls.Config{}
+	var certPool = x509.NewCertPool()
+	// loop through the orderer CAs
+	roots, _ := cas.GetServerRootCAs()
+	for _, root := range roots {
+		block, _ := pem.Decode(root)
+		if block != nil {
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err == nil {
+				certPool.AddCert(cert)
+			} else {
+				commLogger.Warningf("Failed to add root cert to credentials (%s)", err)
+			}
+		} else {
+			commLogger.Warning("Failed to add root cert to credentials")
+		}
+	}
+	tlsConfig.RootCAs = certPool
+	creds = credentials.NewTLS(tlsConfig)
+	return creds
+}
+
 // GetClientRootCAs returns the PEM-encoded root certificates for all of the
 // application and orderer organizations defined for all chains.  The root
 // certificates returned should be used to set the trusted client roots for

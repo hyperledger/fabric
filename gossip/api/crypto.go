@@ -16,7 +16,10 @@ limitations under the License.
 
 package api
 
-import "github.com/hyperledger/fabric/gossip/common"
+import (
+	"github.com/hyperledger/fabric/gossip/common"
+	"google.golang.org/grpc"
+)
 
 // MessageCryptoService is the contract between the gossip component and the
 // peer's cryptographic layer and is used by the gossip component to verify,
@@ -61,3 +64,7 @@ type PeerIdentityType []byte
 // PeerSuspector returns whether a peer with a given identity is suspected
 // as being revoked, or its CA is revoked
 type PeerSuspector func(identity PeerIdentityType) bool
+
+// PeerSecureDialOpts returns the gRPC DialOptions to use for connection level
+// security when communicating with remote peer endpoints
+type PeerSecureDialOpts func() []grpc.DialOption

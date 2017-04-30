@@ -105,7 +105,7 @@ func (*naiveSecProvider) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityTyp
 
 func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 	endpoint := fmt.Sprintf("localhost:%d", port)
-	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec), []byte(endpoint))
+	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec), []byte(endpoint), nil)
 	return inst, err
 }
 

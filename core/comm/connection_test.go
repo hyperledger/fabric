@@ -141,11 +141,17 @@ func TestCASupport(t *testing.T) {
 	creds := cas.GetDeliverServiceCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
+	creds = cas.GetPeerCredentials()
+	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
+		"Expected Security version to be 1.2")
 
 	// append some bad certs and make sure things still work
 	cas.ServerRootCAs = append(cas.ServerRootCAs, []byte("badcert"))
 	cas.ServerRootCAs = append(cas.ServerRootCAs, []byte(badPEM))
 	creds = cas.GetDeliverServiceCredentials()
+	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
+		"Expected Security version to be 1.2")
+	creds = cas.GetPeerCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 
