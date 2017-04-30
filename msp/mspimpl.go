@@ -63,7 +63,7 @@ type bccspmsp struct {
 	CRL []*pkix.CertificateList
 
 	// list of OUs
-	ouIdentifiers []*m.FabricOUIdentifier
+	ouIdentifiers map[string][][]byte
 
 	// cryptoConfig contains
 	cryptoConfig *m.FabricCryptoConfig
@@ -83,29 +83,36 @@ func NewBccspMsp() (MSP, error) {
 	return theMsp, nil
 }
 
-func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, bccsp.Key, error) {
+func (msp *bccspmsp) getCertFromPem(idBytes []byte) (*x509.Certificate, error) {
 	if idBytes == nil {
-		return nil, nil, fmt.Errorf("getIdentityFromConf error: nil idBytes")
+		return nil, fmt.Errorf("getIdentityFromConf error: nil idBytes")
 	}
 
 	// Decode the pem bytes
 	pemCert, _ := pem.Decode(idBytes)
 	if pemCert == nil {
-		return nil, nil, fmt.Errorf("getIdentityFromBytes error: could not decode pem bytes")
+		return nil, fmt.Errorf("getIdentityFromBytes error: could not decode pem bytes [%v]", idBytes)
 	}
 
 	// get a cert
 	var cert *x509.Certificate
 	cert, err := x509.ParseCertificate(pemCert.Bytes)
 	if err != nil {
-		return nil, nil, fmt.Errorf("getIdentityFromBytes error: failed to parse x509 cert, err %s", err)
+		return nil, fmt.Errorf("getIdentityFromBytes error: failed to parse x509 cert, err %s", err)
+	}
+
+	return cert, nil
+}
+
+func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, bccsp.Key, error) {
+	// get a cert
+	cert, err := msp.getCertFromPem(idBytes)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// get the public key in the right format
 	certPubK, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
-	if err != nil {
-		return nil, nil, fmt.Errorf("getIdentityFromBytes error: failed to import certitifacate's public key [%s]", err)
-	}
 
 	// Use the hash of the identity's certificate as id in the IdentityIdentifier
 	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
@@ -376,12 +383,8 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	}
 
 	// setup the OUs
-	msp.ouIdentifiers = make([]*m.FabricOUIdentifier, len(conf.OrganizationalUnitIdentifiers))
-	for i, ou := range conf.OrganizationalUnitIdentifiers {
-		msp.ouIdentifiers[i] = &m.FabricOUIdentifier{
-			CertifiersIdentifier:         ou.CertifiersIdentifier,
-			OrganizationalUnitIdentifier: ou.OrganizationalUnitIdentifier,
-		}
+	if err := msp.setupOUs(conf); err != nil {
+		return err
 	}
 
 	return nil
@@ -495,18 +498,20 @@ func (msp *bccspmsp) Validate(id Identity) error {
 		// meaning that the intersection is not empty.
 		if len(msp.ouIdentifiers) > 0 {
 			found := false
-			for _, ou := range msp.ouIdentifiers {
-				for _, OU := range id.GetOrganizationalUnits() {
-					if bytes.Equal(ou.CertifiersIdentifier, OU.CertifiersIdentifier) &&
-						ou.OrganizationalUnitIdentifier == OU.OrganizationalUnitIdentifier {
-						found = true
-						break
+
+			for _, OU := range id.GetOrganizationalUnits() {
+				certificationIDs, exists := msp.ouIdentifiers[OU.OrganizationalUnitIdentifier]
+
+				if exists {
+					for _, certificationID := range certificationIDs {
+						if bytes.Equal(certificationID, OU.CertifiersIdentifier) {
+							found = true
+							break
+						}
 					}
 				}
-				if found {
-					break
-				}
 			}
+
 			if !found {
 				return fmt.Errorf("None of the identity's organizational units [%v] are in MSP %s", id.GetOrganizationalUnits(), msp.name)
 			}
@@ -699,19 +704,12 @@ func (msp *bccspmsp) getCertificationChainForBCCSPIdentity(id *identity) ([]*x50
 		return nil, errors.New("A CA certificate cannot be used directly by this MSP")
 	}
 
-	// at this point we might want to perform some
-	// more elaborate validation. We do not do this
-	// yet because we do not want to impose any
-	// constraints without knowing the exact requirements,
-	// but we at least list the kind of extra validation that we might perform:
-	// 1) we might only allow a single verification chain (e.g. we expect the
-	//    cert to be signed exactly only by the CA or only by the intermediate)
-	// 2) we might want to let golang find any path, and then have a blacklist
-	//    of paths (e.g. it can be signed by CA -> iCA1 -> iCA2 and it can be
-	//    signed by CA but not by CA -> iCA1)
+	return msp.getValidationChain(id.cert)
+}
 
+func (msp *bccspmsp) getValidationChain(cert *x509.Certificate) ([]*x509.Certificate, error) {
 	// ask golang to validate the cert for us based on the options that we've built at setup time
-	validationChain, err := id.cert.Verify(*(msp.opts))
+	validationChain, err := cert.Verify(*(msp.opts))
 	if err != nil {
 		return nil, fmt.Errorf("The supplied identity is not valid, Verify() returned %s", err)
 	}
@@ -739,14 +737,98 @@ func (msp *bccspmsp) getCertificationChainIdentifier(id Identity) ([]byte, error
 		return nil, fmt.Errorf("Failed getting certification chain for [%v]: [%s]", id, err)
 	}
 
+	// chain[0] is the certificate representing the identity.
+	// It will be discarded
+	return msp.getCertificationChainIdentifierFromChain(chain[1:])
+}
+
+func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*x509.Certificate) ([]byte, error) {
 	// Hash the chain
-	hf, err := msp.bccsp.GetHash(&bccsp.SHA256Opts{})
+	// Use the hash of the identity's certificate as id in the IdentityIdentifier
+	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
 	if err != nil {
-		return nil, fmt.Errorf("Failed getting hash function when computing certification chain identifier for [%v]: [%s]", id, err)
+		return nil, fmt.Errorf("Failed getting hash function options [%s]", err)
 	}
 
+	hf, err := msp.bccsp.GetHash(hashOpt)
+	if err != nil {
+		return nil, fmt.Errorf("Failed getting hash function when computing certification chain identifier: [%s]", err)
+	}
 	for i := 0; i < len(chain); i++ {
 		hf.Write(chain[i].Raw)
 	}
 	return hf.Sum(nil), nil
+}
+
+func (msp *bccspmsp) setupOUs(conf m.FabricMSPConfig) error {
+	msp.ouIdentifiers = make(map[string][][]byte)
+	for _, ou := range conf.OrganizationalUnitIdentifiers {
+		// 1. check that it registered in msp.rootCerts or msp.intermediateCerts
+		cert, err := msp.getCertFromPem(ou.Certificate)
+		if err != nil {
+			return fmt.Errorf("Failed getting certificate for [%v]: [%s]", ou, err)
+		}
+
+		found := false
+		root := true
+		// Search among root certificates
+		for _, v := range msp.rootCerts {
+			if v.(*identity).cert.Equal(cert) {
+				found = true
+				root = true
+				break
+			}
+		}
+		if !found {
+			// Search among root intermediate certificates
+			for _, v := range msp.intermediateCerts {
+				if v.(*identity).cert.Equal(cert) {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			// Certificate not valid, reject configuration
+			return fmt.Errorf("Failed adding OU. Certificate [%v] not in root or intermediate certs.", ou.Certificate)
+		}
+
+		// 2. get the certification path for it
+		var certifiersIdentitifer []byte
+		var chain []*x509.Certificate
+		if root {
+			chain = []*x509.Certificate{cert}
+		} else {
+			chain, err = msp.getValidationChain(cert)
+			if err != nil {
+				return fmt.Errorf("Failed computing validation chain for [%v]. [%s]", cert, err)
+			}
+		}
+
+		// 3. compute the hash of the certification path
+		certifiersIdentitifer, err = msp.getCertificationChainIdentifierFromChain(chain)
+		if err != nil {
+			return fmt.Errorf("Failed computing Certifiers Identifier for [%v]. [%s]", ou.Certificate, err)
+		}
+
+		// Check for duplicates
+		found = false
+		for _, id := range msp.ouIdentifiers[ou.OrganizationalUnitIdentifier] {
+			if bytes.Equal(id, certifiersIdentitifer) {
+				mspLogger.Warningf("Duplicate found in ou identifiers [%s, %v]", ou.OrganizationalUnitIdentifier, id)
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			// No duplicates found, add it
+			msp.ouIdentifiers[ou.OrganizationalUnitIdentifier] = append(
+				msp.ouIdentifiers[ou.OrganizationalUnitIdentifier],
+				certifiersIdentitifer,
+			)
+		}
+	}
+
+	return nil
 }

@@ -132,13 +132,18 @@ message KeyInfo {
     bytes key_material = 2;
 }
 
-// FabricOUIdentifier represents an organizazional unit and
+// FabricOUIdentifier represents an organizational unit and
 // its related chain of trust identifier.
 message FabricOUIdentifier {
 
-    // CertifiersIdentifier is the hash of certificates chain of trust
-    // related to this organizational unit
-    bytes certifiers_identifier = 1;
+    // Certificate represents the second certificate in a certification chain.
+    // (Notice that the first certificate in a certification chain is supposed
+    // to be the certificate of an identity).
+    // It must correspond to the certificate of root or intermediate CA
+    // recognized by the MSP this message belongs to.
+    // Starting from this certificate, a certification chain is computed
+    // and boud to the OrganizationUnitIdentifier specified
+    bytes certificate = 1;
 
     // OrganizationUnitIdentifier defines the organizational unit under the
     // MSP identified with MSPIdentifier

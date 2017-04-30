@@ -102,6 +102,17 @@ type MSP interface {
 	SatisfiesPrincipal(id Identity, principal *msp.MSPPrincipal) error
 }
 
+// OUIdentifier represents an organizational unit and
+// its related chain of trust identifier.
+type OUIdentifier struct {
+	// CertifiersIdentifier is the hash of certificates chain of trust
+	// related to this organizational unit
+	CertifiersIdentifier []byte
+	// OrganizationUnitIdentifier defines the organizational unit under the
+	// MSP identified with MSPIdentifier
+	OrganizationalUnitIdentifier string
+}
+
 // From this point on, there are interfaces that are shared within the peer and client API
 // of the membership service provider.
 
@@ -137,7 +148,7 @@ type Identity interface {
 	// TODO: For X.509 based identities, check if we need a dedicated type
 	//       for OU where the Certificate OU is properly namespaced by the
 	//       signer's identity
-	GetOrganizationalUnits() []msp.FabricOUIdentifier
+	GetOrganizationalUnits() []*OUIdentifier
 
 	// Verify a signature over some message using this identity as reference
 	Verify(msg []byte, sig []byte) error

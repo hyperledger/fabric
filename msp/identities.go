@@ -71,7 +71,7 @@ func (id *identity) Validate() error {
 }
 
 // GetOrganizationalUnits returns the OU for this instance
-func (id *identity) GetOrganizationalUnits() []msp.FabricOUIdentifier {
+func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
 	if id.cert == nil {
 		return nil
 	}
@@ -83,9 +83,9 @@ func (id *identity) GetOrganizationalUnits() []msp.FabricOUIdentifier {
 		return nil
 	}
 
-	res := []msp.FabricOUIdentifier{}
+	res := []*OUIdentifier{}
 	for _, unit := range id.cert.Subject.OrganizationalUnit {
-		res = append(res, msp.FabricOUIdentifier{
+		res = append(res, &OUIdentifier{
 			OrganizationalUnitIdentifier: unit,
 			CertifiersIdentifier:         cid,
 		})

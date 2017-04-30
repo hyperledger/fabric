@@ -135,7 +135,7 @@ func (id *Identity) Validate() error {
 	return nil
 }
 
-func (id *Identity) GetOrganizationalUnits() []mspproto.FabricOUIdentifier {
+func (id *Identity) GetOrganizationalUnits() []*msp.OUIdentifier {
 	return nil
 }
 
