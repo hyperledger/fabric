@@ -17,9 +17,11 @@ limitations under the License.
 package gossip
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/stretchr/testify/assert"
 )
@@ -668,6 +670,146 @@ func TestGossipMessageLeadershipMessageTagType(t *testing.T) {
 
 	msg = signedGossipMessage(channelID, GossipMessage_CHAN_OR_ORG, &GossipMessage_Empty{})
 	assert.Error(t, msg.IsTagLegal())
+}
+
+func TestConnectionInfo_IsAuthenticated(t *testing.T) {
+	connInfo := &ConnectionInfo{
+		ID: common.PKIidType("peerID"),
+	}
+
+	assert.False(t, connInfo.IsAuthenticated())
+
+	connInfo = &ConnectionInfo{
+		ID:   common.PKIidType("peerID"),
+		Auth: &AuthInfo{},
+	}
+
+	assert.True(t, connInfo.IsAuthenticated())
+}
+
+func TestGossipMessageSign(t *testing.T) {
+	idSigner := func(msg []byte) ([]byte, error) {
+		return msg, nil
+	}
+
+	errSigner := func(msg []byte) ([]byte, error) {
+		return nil, errors.New("Error")
+	}
+
+	msg := signedGossipMessage("testChannelID", GossipMessage_EMPTY, &GossipMessage_DataMsg{
+		DataMsg: &DataMessage{},
+	})
+
+	signedMsg := msg.Sign(idSigner)
+
+	// Since checking the identity signer, signature will be same as the payload
+	assert.Equal(t, signedMsg.Payload, signedMsg.Signature)
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Using error signer should lead to the panic")
+		}
+	}()
+
+	_ = msg.Sign(errSigner)
+}
+
+func TestEnvelope_NoopSign(t *testing.T) {
+	channelID := "testChannelID"
+	msg := signedGossipMessage(channelID, GossipMessage_EMPTY, &GossipMessage_DataMsg{
+		DataMsg: &DataMessage{},
+	})
+
+	signedMsg := msg.NoopSign()
+
+	// Since checking the identity signer, signature will be same as the payload
+	assert.Nil(t, signedMsg.Signature)
+}
+
+func TestSignedGossipMessage_Verify(t *testing.T) {
+	channelID := "testChannelID"
+	peerID := []byte("peer")
+	msg := signedGossipMessage(channelID, GossipMessage_EMPTY, &GossipMessage_DataMsg{
+		DataMsg: &DataMessage{},
+	})
+
+	assert.True(t, msg.IsSigned())
+
+	verifier := func(peerIdentity []byte, signature, message []byte) error {
+		return nil
+	}
+
+	res := msg.Verify(peerID, verifier)
+	assert.Nil(t, res)
+
+	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, &GossipMessage_DataMsg{
+		DataMsg: &DataMessage{},
+	})
+
+	env := msg.Envelope
+	msg.Envelope = nil
+	res = msg.Verify(peerID, verifier)
+	assert.Error(t, res)
+
+	msg.Envelope = env
+	payload := msg.Envelope.Payload
+	msg.Envelope.Payload = nil
+	res = msg.Verify(peerID, verifier)
+	assert.Error(t, res)
+
+	msg.Envelope.Payload = payload
+	sig := msg.Signature
+	msg.Signature = nil
+	res = msg.Verify(peerID, verifier)
+	assert.Error(t, res)
+	msg.Signature = sig
+
+	errVerifier := func(peerIdentity []byte, signature, message []byte) error {
+		return errors.New("Test")
+	}
+
+	res = msg.Verify(peerID, errVerifier)
+	assert.Error(t, res)
+}
+
+func TestEnvelope(t *testing.T) {
+	dataMsg := &GossipMessage{
+		Content: dataMessage(1, "hash", []byte("data")),
+	}
+	bytes, err := proto.Marshal(dataMsg)
+	assert.NoError(t, err)
+
+	env := envelopes()[0]
+	env.Payload = bytes
+
+	msg, err := env.ToGossipMessage()
+	assert.NoError(t, err)
+	assert.NotNil(t, msg)
+
+	assert.True(t, msg.IsDataMsg())
+}
+
+func TestEnvelope_SignSecret(t *testing.T) {
+	dataMsg := &GossipMessage{
+		Content: dataMessage(1, "hash", []byte("data")),
+	}
+	bytes, err := proto.Marshal(dataMsg)
+	assert.NoError(t, err)
+
+	env := envelopes()[0]
+	env.Payload = bytes
+	env.SecretEnvelope = nil
+
+	env.SignSecret(func(message []byte) ([]byte, error) {
+		return message, nil
+	}, &Secret{
+		Content: &Secret_InternalEndpoint{
+			InternalEndpoint: "localhost:5050",
+		},
+	})
+
+	assert.NotNil(t, env.SecretEnvelope)
+	assert.Equal(t, env.SecretEnvelope.InternalEndpoint(), "localhost:5050")
 }
 
 func envelopes() []*Envelope {
