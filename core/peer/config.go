@@ -52,9 +52,6 @@ var peerEndpoint *pb.PeerEndpoint
 var peerEndpointError error
 
 // Cached values of commonly used configuration constants.
-var syncStateSnapshotChannelSize int
-var syncStateDeltasChannelSize int
-var syncBlocksChannelSize int
 
 // Note: There is some kind of circular import issue that prevents us from
 // importing the "core" package into the "peer" package. The
@@ -97,10 +94,6 @@ func CacheConfiguration() (err error) {
 	localAddress, localAddressError = getLocalAddress()
 	peerEndpoint, peerEndpointError = getPeerEndpoint()
 
-	syncStateSnapshotChannelSize = viper.GetInt("peer.sync.state.snapshot.channelSize")
-	syncStateDeltasChannelSize = viper.GetInt("peer.sync.state.deltas.channelSize")
-	syncBlocksChannelSize = viper.GetInt("peer.sync.blocks.channelSize")
-
 	securityEnabled = true
 
 	configurationCached = true
@@ -136,30 +129,6 @@ func GetPeerEndpoint() (*pb.PeerEndpoint, error) {
 		cacheConfiguration()
 	}
 	return peerEndpoint, peerEndpointError
-}
-
-// SyncStateSnapshotChannelSize returns the peer.sync.state.snapshot.channelSize property
-func SyncStateSnapshotChannelSize() int {
-	if !configurationCached {
-		cacheConfiguration()
-	}
-	return syncStateSnapshotChannelSize
-}
-
-// SyncStateDeltasChannelSize returns the peer.sync.state.deltas.channelSize property
-func SyncStateDeltasChannelSize() int {
-	if !configurationCached {
-		cacheConfiguration()
-	}
-	return syncStateDeltasChannelSize
-}
-
-// SyncBlocksChannelSize returns the peer.sync.blocks.channelSize property
-func SyncBlocksChannelSize() int {
-	if !configurationCached {
-		cacheConfiguration()
-	}
-	return syncBlocksChannelSize
 }
 
 // SecurityEnabled returns the securityEnabled property from cached configuration
