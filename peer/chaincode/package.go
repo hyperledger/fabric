@@ -76,7 +76,7 @@ func packageCmd(cf *ChaincodeCmdFactory, cdsFact ccDepSpecFactory) *cobra.Comman
 func getInstantiationPolicy(policy string) (*pcommon.SignaturePolicyEnvelope, error) {
 	p, err := cauthdsl.FromString(policy)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid policy %s", policy)
+		return nil, fmt.Errorf("Invalid policy %s, err %s", policy, err)
 	}
 	return p, nil
 }
