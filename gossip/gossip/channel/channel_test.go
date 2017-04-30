@@ -313,6 +313,103 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	gc.Stop()
 }
 
+func TestChannelMsgStoreEviction(t *testing.T) {
+	t.Parallel()
+	// Scenario: Create 4 phases in which the pull mediator of the channel would receive blocks
+	// via pull.
+	// The total amount of blocks should be restricted by the capacity of the message store.
+	// After the pull phases end, we ensure that only the latest blocks are preserved in the pull
+	// mediator, and the old blocks were evicted.
+	// We test this by sending a hello message to the pull mediator and inspecting the digest message
+	// returned as a response.
+
+	cs := &cryptoService{}
+	cs.On("VerifyBlock", mock.Anything).Return(nil)
+	adapter := new(gossipAdapterMock)
+	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
+	adapter.On("Gossip", mock.Anything)
+	adapter.On("DeMultiplex", mock.Anything).Run(func(arg mock.Arguments) {
+	})
+
+	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{})
+	defer gc.Stop()
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(100, pkiIDInOrg1, channelA)})
+
+	var wg sync.WaitGroup
+
+	msgsPerPhase := uint64(50)
+	lastPullPhase := make(chan uint64, msgsPerPhase)
+	totalPhases := uint64(4)
+	phaseNum := uint64(0)
+	wg.Add(int(totalPhases))
+
+	adapter.On("Send", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		msg := args.Get(0).(*proto.SignedGossipMessage)
+		// Ignore all other messages sent like StateInfo messages
+		if !msg.IsPullMsg() {
+			return
+		}
+		// Stop the pull when we reach the final phase
+		if atomic.LoadUint64(&phaseNum) == totalPhases && msg.IsHelloMsg() {
+			return
+		}
+
+		start := atomic.LoadUint64(&phaseNum) * msgsPerPhase
+		end := start + msgsPerPhase
+		if msg.IsHelloMsg() {
+			// Advance phase
+			atomic.AddUint64(&phaseNum, uint64(1))
+		}
+
+		// Create and execute the current phase of pull
+		currSeq := sequence(start, end)
+		pullPhase := simulatePullPhase(gc, t, &wg, func(envelope *proto.Envelope) {}, currSeq...)
+		pullPhase(args)
+
+		// If we finished the last phase, save the sequence to be used later for inspection
+		if msg.IsDataReq() && atomic.LoadUint64(&phaseNum) == totalPhases {
+			for _, seq := range currSeq {
+				lastPullPhase <- seq
+			}
+			close(lastPullPhase)
+		}
+	})
+	// Wait for all pull phases to end
+	wg.Wait()
+
+	msgSentFromPullMediator := make(chan *proto.GossipMessage, 1)
+
+	helloMsg := createHelloMsg(pkiIDInOrg1)
+	helloMsg.On("Respond", mock.Anything).Run(func(arg mock.Arguments) {
+		msg := arg.Get(0).(*proto.GossipMessage)
+		if !msg.IsDigestMsg() {
+			return
+		}
+		msgSentFromPullMediator <- msg
+	})
+	gc.HandleMessage(helloMsg)
+	select {
+	case msg := <-msgSentFromPullMediator:
+		// This is just to check that we responded with a digest on time.
+		// Put message back into the channel for further inspection
+		msgSentFromPullMediator <- msg
+	case <-time.After(time.Second * 5):
+		t.Fatal("Didn't reply with a digest on time")
+	}
+	// Only 1 digest sent
+	assert.Len(t, msgSentFromPullMediator, 1)
+	msg := <-msgSentFromPullMediator
+	// It's a digest and not anything else, like an update
+	assert.True(t, msg.IsDigestMsg())
+	assert.Len(t, msg.GetDataDig().Digests, adapter.GetConf().MaxBlockCountToStore+1)
+	// Check that the last sequences are kept.
+	// Since we checked the length, it proves that the old blocks were discarded, since we had much more
+	// total blocks overall than our capacity
+	for seq := range lastPullPhase {
+		assert.Contains(t, msg.GetDataDig().Digests, fmt.Sprintf("%d", seq))
+	}
+}
+
 func TestChannelPull(t *testing.T) {
 	t.Parallel()
 	cs := &cryptoService{}
@@ -334,7 +431,7 @@ func TestChannelPull(t *testing.T) {
 	go gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(100, pkiIDInOrg1, channelA)})
 
 	var wg sync.WaitGroup
-	pullPhase := simulatePullPhase(gc, t, &wg, func(envelope *proto.Envelope) {})
+	pullPhase := simulatePullPhase(gc, t, &wg, func(envelope *proto.Envelope) {}, 10, 11)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase)
 
 	wg.Wait()
@@ -696,7 +793,7 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 		env.Payload = sMsg.NoopSign().Payload
 	}
 
-	pullPhase1 := simulatePullPhase(gc, t, &wg, changeChan)
+	pullPhase1 := simulatePullPhase(gc, t, &wg, changeChan, 10, 11)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase1)
 	adapter.On("DeMultiplex", mock.Anything)
 	wg.Wait()
@@ -718,7 +815,7 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 	noop := func(env *proto.Envelope) {
 
 	}
-	pullPhase2 := simulatePullPhase(gc, t, &wg2, noop)
+	pullPhase2 := simulatePullPhase(gc, t, &wg2, noop, 10, 11)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase2)
 	wg2.Wait()
 	assert.Equal(t, 0, gc.(*gossipChannel).blockMsgStore.Size())
@@ -740,7 +837,7 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 		sMsg.GossipMessage.GetDataMsg().Payload = nil
 		env.Payload = sMsg.NoopSign().Payload
 	}
-	pullPhase3 := simulatePullPhase(gc, t, &wg3, emptyBlock)
+	pullPhase3 := simulatePullPhase(gc, t, &wg3, emptyBlock, 10, 11)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase3)
 	wg3.Wait()
 	assert.Equal(t, 0, gc.(*gossipChannel).blockMsgStore.Size())
@@ -763,7 +860,7 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 		sMsg.Content = createHelloMsg(pkiIDInOrg1).GetGossipMessage().Content
 		env.Payload = sMsg.NoopSign().Payload
 	}
-	pullPhase4 := simulatePullPhase(gc, t, &wg4, nonBlockMsg)
+	pullPhase4 := simulatePullPhase(gc, t, &wg4, nonBlockMsg, 10, 11)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase4)
 	wg4.Wait()
 	assert.Equal(t, 0, gc.(*gossipChannel).blockMsgStore.Size())
@@ -1253,8 +1350,8 @@ func TestOnDemandGossip(t *testing.T) {
 	}
 }
 
-func createDataUpdateMsg(nonce uint64) *proto.SignedGossipMessage {
-	return (&proto.GossipMessage{
+func createDataUpdateMsg(nonce uint64, seqs ...uint64) *proto.SignedGossipMessage {
+	msg := &proto.GossipMessage{
 		Nonce:   0,
 		Channel: []byte(channelA),
 		Tag:     proto.GossipMessage_CHAN_AND_ORG,
@@ -1262,10 +1359,14 @@ func createDataUpdateMsg(nonce uint64) *proto.SignedGossipMessage {
 			DataUpdate: &proto.DataUpdate{
 				MsgType: proto.PullMsgType_BLOCK_MSG,
 				Nonce:   nonce,
-				Data:    []*proto.Envelope{createDataMsg(10, channelA).Envelope, createDataMsg(11, channelA).Envelope},
+				Data:    []*proto.Envelope{},
 			},
 		},
-	}).NoopSign()
+	}
+	for _, seq := range seqs {
+		msg.GetDataUpdate().Data = append(msg.GetDataUpdate().Data, createDataMsg(seq, channelA).Envelope)
+	}
+	return (msg).NoopSign()
 }
 
 func createHelloMsg(PKIID common.PKIidType) *receivedMsg {
@@ -1348,7 +1449,7 @@ func createDataMsg(seqnum uint64, channel common.ChainID) *proto.SignedGossipMes
 	}).NoopSign()
 }
 
-func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutator msgMutator) func(args mock.Arguments) {
+func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutator msgMutator, seqs ...uint64) func(args mock.Arguments) {
 	var l sync.Mutex
 	var sentHello bool
 	var sentReq bool
@@ -1386,11 +1487,21 @@ func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutat
 			// from the imaginary peer that got the request
 			dataUpdateMsg := new(receivedMsg)
 			dataUpdateMsg.PKIID = pkiIDInOrg1
-			dataUpdateMsg.msg = createDataUpdateMsg(dataReq.Nonce)
+			dataUpdateMsg.msg = createDataUpdateMsg(dataReq.Nonce, seqs...)
 			mutator(dataUpdateMsg.msg.GetDataUpdate().Data[0])
 			gc.HandleMessage(dataUpdateMsg)
 			wg.Done()
 		}
 	}
+}
+
+func sequence(start uint64, end uint64) []uint64 {
+	sequence := make([]uint64, end-start+1)
+	i := 0
+	for n := start; n <= end; n++ {
+		sequence[i] = n
+		i++
+	}
+	return sequence
 
 }

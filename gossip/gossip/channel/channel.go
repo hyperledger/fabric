@@ -282,25 +282,13 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 		}
 		return fmt.Sprintf("%d", dataMsg.Payload.SeqNum)
 	}
-	blockConsumer := func(msg *proto.SignedGossipMessage) {
-		dataMsg := msg.GetDataMsg()
-		if dataMsg == nil || dataMsg.Payload == nil {
-			gc.logger.Warning("Invalid DataMessage:", dataMsg)
-			return
-		}
-		added := gc.blockMsgStore.Add(msg)
-		// if we can't add the message to the msgStore,
-		// no point in disseminating it to others...
-		if !added {
-			return
-		}
-		gc.DeMultiplex(msg)
-	}
-	adapter := pull.PullAdapter{
+	adapter := &pull.PullAdapter{
 		Sndr:        gc,
 		MemSvc:      gc.memFilter,
 		IdExtractor: seqNumFromMsg,
-		MsgCons:     blockConsumer,
+		MsgCons: func(msg *proto.SignedGossipMessage) {
+			gc.DeMultiplex(msg)
+		},
 	}
 	return pull.NewPullMediator(conf, adapter)
 }
@@ -446,6 +434,10 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 			return
 		}
 		if m.IsDataUpdate() {
+			// Iterate over the envelopes, and filter out blocks
+			// that we already have in the blockMsgStore, or blocks that
+			// are too far in the past.
+			filteredEnvelopes := []*proto.Envelope{}
 			for _, item := range m.GetDataUpdate().Data {
 				gMsg, err := item.ToGossipMessage()
 				if err != nil {
@@ -459,7 +451,16 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 				if !gc.verifyBlock(gMsg.GossipMessage, msg.GetConnectionInfo().ID) {
 					return
 				}
+				added := gc.blockMsgStore.Add(gMsg)
+				if !added {
+					// If this block doesn't need to be added, it means it either already
+					// exists in memory or that it is too far in the past
+					continue
+				}
+				filteredEnvelopes = append(filteredEnvelopes, item)
 			}
+			// Replace the update message with just the blocks that should be processed
+			m.GetDataUpdate().Data = filteredEnvelopes
 		}
 		gc.blocksPuller.HandleMessage(msg)
 	}

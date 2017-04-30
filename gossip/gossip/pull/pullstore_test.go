@@ -143,7 +143,7 @@ func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pu
 	blockConsumer := func(msg *proto.SignedGossipMessage) {
 		inst.items.Add(msg.GetDataMsg().Payload.SeqNum)
 	}
-	adapter := PullAdapter{
+	adapter := &PullAdapter{
 		Sndr:        inst,
 		MemSvc:      inst,
 		IdExtractor: seqNumFromMsg,
