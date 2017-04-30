@@ -33,3 +33,15 @@ type Decryptor interface {
 	// The opts argument should be appropriate for the algorithm used.
 	Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) (plaintext []byte, err error)
 }
+
+// Signer is a BCCSP-like interface that provides signing algorithms
+type Signer interface {
+
+	// Sign signs digest using key k.
+	// The opts argument should be appropriate for the algorithm used.
+	//
+	// Note that when a signature of a hash of a larger message is needed,
+	// the caller is responsible for hashing the larger message and passing
+	// the hash (as digest).
+	Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error)
+}
