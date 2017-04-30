@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -32,8 +31,6 @@ import (
 )
 
 const channelFuncName = "channel"
-
-var logger = flogging.MustGetLogger("channelCmd")
 
 var (
 	// join related variables.

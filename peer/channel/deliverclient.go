@@ -57,14 +57,6 @@ func seekHelper(chainID string, start *ab.SeekPosition) *common.Envelope {
 	return env
 }
 
-func (r *deliverClient) seekOldest() error {
-	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}}))
-}
-
-func (r *deliverClient) seekNewest() error {
-	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}}))
-}
-
 func (r *deliverClient) seek(blockNumber uint64) error {
 	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: blockNumber}}}))
 }
