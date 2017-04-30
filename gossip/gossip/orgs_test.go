@@ -121,7 +121,8 @@ func newGossipInstanceWithExternalEndpoint(portPrefix int, id int, mcs *configur
 	}
 
 	idMapper := identity.NewIdentityMapper(mcs)
-	g := NewGossipServiceWithServer(conf, mcs, mcs, idMapper, api.PeerIdentityType(conf.InternalEndpoint))
+	g := NewGossipServiceWithServer(conf, mcs, mcs, idMapper, api.PeerIdentityType(conf.InternalEndpoint),
+		nil)
 
 	return g
 }

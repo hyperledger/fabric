@@ -163,7 +163,18 @@ func serve(args []string) error {
 		mgmt.NewDeserializersManager())
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
 
-	service.InitGossipService(serializedIdentity, peerEndpoint.Address, peerServer.Server(), messageCryptoService, secAdv, bootstrap...)
+	// callback function for secure dial options for gossip service
+	secureDialOpts := func() []grpc.DialOption {
+		var dialOpts []grpc.DialOption
+		if comm.TLSEnabled() {
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCASupport().GetPeerCredentials()))
+		} else {
+			dialOpts = append(dialOpts, grpc.WithInsecure())
+		}
+		return dialOpts
+	}
+	service.InitGossipService(serializedIdentity, peerEndpoint.Address, peerServer.Server(),
+		messageCryptoService, secAdv, secureDialOpts, bootstrap...)
 	defer service.GetGossipService().Stop()
 
 	//initialize system chaincodes
