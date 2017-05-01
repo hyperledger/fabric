@@ -133,22 +133,38 @@ func SetupChaincodeLogging() {
 	viper.SetEnvKeyReplacer(replacer)
 
 	// setup system-wide logging backend
-	logFormat := flogging.SetFormat(viper.GetString("chaincode.logFormat"))
+	logFormat := flogging.SetFormat(viper.GetString("chaincode.logging.format"))
 	flogging.InitBackend(logFormat, logOutput)
 
-	chaincodeLogLevelString := viper.GetString("chaincode.logLevel")
+	// set default log level for all modules
+	chaincodeLogLevelString := viper.GetString("chaincode.logging.level")
 	if chaincodeLogLevelString == "" {
-		shimLogLevelDefault := logging.Level(shimLoggingLevel)
-		chaincodeLogger.Infof("Chaincode log level not provided; defaulting to: %s", shimLogLevelDefault)
-		SetLoggingLevel(shimLoggingLevel)
+		chaincodeLogger.Infof("Chaincode log level not provided; defaulting to: %s", flogging.DefaultLevel())
+		flogging.InitFromSpec(flogging.DefaultLevel())
 	} else {
-		chaincodeLogLevel, err := LogLevel(chaincodeLogLevelString)
+		_, err := LogLevel(chaincodeLogLevelString)
 		if err == nil {
-			SetLoggingLevel(chaincodeLogLevel)
+			flogging.InitFromSpec(chaincodeLogLevelString)
 		} else {
-			chaincodeLogger.Warningf("Error: %s for chaincode log level: %s", err, chaincodeLogLevelString)
+			chaincodeLogger.Warningf("Error: '%s' for chaincode log level: %s; defaulting to %s", err, chaincodeLogLevelString, flogging.DefaultLevel())
+			flogging.InitFromSpec(flogging.DefaultLevel())
 		}
 	}
+
+	// override the log level for the shim logging module - note: if this value is
+	// blank or an invalid log level, then the above call to
+	// `flogging.InitFromSpec` already set the default log level so no action
+	// is required here.
+	shimLogLevelString := viper.GetString("chaincode.logging.shim")
+	if shimLogLevelString != "" {
+		shimLogLevel, err := LogLevel(shimLogLevelString)
+		if err == nil {
+			SetLoggingLevel(shimLogLevel)
+		} else {
+			chaincodeLogger.Warningf("Error: %s for shim log level: %s", err, shimLogLevelString)
+		}
+	}
+
 	//now that logging is setup, print build level. This will help making sure
 	//chaincode is matched with peer.
 	buildLevel := viper.GetString("chaincode.buildlevel")
