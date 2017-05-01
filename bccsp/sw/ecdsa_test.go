@@ -138,11 +138,15 @@ func TestVerifyECDSA(t *testing.T) {
 
 func TestEcdsaSignerSign(t *testing.T) {
 	signer := &ecdsaSigner{}
+	verifierPrivateKey := &ecdsaPrivateKeyVerifier{}
+	verifierPublicKey := &ecdsaPublicKeyKeyVerifier{}
 
 	// Generate a key
 	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.NoError(t, err)
 	k := &ecdsaPrivateKey{lowLevelKey}
+	pk, err := k.PublicKey()
+	assert.NoError(t, err)
 
 	// Sign
 	msg := []byte("Hello World")
@@ -152,6 +156,14 @@ func TestEcdsaSignerSign(t *testing.T) {
 
 	// Verify
 	valid, err := verifyECDSA(&lowLevelKey.PublicKey, sigma, msg, nil)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+
+	valid, err = verifierPrivateKey.Verify(k, sigma, msg, nil)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+
+	valid, err = verifierPublicKey.Verify(pk, sigma, msg, nil)
 	assert.NoError(t, err)
 	assert.True(t, valid)
 }

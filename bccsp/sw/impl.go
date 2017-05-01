@@ -85,12 +85,20 @@ func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.B
 	signers[reflect.TypeOf(&ecdsaPrivateKey{})] = &ecdsaSigner{}
 	signers[reflect.TypeOf(&rsaPrivateKey{})] = &rsaSigner{}
 
+	// Set the verifiers
+	verifiers := make(map[reflect.Type]Verifier)
+	verifiers[reflect.TypeOf(&ecdsaPrivateKey{})] = &ecdsaPrivateKeyVerifier{}
+	verifiers[reflect.TypeOf(&ecdsaPublicKey{})] = &ecdsaPublicKeyKeyVerifier{}
+	verifiers[reflect.TypeOf(&rsaPrivateKey{})] = &rsaPrivateKeyVerifier{}
+	verifiers[reflect.TypeOf(&rsaPublicKey{})] = &rsaPublicKeyKeyVerifier{}
+
 	return &impl{
-		conf,
-		keyStore,
-		encryptors,
-		decryptors,
-		signers}, nil
+		conf:       conf,
+		ks:         keyStore,
+		encryptors: encryptors,
+		decryptors: decryptors,
+		signers:    signers,
+		verifiers:  verifiers}, nil
 }
 
 // SoftwareBasedBCCSP is the software-based implementation of the BCCSP.
@@ -101,6 +109,7 @@ type impl struct {
 	encryptors map[reflect.Type]Encryptor
 	decryptors map[reflect.Type]Decryptor
 	signers    map[reflect.Type]Signer
+	verifiers  map[reflect.Type]Verifier
 }
 
 // KeyGen generates a key using opts.
@@ -693,43 +702,13 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 		return false, errors.New("Invalid digest. Cannot be empty.")
 	}
 
-	// Check key type
-	switch k.(type) {
-	case *ecdsaPrivateKey:
-		return verifyECDSA(&(k.(*ecdsaPrivateKey).privKey.PublicKey), signature, digest, opts)
-	case *ecdsaPublicKey:
-		return verifyECDSA(k.(*ecdsaPublicKey).pubKey, signature, digest, opts)
-	case *rsaPrivateKey:
-		if opts == nil {
-			return false, errors.New("Invalid options. It must not be nil.")
-		}
-		switch opts.(type) {
-		case *rsa.PSSOptions:
-			err := rsa.VerifyPSS(&(k.(*rsaPrivateKey).privKey.PublicKey),
-				(opts.(*rsa.PSSOptions)).Hash,
-				digest, signature, opts.(*rsa.PSSOptions))
-
-			return err == nil, err
-		default:
-			return false, fmt.Errorf("Opts type not recognized [%s]", opts)
-		}
-	case *rsaPublicKey:
-		if opts == nil {
-			return false, errors.New("Invalid options. It must not be nil.")
-		}
-		switch opts.(type) {
-		case *rsa.PSSOptions:
-			err := rsa.VerifyPSS(k.(*rsaPublicKey).pubKey,
-				(opts.(*rsa.PSSOptions)).Hash,
-				digest, signature, opts.(*rsa.PSSOptions))
-
-			return err == nil, err
-		default:
-			return false, fmt.Errorf("Opts type not recognized [%s]", opts)
-		}
-	default:
+	verifier, found := csp.verifiers[reflect.TypeOf(k)]
+	if !found {
 		return false, fmt.Errorf("Unsupported 'VerifyKey' provided [%v]", k)
 	}
+
+	return verifier.Verify(k, signature, digest, opts)
+
 }
 
 // Encrypt encrypts plaintext using key k.

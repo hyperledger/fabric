@@ -45,3 +45,11 @@ type Signer interface {
 	// the hash (as digest).
 	Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error)
 }
+
+// Verifier is a BCCSP-like interface that provides verifying algorithms
+type Verifier interface {
+
+	// Verify verifies signature against key k and digest
+	// The opts argument should be appropriate for the algorithm used.
+	Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error)
+}

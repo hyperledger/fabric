@@ -68,3 +68,30 @@ func (s *Signer) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 
 	return s.Value, s.Err
 }
+
+type Verifier struct {
+	KeyArg       bccsp.Key
+	SignatureArg []byte
+	DigestArg    []byte
+	OptsArg      bccsp.SignerOpts
+
+	Value bool
+	Err   error
+}
+
+func (s *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
+	if !reflect.DeepEqual(s.KeyArg, k) {
+		return false, errors.New("invalid key")
+	}
+	if !reflect.DeepEqual(s.SignatureArg, signature) {
+		return false, errors.New("invalid signature")
+	}
+	if !reflect.DeepEqual(s.DigestArg, digest) {
+		return false, errors.New("invalid digest")
+	}
+	if !reflect.DeepEqual(s.OptsArg, opts) {
+		return false, errors.New("invalid opts")
+	}
+
+	return s.Value, s.Err
+}
