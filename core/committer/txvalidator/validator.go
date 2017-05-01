@@ -204,6 +204,11 @@ func (v *txValidator) Validate(block *common.Block) error {
 						return err
 					}
 					logger.Debugf("config transaction received for chain %s", channel)
+				} else {
+					logger.Warningf("Unknown transaction type [%s] in block number [%d] transaction index [%d]",
+						common.HeaderType(chdr.Type), block.Header.Number, tIdx)
+					txsfltr.SetFlag(tIdx, peer.TxValidationCode_UNKNOWN_TX_TYPE)
+					continue
 				}
 
 				if _, err := proto.Marshal(env); err != nil {
