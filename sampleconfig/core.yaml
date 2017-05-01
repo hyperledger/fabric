@@ -166,15 +166,11 @@ peer:
     tls:
         enabled:  false
         cert:
-            file: peer/tls.crt
+            file: tls/server.crt
         key:
-            file: peer/tls.key
-    # Root cert file for selfsigned certificates
-    # This represents a self-signed x509 cert that was used to sign the cert.file,
-    # this is sent to client to validate the recived certificate from server when
-    # establishing TLS connection
+            file: tls/server.key
         rootcert:
-            file: peer/tls.crt
+            file: tls/ca.crt
 
         # The server name use to verify the hostname returned by TLS handshake
         serverhostoverride:

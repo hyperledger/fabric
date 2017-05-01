@@ -86,7 +86,7 @@ func NewCA(baseDir, name string) (*CA, error) {
 
 // SignCertificate creates a signed certificate based on a built-in template
 // and saves it in baseDir/name
-func (ca *CA) SignCertificate(baseDir, name string, pub *ecdsa.PublicKey) error {
+func (ca *CA) SignCertificate(baseDir, name string, pub *ecdsa.PublicKey) (*x509.Certificate, error) {
 
 	template := x509Template()
 	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
@@ -97,14 +97,14 @@ func (ca *CA) SignCertificate(baseDir, name string, pub *ecdsa.PublicKey) error 
 
 	template.Subject = subject
 
-	_, err := genCertificateECDSA(baseDir, name, &template, ca.SignCert,
+	cert, err := genCertificateECDSA(baseDir, name, &template, ca.SignCert,
 		pub, ca.Signer)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return cert, nil
 }
 
 // default template for X509 subject
