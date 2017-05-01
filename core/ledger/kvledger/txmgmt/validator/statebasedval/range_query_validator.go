@@ -76,9 +76,6 @@ func (v *rangeQueryResultsValidator) validate() (bool, error) {
 			return false, err
 		}
 	}
-	if result, err = itr.Next(); err != nil {
-		return false, err
-	}
 	if result != nil {
 		// iterator is not exhausted - which means that there are extra results in the given range
 		logger.Debugf("Extra result = [%#v]", result)
