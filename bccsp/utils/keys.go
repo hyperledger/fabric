@@ -114,7 +114,7 @@ func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 		}
 
 		var pkcs8Key pkcs8Info
-		pkcs8Key.Version = 1
+		pkcs8Key.Version = 0
 		pkcs8Key.PrivateKeyAlgorithm = make([]asn1.ObjectIdentifier, 2)
 		pkcs8Key.PrivateKeyAlgorithm[0] = oidPublicKeyECDSA
 		pkcs8Key.PrivateKeyAlgorithm[1] = oidNamedCurve
