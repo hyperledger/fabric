@@ -123,6 +123,68 @@ func TestQueryResultHelper_Hash_ThreeLevel(t *testing.T) {
 		MaxLevelHashes: hashesToBytes([]Hash{level3_1, level3_2})})
 }
 
+func TestQueryResultHelper_Hash_MaxLevelIncrementNeededInDone(t *testing.T) {
+	maxDegree := 2
+	kvReads := buildTestKVReads(t, 24)
+	r, h := buildTestResults(t, true, maxDegree, kvReads)
+	level1_1 := computeTestHashKVReads(t, kvReads[0:3])
+	level1_2 := computeTestHashKVReads(t, kvReads[3:6])
+	level1_3 := computeTestHashKVReads(t, kvReads[6:9])
+	level1_4 := computeTestHashKVReads(t, kvReads[9:12])
+	level1_5 := computeTestHashKVReads(t, kvReads[12:15])
+	level1_6 := computeTestHashKVReads(t, kvReads[15:18])
+	level1_7 := computeTestHashKVReads(t, kvReads[18:21])
+	level1_8 := computeTestHashKVReads(t, kvReads[21:24])
+
+	level2_1 := computeTestCombinedHash(t, level1_1, level1_2, level1_3)
+	level2_2 := computeTestCombinedHash(t, level1_4, level1_5, level1_6)
+	level2_3 := computeTestCombinedHash(t, level1_7, level1_8)
+
+	level3_1 := computeTestCombinedHash(t, level2_1, level2_2, level2_3)
+
+	testutil.AssertNil(t, r)
+	testutil.AssertEquals(t, h, &kvrwset.QueryReadsMerkleSummary{
+		MaxDegree:      uint32(maxDegree),
+		MaxLevel:       3,
+		MaxLevelHashes: hashesToBytes([]Hash{level3_1})})
+}
+
+func TestQueryResultHelper_Hash_FirstLevelSkipNeededInDone(t *testing.T) {
+	maxDegree := 2
+	kvReads := buildTestKVReads(t, 45)
+	r, h := buildTestResults(t, true, maxDegree, kvReads)
+	level1_1 := computeTestHashKVReads(t, kvReads[0:3])
+	level1_2 := computeTestHashKVReads(t, kvReads[3:6])
+	level1_3 := computeTestHashKVReads(t, kvReads[6:9])
+	level1_4 := computeTestHashKVReads(t, kvReads[9:12])
+	level1_5 := computeTestHashKVReads(t, kvReads[12:15])
+	level1_6 := computeTestHashKVReads(t, kvReads[15:18])
+	level1_7 := computeTestHashKVReads(t, kvReads[18:21])
+	level1_8 := computeTestHashKVReads(t, kvReads[21:24])
+	level1_9 := computeTestHashKVReads(t, kvReads[24:27])
+	level1_10 := computeTestHashKVReads(t, kvReads[27:30])
+	level1_11 := computeTestHashKVReads(t, kvReads[30:33])
+	level1_12 := computeTestHashKVReads(t, kvReads[33:36])
+	level1_13 := computeTestHashKVReads(t, kvReads[36:39])
+	level1_14 := computeTestHashKVReads(t, kvReads[39:42])
+	level1_15 := computeTestHashKVReads(t, kvReads[42:45])
+
+	level2_1 := computeTestCombinedHash(t, level1_1, level1_2, level1_3)
+	level2_2 := computeTestCombinedHash(t, level1_4, level1_5, level1_6)
+	level2_3 := computeTestCombinedHash(t, level1_7, level1_8, level1_9)
+	level2_4 := computeTestCombinedHash(t, level1_10, level1_11, level1_12)
+	level2_5 := computeTestCombinedHash(t, level1_13, level1_14, level1_15)
+
+	level3_1 := computeTestCombinedHash(t, level2_1, level2_2, level2_3)
+	level3_2 := computeTestCombinedHash(t, level2_4, level2_5)
+
+	testutil.AssertNil(t, r)
+	testutil.AssertEquals(t, h, &kvrwset.QueryReadsMerkleSummary{
+		MaxDegree:      uint32(maxDegree),
+		MaxLevel:       3,
+		MaxLevelHashes: hashesToBytes([]Hash{level3_1, level3_2})})
+}
+
 func buildTestResults(t *testing.T, enableHashing bool, maxDegree int, kvReads []*kvrwset.KVRead) ([]*kvrwset.KVRead, *kvrwset.QueryReadsMerkleSummary) {
 	helper, _ := NewRangeQueryResultsHelper(enableHashing, uint32(maxDegree))
 	for _, kvRead := range kvReads {

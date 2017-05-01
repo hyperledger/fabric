@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
-var logger = flogging.MustGetLogger("rwset")
+var logger = flogging.MustGetLogger("rwsetutil")
 
 type nsRWs struct {
 	readMap          map[string]*kvrwset.KVRead //for mvcc validation
