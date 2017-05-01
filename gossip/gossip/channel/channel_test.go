@@ -125,7 +125,7 @@ func (cs *cryptoService) VerifyByChannel(channel common.ChainID, identity api.Pe
 	return args.Get(0).(error)
 }
 
-func (cs *cryptoService) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
+func (cs *cryptoService) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error {
 	args := cs.Called(signedBlock)
 	if args.Get(0) == nil {
 		return nil

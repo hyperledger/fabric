@@ -33,9 +33,10 @@ type MessageCryptoService interface {
 	// This validation is supposed to be done appropriately during the execution flow.
 	GetPKIidOfCert(peerIdentity PeerIdentityType) common.PKIidType
 
-	// VerifyBlock returns nil if the block is properly signed,
+	// VerifyBlock returns nil if the block is properly signed, and the claimed seqNum is the
+	// sequence number that the block's header contains.
 	// else returns error
-	VerifyBlock(chainID common.ChainID, signedBlock []byte) error
+	VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error
 
 	// Sign signs msg with this peer's signing key and outputs
 	// the signature if no error occurred.

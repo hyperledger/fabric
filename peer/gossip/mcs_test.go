@@ -17,10 +17,8 @@ limitations under the License.
 package gossip
 
 import (
-	"fmt"
-	"testing"
-
 	"reflect"
+	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -152,7 +150,7 @@ func TestVerify(t *testing.T) {
 	assert.NoError(t, err)
 	err = msgCryptoService.Verify(api.PeerIdentityType("Dave"), sigma, msg)
 	assert.Error(t, err)
-	assert.Contains(t, fmt.Sprintf("%v", err), "Could not acquire policy manager")
+	assert.Contains(t, err.Error(), "Could not acquire policy manager")
 
 	// Check invalid args
 	assert.Error(t, msgCryptoService.Verify(nil, sigma, msg))
@@ -182,34 +180,38 @@ func TestVerifyBlock(t *testing.T) {
 	)
 
 	// - Prepare testing valid block, Alice signs it.
-	blockRaw, msg := mockBlock(t, "C", aliceSigner, nil)
+	blockRaw, msg := mockBlock(t, "C", 42, aliceSigner, nil)
 	policyManagerGetter.Managers["C"].(*mocks.ChannelPolicyManager).Policy.(*mocks.Policy).Deserializer.(*mocks.IdentityDeserializer).Msg = msg
-	blockRaw2, msg2 := mockBlock(t, "D", aliceSigner, nil)
+	blockRaw2, msg2 := mockBlock(t, "D", 42, aliceSigner, nil)
 	policyManagerGetter.Managers["D"].(*mocks.ChannelPolicyManager).Policy.(*mocks.Policy).Deserializer.(*mocks.IdentityDeserializer).Msg = msg2
 
 	// - Verify block
-	assert.NoError(t, msgCryptoService.VerifyBlock([]byte("C"), blockRaw))
+	assert.NoError(t, msgCryptoService.VerifyBlock([]byte("C"), 42, blockRaw))
+	// Wrong sequence number claimed
+	err := msgCryptoService.VerifyBlock([]byte("C"), 43, blockRaw)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "but actual seqNum inside block is")
 	delete(policyManagerGetter.Managers, "D")
-	nilPolMgrErr := msgCryptoService.VerifyBlock([]byte("D"), blockRaw2)
-	assert.Contains(t, fmt.Sprintf("%v", nilPolMgrErr), "Could not acquire policy manager")
+	nilPolMgrErr := msgCryptoService.VerifyBlock([]byte("D"), 42, blockRaw2)
+	assert.Contains(t, nilPolMgrErr.Error(), "Could not acquire policy manager")
 	assert.Error(t, nilPolMgrErr)
-	assert.Error(t, msgCryptoService.VerifyBlock([]byte("A"), blockRaw))
-	assert.Error(t, msgCryptoService.VerifyBlock([]byte("B"), blockRaw))
+	assert.Error(t, msgCryptoService.VerifyBlock([]byte("A"), 42, blockRaw))
+	assert.Error(t, msgCryptoService.VerifyBlock([]byte("B"), 42, blockRaw))
 
 	// - Prepare testing invalid block (wrong data has), Alice signs it.
-	blockRaw, msg = mockBlock(t, "C", aliceSigner, []byte{0})
+	blockRaw, msg = mockBlock(t, "C", 42, aliceSigner, []byte{0})
 	policyManagerGetter.Managers["C"].(*mocks.ChannelPolicyManager).Policy.(*mocks.Policy).Deserializer.(*mocks.IdentityDeserializer).Msg = msg
 
 	// - Verify block
-	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), blockRaw))
+	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), 42, blockRaw))
 
 	// Check invalid args
-	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), []byte{0, 1, 2, 3, 4}))
-	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), nil))
+	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), 42, []byte{0, 1, 2, 3, 4}))
+	assert.Error(t, msgCryptoService.VerifyBlock([]byte("C"), 42, nil))
 }
 
-func mockBlock(t *testing.T, channel string, localSigner crypto.LocalSigner, dataHash []byte) ([]byte, []byte) {
-	block := common.NewBlock(0, nil)
+func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.LocalSigner, dataHash []byte) ([]byte, []byte) {
+	block := common.NewBlock(seqNum, nil)
 
 	// Add a fake transaction to the block referring channel "C"
 	sProp, _ := utils.MockSignedEndorserProposalOrPanic(channel, &protospeer.ChaincodeSpec{}, []byte("transactor"), []byte("transactor's signature"))
