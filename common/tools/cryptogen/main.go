@@ -46,21 +46,23 @@ type HostnameData struct {
 	Domain string
 }
 
-type CommonNameData struct {
-	Hostname string
-	Domain   string
+type SpecData struct {
+	Hostname   string
+	Domain     string
+	CommonName string
 }
 
 type NodeTemplate struct {
-	Count    int    `yaml:"Count"`
-	Start    int    `yaml:"Start"`
-	Hostname string `yaml:"Hostname"`
+	Count    int      `yaml:"Count"`
+	Start    int      `yaml:"Start"`
+	Hostname string   `yaml:"Hostname"`
+	SANS     []string `yaml:"SANS"`
 }
 
 type NodeSpec struct {
-	Hostname     string   `yaml:"Hostname"`
-	AltHostnames []string `yaml:"AltHostnames"`
-	CommonName   string   `yaml:"CommonName"`
+	Hostname   string   `yaml:"Hostname"`
+	CommonName string   `yaml:"CommonName"`
+	SANS       []string `yaml:"SANS"`
 }
 
 type UsersSpec struct {
@@ -132,10 +134,20 @@ PeerOrgs:
     #
     #                 which obtains its values from the Spec.Hostname and
     #                 Org.Domain, respectively.
+    #   - SANS:       (Optional) Specifies one or more Subject Alternative Names
+    #                 the be set in the resulting x509.  Accepts template
+    #                 variables {{.Hostname}}, {{.Domain}}, {{.CommonName}}
+    #                 NOTE: Two implicit entries are created for you:
+    #                     - {{ .CommonName }}
+    #                     - {{ .Hostname }}
     # ---------------------------------------------------------------------------
     # Specs:
     #   - Hostname: foo # implicitly "foo.org1.example.com"
     #     CommonName: foo27.org5.example.com # overrides Hostname-based FQDN set above
+    #     SANS:
+    #       - "bar.{{.Domain}}"
+    #       - "altfoo.{{.Domain}}"
+    #       - "{{.Hostname}}.org6.net"
     #   - Hostname: bar
     #   - Hostname: baz
 
@@ -155,6 +167,8 @@ PeerOrgs:
       Count: 1
       # Start: 5
       # Hostname: {{.Prefix}}{{.Index}} # default
+      # SANS:
+      #   - "{{.Hostname}}.alt.{{.Domain}}"
 
     # ---------------------------------------------------------------------------
     # "Users"
@@ -234,7 +248,7 @@ func generate() {
 	}
 
 	for _, orgSpec := range config.PeerOrgs {
-		err = generateNodeSpec(&orgSpec, "peer")
+		err = renderOrgSpec(&orgSpec, "peer")
 		if err != nil {
 			fmt.Printf("Error processing peer configuration: %s", err)
 			os.Exit(-1)
@@ -243,7 +257,7 @@ func generate() {
 	}
 
 	for _, orgSpec := range config.OrdererOrgs {
-		generateNodeSpec(&orgSpec, "orderer")
+		renderOrgSpec(&orgSpec, "orderer")
 		if err != nil {
 			fmt.Printf("Error processing orderer configuration: %s", err)
 			os.Exit(-1)
@@ -252,12 +266,7 @@ func generate() {
 	}
 }
 
-func parseTemplate(input, defaultInput string, data interface{}) (string, error) {
-
-	// Use the default if the input is an empty string
-	if len(input) == 0 {
-		input = defaultInput
-	}
+func parseTemplate(input string, data interface{}) (string, error) {
 
 	t, err := template.New("parse").Parse(input)
 	if err != nil {
@@ -273,16 +282,51 @@ func parseTemplate(input, defaultInput string, data interface{}) (string, error)
 	return output.String(), nil
 }
 
-func renderCN(domain string, spec NodeSpec) (string, error) {
-	data := CommonNameData{
+func parseTemplateWithDefault(input, defaultInput string, data interface{}) (string, error) {
+
+	// Use the default if the input is an empty string
+	if len(input) == 0 {
+		input = defaultInput
+	}
+
+	return parseTemplate(input, data)
+}
+
+func renderNodeSpec(domain string, spec *NodeSpec) error {
+	data := SpecData{
 		Hostname: spec.Hostname,
 		Domain:   domain,
 	}
 
-	return parseTemplate(spec.CommonName, defaultCNTemplate, data)
+	// Process our CommonName
+	cn, err := parseTemplateWithDefault(spec.CommonName, defaultCNTemplate, data)
+	if err != nil {
+		return err
+	}
+
+	spec.CommonName = cn
+	data.CommonName = cn
+
+	// Save off our original, unprocessed SANS entries
+	origSANS := spec.SANS
+
+	// Set our implicit SANS entries for CN/Hostname
+	spec.SANS = []string{cn, spec.Hostname}
+
+	// Finally, process any remaining SANS entries
+	for _, _san := range origSANS {
+		san, err := parseTemplate(_san, data)
+		if err != nil {
+			return err
+		}
+
+		spec.SANS = append(spec.SANS, san)
+	}
+
+	return nil
 }
 
-func generateNodeSpec(orgSpec *OrgSpec, prefix string) error {
+func renderOrgSpec(orgSpec *OrgSpec, prefix string) error {
 	// First process all of our templated nodes
 	for i := 0; i < orgSpec.Template.Count; i++ {
 		data := HostnameData{
@@ -291,34 +335,36 @@ func generateNodeSpec(orgSpec *OrgSpec, prefix string) error {
 			Domain: orgSpec.Domain,
 		}
 
-		hostname, err := parseTemplate(orgSpec.Template.Hostname, defaultHostnameTemplate, data)
+		hostname, err := parseTemplateWithDefault(orgSpec.Template.Hostname, defaultHostnameTemplate, data)
 		if err != nil {
 			return err
 		}
 
-		spec := NodeSpec{Hostname: hostname}
+		spec := NodeSpec{
+			Hostname: hostname,
+			SANS:     orgSpec.Template.SANS,
+		}
 		orgSpec.Specs = append(orgSpec.Specs, spec)
 	}
 
 	// Touch up all general node-specs to add the domain
 	for idx, spec := range orgSpec.Specs {
-		finalCN, err := renderCN(orgSpec.Domain, spec)
+		err := renderNodeSpec(orgSpec.Domain, &spec)
 		if err != nil {
 			return err
 		}
 
-		orgSpec.Specs[idx].CommonName = finalCN
+		orgSpec.Specs[idx] = spec
 	}
 
 	// Process the CA node-spec in the same manner
 	if len(orgSpec.CA.Hostname) == 0 {
 		orgSpec.CA.Hostname = "ca"
 	}
-	finalCN, err := renderCN(orgSpec.Domain, orgSpec.CA)
+	err := renderNodeSpec(orgSpec.Domain, &orgSpec.CA)
 	if err != nil {
 		return err
 	}
-	orgSpec.CA.CommonName = finalCN
 
 	return nil
 }
@@ -346,27 +392,27 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 		os.Exit(1)
 	}
 
-	peerNames := []string{}
-	for _, spec := range orgSpec.Specs {
-		peerNames = append(peerNames, spec.CommonName)
-	}
-	generateNodes(peersDir, peerNames, rootCA)
+	generateNodes(peersDir, orgSpec.Specs, rootCA)
 
 	// TODO: add ability to specify usernames
-	usernames := []string{}
+	users := []NodeSpec{}
 	for j := 1; j <= orgSpec.Users.Count; j++ {
-		usernames = append(usernames, fmt.Sprintf("%s%d@%s",
-			userBaseName, j, orgName))
+		user := NodeSpec{
+			CommonName: fmt.Sprintf("%s%d@%s", userBaseName, j, orgName),
+		}
+
+		users = append(users, user)
 	}
 	// add an admin user
-	adminUserName := fmt.Sprintf("%s@%s",
-		adminBaseName, orgName)
+	adminUser := NodeSpec{
+		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
+	}
 
-	usernames = append(usernames, adminUserName)
-	generateNodes(usersDir, usernames, rootCA)
+	users = append(users, adminUser)
+	generateNodes(usersDir, users, rootCA)
 
 	// copy the admin cert to the org's MSP admincerts
-	err = copyAdminCert(usersDir, adminCertsDir, adminUserName)
+	err = copyAdminCert(usersDir, adminCertsDir, adminUser.CommonName)
 	if err != nil {
 		fmt.Printf("Error copying admin cert for org %s:\n%v\n",
 			orgName, err)
@@ -374,13 +420,12 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	}
 
 	// copy the admin cert to each of the org's peer's MSP admincerts
-	for _, peerName := range peerNames {
+	for _, spec := range orgSpec.Specs {
 		err = copyAdminCert(usersDir,
-			filepath.Join(peersDir, peerName, "msp", "admincerts"),
-			adminUserName)
+			filepath.Join(peersDir, spec.CommonName, "msp", "admincerts"), adminUser.CommonName)
 		if err != nil {
 			fmt.Printf("Error copying admin cert for org %s peer %s:\n%v\n",
-				orgName, peerName, err)
+				orgName, spec.CommonName, err)
 			os.Exit(1)
 		}
 	}
@@ -407,17 +452,16 @@ func copyAdminCert(usersDir, adminCertsDir, adminUserName string) error {
 
 }
 
-func generateNodes(baseDir string, nodeNames []string, rootCA *ca.CA) {
+func generateNodes(baseDir string, nodes []NodeSpec, rootCA *ca.CA) {
 
-	for _, nodeName := range nodeNames {
-		nodeDir := filepath.Join(baseDir, nodeName)
-		err := msp.GenerateLocalMSP(nodeDir, nodeName, rootCA)
+	for _, node := range nodes {
+		nodeDir := filepath.Join(baseDir, node.CommonName)
+		err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, rootCA)
 		if err != nil {
-			fmt.Printf("Error generating local MSP for %s:\n%v\n", nodeName, err)
+			fmt.Printf("Error generating local MSP for %s:\n%v\n", node, err)
 			os.Exit(1)
 		}
 	}
-
 }
 
 func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
@@ -442,25 +486,20 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 		os.Exit(1)
 	}
 
-	// TODO: add ability to specify orderer names
-	// for name just use default base name
-	ordererNames := []string{}
-	for _, spec := range orgSpec.Specs {
-		ordererNames = append(ordererNames, spec.CommonName)
-	}
-	generateNodes(orderersDir, ordererNames, rootCA)
+	generateNodes(orderersDir, orgSpec.Specs, rootCA)
 
-	adminUserName := fmt.Sprintf("%s@%s",
-		adminBaseName, orgName)
+	adminUser := NodeSpec{
+		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
+	}
 
 	// generate an admin for the orderer org
-	usernames := []string{}
+	users := []NodeSpec{}
 	// add an admin user
-	usernames = append(usernames, adminUserName)
-	generateNodes(usersDir, usernames, rootCA)
+	users = append(users, adminUser)
+	generateNodes(usersDir, users, rootCA)
 
 	// copy the admin cert to the org's MSP admincerts
-	err = copyAdminCert(usersDir, adminCertsDir, adminUserName)
+	err = copyAdminCert(usersDir, adminCertsDir, adminUser.CommonName)
 	if err != nil {
 		fmt.Printf("Error copying admin cert for org %s:\n%v\n",
 			orgName, err)
@@ -468,12 +507,12 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 	}
 
 	// copy the admin cert to each of the org's orderers's MSP admincerts
-	for _, ordererName := range ordererNames {
+	for _, spec := range orgSpec.Specs {
 		err = copyAdminCert(usersDir,
-			filepath.Join(orderersDir, ordererName, "msp", "admincerts"), adminUserName)
+			filepath.Join(orderersDir, spec.CommonName, "msp", "admincerts"), adminUser.CommonName)
 		if err != nil {
 			fmt.Printf("Error copying admin cert for org %s orderer %s:\n%v\n",
-				orgName, ordererName, err)
+				orgName, spec.CommonName, err)
 			os.Exit(1)
 		}
 	}
