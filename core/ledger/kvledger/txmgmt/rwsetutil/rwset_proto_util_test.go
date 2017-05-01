@@ -21,6 +21,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
@@ -62,4 +63,16 @@ func TestTxRWSetMarshalUnmarshal(t *testing.T) {
 	testutil.AssertNoError(t, txRwSet1.FromProtoBytes(protoBytes), "")
 	t.Logf("txRwSet=%s, txRwSet1=%s", spew.Sdump(txRwSet), spew.Sdump(txRwSet1))
 	testutil.AssertEquals(t, txRwSet1, txRwSet)
+}
+
+func TestVersionConversion(t *testing.T) {
+	protoVer := &kvrwset.Version{BlockNum: 5, TxNum: 2}
+	internalVer := version.NewHeight(5, 2)
+	// convert proto to internal
+	testutil.AssertNil(t, NewVersion(nil))
+	testutil.AssertEquals(t, NewVersion(protoVer), internalVer)
+
+	// convert internal to proto
+	testutil.AssertNil(t, newProtoVersion(nil))
+	testutil.AssertEquals(t, newProtoVersion(internalVer), protoVer)
 }

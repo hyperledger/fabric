@@ -17,12 +17,19 @@ limitations under the License.
 package rwsetutil
 
 import (
+	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
+
+func TestMain(m *testing.M) {
+	flogging.SetModuleLevel("rwsetutil", "debug")
+	os.Exit(m.Run())
+}
 
 func TestRWSetHolder(t *testing.T) {
 	rwSetBuilder := NewRWSetBuilder()
