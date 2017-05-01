@@ -47,6 +47,7 @@ var (
 func init() {
 	logger = logging.MustGetLogger(pkgLogID)
 	Reset()
+	initgrpclogger()
 }
 
 // Reset sets to logging to the defaults defined in this package.
