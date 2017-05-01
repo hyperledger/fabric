@@ -31,7 +31,7 @@ func TestSign(t *testing.T) {
 	expectetDigest := []byte{1, 2, 3, 4}
 	expectedOpts := &mocks2.SignerOpts{}
 	expectetValue := []byte{0, 1, 2, 3, 4}
-	expectedErr := errors.New("no error")
+	expectedErr := errors.New("Expected Error")
 
 	signers := make(map[reflect.Type]Signer)
 	signers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.Signer{
@@ -39,12 +39,23 @@ func TestSign(t *testing.T) {
 		DigestArg: expectetDigest,
 		OptsArg:   expectedOpts,
 		Value:     expectetValue,
-		Err:       expectedErr,
+		Err:       nil,
 	}
-
 	csp := impl{signers: signers}
-
 	value, err := csp.Sign(expectedKey, expectetDigest, expectedOpts)
 	assert.Equal(t, expectetValue, value)
-	assert.Equal(t, expectedErr, err)
+	assert.Nil(t, err)
+
+	signers = make(map[reflect.Type]Signer)
+	signers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.Signer{
+		KeyArg:    expectedKey,
+		DigestArg: expectetDigest,
+		OptsArg:   expectedOpts,
+		Value:     nil,
+		Err:       expectedErr,
+	}
+	csp = impl{signers: signers}
+	value, err = csp.Sign(expectedKey, expectetDigest, expectedOpts)
+	assert.Nil(t, value)
+	assert.Contains(t, err.Error(), expectedErr.Error())
 }

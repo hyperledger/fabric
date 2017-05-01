@@ -34,7 +34,7 @@ func TestKeyImport(t *testing.T) {
 	expectedRaw := []byte{1, 2, 3}
 	expectedOpts := &mocks2.KeyDerivOpts{EphemeralValue: true}
 	expectetValue := &mocks2.MockKey{BytesValue: []byte{1, 2, 3, 4, 5}}
-	expectedErr := errors.New("no error")
+	expectedErr := errors.New("Expected Error")
 
 	keyImporters := make(map[reflect.Type]KeyImporter)
 	keyImporters[reflect.TypeOf(&mocks2.KeyDerivOpts{})] = &mocks.KeyImporter{
@@ -45,8 +45,8 @@ func TestKeyImport(t *testing.T) {
 	}
 	csp := impl{keyImporters: keyImporters}
 	value, err := csp.KeyImport(expectedRaw, expectedOpts)
-	assert.Equal(t, nil, value)
-	assert.Equal(t, expectedErr, err)
+	assert.Nil(t, value)
+	assert.Contains(t, err.Error(), expectedErr.Error())
 
 	keyImporters = make(map[reflect.Type]KeyImporter)
 	keyImporters[reflect.TypeOf(&mocks2.KeyDerivOpts{})] = &mocks.KeyImporter{
@@ -58,7 +58,7 @@ func TestKeyImport(t *testing.T) {
 	csp = impl{keyImporters: keyImporters}
 	value, err = csp.KeyImport(expectedRaw, expectedOpts)
 	assert.Equal(t, expectetValue, value)
-	assert.Equal(t, nil, err)
+	assert.Nil(t, err)
 }
 
 func TestAES256ImportKeyOptsKeyImporter(t *testing.T) {

@@ -19,12 +19,11 @@ import (
 	"crypto/elliptic"
 	"crypto/sha256"
 	"crypto/sha512"
-	"errors"
-	"fmt"
 	"hash"
 	"reflect"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	"golang.org/x/crypto/sha3"
 )
@@ -38,7 +37,7 @@ var (
 func NewDefaultSecurityLevel(keyStorePath string) (bccsp.BCCSP, error) {
 	ks := &fileBasedKeyStore{}
 	if err := ks.Init(nil, keyStorePath, false); err != nil {
-		return nil, fmt.Errorf("Failed initializing key store [%s]", err)
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed initializing key store at [%v]", keyStorePath).WrapError(err)
 	}
 
 	return New(256, "SHA2", ks)
@@ -57,12 +56,12 @@ func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.B
 	conf := &config{}
 	err := conf.setSecurityLevel(securityLevel, hashFamily)
 	if err != nil {
-		return nil, fmt.Errorf("Failed initializing configuration [%s]", err)
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed initializing configuration at [%v,%v]", securityLevel, hashFamily).WrapError(err)
 	}
 
 	// Check KeyStore
 	if keyStore == nil {
-		return nil, errors.New("Invalid bccsp.KeyStore instance. It must be different from nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid bccsp.KeyStore instance. It must be different from nil.")
 	}
 
 	// Set the encryptors
@@ -159,17 +158,17 @@ type impl struct {
 func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	// Validate arguments
 	if opts == nil {
-		return nil, errors.New("Invalid Opts parameter. It must not be nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid Opts parameter. It must not be nil.")
 	}
 
 	keyGenerator, found := csp.keyGenerators[reflect.TypeOf(opts)]
 	if !found {
-		return nil, fmt.Errorf("Unsupported 'KeyGenOpts' provided [%v]", opts)
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.NotFound, "Unsupported 'KeyGenOpts' provided [%v]", opts)
 	}
 
 	k, err = keyGenerator.KeyGen(opts)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed generating key with opts [%v]", opts).WrapError(err)
 	}
 
 	// If the key is not Ephemeral, store it.
@@ -177,7 +176,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		// Store the key
 		err = csp.ks.StoreKey(k)
 		if err != nil {
-			return nil, fmt.Errorf("Failed storing key [%s]. [%s]", opts.Algorithm(), err)
+			return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed storing key [%s]. [%s]", opts.Algorithm(), err)
 		}
 	}
 
@@ -189,20 +188,20 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
 	// Validate arguments
 	if k == nil {
-		return nil, errors.New("Invalid Key. It must not be nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid Key. It must not be nil.")
 	}
 	if opts == nil {
-		return nil, errors.New("Invalid opts. It must not be nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid opts. It must not be nil.")
 	}
 
 	keyDeriver, found := csp.keyDerivers[reflect.TypeOf(k)]
 	if !found {
-		return nil, fmt.Errorf("Unsupported 'Key' provided [%v]", k)
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.NotFound, "Unsupported 'Key' provided [%v]", k)
 	}
 
 	k, err = keyDeriver.KeyDeriv(k, opts)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed deriving key with opts [%v]", opts).WrapError(err)
 	}
 
 	// If the key is not Ephemeral, store it.
@@ -210,7 +209,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 		// Store the key
 		err = csp.ks.StoreKey(k)
 		if err != nil {
-			return nil, fmt.Errorf("Failed storing key [%s]. [%s]", opts.Algorithm(), err)
+			return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed storing key [%s]. [%s]", opts.Algorithm(), err)
 		}
 	}
 
@@ -222,20 +221,20 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	// Validate arguments
 	if raw == nil {
-		return nil, errors.New("Invalid raw. It must not be nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid raw. It must not be nil.")
 	}
 	if opts == nil {
-		return nil, errors.New("Invalid opts. It must not be nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid opts. It must not be nil.")
 	}
 
 	keyImporter, found := csp.keyImporters[reflect.TypeOf(opts)]
 	if !found {
-		return nil, fmt.Errorf("Unsupported 'KeyImportOpts' provided [%v]", opts)
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.NotFound, "Unsupported 'KeyImportOpts' provided [%v]", opts)
 	}
 
 	k, err = keyImporter.KeyImport(raw, opts)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed importing key with opts [%v]", opts).WrapError(err)
 	}
 
 	// If the key is not Ephemeral, store it.
@@ -243,32 +242,42 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		// Store the key
 		err = csp.ks.StoreKey(k)
 		if err != nil {
-			return nil, fmt.Errorf("Failed storing key [%s]. [%s]", opts.Algorithm(), err)
+			return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed storing imported key with opts [%v]", opts).WrapError(err)
 		}
 	}
 
-	return k, nil
+	return
 }
 
 // GetKey returns the key this CSP associates to
 // the Subject Key Identifier ski.
 func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
-	return csp.ks.GetKey(ski)
+	k, err = csp.ks.GetKey(ski)
+	if err != nil {
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed getting key for SKI [%v]", ski).WrapError(err)
+	}
+
+	return
 }
 
 // Hash hashes messages msg using options opts.
 func (csp *impl) Hash(msg []byte, opts bccsp.HashOpts) (digest []byte, err error) {
 	// Validate arguments
 	if opts == nil {
-		return nil, errors.New("Invalid opts. It must not be nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid opts. It must not be nil.")
 	}
 
 	hasher, found := csp.hashers[reflect.TypeOf(opts)]
 	if !found {
-		return nil, fmt.Errorf("Unsupported 'HashOpt' provided [%v]", opts)
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.NotFound, "Unsupported 'HashOpt' provided [%v]", opts)
 	}
 
-	return hasher.Hash(msg, opts)
+	digest, err = hasher.Hash(msg, opts)
+	if err != nil {
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed hashing with opts [%v]", opts).WrapError(err)
+	}
+
+	return
 }
 
 // GetHash returns and instance of hash.Hash using options opts.
@@ -276,15 +285,20 @@ func (csp *impl) Hash(msg []byte, opts bccsp.HashOpts) (digest []byte, err error
 func (csp *impl) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
 	// Validate arguments
 	if opts == nil {
-		return nil, errors.New("Invalid opts. It must not be nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid opts. It must not be nil.")
 	}
 
 	hasher, found := csp.hashers[reflect.TypeOf(opts)]
 	if !found {
-		return nil, fmt.Errorf("Unsupported 'HashOpt' provided [%v]", opts)
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.NotFound, "Unsupported 'HashOpt' provided [%v]", opts)
 	}
 
-	return hasher.GetHash(opts)
+	h, err = hasher.GetHash(opts)
+	if err != nil {
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed getting hash function with opts [%v]", opts).WrapError(err)
+	}
+
+	return
 }
 
 // Sign signs digest using key k.
@@ -296,40 +310,49 @@ func (csp *impl) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
 func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
 	// Validate arguments
 	if k == nil {
-		return nil, errors.New("Invalid Key. It must not be nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid Key. It must not be nil.")
 	}
 	if len(digest) == 0 {
-		return nil, errors.New("Invalid digest. Cannot be empty.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid digest. Cannot be empty.")
 	}
 
 	signer, found := csp.signers[reflect.TypeOf(k)]
 	if !found {
-		return nil, fmt.Errorf("Unsupported 'SignKey' provided [%v]", k)
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.NotFound, "Unsupported 'SignKey' provided [%v]", k)
 	}
 
-	return signer.Sign(k, digest, opts)
+	signature, err = signer.Sign(k, digest, opts)
+	if err != nil {
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed signing with opts [%v]", opts).WrapError(err)
+	}
+
+	return
 }
 
 // Verify verifies signature against key k and digest
 func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
 	// Validate arguments
 	if k == nil {
-		return false, errors.New("Invalid Key. It must not be nil.")
+		return false, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid Key. It must not be nil.")
 	}
 	if len(signature) == 0 {
-		return false, errors.New("Invalid signature. Cannot be empty.")
+		return false, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid signature. Cannot be empty.")
 	}
 	if len(digest) == 0 {
-		return false, errors.New("Invalid digest. Cannot be empty.")
+		return false, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid digest. Cannot be empty.")
 	}
 
 	verifier, found := csp.verifiers[reflect.TypeOf(k)]
 	if !found {
-		return false, fmt.Errorf("Unsupported 'VerifyKey' provided [%v]", k)
+		return false, errors.ErrorWithCallstack(errors.BCCSP, errors.NotFound, "Unsupported 'VerifyKey' provided [%v]", k)
 	}
 
-	return verifier.Verify(k, signature, digest, opts)
+	valid, err = verifier.Verify(k, signature, digest, opts)
+	if err != nil {
+		return false, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed verifing with opts [%v]", opts).WrapError(err)
+	}
 
+	return
 }
 
 // Encrypt encrypts plaintext using key k.
@@ -337,12 +360,12 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 func (csp *impl) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) (ciphertext []byte, err error) {
 	// Validate arguments
 	if k == nil {
-		return nil, errors.New("Invalid Key. It must not be nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid Key. It must not be nil.")
 	}
 
 	encryptor, found := csp.encryptors[reflect.TypeOf(k)]
 	if !found {
-		return nil, fmt.Errorf("Unsupported 'EncryptKey' provided [%v]", k)
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.NotFound, "Unsupported 'EncryptKey' provided [%v]", k)
 	}
 
 	return encryptor.Encrypt(k, plaintext, opts)
@@ -353,13 +376,18 @@ func (csp *impl) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts
 func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) (plaintext []byte, err error) {
 	// Validate arguments
 	if k == nil {
-		return nil, errors.New("Invalid Key. It must not be nil.")
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.BadRequest, "Invalid Key. It must not be nil.")
 	}
 
 	decryptor, found := csp.decryptors[reflect.TypeOf(k)]
 	if !found {
-		return nil, fmt.Errorf("Unsupported 'DecryptKey' provided [%v]", k)
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.NotFound, "Unsupported 'DecryptKey' provided [%v]", k)
 	}
 
-	return decryptor.Decrypt(k, ciphertext, opts)
+	plaintext, err = decryptor.Decrypt(k, ciphertext, opts)
+	if err != nil {
+		return nil, errors.ErrorWithCallstack(errors.BCCSP, errors.Internal, "Failed decrypting with opts [%v]", opts).WrapError(err)
+	}
+
+	return
 }

@@ -30,7 +30,7 @@ func TestKeyDeriv(t *testing.T) {
 	expectedKey := &mocks2.MockKey{BytesValue: []byte{1, 2, 3}}
 	expectedOpts := &mocks2.KeyDerivOpts{EphemeralValue: true}
 	expectetValue := &mocks2.MockKey{BytesValue: []byte{1, 2, 3, 4, 5}}
-	expectedErr := errors.New("no error")
+	expectedErr := errors.New("Expected Error")
 
 	keyDerivers := make(map[reflect.Type]KeyDeriver)
 	keyDerivers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.KeyDeriver{
@@ -41,8 +41,8 @@ func TestKeyDeriv(t *testing.T) {
 	}
 	csp := impl{keyDerivers: keyDerivers}
 	value, err := csp.KeyDeriv(expectedKey, expectedOpts)
-	assert.Equal(t, nil, value)
-	assert.Equal(t, expectedErr, err)
+	assert.Nil(t, value)
+	assert.Contains(t, err.Error(), expectedErr.Error())
 
 	keyDerivers = make(map[reflect.Type]KeyDeriver)
 	keyDerivers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.KeyDeriver{
@@ -54,7 +54,7 @@ func TestKeyDeriv(t *testing.T) {
 	csp = impl{keyDerivers: keyDerivers}
 	value, err = csp.KeyDeriv(expectedKey, expectedOpts)
 	assert.Equal(t, expectetValue, value)
-	assert.Equal(t, nil, err)
+	assert.Nil(t, err)
 }
 
 func TestECDSAPublicKeyKeyDeriver(t *testing.T) {

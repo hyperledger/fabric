@@ -30,7 +30,7 @@ import (
 func TestKeyGen(t *testing.T) {
 	expectedOpts := &mocks2.KeyGenOpts{EphemeralValue: true}
 	expectetValue := &mocks2.MockKey{}
-	expectedErr := errors.New("no error")
+	expectedErr := errors.New("Expected Error")
 
 	keyGenerators := make(map[reflect.Type]KeyGenerator)
 	keyGenerators[reflect.TypeOf(&mocks2.KeyGenOpts{})] = &mocks.KeyGenerator{
@@ -40,8 +40,8 @@ func TestKeyGen(t *testing.T) {
 	}
 	csp := impl{keyGenerators: keyGenerators}
 	value, err := csp.KeyGen(expectedOpts)
-	assert.Equal(t, nil, value)
-	assert.Equal(t, expectedErr, err)
+	assert.Nil(t, value)
+	assert.Contains(t, err.Error(), expectedErr.Error())
 
 	keyGenerators = make(map[reflect.Type]KeyGenerator)
 	keyGenerators[reflect.TypeOf(&mocks2.KeyGenOpts{})] = &mocks.KeyGenerator{
@@ -52,8 +52,7 @@ func TestKeyGen(t *testing.T) {
 	csp = impl{keyGenerators: keyGenerators}
 	value, err = csp.KeyGen(expectedOpts)
 	assert.Equal(t, expectetValue, value)
-	assert.Equal(t, nil, err)
-
+	assert.Nil(t, err)
 }
 
 func TestECDSAKeyGenerator(t *testing.T) {

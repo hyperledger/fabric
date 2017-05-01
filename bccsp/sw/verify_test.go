@@ -32,7 +32,7 @@ func TestVerify(t *testing.T) {
 	expectetDigest := []byte{1, 2, 3, 4}
 	expectedOpts := &mocks2.SignerOpts{}
 	expectetValue := true
-	expectedErr := errors.New("no error")
+	expectedErr := errors.New("Expected Error")
 
 	verifiers := make(map[reflect.Type]Verifier)
 	verifiers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.Verifier{
@@ -41,12 +41,24 @@ func TestVerify(t *testing.T) {
 		DigestArg:    expectetDigest,
 		OptsArg:      expectedOpts,
 		Value:        expectetValue,
-		Err:          expectedErr,
+		Err:          nil,
 	}
-
 	csp := impl{verifiers: verifiers}
-
 	value, err := csp.Verify(expectedKey, expectetSignature, expectetDigest, expectedOpts)
 	assert.Equal(t, expectetValue, value)
-	assert.Equal(t, expectedErr, err)
+	assert.Nil(t, err)
+
+	verifiers = make(map[reflect.Type]Verifier)
+	verifiers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.Verifier{
+		KeyArg:       expectedKey,
+		SignatureArg: expectetSignature,
+		DigestArg:    expectetDigest,
+		OptsArg:      expectedOpts,
+		Value:        false,
+		Err:          expectedErr,
+	}
+	csp = impl{verifiers: verifiers}
+	value, err = csp.Verify(expectedKey, expectetSignature, expectetDigest, expectedOpts)
+	assert.False(t, value)
+	assert.Contains(t, err.Error(), expectedErr.Error())
 }
