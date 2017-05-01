@@ -18,6 +18,7 @@ package mocks
 
 import (
 	"errors"
+	"hash"
 	"reflect"
 
 	"github.com/hyperledger/fabric/bccsp"
@@ -94,4 +95,32 @@ func (s *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Sign
 	}
 
 	return s.Value, s.Err
+}
+
+type Hasher struct {
+	MsgArg  []byte
+	OptsArg bccsp.HashOpts
+
+	Value     []byte
+	ValueHash hash.Hash
+	Err       error
+}
+
+func (h *Hasher) Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error) {
+	if !reflect.DeepEqual(h.MsgArg, msg) {
+		return nil, errors.New("invalid message")
+	}
+	if !reflect.DeepEqual(h.OptsArg, opts) {
+		return nil, errors.New("invalid opts")
+	}
+
+	return h.Value, h.Err
+}
+
+func (h *Hasher) GetHash(opts bccsp.HashOpts) (hash.Hash, error) {
+	if !reflect.DeepEqual(h.OptsArg, opts) {
+		return nil, errors.New("invalid opts")
+	}
+
+	return h.ValueHash, h.Err
 }
