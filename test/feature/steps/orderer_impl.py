@@ -1,4 +1,4 @@
-# Copyright IBM Corp. 2016 All Rights Reserved.
+# Copyright IBM Corp. 2017 All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,16 +27,6 @@ PROFILE_TYPES = {"solo": "SampleInsecureSolo",
                  "kafka": "SampleInsecureKafka",
                  "solo-msp": "SampleSingleMSPSolo"}
 
-@given(u'I wait "{seconds}" seconds')
-@when(u'I wait "{seconds}" seconds')
-@then(u'I wait "{seconds}" seconds')
-def step_impl(context, seconds):
-    time.sleep(float(seconds))
-
-
-@given(u'we compose "{composeYamlFile}"')
-def step_impl(context, composeYamlFile):
-    pass
 
 @given(u'a bootstrapped orderer network of type {networkType}')
 def step_impl(context, networkType):

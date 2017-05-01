@@ -22,16 +22,16 @@ Scenario Outline: FAB-3505: Test chaincode example02 deploy, invoke, and query
   When a user deploys chaincode at path "github.com/hyperledger/fabric/chaincode_example02" with ["init", "a", "1000" , "b", "2000"] with name "mycc"
   Then the chaincode is deployed
   When a user queries on the chaincode named "mycc" with args ["query", "a"]
-  Then a user receives expected response is 1000
+  Then a user receives expected response of 1000
   When a user invokes on the chaincode named "mycc" with args ["txId1", "invoke", "a", 10]
-  When a user queries on the chaincode named "mycc" with args ["query", "a"]
-  Then a user receives expected response is 990
+  And a user queries on the chaincode named "mycc" with args ["query", "a"]
+  Then a user receives expected response of 990
 
-  Given "Peer1" is taken down
+  Given "peer1" is taken down
   When a user invokes on the chaincode named "mycc" with args ["txId1", "invoke", "a", 10]
   And I wait "15" seconds
-  And "Peer1" comes back up
-  When a user queries on the chaincode named "mycc" with args ["query", "a"] on "Peer1"
+  And "peer1" comes back up
+  When a user queries on the chaincode named "mycc" with args ["query", "a"] on "peer1"
   Then a user receives expected response is 980
   Examples:
     | type  |
