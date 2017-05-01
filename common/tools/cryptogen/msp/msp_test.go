@@ -27,7 +27,8 @@ import (
 )
 
 const (
-	testCAName = "root0"
+	testCAOrg  = "example.com"
+	testCAName = "ca" + "." + testCAOrg
 	testName   = "peer0"
 )
 
@@ -42,7 +43,7 @@ func TestGenerateLocalMSP(t *testing.T) {
 
 	caDir := filepath.Join(testDir, "ca")
 	mspDir := filepath.Join(testDir, "msp")
-	rootCA, err := ca.NewCA(caDir, testCAName)
+	rootCA, err := ca.NewCA(caDir, testCAOrg, testCAName)
 	assert.NoError(t, err, "Error generating CA")
 	err = msp.GenerateLocalMSP(testDir, testName, rootCA)
 	assert.NoError(t, err, "Failed to generate local MSP")
@@ -80,7 +81,7 @@ func TestGenerateVerifyingMSP(t *testing.T) {
 
 	caDir := filepath.Join(testDir, "ca")
 	mspDir := filepath.Join(testDir, "msp")
-	rootCA, err := ca.NewCA(caDir, testCAName)
+	rootCA, err := ca.NewCA(caDir, testCAOrg, testCAName)
 	assert.NoError(t, err, "Failed to create new CA")
 
 	err = msp.GenerateVerifyingMSP(mspDir, rootCA)

@@ -40,7 +40,7 @@ type CA struct {
 
 // NewCA creates an instance of CA and saves the signing key pair in
 // baseDir/name
-func NewCA(baseDir, name string) (*CA, error) {
+func NewCA(baseDir, org, name string) (*CA, error) {
 
 	var response error
 	var ca *CA
@@ -62,7 +62,7 @@ func NewCA(baseDir, name string) (*CA, error) {
 
 				//set the organization for the subject
 				subject := subjectTemplate()
-				subject.Organization = []string{name}
+				subject.Organization = []string{org}
 				subject.CommonName = name
 
 				template.Subject = subject

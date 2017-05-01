@@ -38,7 +38,7 @@ var testDir = filepath.Join(os.TempDir(), "ca-test")
 func TestNewCA(t *testing.T) {
 
 	caDir := filepath.Join(testDir, "ca")
-	rootCA, err := ca.NewCA(caDir, testCAName)
+	rootCA, err := ca.NewCA(caDir, testCAName, testCAName)
 	assert.NoError(t, err, "Error generating CA")
 	assert.NotNil(t, rootCA, "Failed to return CA")
 	assert.NotNil(t, rootCA.Signer,
@@ -68,7 +68,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 	assert.NotNil(t, ecPubKey, "Failed to generate signed certificate")
 
 	// create our CA
-	rootCA, err := ca.NewCA(caDir, testCA2Name)
+	rootCA, err := ca.NewCA(caDir, testCA2Name, testCA2Name)
 	assert.NoError(t, err, "Error generating CA")
 
 	_, err = rootCA.SignCertificate(certDir, testName, ecPubKey)
