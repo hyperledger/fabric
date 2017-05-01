@@ -129,7 +129,7 @@ func (scf *systemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) (conf
 		return nil, err
 	}
 
-	err = configManager.Apply(newChannelConfigEnv)
+	err = configManager.Apply(configtx.FixNewChannelConfig(newChannelConfigEnv))
 	if err != nil {
 		return nil, err
 	}
