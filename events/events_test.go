@@ -149,11 +149,6 @@ func createTestChaincodeEvent(tid string, typ string) *ehpb.Event {
 	return emsg
 }
 
-func closeListenerAndSleep(l net.Listener) {
-	l.Close()
-	time.Sleep(2 * time.Second)
-}
-
 // Test the invocation of a transaction.
 func TestReceiveMessage(t *testing.T) {
 	var err error
