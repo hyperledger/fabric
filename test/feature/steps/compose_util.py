@@ -14,6 +14,7 @@
 #
 
 import os
+import sys
 import subprocess
 import json
 import uuid
@@ -57,19 +58,16 @@ class Composition:
         return servicesList
 
     def up(self, force_recreate=True, components=[]):
-        self.serviceNames = self.collectServiceNames()
         command = ["up", "-d"]
         if force_recreate:
             command += ["--force-recreate"]
         self.issueCommand(command + components)
 
     def scale(self, serviceName, count=1):
-        self.serviceNames = self.collectServiceNames()
         command = ["scale", "%s=%d" %(serviceName, count)]
         self.issueCommand(command)
 
     def stop(self, components=[]):
-        self.serviceNames = self.collectServiceNames()
         command = ["stop"]
         self.issueCommand(command, components)
 
@@ -109,7 +107,7 @@ class Composition:
 
     def getEnv(self):
         myEnv = os.environ.copy()
-        for key,value in self.getEnvAdditions().iteritems():
+        for key,value in self.getEnvAdditions().items():
             myEnv[key] = value
         return myEnv
 
@@ -126,6 +124,13 @@ class Composition:
                 container_ipaddress = container['NetworkSettings']['Networks'].values()[0]['IPAddress']
         return container_ipaddress
 
+    def getContainerFromName(self, containerName, containerList):
+        container = None
+        for container in containerList:
+            if containerName == container.containerName:
+                break
+        return container
+
     def issueCommand(self, command, components=[]):
         componentList = []
         useCompose = True
@@ -138,26 +143,43 @@ class Composition:
 
         # If we need to perform an operation on a specific container, use
         # docker not docker-compose
-        if useCompose:
+        if useCompose and command[0] != "exec":
             cmdArgs = self.getFileArgs()+ command + components
             cmd = ["docker-compose"] + cmdArgs
+        elif command[0] == "exec":
+            cmdArgs = command + componentList
+            cmdList = ["docker"] + cmdArgs
+            cmd = [" ".join(cmdList)]
         else:
             cmdArgs = command + componentList
             cmd = ["docker"] + cmdArgs
 
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.getEnv())
-        output, _error = process.communicate()
+        try:
+            if cmd[0].startswith("docker exec"):
+                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.getEnv())
+                output, _error = process.communicate()
+                if "Error: " in _error or "CRIT " in _error:
+                    raise Exception(_error)
+            else:
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.getEnv())
+                output, _error = process.communicate()
+                if _error:
+                    raise Exception(_error)
+        except:
+            err = "Error occurred {0}: {1}".format(cmd, sys.exc_info()[1])
+            #print(err)
+            output = err
 
         # Don't rebuild if ps command
         if command[0] !="ps" and command[0] !="config":
             self.rebuildContainerData()
-        return output
+        return str(output)
 
     def rebuildContainerData(self):
         self.containerDataList = []
         for containerID in self.refreshContainerIDs():
             # get container metadata
-            container = json.loads(subprocess.check_output(["docker", "inspect", containerID]))[0]
+            container = json.loads(str(subprocess.check_output(["docker", "inspect", containerID])))[0]
             # container name
             container_name = container['Name'][1:]
             # container ip address (only if container is running)
@@ -182,6 +204,12 @@ class Composition:
         self.issueCommand(["rm", "-f"])
         env = self.getEnv()
 
+        print("Current env:", env)
+
         # Now remove associated chaincode containers if any
         cmd = ["docker", "ps", "-qa", "--filter", "name={0}".format(self.projectName)]
-        output = subprocess.check_output(cmd, env=env)
+        output = str(subprocess.check_output(cmd, env=env))
+        container_list = output.strip().split('\n')
+        for container in container_list:
+            if container != '':
+                subprocess.call(['docker', 'rm', '-f', container], env=env)

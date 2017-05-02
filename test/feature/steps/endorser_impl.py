@@ -23,18 +23,22 @@ import config_util
 @when(u'a user deploys chaincode at path "{path}" with {args} with name "{name}" to "{containerName}" on channel "{channel}"')
 def deploy_impl(context, path, args, name, containerName, channel):
     # Be sure there is a transaction block for this channel
-    config_util.generateChannelConfig(channel+"-1", config_util.CHANNEL_PROFILE, context.composition.projectName)
+    config_util.generateChannelConfig(channel, config_util.CHANNEL_PROFILE, context.composition.projectName)
 
     chaincode = {
         "path": path,
         "language": "GOLANG",
         "name": name,
-        "channelID": channel+"-1",
+        "channelID": channel,
         "args": args,
     }
-    context.results = endorser_util.deploy_chaincode(context, chaincode, [containerName], channel+"-1")
+    context.results = endorser_util.deploy_chaincode(context, chaincode, [containerName], channel)
     # Save chaincode name and path and args
     context.chaincode = chaincode
+
+@when(u'a user deploys chaincode at path "{path}" with {args} with name "{name}" on channel "{channel}"')
+def step_impl(context, path, args, name, channel):
+    deploy_impl(context, path, args, name, "peer0.org1.example.com", channel)
 
 @when(u'a user deploys chaincode at path "{path}" with {args} with name "{name}"')
 def step_impl(context, path, args, name):
@@ -59,7 +63,7 @@ def query_impl(context, channel, name, args, component):
     time.sleep(2)
     chaincode = {"args": args,
                  "name": name}
-    context.result = endorser_util.query_chaincode(context, chaincode, component, channel+"-1")
+    context.result = endorser_util.query_chaincode(context, chaincode, component, channel)
 
 @when(u'a user queries on the chaincode named "{name}" with args {args} on "{component}"')
 def step_impl(context, name, args, component):
@@ -87,7 +91,7 @@ def invokes_impl(context, numInvokes, channel, name, args, component):
                  "name": name}
     orderers = endorser_util.get_orderers(context)
     for count in range(int(numInvokes)):
-        context.result = endorser_util.invoke_chaincode(context, chaincode, orderers, component, channel+"-1")
+        context.result = endorser_util.invoke_chaincode(context, chaincode, orderers, component, channel)
 
 @when(u'a user invokes {numInvokes} times on the channel "{channel}" using chaincode named "{name}" with args {args}')
 def step_impl(context, numInvokes, channel, name, args):
@@ -115,6 +119,9 @@ def step_impl(context):
 
 @then(u'the chaincode is deployed')
 def step_impl(context):
+    # Temporarily sleep for 2 sec. This delay should be able to be removed once we start using the python sdk
+    time.sleep(2)
+
     # Grab the key/value pair from the deploy
     key = value = None
     print(context.chaincode['args'])
@@ -136,7 +143,7 @@ def step_impl(context):
     }
     orderers = endorser_util.get_orderers(context)
     peers = endorser_util.get_peers(context)
-    result = endorser_util.query_chaincode(context, chaincode, peers[0], endorser_util.TEST_CHANNEL_ID+'-1')
+    result = endorser_util.query_chaincode(context, chaincode, peers[0], endorser_util.TEST_CHANNEL_ID)
     print(result)
     assert result[peers[0]] == "Query Result: {0}\n".format(value), "Expect {0} = {1}, received from the deploy: {2}".format(key, value, result[peers[0]])
 

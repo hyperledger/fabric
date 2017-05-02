@@ -26,7 +26,7 @@ def getDockerComposeFileArgsFromYamlFile(composeYaml):
 
 
 def getLogFiles(containers, fileSuffix):
-    """ This will gather the logs for the different component containers as well as 
+    """ This will gather the logs for the different component containers as well as
         the chaincode containers. If the containers is a list of strings, it is
         assumed this is a chaincode container list. Otherwise, the list is a list
         of Container objects.

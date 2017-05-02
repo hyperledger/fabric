@@ -59,6 +59,7 @@ services:
         image: hyperledger/fabric-kafka
         container_name: kafka0
         environment:
+            - KAFKA_LOG_RETENTION_MS=-1
             - KAFKA_MESSAGE_MAX_BYTES=103809024
             - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
             - KAFKA_BROKER_ID=0
@@ -85,6 +86,7 @@ services:
         image: hyperledger/fabric-kafka
         container_name: kafka1
         environment:
+            - KAFKA_LOG_RETENTION_MS=-1
             - KAFKA_MESSAGE_MAX_BYTES=103809024
             - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
             - KAFKA_BROKER_ID=1
@@ -111,6 +113,7 @@ services:
         image: hyperledger/fabric-kafka
         container_name: kafka2
         environment:
+            - KAFKA_LOG_RETENTION_MS=-1
             - KAFKA_MESSAGE_MAX_BYTES=103809024
             - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
             - KAFKA_BROKER_ID=2
@@ -137,6 +140,7 @@ services:
         image: hyperledger/fabric-kafka
         container_name: kafka3
         environment:
+            - KAFKA_LOG_RETENTION_MS=-1
             - KAFKA_MESSAGE_MAX_BYTES=103809024
             - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
             - KAFKA_BROKER_ID=3
@@ -159,8 +163,8 @@ services:
              aliases:
                - ${CORE_PEER_NETWORKID}
 
-    orderer.example.com:
-        container_name: orderer.example.com
+    orderer0.example.com:
+        container_name: orderer0.example.com
         image: hyperledger/fabric-orderer
         environment:
             - ORDERER_GENERAL_LOGLEVEL=debug
@@ -186,8 +190,104 @@ services:
             - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/tls/ca.crt]
         volumes:
             - ../configs/${CORE_PEER_NETWORKID}:/var/hyperledger/configs
-            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/msp
-            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer.example.com/tls:/var/hyperledger/tls
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer0.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer0.example.com/tls:/var/hyperledger/tls
+        working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+        command: orderer
+        ports:
+          - '7050'
+        depends_on:
+            - kafka0
+            - kafka1
+            - kafka2
+            - kafka3
+        links:
+            - kafka0:kafka0
+            - kafka1:kafka1
+            - kafka2:kafka2
+            - kafka3:kafka3
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    orderer1.example.com:
+        container_name: orderer1.example.com
+        image: hyperledger/fabric-orderer
+        environment:
+            - ORDERER_GENERAL_LOGLEVEL=debug
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${CORE_PEER_NETWORKID}_default
+            - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/msp
+            - ORDERER_GENERAL_LOCALMSPID=example.com
+            - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+            - ORDERER_GENERAL_LISTENPORT=7050
+            - CONFIGTX_ORDERER_ORDERERTYPE=kafka
+            - CONFIGTX_ORDERER_KAFKA_BROKERS=[kafka0:9092,kafka1:9092,kafka2:9092,kafka3:9092]
+            - ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s
+            - ORDERER_KAFKA_RETRY_SHORTTOTAL=30s
+            - ORDERER_KAFKA_VERBOSE=true
+            - CONFIGTX_ORDERER_ADDRESSES=[127.0.0.1:7050]
+            - ORDERER_GENERAL_LEDGERTYPE=ram
+            - ORDERER_GENERAL_GENESISPROFILE=SampleInsecureKafka
+            - ORDERER_GENERAL_GENESISMETHOD=file
+            - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/configs/orderer.block
+            # TLS settings
+            - ORDERER_GENERAL_TLS_ENABLED=false
+            - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/tls/server.key
+            - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/tls/server.crt
+            - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/tls/ca.crt]
+        volumes:
+            - ../configs/${CORE_PEER_NETWORKID}:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer1.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer1.example.com/tls:/var/hyperledger/tls
+        working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+        command: orderer
+        ports:
+          - '7050'
+        depends_on:
+            - kafka0
+            - kafka1
+            - kafka2
+            - kafka3
+        links:
+            - kafka0:kafka0
+            - kafka1:kafka1
+            - kafka2:kafka2
+            - kafka3:kafka3
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    orderer2.example.com:
+        container_name: orderer2.example.com
+        image: hyperledger/fabric-orderer
+        environment:
+            - ORDERER_GENERAL_LOGLEVEL=debug
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${CORE_PEER_NETWORKID}_default
+            - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/msp
+            - ORDERER_GENERAL_LOCALMSPID=example.com
+            - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+            - ORDERER_GENERAL_LISTENPORT=7050
+            - CONFIGTX_ORDERER_ORDERERTYPE=kafka
+            - CONFIGTX_ORDERER_KAFKA_BROKERS=[kafka0:9092,kafka1:9092,kafka2:9092,kafka3:9092]
+            - ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s
+            - ORDERER_KAFKA_RETRY_SHORTTOTAL=30s
+            - ORDERER_KAFKA_VERBOSE=true
+            - CONFIGTX_ORDERER_ADDRESSES=[127.0.0.1:7050]
+            - ORDERER_GENERAL_LEDGERTYPE=ram
+            - ORDERER_GENERAL_GENESISPROFILE=SampleInsecureKafka
+            - ORDERER_GENERAL_GENESISMETHOD=file
+            - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/configs/orderer.block
+            # TLS settings
+            - ORDERER_GENERAL_TLS_ENABLED=false
+            - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/tls/server.key
+            - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/tls/server.crt
+            - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/tls/ca.crt]
+        volumes:
+            - ../configs/${CORE_PEER_NETWORKID}:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer2.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer2.example.com/tls:/var/hyperledger/tls
         working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
         command: orderer
         ports:
@@ -240,9 +340,13 @@ services:
             - '7051'
             - '7053'
         depends_on:
-            - orderer.example.com
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
         links:
-            - orderer.example.com
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
         command: peer node start
         networks:
           default:
@@ -282,9 +386,13 @@ services:
             - '7051'
             - '7053'
         depends_on:
-            - orderer.example.com
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
         links:
-            - orderer.example.com
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
         command: peer node start
         networks:
           default:
@@ -324,10 +432,14 @@ services:
             - '7051'
             - '7053'
         depends_on:
-            - orderer.example.com
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
             - peer0.org1.example.com
         links:
-            - orderer.example.com
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
         command: peer node start
         networks:
           default:
@@ -367,10 +479,14 @@ services:
             - '7051'
             - '7053'
         depends_on:
-            - orderer.example.com
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
             - peer0.org2.example.com
         links:
-            - orderer.example.com
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
         command: peer node start
         networks:
           default:
@@ -400,7 +516,9 @@ services:
         ports:
             - '9092'
         depends_on:
-          - orderer.example.com
+          - orderer0.example.com
+          - orderer1.example.com
+          - orderer2.example.com
           - peer0.org1.example.com
           - peer1.org1.example.com
           - peer0.org2.example.com

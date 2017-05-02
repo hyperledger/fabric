@@ -16,42 +16,48 @@
 Feature: Peer Service
     As a user I want to be able have channels and chaincodes to execute
 
-
+#@doNotDecompose
+@daily
 Scenario Outline: FAB-3505: Test chaincode example02 deploy, invoke, and query
   Given I have a bootstrapped fabric network of type <type>
-  When a user deploys chaincode at path "github.com/hyperledger/fabric/chaincode_example02" with ["init", "a", "1000" , "b", "2000"] with name "mycc"
+  And I wait "<waitTime>" seconds
+  When a user deploys chaincode at path "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with ["init","a","1000","b","2000"] with name "mycc"
+  And I wait "5" seconds
   Then the chaincode is deployed
-  When a user queries on the chaincode named "mycc" with args ["query", "a"]
+  When a user queries on the chaincode named "mycc" with args ["query","a"]
   Then a user receives expected response of 1000
-  When a user invokes on the chaincode named "mycc" with args ["txId1", "invoke", "a", 10]
-  And a user queries on the chaincode named "mycc" with args ["query", "a"]
+  When a user invokes on the chaincode named "mycc" with args ["invoke","a","b","10"]
+  And a user queries on the chaincode named "mycc" with args ["query","a"]
   Then a user receives expected response of 990
 
-  Given "peer1.org1.example.com" is taken down
-  When a user invokes on the chaincode named "mycc" with args ["txId1", "invoke", "a", 10]
-  And I wait "15" seconds
-  Given "peer1.org1.example.com" comes back up
-  When a user queries on the chaincode named "mycc" with args ["query", "a"] on "peer1.org1.example.com"
-  Then a user receives expected response of 980
+  Given "peer0.org2.example.com" is taken down
+  When a user invokes on the chaincode named "mycc" with args ["invoke","a","b","10"]
+  And I wait "5" seconds
+  Given "peer0.org2.example.com" comes back up
+  And I wait "10" seconds
+  When a user queries on the chaincode named "mycc" with args ["query","a"] on "peer0.org2.example.com"
+  Then a user receives expected response of 980 from "peer0.org2.example.com"
   Examples:
-    | type  |
-    | solo  |
-    | kafka |
+    | type  | waitTime |
+    | solo  |    5     |
+    | kafka |    60    |
 
 
+@daily
 Scenario Outline: FAB-1440: Test basic chaincode deploy, invoke, query
   Given I have a bootstrapped fabric network of type <type>
+  And I wait "<waitTime>" seconds
   When a user deploys chaincode
   Then the chaincode is deployed
-  When a user queries on the chaincode
-  Then a user receives expected response
+  When a user queries on the chaincode with args ["query","a"]
+  Then a user receives expected response of 100
   Examples:
-    | type  |
-    | solo  |
-    | kafka |
+    | type  | waitTime |
+    | solo  |    5     |
+    | kafka |    60    |
 
 
-@skip
+@daily
 Scenario: FAB-3861: Basic Chaincode Execution (example02)
     Given I have a bootstrapped fabric network
     When a user deploys chaincode
@@ -60,13 +66,13 @@ Scenario: FAB-3861: Basic Chaincode Execution (example02)
 
 @skip
 Scenario: FAB-3865: Multiple Channels Per Peer
-    Given I have a bootstrapped fabric network
-    When a user deploys chaincode
-    Then the chaincode is deployed
+    Given this test needs to be implemented
+    When a user gets a chance
+    Then the test will run
 
 
 @skip
 Scenario: FAB-3866: Multiple Chaincodes Per Peer
-    Given I have a bootstrapped fabric network
-    When a user deploys chaincode
-    Then the chaincode is deployed
+    Given this test needs to be implemented
+    When a user gets a chance
+    Then the test will run
