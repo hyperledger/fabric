@@ -129,11 +129,6 @@ public class Example05 extends ChaincodeBase {
 		return newSuccessResponse(String.valueOf(sum).getBytes(UTF_8));
 	}
 
-	@Override
-	public String getChaincodeID() {
-		return "Example05";
-	}
-
 	public static void main(String[] args) throws Exception {
 		new Example05().start(args);
 	}

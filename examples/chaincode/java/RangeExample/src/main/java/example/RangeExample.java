@@ -71,11 +71,6 @@ public class RangeExample extends ChaincodeBase {
 
     }
 
-    @java.lang.Override
-    public String getChaincodeID() {
-        return "RangeExample";
-    }
-
     public static void main(String[] args) throws Exception {
         log.info("starting");
         new RangeExample().start(args);

@@ -42,11 +42,6 @@ public class Example06 extends ChaincodeBase {
 			return newBadRequestResponse(format("Invalid arguments specified"));
 		}
 	}
-	
-	@Override
-	public String getChaincodeID() {
-		return "Example06";
-	}
 
 	public static void main(String[] args) throws Exception {
 		new Example06().start(args);

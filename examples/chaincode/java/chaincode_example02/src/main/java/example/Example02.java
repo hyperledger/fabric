@@ -22,8 +22,6 @@ import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
 import static org.hyperledger.fabric.shim.ChaincodeHelper.newInternalServerErrorResponse;
 import static org.hyperledger.fabric.shim.ChaincodeHelper.newSuccessResponse;
 
-import java.util.List;
-
 import javax.json.Json;
 
 import org.apache.commons.logging.Log;
@@ -153,11 +151,6 @@ public class Example02 extends ChaincodeBase {
 				.add("Amount", Integer.parseInt(stub.getStringState(accountKey)))
 				.build().toString().getBytes(UTF_8));
 
-	}
-
-	@Override
-	public String getChaincodeID() {
-		return "Example02";
 	}
 
 	public static void main(String[] args) throws Exception {

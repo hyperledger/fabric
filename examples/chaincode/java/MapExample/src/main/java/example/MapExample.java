@@ -49,11 +49,6 @@ public class MapExample extends ChaincodeBase {
 		return stub.getState(args[0]);
 	}
 
-	@Override
-	public String getChaincodeID() {
-		return "map";
-	}
-
 	public static void main(String[] args) throws Exception {
 		new MapExample().start(args);
 	}
