@@ -1019,9 +1019,9 @@ func (g *gossipServiceImpl) sameOrgOrOurOrgPullFilter(msg proto.ReceivedMessage)
 func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID) (*proto.SignedGossipMessage, error) {
 	pkiID := g.comm.GetPKIid()
 	stateInfMsg := &proto.StateInfo{
-		ChannelMAC: channel.GenerateMAC(pkiID, chainID),
-		Metadata:   metadata,
-		PkiId:      g.comm.GetPKIid(),
+		Channel_MAC: channel.GenerateMAC(pkiID, chainID),
+		Metadata:    metadata,
+		PkiId:       g.comm.GetPKIid(),
 		Timestamp: &proto.PeerTime{
 			IncNumber: uint64(g.incTime.UnixNano()),
 			SeqNum:    uint64(time.Now().UnixNano()),

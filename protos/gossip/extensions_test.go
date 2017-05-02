@@ -349,7 +349,7 @@ func TestCheckGossipMessageTypes(t *testing.T) {
 	// Create State info pull request
 	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, &GossipMessage_StateInfoPullReq{
 		StateInfoPullReq: &StateInfoPullRequest{
-			ChannelMAC: []byte{17},
+			Channel_MAC: []byte{17},
 		},
 	})
 
@@ -842,8 +842,8 @@ func stateInfoMessage(incNumber uint64, seqNum uint64, pkid []byte, mac []byte) 
 				IncNumber: incNumber,
 				SeqNum:    seqNum,
 			},
-			PkiId:      pkid,
-			ChannelMAC: mac,
+			PkiId:       pkid,
+			Channel_MAC: mac,
 		},
 	}
 }

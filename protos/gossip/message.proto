@@ -23,7 +23,7 @@ service Gossip {
 message Envelope {
     bytes payload   = 1;
     bytes signature = 2;
-    SecretEnvelope secretEnvelope = 3;
+    SecretEnvelope secret_envelope = 3;
 }
 
 // SecretEnvelope is a marshalled Secret
@@ -123,13 +123,13 @@ message StateInfo {
     PeerTime timestamp = 2;
     bytes pki_id       = 3;
 
-    // channelMAC is an authentication code that proves
+    // channel_MAC is an authentication code that proves
     // that the peer that sent this message knows
     // the name of the channel.
     // The channel name that this message relates to
     // can only be computed by a peer that has joined
     // the channel
-    bytes channelMAC  = 4;
+    bytes channel_MAC  = 4;
 }
 
 // StateInfoSnapshot is an aggregation of StateInfo messages
@@ -140,13 +140,13 @@ message StateInfoSnapshot {
 // StateInfoPullRequest is used to fetch a StateInfoSnapshot
 // from a remote peer
 message StateInfoPullRequest {
-    // channelMAC is an authentication code that proves
+    // channel_MAC is an authentication code that proves
     // that the peer that sent this message knows
     // the name of the channel.
     // The channel name that this message relates to
     // can only be computed by a peer that has joined
     // the channel
-    bytes channelMAC  = 1;
+    bytes channel_MAC  = 1;
 }
 
 // ConnEstablish is the message used for the gossip handshake

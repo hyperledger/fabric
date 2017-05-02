@@ -502,9 +502,9 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 		}
 
 		expectedMAC := GenerateMAC(si.PkiId, gc.chainID)
-		if !bytes.Equal(si.ChannelMAC, expectedMAC) {
+		if !bytes.Equal(si.Channel_MAC, expectedMAC) {
 			gc.logger.Warning("Channel", chanName, ": StateInfo message", stateInf,
-				", has an invalid MAC. Expected", expectedMAC, ", got", si.ChannelMAC, ", sent from", sender)
+				", has an invalid MAC. Expected", expectedMAC, ", got", si.Channel_MAC, ", sent from", sender)
 			return
 		}
 		err = gc.ValidateStateInfoMessage(stateInf)
@@ -589,8 +589,8 @@ func (gc *gossipChannel) verifyMsg(msg proto.ReceivedMessage) bool {
 	if m.IsStateInfoMsg() {
 		si := m.GetStateInfo()
 		expectedMAC := GenerateMAC(si.PkiId, gc.chainID)
-		if !bytes.Equal(expectedMAC, si.ChannelMAC) {
-			gc.logger.Warning("Message contains wrong channel MAC(", si.ChannelMAC, "), expected", expectedMAC)
+		if !bytes.Equal(expectedMAC, si.Channel_MAC) {
+			gc.logger.Warning("Message contains wrong channel MAC(", si.Channel_MAC, "), expected", expectedMAC)
 			return false
 		}
 		return true
@@ -599,8 +599,8 @@ func (gc *gossipChannel) verifyMsg(msg proto.ReceivedMessage) bool {
 	if m.IsStateInfoPullRequestMsg() {
 		sipr := m.GetStateInfoPullReq()
 		expectedMAC := GenerateMAC(msg.GetConnectionInfo().ID, gc.chainID)
-		if !bytes.Equal(expectedMAC, sipr.ChannelMAC) {
-			gc.logger.Warning("Message contains wrong channel MAC(", sipr.ChannelMAC, "), expected", expectedMAC)
+		if !bytes.Equal(expectedMAC, sipr.Channel_MAC) {
+			gc.logger.Warning("Message contains wrong channel MAC(", sipr.Channel_MAC, "), expected", expectedMAC)
 			return false
 		}
 		return true
@@ -619,7 +619,7 @@ func (gc *gossipChannel) createStateInfoRequest() *proto.SignedGossipMessage {
 		Nonce: 0,
 		Content: &proto.GossipMessage_StateInfoPullReq{
 			StateInfoPullReq: &proto.StateInfoPullRequest{
-				ChannelMAC: GenerateMAC(gc.pkiID, gc.chainID),
+				Channel_MAC: GenerateMAC(gc.pkiID, gc.chainID),
 			},
 		},
 	}).NoopSign()

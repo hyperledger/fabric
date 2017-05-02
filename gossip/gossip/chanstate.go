@@ -60,7 +60,7 @@ func (cs *channelState) isStopping() bool {
 func (cs *channelState) lookupChannelForMsg(msg proto.ReceivedMessage) channel.GossipChannel {
 	if msg.GetGossipMessage().IsStateInfoPullRequestMsg() {
 		sipr := msg.GetGossipMessage().GetStateInfoPullReq()
-		mac := sipr.ChannelMAC
+		mac := sipr.Channel_MAC
 		pkiID := msg.GetConnectionInfo().ID
 		return cs.getGossipChannelByMAC(mac, pkiID)
 	}
@@ -80,7 +80,7 @@ func (cs *channelState) lookupChannelForGossipMsg(msg *proto.GossipMessage) chan
 
 	// Else, it's a StateInfo message.
 	stateInfMsg := msg.GetStateInfo()
-	return cs.getGossipChannelByMAC(stateInfMsg.ChannelMAC, stateInfMsg.PkiId)
+	return cs.getGossipChannelByMAC(stateInfMsg.Channel_MAC, stateInfMsg.PkiId)
 }
 
 func (cs *channelState) getGossipChannelByMAC(receivedMAC []byte, pkiID common.PKIidType) channel.GossipChannel {
