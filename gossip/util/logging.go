@@ -17,13 +17,10 @@ limitations under the License.
 package util
 
 import (
-	"io/ioutil"
-	"log"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/op/go-logging"
-	"google.golang.org/grpc/grpclog"
 )
 
 // Module names for logger initialization.
@@ -44,10 +41,6 @@ var lock = sync.Mutex{}
 
 // defaultTestSpec is the default logging level for gossip tests
 var defaultTestSpec = "WARNING"
-
-func init() {
-	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
-}
 
 // GetLogger returns a logger for given gossip module and peerID
 func GetLogger(module string, peerID string) *logging.Logger {
