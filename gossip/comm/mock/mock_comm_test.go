@@ -76,7 +76,10 @@ func TestMockComm_PingPong(t *testing.T) {
 	peerA.Send((&proto.GossipMessage{
 		Content: &proto.GossipMessage_DataMsg{
 			&proto.DataMessage{
-				&proto.Payload{1, "", []byte("Ping")},
+				&proto.Payload{
+					SeqNum: 1,
+					Data:   []byte("Ping"),
+				},
 			}},
 	}).NoopSign(), &comm.RemotePeer{"peerB", common.PKIidType("peerB")})
 
@@ -88,7 +91,10 @@ func TestMockComm_PingPong(t *testing.T) {
 	msg.Respond(&proto.GossipMessage{
 		Content: &proto.GossipMessage_DataMsg{
 			&proto.DataMessage{
-				&proto.Payload{1, "", []byte("Pong")},
+				&proto.Payload{
+					SeqNum: 1,
+					Data:   []byte("Pong"),
+				},
 			}},
 	})
 

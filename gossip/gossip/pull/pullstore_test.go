@@ -332,7 +332,6 @@ func dataMsg(seqNum int) *proto.SignedGossipMessage {
 			DataMsg: &proto.DataMessage{
 				Payload: &proto.Payload{
 					Data:   []byte{},
-					Hash:   "",
 					SeqNum: uint64(seqNum),
 				},
 			},

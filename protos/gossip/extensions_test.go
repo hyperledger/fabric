@@ -273,17 +273,15 @@ func TestDataMessageInvalidation(t *testing.T) {
 	comparator := NewGossipMessageComparator(5)
 
 	data := []byte{1, 1, 1}
-	sMsg1 := signedGossipMessage("testChannel", GossipMessage_EMPTY, dataMessage(1, "hash", data))
-	sMsg2 := signedGossipMessage("testChannel", GossipMessage_EMPTY, dataMessage(1, "hash", data))
-	sMsg3 := signedGossipMessage("testChannel", GossipMessage_EMPTY, dataMessage(1, "newHash", data))
-	sMsg4 := signedGossipMessage("testChannel", GossipMessage_EMPTY, dataMessage(2, "newHash", data))
-	sMsg5 := signedGossipMessage("testChannel", GossipMessage_EMPTY, dataMessage(7, "newHash", data))
+	sMsg1 := signedGossipMessage("testChannel", GossipMessage_EMPTY, dataMessage(1, data))
+	sMsg1Clone := signedGossipMessage("testChannel", GossipMessage_EMPTY, dataMessage(1, data))
+	sMsg3 := signedGossipMessage("testChannel", GossipMessage_EMPTY, dataMessage(2, data))
+	sMsg4 := signedGossipMessage("testChannel", GossipMessage_EMPTY, dataMessage(7, data))
 
-	assert.Equal(t, comparator(sMsg1, sMsg2), common.MessageInvalidated)
+	assert.Equal(t, comparator(sMsg1, sMsg1Clone), common.MessageInvalidated)
 	assert.Equal(t, comparator(sMsg1, sMsg3), common.MessageNoAction)
-	assert.Equal(t, comparator(sMsg1, sMsg4), common.MessageNoAction)
-	assert.Equal(t, comparator(sMsg1, sMsg5), common.MessageInvalidated)
-	assert.Equal(t, comparator(sMsg5, sMsg1), common.MessageInvalidates)
+	assert.Equal(t, comparator(sMsg1, sMsg4), common.MessageInvalidated)
+	assert.Equal(t, comparator(sMsg4, sMsg1), common.MessageInvalidates)
 }
 
 func TestIdentityMessagesInvalidation(t *testing.T) {
@@ -376,7 +374,7 @@ func TestCheckGossipMessageTypes(t *testing.T) {
 	assert.True(t, msg.IsAliveMsg())
 
 	// Create gossip data message
-	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, dataMessage(1, "hash", []byte{1, 2, 3, 4, 5}))
+	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, dataMessage(1, []byte{1, 2, 3, 4, 5}))
 	assert.True(t, msg.IsDataMsg())
 
 	// Create data request message
@@ -436,7 +434,6 @@ func TestCheckGossipMessageTypes(t *testing.T) {
 		StateResponse: &RemoteStateResponse{
 			Payloads: []*Payload{&Payload{
 				SeqNum: 1,
-				Hash:   "hash",
 				Data:   []byte{1, 2, 3, 4, 5},
 			}},
 		},
@@ -497,7 +494,7 @@ func TestGossipPullMessageType(t *testing.T) {
 	assert.Equal(t, msg.GetPullMsgType(), PullMsgType_IDENTITY_MSG)
 
 	// Create gossip data message
-	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, dataMessage(1, "hash", []byte{1, 2, 3, 4, 5}))
+	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, dataMessage(1, []byte{1, 2, 3, 4, 5}))
 	assert.True(t, msg.IsDataMsg())
 	assert.Equal(t, msg.GetPullMsgType(), PullMsgType_UNDEFINED)
 }
@@ -506,30 +503,30 @@ func TestGossipMessageDataMessageTagType(t *testing.T) {
 	var msg *SignedGossipMessage
 	channelID := "testID1"
 
-	msg = signedGossipMessage(channelID, GossipMessage_CHAN_AND_ORG, dataMessage(1, "hash", []byte{1}))
+	msg = signedGossipMessage(channelID, GossipMessage_CHAN_AND_ORG, dataMessage(1, []byte{1}))
 	assert.True(t, msg.IsChannelRestricted())
 	assert.True(t, msg.IsOrgRestricted())
 	assert.NoError(t, msg.IsTagLegal())
 
-	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, dataMessage(1, "hash", []byte{1}))
+	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, dataMessage(1, []byte{1}))
 	assert.Error(t, msg.IsTagLegal())
 
-	msg = signedGossipMessage(channelID, GossipMessage_UNDEFINED, dataMessage(1, "hash", []byte{1}))
+	msg = signedGossipMessage(channelID, GossipMessage_UNDEFINED, dataMessage(1, []byte{1}))
 	assert.Error(t, msg.IsTagLegal())
 
-	msg = signedGossipMessage(channelID, GossipMessage_ORG_ONLY, dataMessage(1, "hash", []byte{1}))
+	msg = signedGossipMessage(channelID, GossipMessage_ORG_ONLY, dataMessage(1, []byte{1}))
 	assert.False(t, msg.IsChannelRestricted())
 	assert.True(t, msg.IsOrgRestricted())
 
-	msg = signedGossipMessage(channelID, GossipMessage_CHAN_OR_ORG, dataMessage(1, "hash", []byte{1}))
+	msg = signedGossipMessage(channelID, GossipMessage_CHAN_OR_ORG, dataMessage(1, []byte{1}))
 	assert.True(t, msg.IsChannelRestricted())
 	assert.False(t, msg.IsOrgRestricted())
 
-	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, dataMessage(1, "hash", []byte{1}))
+	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, dataMessage(1, []byte{1}))
 	assert.False(t, msg.IsChannelRestricted())
 	assert.False(t, msg.IsOrgRestricted())
 
-	msg = signedGossipMessage(channelID, GossipMessage_UNDEFINED, dataMessage(1, "hash", []byte{1}))
+	msg = signedGossipMessage(channelID, GossipMessage_UNDEFINED, dataMessage(1, []byte{1}))
 	assert.False(t, msg.IsChannelRestricted())
 	assert.False(t, msg.IsOrgRestricted())
 }
@@ -774,7 +771,7 @@ func TestSignedGossipMessage_Verify(t *testing.T) {
 
 func TestEnvelope(t *testing.T) {
 	dataMsg := &GossipMessage{
-		Content: dataMessage(1, "hash", []byte("data")),
+		Content: dataMessage(1, []byte("data")),
 	}
 	bytes, err := proto.Marshal(dataMsg)
 	assert.NoError(t, err)
@@ -791,7 +788,7 @@ func TestEnvelope(t *testing.T) {
 
 func TestEnvelope_SignSecret(t *testing.T) {
 	dataMsg := &GossipMessage{
-		Content: dataMessage(1, "hash", []byte("data")),
+		Content: dataMessage(1, []byte("data")),
 	}
 	bytes, err := proto.Marshal(dataMsg)
 	assert.NoError(t, err)
@@ -851,12 +848,11 @@ func stateInfoMessage(incNumber uint64, seqNum uint64, pkid []byte, mac []byte) 
 	}
 }
 
-func dataMessage(seqNum uint64, hash string, data []byte) *GossipMessage_DataMsg {
+func dataMessage(seqNum uint64, data []byte) *GossipMessage_DataMsg {
 	return &GossipMessage_DataMsg{
 		DataMsg: &DataMessage{
 			Payload: &Payload{
 				SeqNum: seqNum,
-				Hash:   hash,
 				Data:   data,
 			},
 		},

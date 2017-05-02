@@ -18,7 +18,6 @@ package state
 
 import (
 	"crypto/rand"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -33,30 +32,16 @@ func init() {
 	util.SetupTestLogging()
 }
 
-func uuid() (string, error) {
-	uuid := make([]byte, 16)
-	_, err := rand.Read(uuid)
-	if err != nil {
-		return "", err
-	}
-	uuid[8] = uuid[8]&^0xc0 | 0x80
-
-	uuid[6] = uuid[6]&^0xf0 | 0x40
-	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
-}
-
 func randomPayloadWithSeqNum(seqNum uint64) (*proto.Payload, error) {
 	data := make([]byte, 64)
 	_, err := rand.Read(data)
 	if err != nil {
 		return nil, err
 	}
-	uuid, err := uuid()
-	if err != nil {
-		return nil, err
-	}
-
-	return &proto.Payload{seqNum, uuid, data}, nil
+	return &proto.Payload{
+		SeqNum: seqNum,
+		Data:   data,
+	}, nil
 }
 
 func TestNewPayloadsBuffer(t *testing.T) {

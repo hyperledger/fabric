@@ -394,7 +394,10 @@ func TestAccessControl(t *testing.T) {
 	for i := 1; i <= msgCount; i++ {
 		rawblock := pcomm.NewBlock(uint64(i), []byte{})
 		if b, err := pb.Marshal(rawblock); err == nil {
-			payload := &proto.Payload{uint64(i), "", b}
+			payload := &proto.Payload{
+				SeqNum: uint64(i),
+				Data:   b,
+			}
 			bootstrapSet[0].s.AddPayload(payload)
 		} else {
 			t.Fail()
@@ -550,7 +553,10 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	for i := 1; i <= msgCount; i++ {
 		rawblock := pcomm.NewBlock(uint64(i), []byte{})
 		if b, err := pb.Marshal(rawblock); err == nil {
-			payload := &proto.Payload{uint64(i), "", b}
+			payload := &proto.Payload{
+				SeqNum: uint64(i),
+				Data:   b,
+			}
 			bootstrapSet[0].s.AddPayload(payload)
 		} else {
 			t.Fail()
@@ -682,7 +688,10 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	for i := 1; i <= msgCount; i++ {
 		rawblock := pcomm.NewBlock(uint64(i), []byte{})
 		if b, err := pb.Marshal(rawblock); err == nil {
-			payload := &proto.Payload{uint64(i), "", b}
+			payload := &proto.Payload{
+				SeqNum: uint64(i),
+				Data:   b,
+			}
 			bootPeer.s.AddPayload(payload)
 		} else {
 			t.Fail()
