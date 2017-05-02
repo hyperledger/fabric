@@ -103,12 +103,6 @@ func (dbInst *DB) Close() {
 	dbInst.dbState = closed
 }
 
-func (dbInst *DB) isOpen() bool {
-	dbInst.mux.Lock()
-	defer dbInst.mux.Unlock()
-	return dbInst.dbState == opened
-}
-
 // Get returns the value for the given key
 func (dbInst *DB) Get(key []byte) ([]byte, error) {
 	value, err := dbInst.db.Get(key, dbInst.readOpts)

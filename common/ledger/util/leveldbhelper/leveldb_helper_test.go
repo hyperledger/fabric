@@ -17,111 +17,123 @@ limitations under the License.
 package leveldbhelper
 
 import (
-	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
-const testDBPath = "/tmp/fabric/ledgertests/util/leveldbhelper"
-
-func TestDBBasicWriteAndReads(t *testing.T) {
-	testDBBasicWriteAndReads(t, "db1", "db2", "")
+func TestLevelDBHelperWriteWithoutOpen(t *testing.T) {
+	env := newTestDBEnv(t, testDBPath)
+	defer env.cleanup()
+	db := env.db
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("A panic is expected when writing to db before opening")
+		}
+	}()
+	db.Put([]byte("key"), []byte("value"), false)
 }
 
-func testDBBasicWriteAndReads(t *testing.T, dbNames ...string) {
-	p := createTestDBProvider(t)
-	defer p.Close()
-	for _, dbName := range dbNames {
-		db := p.GetDBHandle(dbName)
-		db.Put([]byte("key1"), []byte("value1_"+dbName), false)
-		db.Put([]byte("key2"), []byte("value2_"+dbName), false)
-		db.Put([]byte("key3"), []byte("value3_"+dbName), false)
+func TestLevelDBHelperReadWithoutOpen(t *testing.T) {
+	env := newTestDBEnv(t, testDBPath)
+	defer env.cleanup()
+	db := env.db
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("A panic is expected when writing to db before opening")
+		}
+	}()
+	db.Get([]byte("key"))
+}
+
+func TestLevelDBHelper(t *testing.T) {
+	env := newTestDBEnv(t, testDBPath)
+	//defer env.cleanup()
+	db := env.db
+
+	db.Open()
+	// second time open should not have any side effect
+	db.Open()
+	db.Put([]byte("key1"), []byte("value1"), false)
+	db.Put([]byte("key2"), []byte("value2"), true)
+	db.Put([]byte("key3"), []byte("value3"), true)
+
+	val, _ := db.Get([]byte("key2"))
+	testutil.AssertEquals(t, string(val), "value2")
+
+	db.Delete([]byte("key1"), false)
+	db.Delete([]byte("key2"), true)
+
+	val1, err1 := db.Get([]byte("key1"))
+	testutil.AssertNoError(t, err1, "")
+	testutil.AssertEquals(t, string(val1), "")
+
+	val2, err2 := db.Get([]byte("key2"))
+	testutil.AssertNoError(t, err2, "")
+	testutil.AssertEquals(t, string(val2), "")
+
+	db.Close()
+	// second time open should not have any side effect
+	db.Close()
+
+	val3, err3 := db.Get([]byte("key3"))
+	testutil.AssertError(t, err3, "")
+
+	db.Open()
+	batch := &leveldb.Batch{}
+	batch.Put([]byte("key1"), []byte("value1"))
+	batch.Put([]byte("key2"), []byte("value2"))
+	batch.Delete([]byte("key3"))
+	db.WriteBatch(batch, true)
+
+	val1, err1 = db.Get([]byte("key1"))
+	testutil.AssertNoError(t, err1, "")
+	testutil.AssertEquals(t, string(val1), "value1")
+
+	val2, err2 = db.Get([]byte("key2"))
+	testutil.AssertNoError(t, err2, "")
+	testutil.AssertEquals(t, string(val2), "value2")
+
+	val3, err3 = db.Get([]byte("key3"))
+	testutil.AssertNoError(t, err3, "")
+	testutil.AssertEquals(t, string(val3), "")
+
+	keys := []string{}
+	itr := db.GetIterator(nil, nil)
+	for itr.Next() {
+		keys = append(keys, string(itr.Key()))
 	}
-
-	for _, dbName := range dbNames {
-		db := p.GetDBHandle(dbName)
-		val, err := db.Get([]byte("key1"))
-		testutil.AssertNoError(t, err, "")
-		testutil.AssertEquals(t, val, []byte("value1_"+dbName))
-
-		val, err = db.Get([]byte("key2"))
-		testutil.AssertNoError(t, err, "")
-		testutil.AssertEquals(t, val, []byte("value2_"+dbName))
-
-		val, err = db.Get([]byte("key3"))
-		testutil.AssertNoError(t, err, "")
-		testutil.AssertEquals(t, val, []byte("value3_"+dbName))
-	}
+	testutil.AssertEquals(t, keys, []string{"key1", "key2"})
 }
 
-func TestIterator(t *testing.T) {
-	p := createTestDBProvider(t)
-	defer p.Close()
-	db1 := p.GetDBHandle("db1")
-	db2 := p.GetDBHandle("db2")
-	db3 := p.GetDBHandle("db3")
-	for i := 0; i < 20; i++ {
-		db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false)
-		db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false)
-		db3.Put([]byte(createTestKey(i)), []byte(createTestValue("db3", i)), false)
-	}
-
-	itr1 := db2.GetIterator([]byte(createTestKey(2)), []byte(createTestKey(4)))
-	defer itr1.Release()
-	checkItrResults(t, itr1, createTestKeys(2, 3), createTestValues("db2", 2, 3))
-
-	itr2 := db2.GetIterator([]byte(createTestKey(2)), nil)
-	defer itr2.Release()
-	checkItrResults(t, itr2, createTestKeys(2, 19), createTestValues("db2", 2, 19))
-
-	itr3 := db2.GetIterator(nil, nil)
-	defer itr3.Release()
-	checkItrResults(t, itr3, createTestKeys(0, 19), createTestValues("db2", 0, 19))
+func TestCreateDBInEmptyDir(t *testing.T) {
+	testutil.AssertNoError(t, os.RemoveAll(testDBPath), "")
+	testutil.AssertNoError(t, os.MkdirAll(testDBPath, 0775), "")
+	db := CreateDB(&Conf{testDBPath})
+	defer db.Close()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Panic is not expected when opening db in an existing empty dir. %s", r)
+		}
+	}()
+	db.Open()
 }
 
-func checkItrResults(t *testing.T, itr *Iterator, expectedKeys []string, expectedValues []string) {
-	defer itr.Release()
-	var actualKeys []string
-	var actualValues []string
-	for itr.Next(); itr.Valid(); itr.Next() {
-		actualKeys = append(actualKeys, string(itr.Key()))
-		actualValues = append(actualValues, string(itr.Value()))
-	}
-	testutil.AssertEquals(t, actualKeys, expectedKeys)
-	testutil.AssertEquals(t, actualValues, expectedValues)
-	testutil.AssertEquals(t, itr.Next(), false)
-}
-
-func createTestKey(i int) string {
-	return fmt.Sprintf("key_%06d", i)
-}
-
-func createTestValue(dbname string, i int) string {
-	return fmt.Sprintf("value_%s_%06d", dbname, i)
-}
-
-func createTestKeys(start int, end int) []string {
-	var keys []string
-	for i := start; i <= end; i++ {
-		keys = append(keys, createTestKey(i))
-	}
-	return keys
-}
-
-func createTestValues(dbname string, start int, end int) []string {
-	var values []string
-	for i := start; i <= end; i++ {
-		values = append(values, createTestValue(dbname, i))
-	}
-	return values
-}
-
-func createTestDBProvider(t *testing.T) *Provider {
-	if err := os.RemoveAll(testDBPath); err != nil {
-		t.Fatalf("Error:%s", err)
-	}
-	dbConf := &Conf{testDBPath}
-	return NewProvider(dbConf)
+func TestCreateDBInNonEmptyDir(t *testing.T) {
+	testutil.AssertNoError(t, os.RemoveAll(testDBPath), "")
+	testutil.AssertNoError(t, os.MkdirAll(testDBPath, 0775), "")
+	file, err := os.Create(filepath.Join(testDBPath, "dummyfile.txt"))
+	testutil.AssertNoError(t, err, "")
+	file.Close()
+	db := CreateDB(&Conf{testDBPath})
+	defer db.Close()
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("A panic is expected when opening db in an existing non-empty dir. %s", r)
+		}
+	}()
+	db.Open()
 }
