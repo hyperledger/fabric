@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	util2 "github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
@@ -49,12 +48,6 @@ func TestBlockValidation(t *testing.T) {
 	ledger, _ := ledgermgmt.CreateLedger(gb)
 	defer ledger.Close()
 
-	chaincodeIns := &sysccprovider.ChaincodeInstance{
-		ChaincodeName:    "foo",
-		ChaincodeVersion: "v1",
-		ChainID:          util2.GetTestChainID(),
-	}
-
 	simulator, _ := ledger.NewTxSimulator()
 	simulator.SetState("ns1", "key1", []byte("value1"))
 	simulator.SetState("ns1", "key2", []byte("value2"))
@@ -63,15 +56,12 @@ func TestBlockValidation(t *testing.T) {
 
 	simRes, _ := simulator.GetTxSimulationResults()
 
-	prespPaylBytes, err := testutil.ConstructBytesProposalResponsePayload("v1", simRes)
+	_, err := testutil.ConstructBytesProposalResponsePayload("v1", simRes)
 	if err != nil {
 		t.Fatalf("Could not construct ProposalResponsePayload bytes, err: %s", err)
 	}
 
-	mockVsccValidator := &validator.MockVsccValidator{
-		CIns:     chaincodeIns,
-		RespPayl: prespPaylBytes,
-	}
+	mockVsccValidator := &validator.MockVsccValidator{}
 	tValidator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, mockVsccValidator}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -85,27 +75,26 @@ func TestBlockValidation(t *testing.T) {
 	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 
-	// upgrade chaincode version
-	upgradeChaincodeIns := &sysccprovider.ChaincodeInstance{
-		ChaincodeName:    "foo",
-		ChaincodeVersion: "v2", // new version
-		ChainID:          util2.GetTestChainID(),
-	}
+	/*
 
-	newMockVsccValidator := &validator.MockVsccValidator{
-		CIns:     upgradeChaincodeIns,
-		RespPayl: prespPaylBytes,
-	}
-	newTxValidator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, newMockVsccValidator}
+		a better way of testing this without all of the mocking was
+		implemented in validator_test.go
 
-	// generate new block
-	newBlock := testutil.ConstructBlock(t, 2, block.Header.Hash(), [][]byte{simRes}, true) // contains one tx with chaincode version v1
+		newMockVsccValidator := &validator.MockVsccValidator{
+			CIns:     upgradeChaincodeIns,
+			RespPayl: prespPaylBytes,
+		}
+		newTxValidator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, newMockVsccValidator}
 
-	newTxValidator.Validate(newBlock)
+		// generate new block
+		newBlock := testutil.ConstructBlock(t, 2, block.Header.Hash(), [][]byte{simRes}, true) // contains one tx with chaincode version v1
 
-	// tx should be invalided because of chaincode upgrade
-	txsfltr = util.TxValidationFlags(newBlock.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_EXPIRED_CHAINCODE))
+		newTxValidator.Validate(newBlock)
+
+		// tx should be invalided because of chaincode upgrade
+		txsfltr = util.TxValidationFlags(newBlock.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+		assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_EXPIRED_CHAINCODE))
+	*/
 }
 
 func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
@@ -225,12 +214,12 @@ func TestGetTxCCInstance(t *testing.T) {
 	payload, err := utils.GetPayload(env)
 	assert.NoError(t, err)
 
-	expectInvokeCCIns := &sysccprovider.ChaincodeInstance{
+	expectInvokeCCIns := &ChaincodeInstance{
 		ChainID:          chainID,
 		ChaincodeName:    "lscc",
 		ChaincodeVersion: "",
 	}
-	expectUpgradeCCIns := &sysccprovider.ChaincodeInstance{
+	expectUpgradeCCIns := &ChaincodeInstance{
 		ChainID:          chainID,
 		ChaincodeName:    upgradeCCName,
 		ChaincodeVersion: upgradeCCVersion,
@@ -246,20 +235,20 @@ func TestGetTxCCInstance(t *testing.T) {
 }
 
 func TestInvalidTXsForUpgradeCC(t *testing.T) {
-	txsChaincodeNames := map[int]*sysccprovider.ChaincodeInstance{
-		0: &sysccprovider.ChaincodeInstance{"chain0", "cc0", "v0"}, // invoke cc0/chain0:v0, should not be affected by upgrade tx in other chain
-		1: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
-		2: &sysccprovider.ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v1, should be invalided by latter cc0/chain1 upgtade tx
-		3: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
-		4: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v1"}, // invoke cc0/chain1:v1, should be invalided by cc1/chain1 upgrade tx
-		5: &sysccprovider.ChaincodeInstance{"chain1", "cc1", "v0"}, // invoke cc1/chain1:v0, should not be affected by other chaincode upgrade tx
-		6: &sysccprovider.ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v2, should be invalided by latter cc0/chain1 upgtade tx
-		7: &sysccprovider.ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v3
+	txsChaincodeNames := map[int]*ChaincodeInstance{
+		0: &ChaincodeInstance{"chain0", "cc0", "v0"}, // invoke cc0/chain0:v0, should not be affected by upgrade tx in other chain
+		1: &ChaincodeInstance{"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
+		2: &ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v1, should be invalided by latter cc0/chain1 upgtade tx
+		3: &ChaincodeInstance{"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
+		4: &ChaincodeInstance{"chain1", "cc0", "v1"}, // invoke cc0/chain1:v1, should be invalided by cc1/chain1 upgrade tx
+		5: &ChaincodeInstance{"chain1", "cc1", "v0"}, // invoke cc1/chain1:v0, should not be affected by other chaincode upgrade tx
+		6: &ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v2, should be invalided by latter cc0/chain1 upgtade tx
+		7: &ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v3
 	}
-	upgradedChaincodes := map[int]*sysccprovider.ChaincodeInstance{
-		2: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v1"},
-		6: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v2"},
-		7: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v3"},
+	upgradedChaincodes := map[int]*ChaincodeInstance{
+		2: &ChaincodeInstance{"chain1", "cc0", "v1"},
+		6: &ChaincodeInstance{"chain1", "cc0", "v2"},
+		7: &ChaincodeInstance{"chain1", "cc0", "v3"},
 	}
 
 	txsfltr := ledgerUtil.NewTxValidationFlags(8)

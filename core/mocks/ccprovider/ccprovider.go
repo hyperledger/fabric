@@ -19,6 +19,7 @@ package ccprovider
 import (
 	"context"
 
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -58,7 +59,7 @@ func (c *mockCcProviderImpl) GetCCValidationInfoFromLSCC(ctxt context.Context, t
 
 // ExecuteChaincode does nothing
 func (c *mockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
-	return nil, nil, nil
+	return &peer.Response{Status: shim.OK}, nil, nil
 }
 
 // Execute executes the chaincode given context and spec (invocation or deploy)
