@@ -542,7 +542,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 
 	// Ensure we don't respond to a StateInfoRequest in the wrong channel from a peer in the right org
 	req2 := gc.(*gossipChannel).createStateInfoRequest()
-	req2.GetStateInfoPullReq().ChannelMAC = GenerateMAC(pkiIDInOrg1, common.ChainID("B"))
+	req2.GetStateInfoPullReq().Channel_MAC = GenerateMAC(pkiIDInOrg1, common.ChainID("B"))
 	invalidReceivedMsg2 := &receivedMsg{
 		msg:   req2,
 		PKIID: pkiIDInOrg1,
@@ -897,7 +897,7 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 
 	// Ensure we ignore stateInfo snapshots with StateInfo messages with wrong MACs
 	sim := createStateInfoMsg(4, pkiIDInOrg1, channelA)
-	sim.GetStateInfo().ChannelMAC = append(sim.GetStateInfo().ChannelMAC, 1)
+	sim.GetStateInfo().Channel_MAC = append(sim.GetStateInfo().Channel_MAC, 1)
 	sim = sim.NoopSign()
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, sim)})
 	assert.Empty(t, gc.GetPeers())
@@ -918,7 +918,7 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 			Tag: proto.GossipMessage_CHAN_OR_ORG,
 			Content: &proto.GossipMessage_StateInfoPullReq{
 				StateInfoPullReq: &proto.StateInfoPullRequest{
-					ChannelMAC: append(GenerateMAC(pkiIDInOrg1, channelA), 1),
+					Channel_MAC: append(GenerateMAC(pkiIDInOrg1, channelA), 1),
 				},
 			},
 		}).NoopSign(),
@@ -941,7 +941,7 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 			Tag: proto.GossipMessage_CHAN_OR_ORG,
 			Content: &proto.GossipMessage_StateInfoPullReq{
 				StateInfoPullReq: &proto.StateInfoPullRequest{
-					ChannelMAC: GenerateMAC(pkiIDInOrg1, channelA),
+					Channel_MAC: GenerateMAC(pkiIDInOrg1, channelA),
 				},
 			},
 		}).NoopSign(),
@@ -1043,7 +1043,7 @@ func TestInterOrgExternalEndpointDisclosure(t *testing.T) {
 			Tag: proto.GossipMessage_CHAN_OR_ORG,
 			Content: &proto.GossipMessage_StateInfoPullReq{
 				StateInfoPullReq: &proto.StateInfoPullRequest{
-					ChannelMAC: GenerateMAC(pkiID3, channelA),
+					Channel_MAC: GenerateMAC(pkiID3, channelA),
 				},
 			},
 		}).NoopSign(),
@@ -1074,7 +1074,7 @@ func TestInterOrgExternalEndpointDisclosure(t *testing.T) {
 			Tag: proto.GossipMessage_CHAN_OR_ORG,
 			Content: &proto.GossipMessage_StateInfoPullReq{
 				StateInfoPullReq: &proto.StateInfoPullRequest{
-					ChannelMAC: GenerateMAC(pkiID2, channelA),
+					Channel_MAC: GenerateMAC(pkiID2, channelA),
 				},
 			},
 		}).NoopSign(),
@@ -1284,7 +1284,7 @@ func TestChannelGetPeers(t *testing.T) {
 	// and ensure that the StateInfo message doesn't count
 	gc = NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{})
 	msg := &receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)}
-	msg.GetGossipMessage().GetStateInfo().ChannelMAC = GenerateMAC(pkiIDinOrg2, channelA)
+	msg.GetGossipMessage().GetStateInfo().Channel_MAC = GenerateMAC(pkiIDinOrg2, channelA)
 	gc.HandleMessage(msg)
 	assert.Len(t, gc.GetPeers(), 0)
 }
@@ -1405,10 +1405,10 @@ func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common
 		Tag: proto.GossipMessage_CHAN_OR_ORG,
 		Content: &proto.GossipMessage_StateInfo{
 			StateInfo: &proto.StateInfo{
-				ChannelMAC: GenerateMAC(pkiID, channel),
-				Timestamp:  &proto.PeerTime{IncNumber: uint64(time.Now().UnixNano()), SeqNum: 1},
-				Metadata:   []byte(fmt.Sprintf("%d", ledgerHeight)),
-				PkiId:      []byte(pkiID),
+				Channel_MAC: GenerateMAC(pkiID, channel),
+				Timestamp:   &proto.PeerTime{IncNumber: uint64(time.Now().UnixNano()), SeqNum: 1},
+				Metadata:    []byte(fmt.Sprintf("%d", ledgerHeight)),
+				PkiId:       []byte(pkiID),
 			},
 		},
 	}).NoopSign()
