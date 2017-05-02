@@ -35,7 +35,7 @@ public class Example05 extends ChaincodeBase {
 		// expects to be called with: { "init", key, value }
 		try {
 			
-			final List<String> args = stub.getArgsAsStrings();
+			final List<String> args = stub.getStringArgs();
 			if(args.size() != 3) {
 				return newBadRequestResponse("Incorrect number of arguments. Expecting \"init\" plus 2 more.");
 			}
@@ -57,9 +57,8 @@ public class Example05 extends ChaincodeBase {
 	public Response invoke(ChaincodeStub stub) {
 		// expects to be called with: { "invoke"|"query", chaincodeName, key }
 		try {
-			final List<String> argList = stub.getArgsAsStrings();
-			final String function = argList.get(0);
-			final String[] args = argList.stream().skip(1).toArray(String[]::new);
+			final String function = stub.getFunction();
+			final String[] args = stub.getParameters().stream().toArray(String[]::new);
 			
 			switch (function) {
 			case "invoke":

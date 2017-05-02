@@ -22,8 +22,6 @@ import static org.hyperledger.fabric.shim.ChaincodeHelper.newBadRequestResponse;
 import static org.hyperledger.fabric.shim.ChaincodeHelper.newInternalServerErrorResponse;
 import static org.hyperledger.fabric.shim.ChaincodeHelper.newSuccessResponse;
 
-import java.util.List;
-
 import javax.json.Json;
 
 import org.apache.commons.logging.Log;
@@ -44,19 +42,18 @@ public class SimpleSample extends ChaincodeBase {
 
 	@Override
 	public Response init(ChaincodeStub stub) {
-		final List<String> args = stub.getArgsAsStrings();
-		if(!args.get(0).equals("init")) {
-			return newBadRequestResponse(format("Unknown function: %s", args.get(0)));
+		final String function = stub.getFunction();
+		if(!function.equals("init")) {
+			return newBadRequestResponse(format("Unknown function: %s", function));
 		}
-		return init(stub, args.stream().skip(1).toArray(String[]::new));
+		return init(stub, stub.getParameters().stream().toArray(String[]::new));
 	}
 
 	@Override
 	public Response invoke(ChaincodeStub stub) {
 		try {
-			final List<String> argList = stub.getArgsAsStrings();
-			final String function = argList.get(0);
-			final String[] args = argList.stream().skip(1).toArray(String[]::new);
+			final String function = stub.getFunction();
+			final String[] args = stub.getParameters().stream().toArray(String[]::new);
 
 			switch (function) {
 			case "transfer":

@@ -39,12 +39,12 @@ public class Example02 extends ChaincodeBase {
 	@Override
 	public Response init(ChaincodeStub stub) {
 		try {
-			final List<String> args = stub.getArgsAsStrings();
-			switch (args.get(0)) {
+			final String function = stub.getFunction();
+			switch (function) {
 			case "init":
-				return init(stub, args.stream().skip(1).toArray(String[]::new));
+				return init(stub, stub.getParameters().stream().toArray(String[]::new));
 			default:
-				return newBadRequestResponse(format("Unknown function: %s", args.get(0)));
+				return newBadRequestResponse(format("Unknown function: %s", function));
 			}
 		} catch (NumberFormatException e) {
 			return newBadRequestResponse(e.toString());
@@ -59,9 +59,8 @@ public class Example02 extends ChaincodeBase {
 	public Response invoke(ChaincodeStub stub) {
 
 		try {
-			final List<String> argList = stub.getArgsAsStrings();
-			final String function = argList.get(0);
-			final String[] args = argList.stream().skip(1).toArray(String[]::new);
+			final String function = stub.getFunction();
+			final String[] args = stub.getParameters().stream().toArray(String[]::new);
 			
 			switch (function) {
 			case "invoke":

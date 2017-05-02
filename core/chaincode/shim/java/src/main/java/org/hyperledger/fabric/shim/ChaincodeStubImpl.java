@@ -16,6 +16,8 @@ limitations under the License.
 
 package org.hyperledger.fabric.shim;
 
+import static java.util.stream.Collectors.toList;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -54,10 +56,26 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	 * @see org.hyperledger.fabric.shim.ChaincodeStub#getArgsAsStrings()
 	 */
 	@Override
-	public List<String> getArgsAsStrings() {
+	public List<String> getStringArgs() {
 		return args.stream().map(x -> x.toStringUtf8()).collect(Collectors.toList());
 	}
 
+	/* (non-Javadoc)
+	 * @see org.hyperledger.fabric.shim.ChaincodeStub#getFunction()
+	 */
+	@Override
+	public String getFunction() {
+		return getStringArgs().size() > 0 ? getStringArgs().get(0) : null;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.hyperledger.fabric.shim.ChaincodeStub#getParameters()
+	 */
+	@Override
+	public List<String> getParameters() {
+		return getStringArgs().stream().skip(1).collect(toList());
+	}
+	
 	/* (non-Javadoc)
 	 * @see org.hyperledger.fabric.shim.ChaincodeStub#setEvent(java.lang.String, byte[])
 	 */

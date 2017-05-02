@@ -16,11 +16,10 @@ limitations under the License.
 package org.hyperledger.fabric.shim;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.stream.Collectors.toList;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.hyperledger.fabric.protos.peer.ChaincodeEventPackage.ChaincodeEvent;
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
@@ -41,9 +40,31 @@ public interface ChaincodeStub {
 	 * {@link Chaincode#init(ChaincodeStub)} or
 	 * {@link Chaincode#invoke(ChaincodeStub)}.
 	 * 
-	 * @return a list of arguments cast to a UTF-8 string
+	 * @return a list of arguments cast to UTF-8 strings
 	 */
-	List<String> getArgsAsStrings();
+	List<String> getStringArgs();
+	
+	/**
+	 * A convenience method that returns the first argument of the chaincode
+	 * invocation for use as a function name.
+	 * 
+	 * The bytes of the first argument are decoded as a UTF-8 string.  
+	 * 
+	 * @return the function name
+	 */
+	String getFunction();
+	
+	/**
+	 * A convenience method that returns all except the first argument of the
+	 * chaincode invocation for use as the parameters to the function returned
+	 * by #{@link ChaincodeStub#getFunction()}.
+	 * 
+	 * The bytes of the arguments are decoded as a UTF-8 strings and returned as
+	 * a list of string parameters..
+	 * 
+	 * @return a list of parameters
+	 */
+	List<String> getParameters();
 
 	/**
 	 * Returns the transaction id
@@ -134,7 +155,7 @@ public interface ChaincodeStub {
 	 * @return
 	 */
 	default Response invokeChaincodeWithStringArgs(String chaincodeName, List<String> args, String channel) {
-		return invokeChaincode(chaincodeName, args.stream().map(x->x.getBytes(StandardCharsets.UTF_8)).collect(Collectors.toList()), channel);
+		return invokeChaincode(chaincodeName, args.stream().map(x->x.getBytes(UTF_8)).collect(toList()), channel);
 	}
 
 	/**
