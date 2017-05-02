@@ -42,7 +42,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business <https
    overview
    capabilities
    fabric_model
-   biz/usecases
+   usecases
 
 
 .. toctree::
