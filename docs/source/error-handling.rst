@@ -11,23 +11,14 @@ A CallStackError consists of the following:
 
 - Component code - a name for the general area of the code that is generating
   the error. Component codes should consist of three uppercase letters. Numerics
-  and special characters are not allowed.
-
-.. note:: Make sure to use a consistent component name across code in related
-          files/packages.
-          Examples of component codes (with their full component name in parentheses)
-          are: CSP (bccsp), CMN (common), COR (core), CCS (core/chaincode), CDS
-          (core/deliverservice), SCC (core/scc), EVT (events), GSP (gossip), LGR
-          (ledger), PER (peer), ORD (orderer)
-
-We may, in the future, add constants to allow searching for currently defined
-components for those using an editor with code completion capabilities.
-
+  and special characters are not allowed. A set of component codes is defined
+  in common/errors/codes.go
 - Reason code - a short code to help identify the reason the error occurred.
   Reason codes should consist of three numeric values. Letters and special
-  characters are not allowed.
+  characters are not allowed. A set of reason codes is defined in
+  common/error/codes.go
 - Error code - the component code and reason code separated by a colon,
-  e.g. PER:404
+  e.g. MSP:404
 - Error message - the text that describes the error. This is the same as the
   input provided to ``fmt.Errorf()`` and ``Errors.New()``. If an error has been
   wrapped into the current error, its message will be appended.
@@ -39,9 +30,9 @@ The CallStackError interface exposes the following functions:
 
 - Error() - returns the error message with callstack appended
 - Message() - returns the error message (without callstack appended)
-- GetComponentCode()
-- GetReasonCode()
-- GetErrorCode()
+- GetComponentCode() - returns the 3-character component code
+- GetReasonCode() - returns the 3-digit reason code
+- GetErrorCode() - returns the error code, which is "component:reason"
 - GetStack() - returns just the callstack
 - WrapError(error) - wraps the provided error into the CallStackError
 

@@ -37,15 +37,15 @@ func TestError(t *testing.T) {
 	var tc []testCase
 
 	tc = append(tc,
-		testCase{"UnknownErrorWithCallstack", []string{"UNK", "404", "An unknown error occurred."}, nil, nil, nil, []bool{true}},
-		testCase{"UnknownError", []string{"UNK", "404", "An unknown error occurred."}, nil, nil, nil, []bool{false}},
-		testCase{"UnknownErrorWithCallstackAndArg", []string{"UNK", "405", "An error occurred: %s"}, []string{"arg1"}, nil, nil, []bool{true}},
-		testCase{"UnknownErrorWithArg", []string{"UNK", "405", "An error occurred: %s"}, []string{"arg1"}, nil, nil, []bool{false}},
-		testCase{"CallStackErrorWrappedCallstackError", []string{"CHA", "404", "An unknown error occurred."}, nil, []string{"UNK", "404", "An unknown error occurred."}, nil, []bool{true, true}},
-		testCase{"ErrorWrappedError", []string{"CHA", "404", "An unknown error occurred."}, nil, []string{"UNK", "404", "An unknown error occurred."}, nil, []bool{false, false}},
-		testCase{"CallStackErrorWrappedError", []string{"CHA", "404", "An unknown error occurred."}, nil, []string{"UNK", "404", "An unknown error occurred."}, nil, []bool{true, false}},
-		testCase{"ErrorWrappedCallStackError", []string{"CHA", "404", "An unknown error occurred."}, nil, []string{"UNK", "404", "An unknown error occurred."}, nil, []bool{false, true}},
-		testCase{"ErrorWrappedStandardError", []string{"CHA", "404", "An unknown error occurred."}, nil, []string{"grpc timed out: %s"}, []string{"failed to connect to server"}, []bool{false, true}},
+		testCase{"UnknownErrorWithCallstack", []string{Core, NotFound, "An unknown error occurred."}, nil, nil, nil, []bool{true}},
+		testCase{"UnknownError", []string{MSP, Forbidden, "An unknown error occurred."}, nil, nil, nil, []bool{false}},
+		testCase{"UnknownErrorWithCallstackAndArg", []string{Ledger, Conflict, "An error occurred: %s"}, []string{"arg1"}, nil, nil, []bool{true}},
+		testCase{"UnknownErrorWithArg", []string{SystemChaincode, Internal, "An error occurred: %s"}, []string{"arg1"}, nil, nil, []bool{false}},
+		testCase{"CallStackErrorWrappedCallstackError", []string{BCCSP, NotImplemented, "An unknown error occurred."}, nil, []string{Peer, UpgradeRequired, "An unknown error occurred."}, nil, []bool{true, true}},
+		testCase{"ErrorWrappedError", []string{Common, Unavailable, "An unknown error occurred."}, nil, []string{SystemChaincode, Gone, "An unknown error occurred."}, nil, []bool{false, false}},
+		testCase{"CallStackErrorWrappedError", []string{Event, Timeout, "An unknown error occurred."}, nil, []string{Orderer, NetworkIO, "An unknown error occurred."}, nil, []bool{true, false}},
+		testCase{"ErrorWrappedCallStackError", []string{Orderer, UnprocessableEntity, "An unknown error occurred."}, nil, []string{"UNK", "404", "An unknown error occurred."}, nil, []bool{false, true}},
+		testCase{"ErrorWrappedStandardError", []string{DeliveryService, Unavailable, "An unknown error occurred."}, nil, []string{"grpc timed out: %s"}, []string{"failed to connect to server"}, []bool{false, true}},
 	)
 
 	assert := assert.New(t)
