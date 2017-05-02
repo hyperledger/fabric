@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	util2 "github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
@@ -214,12 +215,12 @@ func TestGetTxCCInstance(t *testing.T) {
 	payload, err := utils.GetPayload(env)
 	assert.NoError(t, err)
 
-	expectInvokeCCIns := &ChaincodeInstance{
+	expectInvokeCCIns := &sysccprovider.ChaincodeInstance{
 		ChainID:          chainID,
 		ChaincodeName:    "lscc",
 		ChaincodeVersion: "",
 	}
-	expectUpgradeCCIns := &ChaincodeInstance{
+	expectUpgradeCCIns := &sysccprovider.ChaincodeInstance{
 		ChainID:          chainID,
 		ChaincodeName:    upgradeCCName,
 		ChaincodeVersion: upgradeCCVersion,
@@ -235,20 +236,20 @@ func TestGetTxCCInstance(t *testing.T) {
 }
 
 func TestInvalidTXsForUpgradeCC(t *testing.T) {
-	txsChaincodeNames := map[int]*ChaincodeInstance{
-		0: &ChaincodeInstance{"chain0", "cc0", "v0"}, // invoke cc0/chain0:v0, should not be affected by upgrade tx in other chain
-		1: &ChaincodeInstance{"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
-		2: &ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v1, should be invalided by latter cc0/chain1 upgtade tx
-		3: &ChaincodeInstance{"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
-		4: &ChaincodeInstance{"chain1", "cc0", "v1"}, // invoke cc0/chain1:v1, should be invalided by cc1/chain1 upgrade tx
-		5: &ChaincodeInstance{"chain1", "cc1", "v0"}, // invoke cc1/chain1:v0, should not be affected by other chaincode upgrade tx
-		6: &ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v2, should be invalided by latter cc0/chain1 upgtade tx
-		7: &ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v3
+	txsChaincodeNames := map[int]*sysccprovider.ChaincodeInstance{
+		0: &sysccprovider.ChaincodeInstance{"chain0", "cc0", "v0"}, // invoke cc0/chain0:v0, should not be affected by upgrade tx in other chain
+		1: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
+		2: &sysccprovider.ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v1, should be invalided by latter cc0/chain1 upgtade tx
+		3: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
+		4: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v1"}, // invoke cc0/chain1:v1, should be invalided by cc1/chain1 upgrade tx
+		5: &sysccprovider.ChaincodeInstance{"chain1", "cc1", "v0"}, // invoke cc1/chain1:v0, should not be affected by other chaincode upgrade tx
+		6: &sysccprovider.ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v2, should be invalided by latter cc0/chain1 upgtade tx
+		7: &sysccprovider.ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v3
 	}
-	upgradedChaincodes := map[int]*ChaincodeInstance{
-		2: &ChaincodeInstance{"chain1", "cc0", "v1"},
-		6: &ChaincodeInstance{"chain1", "cc0", "v2"},
-		7: &ChaincodeInstance{"chain1", "cc0", "v3"},
+	upgradedChaincodes := map[int]*sysccprovider.ChaincodeInstance{
+		2: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v1"},
+		6: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v2"},
+		7: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v3"},
 	}
 
 	txsfltr := ledgerUtil.NewTxValidationFlags(8)

@@ -86,13 +86,6 @@ type txValidator struct {
 	vscc    vsccValidator
 }
 
-// ChaincodeInstance is unique identifier of chaincode instance
-type ChaincodeInstance struct {
-	ChainID          string
-	ChaincodeName    string
-	ChaincodeVersion string
-}
-
 var logger *logging.Logger // package-level logger
 
 func init() {
@@ -121,9 +114,9 @@ func (v *txValidator) Validate(block *common.Block) error {
 	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
 	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))
 	// txsChaincodeNames records all the invoked chaincodes by tx in a block
-	txsChaincodeNames := make(map[int]*ChaincodeInstance)
+	txsChaincodeNames := make(map[int]*sysccprovider.ChaincodeInstance)
 	// upgradedChaincodes records all the chaincodes that are upgrded in a block
-	txsUpgradedChaincodes := make(map[int]*ChaincodeInstance)
+	txsUpgradedChaincodes := make(map[int]*sysccprovider.ChaincodeInstance)
 	for tIdx, d := range block.Data.Data {
 		if d != nil {
 			if env, err := utils.GetEnvelopeFromBlock(d); err != nil {
@@ -238,14 +231,14 @@ func (v *txValidator) generateCCKey(ccName, chainID string) string {
 }
 
 // invalidTXsForUpgradeCC invalid all txs that should be invalided because of chaincode upgrade txs
-func (v *txValidator) invalidTXsForUpgradeCC(txsChaincodeNames map[int]*ChaincodeInstance, txsUpgradedChaincodes map[int]*ChaincodeInstance, txsfltr ledgerUtil.TxValidationFlags) ledgerUtil.TxValidationFlags {
+func (v *txValidator) invalidTXsForUpgradeCC(txsChaincodeNames map[int]*sysccprovider.ChaincodeInstance, txsUpgradedChaincodes map[int]*sysccprovider.ChaincodeInstance, txsfltr ledgerUtil.TxValidationFlags) ledgerUtil.TxValidationFlags {
 	if len(txsUpgradedChaincodes) == 0 {
 		return txsfltr
 	}
 
 	// Invalid former cc upgrade txs if there're two or more txs upgrade the same cc
 	finalValidUpgradeTXs := make(map[string]int)
-	upgradedChaincodes := make(map[string]*ChaincodeInstance)
+	upgradedChaincodes := make(map[string]*sysccprovider.ChaincodeInstance)
 	for tIdx, cc := range txsUpgradedChaincodes {
 		if cc == nil {
 			continue
@@ -285,7 +278,7 @@ func (v *txValidator) invalidTXsForUpgradeCC(txsChaincodeNames map[int]*Chaincod
 	return txsfltr
 }
 
-func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upgradeCCIns *ChaincodeInstance, err error) {
+func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upgradeCCIns *sysccprovider.ChaincodeInstance, err error) {
 	// This is duplicated unpacking work, but make test easier.
 	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
@@ -301,7 +294,7 @@ func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 		return nil, nil, err
 	}
 	invokeCC := hdrExt.ChaincodeId
-	invokeIns := &ChaincodeInstance{ChainID: chainID, ChaincodeName: invokeCC.Name, ChaincodeVersion: invokeCC.Version}
+	invokeIns := &sysccprovider.ChaincodeInstance{ChainID: chainID, ChaincodeName: invokeCC.Name, ChaincodeVersion: invokeCC.Version}
 
 	// Transaction
 	tx, err := utils.GetTransaction(payload.Data)
@@ -345,13 +338,13 @@ func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 	return invokeIns, nil, nil
 }
 
-func (v *txValidator) getUpgradeTxInstance(chainID string, cdsBytes []byte) (*ChaincodeInstance, error) {
+func (v *txValidator) getUpgradeTxInstance(chainID string, cdsBytes []byte) (*sysccprovider.ChaincodeInstance, error) {
 	cds, err := utils.GetChaincodeDeploymentSpec(cdsBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ChaincodeInstance{
+	return &sysccprovider.ChaincodeInstance{
 		ChainID:          chainID,
 		ChaincodeName:    cds.ChaincodeSpec.ChaincodeId.Name,
 		ChaincodeVersion: cds.ChaincodeSpec.ChaincodeId.Version,
@@ -359,9 +352,9 @@ func (v *txValidator) getUpgradeTxInstance(chainID string, cdsBytes []byte) (*Ch
 }
 
 // GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, vscc and policy from lscc
-func (v *vsccValidatorImpl) GetInfoForValidate(txid, chID, ccID string) (*ChaincodeInstance, *ChaincodeInstance, []byte, error) {
-	cc := &ChaincodeInstance{ChainID: chID}
-	vscc := &ChaincodeInstance{ChainID: chID}
+func (v *vsccValidatorImpl) GetInfoForValidate(txid, chID, ccID string) (*sysccprovider.ChaincodeInstance, *sysccprovider.ChaincodeInstance, []byte, error) {
+	cc := &sysccprovider.ChaincodeInstance{ChainID: chID}
+	vscc := &sysccprovider.ChaincodeInstance{ChainID: chID}
 	var policy []byte
 	if ccID != "lscc" {
 		// when we are validating any chaincode other than
