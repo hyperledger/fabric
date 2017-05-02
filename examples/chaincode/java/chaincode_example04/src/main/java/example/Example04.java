@@ -44,7 +44,7 @@ public class Example04 extends ChaincodeBase {
 
 			final String key = args.get(1);
 			final int value = Integer.parseInt(args.get(2));
-			stub.putState(key, String.valueOf(value));
+			stub.putStringState(key, String.valueOf(value));
 
 		} catch (NumberFormatException e) {
 			return newBadRequestResponse("Expecting integer value for sum");
@@ -87,7 +87,7 @@ public class Example04 extends ChaincodeBase {
 		case 2:
 		case 3: {
 			final String key = args[0];
-			final int value = Integer.parseInt(stub.getState(key));
+			final int value = Integer.parseInt(stub.getStringState(key));
 			return newSuccessResponse(
 					Json.createObjectBuilder()
 						.add("Name", key)
@@ -145,7 +145,7 @@ public class Example04 extends ChaincodeBase {
 		}
 
 		// update the ledger to indicate a successful invoke
-		stub.putState(key, String.valueOf(value));
+		stub.putStringState(key, String.valueOf(value));
 
 		// return the called chaincode's response
 		return response;

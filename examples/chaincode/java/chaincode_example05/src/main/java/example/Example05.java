@@ -42,7 +42,7 @@ public class Example05 extends ChaincodeBase {
 			
 			final String key = args.get(1);
 			final int value = Integer.parseInt(args.get(2));
-			stub.putState(key, String.valueOf(value));
+			stub.putStringState(key, String.valueOf(value));
 			
 		} catch (NumberFormatException e) {
 			return newBadRequestResponse("Expecting integer value for sum");
@@ -124,7 +124,7 @@ public class Example05 extends ChaincodeBase {
 		final int sum = a + b;
 		
 		// write new sum to the ledger
-		stub.putState(key, String.valueOf(sum));
+		stub.putStringState(key, String.valueOf(sum));
 		
 		// return sum as string in payload
 		return newSuccessResponse(String.valueOf(sum).getBytes(UTF_8));

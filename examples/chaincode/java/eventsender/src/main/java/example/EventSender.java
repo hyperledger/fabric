@@ -36,7 +36,7 @@ public class EventSender extends ChaincodeBase {
 
 	@Override
 	public Response init(ChaincodeStub stub) {
-		stub.putState(EVENT_COUNT, Integer.toString(0));
+		stub.putStringState(EVENT_COUNT, Integer.toString(0));
 		return newSuccessResponse();
 	}
 
@@ -65,10 +65,10 @@ public class EventSender extends ChaincodeBase {
 	private Response doInvoke(ChaincodeStub stub, List<String> args) {
 
 		// get number of events sent
-		final int eventNumber = Integer.parseInt(stub.getState(EVENT_COUNT));
+		final int eventNumber = Integer.parseInt(stub.getStringState(EVENT_COUNT));
 
 		// increment number of events sent
-		stub.putState(EVENT_COUNT, Integer.toString(eventNumber + 1));
+		stub.putStringState(EVENT_COUNT, Integer.toString(eventNumber + 1));
 
 		// create event payload
 		final String payload = args.stream().collect(joining(",", "Event " + String.valueOf(eventNumber), ""));
@@ -80,7 +80,7 @@ public class EventSender extends ChaincodeBase {
 	}
 
 	private Response doQuery(ChaincodeStub stub) {
-		return newSuccessResponse(String.format("{\"NoEvents\":%d}", Integer.parseInt(stub.getState(EVENT_COUNT))));
+		return newSuccessResponse(String.format("{\"NoEvents\":%d}", Integer.parseInt(stub.getStringState(EVENT_COUNT))));
 	}
 
 	@Override
