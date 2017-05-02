@@ -425,13 +425,18 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 			logger.Debugf("Ready to transfer payloads to the ledger, next sequence number is = [%d]", s.payloads.Next())
 			// Collect all subsequent payloads
 			for payload := s.payloads.Pop(); payload != nil; payload = s.payloads.Pop() {
-				rawblock := &common.Block{}
-				if err := pb.Unmarshal(payload.Data, rawblock); err != nil {
+				rawBlock := &common.Block{}
+				if err := pb.Unmarshal(payload.Data, rawBlock); err != nil {
 					logger.Errorf("Error getting block with seqNum = %d due to (%s)...dropping block", payload.SeqNum, err)
 					continue
 				}
-				logger.Debug("New block with sequence number ", payload.SeqNum, " transactions num ", len(rawblock.Data.Data))
-				s.commitBlock(rawblock)
+				if rawBlock.Data == nil || rawBlock.Header == nil {
+					logger.Errorf("Block with claimed sequence %d has no header (%v) or data (%v)",
+						payload.SeqNum, rawBlock.Header, rawBlock.Data)
+					continue
+				}
+				logger.Debug("New block with claimed sequence number ", payload.SeqNum, " transactions num ", len(rawBlock.Data.Data))
+				s.commitBlock(rawBlock)
 			}
 		case <-s.stopCh:
 			s.stopCh <- struct{}{}
