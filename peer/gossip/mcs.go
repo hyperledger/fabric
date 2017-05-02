@@ -113,9 +113,10 @@ func (s *mspMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 	return digest
 }
 
-// VerifyBlock returns nil if the block is properly signed,
+// VerifyBlock returns nil if the block is properly signed, and the claimed seqNum is the
+// sequence number that the block's header contains.
 // else returns error
-func (s *mspMessageCryptoService) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
+func (s *mspMessageCryptoService) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error {
 	// - Convert signedBlock to common.Block.
 	block, err := utils.GetBlockFromBlockBytes(signedBlock)
 	if err != nil {
@@ -124,6 +125,11 @@ func (s *mspMessageCryptoService) VerifyBlock(chainID common.ChainID, signedBloc
 
 	if block.Header == nil {
 		return fmt.Errorf("Invalid Block on channel [%s]. Header must be different from nil.", chainID)
+	}
+
+	blockSeqNum := block.Header.Number
+	if seqNum != blockSeqNum {
+		return fmt.Errorf("Claimed seqNum is [%d] but actual seqNum inside block is [%d]", seqNum, blockSeqNum)
 	}
 
 	// - Extract channelID and compare with chainID

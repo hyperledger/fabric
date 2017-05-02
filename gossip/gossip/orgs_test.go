@@ -77,7 +77,7 @@ func (*configurableCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*configurableCryptoService) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
+func (*configurableCryptoService) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error {
 	return nil
 }
 

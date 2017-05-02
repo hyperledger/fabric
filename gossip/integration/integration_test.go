@@ -119,7 +119,7 @@ func (s *cryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common
 	return common.PKIidType(peerIdentity)
 }
 
-func (s *cryptoService) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
+func (s *cryptoService) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error {
 	return nil
 }
 

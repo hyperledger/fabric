@@ -522,11 +522,14 @@ func (gc *gossipChannel) verifyBlock(msg *proto.GossipMessage, sender common.PKI
 		gc.logger.Warning("Received from ", sender, "a DataUpdate message that contains a non-block GossipMessage:", msg)
 		return false
 	}
-	if msg.GetDataMsg().Payload == nil {
+	payload := msg.GetDataMsg().Payload
+	if payload == nil {
 		gc.logger.Warning("Received empty payload from", sender)
 		return false
 	}
-	err := gc.mcs.VerifyBlock(msg.Channel, msg.GetDataMsg().Payload.Data)
+	seqNum := payload.SeqNum
+	rawBlock := payload.Data
+	err := gc.mcs.VerifyBlock(msg.Channel, seqNum, rawBlock)
 	if err != nil {
 		gc.logger.Warning("Received fabricated block from", sender, "in DataUpdate:", err)
 		return false
