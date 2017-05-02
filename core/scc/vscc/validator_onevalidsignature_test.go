@@ -136,6 +136,10 @@ func createCCDataRWset(nameK, nameV, version string, policy []byte) ([]byte, err
 }
 
 func createLSCCTx(ccname, ccver, f string, res []byte) (*common.Envelope, error) {
+	return createLSCCTxPutCds(ccname, ccver, f, res, nil, true)
+}
+
+func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bool) (*common.Envelope, error) {
 	cds := &peer.ChaincodeDeploymentSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			ChaincodeId: &peer.ChaincodeID{
@@ -151,14 +155,30 @@ func createLSCCTx(ccname, ccver, f string, res []byte) (*common.Envelope, error)
 		return nil, err
 	}
 
-	cis := &peer.ChaincodeInvocationSpec{
-		ChaincodeSpec: &peer.ChaincodeSpec{
-			ChaincodeId: &peer.ChaincodeID{Name: "lscc"},
-			Input: &peer.ChaincodeInput{
-				Args: [][]byte{[]byte(f), []byte("barf"), cdsBytes},
+	var cis *peer.ChaincodeInvocationSpec
+	if putcds {
+		if cdsbytes != nil {
+			cdsBytes = cdsbytes
+		}
+		cis = &peer.ChaincodeInvocationSpec{
+			ChaincodeSpec: &peer.ChaincodeSpec{
+				ChaincodeId: &peer.ChaincodeID{Name: "lscc"},
+				Input: &peer.ChaincodeInput{
+					Args: [][]byte{[]byte(f), []byte("barf"), cdsBytes},
+				},
+				Type: peer.ChaincodeSpec_GOLANG,
 			},
-			Type: peer.ChaincodeSpec_GOLANG,
-		},
+		}
+	} else {
+		cis = &peer.ChaincodeInvocationSpec{
+			ChaincodeSpec: &peer.ChaincodeSpec{
+				ChaincodeId: &peer.ChaincodeID{Name: "lscc"},
+				Input: &peer.ChaincodeInput{
+					Args: [][]byte{[]byte(f), []byte("barf")},
+				},
+				Type: peer.ChaincodeSpec_GOLANG,
+			},
+		}
 	}
 
 	prop, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
@@ -217,8 +237,40 @@ func TestInvoke(t *testing.T) {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
+	// not enough args
 	args = [][]byte{[]byte("dv"), []byte("tx")}
 	args[1] = nil
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
+	// nil args
+	args = [][]byte{nil, nil, nil}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
+	// nil args
+	args = [][]byte{[]byte("a"), []byte("a"), nil}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
+	// broken Envelope
+	args = [][]byte{[]byte("a"), []byte("a"), []byte("a")}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
+	// (still) broken Envelope
+	args = [][]byte{[]byte("a"), utils.MarshalOrPanic(&common.Envelope{Payload: []byte("barf")}), []byte("a")}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
+	// (still) broken Envelope
+	b := utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: []byte("barf")}})})
+	args = [][]byte{[]byte("a"), b, []byte("a")}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("vscc invoke should have failed")
 	}
@@ -233,12 +285,32 @@ func TestInvoke(t *testing.T) {
 		t.Fatalf("GetBytesEnvelope returned err %s", err)
 	}
 
-	// good path: signed by the right MSP
+	// broken policy
+	args = [][]byte{[]byte("dv"), envBytes, []byte("barf")}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
 	policy, err := getSignedByMSPMemberPolicy(mspid)
 	if err != nil {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
+	// broken type
+	b = utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
+	args = [][]byte{[]byte("dv"), b, policy}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
+	// broken tx payload
+	b = utils.MarshalOrPanic(&common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
+	args = [][]byte{[]byte("dv"), b, policy}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
+	// good path: signed by the right MSP
 	args = [][]byte{[]byte("dv"), envBytes, policy}
 	res := stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
@@ -456,14 +528,95 @@ func TestValidateDeployFail(t *testing.T) {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
+	/**********************/
+	/* test bad LSCC args */
+	/**********************/
+
+	res, err := createCCDataRWset(ccname, ccname, ccver, nil)
+	assert.NoError(t, err)
+
+	tx, err = createLSCCTxPutCds(ccname, ccver, lscc.DEPLOY, res, nil, false)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+
+	envBytes, err = utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+
+	// good path: signed by the right MSP
+	policy, err = getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+
+	args = [][]byte{[]byte("dv"), envBytes, policy}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
+	/**********************/
+	/* test bad LSCC args */
+	/**********************/
+
+	res, err = createCCDataRWset(ccname, ccname, ccver, nil)
+	assert.NoError(t, err)
+
+	tx, err = createLSCCTxPutCds(ccname, ccver, lscc.DEPLOY, res, []byte("barf"), true)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+
+	envBytes, err = utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+
+	// good path: signed by the right MSP
+	policy, err = getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+
+	args = [][]byte{[]byte("dv"), envBytes, policy}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
 	/***********************/
 	/* test bad cc version */
 	/***********************/
 
-	res, err := createCCDataRWset(ccname, ccname, ccver+".1", nil)
+	res, err = createCCDataRWset(ccname, ccname, ccver+".1", nil)
 	assert.NoError(t, err)
 
 	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+
+	envBytes, err = utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+
+	// good path: signed by the right MSP
+	policy, err = getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+
+	args = [][]byte{[]byte("dv"), envBytes, policy}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
+	}
+
+	/*************/
+	/* bad rwset */
+	/*************/
+
+	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, []byte("barf"))
 	if err != nil {
 		t.Fatalf("createTx returned err %s", err)
 	}
@@ -649,6 +802,60 @@ func TestAlreadyDeployed(t *testing.T) {
 	args = [][]byte{[]byte("dv"), envBytes, policy}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("vscc invocation should have failed")
+	}
+}
+
+func TestValidateDeployNoLedger(t *testing.T) {
+	v := new(ValidatorOneValidSignature)
+	stub := shim.NewMockStub("validatoronevalidsignature", v)
+
+	lccc := new(lscc.LifeCycleSysCC)
+	stublccc := shim.NewMockStub("lscc", lccc)
+
+	State := make(map[string]map[string][]byte)
+	State["lscc"] = stublccc.State
+	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{QErr: fmt.Errorf("Simulated error")})
+	stub.MockPeerChaincode("lscc", stublccc)
+
+	r1 := stub.MockInit("1", [][]byte{})
+	if r1.Status != shim.OK {
+		fmt.Println("Init failed", string(r1.Message))
+		t.FailNow()
+	}
+
+	r := stublccc.MockInit("1", [][]byte{})
+	if r.Status != shim.OK {
+		fmt.Println("Init failed", string(r.Message))
+		t.FailNow()
+	}
+
+	ccname := "mycc"
+	ccver := "1"
+
+	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
+	assert.NoError(t, err)
+	res, err := createCCDataRWset(ccname, ccname, ccver, defaultPolicy)
+	assert.NoError(t, err)
+
+	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+
+	envBytes, err := utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+
+	// good path: signed by the right MSP
+	policy, err := getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+
+	args := [][]byte{[]byte("dv"), envBytes, policy}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("vscc invoke should have failed")
 	}
 }
 

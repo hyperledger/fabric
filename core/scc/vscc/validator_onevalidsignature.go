@@ -168,7 +168,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		if hdrExt.ChaincodeId.Name == "lscc" {
 			logger.Debugf("VSCC info: doing special validation for LSCC")
 
-			err = vscc.ValidateLSCCInvocation(stub, chdr.ChannelId, env, cap)
+			err = vscc.ValidateLSCCInvocation(stub, chdr.ChannelId, env, cap, payl)
 			if err != nil {
 				logger.Errorf("VSCC error: ValidateLSCCInvocation failed, err %s", err)
 				return shim.Error(err.Error())
@@ -182,7 +182,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 }
 
 // checkInstantiationPolicy evaluates an instantiation policy against a signed proposal
-func (vscc *ValidatorOneValidSignature) checkInstantiationPolicy(chainName string, env *common.Envelope, instantiationPolicy []byte) error {
+func (vscc *ValidatorOneValidSignature) checkInstantiationPolicy(chainName string, env *common.Envelope, instantiationPolicy []byte, payl *common.Payload) error {
 	// create a policy object from the policy bytes
 	mgr := mspmgmt.GetManagerForChain(chainName)
 	if mgr == nil {
@@ -196,13 +196,6 @@ func (vscc *ValidatorOneValidSignature) checkInstantiationPolicy(chainName strin
 	}
 
 	logger.Debugf("VSCC info: checkInstantiationPolicy starts, policy is %#v", instPol)
-
-	// get the payload
-	payl, err := utils.GetPayload(env)
-	if err != nil {
-		logger.Errorf("VSCC error: GetPayload failed, err %s", err)
-		return err
-	}
 
 	// get the signature header
 	shdr, err := utils.GetSignatureHeader(payl.Header.SignatureHeader)
@@ -223,7 +216,7 @@ func (vscc *ValidatorOneValidSignature) checkInstantiationPolicy(chainName strin
 	return nil
 }
 
-func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.ChaincodeStubInterface, chid string, env *common.Envelope, cap *pb.ChaincodeActionPayload) error {
+func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.ChaincodeStubInterface, chid string, env *common.Envelope, cap *pb.ChaincodeActionPayload, payl *common.Payload) error {
 	cpp, err := utils.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
 	if err != nil {
 		logger.Errorf("VSCC error: GetChaincodeProposalPayload failed, err %s", err)
@@ -352,7 +345,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.Chainco
 			// here is the same as the one on disk?
 			// PROS: we prevent attacks where the policy is replaced
 			// CONS: this would be a point of non-determinism
-			err = vscc.checkInstantiationPolicy(chid, env, pol)
+			err = vscc.checkInstantiationPolicy(chid, env, pol, payl)
 			if err != nil {
 				return err
 			}
@@ -384,7 +377,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.Chainco
 			// here is the same as the one on disk?
 			// PROS: we prevent attacks where the policy is replaced
 			// CONS: this would be a point of non-determinism
-			err = vscc.checkInstantiationPolicy(chid, env, pol)
+			err = vscc.checkInstantiationPolicy(chid, env, pol, payl)
 			if err != nil {
 				return err
 			}
