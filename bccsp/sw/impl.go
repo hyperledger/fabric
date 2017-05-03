@@ -80,7 +80,17 @@ func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.B
 	decryptors := make(map[reflect.Type]Decryptor)
 	decryptors[reflect.TypeOf(&aesPrivateKey{})] = &aescbcpkcs7Decryptor{}
 
-	return &impl{conf, keyStore, encryptors, decryptors}, nil
+	// Set the signers
+	signers := make(map[reflect.Type]Signer)
+	signers[reflect.TypeOf(&ecdsaPrivateKey{})] = &ecdsaSigner{}
+	signers[reflect.TypeOf(&rsaPrivateKey{})] = &rsaSigner{}
+
+	return &impl{
+		conf,
+		keyStore,
+		encryptors,
+		decryptors,
+		signers}, nil
 }
 
 // SoftwareBasedBCCSP is the software-based implementation of the BCCSP.
@@ -90,6 +100,7 @@ type impl struct {
 
 	encryptors map[reflect.Type]Encryptor
 	decryptors map[reflect.Type]Decryptor
+	signers    map[reflect.Type]Signer
 }
 
 // KeyGen generates a key using opts.
@@ -661,19 +672,12 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 		return nil, errors.New("Invalid digest. Cannot be empty.")
 	}
 
-	// Check key type
-	switch k.(type) {
-	case *ecdsaPrivateKey:
-		return csp.signECDSA(k.(*ecdsaPrivateKey).privKey, digest, opts)
-	case *rsaPrivateKey:
-		if opts == nil {
-			return nil, errors.New("Invalid options. Nil.")
-		}
-
-		return k.(*rsaPrivateKey).privKey.Sign(rand.Reader, digest, opts)
-	default:
+	signer, found := csp.signers[reflect.TypeOf(k)]
+	if !found {
 		return nil, fmt.Errorf("Unsupported 'SignKey' provided [%v]", k)
 	}
+
+	return signer.Sign(k, digest, opts)
 }
 
 // Verify verifies signature against key k and digest
@@ -692,9 +696,9 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 	// Check key type
 	switch k.(type) {
 	case *ecdsaPrivateKey:
-		return csp.verifyECDSA(&(k.(*ecdsaPrivateKey).privKey.PublicKey), signature, digest, opts)
+		return verifyECDSA(&(k.(*ecdsaPrivateKey).privKey.PublicKey), signature, digest, opts)
 	case *ecdsaPublicKey:
-		return csp.verifyECDSA(k.(*ecdsaPublicKey).pubKey, signature, digest, opts)
+		return verifyECDSA(k.(*ecdsaPublicKey).pubKey, signature, digest, opts)
 	case *rsaPrivateKey:
 		if opts == nil {
 			return false, errors.New("Invalid options. It must not be nil.")

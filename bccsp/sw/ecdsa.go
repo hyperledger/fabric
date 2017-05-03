@@ -74,7 +74,7 @@ func unmarshalECDSASignature(raw []byte) (*big.Int, *big.Int, error) {
 	return sig.R, sig.S, nil
 }
 
-func (csp *impl) signECDSA(k *ecdsa.PrivateKey, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
+func signECDSA(k *ecdsa.PrivateKey, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
 	r, s, err := ecdsa.Sign(rand.Reader, k, digest)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (csp *impl) signECDSA(k *ecdsa.PrivateKey, digest []byte, opts bccsp.Signer
 	return marshalECDSASignature(r, s)
 }
 
-func (csp *impl) verifyECDSA(k *ecdsa.PublicKey, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
+func verifyECDSA(k *ecdsa.PublicKey, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
 	r, s, err := unmarshalECDSASignature(signature)
 	if err != nil {
 		return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
@@ -114,4 +114,10 @@ func (csp *impl) verifyECDSA(k *ecdsa.PublicKey, signature, digest []byte, opts 
 	}
 
 	return ecdsa.Verify(k, digest, r, s), nil
+}
+
+type ecdsaSigner struct{}
+
+func (s *ecdsaSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
+	return signECDSA(k.(*ecdsaPrivateKey).privKey, digest, opts)
 }
