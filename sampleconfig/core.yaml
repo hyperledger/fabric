@@ -52,8 +52,9 @@ peer:
 
     # The Address this Peer will listen on
     listenAddress: 0.0.0.0:7051
-    # Represents the peer's endpoint to peers in its organization
-    # for other peers, see externalEndpoint
+    # When used as peer config, represents the endpoint to other peers in the same organization
+    # for peers in other organization, see gossip.externalEndpoint
+    # When used as cli config, will mean the peer node's endpoint to interact with
     address: 0.0.0.0:7051
     # Whether the Peer should programmatically determine its address
     # This case is useful for docker containers.
