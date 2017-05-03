@@ -23,7 +23,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const nodeFuncName = "node"
+const (
+	nodeFuncName = "node"
+	shortDes     = "Operate a peer node: start|stop|status."
+	longDes      = "Operate a peer node: start|stop|status."
+)
 
 var (
 	stopPidFile string
@@ -41,6 +45,6 @@ func Cmd() *cobra.Command {
 
 var nodeCmd = &cobra.Command{
 	Use:   nodeFuncName,
-	Short: fmt.Sprintf("%s specific commands.", nodeFuncName),
-	Long:  fmt.Sprintf("%s specific commands.", nodeFuncName),
+	Short: fmt.Sprint(shortDes),
+	Long:  fmt.Sprint(longDes),
 }

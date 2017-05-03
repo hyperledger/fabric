@@ -30,7 +30,11 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-const channelFuncName = "channel"
+const (
+	channelFuncName = "channel"
+	shortDes        = "Operate a channel: create|fetch|join|list."
+	longDes         = "Operate a channel: create|fetch|join|list."
+)
 
 var (
 	// join related variables.
@@ -70,8 +74,8 @@ func AddFlags(cmd *cobra.Command) {
 
 var channelCmd = &cobra.Command{
 	Use:   channelFuncName,
-	Short: fmt.Sprintf("%s specific commands.", channelFuncName),
-	Long:  fmt.Sprintf("%s specific commands.", channelFuncName),
+	Short: fmt.Sprint(shortDes),
+	Long:  fmt.Sprint(longDes),
 }
 
 type BroadcastClientFactory func() (common.BroadcastClient, error)
