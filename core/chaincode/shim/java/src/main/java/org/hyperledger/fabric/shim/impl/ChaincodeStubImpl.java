@@ -75,7 +75,7 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	public String getFunction() {
 		return getStringArgs().size() > 0 ? getStringArgs().get(0) : null;
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see org.hyperledger.fabric.shim.ChaincodeStub#getParameters()
 	 */
@@ -83,7 +83,7 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	public List<String> getParameters() {
 		return getStringArgs().stream().skip(1).collect(toList());
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see org.hyperledger.fabric.shim.ChaincodeStub#setEvent(java.lang.String, byte[])
 	 */
@@ -185,6 +185,17 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	@Override
 	public CompositeKey splitCompositeKey(String compositeKey) {
 		return CompositeKey.parseCompositeKey(compositeKey);
+	}
+
+	/* (non-Javadoc)
+	 * @see org.hyperledger.fabric.shim.ChaincodeStub#getQueryResult(java.lang.String)
+	 */
+	@Override
+	public QueryResultsIterator<KeyValue> getQueryResult(String query) {
+		return new QueryResultsIteratorImpl<KeyValue>(this.handler, getTxId(),
+				handler.handleGetQueryResult(getTxId(), query),
+				queryResultBytesToKv.andThen(KeyValueImpl::new)
+				);
 	}
 
 	/* (non-Javadoc)

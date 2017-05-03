@@ -33,7 +33,7 @@ public interface ChaincodeStub {
 	 * Returns the arguments corresponding to the call to
 	 * {@link Chaincode#init(ChaincodeStub)} or
 	 * {@link Chaincode#invoke(ChaincodeStub)}.
-	 * 
+	 *
 	 * @return a list of arguments
 	 */
 	List<byte[]> getArgs();
@@ -42,7 +42,7 @@ public interface ChaincodeStub {
 	 * Returns the arguments corresponding to the call to
 	 * {@link Chaincode#init(ChaincodeStub)} or
 	 * {@link Chaincode#invoke(ChaincodeStub)}.
-	 * 
+	 *
 	 * @return a list of arguments cast to UTF-8 strings
 	 */
 	List<String> getStringArgs();
@@ -50,9 +50,9 @@ public interface ChaincodeStub {
 	/**
 	 * A convenience method that returns the first argument of the chaincode
 	 * invocation for use as a function name.
-	 * 
+	 *
 	 * The bytes of the first argument are decoded as a UTF-8 string.
-	 * 
+	 *
 	 * @return the function name
 	 */
 	String getFunction();
@@ -61,10 +61,10 @@ public interface ChaincodeStub {
 	 * A convenience method that returns all except the first argument of the
 	 * chaincode invocation for use as the parameters to the function returned
 	 * by #{@link ChaincodeStub#getFunction()}.
-	 * 
+	 *
 	 * The bytes of the arguments are decoded as a UTF-8 strings and returned as
 	 * a list of string parameters..
-	 * 
+	 *
 	 * @return a list of parameters
 	 */
 	List<String> getParameters();
@@ -78,7 +78,7 @@ public interface ChaincodeStub {
 
 	/**
 	 * Invoke another chaincode using the same transaction context.
-	 * 
+	 *
 	 * @param chaincodeName
 	 *            Name of chaincode to be invoked.
 	 * @param args
@@ -120,7 +120,7 @@ public interface ChaincodeStub {
 	 * Returns all existing keys, and their values, that are lexicographically
 	 * between <code>startkey</code> (inclusive) and the <code>endKey</code>
 	 * (exclusive).
-	 * 
+	 *
 	 * @param startKey
 	 * @param endKey
 	 * @return an {@link Iterable} of {@link KeyValue}
@@ -130,10 +130,10 @@ public interface ChaincodeStub {
 	/**
 	 * Returns all existing keys, and their values, that are prefixed by the
 	 * specified partial {@link CompositeKey}.
-	 * 
+	 *
 	 * If a full composite key is specified, it will not match itself, resulting
 	 * in no keys being returned.
-	 * 
+	 *
 	 * @param compositeKey
 	 *            partial composite key
 	 * @return an {@link Iterable} of {@link KeyValue}
@@ -163,6 +163,19 @@ public interface ChaincodeStub {
 	CompositeKey splitCompositeKey(String compositeKey);
 
 	/**
+	 * Perform a rich query against the state database.
+	 *
+	 * @param query
+	 *            query string in a syntax supported by the underlying state
+	 *            database
+	 * @return
+	 * @throws UnsupportedOperationException
+	 *             if the underlying state database does not support rich
+	 *             queries.
+	 */
+	QueryResultsIterator<KeyValue> getQueryResult(String query);
+
+	/**
 	 * Defines the CHAINCODE type event that will be posted to interested
 	 * clients when the chaincode's result is committed to the ledger.
 	 *
@@ -175,7 +188,7 @@ public interface ChaincodeStub {
 
 	/**
 	 * Invoke another chaincode using the same transaction context.
-	 * 
+	 *
 	 * @param chaincodeName
 	 *            Name of chaincode to be invoked.
 	 * @param args
@@ -188,11 +201,11 @@ public interface ChaincodeStub {
 
 	/**
 	 * Invoke another chaincode using the same transaction context.
-	 * 
+	 *
 	 * This is a convenience version of
 	 * {@link #invokeChaincode(String, List, String)}. The string args will be
 	 * encoded into as UTF-8 bytes.
-	 * 
+	 *
 	 * @param chaincodeName
 	 *            Name of chaincode to be invoked.
 	 * @param args
@@ -207,11 +220,11 @@ public interface ChaincodeStub {
 
 	/**
 	 * Invoke another chaincode using the same transaction context.
-	 * 
+	 *
 	 * This is a convenience version of {@link #invokeChaincode(String, List)}.
 	 * The string args will be encoded into as UTF-8 bytes.
-	 * 
-	 * 
+	 *
+	 *
 	 * @param chaincodeName
 	 *            Name of chaincode to be invoked.
 	 * @param args
@@ -224,11 +237,11 @@ public interface ChaincodeStub {
 
 	/**
 	 * Invoke another chaincode using the same transaction context.
-	 * 
+	 *
 	 * This is a convenience version of {@link #invokeChaincode(String, List)}.
 	 * The string args will be encoded into as UTF-8 bytes.
-	 * 
-	 * 
+	 *
+	 *
 	 * @param chaincodeName
 	 *            Name of chaincode to be invoked.
 	 * @param args
@@ -266,7 +279,7 @@ public interface ChaincodeStub {
 	/**
 	 * Returns the CHAINCODE type event that will be posted to interested
 	 * clients when the chaincode's result is committed to the ledger.
-	 * 
+	 *
 	 * @return the chaincode event or null
 	 */
 	ChaincodeEvent getEvent();
