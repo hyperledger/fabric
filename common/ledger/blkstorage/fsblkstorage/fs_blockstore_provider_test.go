@@ -24,7 +24,10 @@ import (
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func TestMultipleBlockStores(t *testing.T) {
@@ -35,7 +38,7 @@ func TestMultipleBlockStores(t *testing.T) {
 	store1, _ := provider.OpenBlockStore("ledger1")
 	defer store1.Shutdown()
 
-	store2, _ := provider.OpenBlockStore("ledger2")
+	store2, _ := provider.CreateBlockStore("ledger2")
 	defer store2.Shutdown()
 
 	blocks1 := testutil.ConstructTestBlocks(t, 5)
@@ -49,6 +52,8 @@ func TestMultipleBlockStores(t *testing.T) {
 	}
 	checkBlocks(t, blocks1, store1)
 	checkBlocks(t, blocks2, store2)
+	checkWithWrongInputs(t, store1, 5)
+	checkWithWrongInputs(t, store2, 10)
 }
 
 func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.BlockStore) {
@@ -62,6 +67,58 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.
 		block := blockHolder.(ledger.BlockHolder).GetBlock()
 		testutil.AssertEquals(t, block, expectedBlocks[i])
 	}
+
+	for blockNum := 0; blockNum < len(expectedBlocks); blockNum++ {
+		block := expectedBlocks[blockNum]
+		flags := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+		retrievedBlock, _ := store.RetrieveBlockByNumber(uint64(blockNum))
+		testutil.AssertEquals(t, retrievedBlock, block)
+
+		retrievedBlock, _ = store.RetrieveBlockByHash(block.Header.Hash())
+		testutil.AssertEquals(t, retrievedBlock, block)
+
+		for txNum := 0; txNum < len(block.Data.Data); txNum++ {
+			txEnvBytes := block.Data.Data[txNum]
+			txEnv, _ := utils.GetEnvelopeFromBlock(txEnvBytes)
+			txid, err := extractTxID(txEnvBytes)
+			testutil.AssertNoError(t, err, "")
+
+			retrievedBlock, _ := store.RetrieveBlockByTxID(txid)
+			testutil.AssertEquals(t, retrievedBlock, block)
+
+			retrievedTxEnv, _ := store.RetrieveTxByID(txid)
+			testutil.AssertEquals(t, retrievedTxEnv, txEnv)
+
+			retrievedTxEnv, _ = store.RetrieveTxByBlockNumTranNum(uint64(blockNum), uint64(txNum))
+			testutil.AssertEquals(t, retrievedTxEnv, txEnv)
+
+			retrievedTxValCode, err := store.RetrieveTxValidationCodeByTxID(txid)
+			testutil.AssertNoError(t, err, "")
+			testutil.AssertEquals(t, retrievedTxValCode, flags.Flag(txNum))
+		}
+	}
+}
+
+func checkWithWrongInputs(t *testing.T, store blkstorage.BlockStore, numBlocks int) {
+	block, err := store.RetrieveBlockByHash([]byte("non-existent-hash"))
+	testutil.AssertNil(t, block)
+	testutil.AssertEquals(t, err, blkstorage.ErrNotFoundInIndex)
+
+	block, err = store.RetrieveBlockByTxID("non-existent-txid")
+	testutil.AssertNil(t, block)
+	testutil.AssertEquals(t, err, blkstorage.ErrNotFoundInIndex)
+
+	tx, err := store.RetrieveTxByID("non-existent-txid")
+	testutil.AssertNil(t, tx)
+	testutil.AssertEquals(t, err, blkstorage.ErrNotFoundInIndex)
+
+	tx, err = store.RetrieveTxByBlockNumTranNum(uint64(numBlocks+1), uint64(0))
+	testutil.AssertNil(t, tx)
+	testutil.AssertEquals(t, err, blkstorage.ErrNotFoundInIndex)
+
+	txCode, err := store.RetrieveTxValidationCodeByTxID("non-existent-txid")
+	testutil.AssertEquals(t, txCode, peer.TxValidationCode(-1))
+	testutil.AssertEquals(t, err, blkstorage.ErrNotFoundInIndex)
 }
 
 func TestBlockStoreProvider(t *testing.T) {

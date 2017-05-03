@@ -43,6 +43,7 @@ func TestBlockfileMgrCrashDuringWriting(t *testing.T) {
 	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 1)
 	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 0)
 	testBlockfileMgrCrashDuringWriting(t, 0, 0, 1000, 10)
+	testBlockfileMgrCrashDuringWriting(t, 0, 5, 1000, 10)
 }
 
 func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint int,
@@ -52,11 +53,24 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
+
+	// create all necessary blocks
+	totalBlocks := numBlocksBeforeCheckpoint + numBlocksAfterCheckpoint
+	allBlocks := []*common.Block{gb}
+	allBlocks = append(allBlocks, bg.NextTestBlocks(totalBlocks+1)...)
+
+	// identify the blocks that are to be added beforeCP, afterCP, and after restart
 	blocksBeforeCP := []*common.Block{}
-	if numBlocksBeforeCheckpoint > 0 {
-		blocksBeforeCP = append(blocksBeforeCP, gb)
+	blocksAfterCP := []*common.Block{}
+	if numBlocksBeforeCheckpoint != 0 {
+		blocksBeforeCP = allBlocks[0:numBlocksBeforeCheckpoint]
 	}
-	blocksBeforeCP = append(blocksBeforeCP, bg.NextTestBlocks(numBlocksBeforeCheckpoint-1)...)
+	if numBlocksAfterCheckpoint != 0 {
+		blocksAfterCP = allBlocks[numBlocksBeforeCheckpoint : numBlocksBeforeCheckpoint+numBlocksAfterCheckpoint]
+	}
+	blocksAfterRestart := allBlocks[numBlocksBeforeCheckpoint+numBlocksAfterCheckpoint:]
+
+	// add blocks before cp
 	blkfileMgrWrapper.addBlocks(blocksBeforeCP)
 	currentCPInfo := blkfileMgrWrapper.blockfileMgr.cpInfo
 	cpInfo1 := &checkpointInfo{
@@ -65,14 +79,7 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 		currentCPInfo.isChainEmpty,
 		currentCPInfo.lastBlockNumber}
 
-	blocksAfterCP := []*common.Block{}
-	if numBlocksBeforeCheckpoint == 0 {
-		blocksAfterCP = append(blocksAfterCP, gb)
-		blocksAfterCP = append(blocksAfterCP, bg.NextTestBlocks(numBlocksAfterCheckpoint-1)...)
-	} else {
-		blocksAfterCP = bg.NextTestBlocks(numBlocksAfterCheckpoint)
-	}
-
+	// add blocks after cp
 	blkfileMgrWrapper.addBlocks(blocksAfterCP)
 	cpInfo2 := blkfileMgrWrapper.blockfileMgr.cpInfo
 
@@ -94,12 +101,7 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	testutil.AssertEquals(t, cpInfo3, cpInfo2)
 
 	// add fresh blocks after restart
-	blocksAfterRestart := bg.NextTestBlocks(2)
 	blkfileMgrWrapper.addBlocks(blocksAfterRestart)
-	allBlocks := []*common.Block{}
-	allBlocks = append(allBlocks, blocksBeforeCP...)
-	allBlocks = append(allBlocks, blocksAfterCP...)
-	allBlocks = append(allBlocks, blocksAfterRestart...)
 	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 0, len(allBlocks)-1, allBlocks)
 }
 

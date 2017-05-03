@@ -71,7 +71,6 @@ func newBlockfileStream(rootDir string, fileNum int, startOffset int64) (*blockf
 	}
 	var newPosition int64
 	if newPosition, err = file.Seek(startOffset, 0); err != nil {
-		// file.Seek does not raise an error - simply seeks to the new position
 		return nil, err
 	}
 	if newPosition != startOffset {
@@ -186,8 +185,7 @@ func (s *blockStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacementI
 	var blockPlacementInfo *blockPlacementInfo
 	var err error
 	if blockBytes, blockPlacementInfo, err = s.currentFileStream.nextBlockBytesAndPlacementInfo(); err != nil {
-		logger.Debugf("current file [%d]", s.currentFileNum)
-		logger.Debugf("blockbytes [%d]. Err:%s", len(blockBytes), err)
+		logger.Debugf("current file [%d] length of blockbytes [%d]. Err:%s", s.currentFileNum, len(blockBytes), err)
 		return nil, nil, err
 	}
 	logger.Debugf("blockbytes [%d] read from file [%d]", len(blockBytes), s.currentFileNum)

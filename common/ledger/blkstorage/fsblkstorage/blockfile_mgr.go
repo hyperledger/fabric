@@ -32,7 +32,7 @@ import (
 	putil "github.com/hyperledger/fabric/protos/utils"
 )
 
-var logger = flogging.MustGetLogger("kvledger")
+var logger = flogging.MustGetLogger("fsblkstorage")
 
 const (
 	blockfilePrefix = "blockfile_"
@@ -219,10 +219,6 @@ func syncCPInfoFromFS(rootDir string, cpInfo *checkpointInfo) {
 
 func deriveBlockfilePath(rootDir string, suffixNum int) string {
 	return rootDir + "/" + blockfilePrefix + fmt.Sprintf("%06d", suffixNum)
-}
-
-func (mgr *blockfileMgr) open() error {
-	return mgr.currentFileWriter.open()
 }
 
 func (mgr *blockfileMgr) close() {
