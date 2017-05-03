@@ -46,6 +46,12 @@ func TestSavepoint(t *testing.T) {
 	testutil.AssertNoError(t, err, "Error upon historyDatabase.GetLastSavepoint()")
 	testutil.AssertNil(t, savepoint)
 
+	// ShouldRecover should return true when no savepoint is found and recovery from block 0
+	status, blockNum, err := env.testHistoryDB.ShouldRecover(0)
+	testutil.AssertNoError(t, err, "Error upon historyDatabase.ShouldRecover()")
+	testutil.AssertEquals(t, status, true)
+	testutil.AssertEquals(t, blockNum, uint64(0))
+
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	testutil.AssertNoError(t, env.testHistoryDB.Commit(gb), "")
 	// read the savepoint, it should now exist and return a Height object with BlockNum 0
@@ -63,6 +69,31 @@ func TestSavepoint(t *testing.T) {
 	savepoint, err = env.testHistoryDB.GetLastSavepoint()
 	testutil.AssertNoError(t, err, "Error upon historyDatabase.GetLastSavepoint()")
 	testutil.AssertEquals(t, savepoint.BlockNum, uint64(1))
+
+	// Should Recover should return false
+	status, blockNum, err = env.testHistoryDB.ShouldRecover(1)
+	testutil.AssertNoError(t, err, "Error upon historyDatabase.ShouldRecover()")
+	testutil.AssertEquals(t, status, false)
+	testutil.AssertEquals(t, blockNum, uint64(2))
+
+	// create the next block (block 2)
+	simulator, _ = env.txmgr.NewTxSimulator()
+	simulator.SetState("ns1", "key1", []byte("value2"))
+	simulator.Done()
+	simRes, _ = simulator.GetTxSimulationResults()
+	block2 := bg.NextBlock([][]byte{simRes})
+
+	// assume that the peer failed to commit this block to historyDB and is being recovered now
+	env.testHistoryDB.CommitLostBlock(block2)
+	savepoint, err = env.testHistoryDB.GetLastSavepoint()
+	testutil.AssertNoError(t, err, "Error upon historyDatabase.GetLastSavepoint()")
+	testutil.AssertEquals(t, savepoint.BlockNum, uint64(2))
+
+	//Pass high blockNum, ShouldRecover should return true with 3 as blocknum to recover from
+	status, blockNum, err = env.testHistoryDB.ShouldRecover(10)
+	testutil.AssertNoError(t, err, "Error upon historyDatabase.ShouldRecover()")
+	testutil.AssertEquals(t, status, true)
+	testutil.AssertEquals(t, blockNum, uint64(3))
 }
 
 func TestHistory(t *testing.T) {
