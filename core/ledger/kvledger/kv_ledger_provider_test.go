@@ -60,6 +60,8 @@ func TestLedgerProvider(t *testing.T) {
 		testutil.AssertEquals(t, ledgerIds[i], constructTestLedgerID(i))
 	}
 	for i := 0; i < numLedgers; i++ {
+		status, _ := provider.Exists(constructTestLedgerID(i))
+		testutil.AssertEquals(t, status, true)
 		ledger, err := provider.Open(constructTestLedgerID(i))
 		testutil.AssertNoError(t, err, "")
 		bcInfo, err := ledger.GetBlockchainInfo()
@@ -71,8 +73,53 @@ func TestLedgerProvider(t *testing.T) {
 	_, err = provider.Create(gb)
 	testutil.AssertEquals(t, err, ErrLedgerIDExists)
 
+	status, err := provider.Exists(constructTestLedgerID(numLedgers))
+	testutil.AssertNoError(t, err, "Failed to check for ledger existence")
+	testutil.AssertEquals(t, false, status)
+
 	_, err = provider.Open(constructTestLedgerID(numLedgers))
 	testutil.AssertEquals(t, err, ErrNonExistingLedgerID)
+}
+
+func TestRecovery(t *testing.T) {
+	env := newTestEnv(t)
+	defer env.cleanup()
+	provider, _ := NewProvider()
+
+	// now create the genesis block
+	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
+	ledger, err := provider.(*Provider).openInternal(constructTestLedgerID(1))
+	ledger.Commit(genesisBlock)
+	ledger.Close()
+
+	// Case 1: assume a crash happens, force underconstruction flag to be set to simulate
+	// a failure where ledgerid is being created - ie., block is written but flag is not unset
+	provider.(*Provider).idStore.setUnderConstructionFlag(constructTestLedgerID(1))
+	provider.Close()
+
+	// construct a new provider to invoke recovery
+	provider, err = NewProvider()
+	testutil.AssertNoError(t, err, "Provider failed to recover an underConstructionLedger")
+	// verify the underecoveryflag and open the ledger
+	flag, err := provider.(*Provider).idStore.getUnderConstructionFlag()
+	testutil.AssertNoError(t, err, "Failed to read the underconstruction flag")
+	testutil.AssertEquals(t, flag, "")
+	ledger, err = provider.Open(constructTestLedgerID(1))
+	testutil.AssertNoError(t, err, "Failed to open the ledger")
+	ledger.Close()
+
+	// Case 0: assume a crash happens before the genesis block of ledger 2 is comitted
+	// Open the ID store (inventory of chainIds/ledgerIds)
+	provider.(*Provider).idStore.setUnderConstructionFlag(constructTestLedgerID(2))
+	provider.Close()
+
+	// construct a new provider to invoke recovery
+	provider, err = NewProvider()
+	testutil.AssertNoError(t, err, "Provider failed to recover an underConstructionLedger")
+	flag, err = provider.(*Provider).idStore.getUnderConstructionFlag()
+	testutil.AssertNoError(t, err, "Failed to read the underconstruction flag")
+	testutil.AssertEquals(t, flag, "")
+
 }
 
 func TestMultipleLedgerBasicRW(t *testing.T) {
