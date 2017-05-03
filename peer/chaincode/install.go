@@ -164,8 +164,8 @@ func chaincodeInstall(cmd *cobra.Command, ccpackfile string, cf *ChaincodeCmdFac
 
 	var ccpackmsg proto.Message
 	if ccpackfile == "" {
-		if chaincodePath == common.UndefinedParamValue || chaincodeVersion == common.UndefinedParamValue {
-			return fmt.Errorf("Must supply value for %s path and version parameters.", chainFuncName)
+		if chaincodePath == common.UndefinedParamValue || chaincodeVersion == common.UndefinedParamValue || chaincodeName == common.UndefinedParamValue {
+			return fmt.Errorf("Must supply value for %s name, path and version parameters.", chainFuncName)
 		}
 		//generate a raw ChaincodeDeploymentSpec
 		ccpackmsg, err = generateChaincode(cmd, chaincodeName, chaincodeVersion)
