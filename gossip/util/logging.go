@@ -38,13 +38,14 @@ const (
 
 var loggersByModules = make(map[string]*logging.Logger)
 var lock = sync.Mutex{}
+var testMode bool
 
 // defaultTestSpec is the default logging level for gossip tests
 var defaultTestSpec = "WARNING"
 
 // GetLogger returns a logger for given gossip module and peerID
 func GetLogger(module string, peerID string) *logging.Logger {
-	if peerID != "" {
+	if peerID != "" && testMode {
 		module = module + "#" + peerID
 	}
 
@@ -63,5 +64,6 @@ func GetLogger(module string, peerID string) *logging.Logger {
 
 // SetupTestLogging sets the default log levels for gossip unit tests
 func SetupTestLogging() {
+	testMode = true
 	flogging.InitFromSpec(defaultTestSpec)
 }
