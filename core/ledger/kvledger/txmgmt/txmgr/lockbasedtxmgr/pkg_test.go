@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package commontests
+package lockbasedtxmgr
 
 import (
 	"testing"
@@ -25,14 +25,13 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
 )
 
 const (
-	testFilesystemPath = "/tmp/fabric/ledgertests/kvledger/txmgmt/txmgr/commontests"
+	testFilesystemPath = "/tmp/fabric/ledgertests/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 )
 
 type testEnv interface {
@@ -68,7 +67,7 @@ func (env *levelDBLockBasedEnv) init(t *testing.T, testLedgerID string) {
 	testDB, err := testDBEnv.DBProvider.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
 
-	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB)
+	txMgr := NewLockBasedTxMgr(testDB)
 	env.testLedgerID = testLedgerID
 	env.testDBEnv = testDBEnv
 	env.testDB = testDB
@@ -118,7 +117,7 @@ func (env *couchDBLockBasedEnv) init(t *testing.T, testLedgerID string) {
 	testDB, err := testDBEnv.DBProvider.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
 
-	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB)
+	txMgr := NewLockBasedTxMgr(testDB)
 	env.testLedgerID = testLedgerID
 	env.testDBEnv = testDBEnv
 	env.testDB = testDB
