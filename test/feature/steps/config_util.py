@@ -1,4 +1,4 @@
-# Copyright IBM Corp. 2016 All Rights Reserved.
+# Copyright IBM Corp. 2017 All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@ import os
 import sys
 from shutil import copyfile
 
-def generateConfig(context, channelID, profile, ordererBlock="orderer.block"):
+def generateConfig(channelID, profile, projectName, ordererBlock="orderer.block"):
     # Save all the files to a specific directory for the test
-    testConfigs = "configs/%s" % context.composition.projectName
+    testConfigs = "configs/%s" % projectName
     if not os.path.isdir(testConfigs):
         os.mkdir(testConfigs)
 
@@ -44,17 +44,15 @@ def generateConfig(context, channelID, profile, ordererBlock="orderer.block"):
         print("Unable to generate channel config data: {0}".format(sys.exc_info()[0]))
 
 
-def generateCrypto(context, numOrgs=2, numPeersPerOrg=2, numOrderers=1):
+def generateCrypto(projectName):
     # Save all the files to a specific directory for the test
-    testConfigs = "configs/%s" % context.composition.projectName
+    testConfigs = "configs/%s" % projectName
     if not os.path.isdir(testConfigs):
         os.mkdir(testConfigs)
 
     try:
-        subprocess.check_call(["cryptogen",
-                               "-peerOrgs", numOrgs,
-                               "-ordererNodes", numOrderers,
-                               "-peersPerOrg", numPeersPerOrg,
-                               "-baseDir", testConfigs])
+        subprocess.check_call(["cryptogen", "generate",
+                               '--output={0}'.format(testConfigs),
+                               '--config=./configs/crypto.yaml'])
     except:
-        print("Unable to generate crypto material: {0}".format(sys.exc_info()[0]))
+        print("Unable to generate crypto material: {0}".format(sys.exc_info()[1]))
