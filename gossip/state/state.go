@@ -399,8 +399,8 @@ func (s *GossipStateProviderImpl) Stop() {
 // New message notification/handler
 func (s *GossipStateProviderImpl) queueNewMessage(msg *proto.GossipMessage) {
 	if !bytes.Equal(msg.Channel, []byte(s.chainID)) {
-		logger.Warning("Received state transfer request for channel",
-			string(msg.Channel), "while expecting channel", s.chainID, "skipping request...")
+		logger.Warning("Received enqueue for channel",
+			string(msg.Channel), "while expecting channel", s.chainID, "ignoring enqueue")
 		return
 	}
 
