@@ -135,6 +135,10 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 	factory DeliveryServiceFactory, mcs api.MessageCryptoService, secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) {
 	once.Do(func() {
+		if overrideEndpoint := viper.GetString("peer.gossip.endpoint"); overrideEndpoint != "" {
+			endpoint = overrideEndpoint
+		}
+
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
 
 		idMapper := identity.NewIdentityMapper(mcs)
