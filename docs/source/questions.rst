@@ -10,5 +10,5 @@ use
 If you need help finding things, please don't hesitate to send a note to
 the `mailing
 list <http://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__,
-or ask on `RocketChat <(https://chat.hyperledger.org/)>`__ (an
+or ask on `RocketChat <https://chat.hyperledger.org/>`__ (an
 alternative to Slack).

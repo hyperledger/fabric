@@ -50,7 +50,7 @@ Table of Contents
 
 6. `Fabric CA Client`_
 
-   1. `Enrolling the bootstrap user`_
+   1. `Enrolling the bootstrap identity`_
    2. `Registering a new identity`_
    3. `Enrolling a peer identity`_
    4. `Reenrolling an identity`_

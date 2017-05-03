@@ -146,8 +146,7 @@ Using the configtxgen tool
 
 We will now use our second tool - configtxgen - to create our ordering service
 genesis block and a channel configuration artifact.  As the abbreviation suggests,
-this tool is a configuration transaction generator.  More info on the configtxgen
-tool can be found `here <http://hyperledger-fabric.readthedocs.io/en/latest/configtxgen.html>`__
+this tool is a configuration transaction generator. More info can be can be found in the :doc:`configtxgen tool documentation <configtxgen>`.
 However, at this stage (and for the sake of brevity) we will simply make use of
 the tool to generate our two artifacts.
 
