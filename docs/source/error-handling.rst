@@ -4,8 +4,8 @@ Error handling
 General Overview
 ----------------
 The Fabric error handling framework can be found in the Fabric repository under
-common/errors. It defines a new type of error, CallStackError, to use in place of
-the standard error type provided by Go.
+**common/errors**. It defines a new type of error, CallStackError, to use in
+place of the standard error type provided by Go.
 
 A CallStackError consists of the following:
 
@@ -26,19 +26,17 @@ components for those using an editor with code completion capabilities.
 - Reason code - a short code to help identify the reason the error occurred.
   Reason codes should consist of three numeric values. Letters and special
   characters are not allowed.
-
 - Error code - the component code and reason code separated by a colon,
   e.g. PER:404
-
 - Error message - the text that describes the error. This is the same as the
   input provided to ``fmt.Errorf()`` and ``Errors.New()``. If an error has been
   wrapped into the current error, its message will be appended.
-
 - Callstack - the callstack at the time the error is created. If an error has
   been wrapped into the current error, its error message and callstack will be
   appended to retain the context of the wrapped error.
 
 The CallStackError interface exposes the following functions:
+
 - Error() - returns the error message with callstack appended
 - Message() - returns the error message (without callstack appended)
 - GetComponentCode()

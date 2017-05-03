@@ -61,6 +61,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business <https
    configtx
    configtxgen
    cc-packaging-and-signing
+   error-handling
    Setup/logging-control
 
 .. toctree::
