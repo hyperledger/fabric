@@ -98,7 +98,7 @@ func main() {
 	mainCmd.AddCommand(version.Cmd())
 	mainCmd.AddCommand(node.Cmd())
 	mainCmd.AddCommand(chaincode.Cmd(nil))
-	mainCmd.AddCommand(clilogging.Cmd())
+	mainCmd.AddCommand(clilogging.Cmd(nil))
 	mainCmd.AddCommand(channel.Cmd(nil))
 
 	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))

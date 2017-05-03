@@ -29,10 +29,10 @@ const loggingFuncName = "logging"
 var logger = flogging.MustGetLogger("cli/logging")
 
 // Cmd returns the cobra command for Logging
-func Cmd() *cobra.Command {
-	loggingCmd.AddCommand(getLevelCmd())
-	loggingCmd.AddCommand(setLevelCmd())
-	loggingCmd.AddCommand(revertLevelsCmd())
+func Cmd(cf *LoggingCmdFactory) *cobra.Command {
+	loggingCmd.AddCommand(getLevelCmd(cf))
+	loggingCmd.AddCommand(setLevelCmd(cf))
+	loggingCmd.AddCommand(revertLevelsCmd(cf))
 
 	return loggingCmd
 }
