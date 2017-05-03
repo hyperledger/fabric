@@ -384,7 +384,8 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		return
 	}
 	if !gc.IsOrgInChannel(orgID) {
-		gc.logger.Warning("Point to point message came from", msg.GetConnectionInfo().ID, "but it's not eligible for the channel", string(gc.chainID))
+		gc.logger.Warning("Point to point message came from", msg.GetConnectionInfo().ID,
+			", org(", string(orgID), ") but it's not eligible for the channel", string(gc.chainID))
 		return
 	}
 

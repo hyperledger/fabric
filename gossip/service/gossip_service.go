@@ -221,6 +221,7 @@ func (g *gossipServiceImpl) configUpdated(config Config) {
 	jcm := &joinChannelMessage{seqNum: config.Sequence(), members2AnchorPeers: map[string][]api.AnchorPeer{}}
 	for _, appOrg := range config.Organizations() {
 		logger.Debug(appOrg.MSPID(), "anchor peers:", appOrg.AnchorPeers())
+		jcm.members2AnchorPeers[appOrg.MSPID()] = []api.AnchorPeer{}
 		for _, ap := range appOrg.AnchorPeers() {
 			anchorPeer := api.AnchorPeer{
 				Host: ap.Host,

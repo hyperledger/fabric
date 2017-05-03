@@ -17,6 +17,7 @@ limitations under the License.
 package service
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -80,7 +81,7 @@ func (*gossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-
 }
 
 func (g *gossipMock) JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID) {
-	g.Called()
+	g.Called(joinMsg, chainID)
 }
 
 func (*gossipMock) Stop() {
@@ -99,21 +100,20 @@ func (ao *appOrgMock) MSPID() string {
 	return ao.id
 }
 
-func (*appOrgMock) AnchorPeers() []*peer.AnchorPeer {
-	return []*peer.AnchorPeer{{Host: "1.2.3.4", Port: 5611}}
+func (ao *appOrgMock) AnchorPeers() []*peer.AnchorPeer {
+	return []*peer.AnchorPeer{}
 }
 
 type configMock struct {
+	orgs2AppOrgs map[string]config.ApplicationOrg
 }
 
 func (*configMock) ChainID() string {
 	return "A"
 }
 
-func (*configMock) Organizations() map[string]config.ApplicationOrg {
-	return map[string]config.ApplicationOrg{
-		"Org0": &appOrgMock{"Org0"},
-	}
+func (c *configMock) Organizations() map[string]config.ApplicationOrg {
+	return c.orgs2AppOrgs
 }
 
 func (*configMock) Sequence() uint64 {
@@ -127,11 +127,15 @@ func TestJoinChannelConfig(t *testing.T) {
 
 	failChan := make(chan struct{}, 1)
 	g1SvcMock := &gossipMock{}
-	g1SvcMock.On("JoinChan", mock.Anything).Run(func(_ mock.Arguments) {
+	g1SvcMock.On("JoinChan", mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		failChan <- struct{}{}
 	})
 	g1 := &gossipServiceImpl{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("OrgMSP0"), gossipSvc: g1SvcMock}
-	g1.configUpdated(&configMock{})
+	g1.configUpdated(&configMock{
+		orgs2AppOrgs: map[string]config.ApplicationOrg{
+			"Org0": &appOrgMock{id: "Org0"},
+		},
+	})
 	select {
 	case <-time.After(time.Second):
 	case <-failChan:
@@ -140,15 +144,55 @@ func TestJoinChannelConfig(t *testing.T) {
 
 	succChan := make(chan struct{}, 1)
 	g2SvcMock := &gossipMock{}
-	g2SvcMock.On("JoinChan", mock.Anything).Run(func(_ mock.Arguments) {
+	g2SvcMock.On("JoinChan", mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		succChan <- struct{}{}
 	})
 	g2 := &gossipServiceImpl{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: g2SvcMock}
-	g2.configUpdated(&configMock{})
+	g2.configUpdated(&configMock{
+		orgs2AppOrgs: map[string]config.ApplicationOrg{
+			"Org0": &appOrgMock{id: "Org0"},
+		},
+	})
 	select {
 	case <-time.After(time.Second):
 		assert.Fail(t, "Didn't join a channel (should have done so within the time period)")
 	case <-succChan:
 
 	}
+}
+
+func TestJoinChannelNoAnchorPeers(t *testing.T) {
+	// Scenario: The channel we're joining has 2 orgs but no anchor peers
+	// The test ensures that JoinChan is called with a JoinChannelMessage with Members
+	// that consist of the organizations of the configuration given.
+
+	var joinChanCalled sync.WaitGroup
+	joinChanCalled.Add(1)
+	gMock := &gossipMock{}
+	gMock.On("JoinChan", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		defer joinChanCalled.Done()
+		jcm := args.Get(0).(api.JoinChannelMessage)
+		channel := args.Get(1).(common.ChainID)
+		assert.Len(t, jcm.Members(), 2)
+		assert.Contains(t, jcm.Members(), api.OrgIdentityType("Org0"))
+		assert.Contains(t, jcm.Members(), api.OrgIdentityType("Org1"))
+		assert.Equal(t, "A", string(channel))
+	})
+
+	g := &gossipServiceImpl{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: gMock}
+
+	appOrg0 := &appOrgMock{id: "Org0"}
+	appOrg1 := &appOrgMock{id: "Org1"}
+
+	// Make sure the ApplicationOrgs really have no anchor peers
+	assert.Empty(t, appOrg0.AnchorPeers())
+	assert.Empty(t, appOrg1.AnchorPeers())
+
+	g.configUpdated(&configMock{
+		orgs2AppOrgs: map[string]config.ApplicationOrg{
+			"Org0": appOrg0,
+			"Org1": appOrg1,
+		},
+	})
+	joinChanCalled.Wait()
 }
