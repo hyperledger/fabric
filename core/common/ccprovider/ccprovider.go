@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -96,6 +97,17 @@ func GetChaincodePackage(ccname string, ccversion string) ([]byte, error) {
 		return nil, err
 	}
 	return ccbytes, nil
+}
+
+//ChaincodePackageExists returns whether the chaincode package exists in the file system
+func ChaincodePackageExists(ccname string, ccversion string) (bool, error) {
+	path := filepath.Join(chaincodeInstallPath, ccname+"."+ccversion)
+	_, err := os.Stat(path)
+	if err == nil {
+		// chaincodepackage already exists
+		return true, nil
+	}
+	return false, err
 }
 
 // GetChaincodeFromFS this is a wrapper for hiding package implementation.
