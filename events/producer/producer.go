@@ -19,6 +19,7 @@ package producer
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -34,7 +35,7 @@ type EventsServer struct {
 var globalEventsServer *EventsServer
 
 // NewEventsServer returns a EventsServer
-func NewEventsServer(bufferSize uint, timeout int) *EventsServer {
+func NewEventsServer(bufferSize uint, timeout time.Duration) *EventsServer {
 	if globalEventsServer != nil {
 		panic("Cannot create multiple event hub servers")
 	}

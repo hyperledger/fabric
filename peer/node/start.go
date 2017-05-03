@@ -326,7 +326,7 @@ func createEventHubServer(secureConfig comm.SecureServerConfig) (comm.GRPCServer
 	}
 	ehServer := producer.NewEventsServer(
 		uint(viper.GetInt("peer.events.buffersize")),
-		viper.GetInt("peer.events.timeout"))
+		viper.GetDuration("peer.events.timeout"))
 
 	pb.RegisterEventsServer(grpcServer.Server(), ehServer)
 	return grpcServer, nil

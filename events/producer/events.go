@@ -198,11 +198,11 @@ type eventProcessor struct {
 	//we could generalize this with mutiple channels each with its own size
 	eventChannel chan *pb.Event
 
-	//milliseconds timeout for producer to send an event.
+	//timeout duration for producer to send an event.
 	//if < 0, if buffer full, unblocks immediately and not send
 	//if 0, if buffer full, will block and guarantee the event will be sent out
 	//if > 0, if buffer full, blocks till timeout
-	timeout int
+	timeout time.Duration
 }
 
 //global eventProcessor singleton created by initializeEvents. Openchain producers
@@ -236,7 +236,7 @@ func (ep *eventProcessor) start() {
 }
 
 //initialize and start
-func initializeEvents(bufferSize uint, tout int) {
+func initializeEvents(bufferSize uint, tout time.Duration) {
 	if gEventProcessor != nil {
 		panic("should not be called twice")
 	}
@@ -329,7 +329,7 @@ func Send(e *pb.Event) error {
 		logger.Debugf("Event processor timeout > 0")
 		select {
 		case gEventProcessor.eventChannel <- e:
-		case <-time.After(time.Duration(gEventProcessor.timeout) * time.Millisecond):
+		case <-time.After(gEventProcessor.timeout):
 			return fmt.Errorf("could not send the blocking event")
 		}
 	}

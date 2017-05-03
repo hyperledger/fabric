@@ -30,6 +30,8 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func createEvent() (*peer.Event, error) {
@@ -116,6 +118,17 @@ func TestSignedEvent(t *testing.T) {
 		t.Fatalf("validateEventMessage should have failed")
 		return
 	}
+}
+
+func TestNewEventsServer(t *testing.T) {
+	viper.Set("peer.events.buffersize", 100)
+	viper.Set("peer.events.timeout", "1ms")
+
+	ehServer := NewEventsServer(
+		uint(viper.GetInt("peer.events.buffersize")),
+		viper.GetDuration("peer.events.timeout"))
+
+	assert.NotNil(t, ehServer, "nil EventServer found")
 }
 
 var signer msp.SigningIdentity
