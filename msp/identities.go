@@ -45,9 +45,14 @@ type identity struct {
 	msp *bccspmsp
 }
 
-func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) Identity {
+func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity, error) {
 	mspLogger.Debugf("Creating identity instance for ID %s", id)
-	return &identity{id: id, cert: cert, pk: pk, msp: msp}
+
+	cert, err := msp.sanitizeCert(cert)
+	if err != nil {
+		return nil, err
+	}
+	return &identity{id: id, cert: cert, pk: pk, msp: msp}, nil
 }
 
 // SatisfiesPrincipal returns null if this instance matches the supplied principal or an error otherwise
@@ -190,9 +195,13 @@ type signingidentity struct {
 	signer crypto.Signer
 }
 
-func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer crypto.Signer, msp *bccspmsp) SigningIdentity {
+func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer crypto.Signer, msp *bccspmsp) (SigningIdentity, error) {
 	//mspLogger.Infof("Creating signing identity instance for ID %s", id)
-	return &signingidentity{identity{id: id, cert: cert, pk: pk, msp: msp}, signer}
+	mspId, err := newIdentity(id, cert, pk, msp)
+	if err != nil {
+		return nil, err
+	}
+	return &signingidentity{identity: *mspId.(*identity), signer: signer}, nil
 }
 
 // Sign produces a signature over msg, signed by this instance

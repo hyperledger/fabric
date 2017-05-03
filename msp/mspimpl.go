@@ -129,7 +129,12 @@ func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, bccsp.Key, e
 		Mspid: msp.name,
 		Id:    hex.EncodeToString(digest)}
 
-	return newIdentity(id, cert, certPubK, msp), certPubK, nil
+	mspId, err := newIdentity(id, cert, certPubK, msp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return mspId, certPubK, nil
 }
 
 func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) (SigningIdentity, error) {
@@ -180,7 +185,7 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) 
 		Mspid: msp.name,
 		Id:    hex.EncodeToString(digest)}
 
-	return newSigningIdentity(id, idPub.(*identity).cert, idPub.(*identity).pk, peerSigner, msp), nil
+	return newSigningIdentity(id, idPub.(*identity).cert, idPub.(*identity).pk, peerSigner, msp)
 }
 
 /*
@@ -301,17 +306,6 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 		mspLogger.Debugf("CryptoConfig.IdentityIdentifierHashFunction was nil. Move to defaults.")
 	}
 
-	// make and fill the set of admin certs (if present)
-	msp.admins = make([]Identity, len(conf.Admins))
-	for i, admCert := range conf.Admins {
-		id, _, err := msp.getIdentityFromConf(admCert)
-		if err != nil {
-			return err
-		}
-
-		msp.admins[i] = id
-	}
-
 	// make and fill the set of CA certs - we expect them to be there
 	if len(conf.RootCerts) == 0 {
 		return errors.New("Expected at least one CA certificate")
@@ -337,6 +331,29 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 		msp.intermediateCerts[i] = id
 	}
 
+	// pre-create the verify options with roots and intermediates
+	msp.opts = &x509.VerifyOptions{
+		Roots:         x509.NewCertPool(),
+		Intermediates: x509.NewCertPool(),
+	}
+	for _, v := range msp.rootCerts {
+		msp.opts.Roots.AddCert(v.(*identity).cert)
+	}
+	for _, v := range msp.intermediateCerts {
+		msp.opts.Intermediates.AddCert(v.(*identity).cert)
+	}
+
+	// make and fill the set of admin certs (if present)
+	msp.admins = make([]Identity, len(conf.Admins))
+	for i, admCert := range conf.Admins {
+		id, _, err := msp.getIdentityFromConf(admCert)
+		if err != nil {
+			return err
+		}
+
+		msp.admins[i] = id
+	}
+
 	// ensure that our CAs are properly formed
 	for _, cert := range append(append([]Identity{}, msp.rootCerts...), msp.intermediateCerts...) {
 		if !isCACert(cert.(*identity).cert) {
@@ -352,18 +369,6 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 		}
 
 		msp.signer = sid
-	}
-
-	// pre-create the verify options with roots and intermediates
-	msp.opts = &x509.VerifyOptions{
-		Roots:         x509.NewCertPool(),
-		Intermediates: x509.NewCertPool(),
-	}
-	for _, v := range msp.rootCerts {
-		msp.opts.Roots.AddCert(v.(*identity).cert)
-	}
-	for _, v := range msp.intermediateCerts {
-		msp.opts.Intermediates.AddCert(v.(*identity).cert)
 	}
 
 	// setup the CRL (if present)
@@ -581,7 +586,7 @@ func (msp *bccspmsp) deserializeIdentityInternal(serializedIdentity []byte) (Ide
 		return nil, fmt.Errorf("Failed to import certitifacate's public key [%s]", err)
 	}
 
-	return newIdentity(id, cert, pub, msp), nil
+	return newIdentity(id, cert, pub, msp)
 }
 
 // SatisfiesPrincipal returns null if the identity matches the principal or an error otherwise
@@ -709,6 +714,7 @@ func (msp *bccspmsp) getCertificationChainForBCCSPIdentity(id *identity) ([]*x50
 
 func (msp *bccspmsp) getValidationChain(cert *x509.Certificate) ([]*x509.Certificate, error) {
 	// ask golang to validate the cert for us based on the options that we've built at setup time
+	fmt.Printf("MSP [%v]", msp)
 	validationChain, err := cert.Verify(*(msp.opts))
 	if err != nil {
 		return nil, fmt.Errorf("The supplied identity is not valid, Verify() returned %s", err)
@@ -831,4 +837,28 @@ func (msp *bccspmsp) setupOUs(conf m.FabricMSPConfig) error {
 	}
 
 	return nil
+}
+
+func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, error) {
+	if isECDSASignedCert(cert) {
+		// Lookup for a parent certificate to perform the sanitization
+		var parentCert *x509.Certificate
+		if cert.IsCA {
+			parentCert = cert
+		} else {
+			chain, err := msp.getValidationChain(cert)
+			if err != nil {
+				return nil, err
+			}
+			parentCert = chain[1]
+		}
+
+		// Sanitize
+		var err error
+		cert, err = sanitizeECDSASignedCert(cert, parentCert)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return cert, nil
 }

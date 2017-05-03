@@ -29,45 +29,45 @@ import (
 )
 
 func TestUnmarshalECDSASignature(t *testing.T) {
-	_, _, err := unmarshalECDSASignature(nil)
+	_, _, err := UnmarshalECDSASignature(nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed unmashalling signature [")
 
-	_, _, err = unmarshalECDSASignature([]byte{})
+	_, _, err = UnmarshalECDSASignature([]byte{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed unmashalling signature [")
 
-	_, _, err = unmarshalECDSASignature([]byte{0})
+	_, _, err = UnmarshalECDSASignature([]byte{0})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed unmashalling signature [")
 
-	sigma, err := marshalECDSASignature(big.NewInt(-1), big.NewInt(1))
+	sigma, err := MarshalECDSASignature(big.NewInt(-1), big.NewInt(1))
 	assert.NoError(t, err)
-	_, _, err = unmarshalECDSASignature(sigma)
+	_, _, err = UnmarshalECDSASignature(sigma)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid signature. R must be larger than zero")
 
-	sigma, err = marshalECDSASignature(big.NewInt(0), big.NewInt(1))
+	sigma, err = MarshalECDSASignature(big.NewInt(0), big.NewInt(1))
 	assert.NoError(t, err)
-	_, _, err = unmarshalECDSASignature(sigma)
+	_, _, err = UnmarshalECDSASignature(sigma)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid signature. R must be larger than zero")
 
-	sigma, err = marshalECDSASignature(big.NewInt(1), big.NewInt(0))
+	sigma, err = MarshalECDSASignature(big.NewInt(1), big.NewInt(0))
 	assert.NoError(t, err)
-	_, _, err = unmarshalECDSASignature(sigma)
+	_, _, err = UnmarshalECDSASignature(sigma)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid signature. S must be larger than zero")
 
-	sigma, err = marshalECDSASignature(big.NewInt(1), big.NewInt(-1))
+	sigma, err = MarshalECDSASignature(big.NewInt(1), big.NewInt(-1))
 	assert.NoError(t, err)
-	_, _, err = unmarshalECDSASignature(sigma)
+	_, _, err = UnmarshalECDSASignature(sigma)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid signature. S must be larger than zero")
 
-	sigma, err = marshalECDSASignature(big.NewInt(1), big.NewInt(1))
+	sigma, err = MarshalECDSASignature(big.NewInt(1), big.NewInt(1))
 	assert.NoError(t, err)
-	R, S, err := unmarshalECDSASignature(sigma)
+	R, S, err := UnmarshalECDSASignature(sigma)
 	assert.NoError(t, err)
 	assert.Equal(t, big.NewInt(1), R)
 	assert.Equal(t, big.NewInt(1), S)
@@ -126,10 +126,10 @@ func TestVerifyECDSA(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed unmashalling signature [")
 
-	R, S, err := unmarshalECDSASignature(sigma)
+	R, S, err := UnmarshalECDSASignature(sigma)
 	assert.NoError(t, err)
 	S.Add(curveHalfOrders[elliptic.P256()], big.NewInt(1))
-	sigmaWrongS, err := marshalECDSASignature(R, S)
+	sigmaWrongS, err := MarshalECDSASignature(R, S)
 	assert.NoError(t, err)
 	_, err = verifyECDSA(&lowLevelKey.PublicKey, sigmaWrongS, msg, nil)
 	assert.Error(t, err)
@@ -235,4 +235,53 @@ func TestEcdsaPublicKey(t *testing.T) {
 	_, err = k.Bytes()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed marshalling key [")
+}
+
+func TestIsLowS(t *testing.T) {
+	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	assert.NoError(t, err)
+
+	lowS, err := IsLowS(&lowLevelKey.PublicKey, big.NewInt(0))
+	assert.NoError(t, err)
+	assert.True(t, lowS)
+
+	s := new(big.Int)
+	s = s.Set(curveHalfOrders[elliptic.P256()])
+
+	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
+	assert.NoError(t, err)
+	assert.True(t, lowS)
+
+	s = s.Add(s, big.NewInt(1))
+	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
+	assert.NoError(t, err)
+	assert.False(t, lowS)
+	s, modified, err := ToLowS(&lowLevelKey.PublicKey, s)
+	assert.NoError(t, err)
+	assert.True(t, modified)
+	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
+	assert.NoError(t, err)
+	assert.True(t, lowS)
+}
+
+func TestSignatureToLowS(t *testing.T) {
+	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	assert.NoError(t, err)
+
+	s := new(big.Int)
+	s = s.Set(curveHalfOrders[elliptic.P256()])
+	s = s.Add(s, big.NewInt(1))
+
+	lowS, err := IsLowS(&lowLevelKey.PublicKey, s)
+	assert.NoError(t, err)
+	assert.False(t, lowS)
+	sigma, err := MarshalECDSASignature(big.NewInt(1), s)
+	assert.NoError(t, err)
+	sigma2, err := SignatureToLowS(&lowLevelKey.PublicKey, sigma)
+	assert.NoError(t, err)
+	_, s, err = UnmarshalECDSASignature(sigma2)
+	assert.NoError(t, err)
+	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
+	assert.NoError(t, err)
+	assert.True(t, lowS)
 }
