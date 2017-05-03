@@ -177,7 +177,7 @@ type Manager struct {
 	// ProposeConfigUpdateError is returned as the error value for ProposeConfigUpdate
 	ProposeConfigUpdateError error
 
-	// ProposeConfigUpdateVal is returns as the value for ProposeConfigUpdate
+	// ProposeConfigUpdateVal returns as the value for ProposeConfigUpdate
 	ProposeConfigUpdateVal *cb.ConfigEnvelope
 
 	// ConfigEnvelopeVal is returned as the value for ConfigEnvelope()

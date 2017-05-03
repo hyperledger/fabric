@@ -93,7 +93,7 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 	if err != nil {
 		panic(err)
 	}
-	return makeConfigTxFromConfigUpdateEnvelope(chainID, configEnv)
+	return makeConfigTxFromConfigUpdateEnvelope(chainID, configEnv, false)
 }
 
 func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
@@ -104,18 +104,30 @@ func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
 	return result
 }
 
-func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
+func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope, newChannel bool) *cb.Envelope {
 	configUpdateTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, msgVersion, epoch)
 	if err != nil {
 		panic(err)
 	}
-	configTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
-		Config:     &cb.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
-		LastUpdate: configUpdateTx},
+
+	configEnv := &cb.ConfigEnvelope{
+		Config: &cb.Config{
+			Sequence:     1,
+			ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet,
+		},
+		LastUpdate: configUpdateTx,
+	}
+
+	if newChannel {
+		configEnv = configtx.FixNewChannelConfig(configEnv)
+	}
+
+	configTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), configEnv,
 		msgVersion, epoch)
 	if err != nil {
 		panic(err)
 	}
+
 	return configTx
 }
 
