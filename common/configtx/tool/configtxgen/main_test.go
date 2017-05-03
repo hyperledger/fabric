@@ -69,3 +69,26 @@ func TestGenerateAnchorPeersUpdate(t *testing.T) {
 
 	assert.NoError(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "Good anchorPeerUpdate request")
 }
+
+func TestFlags(t *testing.T) {
+	blockDest := tmpDir + string(os.PathSeparator) + "block"
+	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{
+		"cmd",
+		"-outputBlock=" + blockDest,
+		"-outputCreateChannelTx=" + configTxDest,
+		"-profile=" + genesisconfig.SampleSingleMSPSoloProfile,
+		"-inspectBlock=" + blockDest,
+		"-inspectChannelCreateTx=" + configTxDest,
+		"-outputAnchorPeersUpdate=" + configTxDest,
+		"-asOrg=" + genesisconfig.SampleOrgName,
+	}
+	main()
+
+	_, err := os.Stat(blockDest)
+	assert.NoError(t, err, "Block file is written successfully")
+	_, err = os.Stat(configTxDest)
+	assert.NoError(t, err, "Configtx file is written successfully")
+}
