@@ -73,11 +73,6 @@ func (v *Validator) validateEndorserTX(envBytes []byte, doMVCCValidation bool, u
 	return txRWSet, txResult, err
 }
 
-// TODO validate configuration transaction
-func (v *Validator) validateConfigTX(env *common.Envelope) (bool, error) {
-	return true, nil
-}
-
 // ValidateAndPrepareBatch implements method in Validator interface
 func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidation bool) (*statedb.UpdateBatch, error) {
 	logger.Debugf("New block arrived for validation:%#v, doMVCCValidation=%t", block, doMVCCValidation)
@@ -116,31 +111,27 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 			return nil, err
 		}
 
-		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
-			txRWSet, txResult, err := v.validateEndorserTX(envBytes, doMVCCValidation, updates)
+		txType := common.HeaderType(chdr.Type)
 
-			if err != nil {
-				return nil, err
-			}
+		if txType != common.HeaderType_ENDORSER_TRANSACTION {
+			logger.Debugf("Skipping mvcc validation for Block [%d] Transaction index [%d] because, the transaction type is [%s]",
+				block.Header.Number, txIndex, txType)
+			continue
+		}
 
-			txsFilter.SetFlag(txIndex, txResult)
+		txRWSet, txResult, err := v.validateEndorserTX(envBytes, doMVCCValidation, updates)
 
-			//txRWSet != nil => t is valid
-			if txRWSet != nil {
-				committingTxHeight := version.NewHeight(block.Header.Number, uint64(txIndex))
-				addWriteSetToBatch(txRWSet, committingTxHeight, updates)
-				txsFilter.SetFlag(txIndex, peer.TxValidationCode_VALID)
-			}
-		} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
-			_, err := v.validateConfigTX(env)
+		if err != nil {
+			return nil, err
+		}
 
-			if err != nil {
-				return nil, err
-			}
+		txsFilter.SetFlag(txIndex, txResult)
+
+		//txRWSet != nil => t is valid
+		if txRWSet != nil {
+			committingTxHeight := version.NewHeight(block.Header.Number, uint64(txIndex))
+			addWriteSetToBatch(txRWSet, committingTxHeight, updates)
 			txsFilter.SetFlag(txIndex, peer.TxValidationCode_VALID)
-		} else {
-			logger.Errorf("Skipping transaction %d that's not an endorsement or configuration %d", txIndex, chdr.Type)
-			txsFilter.SetFlag(txIndex, peer.TxValidationCode_UNKNOWN_TX_TYPE)
 		}
 
 		if txsFilter.IsValid(txIndex) {
@@ -150,7 +141,6 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 			logger.Warningf("Block [%d] Transaction index [%d] TxId [%s] marked as invalid by state validator. Reason code [%d]",
 				block.Header.Number, txIndex, chdr.TxId, txsFilter.Flag(txIndex))
 		}
-
 	}
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 	return updates, nil
