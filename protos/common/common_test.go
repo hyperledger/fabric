@@ -84,7 +84,7 @@ func TestCommonStructs(t *testing.T) {
 	assert.Nil(t, meta.GetValue())
 	meta = &Metadata{
 		Value:      []byte("value"),
-		Signatures: []*MetadataSignature{&MetadataSignature{}},
+		Signatures: []*MetadataSignature{{}},
 	}
 	assert.NotNil(t, meta.GetSignatures())
 	assert.NotNil(t, meta.GetValue())

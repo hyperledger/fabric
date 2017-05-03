@@ -110,17 +110,17 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 
 	Nym, RandNym := idemix.MakeNym(sk, msp.ipk, rng)
 	role := &m.MSPRole{
-		msp.name,
-		m.MSPRole_MEMBER,
+		MspIdentifier: msp.name,
+		Role:          m.MSPRole_MEMBER,
 	}
 	if conf.Signer.IsAdmin {
 		role.Role = m.MSPRole_ADMIN
 	}
 
 	ou := &m.OrganizationUnit{
-		msp.name,
-		conf.Signer.OrganizationalUnitIdentifier,
-		ipk.Hash,
+		MspIdentifier:                msp.name,
+		OrganizationalUnitIdentifier: conf.Signer.OrganizationalUnitIdentifier,
+		CertifiersIdentifier:         ipk.Hash,
 	}
 
 	// Check if credential contains the right amount of attribute values (Role and OU)
@@ -408,7 +408,7 @@ func (id *idemixidentity) GetOrganizationalUnits() []*OUIdentifier {
 		mspIdentityLogger.Errorf("Failed to marshal ipk in GetOrganizationalUnits: %s", err)
 		return nil
 	}
-	return []*OUIdentifier{&OUIdentifier{certifiersIdentifier, id.OU.OrganizationalUnitIdentifier}}
+	return []*OUIdentifier{{certifiersIdentifier, id.OU.OrganizationalUnitIdentifier}}
 }
 
 func (id *idemixidentity) Validate() error {

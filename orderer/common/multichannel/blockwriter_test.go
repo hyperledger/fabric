@@ -47,7 +47,7 @@ func TestCreateBlock(t *testing.T) {
 
 	bw := &BlockWriter{lastBlock: seedBlock}
 	block := bw.CreateNextBlock([]*cb.Envelope{
-		&cb.Envelope{Payload: []byte("some other bytes")},
+		{Payload: []byte("some other bytes")},
 	})
 
 	assert.Equal(t, seedBlock.Header.Number+1, block.Header.Number)

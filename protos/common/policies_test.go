@@ -61,7 +61,7 @@ func TestPoliciesStructs(t *testing.T) {
 	assert.Nil(t, env.GetRule())
 	env = &SignaturePolicyEnvelope{
 		Rule:       &SignaturePolicy{},
-		Identities: []*common1.MSPPrincipal{&common1.MSPPrincipal{}},
+		Identities: []*common1.MSPPrincipal{{}},
 		Version:    int32(1),
 	}
 	assert.Equal(t, int32(1), env.GetVersion())
@@ -110,7 +110,7 @@ func TestPoliciesStructs(t *testing.T) {
 	assert.Equal(t, int32(0), n.GetN())
 	assert.Nil(t, n.GetRules())
 	n = &SignaturePolicy_NOutOf{
-		Rules: []*SignaturePolicy{&SignaturePolicy{}},
+		Rules: []*SignaturePolicy{{}},
 		N:     int32(1),
 	}
 	assert.Equal(t, int32(1), n.GetN())

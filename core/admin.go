@@ -23,7 +23,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-var log = flogging.MustGetLogger("server")
+var logger = flogging.MustGetLogger("server")
 
 // NewAdminServer creates and returns a Admin service instance.
 func NewAdminServer() *ServerAdmin {
@@ -38,14 +38,14 @@ type ServerAdmin struct {
 // GetStatus reports the status of the server
 func (*ServerAdmin) GetStatus(context.Context, *empty.Empty) (*pb.ServerStatus, error) {
 	status := &pb.ServerStatus{Status: pb.ServerStatus_STARTED}
-	log.Debugf("returning status: %s", status)
+	logger.Debugf("returning status: %s", status)
 	return status, nil
 }
 
 // StartServer starts the server
 func (*ServerAdmin) StartServer(context.Context, *empty.Empty) (*pb.ServerStatus, error) {
 	status := &pb.ServerStatus{Status: pb.ServerStatus_STARTED}
-	log.Debugf("returning status: %s", status)
+	logger.Debugf("returning status: %s", status)
 	return status, nil
 }
 
@@ -64,7 +64,7 @@ func (*ServerAdmin) SetModuleLogLevel(ctx context.Context, request *pb.LogLevelR
 	return logResponse, err
 }
 
-// RevertLogLevels reverts the log levels for all modules to the level
+// RevertLogLevels reverts the logger levels for all modules to the level
 // defined at the end of peer startup.
 func (*ServerAdmin) RevertLogLevels(context.Context, *empty.Empty) (*empty.Empty, error) {
 	err := flogging.RevertToPeerStartupLevels()

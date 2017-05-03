@@ -462,7 +462,7 @@ func TestInvocationsBadArgs(t *testing.T) {
 	assert.Error(t, err)
 	_, err = validateChaincodeProposalMessage(nil, nil)
 	assert.Error(t, err)
-	_, err = validateChaincodeProposalMessage(&peer.Proposal{}, &common.Header{[]byte("a"), []byte("a")})
+	_, err = validateChaincodeProposalMessage(&peer.Proposal{}, &common.Header{ChannelHeader: []byte("a"), SignatureHeader: []byte("a")})
 	assert.Error(t, err)
 }
 

@@ -31,30 +31,30 @@ func TestTxRWSetMarshalUnmarshal(t *testing.T) {
 
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "k0", EndKey: "k9", ItrExhausted: true}
 	rqi1.SetRawReads([]*kvrwset.KVRead{
-		&kvrwset.KVRead{Key: "k1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}},
-		&kvrwset.KVRead{Key: "k2", Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
+		{Key: "k1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}},
+		{Key: "k2", Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
 	})
 
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "k00", EndKey: "k90", ItrExhausted: true}
 	rqi2.SetMerkelSummary(&kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
 
 	txRwSet.NsRwSets = []*NsRwSet{
-		&NsRwSet{NameSpace: "ns1", KvRwSet: &kvrwset.KVRWSet{
-			Reads:            []*kvrwset.KVRead{&kvrwset.KVRead{Key: "key1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
+		{NameSpace: "ns1", KvRwSet: &kvrwset.KVRWSet{
+			Reads:            []*kvrwset.KVRead{{Key: "key1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
 			RangeQueriesInfo: []*kvrwset.RangeQueryInfo{rqi1},
-			Writes:           []*kvrwset.KVWrite{&kvrwset.KVWrite{Key: "key2", IsDelete: false, Value: []byte("value2")}},
+			Writes:           []*kvrwset.KVWrite{{Key: "key2", IsDelete: false, Value: []byte("value2")}},
 		}},
 
-		&NsRwSet{NameSpace: "ns2", KvRwSet: &kvrwset.KVRWSet{
-			Reads:            []*kvrwset.KVRead{&kvrwset.KVRead{Key: "key3", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
+		{NameSpace: "ns2", KvRwSet: &kvrwset.KVRWSet{
+			Reads:            []*kvrwset.KVRead{{Key: "key3", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
 			RangeQueriesInfo: []*kvrwset.RangeQueryInfo{rqi2},
-			Writes:           []*kvrwset.KVWrite{&kvrwset.KVWrite{Key: "key3", IsDelete: false, Value: []byte("value3")}},
+			Writes:           []*kvrwset.KVWrite{{Key: "key3", IsDelete: false, Value: []byte("value3")}},
 		}},
 
-		&NsRwSet{NameSpace: "ns3", KvRwSet: &kvrwset.KVRWSet{
-			Reads:            []*kvrwset.KVRead{&kvrwset.KVRead{Key: "key4", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
+		{NameSpace: "ns3", KvRwSet: &kvrwset.KVRWSet{
+			Reads:            []*kvrwset.KVRead{{Key: "key4", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
 			RangeQueriesInfo: nil,
-			Writes:           []*kvrwset.KVWrite{&kvrwset.KVWrite{Key: "key4", IsDelete: false, Value: []byte("value4")}},
+			Writes:           []*kvrwset.KVWrite{{Key: "key4", IsDelete: false, Value: []byte("value4")}},
 		}},
 	}
 
@@ -124,16 +124,16 @@ func sampleNsRwSetWithNoCollHashedRWs(ns string) *NsRwSet {
 func sampleKvRwSet() *kvrwset.KVRWSet {
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "k0", EndKey: "k9", ItrExhausted: true}
 	rqi1.SetRawReads([]*kvrwset.KVRead{
-		&kvrwset.KVRead{Key: "k1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}},
-		&kvrwset.KVRead{Key: "k2", Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
+		{Key: "k1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}},
+		{Key: "k2", Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
 	})
 
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "k00", EndKey: "k90", ItrExhausted: true}
 	rqi2.SetMerkelSummary(&kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
 	return &kvrwset.KVRWSet{
-		Reads:            []*kvrwset.KVRead{&kvrwset.KVRead{Key: "key1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
+		Reads:            []*kvrwset.KVRead{{Key: "key1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
 		RangeQueriesInfo: []*kvrwset.RangeQueryInfo{rqi1},
-		Writes:           []*kvrwset.KVWrite{&kvrwset.KVWrite{Key: "key2", IsDelete: false, Value: []byte("value2")}},
+		Writes:           []*kvrwset.KVWrite{{Key: "key2", IsDelete: false, Value: []byte("value2")}},
 	}
 }
 
@@ -142,12 +142,12 @@ func sampleCollHashedRwSet(collectionName string) *CollHashedRwSet {
 		CollectionName: collectionName,
 		HashedRwSet: &kvrwset.HashedRWSet{
 			HashedReads: []*kvrwset.KVReadHash{
-				&kvrwset.KVReadHash{KeyHash: []byte("Key-1-hash"), Version: &kvrwset.Version{1, 2}},
-				&kvrwset.KVReadHash{KeyHash: []byte("Key-2-hash"), Version: &kvrwset.Version{2, 3}},
+				{KeyHash: []byte("Key-1-hash"), Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
+				{KeyHash: []byte("Key-2-hash"), Version: &kvrwset.Version{BlockNum: 2, TxNum: 3}},
 			},
 			HashedWrites: []*kvrwset.KVWriteHash{
-				&kvrwset.KVWriteHash{KeyHash: []byte("Key-3-hash"), ValueHash: []byte("value-3-hash"), IsDelete: false},
-				&kvrwset.KVWriteHash{KeyHash: []byte("Key-4-hash"), ValueHash: []byte("value-4-hash"), IsDelete: true},
+				{KeyHash: []byte("Key-3-hash"), ValueHash: []byte("value-3-hash"), IsDelete: false},
+				{KeyHash: []byte("Key-4-hash"), ValueHash: []byte("value-4-hash"), IsDelete: true},
 			},
 		},
 		PvtRwSetHash: []byte(collectionName + "-pvt-rwset-hash"),
@@ -186,8 +186,8 @@ func sampleNsPvtRwSet(ns string) *NsPvtRwSet {
 func sampleCollPvtRwSet(collectionName string) *CollPvtRwSet {
 	return &CollPvtRwSet{CollectionName: collectionName,
 		KvRwSet: &kvrwset.KVRWSet{
-			Reads:  []*kvrwset.KVRead{&kvrwset.KVRead{Key: "key1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
-			Writes: []*kvrwset.KVWrite{&kvrwset.KVWrite{Key: "key2", IsDelete: false, Value: []byte("value2")}},
+			Reads:  []*kvrwset.KVRead{{Key: "key1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
+			Writes: []*kvrwset.KVWrite{{Key: "key2", IsDelete: false, Value: []byte("value2")}},
 		}}
 }
 

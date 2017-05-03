@@ -376,19 +376,19 @@ func TestGetTxCCInstance(t *testing.T) {
 
 func TestInvalidTXsForUpgradeCC(t *testing.T) {
 	txsChaincodeNames := map[int]*sysccprovider.ChaincodeInstance{
-		0: &sysccprovider.ChaincodeInstance{"chain0", "cc0", "v0"}, // invoke cc0/chain0:v0, should not be affected by upgrade tx in other chain
-		1: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
-		2: &sysccprovider.ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v1, should be invalided by latter cc0/chain1 upgtade tx
-		3: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
-		4: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v1"}, // invoke cc0/chain1:v1, should be invalided by cc1/chain1 upgrade tx
-		5: &sysccprovider.ChaincodeInstance{"chain1", "cc1", "v0"}, // invoke cc1/chain1:v0, should not be affected by other chaincode upgrade tx
-		6: &sysccprovider.ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v2, should be invalided by latter cc0/chain1 upgtade tx
-		7: &sysccprovider.ChaincodeInstance{"chain1", "lscc", ""},  // upgrade cc0/chain1 to v3
+		0: {"chain0", "cc0", "v0"}, // invoke cc0/chain0:v0, should not be affected by upgrade tx in other chain
+		1: {"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
+		2: {"chain1", "lscc", ""},  // upgrade cc0/chain1 to v1, should be invalided by latter cc0/chain1 upgtade tx
+		3: {"chain1", "cc0", "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
+		4: {"chain1", "cc0", "v1"}, // invoke cc0/chain1:v1, should be invalided by cc1/chain1 upgrade tx
+		5: {"chain1", "cc1", "v0"}, // invoke cc1/chain1:v0, should not be affected by other chaincode upgrade tx
+		6: {"chain1", "lscc", ""},  // upgrade cc0/chain1 to v2, should be invalided by latter cc0/chain1 upgtade tx
+		7: {"chain1", "lscc", ""},  // upgrade cc0/chain1 to v3
 	}
 	upgradedChaincodes := map[int]*sysccprovider.ChaincodeInstance{
-		2: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v1"},
-		6: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v2"},
-		7: &sysccprovider.ChaincodeInstance{"chain1", "cc0", "v3"},
+		2: {"chain1", "cc0", "v1"},
+		6: {"chain1", "cc0", "v2"},
+		7: {"chain1", "cc0", "v3"},
 	}
 
 	txsfltr := ledgerUtil.NewTxValidationFlags(8)

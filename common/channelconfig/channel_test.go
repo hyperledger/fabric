@@ -30,7 +30,7 @@ func TestInterface(t *testing.T) {
 func TestChannelConfig(t *testing.T) {
 	cc, err := NewChannelConfig(&cb.ConfigGroup{
 		Groups: map[string]*cb.ConfigGroup{
-			"UnknownGroupKey": &cb.ConfigGroup{},
+			"UnknownGroupKey": {},
 		},
 	})
 	assert.Error(t, err)

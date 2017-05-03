@@ -52,12 +52,12 @@ func TestLoggingCalls(t *testing.T) {
 
 	logResponse, err := adminServer.GetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: "test"})
 	assert.NotNil(t, logResponse, "logResponse should have been set")
-	assert.Equal(t, flogging.DefaultLevel(), logResponse.LogLevel, "log level should have been the default")
+	assert.Equal(t, flogging.DefaultLevel(), logResponse.LogLevel, "logger level should have been the default")
 	assert.Nil(t, err, "Error should have been nil")
 
 	logResponse, err = adminServer.SetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: "test", LogLevel: "debug"})
 	assert.NotNil(t, logResponse, "logResponse should have been set")
-	assert.Equal(t, "DEBUG", logResponse.LogLevel, "log level should have been set to debug")
+	assert.Equal(t, "DEBUG", logResponse.LogLevel, "logger level should have been set to debug")
 	assert.Nil(t, err, "Error should have been nil")
 
 	_, err = adminServer.RevertLogLevels(context.Background(), &empty.Empty{})
@@ -65,6 +65,6 @@ func TestLoggingCalls(t *testing.T) {
 
 	logResponse, err = adminServer.GetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: "test"})
 	assert.NotNil(t, logResponse, "logResponse should have been set")
-	assert.Equal(t, flogging.DefaultLevel(), logResponse.LogLevel, "log level should have been the default")
+	assert.Equal(t, flogging.DefaultLevel(), logResponse.LogLevel, "logger level should have been the default")
 	assert.Nil(t, err, "Error should have been nil")
 }

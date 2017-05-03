@@ -113,7 +113,7 @@ func (cm *configManager) verifyDeltaSet(deltaSet map[string]comparable, signedDa
 }
 
 func verifyFullProposedConfig(writeSet, fullProposedConfig map[string]comparable) error {
-	for key, _ := range writeSet {
+	for key := range writeSet {
 		if _, ok := fullProposedConfig[key]; !ok {
 			return fmt.Errorf("Writeset contained key %s which did not appear in proposed config", key)
 		}

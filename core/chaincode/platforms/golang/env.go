@@ -81,7 +81,7 @@ func splitEnvPaths(value string) Paths {
 func flattenEnvPaths(paths Paths) string {
 
 	_paths := make([]string, 0)
-	for path, _ := range paths {
+	for path := range paths {
 		_paths = append(_paths, path)
 	}
 

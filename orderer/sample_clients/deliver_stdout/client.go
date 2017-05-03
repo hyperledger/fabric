@@ -85,7 +85,7 @@ func (r *deliverClient) readUntilClose() {
 				fmt.Println("Received block: ")
 				err := protolator.DeepMarshalJSON(os.Stdout, t.Block)
 				if err != nil {
-					fmt.Println("  Error pretty printing block: %s", err)
+					fmt.Printf("  Error pretty printing block: %s", err)
 				}
 			} else {
 				fmt.Println("Received block: ", t.Block.Header.Number)

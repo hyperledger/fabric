@@ -67,7 +67,7 @@ func (a *BadAdapter) Disconnected(err error) {
 
 func (a *MockAdapter) GetInterestedEvents() ([]*ehpb.Interest, error) {
 	return []*ehpb.Interest{
-		&ehpb.Interest{EventType: ehpb.EventType_BLOCK},
+		{EventType: ehpb.EventType_BLOCK},
 	}, nil
 }
 

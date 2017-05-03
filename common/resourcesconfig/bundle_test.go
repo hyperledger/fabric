@@ -87,7 +87,7 @@ func TestBundleBadSubGroup(t *testing.T) {
 				Groups: map[string]*cb.ConfigGroup{
 					PeerPoliciesGroupKey: &cb.ConfigGroup{
 						Values: map[string]*cb.ConfigValue{
-							"Foo": &cb.ConfigValue{
+							"Foo": {
 								Value: utils.MarshalOrPanic(&pb.Resource{
 									PolicyRef: "foo",
 								}),

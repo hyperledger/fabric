@@ -67,7 +67,7 @@ func (mbc *Receiver) Ordered(env *cb.Envelope) ([][]*cb.Envelope, bool) {
 
 	if mbc.IsolatedTx {
 		logger.Debugf("Receiver: Returning dual batch")
-		res := [][]*cb.Envelope{mbc.CurBatch, []*cb.Envelope{env}}
+		res := [][]*cb.Envelope{mbc.CurBatch, {env}}
 		mbc.CurBatch = nil
 		return res, false
 	}

@@ -32,7 +32,7 @@ func TestBlock(t *testing.T) {
 	assert.Nil(t, block.GetMetadata())
 
 	data := &BlockData{
-		Data: [][]byte{[]byte{0, 1, 2}},
+		Data: [][]byte{{0, 1, 2}},
 	}
 	block = NewBlock(uint64(0), []byte("datahash"))
 	assert.Equal(t, []byte("datahash"), block.Header.PreviousHash, "Incorrect previous hash")

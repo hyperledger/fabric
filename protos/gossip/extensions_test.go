@@ -436,7 +436,7 @@ func TestCheckGossipMessageTypes(t *testing.T) {
 	// Create state response message
 	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, &GossipMessage_StateResponse{
 		StateResponse: &RemoteStateResponse{
-			Payloads: []*Payload{&Payload{
+			Payloads: []*Payload{{
 				SeqNum: 1,
 				Data:   []byte{1, 2, 3, 4, 5},
 			}},

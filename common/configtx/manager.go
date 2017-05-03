@@ -36,8 +36,8 @@ var (
 	configAllowedChars  = "[a-zA-Z0-9.-]+"
 	maxLength           = 249
 	illegalNames        = map[string]struct{}{
-		".":  struct{}{},
-		"..": struct{}{},
+		".":  {},
+		"..": {},
 	}
 )
 

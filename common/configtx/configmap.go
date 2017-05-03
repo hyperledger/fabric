@@ -133,7 +133,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 	newConfigGroup := cb.NewConfigGroup()
 	proto.Merge(newConfigGroup, group.ConfigGroup)
 
-	for key, _ := range group.Groups {
+	for key := range group.Groups {
 		updatedGroup, err := recurseConfigMap(path+PathSeparator+key, configMap)
 		if err != nil {
 			return nil, err
@@ -141,7 +141,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 		newConfigGroup.Groups[key] = updatedGroup
 	}
 
-	for key, _ := range group.Values {
+	for key := range group.Values {
 		valuePath := ValuePrefix + path + PathSeparator + key
 		value, ok := configMap[valuePath]
 		if !ok {
@@ -153,7 +153,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 		newConfigGroup.Values[key] = proto.Clone(value.ConfigValue).(*cb.ConfigValue)
 	}
 
-	for key, _ := range group.Policies {
+	for key := range group.Policies {
 		policyPath := PolicyPrefix + path + PathSeparator + key
 		policy, ok := configMap[policyPath]
 		if !ok {

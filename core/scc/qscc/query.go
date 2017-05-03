@@ -95,7 +95,7 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	// 2. check the channel reader policy
 	res := getACLResource(fname)
 	if err = aclmgmt.GetACLProvider().CheckACL(res, cid, sp); err != nil {
-		return shim.Error(fmt.Sprintf("Authorization request for [%s][%cid] failed: [%s]", fname, cid, err))
+		return shim.Error(fmt.Sprintf("Authorization request for [%s][%s] failed: [%s]", fname, cid, err))
 	}
 
 	switch fname {

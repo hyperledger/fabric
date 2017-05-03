@@ -493,7 +493,7 @@ func prepareNextBlockForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockG
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block := bg.NextBlock([][]byte{pubSimBytes})
 	return &lgr.BlockAndPvtData{Block: block,
-		BlockPvtData: map[uint64]*lgr.TxPvtData{0: &lgr.TxPvtData{SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
+		BlockPvtData: map[uint64]*lgr.TxPvtData{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
 	}
 }
 

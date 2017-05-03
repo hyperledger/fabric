@@ -125,20 +125,20 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 	expectedPvtRWSet := &rwset.TxPvtReadWriteSet{
 		DataModel: rwset.TxReadWriteSet_KV,
 		NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-			&rwset.NsPvtReadWriteSet{
+			{
 				Namespace: "ns1",
 				CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-					&rwset.CollectionPvtReadWriteSet{
+					{
 						CollectionName: "coll2",
 						Rwset:          serializeTestProtoMsg(t, pvt_Ns1_Coll2),
 					},
 				},
 			},
 
-			&rwset.NsPvtReadWriteSet{
+			{
 				Namespace: "ns2",
 				CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-					&rwset.CollectionPvtReadWriteSet{
+					{
 						CollectionName: "coll2",
 						Rwset:          serializeTestProtoMsg(t, pvt_Ns2_Coll2),
 					},
@@ -190,11 +190,11 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 		Namespace: "ns1",
 		Rwset:     serializeTestProtoMsg(t, pub_Ns1),
 		CollectionHashedRwset: []*rwset.CollectionHashedReadWriteSet{
-			&rwset.CollectionHashedReadWriteSet{
+			{
 				CollectionName: "coll1",
 				HashedRwset:    serializeTestProtoMsg(t, hashed_Ns1_Coll1),
 			},
-			&rwset.CollectionHashedReadWriteSet{
+			{
 				CollectionName: "coll2",
 				HashedRwset:    serializeTestProtoMsg(t, hashed_Ns1_Coll2),
 				PvtRwsetHash:   util.ComputeHash(serializeTestProtoMsg(t, pvt_Ns1_Coll2)),
@@ -207,11 +207,11 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 		Namespace: "ns2",
 		Rwset:     serializeTestProtoMsg(t, pub_Ns2),
 		CollectionHashedRwset: []*rwset.CollectionHashedReadWriteSet{
-			&rwset.CollectionHashedReadWriteSet{
+			{
 				CollectionName: "coll1",
 				HashedRwset:    serializeTestProtoMsg(t, hashed_Ns2_Coll1),
 			},
-			&rwset.CollectionHashedReadWriteSet{
+			{
 				CollectionName: "coll2",
 				HashedRwset:    serializeTestProtoMsg(t, hashed_Ns2_Coll2),
 				PvtRwsetHash:   util.ComputeHash(serializeTestProtoMsg(t, pvt_Ns2_Coll2)),

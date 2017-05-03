@@ -168,14 +168,14 @@ func sampleData(t *testing.T) []*ledger.BlockAndPvtData {
 func samplePvtData(t *testing.T, txNums []uint64) map[uint64]*ledger.TxPvtData {
 	pvtWriteSet := &rwset.TxPvtReadWriteSet{DataModel: rwset.TxReadWriteSet_KV}
 	pvtWriteSet.NsPvtRwset = []*rwset.NsPvtReadWriteSet{
-		&rwset.NsPvtReadWriteSet{
+		{
 			Namespace: "ns-1",
 			CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-				&rwset.CollectionPvtReadWriteSet{
+				{
 					CollectionName: "coll-1",
 					Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll1"),
 				},
-				&rwset.CollectionPvtReadWriteSet{
+				{
 					CollectionName: "coll-2",
 					Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll2"),
 				},

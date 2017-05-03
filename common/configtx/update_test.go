@@ -144,7 +144,7 @@ func TestPolicyForItem(t *testing.T) {
 			PolicyManagerVal: &mockpolicies.Manager{
 				Policy: rootPolicy,
 				SubManagersMap: map[string]*mockpolicies.Manager{
-					"foo": &mockpolicies.Manager{
+					"foo": {
 						Policy: fooPolicy,
 					},
 				},

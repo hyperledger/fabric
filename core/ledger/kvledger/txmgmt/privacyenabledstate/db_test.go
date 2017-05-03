@@ -159,8 +159,8 @@ func testGetStateMultipleKeys(t *testing.T, env TestEnv) {
 	assert.NoError(t, err)
 	assert.Equal(t,
 		[]*statedb.VersionedValue{
-			&statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)},
-			&statedb.VersionedValue{Value: []byte("value3"), Version: version.NewHeight(1, 3)},
+			{Value: []byte("value1"), Version: version.NewHeight(1, 1)},
+			{Value: []byte("value3"), Version: version.NewHeight(1, 3)},
 		},
 		versionedVals)
 
@@ -168,8 +168,8 @@ func testGetStateMultipleKeys(t *testing.T, env TestEnv) {
 	assert.NoError(t, err)
 	assert.Equal(t,
 		[]*statedb.VersionedValue{
-			&statedb.VersionedValue{Value: []byte("pvt_value1"), Version: version.NewHeight(1, 4)},
-			&statedb.VersionedValue{Value: []byte("pvt_value3"), Version: version.NewHeight(1, 6)},
+			{Value: []byte("pvt_value1"), Version: version.NewHeight(1, 4)},
+			{Value: []byte("pvt_value3"), Version: version.NewHeight(1, 6)},
 		},
 		pvtVersionedVals)
 }

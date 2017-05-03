@@ -132,7 +132,7 @@ func TestCreateSignedTx(t *testing.T) {
 	shdrBytes, _ := proto.Marshal(&cb.SignatureHeader{
 		Creator: signerBytes,
 	})
-	responses := []*pb.ProposalResponse{&pb.ProposalResponse{}}
+	responses := []*pb.ProposalResponse{{}}
 
 	// malformed chaincode header extension
 	headerBytes, _ := proto.Marshal(&cb.Header{
@@ -159,7 +159,7 @@ func TestCreateSignedTx(t *testing.T) {
 	prop.Header = headerBytes
 
 	// bad status
-	responses = []*pb.ProposalResponse{&pb.ProposalResponse{
+	responses = []*pb.ProposalResponse{{
 		Payload: []byte("payload"),
 		Response: &pb.Response{
 			Status: int32(100),
@@ -169,7 +169,7 @@ func TestCreateSignedTx(t *testing.T) {
 	assert.Error(t, err, "Expected error with status code not equal to 200")
 
 	// non-matching responses
-	responses = []*pb.ProposalResponse{&pb.ProposalResponse{
+	responses = []*pb.ProposalResponse{{
 		Payload: []byte("payload"),
 		Response: &pb.Response{
 			Status: int32(200),
@@ -185,7 +185,7 @@ func TestCreateSignedTx(t *testing.T) {
 	assert.Error(t, err, "Expected error with non-matching responses")
 
 	// no endorsement
-	responses = []*pb.ProposalResponse{&pb.ProposalResponse{
+	responses = []*pb.ProposalResponse{{
 		Payload: []byte("payload"),
 		Response: &pb.Response{
 			Status: int32(200),
@@ -195,7 +195,7 @@ func TestCreateSignedTx(t *testing.T) {
 	assert.Error(t, err, "Expected error with no endorsements")
 
 	// success
-	responses = []*pb.ProposalResponse{&pb.ProposalResponse{
+	responses = []*pb.ProposalResponse{{
 		Payload:     []byte("payload"),
 		Endorsement: &pb.Endorsement{},
 		Response: &pb.Response{

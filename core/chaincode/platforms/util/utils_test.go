@@ -230,7 +230,7 @@ func TestHashNonExistentDir(t *testing.T) {
 	b := []byte("firstcontent")
 	hash := util.ComputeSHA256(b)
 	_, err := HashFilesInDir(".", "idontexist", hash, nil)
-	assert.Error(t, err, "Expected an error for non existent directory %s", "idontexist")
+	assert.Error(t, err, "Expected an error for non existent directory idontexist")
 }
 
 // TestIsCodeExist tests isCodeExist function
@@ -248,12 +248,12 @@ func TestIsCodeExist(t *testing.T) {
 	path = dir + "/blah"
 	err = IsCodeExist(path)
 	assert.Error(err,
-		"%s directory does not exist, IsCodeExist should have returned error", path)
+		fmt.Sprintf("%s directory does not exist, IsCodeExist should have returned error", path))
 
 	f := createTempFile(t)
 	defer os.Remove(f)
 	err = IsCodeExist(f)
-	assert.Error(err, "%s is a file, IsCodeExist should have returned error", f)
+	assert.Error(err, fmt.Sprintf("%s is a file, IsCodeExist should have returned error", f))
 }
 
 // TestDockerBuild tests DockerBuild function

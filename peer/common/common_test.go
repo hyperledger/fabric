@@ -67,10 +67,10 @@ func TestInitCrypto(t *testing.T) {
 	err = common.InitCrypto(mspConfigPath, localMspId)
 	assert.NoError(t, err, "Unexpected error [%s] calling InitCrypto()", err)
 	err = common.InitCrypto("/etc/foobaz", localMspId)
-	assert.Error(t, err, "Expected error [%s] calling InitCrypto()", err)
+	assert.Error(t, err, fmt.Sprintf("Expected error [%s] calling InitCrypto()", err))
 	localMspId = ""
 	err = common.InitCrypto(mspConfigPath, localMspId)
-	assert.Error(t, err, "Expected error [%s] calling InitCrypto()", err)
+	assert.Error(t, err, fmt.Sprintf("Expected error [%s] calling InitCrypto()", err))
 }
 
 func TestGetEndorserClient(t *testing.T) {

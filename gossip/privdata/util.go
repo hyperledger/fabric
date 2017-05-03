@@ -193,8 +193,8 @@ func sampleCollHashedRwSet(collectionName string, hash []byte) *rwsetutil.CollHa
 		CollectionName: collectionName,
 		HashedRwSet: &kvrwset.HashedRWSet{
 			HashedReads: []*kvrwset.KVReadHash{
-				{KeyHash: []byte("Key-1-hash"), Version: &kvrwset.Version{1, 2}},
-				{KeyHash: []byte("Key-2-hash"), Version: &kvrwset.Version{2, 3}},
+				{KeyHash: []byte("Key-1-hash"), Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
+				{KeyHash: []byte("Key-2-hash"), Version: &kvrwset.Version{BlockNum: 2, TxNum: 3}},
 			},
 			HashedWrites: []*kvrwset.KVWriteHash{
 				{KeyHash: []byte("Key-3-hash"), ValueHash: []byte("value-3-hash"), IsDelete: false},

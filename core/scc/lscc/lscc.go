@@ -535,7 +535,7 @@ func (lscc *LifeCycleSysCC) checkInstantiationPolicy(stub shim.ChaincodeStubInte
 		return err
 	}
 	// construct signed data we can evaluate the instantiation policy against
-	sd := []*common.SignedData{&common.SignedData{
+	sd := []*common.SignedData{{
 		Data:      signedProp.ProposalBytes,
 		Identity:  shdr.Creator,
 		Signature: signedProp.Signature,

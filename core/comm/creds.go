@@ -56,7 +56,7 @@ func (sc *serverCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.
 	if err := conn.Handshake(); err != nil {
 		return nil, nil, err
 	}
-	return conn, credentials.TLSInfo{conn.ConnectionState()}, nil
+	return conn, credentials.TLSInfo{State: conn.ConnectionState()}, nil
 }
 
 // Info provides the ProtocolInfo of this TransportCredentials.

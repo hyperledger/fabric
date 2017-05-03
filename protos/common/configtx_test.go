@@ -167,7 +167,7 @@ func TestConfigUpdateEnvelope(t *testing.T) {
 
 	env = &ConfigUpdateEnvelope{
 		Signatures: []*ConfigSignature{
-			&ConfigSignature{},
+			{},
 		},
 		ConfigUpdate: []byte("configupdate"),
 	}

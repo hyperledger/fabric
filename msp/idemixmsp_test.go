@@ -72,12 +72,12 @@ func TestSetupBad(t *testing.T) {
 	assert.Error(t, err)
 
 	// Setup with incorrect MSP type
-	conf := &msp.MSPConfig{1234, nil}
+	conf := &msp.MSPConfig{Type: 1234, Config: nil}
 	err = msp1.Setup(conf)
 	assert.Error(t, err)
 
 	// Setup with bad idemix config bytes
-	conf = &msp.MSPConfig{int32(IDEMIX), []byte("barf")}
+	conf = &msp.MSPConfig{Type: int32(IDEMIX), Config: []byte("barf")}
 	err = msp1.Setup(conf)
 	assert.Error(t, err)
 

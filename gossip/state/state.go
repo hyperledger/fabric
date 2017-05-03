@@ -459,7 +459,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 		Nonce:   msg.GetGossipMessage().Nonce,
 		Tag:     proto.GossipMessage_CHAN_OR_ORG,
 		Channel: []byte(s.chainID),
-		Content: &proto.GossipMessage_StateResponse{response},
+		Content: &proto.GossipMessage_StateResponse{StateResponse: response},
 	})
 }
 

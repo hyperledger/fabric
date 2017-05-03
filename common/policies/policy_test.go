@@ -37,9 +37,9 @@ func defaultProviders() map[int32]Provider {
 func TestUnnestedManager(t *testing.T) {
 	config := &cb.ConfigGroup{
 		Policies: map[string]*cb.ConfigPolicy{
-			"1": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
-			"2": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
-			"3": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
+			"1": {Policy: &cb.Policy{Type: mockType}},
+			"2": {Policy: &cb.Policy{Type: mockType}},
+			"3": {Policy: &cb.Policy{Type: mockType}},
 		},
 	}
 
@@ -65,30 +65,30 @@ func TestUnnestedManager(t *testing.T) {
 func TestNestedManager(t *testing.T) {
 	config := &cb.ConfigGroup{
 		Policies: map[string]*cb.ConfigPolicy{
-			"n0a": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
-			"n0b": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
-			"n0c": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
+			"n0a": {Policy: &cb.Policy{Type: mockType}},
+			"n0b": {Policy: &cb.Policy{Type: mockType}},
+			"n0c": {Policy: &cb.Policy{Type: mockType}},
 		},
 		Groups: map[string]*cb.ConfigGroup{
-			"nest1": &cb.ConfigGroup{
+			"nest1": {
 				Policies: map[string]*cb.ConfigPolicy{
-					"n1a": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
-					"n1b": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
-					"n1c": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
+					"n1a": {Policy: &cb.Policy{Type: mockType}},
+					"n1b": {Policy: &cb.Policy{Type: mockType}},
+					"n1c": {Policy: &cb.Policy{Type: mockType}},
 				},
 				Groups: map[string]*cb.ConfigGroup{
-					"nest2a": &cb.ConfigGroup{
+					"nest2a": {
 						Policies: map[string]*cb.ConfigPolicy{
-							"n2a_1": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
-							"n2a_2": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
-							"n2a_3": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
+							"n2a_1": {Policy: &cb.Policy{Type: mockType}},
+							"n2a_2": {Policy: &cb.Policy{Type: mockType}},
+							"n2a_3": {Policy: &cb.Policy{Type: mockType}},
 						},
 					},
-					"nest2b": &cb.ConfigGroup{
+					"nest2b": {
 						Policies: map[string]*cb.ConfigPolicy{
-							"n2b_1": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
-							"n2b_2": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
-							"n2b_3": &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}},
+							"n2b_1": {Policy: &cb.Policy{Type: mockType}},
+							"n2b_2": {Policy: &cb.Policy{Type: mockType}},
+							"n2b_3": {Policy: &cb.Policy{Type: mockType}},
 						},
 					},
 				},

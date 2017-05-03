@@ -52,21 +52,21 @@ func NewPeerConnectionFSM(to string) *PeerConnectionFSM {
 }
 
 func (d *PeerConnectionFSM) enterState(e *fsm.Event) {
-	log.Debugf("The bi-directional stream to %s is %s, from event %s\n", d.To, e.Dst, e.Event)
+	logger.Debugf("The bi-directional stream to %s is %s, from event %s\n", d.To, e.Dst, e.Event)
 }
 
 func (d *PeerConnectionFSM) beforeHello(e *fsm.Event) {
-	log.Debugf("Before reception of %s, dest is %s, current is %s", e.Event, e.Dst, d.FSM.Current())
+	logger.Debugf("Before reception of %s, dest is %s, current is %s", e.Event, e.Dst, d.FSM.Current())
 }
 
 func (d *PeerConnectionFSM) afterHello(e *fsm.Event) {
-	log.Debugf("After reception of %s, dest is %s, current is %s", e.Event, e.Dst, d.FSM.Current())
+	logger.Debugf("After reception of %s, dest is %s, current is %s", e.Event, e.Dst, d.FSM.Current())
 }
 
 func (d *PeerConnectionFSM) afterPing(e *fsm.Event) {
-	log.Debugf("After reception of %s, dest is %s, current is %s", e.Event, e.Dst, d.FSM.Current())
+	logger.Debugf("After reception of %s, dest is %s, current is %s", e.Event, e.Dst, d.FSM.Current())
 }
 
 func (d *PeerConnectionFSM) beforePing(e *fsm.Event) {
-	log.Debugf("Before %s, dest is %s, current is %s", e.Event, e.Dst, d.FSM.Current())
+	logger.Debugf("Before %s, dest is %s, current is %s", e.Event, e.Dst, d.FSM.Current())
 }

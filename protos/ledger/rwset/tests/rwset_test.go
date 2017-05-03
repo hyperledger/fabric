@@ -57,8 +57,8 @@ func constructSampleRWSet() *rwset.TxReadWriteSet {
 	rwset1 := &rwset.TxReadWriteSet{}
 	rwset1.DataModel = rwset.TxReadWriteSet_KV
 	rwset1.NsRwset = []*rwset.NsReadWriteSet{
-		&rwset.NsReadWriteSet{Namespace: "ns-1", Rwset: []byte("ns-1-rwset")},
-		&rwset.NsReadWriteSet{Namespace: "ns-2", Rwset: []byte("ns-2-rwset")},
+		{Namespace: "ns-1", Rwset: []byte("ns-1-rwset")},
+		{Namespace: "ns-2", Rwset: []byte("ns-2-rwset")},
 	}
 	return rwset1
 }

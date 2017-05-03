@@ -573,7 +573,7 @@ func TestInvoke(t *testing.T) {
 	//start the mock peer
 	go func() {
 		respSet := &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-			&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}}}}
+			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}}}}
 		peerSide.SetResponses(respSet)
 		peerSide.SetKeepAlive(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
 		err = peerSide.Run()
@@ -584,12 +584,12 @@ func TestInvoke(t *testing.T) {
 
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: "1"})
 
-	ci := &pb.ChaincodeInput{[][]byte{[]byte("init"), []byte("A"), []byte("100"), []byte("B"), []byte("200")}, nil}
+	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("A"), []byte("100"), []byte("B"), []byte("200")}, Decorations: nil}
 	payload := utils.MarshalOrPanic(ci)
 	respSet := &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2"}, nil}}}
 	peerSide.SetResponses(respSet)
 
 	//use the payload computed from prev init
@@ -600,14 +600,14 @@ func TestInvoke(t *testing.T) {
 
 	//good invoke
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("100"), Txid: "3"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("200"), Txid: "3"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "3"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "3"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("100"), Txid: "3"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("200"), Txid: "3"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "3"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "3"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "3"})
 
@@ -616,13 +616,13 @@ func TestInvoke(t *testing.T) {
 
 	//bad put
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("100"), Txid: "3a"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("200"), Txid: "3a"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "3a"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3a"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("100"), Txid: "3a"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: []byte("200"), Txid: "3a"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "3a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "3a"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3a"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "3a"})
 
@@ -631,11 +631,11 @@ func TestInvoke(t *testing.T) {
 
 	//bad get
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3b"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "3b"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3b"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Txid: "3b"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "3b"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3b"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "3b"})
 
@@ -644,11 +644,11 @@ func TestInvoke(t *testing.T) {
 
 	//bad delete
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Txid: "4"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "4"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Txid: "4"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "4"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("delete"), []byte("A")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("delete"), []byte("A")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "4"})
 
@@ -657,11 +657,11 @@ func TestInvoke(t *testing.T) {
 
 	//good delete
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Txid: "4a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "4a"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4a"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Txid: "4a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "4a"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4a"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("delete"), []byte("A")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("delete"), []byte("A")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "4a"})
 
@@ -670,10 +670,10 @@ func TestInvoke(t *testing.T) {
 
 	//bad invoke
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "5"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "5"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("badinvoke")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("badinvoke")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "5"})
 
@@ -684,8 +684,8 @@ func TestInvoke(t *testing.T) {
 
 	//create the response
 	rangeQueryResponse := &pb.QueryResponse{Results: []*pb.QueryResultBytes{
-		&pb.QueryResultBytes{ResultBytes: utils.MarshalOrPanic(&lproto.KV{"getputcc", "A", []byte("100")})},
-		&pb.QueryResultBytes{ResultBytes: utils.MarshalOrPanic(&lproto.KV{"getputcc", "B", []byte("200")})}},
+		{ResultBytes: utils.MarshalOrPanic(&lproto.KV{Namespace: "getputcc", Key: "A", Value: []byte("100")})},
+		{ResultBytes: utils.MarshalOrPanic(&lproto.KV{Namespace: "getputcc", Key: "B", Value: []byte("200")})}},
 		HasMore: true}
 	rangeQPayload := utils.MarshalOrPanic(rangeQueryResponse)
 
@@ -693,13 +693,13 @@ func TestInvoke(t *testing.T) {
 	rangeQueryNext := &pb.QueryResponse{Results: nil, HasMore: false}
 
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "6"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "6"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "6"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "6"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("rangeq"), []byte("A"), []byte("B")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("rangeq"), []byte("A"), []byte("B")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "6"})
 
@@ -710,11 +710,11 @@ func TestInvoke(t *testing.T) {
 
 	//create the response
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: "6a"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6a"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: "6a"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6a"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("rangeq"), []byte("A"), []byte("B")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("rangeq"), []byte("A"), []byte("B")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "6a"})
 
@@ -725,13 +725,13 @@ func TestInvoke(t *testing.T) {
 
 	//create the response
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6b"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6b"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6b"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6b"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6b"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "6b"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6b"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6b"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6b"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6b"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6b"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6b"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "6b"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6b"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("rangeq"), []byte("A"), []byte("B")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("rangeq"), []byte("A"), []byte("B")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "6b"})
 
@@ -742,13 +742,13 @@ func TestInvoke(t *testing.T) {
 
 	//create the response
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6c"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6c"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6c"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6c"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6c"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6c"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6c"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Txid: "6c"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: rangeQPayload, Txid: "6c"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "6c"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6c"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "6c"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Txid: "6c"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "6c"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("rangeq"), []byte("A"), []byte("B")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("rangeq"), []byte("A"), []byte("B")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "6c"})
 
@@ -759,18 +759,18 @@ func TestInvoke(t *testing.T) {
 
 	//create the response
 	historyQueryResponse := &pb.QueryResponse{Results: []*pb.QueryResultBytes{
-		&pb.QueryResultBytes{ResultBytes: utils.MarshalOrPanic(&lproto.KeyModification{TxId: "6", Value: []byte("100")})}},
+		{ResultBytes: utils.MarshalOrPanic(&lproto.KeyModification{TxId: "6", Value: []byte("100")})}},
 		HasMore: true}
 	payload = utils.MarshalOrPanic(historyQueryResponse)
 
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Txid: "7"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payload, Txid: "7"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "7"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "7"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "7"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "7"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "7"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Txid: "7"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payload, Txid: "7"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "7"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "7"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "7"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "7"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "7"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("historyq"), []byte("A")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("historyq"), []byte("A")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "7"})
 
@@ -781,11 +781,11 @@ func TestInvoke(t *testing.T) {
 
 	//create the response
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Txid: "7a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: "7a"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "7a"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Txid: "7a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: "7a"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "7a"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("historyq"), []byte("A")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("historyq"), []byte("A")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "7a"})
 
@@ -796,8 +796,8 @@ func TestInvoke(t *testing.T) {
 
 	//create the response
 	getQRResp := &pb.QueryResponse{Results: []*pb.QueryResultBytes{
-		&pb.QueryResultBytes{ResultBytes: utils.MarshalOrPanic(&lproto.KV{"getputcc", "A", []byte("100")})},
-		&pb.QueryResultBytes{ResultBytes: utils.MarshalOrPanic(&lproto.KV{"getputcc", "B", []byte("200")})}},
+		{ResultBytes: utils.MarshalOrPanic(&lproto.KV{Namespace: "getputcc", Key: "A", Value: []byte("100")})},
+		{ResultBytes: utils.MarshalOrPanic(&lproto.KV{Namespace: "getputcc", Key: "B", Value: []byte("200")})}},
 		HasMore: true}
 	getQRRespPayload := utils.MarshalOrPanic(getQRResp)
 
@@ -805,13 +805,13 @@ func TestInvoke(t *testing.T) {
 	rangeQueryNext = &pb.QueryResponse{Results: nil, HasMore: false}
 
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Txid: "8"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: getQRRespPayload, Txid: "8"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "8"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "8"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "8"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "8"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "8"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Txid: "8"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: getQRRespPayload, Txid: "8"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Txid: "8"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: utils.MarshalOrPanic(rangeQueryNext), Txid: "8"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Txid: "8"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "8"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "8"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("richq"), []byte("A")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("richq"), []byte("A")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "8"})
 
@@ -821,11 +821,11 @@ func TestInvoke(t *testing.T) {
 	//query result error
 
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Txid: "8a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: nil, Txid: "8a"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "8a"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Txid: "8a"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: nil, Txid: "8a"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "8a"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("richq"), []byte("A")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("richq"), []byte("A")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "8a"})
 
@@ -853,7 +853,7 @@ func TestStartInProc(t *testing.T) {
 	//start the mock peer
 	go func() {
 		respSet := &mockpeer.MockResponseSet{doneFunc, nil, []*mockpeer.MockResponse{
-			&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}}}}
+			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}}}}
 		peerSide.SetResponses(respSet)
 		peerSide.SetKeepAlive(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
 		err = peerSide.Run()
@@ -895,7 +895,7 @@ func TestCC2CC(t *testing.T) {
 	//start the mock peer
 	go func() {
 		respSet := &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-			&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}}}}
+			{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}}}}
 		peerSide.SetResponses(respSet)
 		peerSide.SetKeepAlive(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
 		err = peerSide.Run()
@@ -906,12 +906,12 @@ func TestCC2CC(t *testing.T) {
 
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: "1"})
 
-	ci := &pb.ChaincodeInput{[][]byte{[]byte("init"), []byte("A"), []byte("100"), []byte("B"), []byte("200")}, nil}
+	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("A"), []byte("100"), []byte("B"), []byte("200")}, Decorations: nil}
 	payload := utils.MarshalOrPanic(ci)
 	respSet := &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Txid: "2"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: "2"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "2"}, nil}}}
 	peerSide.SetResponses(respSet)
 
 	//use the payload computed from prev init
@@ -924,11 +924,11 @@ func TestCC2CC(t *testing.T) {
 	innerResp := utils.MarshalOrPanic(&pb.Response{Status: OK, Payload: []byte("CC2CC rocks")})
 	cc2ccresp := utils.MarshalOrPanic(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: innerResp})
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Txid: "3"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: cc2ccresp, Txid: "3"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Txid: "3"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: cc2ccresp, Txid: "3"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "3"}, nil}}}
 	peerSide.SetResponses(respSet)
 
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("cc2cc"), []byte("othercc"), []byte("arg1"), []byte("arg2")}, nil}
+	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("cc2cc"), []byte("othercc"), []byte("arg1"), []byte("arg2")}, Decorations: nil}
 	payload = utils.MarshalOrPanic(ci)
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "3"})
 
@@ -937,8 +937,8 @@ func TestCC2CC(t *testing.T) {
 
 	//error response cc2cc
 	respSet = &mockpeer.MockResponseSet{errorFunc, errorFunc, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Txid: "4"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: cc2ccresp, Txid: "4"}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4"}, nil}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Txid: "4"}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: cc2ccresp, Txid: "4"}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Txid: "4"}, nil}}}
 	peerSide.SetResponses(respSet)
 
 	peerSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION, Payload: payload, Txid: "4"})

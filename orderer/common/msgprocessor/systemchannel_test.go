@@ -512,7 +512,7 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: {
 										Version: 100,
 									},
 								},
@@ -532,7 +532,7 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: {
 										Version: 1,
 									},
 								},
@@ -553,12 +553,12 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: {
 										Version: 1,
 									},
 								},
 								Values: map[string]*cb.ConfigValue{
-									channelconfig.ConsortiumKey: &cb.ConfigValue{
+									channelconfig.ConsortiumKey: {
 										Value: []byte("bad consortium value"),
 									},
 								},
@@ -578,12 +578,12 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: {
 										Version: 1,
 									},
 								},
 								Values: map[string]*cb.ConfigValue{
-									channelconfig.ConsortiumKey: &cb.ConfigValue{
+									channelconfig.ConsortiumKey: {
 										Value: utils.MarshalOrPanic(
 											&cb.Consortium{
 												Name: "NotTheNameYouAreLookingFor",
@@ -607,12 +607,12 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: {
 										Version: 1,
 									},
 								},
 								Values: map[string]*cb.ConfigValue{
-									channelconfig.ConsortiumKey: &cb.ConfigValue{
+									channelconfig.ConsortiumKey: {
 										Value: utils.MarshalOrPanic(
 											&cb.Consortium{
 												Name: genesisconfig.SampleConsortiumName,
@@ -636,15 +636,15 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: {
 										Version: 1,
 										Groups: map[string]*cb.ConfigGroup{
-											"BadOrgName": &cb.ConfigGroup{},
+											"BadOrgName": {},
 										},
 									},
 								},
 								Values: map[string]*cb.ConfigValue{
-									channelconfig.ConsortiumKey: &cb.ConfigValue{
+									channelconfig.ConsortiumKey: {
 										Value: utils.MarshalOrPanic(
 											&cb.Consortium{
 												Name: genesisconfig.SampleConsortiumName,

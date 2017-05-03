@@ -149,7 +149,7 @@ func TestReinitialization(t *testing.T) {
 	defer tev.tearDown()
 
 	// create a block to add to the ledger
-	b1 := ledger.CreateNextBlock(ledger1, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}})
+	b1 := ledger.CreateNextBlock(ledger1, []*cb.Envelope{{Payload: []byte("My Data")}})
 
 	// add the block to the ledger
 	ledger1.Append(b1)
@@ -190,7 +190,7 @@ func TestAddition(t *testing.T) {
 	defer tev.tearDown()
 	info, _ := fl.blockStore.GetBlockchainInfo()
 	prevHash := info.CurrentBlockHash
-	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
 	assert.Equal(t, uint64(2), fl.Height(), "Block height should be 2")
 
 	block := ledger.GetBlock(fl, 1)
@@ -201,7 +201,7 @@ func TestAddition(t *testing.T) {
 func TestRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
-	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
 	defer it.Close()
 	assert.Zero(t, num, "Expected genesis block iterator, but got %d", num)
@@ -250,7 +250,7 @@ func TestBlockedRetrieval(t *testing.T) {
 	default:
 	}
 
-	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
 	select {
 	case <-signal:
 	default:
@@ -266,7 +266,7 @@ func TestBlockedRetrieval(t *testing.T) {
 		"Expected to successfully retrieve the second block but got block number %d", block.Header.Number)
 
 	go func() {
-		fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+		fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
 	}()
 	select {
 	case <-it.ReadyChan():

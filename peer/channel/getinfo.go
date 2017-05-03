@@ -69,7 +69,7 @@ func (cc *endorserClient) getBlockChainInfo() (*cb.BlockchainInfo, error) {
 	}
 
 	if proposalResp.Response == nil || proposalResp.Response.Status != 200 {
-		return nil, errors.Errorf("received bad response, status %s", proposalResp.Response.Status)
+		return nil, errors.Errorf("received bad response, status %d", proposalResp.Response.Status)
 	}
 
 	blockChainInfo := &cb.BlockchainInfo{}

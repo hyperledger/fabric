@@ -201,7 +201,7 @@ func (vscc *ValidatorOneValidSignature) checkInstantiationPolicy(chainName strin
 	}
 
 	// construct signed data we can evaluate the instantiation policy against
-	sd := []*common.SignedData{&common.SignedData{
+	sd := []*common.SignedData{{
 		Data:      env.Payload,
 		Identity:  shdr.Creator,
 		Signature: env.Signature,

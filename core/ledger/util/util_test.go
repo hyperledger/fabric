@@ -48,7 +48,7 @@ func TestGetValuesBySortedKeys(t *testing.T) {
 	GetValuesBySortedKeys(&mapKeyValue, &sortedRes)
 	assert.Equal(
 		t,
-		[]*name{&name{"None", "none"}, &name{"Two", "two"}, &name{"Three", "three"}, &name{"Five", "five"}},
+		[]*name{{"None", "none"}, {"Two", "two"}, {"Three", "three"}, {"Five", "five"}},
 		sortedRes,
 	)
 }

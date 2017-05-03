@@ -25,8 +25,8 @@ func TestChaincodeListCmd(t *testing.T) {
 
 	installedCqr := &pb.ChaincodeQueryResponse{
 		Chaincodes: []*pb.ChaincodeInfo{
-			&pb.ChaincodeInfo{Name: "mycc1", Version: "1.0", Path: "codePath1", Input: "input", Escc: "escc", Vscc: "vscc"},
-			&pb.ChaincodeInfo{Name: "mycc2", Version: "1.0", Path: "codePath2", Input: "input", Escc: "escc", Vscc: "vscc"},
+			{Name: "mycc1", Version: "1.0", Path: "codePath1", Input: "input", Escc: "escc", Vscc: "vscc"},
+			{Name: "mycc2", Version: "1.0", Path: "codePath2", Input: "input", Escc: "escc", Vscc: "vscc"},
 		},
 	}
 	installedCqrBytes, err := proto.Marshal(installedCqr)

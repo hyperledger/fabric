@@ -83,13 +83,13 @@ func TestGroupPolicyModification(t *testing.T) {
 	original := &cb.ConfigGroup{
 		Version: 4,
 		Policies: map[string]*cb.ConfigPolicy{
-			policy1Name: &cb.ConfigPolicy{
+			policy1Name: {
 				Version: 2,
 				Policy: &cb.Policy{
 					Type: 3,
 				},
 			},
-			policy2Name: &cb.ConfigPolicy{
+			policy2Name: {
 				Version: 1,
 				Policy: &cb.Policy{
 					Type: 5,
@@ -100,7 +100,7 @@ func TestGroupPolicyModification(t *testing.T) {
 	updated := &cb.ConfigGroup{
 		Policies: map[string]*cb.ConfigPolicy{
 			policy1Name: original.Policies[policy1Name],
-			policy2Name: &cb.ConfigPolicy{
+			policy2Name: {
 				Policy: &cb.Policy{
 					Type: 9,
 				},
@@ -128,7 +128,7 @@ func TestGroupPolicyModification(t *testing.T) {
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version,
 		Policies: map[string]*cb.ConfigPolicy{
-			policy2Name: &cb.ConfigPolicy{
+			policy2Name: {
 				Policy: &cb.Policy{
 					Type: updated.Policies[policy2Name].Policy.Type,
 				},
@@ -149,11 +149,11 @@ func TestGroupValueModification(t *testing.T) {
 	original := &cb.ConfigGroup{
 		Version: 7,
 		Values: map[string]*cb.ConfigValue{
-			value1Name: &cb.ConfigValue{
+			value1Name: {
 				Version: 3,
 				Value:   []byte("value1value"),
 			},
-			value2Name: &cb.ConfigValue{
+			value2Name: {
 				Version: 6,
 				Value:   []byte("value2value"),
 			},
@@ -162,7 +162,7 @@ func TestGroupValueModification(t *testing.T) {
 	updated := &cb.ConfigGroup{
 		Values: map[string]*cb.ConfigValue{
 			value1Name: original.Values[value1Name],
-			value2Name: &cb.ConfigValue{
+			value2Name: {
 				Value: []byte("updatedValued2Value"),
 			},
 		},
@@ -188,7 +188,7 @@ func TestGroupValueModification(t *testing.T) {
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version,
 		Values: map[string]*cb.ConfigValue{
-			value2Name: &cb.ConfigValue{
+			value2Name: {
 				Value:   updated.Values[value2Name].Value,
 				Version: original.Values[value2Name].Version + 1,
 			},
@@ -206,10 +206,10 @@ func TestGroupGroupsModification(t *testing.T) {
 	original := &cb.ConfigGroup{
 		Version: 7,
 		Groups: map[string]*cb.ConfigGroup{
-			subGroupName: &cb.ConfigGroup{
+			subGroupName: {
 				Version: 3,
 				Values: map[string]*cb.ConfigValue{
-					"testValue": &cb.ConfigValue{
+					"testValue": {
 						Version: 3,
 					},
 				},
@@ -218,7 +218,7 @@ func TestGroupGroupsModification(t *testing.T) {
 	}
 	updated := &cb.ConfigGroup{
 		Groups: map[string]*cb.ConfigGroup{
-			subGroupName: &cb.ConfigGroup{},
+			subGroupName: {},
 		},
 	}
 
@@ -233,7 +233,7 @@ func TestGroupGroupsModification(t *testing.T) {
 	expectedReadSet := &cb.ConfigGroup{
 		Version: original.Version,
 		Groups: map[string]*cb.ConfigGroup{
-			subGroupName: &cb.ConfigGroup{
+			subGroupName: {
 				Version:  original.Groups[subGroupName].Version,
 				Policies: map[string]*cb.ConfigPolicy{},
 				Values:   map[string]*cb.ConfigValue{},
@@ -249,7 +249,7 @@ func TestGroupGroupsModification(t *testing.T) {
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version,
 		Groups: map[string]*cb.ConfigGroup{
-			subGroupName: &cb.ConfigGroup{
+			subGroupName: {
 				Version:  original.Groups[subGroupName].Version + 1,
 				Groups:   map[string]*cb.ConfigGroup{},
 				Policies: map[string]*cb.ConfigPolicy{},
@@ -270,7 +270,7 @@ func TestGroupValueAddition(t *testing.T) {
 	original := &cb.ConfigGroup{
 		Version: 7,
 		Values: map[string]*cb.ConfigValue{
-			value1Name: &cb.ConfigValue{
+			value1Name: {
 				Version: 3,
 				Value:   []byte("value1value"),
 			},
@@ -279,7 +279,7 @@ func TestGroupValueAddition(t *testing.T) {
 	updated := &cb.ConfigGroup{
 		Values: map[string]*cb.ConfigValue{
 			value1Name: original.Values[value1Name],
-			value2Name: &cb.ConfigValue{
+			value2Name: {
 				Version: 9,
 				Value:   []byte("newValue2"),
 			},
@@ -297,7 +297,7 @@ func TestGroupValueAddition(t *testing.T) {
 	expectedReadSet := &cb.ConfigGroup{
 		Version: original.Version,
 		Values: map[string]*cb.ConfigValue{
-			value1Name: &cb.ConfigValue{
+			value1Name: {
 				Version: original.Values[value1Name].Version,
 			},
 		},
@@ -310,10 +310,10 @@ func TestGroupValueAddition(t *testing.T) {
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version + 1,
 		Values: map[string]*cb.ConfigValue{
-			value1Name: &cb.ConfigValue{
+			value1Name: {
 				Version: original.Values[value1Name].Version,
 			},
-			value2Name: &cb.ConfigValue{
+			value2Name: {
 				Value:   updated.Values[value2Name].Value,
 				Version: 0,
 			},
@@ -332,7 +332,7 @@ func TestGroupPolicySwap(t *testing.T) {
 	original := &cb.ConfigGroup{
 		Version: 4,
 		Policies: map[string]*cb.ConfigPolicy{
-			policy1Name: &cb.ConfigPolicy{
+			policy1Name: {
 				Version: 2,
 				Policy: &cb.Policy{
 					Type: 3,
@@ -342,7 +342,7 @@ func TestGroupPolicySwap(t *testing.T) {
 	}
 	updated := &cb.ConfigGroup{
 		Policies: map[string]*cb.ConfigPolicy{
-			policy2Name: &cb.ConfigPolicy{
+			policy2Name: {
 				Version: 1,
 				Policy: &cb.Policy{
 					Type: 5,
@@ -371,7 +371,7 @@ func TestGroupPolicySwap(t *testing.T) {
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version + 1,
 		Policies: map[string]*cb.ConfigPolicy{
-			policy2Name: &cb.ConfigPolicy{
+			policy2Name: {
 				Policy: &cb.Policy{
 					Type: updated.Policies[policy2Name].Policy.Type,
 				},
@@ -393,15 +393,15 @@ func TestComplex(t *testing.T) {
 	original := &cb.ConfigGroup{
 		Version: 4,
 		Groups: map[string]*cb.ConfigGroup{
-			existingGroup1Name: &cb.ConfigGroup{
+			existingGroup1Name: {
 				Version: 2,
 			},
-			existingGroup2Name: &cb.ConfigGroup{
+			existingGroup2Name: {
 				Version: 2,
 			},
 		},
 		Policies: map[string]*cb.ConfigPolicy{
-			existingPolicyName: &cb.ConfigPolicy{
+			existingPolicyName: {
 				Version: 8,
 				Policy: &cb.Policy{
 					Type: 5,
@@ -415,20 +415,20 @@ func TestComplex(t *testing.T) {
 	newValueName := "newValue"
 	updated := &cb.ConfigGroup{
 		Groups: map[string]*cb.ConfigGroup{
-			existingGroup1Name: &cb.ConfigGroup{},
-			newGroupName: &cb.ConfigGroup{
+			existingGroup1Name: {},
+			newGroupName: {
 				Values: map[string]*cb.ConfigValue{
-					newValueName: &cb.ConfigValue{},
+					newValueName: {},
 				},
 			},
 		},
 		Policies: map[string]*cb.ConfigPolicy{
-			existingPolicyName: &cb.ConfigPolicy{
+			existingPolicyName: {
 				Policy: &cb.Policy{
 					Type: 5,
 				},
 			},
-			newPolicyName: &cb.ConfigPolicy{
+			newPolicyName: {
 				Version: 6,
 				Policy: &cb.Policy{
 					Type: 5,
@@ -448,13 +448,13 @@ func TestComplex(t *testing.T) {
 	expectedReadSet := &cb.ConfigGroup{
 		Version: original.Version,
 		Policies: map[string]*cb.ConfigPolicy{
-			existingPolicyName: &cb.ConfigPolicy{
+			existingPolicyName: {
 				Version: original.Policies[existingPolicyName].Version,
 			},
 		},
 		Values: map[string]*cb.ConfigValue{},
 		Groups: map[string]*cb.ConfigGroup{
-			existingGroup1Name: &cb.ConfigGroup{
+			existingGroup1Name: {
 				Version: original.Groups[existingGroup1Name].Version,
 			},
 		},
@@ -465,10 +465,10 @@ func TestComplex(t *testing.T) {
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version + 1,
 		Policies: map[string]*cb.ConfigPolicy{
-			existingPolicyName: &cb.ConfigPolicy{
+			existingPolicyName: {
 				Version: original.Policies[existingPolicyName].Version,
 			},
-			newPolicyName: &cb.ConfigPolicy{
+			newPolicyName: {
 				Version: 0,
 				Policy: &cb.Policy{
 					Type: 5,
@@ -476,13 +476,13 @@ func TestComplex(t *testing.T) {
 			},
 		},
 		Groups: map[string]*cb.ConfigGroup{
-			existingGroup1Name: &cb.ConfigGroup{
+			existingGroup1Name: {
 				Version: original.Groups[existingGroup1Name].Version,
 			},
-			newGroupName: &cb.ConfigGroup{
+			newGroupName: {
 				Version: 0,
 				Values: map[string]*cb.ConfigValue{
-					newValueName: &cb.ConfigValue{},
+					newValueName: {},
 				},
 				Policies: map[string]*cb.ConfigPolicy{},
 				Groups:   map[string]*cb.ConfigGroup{},
@@ -501,11 +501,11 @@ func TestTwiceNestedModification(t *testing.T) {
 	valueName := "testValue"
 	original := &cb.ConfigGroup{
 		Groups: map[string]*cb.ConfigGroup{
-			subGroupName: &cb.ConfigGroup{
+			subGroupName: {
 				Groups: map[string]*cb.ConfigGroup{
-					subSubGroupName: &cb.ConfigGroup{
+					subSubGroupName: {
 						Values: map[string]*cb.ConfigValue{
-							valueName: &cb.ConfigValue{},
+							valueName: {},
 						},
 					},
 				},
@@ -514,11 +514,11 @@ func TestTwiceNestedModification(t *testing.T) {
 	}
 	updated := &cb.ConfigGroup{
 		Groups: map[string]*cb.ConfigGroup{
-			subGroupName: &cb.ConfigGroup{
+			subGroupName: {
 				Groups: map[string]*cb.ConfigGroup{
-					subSubGroupName: &cb.ConfigGroup{
+					subSubGroupName: {
 						Values: map[string]*cb.ConfigValue{
-							valueName: &cb.ConfigValue{
+							valueName: {
 								ModPolicy: "new",
 							},
 						},
@@ -539,9 +539,9 @@ func TestTwiceNestedModification(t *testing.T) {
 	expectedReadSet := &cb.ConfigGroup{
 		Version: original.Version,
 		Groups: map[string]*cb.ConfigGroup{
-			subGroupName: &cb.ConfigGroup{
+			subGroupName: {
 				Groups: map[string]*cb.ConfigGroup{
-					subSubGroupName: &cb.ConfigGroup{
+					subSubGroupName: {
 						Policies: map[string]*cb.ConfigPolicy{},
 						Values:   map[string]*cb.ConfigValue{},
 						Groups:   map[string]*cb.ConfigGroup{},
@@ -560,11 +560,11 @@ func TestTwiceNestedModification(t *testing.T) {
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version,
 		Groups: map[string]*cb.ConfigGroup{
-			subGroupName: &cb.ConfigGroup{
+			subGroupName: {
 				Groups: map[string]*cb.ConfigGroup{
-					subSubGroupName: &cb.ConfigGroup{
+					subSubGroupName: {
 						Values: map[string]*cb.ConfigValue{
-							valueName: &cb.ConfigValue{
+							valueName: {
 								Version:   original.Groups[subGroupName].Groups[subSubGroupName].Values[valueName].Version + 1,
 								ModPolicy: updated.Groups[subGroupName].Groups[subSubGroupName].Values[valueName].ModPolicy,
 							},

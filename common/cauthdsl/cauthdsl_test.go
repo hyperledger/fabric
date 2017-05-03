@@ -184,13 +184,13 @@ func TestNilSignaturePolicyEnvelope(t *testing.T) {
 
 func TestDeduplicate(t *testing.T) {
 	ids := []*cb.SignedData{
-		&cb.SignedData{
+		{
 			Identity: []byte("id1"),
 		},
-		&cb.SignedData{
+		{
 			Identity: []byte("id2"),
 		},
-		&cb.SignedData{
+		{
 			Identity: []byte("id3"),
 		},
 	}

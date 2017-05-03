@@ -275,7 +275,7 @@ func TestReceiveCCWildcard(t *testing.T) {
 		t.Logf("timed out on message")
 	}
 	adapter.count = 1
-	obcEHClient.UnregisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: ""}}}})
+	obcEHClient.UnregisterAsync([]*ehpb.Interest{{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: ""}}}})
 
 	select {
 	case <-adapter.notfy:

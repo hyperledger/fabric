@@ -110,7 +110,7 @@ func TestTruncationSafety(t *testing.T) {
 
 func TestRetrieval(t *testing.T) {
 	rl := newTestChain(3)
-	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{{Payload: []byte("My Data")}}))
 	it, num := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
 	defer it.Close()
 	if num != 0 {
@@ -157,7 +157,7 @@ func TestBlockedRetrieval(t *testing.T) {
 		t.Fatalf("Should not be ready for block read")
 	default:
 	}
-	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{{Payload: []byte("My Data")}}))
 	select {
 	case <-signal:
 	default:
@@ -184,9 +184,9 @@ func TestIteratorPastEnd(t *testing.T) {
 func TestIteratorOldest(t *testing.T) {
 	rl := newTestChain(3)
 	// add enough block to roll off the genesis block
-	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
-	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
-	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{{Payload: []byte("My Data")}}))
+	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{{Payload: []byte("My Data")}}))
+	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{{Payload: []byte("My Data")}}))
 	it, num := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 	defer it.Close()
 	if num != 1 {
@@ -197,14 +197,14 @@ func TestIteratorOldest(t *testing.T) {
 func TestAppendBadBLock(t *testing.T) {
 	rl := newTestChain(3)
 	t.Run("BadBlockNumber", func(t *testing.T) {
-		nextBlock := ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}})
+		nextBlock := ledger.CreateNextBlock(rl, []*cb.Envelope{{Payload: []byte("My Data")}})
 		nextBlock.Header.Number = nextBlock.Header.Number + 1
 		if err := rl.Append(nextBlock); err == nil {
 			t.Fatalf("Expected Append to fail.")
 		}
 	})
 	t.Run("BadPreviousHash", func(t *testing.T) {
-		nextBlock := ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}})
+		nextBlock := ledger.CreateNextBlock(rl, []*cb.Envelope{{Payload: []byte("My Data")}})
 		nextBlock.Header.PreviousHash = []byte("bad hash")
 		if err := rl.Append(nextBlock); err == nil {
 			t.Fatalf("Expected Append to fail.")

@@ -360,7 +360,7 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 	msgs := [3]string{"listen tcp: lookup tcp/1BBB: nodename nor servname provided, or not known",
 		"listen tcp: unknown port tcp/1BBB", "listen tcp: address tcp/1BBB: unknown port"}
 
-	if assert.Error(t, err, "[%s], [%s] or [%s] expected", msgs[0], msgs[1], msgs[2]) {
+	if assert.Error(t, err, fmt.Sprintf("[%s], [%s] or [%s] expected", msgs[0], msgs[1], msgs[2])) {
 		assert.Contains(t, msgs, err.Error())
 	}
 	if err != nil {
@@ -375,7 +375,7 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 		systems will automatically resolve unknown host names to a "search"
 		address so we just check to make sure that an error was returned
 	*/
-	assert.Error(t, err, "%s error expected", msg)
+	assert.Error(t, err, fmt.Sprintf("%s error expected", msg))
 	if err != nil {
 		t.Log(err.Error())
 	}

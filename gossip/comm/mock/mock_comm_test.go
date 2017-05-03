@@ -35,12 +35,12 @@ func TestMockComm(t *testing.T) {
 	defer comm2.Stop()
 
 	sMsg, _ := (&proto.GossipMessage{
-		Content: &proto.GossipMessage_StateRequest{&proto.RemoteStateRequest{
+		Content: &proto.GossipMessage_StateRequest{StateRequest: &proto.RemoteStateRequest{
 			StartSeqNum: 1,
 			EndSeqNum:   3,
 		}},
 	}).NoopSign()
-	comm2.Send(sMsg, &comm.RemotePeer{"first", common.PKIidType("first")})
+	comm2.Send(sMsg, &comm.RemotePeer{Endpoint: "first", PKIID: common.PKIidType("first")})
 
 	msg := <-msgCh
 
@@ -66,14 +66,14 @@ func TestMockComm_PingPong(t *testing.T) {
 
 	sMsg, _ := (&proto.GossipMessage{
 		Content: &proto.GossipMessage_DataMsg{
-			&proto.DataMessage{
-				&proto.Payload{
+			DataMsg: &proto.DataMessage{
+				Payload: &proto.Payload{
 					SeqNum: 1,
 					Data:   []byte("Ping"),
 				},
 			}},
 	}).NoopSign()
-	peerA.Send(sMsg, &comm.RemotePeer{"peerB", common.PKIidType("peerB")})
+	peerA.Send(sMsg, &comm.RemotePeer{Endpoint: "peerB", PKIID: common.PKIidType("peerB")})
 
 	msg := <-rcvChB
 	dataMsg := msg.GetGossipMessage().GetDataMsg()
@@ -82,8 +82,8 @@ func TestMockComm_PingPong(t *testing.T) {
 
 	msg.Respond(&proto.GossipMessage{
 		Content: &proto.GossipMessage_DataMsg{
-			&proto.DataMessage{
-				&proto.Payload{
+			DataMsg: &proto.DataMessage{
+				Payload: &proto.Payload{
 					SeqNum: 1,
 					Data:   []byte("Pong"),
 				},

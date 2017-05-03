@@ -19,14 +19,14 @@ func TestTxPvtData(t *testing.T) {
 	txPvtData.WriteSet = &rwset.TxPvtReadWriteSet{
 		DataModel: rwset.TxReadWriteSet_KV,
 		NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-			&rwset.NsPvtReadWriteSet{
+			{
 				Namespace: "ns",
 				CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-					&rwset.CollectionPvtReadWriteSet{
+					{
 						CollectionName: "coll-1",
 						Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll1"),
 					},
-					&rwset.CollectionPvtReadWriteSet{
+					{
 						CollectionName: "coll-2",
 						Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll2"),
 					},

@@ -29,7 +29,7 @@ func TestWithRealConfigtx(t *testing.T) {
 		},
 	}
 	conf.Application.Organizations[0].AnchorPeers = []*genesisconfig.AnchorPeer{
-		&genesisconfig.AnchorPeer{
+		{
 			Host: "foo",
 			Port: 7,
 		},

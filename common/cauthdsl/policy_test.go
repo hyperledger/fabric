@@ -67,7 +67,7 @@ func TestAccept(t *testing.T) {
 	policyID := "policyID"
 	m, err := policies.NewManagerImpl("test", providerMap(), &cb.ConfigGroup{
 		Policies: map[string]*cb.ConfigPolicy{
-			policyID: &cb.ConfigPolicy{Policy: acceptAllPolicy},
+			policyID: {Policy: acceptAllPolicy},
 		},
 	})
 	assert.NoError(t, err)
@@ -83,7 +83,7 @@ func TestReject(t *testing.T) {
 	policyID := "policyID"
 	m, err := policies.NewManagerImpl("test", providerMap(), &cb.ConfigGroup{
 		Policies: map[string]*cb.ConfigPolicy{
-			policyID: &cb.ConfigPolicy{Policy: rejectAllPolicy},
+			policyID: {Policy: rejectAllPolicy},
 		},
 	})
 	assert.NoError(t, err)

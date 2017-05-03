@@ -39,7 +39,7 @@ func ownerCreateCCDepSpec(codepackage []byte, sigpolicy *common.SignaturePolicyE
 
 // create an instantiation policy with just the local msp admin
 func createInstantiationPolicy(mspid string, role mspprotos.MSPRole_MSPRoleType) *common.SignaturePolicyEnvelope {
-	principals := []*mspprotos.MSPPrincipal{&mspprotos.MSPPrincipal{
+	principals := []*mspprotos.MSPPrincipal{{
 		PrincipalClassification: mspprotos.MSPPrincipal_ROLE,
 		Principal:               utils.MarshalOrPanic(&mspprotos.MSPRole{Role: role, MspIdentifier: mspid})}}
 	sigspolicy := []*common.SignaturePolicy{cauthdsl.SignedBy(int32(0))}

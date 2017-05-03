@@ -70,7 +70,7 @@ func TestMapNestedMsg(t *testing.T) {
 	mapKey := "bar"
 	startMsg := &testprotos.NestedMsg{
 		MapNestedField: map[string]*testprotos.SimpleMsg{
-			mapKey: &testprotos.SimpleMsg{
+			mapKey: {
 				PlainField: pfValue,
 			},
 		},
@@ -103,7 +103,7 @@ func TestSliceNestedMsg(t *testing.T) {
 	pfValue := "foo"
 	startMsg := &testprotos.NestedMsg{
 		SliceNestedField: []*testprotos.SimpleMsg{
-			&testprotos.SimpleMsg{
+			{
 				PlainField: pfValue,
 			},
 		},

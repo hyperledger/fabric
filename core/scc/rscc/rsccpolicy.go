@@ -114,7 +114,7 @@ func (rp *rsccPolicyProviderImpl) CheckACL(polName string, idinfo interface{}) e
 		return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy [%s]: [%s]", polName, err)
 	}
 
-	sd := []*common.SignedData{&common.SignedData{
+	sd := []*common.SignedData{{
 		Data:      signedProp.ProposalBytes,
 		Identity:  shdr.Creator,
 		Signature: signedProp.Signature,
