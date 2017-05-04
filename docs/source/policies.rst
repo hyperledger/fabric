@@ -40,7 +40,7 @@ hyperledger fabric.
    Principals. It supports arbitrary combinations of *AND*, *OR*, and
    *NOutOf*, allowing the construction of extremely powerful rules like:
    "An admin of org A and 2 other admins, or 11 of 20 org admins".
-2. **ImplicitMetaPolicy**: Tihs policy type is less flexible than
+2. **ImplicitMetaPolicy**: This policy type is less flexible than
    SignaturePolicy, and is only valid in the context of configuration.
    It aggregates the result of evaluating policies deeper in the
    configuration hierarchy, which are ultimately defined by
@@ -116,7 +116,7 @@ minimally as follows:
 Consider the Writers policy referred to with the ``------->`` mark in
 the above example. This policy may be referred to by the shorthand
 notation ``/Channel/Application/Writers``. Note that the elements
-resembling directory components are group names, whlie the last
+resembling directory components are group names, while the last
 component resembling a file basename is the policy name.
 
 Different components of the system will refer to these policy names. For
@@ -181,7 +181,7 @@ For example:
         identities: [mspP1, mspP2],
     }
 
-This defines a signature policy over MSP Prinicipals ``mspP1`` and
+This defines a signature policy over MSP Principals ``mspP1`` and
 ``mspP2``. It requires both that there is a signature satisfying
 ``mspP1`` and a signature satisfying ``mspP2``.
 
@@ -313,7 +313,7 @@ For example, consider a policy defined at ``/Channel/Readers`` as
         sub_policy: "foo",
     }
 
-This policy will implicity select the sub-groups of ``/Channel``, in
+This policy will implicitly select the sub-groups of ``/Channel``, in
 this case, ``Application`` and ``Orderer``, and retrieve the policy of
 name ``foo``, to give the policies ``/Channel/Application/foo`` and
 ``/Channel/Orderer/foo``. Then, when the policy is evaluated, it will
