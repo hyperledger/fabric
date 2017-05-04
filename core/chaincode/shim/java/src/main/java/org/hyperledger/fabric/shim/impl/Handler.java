@@ -599,6 +599,12 @@ public class Handler {
 				.build().toByteString());
 	}
 
+	QueryResponse handleGetHistoryForKey(String txId, String key) {
+		return invokeQueryResponseMessage(txId, Type.GET_HISTORY_FOR_KEY, GetQueryResult.newBuilder()
+				.setQuery(key)
+				.build().toByteString());
+	}
+
 	private QueryResponse invokeQueryResponseMessage(String txId, ChaincodeMessage.Type type, ByteString payload) {
 		try {
 			return QueryResponse.parseFrom(invokeChaincodeSupport(txId, type, payload)

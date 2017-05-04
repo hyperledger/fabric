@@ -25,12 +25,14 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.hyperledger.fabric.protos.ledger.queryresult.KvQueryResult;
 import org.hyperledger.fabric.protos.ledger.queryresult.KvQueryResult.KV;
 import org.hyperledger.fabric.protos.peer.ChaincodeEventPackage.ChaincodeEvent;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.QueryResultBytes;
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
+import org.hyperledger.fabric.shim.ledger.KeyModification;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
 
@@ -197,6 +199,24 @@ class ChaincodeStubImpl implements ChaincodeStub {
 				queryResultBytesToKv.andThen(KeyValueImpl::new)
 				);
 	}
+
+	@Override
+	public QueryResultsIterator<KeyModification> getHistoryForKey(String key) {
+		return new QueryResultsIteratorImpl<KeyModification>(this.handler, getTxId(),
+				handler.handleGetHistoryForKey(getTxId(), key),
+				queryResultBytesToKeyModification.andThen(KeyModificationImpl::new)
+				);
+	}
+
+	private Function<QueryResultBytes, KvQueryResult.KeyModification> queryResultBytesToKeyModification = new Function<QueryResultBytes, KvQueryResult.KeyModification>() {
+		public KvQueryResult.KeyModification apply(QueryResultBytes queryResultBytes) {
+			try {
+				return KvQueryResult.KeyModification.parseFrom(queryResultBytes.getResultBytes());
+			} catch (InvalidProtocolBufferException e) {
+				throw new RuntimeException(e);
+			}
+		};
+	};
 
 	/* (non-Javadoc)
 	 * @see org.hyperledger.fabric.shim.ChaincodeStub#invokeChaincode(java.lang.String, java.util.List, java.lang.String)

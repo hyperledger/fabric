@@ -24,6 +24,7 @@ import java.util.List;
 import org.hyperledger.fabric.protos.peer.ChaincodeEventPackage.ChaincodeEvent;
 import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
+import org.hyperledger.fabric.shim.ledger.KeyModification;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
 
@@ -174,6 +175,14 @@ public interface ChaincodeStub {
 	 *             queries.
 	 */
 	QueryResultsIterator<KeyValue> getQueryResult(String query);
+
+	/**
+	 * Returns the history of the specified key's values across time.
+	 *
+	 * @param key
+	 * @return an {@link Iterable} of {@link KeyModification}
+	 */
+	QueryResultsIterator<KeyModification> getHistoryForKey(String key);
 
 	/**
 	 * Defines the CHAINCODE type event that will be posted to interested
