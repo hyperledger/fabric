@@ -46,7 +46,7 @@ General:
     # Genesis profile: The profile to use when using the provisional
     # GenesisMethod, See the configtx.yaml file for the descriptions of the
     # available profiles.
-    GenesisProfile: SampleSingleMSPSolo
+    GenesisProfile: SampleInsecureSolo
 
     # Genesis file: The file containing the genesis block. Used by the orderer
     # when GenesisMethod is set to "file".
