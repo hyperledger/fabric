@@ -135,7 +135,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{})
 
 	viper.Set("peer.fileSystemPath", "/tmp/hyperledgertest/")
-	viper.Set("chaincode.executetimeout", "3000")
+	viper.Set("chaincode.executetimeout", "3s")
 	os.Mkdir("/tmp/hyperledgertest", 0755)
 
 	peer.MockInitialize()

@@ -113,6 +113,13 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 		done <- cmd.Wait()
 	}()
 
+	ccDeployTimeout := viper.GetDuration("chaincode.deploytimeout")
+	if ccDeployTimeout < time.Duration(30)*time.Second {
+		logger.Warningf("Invalid chaincode deploy timeout value %s (should be at least 30s); defaulting to 30s", ccDeployTimeout)
+		ccDeployTimeout = time.Duration(30) * time.Second
+	} else {
+		logger.Debugf("Setting chaincode deploy timeout to %s", ccDeployTimeout)
+	}
 	select {
 	case <-time.After(time.Duration(viper.GetInt("chaincode.deploytimeout")) * time.Millisecond):
 		// If pulling repos takes too long, we should give up
