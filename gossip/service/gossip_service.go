@@ -142,7 +142,9 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
 
 		idMapper := identity.NewIdentityMapper(mcs)
-		idMapper.Put(mcs.GetPKIidOfCert(peerIdentity), peerIdentity)
+		if err := idMapper.Put(mcs.GetPKIidOfCert(peerIdentity), peerIdentity); err != nil {
+			logger.Panic("Failed associating self PKIID to cert:", err)
+		}
 
 		gossip := integration.NewGossipComponent(peerIdentity, endpoint, s, secAdv,
 			mcs, idMapper, secureDialOpts, bootPeers...)

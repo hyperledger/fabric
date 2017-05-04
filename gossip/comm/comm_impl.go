@@ -99,7 +99,9 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		subscriptions:  make([]chan proto.ReceivedMessage, 0),
 	}
 	commInst.connStore = newConnStore(commInst, commInst.logger)
-	commInst.idMapper.Put(idMapper.GetPKIidOfCert(peerIdentity), peerIdentity)
+	if err := commInst.idMapper.Put(idMapper.GetPKIidOfCert(peerIdentity), peerIdentity); err != nil {
+		commInst.logger.Panic("Failed associating self PKIID to cert:", err)
+	}
 
 	if port > 0 {
 		commInst.stopWG.Add(1)
