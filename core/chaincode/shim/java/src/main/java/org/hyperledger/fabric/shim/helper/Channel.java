@@ -23,11 +23,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class Channel<E> extends LinkedBlockingQueue<E> implements Closeable {
 
 	private boolean closed = false;
-	
+
 	private HashSet<Thread> waiting = new HashSet<>();
-	
-	//TODO add other methods to secure closing behavior
-	
+
+	// TODO add other methods to secure closing behavior
+
 	@Override
 	public E take() throws InterruptedException {
 		synchronized (waiting) {
@@ -40,8 +40,7 @@ public class Channel<E> extends LinkedBlockingQueue<E> implements Closeable {
 		}
 		return e;
 	}
-	
-	
+
 	@Override
 	public boolean add(E e) {
 		if (closed) {
@@ -49,8 +48,7 @@ public class Channel<E> extends LinkedBlockingQueue<E> implements Closeable {
 		}
 		return super.add(e);
 	}
-	
-	
+
 	@Override
 	public void close() {
 		synchronized (waiting) {

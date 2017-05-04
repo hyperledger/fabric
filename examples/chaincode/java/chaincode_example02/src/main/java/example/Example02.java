@@ -31,7 +31,7 @@ import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
 public class Example02 extends ChaincodeBase {
-	
+
 	private static Log log = LogFactory.getLog(Example02.class);
 
 	@Override
@@ -52,14 +52,14 @@ public class Example02 extends ChaincodeBase {
 			return newInternalServerErrorResponse(e);
 		}
 	}
-	
+
 	@Override
 	public Response invoke(ChaincodeStub stub) {
 
 		try {
 			final String function = stub.getFunction();
 			final String[] args = stub.getParameters().stream().toArray(String[]::new);
-			
+
 			switch (function) {
 			case "invoke":
 				return invoke(stub, args);
@@ -93,10 +93,10 @@ public class Example02 extends ChaincodeBase {
 
 		return newSuccessResponse();
 	}
-	
+
 	private Response invoke(ChaincodeStub stub, String[] args) {
 		if (args.length != 3) throw new IllegalArgumentException("Incorrect number of arguments. Expecting: transfer(from, to, amount)");
-		
+
 		final String fromKey = args[0];
 		final String toKey = args[1];
 		final String amount = args[2];
@@ -121,8 +121,7 @@ public class Example02 extends ChaincodeBase {
 		log.info(format("Tranferring %d holdings from %s to %s", transferAmount, fromKey, toKey));
 		int newFromAccountBalance = fromAccountBalance - transferAmount;
 		int newToAccountBalance = toAccountBalance + transferAmount;
-		log.info(format("New holding values will be: %s = %d, %s = %d", fromKey, newFromAccountBalance, toKey,
-				newToAccountBalance));
+		log.info(format("New holding values will be: %s = %d, %s = %d", fromKey, newFromAccountBalance, toKey, newToAccountBalance));
 		stub.putStringState(fromKey, Integer.toString(newFromAccountBalance));
 		stub.putStringState(toKey, Integer.toString(newToAccountBalance));
 		log.info("Transfer complete.");
@@ -131,16 +130,15 @@ public class Example02 extends ChaincodeBase {
 	}
 
 	private Response delete(ChaincodeStub stub, String args[]) {
-		if (args.length != 1)
-			throw new IllegalArgumentException("Incorrect number of arguments. Expecting: delete(account)");
-		
+		if (args.length != 1) throw new IllegalArgumentException("Incorrect number of arguments. Expecting: delete(account)");
+
 		final String account = args[0];
-		
+
 		stub.delState(account);
-		
+
 		return newSuccessResponse();
 	}
-	
+
 	private Response query(ChaincodeStub stub, String[] args) {
 		if (args.length != 1) throw new IllegalArgumentException("Incorrect number of arguments. Expecting: query(account)");
 

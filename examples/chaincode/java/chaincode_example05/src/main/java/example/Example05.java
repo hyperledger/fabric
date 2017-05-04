@@ -29,37 +29,37 @@ import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
 public class Example05 extends ChaincodeBase {
-	
+
 	@Override
 	public Response init(ChaincodeStub stub) {
 		// expects to be called with: { "init", key, value }
 		try {
-			
+
 			final List<String> args = stub.getStringArgs();
-			if(args.size() != 3) {
+			if (args.size() != 3) {
 				return newBadRequestResponse("Incorrect number of arguments. Expecting \"init\" plus 2 more.");
 			}
-			
+
 			final String key = args.get(1);
 			final int value = Integer.parseInt(args.get(2));
 			stub.putStringState(key, String.valueOf(value));
-			
+
 		} catch (NumberFormatException e) {
 			return newBadRequestResponse("Expecting integer value for sum");
 		} catch (Throwable t) {
 			return newInternalServerErrorResponse(t);
 		}
-		
+
 		return newSuccessResponse();
 	}
-	
+
 	@Override
 	public Response invoke(ChaincodeStub stub) {
 		// expects to be called with: { "invoke"|"query", chaincodeName, key }
 		try {
 			final String function = stub.getFunction();
 			final String[] args = stub.getParameters().stream().toArray(String[]::new);
-			
+
 			switch (function) {
 			case "invoke":
 				return doInvoke(stub, args);
@@ -76,55 +76,54 @@ public class Example05 extends ChaincodeBase {
 			return newInternalServerErrorResponse(e);
 		}
 	}
-	
-	
+
 	private Response doQuery(ChaincodeStub stub, String[] args) {
 		// query is the same as invoke, but with response payload wrapped in json
 		final Response result = doInvoke(stub, args);
-		if(result.getStatus() == Status.SUCCESS_VALUE) {
-			return newSuccessResponse(format("{\"Name\":\"%s\",\"Value\":%s}", args[0],result.getPayload().toStringUtf8()));
+		if (result.getStatus() == Status.SUCCESS_VALUE) {
+			return newSuccessResponse(format("{\"Name\":\"%s\",\"Value\":%s}", args[0], result.getPayload().toStringUtf8()));
 		} else {
 			return result;
 		}
 	}
 
 	private Response doInvoke(ChaincodeStub stub, String[] args) {
-		if(args.length !=2) throw new AssertionError("Incorrect number of arguments. Expecting 2");
-		
+		if (args.length != 2) throw new AssertionError("Incorrect number of arguments. Expecting 2");
+
 		// the other chaincode's id
 		final String chaincodeName = args[0];
-		
+
 		// key containing the sum
 		final String key = args[1];
-		
+
 		// query other chaincode for value of key "a"
-		final Response queryResponseA = stub.invokeChaincodeWithStringArgs(chaincodeName, Arrays.asList(new String[] {"query", "a"}));
+		final Response queryResponseA = stub.invokeChaincodeWithStringArgs(chaincodeName, Arrays.asList(new String[] { "query", "a" }));
 
 		// check for error
-		if(queryResponseA.getStatus() != Status.SUCCESS_VALUE) {
+		if (queryResponseA.getStatus() != Status.SUCCESS_VALUE) {
 			return newInternalServerErrorResponse("Failed to query chaincode.", queryResponseA.getPayload().toByteArray());
 		}
-		
+
 		// parse response
 		final int a = Integer.parseInt(queryResponseA.getPayload().toStringUtf8());
-		
+
 		// query other chaincode for value of key "b"
 		final Response queryResponseB = stub.invokeChaincodeWithStringArgs(chaincodeName, "query", "b");
 
 		// check for error
-		if(queryResponseB.getStatus() != Status.SUCCESS_VALUE) {
+		if (queryResponseB.getStatus() != Status.SUCCESS_VALUE) {
 			return newInternalServerErrorResponse("Failed to query chaincode.", queryResponseB.getPayload().toByteArray());
 		}
-		
+
 		// parse response
 		final int b = Integer.parseInt(queryResponseB.getPayload().toStringUtf8());
-		
+
 		// calculate sum
 		final int sum = a + b;
-		
+
 		// write new sum to the ledger
 		stub.putStringState(key, String.valueOf(sum));
-		
+
 		// return sum as string in payload
 		return newSuccessResponse(String.valueOf(sum).getBytes(UTF_8));
 	}

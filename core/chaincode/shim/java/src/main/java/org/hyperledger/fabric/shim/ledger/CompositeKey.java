@@ -38,8 +38,7 @@ public class CompositeKey {
 	}
 
 	public CompositeKey(String objectType, List<String> attributes) {
-		if (objectType == null)
-			throw new NullPointerException("objectType cannot be null");
+		if (objectType == null) throw new NullPointerException("objectType cannot be null");
 		this.objectType = objectType;
 		this.attributes = attributes;
 		this.compositeKey = generateCompositeKeyString(objectType, attributes);
@@ -48,22 +47,22 @@ public class CompositeKey {
 	public String getObjectType() {
 		return objectType;
 	}
-	
+
 	public List<String> getAttributes() {
 		return attributes;
 	}
-	
+
 	@Override
 	public String toString() {
 		return compositeKey;
 	}
-	
+
 	public static CompositeKey parseCompositeKey(String compositeKey) {
-		if(compositeKey == null) return null;
+		if (compositeKey == null) return null;
 		final String[] segments = compositeKey.split(DELIMITER, 0);
 		return new CompositeKey(segments[0], Arrays.stream(segments).skip(1).toArray(String[]::new));
 	}
-	
+
 	private String generateCompositeKeyString(String objectType, List<String> attributes) {
 
 		// object type must be a valid composite key segment
@@ -83,5 +82,5 @@ public class CompositeKey {
 			throw CompositeKeyFormatException.forInputString(segment, matcher.group(), matcher.start());
 		}
 	}
-	
+
 }

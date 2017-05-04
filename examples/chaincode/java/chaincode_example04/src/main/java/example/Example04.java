@@ -38,7 +38,7 @@ public class Example04 extends ChaincodeBase {
 		try {
 
 			final List<String> args = stub.getStringArgs();
-			if(args.size() != 3) {
+			if (args.size() != 3) {
 				return newBadRequestResponse("Incorrect number of arguments. Expecting \"init\" plus 2 more.");
 			}
 
@@ -79,7 +79,6 @@ public class Example04 extends ChaincodeBase {
 		}
 	}
 
-
 	private Response doQuery(ChaincodeStub stub, String[] args) {
 		switch (args.length) {
 		case 1:
@@ -100,10 +99,10 @@ public class Example04 extends ChaincodeBase {
 			final String channel = args[3];
 
 			// invoke other chaincode
-			final Response response = stub.invokeChaincodeWithStringArgs(chaincodeToCall, Arrays.asList(new String[]{ "query", key}), channel);
+			final Response response = stub.invokeChaincodeWithStringArgs(chaincodeToCall, Arrays.asList(new String[] { "query", key }), channel);
 
 			// check for error
-			if(response.getStatus() != Status.SUCCESS_VALUE) {
+			if (response.getStatus() != Status.SUCCESS_VALUE) {
 				return response;
 			}
 
@@ -116,19 +115,19 @@ public class Example04 extends ChaincodeBase {
 	}
 
 	private Response doInvoke(ChaincodeStub stub, String[] args) {
-		if(args.length != 3 && args.length != 4) throw new AssertionError("Incorrect number of arguments. Expecting 3 or 4");
+		if (args.length != 3 && args.length != 4) throw new AssertionError("Incorrect number of arguments. Expecting 3 or 4");
 
 		// the other chaincode's name
 		final String nameOfChaincodeToCall = args[0];
 
 		// other chaincode's channel
 		final String channel;
-		if(args.length == 4) {
+		if (args.length == 4) {
 			channel = args[3];
 		} else {
 			channel = null;
 		}
-		
+
 		// state key to be updated
 		final String key = args[1];
 
@@ -139,7 +138,7 @@ public class Example04 extends ChaincodeBase {
 		final Response response = stub.invokeChaincodeWithStringArgs(nameOfChaincodeToCall, Arrays.asList("invoke", "a", "b", "10"), channel);
 
 		// check for error
-		if(response.getStatus() != Status.SUCCESS_VALUE) {
+		if (response.getStatus() != Status.SUCCESS_VALUE) {
 			return newInternalServerErrorResponse("Failed to query chaincode.", response.getPayload().toByteArray());
 		}
 

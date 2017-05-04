@@ -30,45 +30,48 @@ import org.hyperledger.fabric.shim.ChaincodeStub;
 
 public class LinkExample extends ChaincodeBase {
 
-    /** Default name for map chaincode in dev mode. Can be set to a hash location via init or setMap */
-    private static final String DEFAULT_MAP_CHAINCODE_NAME = "map";
-    
+	/**
+	 * Default name for map chaincode in dev mode. Can be set to a hash location
+	 * via init or setMap
+	 */
+	private static final String DEFAULT_MAP_CHAINCODE_NAME = "map";
+
 	private String mapChaincodeName = DEFAULT_MAP_CHAINCODE_NAME;
 
 	@Override
 	public Response init(ChaincodeStub stub) {
-	    return invoke(stub);
+		return invoke(stub);
 	}
-	
+
 	@Override
 	public Response invoke(ChaincodeStub stub) {
-        try {
-            final String function = stub.getFunction();
-            final List<String> args = stub.getParameters();
-            
-            switch (function) {
-            case "init":
-            case "setMap":
-                this.mapChaincodeName = args.get(0);
-                return newSuccessResponse();
-            case "put":
-                stub.invokeChaincodeWithStringArgs(this.mapChaincodeName, args);
-            case "query":
-                return doQuery(stub, args);
-            default:
-                return newBadRequestResponse(format("Unknown function: %s", function));
-            }
-        } catch (Throwable e) {
-            return newInternalServerErrorResponse(e);
-        }
+		try {
+			final String function = stub.getFunction();
+			final List<String> args = stub.getParameters();
+
+			switch (function) {
+			case "init":
+			case "setMap":
+				this.mapChaincodeName = args.get(0);
+				return newSuccessResponse();
+			case "put":
+				stub.invokeChaincodeWithStringArgs(this.mapChaincodeName, args);
+			case "query":
+				return doQuery(stub, args);
+			default:
+				return newBadRequestResponse(format("Unknown function: %s", function));
+			}
+		} catch (Throwable e) {
+			return newInternalServerErrorResponse(e);
+		}
 	}
-	
+
 	private Response doQuery(ChaincodeStub stub, List<String> args) {
 		final Response response = stub.invokeChaincodeWithStringArgs(this.mapChaincodeName, args);
-		if(response.getStatus() == Status.SUCCESS_VALUE) {
-		    return newSuccessResponse(String.format("\"%s\" (queried from %s chaincode)", response.getPayload().toStringUtf8(), this.mapChaincodeName));
+		if (response.getStatus() == Status.SUCCESS_VALUE) {
+			return newSuccessResponse(String.format("\"%s\" (queried from %s chaincode)", response.getPayload().toStringUtf8(), this.mapChaincodeName));
 		} else {
-		    return response;
+			return response;
 		}
 	}
 

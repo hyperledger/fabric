@@ -30,25 +30,16 @@ class KeyValueImpl implements KeyValue {
 		this.value = kv.getValue();
 	}
 
-	/* (non-Javadoc)
-	 * @see org.hyperledger.fabric.shim.ledger.KeyValue#getKey()
-	 */
 	@Override
 	public String getKey() {
 		return key;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.hyperledger.fabric.shim.ledger.KeyValue#getValue()
-	 */
 	@Override
 	public byte[] getValue() {
 		return value.toByteArray();
 	}
 
-	/* (non-Javadoc)
-	 * @see org.hyperledger.fabric.shim.ledger.KeyValue#getStringValue()
-	 */
 	@Override
 	public String getStringValue() {
 		return value.toStringUtf8();
