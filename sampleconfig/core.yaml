@@ -297,9 +297,9 @@ chaincode:
         Dockerfile:  |
             from $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
 
-    # timeout in millisecs for starting up a container and waiting for Register
+    # timeout duration for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
-    startuptimeout: 300000
+    startuptimeout: 300s
 
     # timeout in millisecs for invokes and initialize commands
     # this timeout is used by all chaincodes in all the channels including

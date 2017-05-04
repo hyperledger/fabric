@@ -23,7 +23,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -296,12 +295,13 @@ func registerChaincodeSupport(grpcServer *grpc.Server) {
 	userRunsCC := chaincode.IsDevMode()
 
 	//get chaincode startup timeout
-	tOut, err := strconv.Atoi(viper.GetString("chaincode.startuptimeout"))
-	if err != nil { //what went wrong ?
-		logger.Warning("could not retrieve timeout var...setting to 5secs")
-		tOut = 5000
+	ccStartupTimeout := viper.GetDuration("chaincode.startuptimeout")
+	if ccStartupTimeout < time.Duration(5)*time.Second {
+		logger.Warningf("Invalid chaincode startup timeout value %s (should be at least 5s); defaulting to 5s", ccStartupTimeout)
+		ccStartupTimeout = time.Duration(5) * time.Second
+	} else {
+		logger.Debugf("Chaincode startup timeout value set to %s", ccStartupTimeout)
 	}
-	ccStartupTimeout := time.Duration(tOut) * time.Millisecond
 
 	ccSrv := chaincode.NewChaincodeSupport(peer.GetPeerEndpoint, userRunsCC, ccStartupTimeout)
 
