@@ -52,10 +52,32 @@ func TestBlocksItrBlockingNext(t *testing.T) {
 	<-doneChan
 }
 
+func TestBlockItrClose(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath(), 0))
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
+	defer blkfileMgrWrapper.close()
+	blkfileMgr := blkfileMgrWrapper.blockfileMgr
+
+	blocks := testutil.ConstructTestBlocks(t, 5)
+	blkfileMgrWrapper.addBlocks(blocks)
+
+	itr, err := blkfileMgr.retrieveBlocks(1)
+	testutil.AssertNoError(t, err, "")
+
+	bh, _ := itr.Next()
+	testutil.AssertNotNil(t, bh)
+	itr.Close()
+
+	bh, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, bh)
+}
+
 func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*common.Block, doneChan chan bool) {
 	blocksIterated := 0
 	for {
-		logger.Infof("blocksIterated: %v", blocksIterated)
+		t.Logf("blocksIterated: %v", blocksIterated)
 		bh, err := itr.Next()
 		testutil.AssertNoError(t, err, "")
 		testutil.AssertEquals(t, bh.(*blockHolder).GetBlock(), blocks[blocksIterated])

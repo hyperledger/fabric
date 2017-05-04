@@ -81,7 +81,7 @@ func (index *blockIndex) getLastBlockIndexed() (uint64, error) {
 	var blockNumBytes []byte
 	var err error
 	if blockNumBytes, err = index.db.Get(indexCheckpointKey); err != nil {
-		return 0, nil
+		return 0, err
 	}
 	if blockNumBytes == nil {
 		return 0, errIndexEmpty
@@ -252,7 +252,7 @@ func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidati
 	if err != nil {
 		return peer.TxValidationCode(-1), err
 	} else if raw == nil {
-		return peer.TxValidationCode(-1), blkstorage.ErrAttrNotIndexed
+		return peer.TxValidationCode(-1), blkstorage.ErrNotFoundInIndex
 	} else if len(raw) != 1 {
 		return peer.TxValidationCode(-1), errors.New("Invalid value in indexItems")
 	}
