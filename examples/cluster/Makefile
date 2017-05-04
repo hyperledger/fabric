@@ -41,8 +41,10 @@ help:
 	@cat usage.txt
 
 compose-up: nodes
+	@echo "Booting docker-compose environment"
 	$(COMPOSE) up -d ca $(PEERS)
 	$(DRUN) ./configure.sh $(CHANNEL_NAME) "$(CHANNEL_TXNS)" "$(PEERS)" $(TLS)
+	@./compose/report-env.sh "$(filter-out cli,$(NODES)")
 
 compose-down:
 	$(COMPOSE) down
