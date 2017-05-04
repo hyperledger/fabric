@@ -301,10 +301,10 @@ chaincode:
     # to come through. 1sec should be plenty for chaincode unit tests
     startuptimeout: 300s
 
-    # timeout in millisecs for invokes and initialize commands
+    # timeout duration for invokes and initialize commands
     # this timeout is used by all chaincodes in all the channels including
-    # system chaincodes. Default is 30000ms (30 seconds)
-    executetimeout: 30000
+    # system chaincodes. Default is 30 seconds
+    executetimeout: 30s
 
     #timeout in millisecs for deploying chaincode from a remote repository.
     deploytimeout: 30000

@@ -169,16 +169,16 @@ func NewChaincodeSupport(getPeerEndpoint func() (*pb.PeerEndpoint, error), userr
 		theChaincodeSupport.keepalive = time.Duration(t) * time.Second
 	}
 
-	//default chaincode execute timeout is 30000ms (30 secs)
-	execto := 30000
-	if eto := viper.GetInt("chaincode.executetimeout"); eto <= 1000 {
-		chaincodeLogger.Errorf("Invalid execute timeout value %d (should be at least 1000ms) defaulting to %d ms", eto, execto)
+	//default chaincode execute timeout is 30 secs
+	execto := time.Duration(30) * time.Second
+	if eto := viper.GetDuration("chaincode.executetimeout"); eto <= time.Duration(1)*time.Second {
+		chaincodeLogger.Errorf("Invalid execute timeout value %s (should be at least 1s); defaulting to %s", eto, execto)
 	} else {
-		chaincodeLogger.Debugf("Setting execute timeout value to %d ms", eto)
+		chaincodeLogger.Debugf("Setting execute timeout value to %s", eto)
 		execto = eto
 	}
 
-	theChaincodeSupport.executetimeout = time.Duration(execto) * time.Millisecond
+	theChaincodeSupport.executetimeout = execto
 
 	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()
