@@ -21,6 +21,14 @@ Use the following sequence to run all unit tests
     cd $GOPATH/src/github.com/hyperledger/fabric
     make unit-test
 
+To run a subset of tests, set the TEST_PKGS environment variable.
+Specify a list of packages (separated by space), for example:
+
+::
+
+    export TEST_PKGS="github.com/hyperledger/fabric/core/ledger/..."
+    make unit-test
+
 To run a specific test use the ``-run RE`` flag where RE is a regular
 expression that matches the test case name. To run tests with verbose
 output use the ``-v`` flag. For example, to run the ``TestGetFoo`` test
@@ -30,6 +38,8 @@ call/excecute
 ::
 
     go test -v -run=TestGetFoo
+
+
 
 Running Node.js Unit Tests
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
