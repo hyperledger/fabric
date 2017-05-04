@@ -34,23 +34,46 @@ func TestMain(m *testing.M) {
 }
 
 func TestLedgerMgmt(t *testing.T) {
+	// Check for error when creating/opening ledger without initialization.
+	gb, _ := test.MakeGenesisBlock(constructTestLedgerID(0))
+	l, err := CreateLedger(gb)
+	testutil.AssertNil(t, l)
+	testutil.AssertEquals(t, err, ErrLedgerMgmtNotInitialized)
+
+	ledgerID := constructTestLedgerID(2)
+	l, err = OpenLedger(ledgerID)
+	testutil.AssertNil(t, l)
+	testutil.AssertEquals(t, err, ErrLedgerMgmtNotInitialized)
+
+	ids, err := GetLedgerIDs()
+	testutil.AssertNil(t, ids)
+	testutil.AssertEquals(t, err, ErrLedgerMgmtNotInitialized)
+
+	Close()
+
 	InitializeTestEnv()
 	defer CleanupTestEnv()
 
 	numLedgers := 10
-	ledgers := make([]ledger.PeerLedger, 10)
+	ledgers := make([]ledger.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		gb, _ := test.MakeGenesisBlock(constructTestLedgerID(i))
 		l, _ := CreateLedger(gb)
 		ledgers[i] = l
 	}
 
-	ledgerID := constructTestLedgerID(2)
+	ids, _ = GetLedgerIDs()
+	testutil.AssertEquals(t, len(ids), numLedgers)
+	for i := 0; i < numLedgers; i++ {
+		testutil.AssertEquals(t, ids[i], constructTestLedgerID(i))
+	}
+
+	ledgerID = constructTestLedgerID(2)
 	t.Logf("Ledger selected for test = %s", ledgerID)
-	_, err := OpenLedger(ledgerID)
+	_, err = OpenLedger(ledgerID)
 	testutil.AssertEquals(t, err, ErrLedgerAlreadyOpened)
 
-	l := ledgers[2]
+	l = ledgers[2]
 	l.Close()
 	l, err = OpenLedger(ledgerID)
 	testutil.AssertNoError(t, err, "")
@@ -60,8 +83,9 @@ func TestLedgerMgmt(t *testing.T) {
 
 	// close all opened ledgers and ledger mgmt
 	Close()
+
 	// Restart ledger mgmt with existing ledgers
-	initialize()
+	Initialize()
 	l, err = OpenLedger(ledgerID)
 	testutil.AssertNoError(t, err, "")
 	Close()
