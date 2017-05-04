@@ -672,7 +672,7 @@ public class Handler {
 			}
 
 			// Incorrect chaincode message received
-			logger.error(String.format("Incorrect chaincode message %s recieved. Expecting %s or %s", response.getType(), RESPONSE, ERROR));
+			logger.error(String.format("Incorrect chaincode message %s received. Expecting %s or %s", response.getType(), RESPONSE, ERROR));
 			throw new RuntimeException("Incorrect chaincode message received");
 		} finally {
 			deleteChannel(txId);

@@ -163,7 +163,7 @@ func (b *BDDContext) userCreatesADeploymentSpecUsingChaincodeSpecAndDevopsOnPeer
 func getContextAndCancelForTimeoutInSecs(parentCtx context.Context, timeoutInSecs string) (context.Context, context.CancelFunc, error) {
 	var err error
 	errRetFunc := func() error {
-		return fmt.Errorf("Error building context and cancel func with timout '%s':  %s", timeoutInSecs, err)
+		return fmt.Errorf("Error building context and cancel func with timeout '%s':  %s", timeoutInSecs, err)
 	}
 	var (
 		durationToWait time.Duration

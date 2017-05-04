@@ -270,7 +270,7 @@ func TestCBCPKCS7Encrypt_EmptyPlaintext(t *testing.T) {
 	// As part of the padding, at least one block gets encrypted (while the first block is the IV)
 	const expectedLength = aes.BlockSize + aes.BlockSize
 	if len(ciphertext) != expectedLength {
-		t.Fatalf("Wrong ciphertext length. Expected %d, recieved %d", expectedLength, len(ciphertext))
+		t.Fatalf("Wrong ciphertext length. Expected %d, received %d", expectedLength, len(ciphertext))
 	}
 
 	t.Log("Ciphertext length: ", len(ciphertext))
