@@ -1,9 +1,13 @@
 #!/bin/bash
 
-UP_DOWN=$1
-CH_NAME=$2
+UP_DOWN="$1"
+CH_NAME="$2"
+CLI_TIMEOUT="$3"
 
-COMPOSE_FILE=docker-compose.yaml
+: ${CLI_TIMEOUT:="10000"}
+
+COMPOSE_FILE=docker-compose-cli.yaml
+#COMPOSE_FILE=docker-compose-e2e.yaml
 
 function printHelp () {
 	echo "Usage: ./network_setup <up|down> <channel-name>"
@@ -40,24 +44,29 @@ function removeUnwantedImages() {
 }
 
 function networkUp () {
-	CURRENT_DIR=$PWD
-        source generateCfgTrx.sh $CH_NAME
-	cd $CURRENT_DIR
+    #Generate all the artifacts that includes org certs, orderer genesis block,
+    # channel configuration transaction
+    source generateArtifacts.sh $CH_NAME
 
-	CHANNEL_NAME=$CH_NAME docker-compose -f $COMPOSE_FILE up -d 2>&1
-	if [ $? -ne 0 ]; then
-		echo "ERROR !!!! Unable to pull the images "
-		exit 1
-	fi
-	docker logs -f cli
+    CHANNEL_NAME=$CH_NAME TIMEOUT=$CLI_TIMEOUT docker-compose -f $COMPOSE_FILE up -d 2>&1
+    if [ $? -ne 0 ]; then
+	echo "ERROR !!!! Unable to pull the images "
+	exit 1
+    fi
+    docker logs -f cli
 }
 
 function networkDown () {
-        docker-compose -f $COMPOSE_FILE down
-        #Cleanup the chaincode containers
-	clearContainers
-	#Cleanup images
-	removeUnwantedImages
+    docker-compose -f $COMPOSE_FILE down
+
+    #Cleanup the chaincode containers
+    clearContainers
+
+    #Cleanup images
+    removeUnwantedImages
+
+    # remove orderer block and other channel configuration transactions and certs
+    rm -rf channel-artifacts/*.block channel-artifacts/*.tx crypto-config
 }
 
 validateArgs

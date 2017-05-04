@@ -205,8 +205,8 @@ What's happening behind the scenes?
 -  Now we have a channel consisting of four peers, and two
    organizations.
 
--  ``PEER0`` and ``PEER1`` belong to Org0; ``PEER2`` and ``PEER3``
-   belong to Org1
+-  ``PEER0`` and ``PEER1`` belong to Org1; ``PEER2`` and ``PEER3``
+   belong to Org2
 
 -  Recall that these relationships are defined in the ``configtx.yaml``
 
@@ -221,8 +221,8 @@ What's happening behind the scenes?
 
 -  The instantiation also passes in an argument for the endorsement
    policy. The policy is defined as
-   ``-P "OR    ('Org0MSP.member','Org1MSP.member')"``, meaning that any
-   transaction must be endorsed by a peer tied to Org0 or Org1.
+   ``-P "OR    ('Org1MSP.member','Org2MSP.member')"``, meaning that any
+   transaction must be endorsed by a peer tied to Org1 or Org2.
 
 -  A query against the value of "a" is issued to ``PEER0``. The
    chaincode was previously installed on ``PEER0``, so this will start
@@ -379,7 +379,7 @@ orderer.
     # Environment variables for PEER0
     CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig
     CORE_PEER_ADDRESS=peer0:7051
-    CORE_PEER_LOCALMSPID="Org0MSP"
+    CORE_PEER_LOCALMSPID="Org1MSP"
     CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig/cacerts/peerOrg0.pem
 
 These environment variables for each peer are defined in the supplied
@@ -453,12 +453,12 @@ Instantiate chaincode and define the endorsement policy
 Instantiate the chaincode on a peer. This will launch a chaincode
 container for the targeted peer and set the endorsement policy for the
 chaincode. In this snippet, we define the policy as requiring an
-endorsement from one peer node that is a part of either `Org0` or `Org1`.
+endorsement from one peer node that is a part of either `Org1` or `Org2`.
 The command is:
 
 .. code:: bash
 
-    peer chaincode instantiate -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org0MSP.member','Org1MSP.member')"
+    peer chaincode instantiate -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org1MSP.member','Org2MSP.member')"
 
 See the `endorsement
 policies <http://hyperledger-fabric.readthedocs.io/en/latest/endorsement-policies.html>`__
@@ -702,7 +702,7 @@ chaincode:
    .. code:: bash
 
        peer chaincode install -o orderer0:7050 -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02
-       peer chaincode instantiate -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02 -c '{"Args":["init"]}' -P "OR      ('Org0MSP.member','Org1MSP.member')"
+       peer chaincode instantiate -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02 -c '{"Args":["init"]}' -P "OR      ('Org1MSP.member','Org2MSP.member')"
 
 -  Create some marbles and move them around:
 

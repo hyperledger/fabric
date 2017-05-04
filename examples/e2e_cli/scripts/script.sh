@@ -1,11 +1,19 @@
 #!/bin/bash
 
+echo
+echo " ____    _____      _      ____    _____           _____   ____    _____ "
+echo "/ ___|  |_   _|    / \    |  _ \  |_   _|         | ____| |___ \  | ____|"
+echo "\___ \    | |     / _ \   | |_) |   | |    _____  |  _|     __) | |  _|  "
+echo " ___) |   | |    / ___ \  |  _ <    | |   |_____| | |___   / __/  | |___ "
+echo "|____/    |_|   /_/   \_\ |_| \_\   |_|           |_____| |_____| |_____|"
+echo
+
 CHANNEL_NAME="$1"
 : ${CHANNEL_NAME:="mychannel"}
 : ${TIMEOUT:="60"}
-COUNTER=0
+COUNTER=1
 MAX_RETRY=5
-ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem
+ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem
 
 echo "Channel name : "$CHANNEL_NAME
 
@@ -20,27 +28,37 @@ verifyResult () {
 
 setGlobals () {
 
-	CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer$1/localMspConfig
-	CORE_PEER_ADDRESS=peer$1:7051
-
 	if [ $1 -eq 0 -o $1 -eq 1 ] ; then
-		CORE_PEER_LOCALMSPID="Org0MSP"
-		CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer$1/localMspConfig/cacerts/peerOrg0.pem
-	else
 		CORE_PEER_LOCALMSPID="Org1MSP"
-		CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer$1/localMspConfig/cacerts/peerOrg1.pem
+		CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+		CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+		if [ $1 -eq 0 ]; then
+			CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+		else
+			CORE_PEER_ADDRESS=peer1.org1.example.com:7051
+			CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+		fi
+	else
+		CORE_PEER_LOCALMSPID="Org2MSP"
+		CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+		CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+		if [ $1 -eq 2 ]; then
+			CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+		else
+			CORE_PEER_ADDRESS=peer1.org2.example.com:7051
+		fi
 	fi
+
 	env |grep CORE
 }
 
 createChannel() {
-	CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig
-	CORE_PEER_LOCALMSPID="Org0MSP"
+	setGlobals 0
 
         if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
-		peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/channel.tx >&log.txt
+		peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME -f ./channel-artifacts/channel.tx >&log.txt
 	else
-		peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/channel.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
+		peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME -f ./channel-artifacts/channel.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
 	fi
 	res=$?
 	cat log.txt
@@ -54,14 +72,14 @@ updateAnchorPeers() {
         setGlobals $PEER
 
         if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
-		peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/${CORE_PEER_LOCALMSPID}anchors.tx >&log.txt
+		peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME -f ./channel-artifacts/${CORE_PEER_LOCALMSPID}anchors.tx >&log.txt
 	else
-		peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/${CORE_PEER_LOCALMSPID}anchors.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
+		peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME -f ./channel-artifacts/${CORE_PEER_LOCALMSPID}anchors.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
 	fi
 	res=$?
 	cat log.txt
 	verifyResult $res "Anchor peer update failed"
-	echo "===================== Anchor peers for org \"$CORE_PEER_LOCALMSPID}\" on \"$CHANNEL_NAME\" is updated successfully ===================== "
+	echo "===================== Anchor peers for org \"$CORE_PEER_LOCALMSPID\" on \"$CHANNEL_NAME\" is updated successfully ===================== "
 	echo
 }
 
@@ -76,7 +94,7 @@ joinWithRetry () {
 		sleep 2
 		joinWithRetry $1
 	else
-		COUNTER=0
+		COUNTER=1
 	fi
         verifyResult $res "After $MAX_RETRY attempts, PEER$ch has failed to Join the Channel"
 }
@@ -106,9 +124,9 @@ instantiateChaincode () {
 	PEER=$1
 	setGlobals $PEER
         if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
-		peer chaincode instantiate -o orderer0:7050 -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org0MSP.member','Org1MSP.member')" >&log.txt
+		peer chaincode instantiate -o orderer.example.com:7050 -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org1MSP.member','Org2MSP.member')" >&log.txt
 	else
-		peer chaincode instantiate -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org0MSP.member','Org1MSP.member')" >&log.txt
+		peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org1MSP.member','Org2MSP.member')" >&log.txt
 	fi
 	res=$?
 	cat log.txt
@@ -142,15 +160,17 @@ chaincodeQuery () {
 	echo "!!!!!!!!!!!!!!! Query result on PEER$PEER is INVALID !!!!!!!!!!!!!!!!"
         echo "================== ERROR !!! FAILED to execute End-2-End Scenario =================="
 	echo
+	exit 1
   fi
 }
 
 chaincodeInvoke () {
         PEER=$1
+        setGlobals $PEER
         if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
-		peer chaincode invoke -o orderer0:7050 -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' >&log.txt
+		peer chaincode invoke -o orderer.example.com:7050 -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' >&log.txt
 	else
-		peer chaincode invoke -o orderer0:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' >&log.txt
+		peer chaincode invoke -o orderer.example.com:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' >&log.txt
 	fi
 	res=$?
 	cat log.txt
@@ -169,28 +189,37 @@ joinChannel
 updateAnchorPeers 0
 updateAnchorPeers 2
 
-## Install chaincode on Peer0/Org0 and Peer2/Org1
+## Install chaincode on Peer0/Org1 and Peer2/Org2
 installChaincode 0
 installChaincode 2
 
-#Instantiate chaincode on Peer2/Org1
-echo "Instantiating chaincode on Peer2/Org1 ..."
+#Instantiate chaincode on Peer2/Org2
+echo "Instantiating chaincode on Peer2/Org2 ..."
 instantiateChaincode 2
 
-#Query on chaincode on Peer0/Org0
+#Query on chaincode on Peer0/Org2
 chaincodeQuery 0 100
 
-#Invoke on chaincode on Peer0/Org0
-echo "send Invoke transaction on Peer0/Org0 ..."
+#Invoke on chaincode on Peer0/Org2
+echo "send Invoke transaction on Peer0/Org2 ..."
 chaincodeInvoke 0
 
-## Install chaincode on Peer3/Org1
+## Install chaincode on Peer3/Org2
 installChaincode 3
 
-#Query on chaincode on Peer3/Org1, check if the result is 90
+#Query on chaincode on Peer3/Org2, check if the result is 90
 chaincodeQuery 3 90
 
 echo
 echo "===================== All GOOD, End-2-End execution completed ===================== "
 echo
+
+echo
+echo " _____   _   _   ____            _____   ____    _____ "
+echo "| ____| | \ | | |  _ \          | ____| |___ \  | ____|"
+echo "|  _|   |  \| | | | | |  _____  |  _|     __) | |  _|  "
+echo "| |___  | |\  | | |_| | |_____| | |___   / __/  | |___ "
+echo "|_____| |_| \_| |____/          |_____| |_____| |_____|"
+echo
+
 exit 0
