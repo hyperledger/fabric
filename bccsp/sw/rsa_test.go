@@ -23,8 +23,10 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
+	"strings"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -92,11 +94,15 @@ func TestRSAPublicKey(t *testing.T) {
 
 func TestRSASignerSign(t *testing.T) {
 	signer := &rsaSigner{}
+	verifierPrivateKey := &rsaPrivateKeyVerifier{}
+	verifierPublicKey := &rsaPublicKeyKeyVerifier{}
 
 	// Generate a key
 	lowLevelKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	assert.NoError(t, err)
 	k := &rsaPrivateKey{lowLevelKey}
+	pk, err := k.PublicKey()
+	assert.NoError(t, err)
 
 	// Sign
 	msg := []byte("Hello World!!!")
@@ -114,12 +120,49 @@ func TestRSASignerSign(t *testing.T) {
 	sigma, err := signer.Sign(k, digest, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash, Hash: crypto.SHA256})
 	assert.NoError(t, err)
 
+	opts := &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash, Hash: crypto.SHA256}
 	// Verify against msg, must fail
-	err = rsa.VerifyPSS(&lowLevelKey.PublicKey, crypto.SHA256, msg, sigma, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash, Hash: crypto.SHA256})
+	err = rsa.VerifyPSS(&lowLevelKey.PublicKey, crypto.SHA256, msg, sigma, opts)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "crypto/rsa: verification error")
 
 	// Verify against digest, must succeed
-	err = rsa.VerifyPSS(&lowLevelKey.PublicKey, crypto.SHA256, digest, sigma, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash, Hash: crypto.SHA256})
+	err = rsa.VerifyPSS(&lowLevelKey.PublicKey, crypto.SHA256, digest, sigma, opts)
 	assert.NoError(t, err)
+
+	valid, err := verifierPrivateKey.Verify(k, sigma, msg, opts)
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "crypto/rsa: verification error"))
+
+	valid, err = verifierPrivateKey.Verify(k, sigma, digest, opts)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+
+	valid, err = verifierPublicKey.Verify(pk, sigma, msg, opts)
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "crypto/rsa: verification error"))
+
+	valid, err = verifierPublicKey.Verify(pk, sigma, digest, opts)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+}
+
+func TestRSAVerifiersInvalidInputs(t *testing.T) {
+	verifierPrivate := &rsaPrivateKeyVerifier{}
+	_, err := verifierPrivate.Verify(nil, nil, nil, nil)
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Invalid options. It must not be nil."))
+
+	_, err = verifierPrivate.Verify(nil, nil, nil, &mocks.SignerOpts{})
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Opts type not recognized ["))
+
+	verifierPublic := &rsaPublicKeyKeyVerifier{}
+	_, err = verifierPublic.Verify(nil, nil, nil, nil)
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Invalid options. It must not be nil."))
+
+	_, err = verifierPublic.Verify(nil, nil, nil, &mocks.SignerOpts{})
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Opts type not recognized ["))
 }
