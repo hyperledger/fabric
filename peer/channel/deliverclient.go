@@ -19,24 +19,28 @@ package channel
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"google.golang.org/grpc"
 )
 
 type deliverClientIntf interface {
 	getBlock() (*common.Block, error)
+	Close() error
 }
 
 type deliverClient struct {
+	conn    *grpc.ClientConn
 	client  ab.AtomicBroadcast_DeliverClient
 	chainID string
 }
 
-func newDeliverClient(client ab.AtomicBroadcast_DeliverClient, chainID string) *deliverClient {
-	return &deliverClient{client: client, chainID: chainID}
+func newDeliverClient(conn *grpc.ClientConn, client ab.AtomicBroadcast_DeliverClient, chainID string) *deliverClient {
+	return &deliverClient{conn: conn, client: client, chainID: chainID}
 }
 
 func seekHelper(chainID string, start *ab.SeekPosition) *common.Envelope {
@@ -62,21 +66,21 @@ func (r *deliverClient) seek(blockNumber uint64) error {
 }
 
 func (r *deliverClient) readBlock() (*common.Block, error) {
-	for {
-		msg, err := r.client.Recv()
-		if err != nil {
-			fmt.Println("Error receiving:", err)
-			return nil, err
-		}
+	msg, err := r.client.Recv()
+	if err != nil {
+		fmt.Println("Error receiving:", err)
+		return nil, err
+	}
 
-		switch t := msg.Type.(type) {
-		case *ab.DeliverResponse_Status:
-			fmt.Println("Got status ", t)
-			continue
-		case *ab.DeliverResponse_Block:
-			fmt.Println("Received block: ", t.Block)
-			return t.Block, nil
-		}
+	switch t := msg.Type.(type) {
+	case *ab.DeliverResponse_Status:
+		fmt.Println("Got status ", t)
+		return nil, fmt.Errorf("can't read the block")
+	case *ab.DeliverResponse_Block:
+		fmt.Println("Received block: ", t.Block)
+		return t.Block, nil
+	default:
+		return nil, fmt.Errorf("response error")
 	}
 }
 
@@ -93,4 +97,32 @@ func (r *deliverClient) getBlock() (*common.Block, error) {
 	}
 
 	return b, nil
+}
+
+func (r *deliverClient) Close() error {
+	return r.conn.Close()
+}
+
+func getGenesisBlock(cf *ChannelCmdFactory) (*common.Block, error) {
+	timer := time.NewTimer(time.Second * time.Duration(timeout))
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-timer.C:
+			cf.DeliverClient.Close()
+			return nil, fmt.Errorf("timeout waiting for channel creation")
+		default:
+			if block, err := cf.DeliverClient.getBlock(); err != nil {
+				cf.DeliverClient.Close()
+				cf, err = InitCmdFactory(false)
+				if err != nil {
+					return nil, fmt.Errorf("failed connecting: %v", err)
+				}
+				time.Sleep(200 * time.Millisecond)
+			} else {
+				return block, nil
+			}
+		}
+	}
 }

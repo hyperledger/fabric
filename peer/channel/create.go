@@ -19,7 +19,6 @@ package channel
 import (
 	"fmt"
 	"io/ioutil"
-	"time"
 
 	"errors"
 
@@ -174,10 +173,8 @@ func executeCreate(cf *ChannelCmdFactory) error {
 		return err
 	}
 
-	time.Sleep(2 * time.Second)
-
 	var block *cb.Block
-	if block, err = cf.DeliverClient.getBlock(); err != nil {
+	if block, err = getGenesisBlock(cf); err != nil {
 		return err
 	}
 
