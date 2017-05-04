@@ -52,6 +52,9 @@ func TestMakeGenesisBlockFromMSPs(t *testing.T) {
 	ordererOrgID := "TestOrdererOrg"
 	appOrgID := "TestAppOrg"
 	appMSPConf, err := msp.GetLocalMspConfig(mspDir, nil, appOrgID)
+	if err != nil {
+		t.Fatalf("Error making genesis block from MSPs: %s", err)
+	}
 	ordererMSPConf, err := msp.GetLocalMspConfig(mspDir, nil, ordererOrgID)
 	if err != nil {
 		t.Fatalf("Error making genesis block from MSPs: %s", err)
