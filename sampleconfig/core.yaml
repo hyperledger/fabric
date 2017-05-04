@@ -306,8 +306,8 @@ chaincode:
     # system chaincodes. Default is 30 seconds
     executetimeout: 30s
 
-    #timeout in millisecs for deploying chaincode from a remote repository.
-    deploytimeout: 30000
+    #timeout duration for deploying chaincode from a remote repository.
+    deploytimeout: 30s
 
     #mode - options are "dev", "net"
     #dev - in dev mode, user runs the chaincode after starting validator from
