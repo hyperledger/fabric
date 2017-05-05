@@ -37,7 +37,7 @@ func TestKeyGenInvalidInputs(t *testing.T) {
 
 	_, err = csp.KeyGen(&mocks.KeyGenOpts{})
 	assert.Error(t, err)
-	assert.True(t, strings.Contains(err.Error(), "Unrecognized KeyGenOpts provided ["))
+	assert.True(t, strings.Contains(err.Error(), "Unsupported 'KeyGenOpts' provided ["))
 
 	_, err = csp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{})
 	assert.Error(t, err, "Generation of a non-ephemeral key must fail. KeyStore is programmed to fail.")

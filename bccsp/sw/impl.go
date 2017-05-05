@@ -19,7 +19,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
@@ -110,6 +109,22 @@ func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.B
 		verifiers:  verifiers,
 		hashers:    hashers}
 
+	// Set the key generators
+	keyGenerators := make(map[reflect.Type]KeyGenerator)
+	keyGenerators[reflect.TypeOf(&bccsp.ECDSAKeyGenOpts{})] = &ecdsaKeyGenerator{curve: conf.ellipticCurve}
+	keyGenerators[reflect.TypeOf(&bccsp.ECDSAP256KeyGenOpts{})] = &ecdsaKeyGenerator{curve: elliptic.P256()}
+	keyGenerators[reflect.TypeOf(&bccsp.ECDSAP384KeyGenOpts{})] = &ecdsaKeyGenerator{curve: elliptic.P384()}
+	keyGenerators[reflect.TypeOf(&bccsp.AESKeyGenOpts{})] = &aesKeyGenerator{length: conf.aesBitLength}
+	keyGenerators[reflect.TypeOf(&bccsp.AES256KeyGenOpts{})] = &aesKeyGenerator{length: 32}
+	keyGenerators[reflect.TypeOf(&bccsp.AES192KeyGenOpts{})] = &aesKeyGenerator{length: 24}
+	keyGenerators[reflect.TypeOf(&bccsp.AES128KeyGenOpts{})] = &aesKeyGenerator{length: 16}
+	keyGenerators[reflect.TypeOf(&bccsp.RSAKeyGenOpts{})] = &rsaKeyGenerator{length: conf.rsaBitLength}
+	keyGenerators[reflect.TypeOf(&bccsp.RSA1024KeyGenOpts{})] = &rsaKeyGenerator{length: 1024}
+	keyGenerators[reflect.TypeOf(&bccsp.RSA2048KeyGenOpts{})] = &rsaKeyGenerator{length: 2048}
+	keyGenerators[reflect.TypeOf(&bccsp.RSA3072KeyGenOpts{})] = &rsaKeyGenerator{length: 3072}
+	keyGenerators[reflect.TypeOf(&bccsp.RSA4096KeyGenOpts{})] = &rsaKeyGenerator{length: 4096}
+	impl.keyGenerators = keyGenerators
+
 	return impl, nil
 }
 
@@ -118,11 +133,12 @@ type impl struct {
 	conf *config
 	ks   bccsp.KeyStore
 
-	encryptors map[reflect.Type]Encryptor
-	decryptors map[reflect.Type]Decryptor
-	signers    map[reflect.Type]Signer
-	verifiers  map[reflect.Type]Verifier
-	hashers    map[reflect.Type]Hasher
+	keyGenerators map[reflect.Type]KeyGenerator
+	encryptors    map[reflect.Type]Encryptor
+	decryptors    map[reflect.Type]Decryptor
+	signers       map[reflect.Type]Signer
+	verifiers     map[reflect.Type]Verifier
+	hashers       map[reflect.Type]Hasher
 }
 
 // KeyGen generates a key using opts.
@@ -132,115 +148,14 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		return nil, errors.New("Invalid Opts parameter. It must not be nil.")
 	}
 
-	// Parse algorithm
-	switch opts.(type) {
-	case *bccsp.ECDSAKeyGenOpts:
-		lowLevelKey, err := ecdsa.GenerateKey(csp.conf.ellipticCurve, rand.Reader)
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating ECDSA key [%s]", err)
-		}
+	keyGenerator, found := csp.keyGenerators[reflect.TypeOf(opts)]
+	if !found {
+		return nil, fmt.Errorf("Unsupported 'KeyGenOpts' provided [%v]", opts)
+	}
 
-		k = &ecdsaPrivateKey{lowLevelKey}
-
-	case *bccsp.ECDSAP256KeyGenOpts:
-		lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating ECDSA P256 key [%s]", err)
-		}
-
-		k = &ecdsaPrivateKey{lowLevelKey}
-
-	case *bccsp.ECDSAP384KeyGenOpts:
-		lowLevelKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating ECDSA P384 key [%s]", err)
-		}
-
-		k = &ecdsaPrivateKey{lowLevelKey}
-
-	case *bccsp.AESKeyGenOpts:
-		lowLevelKey, err := GetRandomBytes(csp.conf.aesBitLength)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating AES key [%s]", err)
-		}
-
-		k = &aesPrivateKey{lowLevelKey, false}
-
-	case *bccsp.AES256KeyGenOpts:
-		lowLevelKey, err := GetRandomBytes(32)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating AES 256 key [%s]", err)
-		}
-
-		k = &aesPrivateKey{lowLevelKey, false}
-
-	case *bccsp.AES192KeyGenOpts:
-		lowLevelKey, err := GetRandomBytes(24)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating AES 192 key [%s]", err)
-		}
-
-		k = &aesPrivateKey{lowLevelKey, false}
-
-	case *bccsp.AES128KeyGenOpts:
-		lowLevelKey, err := GetRandomBytes(16)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating AES 128 key [%s]", err)
-		}
-
-		k = &aesPrivateKey{lowLevelKey, false}
-
-	case *bccsp.RSAKeyGenOpts:
-		lowLevelKey, err := rsa.GenerateKey(rand.Reader, csp.conf.rsaBitLength)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating RSA key [%s]", err)
-		}
-
-		k = &rsaPrivateKey{lowLevelKey}
-
-	case *bccsp.RSA1024KeyGenOpts:
-		lowLevelKey, err := rsa.GenerateKey(rand.Reader, 1024)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating RSA 1024 key [%s]", err)
-		}
-
-		k = &rsaPrivateKey{lowLevelKey}
-
-	case *bccsp.RSA2048KeyGenOpts:
-		lowLevelKey, err := rsa.GenerateKey(rand.Reader, 2048)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating RSA 2048 key [%s]", err)
-		}
-
-		k = &rsaPrivateKey{lowLevelKey}
-
-	case *bccsp.RSA3072KeyGenOpts:
-		lowLevelKey, err := rsa.GenerateKey(rand.Reader, 3072)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating RSA 3072 key [%s]", err)
-		}
-
-		k = &rsaPrivateKey{lowLevelKey}
-
-	case *bccsp.RSA4096KeyGenOpts:
-		lowLevelKey, err := rsa.GenerateKey(rand.Reader, 4096)
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed generating RSA 4096 key [%s]", err)
-		}
-
-		k = &rsaPrivateKey{lowLevelKey}
-
-	default:
-		return nil, fmt.Errorf("Unrecognized KeyGenOpts provided [%s]", opts.Algorithm())
+	k, err = keyGenerator.KeyGen(opts)
+	if err != nil {
+		return nil, err
 	}
 
 	// If the key is not Ephemeral, store it.

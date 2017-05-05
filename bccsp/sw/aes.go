@@ -30,6 +30,10 @@ import (
 
 // GetRandomBytes returns len random looking bytes
 func GetRandomBytes(len int) ([]byte, error) {
+	if len < 0 {
+		return nil, errors.New("Len must be larger than 0")
+	}
+
 	buffer := make([]byte, len)
 
 	n, err := rand.Read(buffer)

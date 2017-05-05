@@ -22,6 +22,13 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 )
 
+// KeyGenerator is a BCCSP-like interface that provides key generation algorithms
+type KeyGenerator interface {
+
+	// KeyGen generates a key using opts.
+	KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error)
+}
+
 // Encryptor is a BCCSP-like interface that provides encryption algorithms
 type Encryptor interface {
 

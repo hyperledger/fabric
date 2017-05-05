@@ -123,14 +123,16 @@ func (o *SignerOpts) HashFunc() crypto.Hash {
 	return o.HashFuncValue
 }
 
-type KeyGenOpts struct{}
+type KeyGenOpts struct {
+	EphemeralValue bool
+}
 
 func (*KeyGenOpts) Algorithm() string {
 	return "Mock KeyGenOpts"
 }
 
-func (*KeyGenOpts) Ephemeral() bool {
-	panic("Not yet implemented")
+func (o *KeyGenOpts) Ephemeral() bool {
+	return o.EphemeralValue
 }
 
 type KeyStore struct {
