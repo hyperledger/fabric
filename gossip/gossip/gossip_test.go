@@ -53,7 +53,7 @@ func init() {
 	discovery.SetAliveExpirationCheckInterval(aliveTimeInterval)
 	discovery.SetAliveExpirationTimeout(aliveTimeInterval * 10)
 	discovery.SetReconnectInterval(aliveTimeInterval)
-	testWG.Add(6)
+	testWG.Add(5)
 	factory.InitFactories(nil)
 	identityExpirationCheckInterval = time.Second
 }
@@ -923,6 +923,7 @@ func TestDisseminateAll2All(t *testing.T) {
 	// disseminate a block to all nodes.
 	// Ensure all blocks are received
 
+	t.Skip()
 	t.Parallel()
 	portPrefix := 6610
 	stopped := int32(0)
