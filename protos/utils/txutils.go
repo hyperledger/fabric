@@ -309,6 +309,29 @@ func MockSignedEndorserProposalOrPanic(chainID string, cs *peer.ChaincodeSpec, c
 	return &peer.SignedProposal{ProposalBytes: propBytes, Signature: signature}, prop
 }
 
+func MockSignedEndorserProposal2OrPanic(chainID string, cs *peer.ChaincodeSpec, signer msp.SigningIdentity) (*peer.SignedProposal, *peer.Proposal) {
+	serializedSigner, err := signer.Serialize()
+	if err != nil {
+		panic(err)
+	}
+
+	prop, _, err := CreateChaincodeProposal(
+		common.HeaderType_ENDORSER_TRANSACTION,
+		chainID,
+		&peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{}},
+		serializedSigner)
+	if err != nil {
+		panic(err)
+	}
+
+	sProp, err := GetSignedProposal(prop, signer)
+	if err != nil {
+		panic(err)
+	}
+
+	return sProp, prop
+}
+
 // GetBytesProposalPayloadForTx takes a ChaincodeProposalPayload and returns its serialized
 // version according to the visibility field
 func GetBytesProposalPayloadForTx(payload *peer.ChaincodeProposalPayload, visibility []byte) ([]byte, error) {

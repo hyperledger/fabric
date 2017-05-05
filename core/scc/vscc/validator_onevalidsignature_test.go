@@ -196,6 +196,17 @@ func getSignedByMSPMemberPolicy(mspID string) ([]byte, error) {
 	return b, err
 }
 
+func getSignedByMSPAdminPolicy(mspID string) ([]byte, error) {
+	p := cauthdsl.SignedByMspAdmin(mspID)
+
+	b, err := utils.Marshal(p)
+	if err != nil {
+		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
+	}
+
+	return b, err
+}
+
 func TestInvoke(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
@@ -609,8 +620,9 @@ func TestAlreadyDeployed(t *testing.T) {
 		t.FailNow()
 	}
 
+	sProp2, _ := utils.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
 	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
-	if res := stublccc.MockInvoke("1", args); res.Status != shim.OK {
+	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
 		fmt.Printf("%#v\n", res)
 		t.FailNow()
 	}
@@ -667,7 +679,9 @@ func TestValidateDeployOK(t *testing.T) {
 	ccname := "mycc"
 	ccver := "1"
 
-	res, err := createCCDataRWset(ccname, ccname, ccver, nil)
+	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
+	assert.NoError(t, err)
+	res, err := createCCDataRWset(ccname, ccname, ccver, defaultPolicy)
 	assert.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
@@ -871,8 +885,9 @@ func TestValidateUpgradeOK(t *testing.T) {
 		t.FailNow()
 	}
 
+	sProp2, _ := utils.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
 	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
-	if res := stublccc.MockInvoke("1", args); res.Status != shim.OK {
+	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
 		fmt.Printf("%#v\n", res)
 		t.FailNow()
 	}
@@ -947,8 +962,9 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 		t.FailNow()
 	}
 
+	sProp2, _ := utils.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
 	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
-	if res := stublccc.MockInvoke("1", args); res.Status != shim.OK {
+	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
 		fmt.Printf("%#v\n", res)
 		t.FailNow()
 	}
@@ -1023,8 +1039,9 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 		t.FailNow()
 	}
 
+	sProp2, _ := utils.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
 	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
-	if res := stublccc.MockInvoke("1", args); res.Status != shim.OK {
+	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
 		fmt.Printf("%#v\n", res)
 		t.FailNow()
 	}
@@ -1207,6 +1224,9 @@ func TestMain(m *testing.M) {
 		fmt.Printf("Failure getting the msp identifier, err %s", err)
 		os.Exit(-1)
 	}
+
+	// also set the MSP for the "test" chain
+	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain(util.GetTestChainID()))
 
 	os.Exit(m.Run())
 }

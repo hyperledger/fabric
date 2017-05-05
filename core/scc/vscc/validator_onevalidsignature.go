@@ -344,20 +344,17 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.Chainco
 			/* security check 1 - check the instantiation policy */
 			/*****************************************************/
 			pol := cdRWSet.InstantiationPolicy
-			if pol != nil {
-				err = vscc.checkInstantiationPolicy(chid, env, pol)
-				if err != nil {
-					return err
-				}
-			} else {
-				// FIXME: this is only temporary until default policies
-				// are specified. We can then fail here once that's done.
-				// FIXME: could we actually pull the cds package from the
-				// file system to verify whether the policy that is specified
-				// here is the same as the one on disk?
-				// PROS: we prevent attacks where the policy is replaced
-				// CONS: this would be a point of non-determinism
-				logger.Debugf("No installation policy was specified, skipping checks")
+			if pol == nil {
+				return fmt.Errorf("No installation policy was specified")
+			}
+			// FIXME: could we actually pull the cds package from the
+			// file system to verify whether the policy that is specified
+			// here is the same as the one on disk?
+			// PROS: we prevent attacks where the policy is replaced
+			// CONS: this would be a point of non-determinism
+			err = vscc.checkInstantiationPolicy(chid, env, pol)
+			if err != nil {
+				return err
 			}
 
 			/******************************************************************/
@@ -379,20 +376,17 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.Chainco
 			/* security check 2 - check the instantiation policy */
 			/*****************************************************/
 			pol := cdLedger.InstantiationPolicy
-			if pol != nil {
-				err = vscc.checkInstantiationPolicy(chid, env, pol)
-				if err != nil {
-					return err
-				}
-			} else {
-				// FIXME: this is only temporary until default policies
-				// are specified. We can then fail here once that's done.
-				// FIXME: could we actually pull the cds package from the
-				// file system to verify whether the policy that is specified
-				// here is the same as the one on disk?
-				// PROS: we prevent attacks where the policy is replaced
-				// CONS: this would be a point of non-determinism
-				logger.Debugf("No installation policy was specified, skipping checks")
+			if pol == nil {
+				return fmt.Errorf("No installation policy was specified")
+			}
+			// FIXME: could we actually pull the cds package from the
+			// file system to verify whether the policy that is specified
+			// here is the same as the one on disk?
+			// PROS: we prevent attacks where the policy is replaced
+			// CONS: this would be a point of non-determinism
+			err = vscc.checkInstantiationPolicy(chid, env, pol)
+			if err != nil {
+				return err
 			}
 
 			/**********************************************************/
