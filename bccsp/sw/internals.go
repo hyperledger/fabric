@@ -29,6 +29,14 @@ type KeyGenerator interface {
 	KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error)
 }
 
+// KeyDeriver is a BCCSP-like interface that provides key derivation algorithms
+type KeyDeriver interface {
+
+	// KeyDeriv derives a key from k using opts.
+	// The opts argument should be appropriate for the primitive used.
+	KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error)
+}
+
 // Encryptor is a BCCSP-like interface that provides encryption algorithms
 type Encryptor interface {
 

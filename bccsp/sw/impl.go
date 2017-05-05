@@ -18,13 +18,11 @@ package sw
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/hmac"
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"hash"
-	"math/big"
 	"reflect"
 
 	"crypto/sha256"
@@ -125,6 +123,13 @@ func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.B
 	keyGenerators[reflect.TypeOf(&bccsp.RSA4096KeyGenOpts{})] = &rsaKeyGenerator{length: 4096}
 	impl.keyGenerators = keyGenerators
 
+	// Set the key generators
+	keyDerivers := make(map[reflect.Type]KeyDeriver)
+	keyDerivers[reflect.TypeOf(&ecdsaPrivateKey{})] = &ecdsaPrivateKeyKeyDeriver{}
+	keyDerivers[reflect.TypeOf(&ecdsaPublicKey{})] = &ecdsaPublicKeyKeyDeriver{}
+	keyDerivers[reflect.TypeOf(&aesPrivateKey{})] = &aesPrivateKeyKeyDeriver{bccsp: impl}
+	impl.keyDerivers = keyDerivers
+
 	return impl, nil
 }
 
@@ -134,6 +139,7 @@ type impl struct {
 	ks   bccsp.KeyStore
 
 	keyGenerators map[reflect.Type]KeyGenerator
+	keyDerivers   map[reflect.Type]KeyDeriver
 	encryptors    map[reflect.Type]Encryptor
 	decryptors    map[reflect.Type]Decryptor
 	signers       map[reflect.Type]Signer
@@ -177,180 +183,30 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 	if k == nil {
 		return nil, errors.New("Invalid Key. It must not be nil.")
 	}
-
-	// Derive key
-	switch k.(type) {
-	case *ecdsaPublicKey:
-		// Validate opts
-		if opts == nil {
-			return nil, errors.New("Invalid Opts parameter. It must not be nil.")
-		}
-
-		ecdsaK := k.(*ecdsaPublicKey)
-
-		switch opts.(type) {
-
-		// Re-randomized an ECDSA private key
-		case *bccsp.ECDSAReRandKeyOpts:
-			reRandOpts := opts.(*bccsp.ECDSAReRandKeyOpts)
-			tempSK := &ecdsa.PublicKey{
-				Curve: ecdsaK.pubKey.Curve,
-				X:     new(big.Int),
-				Y:     new(big.Int),
-			}
-
-			var k = new(big.Int).SetBytes(reRandOpts.ExpansionValue())
-			var one = new(big.Int).SetInt64(1)
-			n := new(big.Int).Sub(ecdsaK.pubKey.Params().N, one)
-			k.Mod(k, n)
-			k.Add(k, one)
-
-			// Compute temporary public key
-			tempX, tempY := ecdsaK.pubKey.ScalarBaseMult(k.Bytes())
-			tempSK.X, tempSK.Y = tempSK.Add(
-				ecdsaK.pubKey.X, ecdsaK.pubKey.Y,
-				tempX, tempY,
-			)
-
-			// Verify temporary public key is a valid point on the reference curve
-			isOn := tempSK.Curve.IsOnCurve(tempSK.X, tempSK.Y)
-			if !isOn {
-				return nil, errors.New("Failed temporary public key IsOnCurve check.")
-			}
-
-			reRandomizedKey := &ecdsaPublicKey{tempSK}
-
-			// If the key is not Ephemeral, store it.
-			if !opts.Ephemeral() {
-				// Store the key
-				err = csp.ks.StoreKey(reRandomizedKey)
-				if err != nil {
-					return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-				}
-			}
-
-			return reRandomizedKey, nil
-
-		default:
-			return nil, fmt.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
-
-		}
-	case *ecdsaPrivateKey:
-		// Validate opts
-		if opts == nil {
-			return nil, errors.New("Invalid Opts parameter. It must not be nil.")
-		}
-
-		ecdsaK := k.(*ecdsaPrivateKey)
-
-		switch opts.(type) {
-
-		// Re-randomized an ECDSA private key
-		case *bccsp.ECDSAReRandKeyOpts:
-			reRandOpts := opts.(*bccsp.ECDSAReRandKeyOpts)
-			tempSK := &ecdsa.PrivateKey{
-				PublicKey: ecdsa.PublicKey{
-					Curve: ecdsaK.privKey.Curve,
-					X:     new(big.Int),
-					Y:     new(big.Int),
-				},
-				D: new(big.Int),
-			}
-
-			var k = new(big.Int).SetBytes(reRandOpts.ExpansionValue())
-			var one = new(big.Int).SetInt64(1)
-			n := new(big.Int).Sub(ecdsaK.privKey.Params().N, one)
-			k.Mod(k, n)
-			k.Add(k, one)
-
-			tempSK.D.Add(ecdsaK.privKey.D, k)
-			tempSK.D.Mod(tempSK.D, ecdsaK.privKey.PublicKey.Params().N)
-
-			// Compute temporary public key
-			tempX, tempY := ecdsaK.privKey.PublicKey.ScalarBaseMult(k.Bytes())
-			tempSK.PublicKey.X, tempSK.PublicKey.Y =
-				tempSK.PublicKey.Add(
-					ecdsaK.privKey.PublicKey.X, ecdsaK.privKey.PublicKey.Y,
-					tempX, tempY,
-				)
-
-			// Verify temporary public key is a valid point on the reference curve
-			isOn := tempSK.Curve.IsOnCurve(tempSK.PublicKey.X, tempSK.PublicKey.Y)
-			if !isOn {
-				return nil, errors.New("Failed temporary public key IsOnCurve check.")
-			}
-
-			reRandomizedKey := &ecdsaPrivateKey{tempSK}
-
-			// If the key is not Ephemeral, store it.
-			if !opts.Ephemeral() {
-				// Store the key
-				err = csp.ks.StoreKey(reRandomizedKey)
-				if err != nil {
-					return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-				}
-			}
-
-			return reRandomizedKey, nil
-
-		default:
-			return nil, fmt.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
-
-		}
-	case *aesPrivateKey:
-		// Validate opts
-		if opts == nil {
-			return nil, errors.New("Invalid Opts parameter. It must not be nil.")
-		}
-
-		aesK := k.(*aesPrivateKey)
-
-		switch opts.(type) {
-		case *bccsp.HMACTruncated256AESDeriveKeyOpts:
-			hmacOpts := opts.(*bccsp.HMACTruncated256AESDeriveKeyOpts)
-
-			mac := hmac.New(csp.conf.hashFunction, aesK.privKey)
-			mac.Write(hmacOpts.Argument())
-			hmacedKey := &aesPrivateKey{mac.Sum(nil)[:csp.conf.aesBitLength], false}
-
-			// If the key is not Ephemeral, store it.
-			if !opts.Ephemeral() {
-				// Store the key
-				err = csp.ks.StoreKey(hmacedKey)
-				if err != nil {
-					return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-				}
-			}
-
-			return hmacedKey, nil
-
-		case *bccsp.HMACDeriveKeyOpts:
-
-			hmacOpts := opts.(*bccsp.HMACDeriveKeyOpts)
-
-			mac := hmac.New(csp.conf.hashFunction, aesK.privKey)
-			mac.Write(hmacOpts.Argument())
-			hmacedKey := &aesPrivateKey{mac.Sum(nil), true}
-
-			// If the key is not Ephemeral, store it.
-			if !opts.Ephemeral() {
-				// Store the key
-				err = csp.ks.StoreKey(hmacedKey)
-				if err != nil {
-					return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-				}
-			}
-
-			return hmacedKey, nil
-
-		default:
-			return nil, fmt.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
-
-		}
-
-	default:
-		return nil, fmt.Errorf("Key type not recognized [%s]", k)
+	if opts == nil {
+		return nil, errors.New("Invalid opts. It must not be nil.")
 	}
+
+	keyDeriver, found := csp.keyDerivers[reflect.TypeOf(k)]
+	if !found {
+		return nil, fmt.Errorf("Unsupported 'Key' provided [%v]", k)
+	}
+
+	k, err = keyDeriver.KeyDeriv(k, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the key is not Ephemeral, store it.
+	if !opts.Ephemeral() {
+		// Store the key
+		err = csp.ks.StoreKey(k)
+		if err != nil {
+			return nil, fmt.Errorf("Failed storing key [%s]. [%s]", opts.Algorithm(), err)
+		}
+	}
+
+	return k, nil
 }
 
 // KeyImport imports a key from its raw representation using opts.
