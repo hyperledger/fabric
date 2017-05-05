@@ -30,6 +30,7 @@
 #   - behave-deps - ensures pre-requisites are available for running behave manually
 #   - gotools - installs go tools like golint
 #   - linter - runs all code checks
+#   - license - checks go sourrce files for Apache license header
 #   - native - ensures all native binaries are available
 #   - docker[-clean] - ensures all docker images are available[/cleaned]
 #   - peer-docker[-clean] - ensures the peer container is available[/cleaned]
@@ -94,7 +95,10 @@ include docker-env.mk
 
 all: native docker checks
 
-checks: linter unit-test behave
+checks: linter license unit-test behave
+
+license: buildenv
+	@scripts/check_license.sh
 
 .PHONY: gotools
 gotools:
