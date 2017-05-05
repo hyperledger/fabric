@@ -21,7 +21,6 @@ import (
 
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
@@ -63,8 +62,7 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.
 
 	itr, _ := store.RetrieveBlocks(0)
 	for i := 0; i < len(expectedBlocks); i++ {
-		blockHolder, _ := itr.Next()
-		block := blockHolder.(ledger.BlockHolder).GetBlock()
+		block, _ := itr.Next()
 		testutil.AssertEquals(t, block, expectedBlocks[i])
 	}
 

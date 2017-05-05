@@ -17,32 +17,10 @@ limitations under the License.
 package fsblkstorage
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/ledger"
-
-	"github.com/hyperledger/fabric/protos/common"
 )
-
-// blockHolder holds block bytes
-type blockHolder struct {
-	blockBytes []byte
-}
-
-// GetBlock serializes Block from block bytes
-func (bh *blockHolder) GetBlock() *common.Block {
-	block, err := deserializeBlock(bh.blockBytes)
-	if err != nil {
-		panic(fmt.Errorf("Problem in deserialzing block: %s", err))
-	}
-	return block
-}
-
-// GetBlockBytes returns block bytes
-func (bh *blockHolder) GetBlockBytes() []byte {
-	return bh.blockBytes
-}
 
 // blocksItr - an iterator for iterating over a sequence of blocks
 type blocksItr struct {
@@ -108,7 +86,7 @@ func (itr *blocksItr) Next() (ledger.QueryResult, error) {
 		return nil, err
 	}
 	itr.blockNumToRetrieve++
-	return &blockHolder{nextBlockBytes}, nil
+	return deserializeBlock(nextBlockBytes)
 }
 
 // Close releases any resources held by the iterator
