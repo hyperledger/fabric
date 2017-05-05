@@ -359,8 +359,19 @@ func PublicKeyToDER(publicKey interface{}) ([]byte, error) {
 
 		return PubASN1, nil
 
+	case *rsa.PublicKey:
+		if k == nil {
+			return nil, errors.New("Invalid rsa public key. It must be different from nil.")
+		}
+		PubASN1, err := x509.MarshalPKIXPublicKey(k)
+		if err != nil {
+			return nil, err
+		}
+
+		return PubASN1, nil
+
 	default:
-		return nil, errors.New("Invalid key type. It must be *ecdsa.PublicKey")
+		return nil, errors.New("Invalid key type. It must be *ecdsa.PublicKey or *rsa.PublicKey")
 	}
 }
 
