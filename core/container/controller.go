@@ -66,7 +66,7 @@ func (vmc *VMController) newVM(typ string) api.VM {
 
 	switch typ {
 	case DOCKER:
-		v = &dockercontroller.DockerVM{}
+		v = dockercontroller.NewDockerVM()
 	case SYSTEM:
 		v = &inproccontroller.InprocVM{}
 	default:
