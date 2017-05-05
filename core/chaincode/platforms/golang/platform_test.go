@@ -34,9 +34,9 @@ import (
 
 func testerr(err error, succ bool) error {
 	if succ && err != nil {
-		return fmt.Errorf("Expected success but got %s", err)
+		return fmt.Errorf("Expected success but got error %s", err)
 	} else if !succ && err == nil {
-		return fmt.Errorf("Expected failer but succeeded")
+		return fmt.Errorf("Expected failure but succeeded")
 	}
 	return nil
 }
@@ -210,7 +210,7 @@ func TestGetDeploymentPayload(t *testing.T) {
 	for _, tst := range tests {
 		_, err := platform.GetDeploymentPayload(tst.spec)
 		if err = testerr(err, tst.succ); err != nil {
-			t.Errorf("Error to validating chaincode spec: %s, %s", tst.spec.ChaincodeId.Path, err)
+			t.Errorf("Error validating chaincode spec: %s, %s", tst.spec.ChaincodeId.Path, err)
 		}
 	}
 }
@@ -255,7 +255,7 @@ func TestGenerateDockerBuild(t *testing.T) {
 		}
 		err = platform.GenerateDockerBuild(cds, tw)
 		if err = testerr(err, tst.SuccessExpected); err != nil {
-			t.Errorf("Error to validating chaincode spec: %s, %s", cds.ChaincodeSpec.ChaincodeId.Path, err)
+			t.Errorf("Error validating chaincode spec: %s, %s", cds.ChaincodeSpec.ChaincodeId.Path, err)
 		}
 	}
 }
