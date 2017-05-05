@@ -124,3 +124,18 @@ func (h *Hasher) GetHash(opts bccsp.HashOpts) (hash.Hash, error) {
 
 	return h.ValueHash, h.Err
 }
+
+type KeyGenerator struct {
+	OptsArg bccsp.KeyGenOpts
+
+	Value bccsp.Key
+	Err   error
+}
+
+func (kg *KeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
+	if !reflect.DeepEqual(kg.OptsArg, opts) {
+		return nil, errors.New("invalid opts")
+	}
+
+	return kg.Value, kg.Err
+}
