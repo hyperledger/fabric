@@ -162,3 +162,9 @@ func (*KeyImportOpts) Ephemeral() bool {
 }
 
 type EncrypterOpts struct{}
+
+type HashOpts struct{}
+
+func (HashOpts) Algorithm() string {
+	return "Mock HashOpts"
+}

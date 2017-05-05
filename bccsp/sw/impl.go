@@ -21,14 +21,15 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
-	"crypto/sha512"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"hash"
 	"math/big"
 	"reflect"
+
+	"crypto/sha256"
+	"crypto/sha512"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
@@ -92,13 +93,24 @@ func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.B
 	verifiers[reflect.TypeOf(&rsaPrivateKey{})] = &rsaPrivateKeyVerifier{}
 	verifiers[reflect.TypeOf(&rsaPublicKey{})] = &rsaPublicKeyKeyVerifier{}
 
-	return &impl{
+	// Set the hashers
+	hashers := make(map[reflect.Type]Hasher)
+	hashers[reflect.TypeOf(&bccsp.SHAOpts{})] = &hasher{hash: conf.hashFunction}
+	hashers[reflect.TypeOf(&bccsp.SHA256Opts{})] = &hasher{hash: sha256.New}
+	hashers[reflect.TypeOf(&bccsp.SHA384Opts{})] = &hasher{hash: sha512.New384}
+	hashers[reflect.TypeOf(&bccsp.SHA3_256Opts{})] = &hasher{hash: sha3.New256}
+	hashers[reflect.TypeOf(&bccsp.SHA3_384Opts{})] = &hasher{hash: sha3.New384}
+
+	impl := &impl{
 		conf:       conf,
 		ks:         keyStore,
 		encryptors: encryptors,
 		decryptors: decryptors,
 		signers:    signers,
-		verifiers:  verifiers}, nil
+		verifiers:  verifiers,
+		hashers:    hashers}
+
+	return impl, nil
 }
 
 // SoftwareBasedBCCSP is the software-based implementation of the BCCSP.
@@ -110,6 +122,7 @@ type impl struct {
 	decryptors map[reflect.Type]Decryptor
 	signers    map[reflect.Type]Signer
 	verifiers  map[reflect.Type]Verifier
+	hashers    map[reflect.Type]Hasher
 }
 
 // KeyGen generates a key using opts.
@@ -619,51 +632,33 @@ func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
 
 // Hash hashes messages msg using options opts.
 func (csp *impl) Hash(msg []byte, opts bccsp.HashOpts) (digest []byte, err error) {
-	var h hash.Hash
+	// Validate arguments
 	if opts == nil {
-		h = csp.conf.hashFunction()
-	} else {
-		switch opts.(type) {
-		case *bccsp.SHAOpts:
-			h = csp.conf.hashFunction()
-		case *bccsp.SHA256Opts:
-			h = sha256.New()
-		case *bccsp.SHA384Opts:
-			h = sha512.New384()
-		case *bccsp.SHA3_256Opts:
-			h = sha3.New256()
-		case *bccsp.SHA3_384Opts:
-			h = sha3.New384()
-		default:
-			return nil, fmt.Errorf("Algorithm not recognized [%s]", opts.Algorithm())
-		}
+		return nil, errors.New("Invalid opts. It must not be nil.")
 	}
 
-	h.Write(msg)
-	return h.Sum(nil), nil
+	hasher, found := csp.hashers[reflect.TypeOf(opts)]
+	if !found {
+		return nil, fmt.Errorf("Unsupported 'HashOpt' provided [%v]", opts)
+	}
+
+	return hasher.Hash(msg, opts)
 }
 
 // GetHash returns and instance of hash.Hash using options opts.
 // If opts is nil then the default hash function is returned.
 func (csp *impl) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
+	// Validate arguments
 	if opts == nil {
-		return csp.conf.hashFunction(), nil
+		return nil, errors.New("Invalid opts. It must not be nil.")
 	}
 
-	switch opts.(type) {
-	case *bccsp.SHAOpts:
-		return csp.conf.hashFunction(), nil
-	case *bccsp.SHA256Opts:
-		return sha256.New(), nil
-	case *bccsp.SHA384Opts:
-		return sha512.New384(), nil
-	case *bccsp.SHA3_256Opts:
-		return sha3.New256(), nil
-	case *bccsp.SHA3_384Opts:
-		return sha3.New384(), nil
-	default:
-		return nil, fmt.Errorf("Algorithm not recognized [%s]", opts.Algorithm())
+	hasher, found := csp.hashers[reflect.TypeOf(opts)]
+	if !found {
+		return nil, fmt.Errorf("Unsupported 'HashOpt' provided [%v]", opts)
 	}
+
+	return hasher.GetHash(opts)
 }
 
 // Sign signs digest using key k.

@@ -156,3 +156,29 @@ func TestDecryptInvalidInputs(t *testing.T) {
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "Unsupported 'DecryptKey' provided ["))
 }
+
+func TestHashInvalidInputs(t *testing.T) {
+	csp, err := New(256, "SHA2", &mocks.KeyStore{})
+	assert.NoError(t, err)
+
+	_, err = csp.Hash(nil, nil)
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Invalid opts. It must not be nil."))
+
+	_, err = csp.Hash(nil, &mocks.HashOpts{})
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Unsupported 'HashOpt' provided ["))
+}
+
+func TestGetHashInvalidInputs(t *testing.T) {
+	csp, err := New(256, "SHA2", &mocks.KeyStore{})
+	assert.NoError(t, err)
+
+	_, err = csp.GetHash(nil)
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Invalid opts. It must not be nil."))
+
+	_, err = csp.GetHash(&mocks.HashOpts{})
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Unsupported 'HashOpt' provided ["))
+}
