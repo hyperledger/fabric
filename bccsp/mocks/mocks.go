@@ -170,3 +170,15 @@ type HashOpts struct{}
 func (HashOpts) Algorithm() string {
 	return "Mock HashOpts"
 }
+
+type KeyDerivOpts struct {
+	EphemeralValue bool
+}
+
+func (*KeyDerivOpts) Algorithm() string {
+	return "Mock KeyDerivOpts"
+}
+
+func (o *KeyDerivOpts) Ephemeral() bool {
+	return o.EphemeralValue
+}

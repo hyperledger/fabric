@@ -139,3 +139,22 @@ func (kg *KeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 
 	return kg.Value, kg.Err
 }
+
+type KeyDeriver struct {
+	KeyArg  bccsp.Key
+	OptsArg bccsp.KeyDerivOpts
+
+	Value bccsp.Key
+	Err   error
+}
+
+func (kd *KeyDeriver) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
+	if !reflect.DeepEqual(kd.KeyArg, k) {
+		return nil, errors.New("invalid key")
+	}
+	if !reflect.DeepEqual(kd.OptsArg, opts) {
+		return nil, errors.New("invalid opts")
+	}
+
+	return kd.Value, kd.Err
+}
