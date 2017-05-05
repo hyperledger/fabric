@@ -146,7 +146,8 @@ func (ccpack *CDSPackage) getCDSData(cds *pb.ChaincodeDeploymentSpec) ([]byte, [
 	cdsdata := &CDSData{}
 
 	//code hash
-	cdsdata.CodeHash = hash.Sum(cds.CodePackage)
+	hash.Write(cds.CodePackage)
+	cdsdata.CodeHash = hash.Sum(nil)
 
 	hash.Reset()
 

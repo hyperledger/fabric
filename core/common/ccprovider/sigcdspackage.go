@@ -160,7 +160,8 @@ func (ccpack *SignedCDSPackage) getCDSData(scds *pb.SignedChaincodeDeploymentSpe
 	scdsdata := &SignedCDSData{}
 
 	//get the code hash
-	scdsdata.CodeHash = hash.Sum(cds.CodePackage)
+	hash.Write(cds.CodePackage)
+	scdsdata.CodeHash = hash.Sum(nil)
 
 	hash.Reset()
 
