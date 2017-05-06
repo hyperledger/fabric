@@ -20,16 +20,22 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	putils "github.com/hyperledger/fabric/protos/utils"
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
+	"golang.org/x/net/context"
 )
 
 // UndefinedParamValue defines what undefined parameters in the command line will initialise to
@@ -118,4 +124,67 @@ func GetDefaultSigner() (msp.SigningIdentity, error) {
 	}
 
 	return signer, err
+}
+
+// GetOrdererEndpointOfChain returns orderer endpoints of given chain
+func GetOrdererEndpointOfChain(chainID string, signer msp.SigningIdentity, endorserClient pb.EndorserClient) ([]string, error) {
+
+	// query cscc for chain config block
+	invocation := &pb.ChaincodeInvocationSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]),
+			ChaincodeId: &pb.ChaincodeID{Name: "cscc"},
+			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte(cscc.GetConfigBlock), []byte(chainID)}},
+		},
+	}
+
+	creator, err := signer.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf("Error serializing identity for %s: %s", signer.GetIdentifier(), err)
+	}
+
+	prop, _, err := putils.CreateProposalFromCIS(pcommon.HeaderType_CONFIG, "", invocation, creator)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating GetConfigBlock proposal: %s", err)
+	}
+
+	signedProp, err := putils.GetSignedProposal(prop, signer)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating signed GetConfigBlock proposal: %s", err)
+	}
+
+	proposalResp, err := endorserClient.ProcessProposal(context.Background(), signedProp)
+	if err != nil {
+		return nil, fmt.Errorf("Error endorsing GetConfigBlock: %s", err)
+	}
+
+	if proposalResp == nil {
+		return nil, fmt.Errorf("Error nil proposal response: %s", err)
+	}
+
+	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != 200 {
+		return nil, fmt.Errorf("Error bad proposal response %d", proposalResp.Response.Status)
+	}
+
+	// parse config block
+	block, err := putils.GetBlockFromBlockBytes(proposalResp.Response.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshaling config block: %s", err)
+	}
+
+	envelopeConfig, err := putils.ExtractEnvelope(block, 0)
+	if err != nil {
+		return nil, fmt.Errorf("Error extracting config block envelope: %s", err)
+	}
+	configtxInitializer := configtx.NewInitializer()
+	configtxManager, err := configtx.NewManagerImpl(
+		envelopeConfig,
+		configtxInitializer,
+		[]func(cm configtxapi.Manager){},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Error loadding config block: %s", err)
+	}
+
+	return configtxManager.ChannelConfig().OrdererAddresses(), nil
 }

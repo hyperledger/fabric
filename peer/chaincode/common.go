@@ -232,6 +232,18 @@ func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFa
 
 	var broadcastClient common.BroadcastClient
 	if isOrdererRequired {
+		if len(orderingEndpoint) == 0 {
+			orderingEndpoints, err := common.GetOrdererEndpointOfChain(chainID, signer, endorserClient)
+			if err != nil {
+				return nil, fmt.Errorf("Error getting (%s) orderer endpoint: %s", chainID, err)
+			}
+			if len(orderingEndpoints) == 0 {
+				return nil, fmt.Errorf("Error no orderer endpoint got for %s", chainID)
+			}
+			logger.Infof("Get chain(%s) orderer endpoint: %s", chainID, orderingEndpoints[0])
+			orderingEndpoint = orderingEndpoints[0]
+		}
+
 		broadcastClient, err = common.GetBroadcastClient(orderingEndpoint, tls, caFile)
 
 		if err != nil {
