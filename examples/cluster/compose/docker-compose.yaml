@@ -10,6 +10,11 @@ services:
       - FABRIC_CA_SERVER_TLS_ENABLED=${TLS_ENABLED}
       - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server/tls/ca.crt
       - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server/tls/ca.key
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "25m"
+        max-file: "2"
     volumes:
       - ../build/nodes/ca/tls:/etc/hyperledger/fabric-ca-server/tls
 
@@ -19,6 +24,8 @@ services:
     dns_search: .
     environment:
       - ORDERER_GENERAL_TLS_ENABLED=${TLS_ENABLED}
+    logging:
+      <<: *logging
     volumes:
       - ../build/nodes/orderer:/etc/hyperledger/fabric
 
@@ -32,6 +39,8 @@ services:
       - CORE_PEER_ADDRESS=peer1:7051
       - CORE_PEER_GOSSIP_ENDPOINT=peer1:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org1.net:7051
+    logging:
+      <<: *logging
     volumes:
         - ../build/nodes/peer1:/etc/hyperledger/fabric
     depends_on:
@@ -47,6 +56,8 @@ services:
       - CORE_PEER_ADDRESS=peer2:7051
       - CORE_PEER_GOSSIP_ENDPOINT=peer2:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer2.org1.net:7051
+    logging:
+      <<: *logging
     volumes:
         - ../build/nodes/peer2:/etc/hyperledger/fabric
     depends_on:
@@ -63,6 +74,8 @@ services:
       - CORE_PEER_ADDRESS=peer3:7051
       - CORE_PEER_GOSSIP_ENDPOINT=peer3:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer3.org1.net:7051
+    logging:
+      <<: *logging
     volumes:
         - ../build/nodes/peer3:/etc/hyperledger/fabric
     depends_on:
@@ -79,6 +92,8 @@ services:
       - CORE_PEER_ADDRESS=peer4:7051
       - CORE_PEER_GOSSIP_ENDPOINT=peer4:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer4.org1.net:7051
+    logging:
+      <<: *logging
     volumes:
         - ../build/nodes/peer4:/etc/hyperledger/fabric
     depends_on:
