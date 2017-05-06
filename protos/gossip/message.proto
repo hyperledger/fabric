@@ -153,9 +153,9 @@ message StateInfoPullRequest {
 // Whenever a peer connects to another peer, it handshakes
 // with it by sending this message that proves its identity
 message ConnEstablish {
-    bytes pki_id = 1;
-    bytes cert  = 2;
-    bytes hash  = 3;
+    bytes pki_id          = 1;
+    bytes identity        = 2;
+    bytes tls_cert_hash   = 3;
 }
 
 // PeerIdentity defines the identity of the peer

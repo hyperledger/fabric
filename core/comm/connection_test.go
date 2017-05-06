@@ -24,6 +24,8 @@ import (
 
 	"github.com/spf13/viper"
 
+	"crypto/tls"
+
 	"github.com/hyperledger/fabric/core/testutil"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -142,7 +144,7 @@ func TestCASupport(t *testing.T) {
 	creds := cas.GetDeliverServiceCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
-	creds = cas.GetPeerCredentials()
+	creds = cas.GetPeerCredentials(tls.Certificate{})
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 
@@ -152,7 +154,7 @@ func TestCASupport(t *testing.T) {
 	creds = cas.GetDeliverServiceCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
-	creds = cas.GetPeerCredentials()
+	creds = cas.GetPeerCredentials(tls.Certificate{})
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 

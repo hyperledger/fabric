@@ -140,6 +140,7 @@ func NewGRPCServerFromListener(listener net.Listener, secureConfig SecureServerC
 				Certificates:           certificates,
 				SessionTicketsDisabled: true,
 			}
+			grpcServer.tlsConfig.ClientAuth = tls.RequestClientCert
 			//checkif client authentication is required
 			if secureConfig.RequireClientCert {
 				//require TLS client auth
