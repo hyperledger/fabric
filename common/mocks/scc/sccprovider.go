@@ -23,15 +23,17 @@ import (
 )
 
 type MocksccProviderFactory struct {
-	Qe *lm.MockQueryExecutor
+	Qe   *lm.MockQueryExecutor
+	QErr error
 }
 
 func (c *MocksccProviderFactory) NewSystemChaincodeProvider() sysccprovider.SystemChaincodeProvider {
-	return &mocksccProviderImpl{Qe: c.Qe}
+	return &mocksccProviderImpl{Qe: c.Qe, QErr: c.QErr}
 }
 
 type mocksccProviderImpl struct {
-	Qe *lm.MockQueryExecutor
+	Qe   *lm.MockQueryExecutor
+	QErr error
 }
 
 func (c *mocksccProviderImpl) IsSysCC(name string) bool {
@@ -47,5 +49,5 @@ func (c *mocksccProviderImpl) IsSysCCAndNotInvokableExternal(name string) bool {
 }
 
 func (c *mocksccProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
-	return c.Qe, nil
+	return c.Qe, c.QErr
 }
