@@ -138,8 +138,8 @@ func (ai *adapterImpl) CreateMessage(isDeclaration bool) Msg {
 		PkiId:         ai.selfPKIid,
 		IsDeclaration: isDeclaration,
 		Timestamp: &proto.PeerTime{
-			IncNumber: ai.incTime,
-			SeqNum:    seqNum,
+			IncNum: ai.incTime,
+			SeqNum: seqNum,
 		},
 	}
 

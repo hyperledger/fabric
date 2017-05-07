@@ -150,8 +150,8 @@ func TestAliveMessageNoActionTaken(t *testing.T) {
 				PkiId:    []byte{17},
 			},
 			Timestamp: &PeerTime{
-				IncNumber: 1,
-				SeqNum:    1,
+				IncNum: 1,
+				SeqNum: 1,
 			},
 			Identity: []byte("peerID1"),
 		},
@@ -165,8 +165,8 @@ func TestAliveMessageNoActionTaken(t *testing.T) {
 				PkiId:    []byte{15},
 			},
 			Timestamp: &PeerTime{
-				IncNumber: 2,
-				SeqNum:    2,
+				IncNum: 2,
+				SeqNum: 2,
 			},
 			Identity: []byte("peerID1"),
 		},
@@ -226,8 +226,8 @@ func TestAliveMessageInvalidation(t *testing.T) {
 				PkiId:    []byte{17},
 			},
 			Timestamp: &PeerTime{
-				IncNumber: 1,
-				SeqNum:    1,
+				IncNum: 1,
+				SeqNum: 1,
 			},
 			Identity: []byte("peerID1"),
 		},
@@ -241,8 +241,8 @@ func TestAliveMessageInvalidation(t *testing.T) {
 				PkiId:    []byte{17},
 			},
 			Timestamp: &PeerTime{
-				IncNumber: 2,
-				SeqNum:    2,
+				IncNum: 2,
+				SeqNum: 2,
 			},
 			Identity: []byte("peerID1"),
 		},
@@ -256,8 +256,8 @@ func TestAliveMessageInvalidation(t *testing.T) {
 				PkiId:    []byte{17},
 			},
 			Timestamp: &PeerTime{
-				IncNumber: 1,
-				SeqNum:    2,
+				IncNum: 1,
+				SeqNum: 2,
 			},
 			Identity: []byte("peerID1"),
 		},
@@ -365,8 +365,8 @@ func TestCheckGossipMessageTypes(t *testing.T) {
 				Endpoint: "localhost",
 			},
 			Timestamp: &PeerTime{
-				SeqNum:    1,
-				IncNumber: 1,
+				SeqNum: 1,
+				IncNum: 1,
 			},
 		},
 	})
@@ -827,20 +827,20 @@ func leadershipMessage(incNum uint64, seqNum uint64, pkid []byte) *GossipMessage
 			PkiId:         pkid,
 			IsDeclaration: false,
 			Timestamp: &PeerTime{
-				IncNumber: incNum,
-				SeqNum:    seqNum,
+				IncNum: incNum,
+				SeqNum: seqNum,
 			},
 		},
 	}
 }
 
-func stateInfoMessage(incNumber uint64, seqNum uint64, pkid []byte, mac []byte) *GossipMessage_StateInfo {
+func stateInfoMessage(incNum uint64, seqNum uint64, pkid []byte, mac []byte) *GossipMessage_StateInfo {
 	return &GossipMessage_StateInfo{
 		StateInfo: &StateInfo{
 			Metadata: []byte{},
 			Timestamp: &PeerTime{
-				IncNumber: incNumber,
-				SeqNum:    seqNum,
+				IncNum: incNum,
+				SeqNum: seqNum,
 			},
 			PkiId:       pkid,
 			Channel_MAC: mac,

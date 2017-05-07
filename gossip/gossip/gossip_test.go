@@ -1068,8 +1068,8 @@ func createLeadershipMsg(isDeclaration bool, channel common.ChainID, incTime uin
 		IsDeclaration: isDeclaration,
 		PkiId:         pkiid,
 		Timestamp: &proto.PeerTime{
-			IncNumber: incTime,
-			SeqNum:    seqNum,
+			IncNum: incTime,
+			SeqNum: seqNum,
 		},
 	}
 

@@ -548,7 +548,7 @@ func (d *gossipDiscoveryImpl) resurrectMember(am *proto.SignedGossipMessage, t p
 	d.aliveLastTS[string(pkiID)] = &timestamp{
 		lastSeen: time.Now(),
 		seqNum:   t.SeqNum,
-		incTime:  tsToTime(t.IncNumber),
+		incTime:  tsToTime(t.IncNum),
 	}
 
 	var internalEndpoint string
@@ -722,8 +722,8 @@ func (d *gossipDiscoveryImpl) createAliveMessage(includeInternalEndpoint bool) *
 					PkiId:    pkiID,
 				},
 				Timestamp: &proto.PeerTime{
-					IncNumber: uint64(d.incTime),
-					SeqNum:    seqNum,
+					IncNum: uint64(d.incTime),
+					SeqNum: seqNum,
 				},
 			},
 		},
@@ -782,7 +782,7 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*proto.SignedGossi
 			d.logger.Debug("Updating aliveness data:", am)
 			// update existing aliveness data
 			alive := d.aliveLastTS[string(am.Membership.PkiId)]
-			alive.incTime = tsToTime(am.Timestamp.IncNumber)
+			alive.incTime = tsToTime(am.Timestamp.IncNum)
 			alive.lastSeen = time.Now()
 			alive.seqNum = am.Timestamp.SeqNum
 
@@ -811,7 +811,7 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.SignedGossip
 			continue
 		}
 		d.aliveLastTS[string(am.GetAliveMsg().Membership.PkiId)] = &timestamp{
-			incTime:  tsToTime(am.GetAliveMsg().Timestamp.IncNumber),
+			incTime:  tsToTime(am.GetAliveMsg().Timestamp.IncNum),
 			lastSeen: time.Now(),
 			seqNum:   am.GetAliveMsg().Timestamp.SeqNum,
 		}
@@ -825,7 +825,7 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.SignedGossip
 			continue
 		}
 		d.deadLastTS[string(dm.GetAliveMsg().Membership.PkiId)] = &timestamp{
-			incTime:  tsToTime(dm.GetAliveMsg().Timestamp.IncNumber),
+			incTime:  tsToTime(dm.GetAliveMsg().Timestamp.IncNum),
 			lastSeen: time.Now(),
 			seqNum:   dm.GetAliveMsg().Timestamp.SeqNum,
 		}
@@ -927,12 +927,12 @@ func equalPKIid(a, b common.PKIidType) bool {
 }
 
 func same(a *timestamp, b *proto.PeerTime) bool {
-	return uint64(a.incTime.UnixNano()) == b.IncNumber && a.seqNum == b.SeqNum
+	return uint64(a.incTime.UnixNano()) == b.IncNum && a.seqNum == b.SeqNum
 }
 
 func before(a *timestamp, b *proto.PeerTime) bool {
-	return (uint64(a.incTime.UnixNano()) == b.IncNumber && a.seqNum < b.SeqNum) ||
-		uint64(a.incTime.UnixNano()) < b.IncNumber
+	return (uint64(a.incTime.UnixNano()) == b.IncNum && a.seqNum < b.SeqNum) ||
+		uint64(a.incTime.UnixNano()) < b.IncNum
 }
 
 func getAliveTimeInterval() time.Duration {

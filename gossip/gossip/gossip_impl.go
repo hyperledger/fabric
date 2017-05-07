@@ -1023,8 +1023,8 @@ func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.C
 		Metadata:    metadata,
 		PkiId:       g.comm.GetPKIid(),
 		Timestamp: &proto.PeerTime{
-			IncNumber: uint64(g.incTime.UnixNano()),
-			SeqNum:    uint64(time.Now().UnixNano()),
+			IncNum: uint64(g.incTime.UnixNano()),
+			SeqNum: uint64(time.Now().UnixNano()),
 		},
 	}
 	m := &proto.GossipMessage{

@@ -1406,7 +1406,7 @@ func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common
 		Content: &proto.GossipMessage_StateInfo{
 			StateInfo: &proto.StateInfo{
 				Channel_MAC: GenerateMAC(pkiID, channel),
-				Timestamp:   &proto.PeerTime{IncNumber: uint64(time.Now().UnixNano()), SeqNum: 1},
+				Timestamp:   &proto.PeerTime{IncNum: uint64(time.Now().UnixNano()), SeqNum: 1},
 				Metadata:    []byte(fmt.Sprintf("%d", ledgerHeight)),
 				PkiId:       []byte(pkiID),
 			},
