@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/spf13/viper"
 )
 
@@ -88,12 +89,12 @@ func TestSetupChaincodeLogging_blankLevel(t *testing.T) {
 	testLogLevelString := ""
 	testLogFormat := "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
 
-	viper.Set("chaincode.logLevel", testLogLevelString)
-	viper.Set("chaincode.logFormat", testLogFormat)
+	viper.Set("chaincode.logging.level", testLogLevelString)
+	viper.Set("chaincode.logging.format", testLogFormat)
 
 	SetupChaincodeLogging()
 
-	if !IsEnabledForLogLevel("info") {
+	if !IsEnabledForLogLevel(flogging.DefaultLevel()) {
 		t.FailNow()
 	}
 }
@@ -102,15 +103,17 @@ func TestSetupChaincodeLogging_blankLevel(t *testing.T) {
 // set the chaincodeLogger's logging format and level
 func TestSetupChaincodeLogging(t *testing.T) {
 	// set log level to a non-default level
-	testLogLevelString := "debug"
+	testLogLevel := "debug"
+	testShimLogLevel := "warning"
 	testLogFormat := "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
 
-	viper.Set("chaincode.logLevel", testLogLevelString)
-	viper.Set("chaincode.logFormat", testLogFormat)
+	viper.Set("chaincode.logging.level", testLogLevel)
+	viper.Set("chaincode.logging.format", testLogFormat)
+	viper.Set("chaincode.logging.shim", testShimLogLevel)
 
 	SetupChaincodeLogging()
 
-	if !IsEnabledForLogLevel(testLogLevelString) {
+	if !IsEnabledForLogLevel(testShimLogLevel) {
 		t.FailNow()
 	}
 }

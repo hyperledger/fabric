@@ -18,9 +18,13 @@ package shim
 
 import (
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/op/go-logging"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 // Test Go shim functionality that can be tested outside of a real chaincode
@@ -141,4 +145,52 @@ func TestNilEventName(t *testing.T) {
 		t.Error("Event name can not be nil string.")
 	}
 
+}
+
+type testCase struct {
+	name         string
+	ccLogLevel   string
+	shimLogLevel string
+}
+
+func TestSetupChaincodeLogging_shim(t *testing.T) {
+	var tc []testCase
+
+	tc = append(tc,
+		testCase{"ValidLevels", "debug", "warning"},
+		testCase{"EmptyLevels", "", ""},
+		testCase{"BadShimLevel", "debug", "war"},
+		testCase{"BadCCLevel", "deb", "notice"},
+		testCase{"EmptyShimLevel", "error", ""},
+		testCase{"EmptyCCLevel", "", "critical"},
+	)
+
+	assert := assert.New(t)
+
+	for i := 0; i < len(tc); i++ {
+		t.Run(tc[i].name, func(t *testing.T) {
+			viper.Set("chaincode.logging.level", tc[i].ccLogLevel)
+			viper.Set("chaincode.logging.shim", tc[i].shimLogLevel)
+
+			SetupChaincodeLogging()
+
+			_, ccErr := logging.LogLevel(tc[i].ccLogLevel)
+			_, shimErr := logging.LogLevel(tc[i].shimLogLevel)
+			if ccErr == nil {
+				assert.Equal(strings.ToUpper(tc[i].ccLogLevel), flogging.GetModuleLevel("ccLogger"), "Test case '%s' failed", tc[i].name)
+				if shimErr == nil {
+					assert.Equal(strings.ToUpper(tc[i].shimLogLevel), flogging.GetModuleLevel("shim"), "Test case '%s' failed", tc[i].name)
+				} else {
+					assert.Equal(strings.ToUpper(tc[i].ccLogLevel), flogging.GetModuleLevel("shim"), "Test case '%s' failed", tc[i].name)
+				}
+			} else {
+				assert.Equal(flogging.DefaultLevel(), flogging.GetModuleLevel("ccLogger"), "Test case '%s' failed", tc[i].name)
+				if shimErr == nil {
+					assert.Equal(strings.ToUpper(tc[i].shimLogLevel), flogging.GetModuleLevel("shim"), "Test case '%s' failed", tc[i].name)
+				} else {
+					assert.Equal(flogging.DefaultLevel(), flogging.GetModuleLevel("shim"), "Test case '%s' failed", tc[i].name)
+				}
+			}
+		})
+	}
 }
