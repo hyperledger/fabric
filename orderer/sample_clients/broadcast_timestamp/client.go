@@ -77,7 +77,7 @@ func main() {
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
 	flag.StringVar(&chainID, "chainID", provisional.TestChainID, "The chain ID to broadcast to.")
-	flag.Uint64Var(&messages, "messages", 1, "The number of messages to braodcast.")
+	flag.Uint64Var(&messages, "messages", 1, "The number of messages to broadcast.")
 	flag.Parse()
 
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())

@@ -80,7 +80,7 @@ type nextStateInfo struct {
 	sendSync bool
 }
 
-// Handler responsbile for management of Peer's side of chaincode stream
+// Handler responsible for management of Peer's side of chaincode stream
 type Handler struct {
 	sync.RWMutex
 	//peer to shim grpc serializer. User only in serialSend

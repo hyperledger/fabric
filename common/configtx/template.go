@@ -38,7 +38,7 @@ const (
 	epoch             = 0
 )
 
-// Template can be used to faciliate creation of config transactions
+// Template can be used to facilitate creation of config transactions
 type Template interface {
 	// Envelope returns a ConfigUpdateEnvelope for the given chainID
 	Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error)

@@ -89,7 +89,7 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) (filter.Action, filter.Com
 
 	maxChannels := scf.support.SharedConfig().MaxChannelsCount()
 	if maxChannels > 0 {
-		// We check for strictly greater than to accomodate the system channel
+		// We check for strictly greater than to accommodate the system channel
 		if uint64(scf.cc.channelsCount()) > maxChannels {
 			logger.Warningf("Rejecting channel creation because the orderer has reached the maximum number of channels, %d", maxChannels)
 			return filter.Reject, nil

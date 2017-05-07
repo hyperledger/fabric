@@ -316,7 +316,7 @@ func (b *BDDContext) userExpectsProposalResponsesWithStatusFromEndorsers(enrollI
 	var userRegistration *UserRegistration
 	var keyedProposalResponseMap KeyedProposalResponseMap
 	errRetFunc := func() error {
-		return fmt.Errorf("Error verifying proposal reponse '%s' for user '%s' with expected response code of '%s':  %s", proposalResponseAlias, enrollID, respStatusCode, err)
+		return fmt.Errorf("Error verifying proposal response '%s' for user '%s' with expected response code of '%s':  %s", proposalResponseAlias, enrollID, respStatusCode, err)
 	}
 	if userRegistration, err = b.GetUserRegistration(enrollID); err != nil {
 		return errRetFunc()

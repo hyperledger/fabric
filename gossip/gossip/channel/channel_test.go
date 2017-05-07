@@ -684,7 +684,7 @@ func TestChannelAddToMessageStoreExpire(t *testing.T) {
 		if msg.IsDigestMsg() {
 			assert.Equal(t, 1, len(msg.GetDataDig().Digests), "Number of digests returned by channel blockPuller incorrect")
 		} else {
-			t.Fatal("Not correct pull msg type in responce - expect digest")
+			t.Fatal("Not correct pull msg type in response - expect digest")
 		}
 	}
 
@@ -728,7 +728,7 @@ func TestChannelAddToMessageStoreExpire(t *testing.T) {
 		if msg.IsDigestMsg() {
 			assert.Equal(t, 1, len(msg.GetDataDig().Digests), "Number of digests returned by channel blockPuller incorrect")
 		} else {
-			t.Fatal("Not correct pull msg type in responce - expect digest")
+			t.Fatal("Not correct pull msg type in response - expect digest")
 		}
 	}
 

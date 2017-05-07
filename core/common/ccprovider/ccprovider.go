@@ -299,7 +299,7 @@ type ChaincodeData struct {
 //Reset resets
 func (cd *ChaincodeData) Reset() { *cd = ChaincodeData{} }
 
-//String convers to string
+//String converts to string
 func (cd *ChaincodeData) String() string { return proto.CompactTextString(cd) }
 
 //ProtoMessage just exists to make proto happy

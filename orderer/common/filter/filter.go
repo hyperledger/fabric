@@ -43,7 +43,7 @@ type Rule interface {
 
 // Committer is returned by postfiltering and should be invoked once the message has been written to the blockchain
 type Committer interface {
-	// Commit performs whatever action should be performed upon commiting of a message
+	// Commit performs whatever action should be performed upon committing of a message
 	Commit()
 
 	// Isolated returns whether this transaction should have a block to itself or may be mixed with other transactions

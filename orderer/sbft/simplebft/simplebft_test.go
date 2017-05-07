@@ -534,7 +534,7 @@ func TestMsgReordering(t *testing.T) {
 	var preprep *testMsgEvent
 
 	// forcing pre-prepare from primary 0 to reach replica 1 after some delay
-	// effectivelly delivering pre-prepare instead of checkpoint
+	// effectively delivering pre-prepare instead of checkpoint
 	sys.filterFn = func(e testElem) (testElem, bool) {
 		if msg, ok := e.ev.(*testMsgEvent); ok {
 			if msg.src == 0 && msg.dst == 1 {
@@ -587,7 +587,7 @@ func TestBacklogReordering(t *testing.T) {
 	var preprep *testMsgEvent
 
 	// forcing pre-prepare from primary 0 to reach replica 1 after some delay
-	// effectivelly delivering pre-prepare instead of checkpoint
+	// effectively delivering pre-prepare instead of checkpoint
 	sys.filterFn = func(e testElem) (testElem, bool) {
 		if msg, ok := e.ev.(*testMsgEvent); ok {
 			if msg.src == 0 && msg.dst == 1 {

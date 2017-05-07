@@ -155,7 +155,7 @@ func TestPolicyForItem(t *testing.T) {
 			ModPolicy: "rootPolicy",
 		},
 	})
-	assert.False(t, ok, "Should not have found rootPolicy off a non-existant manager")
+	assert.False(t, ok, "Should not have found rootPolicy off a non-existent manager")
 
 	policy, ok = cm.policyForItem(comparable{
 		path: []string{"root", "foo"},

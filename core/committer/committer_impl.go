@@ -37,7 +37,7 @@ func init() {
 }
 
 // LedgerCommitter is the implementation of  Committer interface
-// it keeps the reference to the ledger to commit blocks and retreive
+// it keeps the reference to the ledger to commit blocks and retrieve
 // chain information
 type LedgerCommitter struct {
 	ledger    ledger.PeerLedger

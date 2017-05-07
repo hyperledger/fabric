@@ -139,7 +139,7 @@ func TestPhantomValidation(t *testing.T) {
 	rwsetBuilder2.AddToRangeQuerySet("ns1", rqi2)
 	checkValidation(t, validator, []*rwsetutil.TxRwSet{rwsetBuilder2.GetTxReadWriteSet()}, nil, []int{0})
 
-	//rwset3 should not be valid - simulate key3 got commited to db
+	//rwset3 should not be valid - simulate key3 got committed to db
 	rwsetBuilder3 := rwsetutil.NewRWSetBuilder()
 	rqi3 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
 	rqi3.SetRawReads([]*kvrwset.KVRead{

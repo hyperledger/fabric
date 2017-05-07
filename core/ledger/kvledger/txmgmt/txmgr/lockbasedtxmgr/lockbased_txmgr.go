@@ -89,7 +89,7 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	logger.Debugf("Committing updates to state database")
 	txmgr.commitRWLock.Lock()
 	defer txmgr.commitRWLock.Unlock()
-	logger.Debugf("Write lock aquired for committing updates to state database")
+	logger.Debugf("Write lock acquired for committing updates to state database")
 	if txmgr.batch == nil {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}

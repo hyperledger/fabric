@@ -183,7 +183,7 @@ func getMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string, sigid
 
 	intermediatecert, err := getPemMaterialFromDir(intermediatecertsDir)
 	if os.IsNotExist(err) {
-		mspLogger.Infof("intermidiate certs folder not found at [%s]. Skipping.: [%s]", intermediatecertsDir, err)
+		mspLogger.Infof("intermediate certs folder not found at [%s]. Skipping.: [%s]", intermediatecertsDir, err)
 	} else if err != nil {
 		return nil, fmt.Errorf("Failed loading intermediate ca certs at [%s]: [%s]", intermediatecertsDir, err)
 	}

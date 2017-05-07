@@ -59,7 +59,7 @@ var orderingEndpoint string
 
 // XXXDefaultChannelMSPID should not be defined in production code
 // It should only be referenced in tests.  However, it is necessary
-// to support the 'default chain' setup so temporarilly adding until
+// to support the 'default chain' setup so temporarily adding until
 // this concept can be removed to testing scenarios only
 const XXXDefaultChannelMSPID = "DEFAULT"
 
@@ -93,7 +93,7 @@ func initSysCCs() {
 
 func serve(args []string) error {
 	ledgermgmt.Initialize()
-	// Parameter overrides must be processed before any paramaters are
+	// Parameter overrides must be processed before any parameters are
 	// cached. Failures to cache cause the server to terminate immediately.
 	if chaincodeDevMode {
 		logger.Info("Running in chaincode development mode")

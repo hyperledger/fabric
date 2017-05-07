@@ -18,7 +18,7 @@ OBJDIR ?= build
 TMP_GOPATH=$(OBJDIR)/gopath
 GOBIN=$(abspath $(TMP_GOPATH)/bin)
 
-GOTOOLS = golint govendor goimports protoc-gen-go ginkgo gocov gocov-xml
+GOTOOLS = golint govendor goimports protoc-gen-go ginkgo gocov gocov-xml misspell
 GOTOOLS_BIN = $(patsubst %,$(GOBIN)/%, $(GOTOOLS))
 
 # go tool->path mapping
@@ -28,6 +28,7 @@ go.fqp.goimports := golang.org/x/tools/cmd/goimports
 go.fqp.ginkgo    := github.com/onsi/ginkgo/ginkgo
 go.fqp.gocov     := github.com/axw/gocov/...
 go.fqp.gocov-xml := github.com/AlekSi/gocov-xml
+go.fqp.misspell  := github.com/client9/misspell/cmd/misspell
 
 all: $(GOTOOLS_BIN)
 

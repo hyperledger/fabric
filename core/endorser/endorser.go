@@ -327,7 +327,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	// Check for uniqueness of prop.TxID with ledger
 	// Notice that ValidateProposalMessage has already verified
-	// that TxID is computed propertly
+	// that TxID is computed properly
 	txid := chdr.TxId
 	if txid == "" {
 		err = errors.New("Invalid txID. It must be different from the empty string.")

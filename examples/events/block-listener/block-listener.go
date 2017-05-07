@@ -44,7 +44,7 @@ func (a *adapter) Recv(msg *pb.Event) (bool, error) {
 		a.notfy <- o
 		return true, nil
 	}
-	return false, fmt.Errorf("Receive unkown type event: %v", msg)
+	return false, fmt.Errorf("Receive unknown type event: %v", msg)
 }
 
 //Disconnected implements consumer.EventAdapter interface for disconnecting

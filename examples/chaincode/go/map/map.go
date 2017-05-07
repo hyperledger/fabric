@@ -43,7 +43,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // Invoke has two functions
-// put - takes two arguements, a key and value, and stores them in the state
+// put - takes two arguments, a key and value, and stores them in the state
 // remove - takes one argument, a key, and removes if from the state
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()

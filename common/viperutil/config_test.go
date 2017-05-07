@@ -66,7 +66,7 @@ func TestEnvSlice(t *testing.T) {
 
 	expected := []string{"a", "b", "c"}
 	if !reflect.DeepEqual(uconf.Inner.Slice, expected) {
-		t.Fatalf("Did not get back the right slice, expeced: %v got %v", expected, uconf.Inner.Slice)
+		t.Fatalf("Did not get back the right slice, expected: %v got %v", expected, uconf.Inner.Slice)
 	}
 }
 
@@ -119,7 +119,7 @@ func TestByteSize(t *testing.T) {
 				t.Fatalf("Failed to unmarshal with: %s", err)
 			}
 			if uconf.Inner.ByteSize != tc.expected {
-				t.Fatalf("Did not get back the right byte size, expeced: %v got %v", tc.expected, uconf.Inner.ByteSize)
+				t.Fatalf("Did not get back the right byte size, expected: %v got %v", tc.expected, uconf.Inner.ByteSize)
 			}
 		})
 	}

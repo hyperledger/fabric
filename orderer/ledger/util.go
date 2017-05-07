@@ -46,7 +46,7 @@ func (nfei *NotFoundErrorIterator) ReadyChan() <-chan struct{} {
 // CreateNextBlock provides a utility way to construct the next block from
 // contents and metadata for a given ledger
 // XXX This will need to be modified to accept marshaled envelopes
-//     to accomodate non-deterministic marshaling
+//     to accommodate non-deterministic marshaling
 func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 	var nextBlockNumber uint64
 	var previousBlockHash []byte

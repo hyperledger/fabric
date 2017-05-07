@@ -89,7 +89,7 @@ func ListSubdirs(dirPath string) ([]string, error) {
 func logDirStatus(msg string, dirPath string) {
 	exists, _, err := FileExists(dirPath)
 	if err != nil {
-		logger.Errorf("Error while checking for dir existance")
+		logger.Errorf("Error while checking for dir existence")
 	}
 	if exists {
 		logger.Debugf("%s - [%s] exists", msg, dirPath)

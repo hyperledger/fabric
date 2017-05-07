@@ -138,7 +138,7 @@ func getChaincodeInstallPackage(cds *pb.ChaincodeDeploymentSpec, cf *ChaincodeCm
 	return bytesToWrite, nil
 }
 
-// chaincodePackage creates the chaincode packge. On success, the chaincode name
+// chaincodePackage creates the chaincode package. On success, the chaincode name
 // (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
 // commands.
 func chaincodePackage(cmd *cobra.Command, args []string, cdsFact ccDepSpecFactory, cf *ChaincodeCmdFactory) error {

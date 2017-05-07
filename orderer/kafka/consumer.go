@@ -57,7 +57,7 @@ func (c *consumerImpl) Recv() <-chan *sarama.ConsumerMessage {
 	return c.partition.Messages()
 }
 
-// Errors returns a channel with errors occuring during
+// Errors returns a channel with errors occurring during
 // the consumption of a partition from the Kafka cluster.
 func (c *consumerImpl) Errors() <-chan *sarama.ConsumerError {
 	return c.partition.Errors()

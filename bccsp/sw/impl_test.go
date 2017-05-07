@@ -1374,7 +1374,7 @@ func TestRSAKeyGenEphemeral(t *testing.T) {
 		t.Fatalf("Failed generating RSA corresponding public key [%s]", err)
 	}
 	if pk == nil {
-		t.Fatal("PK must be diffrent from nil")
+		t.Fatal("PK must be different from nil")
 	}
 
 	b, err := k.Bytes()

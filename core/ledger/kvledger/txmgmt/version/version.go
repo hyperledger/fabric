@@ -44,7 +44,7 @@ func (h *Height) ToBytes() []byte {
 }
 
 // Compare return a -1, zero, or +1 based on whether this height is
-// less than, equals to, or greater than the specified height repectively.
+// less than, equals to, or greater than the specified height respectively.
 func (h *Height) Compare(h1 *Height) int {
 	res := 0
 	switch {

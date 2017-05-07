@@ -159,7 +159,7 @@ func newResultsItr(ns string, startKey string, endKey string,
 // Before returning the next result, update the EndKey and ItrExhausted in rangeQueryInfo
 // If we set the EndKey in the constructor (as we do for the StartKey) to what is
 // supplied in the original query, we may be capturing the unnecessary longer range if the
-// caller decides to stop iterating at some intermidiate point. Alternatively, we could have
+// caller decides to stop iterating at some intermediate point. Alternatively, we could have
 // set the EndKey and ItrExhausted in the Close() function but it may not be desirable to change
 // transactional behaviour based on whether the Close() was invoked or not
 func (itr *resultsItr) Next() (commonledger.QueryResult, error) {
