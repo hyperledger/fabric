@@ -100,10 +100,6 @@ func InitCmdFactory(isOrdererRequired bool) (*ChannelCmdFactory, error) {
 		return common.GetBroadcastClient(orderingEndpoint, tls, caFile)
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("Error getting broadcast client: %s", err)
-	}
-
 	//for join, we need the endorser as well
 	if isOrdererRequired {
 		cmdFact.EndorserClient, err = common.GetEndorserClient()
