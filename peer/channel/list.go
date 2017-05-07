@@ -91,7 +91,7 @@ func listCmd(cf *ChannelCmdFactory) *cobra.Command {
 func list(cf *ChannelCmdFactory) error {
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(true)
+		cf, err = InitCmdFactory(EndorserRequired, OrdererNotRequired)
 		if err != nil {
 			return err
 		}
