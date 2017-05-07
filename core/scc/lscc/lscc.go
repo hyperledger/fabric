@@ -82,7 +82,7 @@ const (
 
 //---------- the LSCC -----------------
 
-// LifeCycleSysCC implements chaincode lifecycle and policies aroud it
+// LifeCycleSysCC implements chaincode lifecycle and policies around it
 type LifeCycleSysCC struct {
 	// sccprovider is the interface with which we call
 	// methods of the system chaincode package without
@@ -579,7 +579,7 @@ func (lscc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 		return nil, fmt.Errorf("cannot get package for the chaincode to be instantiated (%s:%s)-%s", cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, err)
 	}
 
-	//this is guranteed to be not nil
+	//this is guarantees to be not nil
 	cd := ccpack.GetChaincodeData()
 
 	//retain chaincode specific data and fill channel specific ones

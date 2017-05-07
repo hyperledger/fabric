@@ -51,7 +51,7 @@ func (s *SBFT) handleCommit(c *Subject, src uint64) {
 	s.cur.commit[src] = c
 	s.cancelViewChangeTimer()
 
-	//maybe mark as comitted
+	//maybe mark as committed
 	if s.cur.committed || len(s.cur.commit) < s.commonCaseQuorum() {
 		return
 	}

@@ -89,7 +89,7 @@ func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator, 
 		specified := start.Specified.Number
 		logger.Debugf("Attempting to return block %d", specified)
 
-		// Note the two +1's here is to accomodate the 'preGenesis' block of ^uint64(0)
+		// Note the two +1's here is to accommodate the 'preGenesis' block of ^uint64(0)
 		if specified+1 < oldest.block.Header.Number+1 || specified > rl.newest.block.Header.Number+1 {
 			logger.Debugf("Returning error iterator because specified seek was %d with oldest %d and newest %d",
 				specified, rl.oldest.block.Header.Number, rl.newest.block.Header.Number)

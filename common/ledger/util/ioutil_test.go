@@ -104,7 +104,7 @@ func TestListSubdirs(t *testing.T) {
 }
 
 func createAndWriteAFile(sentence string) (int, error) {
-	//create a file in the direcotry
+	//create a file in the directory
 	f, err2 := os.Create(dbFileTest)
 	if err2 != nil {
 		return 0, err2

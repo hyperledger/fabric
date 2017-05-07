@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package pkcs11
 
 import (
@@ -31,7 +32,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/utils"
 )
 
-// fileBasedKeyStore is a folder-based KeyStore.
+// FileBasedKeyStore is a folder-based KeyStore.
 // Each key is stored in a separated file whose name contains the key's SKI
 // and flags to identity the key's type. All the keys are stored in
 // a folder whose path is provided at initialization time.

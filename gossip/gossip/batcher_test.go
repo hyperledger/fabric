@@ -67,7 +67,7 @@ func TestBatchingEmitterExpiration(t *testing.T) {
 
 	emitter.Add(1)
 	time.Sleep(time.Duration(500) * time.Millisecond)
-	assert.Equal(t, int32(10), atomic.LoadInt32(&disseminationAttempts), "Inadaquate amount of dissemination attempts detected")
+	assert.Equal(t, int32(10), atomic.LoadInt32(&disseminationAttempts), "Inadequate amount of dissemination attempts detected")
 	assert.Equal(t, 0, emitter.Size())
 }
 

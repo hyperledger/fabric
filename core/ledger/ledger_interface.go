@@ -25,7 +25,7 @@ import (
 // PeerLedgerProvider provides handle to ledger instances
 type PeerLedgerProvider interface {
 	// Create creates a new ledger with the given genesis block.
-	// This function guarentees that the creation of ledger and committing the genesis block would an atomic action
+	// This function guarantees that the creation of ledger and committing the genesis block would an atomic action
 	// The chain id retrieved from the genesis block is treated as a ledger id
 	Create(genesisBlock *common.Block) (PeerLedger, error)
 	// Open opens an already created ledger
@@ -120,7 +120,7 @@ type TxSimulator interface {
 	// GetTxSimulationResults encapsulates the results of the transaction simulation.
 	// This should contain enough detail for
 	// - The update in the state that would be caused if the transaction is to be committed
-	// - The environment in which the transaction is executed so as to be able to decide the validity of the enviroment
+	// - The environment in which the transaction is executed so as to be able to decide the validity of the environment
 	//   (at a later time on a different peer) during committing the transactions
 	// Different ledger implementation (or configurations of a single implementation) may want to represent the above two pieces
 	// of information in different way in order to support different data-models or optimize the information representations.

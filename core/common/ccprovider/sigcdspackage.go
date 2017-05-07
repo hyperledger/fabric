@@ -48,7 +48,7 @@ type SignedCDSData struct {
 //Reset resets
 func (data *SignedCDSData) Reset() { *data = SignedCDSData{} }
 
-//String convers to string
+//String converts to string
 func (data *SignedCDSData) String() string { return proto.CompactTextString(data) }
 
 //ProtoMessage just exists to make proto happy

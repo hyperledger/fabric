@@ -95,7 +95,10 @@ include docker-env.mk
 
 all: native docker checks
 
-checks: linter license unit-test behave
+checks: linter license spelling unit-test behave
+
+spelling: buildenv
+	@scripts/check_spelling.sh
 
 license: buildenv
 	@scripts/check_license.sh

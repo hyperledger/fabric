@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 )
 
-//This is where all initializations take place. These closley follow CLI
+//This is where all initializations take place. These closely follow CLI
 //initializations.
 
 //read CC checker configuration from -s <jsonfile>. Defaults to ccchecker.json

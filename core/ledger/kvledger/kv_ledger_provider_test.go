@@ -108,7 +108,7 @@ func TestRecovery(t *testing.T) {
 	testutil.AssertNoError(t, err, "Failed to open the ledger")
 	ledger.Close()
 
-	// Case 0: assume a crash happens before the genesis block of ledger 2 is comitted
+	// Case 0: assume a crash happens before the genesis block of ledger 2 is committed
 	// Open the ID store (inventory of chainIds/ledgerIds)
 	provider.(*Provider).idStore.setUnderConstructionFlag(constructTestLedgerID(2))
 	provider.Close()
@@ -203,7 +203,7 @@ func TestLedgerBackup(t *testing.T) {
 	// Create restore environment
 	env = createTestEnv(t, restorePath)
 
-	// remove the statedb, historydb, and block indexes (they are suppoed to be auto created during opening of an existing ledger)
+	// remove the statedb, historydb, and block indexes (they are supposed to be auto created during opening of an existing ledger)
 	// and rename the originalPath to restorePath
 	testutil.AssertNoError(t, os.RemoveAll(ledgerconfig.GetStateLevelDBPath()), "")
 	testutil.AssertNoError(t, os.RemoveAll(ledgerconfig.GetHistoryLevelDBPath()), "")

@@ -112,7 +112,7 @@ func ApplyQueryWrapper(namespace, queryString string, queryLimit, querySkip int)
 
 }
 
-//setNamespaceInSelector adds an additional heirarchy in the "selector"
+//setNamespaceInSelector adds an additional hierarchy in the "selector"
 //{"owner": {"$eq": "tom"}}
 //would be mapped as (assuming a namespace of "marble"):
 //{"$and":[{"chaincodeid":"marble"},{"data.owner":{"$eq":"tom"}}]}
@@ -129,7 +129,7 @@ func setNamespaceInSelector(namespace, jsonValue interface{},
 	//Add the context filter and the existing selector value
 	queryParts = append(queryParts, namespaceFilter, jsonValue)
 
-	//Create a new mapping for the new query stucture
+	//Create a new mapping for the new query structure
 	mappedSelector := make(map[string]interface{})
 
 	//Specify the "$and" operator for the parts of the query

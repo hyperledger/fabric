@@ -65,7 +65,7 @@ func initialize() {
 }
 
 // CreateLedger creates a new ledger with the given genesis block.
-// This function guarentees that the creation of ledger and committing the genesis block would an atomic action
+// This function guarantees that the creation of ledger and committing the genesis block would an atomic action
 // The chain id retrieved from the genesis block is treated as a ledger id
 func CreateLedger(genesisBlock *common.Block) (ledger.PeerLedger, error) {
 	lock.Lock()

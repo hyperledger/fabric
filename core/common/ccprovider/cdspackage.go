@@ -48,7 +48,7 @@ type CDSData struct {
 //Reset resets
 func (data *CDSData) Reset() { *data = CDSData{} }
 
-//String convers to string
+//String converts to string
 func (data *CDSData) String() string { return proto.CompactTextString(data) }
 
 //ProtoMessage just exists to make proto happy

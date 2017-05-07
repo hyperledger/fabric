@@ -28,7 +28,7 @@ const (
 
 	GroupPrefix  = "[Groups] "
 	ValuePrefix  = "[Values] "
-	PolicyPrefix = "[Policy] " // The plurarility doesn't match, but, it makes the logs much easier being the same lenght as "Groups" and "Values"
+	PolicyPrefix = "[Policy] " // The plurarility doesn't match, but, it makes the logs much easier being the same length as "Groups" and "Values"
 
 	PathSeparator = "/"
 )

@@ -33,7 +33,7 @@ func initInstallTest(fsPath string, t *testing.T) (*cobra.Command, *ChaincodeCmd
 	viper.Set("peer.fileSystemPath", fsPath)
 	finitInstallTest(fsPath)
 
-	//if mkdir fails everthing will fail... but it should not
+	//if mkdir fails everything will fail... but it should not
 	if err := os.Mkdir(fsPath, 0755); err != nil {
 		t.Fatalf("could not create install env")
 	}

@@ -370,7 +370,7 @@ func updateTrustedRoots(cm configtxapi.Manager) {
 }
 
 // populates the appRootCAs and orderRootCAs maps by getting the
-// root and intermediate certs for all msps assocaited with the MSPManager
+// root and intermediate certs for all msps associated with the MSPManager
 func buildTrustedRootsForChain(cm configtxapi.Manager) {
 	rootCASupport.Lock()
 	defer rootCASupport.Unlock()

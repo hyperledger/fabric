@@ -31,7 +31,7 @@ import (
 type SimpleChaincode struct {
 }
 
-// Init takes two arguements, a string and int. These are stored in the key/value pair in the state
+// Init takes two arguments, a string and int. These are stored in the key/value pair in the state
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	var event string // Indicates whether event has happened. Initially 0
 	var eventVal int // State of event

@@ -48,7 +48,7 @@ func NewStandardValues(protosStructs ...interface{}) (*standardValues, error) {
 }
 
 // Deserialize looks up the backing Values proto of the given name, unmarshals the given bytes
-// to populate the backing message structure, and retuns a referenced to the retained deserialized
+// to populate the backing message structure, and returns a referenced to the retained deserialized
 // message (or an error, either because the key did not exist, or there was an an error unmarshaling
 func (sv *standardValues) Deserialize(key string, value []byte) (proto.Message, error) {
 	msg, ok := sv.lookup[key]
@@ -95,7 +95,7 @@ func (sv *standardValues) initializeProtosStruct(objValue reflect.Value) error {
 
 		_, ok = sv.lookup[structField.Name]
 		if ok {
-			return fmt.Errorf("Ambiguous field name specified, multiple occurances of %s", structField.Name)
+			return fmt.Errorf("Ambiguous field name specified, multiple occurrences of %s", structField.Name)
 		}
 
 		sv.lookup[structField.Name] = proto

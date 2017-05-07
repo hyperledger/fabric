@@ -54,7 +54,7 @@ func ReadVarInt(buffer *bytes.Buffer) uint64 {
 	return finalResult
 }
 
-// ParseUTXOBytes parses a bitcoin sytle transaction
+// ParseUTXOBytes parses a bitcoin style transaction
 func ParseUTXOBytes(txAsUTXOBytes []byte) *TX {
 	buffer := bytes.NewBuffer(txAsUTXOBytes)
 	var version int32
