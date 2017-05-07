@@ -158,7 +158,7 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	var broadcastClient common.BroadcastClient
 	broadcastClient, err = cf.BroadcastFactory()
 	if err != nil {
-		return err
+		return fmt.Errorf("Error getting broadcast client: %s", err)
 	}
 
 	defer broadcastClient.Close()
