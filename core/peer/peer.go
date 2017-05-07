@@ -377,13 +377,20 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 
 	appRootCAs := [][]byte{}
 	ordererRootCAs := [][]byte{}
+	appOrgMSPs := make(map[string]struct{})
+
+	//loop through app orgs and build map of MSPIDs
+	for _, appOrg := range cm.ApplicationConfig().Organizations() {
+		appOrgMSPs[appOrg.MSPID()] = struct{}{}
+	}
 	cid := cm.ChainID()
+	peerLogger.Debugf("updating root CAs for channel [%s]", cid)
 	msps, err := cm.MSPManager().GetMSPs()
 	if err != nil {
-		peerLogger.Errorf("Error getting getting root CA for channel %s (%s)", cid, err)
+		peerLogger.Errorf("Error getting root CAs for channel %s (%s)", cid, err)
 	}
 	if err == nil {
-		for _, v := range msps {
+		for k, v := range msps {
 			// check to see if this is a FABRIC MSP
 			if v.GetType() == msp.FABRIC {
 				for _, root := range v.GetRootCerts() {
@@ -392,7 +399,14 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 						id := &mspprotos.SerializedIdentity{}
 						err = proto.Unmarshal(sid, id)
 						if err == nil {
-							appRootCAs = append(appRootCAs, id.IdBytes)
+							// check to see of this is an app org MSP
+							if _, ok := appOrgMSPs[k]; ok {
+								peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
+								appRootCAs = append(appRootCAs, id.IdBytes)
+							} else {
+								peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
+								ordererRootCAs = append(ordererRootCAs, id.IdBytes)
+							}
 						}
 					}
 				}
@@ -402,14 +416,19 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 						id := &mspprotos.SerializedIdentity{}
 						err = proto.Unmarshal(sid, id)
 						if err == nil {
-							appRootCAs = append(appRootCAs, id.IdBytes)
+							// check to see of this is an app org MSP
+							if _, ok := appOrgMSPs[k]; ok {
+								peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
+								appRootCAs = append(appRootCAs, id.IdBytes)
+							} else {
+								peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
+								ordererRootCAs = append(ordererRootCAs, id.IdBytes)
+							}
 						}
 					}
 				}
 			}
 		}
-		// TODO: separate app and orderer CAs
-		ordererRootCAs = appRootCAs
 		rootCASupport.AppRootCAsByChain[cid] = appRootCAs
 		rootCASupport.OrdererRootCAsByChain[cid] = ordererRootCAs
 	}
