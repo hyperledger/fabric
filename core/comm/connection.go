@@ -75,13 +75,12 @@ func (cas *CASupport) GetServerRootCAs() (appRootCAs, ordererRootCAs [][]byte) {
 		appRootCAs = append(appRootCAs, appRootCA...)
 	}
 
-	for _, ordererRootCA := range cas.AppRootCAsByChain {
+	for _, ordererRootCA := range cas.OrdererRootCAsByChain {
 		ordererRootCAs = append(ordererRootCAs, ordererRootCA...)
 	}
 
 	// also need to append statically configured root certs
 	appRootCAs = append(appRootCAs, cas.ServerRootCAs...)
-	ordererRootCAs = append(ordererRootCAs, cas.ServerRootCAs...)
 	return appRootCAs, ordererRootCAs
 }
 
@@ -158,7 +157,6 @@ func (cas *CASupport) GetClientRootCAs() (appRootCAs, ordererRootCAs [][]byte) {
 
 	// also need to append statically configured root certs
 	appRootCAs = append(appRootCAs, cas.ClientRootCAs...)
-	ordererRootCAs = append(ordererRootCAs, cas.ClientRootCAs...)
 	return appRootCAs, ordererRootCAs
 }
 

@@ -238,7 +238,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 
 		{
 			name:          "MutualTLSOrg1Org1",
-			listenAddress: fmt.Sprintf("localhost:%d", 4052),
+			listenAddress: fmt.Sprintf("localhost:%d", 4051),
 			secureConfig: comm.SecureServerConfig{
 				UseTLS:            true,
 				ServerCertificate: org1Server1Cert,
@@ -254,7 +254,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		},
 		{
 			name:          "MutualTLSOrg1Org2",
-			listenAddress: fmt.Sprintf("localhost:%d", 4053),
+			listenAddress: fmt.Sprintf("localhost:%d", 4052),
 			secureConfig: comm.SecureServerConfig{
 				UseTLS:            true,
 				ServerCertificate: org1Server1Cert,

@@ -117,22 +117,23 @@ func TestCASupport(t *testing.T) {
 	cas := GetCASupport()
 	cas.AppRootCAsByChain["channel1"] = [][]byte{rootCAs[0]}
 	cas.AppRootCAsByChain["channel2"] = [][]byte{rootCAs[1]}
-	cas.OrdererRootCAsByChain["channel1"] = [][]byte{(rootCAs[2])}
-	cas.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[3]}
-	cas.ServerRootCAs = [][]byte{rootCAs[4]}
-	cas.ClientRootCAs = [][]byte{rootCAs[4], rootCAs[5]}
+	cas.AppRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
+	cas.OrdererRootCAsByChain["channel1"] = [][]byte{(rootCAs[3])}
+	cas.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
+	cas.ServerRootCAs = [][]byte{rootCAs[5]}
+	cas.ClientRootCAs = [][]byte{rootCAs[5]}
 
 	appServerRoots, ordererServerRoots := cas.GetServerRootCAs()
 	t.Logf("%d appServerRoots | %d ordererServerRoots", len(appServerRoots),
 		len(ordererServerRoots))
-	assert.Equal(t, 3, len(appServerRoots), "Expected 3 app server root CAs")
-	assert.Equal(t, 3, len(ordererServerRoots), "Expected 3 orderer server root CAs")
+	assert.Equal(t, 4, len(appServerRoots), "Expected 4 app server root CAs")
+	assert.Equal(t, 2, len(ordererServerRoots), "Expected 2 orderer server root CAs")
 
 	appClientRoots, ordererClientRoots := cas.GetClientRootCAs()
 	t.Logf("%d appClientRoots | %d ordererClientRoots", len(appClientRoots),
 		len(ordererClientRoots))
-	assert.Equal(t, 4, len(appClientRoots), "Expected 4 app server root CAs")
-	assert.Equal(t, 4, len(ordererClientRoots), "Expected 4 orderer server root CAs")
+	assert.Equal(t, 4, len(appClientRoots), "Expected 4 app client root CAs")
+	assert.Equal(t, 2, len(ordererClientRoots), "Expected 4 orderer client root CAs")
 
 	// make sure we really have a singleton
 	casClone := GetCASupport()
