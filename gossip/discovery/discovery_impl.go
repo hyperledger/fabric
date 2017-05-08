@@ -80,7 +80,7 @@ type gossipDiscoveryImpl struct {
 	aliveMembership *util.MembershipStore
 	deadMembership  *util.MembershipStore
 
-	msgStore msgstore.MessageStore
+	msgStore *aliveMsgStore
 
 	bootstrapPeers []string
 
@@ -114,25 +114,7 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 		disclosurePolicy: disPol,
 	}
 
-	policy := proto.NewGossipMessageComparator(0)
-	trigger := func(m interface{}) {}
-	aliveMsgTTL := getAliveExpirationTimeout() * msgExpirationFactor
-	externalLock := func() { d.lock.Lock() }
-	externalUnlock := func() { d.lock.Unlock() }
-	callback := func(m interface{}) {
-		msg := m.(*proto.SignedGossipMessage)
-		if !msg.IsAliveMsg() {
-			return
-		}
-		id := msg.GetAliveMsg().Membership.PkiId
-		d.aliveMembership.Remove(id)
-		d.deadMembership.Remove(id)
-		delete(d.id2Member, string(id))
-		delete(d.deadLastTS, string(id))
-		delete(d.aliveLastTS, string(id))
-	}
-
-	d.msgStore = msgstore.NewMessageStoreExpirable(policy, trigger, aliveMsgTTL, externalLock, externalUnlock, callback)
+	d.msgStore = newAliveMsgStore(d)
 
 	go d.periodicalSendAlive()
 	go d.periodicalCheckAlive()
@@ -325,7 +307,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 			return
 		}
 
-		if d.msgStore.CheckValid(m) {
+		if d.msgStore.CheckValid(selfInfoGossipMsg) {
 			d.handleAliveMessage(selfInfoGossipMsg)
 		}
 
@@ -364,10 +346,9 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 				return
 			}
 
-			if d.msgStore.CheckValid(m) {
+			if d.msgStore.CheckValid(am) {
 				d.handleAliveMessage(am)
 			}
-
 		}
 
 		for _, env := range memResp.Dead {
@@ -381,7 +362,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 				continue
 			}
 
-			if !d.msgStore.CheckValid(m) {
+			if !d.msgStore.CheckValid(dm) {
 				//Newer alive message exist
 				return
 			}
@@ -964,4 +945,47 @@ func filterOutLocalhost(endpoints []string, port int) []string {
 		returnedEndpoints = append(returnedEndpoints, endpoint)
 	}
 	return returnedEndpoints
+}
+
+type aliveMsgStore struct {
+	msgstore.MessageStore
+}
+
+func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
+	policy := proto.NewGossipMessageComparator(0)
+	trigger := func(m interface{}) {}
+	aliveMsgTTL := getAliveExpirationTimeout() * msgExpirationFactor
+	externalLock := func() { d.lock.Lock() }
+	externalUnlock := func() { d.lock.Unlock() }
+	callback := func(m interface{}) {
+		msg := m.(*proto.SignedGossipMessage)
+		if !msg.IsAliveMsg() {
+			return
+		}
+		id := msg.GetAliveMsg().Membership.PkiId
+		d.aliveMembership.Remove(id)
+		d.deadMembership.Remove(id)
+		delete(d.id2Member, string(id))
+		delete(d.deadLastTS, string(id))
+		delete(d.aliveLastTS, string(id))
+	}
+
+	s := &aliveMsgStore{
+		MessageStore: msgstore.NewMessageStoreExpirable(policy, trigger, aliveMsgTTL, externalLock, externalUnlock, callback),
+	}
+	return s
+}
+
+func (s *aliveMsgStore) Add(msg interface{}) bool {
+	if !msg.(*proto.SignedGossipMessage).IsAliveMsg() {
+		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))
+	}
+	return s.MessageStore.Add(msg)
+}
+
+func (s *aliveMsgStore) CheckValid(msg interface{}) bool {
+	if !msg.(*proto.SignedGossipMessage).IsAliveMsg() {
+		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))
+	}
+	return s.MessageStore.CheckValid(msg)
 }
