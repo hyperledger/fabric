@@ -4,6 +4,8 @@ NODES += orderer
 NODES += cli
 NODES += ca
 
+DAEMONS = $(filter-out cli,$(NODES))
+
 CHANNEL_NAME ?= mychannel
 
 CRYPTOOUTPUT = build/cryptogen
@@ -42,9 +44,9 @@ help:
 
 compose-up: nodes
 	@echo "Booting docker-compose environment"
-	$(COMPOSE) up -d ca $(PEERS)
+	$(COMPOSE) up -d $(DAEMONS)
 	$(DRUN) ./configure.sh $(CHANNEL_NAME) "$(CHANNEL_TXNS)" "$(PEERS)" $(TLS)
-	@./compose/report-env.sh "$(filter-out cli,$(NODES)")
+	@./compose/report-env.sh "$(DAEMONS)"
 
 compose-down:
 	$(COMPOSE) down

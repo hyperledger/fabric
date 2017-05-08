@@ -26,6 +26,8 @@ services:
       <<: *logging
     volumes:
       - ../build/nodes/orderer:/etc/hyperledger/fabric
+    depends_on:
+      - ca
 
   peer1:
     container_name: peer1
