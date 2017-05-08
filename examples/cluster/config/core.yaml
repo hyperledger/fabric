@@ -358,7 +358,7 @@ chaincode:
     # chaincode/importsysccs.go
     system:
         cscc: enable
-        lccc: enable
+        lscc: enable
         escc: enable
         vscc: enable
         qscc: enable

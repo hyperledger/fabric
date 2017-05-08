@@ -4,6 +4,8 @@ NODES += orderer
 NODES += cli
 NODES += ca
 
+DAEMONS = $(filter-out cli,$(NODES))
+
 CHANNEL_NAME ?= mychannel
 
 CRYPTOOUTPUT = build/cryptogen
@@ -42,9 +44,9 @@ help:
 
 compose-up: nodes
 	@echo "Booting docker-compose environment"
-	$(COMPOSE) up -d ca $(PEERS)
+	$(COMPOSE) up -d $(DAEMONS)
 	$(DRUN) ./configure.sh $(CHANNEL_NAME) "$(CHANNEL_TXNS)" "$(PEERS)" $(TLS)
-	@./compose/report-env.sh "$(filter-out cli,$(NODES)")
+	@./compose/report-env.sh "$(DAEMONS)"
 
 compose-down:
 	$(COMPOSE) down
@@ -95,10 +97,10 @@ build/nodes/orderer: build/nodes/orderer/orderer.yaml
 build/nodes/orderer: build/nodes/orderer/genesis.block
 build/nodes/cli: $(CHANNEL_TXNS)
 
-build/nodes/ca:
-	@mkdir -p $@/tls
-	cp $(CA_PATH)/*_sk $@/tls/ca.key
-	cp $(CA_PATH)/*.pem $@/tls/ca.crt
+build/nodes/ca: build/nodes/ca/fabric-ca-server-config.yaml
+	@mkdir -p $@
+	cp $(CA_PATH)/*_sk $@/ca.key
+	cp $(CA_PATH)/*.pem $@/ca.crt
 
 build/nodes/%: build/nodes/%/msp build/nodes/%/configtx.yaml build/nodes/%/core.yaml
 	@echo "Built $@"

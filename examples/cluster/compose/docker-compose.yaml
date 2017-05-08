@@ -8,15 +8,13 @@ services:
     dns_search: .
     environment:
       - FABRIC_CA_SERVER_TLS_ENABLED=${TLS_ENABLED}
-      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server/tls/ca.crt
-      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server/tls/ca.key
     logging: &logging
       driver: json-file
       options:
         max-size: "25m"
         max-file: "2"
     volumes:
-      - ../build/nodes/ca/tls:/etc/hyperledger/fabric-ca-server/tls
+      - ../build/nodes/ca:/etc/hyperledger/fabric-ca-server
 
   orderer:
     container_name: orderer
@@ -28,6 +26,8 @@ services:
       <<: *logging
     volumes:
       - ../build/nodes/orderer:/etc/hyperledger/fabric
+    depends_on:
+      - ca
 
   peer1:
     container_name: peer1
