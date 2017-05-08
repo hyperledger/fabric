@@ -78,9 +78,9 @@ func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*common.Block, 
 	blocksIterated := 0
 	for {
 		t.Logf("blocksIterated: %v", blocksIterated)
-		bh, err := itr.Next()
+		block, err := itr.Next()
 		testutil.AssertNoError(t, err, "")
-		testutil.AssertEquals(t, bh.(*blockHolder).GetBlock(), blocks[blocksIterated])
+		testutil.AssertEquals(t, block, blocks[blocksIterated])
 		blocksIterated++
 		if blocksIterated == len(blocks) {
 			break
