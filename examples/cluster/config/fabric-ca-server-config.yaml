@@ -122,7 +122,7 @@ registry:
 #############################################################################
 db:
   type: sqlite3
-  datasource: /var/hyperledger/fabric-ca-server.db
+  datasource: /var/hyperledger/fabric-ca-server/state.db
   tls:
       enabled: false
       certfiles:
@@ -206,7 +206,7 @@ bccsp:
         security: 256
         filekeystore:
             # The directory used for the software file-based keystore
-            keystore: keystore
+            keystore: /var/hyperledger/fabric-ca-server/keystore
 
 #############################################################################
 # The fabric-ca-server init and start commands support the following two
