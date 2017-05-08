@@ -16,20 +16,15 @@ limitations under the License.
 package sw
 
 import (
-	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/rsa"
-	"crypto/x509"
+	"crypto/sha256"
+	"crypto/sha512"
 	"errors"
 	"fmt"
 	"hash"
 	"reflect"
 
-	"crypto/sha256"
-	"crypto/sha512"
-
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/flogging"
 	"golang.org/x/crypto/sha3"
 )
@@ -130,6 +125,18 @@ func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.B
 	keyDerivers[reflect.TypeOf(&aesPrivateKey{})] = &aesPrivateKeyKeyDeriver{bccsp: impl}
 	impl.keyDerivers = keyDerivers
 
+	// Set the key importers
+	keyImporters := make(map[reflect.Type]KeyImporter)
+	keyImporters[reflect.TypeOf(&bccsp.AES256ImportKeyOpts{})] = &aes256ImportKeyOptsKeyImporter{}
+	keyImporters[reflect.TypeOf(&bccsp.HMACImportKeyOpts{})] = &hmacImportKeyOptsKeyImporter{}
+	keyImporters[reflect.TypeOf(&bccsp.ECDSAPKIXPublicKeyImportOpts{})] = &ecdsaPKIXPublicKeyImportOptsKeyImporter{}
+	keyImporters[reflect.TypeOf(&bccsp.ECDSAPrivateKeyImportOpts{})] = &ecdsaPrivateKeyImportOptsKeyImporter{}
+	keyImporters[reflect.TypeOf(&bccsp.ECDSAGoPublicKeyImportOpts{})] = &ecdsaGoPublicKeyImportOptsKeyImporter{}
+	keyImporters[reflect.TypeOf(&bccsp.RSAGoPublicKeyImportOpts{})] = &rsaGoPublicKeyImportOptsKeyImporter{}
+	keyImporters[reflect.TypeOf(&bccsp.X509PublicKeyImportOpts{})] = &x509PublicKeyImportOptsKeyImporter{bccsp: impl}
+
+	impl.keyImporters = keyImporters
+
 	return impl, nil
 }
 
@@ -140,6 +147,7 @@ type impl struct {
 
 	keyGenerators map[reflect.Type]KeyGenerator
 	keyDerivers   map[reflect.Type]KeyDeriver
+	keyImporters  map[reflect.Type]KeyImporter
 	encryptors    map[reflect.Type]Encryptor
 	decryptors    map[reflect.Type]Decryptor
 	signers       map[reflect.Type]Signer
@@ -214,185 +222,32 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	// Validate arguments
 	if raw == nil {
-		return nil, errors.New("Invalid raw. Cannot be nil")
+		return nil, errors.New("Invalid raw. It must not be nil.")
 	}
-
 	if opts == nil {
-		return nil, errors.New("Invalid Opts parameter. It must not be nil.")
+		return nil, errors.New("Invalid opts. It must not be nil.")
 	}
 
-	switch opts.(type) {
-
-	case *bccsp.AES256ImportKeyOpts:
-		aesRaw, ok := raw.([]byte)
-		if !ok {
-			return nil, errors.New("[AES256ImportKeyOpts] Invalid raw material. Expected byte array.")
-		}
-
-		if len(aesRaw) != 32 {
-			return nil, fmt.Errorf("[AES256ImportKeyOpts] Invalid Key Length [%d]. Must be 32 bytes", len(aesRaw))
-		}
-
-		aesK := &aesPrivateKey{utils.Clone(aesRaw), false}
-
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(aesK)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing AES key [%s]", err)
-			}
-		}
-
-		return aesK, nil
-
-	case *bccsp.HMACImportKeyOpts:
-		aesRaw, ok := raw.([]byte)
-		if !ok {
-			return nil, errors.New("[HMACImportKeyOpts] Invalid raw material. Expected byte array.")
-		}
-
-		if len(aesRaw) == 0 {
-			return nil, errors.New("[HMACImportKeyOpts] Invalid raw. It must not be nil.")
-		}
-
-		aesK := &aesPrivateKey{utils.Clone(aesRaw), false}
-
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(aesK)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing AES key [%s]", err)
-			}
-		}
-
-		return aesK, nil
-
-	case *bccsp.ECDSAPKIXPublicKeyImportOpts:
-		der, ok := raw.([]byte)
-		if !ok {
-			return nil, errors.New("[ECDSAPKIXPublicKeyImportOpts] Invalid raw material. Expected byte array.")
-		}
-
-		if len(der) == 0 {
-			return nil, errors.New("[ECDSAPKIXPublicKeyImportOpts] Invalid raw. It must not be nil.")
-		}
-
-		lowLevelKey, err := utils.DERToPublicKey(der)
-		if err != nil {
-			return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
-		}
-
-		ecdsaPK, ok := lowLevelKey.(*ecdsa.PublicKey)
-		if !ok {
-			return nil, errors.New("Failed casting to ECDSA public key. Invalid raw material.")
-		}
-
-		k = &ecdsaPublicKey{ecdsaPK}
-
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(k)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-			}
-		}
-
-		return k, nil
-
-	case *bccsp.ECDSAPrivateKeyImportOpts:
-		der, ok := raw.([]byte)
-		if !ok {
-			return nil, errors.New("[ECDSADERPrivateKeyImportOpts] Invalid raw material. Expected byte array.")
-		}
-
-		if len(der) == 0 {
-			return nil, errors.New("[ECDSADERPrivateKeyImportOpts] Invalid raw. It must not be nil.")
-		}
-
-		lowLevelKey, err := utils.DERToPrivateKey(der)
-		if err != nil {
-			return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
-		}
-
-		ecdsaSK, ok := lowLevelKey.(*ecdsa.PrivateKey)
-		if !ok {
-			return nil, errors.New("Failed casting to ECDSA public key. Invalid raw material.")
-		}
-
-		k = &ecdsaPrivateKey{ecdsaSK}
-
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(k)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-			}
-		}
-
-		return k, nil
-
-	case *bccsp.ECDSAGoPublicKeyImportOpts:
-		lowLevelKey, ok := raw.(*ecdsa.PublicKey)
-		if !ok {
-			return nil, errors.New("[ECDSAGoPublicKeyImportOpts] Invalid raw material. Expected *ecdsa.PublicKey.")
-		}
-
-		k = &ecdsaPublicKey{lowLevelKey}
-
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(k)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-			}
-		}
-
-		return k, nil
-
-	case *bccsp.RSAGoPublicKeyImportOpts:
-		lowLevelKey, ok := raw.(*rsa.PublicKey)
-		if !ok {
-			return nil, errors.New("[RSAGoPublicKeyImportOpts] Invalid raw material. Expected *rsa.PublicKey.")
-		}
-
-		k = &rsaPublicKey{lowLevelKey}
-
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(k)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing RSA publi key [%s]", err)
-			}
-		}
-
-		return k, nil
-
-	case *bccsp.X509PublicKeyImportOpts:
-		x509Cert, ok := raw.(*x509.Certificate)
-		if !ok {
-			return nil, errors.New("[X509PublicKeyImportOpts] Invalid raw material. Expected *x509.Certificate.")
-		}
-
-		pk := x509Cert.PublicKey
-
-		switch pk.(type) {
-		case *ecdsa.PublicKey:
-			return csp.KeyImport(pk, &bccsp.ECDSAGoPublicKeyImportOpts{Temporary: opts.Ephemeral()})
-		case *rsa.PublicKey:
-			return csp.KeyImport(pk, &bccsp.RSAGoPublicKeyImportOpts{Temporary: opts.Ephemeral()})
-		default:
-			return nil, errors.New("Certificate public key type not recognized. Supported keys: [ECDSA, RSA]")
-		}
-
-	default:
-		return nil, fmt.Errorf("Unsupported 'KeyImportOptions' provided [%v]", opts)
+	keyImporter, found := csp.keyImporters[reflect.TypeOf(opts)]
+	if !found {
+		return nil, fmt.Errorf("Unsupported 'KeyImportOpts' provided [%v]", opts)
 	}
+
+	k, err = keyImporter.KeyImport(raw, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the key is not Ephemeral, store it.
+	if !opts.Ephemeral() {
+		// Store the key
+		err = csp.ks.StoreKey(k)
+		if err != nil {
+			return nil, fmt.Errorf("Failed storing key [%s]. [%s]", opts.Algorithm(), err)
+		}
+	}
+
+	return k, nil
 }
 
 // GetKey returns the key this CSP associates to

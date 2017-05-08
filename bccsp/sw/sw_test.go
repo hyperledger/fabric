@@ -81,15 +81,15 @@ func TestKeyImportInvalidInputs(t *testing.T) {
 
 	_, err = csp.KeyImport(nil, &bccsp.AES256ImportKeyOpts{})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw. Cannot be nil")
+	assert.Contains(t, err.Error(), "Invalid raw. It must not be nil.")
 
 	_, err = csp.KeyImport([]byte{0, 1, 2, 3, 4}, nil)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid Opts parameter. It must not be nil.")
+	assert.Contains(t, err.Error(), "Invalid opts. It must not be nil.")
 
 	_, err = csp.KeyImport([]byte{0, 1, 2, 3, 4}, &mocks.KeyImportOpts{})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Unsupported 'KeyImportOptions' provided [")
+	assert.Contains(t, err.Error(), "Unsupported 'KeyImportOpts' provided [")
 }
 
 func TestGetKeyInvalidInputs(t *testing.T) {

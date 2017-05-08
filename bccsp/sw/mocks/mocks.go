@@ -158,3 +158,22 @@ func (kd *KeyDeriver) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.K
 
 	return kd.Value, kd.Err
 }
+
+type KeyImporter struct {
+	RawArg  []byte
+	OptsArg bccsp.KeyImportOpts
+
+	Value bccsp.Key
+	Err   error
+}
+
+func (ki *KeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+	if !reflect.DeepEqual(ki.RawArg, raw) {
+		return nil, errors.New("invalid raw")
+	}
+	if !reflect.DeepEqual(ki.OptsArg, opts) {
+		return nil, errors.New("invalid opts")
+	}
+
+	return ki.Value, ki.Err
+}
