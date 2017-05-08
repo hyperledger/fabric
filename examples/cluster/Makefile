@@ -95,10 +95,10 @@ build/nodes/orderer: build/nodes/orderer/orderer.yaml
 build/nodes/orderer: build/nodes/orderer/genesis.block
 build/nodes/cli: $(CHANNEL_TXNS)
 
-build/nodes/ca:
-	@mkdir -p $@/tls
-	cp $(CA_PATH)/*_sk $@/tls/ca.key
-	cp $(CA_PATH)/*.pem $@/tls/ca.crt
+build/nodes/ca: build/nodes/ca/fabric-ca-server-config.yaml
+	@mkdir -p $@
+	cp $(CA_PATH)/*_sk $@/ca.key
+	cp $(CA_PATH)/*.pem $@/ca.crt
 
 build/nodes/%: build/nodes/%/msp build/nodes/%/configtx.yaml build/nodes/%/core.yaml
 	@echo "Built $@"
