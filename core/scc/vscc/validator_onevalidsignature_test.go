@@ -37,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	cutils "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	per "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
@@ -1392,6 +1393,12 @@ func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(lccctestpath)
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{})
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})
+
+	mspGetter := func(cid string) []string {
+		return []string{"DEFAULT"}
+	}
+
+	per.MockSetMSPIDGetter(mspGetter)
 
 	var err error
 

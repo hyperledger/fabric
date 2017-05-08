@@ -51,6 +51,12 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 
 	peer.MockInitialize()
 
+	mspGetter := func(cid string) []string {
+		return []string{"DEFAULT"}
+	}
+
+	peer.MockSetMSPIDGetter(mspGetter)
+
 	//use a different address than what we usually use for "peer"
 	//we override the peerAddress set in chaincode_support.go
 	// FIXME: Use peer.GetLocalAddress()

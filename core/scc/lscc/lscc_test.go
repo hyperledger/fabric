@@ -22,6 +22,10 @@ import (
 	"strings"
 	"testing"
 
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/util"
@@ -29,10 +33,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
-	//"github.com/hyperledger/fabric/core/container"
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
+	"github.com/hyperledger/fabric/core/peer"
 
 	"github.com/stretchr/testify/assert"
 
@@ -1213,6 +1214,12 @@ var chainid string = util.GetTestChainID()
 func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(lscctestpath)
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{})
+
+	mspGetter := func(cid string) []string {
+		return []string{"DEFAULT"}
+	}
+
+	peer.MockSetMSPIDGetter(mspGetter)
 
 	var err error
 

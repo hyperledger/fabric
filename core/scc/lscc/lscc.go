@@ -226,7 +226,7 @@ func (f InvalidCCOnFSError) Error() string {
 type InstantiationPolicyViolatedErr string
 
 func (f InstantiationPolicyViolatedErr) Error() string {
-	return "chaincode instantiation policy violated"
+	return fmt.Sprintf("chaincode instantiation policy violated(%s)", string(f))
 }
 
 //InstantiationPolicyMissing when no existing instantiation policy is found when upgrading CC
@@ -479,8 +479,9 @@ func (lscc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 }
 
 // getInstantiationPolicy retrieves the instantiation policy from a SignedCDSPackage
-func (lscc *LifeCycleSysCC) getInstantiationPolicy(stub shim.ChaincodeStubInterface, ccpack ccprovider.CCPackage) ([]byte, error) {
+func (lscc *LifeCycleSysCC) getInstantiationPolicy(channel string, ccpack ccprovider.CCPackage) ([]byte, error) {
 	var ip []byte
+	var err error
 	// if ccpack is a SignedCDSPackage, return its IP, otherwise use a default IP
 	sccpack, isSccpack := ccpack.(*ccprovider.SignedCDSPackage)
 	if isSccpack {
@@ -489,17 +490,16 @@ func (lscc *LifeCycleSysCC) getInstantiationPolicy(stub shim.ChaincodeStubInterf
 			return nil, fmt.Errorf("Instantiation policy cannot be null for a SignedCCDeploymentSpec")
 		}
 	} else {
-		// the default instantiation policy requires the peer's msp admin
-		// it assumes that the peer's MSP does not change over time
-		mspid, err := mspmgmt.GetLocalMSP().GetIdentifier()
+		// the default instantiation policy allows any of the channel MSP admins
+		// to be able to instantiate
+		mspids := peer.GetMSPIDs(channel)
+
+		p := cauthdsl.SignedByAnyAdmin(mspids)
+		ip, err = utils.Marshal(p)
 		if err != nil {
-			return nil, fmt.Errorf("Error creating default instantiation policy: could not retrieve local MSP identifier %s", err)
+			return nil, fmt.Errorf("Error marshalling default instantiation policy")
 		}
-		ipEnvelope := cauthdsl.SignedByMspAdmin(mspid)
-		ip, err = proto.Marshal(ipEnvelope)
-		if err != nil {
-			return nil, fmt.Errorf("Marshalling instantiation policy failed: [%s]", err)
-		}
+
 	}
 	return ip, nil
 }
@@ -542,7 +542,7 @@ func (lscc *LifeCycleSysCC) checkInstantiationPolicy(stub shim.ChaincodeStubInte
 	}}
 	err = instPol.Evaluate(sd)
 	if err != nil {
-		return InstantiationPolicyViolatedErr("")
+		return InstantiationPolicyViolatedErr(err.Error())
 	}
 	return nil
 }
@@ -588,7 +588,7 @@ func (lscc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 	cd.Policy = policy
 
 	// retrieve and evaluate instantiation policy
-	cd.InstantiationPolicy, err = lscc.getInstantiationPolicy(stub, ccpack)
+	cd.InstantiationPolicy, err = lscc.getInstantiationPolicy(chainname, ccpack)
 	if err != nil {
 		return nil, err
 	}
@@ -664,7 +664,7 @@ func (lscc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 	cd.Policy = policy
 
 	// retrieve and evaluate new instantiation policy
-	cd.InstantiationPolicy, err = lscc.getInstantiationPolicy(stub, ccpack)
+	cd.InstantiationPolicy, err = lscc.getInstantiationPolicy(chainName, ccpack)
 	if err != nil {
 		return nil, err
 	}
@@ -757,7 +757,11 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		if len(args) > 3 && len(args[3]) > 0 {
 			policy = args[3]
 		} else {
-			policy = cauthdsl.SignedByAnyMember(peer.GetMSPIDs(chainname))
+			p := cauthdsl.SignedByAnyMember(peer.GetMSPIDs(chainname))
+			policy, err = utils.Marshal(p)
+			if err != nil {
+				return shim.Error(err.Error())
+			}
 		}
 
 		var escc []byte
@@ -806,7 +810,11 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		if len(args) > 3 && len(args[3]) > 0 {
 			policy = args[3]
 		} else {
-			policy = cauthdsl.SignedByAnyMember(peer.GetMSPIDs(chainname))
+			p := cauthdsl.SignedByAnyMember(peer.GetMSPIDs(chainname))
+			policy, err = utils.Marshal(p)
+			if err != nil {
+				return shim.Error(err.Error())
+			}
 		}
 
 		var escc []byte

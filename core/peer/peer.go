@@ -93,6 +93,12 @@ func MockInitialize() {
 
 var chainInitializer func(string)
 
+var mockMSPIDGetter func(string) []string
+
+func MockSetMSPIDGetter(mspIDGetter func(string) []string) {
+	mockMSPIDGetter = mspIDGetter
+}
+
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
@@ -438,6 +444,12 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 func GetMSPIDs(cid string) []string {
 	chains.RLock()
 	defer chains.RUnlock()
+
+	//if mock is set, use it to return MSPIDs
+	//used for tests without a proper join
+	if mockMSPIDGetter != nil {
+		return mockMSPIDGetter(cid)
+	}
 	if c, ok := chains.list[cid]; ok {
 		if c == nil || c.cs == nil ||
 			c.cs.ApplicationConfig() == nil ||
