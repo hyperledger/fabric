@@ -46,7 +46,7 @@ Next, execute the following command:
 
 .. code:: bash
 
-  curl -L https://logs.hyperledger.org/sandbox/vex-yul-hyp-jenkins-2/fabric-binaries/release.tar.gz -o release.tar.gz 2> /dev/null;  tar -xvf release.tar.gz
+  curl -L https://nexus.hyperledger.org/content/repositories/snapshots/sandbox/vex-yul-hyp-jenkins-2/fabric-binaries/release.tar.gz -o release.tar.gz 2> /dev/null;  tar -xvf release.tar.gz
 
 This command pulls and extracts all of the necessary artifacts to set up your
 network and places them into a folder titled ``release``.  It also retrieves the
