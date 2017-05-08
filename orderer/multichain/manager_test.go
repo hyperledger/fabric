@@ -133,7 +133,7 @@ func TestGetConfigTxFailure(t *testing.T) {
 
 }
 
-// This test essentially brings the entire system up and is ultimately what main.go will replicate
+// This test checks to make sure the orderer refuses to come up if it cannot find a system channel
 func TestNoSystemChain(t *testing.T) {
 	defer func() {
 		if recover() == nil {
@@ -147,6 +147,24 @@ func TestNoSystemChain(t *testing.T) {
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
 	NewManagerImpl(lf, consenters, mockCrypto())
+}
+
+// This test checks to make sure that the orderer refuses to come up if there are multiple system channels
+func TestMultiSystemChannel(t *testing.T) {
+	lf := ramledger.New(10)
+
+	for _, id := range []string{"foo", "bar"} {
+		rl, err := lf.GetOrCreate(id)
+		assert.NoError(t, err)
+
+		err = rl.Append(provisional.New(conf).GenesisBlockForChannel(id))
+		assert.NoError(t, err)
+	}
+
+	consenters := make(map[string]Consenter)
+	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
+
+	assert.Panics(t, func() { NewManagerImpl(lf, consenters, mockCrypto()) }, "Two system channels should have caused panic")
 }
 
 // This test essentially brings the entire system up and is ultimately what main.go will replicate

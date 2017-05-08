@@ -66,8 +66,8 @@ func (r *Resources) ApplicationConfig() config.Application {
 	return r.ApplicationConfigVal
 }
 
-func (r *Resources) ConsortiumsConfig() config.Consortiums {
-	return r.ConsortiumsConfigVal
+func (r *Resources) ConsortiumsConfig() (config.Consortiums, bool) {
+	return r.ConsortiumsConfigVal, r.ConsortiumsConfigVal != nil
 }
 
 // Returns the MSPManagerVal
