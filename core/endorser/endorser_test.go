@@ -87,6 +87,12 @@ func initPeer(chainID string) (*testEnvironment, error) {
 	//initialize ledger
 	peer.MockInitialize()
 
+	mspGetter := func(cid string) []string {
+		return []string{"DEFAULT"}
+	}
+
+	peer.MockSetMSPIDGetter(mspGetter)
+
 	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
 		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
 	}

@@ -361,6 +361,7 @@ func (v *vsccValidatorImpl) GetInfoForValidate(txid, chID, ccID string) (*sysccp
 	cc := &sysccprovider.ChaincodeInstance{ChainID: chID}
 	vscc := &sysccprovider.ChaincodeInstance{ChainID: chID}
 	var policy []byte
+	var err error
 	if ccID != "lscc" {
 		// when we are validating any chaincode other than
 		// LSCC, we need to ask LSCC to give us the name
@@ -383,7 +384,11 @@ func (v *vsccValidatorImpl) GetInfoForValidate(txid, chID, ccID string) (*sysccp
 		cc.ChaincodeName = "lscc"
 		cc.ChaincodeVersion = coreUtil.GetSysCCVersion()
 		vscc.ChaincodeName = "vscc"
-		policy = cauthdsl.SignedByAnyMember(v.support.GetMSPIDs(chID))
+		p := cauthdsl.SignedByAnyMember(v.support.GetMSPIDs(chID))
+		policy, err = utils.Marshal(p)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 	}
 
 	// Get vscc version

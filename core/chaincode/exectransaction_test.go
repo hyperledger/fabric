@@ -69,6 +69,12 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 
 	peer.MockInitialize()
 
+	mspGetter := func(cid string) []string {
+		return []string{"DEFAULT"}
+	}
+
+	peer.MockSetMSPIDGetter(mspGetter)
+
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(config.GetPath("peer.tls.cert.file"), config.GetPath("peer.tls.key.file"))

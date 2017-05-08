@@ -43,6 +43,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func signedByAnyMember(ids []string) []byte {
+	p := cauthdsl.SignedByAnyMember(ids)
+	return utils.MarshalOrPanic(p)
+}
+
 func setupLedgerAndValidator(t *testing.T) (ledger.PeerLedger, Validator) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/validatortest")
 	ledgermgmt.InitializeTestEnv()
@@ -193,7 +198,7 @@ func TestInvokeOK(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, cauthdsl.SignedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -210,7 +215,7 @@ func TestInvokeOKSCC(t *testing.T) {
 
 	ccID := "lscc"
 
-	putCCInfo(l, ccID, cauthdsl.SignedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -227,7 +232,7 @@ func TestInvokeNOKWritesToLSCC(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, cauthdsl.SignedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID, "lscc"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -244,7 +249,7 @@ func TestInvokeNOKWritesToESCC(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, cauthdsl.SignedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID, "escc"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -261,7 +266,7 @@ func TestInvokeNOKWritesToNotExt(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, cauthdsl.SignedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID, "notext"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -278,7 +283,7 @@ func TestInvokeNOKInvokesNotExt(t *testing.T) {
 
 	ccID := "notext"
 
-	putCCInfo(l, ccID, cauthdsl.SignedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -295,7 +300,7 @@ func TestInvokeNOKInvokesEmptyCCName(t *testing.T) {
 
 	ccID := ""
 
-	putCCInfo(l, ccID, cauthdsl.SignedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -312,7 +317,7 @@ func TestInvokeNOKExpiredCC(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfoWithVSCCAndVer(l, ccID, "vscc", "badversion", cauthdsl.SignedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfoWithVSCCAndVer(l, ccID, "vscc", "badversion", signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -329,7 +334,7 @@ func TestInvokeNOKBogusActions(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfo(l, ccID, cauthdsl.SignedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, []byte("barf"), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
@@ -361,7 +366,7 @@ func TestInvokeNOKVSCCUnspecified(t *testing.T) {
 
 	ccID := "mycc"
 
-	putCCInfoWithVSCCAndVer(l, ccID, "", ccVersion, cauthdsl.SignedByAnyMember([]string{"DEFAULT"}), t)
+	putCCInfoWithVSCCAndVer(l, ccID, "", ccVersion, signedByAnyMember([]string{"DEFAULT"}), t)
 
 	tx := getEnv(ccID, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
