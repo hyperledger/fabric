@@ -152,7 +152,7 @@ func (cas *CASupport) GetClientRootCAs() (appRootCAs, ordererRootCAs [][]byte) {
 		appRootCAs = append(appRootCAs, appRootCA...)
 	}
 
-	for _, ordererRootCA := range cas.AppRootCAsByChain {
+	for _, ordererRootCA := range cas.OrdererRootCAsByChain {
 		ordererRootCAs = append(ordererRootCAs, ordererRootCA...)
 	}
 

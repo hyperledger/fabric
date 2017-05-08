@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -95,10 +96,13 @@ func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Emp
 }
 
 // helper function to build an MSPConfig given root certs
-func createMSPConfig(rootCerts [][]byte, mspID string) (*mspproto.MSPConfig, error) {
+func createMSPConfig(rootCerts, intermediateCerts [][]byte,
+	mspID string) (*mspproto.MSPConfig, error) {
+
 	fmspconf := &mspproto.FabricMSPConfig{
-		RootCerts: rootCerts,
-		Name:      mspID}
+		RootCerts:         rootCerts,
+		IntermediateCerts: intermediateCerts,
+		Name:              mspID}
 
 	fmpsjs, err := proto.Marshal(fmspconf)
 	if err != nil {
@@ -114,65 +118,82 @@ func createConfigBlock(chainID string, appMSPConf, ordererMSPConf *mspproto.MSPC
 	return block, err
 }
 
-func TestCreatePeerServer(t *testing.T) {
+func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	// load test certs from testdata
 	org1CA, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-cert.pem"))
-	org1Server1Key, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-server1-key.pem"))
-	org1Server1Cert, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-server1-cert.pem"))
-	org1Server2Key, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-server2-key.pem"))
-	org1Server2Cert, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-server2-cert.pem"))
+	org1Server1Key, err := ioutil.ReadFile(filepath.Join("testdata",
+		"Org1-server1-key.pem"))
+	org1Server1Cert, err := ioutil.ReadFile(filepath.Join("testdata",
+		"Org1-server1-cert.pem"))
 	org2CA, err := ioutil.ReadFile(filepath.Join("testdata", "Org2-cert.pem"))
-	org2Server1Key, err := ioutil.ReadFile(filepath.Join("testdata", "Org2-server1-key.pem"))
-	org2Server1Cert, err := ioutil.ReadFile(filepath.Join("testdata", "Org2-server1-cert.pem"))
-	org3CA, err := ioutil.ReadFile(filepath.Join("testdata", "Org3-cert.pem"))
+	org2Server1Key, err := ioutil.ReadFile(filepath.Join("testdata",
+		"Org2-server1-key.pem"))
+	org2Server1Cert, err := ioutil.ReadFile(filepath.Join("testdata",
+		"Org2-server1-cert.pem"))
+	org2IntermediateCA, err := ioutil.ReadFile(filepath.Join("testdata",
+		"Org2-child1-cert.pem"))
+	org2IntermediateServer1Key, err := ioutil.ReadFile(filepath.Join("testdata",
+		"Org2-child1-server1-key.pem"))
+	org2IntermediateServer1Cert, err := ioutil.ReadFile(filepath.Join("testdata",
+		"Org2-child1-server1-cert.pem"))
+	ordererOrgCA, err := ioutil.ReadFile(filepath.Join("testdata", "Org3-cert.pem"))
+	ordererOrgServer1Key, err := ioutil.ReadFile(filepath.Join("testdata",
+		"Org3-server1-key.pem"))
+	ordererOrgServer1Cert, err := ioutil.ReadFile(filepath.Join("testdata",
+		"Org3-server1-cert.pem"))
 
 	if err != nil {
 		t.Fatalf("Failed to load test certificates: %v", err)
 	}
 
 	// create test MSPConfigs
-	org1MSPConf, err := createMSPConfig([][]byte{org1CA}, "Org1MSP")
-	org2MSPConf, err := createMSPConfig([][]byte{org2CA}, "Org2MSP")
-	org3MSPConf, err := createMSPConfig([][]byte{org3CA}, "Org3MSP")
+	org1MSPConf, err := createMSPConfig([][]byte{org1CA}, [][]byte{}, "Org1MSP")
+	org2MSPConf, err := createMSPConfig([][]byte{org2CA}, [][]byte{}, "Org2MSP")
+	org2IntermediateMSPConf, err := createMSPConfig([][]byte{org2CA},
+		[][]byte{org2IntermediateCA}, "Org2IntermediateMSP")
+	ordererOrgMSPConf, err := createMSPConfig([][]byte{ordererOrgCA},
+		[][]byte{}, "OrdererOrgMSP")
 	if err != nil {
 		t.Fatalf("Failed to create MSPConfigs (%s)", err)
 	}
 
 	// create test channel create blocks
-	channel1Block, err := createConfigBlock("channel1", org1MSPConf, org3MSPConf, "Org1MSP", "Org3MSP")
-	channel2Block, err := createConfigBlock("channel2", org2MSPConf, org3MSPConf, "Org2MSP", "Org3MSP")
+	channel1Block, err := createConfigBlock("channel1", org1MSPConf,
+		ordererOrgMSPConf, "Org1MSP", "OrdererOrgMSP")
+	channel2Block, err := createConfigBlock("channel2", org2MSPConf,
+		ordererOrgMSPConf, "Org2MSP", "OrdererOrgMSP")
+	channel3Block, err := createConfigBlock("channel3", org2IntermediateMSPConf,
+		ordererOrgMSPConf, "Org2IntermediateMSP", "OrdererOrgMSP")
 
 	createChannel := func(cid string, block *cb.Block) {
 		viper.Set("peer.tls.enabled", true)
-		viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org1-server1-cert.pem"))
-		viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
-		viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org1-cert.pem"))
+		viper.Set("peer.tls.cert.file", filepath.Join("testdata",
+			"Org1-server1-cert.pem"))
+		viper.Set("peer.tls.key.file", filepath.Join("testdata",
+			"Org1-server1-key.pem"))
+		viper.Set("peer.tls.rootcert.file", filepath.Join("testdata",
+			"Org1-cert.pem"))
+		viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
+		defer os.RemoveAll("/var/hyperledger/test/")
 		err := peer.CreateChainFromBlock(block)
 		if err != nil {
 			t.Fatalf("Failed to create config block (%s)", err)
 		}
 		t.Logf("Channel %s MSPIDs: (%s)", cid, peer.GetMSPIDs(cid))
-		appCAs, orgCAs := comm.GetCASupport().GetClientRootCAs()
-		t.Logf("appCAs after update for channel %s: %d", cid, len(appCAs))
-		t.Logf("orgCAs after update for channel %s: %d", cid, len(orgCAs))
 	}
 
 	org1CertPool, err := createCertPool([][]byte{org1CA})
-	org2CertPool, err := createCertPool([][]byte{org2CA})
 
 	if err != nil {
 		t.Fatalf("Failed to load root certificates into pool: %v", err)
 	}
 
-	org1Creds := credentials.NewClientTLSFromCert(org1CertPool, "")
-	org2Creds := credentials.NewClientTLSFromCert(org2CertPool, "")
-
 	// use server cert as client cert
-	org1ClientCert, err := tls.X509KeyPair(org1Server2Cert, org1Server2Key)
+	org1ClientCert, err := tls.X509KeyPair(org1Server1Cert, org1Server1Key)
 	if err != nil {
 		t.Fatalf("Failed to load client certificate: %v", err)
 	}
-	org1Org1Creds := credentials.NewTLS(&tls.Config{
+	org1Creds := credentials.NewTLS(&tls.Config{
 		Certificates: []tls.Certificate{org1ClientCert},
 		RootCAs:      org1CertPool,
 	})
@@ -180,8 +201,26 @@ func TestCreatePeerServer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load client certificate: %v", err)
 	}
-	org1Org2Creds := credentials.NewTLS(&tls.Config{
+	org2Creds := credentials.NewTLS(&tls.Config{
 		Certificates: []tls.Certificate{org2ClientCert},
+		RootCAs:      org1CertPool,
+	})
+	org2IntermediateClientCert, err := tls.X509KeyPair(
+		org2IntermediateServer1Cert, org2IntermediateServer1Key)
+	if err != nil {
+		t.Fatalf("Failed to load client certificate: %v", err)
+	}
+	org2IntermediateCreds := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{org2IntermediateClientCert},
+		RootCAs:      org1CertPool,
+	})
+	ordererOrgClientCert, err := tls.X509KeyPair(ordererOrgServer1Cert,
+		ordererOrgServer1Key)
+	if err != nil {
+		t.Fatalf("Failed to load client certificate: %v", err)
+	}
+	ordererOrgCreds := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{ordererOrgClientCert},
 		RootCAs:      org1CertPool,
 	})
 
@@ -190,37 +229,13 @@ func TestCreatePeerServer(t *testing.T) {
 		name          string
 		listenAddress string
 		secureConfig  comm.SecureServerConfig
-		expectError   bool
 		createChannel func()
 		goodOptions   []grpc.DialOption
 		badOptions    []grpc.DialOption
+		numAppCAs     int
+		numOrdererCAs int
 	}{
 
-		{
-			name:          "NoTLS",
-			listenAddress: fmt.Sprintf("localhost:%d", 4050),
-			secureConfig: comm.SecureServerConfig{
-				UseTLS: false,
-			},
-			expectError:   false,
-			createChannel: func() {},
-			goodOptions:   []grpc.DialOption{grpc.WithInsecure()},
-			badOptions:    []grpc.DialOption{grpc.WithTransportCredentials(org1Creds)},
-		},
-		{
-			name:          "ServerTLSOrg1",
-			listenAddress: fmt.Sprintf("localhost:%d", 4051),
-			secureConfig: comm.SecureServerConfig{
-				UseTLS:            true,
-				ServerCertificate: org1Server1Cert,
-				ServerKey:         org1Server1Key,
-				ServerRootCAs:     [][]byte{org1CA},
-			},
-			expectError:   false,
-			createChannel: func() {},
-			goodOptions:   []grpc.DialOption{grpc.WithTransportCredentials(org1Creds)},
-			badOptions:    []grpc.DialOption{grpc.WithTransportCredentials(org2Creds)},
-		},
 		{
 			name:          "MutualTLSOrg1Org1",
 			listenAddress: fmt.Sprintf("localhost:%d", 4052),
@@ -231,10 +246,11 @@ func TestCreatePeerServer(t *testing.T) {
 				ServerRootCAs:     [][]byte{org1CA},
 				RequireClientCert: true,
 			},
-			expectError:   false,
 			createChannel: func() { createChannel("channel1", channel1Block) },
-			goodOptions:   []grpc.DialOption{grpc.WithTransportCredentials(org1Org1Creds)},
-			badOptions:    []grpc.DialOption{grpc.WithTransportCredentials(org1Org2Creds)},
+			goodOptions:   []grpc.DialOption{grpc.WithTransportCredentials(org1Creds)},
+			badOptions:    []grpc.DialOption{grpc.WithTransportCredentials(ordererOrgCreds)},
+			numAppCAs:     2, // each channel also has a DEFAULT MSP
+			numOrdererCAs: 1,
 		},
 		{
 			name:          "MutualTLSOrg1Org2",
@@ -246,10 +262,31 @@ func TestCreatePeerServer(t *testing.T) {
 				ServerRootCAs:     [][]byte{org1CA},
 				RequireClientCert: true,
 			},
-			expectError:   false,
 			createChannel: func() { createChannel("channel2", channel2Block) },
-			goodOptions:   []grpc.DialOption{grpc.WithTransportCredentials(org1Org2Creds)},
-			badOptions:    []grpc.DialOption{grpc.WithTransportCredentials(org1Creds)},
+			goodOptions: []grpc.DialOption{
+				grpc.WithTransportCredentials(org2Creds)},
+			badOptions: []grpc.DialOption{
+				grpc.WithTransportCredentials(ordererOrgCreds)},
+			numAppCAs:     4,
+			numOrdererCAs: 2,
+		},
+		{
+			name:          "MutualTLSOrg1Org2Intermediate",
+			listenAddress: fmt.Sprintf("localhost:%d", 4053),
+			secureConfig: comm.SecureServerConfig{
+				UseTLS:            true,
+				ServerCertificate: org1Server1Cert,
+				ServerKey:         org1Server1Key,
+				ServerRootCAs:     [][]byte{org1CA},
+				RequireClientCert: true,
+			},
+			createChannel: func() { createChannel("channel3", channel3Block) },
+			goodOptions: []grpc.DialOption{
+				grpc.WithTransportCredentials(org2IntermediateCreds)},
+			badOptions: []grpc.DialOption{
+				grpc.WithTransportCredentials(ordererOrgCreds)},
+			numAppCAs:     7,
+			numOrdererCAs: 3,
 		},
 	}
 
@@ -258,10 +295,8 @@ func TestCreatePeerServer(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Logf("Running test %s ...", test.name)
 			_, err := peer.CreatePeerServer(test.listenAddress, test.secureConfig)
-			// check to see whether to not we expect an error
-			// we don't check the exact error because the comm package covers these cases
-			if test.expectError {
-				assert.Error(t, err, "CreatePeerServer should have returned an error")
+			if err != nil {
+				t.Fatalf("CreatePeerServer failed with error [%s]", err)
 			} else {
 				assert.NoError(t, err, "CreatePeerServer should not have returned an error")
 				// get the server from peer
@@ -272,15 +307,28 @@ func TestCreatePeerServer(t *testing.T) {
 				go server.Start()
 				defer server.Stop()
 
-				// invoke the EmptyCall service with bad options
-				_, err = invokeEmptyCall(test.listenAddress, test.badOptions)
-				assert.Error(t, err, "Expected error using bad dial options")
+				// invoke the EmptyCall service with good options but should fail
+				// until channel is created and root CAs are updated
+				_, err = invokeEmptyCall(test.listenAddress, test.goodOptions)
+				assert.Error(t, err, "Expected error invoking the EmptyCall service ")
+
 				// creating channel should update the trusted client roots
 				test.createChannel()
+
+				// make sure we have the expected number of CAs
+				appCAs, ordererCAs := comm.GetCASupport().GetClientRootCAs()
+				assert.Equal(t, test.numAppCAs, len(appCAs),
+					"Did not find expected number of app CAs for channel")
+				assert.Equal(t, test.numOrdererCAs, len(ordererCAs),
+					"Did not find expected number of orderer CAs for channel")
+
 				// invoke the EmptyCall service with good options
 				_, err = invokeEmptyCall(test.listenAddress, test.goodOptions)
 				assert.NoError(t, err, "Failed to invoke the EmptyCall service")
 
+				// invoke the EmptyCall service with bad options
+				_, err = invokeEmptyCall(test.listenAddress, test.badOptions)
+				assert.Error(t, err, "Expected error using bad dial options")
 			}
 		})
 	}
