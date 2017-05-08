@@ -32,8 +32,6 @@ import (
 //A SecureServerConfig structure is used to configure security (e.g. TLS) for a
 //GRPCServer instance
 type SecureServerConfig struct {
-	//Whether or not to use TLS for communication
-	UseTLS bool
 	//PEM-encoded X509 public key to be used by the server for TLS communication
 	ServerCertificate []byte
 	//PEM-encoded private key to be used by the server for TLS communication
@@ -41,11 +39,13 @@ type SecureServerConfig struct {
 	//Set of PEM-encoded X509 certificate authorities to optionally send
 	//as part of the server handshake
 	ServerRootCAs [][]byte
-	//Whether or not TLS client must present certificates for authentication
-	RequireClientCert bool
 	//Set of PEM-encoded X509 certificate authorities to use when verifying
 	//client certificates
 	ClientRootCAs [][]byte
+	//Whether or not to use TLS for communication
+	UseTLS bool
+	//Whether or not TLS client must present certificates for authentication
+	RequireClientCert bool
 }
 
 //GRPCServer defines an interface representing a GRPC-based server
