@@ -23,7 +23,6 @@ package configupdate
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -142,7 +141,7 @@ func (p *Processor) newChannelConfig(channelID string, envConfigUpdate *cb.Envel
 		return nil, err
 	}
 
-	newChannelEnvConfig, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID, p.signer, configtx.FixNewChannelConfig(newChannelConfigEnv), msgVersion, epoch)
+	newChannelEnvConfig, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID, p.signer, newChannelConfigEnv, msgVersion, epoch)
 	if err != nil {
 		return nil, err
 	}

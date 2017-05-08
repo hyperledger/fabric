@@ -19,10 +19,6 @@ package configtx
 import (
 	"math/rand"
 	"testing"
-
-	cb "github.com/hyperledger/fabric/protos/common"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // TestValidchainID checks that the constraints on chain IDs are enforced properly
@@ -61,20 +57,6 @@ func TestValidChainID(t *testing.T) {
 			t.Fatal(acceptMsg)
 		}
 	})
-}
-
-// TestFixNewChannelConfig checks that returned config envelope has its Sequence
-// and NewChannel fields set appropriately.
-func TestFixNewChannelConfig(t *testing.T) {
-	expectedSequenceValue := uint64(0)
-	expectedNewChannelValue := true
-
-	sampleConfigEnvelope := &cb.ConfigEnvelope{Config: &cb.Config{Sequence: uint64(rand.Uint32())}}
-	returnedConfigEnvelope := FixNewChannelConfig(sampleConfigEnvelope)
-
-	assert.Equal(t, expectedSequenceValue, returnedConfigEnvelope.Config.Sequence, "Sequence should be zero %d", expectedSequenceValue)
-	assert.NotNil(t, returnedConfigEnvelope.Config.NewChannel, "NewChannel field should be set")
-	assert.Equal(t, expectedNewChannelValue, returnedConfigEnvelope.Config.NewChannel, "NewChannel field should be set to %t", expectedNewChannelValue)
 }
 
 // Helper functions

@@ -175,24 +175,15 @@ func (cm *configManager) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 
 func (cm *configManager) prepareApply(configEnv *cb.ConfigEnvelope) (map[string]comparable, *configResult, error) {
 	if configEnv == nil {
-		return nil, nil, fmt.Errorf("attempted to apply config with nil envelope")
+		return nil, nil, fmt.Errorf("Attempted to apply config with nil envelope")
 	}
 
 	if configEnv.Config == nil {
-		return nil, nil, fmt.Errorf("config cannot be nil")
+		return nil, nil, fmt.Errorf("Config cannot be nil")
 	}
 
-	var expectedSequence uint64
-	if configEnv.Config.NewChannel {
-		expectedSequence = FixNewChannelConfig(configEnv).Config.Sequence
-		if configEnv.Config.Sequence != expectedSequence {
-			return nil, nil, fmt.Errorf("should prepare to update to %d (new channel) got %d instead", expectedSequence, configEnv.Config.Sequence)
-		}
-	} else {
-		expectedSequence = cm.current.sequence + 1
-		if configEnv.Config.Sequence != expectedSequence {
-			return nil, nil, fmt.Errorf("expected sequence %d (config at: %d), cannot prepare to update to %d", expectedSequence, cm.current.sequence, configEnv.Config.Sequence)
-		}
+	if configEnv.Config.Sequence != cm.current.sequence+1 {
+		return nil, nil, fmt.Errorf("Config at sequence %d, cannot prepare to update to %d", cm.current.sequence, configEnv.Config.Sequence)
 	}
 
 	configUpdateEnv, err := envelopeToConfigUpdate(configEnv.LastUpdate)
@@ -207,11 +198,11 @@ func (cm *configManager) prepareApply(configEnv *cb.ConfigEnvelope) (map[string]
 
 	channelGroup, err := configMapToConfig(configMap)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not turn configMap back to channelGroup: %s", err)
+		return nil, nil, fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
 	}
 
 	if !reflect.DeepEqual(channelGroup, configEnv.Config.ChannelGroup) {
-		return nil, nil, fmt.Errorf("configEnvelope LastUpdate did not produce the supplied config result")
+		return nil, nil, fmt.Errorf("ConfigEnvelope LastUpdate did not produce the supplied config result")
 	}
 
 	result, err := cm.processConfig(channelGroup)

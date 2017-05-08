@@ -58,9 +58,6 @@ func (msm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 func (msm *mockSupportManager) NewChannelConfig(env *cb.Envelope) (configtxapi.Manager, error) {
 	return &mockconfigtx.Manager{
 		ProposeConfigUpdateVal: &cb.ConfigEnvelope{
-			Config: &cb.Config{
-				Sequence: 0,
-			},
 			LastUpdate: env,
 		},
 	}, nil
