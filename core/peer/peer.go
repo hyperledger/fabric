@@ -267,8 +267,12 @@ func CreateChainFromBlock(cb *common.Block) error {
 func MockCreateChain(cid string) error {
 	var ledger ledger.PeerLedger
 	var err error
-	if ledger, err = createLedger(cid); err != nil {
-		return err
+
+	if ledger = GetLedger(cid); ledger == nil {
+		gb, _ := configtxtest.MakeGenesisBlock(cid)
+		if ledger, err = ledgermgmt.CreateLedger(gb); err != nil {
+			return err
+		}
 	}
 
 	// Here we need to mock also the policy manager
@@ -483,17 +487,6 @@ func SetCurrConfigBlock(block *common.Block, cid string) error {
 		return nil
 	}
 	return fmt.Errorf("Chain %s doesn't exist on the peer", cid)
-}
-
-// createLedger function is used only for the testing (see function 'MockCreateChain').
-// TODO - this function should not be in this file which contains production code
-func createLedger(cid string) (ledger.PeerLedger, error) {
-	var ledger ledger.PeerLedger
-	if ledger = GetLedger(cid); ledger != nil {
-		return ledger, nil
-	}
-	gb, _ := configtxtest.MakeGenesisBlock(cid)
-	return ledgermgmt.CreateLedger(gb)
 }
 
 // NewPeerClientConnection Returns a new grpc.ClientConn to the configured local PEER.

@@ -20,11 +20,13 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/localmsp"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
+	"github.com/hyperledger/fabric/core/comm"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/deliverservice"
@@ -66,6 +68,56 @@ type mockDeliveryClientFactory struct {
 
 func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
 	return &mockDeliveryClient{}, nil
+}
+
+func TestCreatePeerServer(t *testing.T) {
+
+	server, err := CreatePeerServer(":4050", comm.SecureServerConfig{})
+	assert.NoError(t, err, "CreatePeerServer returned unexpected error")
+	assert.Equal(t, "[::]:4050", server.Address(),
+		"CreatePeerServer returned the wrong address")
+	server.Stop()
+
+	_, err = CreatePeerServer("", comm.SecureServerConfig{})
+	assert.Error(t, err, "expected CreatePeerServer to return error with missing address")
+
+}
+
+func TestGetSecureConfig(t *testing.T) {
+
+	// good config without TLS
+	viper.Set("peer.tls.enabled", false)
+	sc, _ := GetSecureConfig()
+	assert.Equal(t, false, sc.UseTLS, "SecureConfig.UseTLS should be false")
+
+	// good config with TLS
+	viper.Set("peer.tls.enabled", true)
+	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org1-server1-cert.pem"))
+	viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
+	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org1-cert.pem"))
+	sc, _ = GetSecureConfig()
+	assert.Equal(t, true, sc.UseTLS, "SecureConfig.UseTLS should be true")
+
+	// bad config with TLS
+	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org11-cert.pem"))
+	_, err := GetSecureConfig()
+	assert.Error(t, err, "GetSecureConfig should return error with bad root cert path")
+	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org11-cert.pem"))
+	_, err = GetSecureConfig()
+	assert.Error(t, err, "GetSecureConfig should return error with bad tls cert path")
+
+	// disable TLS for remaining tests
+	viper.Set("peer.tls.enabled", false)
+
+}
+
+func TestInitChain(t *testing.T) {
+
+	chainId := "testChain"
+	chainInitializer = func(cid string) {
+		assert.Equal(t, chainId, cid, "chainInitializer received unexpected cid")
+	}
+	InitChain(chainId)
 }
 
 func TestInitialize(t *testing.T) {
@@ -121,6 +173,9 @@ func TestCreateChainFromBlock(t *testing.T) {
 		t.Fatalf("failed to get correct ledger")
 	}
 
+	// Config block from ledger
+	block, err = getCurrConfigBlockFromLedger(ledger)
+
 	// Bad ledger
 	ledger = GetLedger("BogusChain")
 	if ledger != nil {
@@ -138,6 +193,26 @@ func TestCreateChainFromBlock(t *testing.T) {
 	if block != nil {
 		t.Fatalf("got a bogus block")
 	}
+
+	// Correct PolicyManager
+	pmgr := GetPolicyManager(testChainID)
+	if pmgr == nil {
+		t.Fatal("failed to get PolicyManager")
+	}
+
+	// Bad PolicyManager
+	pmgr = GetPolicyManager("BogusChain")
+	if pmgr != nil {
+		t.Fatal("got a bogus PolicyManager")
+	}
+
+	// PolicyManagerGetter
+	pmg := NewChannelPolicyManagerGetter()
+	assert.NotNil(t, pmg, "PolicyManagerGetter should not be nil")
+
+	pmgr, ok := pmg.Manager(testChainID)
+	assert.NotNil(t, pmgr, "PolicyManager should not be nil")
+	assert.Equal(t, true, ok, "expected Manage() to return true")
 
 	// Chaos monkey test
 	Initialize(nil)
