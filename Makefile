@@ -42,6 +42,7 @@
 
 PROJECT_NAME   = hyperledger/fabric
 BASE_VERSION   = 1.0.0
+PREV_VERSION   = 1.0.0-alpha
 IS_RELEASE     = false
 
 ifneq ($(IS_RELEASE),true)
@@ -190,6 +191,9 @@ build/docker/bin/%: $(PROJECT_FILES)
 
 build/bin:
 	mkdir -p $@
+
+changelog:
+	./scripts/changelog.sh v$(PREV_VERSION) v$(BASE_VERSION)
 
 build/docker/gotools/bin/protoc-gen-go: build/docker/gotools
 
