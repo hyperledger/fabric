@@ -27,6 +27,8 @@ import (
 
 const (
 	chainFuncName = "chaincode"
+	shortDes      = "Operate a chaincode: install|instantiate|invoke|package|query|signpackage|upgrade."
+	longDes       = "Operate a chaincode: install|instantiate|invoke|package|query|signpackage|upgrade."
 )
 
 var logger = flogging.MustGetLogger("chaincodeCmd")
@@ -99,6 +101,6 @@ var (
 
 var chaincodeCmd = &cobra.Command{
 	Use:   chainFuncName,
-	Short: fmt.Sprintf("%s specific commands.", chainFuncName),
-	Long:  fmt.Sprintf("%s specific commands.", chainFuncName),
+	Short: fmt.Sprint(shortDes),
+	Long:  fmt.Sprint(longDes),
 }

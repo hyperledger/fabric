@@ -31,7 +31,7 @@ func Cmd() *cobra.Command {
 var cobraCommand = &cobra.Command{
 	Use:   "version",
 	Short: "Print fabric peer version.",
-	Long:  `Print current version of fabric peer server.`,
+	Long:  `Print current version of the the fabric peer server.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		Print()
 	},
