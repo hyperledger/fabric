@@ -38,6 +38,8 @@ Check [the documentation on how to contribute to this project](http://hyperledge
 
 [Hyperledger Chat](http://chat.hyperledger.org/channel/fabric)
 
+[Hyperledger Fabric Issue Tracking](https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104)
+
 [Hyperledger Wiki](https://wiki.hyperledger.org/)
 
 [Hyperledger Code of Conduct](https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct)

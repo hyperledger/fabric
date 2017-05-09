@@ -60,10 +60,10 @@ Reporting bugs
 --------------
 
 If you are a user and you find a bug, please submit an issue using
-`JIRA <https://jira.hyperledger.org>`__. Please try to provide
-sufficient information for someone else to reproduce the issue. One of
-the project's maintainers should respond to your issue within 24 hours.
-If not, please bump the issue with a comment and request that it be
+`JIRA <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`__.
+Please try to provide sufficient information for someone else to reproduce the
+issue. One of the project's maintainers should respond to your issue within 24
+hours. If not, please bump the issue with a comment and request that it be
 reviewed. You can also post to the ``#fabric-maintainers`` channel in
 `chat <https://chat.hyperledger.org/channel/fabric-maintainers>`__.
 
@@ -71,7 +71,7 @@ Fixing issues and working stories
 ---------------------------------
 
 Review the `issues
-list <https://github.com/hyperledger/fabric/issues>`__ and find
+list <https://jira.hyperledger.org/issues/?filter=10580>`__ and find
 something that interests you. You could also check the
 `"help-wanted" <https://jira.hyperledger.org/issues/?filter=10147>`__
 list. It is wise to start with something relatively straight forward and
