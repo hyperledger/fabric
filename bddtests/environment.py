@@ -43,7 +43,8 @@ def after_scenario(context, scenario):
         file_suffix = "_" + scenario.name.replace(" ", "_") + ".log"
         # get logs from the peer containers
         for containerData in context.compose_containers:
-            with open(containerData.containerName + file_suffix, "w+") as logfile:
+            (fileName, fileExists) = contextHelper.getTmpPathForName(name="{0}_{1}".format(containerData.containerName, scenario.name), extension="log", path_relative_to_tmp="logs")
+            with open(fileName, "w+") as logfile:
                 sys_rc = subprocess.call(["docker", "logs", containerData.containerName], stdout=logfile, stderr=logfile)
                 if sys_rc !=0 :
                     print("Cannot get logs for {0}. Docker rc = {1}".format(containerData.containerName,sys_rc))
@@ -52,7 +53,8 @@ def after_scenario(context, scenario):
             cli_call(["docker",  "ps", "-f",  "name=dev-", "--format", "{{.Names}}"], expect_success=True)
         for containerName in cc_output.splitlines():
             namePart,sep,junk = containerName.rpartition("-")
-            with open(namePart + file_suffix, "w+") as logfile:
+            (fileName, fileExists) = contextHelper.getTmpPathForName(name="{0}_{1}".format(namePart, scenario.name), extension="log", path_relative_to_tmp="logs")
+            with open(fileName, "w+") as logfile:
                 sys_rc = subprocess.call(["docker", "logs", containerName], stdout=logfile, stderr=logfile)
                 if sys_rc !=0 :
                     print("Cannot get logs for {0}. Docker rc = {1}".format(namepart,sys_rc))

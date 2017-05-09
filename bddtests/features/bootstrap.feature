@@ -44,11 +44,27 @@ Feature: Bootstrap
 
     And the ordererBootstrapAdmin generates a GUUID to identify the orderer system chain and refer to it by name as "OrdererSystemChainId"
 
+    # We now have an orderer network with NO peers.  Now need to configure and start the peer network
+    # This can be currently automated through folder creation of the proper form and placing PEMs.
+    And user requests role for peer by creating a key and csr for peer and acquires signed certificate from organization:
+      | User            | Peer     | Organization  |AliasSavedUnder|
+      | peer0Signer     | peer0    | peerOrg0      |               |
+      | peer1Signer     | peer1    | peerOrg0      |               |
+      | peer2Signer     | peer2    | peerOrg1      |               |
+      | peer3Signer     | peer3    | peerOrg1      |               |
+      | peer0Admin      | peer0    | peerOrg0      |peer-admin-cert|
+      | peer1Admin      | peer1    | peerOrg0      |peer-admin-cert|
+      | peer2Admin      | peer2    | peerOrg1      |peer-admin-cert|
+      | peer3Admin      | peer3    | peerOrg1      |peer-admin-cert|
+      | mspAdminPeerOrg0| mspAdmin | peerOrg0      |msp-admin-cert |
+      | mspAdminPeerOrg1| mspAdmin | peerOrg1      |msp-admin-cert |
+
     And the ordererBootstrapAdmin creates a consortium "consortium1" (network name) for peer orgs who wish to form a network:
       | Organization  |
       |  peerOrg0     |
       |  peerOrg1     |
 #      |  peerOrg2     |
+
 
     # Order info includes orderer admin/orderer information and address (host:port) from previous steps
     # Only the peer organizations can vary.
@@ -61,20 +77,6 @@ Feature: Bootstrap
 
     # to be used for setting the orderer genesis block path parameter in composition
     And the orderer admins use the genesis block for chain "OrdererSystemChainId" to configure orderers
-
-    # We now have an orderer network with NO peers.  Now need to configure and start the peer network
-    # This can be currently automated through folder creation of the proper form and placing PEMs.
-    And user requests role for peer by creating a key and csr for peer and acquires signed certificate from organization:
-        | User            | Peer     | Organization  |AliasSavedUnder|
-        | peer0Signer     | peer0    | peerOrg0      |               |
-        | peer1Signer     | peer1    | peerOrg0      |               |
-        | peer2Signer     | peer2    | peerOrg1      |               |
-        | peer3Signer     | peer3    | peerOrg1      |               |
-        | peer0Admin      | peer0    | peerOrg0      |peer-admin-cert|
-        | peer1Admin      | peer1    | peerOrg0      |peer-admin-cert|
-        | peer2Admin      | peer2    | peerOrg1      |peer-admin-cert|
-        | peer3Admin      | peer3    | peerOrg1      |peer-admin-cert|
-
 
     And we compose "<ComposeFile>"
 
@@ -199,38 +201,41 @@ Feature: Bootstrap
 
 
     Given user "peer0Admin" gives "cc_spec" to user "dev0Org0"
+      And user "peer0Admin" gives "cc_spec" to user "mspAdminPeerOrg0"
 
-    # Under the covers, create a deployment spec, etc.
-    When user "dev0Org0" using cert alias "dev0Org0App1" creates a instantiate proposal "instantiateProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
 
-    And user "dev0Org0" using cert alias "dev0Org0App1" sends proposal "instantiateProposal1" to endorsers with timeout of "90" seconds with proposal responses "instantiateProposalResponses":
+    When user "mspAdminPeerOrg0" using cert alias "msp-admin-cert" creates a instantiate proposal "instantiateProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
+
+    And user "mspAdminPeerOrg0" using cert alias "msp-admin-cert" sends proposal "instantiateProposal1" to endorsers with timeout of "90" seconds with proposal responses "instantiateProposalResponses":
       | Endorser |
       | peer0    |
       | peer2    |
 
 
-    Then user "dev0Org0" expects proposal responses "instantiateProposalResponses" with status "200" from endorsers:
+    Then user "mspAdminPeerOrg0" expects proposal responses "instantiateProposalResponses" with status "200" from endorsers:
       | Endorser |
       | peer0    |
       | peer2    |
 
-    And user "dev0Org0" expects proposal responses "instantiateProposalResponses" each have the same value from endorsers:
+    And user "mspAdminPeerOrg0" expects proposal responses "instantiateProposalResponses" each have the same value from endorsers:
       | Endorser |
       | peer0    |
       | peer2    |
 
-    When the user "dev0Org0" creates transaction "instantiateTx1" from proposal "instantiateProposal1" and proposal responses "instantiateProposalResponses" for channel "com.acme.blockchain.jdoe.Channel1"
+    When the user "mspAdminPeerOrg0" creates transaction "instantiateTx1" from proposal "instantiateProposal1" and proposal responses "instantiateProposalResponses" for channel "com.acme.blockchain.jdoe.Channel1"
 
-    And the user "dev0Org0" broadcasts transaction "instantiateTx1" to orderer "<orderer1>" on channel "com.acme.blockchain.jdoe.Channel1"
+    And the user "mspAdminPeerOrg0" broadcasts transaction "instantiateTx1" to orderer "<orderer1>" on channel "com.acme.blockchain.jdoe.Channel1"
 
     # Sleep as the deliver takes a bit to have the first block ready
     And I wait "2" seconds
 
-    And user "dev0Org0" sends deliver a seek request on orderer "<orderer0>" with properties:
+    And user "mspAdminPeerOrg0" using cert alias "msp-admin-cert" connects to deliver function on orderer "<orderer0>"
+
+    And user "mspAdminPeerOrg0" sends deliver a seek request on orderer "<orderer0>" with properties:
         | ChainId                               |   Start    |  End    |
         | com.acme.blockchain.jdoe.Channel1     |   1   |  1      |
 
-    Then user "dev0Org0" should get a delivery "deliveredInstantiateTx1Block" from "<orderer0>" of "1" blocks with "1" messages within "1" seconds
+    Then user "mspAdminPeerOrg0" should get a delivery "deliveredInstantiateTx1Block" from "<orderer0>" of "1" blocks with "1" messages within "1" seconds
 
     # Sleep as the deliver takes a bit to have the first block ready
     And I wait "1" seconds

@@ -42,11 +42,14 @@ class ContextHelper:
             os.makedirs(pathToReturn)
         return pathToReturn
 
-    def getTmpPathForName(self, name, extension=None, copyFromCache=False):
+    def getTmpPathForName(self, name, extension=None, copyFromCache=False, path_relative_to_tmp=''):
         'Returns the tmp path for a file, and a flag indicating if the file exists. Will also check in the cache and copy to tmp if copyFromCache==True'
         unicodeName = unicode(name)
+        dir_path = os.path.join(self.getTmpProjectPath(), path_relative_to_tmp)
+        if not os.path.isdir(dir_path):
+            os.makedirs(dir_path)
         slugifiedName = ".".join([slugify(unicodeName), extension]) if extension else slugify(unicodeName)
-        tmpPath = os.path.join(self.getTmpProjectPath(), slugifiedName)
+        tmpPath = os.path.join(dir_path, slugifiedName)
         fileExists = False
         if os.path.isfile(tmpPath):
             # file already exists in tmp path, return path and exists flag

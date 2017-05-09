@@ -236,18 +236,6 @@ class Organization(Entity):
     def getCertAsPEM(self):
         return crypto.dump_certificate(crypto.FILETYPE_PEM, self.getSelfSignedCert())
 
-    def getMSPConfig(self):
-        certPemsList = [crypto.dump_certificate(crypto.FILETYPE_PEM, self.getSelfSignedCert())]
-        # For now, admin certs and CA certs are the same per @ASO
-        adminCerts = certPemsList
-        cacerts = adminCerts
-        # Currently only 1 component, CN=<orgName>
-        # name = self.getSelfSignedCert().get_subject().getComponents()[0][1]
-        name = self.name
-        fabricMSPConfig = msp_config_pb2.FabricMSPConfig(admins=adminCerts, root_certs=cacerts, name=name)
-        mspConfig = msp_config_pb2.MSPConfig(config=fabricMSPConfig.SerializeToString(), type=0)
-        return mspConfig
-
     def isInNetwork(self, network):
         for n in self.networks:
             if str(n)==str(network):
@@ -657,7 +645,7 @@ def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType=
     # Add the orderer org groups MSPConfig info
     for ordererOrg in [org for org in directory.getOrganizations().values() if Network.Orderer in org.networks]:
         channel.groups[OrdererGroup].groups[ordererOrg.name].values[BootstrapHelper.KEY_MSP_INFO].value = toValue(
-            ordererOrg.getMSPConfig())
+            getMSPConfig(org=ordererOrg, directory=directory))
         channel.groups[OrdererGroup].groups[ordererOrg.name].values[BootstrapHelper.KEY_MSP_INFO].mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
     # #Kafka specific
     # matchingNATs = [nat for nat in directory.getNamedCtxTuples() if (("orderer" in nat.user) and ("Signer" in nat.user) and ((compose_service in nat.nodeName)))]
@@ -806,6 +794,20 @@ class PathType(Enum):
     'Denotes whether Path relative to Local filesystem or Containers volume reference.'
     Local = 1
     Container = 2
+
+
+def getMSPConfig(org, directory):
+    adminCerts = [org.getCertAsPEM()]
+    # Find the mspAdmin Tuple for org and add to admincerts folder
+    for pnt, cert in [(nat, cert) for nat, cert in directory.ordererAdminTuples.items() if
+                      org.name == nat.organization and "mspadmin" in nat.nodeName.lower()]:
+        adminCerts.append(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+    cacerts = [org.getCertAsPEM()]
+    # Currently only 1 component, CN=<orgName>
+    # name = self.getSelfSignedCert().get_subject().getComponents()[0][1]
+    fabricMSPConfig = msp_config_pb2.FabricMSPConfig(admins=adminCerts, root_certs=cacerts, name=org.name)
+    mspConfig = msp_config_pb2.MSPConfig(config=fabricMSPConfig.SerializeToString(), type=0)
+    return mspConfig
 
 
 class CallbackHelper:
@@ -1012,7 +1014,7 @@ def createConsortium(context, consortium_name, org_names):
     for consortium_org in [org for org in directory.getOrganizations().values() if org.name in org_names]:
         # channel.groups[ConsortiumsGroup].groups[consortium_name].groups[consortium_org.name].mod_policy = BootstrapHelper.KEY_POLICY_ADMINS
         channel.groups[ConsortiumsGroup].groups[consortium_name].groups[consortium_org.name].values[BootstrapHelper.KEY_MSP_INFO].value = toValue(
-            consortium_org.getMSPConfig())
+            getMSPConfig(org=consortium_org, directory=directory))
         channel.groups[ConsortiumsGroup].groups[consortium_name].groups[consortium_org.name].values[BootstrapHelper.KEY_MSP_INFO].mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
     typeImplicitMeta = common_dot_policies_pb2.Policy.PolicyType.Value("IMPLICIT_META")
     Policy = common_dot_policies_pb2.Policy
