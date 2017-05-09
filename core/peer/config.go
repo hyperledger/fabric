@@ -53,12 +53,6 @@ var peerEndpointError error
 
 // Cached values of commonly used configuration constants.
 
-// Note: There is some kind of circular import issue that prevents us from
-// importing the "core" package into the "peer" package. The
-// 'peer.SecurityEnabled' bit is a duplicate of the 'core.SecurityEnabled'
-// bit.
-var securityEnabled bool
-
 // CacheConfiguration computes and caches commonly-used constants and
 // computed constants as package variables. Routines which were previously
 // global have been embedded here to preserve the original abstraction.
@@ -92,16 +86,12 @@ func CacheConfiguration() (err error) {
 	}
 
 	localAddress, localAddressError = getLocalAddress()
-	peerEndpoint, peerEndpointError = getPeerEndpoint()
-
-	securityEnabled = true
+	peerEndpoint, _ = getPeerEndpoint()
 
 	configurationCached = true
 
 	if localAddressError != nil {
 		return localAddressError
-	} else if peerEndpointError != nil {
-		return peerEndpointError
 	}
 	return
 }
@@ -129,14 +119,6 @@ func GetPeerEndpoint() (*pb.PeerEndpoint, error) {
 		cacheConfiguration()
 	}
 	return peerEndpoint, peerEndpointError
-}
-
-// SecurityEnabled returns the securityEnabled property from cached configuration
-func SecurityEnabled() bool {
-	if !configurationCached {
-		cacheConfiguration()
-	}
-	return securityEnabled
 }
 
 // GetSecureConfig returns the secure server configuration for the peer
