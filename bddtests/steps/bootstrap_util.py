@@ -958,8 +958,8 @@ class OrdererGensisBlockCompositionCallback(compose.CompositionCallback, Callbac
             (keyPath, certPath) = self.getTLSKeyPaths(pnt=pnt, composition=composition, compose_service=ordererService, pathType=PathType.Container)
             env["{0}_ORDERER_GENERAL_TLS_CERTIFICATE".format(ordererService.upper())] = certPath
             env["{0}_ORDERER_GENERAL_TLS_PRIVATEKEY".format(ordererService.upper())] = keyPath
-            # env["{0}_ORDERER_GENERAL_TLS_ROOTCAS".format(ordererService.upper())] = "[{0}]".format(self.getLocalMspConfigRootCertPath(
-            #     directory=directory, composition=composition, compose_service=ordererService, pathType=PathType.Container))
+            env["{0}_ORDERER_GENERAL_TLS_ROOTCAS".format(ordererService.upper())] = "[{0}]".format(self.getLocalMspConfigRootCertPath(
+                directory=directory, composition=composition, compose_service=ordererService, pathType=PathType.Container))
 
 class PeerCompositionCallback(compose.CompositionCallback, CallbackHelper):
     'Responsible for setting up Peer nodes upon composition'
