@@ -643,11 +643,9 @@ func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContex
 const (
 	chaincodeExample02GolangPath   = "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 	chaincodeExample04GolangPath   = "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example04"
-	chaincodeExample05GolangPath   = "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example05"
 	chaincodeEventSenderGolangPath = "github.com/hyperledger/fabric/examples/chaincode/go/eventsender"
 	chaincodeExample02JavaPath     = "../../examples/chaincode/java/chaincode_example02"
 	chaincodeExample04JavaPath     = "../../examples/chaincode/java/chaincode_example04"
-	chaincodeExample05JavaPath     = "../../examples/chaincode/java/chaincode_example05"
 	chaincodeExample06JavaPath     = "../../examples/chaincode/java/chaincode_example06"
 	chaincodeEventSenderJavaPath   = "../../examples/chaincode/java/eventsender"
 )

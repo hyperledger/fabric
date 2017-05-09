@@ -17,16 +17,13 @@ limitations under the License.
 package chaincode
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
-
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/events/producer"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"golang.org/x/net/context"
 )
 
 //Execute - execute proposal, return original response of chaincode
@@ -117,24 +114,4 @@ func ExecuteWithErrorFilter(ctxt context.Context, cccid *ccprovider.CCContext, s
 	}
 
 	return res.Payload, event, nil
-}
-
-// GetSecureContext returns the security context from the context object or error
-// Security context is nil if security is off from core.yaml file
-// func GetSecureContext(ctxt context.Context) (crypto.Peer, error) {
-// 	var err error
-// 	temp := ctxt.Value("security")
-// 	if nil != temp {
-// 		if secCxt, ok := temp.(crypto.Peer); ok {
-// 			return secCxt, nil
-// 		}
-// 		err = errors.New("Failed to convert security context type")
-// 	}
-// 	return nil, err
-// }
-
-var errFailedToGetChainCodeSpecForTransaction = errors.New("Failed to get ChainCodeSpec from Transaction")
-
-func sendTxRejectedEvent(tx *pb.Transaction, errorMsg string) {
-	producer.Send(producer.CreateRejectionEvent(tx, errorMsg))
 }
