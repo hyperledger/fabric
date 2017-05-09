@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#Launches test network and executes multiple tests that 
+#Launches test network and executes multiple tests that
 #exist in chaincodeTests python script inside a  CLI container
-cd envsetup 
-./network_setup.sh restart channel 2 1 4 fabricFeatureChaincodeTestRuns.py
+cd envsetup
+py.test -v --junitxml YourChaincodeResults.xml testYourChaincode.py
