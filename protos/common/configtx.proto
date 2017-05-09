@@ -65,7 +65,6 @@ message ConfigPolicySchema {}
 message Config {
     uint64 sequence = 1;
     ConfigGroup channel_group = 2;
-    bool new_channel = 3;
 }
 
 message ConfigUpdateEnvelope {

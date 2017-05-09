@@ -32,8 +32,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var newChannelID = "newChannel"
-
 type mockSupport struct {
 	msc *mockconfig.Orderer
 }
@@ -73,94 +71,96 @@ func (mcc *mockChainCreator) NewChannelConfig(envConfigUpdate *cb.Envelope) (con
 	if mcc.NewChannelConfigErr != nil {
 		return nil, mcc.NewChannelConfigErr
 	}
-
-	pldConfigUpdate := utils.UnmarshalPayloadOrPanic(envConfigUpdate.Payload)
-	configUpdateEnv := configtx.UnmarshalConfigUpdateEnvelopeOrPanic(pldConfigUpdate.Data)
-	configUpdate := configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate)
-
-	configEnvelopeVal := &cb.ConfigEnvelope{
-		Config: &cb.Config{ChannelGroup: configUpdate.WriteSet},
-	}
-
-	proposeConfigUpdateVal := configEnvelopeVal
-	proposeConfigUpdateVal.Config.Sequence = 1
-	proposeConfigUpdateVal.LastUpdate = envConfigUpdate
-
-	ctxm := &mockconfigtx.Manager{
-		ConfigEnvelopeVal:      configEnvelopeVal,
-		ProposeConfigUpdateVal: proposeConfigUpdateVal,
-	}
-
-	return ctxm, nil
+	confUpdate := configtx.UnmarshalConfigUpdateOrPanic(configtx.UnmarshalConfigUpdateEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(envConfigUpdate.Payload).Data).ConfigUpdate)
+	return &mockconfigtx.Manager{
+		ConfigEnvelopeVal: &cb.ConfigEnvelope{
+			Config:     &cb.Config{Sequence: 1, ChannelGroup: confUpdate.WriteSet},
+			LastUpdate: envConfigUpdate,
+		},
+	}, nil
 }
 
 func TestGoodProposal(t *testing.T) {
+	newChainID := "NewChainID"
+
 	mcc := newMockChainCreator()
 
-	configUpdateEnv, _ := configtx.NewCompositeTemplate(
+	configEnv, err := configtx.NewCompositeTemplate(
 		configtx.NewSimpleTemplate(
 			config.DefaultHashingAlgorithm(),
 			config.DefaultBlockDataHashingStructure(),
 			config.TemplateOrdererAddresses([]string{"foo"}),
 		),
 		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
-	).Envelope(newChannelID)
-
-	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChannelID, configUpdateEnv, true)
-	ordererTx := wrapConfigTx(ingressTx)
+	).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
+	}
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
 	sysFilter := newSystemChainFilter(mcc.ms, mcc)
-	action, committer := sysFilter.Apply(ordererTx)
+	action, committer := sysFilter.Apply(wrapped)
+
 	assert.EqualValues(t, action, filter.Accept, "Did not accept valid transaction")
 	assert.True(t, committer.Isolated(), "Channel creation belong in its own block")
 
 	committer.Commit()
 	assert.Len(t, mcc.newChains, 1, "Proposal should only have created 1 new chain")
+
 	assert.Equal(t, ingressTx, mcc.newChains[0], "New chain should have been created with ingressTx")
 }
 
 func TestProposalRejectedByConfig(t *testing.T) {
+	newChainID := "NewChainID"
+
 	mcc := newMockChainCreator()
 	mcc.NewChannelConfigErr = fmt.Errorf("Error creating channel")
 
-	configUpdateEnv, _ := configtx.NewCompositeTemplate(
+	configEnv, err := configtx.NewCompositeTemplate(
 		configtx.NewSimpleTemplate(
 			config.DefaultHashingAlgorithm(),
 			config.DefaultBlockDataHashingStructure(),
 			config.TemplateOrdererAddresses([]string{"foo"}),
 		),
 		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
-	).Envelope(newChannelID)
-
-	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChannelID, configUpdateEnv, true)
-	ordererTx := wrapConfigTx(ingressTx)
+	).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
+	}
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
 	sysFilter := newSystemChainFilter(mcc.ms, mcc)
-	action, _ := sysFilter.Apply(ordererTx)
+	action, _ := sysFilter.Apply(wrapped)
 
-	assert.EqualValues(t, action, filter.Reject, "Did not reject invalid transaction")
+	assert.EqualValues(t, action, filter.Reject, "Did not accept valid transaction")
 	assert.Len(t, mcc.newChains, 0, "Proposal should not have created a new chain")
 }
 
 func TestNumChainsExceeded(t *testing.T) {
+	newChainID := "NewChainID"
+
 	mcc := newMockChainCreator()
 	mcc.ms.msc.MaxChannelsCountVal = 1
 	mcc.newChains = make([]*cb.Envelope, 2)
 
-	configUpdateEnv, _ := configtx.NewCompositeTemplate(
+	configEnv, err := configtx.NewCompositeTemplate(
 		configtx.NewSimpleTemplate(
 			config.DefaultHashingAlgorithm(),
 			config.DefaultBlockDataHashingStructure(),
 			config.TemplateOrdererAddresses([]string{"foo"}),
 		),
 		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
-	).Envelope(newChannelID)
-
-	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChannelID, configUpdateEnv, true)
-	ordererTx := wrapConfigTx(ingressTx)
+	).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
+	}
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
 	sysFilter := newSystemChainFilter(mcc.ms, mcc)
-	action, _ := sysFilter.Apply(ordererTx)
+	action, _ := sysFilter.Apply(wrapped)
 
 	assert.EqualValues(t, filter.Reject, action, "Transaction had created too many channels")
 }

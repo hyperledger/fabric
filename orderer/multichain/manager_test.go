@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
@@ -254,7 +253,7 @@ func TestNewChain(t *testing.T) {
 	configEnv, err := cm.ProposeConfigUpdate(envConfigUpdate)
 	assert.NoError(t, err, "Proposing initial update")
 
-	ingressTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, newChainID, mockCrypto(), configtx.FixNewChannelConfig(configEnv), msgVersion, epoch)
+	ingressTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, newChainID, mockCrypto(), configEnv, msgVersion, epoch)
 	assert.NoError(t, err, "Creating ingresstx")
 
 	wrapped := wrapConfigTx(ingressTx)
@@ -316,16 +315,6 @@ func TestNewChain(t *testing.T) {
 		if status != cb.Status_SUCCESS {
 			t.Fatalf("Could not retrieve block on new chain")
 		}
-
-		// Inspect LAST_CONFIG value
-		metadataItem := &cb.Metadata{}
-		err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG], metadataItem)
-		assert.NoError(t, err, "Block should carry LAST_CONFIG metadata item")
-		lastConfig := &cb.LastConfig{}
-		err = proto.Unmarshal(metadataItem.Value, lastConfig)
-		assert.NoError(t, err, "LAST_CONFIG metadata item should carry last config value")
-		assert.Equal(t, uint64(0), lastConfig.Index, "LAST_CONFIG value should point to genesis block")
-
 		for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
 			if !reflect.DeepEqual(utils.ExtractEnvelopeOrPanic(block, i), messages[i]) {
 				t.Errorf("Block contents wrong at index %d in new chain", i)

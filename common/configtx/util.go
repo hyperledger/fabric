@@ -97,18 +97,3 @@ func UnmarshalConfigEnvelopeOrPanic(data []byte) *cb.ConfigEnvelope {
 	}
 	return result
 }
-
-// FixNewChannelConfig is to be applied on messages of type ConfigEnvelope that
-// are used to create a new channel. It returns a ConfigEnvelope whose
-// Config.Sequence and Config.NewChannel fields are set so that the config
-// manager of the new channel starts at the right sequence number.
-func FixNewChannelConfig(configEnv *cb.ConfigEnvelope) *cb.ConfigEnvelope {
-	properSequence := uint64(0)
-	if configEnv.Config.Sequence != properSequence {
-		logger.Debugf("Received a new channel config env whose sequence is incorrectly set to %d, setting to %d instead",
-			configEnv.Config.Sequence, properSequence)
-	}
-	configEnv.Config.Sequence = properSequence
-	configEnv.Config.NewChannel = true
-	return configEnv
-}
