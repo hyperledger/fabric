@@ -17,6 +17,7 @@ limitations under the License.
 package msp
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,4 +63,31 @@ func TestIntermediateCAIdentityValidity(t *testing.T) {
 
 	id := thisMSP.(*bccspmsp).intermediateCerts[0]
 	assert.Error(t, id.Validate())
+}
+
+func TestMSPWithIntermediateCAs2(t *testing.T) {
+	// testdata/intermediate2 contains the credentials for a test MSP setup that has
+	// 1) a key and a signcert (used to populate the default signing identity);
+	//    signcert is not signed by a CA directly but by an intermediate CA
+	// 2) intermediatecert is an intermediate CA, signed by the CA
+	// 3) cacert is the CA that signed the intermediate
+	// 4) user2-cert is the certificate of an identity signed directly by the CA
+	//    therefore validation should fail.
+	thisMSP := getLocalMSP(t, filepath.Join("testdata", "intermediate2"))
+
+	// the default signing identity is signed by the intermediate CA,
+	// the validation should return no error
+	id, err := thisMSP.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+	err = thisMSP.Validate(id.GetPublicVersion())
+	assert.NoError(t, err)
+
+	// user2-cert has been signed by the root CA, validation must fail
+	pem, err := readPemFile(filepath.Join("testdata", "intermediate2", "users", "user2-cert.pem"))
+	assert.NoError(t, err)
+	id2, _, err := thisMSP.(*bccspmsp).getIdentityFromConf(pem)
+	assert.NoError(t, err)
+	err = thisMSP.Validate(id2)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid validation chain. Parent certificate should be a leaf of the certification tree ")
 }
