@@ -149,7 +149,7 @@ type membershipFilter struct {
 func (mf *membershipFilter) GetMembership() []discovery.NetworkMember {
 	var members []discovery.NetworkMember
 	for _, mem := range mf.adapter.GetMembership() {
-		if mf.EligibleForChannel(mem) {
+		if mf.eligibleForChannelAndSameOrg(mem) {
 			members = append(members, mem)
 		}
 	}
@@ -250,6 +250,13 @@ func (gc *gossipChannel) requestStateInfo() {
 	req := gc.createStateInfoRequest().NoopSign()
 	endpoints := filter.SelectPeers(gc.GetConf().PullPeerNum, gc.GetMembership(), gc.IsMemberInChan)
 	gc.Send(req, endpoints...)
+}
+
+func (gc *gossipChannel) eligibleForChannelAndSameOrg(member discovery.NetworkMember) bool {
+	sameOrg := func(networkMember discovery.NetworkMember) bool {
+		return bytes.Equal(gc.GetOrgOfPeer(networkMember.PKIid), gc.selfOrg)
+	}
+	return filter.CombineRoutingFilters(gc.EligibleForChannel, sameOrg)(member)
 }
 
 func (gc *gossipChannel) publishStateInfo() {
@@ -430,8 +437,8 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		return
 	}
 	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BLOCK_MSG {
-		if !gc.EligibleForChannel(discovery.NetworkMember{PKIid: msg.GetConnectionInfo().ID}) {
-			gc.logger.Warning(msg.GetConnectionInfo().ID, "isn't eligible for channel", string(gc.chainID))
+		if !gc.eligibleForChannelAndSameOrg(discovery.NetworkMember{PKIid: msg.GetConnectionInfo().ID}) {
+			gc.logger.Warning(msg.GetConnectionInfo().ID, "isn't eligible for pulling blocks of", string(gc.chainID))
 			return
 		}
 		if m.IsDataUpdate() {
