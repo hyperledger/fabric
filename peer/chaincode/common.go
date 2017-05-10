@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
@@ -104,11 +105,24 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 	proposalResp, err := ChaincodeInvokeOrQuery(spec, chainID, invoke,
 		cf.Signer, cf.EndorserClient, cf.BroadcastClient)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s - %v", err, proposalResp)
 	}
 
 	if invoke {
-		logger.Infof("Invoke result: %v", proposalResp)
+		if proposalResp.Response.Status >= shim.ERROR {
+			logger.Debugf("ESCC invoke result: %v", proposalResp)
+			pRespPayload, err := putils.GetProposalResponsePayload(proposalResp.Payload)
+			if err != nil {
+				return fmt.Errorf("Error while unmarshaling proposal response payload: %s", err)
+			}
+			ca, err := putils.GetChaincodeAction(pRespPayload.Extension)
+			if err != nil {
+				return fmt.Errorf("Error while unmarshaling chaincode action: %s", err)
+			}
+			logger.Warningf("Endorsement failure during invoke. chaincode result: %v", ca.Response)
+		} else {
+			logger.Infof("Invoke result: %v", proposalResp)
+		}
 	} else {
 		if proposalResp == nil {
 			return fmt.Errorf("Error query %s by endorsing: %s", chainFuncName, err)
@@ -309,6 +323,9 @@ func ChaincodeInvokeOrQuery(spec *pb.ChaincodeSpec, cID string, invoke bool,
 
 	if invoke {
 		if proposalResp != nil {
+			if proposalResp.Response.Status >= shim.ERROR {
+				return proposalResp, nil
+			}
 			// assemble a signed transaction (it's an Envelope message)
 			env, err := putils.CreateSignedTx(prop, signer, proposalResp)
 			if err != nil {

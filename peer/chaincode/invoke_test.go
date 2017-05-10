@@ -17,12 +17,19 @@
 package chaincode
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
+	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
+	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -116,7 +123,7 @@ func TestInvokeCmd(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestInvokeCmdEndorseFail(t *testing.T) {
+func TestInvokeCmdEndorsementError(t *testing.T) {
 	InitMSP()
 	mockCF, err := getMockChaincodeCmdFactoryWithErr()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
@@ -128,6 +135,35 @@ func TestInvokeCmdEndorseFail(t *testing.T) {
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.Error(t, err, "Expected error executing invoke command")
+}
+
+func TestInvokeCmdEndorsementFailure(t *testing.T) {
+	InitMSP()
+	ccRespStatus := int32(502)
+	ccRespPayload := []byte("Invalid function name")
+	mockCF, err := getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus, ccRespPayload)
+	assert.NoError(t, err, "Error getting mock chaincode command factory")
+
+	cmd := invokeCmd(mockCF)
+	AddFlags(cmd)
+	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+		"-c", "{\"Args\": [\"invokeinvalid\",\"a\",\"b\",\"10\"]}"}
+	cmd.SetArgs(args)
+
+	// set logger to logger with a backend that writes to a byte buffer
+	var buffer bytes.Buffer
+	logger.SetBackend(logging.AddModuleLevel(logging.NewLogBackend(&buffer, "", 0)))
+	// reset the logger after test
+	defer func() {
+		flogging.Reset()
+	}()
+	// make sure buffer is "clean" before running the invoke
+	buffer.Reset()
+
+	err = cmd.Execute()
+	assert.NoError(t, err)
+	assert.Regexp(t, "Endorsement failure during invoke", buffer.String())
+	assert.Regexp(t, fmt.Sprintf("chaincode result: status:%d payload:\"%s\"", ccRespStatus, ccRespPayload), buffer.String())
 }
 
 // Returns mock chaincode command factory
@@ -168,4 +204,45 @@ func getMockChaincodeCmdFactoryWithErr() (*ChaincodeCmdFactory, error) {
 		BroadcastClient: mockBroadcastClient,
 	}
 	return mockCF, nil
+}
+
+// Returns mock chaincode command factory
+func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayload []byte) (*ChaincodeCmdFactory, error) {
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		return nil, err
+	}
+
+	// create a proposal from a ChaincodeInvocationSpec
+	prop, _, err := utils.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("Could not create chaincode proposal, err %s\n", err)
+	}
+
+	response := &pb.Response{Status: ccRespStatus, Payload: ccRespPayload}
+	result := []byte("res")
+	ccid := &pb.ChaincodeID{Name: "foo", Version: "v1"}
+
+	mockRespFailure, err := utils.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, ccid, nil)
+	if err != nil {
+
+		return nil, fmt.Errorf("Could not create proposal response failure, err %s\n", err)
+	}
+
+	mockEndorserClient := common.GetMockEndorserClient(mockRespFailure, nil)
+	mockBroadcastClient := common.GetMockBroadcastClient(nil)
+	mockCF := &ChaincodeCmdFactory{
+		EndorserClient:  mockEndorserClient,
+		Signer:          signer,
+		BroadcastClient: mockBroadcastClient,
+	}
+	return mockCF, nil
+}
+
+func createCIS() *pb.ChaincodeInvocationSpec {
+	return &pb.ChaincodeInvocationSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type:        pb.ChaincodeSpec_GOLANG,
+			ChaincodeId: &pb.ChaincodeID{Name: "chaincode_name"},
+			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
 }
