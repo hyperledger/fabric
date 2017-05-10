@@ -27,9 +27,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/op/go-logging"
 )
+
+var mspIdentityLogger = flogging.MustGetLogger("msp/identity")
 
 type identity struct {
 	// id contains the identifier (MSPID and identity identifier) for this instance
@@ -46,7 +49,7 @@ type identity struct {
 }
 
 func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity, error) {
-	mspLogger.Debugf("Creating identity instance for ID %s", id)
+	mspIdentityLogger.Debugf("Creating identity instance for ID %s", id)
 
 	cert, err := msp.sanitizeCert(cert)
 	if err != nil {
@@ -83,7 +86,7 @@ func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
 
 	cid, err := id.msp.getCertificationChainIdentifier(id)
 	if err != nil {
-		mspLogger.Errorf("Failed getting certification chain identifier for [%v]: [%s]", id, err)
+		mspIdentityLogger.Errorf("Failed getting certification chain identifier for [%v]: [%s]", id, err)
 
 		return nil
 	}
@@ -118,7 +121,7 @@ func NewSerializedIdentity(mspID string, certPEM []byte) ([]byte, error) {
 // to determine whether this identity produced the
 // signature; it returns nil if so or an error otherwise
 func (id *identity) Verify(msg []byte, sig []byte) error {
-	// mspLogger.Infof("Verifying signature")
+	// mspIdentityLogger.Infof("Verifying signature")
 
 	// Compute Hash
 	hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.SignatureHashFamily)
@@ -131,10 +134,9 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 		return fmt.Errorf("Failed computing digest [%s]", err)
 	}
 
-	// TODO: Are these ok to log ?
-	if mspLogger.IsEnabledFor(logging.DEBUG) {
-		mspLogger.Debugf("Verify: digest = %s", hex.Dump(digest))
-		mspLogger.Debugf("Verify: sig = %s", hex.Dump(sig))
+	if mspIdentityLogger.IsEnabledFor(logging.DEBUG) {
+		mspIdentityLogger.Debugf("Verify: digest = %s", hex.Dump(digest))
+		mspIdentityLogger.Debugf("Verify: sig = %s", hex.Dump(sig))
 	}
 
 	valid, err := id.msp.bccsp.Verify(id.pk, sig, digest, nil)
@@ -159,7 +161,7 @@ func (id *identity) VerifyAttributes(proof []byte, spec *AttributeProofSpec) err
 
 // Serialize returns a byte array representation of this identity
 func (id *identity) Serialize() ([]byte, error) {
-	// mspLogger.Infof("Serializing identity %s", id.id)
+	// mspIdentityLogger.Infof("Serializing identity %s", id.id)
 
 	pb := &pem.Block{Bytes: id.cert.Raw}
 	pemBytes := pem.EncodeToMemory(pb)
@@ -196,7 +198,7 @@ type signingidentity struct {
 }
 
 func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer crypto.Signer, msp *bccspmsp) (SigningIdentity, error) {
-	//mspLogger.Infof("Creating signing identity instance for ID %s", id)
+	//mspIdentityLogger.Infof("Creating signing identity instance for ID %s", id)
 	mspId, err := newIdentity(id, cert, pk, msp)
 	if err != nil {
 		return nil, err
@@ -206,7 +208,7 @@ func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp
 
 // Sign produces a signature over msg, signed by this instance
 func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
-	//mspLogger.Infof("Signing message")
+	//mspIdentityLogger.Infof("Signing message")
 
 	// Compute Hash
 	hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.SignatureHashFamily)
@@ -219,14 +221,12 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Failed computing digest [%s]", err)
 	}
 
-	// TODO - consider removing these debug statements in the future as they may
-	// contain confidential information
 	if len(msg) < 32 {
-		mspLogger.Debugf("Sign: plaintext: %X \n", msg)
+		mspIdentityLogger.Debugf("Sign: plaintext: %X \n", msg)
 	} else {
-		mspLogger.Debugf("Sign: plaintext: %X...%X \n", msg[0:16], msg[len(msg)-16:])
+		mspIdentityLogger.Debugf("Sign: plaintext: %X...%X \n", msg[0:16], msg[len(msg)-16:])
 	}
-	mspLogger.Debugf("Sign: digest: %X \n", digest)
+	mspIdentityLogger.Debugf("Sign: digest: %X \n", digest)
 
 	// Sign
 	return id.signer.Sign(rand.Reader, digest, nil)
