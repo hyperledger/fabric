@@ -173,8 +173,11 @@ func TestCreateChainFromBlock(t *testing.T) {
 		t.Fatalf("failed to get correct ledger")
 	}
 
-	// Config block from ledger
+	// Get config block from ledger
 	block, err = getCurrConfigBlockFromLedger(ledger)
+	assert.NoError(t, err, "Failed to get config block from ledger")
+	assert.NotNil(t, block, "Config block should not be nil")
+	assert.Equal(t, uint64(0), block.Header.Number, "config block should have been block 0")
 
 	// Bad ledger
 	ledger = GetLedger("BogusChain")
