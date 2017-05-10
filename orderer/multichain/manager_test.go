@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
@@ -253,14 +254,16 @@ func TestSignatureFilter(t *testing.T) {
 
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain
 func TestNewChain(t *testing.T) {
+	expectedLastConfigBlockNumber := uint64(0)
+	expectedLastConfigSeq := uint64(1)
+	newChainID := "TestNewChain"
+
 	lf, rl := NewRAMLedgerAndFactory(10)
 
 	consenters := make(map[string]Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
 	manager := NewManagerImpl(lf, consenters, mockCrypto())
-
-	newChainID := "TestNewChain"
 
 	envConfigUpdate, err := configtx.MakeChainCreationTransaction(newChainID, genesisconfig.SampleConsortiumName, mockSigningIdentity)
 	assert.NoError(t, err, "Constructing chain creation tx")
@@ -270,6 +273,7 @@ func TestNewChain(t *testing.T) {
 
 	configEnv, err := cm.ProposeConfigUpdate(envConfigUpdate)
 	assert.NoError(t, err, "Proposing initial update")
+	assert.Equal(t, expectedLastConfigSeq, configEnv.GetConfig().Sequence, "Sequence of config envelope for new channel should always be set to %d", expectedLastConfigSeq)
 
 	ingressTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, newChainID, mockCrypto(), configEnv, msgVersion, epoch)
 	assert.NoError(t, err, "Creating ingresstx")
@@ -278,6 +282,7 @@ func TestNewChain(t *testing.T) {
 
 	chainSupport, ok := manager.GetChain(manager.SystemChannelID())
 	assert.True(t, ok, "Could not find system channel")
+
 	chainSupport.Enqueue(wrapped)
 
 	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
@@ -318,6 +323,7 @@ func TestNewChain(t *testing.T) {
 		if status != cb.Status_SUCCESS {
 			t.Fatalf("Could not retrieve new chain genesis block")
 		}
+		testLastConfigBlockNumber(t, block, expectedLastConfigBlockNumber)
 		if len(block.Data.Data) != 1 {
 			t.Fatalf("Should have had only one message in the new genesis block")
 		}
@@ -333,6 +339,7 @@ func TestNewChain(t *testing.T) {
 		if status != cb.Status_SUCCESS {
 			t.Fatalf("Could not retrieve block on new chain")
 		}
+		testLastConfigBlockNumber(t, block, expectedLastConfigBlockNumber)
 		for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
 			if !reflect.DeepEqual(utils.ExtractEnvelopeOrPanic(block, i), messages[i]) {
 				t.Errorf("Block contents wrong at index %d in new chain", i)
@@ -341,4 +348,14 @@ func TestNewChain(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatalf("Block 1 not produced after timeout on new chain")
 	}
+}
+
+func testLastConfigBlockNumber(t *testing.T, block *cb.Block, expectedBlockNumber uint64) {
+	metadataItem := &cb.Metadata{}
+	err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG], metadataItem)
+	assert.NoError(t, err, "Block should carry LAST_CONFIG metadata item")
+	lastConfig := &cb.LastConfig{}
+	err = proto.Unmarshal(metadataItem.Value, lastConfig)
+	assert.NoError(t, err, "LAST_CONFIG metadata item should carry last config value")
+	assert.Equal(t, expectedBlockNumber, lastConfig.Index, "LAST_CONFIG value should point to last config block")
 }

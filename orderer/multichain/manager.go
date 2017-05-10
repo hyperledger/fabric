@@ -187,6 +187,11 @@ func (ml *multiLedger) newChain(configtx *cb.Envelope) {
 
 	logger.Infof("Created and starting new chain %s", chainID)
 
+	cs.lastConfigSeq = cs.Sequence()
+	// The sequence number on the genesis block of the system channel will be 0.
+	// The sequence number on the genesis block of every non-system channel will be 1.
+	logger.Debugf("[channel: %s] Last config set to %d", chainID, cs.lastConfigSeq)
+
 	newChains[string(chainID)] = cs
 	cs.start()
 

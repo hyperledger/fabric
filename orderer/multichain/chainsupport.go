@@ -231,6 +231,7 @@ func (cs *chainSupport) addLastConfigSignature(block *cb.Block) {
 	}
 
 	lastConfigValue := utils.MarshalOrPanic(&cb.LastConfig{Index: cs.lastConfig})
+	logger.Debugf("[channel: %s] About to write block, setting its LAST_CONFIG to %d", cs.ChainID(), cs.lastConfig)
 
 	lastConfigSignature.Signature = utils.SignOrPanic(cs.signer, util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
 
@@ -257,6 +258,8 @@ func (cs *chainSupport) WriteBlock(block *cb.Block, committers []filter.Committe
 	if err != nil {
 		logger.Panicf("[channel: %s] Could not append block: %s", cs.ChainID(), err)
 	}
+	logger.Debugf("[channel: %s] Wrote block %d", cs.ChainID(), block.GetHeader().Number)
+
 	return block
 }
 
