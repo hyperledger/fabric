@@ -184,34 +184,43 @@ chaincodeInvoke () {
 }
 
 ## Create channel
+echo "Creating channel..."
 createChannel
 
 ## Join all the peers to the channel
+echo "Having all peers join the channel..."
 joinChannel
 
 ## Set the anchor peers for each org in the channel
+echo "Updating anchor peers for org1..."
 updateAnchorPeers 0
+echo "Updating anchor peers for org2..."
 updateAnchorPeers 2
 
 ## Install chaincode on Peer0/Org1 and Peer2/Org2
+echo "Installing chaincode on org1/peer0..."
 installChaincode 0
+echo "Install chaincode on org2/peer2..."
 installChaincode 2
 
 #Instantiate chaincode on Peer2/Org2
-echo "Instantiating chaincode on Peer2/Org2 ..."
+echo "Instantiating chaincode on org2/peer2..."
 instantiateChaincode 2
 
-#Query on chaincode on Peer0/Org2
+#Query on chaincode on Peer0/Org1
+echo "Querying chaincode on org1/peer0..."
 chaincodeQuery 0 100
 
 #Invoke on chaincode on Peer0/Org2
-echo "send Invoke transaction on Peer0/Org2 ..."
+echo "Sending invoke transaction on org2/peer2..."
 chaincodeInvoke 0
 
 ## Install chaincode on Peer3/Org2
+echo "Installing chaincode on org2/peer3..."
 installChaincode 3
 
 #Query on chaincode on Peer3/Org2, check if the result is 90
+echo "Querying chaincode on org2/peer3..."
 chaincodeQuery 3 90
 
 echo
