@@ -268,7 +268,7 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() (*DBOperationResponse,
 		maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
 		//process the URL with a PUT, creates the database
-		resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, connectURL.String(), nil, "", "", maxRetries)
+		resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, connectURL.String(), nil, "", "", maxRetries, true)
 		if err != nil {
 			return nil, err
 		}
@@ -309,7 +309,7 @@ func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "", maxRetries)
+	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "", maxRetries, true)
 	if err != nil {
 		return nil, couchDBReturn, err
 	}
@@ -347,7 +347,7 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 	maxRetriesOnStartup := couchInstance.conf.MaxRetriesOnStartup
 
 	resp, couchDBReturn, err := couchInstance.handleRequest(http.MethodGet, connectURL.String(), nil,
-		couchInstance.conf.Username, couchInstance.conf.Password, maxRetriesOnStartup)
+		couchInstance.conf.Username, couchInstance.conf.Password, maxRetriesOnStartup, true)
 
 	if err != nil {
 		return nil, couchDBReturn, fmt.Errorf("Unable to connect to CouchDB, check the hostname and port: %s", err.Error())
@@ -396,7 +396,7 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, connectURL.String(), nil, "", "", maxRetries)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, connectURL.String(), nil, "", "", maxRetries, true)
 	if err != nil {
 		return nil, err
 	}
@@ -436,7 +436,7 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, connectURL.String(), nil, "", "", maxRetries)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, connectURL.String(), nil, "", "", maxRetries, true)
 	if err != nil {
 		logger.Errorf("Failed to invoke _ensure_full_commit Error: %s\n", err.Error())
 		return nil, err
@@ -500,6 +500,9 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 	//Set up a default boundary for use by multipart if sending attachments
 	defaultBoundary := ""
 
+	//Create a flag for shared connections.  This is set to false for zero length attachments
+	keepConnectionOpen := true
+
 	//check to see if attachments is nil, if so, then this is a JSON only
 	if couchDoc.Attachments == nil {
 
@@ -519,6 +522,13 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 			return "", err3
 		}
 
+		//If there is a zero length attachment, do not keep the connection open
+		for _, attach := range couchDoc.Attachments {
+			if attach.Length < 1 {
+				keepConnectionOpen = false
+			}
+		}
+
 		//Set the data buffer to the data from the create multi-part data
 		data = multipartData.Bytes()
 
@@ -531,7 +541,8 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
 	//handle the request for saving the JSON or attachments
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, saveURL.String(), data, rev, defaultBoundary, maxRetries)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, saveURL.String(), data,
+		rev, defaultBoundary, maxRetries, keepConnectionOpen)
 	if err != nil {
 		return "", err
 	}
@@ -662,7 +673,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, readURL.String(), nil, "", "", maxRetries)
+	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, readURL.String(), nil, "", "", maxRetries, true)
 	if err != nil {
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
 			logger.Debug("Document not found (404), returning nil value instead of 404 error")
@@ -815,7 +826,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodGet, rangeURL.String(), nil, "", "", maxRetries)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodGet, rangeURL.String(), nil, "", "", maxRetries, true)
 	if err != nil {
 		return nil, err
 	}
@@ -913,7 +924,7 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, deleteURL.String(), nil, rev, "", maxRetries)
+	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, deleteURL.String(), nil, rev, "", maxRetries, true)
 	if err != nil {
 		fmt.Printf("couchDBReturn=%v", couchDBReturn)
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
@@ -950,7 +961,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, queryURL.String(), []byte(query), "", "", maxRetries)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, queryURL.String(), []byte(query), "", "", maxRetries, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1036,7 +1047,7 @@ func (dbclient *CouchDatabase) BatchRetrieveIDRevision(keys []string) ([]*DocMet
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), jsonKeys, "", "", maxRetries)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), jsonKeys, "", "", maxRetries, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1131,7 +1142,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), jsonKeys, "", "", maxRetries)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), jsonKeys, "", "", maxRetries, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1166,7 +1177,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 // if it returns an error, it ensures that the response body is closed, else it is the
 // callee's responsibility to close response correctly
 func (couchInstance *CouchInstance) handleRequest(method, connectURL string, data []byte, rev string,
-	multipartBoundary string, maxRetries int) (*http.Response, *DBReturn, error) {
+	multipartBoundary string, maxRetries int, keepConnectionOpen bool) (*http.Response, *DBReturn, error) {
 
 	logger.Debugf("Entering handleRequest()  method=%s  url=%v", method, connectURL)
 
@@ -1190,6 +1201,13 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 		req, err := http.NewRequest(method, connectURL, payloadData)
 		if err != nil {
 			return nil, nil, err
+		}
+
+		//set the request to close on completion if shared connections are not allowSharedConnection
+		//Current CouchDB has a problem with zero length attachments, do not allow the connection to be reused.
+		//Apache JIRA item for CouchDB   https://issues.apache.org/jira/browse/COUCHDB-3394
+		if !keepConnectionOpen {
+			req.Close = true
 		}
 
 		//add content header for PUT

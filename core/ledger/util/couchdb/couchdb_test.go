@@ -376,13 +376,119 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 			//Assert that the update was saved and retrieved
 			testutil.AssertEquals(t, assetResp.Owner, "bob")
 
-			//Drop the database
-			_, errdbdrop := db.DropDatabase()
-			testutil.AssertNoError(t, errdbdrop, fmt.Sprintf("Error dropping database"))
+			testBytes2 := []byte(`test attachment 2`)
 
-			//Retrieve the info for the new database and make sure the name matches
-			_, _, errdbinfo := db.GetDatabaseInfo()
-			testutil.AssertError(t, errdbinfo, fmt.Sprintf("Error should have been thrown for missing database"))
+			attachment2 := &Attachment{}
+			attachment2.AttachmentBytes = testBytes2
+			attachment2.ContentType = "application/octet-stream"
+			attachment2.Name = "data"
+			attachments2 := []*Attachment{}
+			attachments2 = append(attachments2, attachment2)
+
+			//Save the test document with an attachment
+			_, saveerr = db.SaveDoc("2", "", &CouchDoc{JSONValue: nil, Attachments: attachments2})
+			testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
+
+			//Retrieve the test document with attachments
+			dbGetResp, _, geterr = db.ReadDoc("2")
+			testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
+
+			//verify the text from the attachment is correct
+			testattach := dbGetResp.Attachments[0].AttachmentBytes
+			testutil.AssertEquals(t, testattach, testBytes2)
+
+			testBytes3 := []byte{}
+
+			attachment3 := &Attachment{}
+			attachment3.AttachmentBytes = testBytes3
+			attachment3.ContentType = "application/octet-stream"
+			attachment3.Name = "data"
+			attachments3 := []*Attachment{}
+			attachments3 = append(attachments3, attachment3)
+
+			//Save the test document with a zero length attachment
+			_, saveerr = db.SaveDoc("3", "", &CouchDoc{JSONValue: nil, Attachments: attachments3})
+			testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
+
+			//Retrieve the test document with attachments
+			dbGetResp, _, geterr = db.ReadDoc("3")
+			testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
+
+			//verify the text from the attachment is correct,  zero bytes
+			testattach = dbGetResp.Attachments[0].AttachmentBytes
+			testutil.AssertEquals(t, testattach, testBytes3)
+
+			testBytes4a := []byte(`test attachment 4a`)
+			attachment4a := &Attachment{}
+			attachment4a.AttachmentBytes = testBytes4a
+			attachment4a.ContentType = "application/octet-stream"
+			attachment4a.Name = "data1"
+
+			testBytes4b := []byte(`test attachment 4b`)
+			attachment4b := &Attachment{}
+			attachment4b.AttachmentBytes = testBytes4b
+			attachment4b.ContentType = "application/octet-stream"
+			attachment4b.Name = "data2"
+
+			attachments4 := []*Attachment{}
+			attachments4 = append(attachments4, attachment4a)
+			attachments4 = append(attachments4, attachment4b)
+
+			//Save the updated test document with multiple attachments
+			_, saveerr = db.SaveDoc("4", "", &CouchDoc{JSONValue: assetJSON, Attachments: attachments4})
+			testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save the updated document"))
+
+			//Retrieve the test document with attachments
+			dbGetResp, _, geterr = db.ReadDoc("4")
+			testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
+
+			for _, attach4 := range dbGetResp.Attachments {
+
+				currentName := attach4.Name
+				if currentName == "data1" {
+					testutil.AssertEquals(t, attach4.AttachmentBytes, testBytes4a)
+				}
+				if currentName == "data2" {
+					testutil.AssertEquals(t, attach4.AttachmentBytes, testBytes4b)
+				}
+
+			}
+
+			testBytes5a := []byte(`test attachment 5a`)
+			attachment5a := &Attachment{}
+			attachment5a.AttachmentBytes = testBytes5a
+			attachment5a.ContentType = "application/octet-stream"
+			attachment5a.Name = "data1"
+
+			testBytes5b := []byte{}
+			attachment5b := &Attachment{}
+			attachment5b.AttachmentBytes = testBytes5b
+			attachment5b.ContentType = "application/octet-stream"
+			attachment5b.Name = "data2"
+
+			attachments5 := []*Attachment{}
+			attachments5 = append(attachments5, attachment5a)
+			attachments5 = append(attachments5, attachment5b)
+
+			//Save the updated test document with multiple attachments and zero length attachments
+			_, saveerr = db.SaveDoc("5", "", &CouchDoc{JSONValue: assetJSON, Attachments: attachments5})
+			testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save the updated document"))
+
+			//Retrieve the test document with attachments
+			dbGetResp, _, geterr = db.ReadDoc("5")
+			testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
+
+			for _, attach5 := range dbGetResp.Attachments {
+
+				currentName := attach5.Name
+				if currentName == "data1" {
+					testutil.AssertEquals(t, attach5.AttachmentBytes, testBytes5a)
+				}
+				if currentName == "data2" {
+					testutil.AssertEquals(t, attach5.AttachmentBytes, testBytes5b)
+				}
+
+			}
 
 			//Attempt to save the document with an invalid id
 			_, saveerr = db.SaveDoc(string([]byte{0xff, 0xfe, 0xfd}), "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
@@ -391,6 +497,22 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 			//Attempt to read a document with an invalid id
 			_, _, readerr := db.ReadDoc(string([]byte{0xff, 0xfe, 0xfd}))
 			testutil.AssertError(t, readerr, fmt.Sprintf("Error should have been thrown when reading a document with an invalid ID"))
+
+			//Drop the database
+			_, errdbdrop := db.DropDatabase()
+			testutil.AssertNoError(t, errdbdrop, fmt.Sprintf("Error dropping database"))
+
+			//Make sure an error is thrown for getting info for a missing database
+			_, _, errdbinfo := db.GetDatabaseInfo()
+			testutil.AssertError(t, errdbinfo, fmt.Sprintf("Error should have been thrown for missing database"))
+
+			//Attempt to save a document to a deleted database
+			_, saveerr = db.SaveDoc("6", "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
+			testutil.AssertError(t, saveerr, fmt.Sprintf("Error should have been thrown while attempting to save to a deleted database"))
+
+			//Attempt to read from a deleted database
+			_, _, geterr = db.ReadDoc("6")
+			testutil.AssertNoError(t, geterr, fmt.Sprintf("Error should not have been thrown for a missing database, nil value is returned"))
 
 		}
 	}
