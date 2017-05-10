@@ -62,8 +62,8 @@ def step_impl(context):
     # Simply create the user
     bootstrap_util.getOrdererBootstrapAdmin(context, shouldCreate=True)
 
-@given(u'the ordererBootstrapAdmin using cert alias "{certAlias}" creates the genesis block "{ordererGenesisBlockName}" for chain "{ordererSystemChainIdName}" for network config policy "{networkConfigPolicy}" and consensus "{consensusType}" using consortiums')
-def step_impl(context, certAlias, ordererGenesisBlockName, ordererSystemChainIdName, networkConfigPolicy, consensusType):
+@given(u'the ordererBootstrapAdmin using cert alias "{certAlias}" creates the genesis block "{ordererGenesisBlockName}" for chain "{ordererSystemChainIdName}" for composition "{composeFile}" and consensus "{consensusType}" using consortiums')
+def step_impl(context, certAlias, ordererGenesisBlockName, ordererSystemChainIdName, composeFile, consensusType):
     directory = bootstrap_util.getDirectory(context=context)
     ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
     ordererSystemChainIdGUUID = ordererBootstrapAdmin.tags[ordererSystemChainIdName]
@@ -74,12 +74,17 @@ def step_impl(context, certAlias, ordererGenesisBlockName, ordererSystemChainIdN
         configGroups += ordererBootstrapAdmin.tags[configGroupName]
     # Concatenate signedConfigItems
 
+    service_names = compose.Composition(context, composeFilesYaml=composeFile, register_and_up=False).getServiceNames()
+
     # Construct block
     nodeAdminTuple = ordererBootstrapAdmin.tags[certAlias]
     bootstrapCert = directory.findCertForNodeAdminTuple(nodeAdminTuple=nodeAdminTuple)
-    (genesisBlock, envelope, genesis_block_channel_config) = bootstrap_util.createGenesisBlock(context, ordererSystemChainIdGUUID, consensusType,
-                                                                 nodeAdminTuple=nodeAdminTuple,
-                                                                 signedConfigItems=configGroups)
+    (genesisBlock, envelope, genesis_block_channel_config) = bootstrap_util.createGenesisBlock(context=context,
+                                                                                               service_names=service_names,
+                                                                                               chainId=ordererSystemChainIdGUUID,
+                                                                                               consensusType=consensusType,
+                                                                                               nodeAdminTuple=nodeAdminTuple,
+                                                                                               signedConfigItems=configGroups)
     ordererBootstrapAdmin.setTagValue(ordererGenesisBlockName + "_genesis_channel_config", genesis_block_channel_config)
     ordererBootstrapAdmin.setTagValue(ordererGenesisBlockName, genesisBlock)
     ordererBootstrapAdmin.setTagValue("ConsensusType", consensusType)

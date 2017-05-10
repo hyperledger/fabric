@@ -68,9 +68,9 @@ Feature: Bootstrap
 
     # Order info includes orderer admin/orderer information and address (host:port) from previous steps
     # Only the peer organizations can vary.
-    And the ordererBootstrapAdmin using cert alias "bootstrapCertAlias" creates the genesis block "ordererGenesisBlock" for chain "OrdererSystemChainId" for network config policy "<PolicyType>" and consensus "<ConsensusType>" using consortiums:
-      |   Consortium    |
-      |  consortium1    |
+    And the ordererBootstrapAdmin using cert alias "bootstrapCertAlias" creates the genesis block "ordererGenesisBlock" for chain "OrdererSystemChainId" for composition "<ComposeFile>" and consensus "<ConsensusType>" using consortiums:
+      | Consortium  |
+      | consortium1 |
 
 
     And the orderer admins inspect and approve the genesis block for chain "OrdererSystemChainId"
