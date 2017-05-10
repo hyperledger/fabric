@@ -17,7 +17,8 @@ It's recommended for first-time users to begin by going through the
 components and the basic transaction flow.  Once comfortable, continue
 exploring the library for demos, technical specifications, APIs, etc.
 
-Before diving in, watch how Fabric is `Building a Blockchain for Business <https://www.youtube.com/watch?v=EKa5Gh9whgU>`__ .
+Before diving in, watch how Fabric is `Building a Blockchain for Business
+<https://www.youtube.com/watch?v=EKa5Gh9whgU>`__ .
 
 
 
@@ -40,6 +41,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business <https
    :caption: Key Concepts
 
    overview
+   blockchain
    capabilities
    fabric_model
    usecases
