@@ -105,21 +105,18 @@ type MessageStore interface {
 }
 
 type messageStoreImpl struct {
-	pol        common.MessageReplacingPolicy
-	lock       sync.RWMutex
-	messages   []*msg
-	invTrigger invalidationTrigger
-
-	expirable    bool
-	msgTTL       time.Duration
-	expiredCount int
-
+	pol               common.MessageReplacingPolicy
+	lock              sync.RWMutex
+	messages          []*msg
+	invTrigger        invalidationTrigger
+	msgTTL            time.Duration
+	expiredCount      int
 	externalLock      func()
 	externalUnlock    func()
 	expireMsgCallback func(msg interface{})
-
-	doneCh   chan struct{}
-	stopOnce sync.Once
+	doneCh            chan struct{}
+	stopOnce          sync.Once
+	expirable         bool
 }
 
 type msg struct {

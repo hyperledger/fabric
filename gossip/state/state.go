@@ -106,13 +106,13 @@ type GossipStateProviderImpl struct {
 
 	stateRequestCh chan proto.ReceivedMessage
 
-	stateTransferActive int32
-
 	stopCh chan struct{}
 
 	done sync.WaitGroup
 
 	once sync.Once
+
+	stateTransferActive int32
 }
 
 var logger *logging.Logger // package-level logger

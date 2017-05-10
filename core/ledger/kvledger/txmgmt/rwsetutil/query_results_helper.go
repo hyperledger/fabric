@@ -61,14 +61,17 @@ var (
 // The `Done` function does the final processing and returns the final output
 type RangeQueryResultsHelper struct {
 	pendingResults []*kvrwset.KVRead
-	hashingEnabled bool
-	maxDegree      uint32
 	mt             *merkleTree
+	maxDegree      uint32
+	hashingEnabled bool
 }
 
 // NewRangeQueryResultsHelper constructs a RangeQueryResultsHelper
 func NewRangeQueryResultsHelper(enableHashing bool, maxDegree uint32) (*RangeQueryResultsHelper, error) {
-	helper := &RangeQueryResultsHelper{nil, enableHashing, maxDegree, nil}
+	helper := &RangeQueryResultsHelper{pendingResults: nil,
+		hashingEnabled: enableHashing,
+		maxDegree:      maxDegree,
+		mt:             nil}
 	if enableHashing {
 		var err error
 		if helper.mt, err = newMerkleTree(maxDegree); err != nil {
@@ -147,16 +150,16 @@ func serializeKVReads(kvReads []*kvrwset.KVRead) ([]byte, error) {
 //////////// Merkle tree building code  ///////
 
 type merkleTree struct {
-	maxDegree uint32
 	tree      map[MerkleTreeLevel][]Hash
 	maxLevel  MerkleTreeLevel
+	maxDegree uint32
 }
 
 func newMerkleTree(maxDegree uint32) (*merkleTree, error) {
 	if maxDegree < 2 {
 		return nil, fmt.Errorf("maxDegree [is %d] should not be less than 2 in the merkle tree", maxDegree)
 	}
-	return &merkleTree{maxDegree, make(map[MerkleTreeLevel][]Hash), 1}, nil
+	return &merkleTree{make(map[MerkleTreeLevel][]Hash), 1, maxDegree}, nil
 }
 
 // update takes a hash that forms the next leaf level (level-1) node in the merkle tree.
