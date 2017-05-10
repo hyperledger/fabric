@@ -17,8 +17,6 @@ limitations under the License.
 package msp
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,17 +26,7 @@ func TestBadConfigOU(t *testing.T) {
 	// testdata/badconfigou:
 	// the configuration is such that only identities
 	// with OU=COP2 and signed by the root ca should be validated
-	conf, err := GetLocalMspConfig("testdata/badconfigou", nil, "DEFAULT")
-	if err != nil {
-		fmt.Printf("Setup should have succeeded, got err %s instead", err)
-		os.Exit(-1)
-	}
-
-	thisMSP, err := NewBccspMsp()
-	assert.NoError(t, err)
-
-	err = thisMSP.Setup(conf)
-	assert.NoError(t, err)
+	thisMSP := getLocalMSP(t, "testdata/badconfigou")
 
 	id, err := thisMSP.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
