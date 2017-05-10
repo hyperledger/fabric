@@ -339,7 +339,7 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 
 	msg := m.GetGossipMessage()
 
-	g.logger.Debug("Entering,", m.GetConnectionInfo().ID, "sent us", msg)
+	g.logger.Debug("Entering,", m.GetConnectionInfo(), "sent us", msg)
 	defer g.logger.Debug("Exiting")
 
 	if !g.validateMsg(m) {

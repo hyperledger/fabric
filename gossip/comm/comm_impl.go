@@ -465,6 +465,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 	connInfo := &proto.ConnectionInfo{
 		ID:       receivedMsg.PkiId,
 		Identity: receivedMsg.Cert,
+		Endpoint: remoteAddress,
 	}
 
 	// if TLS is enabled and detected, verify remote peer

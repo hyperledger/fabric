@@ -380,11 +380,11 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 	}
 	orgID := gc.GetOrgOfPeer(msg.GetConnectionInfo().ID)
 	if len(orgID) == 0 {
-		gc.logger.Debug("Couldn't find org identity of peer", msg.GetConnectionInfo().ID)
+		gc.logger.Debug("Couldn't find org identity of peer", msg.GetConnectionInfo())
 		return
 	}
 	if !gc.IsOrgInChannel(orgID) {
-		gc.logger.Warning("Point to point message came from", msg.GetConnectionInfo().ID,
+		gc.logger.Warning("Point to point message came from", msg.GetConnectionInfo(),
 			", org(", string(orgID), ") but it's not eligible for the channel", string(gc.chainID))
 		return
 	}
