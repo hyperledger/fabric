@@ -62,7 +62,8 @@ type Resources interface {
 	OrdererConfig() config.Orderer
 
 	// ConsortiumsConfig() returns the config.Consortiums for the channel
-	ConsortiumsConfig() config.Consortiums
+	// and whether the consortiums config exists
+	ConsortiumsConfig() (config.Consortiums, bool)
 
 	// ApplicationConfig returns the configtxapplication.SharedConfig for the channel
 	ApplicationConfig() config.Application

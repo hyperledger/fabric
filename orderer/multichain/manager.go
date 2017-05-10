@@ -100,18 +100,18 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 	for _, chainID := range existingChains {
 		rl, err := ledgerFactory.GetOrCreate(chainID)
 		if err != nil {
-			logger.Fatalf("Ledger factory reported chainID %s but could not retrieve it: %s", chainID, err)
+			logger.Panicf("Ledger factory reported chainID %s but could not retrieve it: %s", chainID, err)
 		}
 		configTx := getConfigTx(rl)
 		if configTx == nil {
-			logger.Fatalf("Could not find config transaction for chain %s", chainID)
+			logger.Panicf("Could not find config transaction for chain %s", chainID)
 		}
 		ledgerResources := ml.newLedgerResources(configTx)
 		chainID := ledgerResources.ChainID()
 
-		if ledgerResources.ConsortiumsConfig() != nil {
+		if _, ok := ledgerResources.ConsortiumsConfig(); ok {
 			if ml.systemChannelID != "" {
-				logger.Fatalf("There appear to be two system chains %s and %s", ml.systemChannelID, chainID)
+				logger.Panicf("There appear to be two system chains %s and %s", ml.systemChannelID, chainID)
 			}
 			chain := newChainSupport(createSystemChainFilters(ml, ledgerResources),
 				ledgerResources,
@@ -156,14 +156,14 @@ func (ml *multiLedger) newLedgerResources(configTx *cb.Envelope) *ledgerResource
 	initializer := configtx.NewInitializer()
 	configManager, err := configtx.NewManagerImpl(configTx, initializer, nil)
 	if err != nil {
-		logger.Fatalf("Error creating configtx manager and handlers: %s", err)
+		logger.Panicf("Error creating configtx manager and handlers: %s", err)
 	}
 
 	chainID := configManager.ChainID()
 
 	ledger, err := ml.ledgerFactory.GetOrCreate(chainID)
 	if err != nil {
-		logger.Fatalf("Error getting ledger for %s", chainID)
+		logger.Panicf("Error getting ledger for %s", chainID)
 	}
 
 	return &ledgerResources{
@@ -237,8 +237,8 @@ func (ml *multiLedger) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxa
 	}
 
 	applicationGroup := cb.NewConfigGroup()
-	consortiumsConfig := ml.systemChannel.ConsortiumsConfig()
-	if consortiumsConfig == nil {
+	consortiumsConfig, ok := ml.systemChannel.ConsortiumsConfig()
+	if !ok {
 		return nil, fmt.Errorf("The ordering system channel does not appear to support creating channels")
 	}
 

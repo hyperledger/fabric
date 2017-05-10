@@ -56,9 +56,15 @@ func (r *resources) ApplicationConfig() config.Application {
 	return r.configRoot.Application()
 }
 
-// ConsortiumsConfig returns the api.ConsortiumsConfig for the chain
-func (r *resources) ConsortiumsConfig() config.Consortiums {
-	return r.configRoot.Consortiums()
+// ConsortiumsConfig returns the api.ConsortiumsConfig for the chain and whether or not
+// this channel contains consortiums config
+func (r *resources) ConsortiumsConfig() (config.Consortiums, bool) {
+	result := r.configRoot.Consortiums()
+	if result == nil {
+		return nil, false
+	}
+
+	return result, true
 }
 
 // MSPManager returns the msp.MSPManager for the chain
