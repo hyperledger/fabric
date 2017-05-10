@@ -248,21 +248,30 @@ func (g *gossipServiceImpl) learnAnchorPeers(orgOfAnchorPeers api.OrgIdentityTyp
 			g.logger.Infof("Anchor peer %s:%d isn't in our org(%v) and we have no external endpoint, skipping", ap.Host, ap.Port, string(orgOfAnchorPeers))
 			continue
 		}
-		isInOurOrg := func() bool {
+		identifier := func() (*discovery.PeerIdentification, error) {
 			remotePeerIdentity, err := g.comm.Handshake(&comm.RemotePeer{Endpoint: endpoint})
 			if err != nil {
 				g.logger.Warning("Deep probe of", endpoint, "failed:", err)
-				return false
+				return nil, err
 			}
 			isAnchorPeerInMyOrg := bytes.Equal(g.selfOrg, g.secAdvisor.OrgByPeerIdentity(remotePeerIdentity))
 			if bytes.Equal(orgOfAnchorPeers, g.selfOrg) && !isAnchorPeerInMyOrg {
-				g.logger.Warning("Anchor peer", endpoint, "isn't in our org, but is claimed to be")
+				err := fmt.Sprintf("Anchor peer %s isn't in our org, but is claimed to be", endpoint)
+				g.logger.Warning(err)
+				return nil, errors.New(err)
 			}
-			return isAnchorPeerInMyOrg
+			pkiID := g.mcs.GetPKIidOfCert(remotePeerIdentity)
+			if len(pkiID) == 0 {
+				return nil, fmt.Errorf("Wasn't able to extract PKI-ID of remote peer with identity of %v", remotePeerIdentity)
+			}
+			return &discovery.PeerIdentification{
+				ID:      pkiID,
+				SelfOrg: isAnchorPeerInMyOrg,
+			}, nil
 		}
 
 		g.disc.Connect(discovery.NetworkMember{
-			InternalEndpoint: endpoint, Endpoint: endpoint}, isInOurOrg)
+			InternalEndpoint: endpoint, Endpoint: endpoint}, identifier)
 	}
 }
 

@@ -392,7 +392,9 @@ func TestConnect(t *testing.T) {
 		j := (i + 1) % 10
 		endpoint := fmt.Sprintf("localhost:%d", 7611+j)
 		netMember2Connect2 := NetworkMember{Endpoint: endpoint, PKIid: []byte(endpoint)}
-		inst.Connect(netMember2Connect2, func() bool { return false })
+		inst.Connect(netMember2Connect2, func() (identification *PeerIdentification, err error) {
+			return &PeerIdentification{SelfOrg: false, ID: nil}, nil
+		})
 	}
 
 	time.Sleep(time.Second * 3)

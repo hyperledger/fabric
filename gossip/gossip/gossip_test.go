@@ -53,7 +53,8 @@ func init() {
 	discovery.SetAliveExpirationCheckInterval(aliveTimeInterval)
 	discovery.SetAliveExpirationTimeout(aliveTimeInterval * 10)
 	discovery.SetReconnectInterval(aliveTimeInterval)
-	testWG.Add(5)
+	discovery.SetMaxConnAttempts(5)
+	testWG.Add(6)
 	factory.InitFactories(nil)
 	identityExpirationCheckInterval = time.Second
 }
@@ -359,7 +360,6 @@ func TestPull(t *testing.T) {
 }
 
 func TestConnectToAnchorPeers(t *testing.T) {
-	t.Skip()
 	t.Parallel()
 	// Scenario: spawn 10 peers, and have them join a channel
 	// of 3 anchor peers that don't exist yet.
