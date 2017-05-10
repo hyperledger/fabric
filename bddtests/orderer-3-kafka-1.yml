@@ -3,7 +3,7 @@ services:
   orderer1:
     extends:
         service: orderer0
-    image: hyperledger/fabric-testenv-orderer
+    image: hyperledger/fabric-orderer
     environment:
       - ORDERER_GENERAL_LOCALMSPID=${ORDERER1_ORDERER_GENERAL_LOCALMSPID}
       - ORDERER_GENERAL_TLS_PRIVATEKEY=${ORDERER1_ORDERER_GENERAL_TLS_PRIVATEKEY}
@@ -16,7 +16,7 @@ services:
   orderer2:
     extends:
         service: orderer0
-    image: hyperledger/fabric-testenv-orderer
+    image: hyperledger/fabric-orderer
     environment:
       - ORDERER_GENERAL_LOCALMSPID=${ORDERER2_ORDERER_GENERAL_LOCALMSPID}
       - ORDERER_GENERAL_TLS_PRIVATEKEY=${ORDERER2_ORDERER_GENERAL_TLS_PRIVATEKEY}

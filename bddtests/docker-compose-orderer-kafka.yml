@@ -18,7 +18,7 @@ services:
       - zookeeper
 
   orderer:
-    image: hyperledger/fabric-testenv-orderer
+    image: hyperledger/fabric-orderer
     restart: always
     environment:
       - ORDERER_GENERAL_LOGLEVEL=debug
