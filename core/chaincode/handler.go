@@ -839,6 +839,13 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 		}
 
 		txContext := handler.getTxContext(msg.Txid)
+		if txContext == nil {
+			payload := []byte("transaction context not found (timed out ?)")
+			chaincodeLogger.Errorf("[%s]Failed to get transaction context. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
+			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+			return
+		}
+
 		queryIter := handler.getQueryIterator(txContext, queryStateNext.Id)
 
 		if queryIter == nil {
@@ -918,6 +925,13 @@ func (handler *Handler) handleQueryStateClose(msg *pb.ChaincodeMessage) {
 		}
 
 		txContext := handler.getTxContext(msg.Txid)
+		if txContext == nil {
+			payload := []byte("transaction context not found (timed out ?)")
+			chaincodeLogger.Errorf("[%s]Failed to get transaction context. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
+			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+			return
+		}
+
 		iter := handler.getQueryIterator(txContext, queryStateClose.Id)
 		if iter != nil {
 			iter.Close()
