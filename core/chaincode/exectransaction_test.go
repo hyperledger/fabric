@@ -1146,6 +1146,28 @@ func TestQueries(t *testing.T) {
 		return
 	}
 
+	//FAB-1163- The following range query should timeout and produce an error
+	//the peer should handle this gracefully and not die
+
+	//save the original timeout and set a new timeout of 1 sec
+	origTimeout := theChaincodeSupport.executetimeout
+	theChaincodeSupport.executetimeout = time.Duration(1) * time.Second
+
+	//chaincode to sleep for 2 secs with timeout 1
+	args = util.ToChaincodeArgs(f, "marble001", "marble002", "2000")
+
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
+	if err == nil {
+		t.Fail()
+		t.Logf("expected timeout error but succeeded")
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	//restore timeout
+	theChaincodeSupport.executetimeout = origTimeout
+
 	// querying for all marbles will return 101 marbles
 	// this query should return exactly 101 results (one call to Next())
 	//The following range query for "marble001" to "marble102" should return 101 marbles

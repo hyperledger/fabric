@@ -19,6 +19,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -104,6 +106,12 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		startKey := args[0]
 		endKey := args[1]
 
+		//sleep needed to test peer's timeout behavior when using iterators
+		stime := 0
+		if len(args) > 2 {
+			stime, _ = strconv.Atoi(args[2])
+		}
+
 		keysIter, err := stub.GetStateByRange(startKey, endKey)
 		if err != nil {
 			return shim.Error(fmt.Sprintf("keys operation failed. Error accessing state: %s", err))
@@ -112,6 +120,11 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 		var keys []string
 		for keysIter.HasNext() {
+			//if sleeptime is specied, take a nap
+			if stime > 0 {
+				time.Sleep(time.Duration(stime) * time.Millisecond)
+			}
+
 			response, iterErr := keysIter.Next()
 			if iterErr != nil {
 				return shim.Error(fmt.Sprintf("keys operation failed. Error accessing state: %s", err))
