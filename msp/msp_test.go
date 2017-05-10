@@ -27,6 +27,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
@@ -858,4 +859,22 @@ func getIdentity(t *testing.T, path string) Identity {
 	assert.NoError(t, err)
 
 	return id
+}
+
+func getLocalMSP(t *testing.T, dir string) MSP {
+	conf, err := GetLocalMspConfig(dir, nil, "DEFAULT")
+	assert.NoError(t, err)
+
+	thisMSP, err := NewBccspMsp()
+	assert.NoError(t, err)
+	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
+	assert.NoError(t, err)
+	csp, err := sw.New(256, "SHA2", ks)
+	assert.NoError(t, err)
+	thisMSP.(*bccspmsp).bccsp = csp
+
+	err = thisMSP.Setup(conf)
+	assert.NoError(t, err)
+
+	return thisMSP
 }

@@ -310,6 +310,32 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	if len(conf.RootCerts) == 0 {
 		return errors.New("Expected at least one CA certificate")
 	}
+
+	// pre-create the verify options with roots and intermediates
+	// this is needed to make certificate sanitation working.
+	msp.opts = &x509.VerifyOptions{
+		Roots:         x509.NewCertPool(),
+		Intermediates: x509.NewCertPool(),
+	}
+	for _, v := range conf.RootCerts {
+		cert, err := msp.getCertFromPem(v)
+		if err != nil {
+			return err
+		}
+
+		msp.opts.Roots.AddCert(cert)
+	}
+	for _, v := range conf.IntermediateCerts {
+		cert, err := msp.getCertFromPem(v)
+		if err != nil {
+			return err
+		}
+
+		msp.opts.Intermediates.AddCert(cert)
+	}
+
+	// Load root and intermediate CA identities
+	// Recall that when an identity is created, its certificate gets sanitized
 	msp.rootCerts = make([]Identity, len(conf.RootCerts))
 	for i, trustedCert := range conf.RootCerts {
 		id, _, err := msp.getIdentityFromConf(trustedCert)
@@ -329,18 +355,6 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 		}
 
 		msp.intermediateCerts[i] = id
-	}
-
-	// pre-create the verify options with roots and intermediates
-	msp.opts = &x509.VerifyOptions{
-		Roots:         x509.NewCertPool(),
-		Intermediates: x509.NewCertPool(),
-	}
-	for _, v := range msp.rootCerts {
-		msp.opts.Roots.AddCert(v.(*identity).cert)
-	}
-	for _, v := range msp.intermediateCerts {
-		msp.opts.Intermediates.AddCert(v.(*identity).cert)
 	}
 
 	// make and fill the set of admin certs (if present)
@@ -712,9 +726,9 @@ func (msp *bccspmsp) getCertificationChainForBCCSPIdentity(id *identity) ([]*x50
 	return msp.getValidationChain(id.cert)
 }
 
-func (msp *bccspmsp) getValidationChain(cert *x509.Certificate) ([]*x509.Certificate, error) {
+func (msp *bccspmsp) getUniqueValidationChain(cert *x509.Certificate) ([]*x509.Certificate, error) {
 	// ask golang to validate the cert for us based on the options that we've built at setup time
-	validationChain, err := cert.Verify(*(msp.opts))
+	validationChains, err := cert.Verify(*(msp.opts))
 	if err != nil {
 		return nil, fmt.Errorf("The supplied identity is not valid, Verify() returned %s", err)
 	}
@@ -722,16 +736,25 @@ func (msp *bccspmsp) getValidationChain(cert *x509.Certificate) ([]*x509.Certifi
 	// we only support a single validation chain;
 	// if there's more than one then there might
 	// be unclarity about who owns the identity
-	if len(validationChain) != 1 {
-		return nil, fmt.Errorf("This MSP only supports a single validation chain, got %d", len(validationChain))
+	if len(validationChains) != 1 {
+		return nil, fmt.Errorf("This MSP only supports a single validation chain, got %d", len(validationChains))
+	}
+
+	return validationChains[0], nil
+}
+
+func (msp *bccspmsp) getValidationChain(cert *x509.Certificate) ([]*x509.Certificate, error) {
+	validationChain, err := msp.getUniqueValidationChain(cert)
+	if err != nil {
+		return nil, fmt.Errorf("Failed getting validation chain %s", err)
 	}
 
 	// we expect a chain of length at least 2
-	if len(validationChain[0]) < 2 {
+	if len(validationChain) < 2 {
 		return nil, fmt.Errorf("Expected a chain of length at least 2, got %d", len(validationChain))
 	}
 
-	return validationChain[0], nil
+	return validationChain, nil
 }
 
 // getCertificationChainIdentifier returns the certification chain identifier of the passed identity within this msp.
@@ -838,14 +861,29 @@ func (msp *bccspmsp) setupOUs(conf m.FabricMSPConfig) error {
 	return nil
 }
 
+// sanitizeCert ensures that x509 certificates signed using ECDSA
+// do have signatures in Low-S. If this is not the case, the certificate
+// is regenerated to have a Low-S signature.
 func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, error) {
 	if isECDSASignedCert(cert) {
 		// Lookup for a parent certificate to perform the sanitization
 		var parentCert *x509.Certificate
 		if cert.IsCA {
-			parentCert = cert
+			// at this point, cert might be a root CA certificate
+			// or an intermediate CA certificate
+			chain, err := msp.getUniqueValidationChain(cert)
+			if err != nil {
+				return nil, err
+			}
+			if len(chain) == 1 {
+				// cert is a root CA certificate
+				parentCert = cert
+			} else {
+				// cert is an intermediate CA certificate
+				parentCert = chain[1]
+			}
 		} else {
-			chain, err := msp.getValidationChain(cert)
+			chain, err := msp.getUniqueValidationChain(cert)
 			if err != nil {
 				return nil, err
 			}

@@ -23,25 +23,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getRevocationMSP(t *testing.T) MSP {
+func TestRevocation(t *testing.T) {
 	// testdata/revocation
 	// 1) a key and a signcert (used to populate the default signing identity);
 	// 2) cacert is the CA that signed the intermediate;
 	// 3) a revocation list that revokes signcert
-	conf, err := GetLocalMspConfig("testdata/revocation", nil, "DEFAULT")
-	assert.NoError(t, err)
-
-	thisMSP, err := NewBccspMsp()
-	assert.NoError(t, err)
-
-	err = thisMSP.Setup(conf)
-	assert.NoError(t, err)
-
-	return thisMSP
-}
-
-func TestRevocation(t *testing.T) {
-	thisMSP := getRevocationMSP(t)
+	thisMSP := getLocalMSP(t, "testdata/revocation")
 
 	id, err := thisMSP.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
@@ -52,7 +39,11 @@ func TestRevocation(t *testing.T) {
 }
 
 func TestIdentityPolicyPrincipalAgainstRevokedIdentity(t *testing.T) {
-	thisMSP := getRevocationMSP(t)
+	// testdata/revocation
+	// 1) a key and a signcert (used to populate the default signing identity);
+	// 2) cacert is the CA that signed the intermediate;
+	// 3) a revocation list that revokes signcert
+	thisMSP := getLocalMSP(t, "testdata/revocation")
 
 	id, err := thisMSP.GetDefaultSigningIdentity()
 	assert.NoError(t, err)

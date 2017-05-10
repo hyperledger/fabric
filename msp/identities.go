@@ -48,6 +48,7 @@ type identity struct {
 func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity, error) {
 	mspLogger.Debugf("Creating identity instance for ID %s", id)
 
+	// Sanitize first the certificate
 	cert, err := msp.sanitizeCert(cert)
 	if err != nil {
 		return nil, err
