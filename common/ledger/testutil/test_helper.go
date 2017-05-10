@@ -21,15 +21,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/util"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	ptestutils "github.com/hyperledger/fabric/protos/testutils"
 	"github.com/hyperledger/fabric/protos/utils"
-
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 )
 
 //BlockGenerator generates a series of blocks for testing
@@ -146,10 +143,4 @@ func newBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *com
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = lutils.NewTxValidationFlags(len(env))
 
 	return block
-}
-
-func MakeGenesisBlock() *common.Block {
-	genConf := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
-	gb := provisional.New(genConf).GenesisBlock()
-	return gb
 }
