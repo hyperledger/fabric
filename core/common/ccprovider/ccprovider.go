@@ -110,8 +110,24 @@ func ChaincodePackageExists(ccname string, ccversion string) (bool, error) {
 	return false, err
 }
 
+// CCInfoProvider is responsible to provide backend storage for information
+// about chaincodes. Multiple implementations can persist data to a file system
+// or store them in a cache
+type CCInfoProvider interface {
+	// GetChaincode returns information for the chaincode with the
+	// supplied name and version
+	GetChaincode(ccname string, ccversion string) (CCPackage, error)
+
+	// PutChaincode stores the supplied chaincode info
+	PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackage, error)
+}
+
+// CCInfoFSStorageMgr is an implementation of CCInfoProvider
+// backed by the file system
+type CCInfoFSImpl struct{}
+
 // GetChaincodeFromFS this is a wrapper for hiding package implementation.
-func GetChaincodeFromFS(ccname string, ccversion string) (CCPackage, error) {
+func (*CCInfoFSImpl) GetChaincode(ccname string, ccversion string) (CCPackage, error) {
 	//try raw CDS
 	cccdspack := &CDSPackage{}
 	_, _, err := cccdspack.InitFromFS(ccname, ccversion)
@@ -129,16 +145,76 @@ func GetChaincodeFromFS(ccname string, ccversion string) (CCPackage, error) {
 
 // PutChaincodeIntoFS is a wrapper for putting raw ChaincodeDeploymentSpec
 //using CDSPackage. This is only used in UTs
-func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
+func (*CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackage, error) {
 	buf, err := proto.Marshal(depSpec)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	cccdspack := &CDSPackage{}
 	if _, err := cccdspack.InitFromBuffer(buf); err != nil {
+		return nil, err
+	}
+	err = cccdspack.PutChaincodeToFS()
+	if err != nil {
+		return nil, err
+	}
+
+	return cccdspack, nil
+}
+
+// The following lines create the cache of CCPackage data that sits
+// on top of the file system and avoids a trip to the file system
+// every time. The cache is disabled by default and only enabled
+// if EnableCCInfoCache is called. This is an unfortunate hack
+// required by some legacy tests that remove chaincode packages
+// from the file system as a means of simulating particular test
+// conditions. This way of testing is incompatible with the
+// immutable nature of chaincode packages that is assumed by hlf v1
+// and implemented by this cache. For this reason, tests are for now
+// allowed to run with the cache disabled (unless they enable it)
+// until a later time in which they are fixed. The peer process on
+// the other hand requires the benefits of this cache and therefore
+// enables it.
+// TODO: (post v1) enable cache by default as soon as https://jira.hyperledger.org/browse/FAB-3785 is completed
+
+// ccInfoFSStorageMgr is the storage manager used either by the cache or if the
+// cache is bypassed
+var ccInfoFSProvider = &CCInfoFSImpl{}
+
+// ccInfoCache is the cache instance itself
+var ccInfoCache = NewCCInfoCache(ccInfoFSProvider)
+
+// ccInfoCacheEnabled keeps track of whether the cache is enable
+// (it is disabled by default)
+var ccInfoCacheEnabled bool
+
+// EnableCCInfoCache can be called to enable the cache
+func EnableCCInfoCache() {
+	ccInfoCacheEnabled = true
+}
+
+// GetChaincodeFromFS retrieves chaincode information from the cache (or the
+// file system in case of a cache miss) if the cache is enabled, or directly
+// from the file system otherwise
+func GetChaincodeFromFS(ccname string, ccversion string) (CCPackage, error) {
+	if ccInfoCacheEnabled {
+		return ccInfoCache.GetChaincode(ccname, ccversion)
+	} else {
+		return ccInfoFSProvider.GetChaincode(ccname, ccversion)
+	}
+}
+
+// PutChaincodeIntoFS puts chaincode information in the file system (and
+// also in the cache to prime it) if the cache is enabled, or directly
+// from the file system otherwise
+func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
+	if ccInfoCacheEnabled {
+		_, err := ccInfoCache.PutChaincode(depSpec)
+		return err
+	} else {
+		_, err := ccInfoFSProvider.PutChaincode(depSpec)
 		return err
 	}
-	return cccdspack.PutChaincodeToFS()
 }
 
 // GetCCPackage tries each known package implementation one by one

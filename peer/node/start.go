@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -136,6 +137,9 @@ func serve(args []string) error {
 	if err != nil {
 		grpclog.Fatalf("Failed to create ehub server: %v", err)
 	}
+
+	// enable the cache of chaincode info
+	ccprovider.EnableCCInfoCache()
 
 	registerChaincodeSupport(peerServer.Server())
 
