@@ -39,6 +39,8 @@ following command from a terminal prompt:
 
   docker-compose --version
 
+.. _Golang_setup:
+
 Go Programming Language
 -----------------------
 
@@ -48,6 +50,25 @@ components.
 .. note: Go version 1.8.x will yield test failures
 
   - `Go <https://golang.org/>`__ - version 1.7.x
+
+Given that we are writing a Go chaincode program, we need to be sure that the
+source code is located somewhere within the ``$GOPATH`` tree. First, you will
+need to check that you have set your ``$GOPATH`` environment variable.
+
+.. code:: bash
+  echo $GOPATH
+  /Users/xxx/go
+
+If nothing is displayed when you echo ``$GOPATH``, you will need to set it.
+Typically, the value will be a directory tree child of your development
+workspace, if you have one, or as a child of your $HOME directory. Since we'll
+be doing a bunch of coding in Go, you might want to add the following to your
+``~/.bashrc``:
+
+.. code:: bash
+
+  export GOPATH=$HOME/go
+  export PATH=$PATH:$GOPATH/bin
 
 Node.js Runtime and NPM
 -----------------------

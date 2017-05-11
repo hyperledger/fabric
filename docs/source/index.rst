@@ -45,6 +45,8 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    :caption: Tutorials
 
    chaincode
+   chaincode4ade
+   chaincode4noah
    videos
 
 .. toctree::
