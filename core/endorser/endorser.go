@@ -154,6 +154,50 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	return res, ccevent, err
 }
 
+//TO BE REMOVED WHEN JAVA CC IS ENABLED
+//disableJavaCCInst if trying to install, instantiate or upgrade Java CC
+func (e *Endorser) disableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvocationSpec) error {
+	//if not lscc we don't care
+	if cid.Name != "lscc" {
+		return nil
+	}
+
+	//non-nil spec ? leave it to callers to handle error if this is an error
+	if cis.ChaincodeSpec == nil || cis.ChaincodeSpec.Input == nil {
+		return nil
+	}
+
+	//should at least have a command arg, leave it to callers if this is an error
+	if len(cis.ChaincodeSpec.Input.Args) < 1 {
+		return nil
+	}
+
+	var argNo int
+	switch string(cis.ChaincodeSpec.Input.Args[0]) {
+	case "install":
+		argNo = 1
+	case "deploy", "upgrade":
+		argNo = 2
+	default:
+		//what else can it be ? leave it caller to handle it if error
+		return nil
+	}
+
+	//the inner dep spec will contain the type
+	cds, err := putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[argNo])
+	if err != nil {
+		return err
+	}
+
+	//finally, if JAVA error out
+	if cds.ChaincodeSpec.Type == pb.ChaincodeSpec_JAVA {
+		return fmt.Errorf("Java chaincode is work-in-progress and disabled")
+	}
+
+	//not a java install, instantiate or upgrade op
+	return nil
+}
+
 //simulate the proposal by calling the chaincode
 func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (*ccprovider.ChaincodeData, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
 	//we do expect the payload to be a ChaincodeInvocationSpec
@@ -161,6 +205,11 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	//as something that should change
 	cis, err := putils.GetChaincodeInvocationSpec(prop)
 	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	//disable Java install,instantiate,upgrade for now
+	if err = e.disableJavaCCInst(cid, cis); err != nil {
 		return nil, nil, nil, nil, err
 	}
 

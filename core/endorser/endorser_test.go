@@ -343,6 +343,25 @@ func TestDeploy(t *testing.T) {
 	chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
+//REMOVE WHEN JAVA CC IS ENABLED
+func TestJavaDeploy(t *testing.T) {
+	chainID := util.GetTestChainID()
+	//pretend this is a java CC (type 4)
+	spec := &pb.ChaincodeSpec{Type: 4, ChaincodeId: &pb.ChaincodeID{Name: "javacc", Path: "../../examples/chaincode/java/chaincode_example02", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
+	defer deleteChaincodeOnDisk("javacc.0")
+
+	cccid := ccprovider.NewCCContext(chainID, "javacc", "0", "", false, nil, nil)
+
+	_, _, err := deploy(endorserServer, chainID, spec, nil)
+	if err == nil {
+		t.Fail()
+		t.Logf("expected java CC deploy to fail")
+		chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+	chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+}
+
 //TestRedeploy - deploy two times, second time should fail but example02 should remain deployed
 func TestRedeploy(t *testing.T) {
 	chainID := util.GetTestChainID()
