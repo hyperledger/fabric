@@ -82,8 +82,8 @@ class Composition:
     def GetUUID(cls):
         return GetDockerSafeUUID()
 
-    def __init__(self, context, composeFilesYaml, projectName = None,
-                 force_recreate = True, components = []):
+    def __init__(self, context, composeFilesYaml, projectName=None,
+                 force_recreate=True, components=[], register_and_up=True):
         self.contextHelper = ContextHelper.GetHelper(context=context)
         if not projectName:
             projectName = self.contextHelper.getGuuid()
@@ -93,10 +93,11 @@ class Composition:
         self.composeFilesYaml = composeFilesYaml
         self.serviceNames = []
         self.serviceNames = self._collectServiceNames()
-        # Register with contextHelper (Supports docgen)
-        self.contextHelper.registerComposition(self)
-        [callback.composing(self, context) for callback in Composition.GetCompositionCallbacksFromContext(context)]
-        self.up(context, force_recreate, components)
+        if register_and_up:
+            # Register with contextHelper (Supports docgen)
+            self.contextHelper.registerComposition(self)
+            [callback.composing(self, context) for callback in Composition.GetCompositionCallbacksFromContext(context)]
+            self.up(context, force_recreate, components)
 
     def _collectServiceNames(self):
         'First collect the services names.'

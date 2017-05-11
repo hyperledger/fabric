@@ -595,7 +595,7 @@ def setDefaultPoliciesForOrgs(channel, orgs, group_name, version=0, policy_versi
 
 
 
-def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType="solo", batchTimeout="1s", batchSizeMaxMessageCount=10, batchSizeAbsoluteMaxBytes=100000000, batchSizePreferredMaxBytes=512 * 1024, channel_max_count=0):
+def createChannelConfigGroup(directory, service_names, hashingAlgoName="SHA256", consensusType="solo", batchTimeout="1s", batchSizeMaxMessageCount=10, batchSizeAbsoluteMaxBytes=100000000, batchSizePreferredMaxBytes=512 * 1024, channel_max_count=0):
 
     channel = common_dot_configtx_pb2.ConfigGroup()
     # channel.groups[ApplicationGroup] = common_dot_configtx_pb2.ConfigGroup()
@@ -647,12 +647,12 @@ def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType=
         channel.groups[OrdererGroup].groups[ordererOrg.name].values[BootstrapHelper.KEY_MSP_INFO].value = toValue(
             getMSPConfig(org=ordererOrg, directory=directory))
         channel.groups[OrdererGroup].groups[ordererOrg.name].values[BootstrapHelper.KEY_MSP_INFO].mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
-    # #Kafka specific
-    # matchingNATs = [nat for nat in directory.getNamedCtxTuples() if (("orderer" in nat.user) and ("Signer" in nat.user) and ((compose_service in nat.nodeName)))]
-    # for broker in [org for org in directory.getOrganizations().values() if Network.Orderer in org.networks]:
-    #     channel.groups[OrdererGroup].groups[ordererOrg.name].values[BootstrapHelper.KEY_MSP_INFO].value = toValue(
-    #         ordererOrg.getMSPConfig())
-    # channel.groups[OrdererGroup].values[BootstrapHelper.KEY_ORDERER_KAFKA_BROKERS].value = toValue(orderer_dot_configuration_pb2.KafkaBrokers(brokers=["kafka0:9092"]))
+
+    #Kafka specific
+    kafka_brokers = ["{0}:9092".format(service_name) for service_name in service_names if "kafka" in service_name]
+    if len(kafka_brokers) > 0:
+        channel.groups[OrdererGroup].values[BootstrapHelper.KEY_ORDERER_KAFKA_BROKERS].value = toValue(
+            orderer_dot_configuration_pb2.KafkaBrokers(brokers=kafka_brokers))
 
     for vKey, vVal in channel.groups[OrdererGroup].values.iteritems():
         vVal.mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
@@ -666,9 +666,8 @@ def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType=
 
     #New OrdererAddress
     ordererAddress = common_dot_configuration_pb2.OrdererAddresses()
-    for ordererNodeTuple, cert in [(user_node_tuple, cert) for user_node_tuple, cert in directory.ordererAdminTuples.iteritems() if
-                      "orderer" in user_node_tuple.user and "signer" in user_node_tuple.user.lower()]:
-        ordererAddress.addresses.append("{0}:7050".format(ordererNodeTuple.nodeName))
+    for orderer_service_name in [service_name for service_name in service_names if "orderer" in service_name]:
+        ordererAddress.addresses.append("{0}:7050".format(orderer_service_name))
     assert len(ordererAddress.addresses) > 0, "No orderer nodes were found while trying to create channel ConfigGroup"
     channel.values[BootstrapHelper.KEY_ORDERER_ADDRESSES].value = toValue(ordererAddress)
 
@@ -739,13 +738,13 @@ def mergeConfigGroups(configGroupTarget, configGroupSource):
         configGroupTarget.values[k].CopyFrom(v)
 
 
-def createGenesisBlock(context, chainId, consensusType, nodeAdminTuple, signedConfigItems=[]):
+def createGenesisBlock(context, service_names, chainId, consensusType, nodeAdminTuple, signedConfigItems=[]):
     'Generates the genesis block for starting the oderers and for use in the chain config transaction by peers'
     # assert not "bootstrapGenesisBlock" in context,"Genesis block already created:\n{0}".format(context.bootstrapGenesisBlock)
     directory = getDirectory(context)
     assert len(directory.ordererAdminTuples) > 0, "No orderer admin tuples defined!!!"
 
-    channelConfig = createChannelConfigGroup(directory=directory, consensusType=consensusType)
+    channelConfig = createChannelConfigGroup(directory=directory, service_names=service_names, consensusType=consensusType)
     for configGroup in signedConfigItems:
         mergeConfigGroups(channelConfig, configGroup)
 
