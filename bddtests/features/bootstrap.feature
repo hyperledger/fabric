@@ -149,7 +149,7 @@ Feature: Bootstrap
 
     And the user "dev0Org0" using cert alias "dev0Org0App1" broadcasts ConfigUpdate Tx "configUpdateTx1" to orderer "<orderer0>" to create channel "com.acme.blockchain.jdoe.Channel1"
 
-    # Sleep as the deliver takes a bit to have the first block ready
+    # Sleep as the local orderer ledger needs to create the block that corresponds to the start number of the seek request
     And I wait "<BroadcastWaitTime>" seconds
 
     When user "dev0Org0" using cert alias "dev0Org0App1" connects to deliver function on orderer "<orderer0>"
@@ -257,8 +257,8 @@ Feature: Bootstrap
 
     And the user "configAdminPeerOrg0" broadcasts transaction "instantiateTx1" to orderer "<orderer1>" on channel "com.acme.blockchain.jdoe.Channel1"
 
-    # Sleep as the deliver takes a bit to have the first block ready
-    And I wait "2" seconds
+    # Sleep as the local orderer ledger needs to create the block that corresponds to the start number of the seek request
+    And I wait "<BroadcastWaitTime>" seconds
 
     And user "configAdminPeerOrg0" using cert alias "config-admin-cert" connects to deliver function on orderer "<orderer0>"
 
@@ -268,9 +268,8 @@ Feature: Bootstrap
 
     Then user "configAdminPeerOrg0" should get a delivery "deliveredInstantiateTx1Block" from "<orderer0>" of "1" blocks with "1" messages within "1" seconds
 
-    # Sleep as the deliver takes a bit to have the first block ready
+    # Sleep to allow for chaincode instantiation on the peer
     And I wait "3" seconds
-
 
     # Entry point for invoking on an existing channel
     When user "dev0Org0" creates a chaincode invocation spec "querySpec1" using spec "cc_spec" with input:
@@ -323,8 +322,8 @@ Feature: Bootstrap
 
       And the user "dev0Org0" broadcasts transaction "invokeTx1" to orderer "<orderer2>" on channel "com.acme.blockchain.jdoe.Channel1"
 
-    # Sleep as the deliver takes a bit to have the first block ready
-      And I wait "3" seconds
+      # Sleep as the local orderer ledger needs to create the block that corresponds to the start number of the seek request
+      And I wait "<BroadcastWaitTime>" seconds
 
       And user "dev0Org0" sends deliver a seek request on orderer "<orderer0>" with properties:
         | ChainId                               |   Start    |  End    |
@@ -338,7 +337,7 @@ Feature: Bootstrap
     Examples: Orderer Options
       |          ComposeFile                                                                                                                       |  SystemUpWaitTime   | ConsensusType | BroadcastWaitTime | orderer0 | orderer1 | orderer2 |Orderer Specific Info|
       |   docker-compose-next-4.yml                                                                                                                |        0            |     solo      |      2            | orderer0 | orderer0 | orderer0 |                     |
-#      |   docker-compose-next-4.yml  ./environments/orderer-1-kafka-1/docker-compose.yml orderer-3-kafka-1.yml                                     |        5            |     kafka     |      5            | orderer0 | orderer1 | orderer2 |                     |
+#      |   docker-compose-next-4.yml  ./environments/orderer-1-kafka-1/docker-compose.yml orderer-3-kafka-1.yml                                     |        10            |     kafka     |      7            | orderer0 | orderer1 | orderer2 |                     |
 #      |   docker-compose-next-4.yml  docker-compose-next-4-couchdb.yml                                                                             |        10            |     solo      |      2            | orderer0 | orderer0 | orderer0 |                     |
-#      |   docker-compose-next-4.yml  docker-compose-next-4-couchdb.yml  ./environments/orderer-1-kafka-1/docker-compose.yml orderer-3-kafka-1.yml  |        10            |     kafka     |      5            | orderer0 | orderer1 | orderer2 |                     |
-#      |   docker-compose-next-4.yml  ./environments/orderer-1-kafka-3/docker-compose.yml                                                           |          5          |     kafka     |      5            | orderer0 | orderer1 | orderer2 |                     |
+#      |   docker-compose-next-4.yml  docker-compose-next-4-couchdb.yml  ./environments/orderer-1-kafka-1/docker-compose.yml orderer-3-kafka-1.yml  |        10            |     kafka     |      7            | orderer0 | orderer1 | orderer2 |                     |
+#      |   docker-compose-next-4.yml  ./environments/orderer-1-kafka-3/docker-compose.yml                                                           |        10            |     kafka     |      7            | orderer0 | orderer0 | orderer0 |                     |
