@@ -1,0 +1,28 @@
+#sdk=node userInputs/samplecc-chan1-constant-i.json
+#sdk=node userInputs/samplecc-chan2-constant-i.json
+#sdk=node userInputs/samplecc-chan1-q.json
+#sdk=node userInputs/samplecc-chan2-q.json
+#sdk=node userInputs/samplecc-chan1-latency-i.json
+#sdk=node userInputs/samplecc-chan2-latency-i.json
+#sdk=node userInputs/samplecc-chan1-latency-q.json
+#sdk=node userInputs/samplecc-chan2-latency-q.json
+#sdk=node userInputs/samplecc-chan1-complex-i.json
+#sdk=node userInputs/samplecc-chan2-complex-i.json
+#sdk=node userInputs/samplecc-chan1-longrun-i.json
+#sdk=node userInputs/samplecc-chan2-longrun-i.json
+#sdk=node userInputs/samplecc-chan1-concurrency-i.json
+#sdk=node userInputs/samplecc-chan2-concurrency-i.json
+
+#sdk=node userInputs/samplecc-chan1-create.json
+#sdk=node userInputs/samplecc-chan1-join1.json
+#sdk=node userInputs/samplecc-chan1-join2.json
+#sdk=node userInputs/samplecc-chan1-install1.json
+#sdk=node userInputs/samplecc-chan1-install2.json
+#sdk=node userInputs/samplecc-chan1-instantiate.json
+
+#sdk=node userInputs/samplecc-chan2-create.json
+#sdk=node userInputs/samplecc-chan2-join1.json
+#sdk=node userInputs/samplecc-chan2-join2.json
+#sdk=node userInputs/samplecc-chan2-install1.json
+#sdk=node userInputs/samplecc-chan2-install2.json
+#sdk=node userInputs/samplecc-chan2-instantiate.json
