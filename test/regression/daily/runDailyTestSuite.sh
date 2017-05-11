@@ -8,6 +8,11 @@ DAILYDIR="$GOPATH/src/github.com/hyperledger/fabric/test/regression/daily"
 echo "========== System Test Performance Stress tests driven by PTE tool..."
 py.test -v --junitxml results_systest_pte.xml systest_pte.py
 
+echo "========== Behave feature and system tests..."
+cd ../../feature
+behave --junit --junit-directory ../regression/daily/. --tags=-skip --tags=daily
+cd -
+
 echo "========== Test Your Chaincode ..."
 # TBD - after changeset https://gerrit.hyperledger.org/r/#/c/9163/ is merged,
 # replace the previous 2 lines with this new syntax to run all the chaincode tests;
