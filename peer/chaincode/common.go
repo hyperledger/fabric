@@ -121,7 +121,16 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 			}
 			logger.Warningf("Endorsement failure during invoke. chaincode result: %v", ca.Response)
 		} else {
-			logger.Infof("Invoke result: %v", proposalResp)
+			logger.Debugf("ESCC invoke result: %v", proposalResp)
+			pRespPayload, err := putils.GetProposalResponsePayload(proposalResp.Payload)
+			if err != nil {
+				return fmt.Errorf("Error while unmarshaling proposal response payload: %s", err)
+			}
+			ca, err := putils.GetChaincodeAction(pRespPayload.Extension)
+			if err != nil {
+				return fmt.Errorf("Error while unmarshaling chaincode action: %s", err)
+			}
+			logger.Infof("Chaincode invoke successful. result: %v", ca.Response)
 		}
 	} else {
 		if proposalResp == nil {
