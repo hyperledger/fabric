@@ -46,6 +46,9 @@ var (
 	orderingEndpoint string
 	tls              bool
 	caFile           string
+	timeout          int
+
+	expire bool
 )
 
 // Cmd returns the cobra command for Node
@@ -70,6 +73,7 @@ func AddFlags(cmd *cobra.Command) {
 	flags.StringVarP(&orderingEndpoint, "orderer", "o", "", "Ordering service endpoint")
 	flags.BoolVarP(&tls, "tls", "", false, "Use TLS when communicating with the orderer endpoint")
 	flags.StringVarP(&caFile, "cafile", "", "", "Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint")
+	flags.IntVarP(&timeout, "timeout", "t", 5, "Channel creation timeout")
 }
 
 var channelCmd = &cobra.Command{
@@ -140,7 +144,7 @@ func InitCmdFactory(isOrdererRequired bool) (*ChannelCmdFactory, error) {
 			return nil, err
 		}
 
-		cmdFact.DeliverClient = newDeliverClient(client, chainID)
+		cmdFact.DeliverClient = newDeliverClient(conn, client, chainID)
 	}
 
 	return cmdFact, nil
