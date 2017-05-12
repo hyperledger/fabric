@@ -47,8 +47,6 @@ var (
 	tls              bool
 	caFile           string
 	timeout          int
-
-	expire bool
 )
 
 // Cmd returns the cobra command for Node
