@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/events/consumer"
 	"github.com/hyperledger/fabric/events/producer"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	ehpb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -165,7 +166,7 @@ func TestReceiveMessage(t *testing.T) {
 	case <-adapter.notfy:
 	case <-time.After(2 * time.Second):
 		t.Fail()
-		t.Logf("timed out on messge")
+		t.Logf("timed out on message")
 	}
 }
 func TestReceiveAnyMessage(t *testing.T) {
@@ -190,7 +191,7 @@ func TestReceiveAnyMessage(t *testing.T) {
 		case <-adapter.notfy:
 		case <-time.After(5 * time.Second):
 			t.Fail()
-			t.Logf("timed out on messge")
+			t.Logf("timed out on message")
 		}
 	}
 }
@@ -327,6 +328,14 @@ func BenchmarkMessages(b *testing.B) {
 }
 
 func TestMain(m *testing.M) {
+	// setup crypto algorithms
+	// setup the MSP manager so that we can sign/verify
+	err := msptesttools.LoadMSPSetupForTesting()
+	if err != nil {
+		fmt.Printf("Could not initialize msp, err %s", err)
+		os.Exit(-1)
+		return
+	}
 	SetupTestConfig()
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
@@ -353,7 +362,6 @@ func TestMain(m *testing.M) {
 	ehServer := producer.NewEventsServer(100, 0)
 	ehpb.RegisterEventsServer(grpcServer, ehServer)
 
-	fmt.Printf("Starting events server\n")
 	go grpcServer.Serve(lis)
 
 	var regTimeout = 5 * time.Second

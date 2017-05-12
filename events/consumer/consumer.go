@@ -90,8 +90,12 @@ func (ec *EventsClient) send(emsg *ehpb.Event) error {
 
 // RegisterAsync - registers interest in a event and doesn't wait for a response
 func (ec *EventsClient) RegisterAsync(ies []*ehpb.Interest) error {
-	emsg := &ehpb.Event{Event: &ehpb.Event_Register{Register: &ehpb.Register{Events: ies}}}
-	var err error
+	creator, err := getCreatorFromLocalMSP()
+	if err != nil {
+		return fmt.Errorf("error getting creator from MSP: %s", err)
+	}
+	emsg := &ehpb.Event{Event: &ehpb.Event_Register{Register: &ehpb.Register{Events: ies}}, Creator: creator}
+
 	if err = ec.send(emsg); err != nil {
 		consumerLogger.Errorf("error on Register send %s\n", err)
 	}
@@ -131,8 +135,12 @@ func (ec *EventsClient) register(ies []*ehpb.Interest) error {
 
 // UnregisterAsync - Unregisters interest in a event and doesn't wait for a response
 func (ec *EventsClient) UnregisterAsync(ies []*ehpb.Interest) error {
-	emsg := &ehpb.Event{Event: &ehpb.Event_Unregister{Unregister: &ehpb.Unregister{Events: ies}}}
-	var err error
+	creator, err := getCreatorFromLocalMSP()
+	if err != nil {
+		return fmt.Errorf("error getting creator from MSP: %s", err)
+	}
+	emsg := &ehpb.Event{Event: &ehpb.Event_Unregister{Unregister: &ehpb.Unregister{Events: ies}}, Creator: creator}
+
 	if err = ec.send(emsg); err != nil {
 		err = fmt.Errorf("error on unregister send %s\n", err)
 	}
@@ -222,4 +230,20 @@ func (ec *EventsClient) Stop() error {
 		return nil
 	}
 	return ec.stream.CloseSend()
+}
+
+func getCreatorFromLocalMSP() ([]byte, error) {
+	localMsp := mspmgmt.GetLocalMSP()
+	if localMsp == nil {
+		return nil, errors.New("nil local MSP manager")
+	}
+	signer, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		return nil, fmt.Errorf("could not obtain the default signing identity, err %s", err)
+	}
+	creator, err := signer.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf("error serializing the signer: %s", err)
+	}
+	return creator, nil
 }
