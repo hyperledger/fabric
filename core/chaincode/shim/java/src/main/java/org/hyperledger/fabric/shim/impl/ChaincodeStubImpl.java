@@ -23,13 +23,11 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.hyperledger.fabric.protos.ledger.queryresult.KvQueryResult;
 import org.hyperledger.fabric.protos.ledger.queryresult.KvQueryResult.KV;
 import org.hyperledger.fabric.protos.peer.ChaincodeEventPackage.ChaincodeEvent;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.QueryResultBytes;
-import org.hyperledger.fabric.protos.peer.ProposalResponsePackage.Response;
+import org.hyperledger.fabric.shim.Chaincode.Response;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
 import org.hyperledger.fabric.shim.ledger.KeyModification;
@@ -41,15 +39,13 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 class ChaincodeStubImpl implements ChaincodeStub {
 
-	private static Log logger = LogFactory.getLog(ChaincodeStubImpl.class);
-
-	private final String txid;
+	private final String txId;
 	private final Handler handler;
 	private final List<ByteString> args;
 	private ChaincodeEvent event;
 
-	ChaincodeStubImpl(String uuid, Handler handler, List<ByteString> args) {
-		this.txid = uuid;
+	ChaincodeStubImpl(String txId, Handler handler, List<ByteString> args) {
+		this.txId = txId;
 		this.handler = handler;
 		this.args = Collections.unmodifiableList(args);
 	}
@@ -96,28 +92,28 @@ class ChaincodeStubImpl implements ChaincodeStub {
 
 	@Override
 	public String getTxId() {
-		return txid;
+		return txId;
 	}
 
 	@Override
 	public byte[] getState(String key) {
-		return handler.handleGetState(key, txid).toByteArray();
+		return handler.getState(txId, key).toByteArray();
 	}
 
 	@Override
 	public void putState(String key, byte[] value) {
-		handler.handlePutState(key, ByteString.copyFrom(value), txid);
+		handler.putState(txId, key, ByteString.copyFrom(value));
 	}
 
 	@Override
 	public void delState(String key) {
-		handler.handleDeleteState(key, txid);
+		handler.deleteState(txId, key);
 	}
 
 	@Override
 	public QueryResultsIterator<KeyValue> getStateByRange(String startKey, String endKey) {
 		return new QueryResultsIteratorImpl<KeyValue>(this.handler, getTxId(),
-				handler.handleGetStateByRange(getTxId(), startKey, endKey),
+				handler.getStateByRange(getTxId(), startKey, endKey),
 				queryResultBytesToKv.andThen(KeyValueImpl::new)
 				);
 	}
@@ -150,7 +146,7 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	@Override
 	public QueryResultsIterator<KeyValue> getQueryResult(String query) {
 		return new QueryResultsIteratorImpl<KeyValue>(this.handler, getTxId(),
-				handler.handleGetQueryResult(getTxId(), query),
+				handler.getQueryResult(getTxId(), query),
 				queryResultBytesToKv.andThen(KeyValueImpl::new)
 				);
 	}
@@ -158,7 +154,7 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	@Override
 	public QueryResultsIterator<KeyModification> getHistoryForKey(String key) {
 		return new QueryResultsIteratorImpl<KeyModification>(this.handler, getTxId(),
-				handler.handleGetHistoryForKey(getTxId(), key),
+				handler.getHistoryForKey(getTxId(), key),
 				queryResultBytesToKeyModification.andThen(KeyModificationImpl::new)
 				);
 	}
@@ -182,7 +178,7 @@ class ChaincodeStubImpl implements ChaincodeStub {
 		} else {
 			compositeName = chaincodeName;
 		}
-		return handler.handleInvokeChaincode(compositeName, args, this.txid);
+		return handler.invokeChaincode(this.txId, compositeName, args);
 	}
 
 }
