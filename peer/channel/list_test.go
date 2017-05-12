@@ -17,9 +17,11 @@ limitations under the License.
 package channel
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +37,6 @@ func TestListChannels(t *testing.T) {
 	}
 
 	mockPayload, err := proto.Marshal(mockChannelResponse)
-
 	assert.NoError(t, err)
 
 	mockResponse := &pb.ProposalResponse{
@@ -56,11 +57,52 @@ func TestListChannels(t *testing.T) {
 	}
 
 	cmd := listCmd(mockCF)
-
 	AddFlags(cmd)
-
 	if err := cmd.Execute(); err != nil {
 		t.Fail()
 		t.Error(err)
 	}
+
+	testListChannelsEmptyCF(t, mockCF)
+}
+
+func testListChannelsEmptyCF(t *testing.T, mockCF *ChannelCmdFactory) {
+	cmd := listCmd(nil)
+	AddFlags(cmd)
+
+	// Error case 1: no orderer endpoints
+	getEndorserClient := common.GetEndorserClientFnc
+	getBroadcastClient := common.GetBroadcastClientFnc
+	getDefaultSigner := common.GetDefaultSignerFnc
+	defer func() {
+		common.GetEndorserClientFnc = getEndorserClient
+		common.GetBroadcastClientFnc = getBroadcastClient
+		common.GetDefaultSignerFnc = getDefaultSigner
+	}()
+	common.GetDefaultSignerFnc = func() (msp.SigningIdentity, error) {
+		return nil, errors.New("error")
+	}
+	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
+		return mockCF.EndorserClient, nil
+	}
+	common.GetBroadcastClientFnc = func(orderingEndpoint string, tlsEnabled bool, caFile string) (common.BroadcastClient, error) {
+		broadcastClient := common.GetMockBroadcastClient(nil)
+		return broadcastClient, nil
+	}
+
+	err := cmd.Execute()
+	assert.Error(t, err, "Error expected because GetDefaultSignerFnc returns an error")
+
+	common.GetDefaultSignerFnc = getDefaultSigner
+	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
+		return nil, errors.New("error")
+	}
+	err = cmd.Execute()
+	assert.Error(t, err, "Error expected because GetEndorserClientFnc returns an error")
+
+	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
+		return mockCF.EndorserClient, nil
+	}
+	err = cmd.Execute()
+	assert.NoError(t, err, "Error occurred while executing list command")
 }
