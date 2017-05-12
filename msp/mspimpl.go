@@ -44,6 +44,12 @@ type bccspmsp struct {
 	// list of intermediate certs we trust
 	intermediateCerts []Identity
 
+	// certificationTreeInternalNodesMap whose keys correspond to the raw material
+	// (DER representation) of a certificate casted to a string, and whose values
+	// are boolean. True means that the certificate is an internal node of the certification tree.
+	// False means that the certificate corresponds to a leaf of the certification tree.
+	certificationTreeInternalNodesMap map[string]bool
+
 	// list of signing identities
 	signer SigningIdentity
 
@@ -311,18 +317,17 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 		return errors.New("Expected at least one CA certificate")
 	}
 
-	// pre-create the verify options with roots and intermediates
-	// this is needed to make certificate sanitation working.
-	msp.opts = &x509.VerifyOptions{
-		Roots:         x509.NewCertPool(),
-		Intermediates: x509.NewCertPool(),
-	}
+	// pre-create the verify options with roots and intermediates.
+	// This is needed to make certificate sanitation working.
+	// Recall that sanitization is applied also to root CA and intermediate
+	// CA certificates. After their sanitization is done, the opts
+	// will be recreated using the sanitized certs.
+	msp.opts = &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()}
 	for _, v := range conf.RootCerts {
 		cert, err := msp.getCertFromPem(v)
 		if err != nil {
 			return err
 		}
-
 		msp.opts.Roots.AddCert(cert)
 	}
 	for _, v := range conf.IntermediateCerts {
@@ -330,7 +335,6 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 		if err != nil {
 			return err
 		}
-
 		msp.opts.Intermediates.AddCert(cert)
 	}
 
@@ -355,6 +359,15 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 		}
 
 		msp.intermediateCerts[i] = id
+	}
+
+	// root CA and intermediate CA certificates are sanitized, they can be reimported
+	msp.opts = &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()}
+	for _, id := range msp.rootCerts {
+		msp.opts.Roots.AddCert(id.(*identity).cert)
+	}
+	for _, id := range msp.intermediateCerts {
+		msp.opts.Intermediates.AddCert(id.(*identity).cert)
 	}
 
 	// make and fill the set of admin certs (if present)
@@ -392,6 +405,21 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 
 		if err := msp.validateCAIdentity(id.(*identity)); err != nil {
 			return fmt.Errorf("CA Certificate is not valid, (SN: %s) [%s]", id.(*identity).cert.SerialNumber, err)
+		}
+	}
+
+	// populate certificationTreeInternalNodesMap to mark the internal nodes of the
+	// certification tree
+	msp.certificationTreeInternalNodesMap = make(map[string]bool)
+	for _, cert := range append([]Identity{}, msp.intermediateCerts...) {
+		chain, err := msp.getUniqueValidationChain(cert.(*identity).cert)
+		if err != nil {
+			return fmt.Errorf("Failed getting validation chain, (SN: %s)", cert.(*identity).cert.SerialNumber)
+		}
+
+		// Recall chain[0] is cert.(*identity).cert so it does not count as a parent
+		for i := 1; i < len(chain); i++ {
+			msp.certificationTreeInternalNodesMap[string(chain[i].Raw)] = true
 		}
 	}
 
@@ -681,6 +709,11 @@ func (msp *bccspmsp) getValidationChain(cert *x509.Certificate) ([]*x509.Certifi
 	// we expect a chain of length at least 2
 	if len(validationChain) < 2 {
 		return nil, fmt.Errorf("Expected a chain of length at least 2, got %d", len(validationChain))
+	}
+
+	// check that the parent is a leaf of the certification tree
+	if msp.certificationTreeInternalNodesMap[string(validationChain[1].Raw)] {
+		return nil, fmt.Errorf("Invalid validation chain. Parent certificate should be a leaf of the certification tree [%v].", cert.Raw)
 	}
 
 	return validationChain, nil
