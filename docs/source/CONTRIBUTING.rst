@@ -81,6 +81,32 @@ assignment if you cannot finish in a reasonable time, or add a comment
 saying that you are still actively working the issue if you need a
 little more time.
 
+Making Feature/Enhancement Proposals
+------------------------------------
+
+Review
+`JIRA <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`__.
+to be sure that there isn't already an open (or recently closed) proposal for the
+same function. If there isn't, to make a proposal we recommend that you open a
+JIRA Epic, Story or Improvement, whichever seems to best fit the circumstance and
+link or inline a "one pager" of the proposal that states what the feature would
+do and, if possible, how it might be implemented. It would help also to make a
+case for why the feature should be added, such as identifying specific use
+case(s) for which the feature is needed and a case for what the benefit would be
+should the feature be implemented. Once the JIRA issue is created, and the
+"one pager" either attached, inlined in the description field, or a link to a
+publicly accessible document is added to the description, send an introductory
+email to the hyperledger-fabric@lists.hyperledger.org mailing list linking the
+JIRA issue, and soliciting feedback.
+
+Discussion of the proposed feature should be conducted in the JIRA issue itself,
+so that we have a consistent pattern within our community as to where to find
+design discussion.
+
+Getting the support of three or more of the Fabric maintainers for the new
+feature will greatly enhance the probability that the feature's related CRs
+will be merged.
+
 Working with a local clone and Gerrit
 -------------------------------------
 
@@ -181,13 +207,6 @@ Finally, be responsive. Don't let a change request fester with review
 comments such that it gets to a point that it requires a rebase. It only
 further delays getting it merged and adds more work for you - to
 remediate the merge conflicts.
-
-Coding guidelines
------------------
-
-Be sure to check out the language-specific :doc:`style
-guides <Style-guides/go-style>` before making any changes. This
-will ensure a smoother review.
 
 Communication
 --------------
