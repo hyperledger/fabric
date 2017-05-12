@@ -20,55 +20,34 @@ import (
 	"testing"
 
 	"github.com/looplab/fsm"
+	"github.com/stretchr/testify/assert"
 )
 
 func simulateConn(tb testing.TB) {
 	peerConn := NewPeerConnectionFSM("10.10.10.10:7051")
 
 	err := peerConn.FSM.Event("HELLO")
-	if err != nil {
-		tb.Error(err)
-	}
+	assert.Nil(tb, err, "Error should have been nil")
 
 	err = peerConn.FSM.Event("DISCONNECT")
-	if err != nil {
-		tb.Error(err)
-	}
-
+	assert.Nil(tb, err, "Error should have been nil")
 }
 
 func TestFSM_PeerConnection(t *testing.T) {
 	peerConn := NewPeerConnectionFSM("10.10.10.10:7051")
+	assert.Equal(t, peerConn.FSM.Current(), "created", "Expected to be in created state, got: %s", peerConn.FSM.Current())
 
 	err := peerConn.FSM.Event("HELLO")
-	if err != nil {
-		t.Error(err)
-	}
-	if peerConn.FSM.Current() != "established" {
-		t.Error("Expected to be in establised state")
-	}
+	assert.Nil(t, err, "Error should have been nil")
+	assert.Equal(t, peerConn.FSM.Current(), "established", "Expected to be in established state, got: %s", peerConn.FSM.Current())
+
+	err = peerConn.FSM.Event("PING")
+	assert.NotNil(t, err, "Expected bad state message")
+	assert.Equal(t, peerConn.FSM.Current(), "established", "Expected to be in established state, got: %s", peerConn.FSM.Current())
 
 	err = peerConn.FSM.Event("DISCONNECT")
-	if err != nil {
-		t.Error(err)
-	}
-}
-
-func TestFSM_PeerConnection2(t *testing.T) {
-	peerConn := NewPeerConnectionFSM("10.10.10.10:7051")
-
-	err := peerConn.FSM.Event("HELLO")
-	if err != nil {
-		t.Error(err)
-	}
-	if peerConn.FSM.Current() != "established" {
-		t.Error("Expected to be in establised state")
-	}
-
-	err = peerConn.FSM.Event("DISCONNECT")
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err, "Error should have been nil")
+	assert.Equal(t, peerConn.FSM.Current(), "closed", "Expected to be in closed state, got: %s", peerConn.FSM.Current())
 }
 
 func TestFSM_PeerConnection_BadState_1(t *testing.T) {
@@ -76,20 +55,13 @@ func TestFSM_PeerConnection_BadState_1(t *testing.T) {
 
 	// Try to move from created state
 	err := peerConn.FSM.Event("GET_PEERS")
-	if err == nil {
-		t.Error("Expected bad state message")
-	}
+	assert.NotNil(t, err, "Expected bad state message")
 
 	err = peerConn.FSM.Event("PING")
-	if err == nil {
-		t.Error("Expected bad state message")
-	}
+	assert.NotNil(t, err, "Expected bad state message")
 
 	err = peerConn.FSM.Event("DISCONNECT")
-	if err != nil {
-		t.Error(err)
-	}
-
+	assert.Nil(t, err, "Error should have been nil")
 }
 
 func TestFSM_PeerConnection_BadState_2(t *testing.T) {
@@ -97,14 +69,10 @@ func TestFSM_PeerConnection_BadState_2(t *testing.T) {
 
 	// Try to move from created state
 	err := peerConn.FSM.Event("GET_PEERS")
-	if err == nil {
-		t.Error("Expected bad state message")
-	}
+	assert.NotNil(t, err, "Expected bad state message")
 
 	err = peerConn.FSM.Event("PING")
-	if err == nil {
-		t.Error("Expected bad state message")
-	}
+	assert.NotNil(t, err, "Expected bad state message")
 }
 
 func TestFSM_PeerConnection_BadEvent(t *testing.T) {
@@ -112,16 +80,10 @@ func TestFSM_PeerConnection_BadEvent(t *testing.T) {
 
 	// Try to move from created state
 	err := peerConn.FSM.Event("UNDEFINED_EVENT")
-	if err == nil {
-		t.Error("Expected bad event message")
-	} else {
-		// Make sure expected error type
-		if _, ok := err.(*fsm.UnknownEventError); !ok {
-			t.Error("expected only 'fsm.UnknownEventError'")
-		}
-		t.Logf("Received expected error: %s", err)
-	}
-
+	assert.NotNil(t, err, "Expected bad state message")
+	// Make sure expected error type
+	_, ok := err.(*fsm.UnknownEventError)
+	assert.True(t, ok, "expected only 'fsm.UnknownEventError'")
 }
 
 func Benchmark_FSM(b *testing.B) {
