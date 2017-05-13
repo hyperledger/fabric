@@ -63,10 +63,7 @@ func TemplateGroupMSPWithAdminRolePrincipal(configPath []string, mspConfig *mspp
 	}
 
 	// add the MSP to the map of pending MSPs
-	mspID, err := mspInst.GetIdentifier()
-	if err != nil {
-		logger.Panicf("Could not extract msp identifier, err %s", err)
-	}
+	mspID, _ := mspInst.GetIdentifier()
 
 	memberPolicy := &cb.ConfigPolicy{
 		Policy: &cb.Policy{
