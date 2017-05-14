@@ -387,12 +387,6 @@ func (ks *fileBasedKeyStore) loadKey(alias string) ([]byte, error) {
 	return key, nil
 }
 
-func (ks *fileBasedKeyStore) close() error {
-	ks.isOpen = false
-	logger.Debug("Closing keystore...done!")
-	return nil
-}
-
 func (ks *fileBasedKeyStore) createKeyStoreIfNotExists() error {
 	// Check keystore directory
 	ksPath := ks.path
@@ -420,12 +414,6 @@ func (ks *fileBasedKeyStore) createKeyStore() error {
 
 	logger.Debugf("KeyStore created at [%s].", ksPath)
 	return nil
-}
-
-func (ks *fileBasedKeyStore) deleteKeyStore() error {
-	logger.Debugf("Removing KeyStore at [%s].", ks.path)
-
-	return os.RemoveAll(ks.path)
 }
 
 func (ks *fileBasedKeyStore) openKeyStore() error {
