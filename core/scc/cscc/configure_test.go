@@ -90,6 +90,33 @@ func TestConfigerInit(t *testing.T) {
 	}
 }
 
+func TestConfigerInvokeInvalidParameters(t *testing.T) {
+	e := new(PeerConfiger)
+	stub := shim.NewMockStub("PeerConfiger", e)
+
+	res := stub.MockInit("1", nil)
+	assert.Equal(t, res.Status, int32(shim.OK), "Init failed")
+
+	res = stub.MockInvoke("2", nil)
+	assert.Equal(t, res.Status, int32(shim.ERROR), "CSCC invoke expected to fail having zero arguments")
+	assert.Equal(t, res.Message, "Incorrect number of arguments, 0")
+
+	args := [][]byte{[]byte("GetChannels")}
+	res = stub.MockInvokeWithSignedProposal("3", args, nil)
+	assert.Equal(t, res.Status, int32(shim.ERROR), "CSCC invoke expected to fail no signed proposal provided")
+	assert.Contains(t, res.Message, "failed authorization check")
+
+	args = [][]byte{[]byte("GetConfigBlock"), []byte("testChainID")}
+	res = stub.MockInvokeWithSignedProposal("4", args, nil)
+	assert.Equal(t, res.Status, int32(shim.ERROR), "CSCC invoke expected to fail no signed proposal provided")
+	assert.Contains(t, res.Message, "failed authorization check")
+
+	args = [][]byte{[]byte("fooFunction"), []byte("testChainID")}
+	res = stub.MockInvoke("5", args)
+	assert.Equal(t, res.Status, int32(shim.ERROR), "CSCC invoke expected wrong function name provided")
+	assert.Equal(t, res.Message, "Requested function fooFunction not found.")
+}
+
 func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/hyperledgertest/")
 	os.Mkdir("/tmp/hyperledgertest", 0755)
@@ -103,7 +130,7 @@ func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
 		t.FailNow()
 	}
 
-	// Failed path: Not enough parameters
+	// Failed path: expected to have at least one argument
 	args := [][]byte{[]byte("JoinChain")}
 	if res := stub.MockInvoke("2", args); res.Status == shim.OK {
 		t.Fatalf("cscc invoke JoinChain should have failed with invalid number of args: %v", args)
@@ -181,13 +208,19 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	identityDeserializer.Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
+
+	// Try fail path with nil block
+	res := stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), nil}, sProp)
+	assert.Equal(t, res.Status, int32(shim.ERROR))
+
+	// Now, continue with valid execution path
 	if res := stub.MockInvokeWithSignedProposal("2", args, sProp); res.Status != shim.OK {
 		t.Fatalf("cscc invoke JoinChain failed with: %v", res.Message)
 	}
 
 	// This call must fail
 	sProp.Signature = nil
-	res := stub.MockInvokeWithSignedProposal("3", args, sProp)
+	res = stub.MockInvokeWithSignedProposal("3", args, sProp)
 	if res.Status == shim.OK {
 		t.Fatalf("cscc invoke JoinChain must fail : %v", res.Message)
 	}
