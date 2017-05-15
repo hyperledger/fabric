@@ -17,11 +17,14 @@ limitations under the License.
 package committer
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 )
 
@@ -42,20 +45,42 @@ func init() {
 type LedgerCommitter struct {
 	ledger    ledger.PeerLedger
 	validator txvalidator.Validator
+	eventer   ConfigBlockEventer
 }
 
+// ConfigBlockEventer callback function proto type to define action
+// upon arrival on new configuaration update block
+type ConfigBlockEventer func(block *common.Block) error
+
 // NewLedgerCommitter is a factory function to create an instance of the committer
+// which passes incoming blocks via validation and commits them into the ledger.
 func NewLedgerCommitter(ledger ledger.PeerLedger, validator txvalidator.Validator) *LedgerCommitter {
-	return &LedgerCommitter{ledger: ledger, validator: validator}
+	return NewLedgerCommitterReactive(ledger, validator, func(_ *common.Block) error { return nil })
+}
+
+// NewLedgerCommitterReactive is a factory function to create an instance of the committer
+// same as way as NewLedgerCommitter, while also provides an option to specify callback to
+// be called upon new configuration block arrival and commit event
+func NewLedgerCommitterReactive(ledger ledger.PeerLedger, validator txvalidator.Validator, eventer ConfigBlockEventer) *LedgerCommitter {
+	return &LedgerCommitter{ledger: ledger, validator: validator, eventer: eventer}
 }
 
 // Commit commits block to into the ledger
 // Note, it is important that this always be called serially
 func (lc *LedgerCommitter) Commit(block *common.Block) error {
+
 	// Validate and mark invalid transactions
 	logger.Debug("Validating block")
 	if err := lc.validator.Validate(block); err != nil {
 		return err
+	}
+
+	// Updating CSCC with new configuration block
+	if utils.IsConfigBlock(block) {
+		logger.Debug("Received configuration update, calling CSCC ConfigUpdate")
+		if err := lc.eventer(block); err != nil {
+			return fmt.Errorf("Could not update CSCC with new configuration update due to %s", err)
+		}
 	}
 
 	if err := lc.ledger.Commit(block); err != nil {

@@ -220,10 +220,17 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		ledger:      ledger,
 	}
 
-	c := committer.NewLedgerCommitter(ledger, txvalidator.NewTxValidator(cs))
+	c := committer.NewLedgerCommitterReactive(ledger, txvalidator.NewTxValidator(cs), func(block *common.Block) error {
+		chainID, err := utils.GetChainIDFromBlock(block)
+		if err != nil {
+			return err
+		}
+		return SetCurrConfigBlock(block, chainID)
+	})
+
 	ordererAddresses := configtxManager.ChannelConfig().OrdererAddresses()
 	if len(ordererAddresses) == 0 {
-		return errors.New("No orderering service endpoint provided in configuration block")
+		return errors.New("No ordering service endpoint provided in configuration block")
 	}
 	service.GetGossipService().InitializeChannel(cs.ChainID(), c, ordererAddresses)
 
@@ -470,10 +477,6 @@ func SetCurrConfigBlock(block *common.Block, cid string) error {
 	defer chains.Unlock()
 	if c, ok := chains.list[cid]; ok {
 		c.cb = block
-		// TODO: Change MSP config
-		// c.mspmgr.Reconfig(block)
-
-		// TODO: Change gossip configs
 		return nil
 	}
 	return fmt.Errorf("Chain %s doesn't exist on the peer", cid)

@@ -259,65 +259,6 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	}
 }
 
-func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
-	e := new(PeerConfiger)
-	stub := shim.NewMockStub("PeerConfiger", e)
-
-	// Init the policy checker
-	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
-		Managers: map[string]policies.Manager{
-			"mytestchainid": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
-		},
-	}
-
-	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
-
-	e.policyChecker = policy.NewPolicyChecker(
-		policyManagerGetter,
-		identityDeserializer,
-		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
-	)
-
-	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
-	identityDeserializer.Msg = sProp.ProposalBytes
-	sProp.Signature = sProp.ProposalBytes
-	policyManagerGetter.Managers["mytestchainid"].(*policymocks.MockChannelPolicyManager).MockPolicy.(*policymocks.MockPolicy).Deserializer.(*policymocks.MockIdentityDeserializer).Msg = sProp.ProposalBytes
-
-	// Failed path: Not enough parameters
-	args := [][]byte{[]byte("UpdateConfigBlock")}
-	if res := stub.MockInvokeWithSignedProposal("2", args, sProp); res.Status == shim.OK {
-		t.Fatalf("cscc invoke UpdateConfigBlock should have failed with invalid number of args: %v", args)
-	}
-
-	// Failed path: wrong parameter type
-	args = [][]byte{[]byte("UpdateConfigBlock"), []byte("action")}
-	if res := stub.MockInvokeWithSignedProposal("2", args, sProp); res.Status == shim.OK {
-		t.Fatalf("cscc invoke UpdateConfigBlock should have failed with null genesis block - args: %v", args)
-	}
-
-	// Successful path for UpdateConfigBlock
-	blockBytes := mockConfigBlock()
-	if blockBytes == nil {
-		t.Fatalf("cscc invoke UpdateConfigBlock failed because invalid block")
-	}
-	args = [][]byte{[]byte("UpdateConfigBlock"), blockBytes}
-	if res := stub.MockInvokeWithSignedProposal("2", args, sProp); res.Status != shim.OK {
-		t.Fatalf("cscc invoke UpdateConfigBlock failed with: %v", res.Message)
-	}
-
-	// Query the configuration block
-	//chainID := []byte{143, 222, 22, 192, 73, 145, 76, 110, 167, 154, 118, 66, 132, 204, 113, 168}
-	chainID, err := utils.GetChainIDFromBlockBytes(blockBytes)
-	if err != nil {
-		t.Fatalf("cscc invoke UpdateConfigBlock failed with: %v", err)
-	}
-	args = [][]byte{[]byte("GetConfigBlock"), []byte(chainID)}
-	if res := stub.MockInvokeWithSignedProposal("2", args, sProp); res.Status != shim.OK {
-		t.Fatalf("cscc invoke GetConfigBlock failed with: %v", err)
-	}
-
-}
-
 func mockConfigBlock() []byte {
 	var blockBytes []byte = nil
 	block, err := configtxtest.MakeGenesisBlock("mytestchainid")

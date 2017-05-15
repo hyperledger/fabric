@@ -49,10 +49,9 @@ var cnflogger = flogging.MustGetLogger("cscc")
 
 // These are function names from Invoke first parameter
 const (
-	JoinChain         string = "JoinChain"
-	UpdateConfigBlock string = "UpdateConfigBlock"
-	GetConfigBlock    string = "GetConfigBlock"
-	GetChannels       string = "GetChannels"
+	JoinChain      string = "JoinChain"
+	GetConfigBlock string = "GetConfigBlock"
+	GetChannels    string = "GetChannels"
 )
 
 // Init is called once per chain when the chain is created.
@@ -124,13 +123,6 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 			return shim.Error(fmt.Sprintf("\"GetConfigBlock\" request failed authorization check for channel [%s]: [%s]", args[1], err))
 		}
 		return getConfigBlock(args[1])
-	case UpdateConfigBlock:
-		// TODO: It needs to be clarified if this is a function invoked by a proposal or not.
-		// The issue is the following: ChannelApplicationAdmins might require multiple signatures
-		// but currently a proposal can be signed by a signle entity only. Therefore, the ChannelApplicationAdmins policy
-		// will be never satisfied.
-
-		return updateConfigBlock(args[1])
 	case GetChannels:
 		// 2. check local MSP Members policy
 		if err = e.policyChecker.CheckPolicyNoChannel(mgmt.Members, sp); err != nil {
@@ -165,24 +157,6 @@ func joinChain(blockBytes []byte) pb.Response {
 
 	if err := producer.SendProducerBlockEvent(block); err != nil {
 		cnflogger.Errorf("Error sending block event %s", err)
-	}
-
-	return shim.Success(nil)
-}
-
-func updateConfigBlock(blockBytes []byte) pb.Response {
-	block, err := extractBlock(blockBytes)
-	if err != nil {
-		return shim.Error(fmt.Sprintf("Failed to reconstruct the configuration block, %s", err))
-	}
-	chainID, err := utils.GetChainIDFromBlock(block)
-	if err != nil {
-		return shim.Error(fmt.Sprintf("Failed to get the chain ID from the configuration block, %s", err))
-	}
-
-	if err := peer.SetCurrConfigBlock(block, chainID); err != nil {
-
-		return shim.Error(err.Error())
 	}
 
 	return shim.Success(nil)
