@@ -17,6 +17,7 @@ limitations under the License.
 package multichain
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	logging "github.com/op/go-logging"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -96,6 +98,7 @@ func TestGoodProposal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
 	}
+
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
@@ -163,4 +166,239 @@ func TestNumChainsExceeded(t *testing.T) {
 	action, _ := sysFilter.Apply(wrapped)
 
 	assert.EqualValues(t, filter.Reject, action, "Transaction had created too many channels")
+}
+
+func TestBadProposal(t *testing.T) {
+	mcc := newMockChainCreator()
+	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	// logging.SetLevel(logging.DEBUG, "orderer/multichain")
+	t.Run("BadPayload", func(t *testing.T) {
+		action, committer := sysFilter.Apply(&cb.Envelope{Payload: []byte("bad payload")})
+		assert.EqualValues(t, action, filter.Forward, "Should of skipped invalid tx")
+		assert.Nil(t, committer)
+	})
+
+	// set logger to logger with a backend that writes to a byte buffer
+	var buffer bytes.Buffer
+	logger.SetBackend(logging.AddModuleLevel(logging.NewLogBackend(&buffer, "", 0)))
+	// reset the logger after test
+	defer func() {
+		logger = logging.MustGetLogger("orderer/multichain")
+	}()
+
+	for _, tc := range []struct {
+		name    string
+		payload *cb.Payload
+		action  filter.Action
+		regexp  string
+	}{
+		{
+			"MissingPayloadHeader",
+			&cb.Payload{},
+			filter.Forward,
+			"",
+		},
+		{
+			"BadChannelHeader",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: []byte("bad channel header"),
+				},
+			},
+			filter.Forward,
+			"",
+		},
+		{
+			"BadConfigTx",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: []byte("bad configTx"),
+			},
+			filter.Reject,
+			"",
+		},
+		{
+			"BadConfigTxPayload",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: []byte("bad payload"),
+					},
+				),
+			},
+			filter.Reject,
+			"Error unmarshaling envelope payload",
+		},
+		{
+			"MissingConfigTxChannelHeader",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: utils.MarshalOrPanic(
+							&cb.Payload{},
+						),
+					},
+				),
+			},
+			filter.Reject,
+			"Not a config transaction",
+		},
+		{
+			"BadConfigTxChannelHeader",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: utils.MarshalOrPanic(
+							&cb.Payload{
+								Header: &cb.Header{
+									ChannelHeader: []byte("bad channel header"),
+								},
+							},
+						),
+					},
+				),
+			},
+			filter.Reject,
+			"Error unmarshaling channel header",
+		},
+		{
+			"BadConfigTxChannelHeaderType",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: utils.MarshalOrPanic(
+							&cb.Payload{
+								Header: &cb.Header{
+									ChannelHeader: utils.MarshalOrPanic(
+										&cb.ChannelHeader{
+											Type: 0xBad,
+										},
+									),
+								},
+							},
+						),
+					},
+				),
+			},
+			filter.Reject,
+			"Not a config transaction",
+		},
+		{
+			"BadConfigEnvelope",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: utils.MarshalOrPanic(
+							&cb.Payload{
+								Header: &cb.Header{
+									ChannelHeader: utils.MarshalOrPanic(
+										&cb.ChannelHeader{
+											Type: int32(cb.HeaderType_CONFIG),
+										},
+									),
+								},
+								Data: []byte("bad config update"),
+							},
+						),
+					},
+				),
+			},
+			filter.Reject,
+			"Error unmarshalling config envelope from payload",
+		},
+		{
+			"MissingConfigEnvelopeLastUpdate",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: utils.MarshalOrPanic(
+							&cb.Payload{
+								Header: &cb.Header{
+									ChannelHeader: utils.MarshalOrPanic(
+										&cb.ChannelHeader{
+											Type: int32(cb.HeaderType_CONFIG),
+										},
+									),
+								},
+								Data: utils.MarshalOrPanic(
+									&cb.ConfigEnvelope{},
+								),
+							},
+						),
+					},
+				),
+			},
+			filter.Reject,
+			"Must include a config update",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			buffer.Reset()
+			action, committer := sysFilter.Apply(&cb.Envelope{Payload: utils.MarshalOrPanic(tc.payload)})
+			assert.EqualValues(t, tc.action, action, "Expected tx to be %sed, but instead the tx will be %sed.", filterActionToString(tc.action), filterActionToString(action))
+			assert.Nil(t, committer)
+			assert.Regexp(t, tc.regexp, buffer.String())
+		})
+	}
+}
+
+func filterActionToString(action filter.Action) string {
+	switch action {
+	case filter.Accept:
+		return "accept"
+	case filter.Forward:
+		return "forward"
+	case filter.Reject:
+		return "reject"
+	default:
+		return ""
+	}
 }
