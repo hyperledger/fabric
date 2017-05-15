@@ -1,0 +1,445 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Read-Write set semantics &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/>
+        <link rel="next" title="Gossip data dissemination protocol" href="gossip.html"/>
+        <link rel="prev" title="Ledger" href="ledger.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Read-Write set semantics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#transaction-simulation-and-read-write-set">Transaction simulation and read-write set</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#transaction-validation-and-updating-world-state-using-read-write-set">Transaction validation and updating world state using read-write set</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-simulation-and-validation">Example simulation and validation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Read-Write set semantics</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/readwrite.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="read-write-set-semantics">
+<h1>Read-Write set semantics<a class="headerlink" href="#read-write-set-semantics" title="Permalink to this headline">¶</a></h1>
+<p>This documents discusses the details of the current implementation about
+the semantics of read-write sets.</p>
+<div class="section" id="transaction-simulation-and-read-write-set">
+<h2>Transaction simulation and read-write set<a class="headerlink" href="#transaction-simulation-and-read-write-set" title="Permalink to this headline">¶</a></h2>
+<p>During simulation of a transaction at an <code class="docutils literal"><span class="pre">endorser</span></code>, a read-write set
+is prepared for the transaction. The <code class="docutils literal"><span class="pre">read</span> <span class="pre">set</span></code> contains a list of
+unique keys and their committed versions that the transaction reads
+during simulation. The <code class="docutils literal"><span class="pre">write</span> <span class="pre">set</span></code> contains a list of unique keys
+(though there can be overlap with the keys present in the read set) and
+their new values that the transaction writes. A delete marker is set (in
+the place of new value) for the key if the update performed by the
+transaction is to delete the key.</p>
+<p>Further, if the transaction writes a value multiple times for a key,
+only the last written value is retained. Also, if a transaction reads a
+value for a key, the value in the committed state is returned even if
+the transaction has updated the value for the key before issuing the
+read. In another words, Read-your-writes semantics are not supported.</p>
+<p>As noted earlier, the versions of the keys are recorded only in the read
+set; the write set just contains the list of unique keys and their
+latest values set by the transaction.</p>
+<p>There could be various schemes for implementing versions. The minimal
+requirement for a versioning scheme is to produce non-repeating
+identifiers for a given key. For instance, using monotonically
+increasing numbers for versions can be one such scheme. In the current
+implementation, we use a blockchain height based versioning scheme in
+which the height of the committing transaction is used as the latest
+version for all the keys modified by the transaction. In this scheme,
+the height of a transaction is represented by a tuple (txNumber is the
+height of the transaction within the block). This scheme has many
+advantages over the incremental number scheme - primarily, it enables
+other components such as statedb, transaction simulation and validation
+for making efficient design choices.</p>
+<p>Following is an illustration of an example read-write set prepared by
+simulation of a hypothetical transaction. For the sake of simplicity, in
+the illustrations, we use the incremental numbers for representing the
+versions.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">TxReadWriteSet</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">NsReadWriteSet</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;chaincode1&quot;</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">read</span><span class="o">-</span><span class="nb">set</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">read</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;K1&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">read</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;K2&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="o">&gt;</span>
+    <span class="o">&lt;/</span><span class="n">read</span><span class="o">-</span><span class="nb">set</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">write</span><span class="o">-</span><span class="nb">set</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">write</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;K1&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;V1&quot;</span>
+      <span class="o">&lt;</span><span class="n">write</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;K3&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;V2&quot;</span>
+      <span class="o">&lt;</span><span class="n">write</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;K4&quot;</span><span class="p">,</span> <span class="n">isDelete</span><span class="o">=</span><span class="s2">&quot;true&quot;</span>
+    <span class="o">&lt;/</span><span class="n">write</span><span class="o">-</span><span class="nb">set</span><span class="o">&gt;</span>
+  <span class="o">&lt;/</span><span class="n">NsReadWriteSet</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="n">TxReadWriteSet</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Additionally, if the transaction performs a range query during
+simulation, the range query as well as its results will be added to the
+read-write set as <code class="docutils literal"><span class="pre">query-info</span></code>.</p>
+</div>
+<div class="section" id="transaction-validation-and-updating-world-state-using-read-write-set">
+<h2>Transaction validation and updating world state using read-write set<a class="headerlink" href="#transaction-validation-and-updating-world-state-using-read-write-set" title="Permalink to this headline">¶</a></h2>
+<p>A <code class="docutils literal"><span class="pre">committer</span></code> uses the read set portion of the read-write set for
+checking the validity of a transaction and the write set portion of the
+read-write set for updating the versions and the values of the affected
+keys.</p>
+<p>In the validation phase, a transaction is considered <code class="docutils literal"><span class="pre">valid</span></code> if the
+version of each key present in the read set of the transaction matches
+the version for the same key in the world state - assuming all the
+preceding <code class="docutils literal"><span class="pre">valid</span></code> transactions (including the preceding transactions
+in the same block) are committed (<em>committed-state</em>). An additional
+validation is performed if the read-write set also contains one or more
+query-info.</p>
+<p>This additional validation should ensure that no key has been
+inserted/deleted/updated in the super range (i.e., union of the ranges)
+of the results captured in the query-info(s). In other words, if we
+re-execute any of the range queries (that the transaction performed
+during simulation) during validation on the committed-state, it should
+yield the same results that were observed by the transaction at the time
+of simulation. This check ensures that if a transaction observes phantom
+items during commit, the transaction should be marked as invalid. Note
+that the this phantom protection is limited to range queries (i.e.,
+<code class="docutils literal"><span class="pre">GetStateByRange</span></code> function in the chaincode) and not yet implemented
+for other queries (i.e., <code class="docutils literal"><span class="pre">GetQueryResult</span></code> function in the chaincode).
+Other queries are at risk of phantoms, and should therefore only be used
+in read-only transactions that are not submitted to ordering, unless the
+application can guarantee the stability of the result set between
+simulation and validation/commit time.</p>
+<p>If a transaction passes the validity check, the committer uses the write
+set for updating the world state. In the update phase, for each key
+present in the write set, the value in the world state for the same key
+is set to the value as specified in the write set. Further, the version
+of the key in the world state is changed to reflect the latest version.</p>
+</div>
+<div class="section" id="example-simulation-and-validation">
+<h2>Example simulation and validation<a class="headerlink" href="#example-simulation-and-validation" title="Permalink to this headline">¶</a></h2>
+<p>This section helps with understanding the semantics through an example
+scenario. For the purpose of this example, the presence of a key, <code class="docutils literal"><span class="pre">k</span></code>,
+in the world state is represented by a tuple <code class="docutils literal"><span class="pre">(k,ver,val)</span></code> where
+<code class="docutils literal"><span class="pre">ver</span></code> is the latest version of the key <code class="docutils literal"><span class="pre">k</span></code> having <code class="docutils literal"><span class="pre">val</span></code> as its
+value.</p>
+<p>Now, consider a set of five transactions <code class="docutils literal"><span class="pre">T1,</span> <span class="pre">T2,</span> <span class="pre">T3,</span> <span class="pre">T4,</span> <span class="pre">and</span> <span class="pre">T5</span></code>, all
+simulated on the same snapshot of the world state. The following snippet
+shows the snapshot of the world state against which the transactions are
+simulated and the sequence of read and write activities performed by
+each of these transactions.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">World</span> <span class="n">state</span><span class="p">:</span> <span class="p">(</span><span class="n">k1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">v1</span><span class="p">),</span> <span class="p">(</span><span class="n">k2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">v2</span><span class="p">),</span> <span class="p">(</span><span class="n">k3</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">v3</span><span class="p">),</span> <span class="p">(</span><span class="n">k4</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">v4</span><span class="p">),</span> <span class="p">(</span><span class="n">k5</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">v5</span><span class="p">)</span>
+<span class="n">T1</span> <span class="o">-&gt;</span> <span class="n">Write</span><span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">v1</span><span class="s1">&#39;), Write(k2, v2&#39;</span><span class="p">)</span>
+<span class="n">T2</span> <span class="o">-&gt;</span> <span class="n">Read</span><span class="p">(</span><span class="n">k1</span><span class="p">),</span> <span class="n">Write</span><span class="p">(</span><span class="n">k3</span><span class="p">,</span> <span class="n">v3</span><span class="s1">&#39;)</span>
+<span class="n">T3</span> <span class="o">-&gt;</span> <span class="n">Write</span><span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">v2</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="n">T4</span> <span class="o">-&gt;</span> <span class="n">Write</span><span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">v2</span><span class="s1">&#39;&#39;&#39;), read(k2)</span>
+<span class="s1">T5 -&gt; Write(k6, v6&#39;), read(k5)</span>
+</pre></div>
+</div>
+<p>Now, assume that these transactions are ordered in the sequence of
+T1,..,T5 (could be contained in a single block or different blocks)</p>
+<ol class="arabic simple">
+<li><code class="docutils literal"><span class="pre">T1</span></code> passes validation because it does not perform any read.
+Further, the tuple of keys <code class="docutils literal"><span class="pre">k1</span></code> and <code class="docutils literal"><span class="pre">k2</span></code> in the world state are
+updated to <code class="docutils literal"><span class="pre">(k1,2,v1'),</span> <span class="pre">(k2,2,v2')</span></code></li>
+<li><code class="docutils literal"><span class="pre">T2</span></code> fails validation because it reads a key, <code class="docutils literal"><span class="pre">k1</span></code>, which was
+modified by a preceding transaction - <code class="docutils literal"><span class="pre">T1</span></code></li>
+<li><code class="docutils literal"><span class="pre">T3</span></code> passes the validation because it does not perform a read.
+Further the tuple of the key, <code class="docutils literal"><span class="pre">k2</span></code>, in the world state is updated
+to <code class="docutils literal"><span class="pre">(k2,3,v2'')</span></code></li>
+<li><code class="docutils literal"><span class="pre">T4</span></code> fails the validation because it reads a key, <code class="docutils literal"><span class="pre">k2</span></code>, which was
+modified by a preceding transaction <code class="docutils literal"><span class="pre">T1</span></code></li>
+<li><code class="docutils literal"><span class="pre">T5</span></code> passes validation because it reads a key, <code class="docutils literal"><span class="pre">k5,</span></code> which was
+not modified by any of the preceding transactions</li>
+</ol>
+<p><strong>Note</strong>: Transactions with multiple read-write sets are not yet supported.</p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="gossip.html" class="btn btn-neutral float-right" title="Gossip data dissemination protocol" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="ledger.html" class="btn btn-neutral" title="Ledger" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

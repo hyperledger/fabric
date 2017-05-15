@@ -1,0 +1,409 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Ledger &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/>
+        <link rel="next" title="Read-Write set semantics" href="readwrite.html"/>
+        <link rel="prev" title="Channels" href="channels.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Ledger</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#chain">Chain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#state-database">State Database</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#transaction-flow">Transaction Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#state-database-options">State Database options</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Ledger</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/ledger.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="ledger">
+<h1>Ledger<a class="headerlink" href="#ledger" title="Permalink to this headline">¶</a></h1>
+<p>The ledger is the sequenced, tamper-resistant record of all state transitions in the fabric.  State
+transitions are a result of chaincode invocations (‘transactions’) submitted by participating
+parties.  Each transaction results in a set of asset key-value pairs that are committed to the
+ledger as creates, updates, or deletes.</p>
+<p>The ledger is comprised of a blockchain (‘chain’) to store the immutable, sequenced record in
+blocks, as well as a state database to maintain current fabric state.  There is one ledger per
+channel. Each peer maintains a copy of the ledger for each channel of which they are a member.</p>
+<div class="section" id="chain">
+<h2>Chain<a class="headerlink" href="#chain" title="Permalink to this headline">¶</a></h2>
+<p>The chain is a transaction log, structured as hash-linked blocks, where each block contains a
+sequence of N transactions. The block header includes a hash of the block’s transactions, as
+well as a hash of the prior block’s header. In this way, all transactions on the ledger are
+sequenced and cryptographically linked together. In other words, it is not possible to tamper with
+the ledger data, without breaking the hash links. The hash of the latest block represents every
+transaction that has come before, making it possible to ensure that all peers are in a consistent
+and trusted state.</p>
+<p>The chain is stored on the peer file system (either local or attached storage), efficiently
+supporting the append-only nature of the blockchain workload.</p>
+</div>
+<div class="section" id="state-database">
+<h2>State Database<a class="headerlink" href="#state-database" title="Permalink to this headline">¶</a></h2>
+<p>The ledger’s current state data represents the latest values for all keys ever included in the chain
+transaction log. Since current state represents all latest key values known to the channel, it is
+sometimes referred to as World State.</p>
+<p>Chaincode invocations execute transactions against the current state data. To make these
+chaincode interactions extremely efficient, the latest values of all keys are stored in a state
+database. The state database is simply an indexed view into the chain’s transaction log, it can
+therefore be regenerated from the chain at any time.  The state database will automatically get
+recovered (or generated if needed) upon peer startup, before transactions are accepted.</p>
+</div>
+<div class="section" id="transaction-flow">
+<h2>Transaction Flow<a class="headerlink" href="#transaction-flow" title="Permalink to this headline">¶</a></h2>
+<p>At a high level, the transaction flow consists of a transaction proposal sent by an application
+client to specific endorsing peers.  The endorsing peers verify the client signature, and execute
+a chaincode function to simulate the transaction.  The output is the chaincode results,
+a set of key/value versions that were read in the chaincode (read set), and the set of keys/values
+that were written in chaincode (write set).  The proposal response gets sent back to the client
+along with an endorsement signature.</p>
+<p>The client assembles the endorsements into a transaction payload and broadcasts it to an ordering
+service.  The ordering service delivers ordered transactions as blocks to all peers on a channel.</p>
+<p>Before committal, peers will validate the transactions.  First, they will check the endorsement
+policy to ensure that the correct allotment of the specified peers have signed the results, and they
+will authenticate the signatures against the transaction payload.</p>
+<p>Secondly, peers will perform a versioning check against the transaction read set, to ensure
+data integrity and protect against threats such as double-spending.
+The fabric has concurrency control whereby transactions execute in parallel (by endorsers)
+to increase throughput, and upon commit (by all peers) each transaction is verified to ensure
+that no other transaction has modified data it has read. In other words, it ensures that the data
+that was read during chaincode execution has not changed since execution (endorsement) time,
+and therefore the execution results are still valid and can be committed to the ledger state
+database. If the data that was read has been changed by another transaction, then the
+transaction in the block is marked as invalid and is not applied to the ledger state database.
+The client application is alerted, and can handle the error or retry as appropriate.</p>
+<p>See the <a class="reference internal" href="txflow.html"><span class="doc">Transaction Flow</span></a> and <a class="reference internal" href="readwrite.html"><span class="doc">Read-Write set semantics</span></a> topics for a deeper dive on transaction structure,
+concurrency control, and the state DB.</p>
+</div>
+<div class="section" id="state-database-options">
+<h2>State Database options<a class="headerlink" href="#state-database-options" title="Permalink to this headline">¶</a></h2>
+<p>State database options include LevelDB and CouchDB (beta). LevelDB is the default key/value state
+database embedded in the peer process. CouchDB is an optional alternative external state database.
+Like the LevelDB key/value store, CouchDB can store any binary data that is modeled in chaincode
+(CouchDB attachment functionality is used internally for non-JSON binary data). But as a JSON
+document store, CouchDB additionally enables rich query against the chaincode data, when chaincode
+values (e.g. assets) are modeled as JSON data.</p>
+<p>Both LevelDB and CouchDB support core chaincode operations such as getting and setting a key
+(asset), and querying based on keys. Keys can be queried by range, and composite keys can be
+modeled to enable equivalence queries against multiple parameters. For example a composite
+key of (owner,asset_id) can be used to query all assets owned by a certain entity. These key-based
+queries can be used for read-only queries against the ledger, as well as in transactions that
+update the ledger.</p>
+<p>If you model assets as JSON and use CouchDB, you can also perform complex rich queries against the
+chaincode data values, using the CouchDB JSON query language within chaincode. These types of
+queries are excellent for understanding what is on the ledger. Proposal responses for these types
+of queries are typically useful to the client application, but are not typically submitted as
+transactions to the ordering service. In fact the fabric does not guarantee the result set is stable
+between chaincode execution and commit time for rich queries, and therefore rich queries
+are not appropriate for use in update transactions, unless your application can guarantee the
+result set is stable between chaincode execution time and commit time, or can handle potential
+changes in subsequent transactions.  For example, if you perform a rich query for all assets
+owned by Alice and transfer them to Bob, a new asset may be assigned to Alice by another
+transaction between chaincode execution time and commit time, and you would miss this ‘phantom’
+item.</p>
+<p>CouchDB runs as a separate database process alongside the peer, therefore there are additional
+considerations in terms of setup, management, and operations. You may consider starting with the
+default embedded LevelDB, and move to CouchDB if you require the additional complex rich queries.
+It is a good practice to model chaincode asset data as JSON, so that you have the option to perform
+complex rich queries if needed in the future.</p>
+<p>To enable CouchDB as the state database, configure the /fabric/sampleconfig/core.yaml <code class="docutils literal"><span class="pre">stateDatabase</span></code>
+section.</p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="readwrite.html" class="btn btn-neutral float-right" title="Read-Write set semantics" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="channels.html" class="btn btn-neutral" title="Channels" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

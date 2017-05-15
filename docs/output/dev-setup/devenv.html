@@ -1,0 +1,479 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Setting up the development environment &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/>
+        <link rel="next" title="Building the fabric" href="build.html"/>
+        <link rel="prev" title="Using Jira to understand current work items" href="../jira_navigation.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Setting up the development environment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pip-behave-and-docker-compose"><code class="docutils literal"><span class="pre">pip</span></code>, <code class="docutils literal"><span class="pre">behave</span></code> and <code class="docutils literal"><span class="pre">docker-compose</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#steps">Steps</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#set-your-gopath">Set your GOPATH</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#note-to-windows-users">Note to Windows users</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cloning-the-fabric-project">Cloning the Fabric project</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bootstrapping-the-vm-using-vagrant">Bootstrapping the VM using Vagrant</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#building-the-fabric">Building the fabric</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notes">Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Setting up the development environment</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/dev-setup/devenv.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="setting-up-the-development-environment">
+<h1>Setting up the development environment<a class="headerlink" href="#setting-up-the-development-environment" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>Prior to the v1.0.0 release, the development environment utilized Vagrant
+running an Ubuntu image, which in turn launched Docker containers as a
+means of ensuring a consistent experience for developers who might be
+working with varying platforms, such as macOS, Windows, Linux, or
+whatever. Advances in Docker have enabled native support on the most
+popular development platforms: macOS and Windows. Hence, we have
+reworked our build to take full advantage of these advances. While we
+still maintain a Vagrant based approach that can be used for older
+versions of macOS and Windows that Docker does not support, we strongly
+encourage that the non-Vagrant development setup be used.</p>
+<p>Note that while the Vagrant-based development setup could not be used in
+a cloud context, the Docker-based build does support cloud platforms
+such as AWS, Azure, Google and IBM to name a few. Please follow the
+instructions for Ubuntu builds, below.</p>
+</div>
+<div class="section" id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="https://git-scm.com/downloads">Git client</a></li>
+<li><a class="reference external" href="https://golang.org/">Go</a> - 1.7 or later (for releases before
+v1.0, 1.6 or later)</li>
+<li>For macOS,
+<a class="reference external" href="https://itunes.apple.com/us/app/xcode/id497799835?mt=12">Xcode</a>
+must be installed</li>
+<li><a class="reference external" href="https://www.docker.com/products/overview">Docker</a> - 1.12 or later</li>
+<li><a class="reference external" href="https://docs.docker.com/compose/">Docker Compose</a> - 1.8.1 or later</li>
+<li><a class="reference external" href="https://pip.pypa.io/en/stable/installing/">Pip</a></li>
+<li>(macOS) you may need to install gnutar, as macOS comes with bsdtar
+as the default, but the build uses some gnutar flags. You can use
+Homebrew to install it as follows:</li>
+</ul>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">brew</span> <span class="n">install</span> <span class="n">gnu</span><span class="o">-</span><span class="n">tar</span> <span class="o">--</span><span class="k">with</span><span class="o">-</span><span class="n">default</span><span class="o">-</span><span class="n">names</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>(only if using Vagrant) - <a class="reference external" href="https://www.vagrantup.com/">Vagrant</a> -
+1.7.4 or later</li>
+<li>(only if using Vagrant) -
+<a class="reference external" href="https://www.virtualbox.org/">VirtualBox</a> - 5.0 or later</li>
+<li>BIOS Enabled Virtualization - Varies based on hardware</li>
+<li>Note: The BIOS Enabled Virtualization may be within the CPU or
+Security settings of the BIOS</li>
+</ul>
+</div>
+<div class="section" id="pip-behave-and-docker-compose">
+<h2><code class="docutils literal"><span class="pre">pip</span></code>, <code class="docutils literal"><span class="pre">behave</span></code> and <code class="docutils literal"><span class="pre">docker-compose</span></code><a class="headerlink" href="#pip-behave-and-docker-compose" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">upgrade</span> <span class="n">pip</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">behave</span> <span class="n">nose</span> <span class="n">docker</span><span class="o">-</span><span class="n">compose</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">I</span> <span class="n">flask</span><span class="o">==</span><span class="mf">0.10</span><span class="o">.</span><span class="mi">1</span> <span class="n">python</span><span class="o">-</span><span class="n">dateutil</span><span class="o">==</span><span class="mf">2.2</span> <span class="n">pytz</span><span class="o">==</span><span class="mf">2014.3</span> <span class="n">pyyaml</span><span class="o">==</span><span class="mf">3.10</span> <span class="n">couchdb</span><span class="o">==</span><span class="mf">1.0</span> <span class="n">flask</span><span class="o">-</span><span class="n">cors</span><span class="o">==</span><span class="mf">2.0</span><span class="o">.</span><span class="mi">1</span> <span class="n">requests</span><span class="o">==</span><span class="mf">2.4</span><span class="o">.</span><span class="mi">3</span> <span class="n">pyOpenSSL</span><span class="o">==</span><span class="mf">16.2</span><span class="o">.</span><span class="mi">0</span> <span class="n">pysha3</span><span class="o">==</span><span class="mf">1.0</span><span class="n">b1</span> <span class="n">grpcio</span><span class="o">==</span><span class="mf">1.0</span><span class="o">.</span><span class="mi">4</span>
+
+<span class="c1">#PIP packages required for some behave tests</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">urllib3</span> <span class="n">ndg</span><span class="o">-</span><span class="n">httpsclient</span> <span class="n">pyasn1</span> <span class="n">ecdsa</span> <span class="n">python</span><span class="o">-</span><span class="n">slugify</span> <span class="n">grpcio</span><span class="o">-</span><span class="n">tools</span> <span class="n">jinja2</span> <span class="n">b3j0f</span><span class="o">.</span><span class="n">aop</span> <span class="n">six</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="steps">
+<h2>Steps<a class="headerlink" href="#steps" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="set-your-gopath">
+<h3>Set your GOPATH<a class="headerlink" href="#set-your-gopath" title="Permalink to this headline">¶</a></h3>
+<p>Make sure you have properly setup your Host’s <a class="reference external" href="https://github.com/golang/go/wiki/GOPATH">GOPATH environment
+variable</a>. This allows for
+both building within the Host and the VM.</p>
+</div>
+<div class="section" id="note-to-windows-users">
+<h3>Note to Windows users<a class="headerlink" href="#note-to-windows-users" title="Permalink to this headline">¶</a></h3>
+<p>If you are running Windows, before running any <code class="docutils literal"><span class="pre">git</span> <span class="pre">clone</span></code> commands,
+run the following command.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">config</span> <span class="o">--</span><span class="n">get</span> <span class="n">core</span><span class="o">.</span><span class="n">autocrlf</span>
+</pre></div>
+</div>
+<p>If <code class="docutils literal"><span class="pre">core.autocrlf</span></code> is set to <code class="docutils literal"><span class="pre">true</span></code>, you must set it to <code class="docutils literal"><span class="pre">false</span></code> by
+running</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">config</span> <span class="o">--</span><span class="k">global</span> <span class="n">core</span><span class="o">.</span><span class="n">autocrlf</span> <span class="n">false</span>
+</pre></div>
+</div>
+<p>If you continue with <code class="docutils literal"><span class="pre">core.autocrlf</span></code> set to <code class="docutils literal"><span class="pre">true</span></code>, the
+<code class="docutils literal"><span class="pre">vagrant</span> <span class="pre">up</span></code> command will fail with the error:</p>
+<p><code class="docutils literal"><span class="pre">./setup.sh:</span> <span class="pre">/bin/bash^M:</span> <span class="pre">bad</span> <span class="pre">interpreter:</span> <span class="pre">No</span> <span class="pre">such</span> <span class="pre">file</span> <span class="pre">or</span> <span class="pre">directory</span></code></p>
+</div>
+<div class="section" id="cloning-the-fabric-project">
+<h3>Cloning the Fabric project<a class="headerlink" href="#cloning-the-fabric-project" title="Permalink to this headline">¶</a></h3>
+<p>Since the Fabric project is a <code class="docutils literal"><span class="pre">Go</span></code> project, you’ll need to clone the
+Fabric repo to your $GOPATH/src directory. If your $GOPATH has multiple
+path components, then you will want to use the first one. There’s a
+little bit of setup needed:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src
+mkdir -p github.com/hyperledger
+cd github.com/hyperledger
+</pre></div>
+</div>
+<p>Recall that we are using <code class="docutils literal"><span class="pre">Gerrit</span></code> for source control, which has its
+own internal git repositories. Hence, we will need to clone from
+<a class="reference internal" href="../Gerrit/gerrit.html"><span class="doc">Gerrit</span></a>.
+For brevity, the command is as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">LFID</span><span class="nd">@gerrit</span><span class="o">.</span><span class="n">hyperledger</span><span class="o">.</span><span class="n">org</span><span class="p">:</span><span class="mi">29418</span><span class="o">/</span><span class="n">fabric</span> <span class="o">&amp;&amp;</span> <span class="n">scp</span> <span class="o">-</span><span class="n">p</span> <span class="o">-</span><span class="n">P</span> <span class="mi">29418</span> <span class="n">LFID</span><span class="nd">@gerrit</span><span class="o">.</span><span class="n">hyperledger</span><span class="o">.</span><span class="n">org</span><span class="p">:</span><span class="n">hooks</span><span class="o">/</span><span class="n">commit</span><span class="o">-</span><span class="n">msg</span> <span class="n">fabric</span><span class="o">/.</span><span class="n">git</span><span class="o">/</span><span class="n">hooks</span><span class="o">/</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong> Of course, you would want to replace <code class="docutils literal"><span class="pre">LFID</span></code> with your own
+<a class="reference internal" href="../Gerrit/lf-account.html"><span class="doc">Linux Foundation ID</span></a>.</p>
+</div>
+<div class="section" id="bootstrapping-the-vm-using-vagrant">
+<h3>Bootstrapping the VM using Vagrant<a class="headerlink" href="#bootstrapping-the-vm-using-vagrant" title="Permalink to this headline">¶</a></h3>
+<p>If you are planning on using the Vagrant developer environment, the
+following steps apply. <strong>Again, we recommend against its use except for
+developers that are limited to older versions of macOS and Windows that
+are not supported by Docker for Mac or Windows.</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric/devenv
+vagrant up
+</pre></div>
+</div>
+<p>Go get coffee… this will take a few minutes. Once complete, you should
+be able to <code class="docutils literal"><span class="pre">ssh</span></code> into the Vagrant VM just created.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">vagrant</span> <span class="n">ssh</span>
+</pre></div>
+</div>
+<p>Once inside the VM, you can find the peer project under
+<code class="docutils literal"><span class="pre">$GOPATH/src/github.com/hyperledger/fabric</span></code>. It is also mounted as
+<code class="docutils literal"><span class="pre">/hyperledger</span></code>.</p>
+</div>
+</div>
+<div class="section" id="building-the-fabric">
+<h2>Building the fabric<a class="headerlink" href="#building-the-fabric" title="Permalink to this headline">¶</a></h2>
+<p>Once you have all the dependencies installed, and have cloned the
+repository, you can proceed to <a class="reference internal" href="build.html"><span class="doc">build and test</span></a> the fabric.</p>
+</div>
+<div class="section" id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Permalink to this headline">¶</a></h2>
+<p><strong>NOTE:</strong> Any time you change any of the files in your local fabric
+directory (under <code class="docutils literal"><span class="pre">$GOPATH/src/github.com/hyperledger/fabric</span></code>), the
+update will be instantly available within the VM fabric directory.</p>
+<p><strong>NOTE:</strong> If you intend to run the development environment behind an
+HTTP Proxy, you need to configure the guest so that the provisioning
+process may complete. You can achieve this via the <em>vagrant-proxyconf</em>
+plugin. Install with <code class="docutils literal"><span class="pre">vagrant</span> <span class="pre">plugin</span> <span class="pre">install</span> <span class="pre">vagrant-proxyconf</span></code> and
+then set the VAGRANT_HTTP_PROXY and VAGRANT_HTTPS_PROXY environment
+variables <em>before</em> you execute <code class="docutils literal"><span class="pre">vagrant</span> <span class="pre">up</span></code>. More details are
+available here: <a class="reference external" href="https://github.com/tmatilai/vagrant-proxyconf/">https://github.com/tmatilai/vagrant-proxyconf/</a></p>
+<p><strong>NOTE:</strong> The first time you run this command it may take quite a while
+to complete (it could take 30 minutes or more depending on your
+environment) and at times it may look like it’s not doing anything. As
+long you don’t get any error messages just leave it alone, it’s all
+good, it’s just cranking.</p>
+<p><strong>NOTE to Windows 10 Users:</strong> There is a known problem with vagrant on
+Windows 10 (see
+<a class="reference external" href="https://github.com/mitchellh/vagrant/issues/6754">mitchellh/vagrant#6754</a>).
+If the <code class="docutils literal"><span class="pre">vagrant</span> <span class="pre">up</span></code> command fails it may be because you do not have
+the Microsoft Visual C++ Redistributable package installed. You can
+download the missing package at the following address:
+<a class="reference external" href="http://www.microsoft.com/en-us/download/details.aspx?id=8328">http://www.microsoft.com/en-us/download/details.aspx?id=8328</a></p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="build.html" class="btn btn-neutral float-right" title="Building the fabric" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../jira_navigation.html" class="btn btn-neutral" title="Using Jira to understand current work items" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

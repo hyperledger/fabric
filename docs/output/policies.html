@@ -1,0 +1,626 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Policies in Hyperledger Fabric &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Policies in Hyperledger Fabric</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/policies.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="policies-in-hyperledger-fabric">
+<h1>Policies in Hyperledger Fabric<a class="headerlink" href="#policies-in-hyperledger-fabric" title="Permalink to this headline">¶</a></h1>
+<p>Configuration for a Hyperledger Fabric blockchain network is managed by
+policies. These policies generally reside in the channel configuration.
+The primary purpose of this document is to explain how policies are
+defined in and interact with the channel configuration. However,
+policies may also be specified in some other places, such as chaincodes,
+so this information may be of interest outside the scope of channel
+configuration.</p>
+<div class="section" id="what-is-a-policy">
+<h2>What is a Policy?<a class="headerlink" href="#what-is-a-policy" title="Permalink to this headline">¶</a></h2>
+<p>At its most basic level, a policy is a function which accepts as input a
+set of signed data and evaluates successfully, or returns an error
+because some aspect of the signed data did not satisfy the policy.</p>
+<p>More concretely, policies test whether the signer or signers of some
+data meet some condition required for those signatures to be considered
+‘valid’. This is useful for determining that the correct parties have
+agreed to a transaction, or change.</p>
+<p>For example a policy may define any of the following: * Administrators
+from 2 out 5 possible different organizations must sign. * Any member
+from any organization must sign. * Two specific certificates must both
+sign.</p>
+<p>Of course these are only examples, and other more powerful rules can be
+constructed.</p>
+</div>
+<div class="section" id="policy-types">
+<h2>Policy Types<a class="headerlink" href="#policy-types" title="Permalink to this headline">¶</a></h2>
+<p>There are presently two different types of policies implemented in the
+hyperledger fabric.</p>
+<ol class="arabic simple">
+<li><strong>SignaturePolicy</strong>: This policy type is the most powerful, and
+specifies the policy as a combination of evaluation rules for MSP
+Principals. It supports arbitrary combinations of <em>AND</em>, <em>OR</em>, and
+<em>NOutOf</em>, allowing the construction of extremely powerful rules like:
+“An admin of org A and 2 other admins, or 11 of 20 org admins”.</li>
+<li><strong>ImplicitMetaPolicy</strong>: Tihs policy type is less flexible than
+SignaturePolicy, and is only valid in the context of configuration.
+It aggregates the result of evaluating policies deeper in the
+configuration hierarchy, which are ultimately defined by
+SignaturePolicies. It supports good default rules like “A majority of
+the organization admin policies”.</li>
+</ol>
+<p>Policies are encoded in a <code class="docutils literal"><span class="pre">common.Policy</span></code> message as defined in
+<code class="docutils literal"><span class="pre">fabric/protos/common/policies.proto</span></code>. They are defined by the
+following message:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">message</span> <span class="n">Policy</span> <span class="p">{</span>
+    <span class="n">enum</span> <span class="n">PolicyType</span> <span class="p">{</span>
+        <span class="n">UNKNOWN</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="o">//</span> <span class="n">Reserved</span> <span class="n">to</span> <span class="n">check</span> <span class="k">for</span> <span class="n">proper</span> <span class="n">initialization</span>
+        <span class="n">SIGNATURE</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">MSP</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="n">IMPLICIT_META</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">int32</span> <span class="nb">type</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="o">//</span> <span class="n">For</span> <span class="n">outside</span> <span class="n">implementors</span><span class="p">,</span> <span class="n">consider</span> <span class="n">the</span> <span class="n">first</span> <span class="mi">1000</span> <span class="n">types</span> <span class="n">reserved</span><span class="p">,</span> <span class="n">otherwise</span> <span class="n">one</span> <span class="n">of</span> <span class="n">PolicyType</span>
+    <span class="nb">bytes</span> <span class="n">policy</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>To encode the policy, simply pick the policy type of either
+<code class="docutils literal"><span class="pre">SIGNATURE</span></code> or <code class="docutils literal"><span class="pre">IMPLICIT_META</span></code>, set it to the <code class="docutils literal"><span class="pre">type</span></code> field, and
+marshal the corresponding policy implementation proto to <code class="docutils literal"><span class="pre">policy</span></code>.</p>
+</div>
+<div class="section" id="configuration-and-policies">
+<h2>Configuration and Policies<a class="headerlink" href="#configuration-and-policies" title="Permalink to this headline">¶</a></h2>
+<p>The channel configuration is expressed as a hierarchy of configuration
+groups, each of which has a set of values and policies associated with
+them. For a validly configured application channel with two application
+organizations and one ordering organization, the configuration looks
+minimally as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Channel</span><span class="p">:</span>
+    <span class="n">Policies</span><span class="p">:</span>
+        <span class="n">Readers</span>
+        <span class="n">Writers</span>
+        <span class="n">Admins</span>
+    <span class="n">Groups</span><span class="p">:</span>
+        <span class="n">Orderer</span><span class="p">:</span>
+            <span class="n">Policies</span><span class="p">:</span>
+                <span class="n">Readers</span>
+                <span class="n">Writers</span>
+                <span class="n">Admins</span>
+            <span class="n">Groups</span><span class="p">:</span>
+                <span class="n">OrdereringOrganization1</span><span class="p">:</span>
+                    <span class="n">Policies</span><span class="p">:</span>
+                        <span class="n">Readers</span>
+                        <span class="n">Writers</span>
+                        <span class="n">Admins</span>
+        <span class="n">Application</span><span class="p">:</span>
+            <span class="n">Policies</span><span class="p">:</span>
+                <span class="n">Readers</span>
+<span class="o">-----------&gt;</span>    <span class="n">Writers</span>
+                <span class="n">Admins</span>
+            <span class="n">Groups</span><span class="p">:</span>
+                <span class="n">ApplicationOrganization1</span><span class="p">:</span>
+                    <span class="n">Policies</span><span class="p">:</span>
+                        <span class="n">Readers</span>
+                        <span class="n">Writers</span>
+                        <span class="n">Admins</span>
+                <span class="n">ApplicationOrganization2</span><span class="p">:</span>
+                    <span class="n">Policies</span><span class="p">:</span>
+                        <span class="n">Readers</span>
+                        <span class="n">Writers</span>
+                        <span class="n">Admins</span>
+</pre></div>
+</div>
+<p>Consider the Writers policy referred to with the <code class="docutils literal"><span class="pre">-------&gt;</span></code> mark in
+the above example. This policy may be referred to by the shorthand
+notation <code class="docutils literal"><span class="pre">/Channel/Application/Writers</span></code>. Note that the elements
+resembling directory components are group names, whlie the last
+component resembling a file basename is the policy name.</p>
+<p>Different components of the system will refer to these policy names. For
+instance, to call <code class="docutils literal"><span class="pre">Deliver</span></code> on the orderer, the signature on the
+request must satisfy the <code class="docutils literal"><span class="pre">/Channel/Readers</span></code> policy. However, to gossip
+a block to a peer will require that the <code class="docutils literal"><span class="pre">/Channel/Application/Readers</span></code>
+policy be satisfied.</p>
+<p>By setting these different policies, the system can be configured with
+rich access controls.</p>
+</div>
+<div class="section" id="constructing-a-signaturepolicy">
+<h2>Constructing a SignaturePolicy<a class="headerlink" href="#constructing-a-signaturepolicy" title="Permalink to this headline">¶</a></h2>
+<p>As with all policies, the SignaturePolicy is expressed as protobuf.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">message</span> <span class="n">SignaturePolicyEnvelope</span> <span class="p">{</span>
+    <span class="n">int32</span> <span class="n">version</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">SignaturePolicy</span> <span class="n">policy</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="n">repeated</span> <span class="n">MSPPrincipal</span> <span class="n">identities</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">message</span> <span class="n">SignaturePolicy</span> <span class="p">{</span>
+    <span class="n">message</span> <span class="n">NOutOf</span> <span class="p">{</span>
+        <span class="n">int32</span> <span class="n">N</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">repeated</span> <span class="n">SignaturePolicy</span> <span class="n">policies</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">oneof</span> <span class="n">Type</span> <span class="p">{</span>
+        <span class="n">int32</span> <span class="n">signed_by</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">NOutOf</span> <span class="n">n_out_of</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The outer <code class="docutils literal"><span class="pre">SignaturePolicyEnvelope</span></code> defines a version (currently only
+<code class="docutils literal"><span class="pre">0</span></code> is supported), a set of identities expressed as
+<code class="docutils literal"><span class="pre">MSPPrincipal</span></code>s , and a <code class="docutils literal"><span class="pre">policy</span></code> which defines the policy rule,
+referencing the <code class="docutils literal"><span class="pre">identities</span></code> by index. For more details on how to
+specify MSP Principals, see the MSP Principals section.</p>
+<p>The <code class="docutils literal"><span class="pre">SignaturePolicy</span></code> is a recursive data structure which either
+represents a single signature requirement from a specific
+<code class="docutils literal"><span class="pre">MSPPrincipal</span></code>, or a collection of <code class="docutils literal"><span class="pre">SignaturePolicy</span></code>s, requiring
+that <code class="docutils literal"><span class="pre">N</span></code> of them are satisfied.</p>
+<p>For example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">SignaturePolicyEnvelope</span><span class="p">{</span>
+    <span class="n">version</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">policy</span><span class="p">:</span> <span class="n">SignaturePolicy</span><span class="p">{</span>
+        <span class="n">n_out_of</span><span class="p">:</span> <span class="n">NOutOf</span><span class="p">{</span>
+            <span class="n">N</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="n">policies</span><span class="p">:</span> <span class="p">[</span>
+                <span class="n">SignaturePolicy</span><span class="p">{</span> <span class="n">signed_by</span><span class="p">:</span> <span class="mi">0</span> <span class="p">},</span>
+                <span class="n">SignaturePolicy</span><span class="p">{</span> <span class="n">signed_by</span><span class="p">:</span> <span class="mi">1</span> <span class="p">},</span>
+            <span class="p">],</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="n">identities</span><span class="p">:</span> <span class="p">[</span><span class="n">mspP1</span><span class="p">,</span> <span class="n">mspP2</span><span class="p">],</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This defines a signature policy over MSP Prinicipals <code class="docutils literal"><span class="pre">mspP1</span></code> and
+<code class="docutils literal"><span class="pre">mspP2</span></code>. It requires both that there is a signature satisfying
+<code class="docutils literal"><span class="pre">mspP1</span></code> and a signature satisfying <code class="docutils literal"><span class="pre">mspP2</span></code>.</p>
+<p>As another more complex example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">SignaturePolicyEnvelope</span><span class="p">{</span>
+    <span class="n">version</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">policy</span><span class="p">:</span> <span class="n">SignaturePolicy</span><span class="p">{</span>
+        <span class="n">n_out_of</span><span class="p">:</span> <span class="n">NOutOf</span><span class="p">{</span>
+            <span class="n">N</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="n">policies</span><span class="p">:</span> <span class="p">[</span>
+                <span class="n">SignaturePolicy</span><span class="p">{</span> <span class="n">signed_by</span><span class="p">:</span> <span class="mi">0</span> <span class="p">},</span>
+                <span class="n">SignaturePolicy</span><span class="p">{</span>
+                    <span class="n">n_out_of</span><span class="p">:</span> <span class="n">NOutOf</span><span class="p">{</span>
+                        <span class="n">N</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                        <span class="n">policies</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="n">SignaturePolicy</span><span class="p">{</span> <span class="n">signed_by</span><span class="p">:</span> <span class="mi">1</span> <span class="p">},</span>
+                            <span class="n">SignaturePolicy</span><span class="p">{</span> <span class="n">signed_by</span><span class="p">:</span> <span class="mi">2</span> <span class="p">},</span>
+                        <span class="p">],</span>
+                    <span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">],</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="n">identities</span><span class="p">:</span> <span class="p">[</span><span class="n">mspP1</span><span class="p">,</span> <span class="n">mspP2</span><span class="p">,</span> <span class="n">mspP3</span><span class="p">],</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This defines a signature policy over MSP Principals <code class="docutils literal"><span class="pre">mspP1</span></code>,
+<code class="docutils literal"><span class="pre">mspP2</span></code>, and <code class="docutils literal"><span class="pre">mspP3</span></code>. It requires one signature which satisfies
+<code class="docutils literal"><span class="pre">mspP0</span></code>, and another signature which either satisfies <code class="docutils literal"><span class="pre">mspP2</span></code> or
+<code class="docutils literal"><span class="pre">mspP3</span></code>.</p>
+<p>Hopefully it is clear that complicated and relatively arbitrary logic
+may be expressed using the SignaturePolicy policy type. For code which
+constructs signature policies, consult
+<code class="docutils literal"><span class="pre">fabric/common/cauthdsl/cauthdsl_builder.go</span></code>.</p>
+</div>
+<div class="section" id="msp-principals">
+<h2>MSP Principals<a class="headerlink" href="#msp-principals" title="Permalink to this headline">¶</a></h2>
+<p>The MSP Principal is a generalized notion of cryptographic identity.
+Although the MSP framework is designed to work with types of
+cryptography other than X.509, for the purposes of this document, the
+discussion will assume that the underlying MSP implementation is the
+fabric MSP type, based on X.509 cryptography.</p>
+<p>An MSP Principal is defined in <code class="docutils literal"><span class="pre">fabric/protos/msp_principal.proto</span></code> as
+follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">message</span> <span class="n">MSPPrincipal</span> <span class="p">{</span>
+
+    <span class="n">enum</span> <span class="n">Classification</span> <span class="p">{</span>
+        <span class="n">ROLE</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="n">ORGANIZATION_UNIT</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">IDENTITY</span>  <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">Classification</span> <span class="n">principal_classification</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+    <span class="nb">bytes</span> <span class="n">principal</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">principal_classification</span></code> must be set to either <code class="docutils literal"><span class="pre">ROLE</span></code> or
+<code class="docutils literal"><span class="pre">IDENTITY</span></code>. The <code class="docutils literal"><span class="pre">ORGANIZATIONAL_UNIT</span></code> is at the time of this writing
+not implemented.</p>
+<p>In the case of <code class="docutils literal"><span class="pre">IDENTITY</span></code> the <code class="docutils literal"><span class="pre">principal</span></code> field is set to the bytes
+of a certificate literal.</p>
+<p>However, more commonly the <code class="docutils literal"><span class="pre">ROLE</span></code> type is used, as it allows the
+principal to match many different certs issued by the MSP’s certificate
+authority.</p>
+<p>In the case of <code class="docutils literal"><span class="pre">ROLE</span></code>, the <code class="docutils literal"><span class="pre">principal</span></code> is a marshaled <code class="docutils literal"><span class="pre">MSPRole</span></code>
+message defined as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">message</span> <span class="n">MSPRole</span> <span class="p">{</span>
+    <span class="n">string</span> <span class="n">msp_identifier</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+    <span class="n">enum</span> <span class="n">MSPRoleType</span> <span class="p">{</span>
+        <span class="n">MEMBER</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="o">//</span> <span class="n">Represents</span> <span class="n">an</span> <span class="n">MSP</span> <span class="n">Member</span>
+        <span class="n">ADMIN</span>  <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="o">//</span> <span class="n">Represents</span> <span class="n">an</span> <span class="n">MSP</span> <span class="n">Admin</span>
+    <span class="p">}</span>
+
+    <span class="n">MSPRoleType</span> <span class="n">Role</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">msp_identifier</span></code> is set to the ID of the MSP (as defined by the
+MSPConfig proto in the channel configuration for an org) which will
+evaluate the signature, and the <code class="docutils literal"><span class="pre">Role</span></code> is set to either <code class="docutils literal"><span class="pre">MEMBER</span></code> or
+<code class="docutils literal"><span class="pre">ADMIN</span></code>. The <code class="docutils literal"><span class="pre">MEMBER</span></code> role will match any certificate issued by the
+MSP, while the <code class="docutils literal"><span class="pre">ADMIN</span></code> role will match only certificates which are
+enumerated as admin certificates in the MSP definition.</p>
+</div>
+<div class="section" id="constructing-an-implicitmetapolicy">
+<h2>Constructing an ImplicitMetaPolicy<a class="headerlink" href="#constructing-an-implicitmetapolicy" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal"><span class="pre">ImplicitMetaPolicy</span></code> is only validly defined in the context of
+channel configuration. It is <code class="docutils literal"><span class="pre">Implicit</span></code> because it is constructed
+implicitly based on the current configuration, and it is <code class="docutils literal"><span class="pre">Meta</span></code>
+because its evaluation is not against MSP principals, but rather against
+other policies. It is defined in <code class="docutils literal"><span class="pre">fabric/protos/common/policies.proto</span></code>
+as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">message</span> <span class="n">ImplicitMetaPolicy</span> <span class="p">{</span>
+    <span class="n">enum</span> <span class="n">Rule</span> <span class="p">{</span>
+        <span class="n">ANY</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>      <span class="o">//</span> <span class="n">Requires</span> <span class="nb">any</span> <span class="n">of</span> <span class="n">the</span> <span class="n">sub</span><span class="o">-</span><span class="n">policies</span> <span class="n">be</span> <span class="n">satisfied</span><span class="p">,</span> <span class="k">if</span> <span class="n">no</span> <span class="n">sub</span><span class="o">-</span><span class="n">policies</span> <span class="n">exist</span><span class="p">,</span> <span class="n">always</span> <span class="n">returns</span> <span class="n">true</span>
+        <span class="n">ALL</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>      <span class="o">//</span> <span class="n">Requires</span> <span class="nb">all</span> <span class="n">of</span> <span class="n">the</span> <span class="n">sub</span><span class="o">-</span><span class="n">policies</span> <span class="n">be</span> <span class="n">satisfied</span>
+        <span class="n">MAJORITY</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span> <span class="o">//</span> <span class="n">Requires</span> <span class="n">a</span> <span class="n">strict</span> <span class="n">majority</span> <span class="p">(</span><span class="n">greater</span> <span class="n">than</span> <span class="n">half</span><span class="p">)</span> <span class="n">of</span> <span class="n">the</span> <span class="n">sub</span><span class="o">-</span><span class="n">policies</span> <span class="n">be</span> <span class="n">satisfied</span>
+    <span class="p">}</span>
+    <span class="n">string</span> <span class="n">sub_policy</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">Rule</span> <span class="n">rule</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For example, consider a policy defined at <code class="docutils literal"><span class="pre">/Channel/Readers</span></code> as</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">ImplicitMetaPolicy</span><span class="p">{</span>
+    <span class="n">rule</span><span class="p">:</span> <span class="n">ANY</span><span class="p">,</span>
+    <span class="n">sub_policy</span><span class="p">:</span> <span class="s2">&quot;foo&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This policy will implicity select the sub-groups of <code class="docutils literal"><span class="pre">/Channel</span></code>, in
+this case, <code class="docutils literal"><span class="pre">Application</span></code> and <code class="docutils literal"><span class="pre">Orderer</span></code>, and retrieve the policy of
+name <code class="docutils literal"><span class="pre">foo</span></code>, to give the policies <code class="docutils literal"><span class="pre">/Channel/Application/foo</span></code> and
+<code class="docutils literal"><span class="pre">/Channel/Orderer/foo</span></code>. Then, when the policy is evaluated, it will
+check to see if <code class="docutils literal"><span class="pre">ANY</span></code> of those two policies evaluate without error.
+Had the rule been <code class="docutils literal"><span class="pre">ALL</span></code> it would require both.</p>
+<p>Consider another policy defined at <code class="docutils literal"><span class="pre">/Channel/Application/Writers</span></code>
+where there are 3 application orgs defined, <code class="docutils literal"><span class="pre">OrgA</span></code>, <code class="docutils literal"><span class="pre">OrgB</span></code>, and
+<code class="docutils literal"><span class="pre">OrgC</span></code>.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">ImplicitMetaPolicy</span><span class="p">{</span>
+    <span class="n">rule</span><span class="p">:</span> <span class="n">MAJORITY</span><span class="p">,</span>
+    <span class="n">sub_policy</span><span class="p">:</span> <span class="s2">&quot;bar&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>In this case, the policies collected would be
+<code class="docutils literal"><span class="pre">/Channel/Application/OrgA/bar</span></code>, <code class="docutils literal"><span class="pre">/Channel/Application/OrgB/bar</span></code>,
+and <code class="docutils literal"><span class="pre">/Channel/Application/OrgC/bar</span></code>. Because the rule requires a
+<code class="docutils literal"><span class="pre">MAJORITY</span></code>, this policy will require that 2 of the three
+organization’s <code class="docutils literal"><span class="pre">bar</span></code> policies are satisfied.</p>
+</div>
+<div class="section" id="policy-defaults">
+<h2>Policy Defaults<a class="headerlink" href="#policy-defaults" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal"><span class="pre">configtxgen</span></code> tool creates default policies as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Readers</span> <span class="p">:</span> <span class="n">ImplicitMetaPolicy</span> <span class="k">for</span> <span class="n">ANY</span> <span class="n">of</span> <span class="o">/</span><span class="n">Channel</span><span class="o">/*/</span><span class="n">Readers</span>
+<span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Writers</span> <span class="p">:</span> <span class="n">ImplicitMetaPolicy</span> <span class="k">for</span> <span class="n">ANY</span> <span class="n">of</span> <span class="o">/</span><span class="n">Channel</span><span class="o">/*/</span><span class="n">Writers</span>
+<span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Admins</span>  <span class="p">:</span> <span class="n">ImplicitMetaPolicy</span> <span class="k">for</span> <span class="n">MAJORITY</span> <span class="n">of</span> <span class="o">/</span><span class="n">Channel</span><span class="o">/*/</span><span class="n">Admins</span>
+
+<span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Application</span><span class="o">/</span><span class="n">Readers</span> <span class="p">:</span> <span class="n">ImplicitMetaPolicy</span> <span class="k">for</span> <span class="n">ANY</span> <span class="n">of</span> <span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Application</span><span class="o">/*/</span><span class="n">Readers</span>
+<span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Application</span><span class="o">/</span><span class="n">Writers</span> <span class="p">:</span> <span class="n">ImplicitMetaPolicy</span> <span class="k">for</span> <span class="n">ANY</span> <span class="n">of</span> <span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Application</span><span class="o">/*/</span><span class="n">Writers</span>
+<span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Application</span><span class="o">/</span><span class="n">Admins</span>  <span class="p">:</span> <span class="n">ImplicitMetaPolicy</span> <span class="k">for</span> <span class="n">MAJORITY</span> <span class="n">of</span> <span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Application</span><span class="o">/*/</span><span class="n">Admins</span>
+
+<span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Orderer</span><span class="o">/</span><span class="n">Readers</span> <span class="p">:</span> <span class="n">ImplicitMetaPolicy</span> <span class="k">for</span> <span class="n">ANY</span> <span class="n">of</span> <span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Orderer</span><span class="o">/*/</span><span class="n">Readers</span>
+<span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Orderer</span><span class="o">/</span><span class="n">Writers</span> <span class="p">:</span> <span class="n">ImplicitMetaPolicy</span> <span class="k">for</span> <span class="n">ANY</span> <span class="n">of</span> <span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Orderer</span><span class="o">/*/</span><span class="n">Writers</span>
+<span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Orderer</span><span class="o">/</span><span class="n">Admins</span>  <span class="p">:</span> <span class="n">ImplicitMetaPolicy</span> <span class="k">for</span> <span class="n">MAJORITY</span> <span class="n">of</span> <span class="o">/</span><span class="n">Channel</span><span class="o">/</span><span class="n">Orderer</span><span class="o">/*/</span><span class="n">Admins</span>
+
+<span class="c1"># Here * represents either Orderer, or Application, and this is repeated for each org</span>
+<span class="o">/</span><span class="n">Channel</span><span class="o">/*/</span><span class="n">Org</span><span class="o">/</span><span class="n">Readers</span> <span class="p">:</span> <span class="n">SignaturePolicy</span> <span class="k">for</span> <span class="mi">1</span> <span class="n">of</span> <span class="n">MSP</span> <span class="n">Principal</span> <span class="n">Org</span> <span class="n">Member</span>
+<span class="o">/</span><span class="n">Channel</span><span class="o">/*/</span><span class="n">Org</span><span class="o">/</span><span class="n">Writers</span> <span class="p">:</span> <span class="n">SignaturePolicy</span> <span class="k">for</span> <span class="mi">1</span> <span class="n">of</span> <span class="n">MSP</span> <span class="n">Principal</span> <span class="n">Org</span> <span class="n">Member</span>
+<span class="o">/</span><span class="n">Channel</span><span class="o">/*/</span><span class="n">Org</span><span class="o">/</span><span class="n">Admins</span>  <span class="p">:</span> <span class="n">SignaturePolicy</span> <span class="k">for</span> <span class="mi">1</span> <span class="n">of</span> <span class="n">MSP</span> <span class="n">Principal</span> <span class="n">Org</span> <span class="n">Admin</span>
+</pre></div>
+</div>
+<p>Note that policies higher in the hierarchy are all defined as
+<code class="docutils literal"><span class="pre">ImplicitMetaPolicy</span></code>s while leaf nodes necessarily are defined as
+<code class="docutils literal"><span class="pre">SignaturePolicy</span></code>s. This set of defaults works nicely because the
+<code class="docutils literal"><span class="pre">ImplicitMetaPolicies</span></code> do not need to be redefined as the number of
+organizations change, and the individual organizations may pick their
+own rules and thresholds for what is means to be a a Reader, Writer, and
+Admin.</p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

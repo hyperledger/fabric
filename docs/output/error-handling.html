@@ -1,0 +1,432 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Error handling &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Error handling</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/error-handling.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="error-handling">
+<h1>Error handling<a class="headerlink" href="#error-handling" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="general-overview">
+<h2>General Overview<a class="headerlink" href="#general-overview" title="Permalink to this headline">¶</a></h2>
+<p>The Fabric error handling framework can be found in the Fabric repository under
+common/errors. It defines a new type of error, CallStackError, to use in place of
+the standard error type provided by Go.</p>
+<p>A CallStackError consists of the following:</p>
+<ul class="simple">
+<li>Component code - a name for the general area of the code that is generating
+the error. Component codes should consist of three uppercase letters. Numerics
+and special characters are not allowed.</li>
+</ul>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Make sure to use a consistent component name across code in related
+files/packages.
+Examples of component codes (with their full component name in parentheses)
+are: CSP (bccsp), CMN (common), COR (core), CCS (core/chaincode), CDS
+(core/deliverservice), SCC (core/scc), EVT (events), GSP (gossip), LGR
+(ledger), PER (peer), ORD (orderer)</p>
+</div>
+<p>We may, in the future, add constants to allow searching for currently defined
+components for those using an editor with code completion capabilities.</p>
+<ul class="simple">
+<li>Reason code - a short code to help identify the reason the error occurred.
+Reason codes should consist of three numeric values. Letters and special
+characters are not allowed.</li>
+<li>Error code - the component code and reason code separated by a colon,
+e.g. PER:404</li>
+<li>Error message - the text that describes the error. This is the same as the
+input provided to <code class="docutils literal"><span class="pre">fmt.Errorf()</span></code> and <code class="docutils literal"><span class="pre">Errors.New()</span></code>. If an error has been
+wrapped into the current error, its message will be appended.</li>
+<li>Callstack - the callstack at the time the error is created. If an error has
+been wrapped into the current error, its error message and callstack will be
+appended to retain the context of the wrapped error.</li>
+</ul>
+<p>The CallStackError interface exposes the following functions:
+- Error() - returns the error message with callstack appended
+- Message() - returns the error message (without callstack appended)
+- GetComponentCode()
+- GetReasonCode()
+- GetErrorCode()
+- GetStack() - returns just the callstack
+- WrapError(error) - wraps the provided error into the CallStackError</p>
+</div>
+<div class="section" id="usage-instructions">
+<h2>Usage Instructions<a class="headerlink" href="#usage-instructions" title="Permalink to this headline">¶</a></h2>
+<p>The new error handling framework should be used in place of all calls to
+<code class="docutils literal"><span class="pre">fmt.Errorf()</span></code> or <code class="docutils literal"><span class="pre">Errors.new()</span></code>. Using this framework will provide error
+codes to check against as well as the option to generate a callstack that will be
+appended to the error message.</p>
+<p>Using the framework is simple and will only require an easy tweak to your code.</p>
+<p>First, you’ll need to import <strong>github.com/hyperledger/fabric/common/errors</strong> into
+any file that uses this framework.</p>
+<p>Let’s take the following as an example from core/chaincode/chaincode_support.go:</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">err</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s2">&quot;Error starting container: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For this error, we will simply call the constructor for Error and pass a
+component code, reason code, followed by the error message. At the end, we
+then call the <code class="docutils literal"><span class="pre">WrapError()</span></code> function, passing along the error itself.</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s2">&quot;Error starting container: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>becomes</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">errors</span><span class="o">.</span><span class="n">ErrorWithCallstack</span><span class="p">(</span><span class="s2">&quot;CHA&quot;</span><span class="p">,</span> <span class="s2">&quot;505&quot;</span><span class="p">,</span> <span class="s2">&quot;Error starting container&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">WrapError</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You could also just leave the message as is without any problems:</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">errors</span><span class="o">.</span><span class="n">ErrorWithCallstack</span><span class="p">(</span><span class="s2">&quot;CHA&quot;</span><span class="p">,</span> <span class="s2">&quot;505&quot;</span><span class="p">,</span> <span class="s2">&quot;Error starting container: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With this usage you will be able to format the error message from the previous
+error into the new error, but will lose the ability to print the callstack (if
+the wrapped error is a CallStackError).</p>
+<p>A second example to highlight a scenario that involves formatting directives for
+parameters other than errors, while still wrapping an error, is as follows:</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s2">&quot;failed to get deployment payload </span><span class="si">%s</span><span class="s2"> - </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">canName</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>becomes</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">errors</span><span class="o">.</span><span class="n">ErrorWithCallstack</span><span class="p">(</span><span class="s2">&quot;CHA&quot;</span><span class="p">,</span> <span class="s2">&quot;506&quot;</span><span class="p">,</span> <span class="s2">&quot;Failed to get deployment payload </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">canName</span><span class="p">)</span><span class="o">.</span><span class="n">WrapError</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="displaying-error-messages">
+<h2>Displaying error messages<a class="headerlink" href="#displaying-error-messages" title="Permalink to this headline">¶</a></h2>
+<p>Once the error has been created using the framework, displaying the error
+message is as simple as:</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">logger</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>or</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>or</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">.</span><span class="n">Printf</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An example from peer/common/common.go:</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">errors</span><span class="o">.</span><span class="n">ErrorWithCallstack</span><span class="p">(</span><span class="s2">&quot;PER&quot;</span><span class="p">,</span> <span class="s2">&quot;404&quot;</span><span class="p">,</span> <span class="s2">&quot;Error trying to connect to local peer&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">WrapError</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>would display the error message:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">PER</span><span class="p">:</span><span class="mi">404</span> <span class="o">-</span> <span class="n">Error</span> <span class="n">trying</span> <span class="n">to</span> <span class="n">connect</span> <span class="n">to</span> <span class="n">local</span> <span class="n">peer</span>
+<span class="n">Caused</span> <span class="n">by</span><span class="p">:</span> <span class="n">grpc</span><span class="p">:</span> <span class="n">timed</span> <span class="n">out</span> <span class="n">when</span> <span class="n">dialing</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The callstacks have not been displayed for this example for the sake of
+brevity.</p>
+</div>
+</div>
+<div class="section" id="general-guidelines-for-error-handling-in-fabric">
+<h2>General guidelines for error handling in Fabric<a class="headerlink" href="#general-guidelines-for-error-handling-in-fabric" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>If it is some sort of best effort thing you are doing, you should log the
+error and ignore it.</li>
+<li>If you are servicing a user request, you should log the error and return it.</li>
+<li>If the error comes from elsewhere in the Fabric, you have the choice to wrap
+the error or not. Typically, it’s best to not wrap the error and simply return
+it as is. However, for certain cases where a utility function is called,
+wrapping the error with a new component and reason code can help an end user
+understand where the error is really occurring without inspecting the callstack.</li>
+<li>A panic should be handled within the same layer by throwing an internal error
+code/start a recovery process and should not be allowed to propagate to other
+packages.</li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

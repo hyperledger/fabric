@@ -1,0 +1,640 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Gerrit Recommended Practices &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/>
+        <link rel="next" title="Testing" href="../testing.html"/>
+        <link rel="prev" title="Reviewing a Change" href="reviewing.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Gerrit Recommended Practices</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#browsing-the-git-tree">Browsing the Git Tree</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#watching-a-project">Watching a Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#commit-messages">Commit Messages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#avoid-pushing-untested-work-to-a-gerrit-server">Avoid Pushing Untested Work to a Gerrit Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#keeping-track-of-changes">Keeping Track of Changes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#topic-branches">Topic branches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-a-cover-letter-for-a-topic">Creating a Cover Letter for a Topic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#finding-available-topics">Finding Available Topics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#downloading-or-checking-out-a-change">Downloading or Checking Out a Change</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-draft-branches">Using Draft Branches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-sandbox-branches">Using Sandbox Branches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#updating-the-version-of-a-change">Updating the Version of a Change</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rebasing">Rebasing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rebasing-during-a-pull">Rebasing During a Pull</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#getting-better-logs-from-git">Getting Better Logs from Git</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Gerrit Recommended Practices</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/Gerrit/best-practices.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="gerrit-recommended-practices">
+<h1>Gerrit Recommended Practices<a class="headerlink" href="#gerrit-recommended-practices" title="Permalink to this headline">¶</a></h1>
+<p>This document presents some best practices to help you use Gerrit more
+effectively. The intent is to show how content can be submitted easily.
+Use the recommended practices to reduce your troubleshooting time and
+improve participation in the community.</p>
+<div class="section" id="browsing-the-git-tree">
+<h2>Browsing the Git Tree<a class="headerlink" href="#browsing-the-git-tree" title="Permalink to this headline">¶</a></h2>
+<p>Visit
+<a class="reference external" href="https://gerrit.hyperledger.org/r/#/admin/projects/fabric">Gerrit</a>
+then select <code class="docutils literal"><span class="pre">Projects</span> <span class="pre">--&gt;</span> <span class="pre">List</span> <span class="pre">--&gt;</span> <span class="pre">SELECT-PROJECT</span> <span class="pre">--&gt;</span> <span class="pre">Branches</span></code>.
+Select the branch that interests you, click on <code class="docutils literal"><span class="pre">gitweb</span></code> located on the
+right-hand side. Now, <code class="docutils literal"><span class="pre">gitweb</span></code> loads your selection on the Git web
+interface and redirects appropriately.</p>
+</div>
+<div class="section" id="watching-a-project">
+<h2>Watching a Project<a class="headerlink" href="#watching-a-project" title="Permalink to this headline">¶</a></h2>
+<p>Visit
+<a class="reference external" href="https://gerrit.hyperledger.org/r/#/admin/projects/fabric">Gerrit</a>,
+then select <code class="docutils literal"><span class="pre">Settings</span></code>, located on the top right corner. Select
+<code class="docutils literal"><span class="pre">Watched</span> <span class="pre">Projects</span></code> and then add any projects that interest you.</p>
+</div>
+<div class="section" id="commit-messages">
+<h2>Commit Messages<a class="headerlink" href="#commit-messages" title="Permalink to this headline">¶</a></h2>
+<p>Gerrit follows the Git commit message format. Ensure the headers are at
+the bottom and don’t contain blank lines between one another. The
+following example shows the format and content expected in a commit
+message:</p>
+<p>Brief (no more than 50 chars) one line description.</p>
+<p>Elaborate summary of the changes made referencing why (motivation), what
+was changed and how it was tested. Note also any changes to
+documentation made to remain consistent with the code changes, wrapping
+text at 72 chars/line.</p>
+<div class="line-block">
+<div class="line">Jira: FAB-100</div>
+<div class="line">Change-Id: LONGHEXHASH</div>
+<div class="line">Signed-off-by: Your Name <a class="reference external" href="mailto:your&#46;email&#37;&#52;&#48;example&#46;org">your<span>&#46;</span>email<span>&#64;</span>example<span>&#46;</span>org</a></div>
+<div class="line">AnotherExampleHeader: An Example of another Value</div>
+</div>
+<p>The Gerrit server provides a precommit hook to autogenerate the
+Change-Id which is one time use.</p>
+<p><strong>Recommended reading:</strong> <a class="reference external" href="http://chris.beams.io/posts/git-commit/">How to Write a Git Commit
+Message</a></p>
+</div>
+<div class="section" id="avoid-pushing-untested-work-to-a-gerrit-server">
+<h2>Avoid Pushing Untested Work to a Gerrit Server<a class="headerlink" href="#avoid-pushing-untested-work-to-a-gerrit-server" title="Permalink to this headline">¶</a></h2>
+<p>To avoid pushing untested work to Gerrit.</p>
+<p>Check your work at least three times before pushing your change to
+Gerrit. Be mindful of what information you are publishing.</p>
+</div>
+<div class="section" id="keeping-track-of-changes">
+<h2>Keeping Track of Changes<a class="headerlink" href="#keeping-track-of-changes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Set Gerrit to send you emails:</li>
+<li>Gerrit will add you to the email distribution list for a change if a
+developer adds you as a reviewer, or if you comment on a specific
+Patch Set.</li>
+<li>Opening a change in Gerrit’s review interface is a quick way to
+follow that change.</li>
+<li>Watch projects in the Gerrit projects section at <code class="docutils literal"><span class="pre">Gerrit</span></code>, select
+at least <em>New Changes, New Patch Sets, All Comments</em> and <em>Submitted
+Changes</em>.</li>
+</ul>
+<p>Always track the projects you are working on; also see the
+feedback/comments mailing list to learn and help others ramp up.</p>
+</div>
+<div class="section" id="topic-branches">
+<h2>Topic branches<a class="headerlink" href="#topic-branches" title="Permalink to this headline">¶</a></h2>
+<p>Topic branches are temporary branches that you push to commit a set of
+logically-grouped dependent commits:</p>
+<p>To push changes from <code class="docutils literal"><span class="pre">REMOTE/master</span></code> tree to Gerrit for being reviewed
+as a topic in <strong>TopicName</strong> use the following command as an example:</p>
+<p>$ git push REMOTE HEAD:refs/for/master/TopicName</p>
+<p>The topic will show up in the review :abbr:<code class="docutils literal"><span class="pre">UI</span></code> and in the
+<code class="docutils literal"><span class="pre">Open</span> <span class="pre">Changes</span> <span class="pre">List</span></code>. Topic branches will disappear from the master
+tree when its content is merged.</p>
+</div>
+<div class="section" id="creating-a-cover-letter-for-a-topic">
+<h2>Creating a Cover Letter for a Topic<a class="headerlink" href="#creating-a-cover-letter-for-a-topic" title="Permalink to this headline">¶</a></h2>
+<p>You may decide whether or not you’d like the cover letter to appear in
+the history.</p>
+<ol class="arabic simple">
+<li>To make a cover letter that appears in the history, use this command:</li>
+</ol>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">--</span><span class="n">allow</span><span class="o">-</span><span class="n">empty</span>
+</pre></div>
+</div>
+<p>Edit the commit message, this message then becomes the cover letter. The
+command used doesn’t change any files in the source tree.</p>
+<ol class="arabic simple" start="2">
+<li>To make a cover letter that doesn’t appear in the history follow
+these steps:</li>
+</ol>
+<ul>
+<li><div class="first line-block">
+<div class="line">Put the empty commit at the end of your commits list so it can be
+ignored</div>
+<div class="line">without having to rebase.</div>
+</div>
+</li>
+<li><p class="first">Now add your commits</p>
+</li>
+</ul>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">...</span>
+<span class="n">git</span> <span class="n">commit</span> <span class="o">...</span>
+<span class="n">git</span> <span class="n">commit</span> <span class="o">...</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>Finally, push the commits to a topic branch. The following command is
+an example:</li>
+</ul>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">push</span> <span class="n">REMOTE</span> <span class="n">HEAD</span><span class="p">:</span><span class="n">refs</span><span class="o">/</span><span class="k">for</span><span class="o">/</span><span class="n">master</span><span class="o">/</span><span class="n">TopicName</span>
+</pre></div>
+</div>
+<p>If you already have commits but you want to set a cover letter, create
+an empty commit for the cover letter and move the commit so it becomes
+the last commit on the list. Use the following command as an example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">rebase</span> <span class="o">-</span><span class="n">i</span> <span class="n">HEAD</span><span class="o">~</span><span class="c1">#Commits</span>
+</pre></div>
+</div>
+<p>Be careful to uncomment the commit before moving it. <code class="docutils literal"><span class="pre">#Commits</span></code> is the
+sum of the commits plus your new cover letter.</p>
+</div>
+<div class="section" id="finding-available-topics">
+<h2>Finding Available Topics<a class="headerlink" href="#finding-available-topics" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ ssh -p 29418 gerrit.hyperledger.org gerrit query \ status:open project:fabric branch:master \
+| grep topic: | sort -u
+</pre></div>
+</div>
+<ul class="simple">
+<li><a href="#id1"><span class="problematic" id="id2">`gerrit.hyperledger.org &lt;&gt;`__</span></a> Is the current URL where the project is
+hosted.</li>
+<li><em>status</em> Indicates the topic’s current status: open , merged,
+abandoned, draft, merge conflict.</li>
+<li><em>project</em> Refers to the current name of the project, in this case
+fabric.</li>
+<li><em>branch</em> The topic is searched at this branch.</li>
+<li><em>topic</em> The name of an specific topic, leave it blank to include them
+all.</li>
+<li><em>sort</em> Sorts the found topics, in this case by update (-u).</li>
+</ul>
+</div>
+<div class="section" id="downloading-or-checking-out-a-change">
+<h2>Downloading or Checking Out a Change<a class="headerlink" href="#downloading-or-checking-out-a-change" title="Permalink to this headline">¶</a></h2>
+<p>In the review UI, on the top right corner, the <strong>Download</strong> link
+provides a list of commands and hyperlinks to checkout or download diffs
+or files.</p>
+<p>We recommend the use of the <em>git review</em> plugin. The steps to install
+git review are beyond the scope of this document. Refer to the <a class="reference external" href="https://wiki.openstack.org/wiki/Documentation/HowTo/FirstTimers">git
+review
+documentation</a>
+for the installation process.</p>
+<p>To check out a specific change using Git, the following command usually
+works:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">review</span> <span class="o">-</span><span class="n">d</span> <span class="n">CHANGEID</span>
+</pre></div>
+</div>
+<p>If you don’t have Git-review installed, the following commands will do
+the same thing:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="n">REMOTE</span> <span class="n">refs</span><span class="o">/</span><span class="n">changes</span><span class="o">/</span><span class="n">NN</span><span class="o">/</span><span class="n">CHANGEIDNN</span><span class="o">/</span><span class="n">VERSION</span> \ <span class="o">&amp;&amp;</span> <span class="n">git</span> <span class="n">checkout</span> <span class="n">FETCH_HEAD</span>
+</pre></div>
+</div>
+<p>For example, for the 4th version of change 2464, NN is the first two
+digits (24):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="n">REMOTE</span> <span class="n">refs</span><span class="o">/</span><span class="n">changes</span><span class="o">/</span><span class="mi">24</span><span class="o">/</span><span class="mi">2464</span><span class="o">/</span><span class="mi">4</span> \ <span class="o">&amp;&amp;</span> <span class="n">git</span> <span class="n">checkout</span> <span class="n">FETCH_HEAD</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="using-draft-branches">
+<h2>Using Draft Branches<a class="headerlink" href="#using-draft-branches" title="Permalink to this headline">¶</a></h2>
+<p>You can use draft branches to add specific reviewers before you
+publishing your change. The Draft Branches are pushed to
+<code class="docutils literal"><span class="pre">refs/drafts/master/TopicName</span></code></p>
+<p>The next command ensures a local branch is created:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="n">BRANCHNAME</span>
+</pre></div>
+</div>
+<p>The next command pushes your change to the drafts branch under
+<strong>TopicName</strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">push</span> <span class="n">REMOTE</span> <span class="n">HEAD</span><span class="p">:</span><span class="n">refs</span><span class="o">/</span><span class="n">drafts</span><span class="o">/</span><span class="n">master</span><span class="o">/</span><span class="n">TopicName</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="using-sandbox-branches">
+<h2>Using Sandbox Branches<a class="headerlink" href="#using-sandbox-branches" title="Permalink to this headline">¶</a></h2>
+<p>You can create your own branches to develop features. The branches are
+pushed to the <code class="docutils literal"><span class="pre">refs/sandbox/USERNAME/BRANCHNAME</span></code> location.</p>
+<p>These commands ensure the branch is created in Gerrit’s server.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="n">sandbox</span><span class="o">/</span><span class="n">USERNAME</span><span class="o">/</span><span class="n">BRANCHNAME</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">--</span><span class="nb">set</span><span class="o">-</span><span class="n">upstream</span> <span class="n">REMOTE</span> <span class="n">HEAD</span><span class="p">:</span><span class="n">refs</span><span class="o">/</span><span class="n">heads</span><span class="o">/</span><span class="n">sandbox</span><span class="o">/</span><span class="n">USERNAME</span><span class="o">/</span><span class="n">BRANCHNAME</span>
+</pre></div>
+</div>
+<p>Usually, the process to create content is:</p>
+<ul class="simple">
+<li>develop the code,</li>
+<li>break the information into small commits,</li>
+<li>submit changes,</li>
+<li>apply feedback,</li>
+<li>rebase.</li>
+</ul>
+<p>The next command pushes forcibly without review:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">push</span> <span class="n">REMOTE</span> <span class="n">sandbox</span><span class="o">/</span><span class="n">USERNAME</span><span class="o">/</span><span class="n">BRANCHNAME</span>
+</pre></div>
+</div>
+<p>You can also push forcibly with review:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">push</span> <span class="n">REMOTE</span> <span class="n">HEAD</span><span class="p">:</span><span class="n">ref</span><span class="o">/</span><span class="k">for</span><span class="o">/</span><span class="n">sandbox</span><span class="o">/</span><span class="n">USERNAME</span><span class="o">/</span><span class="n">BRANCHNAME</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="updating-the-version-of-a-change">
+<h2>Updating the Version of a Change<a class="headerlink" href="#updating-the-version-of-a-change" title="Permalink to this headline">¶</a></h2>
+<p>During the review process, you might be asked to update your change. It
+is possible to submit multiple versions of the same change. Each version
+of the change is called a patch set.</p>
+<p>Always maintain the <strong>Change-Id</strong> that was assigned. For example, there
+is a list of commits, <strong>c0…c7</strong>, which were submitted as a topic
+branch:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">log</span> <span class="n">REMOTE</span><span class="o">/</span><span class="n">master</span><span class="o">..</span><span class="n">master</span>
+
+<span class="n">c0</span>
+<span class="o">...</span>
+<span class="n">c7</span>
+
+<span class="n">git</span> <span class="n">push</span> <span class="n">REMOTE</span> <span class="n">HEAD</span><span class="p">:</span><span class="n">refs</span><span class="o">/</span><span class="k">for</span><span class="o">/</span><span class="n">master</span><span class="o">/</span><span class="n">SOMETOPIC</span>
+</pre></div>
+</div>
+<p>After you get reviewers’ feedback, there are changes in <strong>c3</strong> and
+<strong>c4</strong> that must be fixed. If the fix requires rebasing, rebasing
+changes the commit Ids, see the
+<a class="reference external" href="http://git-scm.com/book/en/v2/Git-Branching-Rebasing">rebasing</a>
+section for more information. However, you must keep the same Change-Id
+and push the changes again:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">push</span> <span class="n">REMOTE</span> <span class="n">HEAD</span><span class="p">:</span><span class="n">refs</span><span class="o">/</span><span class="k">for</span><span class="o">/</span><span class="n">master</span><span class="o">/</span><span class="n">SOMETOPIC</span>
+</pre></div>
+</div>
+<p>This new push creates a patches revision, your local history is then
+cleared. However you can still access the history of your changes in
+Gerrit on the <code class="docutils literal"><span class="pre">review</span> <span class="pre">UI</span></code> section, for each change.</p>
+<p>It is also permitted to add more commits when pushing new versions.</p>
+</div>
+<div class="section" id="rebasing">
+<h2>Rebasing<a class="headerlink" href="#rebasing" title="Permalink to this headline">¶</a></h2>
+<p>Rebasing is usually the last step before pushing changes to Gerrit; this
+allows you to make the necessary <em>Change-Ids</em>. The <em>Change-Ids</em> must be
+kept the same.</p>
+<ul class="simple">
+<li><strong>squash:</strong> mixes two or more commits into a single one.</li>
+<li><strong>reword:</strong> changes the commit message.</li>
+<li><strong>edit:</strong> changes the commit content.</li>
+<li><strong>reorder:</strong> allows you to interchange the order of the commits.</li>
+<li><strong>rebase:</strong> stacks the commits on top of the master.</li>
+</ul>
+</div>
+<div class="section" id="rebasing-during-a-pull">
+<h2>Rebasing During a Pull<a class="headerlink" href="#rebasing-during-a-pull" title="Permalink to this headline">¶</a></h2>
+<p>Before pushing a rebase to your master, ensure that the history has a
+consecutive order.</p>
+<p>For example, your <code class="docutils literal"><span class="pre">REMOTE/master</span></code> has the list of commits from <strong>a0</strong>
+to <strong>a4</strong>; Then, your changes <strong>c0…c7</strong> are on top of <strong>a4</strong>; thus:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">log</span> <span class="o">--</span><span class="n">oneline</span> <span class="n">REMOTE</span><span class="o">/</span><span class="n">master</span><span class="o">..</span><span class="n">master</span>
+
+<span class="n">a0</span>
+<span class="n">a1</span>
+<span class="n">a2</span>
+<span class="n">a3</span>
+<span class="n">a4</span>
+<span class="n">c0</span>
+<span class="n">c1</span>
+<span class="o">...</span>
+<span class="n">c7</span>
+</pre></div>
+</div>
+<p>If <code class="docutils literal"><span class="pre">REMOTE/master</span></code> receives commits <strong>a5</strong>, <strong>a6</strong> and <strong>a7</strong>. Pull
+with a rebase as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">pull</span> <span class="o">--</span><span class="n">rebase</span> <span class="n">REMOTE</span> <span class="n">master</span>
+</pre></div>
+</div>
+<p>This pulls <strong>a5-a7</strong> and re-apply <strong>c0-c7</strong> on top of them:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ git log --oneline REMOTE/master..master
+a0
+...
+a7
+c0
+c1
+...
+c7
+</pre></div>
+</div>
+</div>
+<div class="section" id="getting-better-logs-from-git">
+<h2>Getting Better Logs from Git<a class="headerlink" href="#getting-better-logs-from-git" title="Permalink to this headline">¶</a></h2>
+<p>Use these commands to change the configuration of Git in order to
+produce better logs:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">config</span> <span class="n">log</span><span class="o">.</span><span class="n">abbrevCommit</span> <span class="n">true</span>
+</pre></div>
+</div>
+<p>The command above sets the log to abbreviate the commits’ hash.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">config</span> <span class="n">log</span><span class="o">.</span><span class="n">abbrev</span> <span class="mi">5</span>
+</pre></div>
+</div>
+<p>The command above sets the abbreviation length to the last 5 characters
+of the hash.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">config</span> <span class="nb">format</span><span class="o">.</span><span class="n">pretty</span> <span class="n">oneline</span>
+</pre></div>
+</div>
+<p>The command above avoids the insertion of an unnecessary line before the
+Author line.</p>
+<p>To make these configuration changes specifically for the current Git
+user, you must add the path option <code class="docutils literal"><span class="pre">--global</span></code> to <code class="docutils literal"><span class="pre">config</span></code> as
+follows:</p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../testing.html" class="btn btn-neutral float-right" title="Testing" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="reviewing.html" class="btn btn-neutral" title="Reviewing a Change" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

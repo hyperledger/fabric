@@ -1,0 +1,513 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>What is chaincode? &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/>
+        <link rel="next" title="Videos" href="videos.html"/>
+        <link rel="prev" title="Demos" href="demos.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">What is chaincode?</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#chaincode-interfaces">Chaincode interfaces</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#init">Init()</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#invoke">Invoke()</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#chaincode-apis">Chaincode APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#response">Response</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#command-line-interfaces">Command Line Interfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#chaincode-swimlanes">Chaincode Swimlanes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#deploy-a-chaincode">Deploy a chaincode</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>What is chaincode?</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/chaincode.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="what-is-chaincode">
+<h1>What is chaincode?<a class="headerlink" href="#what-is-chaincode" title="Permalink to this headline">¶</a></h1>
+<p>[WIP]</p>
+<p>coming soon … end-to-end examples of chaincode demonstrating the
+available APIs.</p>
+<p>Chaincode is a piece of code that is written in one of the supported
+languages such as Go or Java. It is installed and instantiated through
+an SDK or CLI onto a network of Hyperledger Fabric peer nodes, enabling
+interaction with that network’s shared ledger.</p>
+<p>There are three aspects to chaincode development:</p>
+<ul class="simple">
+<li>Chaincode Interfaces</li>
+<li>APIs</li>
+<li>Chaincode Responses</li>
+</ul>
+<div class="section" id="chaincode-interfaces">
+<h2>Chaincode interfaces<a class="headerlink" href="#chaincode-interfaces" title="Permalink to this headline">¶</a></h2>
+<p>A chaincode implements the Chaincode Interface that supports two
+methods:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">Init</span></code></li>
+<li><code class="docutils literal"><span class="pre">Invoke</span></code></li>
+</ul>
+<div class="section" id="init">
+<h3>Init()<a class="headerlink" href="#init" title="Permalink to this headline">¶</a></h3>
+<p>Init is called when you first deploy your chaincode. As the name
+implies, this function is used to do any initialization your chaincode
+needs.</p>
+</div>
+<div class="section" id="invoke">
+<h3>Invoke()<a class="headerlink" href="#invoke" title="Permalink to this headline">¶</a></h3>
+<p>Invoke is called when you want to call chaincode functions to do real
+work (i.e. read and write to the ledger). Invocations are captured as
+transactions, which get grouped into blocks on the chain. When you need
+to update or query the ledger, you do so by invoking your chaincode.</p>
+</div>
+</div>
+<div class="section" id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h2>
+<p>The import statement lists a few dependencies for the chaincode to
+compile successfully.</p>
+<ul class="simple">
+<li>fmt – contains <code class="docutils literal"><span class="pre">Println</span></code> for debugging/logging.</li>
+<li>errors – standard go error format.</li>
+<li><a class="reference external" href="https://github.com/hyperledger/fabric/tree/master/core/chaincode/shim">shim</a> – contains the definitions for the chaincode interface and the chaincode stub, which are required to interact with the ledger.</li>
+</ul>
+</div>
+<div class="section" id="chaincode-apis">
+<h2>Chaincode APIs<a class="headerlink" href="#chaincode-apis" title="Permalink to this headline">¶</a></h2>
+<p>When the Init or Invoke function of a chaincode is called, the fabric
+passes the <code class="docutils literal"><span class="pre">stub</span> <span class="pre">shim.ChaincodeStubInterface</span></code> parameter and the
+chaincode returns a <code class="docutils literal"><span class="pre">pb.Response</span></code>. This stub can be used to call APIs
+to access to the ledger services, transaction context, or to invoke
+other chaincodes.</p>
+<p>The current APIs are defined in the shim package, and can be generated
+with the following command:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">godoc</span> <span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">core</span><span class="o">/</span><span class="n">chaincode</span><span class="o">/</span><span class="n">shim</span>
+</pre></div>
+</div>
+<p>However, it also includes functions from chaincode.pb.go (protobuffer
+functions) that are not intended as public APIs. The best practice is to
+look at the function definitions in chaincode.go and and the
+<a class="reference external" href="https://github.com/hyperledger/fabric/tree/master/examples/chaincode/go">examples</a>
+directory.</p>
+</div>
+<div class="section" id="response">
+<h2>Response<a class="headerlink" href="#response" title="Permalink to this headline">¶</a></h2>
+<p>The chaincode response comes in the form of a protobuffer.</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">message</span> <span class="n">Response</span> <span class="p">{</span>
+
+    <span class="o">//</span> <span class="n">A</span> <span class="n">status</span> <span class="n">code</span> <span class="n">that</span> <span class="n">should</span> <span class="n">follow</span> <span class="n">the</span> <span class="n">HTTP</span> <span class="n">status</span> <span class="n">codes</span><span class="o">.</span>
+    <span class="n">int32</span> <span class="n">status</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+    <span class="o">//</span> <span class="n">A</span> <span class="n">message</span> <span class="n">associated</span> <span class="k">with</span> <span class="n">the</span> <span class="n">response</span> <span class="n">code</span><span class="o">.</span>
+    <span class="n">string</span> <span class="n">message</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+
+    <span class="o">//</span> <span class="n">A</span> <span class="n">payload</span> <span class="n">that</span> <span class="n">can</span> <span class="n">be</span> <span class="n">used</span> <span class="n">to</span> <span class="n">include</span> <span class="n">metadata</span> <span class="k">with</span> <span class="n">this</span> <span class="n">response</span><span class="o">.</span>
+    <span class="nb">bytes</span> <span class="n">payload</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The chaincode will also return events. Message events and chaincode
+events.</p>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">messageEvent</span> <span class="p">{</span>
+
+    <span class="n">oneof</span> <span class="n">Event</span> <span class="p">{</span>
+
+    <span class="o">//</span><span class="n">Register</span> <span class="n">consumer</span> <span class="n">sent</span> <span class="n">event</span>
+    <span class="n">Register</span> <span class="n">register</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+    <span class="o">//</span><span class="n">producer</span> <span class="n">events</span> <span class="n">common</span><span class="o">.</span>
+    <span class="n">Block</span> <span class="n">block</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="n">ChaincodeEvent</span> <span class="n">chaincodeEvent</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+    <span class="n">Rejection</span> <span class="n">rejection</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+
+    <span class="o">//</span><span class="n">Unregister</span> <span class="n">consumer</span> <span class="n">sent</span> <span class="n">events</span>
+    <span class="n">Unregister</span> <span class="n">unregister</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+
+    <span class="p">}</span>
+
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="code go highlight-default"><div class="highlight"><pre><span></span><span class="n">messageChaincodeEvent</span> <span class="p">{</span>
+
+    <span class="n">string</span> <span class="n">chaincodeID</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">string</span> <span class="n">txID</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="n">string</span> <span class="n">eventName</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+    <span class="nb">bytes</span> <span class="n">payload</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Once developed and deployed, there are two ways to interact with the
+chaincode - through an SDK or the CLI. The steps for CLI are described
+below. For SDK interaction, refer to the <a class="reference external" href="https://github.com/hyperledger/fabric-sdk-node/tree/master/examples/balance-transfer">balance transfer</a> samples. <strong>Note</strong>: This SDK interaction is covered in the <strong>Getting Started</strong> section.</p>
+</div>
+<div class="section" id="command-line-interfaces">
+<h2>Command Line Interfaces<a class="headerlink" href="#command-line-interfaces" title="Permalink to this headline">¶</a></h2>
+<p>To view the currently available CLI commands, execute the following:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="c1"># this assumes that you have correctly set the GOPATH variable and cloned the Fabric codebase into that path</span>
+<span class="n">cd</span> <span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span>
+<span class="n">build</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">peer</span>
+</pre></div>
+</div>
+<p>You will see output similar to the example below. (<strong>NOTE</strong>: rootcommand
+below is hardcoded in main.go. Currently, the build will create a <em>peer</em>
+executable file).</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>Usage:
+      peer [flags]
+      peer [command]
+
+    Available Commands:
+      version     Print fabric peer version.
+      node        node specific commands.
+      channel     channel specific commands.
+      chaincode   chaincode specific commands.
+      logging     logging specific commands
+
+
+    Flags:
+      --logging-level string: Default logging level and overrides, see core.yaml for full syntax
+      --test.coverprofile string: Done (default “coverage.cov)
+      -v, --version: Display current version of fabric peer server
+    Use &quot;peer [command] --help&quot; for more information about a command.
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">peer</span></code> command supports several subcommands and flags, as shown
+above. To facilitate its use in scripted applications, the <code class="docutils literal"><span class="pre">peer</span></code>
+command always produces a non-zero return code in the event of command
+failure. Upon success, many of the subcommands produce a result on
+stdout as shown in the table below:</p>
+<table width="665" cellpadding="8" cellspacing="0"><colgroup><col width="262"><col width="371"></colgroup><thead><tr><th width="262" bgcolor="#ffffff" style="border-top: none; border-bottom: 1.50pt solid #e1e4e5; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0in; padding-right: 0in"><p>Command</p>
+</th><th width="371" bgcolor="#ffffff" style="border-top: none; border-bottom: 1.50pt solid #e1e4e5; border-left: none; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0in; padding-right: 0in"><p>stdout&nbsp;result in the event of success</p>
+</th></tr></thead><tbody><tr><td width="262" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>version</p>
+</td><td width="371" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>String form of&nbsp;peer.version&nbsp;defined in&nbsp;core.yaml</p>
+</td></tr><tr><td width="262" bgcolor="#ffffff" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>node start</p>
+</td><td width="371" bgcolor="#ffffff" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>N/A</p>
+</td></tr><tr><td width="262" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>node status</p>
+</td><td width="371" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>String form of&nbsp;StatusCode</p>
+</td></tr><tr><td width="262" bgcolor="#ffffff" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>node stop</p>
+</td><td width="371" bgcolor="#ffffff" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>String form of&nbsp;StatusCode</p>
+</td></tr><tr><td width="262" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>chaincode deploy</p>
+</td><td width="371" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>The chaincode container name (hash) required for subsequent chaincode
+invoke&nbsp;and&nbsp;chaincode query&nbsp;commands</p>
+</td></tr><tr><td width="262" bgcolor="#ffffff" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>chaincode invoke</p>
+</td><td width="371" bgcolor="#ffffff" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>The transaction ID (UUID)</p>
+</td></tr><tr><td width="262" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>chaincode query</p>
+</td><td width="371" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>By default, the query result is formatted as a printable</p>
+</td></tr><tr><td width="262" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>channel create</p>
+</td><td width="371" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>Create a chain</p>
+</td></tr><tr><td width="262" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>channel join</p>
+</td><td width="371" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><p>Adds a peer to the chain</p>
+</td></tr><tr><td width="262" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in"><pre class="western" style="orphans: 2; widows: 2"><span style="display: inline-block; border: 1px solid #e1e4e5; padding: 0.01in"><span style="font-variant: normal"><font color="#e74c3c"><font face="Consolas, Andale Mono WT, Andale Mono, Lucida Console, Lucida Sans Typewriter, DejaVu Sans Mono, Bitstream Vera Sans Mono, Liberation Mono, Nimbus Mono L, Monaco, Courier New, Courier, monospace"><font size="1" style="font-size: 7pt"><span style="letter-spacing: normal"><span lang="en-US"><span style="font-style: normal"><span style="font-weight: normal">--peer-defaultchain=true</span></span></span></span></font></font></font></span></span></pre></td>  <td width="371" bgcolor="#f3f6f6" style="border-top: 1px solid #e1e4e5; border-bottom: 1px solid #e1e4e5; border-left: 1px solid #e1e4e5; border-right: none; padding-top: 0in; padding-bottom: 0.08in; padding-left: 0.16in; padding-right: 0in">
+
+Allows users to continue to work with the default TEST\_CHAINID string.<p>Command line options support writing this value as raw bytes (-r, –raw)
+or formatted as the hexadecimal representation of the raw bytes (-x,
+–hex). If the query response is empty then nothing is output.</p>
+</td></tbody></table></div>
+<div class="section" id="chaincode-swimlanes">
+<span id="swimlane"></span><h2>Chaincode Swimlanes<a class="headerlink" href="#chaincode-swimlanes" title="Permalink to this headline">¶</a></h2>
+<img alt="_images/chaincode_swimlane.png" src="_images/chaincode_swimlane.png" />
+</div>
+<div class="section" id="deploy-a-chaincode">
+<h2>Deploy a chaincode<a class="headerlink" href="#deploy-a-chaincode" title="Permalink to this headline">¶</a></h2>
+<p>[WIP] - the CLI commands need to be refactored based on the new
+deployment model. Channel Create and Channel Join will remain the same.</p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="videos.html" class="btn btn-neutral float-right" title="Videos" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="demos.html" class="btn btn-neutral" title="Demos" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

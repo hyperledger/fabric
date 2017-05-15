@@ -1,0 +1,926 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Getting Started &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/>
+        <link rel="next" title="Overview" href="overview.html"/>
+        <link rel="prev" title="Release Notes" href="releases.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites-and-setup">Prerequisites and setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#curl-the-artifacts-and-binaries">Curl the artifacts and binaries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pulling-the-docker-images">Pulling the docker images</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#using-the-cryptogen-tool">Using the cryptogen tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-the-configtxgen-tool">Using the configtxgen tool</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#generate-the-orderer-genesis-block">Generate the orderer genesis block</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#generate-the-channel-configuration-artifact">Generate the channel configuration artifact</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#start-the-network-no-tls">Start the network (No TLS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#create-join-channel">Create &amp; Join Channel</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#create-channel">Create Channel</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#environment-variables">Environment variables</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#join-channel">Join channel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#install">Install</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#instantiate">Instantiate</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#query">Query</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#invoke">Invoke</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Query</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#start-the-network-tls-enabled">Start the network (TLS enabled)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#scripts">Scripts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#clean-up">Clean up</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#all-in-one">All in one</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#apis-only">APIs only</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#using-couchdb">Using CouchDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#a-note-on-data-persistence">A Note on Data Persistence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Getting Started</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/getting_startedv2.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
+<p>The getting started scenario provisions a sample Fabric network consisting of
+two organizations, each maintaining two peers, and a “solo” ordering service.</p>
+<p>Prior to launching the network, we will demonstrate the usage of two fundamental tools:</p>
+<ul class="simple">
+<li>cryptogen - generates the x509 certificates used to identify and authenticate
+the various components in the network.</li>
+<li>configtxgen - generates the requisite configuration artifacts for orderer
+bootstrap and channel creation.</li>
+</ul>
+<p>In no time we’ll have a fully-functioning transactional network with a shared
+ledger and digital signature verification.  Let’s get going…</p>
+<div class="section" id="prerequisites-and-setup">
+<h2>Prerequisites and setup<a class="headerlink" href="#prerequisites-and-setup" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="https://www.docker.com/products/overview">Docker</a> - v1.12 or higher</li>
+<li><a class="reference external" href="https://docs.docker.com/compose/overview/">Docker Compose</a> - v1.8 or higher</li>
+<li><a class="reference external" href="https://docs.docker.com/toolbox/toolbox_install_windows/">Docker Toolbox</a> - Windows users only</li>
+<li><a class="reference external" href="https://golang.org/">Go</a> - 1.7 or higher</li>
+<li><a class="reference external" href="https://git-scm.com/downloads">Git Bash</a> - Windows users only; provides a better alternative to the Windows command prompt</li>
+</ul>
+<div class="section" id="curl-the-artifacts-and-binaries">
+<h3>Curl the artifacts and binaries<a class="headerlink" href="#curl-the-artifacts-and-binaries" title="Permalink to this headline">¶</a></h3>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you are running on Windows you will want to make use of your Git
+Bash shell for the upcoming terminal commands.</p>
+</div>
+<ul class="simple">
+<li>Download the <a class="reference external" href="https://curl.haxx.se/download.html">cURL</a> tool if not already installed.</li>
+<li>Determine a location on your machine where you want to place the artifacts and binaries.</li>
+</ul>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="n">fabric</span><span class="o">-</span><span class="n">sample</span>
+<span class="n">cd</span> <span class="n">fabric</span><span class="o">-</span><span class="n">sample</span>
+</pre></div>
+</div>
+<p>Next, execute the following command:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">curl</span> <span class="o">-</span><span class="n">L</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">logs</span><span class="o">.</span><span class="n">hyperledger</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">sandbox</span><span class="o">/</span><span class="n">vex</span><span class="o">-</span><span class="n">yul</span><span class="o">-</span><span class="n">hyp</span><span class="o">-</span><span class="n">jenkins</span><span class="o">-</span><span class="mi">2</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">verify</span><span class="o">-</span><span class="n">x86_64_1</span><span class="o">/</span><span class="mi">5</span><span class="o">/</span><span class="n">release</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span> <span class="o">-</span><span class="n">o</span> <span class="n">release</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span> <span class="mi">2</span><span class="o">&gt;</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">null</span><span class="p">;</span>  <span class="n">tar</span> <span class="o">-</span><span class="n">xvf</span> <span class="n">release</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span>
+</pre></div>
+</div>
+<p>This command pulls and extracts all of the necessary artifacts to set up your
+network and places them into a folder titled <code class="docutils literal"><span class="pre">release</span></code>.  It also retrieves the
+two binaries - cryptogen and configtxgen - which are briefly described at the top
+of this page.</p>
+</div>
+<div class="section" id="pulling-the-docker-images">
+<h3>Pulling the docker images<a class="headerlink" href="#pulling-the-docker-images" title="Permalink to this headline">¶</a></h3>
+<p>Change directories into <code class="docutils literal"><span class="pre">release</span></code>.  You should see the following:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>jdoe-mbp:release johndoe$ ls
+darwin-amd64  linux-amd64     linux-ppc64le   linux-s390x     samples         templates       windows-amd64
+</pre></div>
+</div>
+<p>You will notice that there are platform-specific folders.  Each folder contains the
+corresponding binaries for that platform, along with a script that we will use
+to download the Fabric images.  Right now we’re only interested in the script.
+Navigate into the folder matching your machine’s OS and then into <code class="docutils literal"><span class="pre">install</span></code>.
+For example, if you were running on OSX:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">darwin</span><span class="o">-</span><span class="n">amd64</span><span class="o">/</span><span class="n">install</span>
+</pre></div>
+</div>
+<p>Now run the shell script to download the docker images.  This will take a few
+minutes so remember that patience is a virtue:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">get</span><span class="o">-</span><span class="n">docker</span><span class="o">-</span><span class="n">images</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>Execute a <code class="docutils literal"><span class="pre">docker</span> <span class="pre">images</span></code> command to view your images.  Assuming you had no
+images on your machine prior to running the script, you should see the following:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>jdoe-mbp:install johndoe$ docker images
+REPOSITORY                     TAG                  IMAGE ID            CREATED             SIZE
+hyperledger/fabric-couchdb     x86_64-1.0.0-alpha   f3ce31e25872        5 weeks ago         1.51 GB
+hyperledger/fabric-kafka       x86_64-1.0.0-alpha   589dad0b93fc        5 weeks ago         1.3 GB
+hyperledger/fabric-zookeeper   x86_64-1.0.0-alpha   9a51f5be29c1        5 weeks ago         1.31 GB
+hyperledger/fabric-orderer     x86_64-1.0.0-alpha   5685fd77ab7c        5 weeks ago         182 MB
+hyperledger/fabric-peer        x86_64-1.0.0-alpha   784c5d41ac1d        5 weeks ago         184 MB
+hyperledger/fabric-javaenv     x86_64-1.0.0-alpha   a08f85d8f0a9        5 weeks ago         1.42 GB
+hyperledger/fabric-ccenv       x86_64-1.0.0-alpha   91792014b61f        5 weeks ago         1.29 GB
+</pre></div>
+</div>
+<p>Look at the names for each image; these are the components that will ultimately
+comprise our Fabric network.</p>
+</div>
+</div>
+<div class="section" id="using-the-cryptogen-tool">
+<h2>Using the cryptogen tool<a class="headerlink" href="#using-the-cryptogen-tool" title="Permalink to this headline">¶</a></h2>
+<p>First, let’s set the environment variable for our platform.  This command
+will detect your OS and use the appropriate binaries for the subsequent steps:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span># for power or z
+os_arch=$(echo &quot;$(uname -s)-$(uname -m)&quot; | awk &#39;{print tolower($0)}&#39;)
+# for linux, osx or windows
+os_arch=$(echo &quot;$(uname -s)-amd64&quot; | awk &#39;{print tolower($0)}&#39;)
+</pre></div>
+</div>
+<p>Ok now for the fun stuff - generating the crypto material.  Pop into the <code class="docutils literal"><span class="pre">e2e</span></code> folder:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">../../</span><span class="n">samples</span><span class="o">/</span><span class="n">e2e</span>
+</pre></div>
+</div>
+<p>We are going to pass in the <code class="docutils literal"><span class="pre">crypto-config.yaml</span></code> file as an argument for the
+upcoming command.  This file contains the definition/structure of our network
+and lists the components that we are generating certs for.  If you open the file
+you will see that our network will consist of - one <code class="docutils literal"><span class="pre">OrdererOrg</span></code> and two
+<code class="docutils literal"><span class="pre">PeerOrgs</span></code> each maintaining two peers. You can easily modify this file to
+generate certs for a more elaborate network, however we will leave the sample configuration
+for the sake of simplicity.  Got it?  Let’s run the tool now:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span># this syntax requires you to be in the e2e directory
+# notice that we will pass in the $os_arch variable in order to use the correct binary
+./../../$os_arch/bin/cryptogen generate --config=./crypto-config.yaml
+</pre></div>
+</div>
+<p>If the tool runs successfully, you will see the various KeyStores churn out in
+your terminal.  The certs are then parked into a <code class="docutils literal"><span class="pre">crypto-config</span></code> folder that
+is generated when you run the tool.</p>
+</div>
+<div class="section" id="using-the-configtxgen-tool">
+<h2>Using the configtxgen tool<a class="headerlink" href="#using-the-configtxgen-tool" title="Permalink to this headline">¶</a></h2>
+<p>We will now use our second tool - configtxgen - to create our ordering service
+genesis block and a channel configuration artifact.  As the abbreviation suggests,
+this tool is a configuration transaction generator.  More info on the configtxgen
+tool can be found <a class="reference external" href="http://hyperledger-fabric.readthedocs.io/en/latest/configtxgen.html">here</a>
+However, at this stage (and for the sake of brevity) we will simply make use of
+the tool to generate our two artifacts.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <code class="docutils literal"><span class="pre">configtx.yaml</span></code> file contains the definitions for our sample
+network and presents the topology of the network components - three members
+(OrdererOrg, Org0 &amp; Org1), and the anchor peers for each PeerOrg
+(peer0 and peer2).  You will notice
+that it is structured similarly to the <code class="docutils literal"><span class="pre">crypto-config.yaml</span></code> that we
+just passed to generate our certs.  The main difference is that we can
+now point to the locations of those certs.  You’ll recall that in the
+previous step we created a new folder called <code class="docutils literal"><span class="pre">crypto-config</span></code> and parked
+the certs there.  The <code class="docutils literal"><span class="pre">configtx.yaml</span></code> points to that directory and
+allows us to bundle the root certs for the Orgs constituting our
+network into the genesis block.  This is a critical concept.  Now any
+network entity communicating with the ordering service can have its
+digital signature verified.</p>
+</div>
+<div class="section" id="generate-the-orderer-genesis-block">
+<h3>Generate the orderer genesis block<a class="headerlink" href="#generate-the-orderer-genesis-block" title="Permalink to this headline">¶</a></h3>
+<p>From your <code class="docutils literal"><span class="pre">e2e</span></code> folder first execute the following:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span># this command will not return a response
+export ORDERER_CFG_PATH=$PWD
+</pre></div>
+</div>
+<p>Then use the tool:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span># notice at the top of configtx.yaml we define the profile as TwoOrgs
+./../../$os_arch/bin/configtxgen -profile TwoOrgs -outputBlock orderer.block
+# for example, if you are running OSX then the binary from darwin-amd64 would have been used
+</pre></div>
+</div>
+<p>The orderer genesis block - <code class="docutils literal"><span class="pre">orderer.block</span></code> - is output into the <code class="docutils literal"><span class="pre">e2e</span></code> directory.</p>
+</div>
+<div class="section" id="generate-the-channel-configuration-artifact">
+<h3>Generate the channel configuration artifact<a class="headerlink" href="#generate-the-channel-configuration-artifact" title="Permalink to this headline">¶</a></h3>
+<p>When we call the <code class="docutils literal"><span class="pre">createChannel</span></code> API, and send the proposal to the ordering
+service, we need to pass a channel configuration artifact along with this call.
+We will once again leverage the <code class="docutils literal"><span class="pre">configtx.yaml</span></code> and use the same profile
+definition - TwoOrgs - that we used to create the orderer genesis block.  In
+other words, this channel we are creating is a network-wide channel.  All Orgs
+are included.</p>
+<p>Still in your <code class="docutils literal"><span class="pre">e2e</span></code> folder execute the following:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span># replace the &lt;CHANNEL_NAME&gt; parm with a name of your choosing
+./../../$os_arch/bin/configtxgen -profile TwoOrgs -outputCreateChannelTx channel.tx -channelID &lt;CHANNEL_NAME&gt;
+</pre></div>
+</div>
+<p>The channel configuration artifact - <code class="docutils literal"><span class="pre">channel.tx</span></code> - is output into the <code class="docutils literal"><span class="pre">e2e</span></code> directory.</p>
+</div>
+</div>
+<div class="section" id="start-the-network-no-tls">
+<h2>Start the network (No TLS)<a class="headerlink" href="#start-the-network-no-tls" title="Permalink to this headline">¶</a></h2>
+<p>We will leverage a docker-compose script to spin up our network.  The docker-compose
+points to the images that we have already downloaded, and bootstraps the orderer
+with our previously generated <code class="docutils literal"><span class="pre">orderer.block</span></code>.  Before launching the network,
+open the docker-compose file and comment out the script.sh in the CLI container.
+Your docker-compose should look like this:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">working_dir</span><span class="p">:</span> <span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span>
+<span class="c1">#command: /bin/bash -c &#39;./scripts/script.sh ${CHANNEL_NAME}; &#39;</span>
+<span class="n">volumes</span><span class="p">:</span>
+</pre></div>
+</div>
+<p>If left uncommented, the script will exercise all of the CLI commands when the
+network is started.  However, we want to go through the commands manually in order to
+expose the syntax and functionality of each call.</p>
+<p>Start your network:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span># this sets our OS
+export ARCH_TAG=$(uname -m)
+# this starts the network in &quot;detached&quot; mode; enter the appropriate value for the CHANNEL_NAME parm
+CHANNEL_NAME=&lt;CHANNEL_NAME&gt; docker-compose -f docker-compose-no-tls.yaml up -d
+</pre></div>
+</div>
+<p>If you’d like to see the realtime logs for the components, then remove the <code class="docutils literal"><span class="pre">-d</span></code> flag:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CHANNEL_NAME</span><span class="o">=&lt;</span><span class="n">CHANNEL_NAME</span><span class="o">&gt;</span> <span class="n">docker</span><span class="o">-</span><span class="n">compose</span> <span class="o">-</span><span class="n">f</span> <span class="n">docker</span><span class="o">-</span><span class="n">compose</span><span class="o">-</span><span class="n">no</span><span class="o">-</span><span class="n">tls</span><span class="o">.</span><span class="n">yaml</span> <span class="n">up</span>
+</pre></div>
+</div>
+<p>Now open another terminal and navigate back to <code class="docutils literal"><span class="pre">release/samples/e2e</span></code>.</p>
+</div>
+<div class="section" id="create-join-channel">
+<h2>Create &amp; Join Channel<a class="headerlink" href="#create-join-channel" title="Permalink to this headline">¶</a></h2>
+<p>Go into the cli container:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">exec</span> <span class="o">-</span><span class="n">it</span> <span class="n">cli</span> <span class="n">bash</span>
+</pre></div>
+</div>
+<p>You should see the following:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">root</span><span class="nd">@bb5e894d9668</span><span class="p">:</span><span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="c1">#</span>
+</pre></div>
+</div>
+<div class="section" id="create-channel">
+<h3>Create Channel<a class="headerlink" href="#create-channel" title="Permalink to this headline">¶</a></h3>
+<p>Recall that we used the configtxgen tool to generate a channel configuration
+artifact - <code class="docutils literal"><span class="pre">channel.tx</span></code>.  We are going to pass in this artifact to the
+orderer as part of the create channel request.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">For this to work, we must pass in the path of the orderer’s local MSP in order to sign
+this create channel call.  Recall that we bootstrapped the orderer
+with the root certificates (ca certs) for all the member’s of our
+network.  As a result, the orderer can verify the digital signature
+of the submitting client.  This call will also work if we pass in the
+local MSP for Org0 or Org1.</p>
+</div>
+<p>The following environment variables for the orderer must be passed:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_MSPCONFIGPATH</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">ordererOrganizations</span><span class="o">/</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">orderers</span><span class="o">/</span><span class="n">orderer</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span>
+<span class="n">CORE_PEER_LOCALMSPID</span><span class="o">=</span><span class="s2">&quot;OrdererMSP&quot;</span>
+<span class="n">CHANNEL_NAME</span><span class="o">=&lt;</span><span class="n">YOUR_CHANNEL_NAME</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>The syntax is as follows:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">channel</span> <span class="n">create</span> <span class="o">-</span><span class="n">o</span> <span class="o">&lt;</span><span class="n">ORDERER_NAME</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">7050</span> <span class="o">-</span><span class="n">c</span> <span class="o">&lt;</span><span class="n">CHANNEL_NAME</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">f</span> <span class="n">channel</span><span class="o">.</span><span class="n">tx</span>
+</pre></div>
+</div>
+<p>So our command in its entirety would be:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_MSPCONFIGPATH</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">ordererOrganizations</span><span class="o">/</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">orderers</span><span class="o">/</span><span class="n">orderer</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span> <span class="n">CORE_PEER_LOCALMSPID</span><span class="o">=</span><span class="s2">&quot;OrdererMSP&quot;</span> <span class="n">peer</span> <span class="n">channel</span> <span class="n">create</span> <span class="o">-</span><span class="n">o</span> <span class="n">orderer</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">7050</span> <span class="o">-</span><span class="n">c</span> <span class="n">mychannel</span> <span class="o">-</span><span class="n">f</span> <span class="n">channel</span><span class="o">.</span><span class="n">tx</span>
+</pre></div>
+</div>
+<p>This command returns a genesis block - <code class="docutils literal"><span class="pre">mychannel.block</span></code> - which we will use
+to join the channel.</p>
+<div class="section" id="environment-variables">
+<h4>Environment variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">¶</a></h4>
+<p>You can see the syntax for all commands by inspecting the <code class="docutils literal"><span class="pre">script.sh</span></code> file in the <code class="docutils literal"><span class="pre">scripts</span></code> directory.</p>
+<p>For the following cli commands against <code class="docutils literal"><span class="pre">PEER0</span></code> to work, we need to set the
+values for the four global environment variables given below. Please make sure to override
+the values accordingly when calling commands against other peers and the orderer.</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="c1"># Environment variables for PEER0</span>
+<span class="n">CORE_PEER_MSPCONFIGPATH</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span>
+<span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">7051</span>
+<span class="n">CORE_PEER_LOCALMSPID</span><span class="o">=</span><span class="s2">&quot;Org0MSP&quot;</span>
+<span class="n">CORE_PEER_TLS_ROOTCERT_FILE</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cacerts</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+</pre></div>
+</div>
+<p>These environment variables for each peer are defined in the supplied docker-compose file.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">In these examples, we are using the default <code class="docutils literal"><span class="pre">mychannel</span></code> for all CHANNEL_NAME arguments.
+If you elect to create a uniquely named channel, be conscious to modify
+your strings accordingly.</p>
+</div>
+</div>
+</div>
+<div class="section" id="join-channel">
+<h3>Join channel<a class="headerlink" href="#join-channel" title="Permalink to this headline">¶</a></h3>
+<p>Now let’s join <code class="docutils literal"><span class="pre">PEER0</span></code> to the channel by passing in the genesis block that was
+just returned to us upon the create channel command.</p>
+<p>The syntax is as follows:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">channel</span> <span class="n">join</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">CHANNEL_NAME</span><span class="o">&gt;.</span><span class="n">block</span>
+</pre></div>
+</div>
+<p>Remember, we need to pass the four global variables.  So this command in its
+entirety would be:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_MSPCONFIGPATH</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span> <span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">7051</span> <span class="n">CORE_PEER_LOCALMSPID</span><span class="o">=</span><span class="s2">&quot;Org0MSP&quot;</span> <span class="n">CORE_PEER_TLS_ROOTCERT_FILE</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cacerts</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span> <span class="n">peer</span> <span class="n">channel</span> <span class="n">join</span> <span class="o">-</span><span class="n">b</span> <span class="n">mychannel</span><span class="o">.</span><span class="n">block</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="install">
+<h3>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h3>
+<p>Now we will install the chaincode source onto the peer’s filesystem.  The syntax
+is as follows:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">install</span> <span class="o">-</span><span class="n">n</span> <span class="o">&lt;</span><span class="n">CHAINCODE_NAME</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">v</span> <span class="o">&lt;</span><span class="n">CHAINCODE_VERSION</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">p</span> <span class="o">&lt;</span><span class="n">CHAINCODE_PATH</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>This command in its entirety would be:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_MSPCONFIGPATH</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span> <span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">7051</span> <span class="n">CORE_PEER_LOCALMSPID</span><span class="o">=</span><span class="s2">&quot;Org0MSP&quot;</span> <span class="n">CORE_PEER_TLS_ROOTCERT_FILE</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cacerts</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">install</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">v</span> <span class="mf">1.0</span> <span class="o">-</span><span class="n">p</span> <span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">examples</span><span class="o">/</span><span class="n">chaincode</span><span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="n">chaincode_example02</span> <span class="o">&gt;&amp;</span><span class="n">log</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="instantiate">
+<h3>Instantiate<a class="headerlink" href="#instantiate" title="Permalink to this headline">¶</a></h3>
+<p>Now we start the chaincode container and initialize our key value pairs.  The
+syntax for instantiate is as follows:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">instantiate</span> <span class="o">-</span><span class="n">o</span> <span class="o">&lt;</span><span class="n">ORDERER_NAME</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">7050</span> <span class="o">-</span><span class="n">C</span> <span class="o">&lt;</span><span class="n">CHANNEL_NAME</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">n</span> <span class="o">&lt;</span><span class="n">CHAINCODE_NAME</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">v</span> <span class="o">&lt;</span><span class="n">VERSION</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;init&quot;,&quot;key&quot;,&quot;value&quot;]}&#39;</span> <span class="o">-</span><span class="n">P</span> <span class="s2">&quot;OR/AND (CHAINCODE_POLICY)&quot;</span>
+</pre></div>
+</div>
+<p>Take note of the <code class="docutils literal"><span class="pre">-P</span></code> argument.  This is our policy where we specify the
+required level of endorsement for a transaction against this chaincode to be
+validated.  In the command below you’ll notice that we specify our policy as
+<code class="docutils literal"><span class="pre">-P</span> <span class="pre">&quot;OR</span> <span class="pre">('Org0MSP.member','Org1MSP.member')&quot;</span></code>.  This means that we need
+“endorsement” from a peer belonging to Org0 <strong>OR</strong> Org1 (i.e. only one endorsement).
+If we changed the syntax to <code class="docutils literal"><span class="pre">AND</span></code> then we would need two endorsements.</p>
+<p>This command in its entirety would be:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="c1"># we instantiate with the following key value pairs: &quot;a&quot;,&quot;100&quot;,&quot;b&quot;,&quot;200&quot;</span>
+<span class="n">CORE_PEER_MSPCONFIGPATH</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span> <span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">7051</span> <span class="n">CORE_PEER_LOCALMSPID</span><span class="o">=</span><span class="s2">&quot;Org0MSP&quot;</span> <span class="n">CORE_PEER_TLS_ROOTCERT_FILE</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cacerts</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">instantiate</span> <span class="o">-</span><span class="n">o</span> <span class="n">orderer</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">7050</span> <span class="o">-</span><span class="n">C</span> <span class="n">mychannel</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">v</span> <span class="mf">1.0</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;init&quot;,&quot;a&quot;,&quot;100&quot;,&quot;b&quot;,&quot;200&quot;]}&#39;</span> <span class="o">-</span><span class="n">P</span> <span class="s2">&quot;OR (&#39;Org0MSP.member&#39;,&#39;Org1MSP.member&#39;)&quot;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The above command will only start a single chaincode container.  If
+you want to interact with different peers, you must first install
+the source code onto that peer’s filesystem.  You can then send
+an invoke or query to the peer.  You needn’t instantiate twice, this
+command will propagate to the entire channel.</p>
+</div>
+</div>
+<div class="section" id="query">
+<h3>Query<a class="headerlink" href="#query" title="Permalink to this headline">¶</a></h3>
+<p>Lets query for the value of “a” to make sure the chaincode was properly instantiated
+and the state DB was populated.  The syntax for query is as follows:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">C</span> <span class="o">&lt;</span><span class="n">CHANNEL_NAME</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">n</span> <span class="o">&lt;</span><span class="n">CHAINCODE_NAME</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;query&quot;,&quot;key&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>This command in its entirety would be:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_MSPCONFIGPATH</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span> <span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">7051</span> <span class="n">CORE_PEER_LOCALMSPID</span><span class="o">=</span><span class="s2">&quot;Org0MSP&quot;</span> <span class="n">CORE_PEER_TLS_ROOTCERT_FILE</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cacerts</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">C</span> <span class="n">mychannel</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;query&quot;,&quot;a&quot;]}&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="invoke">
+<h3>Invoke<a class="headerlink" href="#invoke" title="Permalink to this headline">¶</a></h3>
+<p>Lastly we will move “10” from “a” to “b”.  This transaction will cut a new block
+and update the state DB.  The syntax for invoke is as follows:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">invoke</span> <span class="o">-</span><span class="n">o</span> <span class="o">&lt;</span><span class="n">ORDERER_NAME</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">7050</span> <span class="o">-</span><span class="n">C</span> <span class="o">&lt;</span><span class="n">CHANNEL_NAME</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">n</span> <span class="o">&lt;</span><span class="n">CHAINCODE_NAME</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;invoke&quot;,&quot;key&quot;,&quot;key&quot;,&quot;value&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>This command in its entirety would be:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_MSPCONFIGPATH</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span> <span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">7051</span> <span class="n">CORE_PEER_LOCALMSPID</span><span class="o">=</span><span class="s2">&quot;Org0MSP&quot;</span> <span class="n">CORE_PEER_TLS_ROOTCERT_FILE</span><span class="o">=/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="o">/</span><span class="n">crypto</span><span class="o">/</span><span class="n">peerOrganizations</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">peers</span><span class="o">/</span><span class="n">peer0</span><span class="o">.</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cacerts</span><span class="o">/</span><span class="n">org1</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">invoke</span> <span class="o">-</span><span class="n">o</span> <span class="n">orderer</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">7050</span> <span class="o">-</span><span class="n">C</span> <span class="n">mychannel</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;invoke&quot;,&quot;a&quot;,&quot;b&quot;,&quot;10&quot;]}&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id1">
+<h3>Query<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>Lets confirm that our previous invocation executed properly.  We initialized the
+key “a” with a value of “100”.  Therefore, removing “10” should return a value
+of “90” when we query “a”.  The syntax for query is outlined above.</p>
+<p>This query command in its entirety would be:</p>
+<blockquote>
+<div>CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com CORE_PEER_ADDRESS=peer0.org1.example.com:7051 CORE_PEER_LOCALMSPID=”Org0MSP” CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/cacerts/org1.example.com-cert.pem peer chaincode query -C mychannel -n mycc -c ‘{“Args”:[“query”,”a”]}’</div></blockquote>
+</div>
+</div>
+<div class="section" id="start-the-network-tls-enabled">
+<h2>Start the network (TLS enabled)<a class="headerlink" href="#start-the-network-tls-enabled" title="Permalink to this headline">¶</a></h2>
+<p>Use the <code class="docutils literal"><span class="pre">script.sh</span></code> to see the exact syntax for TLS-enabled CLI commands.</p>
+<p>Before starting, we need to modify our docker-compose file to reflect the appropriate private keys for
+the orderer and peers.</p>
+<p>From your <code class="docutils literal"><span class="pre">e2e</span></code> directory execute the following:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>PRIV_KEY=$(ls crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/keystore/) sed -i &quot;s/ORDERER_PRIVATE_KEY/${PRIV_KEY}/g&quot; docker-compose.yaml
+PRIV_KEY=$(ls crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/keystore/) sed -i &quot;s/PEER0_ORG1_PRIVATE_KEY/${PRIV_KEY}/g&quot; docker-compose.yaml
+PRIV_KEY=$(ls crypto-config/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/keystore/) sed -i &quot;s/PEER0_ORG2_PRIVATE_KEY/${PRIV_KEY}/g&quot; docker-compose.yaml
+PRIV_KEY=$(ls crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/keystore/) sed -i &quot;s/PEER1_ORG1_PRIVATE_KEY/${PRIV_KEY}/g&quot; docker-compose.yaml
+PRIV_KEY=$(ls crypto-config/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/keystore/) sed -i &quot;s/PEER1_ORG2_PRIVATE_KEY/${PRIV_KEY}/g&quot; docker-compose.yaml
+</pre></div>
+</div>
+<p>These commands will modify the TLS_KEY_FILE variables in your docker-compose.
+Once you have executed all five commands, spin the network back up and begin
+by creating your channel.</p>
+</div>
+<div class="section" id="scripts">
+<h2>Scripts<a class="headerlink" href="#scripts" title="Permalink to this headline">¶</a></h2>
+<p>We exposed the verbosity of the commands in order to provide some edification
+on the underlying flow and the appropriate syntax.  Entering the commands manually
+through the CLI is quite onerous, therefore we provide a few scripts to do the
+entirety of the heavy lifting.</p>
+<div class="section" id="clean-up">
+<h3>Clean up<a class="headerlink" href="#clean-up" title="Permalink to this headline">¶</a></h3>
+<p>Let’s clean things up before continuing.  First, kill your containers:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>docker rm -f $(docker ps -aq)
+</pre></div>
+</div>
+<p>Next, execute a <code class="docutils literal"><span class="pre">docker</span> <span class="pre">images</span></code> command in your terminal to view the
+<strong>chaincode</strong> images.  They will look similar to the following:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">REPOSITORY</span>                     <span class="n">TAG</span>                  <span class="n">IMAGE</span> <span class="n">ID</span>            <span class="n">CREATED</span>             <span class="n">SIZE</span>
+<span class="n">dev</span><span class="o">-</span><span class="n">peer3</span><span class="o">-</span><span class="n">mycc</span><span class="o">-</span><span class="mf">1.0</span>             <span class="n">latest</span>               <span class="mi">13</span><span class="n">f6c8b042c6</span>        <span class="mi">5</span> <span class="n">minutes</span> <span class="n">ago</span>       <span class="mi">176</span> <span class="n">MB</span>
+<span class="n">dev</span><span class="o">-</span><span class="n">peer0</span><span class="o">-</span><span class="n">mycc</span><span class="o">-</span><span class="mf">1.0</span>             <span class="n">latest</span>               <span class="n">e27456b2bd92</span>        <span class="mi">5</span> <span class="n">minutes</span> <span class="n">ago</span>       <span class="mi">176</span> <span class="n">MB</span>
+<span class="n">dev</span><span class="o">-</span><span class="n">peer2</span><span class="o">-</span><span class="n">mycc</span><span class="o">-</span><span class="mf">1.0</span>             <span class="n">latest</span>               <span class="mi">111098</span><span class="n">a7c98c</span>        <span class="mi">5</span> <span class="n">minutes</span> <span class="n">ago</span>       <span class="mi">176</span> <span class="n">MB</span>
+</pre></div>
+</div>
+<p>Remove these images:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">rmi</span> <span class="o">&lt;</span><span class="n">IMAGE</span> <span class="n">ID</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">IMAGE</span> <span class="n">ID</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">IMAGE</span> <span class="n">ID</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">rmi</span> <span class="o">-</span><span class="n">f</span> <span class="mi">13</span><span class="n">f</span> <span class="n">e27</span> <span class="mi">111</span>
+</pre></div>
+</div>
+<p>Lastly, remove the <cite>crypto-config`</cite> folder and the two artifacts - <code class="docutils literal"><span class="pre">channel.tx</span></code>
+&amp; <code class="docutils literal"><span class="pre">orderer.block</span></code>.</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="c1"># from the e2e directory</span>
+<span class="n">rm</span> <span class="o">-</span><span class="n">rf</span> <span class="n">channel</span><span class="o">.</span><span class="n">tx</span> <span class="n">orderer</span><span class="o">.</span><span class="n">block</span> <span class="n">crypto</span><span class="o">-</span><span class="n">config</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="all-in-one">
+<h3>All in one<a class="headerlink" href="#all-in-one" title="Permalink to this headline">¶</a></h3>
+<p>This script will do it all for you!  From the <code class="docutils literal"><span class="pre">e2e</span></code> directory:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">network_setup</span><span class="o">.</span><span class="n">sh</span> <span class="n">up</span> <span class="o">&lt;</span><span class="n">channel_name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you choose not to pass a channel_name value, then the default
+<code class="docutils literal"><span class="pre">mychannel</span></code> will be used.</p>
+</div>
+</div>
+<div class="section" id="apis-only">
+<h3>APIs only<a class="headerlink" href="#apis-only" title="Permalink to this headline">¶</a></h3>
+<p>The other option is to manually generate your crypto material and configuration
+artifacts, and then use the embedded <code class="docutils literal"><span class="pre">script.sh</span></code> in the docker-compose files
+to drive your network.  Make sure this script is not commented out in your
+CLI container.</p>
+<p>When the scripts complete successfully, you should see the following message
+in your terminal:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="o">=====================</span> <span class="n">Query</span> <span class="n">on</span> <span class="n">PEER3</span> <span class="n">on</span> <span class="n">channel</span> <span class="s1">&#39;mychannel&#39;</span> <span class="ow">is</span> <span class="n">successful</span> <span class="o">=====================</span>
+
+<span class="o">=====================</span> <span class="n">All</span> <span class="n">GOOD</span><span class="p">,</span> <span class="n">End</span><span class="o">-</span><span class="mi">2</span><span class="o">-</span><span class="n">End</span> <span class="n">execution</span> <span class="n">completed</span> <span class="o">=====================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="using-couchdb">
+<h2>Using CouchDB<a class="headerlink" href="#using-couchdb" title="Permalink to this headline">¶</a></h2>
+<p>The state database can be switched from the default (goleveldb) to CouchDB.
+The same chaincode functions are available with CouchDB, however, there is the
+added ability to perform rich and complex queries against the state database
+data content contingent upon the chaincode data being modeled as JSON.</p>
+<p>To use CouchDB instead of the default database (goleveldb), follow the same
+procedure in the <strong>Prerequisites</strong> section, and additionally perform the
+following two steps to enable the CouchDB containers and associate each peer
+container with a CouchDB container:</p>
+<ul class="simple">
+<li>Make the CouchDB image.</li>
+</ul>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="c1"># make sure you are in the fabric directory</span>
+<span class="n">make</span> <span class="n">couchdb</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>Open the <code class="docutils literal"><span class="pre">release/samples/e2e/docker-compose.yaml</span></code> and un-comment
+all commented statements relating to CouchDB containers and peer container
+use of CouchDB. These instructions are are also outlined in the
+same <code class="docutils literal"><span class="pre">docker-compose.yaml</span></code> file. Search the file for ‘couchdb’ (case insensitive) references.</li>
+</ul>
+<p><strong>chaincode_example02</strong> should now work using CouchDB underneath.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you choose to implement mapping of the fabric-couchdb container
+port to a host port, please make sure you are aware of the security
+implications. Mapping of the port in a development environment allows the
+visualization of the database via the CouchDB web interface (Fauxton).
+Production environments would likely refrain from implementing port mapping in
+order to restrict outside access to the CouchDB containers.</p>
+</div>
+<p>You can use <strong>chaincode_example02</strong> chaincode against the CouchDB state database
+using the steps outlined above, however in order to exercise the query
+capabilities you will need to use a chaincode that has data modeled as JSON,
+(e.g. <strong>marbles02</strong>). You can locate the <strong>marbles02</strong> chaincode in the
+<code class="docutils literal"><span class="pre">release/samples/chaincodes/go</span></code> directory.</p>
+<p>Install, instantiate, invoke, and query <strong>marbles02</strong> chaincode by following the
+same general steps outlined above for <strong>chaincode_example02</strong> in the
+<strong>Manually execute transactions</strong> section. After the <strong>Join channel</strong> step, use the
+following commands to interact with the <strong>marbles02</strong> chaincode:</p>
+<ul class="simple">
+<li>Install and instantiate the chaincode on <code class="docutils literal"><span class="pre">PEER0</span></code>:</li>
+</ul>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>peer chaincode install -o orderer0:7050 -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02
+peer chaincode instantiate -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02 -c &#39;{&quot;Args&quot;:[&quot;init&quot;]}&#39; -P &quot;OR (&#39;Org0MSP.member&#39;,&#39;Org1MSP.member&#39;)&quot;
+</pre></div>
+</div>
+<ul class="simple">
+<li>Create some marbles and move them around:</li>
+</ul>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>peer chaincode invoke -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n marbles -c &#39;{&quot;Args&quot;:[&quot;initMarble&quot;,&quot;marble1&quot;,&quot;blue&quot;,&quot;35&quot;,&quot;tom&quot;]}&#39;
+peer chaincode invoke -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n marbles -c &#39;{&quot;Args&quot;:[&quot;initMarble&quot;,&quot;marble2&quot;,&quot;red&quot;,&quot;50&quot;,&quot;tom&quot;]}&#39;
+peer chaincode invoke -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n marbles -c &#39;{&quot;Args&quot;:[&quot;initMarble&quot;,&quot;marble3&quot;,&quot;blue&quot;,&quot;70&quot;,&quot;tom&quot;]}&#39;
+peer chaincode invoke -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n marbles -c &#39;{&quot;Args&quot;:[&quot;transferMarble&quot;,&quot;marble2&quot;,&quot;jerry&quot;]}&#39;
+peer chaincode invoke -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n marbles -c &#39;{&quot;Args&quot;:[&quot;transferMarblesBasedOnColor&quot;,&quot;blue&quot;,&quot;jerry&quot;]}&#39;
+peer chaincode invoke -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n marbles -c &#39;{&quot;Args&quot;:[&quot;delete&quot;,&quot;marble1&quot;]}&#39;
+</pre></div>
+</div>
+<ul>
+<li><p class="first">If you chose to activate port mapping, you can now view the state database
+through the CouchDB web interface (Fauxton) by opening a browser and
+navigating to one of the two URLs below.</p>
+<p>For containers running in a vagrant environment:</p>
+<p><code class="docutils literal"><span class="pre">http://localhost:15984/_utils</span></code></p>
+<p>For non-vagrant environment, use the port address that was mapped in CouchDB
+container specification:</p>
+<p><code class="docutils literal"><span class="pre">http://localhost:5984/_utils</span></code></p>
+<p>You should see a database named <code class="docutils literal"><span class="pre">mychannel</span></code> and the documents
+inside it.</p>
+</li>
+<li><p class="first">You can run regular queries from the cli (e.g. reading <code class="docutils literal"><span class="pre">marble2</span></code>):</p>
+</li>
+</ul>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">C</span> <span class="n">mychannel</span> <span class="o">-</span><span class="n">n</span> <span class="n">marbles</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;readMarble&quot;,&quot;marble2&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>You should see the details of <code class="docutils literal"><span class="pre">marble2</span></code>:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">Query</span> <span class="n">Result</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span><span class="s2">&quot;red&quot;</span><span class="p">,</span><span class="s2">&quot;docType&quot;</span><span class="p">:</span><span class="s2">&quot;marble&quot;</span><span class="p">,</span><span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;marble2&quot;</span><span class="p">,</span><span class="s2">&quot;owner&quot;</span><span class="p">:</span><span class="s2">&quot;jerry&quot;</span><span class="p">,</span><span class="s2">&quot;size&quot;</span><span class="p">:</span><span class="mi">50</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Retrieve the history of <code class="docutils literal"><span class="pre">marble1</span></code>:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">C</span> <span class="n">mychannel</span> <span class="o">-</span><span class="n">n</span> <span class="n">marbles</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;getHistoryForMarble&quot;,&quot;marble1&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>You should see the transactions on <code class="docutils literal"><span class="pre">marble1</span></code>:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">Query</span> <span class="n">Result</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;TxId&quot;</span><span class="p">:</span><span class="s2">&quot;1c3d3caf124c89f91a4c0f353723ac736c58155325f02890adebaa15e16e6464&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:{</span><span class="s2">&quot;docType&quot;</span><span class="p">:</span><span class="s2">&quot;marble&quot;</span><span class="p">,</span><span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;marble1&quot;</span><span class="p">,</span><span class="s2">&quot;color&quot;</span><span class="p">:</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span><span class="s2">&quot;size&quot;</span><span class="p">:</span><span class="mi">35</span><span class="p">,</span><span class="s2">&quot;owner&quot;</span><span class="p">:</span><span class="s2">&quot;tom&quot;</span><span class="p">}},{</span><span class="s2">&quot;TxId&quot;</span><span class="p">:</span><span class="s2">&quot;755d55c281889eaeebf405586f9e25d71d36eb3d35420af833a20a2f53a3eefd&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:{</span><span class="s2">&quot;docType&quot;</span><span class="p">:</span><span class="s2">&quot;marble&quot;</span><span class="p">,</span><span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;marble1&quot;</span><span class="p">,</span><span class="s2">&quot;color&quot;</span><span class="p">:</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span><span class="s2">&quot;size&quot;</span><span class="p">:</span><span class="mi">35</span><span class="p">,</span><span class="s2">&quot;owner&quot;</span><span class="p">:</span><span class="s2">&quot;jerry&quot;</span><span class="p">}},{</span><span class="s2">&quot;TxId&quot;</span><span class="p">:</span><span class="s2">&quot;819451032d813dde6247f85e56a89262555e04f14788ee33e28b232eef36d98f&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:}]</span>
+</pre></div>
+</div>
+<p>You can also perform rich queries on the data content, such as querying marble fields by owner <code class="docutils literal"><span class="pre">jerry</span></code>:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">C</span> <span class="n">mychannel</span> <span class="o">-</span><span class="n">n</span> <span class="n">marbles</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;queryMarblesByOwner&quot;,&quot;jerry&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>The output should display the two marbles owned by <code class="docutils literal"><span class="pre">jerry</span></code>:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">Query</span> <span class="n">Result</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Key&quot;</span><span class="p">:</span><span class="s2">&quot;marble2&quot;</span><span class="p">,</span> <span class="s2">&quot;Record&quot;</span><span class="p">:{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span><span class="s2">&quot;red&quot;</span><span class="p">,</span><span class="s2">&quot;docType&quot;</span><span class="p">:</span><span class="s2">&quot;marble&quot;</span><span class="p">,</span><span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;marble2&quot;</span><span class="p">,</span><span class="s2">&quot;owner&quot;</span><span class="p">:</span><span class="s2">&quot;jerry&quot;</span><span class="p">,</span><span class="s2">&quot;size&quot;</span><span class="p">:</span><span class="mi">50</span><span class="p">}},{</span><span class="s2">&quot;Key&quot;</span><span class="p">:</span><span class="s2">&quot;marble3&quot;</span><span class="p">,</span> <span class="s2">&quot;Record&quot;</span><span class="p">:{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span><span class="s2">&quot;docType&quot;</span><span class="p">:</span><span class="s2">&quot;marble&quot;</span><span class="p">,</span><span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;marble3&quot;</span><span class="p">,</span><span class="s2">&quot;owner&quot;</span><span class="p">:</span><span class="s2">&quot;jerry&quot;</span><span class="p">,</span><span class="s2">&quot;size&quot;</span><span class="p">:</span><span class="mi">70</span><span class="p">}}]</span>
+</pre></div>
+</div>
+<p>Query by field <code class="docutils literal"><span class="pre">owner</span></code> where the value is <code class="docutils literal"><span class="pre">jerry</span></code>:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">C</span> <span class="n">mychannel</span> <span class="o">-</span><span class="n">n</span> <span class="n">marbles</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;queryMarbles&quot;,&quot;{</span><span class="se">\&quot;</span><span class="s1">selector</span><span class="se">\&quot;</span><span class="s1">:{</span><span class="se">\&quot;</span><span class="s1">owner</span><span class="se">\&quot;</span><span class="s1">:</span><span class="se">\&quot;</span><span class="s1">jerry</span><span class="se">\&quot;</span><span class="s1">}}&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>The output should display:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">Query</span> <span class="n">Result</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Key&quot;</span><span class="p">:</span><span class="s2">&quot;marble2&quot;</span><span class="p">,</span> <span class="s2">&quot;Record&quot;</span><span class="p">:{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span><span class="s2">&quot;red&quot;</span><span class="p">,</span><span class="s2">&quot;docType&quot;</span><span class="p">:</span><span class="s2">&quot;marble&quot;</span><span class="p">,</span><span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;marble2&quot;</span><span class="p">,</span><span class="s2">&quot;owner&quot;</span><span class="p">:</span><span class="s2">&quot;jerry&quot;</span><span class="p">,</span><span class="s2">&quot;size&quot;</span><span class="p">:</span><span class="mi">50</span><span class="p">}},{</span><span class="s2">&quot;Key&quot;</span><span class="p">:</span><span class="s2">&quot;marble3&quot;</span><span class="p">,</span> <span class="s2">&quot;Record&quot;</span><span class="p">:{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span><span class="s2">&quot;docType&quot;</span><span class="p">:</span><span class="s2">&quot;marble&quot;</span><span class="p">,</span><span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;marble3&quot;</span><span class="p">,</span><span class="s2">&quot;owner&quot;</span><span class="p">:</span><span class="s2">&quot;jerry&quot;</span><span class="p">,</span><span class="s2">&quot;size&quot;</span><span class="p">:</span><span class="mi">70</span><span class="p">}}]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="a-note-on-data-persistence">
+<h2>A Note on Data Persistence<a class="headerlink" href="#a-note-on-data-persistence" title="Permalink to this headline">¶</a></h2>
+<p>If data persistence is desired on the peer container or the CouchDB container,
+one option is to mount a directory in the docker-host into a relevant directory
+in the container. For example, you may add the following two lines in
+the peer container specification in the <code class="docutils literal"><span class="pre">docker-compose.yaml</span></code> file:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">volumes</span><span class="p">:</span>
+ <span class="o">-</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">peer0</span><span class="p">:</span><span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">production</span>
+</pre></div>
+</div>
+<p>For the CouchDB container, you may add the following two lines in the CouchDB
+container specification:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">volumes</span><span class="p">:</span>
+ <span class="o">-</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">couchdb0</span><span class="p">:</span><span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">couchdb</span><span class="o">/</span><span class="n">data</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Ensure you clear the file system after each run</li>
+<li>If you see docker errors, remove your containers and start again.</li>
+</ul>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>docker rm -f $(docker ps -aq)
+</pre></div>
+</div>
+<ul class="simple">
+<li>If you elect to run the “All in one” option, be sure you have deleted your
+crypto directory and the two artifacts.</li>
+<li>If you see the below error:</li>
+</ul>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">Error</span><span class="p">:</span> <span class="n">Error</span> <span class="n">endorsing</span> <span class="n">chaincode</span><span class="p">:</span> <span class="n">rpc</span> <span class="n">error</span><span class="p">:</span> <span class="n">code</span> <span class="o">=</span> <span class="mi">2</span> <span class="n">desc</span> <span class="o">=</span> <span class="n">Error</span> <span class="n">installing</span> <span class="n">chaincode</span> <span class="n">code</span> <span class="n">mycc</span><span class="p">:</span><span class="mf">1.0</span><span class="p">(</span><span class="n">chaincode</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">production</span><span class="o">/</span><span class="n">chaincodes</span><span class="o">/</span><span class="n">mycc</span><span class="o">.</span><span class="mf">1.0</span> <span class="n">exits</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You likely have chaincode images (e.g. <code class="docutils literal"><span class="pre">dev-peer0-mycc-1.0</span></code> or <code class="docutils literal"><span class="pre">dev-peer1-mycc-1.0</span></code>)
+from prior runs. Remove them and try again.</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>docker rmi -f $(docker images | grep peer[0-9]-peer[0-9] | awk &#39;{print $3}&#39;)
+</pre></div>
+</div>
+<ul class="simple">
+<li>To cleanup the network, use the <code class="docutils literal"><span class="pre">down</span></code> option:</li>
+</ul>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">network_setup</span><span class="o">.</span><span class="n">sh</span> <span class="n">down</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="overview.html" class="btn btn-neutral float-right" title="Overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="releases.html" class="btn btn-neutral" title="Release Notes" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

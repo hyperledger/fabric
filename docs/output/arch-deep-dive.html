@@ -1,0 +1,1106 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Architecture Explained &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/>
+        <link rel="next" title="Transaction Flow" href="txflow.html"/>
+        <link rel="prev" title="Logging Control" href="Setup/logging-control.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Architecture Explained</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#system-architecture">1. System architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#transactions">1.1. Transactions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#blockchain-datastructures">1.2. Blockchain datastructures</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#state">1.2.1. State</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ledger">1.2.2 Ledger</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#nodes">1.3. Nodes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#client">1.3.1. Client</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#peer">1.3.2. Peer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ordering-service-nodes-orderers">1.3.3. Ordering service nodes (Orderers)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#basic-workflow-of-transaction-endorsement">2. Basic workflow of transaction endorsement</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-client-creates-a-transaction-and-sends-it-to-endorsing-peers-of-its-choice">2.1. The client creates a transaction and sends it to endorsing peers of its choice</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#propose-message-format">2.1.1. <code class="docutils literal"><span class="pre">PROPOSE</span></code> message format</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#message-patterns">2.1.2. Message patterns</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#the-endorsing-peer-simulates-a-transaction-and-produces-an-endorsement-signature">2.2. The endorsing peer simulates a transaction and produces an endorsement signature</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-submitting-client-collects-an-endorsement-for-a-transaction-and-broadcasts-it-through-ordering-service">2.3. The submitting client collects an endorsement for a transaction and broadcasts it through ordering service</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-ordering-service-delivers-a-transactions-to-the-peers">2.4. The ordering service delivers a transactions to the peers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#endorsement-policies">3. Endorsement policies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#endorsement-policy-specification">3.1. Endorsement policy specification</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#transaction-evaluation-against-endorsement-policy">3.2. Transaction evaluation against endorsement policy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-endorsement-policies">3.3. Example endorsement policies</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#post-v1-validated-ledger-and-peerledger-checkpointing-pruning">4 (post-v1). Validated ledger and <code class="docutils literal"><span class="pre">PeerLedger</span></code> checkpointing (pruning)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#validated-ledger-vledger">4.1. Validated ledger (VLedger)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#peerledger-checkpointing">4.2. <code class="docutils literal"><span class="pre">PeerLedger</span></code> Checkpointing</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#checkpointing-protocol">4.2.1. Checkpointing protocol</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#valid-checkpoints">4.2.2. Valid checkpoints</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Architecture Explained</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/arch-deep-dive.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="architecture-explained">
+<h1>Architecture Explained<a class="headerlink" href="#architecture-explained" title="Permalink to this headline">¶</a></h1>
+<p>The v1 architecture delivers the following advantages:</p>
+<ul class="simple">
+<li><strong>Chaincode trust flexibility.</strong> The architecture separates <em>trust
+assumptions</em> for chaincodes (blockchain applications) from trust
+assumptions for ordering. In other words, the ordering service may be
+provided by one set of nodes (orderers) and tolerate some of them to
+fail or misbehave, and the endorsers may be different for each
+chaincode.</li>
+<li><strong>Scalability.</strong> As the endorser nodes responsible for particular
+chaincode are orthogonal to the orderers, the system may <em>scale</em>
+better than if these functions were done by the same nodes. In
+particular, this results when different chaincodes specify disjoint
+endorsers, which introduces a partitioning of chaincodes between
+endorsers and allows parallel chaincode execution (endorsement).
+Besides, chaincode execution, which can potentially be costly, is
+removed from the critical path of the ordering service.</li>
+<li><strong>Confidentiality.</strong> The architecture facilitates deployment of
+chaincodes that have <em>confidentiality</em> requirements with respect to
+the content and state updates of its transactions.</li>
+<li><strong>Consensus modularity.</strong> The architecture is <em>modular</em> and allows
+pluggable consensus (i.e., ordering service) implementations.</li>
+</ul>
+<p><strong>Part I: Elements of the architecture relevant to Hyperledger Fabric
+v1</strong></p>
+<ol class="arabic">
+<li><p class="first">System architecture</p>
+</li>
+<li><p class="first">Basic workflow of transaction endorsement</p>
+</li>
+<li><p class="first">Endorsement policies</p>
+<p><strong>Part II: Post-v1 elements of the architecture</strong></p>
+</li>
+<li><p class="first">Ledger checkpointing (pruning)</p>
+</li>
+</ol>
+<div class="section" id="system-architecture">
+<h2>1. System architecture<a class="headerlink" href="#system-architecture" title="Permalink to this headline">¶</a></h2>
+<p>The blockchain is a distributed system consisting of many nodes that
+communicate with each other. The blockchain runs programs called
+chaincode, holds state and ledger data, and executes transactions. The
+chaincode is the central element as transactions are operations invoked
+on the chaincode. Transactions have to be “endorsed” and only endorsed
+transactions may be committed and have an effect on the state. There may
+exist one or more special chaincodes for management functions and
+parameters, collectively called <em>system chaincodes</em>.</p>
+<div class="section" id="transactions">
+<h3>1.1. Transactions<a class="headerlink" href="#transactions" title="Permalink to this headline">¶</a></h3>
+<p>Transactions may be of two types:</p>
+<ul class="simple">
+<li><em>Deploy transactions</em> create new chaincode and take a program as
+parameter. When a deploy transaction executes successfully, the
+chaincode has been installed “on” the blockchain.</li>
+<li><em>Invoke transactions</em> perform an operation in the context of
+previously deployed chaincode. An invoke transaction refers to a
+chaincode and to one of its provided functions. When successful, the
+chaincode executes the specified function - which may involve
+modifying the corresponding state, and returning an output.</li>
+</ul>
+<p>As described later, deploy transactions are special cases of invoke
+transactions, where a deploy transaction that creates new chaincode,
+corresponds to an invoke transaction on a system chaincode.</p>
+<p><strong>Remark:</strong> <em>This document currently assumes that a transaction either
+creates new chaincode or invokes an operation provided by *one</em> already
+deployed chaincode. This document does not yet describe: a)
+optimizations for query (read-only) transactions (included in v1), b)
+support for cross-chaincode transactions (post-v1 feature).*</p>
+</div>
+<div class="section" id="blockchain-datastructures">
+<h3>1.2. Blockchain datastructures<a class="headerlink" href="#blockchain-datastructures" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="state">
+<h4>1.2.1. State<a class="headerlink" href="#state" title="Permalink to this headline">¶</a></h4>
+<p>The latest state of the blockchain (or, simply, <em>state</em>) is modeled as a
+versioned key/value store (KVS), where keys are names and values are
+arbitrary blobs. These entries are manipulated by the chaincodes
+(applications) running on the blockchain through <code class="docutils literal"><span class="pre">put</span></code> and <code class="docutils literal"><span class="pre">get</span></code>
+KVS-operations. The state is stored persistently and updates to the
+state are logged. Notice that versioned KVS is adopted as state model,
+an implementation may use actual KVSs, but also RDBMSs or any other
+solution.</p>
+<p>More formally, state <code class="docutils literal"><span class="pre">s</span></code> is modeled as an element of a mapping
+<code class="docutils literal"><span class="pre">K</span> <span class="pre">-&gt;</span> <span class="pre">(V</span> <span class="pre">X</span> <span class="pre">N)</span></code>, where:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">K</span></code> is a set of keys</li>
+<li><code class="docutils literal"><span class="pre">V</span></code> is a set of values</li>
+<li><code class="docutils literal"><span class="pre">N</span></code> is an infinite ordered set of version numbers. Injective
+function <code class="docutils literal"><span class="pre">next:</span> <span class="pre">N</span> <span class="pre">-&gt;</span> <span class="pre">N</span></code> takes an element of <code class="docutils literal"><span class="pre">N</span></code> and returns the
+next version number.</li>
+</ul>
+<p>Both <code class="docutils literal"><span class="pre">V</span></code> and <code class="docutils literal"><span class="pre">N</span></code> contain a special element <code class="docutils literal"><span class="pre">\bot</span></code>, which is in
+case of <code class="docutils literal"><span class="pre">N</span></code> the lowest element. Initially all keys are mapped to
+<code class="docutils literal"><span class="pre">(\bot,\bot)</span></code>. For <code class="docutils literal"><span class="pre">s(k)=(v,ver)</span></code> we denote <code class="docutils literal"><span class="pre">v</span></code> by <code class="docutils literal"><span class="pre">s(k).value</span></code>,
+and <code class="docutils literal"><span class="pre">ver</span></code> by <code class="docutils literal"><span class="pre">s(k).version</span></code>.</p>
+<p>KVS operations are modeled as follows:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">put(k,v)</span></code>, for <code class="docutils literal"><span class="pre">k\in</span> <span class="pre">K</span></code> and <code class="docutils literal"><span class="pre">v\in</span> <span class="pre">V</span></code>, takes the blockchain
+state <code class="docutils literal"><span class="pre">s</span></code> and changes it to <code class="docutils literal"><span class="pre">s'</span></code> such that
+<code class="docutils literal"><span class="pre">s'(k)=(v,next(s(k).version))</span></code> with <code class="docutils literal"><span class="pre">s'(k')=s(k')</span></code> for all
+<code class="docutils literal"><span class="pre">k'!=k</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">get(k)</span></code> returns <code class="docutils literal"><span class="pre">s(k)</span></code>.</li>
+</ul>
+<p>State is maintained by peers, but not by orderers and clients.</p>
+<p><strong>State partitioning.</strong> Keys in the KVS can be recognized from their
+name to belong to a particular chaincode, in the sense that only
+transaction of a certain chaincode may modify the keys belonging to this
+chaincode. In principle, any chaincode can read the keys belonging to
+other chaincodes. <em>Support for cross-chaincode transactions, that modify
+the state belonging to two or more chaincodes is a post-v1 feature.</em></p>
+</div>
+<div class="section" id="ledger">
+<h4>1.2.2 Ledger<a class="headerlink" href="#ledger" title="Permalink to this headline">¶</a></h4>
+<p>Ledger provides a verifiable history of all successful state changes (we
+talk about <em>valid</em> transactions) and unsuccessful attempts to change
+state (we talk about <em>invalid</em> transactions), occurring during the
+operation of the system.</p>
+<p>Ledger is constructed by the ordering service (see Sec 1.3.3) as a
+totally ordered hashchain of <em>blocks</em> of (valid or invalid)
+transactions. The hashchain imposes the total order of blocks in a
+ledger and each block contains an array of totally ordered transactions.
+This imposes total order across all transactions.</p>
+<p>Ledger is kept at all peers and, optionally, at a subset of orderers. In
+the context of an orderer we refer to the Ledger as to
+<code class="docutils literal"><span class="pre">OrdererLedger</span></code>, whereas in the context of a peer we refer to the
+ledger as to <code class="docutils literal"><span class="pre">PeerLedger</span></code>. <code class="docutils literal"><span class="pre">PeerLedger</span></code> differs from the
+<code class="docutils literal"><span class="pre">OrdererLedger</span></code> in that peers locally maintain a bitmask that tells
+apart valid transactions from invalid ones (see Section XX for more
+details).</p>
+<p>Peers may prune <code class="docutils literal"><span class="pre">PeerLedger</span></code> as described in Section XX (post-v1
+feature). Orderers maintain <code class="docutils literal"><span class="pre">OrdererLedger</span></code> for fault-tolerance and
+availability (of the <code class="docutils literal"><span class="pre">PeerLedger</span></code>) and may decide to prune it at
+anytime, provided that properties of the ordering service (see Sec.
+1.3.3) are maintained.</p>
+<p>The ledger allows peers to replay the history of all transactions and to
+reconstruct the state. Therefore, state as described in Sec 1.2.1 is an
+optional datastructure.</p>
+</div>
+</div>
+<div class="section" id="nodes">
+<h3>1.3. Nodes<a class="headerlink" href="#nodes" title="Permalink to this headline">¶</a></h3>
+<p>Nodes are the communication entities of the blockchain. A “node” is only
+a logical function in the sense that multiple nodes of different types
+can run on the same physical server. What counts is how nodes are
+grouped in “trust domains” and associated to logical entities that
+control them.</p>
+<p>There are three types of nodes:</p>
+<ol class="arabic simple">
+<li><strong>Client</strong> or <strong>submitting-client</strong>: a client that submits an actual
+transaction-invocation to the endorsers, and broadcasts
+transaction-proposals to the ordering service.</li>
+<li><strong>Peer</strong>: a node that commits transactions and maintains the state
+and a copy of the ledger (see Sec, 1.2). Besides, peers can have a
+special <strong>endorser</strong> role.</li>
+<li><strong>Ordering-service-node</strong> or <strong>orderer</strong>: a node running the
+communication service that implements a delivery guarantee, such as
+atomic or total order broadcast.</li>
+</ol>
+<p>The types of nodes are explained next in more detail.</p>
+<div class="section" id="client">
+<h4>1.3.1. Client<a class="headerlink" href="#client" title="Permalink to this headline">¶</a></h4>
+<p>The client represents the entity that acts on behalf of an end-user. It
+must connect to a peer for communicating with the blockchain. The client
+may connect to any peer of its choice. Clients create and thereby invoke
+transactions.</p>
+<p>As detailed in Section 2, clients communicate with both peers and the
+ordering service.</p>
+</div>
+<div class="section" id="peer">
+<h4>1.3.2. Peer<a class="headerlink" href="#peer" title="Permalink to this headline">¶</a></h4>
+<p>A peer receives ordered state updates in the form of <em>blocks</em> from the
+ordering service and maintain the state and the ledger.</p>
+<p>Peers can additionally take up a special role of an <strong>endorsing peer</strong>,
+or an <strong>endorser</strong>. The special function of an <em>endorsing peer</em> occurs
+with respect to a particular chaincode and consists in <em>endorsing</em> a
+transaction before it is committed. Every chaincode may specify an
+<em>endorsement policy</em> that may refer to a set of endorsing peers. The
+policy defines the necessary and sufficient conditions for a valid
+transaction endorsement (typically a set of endorsers’ signatures), as
+described later in Sections 2 and 3. In the special case of deploy
+transactions that install new chaincode the (deployment) endorsement
+policy is specified as an endorsement policy of the system chaincode.</p>
+</div>
+<div class="section" id="ordering-service-nodes-orderers">
+<h4>1.3.3. Ordering service nodes (Orderers)<a class="headerlink" href="#ordering-service-nodes-orderers" title="Permalink to this headline">¶</a></h4>
+<p>The <em>orderers</em> form the <em>ordering service</em>, i.e., a communication fabric
+that provides delivery guarantees. The ordering service can be
+implemented in different ways: ranging from a centralized service (used
+e.g., in development and testing) to distributed protocols that target
+different network and node fault models.</p>
+<p>Ordering service provides a shared <em>communication channel</em> to clients
+and peers, offering a broadcast service for messages containing
+transactions. Clients connect to the channel and may broadcast messages
+on the channel which are then delivered to all peers. The channel
+supports <em>atomic</em> delivery of all messages, that is, message
+communication with total-order delivery and (implementation specific)
+reliability. In other words, the channel outputs the same messages to
+all connected peers and outputs them to all peers in the same logical
+order. This atomic communication guarantee is also called <em>total-order
+broadcast</em>, <em>atomic broadcast</em>, or <em>consensus</em> in the context of
+distributed systems. The communicated messages are the candidate
+transactions for inclusion in the blockchain state.</p>
+<p><strong>Partitioning (ordering service channels).</strong> Ordering service may
+support multiple <em>channels</em> similar to the <em>topics</em> of a
+publish/subscribe (pub/sub) messaging system. Clients can connects to a
+given channel and can then send messages and obtain the messages that
+arrive. Channels can be thought of as partitions - clients connecting to
+one channel are unaware of the existence of other channels, but clients
+may connect to multiple channels. Even though some ordering service
+implementations included with Hyperledger Fabric v1 will support
+multiple channels, for simplicity of presentation, in the rest of this
+document, we assume ordering service consists of a single channel/topic.</p>
+<p><strong>Ordering service API.</strong> Peers connect to the channel provided by the
+ordering service, via the interface provided by the ordering service.
+The ordering service API consists of two basic operations (more
+generally <em>asynchronous events</em>):</p>
+<p><strong>TODO</strong> add the part of the API for fetching particular blocks under
+client/peer specified sequence numbers.</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">broadcast(blob)</span></code>: a client calls this to broadcast an arbitrary
+message <code class="docutils literal"><span class="pre">blob</span></code> for dissemination over the channel. This is also
+called <code class="docutils literal"><span class="pre">request(blob)</span></code> in the BFT context, when sending a request
+to a service.</li>
+<li><code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash,</span> <span class="pre">blob)</span></code>: the ordering service calls this
+on the peer to deliver the message <code class="docutils literal"><span class="pre">blob</span></code> with the specified
+non-negative integer sequence number (<code class="docutils literal"><span class="pre">seqno</span></code>) and hash of the most
+recently delivered blob (<code class="docutils literal"><span class="pre">prevhash</span></code>). In other words, it is an
+output event from the ordering service. <code class="docutils literal"><span class="pre">deliver()</span></code> is also
+sometimes called <code class="docutils literal"><span class="pre">notify()</span></code> in pub-sub systems or <code class="docutils literal"><span class="pre">commit()</span></code> in
+BFT systems.</li>
+</ul>
+<p><strong>Ledger and block formation.</strong> The ledger (see also Sec. 1.2.2)
+contains all data output by the ordering service. In a nutshell, it is a
+sequence of <code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash,</span> <span class="pre">blob)</span></code> events, which form a hash
+chain according to the computation of <code class="docutils literal"><span class="pre">prevhash</span></code> described before.</p>
+<p>Most of the time, for efficiency reasons, instead of outputting
+individual transactions (blobs), the ordering service will group (batch)
+the blobs and output <em>blocks</em> within a single <code class="docutils literal"><span class="pre">deliver</span></code> event. In this
+case, the ordering service must impose and convey a deterministic
+ordering of the blobs within each block. The number of blobs in a block
+may be chosen dynamically by an ordering service implementation.</p>
+<p>In the following, for ease of presentation, we define ordering service
+properties (rest of this subsection) and explain the workflow of
+transaction endorsement (Section 2) assuming one blob per <code class="docutils literal"><span class="pre">deliver</span></code>
+event. These are easily extended to blocks, assuming that a <code class="docutils literal"><span class="pre">deliver</span></code>
+event for a block corresponds to a sequence of individual <code class="docutils literal"><span class="pre">deliver</span></code>
+events for each blob within a block, according to the above mentioned
+deterministic ordering of blobs within a blocs.</p>
+<p><strong>Ordering service properties</strong></p>
+<p>The guarantees of the ordering service (or atomic-broadcast channel)
+stipulate what happens to a broadcasted message and what relations exist
+among delivered messages. These guarantees are as follows:</p>
+<ol class="arabic">
+<li><p class="first"><strong>Safety (consistency guarantees)</strong>: As long as peers are connected
+for sufficiently long periods of time to the channel (they can
+disconnect or crash, but will restart and reconnect), they will see
+an <em>identical</em> series of delivered <code class="docutils literal"><span class="pre">(seqno,</span> <span class="pre">prevhash,</span> <span class="pre">blob)</span></code>
+messages. This means the outputs (<code class="docutils literal"><span class="pre">deliver()</span></code> events) occur in the
+<em>same order</em> on all peers and according to sequence number and carry
+<em>identical content</em> (<code class="docutils literal"><span class="pre">blob</span></code> and <code class="docutils literal"><span class="pre">prevhash</span></code>) for the same sequence
+number. Note this is only a <em>logical order</em>, and a
+<code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash,</span> <span class="pre">blob)</span></code> on one peer is not required to
+occur in any real-time relation to <code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash,</span> <span class="pre">blob)</span></code>
+that outputs the same message at another peer. Put differently, given
+a particular <code class="docutils literal"><span class="pre">seqno</span></code>, <em>no</em> two correct peers deliver <em>different</em>
+<code class="docutils literal"><span class="pre">prevhash</span></code> or <code class="docutils literal"><span class="pre">blob</span></code> values. Moreover, no value <code class="docutils literal"><span class="pre">blob</span></code> is
+delivered unless some client (peer) actually called
+<code class="docutils literal"><span class="pre">broadcast(blob)</span></code> and, preferably, every broadcasted blob is only
+delivered <em>once</em>.</p>
+<p>Furthermore, the <code class="docutils literal"><span class="pre">deliver()</span></code> event contains the cryptographic hash
+of the data in the previous <code class="docutils literal"><span class="pre">deliver()</span></code> event (<code class="docutils literal"><span class="pre">prevhash</span></code>). When
+the ordering service implements atomic broadcast guarantees,
+<code class="docutils literal"><span class="pre">prevhash</span></code> is the cryptographic hash of the parameters from the
+<code class="docutils literal"><span class="pre">deliver()</span></code> event with sequence number <code class="docutils literal"><span class="pre">seqno-1</span></code>. This
+establishes a hash chain across <code class="docutils literal"><span class="pre">deliver()</span></code> events, which is used
+to help verify the integrity of the ordering service output, as
+discussed in Sections 4 and 5 later. In the special case of the first
+<code class="docutils literal"><span class="pre">deliver()</span></code> event, <code class="docutils literal"><span class="pre">prevhash</span></code> has a default value.</p>
+</li>
+<li><p class="first"><strong>Liveness (delivery guarantee)</strong>: Liveness guarantees of the
+ordering service are specified by a ordering service implementation.
+The exact guarantees may depend on the network and node fault model.</p>
+<p>In principle, if the submitting client does not fail, the ordering
+service should guarantee that every correct peer that connects to the
+ordering service eventually delivers every submitted transaction.</p>
+</li>
+</ol>
+<p>To summarize, the ordering service ensures the following properties:</p>
+<ul class="simple">
+<li><em>Agreement.</em> For any two events at correct peers
+<code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash0,</span> <span class="pre">blob0)</span></code> and
+<code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash1,</span> <span class="pre">blob1)</span></code> with the same <code class="docutils literal"><span class="pre">seqno</span></code>,
+<code class="docutils literal"><span class="pre">prevhash0==prevhash1</span></code> and <code class="docutils literal"><span class="pre">blob0==blob1</span></code>;</li>
+<li><em>Hashchain integrity.</em> For any two events at correct peers
+<code class="docutils literal"><span class="pre">deliver(seqno-1,</span> <span class="pre">prevhash0,</span> <span class="pre">blob0)</span></code> and
+<code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash,</span> <span class="pre">blob)</span></code>,
+<code class="docutils literal"><span class="pre">prevhash</span> <span class="pre">=</span> <span class="pre">HASH(seqno-1||prevhash0||blob0)</span></code>.</li>
+<li><em>No skipping</em>. If an ordering service outputs
+<code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash,</span> <span class="pre">blob)</span></code> at a correct peer <em>p</em>, such that
+<code class="docutils literal"><span class="pre">seqno&gt;0</span></code>, then <em>p</em> already delivered an event
+<code class="docutils literal"><span class="pre">deliver(seqno-1,</span> <span class="pre">prevhash0,</span> <span class="pre">blob0)</span></code>.</li>
+<li><em>No creation</em>. Any event <code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash,</span> <span class="pre">blob)</span></code> at a
+correct peer must be preceded by a <code class="docutils literal"><span class="pre">broadcast(blob)</span></code> event at some
+(possibly distinct) peer;</li>
+<li><em>No duplication (optional, yet desirable)</em>. For any two events
+<code class="docutils literal"><span class="pre">broadcast(blob)</span></code> and <code class="docutils literal"><span class="pre">broadcast(blob')</span></code>, when two events
+<code class="docutils literal"><span class="pre">deliver(seqno0,</span> <span class="pre">prevhash0,</span> <span class="pre">blob)</span></code> and
+<code class="docutils literal"><span class="pre">deliver(seqno1,</span> <span class="pre">prevhash1,</span> <span class="pre">blob')</span></code> occur at correct peers and
+<code class="docutils literal"><span class="pre">blob</span> <span class="pre">==</span> <span class="pre">blob'</span></code>, then <code class="docutils literal"><span class="pre">seqno0==seqno1</span></code> and
+<code class="docutils literal"><span class="pre">prevhash0==prevhash1</span></code>.</li>
+<li><em>Liveness</em>. If a correct client invokes an event <code class="docutils literal"><span class="pre">broadcast(blob)</span></code>
+then every correct peer “eventually” issues an event
+<code class="docutils literal"><span class="pre">deliver(*,</span> <span class="pre">*,</span> <span class="pre">blob)</span></code>, where <code class="docutils literal"><span class="pre">*</span></code> denotes an arbitrary value.</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="basic-workflow-of-transaction-endorsement">
+<h2>2. Basic workflow of transaction endorsement<a class="headerlink" href="#basic-workflow-of-transaction-endorsement" title="Permalink to this headline">¶</a></h2>
+<p>In the following we outline the high-level request flow for a
+transaction.</p>
+<p><strong>Remark:</strong> <em>Notice that the following protocol *does not</em> assume that
+all transactions are deterministic, i.e., it allows for
+non-deterministic transactions.*</p>
+<div class="section" id="the-client-creates-a-transaction-and-sends-it-to-endorsing-peers-of-its-choice">
+<h3>2.1. The client creates a transaction and sends it to endorsing peers of its choice<a class="headerlink" href="#the-client-creates-a-transaction-and-sends-it-to-endorsing-peers-of-its-choice" title="Permalink to this headline">¶</a></h3>
+<p>To invoke a transaction, the client sends a <code class="docutils literal"><span class="pre">PROPOSE</span></code> message to a set
+of endorsing peers of its choice (possibly not at the same time - see
+Sections 2.1.2. and 2.3.). The set of endorsing peers for a given
+<code class="docutils literal"><span class="pre">chaincodeID</span></code> is made available to client via peer, which in turn
+knows the set of endorsing peers from endorsement policy (see Section
+3). For example, the transaction could be sent to <em>all</em> endorsers of a
+given <code class="docutils literal"><span class="pre">chaincodeID</span></code>. That said, some endorsers could be offline,
+others may object and choose not to endorse the transaction. The
+submitting client tries to satisfy the policy expression with the
+endorsers available.</p>
+<p>In the following, we first detail <code class="docutils literal"><span class="pre">PROPOSE</span></code> message format and then
+discuss possible patterns of interaction between submitting client and
+endorsers.</p>
+</div>
+<div class="section" id="propose-message-format">
+<h3>2.1.1. <code class="docutils literal"><span class="pre">PROPOSE</span></code> message format<a class="headerlink" href="#propose-message-format" title="Permalink to this headline">¶</a></h3>
+<p>The format of a <code class="docutils literal"><span class="pre">PROPOSE</span></code> message is <code class="docutils literal"><span class="pre">&lt;PROPOSE,tx,[anchor]&gt;</span></code>, where
+<code class="docutils literal"><span class="pre">tx</span></code> is a mandatory and <code class="docutils literal"><span class="pre">anchor</span></code> optional argument explained in the
+following.</p>
+<ul>
+<li><p class="first"><code class="docutils literal"><span class="pre">tx=&lt;clientID,chaincodeID,txPayload,timestamp,clientSig&gt;</span></code>, where</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">clientID</span></code> is an ID of the submitting client,</li>
+<li><code class="docutils literal"><span class="pre">chaincodeID</span></code> refers to the chaincode to which the transaction
+pertains,</li>
+<li><code class="docutils literal"><span class="pre">txPayload</span></code> is the payload containing the submitted transaction
+itself,</li>
+<li><code class="docutils literal"><span class="pre">timestamp</span></code> is a monotonically increasing (for every new
+transaction) integer maintained by the client,</li>
+<li><code class="docutils literal"><span class="pre">clientSig</span></code> is signature of a client on other fields of <code class="docutils literal"><span class="pre">tx</span></code>.</li>
+</ul>
+<p>The details of <code class="docutils literal"><span class="pre">txPayload</span></code> will differ between invoke transactions
+and deploy transactions (i.e., invoke transactions referring to a
+deploy-specific system chaincode). For an <strong>invoke transaction</strong>,
+<code class="docutils literal"><span class="pre">txPayload</span></code> would consist of two fields</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">txPayload</span> <span class="pre">=</span> <span class="pre">&lt;operation,</span> <span class="pre">metadata&gt;</span></code>, where<ul>
+<li><code class="docutils literal"><span class="pre">operation</span></code> denotes the chaincode operation (function) and
+arguments,</li>
+<li><code class="docutils literal"><span class="pre">metadata</span></code> denotes attributes related to the invocation.</li>
+</ul>
+</li>
+</ul>
+<p>For a <strong>deploy transaction</strong>, <code class="docutils literal"><span class="pre">txPayload</span></code> would consist of three
+fields</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">txPayload</span> <span class="pre">=</span> <span class="pre">&lt;source,</span> <span class="pre">metadata,</span> <span class="pre">policies&gt;</span></code>, where<ul>
+<li><code class="docutils literal"><span class="pre">source</span></code> denotes the source code of the chaincode,</li>
+<li><code class="docutils literal"><span class="pre">metadata</span></code> denotes attributes related to the chaincode and
+application,</li>
+<li><code class="docutils literal"><span class="pre">policies</span></code> contains policies related to the chaincode that
+are accessible to all peers, such as the endorsement policy.
+Note that endorsement policies are not supplied with
+<code class="docutils literal"><span class="pre">txPayload</span></code> in a <code class="docutils literal"><span class="pre">deploy</span></code> transaction, but
+<code class="docutils literal"><span class="pre">txPayload</span></code> of a <code class="docutils literal"><span class="pre">deploy</span></code> contains endorsement policy ID and
+its parameters (see Section 3).</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">anchor</span></code> contains <em>read version dependencies</em>, or more
+specifically, key-version pairs (i.e., <code class="docutils literal"><span class="pre">anchor</span></code> is a subset of
+<code class="docutils literal"><span class="pre">KxN</span></code>), that binds or “anchors” the <code class="docutils literal"><span class="pre">PROPOSE</span></code> request to
+specified versions of keys in a KVS (see Section 1.2.). If the client
+specifies the <code class="docutils literal"><span class="pre">anchor</span></code> argument, an endorser endorses a transaction
+only upon <em>read</em> version numbers of corresponding keys in its local
+KVS match <code class="docutils literal"><span class="pre">anchor</span></code> (see Section 2.2. for more details).</p>
+</li>
+</ul>
+<p>Cryptographic hash of <code class="docutils literal"><span class="pre">tx</span></code> is used by all nodes as a unique
+transaction identifier <code class="docutils literal"><span class="pre">tid</span></code> (i.e., <code class="docutils literal"><span class="pre">tid=HASH(tx)</span></code>). The client
+stores <code class="docutils literal"><span class="pre">tid</span></code> in memory and waits for responses from endorsing peers.</p>
+<div class="section" id="message-patterns">
+<h4>2.1.2. Message patterns<a class="headerlink" href="#message-patterns" title="Permalink to this headline">¶</a></h4>
+<p>The client decides on the sequence of interaction with endorsers. For
+example, a client would typically send <code class="docutils literal"><span class="pre">&lt;PROPOSE,</span> <span class="pre">tx&gt;</span></code> (i.e., without
+the <code class="docutils literal"><span class="pre">anchor</span></code> argument) to a single endorser, which would then produce
+the version dependencies (<code class="docutils literal"><span class="pre">anchor</span></code>) which the client can later on use
+as an argument of its <code class="docutils literal"><span class="pre">PROPOSE</span></code> message to other endorsers. As another
+example, the client could directly send <code class="docutils literal"><span class="pre">&lt;PROPOSE,</span> <span class="pre">tx&gt;</span></code> (without
+<code class="docutils literal"><span class="pre">anchor</span></code>) to all endorsers of its choice. Different patterns of
+communication are possible and client is free to decide on those (see
+also Section 2.3.).</p>
+</div>
+</div>
+<div class="section" id="the-endorsing-peer-simulates-a-transaction-and-produces-an-endorsement-signature">
+<h3>2.2. The endorsing peer simulates a transaction and produces an endorsement signature<a class="headerlink" href="#the-endorsing-peer-simulates-a-transaction-and-produces-an-endorsement-signature" title="Permalink to this headline">¶</a></h3>
+<p>On reception of a <code class="docutils literal"><span class="pre">&lt;PROPOSE,tx,[anchor]&gt;</span></code> message from a client, the
+endorsing peer <code class="docutils literal"><span class="pre">epID</span></code> first verifies the client’s signature
+<code class="docutils literal"><span class="pre">clientSig</span></code> and then simulates a transaction. If the client specifies
+<code class="docutils literal"><span class="pre">anchor</span></code> then endorsing peer simulates the transactions only upon read
+version numbers (i.e., <code class="docutils literal"><span class="pre">readset</span></code> as defined below) of corresponding
+keys in its local KVS match those version numbers specified by
+<code class="docutils literal"><span class="pre">anchor</span></code>.</p>
+<p>Simulating a transaction involves endorsing peer tentatively <em>executing</em>
+a transaction (<code class="docutils literal"><span class="pre">txPayload</span></code>), by invoking the chaincode to which the
+transaction refers (<code class="docutils literal"><span class="pre">chaincodeID</span></code>) and the copy of the state that the
+endorsing peer locally holds.</p>
+<p>As a result of the execution, the endorsing peer computes <em>read version
+dependencies</em> (<code class="docutils literal"><span class="pre">readset</span></code>) and <em>state updates</em> (<code class="docutils literal"><span class="pre">writeset</span></code>), also
+called <em>MVCC+postimage info</em> in DB language.</p>
+<p>Recall that the state consists of key/value (k/v) pairs. All k/v entries
+are versioned, that is, every entry contains ordered version
+information, which is incremented every time when the value stored under
+a key is updated. The peer that interprets the transaction records all
+k/v pairs accessed by the chaincode, either for reading or for writing,
+but the peer does not yet update its state. More specifically:</p>
+<ul class="simple">
+<li>Given state <code class="docutils literal"><span class="pre">s</span></code> before an endorsing peer executes a transaction,
+for every key <code class="docutils literal"><span class="pre">k</span></code> read by the transaction, pair
+<code class="docutils literal"><span class="pre">(k,s(k).version)</span></code> is added to <code class="docutils literal"><span class="pre">readset</span></code>.</li>
+<li>Additionally, for every key <code class="docutils literal"><span class="pre">k</span></code> modified by the transaction to the
+new value <code class="docutils literal"><span class="pre">v'</span></code>, pair <code class="docutils literal"><span class="pre">(k,v')</span></code> is added to <code class="docutils literal"><span class="pre">writeset</span></code>.
+Alternatively, <code class="docutils literal"><span class="pre">v'</span></code> could be the delta of the new value to previous
+value (<code class="docutils literal"><span class="pre">s(k).value</span></code>).</li>
+</ul>
+<p>If a client specifies <code class="docutils literal"><span class="pre">anchor</span></code> in the <code class="docutils literal"><span class="pre">PROPOSE</span></code> message then client
+specified <code class="docutils literal"><span class="pre">anchor</span></code> must equal <code class="docutils literal"><span class="pre">readset</span></code> produced by endorsing peer
+when simulating the transaction.</p>
+<p>Then, the peer forwards internally <code class="docutils literal"><span class="pre">tran-proposal</span></code> (and possibly
+<code class="docutils literal"><span class="pre">tx</span></code>) to the part of its (peer’s) logic that endorses a transaction,
+referred to as <strong>endorsing logic</strong>. By default, endorsing logic at a
+peer accepts the <code class="docutils literal"><span class="pre">tran-proposal</span></code> and simply signs the
+<code class="docutils literal"><span class="pre">tran-proposal</span></code>. However, endorsing logic may interpret arbitrary
+functionality, to, e.g., interact with legacy systems with
+<code class="docutils literal"><span class="pre">tran-proposal</span></code> and <code class="docutils literal"><span class="pre">tx</span></code> as inputs to reach the decision whether to
+endorse a transaction or not.</p>
+<p>If endorsing logic decides to endorse a transaction, it sends
+<code class="docutils literal"><span class="pre">&lt;TRANSACTION-ENDORSED,</span> <span class="pre">tid,</span> <span class="pre">tran-proposal,epSig&gt;</span></code> message to the
+submitting client(<code class="docutils literal"><span class="pre">tx.clientID</span></code>), where:</p>
+<ul>
+<li><p class="first"><code class="docutils literal"><span class="pre">tran-proposal</span> <span class="pre">:=</span> <span class="pre">(epID,tid,chaincodeID,txContentBlob,readset,writeset)</span></code>,</p>
+<p>where <code class="docutils literal"><span class="pre">txContentBlob</span></code> is chaincode/transaction specific
+information. The intention is to have <code class="docutils literal"><span class="pre">txContentBlob</span></code> used as some
+representation of <code class="docutils literal"><span class="pre">tx</span></code> (e.g., <code class="docutils literal"><span class="pre">txContentBlob=tx.txPayload</span></code>).</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">epSig</span></code> is the endorsing peer’s signature on <code class="docutils literal"><span class="pre">tran-proposal</span></code></p>
+</li>
+</ul>
+<p>Else, in case the endorsing logic refuses to endorse the transaction, an
+endorser <em>may</em> send a message <code class="docutils literal"><span class="pre">(TRANSACTION-INVALID,</span> <span class="pre">tid,</span> <span class="pre">REJECTED)</span></code>
+to the submitting client.</p>
+<p>Notice that an endorser does not change its state in this step, the
+updates produced by transaction simulation in the context of endorsement
+do not affect the state!</p>
+</div>
+<div class="section" id="the-submitting-client-collects-an-endorsement-for-a-transaction-and-broadcasts-it-through-ordering-service">
+<h3>2.3. The submitting client collects an endorsement for a transaction and broadcasts it through ordering service<a class="headerlink" href="#the-submitting-client-collects-an-endorsement-for-a-transaction-and-broadcasts-it-through-ordering-service" title="Permalink to this headline">¶</a></h3>
+<p>The submitting client waits until it receives “enough” messages and
+signatures on <code class="docutils literal"><span class="pre">(TRANSACTION-ENDORSED,</span> <span class="pre">tid,</span> <span class="pre">*,</span> <span class="pre">*)</span></code> statements to
+conclude that the transaction proposal is endorsed. As discussed in
+Section 2.1.2., this may involve one or more round-trips of interaction
+with endorsers.</p>
+<p>The exact number of “enough” depend on the chaincode endorsement policy
+(see also Section 3). If the endorsement policy is satisfied, the
+transaction has been <em>endorsed</em>; note that it is not yet committed. The
+collection of signed <code class="docutils literal"><span class="pre">TRANSACTION-ENDORSED</span></code> messages from endorsing
+peers which establish that a transaction is endorsed is called an
+<em>endorsement</em> and denoted by <code class="docutils literal"><span class="pre">endorsement</span></code>.</p>
+<p>If the submitting client does not manage to collect an endorsement for a
+transaction proposal, it abandons this transaction with an option to
+retry later.</p>
+<p>For transaction with a valid endorsement, we now start using the
+ordering service. The submitting client invokes ordering service using
+the <code class="docutils literal"><span class="pre">broadcast(blob)</span></code>, where <code class="docutils literal"><span class="pre">blob=endorsement</span></code>. If the client does
+not have capability of invoking ordering service directly, it may proxy
+its broadcast through some peer of its choice. Such a peer must be
+trusted by the client not to remove any message from the <code class="docutils literal"><span class="pre">endorsement</span></code>
+or otherwise the transaction may be deemed invalid. Notice that,
+however, a proxy peer may not fabricate a valid <code class="docutils literal"><span class="pre">endorsement</span></code>.</p>
+</div>
+<div class="section" id="the-ordering-service-delivers-a-transactions-to-the-peers">
+<h3>2.4. The ordering service delivers a transactions to the peers<a class="headerlink" href="#the-ordering-service-delivers-a-transactions-to-the-peers" title="Permalink to this headline">¶</a></h3>
+<p>When an event <code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash,</span> <span class="pre">blob)</span></code> occurs and a peer has
+applied all state updates for blobs with sequence number lower than
+<code class="docutils literal"><span class="pre">seqno</span></code>, a peer does the following:</p>
+<ul class="simple">
+<li>It checks that the <code class="docutils literal"><span class="pre">blob.endorsement</span></code> is valid according to the
+policy of the chaincode (<code class="docutils literal"><span class="pre">blob.tran-proposal.chaincodeID</span></code>) to which
+it refers.</li>
+<li>In a typical case, it also verifies that the dependencies
+(<code class="docutils literal"><span class="pre">blob.endorsement.tran-proposal.readset</span></code>) have not been violated
+meanwhile. In more complex use cases, <code class="docutils literal"><span class="pre">tran-proposal</span></code> fields in
+endorsement may differ and in this case endorsement policy (Section
+3) specifies how the state evolves.</li>
+</ul>
+<p>Verification of dependencies can be implemented in different ways,
+according to a consistency property or “isolation guarantee” that is
+chosen for the state updates. <strong>Serializability</strong> is a default isolation
+guarantee, unless chaincode endorsement policy specifies a different
+one. Serializability can be provided by requiring the version associated
+with <em>every</em> key in the <code class="docutils literal"><span class="pre">readset</span></code> to be equal to that key’s version in
+the state, and rejecting transactions that do not satisfy this
+requirement.</p>
+<ul class="simple">
+<li>If all these checks pass, the transaction is deemed <em>valid</em> or
+<em>committed</em>. In this case, the peer marks the transaction with 1 in
+the bitmask of the <code class="docutils literal"><span class="pre">PeerLedger</span></code>, applies
+<code class="docutils literal"><span class="pre">blob.endorsement.tran-proposal.writeset</span></code> to blockchain state (if
+<code class="docutils literal"><span class="pre">tran-proposals</span></code> are the same, otherwise endorsement policy logic
+defines the function that takes <code class="docutils literal"><span class="pre">blob.endorsement</span></code>).</li>
+<li>If the endorsement policy verification of <code class="docutils literal"><span class="pre">blob.endorsement</span></code> fails,
+the transaction is invalid and the peer marks the transaction with 0
+in the bitmask of the <code class="docutils literal"><span class="pre">PeerLedger</span></code>. It is important to note that
+invalid transactions do not change the state.</li>
+</ul>
+<p>Note that this is sufficient to have all (correct) peers have the same
+state after processing a deliver event (block) with a given sequence
+number. Namely, by the guarantees of the ordering service, all correct
+peers will receive an identical sequence of
+<code class="docutils literal"><span class="pre">deliver(seqno,</span> <span class="pre">prevhash,</span> <span class="pre">blob)</span></code> events. As the evaluation of the
+endorsement policy and evaluation of version dependencies in <code class="docutils literal"><span class="pre">readset</span></code>
+are deterministic, all correct peers will also come to the same
+conclusion whether a transaction contained in a blob is valid. Hence,
+all peers commit and apply the same sequence of transactions and update
+their state in the same way.</p>
+<div class="figure" id="id1">
+<img alt="Illustration of the transaction flow (common-case path)." src="http://vukolic.com/hyperledger/flow-4.png" />
+<p class="caption"><span class="caption-text">Illustration of the transaction flow (common-case path).</span></p>
+</div>
+<p>Figure 1. Illustration of one possible transaction flow (common-case
+path).</p>
+</div>
+</div>
+<div class="section" id="endorsement-policies">
+<h2>3. Endorsement policies<a class="headerlink" href="#endorsement-policies" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="endorsement-policy-specification">
+<h3>3.1. Endorsement policy specification<a class="headerlink" href="#endorsement-policy-specification" title="Permalink to this headline">¶</a></h3>
+<p>An <strong>endorsement policy</strong>, is a condition on what <em>endorses</em> a
+transaction. Blockchain peers have a pre-specified set of endorsement
+policies, which are referenced by a <code class="docutils literal"><span class="pre">deploy</span></code> transaction that installs
+specific chaincode. Endorsement policies can be parametrized, and these
+parameters can be specified by a <code class="docutils literal"><span class="pre">deploy</span></code> transaction.</p>
+<p>To guarantee blockchain and security properties, the set of endorsement
+policies <strong>should be a set of proven policies</strong> with limited set of
+functions in order to ensure bounded execution time (termination),
+determinism, performance and security guarantees.</p>
+<p>Dynamic addition of endorsement policies (e.g., by <code class="docutils literal"><span class="pre">deploy</span></code>
+transaction on chaincode deploy time) is very sensitive in terms of
+bounded policy evaluation time (termination), determinism, performance
+and security guarantees. Therefore, dynamic addition of endorsement
+policies is not allowed, but can be supported in future.</p>
+</div>
+<div class="section" id="transaction-evaluation-against-endorsement-policy">
+<h3>3.2. Transaction evaluation against endorsement policy<a class="headerlink" href="#transaction-evaluation-against-endorsement-policy" title="Permalink to this headline">¶</a></h3>
+<p>A transaction is declared valid only if it has been endorsed according
+to the policy. An invoke transaction for a chaincode will first have to
+obtain an <em>endorsement</em> that satisfies the chaincode’s policy or it will
+not be committed. This takes place through the interaction between the
+submitting client and endorsing peers as explained in Section 2.</p>
+<p>Formally the endorsement policy is a predicate on the endorsement, and
+potentially further state that evaluates to TRUE or FALSE. For deploy
+transactions the endorsement is obtained according to a system-wide
+policy (for example, from the system chaincode).</p>
+<p>An endorsement policy predicate refers to certain variables. Potentially
+it may refer to:</p>
+<ol class="arabic simple">
+<li>keys or identities relating to the chaincode (found in the metadata
+of the chaincode), for example, a set of endorsers;</li>
+<li>further metadata of the chaincode;</li>
+<li>elements of the <code class="docutils literal"><span class="pre">endorsement</span></code> and <code class="docutils literal"><span class="pre">endorsement.tran-proposal</span></code>;</li>
+<li>and potentially more.</li>
+</ol>
+<p>The above list is ordered by increasing expressiveness and complexity,
+that is, it will be relatively simple to support policies that only
+refer to keys and identities of nodes.</p>
+<p><strong>The evaluation of an endorsement policy predicate must be
+deterministic.</strong> An endorsement shall be evaluated locally by every peer
+such that a peer does <em>not</em> need to interact with other peers, yet all
+correct peers evaluate the endorsement policy in the same way.</p>
+</div>
+<div class="section" id="example-endorsement-policies">
+<h3>3.3. Example endorsement policies<a class="headerlink" href="#example-endorsement-policies" title="Permalink to this headline">¶</a></h3>
+<p>The predicate may contain logical expressions and evaluates to TRUE or
+FALSE. Typically the condition will use digital signatures on the
+transaction invocation issued by endorsing peers for the chaincode.</p>
+<p>Suppose the chaincode specifies the endorser set
+<code class="docutils literal"><span class="pre">E</span> <span class="pre">=</span> <span class="pre">{Alice,</span> <span class="pre">Bob,</span> <span class="pre">Charlie,</span> <span class="pre">Dave,</span> <span class="pre">Eve,</span> <span class="pre">Frank,</span> <span class="pre">George}</span></code>. Some example
+policies:</p>
+<ul class="simple">
+<li>A valid signature from on the same <code class="docutils literal"><span class="pre">tran-proposal</span></code> from all members
+of E.</li>
+<li>A valid signature from any single member of E.</li>
+<li>Valid signatures on the same <code class="docutils literal"><span class="pre">tran-proposal</span></code> from endorsing peers
+according to the condition
+<code class="docutils literal"><span class="pre">(Alice</span> <span class="pre">OR</span> <span class="pre">Bob)</span> <span class="pre">AND</span> <span class="pre">(any</span> <span class="pre">two</span> <span class="pre">of:</span> <span class="pre">Charlie,</span> <span class="pre">Dave,</span> <span class="pre">Eve,</span> <span class="pre">Frank,</span> <span class="pre">George)</span></code>.</li>
+<li>Valid signatures on the same <code class="docutils literal"><span class="pre">tran-proposal</span></code> by any 5 out of the 7
+endorsers. (More generally, for chaincode with <code class="docutils literal"><span class="pre">n</span> <span class="pre">&gt;</span> <span class="pre">3f</span></code> endorsers,
+valid signatures by any <code class="docutils literal"><span class="pre">2f+1</span></code> out of the <code class="docutils literal"><span class="pre">n</span></code> endorsers, or by
+any group of <em>more</em> than <code class="docutils literal"><span class="pre">(n+f)/2</span></code> endorsers.)</li>
+<li>Suppose there is an assignment of “stake” or “weights” to the
+endorsers, like
+<code class="docutils literal"><span class="pre">{Alice=49,</span> <span class="pre">Bob=15,</span> <span class="pre">Charlie=15,</span> <span class="pre">Dave=10,</span> <span class="pre">Eve=7,</span> <span class="pre">Frank=3,</span> <span class="pre">George=1}</span></code>,
+where the total stake is 100: The policy requires valid signatures
+from a set that has a majority of the stake (i.e., a group with
+combined stake strictly more than 50), such as <code class="docutils literal"><span class="pre">{Alice,</span> <span class="pre">X}</span></code> with
+any <code class="docutils literal"><span class="pre">X</span></code> different from George, or
+<code class="docutils literal"><span class="pre">{everyone</span> <span class="pre">together</span> <span class="pre">except</span> <span class="pre">Alice}</span></code>. And so on.</li>
+<li>The assignment of stake in the previous example condition could be
+static (fixed in the metadata of the chaincode) or dynamic (e.g.,
+dependent on the state of the chaincode and be modified during the
+execution).</li>
+<li>Valid signatures from (Alice OR Bob) on <code class="docutils literal"><span class="pre">tran-proposal1</span></code> and valid
+signatures from <code class="docutils literal"><span class="pre">(any</span> <span class="pre">two</span> <span class="pre">of:</span> <span class="pre">Charlie,</span> <span class="pre">Dave,</span> <span class="pre">Eve,</span> <span class="pre">Frank,</span> <span class="pre">George)</span></code>
+on <code class="docutils literal"><span class="pre">tran-proposal2</span></code>, where <code class="docutils literal"><span class="pre">tran-proposal1</span></code> and
+<code class="docutils literal"><span class="pre">tran-proposal2</span></code> differ only in their endorsing peers and state
+updates.</li>
+</ul>
+<p>How useful these policies are will depend on the application, on the
+desired resilience of the solution against failures or misbehavior of
+endorsers, and on various other properties.</p>
+</div>
+</div>
+<div class="section" id="post-v1-validated-ledger-and-peerledger-checkpointing-pruning">
+<h2>4 (post-v1). Validated ledger and <code class="docutils literal"><span class="pre">PeerLedger</span></code> checkpointing (pruning)<a class="headerlink" href="#post-v1-validated-ledger-and-peerledger-checkpointing-pruning" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="validated-ledger-vledger">
+<h3>4.1. Validated ledger (VLedger)<a class="headerlink" href="#validated-ledger-vledger" title="Permalink to this headline">¶</a></h3>
+<p>To maintain the abstraction of a ledger that contains only valid and
+committed transactions (that appears in Bitcoin, for example), peers
+may, in addition to state and Ledger, maintain the <em>Validated Ledger (or
+VLedger)</em>. This is a hash chain derived from the ledger by filtering out
+invalid transactions.</p>
+<p>The construction of the VLedger blocks (called here <em>vBlocks</em>) proceeds
+as follows. As the <code class="docutils literal"><span class="pre">PeerLedger</span></code> blocks may contain invalid
+transactions (i.e., transactions with invalid endorsement or with
+invalid version dependencies), such transactions are filtered out by
+peers before a transaction from a block becomes added to a vBlock. Every
+peer does this by itself (e.g., by using the bitmask associated with
+<code class="docutils literal"><span class="pre">PeerLedger</span></code>). A vBlock is defined as a block without the invalid
+transactions, that have been filtered out. Such vBlocks are inherently
+dynamic in size and may be empty. An illustration of vBlock construction
+is given in the figure below. <img alt="Illustration of the transaction flow (common-case path)." src="http://vukolic.com/hyperledger/blocks-3.png" /></p>
+<p>Figure 2. Illustration of validated ledger block (vBlock) formation from
+ledger (<code class="docutils literal"><span class="pre">PeerLedger</span></code>) blocks.</p>
+<p>vBlocks are chained together to a hash chain by every peer. More
+specifically, every block of a validated ledger contains:</p>
+<ul class="simple">
+<li>The hash of the previous vBlock.</li>
+<li>vBlock number.</li>
+<li>An ordered list of all valid transactions committed by the peers
+since the last vBlock was computed (i.e., list of valid transactions
+in a corresponding block).</li>
+<li>The hash of the corresponding block (in <code class="docutils literal"><span class="pre">PeerLedger</span></code>) from which
+the current vBlock is derived.</li>
+</ul>
+<p>All this information is concatenated and hashed by a peer, producing the
+hash of the vBlock in the validated ledger.</p>
+</div>
+<div class="section" id="peerledger-checkpointing">
+<h3>4.2. <code class="docutils literal"><span class="pre">PeerLedger</span></code> Checkpointing<a class="headerlink" href="#peerledger-checkpointing" title="Permalink to this headline">¶</a></h3>
+<p>The ledger contains invalid transactions, which may not necessarily be
+recorded forever. However, peers cannot simply discard <code class="docutils literal"><span class="pre">PeerLedger</span></code>
+blocks and thereby prune <code class="docutils literal"><span class="pre">PeerLedger</span></code> once they establish the
+corresponding vBlocks. Namely, in this case, if a new peer joins the
+network, other peers could not transfer the discarded blocks (pertaining
+to <code class="docutils literal"><span class="pre">PeerLedger</span></code>) to the joining peer, nor convince the joining peer of
+the validity of their vBlocks.</p>
+<p>To facilitate pruning of the <code class="docutils literal"><span class="pre">PeerLedger</span></code>, this document describes a
+<em>checkpointing</em> mechanism. This mechanism establishes the validity of
+the vBlocks across the peer network and allows checkpointed vBlocks to
+replace the discarded <code class="docutils literal"><span class="pre">PeerLedger</span></code> blocks. This, in turn, reduces
+storage space, as there is no need to store invalid transactions. It
+also reduces the work to reconstruct the state for new peers that join
+the network (as they do not need to establish validity of individual
+transactions when reconstructing the state by replaying <code class="docutils literal"><span class="pre">PeerLedger</span></code>,
+but may simply replay the state updates contained in the validated
+ledger).</p>
+<div class="section" id="checkpointing-protocol">
+<h4>4.2.1. Checkpointing protocol<a class="headerlink" href="#checkpointing-protocol" title="Permalink to this headline">¶</a></h4>
+<p>Checkpointing is performed periodically by the peers every <em>CHK</em> blocks,
+where <em>CHK</em> is a configurable parameter. To initiate a checkpoint, the
+peers broadcast (e.g., gossip) to other peers message
+<code class="docutils literal"><span class="pre">&lt;CHECKPOINT,blocknohash,blockno,stateHash,peerSig&gt;</span></code>, where
+<code class="docutils literal"><span class="pre">blockno</span></code> is the current blocknumber and <code class="docutils literal"><span class="pre">blocknohash</span></code> is its
+respective hash, <code class="docutils literal"><span class="pre">stateHash</span></code> is the hash of the latest state (produced
+by e.g., a Merkle hash) upon validation of block <code class="docutils literal"><span class="pre">blockno</span></code> and
+<code class="docutils literal"><span class="pre">peerSig</span></code> is peer’s signature on
+<code class="docutils literal"><span class="pre">(CHECKPOINT,blocknohash,blockno,stateHash)</span></code>, referring to the
+validated ledger.</p>
+<p>A peer collects <code class="docutils literal"><span class="pre">CHECKPOINT</span></code> messages until it obtains enough
+correctly signed messages with matching <code class="docutils literal"><span class="pre">blockno</span></code>, <code class="docutils literal"><span class="pre">blocknohash</span></code> and
+<code class="docutils literal"><span class="pre">stateHash</span></code> to establish a <em>valid checkpoint</em> (see Section 4.2.2.).</p>
+<p>Upon establishing a valid checkpoint for block number <code class="docutils literal"><span class="pre">blockno</span></code> with
+<code class="docutils literal"><span class="pre">blocknohash</span></code>, a peer:</p>
+<ul class="simple">
+<li>if <code class="docutils literal"><span class="pre">blockno&gt;latestValidCheckpoint.blockno</span></code>, then a peer assigns
+<code class="docutils literal"><span class="pre">latestValidCheckpoint=(blocknohash,blockno)</span></code>,</li>
+<li>stores the set of respective peer signatures that constitute a valid
+checkpoint into the set <code class="docutils literal"><span class="pre">latestValidCheckpointProof</span></code>,</li>
+<li>stores the state corresponding to <code class="docutils literal"><span class="pre">stateHash</span></code> to
+<code class="docutils literal"><span class="pre">latestValidCheckpointedState</span></code>,</li>
+<li>(optionally) prunes its <code class="docutils literal"><span class="pre">PeerLedger</span></code> up to block number <code class="docutils literal"><span class="pre">blockno</span></code>
+(inclusive).</li>
+</ul>
+</div>
+<div class="section" id="valid-checkpoints">
+<h4>4.2.2. Valid checkpoints<a class="headerlink" href="#valid-checkpoints" title="Permalink to this headline">¶</a></h4>
+<p>Clearly, the checkpointing protocol raises the following questions:
+<em>When can a peer prune its “PeerLedger“? How many “CHECKPOINT“
+messages are “sufficiently many”?</em>. This is defined by a <em>checkpoint
+validity policy</em>, with (at least) two possible approaches, which may
+also be combined:</p>
+<ul class="simple">
+<li><em>Local (peer-specific) checkpoint validity policy (LCVP).</em> A local
+policy at a given peer <em>p</em> may specify a set of peers which peer <em>p</em>
+trusts and whose <code class="docutils literal"><span class="pre">CHECKPOINT</span></code> messages are sufficient to establish
+a valid checkpoint. For example, LCVP at peer <em>Alice</em> may define that
+<em>Alice</em> needs to receive <code class="docutils literal"><span class="pre">CHECKPOINT</span></code> message from Bob, or from
+<em>both</em> <em>Charlie</em> and <em>Dave</em>.</li>
+<li><em>Global checkpoint validity policy (GCVP).</em> A checkpoint validity
+policy may be specified globally. This is similar to a local peer
+policy, except that it is stipulated at the system (blockchain)
+granularity, rather than peer granularity. For instance, GCVP may
+specify that:<ul>
+<li>each peer may trust a checkpoint if confirmed by <em>11</em> different
+peers.</li>
+<li>in a specific deployment in which every orderer is collocated with
+a peer in the same machine (i.e., trust domain) and where up to
+<em>f</em> orderers may be (Byzantine) faulty, each peer may trust a
+checkpoint if confirmed by <em>f+1</em> different peers collocated with
+orderers.</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="txflow.html" class="btn btn-neutral float-right" title="Transaction Flow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="Setup/logging-control.html" class="btn btn-neutral" title="Logging Control" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

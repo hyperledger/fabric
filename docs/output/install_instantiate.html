@@ -1,0 +1,440 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Install and Instantiate &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Install and Instantiate</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/install_instantiate.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="install-and-instantiate">
+<h1>Install and Instantiate<a class="headerlink" href="#install-and-instantiate" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial requires the latest builds for
+<code class="docutils literal"><span class="pre">hyperledger/fabric-baseimage</span></code>, <code class="docutils literal"><span class="pre">hyperledger/fabric-peer</span></code> and
+<code class="docutils literal"><span class="pre">hyperledger/fabric-orderer</span></code>. Rather than pull from docker hub, you
+can compile these images locally to ensure they are up to date. It is up
+to the user how to build the images, although a typical approach is
+through vagrant. If you do choose to build through vagrant, make sure
+you have followed the steps outlined in <a class="reference external" href="dev-setup/devenv.md">setting up the development
+environment</a>. Then from the fabric directory
+within your vagrant environment, execute the <code class="docutils literal"><span class="pre">make</span> <span class="pre">peer-docker</span></code> and
+<code class="docutils literal"><span class="pre">make</span> <span class="pre">orderer-docker</span></code> commands.</p>
+<div class="section" id="start-the-network-of-2-peers-an-orderer-and-a-cli">
+<h2>Start the network of 2 peers, an orderer, and a CLI<a class="headerlink" href="#start-the-network-of-2-peers-an-orderer-and-a-cli" title="Permalink to this headline">¶</a></h2>
+<p>Navigate to the fabric/docs directory in your vagrant environment and
+start your network:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">docker</span><span class="o">-</span><span class="n">compose</span> <span class="o">-</span><span class="n">f</span> <span class="n">docker</span><span class="o">-</span><span class="mi">2</span><span class="n">peer</span><span class="o">.</span><span class="n">yml</span> <span class="n">up</span>
+</pre></div>
+</div>
+<p>View all your containers:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="c1"># active and non-active</span>
+<span class="n">docker</span> <span class="n">ps</span> <span class="o">-</span><span class="n">a</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="get-into-the-cli-container">
+<h2>Get into the CLI container<a class="headerlink" href="#get-into-the-cli-container" title="Permalink to this headline">¶</a></h2>
+<p>Now, open a second terminal and navigate once again to your vagrant
+environment.</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">exec</span> <span class="o">-</span><span class="n">it</span> <span class="n">cli</span> <span class="n">bash</span>
+</pre></div>
+</div>
+<p>You should see the following in your terminal:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">root</span><span class="nd">@ccd3308afc73</span><span class="p">:</span><span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">peer</span><span class="c1">#</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="create-and-join-channel-from-the-remote-cli">
+<h2>Create and join channel from the remote CLI<a class="headerlink" href="#create-and-join-channel-from-the-remote-cli" title="Permalink to this headline">¶</a></h2>
+<p>From your second terminal, lets create a channel by the name of “myc”:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">channel</span> <span class="n">create</span> <span class="o">-</span><span class="n">c</span> <span class="n">myc</span> <span class="o">-</span><span class="n">o</span> <span class="n">orderer</span><span class="p">:</span><span class="mi">5005</span>
+</pre></div>
+</div>
+<p>This will generate a genesis block - <code class="docutils literal"><span class="pre">myc.block</span></code> - and place it into
+the same directory from which you issued your <code class="docutils literal"><span class="pre">peer</span> <span class="pre">channel</span> <span class="pre">create</span></code>
+command. Now, from the same directory, direct both peers to join channel
+- <code class="docutils literal"><span class="pre">myc</span></code> - by passing in the genesis block - <code class="docutils literal"><span class="pre">myc.block</span></code> - with a
+<code class="docutils literal"><span class="pre">peer</span> <span class="pre">channel</span> <span class="pre">join</span></code> command:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="p">:</span><span class="mi">7051</span> <span class="n">peer</span> <span class="n">channel</span> <span class="n">join</span> <span class="o">-</span><span class="n">b</span> <span class="n">myc</span><span class="o">.</span><span class="n">block</span>
+<span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer1</span><span class="p">:</span><span class="mi">7051</span> <span class="n">peer</span> <span class="n">channel</span> <span class="n">join</span> <span class="o">-</span><span class="n">b</span> <span class="n">myc</span><span class="o">.</span><span class="n">block</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="install-the-chaincode-on-peer0-from-the-remote-cli">
+<h2>Install the chaincode on peer0 from the remote CLI<a class="headerlink" href="#install-the-chaincode-on-peer0-from-the-remote-cli" title="Permalink to this headline">¶</a></h2>
+<p>From your second terminal, and still within the CLI container, issue the
+following command to install a chaincode named <code class="docutils literal"><span class="pre">mycc</span></code> with a version
+of <code class="docutils literal"><span class="pre">v0</span></code> onto <code class="docutils literal"><span class="pre">peer0</span></code>.</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="p">:</span><span class="mi">7051</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">install</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">p</span> <span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">examples</span><span class="o">/</span><span class="n">chaincode</span><span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="n">chaincode_example02</span> <span class="o">-</span><span class="n">v</span> <span class="n">v0</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="instantiate-the-chaincode-on-the-channel-from-the-remote-cli">
+<h2>Instantiate the chaincode on the channel from the remote CLI<a class="headerlink" href="#instantiate-the-chaincode-on-the-channel-from-the-remote-cli" title="Permalink to this headline">¶</a></h2>
+<p>Now, still within the cli container in your second terminal, instantiate
+the chaincode <code class="docutils literal"><span class="pre">mycc</span></code> with version <code class="docutils literal"><span class="pre">v0</span></code> onto <code class="docutils literal"><span class="pre">peer0</span></code>. This
+instantiation will initialize the chaincode with key value pairs of
+[“a”,”100”] and [“b”,”200”].</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="p">:</span><span class="mi">7051</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">instantiate</span> <span class="o">-</span><span class="n">o</span> <span class="n">orderer</span><span class="p">:</span><span class="mi">5005</span> <span class="o">-</span><span class="n">C</span> <span class="n">myc</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">p</span> <span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">examples</span><span class="o">/</span><span class="n">chaincode</span><span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="n">chaincode_example02</span> <span class="o">-</span><span class="n">v</span> <span class="n">v0</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;init&quot;,&quot;a&quot;,&quot;100&quot;,&quot;b&quot;,&quot;200&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p><strong>Continue operating within your second terminal for the remainder of
+the commands</strong></p>
+</div>
+<div class="section" id="query-for-the-value-of-a-to-make-sure-the-chaincode-container-has-successfully-started">
+<h2>Query for the value of “a” to make sure the chaincode container has successfully started<a class="headerlink" href="#query-for-the-value-of-a-to-make-sure-the-chaincode-container-has-successfully-started" title="Permalink to this headline">¶</a></h2>
+<p>Send a query to <code class="docutils literal"><span class="pre">peer0</span></code> for the value of key <code class="docutils literal"><span class="pre">&quot;a&quot;</span></code>:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="p">:</span><span class="mi">7051</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">C</span> <span class="n">myc</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">v</span> <span class="n">v0</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;query&quot;,&quot;a&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>This query should return “100”.</p>
+</div>
+<div class="section" id="invoke-to-make-a-state-change">
+<h2>Invoke to make a state change<a class="headerlink" href="#invoke-to-make-a-state-change" title="Permalink to this headline">¶</a></h2>
+<p>Send an invoke request to <code class="docutils literal"><span class="pre">peer0</span></code> to move 10 units from “a” to “b”:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer0</span><span class="p">:</span><span class="mi">7051</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">invoke</span> <span class="o">-</span><span class="n">C</span> <span class="n">myc</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">v</span> <span class="n">v0</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;invoke&quot;,&quot;a&quot;,&quot;b&quot;,&quot;10&quot;]}&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="query-on-the-second-peer">
+<h2>Query on the second peer<a class="headerlink" href="#query-on-the-second-peer" title="Permalink to this headline">¶</a></h2>
+<p>Issue a query against the key “a” to <code class="docutils literal"><span class="pre">peer1</span></code>. Recall that <code class="docutils literal"><span class="pre">peer1</span></code>
+has successfully joined the channel.</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer1</span><span class="p">:</span><span class="mi">7051</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">C</span> <span class="n">myc</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">v</span> <span class="n">v0</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;query&quot;,&quot;a&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>This will return an error response because <code class="docutils literal"><span class="pre">peer1</span></code> does not have the
+chaincode installed.</p>
+</div>
+<div class="section" id="install-on-the-second-peer">
+<h2>Install on the second peer<a class="headerlink" href="#install-on-the-second-peer" title="Permalink to this headline">¶</a></h2>
+<p>Now add the chaincode to <code class="docutils literal"><span class="pre">peer1</span></code> so that you can successfully perform
+read/write operations.</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer1</span><span class="p">:</span><span class="mi">7051</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">install</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">p</span> <span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">examples</span><span class="o">/</span><span class="n">chaincode</span><span class="o">/</span><span class="n">go</span><span class="o">/</span><span class="n">chaincode_example02</span> <span class="o">-</span><span class="n">v</span> <span class="n">v0</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><strong>Note</strong>: The initial instantiation applies to all peers in the
+channel, and is affected upon any peer that has the chaincode
+installed. Therefore, we installed the chaincode on <code class="docutils literal"><span class="pre">peer0</span></code> in order
+to execute the instantiate command through it.</div>
+<div class="line">Now that we want to access the chaincode on <code class="docutils literal"><span class="pre">peer1</span></code>, we must install
+the chaincode on <code class="docutils literal"><span class="pre">peer1</span></code> as well. In general, a chaincode has to be
+installed only on those peers through which the chaincode needs to be
+accessed from. In particular, the chaincode must be installed on any
+peer receiving endorsement requests for that chaincode.</div>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>Query on the second peer<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>Now issue the same query request to <code class="docutils literal"><span class="pre">peer1</span></code>.</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="n">peer1</span><span class="p">:</span><span class="mi">7051</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">C</span> <span class="n">myc</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">v</span> <span class="n">v0</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;:[&quot;query&quot;,&quot;a&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>Query will now succeed.</p>
+</div>
+<div class="section" id="what-does-this-demonstrate">
+<h2>What does this demonstrate?<a class="headerlink" href="#what-does-this-demonstrate" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>The ability to invoke (alter key value states) is restricted to peers
+that have the chaincode installed.</li>
+<li>Just as state changes due to invoke on a peer affects all peers in
+the channel, the instantiate on a peer will likewise affect all peers
+in the channel.</li>
+<li>The world state of the chaincode is available to all peers on the
+channel - even those that do not have the chaincode installed.</li>
+<li>Once the chaincode is installed on a peer, invokes and queries can
+access those states normally.</li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,449 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Building the fabric &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/>
+        <link rel="next" title="Requesting a Linux Foundation Account" href="../Gerrit/lf-account.html"/>
+        <link rel="prev" title="Setting up the development environment" href="devenv.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Building the fabric</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#running-the-unit-tests">Running the unit tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-node-js-unit-tests">Running Node.js Unit Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-behave-bdd-tests">Running Behave BDD Tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#building-outside-of-vagrant">Building outside of Vagrant</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#building-on-z">Building on Z</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#building-on-power-platform">Building on Power Platform</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Building the fabric</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/dev-setup/build.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="building-the-fabric">
+<h1>Building the fabric<a class="headerlink" href="#building-the-fabric" title="Permalink to this headline">¶</a></h1>
+<p>The following instructions assume that you have already set up your
+<a class="reference internal" href="devenv.html"><span class="doc">development environment</span></a>.</p>
+<p>To build the Fabric:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric
+make dist-clean all
+</pre></div>
+</div>
+<div class="section" id="running-the-unit-tests">
+<h2>Running the unit tests<a class="headerlink" href="#running-the-unit-tests" title="Permalink to this headline">¶</a></h2>
+<p>Use the following sequence to run all unit tests</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric
+make unit-test
+</pre></div>
+</div>
+<p>To run a specific test use the <code class="docutils literal"><span class="pre">-run</span> <span class="pre">RE</span></code> flag where RE is a regular
+expression that matches the test case name. To run tests with verbose
+output use the <code class="docutils literal"><span class="pre">-v</span></code> flag. For example, to run the <code class="docutils literal"><span class="pre">TestGetFoo</span></code> test
+case, change to the directory containing the <code class="docutils literal"><span class="pre">foo_test.go</span></code> and
+call/excecute</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">go</span> <span class="n">test</span> <span class="o">-</span><span class="n">v</span> <span class="o">-</span><span class="n">run</span><span class="o">=</span><span class="n">TestGetFoo</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="running-node-js-unit-tests">
+<h2>Running Node.js Unit Tests<a class="headerlink" href="#running-node-js-unit-tests" title="Permalink to this headline">¶</a></h2>
+<p>You must also run the Node.js unit tests to insure that the Node.js
+client SDK is not broken by your changes. To run the Node.js unit tests,
+follow the instructions
+<a class="reference external" href="https://github.com/hyperledger/fabric-sdk-node/blob/master/README.md">here</a>.</p>
+</div>
+<div class="section" id="running-behave-bdd-tests">
+<h2>Running Behave BDD Tests<a class="headerlink" href="#running-behave-bdd-tests" title="Permalink to this headline">¶</a></h2>
+<p><strong>Note:</strong> currently, the behave tests must be run from within in the
+Vagrant environment. See the <a class="reference internal" href="devenv.html"><span class="doc">development environment</span></a> setup instructions
+if you have not already set up your Vagrant environment.</p>
+<p><a class="reference external" href="http://pythonhosted.org/behave/">Behave</a> tests will setup networks
+of peers with different security and consensus configurations and verify
+that transactions run properly. To run these tests</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric
+make behave
+</pre></div>
+</div>
+<p>Some of the Behave tests run inside Docker containers. If a test fails
+and you want to have the logs from the Docker containers, run the tests
+with this option:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric/bddtests
+behave -D logs=Y
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="building-outside-of-vagrant">
+<h1>Building outside of Vagrant<a class="headerlink" href="#building-outside-of-vagrant" title="Permalink to this headline">¶</a></h1>
+<p>It is possible to build the project and run peers outside of Vagrant.
+Generally speaking, one has to ‘translate’ the vagrant <a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/devenv/setup.sh">setup
+file</a>
+to the platform of your choice.</p>
+<div class="section" id="building-on-z">
+<h2>Building on Z<a class="headerlink" href="#building-on-z" title="Permalink to this headline">¶</a></h2>
+<p>To make building on Z easier and faster, <a class="reference external" href="https://github.com/hyperledger/fabric/tree/master/devenv/setupRHELonZ.sh">this
+script</a>
+is provided (which is similar to the <a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/devenv/setup.sh">setup
+file</a>
+provided for vagrant). This script has been tested only on RHEL 7.2 and
+has some assumptions one might want to re-visit (firewall settings,
+development as root user, etc.). It is however sufficient for
+development in a personally-assigned VM instance.</p>
+<p>To get started, from a freshly installed OS:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>sudo su
+yum install git
+mkdir -p $HOME/git/src/github.com/hyperledger
+cd $HOME/git/src/github.com/hyperledger
+git clone http://gerrit.hyperledger.org/r/fabric
+source fabric/devenv/setupRHELonZ.sh
+</pre></div>
+</div>
+<p>From this point, you can proceed as described above for the Vagrant
+development environment.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric
+make peer unit-test behave
+</pre></div>
+</div>
+</div>
+<div class="section" id="building-on-power-platform">
+<h2>Building on Power Platform<a class="headerlink" href="#building-on-power-platform" title="Permalink to this headline">¶</a></h2>
+<p>Development and build on Power (ppc64le) systems is done outside of
+vagrant as outlined <a class="reference external" href="#building-outside-of-vagrant">here</a>. For ease
+of setting up the dev environment on Ubuntu, invoke <a class="reference external" href="https://github.com/hyperledger/fabric/tree/master/devenv/setupUbuntuOnPPC64le.sh">this
+script</a>
+as root. This script has been validated on Ubuntu 16.04 and assumes
+certain things (like, development system has OS repositories in place,
+firewall setting etc) and in general can be improvised further.</p>
+<p>To get started on Power server installed with Ubuntu, first ensure you
+have properly setup your Host’s <a class="reference external" href="https://github.com/golang/go/wiki/GOPATH">GOPATH environment
+variable</a>. Then, execute
+the following commands to build the fabric code:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>mkdir -p $GOPATH/src/github.com/hyperledger
+cd $GOPATH/src/github.com/hyperledger
+git clone http://gerrit.hyperledger.org/r/fabric
+sudo ./fabric/devenv/setupUbuntuOnPPC64le.sh
+cd $GOPATH/src/github.com/hyperledger/fabric
+make dist-clean all
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="configuration">
+<h1>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h1>
+<p>Configuration utilizes the <a class="reference external" href="https://github.com/spf13/viper">viper</a>
+and <a class="reference external" href="https://github.com/spf13/cobra">cobra</a> libraries.</p>
+<p>There is a <strong>core.yaml</strong> file that contains the configuration for the
+peer process. Many of the configuration settings can be overridden on
+the command line by setting ENV variables that match the configuration
+setting, but by prefixing with <em>‘CORE_’</em>. For example, logging level
+manipulation through the environment is shown below:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_PEER_LOGGING_LEVEL</span><span class="o">=</span><span class="n">CRITICAL</span> <span class="n">peer</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="logging">
+<h1>Logging<a class="headerlink" href="#logging" title="Permalink to this headline">¶</a></h1>
+<p>Logging utilizes the <a class="reference external" href="https://github.com/op/go-logging">go-logging</a>
+library.</p>
+<p>The available log levels in order of increasing verbosity are: <em>CRITICAL
+| ERROR | WARNING | NOTICE | INFO | DEBUG</em></p>
+<p>See <a class="reference internal" href="../Setup/logging-control.html"><span class="doc">specific logging control</span></a>
+instructions when running the peer process.</p>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../Gerrit/lf-account.html" class="btn btn-neutral float-right" title="Requesting a Linux Foundation Account" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="devenv.html" class="btn btn-neutral" title="Setting up the development environment" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
