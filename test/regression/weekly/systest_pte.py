@@ -2,7 +2,7 @@
 ######################################################################
 # To execute:
 # Install: sudo apt-get install python python-pytest
-# Run on command line: py.test -v --junitxml results.xml ./test_pte.py
+# Run on command line: py.test -v --junitxml results.xml ./systest_pte.py
 
 import unittest
 import subprocess
@@ -14,7 +14,7 @@ TEST_PASS_STRING="RESULT=PASS"
 ### COUCHDB
 ######################################################################
 
-class CouchDB_Perf_Stress(unittest.TestCase):
+class Perf_Stress_CouchDB(unittest.TestCase):
 
     @unittest.skip("skipping")
     def test_FAB3820_TimedRun_12Hr(self):
