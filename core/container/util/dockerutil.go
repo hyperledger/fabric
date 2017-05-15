@@ -56,7 +56,7 @@ func getArch() string {
 	}
 }
 
-func parseDockerfileTemplate(template string) string {
+func ParseDockerfileTemplate(template string) string {
 	r := strings.NewReplacer(
 		"$(ARCH)", getArch(),
 		"$(PROJECT_VERSION)", metadata.Version,
@@ -68,5 +68,5 @@ func parseDockerfileTemplate(template string) string {
 }
 
 func GetDockerfileFromConfig(path string) string {
-	return parseDockerfileTemplate(viper.GetString(path))
+	return ParseDockerfileTemplate(viper.GetString(path))
 }

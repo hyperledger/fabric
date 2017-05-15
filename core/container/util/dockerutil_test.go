@@ -26,7 +26,7 @@ import (
 
 func TestUtil_DockerfileTemplateParser(t *testing.T) {
 	expected := "FROM foo:" + getArch() + "-" + metadata.Version
-	actual := parseDockerfileTemplate("FROM foo:$(ARCH)-$(PROJECT_VERSION)")
+	actual := ParseDockerfileTemplate("FROM foo:$(ARCH)-$(PROJECT_VERSION)")
 	assert.Equal(t, expected, actual, "Error parsing Dockerfile Template. Expected \"%s\", got \"%s\"",
 		expected, actual)
 }
