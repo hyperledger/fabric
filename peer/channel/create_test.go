@@ -17,6 +17,7 @@
 package channel
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -26,9 +27,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-
-	"errors"
-
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -43,7 +41,6 @@ type timeoutOrderer struct {
 	nextExpectedSeek uint64
 	t                *testing.T
 	blockChannel     chan uint64
-	stopChan         chan struct{}
 }
 
 func newOrderer(port int, t *testing.T) *timeoutOrderer {
@@ -58,7 +55,6 @@ func newOrderer(port int, t *testing.T) *timeoutOrderer {
 		t:                t,
 		nextExpectedSeek: uint64(1),
 		blockChannel:     make(chan uint64, 1),
-		stopChan:         make(chan struct{}, 1),
 		counter:          int(1),
 	}
 	orderer.RegisterAtomicBroadcastServer(srv, o)
@@ -66,7 +62,6 @@ func newOrderer(port int, t *testing.T) *timeoutOrderer {
 }
 
 func (o *timeoutOrderer) Shutdown() {
-	o.stopChan <- struct{}{}
 	o.Server.Stop()
 	o.Listener.Close()
 }
