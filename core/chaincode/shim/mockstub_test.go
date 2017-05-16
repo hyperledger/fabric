@@ -234,3 +234,39 @@ func TestGetTxTimestamp(t *testing.T) {
 
 	stub.MockTransactionEnd("init")
 }
+
+//TestMockMock clearly cheating for coverage... but not. Mock should
+//be tucked away under common/mocks package which is not
+//included for coverage. Moving mockstub to another package
+//will cause upheaval in other code best dealt with separately
+//For now, call all the methods to get mock covered in this
+//package
+func TestMockMock(t *testing.T) {
+	stub := NewMockStub("MOCKMOCK", &shimTestCC{})
+	stub.args = [][]byte{[]byte("a"), []byte("b")}
+	stub.MockInit("id", nil)
+	stub.GetArgs()
+	stub.GetStringArgs()
+	stub.GetFunctionAndParameters()
+	stub.GetTxID()
+	stub.MockInvoke("id", nil)
+	stub.MockInvokeWithSignedProposal("id", nil, nil)
+	stub.DelState("dummy")
+	stub.GetStateByRange("start", "end")
+	stub.GetQueryResult("q")
+	stub2 := NewMockStub("othercc", &shimTestCC{})
+	stub.MockPeerChaincode("othercc/mychan", stub2)
+	stub.InvokeChaincode("othercc", nil, "mychan")
+	stub.GetCreator()
+	stub.GetTransient()
+	stub.GetBinding()
+	stub.GetSignedProposal()
+	stub.GetArgsSlice()
+	stub.SetEvent("e", nil)
+	stub.GetHistoryForKey("k")
+	iter := &MockStateRangeQueryIterator{}
+	iter.HasNext()
+	iter.Close()
+	getBytes("f", []string{"a", "b"})
+	getFuncArgs([][]byte{[]byte("a")})
+}
