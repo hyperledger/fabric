@@ -12,8 +12,8 @@ Getting a Linux Foundation account
 ----------------------------------
 
 In order to participate in the development of the Hyperledger Fabric
-project, you will need a `Linux Foundation
-account <Gerrit/lf-account.rst>`__. You will need to use your LF ID to
+project, you will need a :doc:`Linux Foundation
+account <Gerrit/lf-account>`. You will need to use your LF ID to
 access to all the Hyperledger community development tools, including
 `Gerrit <https://gerrit.hyperledger.org>`__,
 `Jira <https://jira.hyperledger.org>`__ and the
@@ -25,7 +25,7 @@ Setting up your SSH key
 For Gerrit, before you can submit any change set for review, you will
 need to register your public SSH key. Login to
 `Gerrit <https://gerrit.hyperledger.org>`__ with your
-`LFID <Gerrit/lf-account.rst>`__, and click on your name in the upper
+:doc:`LFID <Gerrit/lf-account>`, and click on your name in the upper
 right-hand corner of your browser window and then click 'Settings'. In
 the left-hand margin, you should see a link for 'SSH Public Keys'.
 Copy-n-paste your `public SSH
@@ -87,21 +87,21 @@ Working with a local clone and Gerrit
 We are using
 `Gerrit <https://gerrit.hyperledger.org/r/#/admin/projects/fabric>`__ to
 manage code contributions. If you are unfamiliar, please review this
-`document <Gerrit/gerrit.rst>`__ before proceeding.
+:doc:`document <Gerrit/gerrit>` before proceeding.
 
 After you have familiarized yourself with ``Gerrit``, and maybe played
 around with the ``lf-sandbox``
 `project <https://gerrit.hyperledger.org/r/#/admin/projects/lf-sandbox,branches>`__,
 you should be ready to set up your local development
-`environment <dev-setup/devenv.rst>`__.
+:doc:`environment <dev-setup/devenv>`.
 
-Next, try `building the project <dev-setup/build.rst>`__ in your local
+Next, try :doc:`building the project <dev-setup/build>` in your local
 development environment to ensure that everything is set up correctly.
 
-`Logging control <Setup/logging-control.rst>`__ describes how to tweak
+:doc:`Logging control <Setup/logging-control>` describes how to tweak
 the logging levels of various components within the Fabric. Finally,
-every source file needs to include a `license
-header <dev-setup/headers.txt>`__: modified to include a copyright
+every source file needs to include a `license header
+<https://github.com/hyperledger/fabric/blob/master/docs/source/dev-setup/headers.txt>`__: modified to include a copyright
 statement for the principle author(s).
 
 What makes a good change request?
@@ -185,8 +185,8 @@ remediate the merge conflicts.
 Coding guidelines
 -----------------
 
-Be sure to check out the language-specific `style
-guides <Style-guides/go-style.rst>`__ before making any changes. This
+Be sure to check out the language-specific :doc:`style
+guides <Style-guides/go-style>` before making any changes. This
 will ensure a smoother review.
 
 Communication
@@ -202,7 +202,7 @@ list <http://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__.
 Maintainers
 -----------
 
-The project's `maintainers <MAINTAINERS.rst>`__ are responsible for
+The project's :doc:`maintainers <MAINTAINERS>` are responsible for
 reviewing and merging all patches submitted for review and they guide
 the over-all technical direction of the project within the guidelines
 established by the Hyperledger Project's Technical Steering Committee
@@ -218,7 +218,7 @@ designate an initial set of maintainers that will be approved by the
 top-level project's existing maintainers when the project is first
 approved. The project's maintainers will, from time-to-time, consider
 adding or removing a maintainer. An existing maintainer can submit a
-change set to the `MAINTAINERS.rst <MAINTAINERS.rst>`__ file. If there are
+change set to the :doc:`MAINTAINERS.rst <MAINTAINERS>` file. If there are
 less than eight maintainers, a majority of the existing maintainers on
 that project are required to merge the change set. If there are more
 than eight existing maintainers, then if five or more of the maintainers
@@ -232,13 +232,13 @@ Legal stuff
 -----------
 
 **Note:** Each source file must include a license header for the Apache
-Software License 2.0. A template of that header can be found
-`here <https://github.com/hyperledger/fabric/blob/master/docs/dev-setup/headers.txt>`__.
+Software License 2.0. See the template of the `license header
+<https://github.com/hyperledger/fabric/blob/master/docs/source/dev-setup/headers.txt>`__.
 
 We have tried to make it as easy as possible to make contributions. This
 applies to how we handle the legal aspects of contribution. We use the
 same approach—the `Developer's Certificate of Origin 1.1
-(DCO) <docs/biz/DCO1.1.txt>`__—that the Linux® Kernel
+(DCO) <https://github.com/hyperledger/fabric/blob/master/docs/source/biz/DCO1.1.txt>`__—that the Linux® Kernel
 `community <http://elinux.org/Developer_Certificate_Of_Origin>`__ uses
 to manage code contributions.
 

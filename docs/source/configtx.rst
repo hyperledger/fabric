@@ -71,9 +71,9 @@ policies. It is defined as follows:
         string mod_policy = 5;
     }
 
-Because ``ConfigGroup`` is a recursive structure, consider an example
-hierarchical arrangement of ``ConfigGroup``s (expressed for clarity in
-golang notation).
+Because ``ConfigGroup`` is a recursive structure, it has hierarchical
+arrangement. The following example is expressed for clarity in golang
+notation.
 
 ::
 

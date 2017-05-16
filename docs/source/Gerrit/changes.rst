@@ -10,7 +10,7 @@ Change Requirements
 
 This section contains guidelines for submitting code changes for review.
 For more information on how to submit a change using Gerrit, please see
-`Gerrit <gerrit.md>`__.
+:doc:`Gerrit <gerrit>`.
 
 Changes are submitted as Git commits. Each commit must contain:
 
@@ -31,7 +31,7 @@ Informationally, ``commit messages`` must include:
 -  **why** you chose that approach, and
 -  **how** you know it works -- for example, which tests you ran.
 
-Commits must `build cleanly <../dev-setup/build.md>`__ when applied in
+Commits must :doc:`build cleanly <../dev-setup/build>` when applied in
 top of each other, thus avoiding breaking bisectability. Each commit
 must address a single identifiable issue and must be logically
 self-contained.

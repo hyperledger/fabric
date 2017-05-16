@@ -4,16 +4,16 @@ delivering accountability, transparency, and efficiencies unmatched by
 other blockchain or DLT technology.
 
 Hyperledger Fabric implements a specific type of
-`permissioned <glossary.md#permissioned-network>`__ `blockchain
-network <glossary.md#blockchain-network>`__ on which members can track,
+:doc:`permissioned <glossary#permissioned-network>` :doc:`blockchain
+network <glossary#blockchain-network>` on which members can track,
 exchange and interact with digitized assets using
-`transactions <glossary.md#transactions>`__ that are governed by smart
-contracts - what we call `chaincode <glossary.md#chaincode>`__ - in a
+:doc:`transactions <glossary#transactions>` that are governed by smart
+contracts - what we call :doc:`chaincode <glossary#chaincode>` - in a
 secure and robust manner while enabling
-`participants <glossary.md#participants>`__ in the network to interact
+:doc:`participants <glossary#participants>` in the network to interact
 in a manner that ensures that their transactions and data can be
 restricted to an identified subset of network participants - something
-we call a `channel <glossary.md#channel>`__.
+we call a :doc:`channel <glossary#channel>`.
 
 The blockchain network supports the ability for members to establish
 shared ledgers that contain the source of truth about those digitized
@@ -28,31 +28,31 @@ Hyperledger Fabric also offers a certificate authority service,
 *fabric-ca* but, you may substitute that with your own.
 
 All peer nodes maintain the ledger/state by committing transactions. In
-that role, the peer is called a `committer <glossary.md#committer>`__.
+that role, the peer is called a :doc:`committer <glossary#commitment>`.
 Some peers are also responsible for simulating transactions by executing
 chaincodes (smart contracts) and endorsing the result. In that role the
-peer is called an `endorser <glossary.md#endorser>`__. A peer may be an
+peer is called an :doc:`endorser <glossary#endorsement>`. A peer may be an
 endorser for certain types of transactions and just a ledger maintainer
 (committer) for others.
 
-The `orderers <glossary.md#orderer>`__ consent on the order of
+The :doc:`orderers <glossary#ordering-service>` consent on the order of
 transactions in a block to be committed to the ledger. In common
 blockchain architectures (including earlier versions of the Hyperledger
 Fabric) the roles played by the peer and orderer nodes were unified (cf.
 validating peer in Hyperledger Fabric v0.6). The orderers also play a
 fundamental role in the creation and management of channels.
 
-Two or more `participants <glossary.md#participant>`__ may create and
+Two or more :doc:`participants <glossary#participant>` may create and
 join a channel, and begin to interact. Among other things, the policies
 governing the channel membership and chaincode lifecycle are specified
 at the time of channel creation. Initially, the members in a channel
 agree on the terms of the chaincode that will govern the transactions.
-When consensus is reached on the `proposal <glossary.md#proposal>`__ to
+When consensus is reached on the :doc:`proposal <glossary#proposal>` to
 deploy a given chaincode (as governed by the life cycle policy for the
 channel), it is committed to the ledger.
 
-Once the chaincode is deployed to the peer nodes in the channel, `end
-users <glossary.md#end-users>`__ with the right privileges can propose
+Once the chaincode is deployed to the peer nodes in the channel, :doc:`end
+users <glossary#end-users>` with the right privileges can propose
 transactions on the channel by using one of the language-specific client
 SDKs to invoke functions on the deployed chaincode.
 
@@ -100,5 +100,5 @@ Some key capabilities of Hyperledger Fabric include:
    required levels of trust and verification across nodes for
    optimization.
 
-For a deeper dive into the details, please visit `this
-document <arch-deep-dive.md>`__.
+For a deeper dive into the details, please visit :doc:`this
+document <arch-deep-dive>`.
