@@ -49,12 +49,11 @@ type cursor struct {
 }
 
 type jsonLedger struct {
-	directory      string
-	fqFormatString string
-	height         uint64
-	signal         chan struct{}
-	lastHash       []byte
-	marshaler      *jsonpb.Marshaler
+	directory string
+	height    uint64
+	signal    chan struct{}
+	lastHash  []byte
+	marshaler *jsonpb.Marshaler
 }
 
 // readBlock returns the block or nil, and whether the block was found or not, (nil,true) generally indicates an irrecoverable problem

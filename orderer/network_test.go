@@ -52,21 +52,8 @@ const maindir = "github.com/hyperledger/fabric/orderer"
 var ordererDir string
 var mainexe string
 
-type flags struct {
-	listenAddr    string
-	grpcAddr      string
-	telemetryAddr string
-	certFile      string
-	keyFile       string
-	dataDir       string
-	genesisFile   string
-	verbose       string
-	init          string
-}
-
 type Peer struct {
 	id     uint64
-	config flags
 	cancel context.CancelFunc
 	cmd    *exec.Cmd
 }

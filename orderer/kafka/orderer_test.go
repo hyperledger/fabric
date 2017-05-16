@@ -36,14 +36,9 @@ import (
 
 var cp = newChainPartition(provisional.TestChainID, rawPartition)
 
-func newMockSharedConfigManager() *mockconfig.Orderer {
-	return &mockconfig.Orderer{KafkaBrokersVal: testGenesisConf.Orderer.Kafka.Brokers}
-}
-
 type mockConsenterImpl struct {
 	consenterImpl
 	prodDisk, consDisk chan *ab.KafkaMessage
-	consumerSetUp      bool
 	t                  *testing.T
 }
 

@@ -299,10 +299,6 @@ func newTestSystemWithBatchSize(n uint64, batchSize uint64) *testSystem {
 	return newTestSystemWithParams(n, batchSize, false)
 }
 
-func newTestSystemWOTimers(n uint64) *testSystem {
-	return newTestSystemWithParams(n, defaultMaxReqCount, true)
-}
-
 func newTestSystemWOTimersWithBatchSize(n uint64, batchSize uint64) *testSystem {
 	return newTestSystemWithParams(n, batchSize, true)
 }

@@ -33,8 +33,6 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 
-	"errors"
-
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
@@ -61,18 +59,6 @@ type mockCryptoHelper struct {
 
 func (mch mockCryptoHelper) VerifySignature(sd *cb.SignedData) error {
 	return nil
-}
-
-func mockCryptoRejector() *mockCryptoRejectorHelper {
-	return &mockCryptoRejectorHelper{LocalSigner: mockcrypto.FakeLocalSigner}
-}
-
-type mockCryptoRejectorHelper struct {
-	*mockcrypto.LocalSigner
-}
-
-func (mch mockCryptoRejectorHelper) VerifySignature(sd *cb.SignedData) error {
-	return errors.New("Nope")
 }
 
 func NewRAMLedgerAndFactory(maxSize int) (ledger.Factory, ledger.ReadWriter) {
@@ -212,45 +198,6 @@ func TestManagerImpl(t *testing.T) {
 		t.Fatalf("Block 1 not produced after timeout")
 	}
 }
-
-/*
-// This test makes sure that the signature filter works
-func TestSignatureFilter(t *testing.T) {
-	lf, rl := NewRAMLedgerAndFactory(10)
-
-	consenters := make(map[string]Consenter)
-	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
-
-	manager := NewManagerImpl(lf, consenters, mockCryptoRejector())
-
-	cs, ok := manager.GetChain(provisional.TestChainID)
-
-	if !ok {
-		t.Fatalf("Should have gotten chain which was initialized by ramledger")
-	}
-
-	messages := make([]*cb.Envelope, conf.Orderer.BatchSize.MaxMessageCount)
-	for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
-		messages[i] = makeSignaturelessTx(provisional.TestChainID, i)
-	}
-
-	for _, message := range messages {
-		cs.Enqueue(message)
-	}
-
-	// Causes the consenter thread to exit after it processes all messages
-	close(cs.(*chainSupport).chain.(*mockChain).queue)
-
-	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
-	select {
-	case <-it.ReadyChan():
-		// Will unblock if a block is created
-		t.Fatalf("Block 1 should not have been created")
-	case <-cs.(*chainSupport).chain.(*mockChain).done:
-		// Will unblock once the consenter thread has exited
-	}
-}
-*/
 
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain
 func TestNewChain(t *testing.T) {
