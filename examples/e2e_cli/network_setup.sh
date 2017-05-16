@@ -3,14 +3,16 @@
 UP_DOWN="$1"
 CH_NAME="$2"
 CLI_TIMEOUT="$3"
+IF_COUCHDB="$4"
 
 : ${CLI_TIMEOUT:="10000"}
 
 COMPOSE_FILE=docker-compose-cli.yaml
+COMPOSE_FILE_COUCH=docker-compose-couch.yaml
 #COMPOSE_FILE=docker-compose-e2e.yaml
 
 function printHelp () {
-	echo "Usage: ./network_setup <up|down> <channel-name>"
+	echo "Usage: ./network_setup <up|down> <\$channel-name> <\$cli_timeout> <couchdb>.\nThe arguments must be in order."
 }
 
 function validateArgs () {
@@ -48,7 +50,11 @@ function networkUp () {
     # channel configuration transaction
     source generateArtifacts.sh $CH_NAME
 
-    CHANNEL_NAME=$CH_NAME TIMEOUT=$CLI_TIMEOUT docker-compose -f $COMPOSE_FILE up -d 2>&1
+    if [ "${IF_COUCHDB}" == "couchdb" ]; then
+      CHANNEL_NAME=$CH_NAME TIMEOUT=$CLI_TIMEOUT docker-compose -f $COMPOSE_FILE -f $COMPOSE_FILE_COUCH up -d 2>&1
+    else
+      CHANNEL_NAME=$CH_NAME TIMEOUT=$CLI_TIMEOUT docker-compose -f $COMPOSE_FILE up -d 2>&1
+    fi
     if [ $? -ne 0 ]; then
 	echo "ERROR !!!! Unable to pull the images "
 	exit 1
