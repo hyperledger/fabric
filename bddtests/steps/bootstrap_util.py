@@ -213,6 +213,9 @@ class User(Entity, orderer_util.UserRegistration):
         self.tags[tagKey] = tagValue
         return tagValue
 
+    def getTagValue(self, tagKey):
+        return self.tags[tagKey]
+
     def cleanup(self):
         self.closeStreams()
 
@@ -506,39 +509,6 @@ def getOrdererBootstrapAdminOrgReferences(context):
         ordererBootstrapAdmin.tags['OrgReferences'] = {}
     return ordererBootstrapAdmin.tags['OrgReferences']
 
-
-def getSignedMSPConfigItems(context, orgNames, channel_version=0, application_group_version=0, application_group_policy_version=0):
-    directory = getDirectory(context)
-    orgs = [directory.getOrganization(orgName) for orgName in orgNames]
-
-    channel = common_dot_configtx_pb2.ConfigGroup()
-    channel.version=channel_version
-    channel.groups[ApplicationGroup].version=application_group_version
-    for org in orgs:
-        channel.groups[ApplicationGroup].groups[org.name].version = application_group_version
-        channel.groups[ApplicationGroup].groups[org.name]
-
-    # For now, setting same policies for each 'Non-Org' group
-    typeImplicitMeta = common_dot_policies_pb2.Policy.PolicyType.Value("IMPLICIT_META")
-    Policy = common_dot_policies_pb2.Policy
-    IMP = common_dot_policies_pb2.ImplicitMetaPolicy
-    ruleAny = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("ANY")
-    ruleMajority = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("MAJORITY")
-    for group in [channel.groups[ApplicationGroup]]:
-        group.policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
-            rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_READERS).SerializeToString()))
-        group.policies[BootstrapHelper.KEY_POLICY_WRITERS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
-            rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
-        group.policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
-            rule=ruleMajority, sub_policy=BootstrapHelper.KEY_POLICY_ADMINS).SerializeToString()))
-    for group in [channel.groups[ApplicationGroup]]:
-        group.policies[BootstrapHelper.KEY_POLICY_READERS].version=application_group_policy_version
-        group.policies[BootstrapHelper.KEY_POLICY_WRITERS].version=application_group_policy_version
-        group.policies[BootstrapHelper.KEY_POLICY_ADMINS].version=application_group_policy_version
-
-    return [channel]
-
-
 def getAnchorPeersConfigGroup(context, nodeAdminTuples):
     directory = getDirectory(context)
     config_group = common_dot_configtx_pb2.ConfigGroup()
@@ -552,17 +522,6 @@ def getAnchorPeersConfigGroup(context, nodeAdminTuples):
             #                                           directory.findCertForNodeAdminTuple(nodeAdminTuple))
         config_group.groups[ApplicationGroup].groups[orgName].values[BootstrapHelper.KEY_ANCHOR_PEERS].value=toValue(anchorPeers)
     return [config_group]
-
-def createSignedConfigItems(directory, consensus_type, consortium_name, version=1, channel_version=0, channel_consortium_version=0, configGroups=[]):
-    channelConfig = common_dot_configtx_pb2.ConfigGroup()
-    channelConfig.values[BootstrapHelper.KEY_CONSORTIUM].version=channel_consortium_version
-    channelConfig.values[BootstrapHelper.KEY_CONSORTIUM].value=toValue(common_dot_configuration_pb2.Consortium(name=consortium_name))
-    channelConfig.version = channel_version
-    channelConfig.groups[ApplicationGroup].version = version
-    for configGroup in configGroups:
-        mergeConfigGroups(channelConfig, configGroup)
-    return channelConfig
-
 
 def setDefaultPoliciesForOrgs(channel, orgs, group_name, version=0, policy_version=0):
     for org in orgs:
@@ -748,10 +707,6 @@ def createGenesisBlock(context, service_names, chainId, consensusType, nodeAdmin
     for configGroup in signedConfigItems:
         mergeConfigGroups(channelConfig, configGroup)
 
-    # (fileName, fileExist) = ContextHelper.GetHelper(context=context).getTmpPathForName(name="t",extension="protobuf")
-    # with open(fileName, 'w') as f:
-    #     f.write(channelConfig.SerializeToString())
-
     config = common_dot_configtx_pb2.Config(
         sequence=0,
         channel_group=channelConfig)
@@ -799,7 +754,7 @@ def getMSPConfig(org, directory):
     adminCerts = [org.getCertAsPEM()]
     # Find the mspAdmin Tuple for org and add to admincerts folder
     for pnt, cert in [(nat, cert) for nat, cert in directory.ordererAdminTuples.items() if
-                      org.name == nat.organization and "mspadmin" in nat.nodeName.lower()]:
+                      org.name == nat.organization and "configadmin" in nat.nodeName.lower()]:
         adminCerts.append(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
     cacerts = [org.getCertAsPEM()]
     # Currently only 1 component, CN=<orgName>
@@ -1006,9 +961,76 @@ class PeerCompositionCallback(compose.CompositionCallback, CallbackHelper):
             env["{0}_CORE_PEER_TLS_SERVERHOSTOVERRIDE".format(peerService.upper())] = peerService
 
 
-def createConsortium(context, consortium_name, org_names):
+def getDefaultConsortiumGroup(consortiums_mod_policy):
+    default_config_group = common_dot_configtx_pb2.ConfigGroup()
+    default_config_group.groups[ConsortiumsGroup].mod_policy=consortiums_mod_policy
+    return default_config_group
+
+
+def create_config_update_envelope(config_update):
+    return  common_dot_configtx_pb2.ConfigUpdateEnvelope(config_update=config_update.SerializeToString(), signatures =[])
+
+def create_orderer_consortium_config_update(orderer_system_chain_id, orderer_channel_group, config_groups):
+    'Creates the orderer config update'
+    # First determine read set
+    read_set = common_dot_configtx_pb2.ConfigGroup()
+    read_set.groups[ConsortiumsGroup].CopyFrom(orderer_channel_group.groups[ConsortiumsGroup])
+
+    write_set = common_dot_configtx_pb2.ConfigGroup()
+    write_set.groups[ConsortiumsGroup].CopyFrom(orderer_channel_group.groups[ConsortiumsGroup])
+    write_set.groups[ConsortiumsGroup].version += 1
+    for config_group in config_groups:
+        mergeConfigGroups(write_set, config_group)
+    config_update = common_dot_configtx_pb2.ConfigUpdate(channel_id=orderer_system_chain_id,
+                                                        read_set=read_set,
+                                                        write_set=write_set)
+    # configUpdateEnvelope = common_dot_configtx_pb2.ConfigUpdateEnvelope(config_update=configUpdate.SerializeToString(), signatures =[])
+    return config_update
+
+def create_channel_config_update(system_channel_version, channel_id, consortium_config_group):
+    read_set = common_dot_configtx_pb2.ConfigGroup()
+    read_set.version = system_channel_version
+    read_set.values[BootstrapHelper.KEY_CONSORTIUM].value=toValue(common_dot_configuration_pb2.Consortium(name=consortium_config_group.groups[ConsortiumsGroup].groups.keys()[0]))
+
+    # Copying all of the consortium orgs into the ApplicationGroup
+    read_set.groups[ApplicationGroup].CopyFrom(consortium_config_group.groups[ConsortiumsGroup].groups.values()[0])
+    read_set.groups[ApplicationGroup].values.clear()
+    read_set.groups[ApplicationGroup].policies.clear()
+    read_set.groups[ApplicationGroup].mod_policy=""
+    for k, v in read_set.groups[ApplicationGroup].groups.iteritems():
+        v.values.clear()
+        v.policies.clear()
+        v.mod_policy=""
+
+    # Now the write_set
+    write_set = common_dot_configtx_pb2.ConfigGroup()
+    write_set.CopyFrom(read_set)
+    write_set.groups[ApplicationGroup].version += 1
+    # For now, setting same policies for each 'Non-Org' group
+    typeImplicitMeta = common_dot_policies_pb2.Policy.PolicyType.Value("IMPLICIT_META")
+    Policy = common_dot_policies_pb2.Policy
+    IMP = common_dot_policies_pb2.ImplicitMetaPolicy
+    ruleAny = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("ANY")
+    ruleMajority = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("MAJORITY")
+    write_set.groups[ApplicationGroup].policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(
+        Policy(type=typeImplicitMeta, policy=IMP(
+            rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_READERS).SerializeToString()))
+    write_set.groups[ApplicationGroup].policies[BootstrapHelper.KEY_POLICY_WRITERS].policy.CopyFrom(
+        Policy(type=typeImplicitMeta, policy=IMP(
+            rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
+    write_set.groups[ApplicationGroup].policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(
+        Policy(type=typeImplicitMeta, policy=IMP(
+            rule=ruleMajority, sub_policy=BootstrapHelper.KEY_POLICY_ADMINS).SerializeToString()))
+    write_set.groups[ApplicationGroup].mod_policy = "Admins"
+    config_update = common_dot_configtx_pb2.ConfigUpdate(channel_id=channel_id,
+                                                         read_set=read_set,
+                                                         write_set=write_set)
+    return config_update
+
+def createConsortium(context, consortium_name, org_names, mod_policy):
     channel = common_dot_configtx_pb2.ConfigGroup()
     directory = getDirectory(context=context)
+    channel.groups[ConsortiumsGroup].groups[consortium_name].mod_policy = mod_policy
     # Add the orderer org groups MSPConfig info to consortiums group
     for consortium_org in [org for org in directory.getOrganizations().values() if org.name in org_names]:
         # channel.groups[ConsortiumsGroup].groups[consortium_name].groups[consortium_org.name].mod_policy = BootstrapHelper.KEY_POLICY_ADMINS
@@ -1039,6 +1061,33 @@ def broadcastCreateChannelConfigTx(context, certAlias, composeService, chainId, 
     user.broadcastMessages(context=context, numMsgsToBroadcast=1, composeService=composeService, chainID=chainId,
                            dataFunc=dataFunc)
 
+def get_latest_configuration_block(deliverer_stream_helper, channel_id):
+    latest_config_block = None
+    deliverer_stream_helper.seekToRange(chainID=channel_id, start="Newest", end="Newest")
+    blocks = deliverer_stream_helper.getBlocks()
+    assert len(blocks) == 1, "Expected single block, received: {0} blocks".format(len(blocks))
+    newest_block = blocks[0]
+    last_config = common_dot_common_pb2.LastConfig()
+    last_config.ParseFromString(newest_block.metadata.metadata[common_dot_common_pb2.BlockMetadataIndex.Value('LAST_CONFIG')])
+    if last_config.index == newest_block.header.number:
+        latest_config_block = newest_block
+    else:
+        deliverer_stream_helper.seekToRange(chainID=channel_id, start=last_config.index, end=last_config.index)
+        blocks = deliverer_stream_helper.getBlocks()
+        assert len(blocks) == 1, "Expected single block, received: {0} blocks".format(len(blocks))
+        assert len(block.data.data) == 1, "Expected single transaction for configuration block, instead found {0} transactions".format(len(block.data.data))
+        latest_config_block = blocks[0]
+    return latest_config_block
+
+def get_channel_group_from_config_block(block):
+    assert len(block.data.data) == 1, "Expected single transaction for configuration block, instead found {0} transactions".format(len(block.data.data))
+    e = common_dot_common_pb2.Envelope()
+    e.ParseFromString(block.data.data[0])
+    p = common_dot_common_pb2.Payload()
+    p.ParseFromString(e.payload)
+    config_envelope = common_dot_configtx_pb2.ConfigEnvelope()
+    config_envelope.ParseFromString(p.data)
+    return config_envelope.config.channel_group
 
 def getArgsFromContextForUser(context, userName):
     directory = getDirectory(context)

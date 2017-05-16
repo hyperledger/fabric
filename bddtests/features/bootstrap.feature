@@ -19,12 +19,15 @@ Feature: Bootstrap
     Given the orderer network has organizations:
       | Organization  |   Readers  | Writers  | Admins  |
       | ordererOrg0   |    member  |  member  |  admin  |
+#      | ordererOrg1   |    member  |  member  |  admin  |
 
     And user requests role of orderer admin by creating a key and csr for orderer and acquires signed certificate from organization:
-      | User           | Orderer  | Organization  |
-      | orderer0Signer | orderer0 | ordererOrg0   |
-      | orderer1Signer | orderer1 | ordererOrg0   |
-      | orderer2Signer | orderer2 | ordererOrg0   |
+      | User                   | Orderer     | Organization | AliasSavedUnder   |
+      | orderer0Signer         | orderer0    | ordererOrg0  |                   |
+      | orderer1Signer         | orderer1    | ordererOrg0  |                   |
+      | orderer2Signer         | orderer2    | ordererOrg0  |                   |
+      | configAdminOrdererOrg0 | configAdmin | ordererOrg0  | config-admin-cert |
+#      | configAdminOrdererOrg1 | configAdmin | ordererOrg1  | config-admin-cert |
 
 
     # Rolenames : MspPrincipal.proto
@@ -47,30 +50,24 @@ Feature: Bootstrap
     # We now have an orderer network with NO peers.  Now need to configure and start the peer network
     # This can be currently automated through folder creation of the proper form and placing PEMs.
     And user requests role for peer by creating a key and csr for peer and acquires signed certificate from organization:
-      | User            | Peer     | Organization  |AliasSavedUnder|
-      | peer0Signer     | peer0    | peerOrg0      |               |
-      | peer1Signer     | peer1    | peerOrg0      |               |
-      | peer2Signer     | peer2    | peerOrg1      |               |
-      | peer3Signer     | peer3    | peerOrg1      |               |
-      | peer0Admin      | peer0    | peerOrg0      |peer-admin-cert|
-      | peer1Admin      | peer1    | peerOrg0      |peer-admin-cert|
-      | peer2Admin      | peer2    | peerOrg1      |peer-admin-cert|
-      | peer3Admin      | peer3    | peerOrg1      |peer-admin-cert|
-      | mspAdminPeerOrg0| mspAdmin | peerOrg0      |msp-admin-cert |
-      | mspAdminPeerOrg1| mspAdmin | peerOrg1      |msp-admin-cert |
-
-    And the ordererBootstrapAdmin creates a consortium "consortium1" (network name) for peer orgs who wish to form a network:
-      | Organization  |
-      |  peerOrg0     |
-      |  peerOrg1     |
-#      |  peerOrg2     |
+      | User                | Peer        | Organization | AliasSavedUnder   |
+      | peer0Signer         | peer0       | peerOrg0     |                   |
+      | peer1Signer         | peer1       | peerOrg0     |                   |
+      | peer2Signer         | peer2       | peerOrg1     |                   |
+      | peer3Signer         | peer3       | peerOrg1     |                   |
+      | peer0Admin          | peer0       | peerOrg0     | peer-admin-cert   |
+      | peer1Admin          | peer1       | peerOrg0     | peer-admin-cert   |
+      | peer2Admin          | peer2       | peerOrg1     | peer-admin-cert   |
+      | peer3Admin          | peer3       | peerOrg1     | peer-admin-cert   |
+      | configAdminPeerOrg0 | configAdmin | peerOrg0     | config-admin-cert |
+      | configAdminPeerOrg1 | configAdmin | peerOrg1     | config-admin-cert |
 
 
     # Order info includes orderer admin/orderer information and address (host:port) from previous steps
     # Only the peer organizations can vary.
-    And the ordererBootstrapAdmin using cert alias "bootstrapCertAlias" creates the genesis block "ordererGenesisBlock" for chain "OrdererSystemChainId" for composition "<ComposeFile>" and consensus "<ConsensusType>" using consortiums:
+    And the ordererBootstrapAdmin using cert alias "bootstrapCertAlias" creates the genesis block "ordererGenesisBlock" for chain "OrdererSystemChainId" for composition "<ComposeFile>" and consensus "<ConsensusType>" with consortiums modification policy "/Channel/Orderer/Admins" using consortiums:
       | Consortium  |
-      | consortium1 |
+#      | consortium1 |
 
 
     And the orderer admins inspect and approve the genesis block for chain "OrdererSystemChainId"
@@ -83,10 +80,41 @@ Feature: Bootstrap
     # Sleep as to allow system up time
     And I wait "<SystemUpWaitTime>" seconds
 
-    And the following application developers are defined for peer organizations and each saves their cert as alias
+    Given user "ordererBootstrapAdmin" gives "OrdererSystemChainId" to user "configAdminOrdererOrg0"
+    And user "ordererBootstrapAdmin" gives "ordererGenesisBlock" to user "configAdminOrdererOrg0"
+
+    And the orderer config admin "configAdminOrdererOrg0" creates a consortium "consortium1" with modification policy "/Channel/Orderer/Admins" for peer orgs who wish to form a network:
+        | Organization  |
+        |  peerOrg0     |
+        |  peerOrg1     |
+#      |  peerOrg2     |
+
+    And user "configAdminOrdererOrg0" using cert alias "config-admin-cert" connects to deliver function on orderer "<orderer0>"
+
+    And user "configAdminOrdererOrg0" retrieves the latest configuration "latestOrdererConfig" from orderer "<orderer0>" for channel "OrdererSystemChainId"
+
+    And the orderer config admin "configAdminOrdererOrg0" creates a consortiums config update "consortiumsConfigUpdate1" using config "latestOrdererConfig" using orderer system channel ID "OrdererSystemChainId" to add consortiums:
+      | Consortium  |
+      | consortium1 |
+
+    And the user "configAdminOrdererOrg0" creates a configUpdateEnvelope "consortiumsConfigUpdate1Envelope" using configUpdate "consortiumsConfigUpdate1"
+
+    And the user "configAdminOrdererOrg0" collects signatures for ConfigUpdateEnvelope "consortiumsConfigUpdate1Envelope" from developers:
+      | Developer              | Cert Alias        |
+      | configAdminOrdererOrg0 | config-admin-cert |
+#      | configAdminOrdererOrg1 | config-admin-cert |
+
+    And the user "configAdminOrdererOrg0" creates a ConfigUpdate Tx "consortiumsConfigUpdateTx1" using cert alias "config-admin-cert" using signed ConfigUpdateEnvelope "consortiumsConfigUpdate1Envelope"
+
+    And the user "configAdminOrdererOrg0" using cert alias "config-admin-cert" broadcasts ConfigUpdate Tx "consortiumsConfigUpdateTx1" to orderer "<orderer0>" to create channel "com.acme.blockchain.jdoe.Channel1"
+
+
+    Given the following application developers are defined for peer organizations and each saves their cert as alias
       | Developer       | Consortium     | Organization  |  AliasSavedUnder   |
       | dev0Org0        | consortium1    |  peerOrg0     |    dev0Org0App1    |
       | dev0Org1        | consortium1    |  peerOrg1     |    dev0Org1App1    |
+
+    And user "configAdminOrdererOrg0" gives "consortium1" to user "dev0Org0"
 
     # Need Consortium MSP info and
     # need to add the ChannelWriters ConfigItem (using ChannelWriters ref name),
@@ -100,21 +128,24 @@ Feature: Bootstrap
 
     And the user "dev0Org0" creates an peer anchor set "anchors1" for channel "com.acme.blockchain.jdoe.Channel1" for orgs:
       | User            | Peer     | Organization  |
-      | peer0Signer     | peer0    | peerOrg0      |
-      | peer2Signer     | peer2    | peerOrg1      |
+#      | peer0Signer     | peer0    | peerOrg0      |
+#      | peer2Signer     | peer2    | peerOrg1      |
 
     # TODO: grab the peer orgs from template1 and put into Murali's MSP info SCIs.
     # Entry point for creating a channel from existing templates
-    And the user "dev0Org0" creates a ConfigUpdateEnvelope "createChannelConfigUpdate1"
-        | ChannelID                          | Template     | Consortium    | Anchors  |
-        | com.acme.blockchain.jdoe.Channel1  | template1    | consortium1   | anchors1 |
+    And the user "dev0Org0" creates a new channel ConfigUpdate "createChannelConfigUpdate1" using consortium config "consortium1"
+      | ChannelID                         | Template  | Anchors  |
+      | com.acme.blockchain.jdoe.Channel1 | template1 | anchors1 |
 
-    And the user "dev0Org0" collects signatures for ConfigUpdateEnvelope "createChannelConfigUpdate1" from developers:
+    And the user "dev0Org0" creates a configUpdateEnvelope "createChannelConfigUpdate1Envelope" using configUpdate "createChannelConfigUpdate1"
+
+
+    And the user "dev0Org0" collects signatures for ConfigUpdateEnvelope "createChannelConfigUpdate1Envelope" from developers:
       |   Developer     |    Cert Alias    |
       |  dev0Org0       |   dev0Org0App1   |
       |  dev0Org1       |   dev0Org1App1   |
 
-    And the user "dev0Org0" creates a ConfigUpdate Tx "configUpdateTx1" using cert alias "dev0Org0App1" using signed ConfigUpdateEnvelope "createChannelConfigUpdate1"
+    And the user "dev0Org0" creates a ConfigUpdate Tx "configUpdateTx1" using cert alias "dev0Org0App1" using signed ConfigUpdateEnvelope "createChannelConfigUpdate1Envelope"
 
     And the user "dev0Org0" using cert alias "dev0Org0App1" broadcasts ConfigUpdate Tx "configUpdateTx1" to orderer "<orderer0>" to create channel "com.acme.blockchain.jdoe.Channel1"
 
@@ -201,44 +232,44 @@ Feature: Bootstrap
 
 
     Given user "peer0Admin" gives "cc_spec" to user "dev0Org0"
-      And user "peer0Admin" gives "cc_spec" to user "mspAdminPeerOrg0"
+      And user "peer0Admin" gives "cc_spec" to user "configAdminPeerOrg0"
 
 
-    When user "mspAdminPeerOrg0" using cert alias "msp-admin-cert" creates a instantiate proposal "instantiateProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
+    When user "configAdminPeerOrg0" using cert alias "config-admin-cert" creates a instantiate proposal "instantiateProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
 
-    And user "mspAdminPeerOrg0" using cert alias "msp-admin-cert" sends proposal "instantiateProposal1" to endorsers with timeout of "90" seconds with proposal responses "instantiateProposalResponses":
+    And user "configAdminPeerOrg0" using cert alias "config-admin-cert" sends proposal "instantiateProposal1" to endorsers with timeout of "90" seconds with proposal responses "instantiateProposalResponses":
       | Endorser |
       | peer0    |
       | peer2    |
 
 
-    Then user "mspAdminPeerOrg0" expects proposal responses "instantiateProposalResponses" with status "200" from endorsers:
+    Then user "configAdminPeerOrg0" expects proposal responses "instantiateProposalResponses" with status "200" from endorsers:
       | Endorser |
       | peer0    |
       | peer2    |
 
-    And user "mspAdminPeerOrg0" expects proposal responses "instantiateProposalResponses" each have the same value from endorsers:
+    And user "configAdminPeerOrg0" expects proposal responses "instantiateProposalResponses" each have the same value from endorsers:
       | Endorser |
       | peer0    |
       | peer2    |
 
-    When the user "mspAdminPeerOrg0" creates transaction "instantiateTx1" from proposal "instantiateProposal1" and proposal responses "instantiateProposalResponses" for channel "com.acme.blockchain.jdoe.Channel1"
+    When the user "configAdminPeerOrg0" creates transaction "instantiateTx1" from proposal "instantiateProposal1" and proposal responses "instantiateProposalResponses" for channel "com.acme.blockchain.jdoe.Channel1"
 
-    And the user "mspAdminPeerOrg0" broadcasts transaction "instantiateTx1" to orderer "<orderer1>" on channel "com.acme.blockchain.jdoe.Channel1"
+    And the user "configAdminPeerOrg0" broadcasts transaction "instantiateTx1" to orderer "<orderer1>" on channel "com.acme.blockchain.jdoe.Channel1"
 
     # Sleep as the deliver takes a bit to have the first block ready
     And I wait "2" seconds
 
-    And user "mspAdminPeerOrg0" using cert alias "msp-admin-cert" connects to deliver function on orderer "<orderer0>"
+    And user "configAdminPeerOrg0" using cert alias "config-admin-cert" connects to deliver function on orderer "<orderer0>"
 
-    And user "mspAdminPeerOrg0" sends deliver a seek request on orderer "<orderer0>" with properties:
+    And user "configAdminPeerOrg0" sends deliver a seek request on orderer "<orderer0>" with properties:
         | ChainId                               |   Start    |  End    |
         | com.acme.blockchain.jdoe.Channel1     |   1   |  1      |
 
-    Then user "mspAdminPeerOrg0" should get a delivery "deliveredInstantiateTx1Block" from "<orderer0>" of "1" blocks with "1" messages within "1" seconds
+    Then user "configAdminPeerOrg0" should get a delivery "deliveredInstantiateTx1Block" from "<orderer0>" of "1" blocks with "1" messages within "1" seconds
 
     # Sleep as the deliver takes a bit to have the first block ready
-    And I wait "1" seconds
+    And I wait "3" seconds
 
 
     # Entry point for invoking on an existing channel
@@ -293,7 +324,7 @@ Feature: Bootstrap
       And the user "dev0Org0" broadcasts transaction "invokeTx1" to orderer "<orderer2>" on channel "com.acme.blockchain.jdoe.Channel1"
 
     # Sleep as the deliver takes a bit to have the first block ready
-      And I wait "2" seconds
+      And I wait "3" seconds
 
       And user "dev0Org0" sends deliver a seek request on orderer "<orderer0>" with properties:
         | ChainId                               |   Start    |  End    |

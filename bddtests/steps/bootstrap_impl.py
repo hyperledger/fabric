@@ -34,7 +34,10 @@ def step_impl(context):
     assert 'table' in context, "Expected table with triplet of User/Orderer/Organization"
     directory = bootstrap_util.getDirectory(context)
     for row in context.table.rows:
-        directory.registerOrdererAdminTuple(row['User'], row['Orderer'], row['Organization'])
+        nodeAdminTuple = directory.registerOrdererAdminTuple(row['User'], row['Orderer'], row['Organization'])
+        aliasToSaveUnder = row['AliasSavedUnder']
+        if aliasToSaveUnder != "":
+            directory.getUser(row['User']).setTagValue(aliasToSaveUnder, nodeAdminTuple)
 
 @given(u'user requests role for peer by creating a key and csr for peer and acquires signed certificate from organization')
 def step_impl(context):
@@ -62,13 +65,13 @@ def step_impl(context):
     # Simply create the user
     bootstrap_util.getOrdererBootstrapAdmin(context, shouldCreate=True)
 
-@given(u'the ordererBootstrapAdmin using cert alias "{certAlias}" creates the genesis block "{ordererGenesisBlockName}" for chain "{ordererSystemChainIdName}" for composition "{composeFile}" and consensus "{consensusType}" using consortiums')
-def step_impl(context, certAlias, ordererGenesisBlockName, ordererSystemChainIdName, composeFile, consensusType):
+@given(u'the ordererBootstrapAdmin using cert alias "{certAlias}" creates the genesis block "{ordererGenesisBlockName}" for chain "{ordererSystemChainIdName}" for composition "{composeFile}" and consensus "{consensusType}" with consortiums modification policy "{consortiumsModPolicy}" using consortiums')
+def step_impl(context, certAlias, ordererGenesisBlockName, ordererSystemChainIdName, composeFile, consensusType, consortiumsModPolicy):
     directory = bootstrap_util.getDirectory(context=context)
     ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
     ordererSystemChainIdGUUID = ordererBootstrapAdmin.tags[ordererSystemChainIdName]
     # Now collect the named signed config items
-    configGroups =[]
+    configGroups =[bootstrap_util.getDefaultConsortiumGroup(consortiumsModPolicy)]
     for row in context.table.rows:
         configGroupName = row['Consortium']
         configGroups += ordererBootstrapAdmin.tags[configGroupName]
@@ -107,19 +110,34 @@ def step_impl(context, ordererSystemChainId):
     ordererBootstrapAdmin.setTagValue(ordererSystemChainId, bootstrap_util.GetUUID())
 
 
-@given(u'the ordererBootstrapAdmin creates a consortium "{consortiumName}" (network name) for peer orgs who wish to form a network')
-def step_impl(context, consortiumName):
+@given(u'the orderer config admin "{ordererConfigAdmin}" creates a consortium "{consortiumName}" with modification policy "{modPolicy}" for peer orgs who wish to form a network')
+def step_impl(context, ordererConfigAdmin, consortiumName, modPolicy):
     directory = bootstrap_util.getDirectory(context)
-
-
-    ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
+    ordererConfigAdmin = directory.getUser(ordererConfigAdmin)
 
     # Collect the orgs from the table
     orgNames = [row['Organization'] for row in context.table.rows]
     bootstrap_util.addOrdererBootstrapAdminOrgReferences(context, consortiumName, orgNames)
 
-    consortium = bootstrap_util.createConsortium(context=context, consortium_name=consortiumName, org_names=orgNames)
-    ordererBootstrapAdmin.setTagValue(consortiumName, [consortium])
+    consortium = bootstrap_util.createConsortium(context=context, consortium_name=consortiumName, org_names=orgNames, mod_policy=modPolicy)
+    ordererConfigAdmin.setTagValue(consortiumName, consortium)
+
+@given(u'the orderer config admin "{ordererConfigAdmin}" creates a consortiums config update "{consortiumsConfigUpdateName}" using config "{configName}" using orderer system channel ID "{ordererSystemChainIdName}" to add consortiums')
+def step_impl(context, ordererConfigAdmin, consortiumsConfigUpdateName, configName, ordererSystemChainIdName):
+    '''
+    channel group/Consortiums/
+    Read the consortiums Group from existing genesis block.
+    '''
+    directory = bootstrap_util.getDirectory(context)
+    ordererConfigAdmin = directory.getUser(ordererConfigAdmin)
+    channel_group = ordererConfigAdmin.getTagValue(configName)
+    orderer_system_chain_id = ordererConfigAdmin.getTagValue(ordererSystemChainIdName)
+    config_groups = []
+    # Now collect the consortiums
+    for row in context.table.rows:
+        config_groups.append(ordererConfigAdmin.getTagValue(row['Consortium']))
+    config_update = bootstrap_util.create_orderer_consortium_config_update(orderer_system_chain_id, channel_group, config_groups)
+    ordererConfigAdmin.setTagValue(tagKey=consortiumsConfigUpdateName, tagValue=config_update)
 
 @given(u'the user "{userName}" creates a peer template "{templateName}" with chaincode deployment policy using consortium "{chainCreatePolicyName}" and peer organizations')
 def step_impl(context, userName, templateName, chainCreatePolicyName):
@@ -128,46 +146,33 @@ def step_impl(context, userName, templateName, chainCreatePolicyName):
     user = directory.getUser(userName)
     user.setTagValue(templateName, [directory.getOrganization(row['Organization']) for row in context.table.rows])
 
-
-@given(u'the user "{userName}" creates a ConfigUpdateEnvelope "{createChannelSignedConfigEnvelope}"')
-def step_impl(context, userName, createChannelSignedConfigEnvelope):
+@given(u'the user "{userName}" creates a configUpdateEnvelope "{configUpdateEnvelopeName}" using configUpdate "{configUpdateName}"')
+def step_impl(context, userName, configUpdateEnvelopeName, configUpdateName):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName)
-    ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
+    config_update_envelope = bootstrap_util.create_config_update_envelope(config_update=user.getTagValue(configUpdateName))
+    user.setTagValue(tagKey=configUpdateEnvelopeName, tagValue=config_update_envelope)
 
+@given(u'the user "{userName}" creates a new channel ConfigUpdate "{create_channel_config_update_name}" using consortium config "{consortium_name}"')
+def step_impl(context, userName, create_channel_config_update_name, consortium_name):
+    directory = bootstrap_util.getDirectory(context)
+    user = directory.getUser(userName)
+    consortium_config_group = user.getTagValue(tagKey=consortium_name)
 
-    channelID = context.table.rows[0]["ChannelID"]
-    consortium_name = context.table.rows[0]["Consortium"]
+    channel_id = context.table.rows[0]["ChannelID"]
     templateName = context.table.rows[0]["Template"]
     # Loop through templates referenced orgs
-    mspOrgNames = [org.name for org in user.tags[templateName]]
-    signedMspConfigItems = bootstrap_util.getSignedMSPConfigItems(context=context, orgNames=mspOrgNames, channel_version=0)
-    user.setTagValue(createChannelSignedConfigEnvelope + "_signedMspConfigItems", signedMspConfigItems)
+    # mspOrgNames = [org.name for org in user.tags[templateName]]
+    #TODO: Where does the system_channel_version come from?
+    system_channel_version = 0
+    channel_config_update = bootstrap_util.create_channel_config_update(system_channel_version, channel_id, consortium_config_group)
 
     # Add the anchors signed config Items
-    anchorSignedConfigItemsName = context.table.rows[0]["Anchors"]
-    signedAnchorsConfigItems = user.tags[anchorSignedConfigItemsName]
+    # anchorSignedConfigItemsName = context.table.rows[0]["Anchors"]
+    # signedAnchorsConfigItems = user.tags[anchorSignedConfigItemsName]
 
-    # Intermediate step until template tool is ready
-    consensus_type = ordererBootstrapAdmin.tags["ConsensusType"]
-    channel_config_groups = bootstrap_util.createSignedConfigItems(directory=directory,
-                                                                   consensus_type=consensus_type,
-                                                                   consortium_name=consortium_name,
-                                                                   version=1,
-                                                                   channel_version=0,
-                                                                   channel_consortium_version=0,
-                                                                   configGroups=signedMspConfigItems)
-    user.setTagValue(createChannelSignedConfigEnvelope + "_channel_config_groups", channel_config_groups)
-    # bootstrap_util.setMetaPolicy(channelId=channelID, channgel_config_groups=channgel_config_groups)
+    user.setTagValue(create_channel_config_update_name, channel_config_update)
 
-    #NOTE: Conidered passing signing key for appDeveloper, but decided that the peer org signatures they need to collect subsequently should be proper way
-    config_update_envelope = bootstrap_util.createNewConfigUpdateEnvelope(channelConfig=channel_config_groups, chainId=channelID)
-
-    user.setTagValue(createChannelSignedConfigEnvelope, config_update_envelope)
-
-    # Construct TX Config Envelope, broadcast, expect success, and then connect to deliver to revtrieve block.
-    # Make sure the blockdata exactly the TxConfigEnvelope I submitted.
-    # txConfigEnvelope = bootstrap_util.createConfigTxEnvelope(chainId=channelID, signedConfigEnvelope=signedConfigEnvelope)
 
 
 @given(u'the following application developers are defined for peer organizations and each saves their cert as alias')
@@ -225,6 +230,7 @@ def step_impl(context, userName, transactionAlias, orderer, channelId):
 
 
 @when(u'user "{userName}" using cert alias "{certAlias}" connects to deliver function on orderer "{composeService}"')
+@Given(u'user "{userName}" using cert alias "{certAlias}" connects to deliver function on orderer "{composeService}"')
 def step_impl(context, userName, certAlias, composeService):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
@@ -243,6 +249,16 @@ def step_impl(context, userName, composeService):
     print("")
     streamHelper = user.getDelivererStreamHelper(context, composeService)
     streamHelper.seekToRange(chainID=chainID, start = start, end = end)
+
+@given(u'user "{userName}" retrieves the latest configuration "{latest_config_name}" from orderer "{service_name}" for channel "{channel_id_name}"')
+def step_impl(context, userName, latest_config_name, service_name, channel_id_name):
+    directory = bootstrap_util.getDirectory(context)
+    user = directory.getUser(userName=userName)
+    streamHelper = user.getDelivererStreamHelper(context, service_name)
+    latest_config_block = bootstrap_util.get_latest_configuration_block(deliverer_stream_helper=streamHelper, channel_id=user.getTagValue(channel_id_name))
+    channel_group = bootstrap_util.get_channel_group_from_config_block(latest_config_block)
+    user.setTagValue(tagKey=latest_config_name, tagValue=channel_group)
+    # raise NotImplementedError(u'STEP: Given user "configAdminOrdererOrg0" retrieves the latest configuration "latestOrdererConfig" from orderer "orderer0" for channel "OrdererSystemChainId"')
 
 @then(u'user "{userName}" should get a delivery "{deliveryName}" from "{composeService}" of "{expectedBlocks}" blocks with "{numMsgsToBroadcast}" messages within "{batchTimeout}" seconds')
 def step_impl(context, userName, deliveryName, composeService, expectedBlocks, numMsgsToBroadcast, batchTimeout):
