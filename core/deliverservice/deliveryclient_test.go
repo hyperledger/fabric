@@ -353,19 +353,17 @@ func assertBlockDissemination(expectedSeq uint64, ch chan uint64, t *testing.T) 
 }
 
 func ensureNoGoroutineLeak(t *testing.T) func() {
-	//goroutineCountAtStart := runtime.NumGoroutine()
+	goroutineCountAtStart := runtime.NumGoroutine()
 	return func() {
-		// Temporarily disabled, see FAB-3257 for progress
-		/*		start := time.Now()
-				timeLimit := start.Add(goRoutineTestWaitTimeout)
-				for time.Now().Before(timeLimit) {
-					time.Sleep(time.Millisecond * 500)
-					if goroutineCountAtStart == runtime.NumGoroutine() {
-						fmt.Println(getStackTrace())
-						return
-					}
-				}
-				assert.Equal(t, goroutineCountAtStart, runtime.NumGoroutine(), "Some goroutine(s) didn't finish: %s", getStackTrace())*/
+		start := time.Now()
+		timeLimit := start.Add(goRoutineTestWaitTimeout)
+		for time.Now().Before(timeLimit) {
+			time.Sleep(time.Millisecond * 500)
+			if goroutineCountAtStart >= runtime.NumGoroutine() {
+				return
+			}
+		}
+		assert.Fail(t, "Some goroutine(s) didn't finish: %s", getStackTrace())
 	}
 }
 
