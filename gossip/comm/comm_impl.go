@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -620,39 +619,20 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, api.PeerSecureDialOp
 	var serverOpts []grpc.ServerOption
 	var dialOpts []grpc.DialOption
 
-	keyFileName := fmt.Sprintf("key.%d.pem", util.RandomUInt64())
-	certFileName := fmt.Sprintf("cert.%d.pem", util.RandomUInt64())
+	cert := GenerateCertificatesOrPanic()
+	returnedCertHash = certHashFromRawCert(cert.Certificate[0])
 
-	defer os.Remove(keyFileName)
-	defer os.Remove(certFileName)
-
-	err = GenerateCertificates(keyFileName, certFileName)
-	if err == nil {
-		cert, err := tls.LoadX509KeyPair(certFileName, keyFileName)
-		if err != nil {
-			panic(err)
-		}
-
-		if len(cert.Certificate) == 0 {
-			panic(errors.New("Certificate chain is nil"))
-		}
-
-		returnedCertHash = certHashFromRawCert(cert.Certificate[0])
-
-		tlsConf := &tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			ClientAuth:         tls.RequestClientCert,
-			InsecureSkipVerify: true,
-		}
-		serverOpts = append(serverOpts, grpc.Creds(credentials.NewTLS(tlsConf)))
-		ta := credentials.NewTLS(&tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: true,
-		})
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}))
-	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+	tlsConf := &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		ClientAuth:         tls.RequestClientCert,
+		InsecureSkipVerify: true,
 	}
+	serverOpts = append(serverOpts, grpc.Creds(credentials.NewTLS(tlsConf)))
+	ta := credentials.NewTLS(&tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+	})
+	dialOpts = append(dialOpts, grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}))
 
 	listenAddress := fmt.Sprintf("%s:%d", "", port)
 	ll, err = net.Listen("tcp", listenAddress)

@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -107,18 +106,7 @@ func newPeerMock(port int, expectedMsgs2Receive int, t *testing.T, msgAssertions
 }
 
 func newGRPCServerWithTLS() (*grpc.Server, []byte) {
-	// TODO: For this change set I simply exported the function, but I think that we should
-	// Instead have a function that returns a TLS gRPC server from the comm package instead,
-	// and then we could remove the boilerplate code below both from this file and from the
-	// comm test code.
-	// However, it needs to be attended in a subsequent change set rather than this.
-	comm.GenerateCertificates("key.pem", "cert.pem")
-	defer os.Remove("cert.pem")
-	defer os.Remove("key.pem")
-	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
-	if err != nil {
-		panic(err)
-	}
+	cert := comm.GenerateCertificatesOrPanic()
 	tlsConf := &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		ClientAuth:         tls.RequestClientCert,
