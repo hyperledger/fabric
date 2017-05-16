@@ -48,7 +48,7 @@ Now create the following directory structure and ``cd`` into it:
 
        git clone http://gerrit.hyperledger.org/r/fabric
 
-   or though a mirrored repository in github:
+or though a mirrored repository in github:
 
 .. code:: bash
 
@@ -61,6 +61,25 @@ Now create the following directory structure and ``cd`` into it:
         brew install gnu-tar --with-default-names
         brew install libtool
 
+Pick a commit level
+^^^^^^^^^^^^^^^^^^^
+
+It's recommended to run the end-to-end tests against images and binaries from
+the stable "alpha2" release.
+
+From your fabric directory:
+
+.. code:: bash
+
+  git tag -l
+  git checkout v1.0.0-alpha2
+
+This reverts us back to the "alpha2" commit.  **NOTE**:  You do have the option of
+compiling images and binaries from the current master branch
+(this might be desired for chaincode testing or fabric development), however
+debugging and troubleshooting responsibilities will fall upon the user.  As a
+result we recommend "alpha2".
+
 -  Now make the platform-specific binaries for ``cryptogen`` and ``configtxgen``.
 
 .. code:: bash
@@ -71,7 +90,7 @@ Now create the following directory structure and ``cd`` into it:
 
 This will output platform-specific binaries into the ``fabric/release`` folder.
 
--  Make the Fabric images.  This typically takes between five to ten minutes, so
+-  Next, make the Fabric images.  This typically takes between five to ten minutes, so
    be patient:
 
 .. code:: bash
@@ -84,27 +103,27 @@ successfully, you should see an output similar to the following:
 
 .. code:: bash
 
-    REPOSITORY                     TAG                              IMAGE ID            CREATED             SIZE
-    hyperledger/fabric-couchdb     latest                           07b28f8cdafd        3 hours ago         1.51 GB
-    hyperledger/fabric-couchdb     x86_64-1.0.0-snapshot-1dfdee59   07b28f8cdafd        3 hours ago         1.51 GB
-    hyperledger/fabric-kafka       latest                           51f3b454bce2        3 hours ago         1.3 GB
-    hyperledger/fabric-kafka       x86_64-1.0.0-snapshot-1dfdee59   51f3b454bce2        3 hours ago         1.3 GB
-    hyperledger/fabric-zookeeper   latest                           381faf5019b0        3 hours ago         1.31 GB
-    hyperledger/fabric-zookeeper   x86_64-1.0.0-snapshot-1dfdee59   381faf5019b0        3 hours ago         1.31 GB
-    hyperledger/fabric-testenv     latest                           deeeef590f79        3 hours ago         1.4 GB
-    hyperledger/fabric-testenv     x86_64-1.0.0-snapshot-1dfdee59   deeeef590f79        3 hours ago         1.4 GB
-    hyperledger/fabric-buildenv    latest                           50dc54a88084        3 hours ago         1.31 GB
-    hyperledger/fabric-buildenv    x86_64-1.0.0-snapshot-1dfdee59   50dc54a88084        3 hours ago         1.31 GB
-    hyperledger/fabric-orderer     latest                           87ec206a1a2e        3 hours ago         182 MB
-    hyperledger/fabric-orderer     x86_64-1.0.0-snapshot-1dfdee59   87ec206a1a2e        3 hours ago         182 MB
-    hyperledger/fabric-peer        latest                           f74f6934f3d2        3 hours ago         185 MB
-    hyperledger/fabric-peer        x86_64-1.0.0-snapshot-1dfdee59   f74f6934f3d2        3 hours ago         185 MB
-    hyperledger/fabric-javaenv     latest                           8a81bf83739a        3 hours ago         1.43 GB
-    hyperledger/fabric-javaenv     x86_64-1.0.0-snapshot-1dfdee59   8a81bf83739a        3 hours ago         1.43 GB
-    hyperledger/fabric-ccenv       latest                           db8c3edbe98d        3 hours ago         1.29 GB
-    hyperledger/fabric-ccenv       x86_64-1.0.0-snapshot-1dfdee59   db8c3edbe98d        3 hours ago         1.29 GB
-    hyperledger/fabric-baseimage   x86_64-0.3.0                     f4751a503f02        3 months ago        1.27 GB
-    hyperledger/fabric-baseos      x86_64-0.3.0                     c3a4cf3b3350        3 months ago        161 MB
+  REPOSITORY                     TAG                   IMAGE ID            CREATED             SIZE
+  hyperledger/fabric-couchdb     latest                e2df4dd39ca9        38 minutes ago      1.51 GB
+  hyperledger/fabric-couchdb     x86_64-1.0.0-alpha2   e2df4dd39ca9        38 minutes ago      1.51 GB
+  hyperledger/fabric-kafka       latest                08af4d797266        40 minutes ago      1.3 GB
+  hyperledger/fabric-kafka       x86_64-1.0.0-alpha2   08af4d797266        40 minutes ago      1.3 GB
+  hyperledger/fabric-zookeeper   latest                444e9e695367        40 minutes ago      1.31 GB
+  hyperledger/fabric-zookeeper   x86_64-1.0.0-alpha2   444e9e695367        40 minutes ago      1.31 GB
+  hyperledger/fabric-testenv     latest                8678d3101930        41 minutes ago      1.41 GB
+  hyperledger/fabric-testenv     x86_64-1.0.0-alpha2   8678d3101930        41 minutes ago      1.41 GB
+  hyperledger/fabric-buildenv    latest                60911392c82e        41 minutes ago      1.33 GB
+  hyperledger/fabric-buildenv    x86_64-1.0.0-alpha2   60911392c82e        41 minutes ago      1.33 GB
+  hyperledger/fabric-orderer     latest                2afab937b9cc        41 minutes ago      182 MB
+  hyperledger/fabric-orderer     x86_64-1.0.0-alpha2   2afab937b9cc        41 minutes ago      182 MB
+  hyperledger/fabric-peer        latest                9560e58e8089        41 minutes ago      185 MB
+  hyperledger/fabric-peer        x86_64-1.0.0-alpha2   9560e58e8089        41 minutes ago      185 MB
+  hyperledger/fabric-javaenv     latest                881ca5219fad        42 minutes ago      1.43 GB
+  hyperledger/fabric-javaenv     x86_64-1.0.0-alpha2   881ca5219fad        42 minutes ago      1.43 GB
+  hyperledger/fabric-ccenv       latest                28af77ffe9e9        43 minutes ago      1.29 GB
+  hyperledger/fabric-ccenv       x86_64-1.0.0-alpha2   28af77ffe9e9        43 minutes ago      1.29 GB
+  hyperledger/fabric-baseimage   x86_64-0.3.0          f4751a503f02        3 months ago        1.27 GB
+  hyperledger/fabric-baseos      x86_64-0.3.0          c3a4cf3b3350        3 months ago        161 MB
 
 If you failed to compile the ``fabric-testenv`` image, then you can
 perform a ``make clean`` followed by another ``make docker``.
@@ -121,10 +140,10 @@ How does it work?
 Cryptogen consumes a file - ``crypto-config.yaml`` - that contains the network
 topology and allows us to generate a library of certificates for both the
 Organizations and the components that belong to those Organizations.  Each
-Organization is provisioned a unique root certificate (/ca-cert), that binds
+Organization is provisioned a unique root certificate (``ca-cert``), that binds
 specific components (peers and orderers) to that Org.  Transactions and communications
-within Fabric are signed by an entity's private key (/keystore), and then verified
-by means of a public key (/signcerts).  You will notice a "count" variable within
+within Fabric are signed by an entity's private key (``keystore``), and then verified
+by means of a public key (``signcerts``).  You will notice a "count" variable within
 this file.  We use this to specify the number of peers per Organization; in our
 case it's two peers per Org.  The rest of this template is extremely
 self-explanatory.
@@ -142,8 +161,8 @@ for each Peer Org.
 
 The orderer block is the genesis block for the ordering service, and the
 channel transaction file is broadcast to the orderer at channel creation
-time.  The anchor peer transactions, as the name might suggest, specify the
-each Org's anchor peer on this channel.
+time.  The anchor peer transactions, as the name might suggest, specify each
+Org's anchor peer on this channel.
 
 How does it work?
 ^^^^^^^^^^^^^^^^^
@@ -154,18 +173,19 @@ and two Peer Orgs (``Org1`` & ``Org2``) each managing and maintaining two peer n
 This file also specifies a consortium - ``SampleConsortium`` - consisting of our
 two Peer Orgs.  Pay specific attention to the "Profiles" section at the top of
 this file.  You will notice that we have two unique headers. One for the orderer genesis
-block - ``TwoOrgsOrdererGenesis`` - and one for our channel - ``TwoOrgsChannel`.
+block - ``TwoOrgsOrdererGenesis`` - and one for our channel - ``TwoOrgsChannel``.
 These headers are important, as we will pass them in as arguments when we create
 our artifacts.  This file also contains two additional specifications that are worth
 noting.  Firstly, we specify the anchor peers for each Peer Org
-(`peer0.org1.example.com` & `peer0.org2.example.com`).  Secondly, we point to
+(``peer0.org1.example.com`` & ``peer0.org2.example.com``).  Secondly, we point to
 the location of the MSP directory for each member, in turn allowing us to store the
 root certificates for each Org in the orderer genesis block.  This is a critical
 concept. Now any network entity communicating with the ordering service can have
 its digital signature verified.
 
 For ease of use, a script - ``generateArtifacts.sh`` - is provided. The
-script will generate the crypto material and our two configuration artifacts.
+script will generate the crypto material and our four configuration artifacts, and
+subsequently output these files into the ``channel-artifacts`` folder.
 
 Run the shell script
 ^^^^^^^^^^^^^^^^^^^^
@@ -225,6 +245,7 @@ This command will detect your OS and use the appropriate binaries for the subseq
 
   # for power or z
   os_arch=$(echo "$(uname -s)-$(uname -m)" | awk '{print tolower($0)}')
+
   # for linux, osx or windows
   os_arch=$(echo "$(uname -s)-amd64" | awk '{print tolower($0)}')
 
@@ -239,7 +260,6 @@ directory, so we need to provide the relative path to where the tool resides.
 Make sure you are in ``examples/e2e_cli``:
 
 .. code:: bash
-
 
     ./../../release/$os_arch/bin/cryptogen generate --config=./crypto-config.yaml
 
@@ -307,7 +327,7 @@ For example,
 
     CHANNEL_NAME=abc TIMEOUT=1000 docker-compose -f docker-compose-cli.yaml up -d
 
-Wait, 30 seconds. Behind the scenes, there are transactions being sent
+Wait, 60 seconds or so. Behind the scenes, there are transactions being sent
 to the peers. Execute a ``docker ps`` to view your active containers.
 You should see an output identical to the following:
 
@@ -330,32 +350,32 @@ What's happening behind the scenes?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 -  A script - ``script.sh`` - is baked inside the CLI container. The
-   script drives the ``createChannel`` command against the default
-   ``mychannel`` name and uses the channel.tx file for channel configuration.
+   script drives the ``createChannel`` command against the supplied channel name
+   and uses the channel.tx file for channel configuration.
 
 -  The output of ``createChannel`` is a genesis block -
-   ``mychannel.block`` - which gets stored on the peers' file systems and contains
+   ``<your_channel_name>.block`` - which gets stored on the peers' file systems and contains
    the channel configuration specified from channel.tx.
 
 -  The ``joinChannel`` command is exercised for all four peers, which takes as
    input the previously generated genesis block.  This command instructs the
-   peers to join ``mychannel`` and create a chain starting with ``mychannel.block``.
+   peers to join ``<your_channel_name>`` and create a chain starting with ``<your_channel_name>.block``.
 
 -  Now we have a channel consisting of four peers, and two
    organizations.  This is our ``TwoOrgsChannel`` profile.
 
 -  ``peer0.org1.example.com`` and ``peer1.org1.example.com`` belong to Org1;
-   ``peer0.org2.example.com`` and ``peer0.org2.example.com``belong to Org2
+   ``peer0.org2.example.com`` and ``peer1.org2.example.com`` belong to Org2
 
 -  These relationships are defined through the ``crypto-config.yaml`` and
    the MSP path is specified in our docker compose.
 
--  The anchor peers for Org1MSP (peer0.org1.example.com) and
-   Org2MSP (peer0.org2.example.com) are then updated.  We do this by passing
+-  The anchor peers for Org1MSP (``peer0.org1.example.com``) and
+   Org2MSP (``peer0.org2.example.com``) are then updated.  We do this by passing
    the ``Org1MSPanchors.tx`` and ``Org2MSPanchors.tx`` artifacts to the ordering
    service along with the name of our channel.
 
--  A chaincode - **chaincode_example02** is installed on ``peer0.org1.example.com`` and
+-  A chaincode - **chaincode_example02** - is installed on ``peer0.org1.example.com`` and
    ``peer0.org2.example.com``
 
 -  The chaincode is then "instantiated" on ``peer0.org2.example.com``. Instantiation
@@ -398,14 +418,14 @@ blocks, as well as a state database to maintain current fabric state.
 This includes those peers that do not have chaincode installed on them
 (like ``peer1.org1.example.com`` in the above example) . Finally, the chaincode is accessible
 after it is installed (like ``peer1.org2.example.com`` in the above example) because it
-already has been instantiated.
+has already been instantiated.
 
 How do I see these transactions?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check the logs for the CLI docker container.
 
-::
+.. code:: bash
 
     docker logs -f cli
 
@@ -413,15 +433,22 @@ You should see the following output:
 
 .. code:: bash
 
-  2017-05-04 19:34:54.010 UTC [msp] GetLocalMSP -> DEBU 004 Returning existing local MSP
-  2017-05-04 19:34:54.010 UTC [msp] GetDefaultSigningIdentity -> DEBU 005 Obtaining default signing identity
-  2017-05-04 19:34:54.010 UTC [msp] Sign -> DEBU 006 Sign: plaintext: 0AAB070A6108031A0B08DE84AEC80510...6D7963631A0A0A0571756572790A0161
-  2017-05-04 19:34:54.010 UTC [msp] Sign -> DEBU 007 Sign: digest: 130B899654F03C41F2303844AB34D108E8AC0B03272D97A8A659548FE7D87B15
+  2017-05-16 17:08:01.366 UTC [msp] GetLocalMSP -> DEBU 004 Returning existing local MSP
+  2017-05-16 17:08:01.366 UTC [msp] GetDefaultSigningIdentity -> DEBU 005 Obtaining default signing identity
+  2017-05-16 17:08:01.366 UTC [msp/identity] Sign -> DEBU 006 Sign: plaintext: 0AB1070A6708031A0C08F1E3ECC80510...6D7963631A0A0A0571756572790A0161
+  2017-05-16 17:08:01.367 UTC [msp/identity] Sign -> DEBU 007 Sign: digest: E61DB37F4E8B0D32C9FE10E3936BA9B8CD278FAA1F3320B08712164248285C54
   Query Result: 90
-  2017-05-04 19:35:07.774 UTC [main] main -> INFO 008 Exiting.....
-  ===================== Query on PEER3 on channel 'nick' is successful =====================
+  2017-05-16 17:08:15.158 UTC [main] main -> INFO 008 Exiting.....
+  ===================== Query on PEER3 on channel 'mychannel' is successful =====================
 
   ===================== All GOOD, End-2-End execution completed =====================
+
+
+   _____   _   _   ____            _____   ____    _____
+  | ____| | \ | | |  _ \          | ____| |___ \  | ____|
+  |  _|   |  \| | | | | |  _____  |  _|     __) | |  _|
+  | |___  | |\  | | |_| | |_____| | |___   / __/  | |___
+  |_____| |_| \_| |____/          |_____| |_____| |_____|
 
 How can I see the chaincode logs?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -459,7 +486,13 @@ script will use a default name of ``mychannel``.  The cli timeout parameter
 is an optional value; if you choose not to set it, then your cli container
 will exit upon conclusion of the script.
 
-    .. code:: bash
+.. code:: bash
+
+        ./network_setup.sh up
+
+OR
+
+.. code:: bash
 
         ./network_setup.sh up <channel-ID> <timeout-value>
 
@@ -468,14 +501,14 @@ Understanding the docker-compose topology
 
 The ``e2e_cli`` folder offers us two flavors of docker-compose files, both of which
 are extended from the ``docker-compose-base.yaml``.  Our first flavor,
-docker-compose-cli.yaml, provides us with a CLI container, along with an orderer,
+``docker-compose-cli.yaml``, provides us with a CLI container, along with an orderer,
 four peers, and the optional couchDB containers.  We use this docker-compose for
 the entirety of the instructions on this page.
 
-The second flavor - docker-compose-e2e.yaml - is constructed to run end to end tests
+The second flavor, ``docker-compose-e2e.yaml``, is constructed to run end-to-end tests
 using the Node.js SDK.  Aside from functioning with the SDK, its primary differentiation
-is that there are containers for the fabric-ca servers.  As a result we are able
-to send REST calls to the organizational CA's for user registration and enrollment.
+is that there are containers for the fabric-ca servers.  As a result, we are able
+to send REST calls to the organizational CAs for user registration and enrollment.
 
 If you want to use the ``docker-compose-e2e.yaml`` without first running the
 **All in one** script, then we  will need to make four slight modifications.
@@ -493,7 +526,7 @@ CA container.
 Manually exercise the commands
 ------------------------------
 
-From your vagrant environment exit the currently running containers:
+Exit the currently-running containers:
 
 .. code:: bash
 
@@ -533,7 +566,7 @@ Modify the docker-compose file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Open the ``docker-compose-cli.yaml`` file and comment out the command to run
-``script.sh``. Navigate down to the cli image and place a ``#`` to the
+``script.sh``. Navigate down to the cli container and place a ``#`` to the
 left of the command. For example:
 
 .. code:: bash
@@ -551,7 +584,7 @@ Now restart your network:
     CHANNEL_NAME=<channel-id> TIMEOUT=<pick_a_value> docker-compose -f docker-compose-cli.yaml up -d
 
 If you want to see the realtime logs for your network, then do not supply the ``-d`` flag.
-You will need to open a second terminal to execute your CLI calls.
+If you let the logs stream, then you will need to open a second terminal to execute the CLI calls.
 
 Command syntax
 ^^^^^^^^^^^^^^
@@ -562,13 +595,14 @@ For the following CLI commands against `peer0.org1.example.com` to work, we need
 to preface our commands with the four environment variables given below.  These
 variables for ``peer0.org1.example.com`` are baked into the CLI container,
 therefore we can operate without passing them.  **HOWEVER**, if you want to send
-calls to other peers or the orderer, then you will need to override these
+calls to other peers or the orderer, then you will need to provide these
 values accordingly.  Inspect the ``docker-compose-base.yaml`` for the specific
 paths:
 
 .. code:: bash
 
     # Environment variables for PEER0
+
     CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     CORE_PEER_ADDRESS=peer0.org1.example.com:7051
     CORE_PEER_LOCALMSPID="Org1MSP"
@@ -596,7 +630,7 @@ with a different name.
 
 .. code:: bash
 
-    # the channel.tx and orderer.block are mounted in the channel-artifacts directory within your cli container
+    # the channel.tx file is mounted in the channel-artifacts directory within your cli container
     # as a result, we pass the full path for the file
     # we also pass the path for the orderer ca-cert in order to verify the TLS handshake
     # be sure to replace the $CHANNEL_NAME variable appropriately
@@ -617,7 +651,8 @@ Join specific peers to the channel
 .. code:: bash
 
     # By default, this joins ``peer0.org1.example.com`` only
-    # the channel.block is also mounted in the channel-artifacts directory
+    # the channel.block was returned by the previous command
+
      peer channel join -b <YOUR_CHANNEL.block>
 
 You can make other peers join the channel as necessary by making appropriate
@@ -638,13 +673,14 @@ Instantiate chaincode and define the endorsement policy
 Instantiate the chaincode on a peer. This will launch a chaincode
 container for the targeted peer and set the endorsement policy for the
 chaincode. In this snippet, we define the policy as requiring an
-endorsement from one peer node that is a part of either `Org1` or `Org2`.
+endorsement from one peer node that is a part of either ``Org1`` or ``Org2``.
 The command is:
 
 .. code:: bash
 
     # be sure to replace the $CHANNEL_NAME environment variable
     # if you did not install your chaincode with a name of mycc, then modify that argument as well
+
     peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org1MSP.member','Org2MSP.member')"
 
 See the `endorsement
@@ -667,7 +703,7 @@ Query chaincode
 .. code:: bash
 
     # be sure to set the -C and -n flags appropriately
-    peer chaincode query -C mychannel -n mycc -c '{"Args":["query","a"]}'
+    peer chaincode query -C $CHANNEL_NAME -n mycc -c '{"Args":["query","a"]}'
 
 The result of the above command should be the following:
 
@@ -711,25 +747,26 @@ capabilities you will need to use a chaincode that has data modeled as JSON,
 (e.g. **marbles02**). You can locate the **marbles02** chaincode in the
 ``fabric/examples/chaincode/go`` directory.
 
-Install, instantiate, invoke, and query **marbles02** chaincode by following the
-same general steps outlined above for **chaincode_example02** in the **Manually
-exercise the commands** section. After the **Join
-channel** step, use the following steps to interact with the **marbles02**
+We will follow the same process to create and join the channel as outlined in the
+**Manually exercise the commands** section above.  Once you have joined your
+peer(s) to the channel, use the following steps to interact with the **marbles02**
 chaincode:
 
 -  Install and instantiate the chaincode on ``peer0.org1.example.com``:
 
-   .. code:: bash
+.. code:: bash
 
-       # be sure to modify the $CHANNEL_NAME variable accordingly
+       # be sure to modify the $CHANNEL_NAME variable accordingly for the instantiate command
+
        peer chaincode install -o orderer.example.com:7050 -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02
-       peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02 -c '{"Args":["init"]}' -P "OR      ('Org0MSP.member','Org1MSP.member')"
+       peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02 -c '{"Args":["init"]}' -P "OR ('Org0MSP.member','Org1MSP.member')"
 
 -  Create some marbles and move them around:
 
-   .. code:: bash
+.. code:: bash
 
         # be sure to modify the $CHANNEL_NAME variable accordingly
+
         peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["initMarble","marble1","blue","35","tom"]}'
         peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["initMarble","marble2","red","50","tom"]}'
         peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -c '{"Args":["initMarble","marble3","blue","70","tom"]}'
@@ -793,7 +830,7 @@ one option is to mount a directory in the docker-host into a relevant directory
 in the container. For example, you may add the following two lines in
 the peer container specification in the ``docker-compose-base.yaml`` file:
 
-   .. code:: bash
+.. code:: bash
 
        volumes:
         - /var/hyperledger/peer0:/var/hyperledger/production
@@ -802,7 +839,7 @@ the peer container specification in the ``docker-compose-base.yaml`` file:
 For the CouchDB container, you may add the following two lines in the CouchDB
 container specification:
 
-   .. code:: bash
+.. code:: bash
 
        volumes:
         - /var/hyperledger/couchdb0:/opt/couchdb/data
@@ -818,7 +855,10 @@ Troubleshooting
       ./network_setup.sh down
 
 -  If you see docker errors, first check your version (should be 1.12 or above),
-   and then try restarting your docker process.
+   and then try restarting your docker process.  Problems with Docker are
+   oftentimes not immediately recognizable.  For example, you may see errors
+   resulting from an inability to access crypto material mounted within a
+   container.
 
 -  If they persist remove your images and start from scratch:
 
@@ -849,8 +889,8 @@ again.
       Error: rpc error: code = 14 desc = grpc: RPC failed fast due to transport failure
 
 Make sure you pointed to the correct binaries in the release folder when
-generating the artifacts, and that your backend is running against source code
-compiled from the current master branch.
+generating the artifacts, and that your backend is running against "alpha2" images
+or compiled images from the current master branch.
 
 If you see the below error:
 
@@ -865,9 +905,9 @@ back and recreate your channel artifacts.
 
 -  To cleanup the network, use the ``down`` option:
 
-   .. code:: bash
+.. code:: bash
 
        ./network_setup.sh down
 
 - If you continue to see errors, share your logs on the **# fabric-questions**
-channel on `Hyperledger Rocket Chat <https://chat.hyperledger.org/home>`__.
+  channel on `Hyperledger Rocket Chat <https://chat.hyperledger.org/home>`__.
