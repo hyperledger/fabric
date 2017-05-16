@@ -50,6 +50,10 @@ type chaincodeHandlerList struct {
 }
 
 func (hl *chaincodeHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
+	if h == nil {
+		return false, fmt.Errorf("cannot add nil chaincode handler")
+	}
+
 	hl.Lock()
 	defer hl.Unlock()
 
@@ -157,6 +161,9 @@ func (hl *chaincodeHandlerList) foreach(e *pb.Event, action func(h *handler)) {
 }
 
 func (hl *genericHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
+	if h == nil {
+		return false, fmt.Errorf("cannot add nil generic handler")
+	}
 	hl.Lock()
 	if _, ok := hl.handlers[h]; ok {
 		hl.Unlock()

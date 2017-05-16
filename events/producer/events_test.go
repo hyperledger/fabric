@@ -127,6 +127,8 @@ func TestRegister(t *testing.T) {
 
 	// attempt to register handlers (invalid type or nil handlers)
 	assert.Error(t, registerHandler(&peer.Interest{EventType: 100}, nil))
+	assert.Error(t, registerHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, nil))
+	assert.Error(t, registerHandler(&peer.Interest{EventType: peer.EventType_CHAINCODE}, nil))
 
 	// attempt to register valid handler
 	recvChan := make(chan *streamEvent)
