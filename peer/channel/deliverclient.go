@@ -121,6 +121,7 @@ func getGenesisBlock(cf *ChannelCmdFactory) (*common.Block, error) {
 				}
 				time.Sleep(200 * time.Millisecond)
 			} else {
+				cf.DeliverClient.Close()
 				return block, nil
 			}
 		}
