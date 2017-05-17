@@ -272,8 +272,7 @@ func AddEventType(eventType pb.EventType) error {
 }
 
 func registerHandler(ie *pb.Interest, h *handler) error {
-	logger.Debugf("registerHandler %s", ie.EventType)
-
+	logger.Debugf("registering event type: %s", ie.EventType)
 	gEventProcessor.Lock()
 	defer gEventProcessor.Unlock()
 	if hl, ok := gEventProcessor.eventConsumers[ie.EventType]; !ok {
@@ -286,7 +285,7 @@ func registerHandler(ie *pb.Interest, h *handler) error {
 }
 
 func deRegisterHandler(ie *pb.Interest, h *handler) error {
-	logger.Debugf("deRegisterHandler %s", ie.EventType)
+	logger.Debugf("deregistering event type: %s", ie.EventType)
 
 	gEventProcessor.Lock()
 	defer gEventProcessor.Unlock()
