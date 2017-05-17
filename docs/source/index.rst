@@ -58,6 +58,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business <https
    :caption: Operations Guide
 
    best_practices
+   msp
    configtx
    configtxgen
    cc-packaging-and-signing
