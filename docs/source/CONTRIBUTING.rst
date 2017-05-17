@@ -161,7 +161,10 @@ What makes a good change request?
    definition. Why? Because many open source developers do Test Driven
    Development. They place a watch on the directory that invokes the
    tests automagically as the code is changed. This is far more
-   efficient than having to run a whole build between code changes.
+   efficient than having to run a whole build between code changes. See
+   `this definition<http://artofunittesting.com/definition-of-a-unit-test/>`__
+   of unit testing for a good set of criteria to keep in mind for writing
+   effective unit tests.
 
 -  Minimize the lines of code per CR. Why? Maintainers have day jobs,
    too. If you send a 1,000 or 2,000 LOC change, how long do you think
