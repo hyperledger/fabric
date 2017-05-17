@@ -151,14 +151,7 @@ test-cmd:
 docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 native: peer orderer configtxgen cryptogen
 
-BEHAVE_ENVIRONMENTS = kafka orderer-1-kafka-1 orderer-1-kafka-3
-BEHAVE_ENVIRONMENT_TARGETS = $(patsubst %,bddtests/environments/%, $(BEHAVE_ENVIRONMENTS))
-.PHONY: behave-environments $(BEHAVE_ENVIRONMENT_TARGETS)
-behave-environments: $(BEHAVE_ENVIRONMENT_TARGETS)
-$(BEHAVE_ENVIRONMENT_TARGETS):
-	@docker-compose --file $@/docker-compose.yml build
-
-behave-deps: docker peer build/bin/block-listener behave-environments configtxgen cryptogen
+behave-deps: docker peer build/bin/block-listener configtxgen cryptogen
 behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)

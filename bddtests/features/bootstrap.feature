@@ -1,5 +1,3 @@
-#
-#
 # Copyright IBM Corp. 2016 All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -342,9 +340,7 @@ Feature: Bootstrap
 
     Examples: Orderer Options
       |          ComposeFile                                                                                                                       |  SystemUpWaitTime   | ConsensusType | BroadcastWaitTime | orderer0 | orderer1 | orderer2 |Orderer Specific Info|
-      |   docker-compose-next-4.yml                                                                                                                |        0            |     solo      |      2            | orderer0 | orderer0 | orderer0 |                     |
-#      |   docker-compose-next-4.yml  ./environments/orderer-1-kafka-1/docker-compose.yml orderer-3-kafka-1.yml                                     |        10            |     kafka     |      7            | orderer0 | orderer1 | orderer2 |                     |
-#      |   docker-compose-next-4.yml  docker-compose-next-4-couchdb.yml                                                                             |        10            |     solo      |      2            | orderer0 | orderer0 | orderer0 |                     |
-#      |   docker-compose-next-4.yml  docker-compose-next-4-couchdb.yml  ./environments/orderer-1-kafka-1/docker-compose.yml orderer-3-kafka-1.yml  |        10            |     kafka     |      5            | orderer0 | orderer1 | orderer2 |                     |
-#      |   docker-compose-next-4.yml  ./environments/orderer-1-kafka-3/docker-compose.yml                                                           |        10            |     kafka     |      7            | orderer0 | orderer0 | orderer0 |                     |
-#      |   docker-compose-next-4.yml  ./environments/orderer-1-kafka-3/docker-compose.yml orderer-3-kafka-3.yml                                     |        10            |     kafka     |      7            | orderer0 | orderer1 | orderer2 |                     |
+      |   dc-base.yml                                                                                                                              |        0            |     solo      |      2            | orderer0 | orderer0 | orderer0 |                     |
+#      |   dc-base.yml  dc-peer-couchdb.yml                                                                                                         |        10           |     solo      |      2            | orderer0 | orderer0 | orderer0 |                     |
+#      |   dc-base.yml  dc-orderer-kafka.yml                                                                                                        |        30           |     kafka     |      7            | orderer0 | orderer1 | orderer2 |                     |
+#      |   dc-base.yml  dc-peer-couchdb.yml dc-orderer-kafka.yml                                                                                    |        30           |     kafka     |      7            | orderer0 | orderer1 | orderer2 |                     |
