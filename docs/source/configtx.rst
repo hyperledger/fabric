@@ -136,7 +136,7 @@ we use the golang map reference syntax, so
 
 * ``policy1`` maps to ``Channel.Groups["Application"].Policies["policy1"]``
 * ``Org1/policy2`` maps to
-``Channel.Groups["Application"].Groups["Org1"].Policies["policy2"]``
+  ``Channel.Groups["Application"].Groups["Org1"].Policies["policy2"]``
 * ``/Channel/policy3`` maps to ``Channel.Policies["policy3"]``
 
 Note that if a ``mod_policy`` references a policy which does not exist,
