@@ -93,10 +93,6 @@ func toSignedData(data [][]byte, identities [][]byte, signatures [][]byte) ([]*c
 type mockDeserializer struct {
 }
 
-func NewMockDeserializer() msp.IdentityDeserializer {
-	return &mockDeserializer{}
-}
-
 func (md *mockDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
 	return &mockIdentity{idBytes: serializedIdentity}, nil
 }
