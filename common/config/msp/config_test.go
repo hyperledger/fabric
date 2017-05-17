@@ -19,9 +19,12 @@ package msp
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
+	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,6 +38,17 @@ func TestMSPConfigManager(t *testing.T) {
 
 	// begin/propose/commit
 	mspCH := NewMSPConfigHandler()
+
+	assert.Panics(t, func() {
+		mspCH.PreCommit(t)
+	}, "Expected panic calling PreCommit before beginning transaction")
+	assert.Panics(t, func() {
+		mspCH.CommitProposals(t)
+	}, "Expected panic calling CommitProposals before beginning transaction")
+	assert.Panics(t, func() {
+		_, err = mspCH.ProposeMSP(t, conf)
+	}, "Expected panic calling ProposeMSP before beginning transaction")
+
 	mspCH.BeginConfig(t)
 	_, err = mspCH.ProposeMSP(t, conf)
 	assert.NoError(t, err)
@@ -48,6 +62,10 @@ func TestMSPConfigManager(t *testing.T) {
 		t.Fatalf("There are no MSPS in the manager")
 	}
 
+	mspCH.BeginConfig(t)
+	_, err = mspCH.ProposeMSP(t, conf)
+	mspCH.RollbackProposals(t)
+
 	// test failure
 	// begin/propose/commit
 	mspCH.BeginConfig(t)
@@ -55,4 +73,38 @@ func TestMSPConfigManager(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = mspCH.ProposeMSP(t, &mspprotos.MSPConfig{Config: []byte("BARF!")})
 	assert.Error(t, err)
+	_, err = mspCH.ProposeMSP(t, &mspprotos.MSPConfig{Type: int32(10)})
+	assert.Panics(t, func() {
+		mspCH.BeginConfig(t)
+	}, "Expected panic calling BeginConfig multiple times for same transaction")
+}
+
+func TestTemplates(t *testing.T) {
+	mspDir, err := config.GetDevMspDir()
+	assert.NoError(t, err)
+	mspConf, err := msp.GetLocalMspConfig(mspDir, nil, "DEFAULT")
+	assert.NoError(t, err)
+
+	expectedMSPValue := &cb.ConfigValue{
+		Value: utils.MarshalOrPanic(mspConf),
+	}
+	configGroup := TemplateGroupMSP([]string{"TestPath"}, mspConf)
+	testGroup, ok := configGroup.Groups["TestPath"]
+	assert.Equal(t, true, ok, "Failed to find group key")
+	assert.Equal(t, expectedMSPValue, testGroup.Values[MSPKey], "MSPKey did not match expected value")
+
+	configGroup = TemplateGroupMSPWithAdminRolePrincipal([]string{"TestPath"}, mspConf, false)
+	expectedPolicyValue := utils.MarshalOrPanic(cauthdsl.SignedByMspMember("DEFAULT"))
+	actualPolicyValue := configGroup.Groups["TestPath"].Policies[AdminsPolicyKey].Policy.Policy
+	assert.Equal(t, expectedPolicyValue, actualPolicyValue, "Expected SignedByMspMemberPolicy")
+
+	mspConf = &mspprotos.MSPConfig{}
+	assert.Panics(t, func() {
+		configGroup = TemplateGroupMSPWithAdminRolePrincipal([]string{"TestPath"}, mspConf, false)
+	}, "Expected panic with bad msp config")
+	mspConf.Type = int32(10)
+	assert.Panics(t, func() {
+		configGroup = TemplateGroupMSPWithAdminRolePrincipal([]string{"TestPath"}, mspConf, false)
+	}, "Expected panic with bad msp config")
+
 }

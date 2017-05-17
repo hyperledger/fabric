@@ -29,6 +29,20 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
+func TestRoot(t *testing.T) {
+	r := NewRoot(&msp.MSPConfigHandler{})
+	appGroup := &ApplicationGroup{}
+	ordererGroup := &OrdererGroup{}
+	consortiumsGroup := &ConsortiumsGroup{}
+	r.Channel().appConfig = appGroup
+	r.Channel().ordererConfig = ordererGroup
+	r.Channel().consortiumsConfig = consortiumsGroup
+
+	assert.Equal(t, appGroup, r.Application(), "Failed to return correct application group")
+	assert.Equal(t, ordererGroup, r.Orderer(), "Failed to return correct orderer group")
+	assert.Equal(t, consortiumsGroup, r.Consortiums(), "Failed to return correct consortiums group")
+}
+
 func TestBeginBadRoot(t *testing.T) {
 	r := NewRoot(&msp.MSPConfigHandler{})
 
