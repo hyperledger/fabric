@@ -17,9 +17,40 @@ limitations under the License.
 package common
 
 import (
+	"encoding/asn1"
 	"math"
 	"testing"
+
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/stretchr/testify/assert"
 )
+
+func TestBlock(t *testing.T) {
+	var block *Block
+	assert.Nil(t, block.GetHeader())
+	assert.Nil(t, block.GetData())
+	assert.Nil(t, block.GetMetadata())
+
+	data := &BlockData{
+		Data: [][]byte{[]byte{0, 1, 2}},
+	}
+	block = NewBlock(uint64(0), []byte("datahash"))
+	assert.Equal(t, []byte("datahash"), block.Header.PreviousHash, "Incorrect previous hash")
+	assert.NotNil(t, block.GetData())
+	assert.NotNil(t, block.GetMetadata())
+	block.GetHeader().DataHash = data.Hash()
+
+	asn1Bytes, err := asn1.Marshal(asn1Header{
+		Number:       int64(uint64(0)),
+		DataHash:     data.Hash(),
+		PreviousHash: []byte("datahash"),
+	})
+	headerHash := util.ComputeSHA256(asn1Bytes)
+	assert.NoError(t, err)
+	assert.Equal(t, asn1Bytes, block.Header.Bytes(), "Incorrect marshaled blockheader bytes")
+	assert.Equal(t, headerHash, block.Header.Hash(), "Incorrect blockheader hash")
+
+}
 
 func TestGoodBlockHeaderBytes(t *testing.T) {
 	goodBlockHeader := &BlockHeader{
