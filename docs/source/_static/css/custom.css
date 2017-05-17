@@ -52,7 +52,7 @@ a:visited {
 
 .wy-side-nav-search a.icon-home {
     color: transparent;
-    background-image: url('../images/fabric1.png');
+/*    background-image: url('../images/fabric1.png'); */
     background-repeat: no-repeat;
     background-size: Auto 20px;
     background-position: center top;
@@ -173,7 +173,7 @@ a:visited {
 
 .wy-nav-top a {
     color: transparent;
-    background-image: url('../images/fabric1.png');
+/*    background-image: url('../images/fabric1.png'); */
     background-repeat: no-repeat;
     background-size: Auto 19px;
     background-position: center top;
