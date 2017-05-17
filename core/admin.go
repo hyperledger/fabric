@@ -61,7 +61,7 @@ func (*ServerAdmin) StopServer(context.Context, *empty.Empty) (*pb.ServerStatus,
 	pidFile := config.GetPath("peer.fileSystemPath") + "/peer.pid"
 	log.Debugf("Remove pid file  %s", pidFile)
 	os.Remove(pidFile)
-	defer os.Exit(0)
+	defer os.Exit(1)
 	return status, nil
 }
 
