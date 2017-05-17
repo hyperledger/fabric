@@ -128,11 +128,6 @@ func (s *Set) Remove(item interface{}) {
 	delete(s.items, item)
 }
 
-type goroutine struct {
-	id    int64
-	Stack []string
-}
-
 // PrintStackTrace prints to stdout
 // all goroutines
 func PrintStackTrace() {

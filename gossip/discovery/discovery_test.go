@@ -66,14 +66,6 @@ type dummyCommModule struct {
 	mock         *mock.Mock
 }
 
-type gossipMsg struct {
-	*proto.GossipMessage
-}
-
-func (m *gossipMsg) GetGossipMessage() *proto.GossipMessage {
-	return m.GossipMessage
-}
-
 type gossipInstance struct {
 	comm *dummyCommModule
 	Discovery

@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -163,26 +162,6 @@ func TestAdapterImpl_Gossip(t *testing.T) {
 
 	}
 
-}
-
-type mockMsgCrypto struct {
-}
-
-// Sign signs a message, returns a signed message on success
-// or an error on failure
-func (is *mockMsgCrypto) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
-}
-
-// Verify verifies a signed message
-func (is *mockMsgCrypto) Verify(vkID, signature, message []byte) error {
-	return nil
-}
-
-// Get returns the identity of a given pkiID, or error if such an identity
-// isn't found
-func (is *mockMsgCrypto) Get(pkiID common.PKIidType) (api.PeerIdentityType, error) {
-	return nil, nil
 }
 
 type mockAcceptor struct {
