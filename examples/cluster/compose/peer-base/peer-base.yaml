@@ -5,7 +5,7 @@ services:
     dns_search: .
     environment:
       - CORE_PEER_TLS_ENABLED=${TLS_ENABLED}
-      - CORE_LOGGING_LEVEL=DEBUG
+      - CORE_LOGGING_LEVEL=WARNING
       - CORE_NEXT=true
       - CORE_PEER_ENDORSER_ENABLED=true
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer1:7051
