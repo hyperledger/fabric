@@ -41,7 +41,6 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
-	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
@@ -197,7 +196,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	// Query the configuration block
 	//chainID := []byte{143, 222, 22, 192, 73, 145, 76, 110, 167, 154, 118, 66, 132, 204, 113, 168}
-	chainID, err := getChainID(blockBytes)
+	chainID, err := utils.GetChainIDFromBlockBytes(blockBytes)
 	if err != nil {
 		t.Fatalf("cscc invoke JoinChain failed with: %v", err)
 	}
@@ -274,7 +273,7 @@ func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
 
 	// Query the configuration block
 	//chainID := []byte{143, 222, 22, 192, 73, 145, 76, 110, 167, 154, 118, 66, 132, 204, 113, 168}
-	chainID, err := getChainID(blockBytes)
+	chainID, err := utils.GetChainIDFromBlockBytes(blockBytes)
 	if err != nil {
 		t.Fatalf("cscc invoke UpdateConfigBlock failed with: %v", err)
 	}
@@ -286,33 +285,10 @@ func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
 }
 
 func mockConfigBlock() []byte {
-	var blockBytes []byte
+	var blockBytes []byte = nil
 	block, err := configtxtest.MakeGenesisBlock("mytestchainid")
-	if err != nil {
-		blockBytes = nil
-	} else {
+	if err == nil {
 		blockBytes = utils.MarshalOrPanic(block)
 	}
 	return blockBytes
-}
-
-func getChainID(blockBytes []byte) (string, error) {
-	block := &common.Block{}
-	if err := proto.Unmarshal(blockBytes, block); err != nil {
-		return "", err
-	}
-	envelope := &common.Envelope{}
-	if err := proto.Unmarshal(block.Data.Data[0], envelope); err != nil {
-		return "", err
-	}
-	payload := &common.Payload{}
-	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
-		return "", err
-	}
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-	if err != nil {
-		return "", err
-	}
-	fmt.Printf("Channel id: %v\n", chdr.ChannelId)
-	return chdr.ChannelId, nil
 }

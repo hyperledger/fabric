@@ -24,8 +24,6 @@ package cscc
 import (
 	"fmt"
 
-	"errors"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
@@ -172,21 +170,6 @@ func joinChain(blockBytes []byte) pb.Response {
 	}
 
 	return shim.Success(nil)
-}
-
-func getChannelFromConfigBlock(blockBytes []byte) (string, error) {
-	if blockBytes == nil {
-		return "", errors.New("Configuration block must not be nil.")
-	}
-	block, err := utils.GetBlockFromBlockBytes(blockBytes)
-	if err != nil {
-		return "", fmt.Errorf("Failed to reconstruct the configuration block, %s", err)
-	}
-	chainID, err := utils.GetChainIDFromBlock(block)
-	if err != nil {
-		return "", fmt.Errorf("Failed to get the chain ID from the configuration block, %s", err)
-	}
-	return chainID, nil
 }
 
 func updateConfigBlock(blockBytes []byte) pb.Response {
