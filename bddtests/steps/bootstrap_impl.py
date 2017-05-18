@@ -139,12 +139,12 @@ def step_impl(context, ordererConfigAdmin, consortiumsConfigUpdateName, configNa
     config_update = bootstrap_util.create_orderer_consortium_config_update(orderer_system_chain_id, channel_group, config_groups)
     ordererConfigAdmin.setTagValue(tagKey=consortiumsConfigUpdateName, tagValue=config_update)
 
-@given(u'the user "{userName}" creates a peer template "{templateName}" with chaincode deployment policy using consortium "{chainCreatePolicyName}" and peer organizations')
-def step_impl(context, userName, templateName, chainCreatePolicyName):
+@given(u'the user "{userName}" creates a peer organization set "{peerOrgSetName}" with peer organizations')
+def step_impl(context, userName, peerOrgSetName):
     ' At the moment, only really defining MSP Config Items (NOT SIGNED)'
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName)
-    user.setTagValue(templateName, [directory.getOrganization(row['Organization']).name for row in context.table.rows])
+    user.setTagValue(peerOrgSetName, [directory.getOrganization(row['Organization']).name for row in context.table.rows])
 
 @given(u'the user "{userName}" creates a configUpdateEnvelope "{configUpdateEnvelopeName}" using configUpdate "{configUpdateName}"')
 def step_impl(context, userName, configUpdateEnvelopeName, configUpdateName):
@@ -153,14 +153,16 @@ def step_impl(context, userName, configUpdateEnvelopeName, configUpdateName):
     config_update_envelope = bootstrap_util.create_config_update_envelope(config_update=user.getTagValue(configUpdateName))
     user.setTagValue(tagKey=configUpdateEnvelopeName, tagValue=config_update_envelope)
 
-@given(u'the user "{userName}" creates a new channel ConfigUpdate "{create_channel_config_update_name}" using consortium config "{consortium_name}"')
+@given(u'the user "{userName}" creates a new channel ConfigUpdate "{create_channel_config_update_name}" using consortium "{consortium_name}"')
 def step_impl(context, userName, create_channel_config_update_name, consortium_name):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName)
     consortium_config_group = user.getTagValue(tagKey=consortium_name)
 
+    peerOrgSet = user.getTagValue(tagKey=context.table.rows[0]["PeerOrgSet"])
+    peerAnchorSet = user.getTagValue(tagKey=context.table.rows[0]["PeerAnchorSet"])
+
     channel_id = context.table.rows[0]["ChannelID"]
-    templateName = context.table.rows[0]["Template"]
     # Loop through templates referenced orgs
     # mspOrgNames = [org.name for org in user.tags[templateName]]
     #TODO: Where does the system_channel_version come from?
@@ -170,6 +172,16 @@ def step_impl(context, userName, create_channel_config_update_name, consortium_n
     # Add the anchors signed config Items
     # anchorSignedConfigItemsName = context.table.rows[0]["Anchors"]
     # signedAnchorsConfigItems = user.tags[anchorSignedConfigItemsName]
+
+    #Make sure orgs exist in consortium
+    for orgName in peerOrgSet:
+        assert orgName in channel_config_update.write_set.groups['Application'].groups.keys(), "PeerOrgSet entry {0} not found in consortium".format(orgName)
+
+    # Strip out any organizations that are NOT referenced in peerOrgSet
+    for orgName in channel_config_update.write_set.groups['Application'].groups.keys():
+        if not orgName in peerOrgSet:
+            del(channel_config_update.read_set.groups['Application'].groups[orgName])
+            del(channel_config_update.write_set.groups['Application'].groups[orgName])
 
     user.setTagValue(create_channel_config_update_name, channel_config_update)
 
@@ -301,8 +313,8 @@ def step_impl(context, userName, proposalResponseName, proposalResponseResultCod
     print("ProposalResponse: \n{0}\n".format(proposalResponse))
     print("")
 
-@given(u'the user "{userName}" creates an peer anchor set "{anchorSetName}" for channel "{channelName}" for orgs')
-def step_impl(context, userName, anchorSetName, channelName):
+@given(u'the user "{userName}" creates an peer anchor set "{anchorSetName}" for orgs')
+def step_impl(context, userName, anchorSetName):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
     nodeAdminTuples = [directory.findNodeAdminTuple(row['User'], row['Peer'], row['Organization']) for row in context.table.rows]

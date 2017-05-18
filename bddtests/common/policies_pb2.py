@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='common/policies.proto',
   package='common',
   syntax='proto3',
-  serialized_pb=_b('\n\x15\x63ommon/policies.proto\x12\x06\x63ommon\x1a\x17msp/msp_principal.proto\"l\n\x06Policy\x12\x0c\n\x04type\x18\x01 \x01(\x05\x12\x0e\n\x06policy\x18\x02 \x01(\x0c\"D\n\nPolicyType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\r\n\tSIGNATURE\x10\x01\x12\x07\n\x03MSP\x10\x02\x12\x11\n\rIMPLICIT_META\x10\x03\"}\n\x17SignaturePolicyEnvelope\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12\'\n\x06policy\x18\x02 \x01(\x0b\x32\x17.common.SignaturePolicy\x12(\n\nidentities\x18\x03 \x03(\x0b\x32\x14.common.MSPPrincipal\"\xa2\x01\n\x0fSignaturePolicy\x12\x13\n\tsigned_by\x18\x01 \x01(\x05H\x00\x12\x32\n\x08n_out_of\x18\x02 \x01(\x0b\x32\x1e.common.SignaturePolicy.NOutOfH\x00\x1a>\n\x06NOutOf\x12\t\n\x01n\x18\x01 \x01(\x05\x12)\n\x08policies\x18\x02 \x03(\x0b\x32\x17.common.SignaturePolicyB\x06\n\x04Type\"\x7f\n\x12ImplicitMetaPolicy\x12\x12\n\nsub_policy\x18\x01 \x01(\t\x12-\n\x04rule\x18\x02 \x01(\x0e\x32\x1f.common.ImplicitMetaPolicy.Rule\"&\n\x04Rule\x12\x07\n\x03\x41NY\x10\x00\x12\x07\n\x03\x41LL\x10\x01\x12\x0c\n\x08MAJORITY\x10\x02\x42S\n$org.hyperledger.fabric.protos.commonZ+github.com/hyperledger/fabric/protos/commonb\x06proto3')
+  serialized_pb=_b('\n\x15\x63ommon/policies.proto\x12\x06\x63ommon\x1a\x17msp/msp_principal.proto\"k\n\x06Policy\x12\x0c\n\x04type\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\x0c\"D\n\nPolicyType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\r\n\tSIGNATURE\x10\x01\x12\x07\n\x03MSP\x10\x02\x12\x11\n\rIMPLICIT_META\x10\x03\"{\n\x17SignaturePolicyEnvelope\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12%\n\x04rule\x18\x02 \x01(\x0b\x32\x17.common.SignaturePolicy\x12(\n\nidentities\x18\x03 \x03(\x0b\x32\x14.common.MSPPrincipal\"\x9f\x01\n\x0fSignaturePolicy\x12\x13\n\tsigned_by\x18\x01 \x01(\x05H\x00\x12\x32\n\x08n_out_of\x18\x02 \x01(\x0b\x32\x1e.common.SignaturePolicy.NOutOfH\x00\x1a;\n\x06NOutOf\x12\t\n\x01n\x18\x01 \x01(\x05\x12&\n\x05rules\x18\x02 \x03(\x0b\x32\x17.common.SignaturePolicyB\x06\n\x04Type\"\x7f\n\x12ImplicitMetaPolicy\x12\x12\n\nsub_policy\x18\x01 \x01(\t\x12-\n\x04rule\x18\x02 \x01(\x0e\x32\x1f.common.ImplicitMetaPolicy.Rule\"&\n\x04Rule\x12\x07\n\x03\x41NY\x10\x00\x12\x07\n\x03\x41LL\x10\x01\x12\x0c\n\x08MAJORITY\x10\x02\x42S\n$org.hyperledger.fabric.protos.commonZ+github.com/hyperledger/fabric/protos/commonb\x06proto3')
   ,
   dependencies=[msp_dot_msp__principal__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -52,8 +52,8 @@ _POLICY_POLICYTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=98,
-  serialized_end=166,
+  serialized_start=97,
+  serialized_end=165,
 )
 _sym_db.RegisterEnumDescriptor(_POLICY_POLICYTYPE)
 
@@ -78,8 +78,8 @@ _IMPLICITMETAPOLICY_RULE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=549,
-  serialized_end=587,
+  serialized_start=543,
+  serialized_end=581,
 )
 _sym_db.RegisterEnumDescriptor(_IMPLICITMETAPOLICY_RULE)
 
@@ -99,7 +99,7 @@ _POLICY = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='policy', full_name='common.Policy.policy', index=1,
+      name='value', full_name='common.Policy.value', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -119,7 +119,7 @@ _POLICY = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=58,
-  serialized_end=166,
+  serialized_end=165,
 )
 
 
@@ -138,7 +138,7 @@ _SIGNATUREPOLICYENVELOPE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='policy', full_name='common.SignaturePolicyEnvelope.policy', index=1,
+      name='rule', full_name='common.SignaturePolicyEnvelope.rule', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -163,8 +163,8 @@ _SIGNATUREPOLICYENVELOPE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=168,
-  serialized_end=293,
+  serialized_start=167,
+  serialized_end=290,
 )
 
 
@@ -183,7 +183,7 @@ _SIGNATUREPOLICY_NOUTOF = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='policies', full_name='common.SignaturePolicy.NOutOf.policies', index=1,
+      name='rules', full_name='common.SignaturePolicy.NOutOf.rules', index=1,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -201,8 +201,8 @@ _SIGNATUREPOLICY_NOUTOF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=388,
-  serialized_end=450,
+  serialized_start=385,
+  serialized_end=444,
 )
 
 _SIGNATUREPOLICY = _descriptor.Descriptor(
@@ -241,8 +241,8 @@ _SIGNATUREPOLICY = _descriptor.Descriptor(
       name='Type', full_name='common.SignaturePolicy.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=296,
-  serialized_end=458,
+  serialized_start=293,
+  serialized_end=452,
 )
 
 
@@ -280,14 +280,14 @@ _IMPLICITMETAPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=460,
-  serialized_end=587,
+  serialized_start=454,
+  serialized_end=581,
 )
 
 _POLICY_POLICYTYPE.containing_type = _POLICY
-_SIGNATUREPOLICYENVELOPE.fields_by_name['policy'].message_type = _SIGNATUREPOLICY
+_SIGNATUREPOLICYENVELOPE.fields_by_name['rule'].message_type = _SIGNATUREPOLICY
 _SIGNATUREPOLICYENVELOPE.fields_by_name['identities'].message_type = msp_dot_msp__principal__pb2._MSPPRINCIPAL
-_SIGNATUREPOLICY_NOUTOF.fields_by_name['policies'].message_type = _SIGNATUREPOLICY
+_SIGNATUREPOLICY_NOUTOF.fields_by_name['rules'].message_type = _SIGNATUREPOLICY
 _SIGNATUREPOLICY_NOUTOF.containing_type = _SIGNATUREPOLICY
 _SIGNATUREPOLICY.fields_by_name['n_out_of'].message_type = _SIGNATUREPOLICY_NOUTOF
 _SIGNATUREPOLICY.oneofs_by_name['Type'].fields.append(
@@ -346,10 +346,10 @@ try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.
   import grpc
-  from grpc.framework.common import cardinality
-  from grpc.framework.interfaces.face import utilities as face_utilities
   from grpc.beta import implementations as beta_implementations
   from grpc.beta import interfaces as beta_interfaces
+  from grpc.framework.common import cardinality
+  from grpc.framework.interfaces.face import utilities as face_utilities
 except ImportError:
   pass
 # @@protoc_insertion_point(module_scope)

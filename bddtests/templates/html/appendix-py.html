@@ -33,7 +33,9 @@ blocks = deliverer_stream_helper.getBlocks()
 assert len(blocks) == 1, "Expected single block, received: {0} blocks".format(len(blocks))
 newest_block = blocks[0]
 last_config = common_dot_common_pb2.LastConfig()
-last_config.ParseFromString(newest_block.metadata.metadata[common_dot_common_pb2.BlockMetadataIndex.Value('LAST_CONFIG')])
+metadata = common_dot_common_pb2.Metadata()
+metadata.ParseFromString(newest_block.metadata.metadata[common_dot_common_pb2.BlockMetadataIndex.Value('LAST_CONFIG')])
+last_config.ParseFromString(metadata.value)
 print("Latest config index = {0}, with latest block index = {1}".format(last_config.index, newest_block.header.number))
 
 #NOTE When done, close open streams
