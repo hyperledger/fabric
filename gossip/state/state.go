@@ -95,8 +95,6 @@ type GossipStateProviderImpl struct {
 
 	commChan <-chan proto.ReceivedMessage
 
-	mutex sync.RWMutex
-
 	// Queue of payloads which wasn't acquired yet
 	payloads PayloadsBuffer
 

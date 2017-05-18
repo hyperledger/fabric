@@ -82,8 +82,6 @@ type gossipDiscoveryImpl struct {
 
 	msgStore *aliveMsgStore
 
-	bootstrapPeers []string
-
 	comm  CommService
 	crypt CryptoService
 	lock  *sync.RWMutex
