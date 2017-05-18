@@ -306,11 +306,6 @@
 			"revisionTime": "2017-01-30T13:11:20Z"
 		},
 		{
-			"path": "github.com/mattn/go-sqlite3",
-			"revision": "5651a9d9d49ec25811d08220ee972080378d52ea",
-			"revisionTime": "2015-11-06T23:54:04+09:00"
-		},
-		{
 			"checksumSHA1": "yOED17cgEIwsqkhg16Y0xiTHiZ0=",
 			"path": "github.com/miekg/pkcs11",
 			"revision": "2c6cdd29253e84b5f0f1bec7d77cce36f12d15bd",
