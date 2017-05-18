@@ -341,19 +341,6 @@ func (handler *Handler) beforeTransaction(e *fsm.Event) {
 	}
 }
 
-// afterCompleted will need to handle COMPLETED event by sending message to the peer
-func (handler *Handler) afterCompleted(e *fsm.Event) {
-	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
-	if !ok {
-		e.Cancel(fmt.Errorf("Received unexpected message type"))
-		return
-	}
-	chaincodeLogger.Debugf("[%s]sending COMPLETED to validator for tid", shorttxid(msg.Txid))
-	if err := handler.serialSend(msg); err != nil {
-		e.Cancel(fmt.Errorf("send COMPLETED failed %s", err))
-	}
-}
-
 // afterResponse is called to deliver a response or error to the chaincode stub.
 func (handler *Handler) afterResponse(e *fsm.Event) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
