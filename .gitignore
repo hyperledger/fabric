@@ -31,7 +31,10 @@ bddtests/volumes
 go-carpet-coverage*
 # make node-sdk copied files
 sdk/node/lib/protos/*
+# Test result xml files
 report.xml
+results.xml
+TESTS*.xml
 .settings
 .project
 .gradle
