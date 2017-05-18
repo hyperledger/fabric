@@ -34,17 +34,17 @@ type blocksRequester struct {
 func (b *blocksRequester) RequestBlocks(ledgerInfoProvider blocksprovider.LedgerInfo) error {
 	height, err := ledgerInfoProvider.LedgerHeight()
 	if err != nil {
-		logger.Errorf("Can't get legder height from committer [%s]", err)
+		logger.Errorf("Can't get legder height for channel %s from committer [%s]", b.chainID, err)
 		return err
 	}
 
 	if height > 0 {
-		logger.Debugf("Starting deliver with block [%d]", height)
+		logger.Debugf("Starting deliver with block [%d] for channel %s", height, b.chainID)
 		if err := b.seekLatestFromCommitter(height); err != nil {
 			return err
 		}
 	} else {
-		logger.Debug("Starting deliver with olders block")
+		logger.Debugf("Starting deliver with olders block for channel %s", b.chainID)
 		if err := b.seekOldest(); err != nil {
 			return err
 		}
