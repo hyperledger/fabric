@@ -117,10 +117,12 @@ func TestGetLogger(t *testing.T) {
 func TestSet(t *testing.T) {
 	s := NewSet()
 	assert.Len(t, s.ToArray(), 0)
+	assert.Equal(t, s.Size(), 0)
 	assert.False(t, s.Exists(42))
 	s.Add(42)
 	assert.True(t, s.Exists(42))
 	assert.Len(t, s.ToArray(), 1)
+	assert.Equal(t, s.Size(), 1)
 	s.Remove(42)
 	assert.False(t, s.Exists(42))
 	s.Add(42)

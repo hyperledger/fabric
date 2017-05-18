@@ -111,7 +111,7 @@ func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 
 func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte, mutualTLS bool) <-chan proto.ReceivedMessage {
 	c := &commImpl{}
-	err := generateCertificates("key.pem", "cert.pem")
+	err := GenerateCertificates("key.pem", "cert.pem")
 	assert.NoError(t, err, "%v", err)
 	defer os.Remove("cert.pem")
 	defer os.Remove("key.pem")
@@ -289,7 +289,7 @@ func TestProdConstructor(t *testing.T) {
 	keyFileName := fmt.Sprintf("key.%d.pem", util.RandomUInt64())
 	certFileName := fmt.Sprintf("cert.%d.pem", util.RandomUInt64())
 
-	generateCertificates(keyFileName, certFileName)
+	GenerateCertificates(keyFileName, certFileName)
 	cert, _ := tls.LoadX509KeyPair(certFileName, keyFileName)
 	os.Remove(keyFileName)
 	os.Remove(certFileName)
@@ -300,7 +300,7 @@ func TestProdConstructor(t *testing.T) {
 	comm1.(*commImpl).selfCertHash = certHash
 	go srv.Serve(lsnr)
 
-	generateCertificates(keyFileName, certFileName)
+	GenerateCertificates(keyFileName, certFileName)
 	cert, _ = tls.LoadX509KeyPair(certFileName, keyFileName)
 	os.Remove(keyFileName)
 	os.Remove(certFileName)
@@ -350,7 +350,7 @@ func TestCloseConn(t *testing.T) {
 	defer comm1.Stop()
 	acceptChan := comm1.Accept(acceptAll)
 
-	err := generateCertificates("key.pem", "cert.pem")
+	err := GenerateCertificates("key.pem", "cert.pem")
 	assert.NoError(t, err, "%v", err)
 	defer os.Remove("cert.pem")
 	defer os.Remove("key.pem")

@@ -84,7 +84,7 @@ func (s *gossipTestServer) Ping(context.Context, *proto.Empty) (*proto.Empty, er
 }
 
 func TestCertificateExtraction(t *testing.T) {
-	err := generateCertificates("key.pem", "cert.pem")
+	err := GenerateCertificates("key.pem", "cert.pem")
 	defer os.Remove("cert.pem")
 	defer os.Remove("key.pem")
 	assert.NoError(t, err, "%v", err)
@@ -94,7 +94,7 @@ func TestCertificateExtraction(t *testing.T) {
 	srv := createTestServer(t, &serverCert)
 	defer srv.stop()
 
-	generateCertificates("key2.pem", "cert2.pem")
+	GenerateCertificates("key2.pem", "cert2.pem")
 	defer os.Remove("cert2.pem")
 	defer os.Remove("key2.pem")
 	clientCert, err := tls.LoadX509KeyPair("cert2.pem", "key2.pem")

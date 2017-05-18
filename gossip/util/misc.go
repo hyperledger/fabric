@@ -100,6 +100,13 @@ func (s *Set) Exists(item interface{}) bool {
 	return exists
 }
 
+// Size returns the size of the set
+func (s *Set) Size() int {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return len(s.items)
+}
+
 // ToArray returns a slice with items
 // at the point in time the method was invoked
 func (s *Set) ToArray() []interface{} {

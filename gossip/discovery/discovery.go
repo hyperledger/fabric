@@ -97,6 +97,16 @@ func (n NetworkMember) PreferredEndpoint() string {
 	return n.Endpoint
 }
 
+// PeerIdentification encompasses a remote peer's
+// PKI-ID and whether its in the same org as the current
+// peer or not
+type PeerIdentification struct {
+	ID      common.PKIidType
+	SelfOrg bool
+}
+
+type identifier func() (*PeerIdentification, error)
+
 // Discovery is the interface that represents a discovery module
 type Discovery interface {
 
@@ -123,7 +133,8 @@ type Discovery interface {
 	InitiateSync(peerNum int)
 
 	// Connect makes this instance to connect to a remote instance
-	// The sendInternalEndpoint param determines whether or not
-	// to include the internal endpoint in the membership request,
-	Connect(member NetworkMember, sendInternalEndpoint func() bool)
+	// The identifier param is a function that can be used to identify
+	// the peer, and to assert its PKI-ID, whether its in the peer's org or not,
+	// and whether the action was successful or not
+	Connect(member NetworkMember, id identifier)
 }

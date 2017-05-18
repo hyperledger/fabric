@@ -626,7 +626,7 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, api.PeerSecureDialOp
 	defer os.Remove(keyFileName)
 	defer os.Remove(certFileName)
 
-	err = generateCertificates(keyFileName, certFileName)
+	err = GenerateCertificates(keyFileName, certFileName)
 	if err == nil {
 		cert, err := tls.LoadX509KeyPair(certFileName, keyFileName)
 		if err != nil {

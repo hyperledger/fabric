@@ -43,7 +43,7 @@ func writeFile(filename string, keyType string, data []byte) error {
 	return pem.Encode(f, &pem.Block{Type: keyType, Bytes: data})
 }
 
-func generateCertificates(privKeyFile string, certKeyFile string) error {
+func GenerateCertificates(privKeyFile string, certKeyFile string) error {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return err
