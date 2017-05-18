@@ -17,14 +17,18 @@ limitations under the License.
 package msp
 
 import (
-	"testing"
-
 	"path/filepath"
+	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "msp/identity")
+}
 
 func TestRevocation(t *testing.T) {
 	// testdata/revocation
@@ -39,6 +43,18 @@ func TestRevocation(t *testing.T) {
 	// the certificate associated to this id is revoked and so validation should fail!
 	err = id.Validate()
 	assert.Error(t, err)
+
+	// This MSP is identical to the previous one, with only 1 difference:
+	// the signature on the CRL is invalid
+	thisMSP = getLocalMSP(t, "testdata/revocation2")
+
+	id, err = thisMSP.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	// the certificate associated to this id is revoked but the signature on the CRL is invalid
+	// so validation should succeed
+	err = id.Validate()
+	assert.NoError(t, err, "Identity found revoked although the signature over the CRL is invalid")
 }
 
 func TestIdentityPolicyPrincipalAgainstRevokedIdentity(t *testing.T) {
