@@ -2,7 +2,7 @@
 # To run this:
 # Install: sudo apt-get install python python-pytest
 # Install: sudo pip install xmlrunner
-# At command line: py.test -v --junitxml results.xml ./test_example.py
+# At command line: py.test -v --junitxml results_sample.xml Example.py
 
 import unittest
 import xmlrunner
@@ -21,7 +21,7 @@ class SampleTest(unittest.TestCase):
     # This runs on ubuntu x86 laptop, but it fails when run by CI, because
     # "bc" is not installed on the servers used for CI jobs.
     @unittest.skip("skipping")
-    def test_SampleAdditionTestWillPass(self):
+    def test_SampleAdditionTestSkippedButWillPassIfInstallBC(self):
         '''
         This test will pass.
         '''
