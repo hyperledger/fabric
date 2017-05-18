@@ -81,9 +81,9 @@ func createSubDir(parentDirPath string, subDir string) (string, bool) {
 				logger.Panic("Error creating sub dir:", err)
 			}
 			created = true
-		} else {
-			logger.Debugf("Found %s sub-dir and using it", fsblkstorage.ChainsDir)
 		}
+	} else {
+		logger.Debugf("Found %s sub-dir and using it", fsblkstorage.ChainsDir)
 	}
 	return subDirPath, created
 }

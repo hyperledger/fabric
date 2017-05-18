@@ -19,8 +19,12 @@ package main
 import (
 	"os"
 	"testing"
+	"time"
 
 	config "github.com/hyperledger/fabric/orderer/localconfig"
+	"github.com/hyperledger/fabric/orderer/sbft"
+	"github.com/hyperledger/fabric/orderer/sbft/backend"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateLedgerFactory(t *testing.T) {
@@ -103,4 +107,69 @@ func TestCreateSubDir(t *testing.T) {
 			}
 		})
 	}
+	t.Run("ParentDirNotExists", func(t *testing.T) {
+		assert.Panics(t, func() { createSubDir(os.TempDir(), "foo/name") })
+	})
+}
+
+func TestCreateTempDir(t *testing.T) {
+	t.Run("Good", func(t *testing.T) {
+		tempDir := createTempDir("foo")
+		if _, err := os.Stat(tempDir); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("Bad", func(t *testing.T) {
+		assert.Panics(t, func() {
+			createTempDir("foo/bar")
+		})
+	})
+
+}
+
+func TestMakeSbftStackConfig(t *testing.T) {
+	stackConfig := makeSbftStackConfig(
+		&config.TopLevel{
+			SbftLocal: config.SbftLocal{
+				PeerCommAddr: "0.0.0.0:0",
+				CertFile:     "certfile",
+				KeyFile:      "keyfile",
+				DataDir:      "datadir",
+			},
+		},
+	)
+	assert.NotNil(t, stackConfig)
+	assert.IsType(t, &backend.StackConfig{}, stackConfig)
+	assert.Equal(t, "0.0.0.0:0", stackConfig.ListenAddr)
+	assert.Equal(t, "certfile", stackConfig.CertFile)
+	assert.Equal(t, "keyfile", stackConfig.KeyFile)
+	assert.Equal(t, "datadir", stackConfig.DataDir)
+}
+
+func TestMakeSbftConsensusConfig(t *testing.T) {
+	consensusConfig := makeSbftConsensusConfig(
+		&config.TopLevel{
+			Genesis: config.Genesis{
+				DeprecatedBatchSize:    1,
+				DeprecatedBatchTimeout: 2 * time.Second,
+				SbftShared: config.SbftShared{
+					F: 3,
+					N: 4,
+					Peers: map[string]string{
+						"peer": "PEM",
+					},
+					RequestTimeoutNsec: 5,
+				},
+			},
+		},
+	)
+	assert.NotNil(t, consensusConfig)
+	assert.IsType(t, &sbft.ConsensusConfig{}, consensusConfig)
+	assert.EqualValues(t, 1, consensusConfig.GetConsensus().BatchSizeBytes)
+	assert.EqualValues(t, 2*time.Second, consensusConfig.GetConsensus().BatchDurationNsec)
+	assert.EqualValues(t, 3, consensusConfig.GetConsensus().F)
+	assert.EqualValues(t, 4, consensusConfig.GetConsensus().N)
+	assert.EqualValues(t, 5, consensusConfig.GetConsensus().RequestTimeoutNsec)
+	assert.Len(t, consensusConfig.Peers, 1)
 }
