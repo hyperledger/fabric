@@ -1,71 +1,68 @@
-A framework to verify Hyperledger-Fabric functionality using chaincodes and CLI 
+Chaincode Test Framework
+==========================================================================
 
-Multiple tests spanning multiple chaincodes can be run.
-Supports XML Reporting for each test run
+Framework Capabilities
+------------------------------------------------------------------------
+
+* Verifies Hyperledger-Fabric features by executing your chaincode
+* Supports any chaincodes written in **GO**
+* Spins up a docker network and runs CLI test scripts
+* Tests all contributed chaincodes as part of our daily Continuous Integration (CI) test suite, and displays XML Reports for each chaincodee
 
 
-Write and Test Chaincodes
-----------------------------------------------------------
-Users can write their own GO chaincodes that implements one or more fabric features.
-These chaincode calls can then be verified using e2e CLI bash scripts
+How to Plug In *YourChaincode*
+---------------------------------------------------------------------------
 
+* Using **GO** language, write *YourChaincode* and place it at *fabric/test/regression/daily/chaincodeTests/fabricFeatureChaincodes/go/<YourChaincodeDir>/<YourChaincode.go>*
+* Write a CLI bash script such as *e2e_test_<YourChaincode>.sh* to execute invokes and queries using your chaincode API, and place it under *fabric/test/regression/daily/chaincodeTests/fabricFeatureChaincodes/*
 
-How to test your chaincode
-----------------------------------------------------------------------
+  * Simply model it after others, such as *e2e_test_example02.sh*
+  * During the install step, give the path to chaincode as *github.com/hyperledger/fabric/test/regression/daily/chaincodeTests/fabricFeatureChaincodes/go/<YourChaincodeDir>*
+  * Note: **test_AFAB3843_Create_Join_Channel** must be run as first test step
 
-* Place your "Go" chaincode under test/regression/daily/chaincodeTests/fabricFeatureChaincodes/go
-* Place your CLI shell script under test/regression/daily/chaincodeTests/fabricFeatureChaincodes
-* Add a new definition for your test script inside test/regression/daily/chaincodeTests/envsetup/scripts/fabricFeaturerChaincodeTestiRuns.py
+* Add a few lines to define your new test inside *test/regression/daily/chaincodeTests/envsetup/testYourChaincode.py*
 
-cd test/regression/daily/chaincodeTests 
-./runChaincodes.sh
+  * Copy the few lines from another example such as 'def test_example02', and simply change the name and path
 
 ===========================================================================
 
 
-runChaincodes.sh calls network_setup.sh under test/regression/daily/chaincodeTests/envsetup
+How to Run the Chaincode Tests
+------------------------------------------------------------------------
+
+    ``$ cd fabric/test/regression/daily/chaincodeTests``
+    ``$ ./runChaincodes.sh``
+
+      *runChaincodes.sh* calls *testYourChaincode.py*
+
+        ``py.test -v --junitxml YourChaincodeResults.xml testYourChaincode.py``
+
+  The output should look like the following:
+
+  ::
+
+    =========================
+    test session starts
+    =========================
+    platform linux2 -- Python 2.7.12, pytest-2.8.7, py-1.4.31, pluggy-0.3.1 -- /usr/bin/python
+    cachedir: .cache
+    rootdir: /opt/gopath/src/github.com/hyperledger/fabric/test/regression/daily/chaincodeTests/envsetup, inifile:
+    collected 3 items
+    testYourChaincode.py::ChaincodeAPI::test_AFAB3843_Create_Join_Channel PASSED
+    testYourChaincode.py::ChaincodeAPI::test_FAB3791_example03 PASSED
+    testYourChaincode.py::ChaincodeAPI::test_FAB3792_marbles02 PASSED
 
 
-.. code:: bash
-
- ./network_setup.sh <up|down|retstart> [channel-name] [num-channels] [num-chaincodes] [endorsers count] [script_name]
-
-channel_name - channel prefix
-num-channels - default 1
-num-chaincodes - default 1
-endorsers count - 4
-script_name - script that has test runs in it
+Logs
+-------------------------------------------------------------------------------
+Logs from each test script are redirected and stored at envsetup/scripts/output.log
 
 
+Deactivate Network
+-------------------------------------------------------------------------------
+The network is automatically deactivated as part of the teardown step after running all tests.
+In case of trouble, here is how to deactivate docker network manually:
 
-output of each of the steps when executing chaincode_example02 looks like
-
-.. code:: bash
-
-Running tests...
-----------------------------------------------------------------------
-
-./scripts/e2e_test_example02.sh myc 1 1 4 create
-./scripts/e2e_test_example02.sh myc 1 1 4 join
-./scripts/e2e_test_example02.sh myc 1 1 4 install
-./scripts/e2e_test_example02.sh myc 1 1 4 instantiate
-./scripts/e2e_test_example02.sh myc 1 1 4 invokeQuery
-
-Ran 1 test in 135.392s
-
-
-
-OK
-
-
-
-To deactivate docker network
-
-cd envsetup
-
-.. code:: bash
-
-  ./network_setup.sh down
-                                                                                                                                                                                           95,1          97%
-
+    ``cd /path/to/fabric/test/regression/daily/chaincodeTests/envsetup``
+     ``./network_setup.sh down``
 

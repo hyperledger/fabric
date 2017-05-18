@@ -5,7 +5,6 @@ CH_NAME=$2
 CHANNELS=$3
 CHAINCODES=$4
 ENDORSERS=$5
-SCRIPT_NAME=$6
 
 : ${CH_NAME:="mychannel"}
 : ${CHANNELS:="1"}
@@ -14,7 +13,7 @@ SCRIPT_NAME=$6
 COMPOSE_FILE=docker-compose.yaml
 
 function printHelp () {
-	echo "Usage: ./network_setup.sh <up|down|retstart> [channel-name] [total-channels [chaincodes] [endorsers count] [SCRIPT_NAME]"
+	echo "Usage: ./network_setup.sh <up|down|retstart> [channel-name] [total-channels [chaincodes] [endorsers count]"
 }
 
 function validateArgs () {
@@ -45,21 +44,18 @@ function removeUnwantedImages() {
 
 function networkUp () {
         CurrentDIR=$PWD
-        cd ./configTx
         echo "ch_name $CH_NAME"
         echo "Num channels $CHANNELS"
         echo "Num chaincodes $CHAINCODES"
         echo "Num of endorsers/peers $ENDORSERS"
-        echo "Running Script $SCRIPT_NAME"
         source generateCfgTrx.sh $CH_NAME $CHANNELS
         cd $CurrentDIR
 
-	CHANNEL_NAME=$CH_NAME CHANNELS_NUM=$CHANNELS CHAINCODES_NUM=$CHAINCODES ENDORSERS_NUM=$ENDORSERS SCRIPT_NAME=$SCRIPT_NAME docker-compose -f $COMPOSE_FILE up -d 2>&1
+	docker-compose -f $COMPOSE_FILE up -d 2>&1
 	if [ $? -ne 0 ]; then
 		echo "ERROR !!!! Unable to pull the images "
 		exit 1
 	fi
-	docker logs -f cli
 }
 
 function networkDown () {
@@ -69,7 +65,7 @@ function networkDown () {
 	#Cleanup images
 	removeUnwantedImages
         #remove orderer and config txn
-        rm -rf channel-artifacts/*  crypto-config  crypto-config.yaml configtx.yaml scripts/__pycache__ scripts/results.xml scripts/logs.txt scripts/.cache base
+        rm -rf channel-artifacts/*  crypto-config  crypto-config.yaml configtx.yaml __pycache__ results.xml scripts/.cache base
 }
 
 validateArgs
