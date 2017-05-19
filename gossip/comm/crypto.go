@@ -26,9 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"net"
 	"os"
-	"time"
 
 	"github.com/hyperledger/fabric/common/util"
 	gutil "github.com/hyperledger/fabric/gossip/util"
@@ -121,24 +119,4 @@ func extractCertificateHashFromContext(ctx context.Context) []byte {
 	}
 	raw := certs[0].Raw
 	return certHashFromRawCert(raw)
-}
-
-type authCreds struct {
-	tlsCreds credentials.TransportCredentials
-}
-
-func (c authCreds) Info() credentials.ProtocolInfo {
-	return c.tlsCreds.Info()
-}
-
-func (c *authCreds) ClientHandshake(addr string, rawConn net.Conn, timeout time.Duration) (_ net.Conn, _ credentials.AuthInfo, err error) {
-	conn, auth, err := c.tlsCreds.ClientHandshake(addr, rawConn, timeout)
-	if auth == nil && conn != nil {
-		auth = credentials.TLSInfo{State: conn.(*tls.Conn).ConnectionState()}
-	}
-	return conn, auth, err
-}
-
-func (c *authCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
-	return c.tlsCreds.ServerHandshake(rawConn)
 }

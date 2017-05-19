@@ -768,8 +768,7 @@ func TestWithSignedRootCertificates(t *testing.T) {
 	_, err = invokeEmptyCall(testAddress, dialOptions)
 
 	//client should not be able to connect
-	//for now we can only test that we get a timeout error
-	assert.EqualError(t, err, grpc.ErrClientConnTimeout.Error())
+	assert.EqualError(t, err, x509.UnknownAuthorityError{}.Error())
 	t.Logf("assert.EqualError: %s", err.Error())
 
 	//now use the CA certificate
@@ -849,8 +848,7 @@ func TestWithSignedIntermediateCertificates(t *testing.T) {
 	_, err = invokeEmptyCall(testAddress, dialOptions)
 
 	//client should not be able to connect
-	//for now we can only test that we get a timeout error
-	assert.EqualError(t, err, grpc.ErrClientConnTimeout.Error())
+	assert.EqualError(t, err, x509.UnknownAuthorityError{}.Error())
 	t.Logf("assert.EqualError: %s", err.Error())
 
 	//now use the CA certificate

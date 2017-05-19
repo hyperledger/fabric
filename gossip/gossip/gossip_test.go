@@ -1089,6 +1089,10 @@ var connectionLeak = func(g goroutine) bool {
 	return searchInStackTrace("comm.(*connection).writeToStream", g.stack)
 }
 
+var connectionLeak2 = func(g goroutine) bool {
+	return searchInStackTrace("comm.(*connection).readFromStream", g.stack)
+}
+
 var runTests = func(g goroutine) bool {
 	return searchInStackTrace("testing.RunTests", g.stack)
 }
@@ -1125,7 +1129,8 @@ func anyOfPredicates(predicates ...goroutinePredicate) goroutinePredicate {
 }
 
 func shouldNotBeRunningAtEnd(gr goroutine) bool {
-	return !anyOfPredicates(runTests, goExit, testingg, waitForTestCompl, gossipTest, clientConn, connectionLeak)(gr)
+	return !anyOfPredicates(runTests, goExit, testingg, waitForTestCompl, gossipTest,
+		clientConn, connectionLeak, connectionLeak2)(gr)
 }
 
 func ensureGoroutineExit(t *testing.T) {

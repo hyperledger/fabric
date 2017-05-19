@@ -433,6 +433,10 @@ func (s *mockstream) Recv() (*peer.SignedEvent, error) {
 	return nil, se.err
 }
 
+func (*mockstream) SetHeader(metadata.MD) error {
+	panic("not implemented")
+}
+
 func (*mockstream) SendHeader(metadata.MD) error {
 	panic("not implemented")
 }
