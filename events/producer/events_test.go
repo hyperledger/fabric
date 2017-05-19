@@ -104,10 +104,12 @@ func TestEvents(t *testing.T) {
 		gEventProcessor = gEventProcessorBck
 		Send(e)
 	}
+	prevTimeout := gEventProcessor.timeout
 	for _, timeout := range []time.Duration{0, -1, 1} {
 		gEventProcessor.timeout = timeout
 		test(timeout)
 	}
+	gEventProcessor.timeout = prevTimeout
 }
 
 func TestDeRegister(t *testing.T) {
