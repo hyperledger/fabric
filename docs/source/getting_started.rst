@@ -32,7 +32,11 @@ Prerequisites and setup
 - `Docker Compose <https://docs.docker.com/compose/overview/>`__ - v1.8 or higher
 - `Docker Toolbox <https://docs.docker.com/toolbox/toolbox_install_windows/>`__ - Windows users only
 - `Go <https://golang.org/>`__ - 1.7 or higher
-- `Git Bash <https://git-scm.com/downloads>`__ - Windows users only; provides a better alternative to the Windows command prompt
+
+On Windows machines you will also need the following which provides a better alternative to the Windows command prompt:
+
+- `Git Bash <https://git-scm.com/downloads>`__
+- `make for MinGW <http://sourceforge.net/projects/mingw/files/MinGW/Extension/make/make-3.82.90-cvs/make-3.82.90-2-mingw32-cvs-20120902-bin.tar.lzma>`__ to be added to Git Bash
 
 Curl the artifacts and binaries & pull the docker images
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,7 +210,7 @@ Create the orderer genesis block:
 
 .. code:: bash
 
-    ./bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/orderer.genesis.block
+    ./bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
 
 You can ignore the logs regarding intermediate certs, we are not using them in
 this crypto implementation.

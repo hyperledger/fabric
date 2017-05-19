@@ -10,7 +10,7 @@ export FABRIC_ROOT=$PWD/../..
 export FABRIC_CFG_PATH=$PWD
 echo
 
-OS_ARCH=$(echo "$(uname -s)-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
+OS_ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
 
 ## Using docker-compose template replace private key file names with constants
 function replacePrivateKey () {
@@ -67,7 +67,9 @@ function generateChannelArtifacts() {
 	echo "##########################################################"
 	echo "#########  Generating Orderer Genesis block ##############"
 	echo "##########################################################"
-	$CONFIGTXGEN -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/orderer.genesis.block
+	# Note: For some unknown reason (at least for now) the block file can't be
+	# named orderer.genesis.block or the orderer will fail to launch!
+	$CONFIGTXGEN -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
 
 	echo
 	echo "#################################################################"

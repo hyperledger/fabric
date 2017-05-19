@@ -27,7 +27,11 @@ Prerequisites
 - `Xcode <https://itunes.apple.com/us/app/xcode/id497799835?mt=12>`__ - OSX only (this can take upwards of an hour)
 - `Docker Toolbox <https://docs.docker.com/toolbox/toolbox_install_windows/>`__ - Windows users only
 - `Go <https://golang.org/>`__ - 1.7 or higher
-- `Git Bash <https://git-scm.com/downloads>`__ - Windows users only; provides a better alternative to the Windows command prompt
+
+On Windows machines you will also need the following which provides a better alternative to the Windows command prompt:
+
+- `Git Bash <https://git-scm.com/downloads>`__
+- `make for MinGW <http://sourceforge.net/projects/mingw/files/MinGW/Extension/make/make-3.82.90-cvs/make-3.82.90-2-mingw32-cvs-20120902-bin.tar.lzma>`__ to be added to Git Bash
 
 Setting the $GOPATH
 ^^^^^^^^^^^^^^^^^^^
@@ -281,7 +285,7 @@ Create the orderer genesis block:
 
 .. code:: bash
 
-    ./../../release/$os_arch/bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/orderer.genesis.block
+    ./../../release/$os_arch/bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
 
 You can ignore the logs regarding intermediate certs, we are not using them in
 this crypto implementation.
