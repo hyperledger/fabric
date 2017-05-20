@@ -27,8 +27,10 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/container/dockercontroller"
+	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	pb "github.com/hyperledger/fabric/protos/peer"
-
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
 
@@ -269,4 +271,18 @@ func TestVMCStopContainer(t *testing.T) {
 	//wait for VMController to complete.
 	fmt.Println("VMCStopContainer-waiting for response")
 	<-c
+}
+
+func TestNewVM(t *testing.T) {
+	vm := vmcontroller.newVM("Docker")
+	dvm := vm.(*dockercontroller.DockerVM)
+	assert.NotNil(t, dvm, "Requested Docker VM but newVM did not return dockercontroller.DockerVM")
+
+	vm = vmcontroller.newVM("System")
+	ivm := vm.(*inproccontroller.InprocVM)
+	assert.NotNil(t, ivm, "Requested System VM but newVM did not return inproccontroller.InprocVM")
+
+	vm = vmcontroller.newVM("")
+	dvm = vm.(*dockercontroller.DockerVM)
+	assert.NotNil(t, dvm, "Requested default VM but newVM did not return dockercontroller.DockerVM")
 }
