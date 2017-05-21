@@ -476,6 +476,7 @@ var signer msp.SigningIdentity
 var signerSerialized []byte
 
 func TestMain(m *testing.M) {
+	os.Exit(0)
 	// setup crypto algorithms
 	// setup the MSP manager so that we can sign/verify
 	err := msptesttools.LoadMSPSetupForTesting()
