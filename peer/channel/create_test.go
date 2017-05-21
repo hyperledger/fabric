@@ -250,14 +250,14 @@ func TestCreateChainWithTimeoutErr(t *testing.T) {
 		Signer:           signer,
 		DeliverClient:    &mockDeliverClient{sendErr},
 	}
-	fakeOrderer := newOrderer(7050, t)
+	fakeOrderer := newOrderer(8050, t)
 	defer fakeOrderer.Shutdown()
 
 	cmd := createCmd(mockCF)
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchain, "-o", "localhost:7050", "-t", "1"}
+	args := []string{"-c", mockchain, "-o", "localhost:8050", "-t", "1"}
 	cmd.SetArgs(args)
 
 	expectedErrMsg := sendErr.Error()
