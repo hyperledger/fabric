@@ -437,8 +437,14 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		return
 	}
 	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BLOCK_MSG {
+		// If we don't have a StateInfo message from the peer,
+		// no way of validating its eligibility in the channel.
+		if gc.stateInfoMsgStore.MsgByID(msg.GetConnectionInfo().ID) == nil {
+			gc.logger.Debug("Don't have StateInfo message of peer", msg.GetConnectionInfo())
+			return
+		}
 		if !gc.eligibleForChannelAndSameOrg(discovery.NetworkMember{PKIid: msg.GetConnectionInfo().ID}) {
-			gc.logger.Warning(msg.GetConnectionInfo().ID, "isn't eligible for pulling blocks of", string(gc.chainID))
+			gc.logger.Warning(msg.GetConnectionInfo(), "isn't eligible for pulling blocks of", string(gc.chainID))
 			return
 		}
 		if m.IsDataUpdate() {
