@@ -77,8 +77,7 @@ type Config struct {
 	PropagateIterations int      // Number of times a message is pushed to remote peers
 	PropagatePeerNum    int      // Number of peers selected to push messages to
 
-	MaxBlockCountToStore       int           // Maximum count of blocks we store in memory
-	StateInfoRetentionInterval time.Duration // TODO: this would be a maximum time a stateInfo message is kept until expired
+	MaxBlockCountToStore int // Maximum count of blocks we store in memory
 
 	MaxPropagationBurstSize    int           // Max number of messages stored until it triggers a push to remote peers
 	MaxPropagationBurstLatency time.Duration // Max time between consecutive message pushes

@@ -40,15 +40,14 @@ import (
 // Config is a configuration item
 // of the channel store
 type Config struct {
-	ID                       string
-	PublishStateInfoInterval time.Duration
-	MaxBlockCountToStore     int
-	PullPeerNum              int
-	PullInterval             time.Duration
-	RequestStateInfoInterval time.Duration
-
+	ID                          string
+	PublishStateInfoInterval    time.Duration
+	MaxBlockCountToStore        int
+	PullPeerNum                 int
+	PullInterval                time.Duration
+	RequestStateInfoInterval    time.Duration
 	BlockExpirationInterval     time.Duration
-	StateInfoExpirationInterval time.Duration
+	StateInfoCacheSweepInterval time.Duration
 }
 
 // GossipChannel defines an object that deals with all channel-related messages
@@ -188,13 +187,16 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 		gc.blocksPuller.Remove(seqNumFromMsg(m))
 	})
 
-	gc.stateInfoMsgStore = newStateInfoCache(gc.GetConf().StateInfoExpirationInterval)
+	hashPeerExpiredInMembership := func(o interface{}) bool {
+		pkiID := o.(*proto.SignedGossipMessage).GetStateInfo().PkiId
+		return gc.Lookup(pkiID) == nil
+	}
+	gc.stateInfoMsgStore = newStateInfoCache(gc.GetConf().StateInfoCacheSweepInterval, hashPeerExpiredInMembership)
 
 	ttl := election.GetMsgExpirationTimeout()
-	noopFunc := func(m interface{}) {}
 	pol := proto.NewGossipMessageComparator(0)
 
-	gc.leaderMsgStore = msgstore.NewMessageStoreExpirable(pol, noopFunc, ttl, nil, nil, nil)
+	gc.leaderMsgStore = msgstore.NewMessageStoreExpirable(pol, msgstore.Noop, ttl, nil, nil, nil)
 
 	gc.ConfigureChannel(joinMsg)
 
@@ -521,6 +523,13 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 				stateInf, ":", err, "sent from", sender)
 			return
 		}
+
+		if gc.Lookup(si.PkiId) == nil {
+			// Skip StateInfo messages that belong to peers
+			// that have been expired
+			continue
+		}
+
 		gc.stateInfoMsgStore.Add(stateInf)
 	}
 }
@@ -646,30 +655,29 @@ func (gc *gossipChannel) UpdateStateInfo(msg *proto.SignedGossipMessage) {
 	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(1))
 }
 
-// NewStateInfoMessageStore returns a expirable MessageStore
-// ttl is time duration before msg expires and removed from store
-func NewStateInfoMessageStore(ttl time.Duration) msgstore.MessageStore {
-	return NewStateInfoMessageStoreWithCallback(ttl, nil)
-}
-
-// NewStateInfoMessageStoreWithCallback returns a exiprable MessageStore
-// Callback invoked once message expires and removed from store
-// ttl is time duration before msg expires
-func NewStateInfoMessageStoreWithCallback(ttl time.Duration, callback func(m interface{})) msgstore.MessageStore {
-	pol := proto.NewGossipMessageComparator(0)
-	noopTrigger := func(m interface{}) {}
-	return msgstore.NewMessageStoreExpirable(pol, noopTrigger, ttl, nil, nil, callback)
-}
-
-func newStateInfoCache(ttl time.Duration) *stateInfoCache {
+func newStateInfoCache(sweepInterval time.Duration, hasExpired func(interface{}) bool) *stateInfoCache {
 	membershipStore := util.NewMembershipStore()
-	callback := func(m interface{}) {
-		membershipStore.Remove(m.(*proto.SignedGossipMessage).GetStateInfo().PkiId)
-	}
+	pol := proto.NewGossipMessageComparator(0)
 	s := &stateInfoCache{
 		MembershipStore: membershipStore,
-		MessageStore:    NewStateInfoMessageStoreWithCallback(ttl, callback),
+		stopChan:        make(chan struct{}),
 	}
+	invalidationTrigger := func(m interface{}) {
+		pkiID := m.(*proto.SignedGossipMessage).GetStateInfo().PkiId
+		membershipStore.Remove(pkiID)
+	}
+	s.MessageStore = msgstore.NewMessageStore(pol, invalidationTrigger)
+
+	go func() {
+		for {
+			select {
+			case <-s.stopChan:
+				return
+			case <-time.After(sweepInterval):
+				s.Purge(hasExpired)
+			}
+		}
+	}()
 	return s
 }
 
@@ -679,6 +687,7 @@ func newStateInfoCache(ttl time.Duration) *stateInfoCache {
 type stateInfoCache struct {
 	*util.MembershipStore
 	msgstore.MessageStore
+	stopChan chan struct{}
 }
 
 // Add attempts to add the given message to the stateInfoCache,
@@ -691,6 +700,10 @@ func (cache *stateInfoCache) Add(msg *proto.SignedGossipMessage) bool {
 		cache.MembershipStore.Put(pkiID, msg)
 	}
 	return added
+}
+
+func (cache *stateInfoCache) Stop() {
+	cache.stopChan <- struct{}{}
 }
 
 // GenerateMAC returns a byte slice that is derived from the peer's PKI-ID
