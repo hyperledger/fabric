@@ -18,6 +18,7 @@ package peer
 
 import (
 	"fmt"
+	"time"
 
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -53,11 +54,13 @@ type MockResponse struct {
 type MockCCComm struct {
 	name        string
 	bailOnError bool
+	keepAlive   *pb.ChaincodeMessage
 	sendOnRecv  *pb.ChaincodeMessage
 	recvStream  chan *pb.ChaincodeMessage
 	sendStream  chan *pb.ChaincodeMessage
 	respIndex   int
 	respSet     *MockResponseSet
+	pong        bool
 }
 
 func (s *MockCCComm) SetName(newname string) {
@@ -66,6 +69,9 @@ func (s *MockCCComm) SetName(newname string) {
 
 //Send sends a message
 func (s *MockCCComm) Send(msg *pb.ChaincodeMessage) error {
+	defer func() {
+		recover()
+	}()
 	s.sendStream <- msg
 	return nil
 }
@@ -109,14 +115,44 @@ func (s *MockCCComm) SetBailOnError(b bool) {
 	s.bailOnError = b
 }
 
+//SetPong pongs received keepalive. This mut be done on the chaincode only
+func (s *MockCCComm) SetPong(val bool) {
+	s.pong = val
+}
+
+//SetKeepAlive sets keepalive. This mut be done on the server only
+func (s *MockCCComm) SetKeepAlive(ka *pb.ChaincodeMessage) {
+	s.keepAlive = ka
+}
+
 //SetResponses sets responses for an Init or Invoke
 func (s *MockCCComm) SetResponses(respSet *MockResponseSet) {
 	s.respSet = respSet
 	s.respIndex = 0
 }
 
+//keepAlive
+func (s *MockCCComm) ka() {
+	defer recover()
+	for {
+		if s.keepAlive == nil {
+			return
+		}
+		s.Send(s.keepAlive)
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 //Run receives and sends indefinitely
 func (s *MockCCComm) Run() error {
+	//start the keepalive
+	go s.ka()
+
+	//if we started keep alive this will kill it
+	defer func() {
+		s.keepAlive = nil
+	}()
+
 	for {
 		msg, err := s.Recv()
 
@@ -133,6 +169,14 @@ func (s *MockCCComm) Run() error {
 }
 
 func (s *MockCCComm) respond(msg *pb.ChaincodeMessage) error {
+	if msg != nil && msg.Type == pb.ChaincodeMessage_KEEPALIVE {
+		//if ping should be ponged, pong
+		if s.pong {
+			return s.Send(msg)
+		}
+		return nil
+	}
+
 	var err error
 	if s.respIndex < len(s.respSet.Responses) {
 		mockResp := s.respSet.Responses[s.respIndex]

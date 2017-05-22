@@ -434,6 +434,14 @@ const (
 	HISTORY_QUERY_RESULT
 )
 
+func (stub *ChaincodeStub) handleGetStateByRange(startKey, endKey string) (StateQueryIteratorInterface, error) {
+	response, err := stub.handler.handleGetStateByRange(startKey, endKey, stub.TxID)
+	if err != nil {
+		return nil, err
+	}
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
+}
+
 // GetStateByRange function can be invoked by a chaincode to query of a range
 // of keys in the state. Assuming the startKey and endKey are in lexical order,
 // an iterator will be returned that can be used to iterate over all keys
@@ -448,11 +456,7 @@ func (stub *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryI
 	if err := validateSimpleKeys(startKey, endKey); err != nil {
 		return nil, err
 	}
-	response, err := stub.handler.handleGetStateByRange(startKey, endKey, stub.TxID)
-	if err != nil {
-		return nil, err
-	}
-	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
+	return stub.handleGetStateByRange(startKey, endKey)
 }
 
 // GetQueryResult function can be invoked by a chaincode to perform a
@@ -547,31 +551,27 @@ func validateSimpleKeys(simpleKeys ...string) error {
 //a partial composite key. For a full composite key, an iter with empty response
 //would be returned.
 func (stub *ChaincodeStub) GetStateByPartialCompositeKey(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
-	partialCompositeKey, err := stub.CreateCompositeKey(objectType, attributes)
-	if err != nil {
+	if partialCompositeKey, err := stub.CreateCompositeKey(objectType, attributes); err == nil {
+		return stub.handleGetStateByRange(partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue))
+	} else {
 		return nil, err
 	}
-	response, err := stub.handler.handleGetStateByRange(partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue), stub.TxID)
-	if err != nil {
-		return nil, err
-	}
-	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
 func (iter *StateQueryIterator) Next() (*queryresult.KV, error) {
-	result, err := iter.nextResult(STATE_QUERY_RESULT)
-	if err != nil {
+	if result, err := iter.nextResult(STATE_QUERY_RESULT); err == nil {
+		return result.(*queryresult.KV), err
+	} else {
 		return nil, err
 	}
-	return result.(*queryresult.KV), err
 }
 
 func (iter *HistoryQueryIterator) Next() (*queryresult.KeyModification, error) {
-	result, err := iter.nextResult(HISTORY_QUERY_RESULT)
-	if err != nil {
+	if result, err := iter.nextResult(HISTORY_QUERY_RESULT); err == nil {
+		return result.(*queryresult.KeyModification), err
+	} else {
 		return nil, err
 	}
-	return result.(*queryresult.KeyModification), err
 }
 
 // HasNext returns true if the range query iterator contains additional keys
@@ -608,15 +608,13 @@ func (iter *CommonIterator) getResultFromBytes(queryResultBytes *pb.QueryResultB
 }
 
 func (iter *CommonIterator) fetchNextQueryResult() error {
-	response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.uuid)
-
-	if err != nil {
+	if response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.uuid); err == nil {
+		iter.currentLoc = 0
+		iter.response = response
+		return nil
+	} else {
 		return err
 	}
-
-	iter.currentLoc = 0
-	iter.response = response
-	return nil
 }
 
 // nextResult returns the next QueryResult (i.e., either a KV struct or KeyModification)
