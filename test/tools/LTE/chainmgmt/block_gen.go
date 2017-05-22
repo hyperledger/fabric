@@ -21,7 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/common"
-	benchcommon "github.com/hyperledger/fabric/test/tools/ledgerbenchmarks/common"
+	benchcommon "github.com/hyperledger/fabric/test/tools/LTE/common"
 )
 
 const (

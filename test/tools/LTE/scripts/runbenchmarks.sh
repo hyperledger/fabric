@@ -6,24 +6,14 @@
 #
 
 source ./benchmarks.sh
+source ./parameters_daily_CI.sh
 
 ########################################################################################################
-# This shell script invokes a series of benchmark tests with desired values of test specific parameters
+# This shell script contains a series of benchmark tests
+# The test parameters are imported from "parameters_daily_CI.sh"
 ########################################################################################################
-
-function setDefaultTestParams {
-    DataDir="/tmp/fabric/test/tools/ledgerbenchmarks/data"
-    NumChains=10
-    NumParallelTxPerChain=10
-    NumKVs=1000000
-    NumTotalTx=1000000
-    NumKeysInEachTx=4
-    BatchSize=50
-    KVSize=200
-}
 
 function varyNumParallelTxPerChain {
-    setDefaultTestParams
     for v in 1 5 10 20 50 100 500 2000; do
         NumParallelTxPerChain=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
@@ -31,7 +21,6 @@ function varyNumParallelTxPerChain {
 }
 
 function varyNumChains {
-    setDefaultTestParams
     for v in 1 5 10 20 50 100 500 2000; do
         NumChains=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
@@ -39,7 +28,6 @@ function varyNumChains {
 }
 
 function varyNumKeysInEachTx {
-    setDefaultTestParams
     for v in 1 2 5 10 20; do
         NumKeysInEachTx=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
@@ -47,7 +35,6 @@ function varyNumKeysInEachTx {
 }
 
 function varyKVSize {
-    setDefaultTestParams
     for v in 100 200 500 1000 2000; do
         KVSize=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
@@ -55,7 +42,6 @@ function varyKVSize {
 }
 
 function varyBatchSize {
-    setDefaultTestParams
     for v in 10 20 100 500; do
         BatchSize=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
@@ -63,7 +49,6 @@ function varyBatchSize {
 }
 
 function varyNumParallelTxWithSingleChain {
-    setDefaultTestParams
     NumChains=1
     for v in 1 5 10 20 50 100 500 2000; do
         NumParallelTxPerChain=$v
@@ -72,7 +57,6 @@ function varyNumParallelTxWithSingleChain {
 }
 
 function varyNumChainsWithNoParallelism {
-    setDefaultTestParams
     NumParallelTxPerChain=1
     for v in 1 5 10 20 50 100 500 2000; do
         NumChains=$v
@@ -81,7 +65,6 @@ function varyNumChainsWithNoParallelism {
 }
 
 function varyNumTxs {
-    setDefaultTestParams
     for v in 1000000 2000000 5000000 10000000; do
         NumTotalTx=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
@@ -89,13 +72,34 @@ function varyNumTxs {
 }
 
 function runLargeDataExperiment {
-    setDefaultTestParams
     NumKVs=10000000
     NumTotalTx=10000000
     rm -rf $DataDir;runInsertTxs;runReadWriteTxs
 }
 
-### Run tests
+shift $(expr $OPTIND - 1 )
+
+case $1 in
+  varyNumParallelTxPerChain)
+    varyNumParallelTxPerChain ;;
+  varyNumChains)
+    varyNumChains ;;
+  varyNumParallelTxWithSingleChain)
+    varyNumParallelTxWithSingleChain ;;
+  varyNumChainsWithNoParallelism)
+    varyNumChainsWithNoParallelism ;;
+  varyNumKeysInEachTx)
+    varyNumKeysInEachTx ;;
+  varyKVSize)
+    varyKVSize ;;
+  varyBatchSize)
+    varyBatchSize ;;
+  varyNumTxs)
+    varyNumTxs ;;
+  runLargeDataExperiment)
+    runLargeDataExperiment ;;
+  help)
+    printf "Usage: ./runbenchmarks.sh [test_name]\nAvailable tests (use \"all\" to run all tests):
 varyNumParallelTxPerChain
 varyNumChains
 varyNumParallelTxWithSingleChain
@@ -104,4 +108,18 @@ varyNumKeysInEachTx
 varyKVSize
 varyBatchSize
 varyNumTxs
-runLargeDataExperiment
+runLargeDataExperiment\n"
+    ;;
+  all)
+    varyNumParallelTxPerChain
+    varyNumChains
+    varyNumParallelTxWithSingleChain
+    varyNumChainsWithNoParallelism
+    varyNumKeysInEachTx
+    varyKVSize
+    varyBatchSize
+    varyNumTxs
+    runLargeDataExperiment ;;
+  *)
+    printf "Error: test name empty/incorrect!\n"  >> /dev/stderr
+esac
