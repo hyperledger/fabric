@@ -21,7 +21,6 @@ import (
 	"strconv"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/op/go-logging"
 
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -93,9 +92,8 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	if targetLedger == nil {
 		return shim.Error(fmt.Sprintf("Invalid chain ID, %s", cid))
 	}
-	if qscclogger.IsEnabledFor(logging.DEBUG) {
-		qscclogger.Debugf("Invoke function: %s on chain: %s", fname, cid)
-	}
+
+	qscclogger.Debugf("Invoke function: %s on chain: %s", fname, cid)
 
 	// Handle ACL:
 	// 1. get the signed proposal
