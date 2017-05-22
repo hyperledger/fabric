@@ -23,12 +23,15 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"math/big"
 	"net"
 	"os"
 	"time"
 
 	"github.com/hyperledger/fabric/common/util"
+	gutil "github.com/hyperledger/fabric/gossip/util"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -43,15 +46,20 @@ func writeFile(filename string, keyType string, data []byte) error {
 	return pem.Encode(f, &pem.Block{Type: keyType, Bytes: data})
 }
 
-func GenerateCertificates(privKeyFile string, certKeyFile string) error {
+func GenerateCertificatesOrPanic() tls.Certificate {
+	privKeyFile := fmt.Sprintf("key.%d.priv", gutil.RandomUInt64())
+	certKeyFile := fmt.Sprintf("cert.%d.pub", gutil.RandomUInt64())
+
+	defer os.Remove(privKeyFile)
+	defer os.Remove(certKeyFile)
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	sn, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
-		return err
+		panic(err)
 	}
 	template := x509.Certificate{
 		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
@@ -60,18 +68,28 @@ func GenerateCertificates(privKeyFile string, certKeyFile string) error {
 	}
 	rawBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	err = writeFile(certKeyFile, "CERTIFICATE", rawBytes)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	privBytes, err := x509.MarshalECPrivateKey(privateKey)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	err = writeFile(privKeyFile, "EC PRIVATE KEY", privBytes)
-	return err
+	if err != nil {
+		panic(err)
+	}
+	cert, err := tls.LoadX509KeyPair(certKeyFile, privKeyFile)
+	if err != nil {
+		panic(err)
+	}
+	if len(cert.Certificate) == 0 {
+		panic(errors.New("Certificate chain is empty"))
+	}
+	return cert
 }
 
 func certHashFromRawCert(rawCert []byte) []byte {

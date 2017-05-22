@@ -111,12 +111,7 @@ func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 
 func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte, mutualTLS bool) <-chan proto.ReceivedMessage {
 	c := &commImpl{}
-	err := GenerateCertificates("key.pem", "cert.pem")
-	assert.NoError(t, err, "%v", err)
-	defer os.Remove("cert.pem")
-	defer os.Remove("key.pem")
-	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
-	assert.NoError(t, err, "%v", err)
+	cert := GenerateCertificatesOrPanic()
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
 	}
@@ -286,28 +281,19 @@ func TestBasic(t *testing.T) {
 
 func TestProdConstructor(t *testing.T) {
 	t.Parallel()
-	keyFileName := fmt.Sprintf("key.%d.pem", util.RandomUInt64())
-	certFileName := fmt.Sprintf("cert.%d.pem", util.RandomUInt64())
-
-	GenerateCertificates(keyFileName, certFileName)
-	cert, _ := tls.LoadX509KeyPair(certFileName, keyFileName)
-	os.Remove(keyFileName)
-	os.Remove(certFileName)
+	peerIdentity := GenerateCertificatesOrPanic()
 	srv, lsnr, dialOpts, certHash := createGRPCLayer(20000)
 	defer srv.Stop()
 	defer lsnr.Close()
-	comm1, _ := NewCommInstance(srv, &cert, identity.NewIdentityMapper(naiveSec), []byte("localhost:20000"), dialOpts)
+	comm1, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec), []byte("localhost:20000"), dialOpts)
 	comm1.(*commImpl).selfCertHash = certHash
 	go srv.Serve(lsnr)
 
-	GenerateCertificates(keyFileName, certFileName)
-	cert, _ = tls.LoadX509KeyPair(certFileName, keyFileName)
-	os.Remove(keyFileName)
-	os.Remove(certFileName)
+	peerIdentity = GenerateCertificatesOrPanic()
 	srv, lsnr, dialOpts, certHash = createGRPCLayer(30000)
 	defer srv.Stop()
 	defer lsnr.Close()
-	comm2, _ := NewCommInstance(srv, &cert, identity.NewIdentityMapper(naiveSec), []byte("localhost:30000"), dialOpts)
+	comm2, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec), []byte("localhost:30000"), dialOpts)
 	comm2.(*commImpl).selfCertHash = certHash
 	go srv.Serve(lsnr)
 	defer comm1.Stop()
@@ -350,12 +336,7 @@ func TestCloseConn(t *testing.T) {
 	defer comm1.Stop()
 	acceptChan := comm1.Accept(acceptAll)
 
-	err := GenerateCertificates("key.pem", "cert.pem")
-	assert.NoError(t, err, "%v", err)
-	defer os.Remove("cert.pem")
-	defer os.Remove("key.pem")
-	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
-	assert.NoError(t, err, "%v", err)
+	cert := GenerateCertificatesOrPanic()
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
 		Certificates:       []tls.Certificate{cert},
