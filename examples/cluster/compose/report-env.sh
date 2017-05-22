@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+# Copyright Greg Haskins All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 
 NODES=$1
 CONFIG=$2

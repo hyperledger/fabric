@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 
 # Development on Z is done on the native OS, not in Vagrant. This script can be
 # used to set things up in RHEL on Z, similar to devenv/setup.sh which does the
