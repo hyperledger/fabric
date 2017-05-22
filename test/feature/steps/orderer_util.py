@@ -1,4 +1,4 @@
-# Copyright IBM Corp. 2016 All Rights Reserved.
+# Copyright IBM Corp. 2017 All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@ import sys
 import datetime
 
 try:
-    pbFilePath = os.environ['GOPATH'] + "/src/github.com/hyperledger/fabric/bddtests"
+    pbFilePath = "../../bddtests"
     sys.path.insert(0, pbFilePath)
     from common import common_pb2
 except:
-    print "ERROR! Unable to import the protobuf libraries from the hyperledger/fabric/bddtests directory: {0}".format(sys.exc_info()[0])
+    print("ERROR! Unable to import the protobuf libraries from the hyperledger/fabric/bddtests directory: {0}".format(sys.exc_info()[0]))
     sys.exit(1)
 
 
@@ -36,7 +36,7 @@ def _testAccessPBMethods():
     header = common_pb2.Header(channel_header=channel_header.SerializeToString(),
                                signature_header=common_pb2.SignatureHeader().SerializeToString())
     payload = common_pb2.Payload(header=header,
-                                 data="Functional test: {0}".format(datetime.datetime.utcnow()))
+                                 data=str.encode("Functional test: {0}".format(datetime.datetime.utcnow())) )
     envelope = common_pb2.Envelope(payload=payload.SerializeToString())
     return envelope
 

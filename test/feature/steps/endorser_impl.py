@@ -1,4 +1,4 @@
-# Copyright IBM Corp. 2016 All Rights Reserved.
+# Copyright IBM Corp. 2017 All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,13 +32,21 @@ def step_impl(context):
                 ["init", "a", "100" , "b", "200"],
                 "mycc")
 
-@when(u'a user queries on the chaincode named {name}')
-def query_impl(context, name):
+@when(u'a user queries on the chaincode named {name} with args {args} on {component}')
+def query_impl(context, name, args, component):
     pass
+
+@when(u'a user queries on the chaincode named {name} with args {args}')
+def step_impl(context, name, args):
+    query_impl(context, name, json.loads(args), "peer0")
+
+@when(u'a user queries on the chaincode named {name}')
+def step_impl(context, name):
+    query_impl(context, name, ["query", "a"], "peer0")
 
 @when(u'a user queries on the chaincode')
 def step_impl(context):
-    query_impl(context, "mycc")
+    query_impl(context, "mycc", ["query", "a"], "peer0")
 
 @when(u'a user invokes {count} times on the chaincode named {name} with args {args}')
 def invokes_impl(context, count, name, args):
@@ -64,7 +72,10 @@ def step_impl(context):
 def step_impl(context):
     pass
 
-@then(u'a user receives expected response')
-def step_impl(context):
+@then(u'a user receives expected response of {response}')
+def expected_impl(context, response):
     pass
 
+@then(u'a user receives expected response')
+def step_impl(context):
+    expected_impl(context, 1000)
