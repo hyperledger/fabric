@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
@@ -251,6 +252,181 @@ func TestSignatureFilter(t *testing.T) {
 	}
 }
 */
+
+func TestNewChannelConfig(t *testing.T) {
+
+	lf, _ := NewRAMLedgerAndFactory(3)
+
+	consenters := make(map[string]Consenter)
+	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
+	manager := NewManagerImpl(lf, consenters, mockCrypto())
+
+	t.Run("BadPayload", func(t *testing.T) {
+		_, err := manager.NewChannelConfig(&cb.Envelope{Payload: []byte("bad payload")})
+		assert.Error(t, err, "Should bot be able to create new channel config from bad payload.")
+	})
+
+	for _, tc := range []struct {
+		name    string
+		payload *cb.Payload
+		regex   string
+	}{
+		{
+			"BadPayloadData",
+			&cb.Payload{
+				Data: []byte("bad payload data"),
+			},
+			"^Failing initial channel config creation because of config update envelope unmarshaling error:",
+		},
+		{
+			"BadConfigUpdate",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: []byte("bad config update envelope data"),
+				}),
+			},
+			"^Failing initial channel config creation because of config update unmarshaling error:",
+		},
+		{
+			"EmptyConfigUpdateWriteSet",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{},
+					),
+				}),
+			},
+			"^Config update has an empty writeset$",
+		},
+		{
+			"WriteSetNoGroups",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{},
+						},
+					),
+				}),
+			},
+			"^Config update has missing application group$",
+		},
+		{
+			"WriteSetNoApplicationGroup",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{},
+							},
+						},
+					),
+				}),
+			},
+			"^Config update has missing application group$",
+		},
+		{
+			"BadWriteSetApplicationGroupVersion",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 100,
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"^Config update for channel creation does not set application group version to 1,",
+		},
+		{
+			"MissingWriteSetConsortiumValue",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{},
+							},
+						},
+					),
+				}),
+			},
+			"^Consortium config value missing$",
+		},
+		{
+			"BadWriteSetConsortiumValueValue",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{
+									config.ConsortiumKey: &cb.ConfigValue{
+										Value: []byte("bad consortium value"),
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"^Error reading unmarshaling consortium name:",
+		},
+		{
+			"UnknownConsortiumName",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{
+									config.ConsortiumKey: &cb.ConfigValue{
+										Value: utils.MarshalOrPanic(
+											&cb.Consortium{
+												Name: "NotTheNameYouAreLookingFor",
+											},
+										),
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"^Unknown consortium name:",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := manager.NewChannelConfig(&cb.Envelope{Payload: utils.MarshalOrPanic(tc.payload)})
+			if assert.Error(t, err) {
+				assert.Regexp(t, tc.regex, err.Error())
+			}
+		})
+	}
+	// SampleConsortium
+}
 
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain
 func TestNewChain(t *testing.T) {
