@@ -85,7 +85,7 @@ func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 		return shim.Success(valbytes)
 	default:
-		jsonResp := "{\"Error\":\"Unknown functon " + f + "\"}"
+		jsonResp := "{\"Error\":\"Unknown function " + f + "\"}"
 		return shim.Error(jsonResp)
 	}
 }
