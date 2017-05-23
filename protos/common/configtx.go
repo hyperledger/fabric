@@ -16,10 +16,92 @@ limitations under the License.
 
 package common
 
+import (
+	"fmt"
+
+	"github.com/golang/protobuf/proto"
+)
+
 func NewConfigGroup() *ConfigGroup {
 	return &ConfigGroup{
 		Groups:   make(map[string]*ConfigGroup),
 		Values:   make(map[string]*ConfigValue),
 		Policies: make(map[string]*ConfigPolicy),
 	}
+}
+
+func (cue *ConfigUpdateEnvelope) StaticallyOpaqueFields() []string {
+	return []string{"config_update"}
+}
+
+func (cue *ConfigUpdateEnvelope) StaticallyOpaqueFieldProto(name string) (proto.Message, error) {
+	if name != cue.StaticallyOpaqueFields()[0] {
+		return nil, fmt.Errorf("Not a marshaled field: %s", name)
+	}
+	return &ConfigUpdate{}, nil
+}
+
+func (cs *ConfigSignature) StaticallyOpaqueFields() []string {
+	return []string{"signature_header"}
+}
+
+func (cs *ConfigSignature) StaticallyOpaqueFieldProto(name string) (proto.Message, error) {
+	if name != cs.StaticallyOpaqueFields()[0] {
+		return nil, fmt.Errorf("Not a marshaled field: %s", name)
+	}
+	return &SignatureHeader{}, nil
+}
+
+func (c *Config) DynamicFields() []string {
+	return []string{"channel_group"}
+}
+
+func (c *Config) DynamicFieldProto(name string, base proto.Message) (proto.Message, error) {
+	if name != c.DynamicFields()[0] {
+		return nil, fmt.Errorf("Not a dynamic field: %s", name)
+	}
+
+	cg, ok := base.(*ConfigGroup)
+	if !ok {
+		return nil, fmt.Errorf("Config must embed a config group as its dynamic field")
+	}
+
+	return &DynamicChannelGroup{
+		ConfigGroup: cg,
+	}, nil
+}
+
+func (c *ConfigUpdate) DynamicFields() []string {
+	return []string{"read_set", "write_set"}
+}
+
+func (c *ConfigUpdate) DynamicFieldProto(name string, base proto.Message) (proto.Message, error) {
+	if name != c.DynamicFields()[0] && name != c.DynamicFields()[1] {
+		return nil, fmt.Errorf("Not a dynamic field: %s", name)
+	}
+
+	cg, ok := base.(*ConfigGroup)
+	if !ok {
+		return nil, fmt.Errorf("Expected base to be *ConfigGroup, got %T", base)
+	}
+
+	return &DynamicChannelGroup{
+		ConfigGroup: cg,
+	}, nil
+}
+
+func (cv *ConfigValue) VariablyOpaqueFields() []string {
+	return []string{"value"}
+}
+
+func (cv *ConfigValue) Underlying() proto.Message {
+	return cv
+}
+
+func (cg *ConfigGroup) DynamicMapFields() []string {
+	return []string{"groups", "values"}
+}
+
+func (cg *ConfigGroup) Underlying() proto.Message {
+	return cg
 }
