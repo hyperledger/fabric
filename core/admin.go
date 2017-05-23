@@ -29,6 +29,9 @@ import (
 
 var log = flogging.MustGetLogger("server")
 
+// Here for unit testing purposes
+var osExit = os.Exit
+
 // NewAdminServer creates and returns a Admin service instance.
 func NewAdminServer() *ServerAdmin {
 	s := new(ServerAdmin)
@@ -61,7 +64,7 @@ func (*ServerAdmin) StopServer(context.Context, *empty.Empty) (*pb.ServerStatus,
 	pidFile := config.GetPath("peer.fileSystemPath") + "/peer.pid"
 	log.Debugf("Remove pid file  %s", pidFile)
 	os.Remove(pidFile)
-	defer os.Exit(1)
+	defer osExit(1)
 	return status, nil
 }
 
