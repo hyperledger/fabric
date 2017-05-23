@@ -54,6 +54,11 @@ type protoField interface {
 	PopulateTo() (interface{}, error)
 }
 
+var (
+	protoMsgType           = reflect.TypeOf((*proto.Message)(nil)).Elem()
+	mapStringInterfaceType = reflect.TypeOf(map[string]interface{}{})
+)
+
 type baseField struct {
 	msg   proto.Message
 	name  string
@@ -235,7 +240,11 @@ func jsonToMap(marshaled []byte) (map[string]interface{}, error) {
 // The factory implementations, listed in order of most greedy to least.
 // Factories listed lower, may depend on factories listed higher being
 // evaluated first.
-var fieldFactories = []protoFieldFactory{}
+var fieldFactories = []protoFieldFactory{
+	nestedSliceFieldFactory{},
+	nestedMapFieldFactory{},
+	nestedFieldFactory{},
+}
 
 func protoFields(msg proto.Message, uMsg proto.Message) ([]protoField, error) {
 	var result []protoField
