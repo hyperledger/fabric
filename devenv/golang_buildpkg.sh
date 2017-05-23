@@ -1,4 +1,10 @@
 #!/bin/sh
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 if [ -z "$1" ]; then
         echo 'GOOS is not specified' 1>&2
         exit 2
