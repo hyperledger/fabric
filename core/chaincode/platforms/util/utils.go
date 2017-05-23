@@ -155,6 +155,21 @@ func DockerBuild(opts DockerBuildOptions) error {
 		}
 	}
 
+	logger.Debugf("Attempting build with image %s", opts.Image)
+
+	//-----------------------------------------------------------------------------------
+	// Ensure the image exists locally, or pull it from a registry if it doesn't
+	//-----------------------------------------------------------------------------------
+	_, err = client.InspectImage(opts.Image)
+	if err != nil {
+		logger.Debugf("Image %s does not exist locally, attempt pull", opts.Image)
+
+		err = client.PullImage(docker.PullImageOptions{Repository: opts.Image}, docker.AuthConfiguration{})
+		if err != nil {
+			return fmt.Errorf("Failed to pull %s: %s", opts.Image, err)
+		}
+	}
+
 	//-----------------------------------------------------------------------------------
 	// Create an ephemeral container, armed with our Env/Cmd
 	//-----------------------------------------------------------------------------------
