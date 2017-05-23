@@ -125,8 +125,8 @@ func Test_Start(t *testing.T) {
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
 		ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath},
 		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
-	codePackage, err := platforms.GetDeploymentPayload(spec)
-	if err != nil {
+	codePackage, err1 := platforms.GetDeploymentPayload(spec)
+	if err1 != nil {
 		t.Fatal()
 	}
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackage}

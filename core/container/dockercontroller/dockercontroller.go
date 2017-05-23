@@ -253,7 +253,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 				return err
 			}
 		} else {
-			dockerLogger.Errorf("start-could not recreate container %s", err)
+			dockerLogger.Errorf("start-could not recreate container: %s", err)
 			return err
 		}
 	}
@@ -329,7 +329,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 	// start container with HostConfig was deprecated since v1.10 and removed in v1.2
 	err = client.StartContainer(containerID, nil)
 	if err != nil {
-		dockerLogger.Errorf("start-could not start container %s", err)
+		dockerLogger.Errorf("start-could not start container: %s", err)
 		return err
 	}
 
