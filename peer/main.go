@@ -28,7 +28,6 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/channel"
@@ -59,7 +58,7 @@ var mainCmd = &cobra.Command{
 		}
 		flogging.InitFromSpec(loggingSpec)
 
-		return core.CacheConfiguration()
+		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if versionFlag {
