@@ -36,8 +36,18 @@ message NestedMsg {
 }
 
 // StaticallyOpaqueMsg is designed to test the statically opaque message component
+// All fields are statically marshaled to the NestedMsg type
 message StaticallyOpaqueMsg {
 	bytes plain_opaque_field = 1;
 	map<string, bytes> map_opaque_field = 2;
 	repeated bytes slice_opaque_field = 3;
+}
+
+// VariablyOpaqueMsg is designed to test the staticaly opaque message component
+// The opaque type is determined by opaque_type
+message VariablyOpaqueMsg {
+	string opaque_type = 1;
+	bytes plain_opaque_field = 2;
+	map<string, bytes> map_opaque_field = 3;
+	repeated bytes slice_opaque_field = 4;
 }

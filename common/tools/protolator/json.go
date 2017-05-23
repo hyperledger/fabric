@@ -251,6 +251,9 @@ func jsonToMap(marshaled []byte) (map[string]interface{}, error) {
 // Factories listed lower, may depend on factories listed higher being
 // evaluated first.
 var fieldFactories = []protoFieldFactory{
+	variablyOpaqueSliceFieldFactory{},
+	variablyOpaqueMapFieldFactory{},
+	variablyOpaqueFieldFactory{},
 	staticallyOpaqueSliceFieldFactory{},
 	staticallyOpaqueMapFieldFactory{},
 	staticallyOpaqueFieldFactory{},
