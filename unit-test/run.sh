@@ -36,5 +36,6 @@ fi
 echo "DONE!"
 
 echo "Running tests..."
+#go test -cover -ldflags "$GO_LDFLAGS" $PKGS -p 1 -timeout=20m
 gocov test -ldflags "$GO_LDFLAGS" $PKGS -p 1 -timeout=20m | gocov-xml > report.xml
 
