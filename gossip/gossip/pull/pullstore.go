@@ -154,7 +154,6 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 		return
 	}
 	msg := m.GetGossipMessage()
-
 	msgType := msg.GetPullMsgType()
 	if msgType != p.config.MsgType {
 		return
@@ -262,7 +261,7 @@ func (p *pullMediatorImpl) Hello(dest string, nonce uint64) {
 		},
 	}
 
-	p.logger.Debug("Sending hello to", dest)
+	p.logger.Debug("Sending", p.config.MsgType, "hello to", dest)
 	p.Sndr.Send(helloMsg.NoopSign(), p.peersWithEndpoints(dest)...)
 }
 
@@ -281,7 +280,8 @@ func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context int
 			},
 		},
 	}
-	p.logger.Debug("Sending digest", digMsg.GetDataDig().Digests)
+	remotePeer := context.(proto.ReceivedMessage).GetConnectionInfo()
+	p.logger.Debug("Sending", p.config.MsgType, "digest:", digMsg.GetDataDig().Digests, "to", remotePeer)
 	context.(proto.ReceivedMessage).Respond(digMsg)
 }
 
@@ -327,7 +327,8 @@ func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce ui
 			},
 		},
 	}
-	p.logger.Debug("Sending", returnedUpdate, "to")
+	remotePeer := context.(proto.ReceivedMessage).GetConnectionInfo()
+	p.logger.Debug("Sending", len(returnedUpdate.GetDataUpdate().Data), p.config.MsgType, "items to", remotePeer)
 	context.(proto.ReceivedMessage).Respond(returnedUpdate)
 }
 
