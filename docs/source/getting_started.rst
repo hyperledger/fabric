@@ -210,7 +210,7 @@ Create the orderer genesis block:
 
 .. code:: bash
 
-    ./bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
+    ./bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/orderer.genesis.block
 
 You can ignore the logs regarding intermediate certs, we are not using them in
 this crypto implementation.
