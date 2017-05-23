@@ -18,20 +18,19 @@ package qscc
 import (
 	"fmt"
 	"os"
-	"testing"
-
-	"github.com/spf13/viper"
-
 	"strings"
+	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
+	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	peer2 "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -160,21 +159,21 @@ func TestFailingAccessControl(t *testing.T) {
 	}
 	e := new(LedgerQuerier)
 	// Init the policy checker to have a failure
-	policyManagerGetter := &policy.MockChannelPolicyManagerGetter{
+	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
 		Managers: map[string]policies.Manager{
-			chainid: &policy.MockChannelPolicyManager{MockPolicy: &policy.MockPolicy{Deserializer: &policy.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
+			chainid: &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: &policymocks.MockIdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1")}}},
 		},
 	}
 	e.policyChecker = policy.NewPolicyChecker(
 		policyManagerGetter,
-		&policy.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")},
-		&policy.MockMSPPrincipalGetter{Principal: []byte("Alice")},
+		&policymocks.MockIdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1")},
+		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
 	)
 	stub := shim.NewMockStub("LedgerQuerier", e)
 
 	args := [][]byte{[]byte(GetChainInfo), []byte(chainid)}
 	sProp, _ := utils.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
-	policyManagerGetter.Managers[chainid].(*policy.MockChannelPolicyManager).MockPolicy.(*policy.MockPolicy).Deserializer.(*policy.MockIdentityDeserializer).Msg = sProp.ProposalBytes
+	policyManagerGetter.Managers[chainid].(*policymocks.MockChannelPolicyManager).MockPolicy.(*policymocks.MockPolicy).Deserializer.(*policymocks.MockIdentityDeserializer).Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
 	res := stub.MockInvokeWithSignedProposal("2", args, sProp)
 	assert.Equal(t, int32(shim.OK), res.Status, "GetChainInfo failed with err: %s", res.Message)

@@ -17,6 +17,8 @@ limitations under the License.
 package chaincode
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -25,15 +27,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"encoding/json"
-	"strings"
-
 	"github.com/golang/protobuf/proto"
-
 	"github.com/hyperledger/fabric/bccsp/factory"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
@@ -43,22 +42,20 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
+	"github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/testutil"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	putils "github.com/hyperledger/fabric/protos/utils"
-
-	"bytes"
-
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
+	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -1877,7 +1874,7 @@ type mockPolicyCheckerFactory struct{}
 func (f *mockPolicyCheckerFactory) NewPolicyChecker() policy.PolicyChecker {
 	return policy.NewPolicyChecker(
 		peer.NewChannelPolicyManagerGetter(),
-		&policy.MockIdentityDeserializer{[]byte("Admin"), []byte("msg1")},
-		&policy.MockMSPPrincipalGetter{Principal: []byte("Admin")},
+		&mocks.MockIdentityDeserializer{[]byte("Admin"), []byte("msg1")},
+		&mocks.MockMSPPrincipalGetter{Principal: []byte("Admin")},
 	)
 }
