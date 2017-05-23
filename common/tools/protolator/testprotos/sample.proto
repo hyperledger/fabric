@@ -34,3 +34,10 @@ message NestedMsg {
 	map<string,SimpleMsg> map_nested_field = 2;
 	repeated SimpleMsg slice_nested_field = 3;
 }
+
+// StaticallyOpaqueMsg is designed to test the statically opaque message component
+message StaticallyOpaqueMsg {
+	bytes plain_opaque_field = 1;
+	map<string, bytes> map_opaque_field = 2;
+	repeated bytes slice_opaque_field = 3;
+}
