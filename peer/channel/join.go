@@ -128,7 +128,7 @@ func executeJoin(cf *ChannelCmdFactory) (err error) {
 func join(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(true)
+		cf, err = InitCmdFactory(EndorserRequired, OrdererNotRequired)
 		if err != nil {
 			return err
 		}
