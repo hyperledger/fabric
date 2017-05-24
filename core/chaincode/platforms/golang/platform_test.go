@@ -17,20 +17,19 @@ limitations under the License.
 package golang
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
-
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"time"
-
-	"github.com/spf13/viper"
 
 	"github.com/hyperledger/fabric/core/config"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func testerr(err error, succ bool) error {
@@ -108,6 +107,24 @@ func TestValidateCDS(t *testing.T) {
 	}
 }
 
+func TestPlatform_GoPathNotSet(t *testing.T) {
+	p := &Platform{}
+	spec := &pb.ChaincodeSpec{
+		ChaincodeId: &pb.ChaincodeID{
+			Path: "/opt/gopath/src/github.com/hyperledger/fabric",
+		},
+	}
+	gopath := os.Getenv("GOPATH")
+	defer os.Setenv("GOPATH", gopath)
+	os.Setenv("GOPATH", "")
+
+	f := func() {
+		p.ValidateSpec(spec)
+	}
+	assert.NotPanics(t, f)
+	assert.Contains(t, p.ValidateSpec(spec).Error(), "invalid GOPATH environment variable value")
+}
+
 func Test_writeGopathSrc(t *testing.T) {
 
 	inputbuf := bytes.NewBuffer(nil)
@@ -157,7 +174,7 @@ func Test_decodeUrl(t *testing.T) {
 	}
 }
 
-func TestValidChaincodeSpec(t *testing.T) {
+func TestValidateSpec(t *testing.T) {
 	platform := &Platform{}
 
 	var tests = []struct {
@@ -168,12 +185,13 @@ func TestValidChaincodeSpec(t *testing.T) {
 		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "https://github.com/hyperledger/fabric/examples/chaincode/go/map"}}, succ: true},
 		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map"}}, succ: true},
 		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/bad/chaincode/go/map"}}, succ: false},
+		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: ":github.com/hyperledger/fabric/examples/chaincode/go/map"}}, succ: false},
 	}
 
 	for _, tst := range tests {
 		err := platform.ValidateSpec(tst.spec)
 		if err = testerr(err, tst.succ); err != nil {
-			t.Errorf("Error to validating chaincode spec: %s, %s", tst.spec.ChaincodeId.Path, err)
+			t.Errorf("Error validating chaincode spec: %s, %s", tst.spec.ChaincodeId.Path, err)
 		}
 	}
 }
