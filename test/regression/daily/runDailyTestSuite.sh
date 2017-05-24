@@ -19,17 +19,5 @@ cd ../../feature
 behave --junit --junit-directory ../regression/daily/. --tags=-skip --tags=daily
 cd -
 
-echo "========== Test Your Chaincode ..."
-# TBD - after changeset https://gerrit.hyperledger.org/r/#/c/9163/ is merged,
-# replace the previous 2 lines with this new syntax to run all the chaincode tests;
-# and when making this change we should also remove file chaincodeTests/runChaincodes.sh)
-#
-#cd $DAILYDIR/chaincodeTests/envsetup
-#py.test -v --junitxml ../../results_testYourChaincode.xml testYourChaincode.py
-
-# TBD - after changeset https://gerrit.hyperledger.org/r/#/c/9251/ is merged,
-# and integrated with this, lines like these should be executed too:
-#echo "========== Ledger component performance tests..."
-#cd $DAILYDIR/ledgerperftests
-#py.test -v --junitxml results_perf_goleveldb.xml test_perf_goleveldb.py
-#py.test -v --junitxml results_perf_couchdb.xml test_perf_couchdb.py
+echo "========== Ledger component performance tests..."
+py.test -v --junitxml results_ledger_lte.xml ledger_lte.py
