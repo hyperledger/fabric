@@ -267,7 +267,9 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 		go func() {
 			// AttachToContainer will fire off a message on the "attached" channel once the
 			// attachment completes, and then block until the container is terminated.
-			err = client.AttachToContainer(docker.AttachToContainerOptions{
+			// The returned error is not used outside the scope of this function. Assign the
+			// error to a local variable to prevent clobbering the function variable 'err'.
+			err := client.AttachToContainer(docker.AttachToContainerOptions{
 				Container:    containerID,
 				OutputStream: w,
 				ErrorStream:  w,
