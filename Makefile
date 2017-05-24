@@ -183,8 +183,8 @@ build/docker/bin/%: $(PROJECT_FILES)
 	@echo "Building $@"
 	@mkdir -p build/docker/bin build/docker/$(TARGET)/pkg
 	@$(DRUN) \
-		-v $(abspath build/docker/bin):/opt/gopath/bin \
-		-v $(abspath build/docker/$(TARGET)/pkg):/opt/gopath/pkg \
+		-v $(abspath build/docker/bin):$(GOPATH)/bin \
+		-v $(abspath build/docker/$(TARGET)/pkg):$(GOPATH)/pkg \
 		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		go install -ldflags "$(DOCKER_GO_LDFLAGS)" $(pkgmap.$(@F))
 	@touch $@
