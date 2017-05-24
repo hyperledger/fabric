@@ -158,7 +158,7 @@ behave-environments: $(BEHAVE_ENVIRONMENT_TARGETS)
 $(BEHAVE_ENVIRONMENT_TARGETS):
 	@docker-compose --file $@/docker-compose.yml build
 
-behave-deps: docker peer build/bin/block-listener behave-environments
+behave-deps: docker peer build/bin/block-listener behave-environments configtxgen cryptogen
 behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)
