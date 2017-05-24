@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -30,7 +31,7 @@ import (
 func TestMain(m *testing.M) {
 	flag.BoolVar(&runTests, "run-controller-tests", false, "run tests")
 	flag.Parse()
-	SetupTestConfig()
+	testutil.SetupTestConfig()
 	os.Exit(m.Run())
 }
 

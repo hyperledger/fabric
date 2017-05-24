@@ -54,8 +54,8 @@ func TestHostConfig(t *testing.T) {
 }
 
 func TestGetDockerHostConfig(t *testing.T) {
-	os.Setenv("HYPERLEDGER_VM_DOCKER_HOSTCONFIG_NETWORKMODE", "overlay")
-	os.Setenv("HYPERLEDGER_VM_DOCKER_HOSTCONFIG_CPUSHARES", fmt.Sprint(1024*1024*1024*2))
+	os.Setenv("CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE", "overlay")
+	os.Setenv("CORE_VM_DOCKER_HOSTCONFIG_CPUSHARES", fmt.Sprint(1024*1024*1024*2))
 	coreutil.SetupTestConfig()
 	hostConfig := getDockerHostConfig()
 	testutil.AssertNotNil(t, hostConfig)
