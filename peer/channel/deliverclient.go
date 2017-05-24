@@ -115,7 +115,7 @@ func getGenesisBlock(cf *ChannelCmdFactory) (*common.Block, error) {
 		default:
 			if block, err := cf.DeliverClient.getBlock(); err != nil {
 				cf.DeliverClient.Close()
-				cf, err = InitCmdFactory(false)
+				cf, err = InitCmdFactory(EndorserNotRequired, OrdererRequired)
 				if err != nil {
 					return nil, fmt.Errorf("failed connecting: %v", err)
 				}
