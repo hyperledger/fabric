@@ -24,8 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 )
 
-const badConnectURL = "couchdb:5990"
-
 // TestVDBEnv provides a couch db backed versioned db for testing
 type TestVDBEnv struct {
 	t          testing.TB

@@ -32,7 +32,6 @@ import (
 
 var logger = flogging.MustGetLogger("historyleveldb")
 
-var compositeKeySep = []byte{0x00}
 var savePointKey = []byte{0x00}
 var emptyValue = []byte{}
 
