@@ -62,7 +62,7 @@ func TestNewGossipCryptoService(t *testing.T) {
 	endpoint3 := "localhost:5613"
 	msptesttools.LoadMSPSetupForTesting()
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
-	idMapper := identity.NewIdentityMapper(cryptSvc)
+	idMapper := identity.NewIdentityMapper(cryptSvc, peerIdentity)
 
 	g1 := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc, idMapper,
 		defaultSecureDialOpts)
@@ -82,7 +82,7 @@ func TestBadInitialization(t *testing.T) {
 	msptesttools.LoadMSPSetupForTesting()
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	s1 := grpc.NewServer()
-	idMapper := identity.NewIdentityMapper(cryptSvc)
+	idMapper := identity.NewIdentityMapper(cryptSvc, peerIdentity)
 	assert.Panics(t, func() {
 		newConfig("anEndpointWithoutAPort", "anEndpointWithoutAPort")
 	})

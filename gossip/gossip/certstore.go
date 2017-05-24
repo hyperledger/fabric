@@ -43,10 +43,6 @@ type certStore struct {
 func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity api.PeerIdentityType, mcs api.MessageCryptoService) *certStore {
 	selfPKIID := idMapper.GetPKIidOfCert(selfIdentity)
 	logger := util.GetLogger(util.LoggingGossipModule, string(selfPKIID))
-	if err := idMapper.Put(selfPKIID, selfIdentity); err != nil {
-		logger.Error("Failed associating self PKIID to cert:", err)
-		panic(fmt.Errorf("Failed associating self PKIID to cert: %v", err))
-	}
 
 	certStore := &certStore{
 		mcs:          mcs,

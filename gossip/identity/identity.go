@@ -19,10 +19,10 @@ package identity
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"sync"
-	"time"
-
 	"sync/atomic"
+	"time"
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -31,7 +31,7 @@ import (
 var (
 	// identityUsageThreshold sets the maximum time that an identity
 	// can not be used to verify some signature before it will be deleted
-	identityUsageThreshold = time.Hour
+	usageThreshold = time.Hour
 )
 
 // Mapper holds mappings between pkiID
@@ -66,14 +66,21 @@ type identityMapperImpl struct {
 	mcs        api.MessageCryptoService
 	pkiID2Cert map[string]*storedIdentity
 	sync.RWMutex
+	selfPKIID string
 }
 
 // NewIdentityMapper method, all we need is a reference to a MessageCryptoService
-func NewIdentityMapper(mcs api.MessageCryptoService) Mapper {
-	return &identityMapperImpl{
+func NewIdentityMapper(mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType) Mapper {
+	selfPKIID := mcs.GetPKIidOfCert(selfIdentity)
+	idMapper := &identityMapperImpl{
 		mcs:        mcs,
 		pkiID2Cert: make(map[string]*storedIdentity),
+		selfPKIID:  string(selfPKIID),
 	}
+	if err := idMapper.Put(selfPKIID, selfIdentity); err != nil {
+		panic(fmt.Errorf("Failed putting our own identity into the identity mapper: %v", err))
+	}
+	return idMapper
 }
 
 // put associates an identity to its given pkiID, and returns an error
@@ -157,7 +164,7 @@ func (is *identityMapperImpl) validateIdentities(isSuspected api.PeerSuspector) 
 	defer is.RUnlock()
 	var revokedIds []common.PKIidType
 	for pkiID, storedIdentity := range is.pkiID2Cert {
-		if storedIdentity.fetchLastAccessTime().Add(identityUsageThreshold).Before(now) {
+		if pkiID != is.selfPKIID && storedIdentity.fetchLastAccessTime().Add(usageThreshold).Before(now) {
 			revokedIds = append(revokedIds, common.PKIidType(pkiID))
 			continue
 		}
@@ -190,4 +197,18 @@ func (si *storedIdentity) fetchIdentity() api.PeerIdentityType {
 
 func (si *storedIdentity) fetchLastAccessTime() time.Time {
 	return time.Unix(0, atomic.LoadInt64(&si.lastAccessTime))
+}
+
+// SetIdentityUsageThreshold sets the usage threshold of identities.
+// Identities that are not used at least once during the given time
+// are purged
+func SetIdentityUsageThreshold(duration time.Duration) {
+	usageThreshold = duration
+}
+
+// GetIdentityUsageThreshold returns the usage threshold of identities.
+// Identities that are not used at least once during the usage threshold
+// duration are purged.
+func GetIdentityUsageThreshold() time.Duration {
+	return usageThreshold
 }
