@@ -17,6 +17,7 @@ limitations under the License.
 package chaincode
 
 import (
+	"flag"
 	"fmt"
 	"math/rand"
 	"net"
@@ -33,6 +34,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -45,6 +47,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 
@@ -1782,8 +1785,36 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	SetupTestConfig()
+	setupTestConfig()
 	os.Exit(m.Run())
+}
+
+func setupTestConfig() {
+	flag.Parse()
+
+	// Now set the configuration file
+	viper.SetEnvPrefix("CORE")
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.SetConfigName("chaincodetest") // name of config file (without extension)
+	viper.AddConfigPath("./")            // path to look for the config file in
+	err := viper.ReadInConfig()          // Find and read the config file
+	if err != nil {                      // Handle errors reading the config file
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
+
+	testutil.SetupTestLogging()
+
+	// Set the number of maxprocs
+	var numProcsDesired = viper.GetInt("peer.gomaxprocs")
+	chaincodeLogger.Debugf("setting Number of procs to %d, was %d\n", numProcsDesired, runtime.GOMAXPROCS(2))
+
+	// Init the BCCSP
+	err = factory.InitFactories(nil)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 }
 
 func deployChaincode(ctx context.Context, name string, version string, chaincodeType pb.ChaincodeSpec_Type, path string, args [][]byte, creator []byte, channel string, nextBlockNumber uint64) ([]byte, *ccprovider.CCContext, error) {
