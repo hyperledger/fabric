@@ -132,7 +132,7 @@ func InitMSP() {
 func initMSP() {
 	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
-		panic(fmt.Errorf("Fatal error when reading MSP config: err %s\n", err))
+		panic(fmt.Errorf("Fatal error when reading MSP config: err %s", err))
 	}
 }
 
@@ -203,6 +203,7 @@ func TestCreateChainWithDefaultAnchorPeers(t *testing.T) {
 }
 
 func TestCreateChainWithWaitSuccess(t *testing.T) {
+	t.Skip("intermittent UT failure FAB-4128")
 	InitMSP()
 
 	mockchain := "mockchain"
@@ -460,7 +461,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 
 	defer os.Remove(file)
 
-	if err := cmd.Execute(); err == nil {
+	if err = cmd.Execute(); err == nil {
 		t.Errorf("expected error")
 	} else if _, ok := err.(InvalidCreateTx); !ok {
 		t.Errorf("invalid error")
@@ -471,7 +472,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 		t.Fatalf("couldn't create tx file")
 	}
 
-	if err := cmd.Execute(); err == nil {
+	if err = cmd.Execute(); err == nil {
 		t.Errorf("expected error")
 	} else if _, ok := err.(InvalidCreateTx); !ok {
 		t.Errorf("invalid error")
