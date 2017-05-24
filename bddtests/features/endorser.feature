@@ -1,4 +1,10 @@
 #
+#
+# Copyright IBM Corp. 2016 All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # Test Endorser function
 #
 # Tags that can be used and will affect test internals:

@@ -1,3 +1,10 @@
+
+#
+# Copyright IBM Corp. 2016 All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # Tags that can be used and will affect test internals:
 #  @doNotDecompose will NOT decompose the named compose_yaml after scenario ends.
 #  Useful for setting up environment and reviewing after scenario.
