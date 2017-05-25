@@ -1,0 +1,2 @@
+sdk=node userInputs/samplecc-chan1-create.json
+sdk=node userInputs/samplecc-chan2-create.json

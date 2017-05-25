@@ -1,0 +1,2 @@
+sdk=node userInputs/samplecc-chan1-latency-q.json
+#sdk=node userInputs/samplecc-chan2-latency-q.json

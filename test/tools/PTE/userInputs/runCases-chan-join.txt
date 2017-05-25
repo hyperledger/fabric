@@ -1,0 +1,8 @@
+sdk=node userInputs/samplecc-chan1-join1.json
+sdk=node userInputs/samplecc-chan1-join2.json
+sdk=node userInputs/samplecc-chan2-join1.json
+sdk=node userInputs/samplecc-chan2-join2.json
+#sdk=node userInputs/samplecc-chan1-join1-TLS.json
+#sdk=node userInputs/samplecc-chan1-join2-TLS.json
+#sdk=node userInputs/samplecc-chan2-join1-TLS.json
+#sdk=node userInputs/samplecc-chan2-join2-TLS.json
