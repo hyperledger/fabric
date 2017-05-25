@@ -46,24 +46,6 @@ func TestStartServer(t *testing.T) {
 	assert.Nil(t, err, "Error should have been nil")
 }
 
-func TestStopServer(t *testing.T) {
-	oldOsExit := osExit
-
-	defer func() { osExit = oldOsExit }()
-
-	var got int
-	myExit := func(code int) {
-		got = code
-	}
-
-	osExit = myExit
-	response, err := adminServer.StopServer(context.Background(), &empty.Empty{})
-	assert.NotNil(t, response, "Response should have been set")
-	assert.Nil(t, err, "Error should have been nil")
-
-	assert.Equal(t, 1, got, "Exit code should be 1")
-}
-
 func TestLoggingCalls(t *testing.T) {
 	flogging.MustGetLogger("test")
 	flogging.SetPeerStartupModulesMap()

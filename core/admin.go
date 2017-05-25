@@ -17,20 +17,13 @@ limitations under the License.
 package core
 
 import (
-	"os"
-
-	"golang.org/x/net/context"
-
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/config"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"golang.org/x/net/context"
 )
 
 var log = flogging.MustGetLogger("server")
-
-// Here for unit testing purposes
-var osExit = os.Exit
 
 // NewAdminServer creates and returns a Admin service instance.
 func NewAdminServer() *ServerAdmin {
@@ -53,18 +46,6 @@ func (*ServerAdmin) GetStatus(context.Context, *empty.Empty) (*pb.ServerStatus, 
 func (*ServerAdmin) StartServer(context.Context, *empty.Empty) (*pb.ServerStatus, error) {
 	status := &pb.ServerStatus{Status: pb.ServerStatus_STARTED}
 	log.Debugf("returning status: %s", status)
-	return status, nil
-}
-
-// StopServer stops the server
-func (*ServerAdmin) StopServer(context.Context, *empty.Empty) (*pb.ServerStatus, error) {
-	status := &pb.ServerStatus{Status: pb.ServerStatus_STOPPED}
-	log.Debugf("returning status: %s", status)
-
-	pidFile := config.GetPath("peer.fileSystemPath") + "/peer.pid"
-	log.Debugf("Remove pid file  %s", pidFile)
-	os.Remove(pidFile)
-	defer osExit(1)
 	return status, nil
 }
 

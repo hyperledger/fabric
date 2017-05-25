@@ -25,20 +25,16 @@ import (
 
 const (
 	nodeFuncName = "node"
-	shortDes     = "Operate a peer node: start|stop|status."
-	longDes      = "Operate a peer node: start|stop|status."
+	shortDes     = "Operate a peer node: start|status."
+	longDes      = "Operate a peer node: start|status."
 )
 
-var (
-	stopPidFile string
-)
 var logger = flogging.MustGetLogger("nodeCmd")
 
 // Cmd returns the cobra command for Node
 func Cmd() *cobra.Command {
 	nodeCmd.AddCommand(startCmd())
 	nodeCmd.AddCommand(statusCmd())
-	nodeCmd.AddCommand(stopCmd())
 
 	return nodeCmd
 }

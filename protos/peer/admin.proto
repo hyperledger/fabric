@@ -29,7 +29,6 @@ service Admin {
     // Return the serve status.
     rpc GetStatus(google.protobuf.Empty) returns (ServerStatus) {}
     rpc StartServer(google.protobuf.Empty) returns (ServerStatus) {}
-    rpc StopServer(google.protobuf.Empty) returns (ServerStatus) {}
     rpc GetModuleLogLevel(LogLevelRequest) returns (LogLevelResponse) {}
     rpc SetModuleLogLevel(LogLevelRequest) returns (LogLevelResponse) {}
     rpc RevertLogLevels(google.protobuf.Empty) returns (google.protobuf.Empty) {}
