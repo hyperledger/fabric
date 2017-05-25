@@ -428,9 +428,13 @@ func TestResponses(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
+	wg := sync.WaitGroup{}
+
 	msg := createGossipMsg()
+	wg.Add(1)
 	go func() {
 		inChan := comm1.Accept(acceptAll)
+		wg.Done()
 		for m := range inChan {
 			reply := createGossipMsg()
 			reply.Nonce = m.GetGossipMessage().Nonce + 1
@@ -440,9 +444,9 @@ func TestResponses(t *testing.T) {
 	expectedNOnce := uint64(msg.Nonce + 1)
 	responsesFromComm1 := comm2.Accept(acceptAll)
 
-	ticker := time.NewTicker(time.Duration(6000) * time.Millisecond)
+	ticker := time.NewTicker(10 * time.Second)
+	wg.Wait()
 	comm2.Send(msg, remotePeer(8611))
-	time.Sleep(time.Duration(100) * time.Millisecond)
 
 	select {
 	case <-ticker.C:
@@ -596,8 +600,24 @@ func TestPresumedDead(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(4611, naiveSec)
 	comm2, _ := newCommInstance(4612, naiveSec)
-	go comm1.Send(createGossipMsg(), remotePeer(4612))
-	<-comm2.Accept(acceptAll)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		wg.Wait()
+		comm1.Send(createGossipMsg(), remotePeer(4612))
+	}()
+
+	ticker := time.NewTicker(time.Duration(10) * time.Second)
+	acceptCh := comm2.Accept(acceptAll)
+	wg.Done()
+	select {
+	case <-acceptCh:
+		ticker.Stop()
+	case <-ticker.C:
+		assert.Fail(t, "Didn't get first message")
+	}
+
 	comm2.Stop()
 	go func() {
 		for i := 0; i < 5; i++ {
@@ -606,7 +626,7 @@ func TestPresumedDead(t *testing.T) {
 		}
 	}()
 
-	ticker := time.NewTicker(time.Second * time.Duration(3))
+	ticker = time.NewTicker(time.Second * time.Duration(3))
 	select {
 	case <-ticker.C:
 		assert.Fail(t, "Didn't get a presumed dead message within a timely manner")
