@@ -38,7 +38,7 @@ On Windows machines you will also need the following which provides a better alt
 - `Git Bash <https://git-scm.com/downloads>`__
 - `make for MinGW <http://sourceforge.net/projects/mingw/files/MinGW/Extension/make/make-3.82.90-cvs/make-3.82.90-2-mingw32-cvs-20120902-bin.tar.lzma>`__ to be added to Git Bash
 
-Curl the artifacts and binaries & pull the docker images
+Download the artifacts and binaries & pull the docker images
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. note:: If you are running on Windows you will want to make use of your Git
@@ -56,14 +56,15 @@ Next, execute the following command:
 
 .. code:: bash
 
-  curl -sS https://raw.githubusercontent.com/hyperledger/fabric/master/examples/e2e_cli/bootstrap.sh | bash
+  curl -sSL https://goo.gl/NIKLiU | bash
 
-This command executes a bash script (``bootstrap.sh``) that will extract all of the necessary
-artifacts to set up your network and place them into a folder named ``release``.
-It also retrieves the two binaries - cryptogen and configtxgen - which are briefly
-described above.  Finally, the script will download the Hyperledger Fabric
-docker images. The script leverages an environment variable to detect your OS, allowing us to pull
-platform specific binaries and images.
+This command downloads and executes a bash script (``bootstrap.sh``) that will
+extract all of the necessary artifacts to set up your network and place them
+into a folder named ``release``.
+
+It also retrieves the two platform-specific binaries - ``cryptogen`` and
+``configtxgen`` - which are briefly described above. Finally, the script will
+download the Hyperledger Fabric docker images into your local Docker registry.
 
 The script lists out the docker images upon conclusion.  You should see the
 following:
