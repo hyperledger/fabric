@@ -65,24 +65,8 @@ or though a mirrored repository in github:
         brew install gnu-tar --with-default-names
         brew install libtool
 
-Pick a commit level
-^^^^^^^^^^^^^^^^^^^
-
-It's recommended to run the end-to-end tests against images and binaries from
-the stable "alpha2" release.
-
-From your fabric directory:
-
-.. code:: bash
-
-  git tag -l
-  git checkout v1.0.0-alpha2
-
-This reverts us back to the "alpha2" commit.  **NOTE**:  You do have the option of
-compiling images and binaries from the current master branch
-(this might be desired for chaincode testing or fabric development), however
-debugging and troubleshooting responsibilities will fall upon the user.  As a
-result we recommend "alpha2".
+Build the binaries
+^^^^^^^^^^^^^^^^^^
 
 -  Now make the platform-specific binaries for ``cryptogen`` and ``configtxgen``.
 
