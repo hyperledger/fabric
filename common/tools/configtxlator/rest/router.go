@@ -32,6 +32,9 @@ func NewRouter() *mux.Router {
 	router.
 		HandleFunc("/protolator/decode/{msgName}", Decode).
 		Methods("POST")
+	router.
+		HandleFunc("/configtxlator/compute/update-from-configs", ComputeUpdateFromConfigs).
+		Methods("POST")
 
 	return router
 }
