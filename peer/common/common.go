@@ -47,7 +47,7 @@ func InitConfig(cmdRoot string) error {
 
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {             // Handle errors reading the config file
-		return fmt.Errorf("Fatal error when reading %s config file: %s\n", cmdRoot, err)
+		return fmt.Errorf("Error when reading %s config file: %s", cmdRoot, err)
 	}
 
 	return nil
@@ -64,7 +64,7 @@ func InitCrypto(mspMgrConfigDir string, localMSPID string) error {
 
 	err = mspmgmt.LoadLocalMsp(mspMgrConfigDir, bccspConfig, localMSPID)
 	if err != nil {
-		return fmt.Errorf("Fatal error when setting up MSP from directory %s: err %s\n", mspMgrConfigDir, err)
+		return fmt.Errorf("Error when setting up MSP from directory %s: err %s", mspMgrConfigDir, err)
 	}
 
 	return nil
@@ -96,14 +96,15 @@ func GetAdminClient() (pb.AdminClient, error) {
 // core.yaml
 func SetLogLevelFromViper(module string) error {
 	var err error
-	if module != "" {
-		logLevelFromViper := viper.GetString("logging." + module)
-		err = CheckLogLevel(logLevelFromViper)
-		if err != nil {
-			return err
-		}
-		_, err = flogging.SetModuleLevel(module, logLevelFromViper)
+	if module == "" {
+		return fmt.Errorf("log level not set, no module name provided")
 	}
+	logLevelFromViper := viper.GetString("logging." + module)
+	err = CheckLogLevel(logLevelFromViper)
+	if err != nil {
+		return err
+	}
+	_, err = flogging.SetModuleLevel(module, logLevelFromViper)
 	return err
 }
 
