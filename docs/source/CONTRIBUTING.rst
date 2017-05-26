@@ -162,7 +162,7 @@ What makes a good change request?
    Development. They place a watch on the directory that invokes the
    tests automagically as the code is changed. This is far more
    efficient than having to run a whole build between code changes. See
-   `this definition<http://artofunittesting.com/definition-of-a-unit-test/>`__
+   `this definition <http://artofunittesting.com/definition-of-a-unit-test/>`__
    of unit testing for a good set of criteria to keep in mind for writing
    effective unit tests.
 
