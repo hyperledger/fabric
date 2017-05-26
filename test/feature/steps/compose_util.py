@@ -41,43 +41,50 @@ class ContainerData:
 class Composition:
 
     def __init__(self, context, composeFilesYaml, projectName = None,
-                 force_recreate = True, components = []):
+                 force_recreate = True, components = [], startContainers=True):
         if not projectName:
             projectName = str(uuid.uuid1()).replace('-','')
         self.projectName = projectName
         self.context = context
         self.containerDataList = []
         self.composeFilesYaml = composeFilesYaml
-        self.serviceNames = []
-        self.serviceNames = self._collectServiceNames()
-        self.up(context, force_recreate, components)
+        if startContainers:
+            self.up(force_recreate, components)
 
-    def _collectServiceNames(self):
+    def collectServiceNames(self):
         'First collect the services names.'
         servicesList = [service for service in self.issueCommand(["config", "--services"]).splitlines() if "WARNING" not in service]
         return servicesList
 
-    def up(self, context, force_recreate=True, components=[]):
-        self.serviceNames = self._collectServiceNames()
+    def up(self, force_recreate=True, components=[]):
+        self.serviceNames = self.collectServiceNames()
         command = ["up", "-d"]
         if force_recreate:
             command += ["--force-recreate"]
         self.issueCommand(command + components)
 
-    def scale(self, context, serviceName, count=1):
-        self.serviceNames = self._collectServiceNames()
+    def scale(self, serviceName, count=1):
+        self.serviceNames = self.collectServiceNames()
         command = ["scale", "%s=%d" %(serviceName, count)]
         self.issueCommand(command)
 
-    def stop(self, context, components=[]):
-        self.serviceNames = self._collectServiceNames()
+    def stop(self, components=[]):
+        self.serviceNames = self.collectServiceNames()
         command = ["stop"]
         self.issueCommand(command, components)
 
-    def start(self, context, components=[]):
-        self.serviceNames = self._collectServiceNames()
+    def start(self, components=[]):
+        self.serviceNames = self.collectServiceNames()
         command = ["start"]
         self.issueCommand(command, components)
+
+    def docker_exec(self, command, components=[]):
+        results = {}
+        updatedCommand = " ".join(command)
+        for component in components:
+            execCommand = ["exec", component, updatedCommand]
+            results[component] = self.issueCommand(execCommand, [])
+        return results
 
     def parseComposeFilesArg(self, composeFileArgs):
         composeFileList = []
@@ -138,7 +145,8 @@ class Composition:
             cmdArgs = command + componentList
             cmd = ["docker"] + cmdArgs
 
-        output = subprocess.check_output(cmd, env=self.getEnv())
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self.getEnv())
+        output, _error = process.communicate()
 
         # Don't rebuild if ps command
         if command[0] !="ps" and command[0] !="config":

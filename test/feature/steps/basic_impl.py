@@ -15,6 +15,11 @@
 
 from behave import *
 import time
+import os
+import uuid
+import compose_util
+import config_util
+import endorser_util
 
 
 ORDERER_TYPES = ["solo",
@@ -33,8 +38,12 @@ def step_impl(context, seconds):
     time.sleep(float(seconds))
 
 @given(u'we compose "{composeYamlFile}"')
-def compose_impl(context, composeYamlFile):
-    pass
+def compose_impl(context, composeYamlFile, projectName=None, startContainers=True):
+    composition = compose_util.Composition(context, composeYamlFile,
+                                           projectName=projectName,
+                                           startContainers=startContainers)
+    context.compose_containers = composition.containerDataList
+    context.composition = composition
 
 @given(u'I have a bootstrapped fabric network')
 def step_impl(context):
@@ -42,12 +51,23 @@ def step_impl(context):
 
 @given(u'I have a bootstrapped fabric network of type {networkType}')
 def bootstrapped_impl(context, networkType):
-    pass
+    assert networkType in ORDERER_TYPES, "Unknown network type '%s'" % networkType
+    curpath = os.path.realpath('.')
+    context.composeFile = "%s/docker-compose/docker-compose-%s.yml" % (curpath, networkType)
+    assert os.path.exists(context.composeFile), "The docker compose file does not exist: {0}".format(context.composeFile)
+    profile = PROFILE_TYPES.get(networkType, "SampleInsecureSolo")
+    channelID = endorser_util.TEST_CHANNEL_ID
+    projectName = str(uuid.uuid1()).replace('-','')
+    config_util.generateCrypto(projectName)
+    config_util.generateConfig(channelID, profile, projectName)
+    compose_impl(context, context.composeFile, projectName=projectName)
 
 @given(u'{component} is taken down')
 def step_impl(context, component):
-    pass
+    assert component in context.composition.collectServiceNames(), "Unknown component '{0}'".format(component)
+    context.composition.stop([component])
 
 @given(u'{component} comes back up')
 def step_impl(context, component):
-    pass
+    assert component in context.composition.collectServiceNames(), "Unknown component '{0}'".format(component)
+    context.composition.start([component])
