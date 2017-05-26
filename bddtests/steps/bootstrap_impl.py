@@ -144,7 +144,7 @@ def step_impl(context, userName, templateName, chainCreatePolicyName):
     ' At the moment, only really defining MSP Config Items (NOT SIGNED)'
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName)
-    user.setTagValue(templateName, [directory.getOrganization(row['Organization']) for row in context.table.rows])
+    user.setTagValue(templateName, [directory.getOrganization(row['Organization']).name for row in context.table.rows])
 
 @given(u'the user "{userName}" creates a configUpdateEnvelope "{configUpdateEnvelopeName}" using configUpdate "{configUpdateName}"')
 def step_impl(context, userName, configUpdateEnvelopeName, configUpdateName):
@@ -234,9 +234,7 @@ def step_impl(context, userName, transactionAlias, orderer, channelId):
 def step_impl(context, userName, certAlias, composeService):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
-    nodeAdminTuple = user.tags[certAlias]
-    cert = directory.findCertForNodeAdminTuple(nodeAdminTuple)
-    user.connectToDeliverFunction(context, composeService, certAlias, nodeAdminTuple=nodeAdminTuple)
+    user.connectToDeliverFunction(context, composeService, nodeAdminTuple=user.tags[certAlias])
 
 @when(u'user "{userName}" sends deliver a seek request on orderer "{composeService}" with properties')
 def step_impl(context, userName, composeService):

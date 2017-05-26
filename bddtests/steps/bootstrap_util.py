@@ -162,12 +162,13 @@ def createCertificate(req, issuerCertKey, serial, validityPeriod, digest="sha256
 # SUBJECT_DEFAULT = {countryName : "US", stateOrProvinceName : "NC", localityName : "RTP", organizationName : "IBM", organizationalUnitName : "Blockchain"}
 
 class Entity:
-    def __init__(self, name):
+    def __init__(self, name, ecdsaSigningKey, rsaSigningKey):
         self.name = name
         # Create a ECDSA key, then a crypto pKey from the DER for usage with cert requests, etc.
-        self.ecdsaSigningKey = createECDSAKey()
-        self.rsaSigningKey = createRSAKey()
-        self.pKey = crypto.load_privatekey(crypto.FILETYPE_ASN1, self.ecdsaSigningKey.to_der())
+        self.ecdsaSigningKey = ecdsaSigningKey
+        self.rsaSigningKey = rsaSigningKey
+        if self.ecdsaSigningKey:
+            self.pKey = crypto.load_privatekey(crypto.FILETYPE_ASN1, self.ecdsaSigningKey.to_der())
         # Signing related ecdsa config
         self.hashfunc = hashlib.sha256
         self.sigencode = ecdsa.util.sigencode_der_canonize
@@ -200,10 +201,16 @@ class Entity:
     def getPrivateKeyAsPEM(self):
         return self.ecdsaSigningKey.to_pem()
 
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        del state['ecdsaSigningKey']
+        del state['rsaSigningKey']
+        del state['pKey']
+        return state
 
 class User(Entity, orderer_util.UserRegistration):
-    def __init__(self, name, directory):
-        Entity.__init__(self, name)
+    def __init__(self, name, directory, ecdsaSigningKey, rsaSigningKey):
+        Entity.__init__(self, name, ecdsaSigningKey=ecdsaSigningKey, rsaSigningKey=rsaSigningKey)
         orderer_util.UserRegistration.__init__(self, name, directory)
         self.tags = {}
 
@@ -222,8 +229,8 @@ class User(Entity, orderer_util.UserRegistration):
 
 class Organization(Entity):
 
-    def __init__(self, name):
-        Entity.__init__(self, name)
+    def __init__(self, name, ecdsaSigningKey, rsaSigningKey):
+        Entity.__init__(self, name, ecdsaSigningKey, rsaSigningKey)
         req = createCertRequest(self.pKey, C="US", ST="North Carolina", L="RTP", O="IBM", CN=name)
         numYrs = 1
         self.signedCert = createCertificate(req, (req, self.pKey), 1000, (0, 60 * 60 * 24 * 365 * numYrs), isCA=True)
@@ -265,21 +272,23 @@ class Organization(Entity):
 
 class Directory:
     def __init__(self):
+        import atexit
         self.organizations = {}
         self.users = {}
         self.ordererAdminTuples = {}
+        atexit.register(self.cleanup)
 
     def getNamedCtxTuples(self):
         return self.ordererAdminTuples
 
     def _registerOrg(self, orgName):
         assert orgName not in self.organizations, "Organization already registered {0}".format(orgName)
-        self.organizations[orgName] = Organization(orgName)
+        self.organizations[orgName] = Organization(orgName, ecdsaSigningKey = createECDSAKey(), rsaSigningKey = createRSAKey())
         return self.organizations[orgName]
 
     def _registerUser(self, userName):
         assert userName not in self.users, "User already registered {0}".format(userName)
-        self.users[userName] = User(userName, directory=self)
+        self.users[userName] = User(userName, directory=self, ecdsaSigningKey = createECDSAKey(), rsaSigningKey = createRSAKey())
         return self.users[userName]
 
     def getUser(self, userName, shouldCreate=False):
@@ -353,6 +362,48 @@ class Directory:
         self.ordererAdminTuples[ordererAdminTuple] = userCert
         return ordererAdminTuple
 
+    def dump(self, output):
+        'Will dump the directory to the provided store'
+        import cPickle
+        data = {'users' : {}, 'organizations' : {}, 'nats' : {}}
+        dump_cert = lambda cert: crypto.dump_certificate(crypto.FILETYPE_PEM, cert)
+        for userName, user in self.users.iteritems():
+            # for k, v in user.tags.iteritems():
+            #     try:
+            #         cPickle.dumps(v)
+            #     except:
+            #         raise Exception("Failed on key {0}".format(k))
+            data['users'][userName] = (user.ecdsaSigningKey.to_pem(), crypto.dump_privatekey(crypto.FILETYPE_PEM, user.rsaSigningKey), user.tags)
+        for orgName, org in self.organizations.iteritems():
+            networks = [n.name for n in  org.networks]
+            data['organizations'][orgName] = (
+                org.ecdsaSigningKey.to_pem(), crypto.dump_privatekey(crypto.FILETYPE_PEM, org.rsaSigningKey),
+                dump_cert(org.getSelfSignedCert()), networks)
+        for nat, cert in self.ordererAdminTuples.iteritems():
+            data['nats'][nat] = dump_cert(cert)
+        cPickle.dump(data, output)
+
+    def initFromPath(self, path):
+        'Will initialize the directory from the path supplied'
+        import cPickle
+        data = None
+        with open(path,'r') as f:
+            data = cPickle.load(f)
+        assert data != None, "Expected some data, did not load any."
+        priv_key_from_pem = lambda x: crypto.load_privatekey(crypto.FILETYPE_PEM, x)
+        for userName, keyTuple in data['users'].iteritems():
+            self.users[userName] = User(userName, directory=self,
+                                        ecdsaSigningKey=ecdsa.SigningKey.from_pem(keyTuple[0]),
+                                        rsaSigningKey=priv_key_from_pem(keyTuple[1]))
+            self.users[userName].tags = keyTuple[2]
+        for orgName, tuple in data['organizations'].iteritems():
+            org = Organization(orgName, ecdsaSigningKey=ecdsa.SigningKey.from_pem(keyTuple[0]),
+                               rsaSigningKey=priv_key_from_pem(keyTuple[0]))
+            org.signedCert = crypto.load_certificate(crypto.FILETYPE_PEM, tuple[2])
+            org.networks = [Network[name] for name in tuple[3]]
+            self.organizations[orgName] = org
+        for nat, cert_as_pem in data['nats'].iteritems():
+            self.ordererAdminTuples[nat] = crypto.load_certificate(crypto.FILETYPE_PEM, cert_as_pem)
 
 class AuthDSLHelper:
     @classmethod
@@ -1075,7 +1126,7 @@ def get_latest_configuration_block(deliverer_stream_helper, channel_id):
         deliverer_stream_helper.seekToRange(chainID=channel_id, start=last_config.index, end=last_config.index)
         blocks = deliverer_stream_helper.getBlocks()
         assert len(blocks) == 1, "Expected single block, received: {0} blocks".format(len(blocks))
-        assert len(block.data.data) == 1, "Expected single transaction for configuration block, instead found {0} transactions".format(len(block.data.data))
+        assert len(blocks[0].data.data) == 1, "Expected single transaction for configuration block, instead found {0} transactions".format(len(block.data.data))
         latest_config_block = blocks[0]
     return latest_config_block
 
