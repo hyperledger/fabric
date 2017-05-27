@@ -28,6 +28,91 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestKeyGenFailures(t *testing.T) {
+	var testOpts bccsp.KeyGenOpts
+	ki := currentBCCSP
+	_, err := ki.KeyGen(testOpts)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid Opts parameter. It must not be nil.")
+}
+
+func TestLoadLib(t *testing.T) {
+	// Setup PKCS11 library and provide initial set of values
+	lib, pin, label := FindPKCS11Lib()
+
+	// Test for no specified PKCS11 library
+	_, _, _, err := loadLib("", pin, label)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "No PKCS11 library default")
+
+	// Test for invalid PKCS11 library
+	_, _, _, err = loadLib("badLib", pin, label)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Instantiate failed")
+
+	// Test for invalid label
+	_, _, _, err = loadLib(lib, pin, "badLabel")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Could not find token with label")
+
+	// Test for no pin
+	_, _, _, err = loadLib(lib, "", label)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "No PIN set")
+}
+
+func TestOIDFromNamedCurve(t *testing.T) {
+	// Test for valid OID for P224
+	testOID, boolValue := oidFromNamedCurve(elliptic.P224())
+	assert.Equal(t, oidNamedCurveP224, testOID, "Did not receive expected OID for elliptic.P224")
+	assert.Equal(t, true, boolValue, "Did not receive a true value when acquiring OID for elliptic.P224")
+
+	// Test for valid OID for P256
+	testOID, boolValue = oidFromNamedCurve(elliptic.P256())
+	assert.Equal(t, oidNamedCurveP256, testOID, "Did not receive expected OID for elliptic.P256")
+	assert.Equal(t, true, boolValue, "Did not receive a true value when acquiring OID for elliptic.P256")
+
+	// Test for valid OID for P384
+	testOID, boolValue = oidFromNamedCurve(elliptic.P384())
+	assert.Equal(t, oidNamedCurveP384, testOID, "Did not receive expected OID for elliptic.P384")
+	assert.Equal(t, true, boolValue, "Did not receive a true value when acquiring OID for elliptic.P384")
+
+	// Test for valid OID for P521
+	testOID, boolValue = oidFromNamedCurve(elliptic.P521())
+	assert.Equal(t, oidNamedCurveP521, testOID, "Did not receive expected OID for elliptic.P521")
+	assert.Equal(t, true, boolValue, "Did not receive a true value when acquiring OID for elliptic.P521")
+
+	var testCurve elliptic.Curve
+	testOID, boolValue = oidFromNamedCurve(testCurve)
+	if testOID != nil {
+		t.Fatal("Expected nil to be returned.")
+	}
+}
+
+func TestNamedCurveFromOID(t *testing.T) {
+	// Test for valid P224 elliptic curve
+	namedCurve := namedCurveFromOID(oidNamedCurveP224)
+	assert.Equal(t, elliptic.P224(), namedCurve, "Did not receive expected named curve for oidNamedCurveP224")
+
+	// Test for valid P256 elliptic curve
+	namedCurve = namedCurveFromOID(oidNamedCurveP256)
+	assert.Equal(t, elliptic.P256(), namedCurve, "Did not receive expected named curve for oidNamedCurveP256")
+
+	// Test for valid P256 elliptic curve
+	namedCurve = namedCurveFromOID(oidNamedCurveP384)
+	assert.Equal(t, elliptic.P384(), namedCurve, "Did not receive expected named curve for oidNamedCurveP384")
+
+	// Test for valid P521 elliptic curve
+	namedCurve = namedCurveFromOID(oidNamedCurveP521)
+	assert.Equal(t, elliptic.P521(), namedCurve, "Did not receive expected named curved for oidNamedCurveP521")
+
+	testAsn1Value := asn1.ObjectIdentifier{4, 9, 15, 1}
+	namedCurve = namedCurveFromOID(testAsn1Value)
+	if namedCurve != nil {
+		t.Fatal("Expected nil to be returned.")
+	}
+}
+
 func TestPKCS11GetSession(t *testing.T) {
 	var sessions []pkcs11.SessionHandle
 	for i := 0; i < 3*sessionCacheSize; i++ {
