@@ -1,19 +1,9 @@
-/******************************************************************
+/*
 Copyright IT People Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+SPDX-License-Identifier: Apache-2.0
 
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-******************************************************************/
+*/
 
 ///////////////////////////////////////////////////////////////////////
 // Author : IT People - Mohan Venkataraman - Auction API for v1.0
@@ -394,7 +384,7 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, function strin
 
 	if len(args) < 1 {
 		fmt.Println("Query() : Include at least 1 arguments Key ")
-		return shim.Error("Query() : Expecting Transation type and Key value for query")
+		return shim.Error("Query() : Expecting Transaction type and Key value for query")
 	}
 
 	QueryRequest := QueryFunction(function)
@@ -457,7 +447,7 @@ func GetUser(stub shim.ChaincodeStubInterface, function string, args []string) p
 		return shim.Error(jsonResp)
 	}
 
-	fmt.Println("GetUser() : Response : Successfull -")
+	fmt.Println("GetUser() : Response : Successful -")
 	return shim.Success(Avalbytes)
 }
 
@@ -491,7 +481,7 @@ func GetItem(stub shim.ChaincodeStubInterface, function string, args []string) p
 	itemObj.ItemImage = []byte{}
 	Avalbytes, _ = ARtoJSON(itemObj)
 
-	fmt.Println("GetItem() : Response : Successfull ")
+	fmt.Println("GetItem() : Response : Successful ")
 	return shim.Success(Avalbytes)
 }
 
@@ -546,7 +536,7 @@ func ValidateItemOwnership(stub shim.ChaincodeStubInterface, function string, ar
 		return shim.Error(jsonResp)
 	}
 
-	fmt.Print("ValidateItemOwnership() : Response : Successfull - \n")
+	fmt.Print("ValidateItemOwnership() : Response : Successful - \n")
 	return shim.Success(Avalbytes)
 }
 
@@ -575,7 +565,7 @@ func GetAuctionRequest(stub shim.ChaincodeStubInterface, function string, args [
 		return shim.Error(jsonResp)
 	}
 
-	fmt.Println("GetAuctionRequest() : Response : Successfull - \n")
+	fmt.Println("GetAuctionRequest() : Response : Successful - \n")
 	return shim.Success(Avalbytes)
 }
 
@@ -611,7 +601,7 @@ func GetBid(stub shim.ChaincodeStubInterface, function string, args []string) pb
 		return shim.Error(jsonResp)
 	}
 
-	fmt.Println("GetBid() : Response : Successfull -")
+	fmt.Println("GetBid() : Response : Successful -")
 	return shim.Success(Avalbytes)
 }
 
@@ -639,7 +629,7 @@ func GetTransaction(stub shim.ChaincodeStubInterface, function string, args []st
 		return shim.Error(jsonResp)
 	}
 
-	fmt.Println("GetTransaction() : Response : Successfull")
+	fmt.Println("GetTransaction() : Response : Successful")
 	return shim.Success(Avalbytes)
 }
 
@@ -649,7 +639,7 @@ func GetTransaction(stub shim.ChaincodeStubInterface, function string, args []st
 // There are different types of users - Traders (TRD), Auction Houses (AH)
 // Shippers (SHP), Insurance Companies (INS), Banks (BNK)
 // While this version of the chain code does not enforce strict validation
-// the business process recomends validating each persona for the service
+// the business process recommends validating each persona for the service
 // they provide or their participation on the auction blockchain, future enhancements will do that
 // ./peer chaincode invoke -l golang -n mycc -c '{"Function": "PostUser", "Args":["100", "USER", "Ashley Hart", "TRD",  "Morrisville Parkway, #216, Morrisville, NC 27560", "9198063535", "ashley@itpeople.com", "SUNTRUST", "00017102345", "0234678"]}'
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -934,7 +924,7 @@ func TransferItem(stub shim.ChaincodeStubInterface, function string, args []stri
 	myItem.AES_Key, _ = GenAESKey()
 	myItem.ItemImage = Encrypt(myItem.AES_Key, image)
 
-	// Update the owner to the new owner transfered to
+	// Update the owner to the new owner transferred to
 	myItem.CurrentOwnerID = args[3]
 
 	ar, err = ARtoJSON(myItem)
@@ -1193,7 +1183,7 @@ func PostTransaction(stub shim.ChaincodeStubInterface, function string, args []s
 
 	buyer := response.Payload
 
-	fmt.Println("PostTransaction(): Validated Buyer information successfully ", buyer, ar.UserId)
+	fmt.Println("PostTransaction(): Validated Buyer information Successfully ", buyer, ar.UserId)
 
 	// Validate Item record
 	response = ValidateItemSubmission(stub, ar.ItemID)
@@ -1203,7 +1193,7 @@ func PostTransaction(stub shim.ChaincodeStubInterface, function string, args []s
 	}
 
 	lastUpdatedItemOBCObject := response.Payload
-	fmt.Println("PostTransaction() : Validated Item Object in Blockchain successfully", ar.ItemID)
+	fmt.Println("PostTransaction() : Validated Item Object in Blockchain Successfully", ar.ItemID)
 
 	// Update Item Object with new Owner Key
 	response = UpdateItemObject(stub, lastUpdatedItemOBCObject, ar.HammerPrice, ar.UserId)
@@ -1216,7 +1206,7 @@ func PostTransaction(stub shim.ChaincodeStubInterface, function string, args []s
 		fmt.Println("PostTransaction() : New encryption Key is  ", newKey)
 	}
 
-	fmt.Println("PostTransaction() : Updated Item Master Object in Blockchain successfully", ar.ItemID)
+	fmt.Println("PostTransaction() : Updated Item Master Object in Blockchain Successfully", ar.ItemID)
 
 	// Post an Item Log
 	itemObject, err := JSONtoAR(lastUpdatedItemOBCObject)
@@ -1235,7 +1225,7 @@ func PostTransaction(stub shim.ChaincodeStubInterface, function string, args []s
 		return shim.Error(err.Error())
 	}
 
-	fmt.Println("PostTransaction() : Inserted item log record successfully", ar.ItemID)
+	fmt.Println("PostTransaction() : Inserted item log record Successfully", ar.ItemID)
 
 	// Convert Transaction Object to JSON
 	buff, err := TrantoJSON(ar) //
@@ -1252,7 +1242,7 @@ func PostTransaction(stub shim.ChaincodeStubInterface, function string, args []s
 		return shim.Error(err.Error())
 	}
 
-	fmt.Println("PostTransaction() : Posted Transaction Record successfully\n")
+	fmt.Println("PostTransaction() : Posted Transaction Record Successfully\n")
 
 	// Returns New Key. To get Transaction Details, run GetTransaction
 
@@ -2545,7 +2535,7 @@ func ProcessQueryResult(stub shim.ChaincodeStubInterface, Avalbytes []byte, args
 			fmt.Println("ProcessRequestType() : Image decrytion failed ")
 			return err
 		}
-		fmt.Println("ProcessRequestType() : Image conversion from byte[] to file successfull ")
+		fmt.Println("ProcessRequestType() : Image conversion from byte[] to file Successful ")
 		err = ByteArrayToImage(image, "copy."+ar.ItemPicFN)
 		if err != nil {
 

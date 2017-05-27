@@ -5,9 +5,17 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+CHECK=$(git diff --name-only HEAD * | grep -v .png$ | grep -v .git \
+  | grep -v ^vendor/ | grep -v ^build/ | sort -u)
 
-echo "Checking Go files for spelling errors ..."
-errs=`find . -name "*.go" | grep -v vendor/ | grep -v build/ | grep -v ".pb.go" | xargs misspell`
+if [[ -z "$CHECK" ]]; then
+  CHECK=$(git diff-tree --no-commit-id --name-only -r $(git log -2 \
+    --pretty=format:"%h") | grep -v .png$ | grep -v .git \
+    | grep -v ^vendor/ | grep -v ^build/ | sort -u)
+fi
+
+echo "Checking changed go files for spelling errors ..."
+errs=`echo $CHECK | xargs misspell -source=text`
 if [ -z "$errs" ]; then
    echo "spell checker passed"
    exit 0
