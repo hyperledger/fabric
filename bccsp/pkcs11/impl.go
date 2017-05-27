@@ -150,6 +150,9 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 		// Re-randomized an ECDSA public key
 		case *bccsp.ECDSAReRandKeyOpts:
 			pubKey := ecdsaK.pub
+			if pubKey == nil {
+				return nil, errors.New("Public base key cannot be nil.")
+			}
 			reRandOpts := opts.(*bccsp.ECDSAReRandKeyOpts)
 			tempSK := &ecdsa.PublicKey{
 				Curve: pubKey.Curve,
@@ -208,6 +211,10 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 		case *bccsp.ECDSAReRandKeyOpts:
 			reRandOpts := opts.(*bccsp.ECDSAReRandKeyOpts)
 			pubKey := ecdsaK.pub.pub
+			if pubKey == nil {
+				return nil, errors.New("Public base key cannot be nil.")
+			}
+
 			secret := csp.getSecretValue(ecdsaK.ski)
 			if secret == nil {
 				return nil, errors.New("Could not obtain EC Private Key")
@@ -271,7 +278,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	// Validate arguments
 	if raw == nil {
-		return nil, errors.New("Invalid raw. Cannot be nil")
+		return nil, errors.New("Invalid raw. Cannot be nil.")
 	}
 
 	if opts == nil {
@@ -414,7 +421,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		case *rsa.PublicKey:
 			return csp.KeyImport(pk, &bccsp.RSAGoPublicKeyImportOpts{Temporary: opts.Ephemeral()})
 		default:
-			return nil, errors.New("Certificate public key type not recognized. Supported keys: [ECDSA, RSA]")
+			return nil, errors.New("Certificate's public key type not recognized. Supported keys: [ECDSA, RSA]")
 		}
 
 	default:

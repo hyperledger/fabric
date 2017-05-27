@@ -40,6 +40,8 @@ import (
 	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -57,6 +59,9 @@ type testConfig struct {
 }
 
 func TestMain(m *testing.M) {
+	// Activate DEBUG level to cover listAttrs function
+	logging.SetLevel(logging.DEBUG, "bccsp_p11")
+
 	ks, err := sw.NewFileBasedKeyStore(nil, os.TempDir(), false)
 	if err != nil {
 		fmt.Printf("Failed initiliazing KeyStore [%s]", err)
@@ -105,6 +110,61 @@ func TestMain(m *testing.M) {
 		}
 	}
 	os.Exit(0)
+}
+
+func TestNew(t *testing.T) {
+	opts := PKCS11Opts{
+		HashFamily: "SHA2",
+		SecLevel:   256,
+		SoftVerify: false,
+		Sensitive:  true,
+		Library:    "lib",
+		Label:      "ForFabric",
+		Pin:        "98765432",
+	}
+
+	// Setup PKCS11 library and provide initial set of values
+	lib, _, _ := FindPKCS11Lib()
+	opts.Library = lib
+
+	// Test for nil keystore
+	_, err := New(opts, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid bccsp.KeyStore instance. It must be different from nil.")
+
+	// Test for invalid PKCS11 loadLib
+	opts.Library = ""
+	_, err = New(opts, currentKS)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Failed initializing PKCS11 library")
+}
+
+func TestFindPKCS11LibEnvVars(t *testing.T) {
+	const (
+		dummy_PKCS11_LIB   = "/usr/lib/pkcs11"
+		dummy_PKCS11_PIN   = "98765432"
+		dummy_PKCS11_LABEL = "testing"
+	)
+
+	// Set environment variables used for test and preserve
+	// original values for restoration after test completion
+	orig_PKCS11_LIB := os.Getenv("PKCS11_LIB")
+	os.Setenv("PKCS11_LIB", dummy_PKCS11_LIB)
+
+	orig_PKCS11_PIN := os.Getenv("PKCS11_PIN")
+	os.Setenv("PKCS11_PIN", dummy_PKCS11_PIN)
+
+	orig_PKCS11_LABEL := os.Getenv("PKCS11_LABEL")
+	os.Setenv("PKCS11_LABEL", dummy_PKCS11_LABEL)
+
+	lib, pin, label := FindPKCS11Lib()
+	assert.EqualValues(t, dummy_PKCS11_LIB, lib, "FindPKCS11Lib did not return expected library")
+	assert.EqualValues(t, dummy_PKCS11_PIN, pin, "FindPKCS11Lib did not return expected pin")
+	assert.EqualValues(t, dummy_PKCS11_LABEL, label, "FindPKCS11Lib did not return expected label")
+
+	os.Setenv("PKCS11_LIB", orig_PKCS11_LIB)
+	os.Setenv("PKCS11_PIN", orig_PKCS11_PIN)
+	os.Setenv("PKCS11_LABEL", orig_PKCS11_LABEL)
 }
 
 func TestInvalidNewParameter(t *testing.T) {
