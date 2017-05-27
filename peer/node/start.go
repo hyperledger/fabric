@@ -23,15 +23,11 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
@@ -46,7 +42,6 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
-	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -69,7 +64,7 @@ func startCmd() *cobra.Command {
 	flags := nodeStartCmd.Flags()
 	flags.BoolVarP(&chaincodeDevMode, "peer-chaincodedev", "", false,
 		"Whether peer in chaincode development mode")
-	flags.BoolVarP(&peerDefaultChain, "peer-defaultchain", "", true,
+	flags.BoolVarP(&peerDefaultChain, "peer-defaultchain", "", false,
 		"Whether to start peer with chain testchainid")
 	flags.StringVarP(&orderingEndpoint, "orderer", "o", "orderer:7050", "Ordering service endpoint")
 
@@ -182,44 +177,6 @@ func serve(args []string) error {
 
 	//initialize system chaincodes
 	initSysCCs()
-
-	// Begin startup of default chain
-	if peerDefaultChain {
-		if orderingEndpoint == "" {
-			logger.Panic("No ordering service endpoint provided, please use -o option.")
-		}
-
-		if len(strings.Split(orderingEndpoint, ":")) != 2 {
-			logger.Panicf("Invalid format of ordering service endpoint, %s.", orderingEndpoint)
-		}
-
-		chainID := util.GetTestChainID()
-
-		var block *cb.Block
-
-		func() {
-			defer func() {
-				if err := recover(); err != nil {
-					logger.Fatalf("Peer configured to start with the default test chain, but supporting configuration files did not match.  Please ensure that configtx.yaml contains the unmodified SampleSingleMSPSolo profile and that sampleconfig/msp is present.\n%s", err)
-				}
-			}()
-
-			genConf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
-			genConf.Orderer.Addresses = []string{orderingEndpoint}
-			genConf.Application.Organizations[0].Name = XXXDefaultChannelMSPID
-			genConf.Application.Organizations[0].ID = XXXDefaultChannelMSPID
-			block = provisional.New(genConf).GenesisBlockForChannel(chainID)
-		}()
-
-		//this creates testchainid and sets up gossip
-		if err = peer.CreateChainFromBlock(block); err == nil {
-			logger.Infof("create chain [%s]", chainID)
-			scc.DeploySysCCs(chainID)
-			logger.Infof("Deployed system chaincodes on %s", chainID)
-		} else {
-			logger.Errorf("create default chain [%s] failed with %s", chainID, err)
-		}
-	}
 
 	//this brings up all the chains (including testchainid)
 	peer.Initialize(func(cid string) {
