@@ -411,7 +411,7 @@ func TestSignAndVerify(t *testing.T) {
 func TestSignAndVerifyFailures(t *testing.T) {
 	msg := []byte("foo")
 
-	id, err := localMsp.GetDefaultSigningIdentity()
+	id, err := localMspBad.GetDefaultSigningIdentity()
 	if err != nil {
 		t.Fatalf("GetSigningIdentity should have succeeded")
 		return
@@ -512,7 +512,7 @@ func TestGetOU(t *testing.T) {
 }
 
 func TestGetOUFail(t *testing.T) {
-	id, err := localMsp.GetDefaultSigningIdentity()
+	id, err := localMspBad.GetDefaultSigningIdentity()
 	if err != nil {
 		t.Fatalf("GetSigningIdentity should have succeeded")
 		return
@@ -836,6 +836,9 @@ func TestIdentityPolicyPrincipalFails(t *testing.T) {
 
 var conf *msp.MSPConfig
 var localMsp MSP
+
+// Required because deleting the cert or msp options from localMsp causes parallel tests to fail
+var localMspBad MSP
 var mspMgr MSPManager
 
 func TestMain(m *testing.M) {
@@ -858,7 +861,19 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
+	localMspBad, err = NewBccspMsp()
+	if err != nil {
+		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
 	err = localMsp.Setup(conf)
+	if err != nil {
+		fmt.Printf("Setup for msp should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	err = localMspBad.Setup(conf)
 	if err != nil {
 		fmt.Printf("Setup for msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
