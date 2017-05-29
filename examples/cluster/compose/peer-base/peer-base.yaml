@@ -17,4 +17,4 @@ services:
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=compose_default
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: peer node start --peer-defaultchain=false
+    command: peer node start
