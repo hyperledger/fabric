@@ -98,10 +98,7 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 		return nil
 	}
 
-	stateInfoExpirationInterval := conf.PublishStateInfoInterval * 100
-
 	g := &gossipServiceImpl{
-		stateInfoMsgStore:     channel.NewStateInfoMessageStore(stateInfoExpirationInterval),
 		selfOrg:               secAdvisor.OrgByPeerIdentity(selfIdentity),
 		secAdvisor:            secAdvisor,
 		selfIdentity:          selfIdentity,
@@ -118,6 +115,7 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 		stopSignal:            &sync.WaitGroup{},
 		includeIdentityPeriod: time.Now().Add(conf.PublishCertPeriod),
 	}
+	g.stateInfoMsgStore = g.newStateInfoMsgStore()
 
 	g.chanState = newChannelState(g)
 	g.emitter = newBatchingEmitter(conf.PropagateIterations,
@@ -139,6 +137,16 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 	go g.periodicalIdentityValidationAndExpiration()
 
 	return g
+}
+
+func (g *gossipServiceImpl) newStateInfoMsgStore() msgstore.MessageStore {
+	pol := proto.NewGossipMessageComparator(0)
+	return msgstore.NewMessageStoreExpirable(pol,
+		msgstore.Noop,
+		g.conf.PublishStateInfoInterval*100,
+		nil,
+		nil,
+		msgstore.Noop)
 }
 
 func (g *gossipServiceImpl) selfNetworkMember() discovery.NetworkMember {

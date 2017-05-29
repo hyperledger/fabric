@@ -47,7 +47,7 @@ var conf = Config{
 	PullInterval:                time.Second,
 	RequestStateInfoInterval:    time.Millisecond * 100,
 	BlockExpirationInterval:     time.Second * 6,
-	StateInfoExpirationInterval: time.Second * 6,
+	StateInfoCacheSweepInterval: time.Second,
 }
 
 func init() {
@@ -196,6 +196,10 @@ func (ga *gossipAdapterMock) GetMembership() []discovery.NetworkMember {
 
 // Lookup returns a network member, or nil if not found
 func (ga *gossipAdapterMock) Lookup(PKIID common.PKIidType) *discovery.NetworkMember {
+	// Ensure we have configured Lookup prior
+	if !ga.wasMocked("Lookup") {
+		return &discovery.NetworkMember{}
+	}
 	args := ga.Called(PKIID)
 	if args.Get(0) == nil {
 		return nil
@@ -205,14 +209,7 @@ func (ga *gossipAdapterMock) Lookup(PKIID common.PKIidType) *discovery.NetworkMe
 
 func (ga *gossipAdapterMock) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	// Ensure we have configured Send prior
-	foundSend := false
-	for _, ec := range ga.ExpectedCalls {
-		if ec.Method == "Send" {
-			foundSend = true
-		}
-
-	}
-	if !foundSend {
+	if !ga.wasMocked("Send") {
 		return
 	}
 	ga.Called(msg, peers)
@@ -236,6 +233,18 @@ func (ga *gossipAdapterMock) GetOrgOfPeer(PKIIID common.PKIidType) api.OrgIdenti
 
 func (ga *gossipAdapterMock) GetIdentityByPKIID(pkiID common.PKIidType) api.PeerIdentityType {
 	return api.PeerIdentityType(pkiID)
+}
+
+func (ga *gossipAdapterMock) wasMocked(methodName string) bool {
+	// The following On call is just to synchronize the ExpectedCalls
+	// access with 'On' calls from the test goroutine
+	ga.On("bla", mock.Anything)
+	for _, ec := range ga.ExpectedCalls {
+		if ec.Method == methodName {
+			return true
+		}
+	}
+	return false
 }
 
 func configureAdapter(adapter *gossipAdapterMock, members ...discovery.NetworkMember) {
@@ -265,6 +274,98 @@ func TestBadInput(t *testing.T) {
 	gc.HandleMessage(&receivedMsg{msg: createDataUpdateMsg(0), PKIID: pkiIDnilOrg})
 }
 
+func TestMsgStoreNotExpire(t *testing.T) {
+	t.Parallel()
+
+	cs := &cryptoService{}
+
+	pkiID1 := common.PKIidType("1")
+	pkiID2 := common.PKIidType("2")
+	pkiID3 := common.PKIidType("3")
+
+	peer1 := discovery.NetworkMember{PKIid: pkiID2, InternalEndpoint: "1", Endpoint: "1"}
+	peer2 := discovery.NetworkMember{PKIid: pkiID2, InternalEndpoint: "2", Endpoint: "2"}
+	peer3 := discovery.NetworkMember{PKIid: pkiID3, InternalEndpoint: "3", Endpoint: "3"}
+
+	jcm := &joinChanMsg{
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(orgInChannelA): {},
+		},
+	}
+
+	adapter := new(gossipAdapterMock)
+	adapter.On("GetOrgOfPeer", pkiID1).Return(orgInChannelA)
+	adapter.On("GetOrgOfPeer", pkiID2).Return(orgInChannelA)
+	adapter.On("GetOrgOfPeer", pkiID3).Return(orgInChannelA)
+
+	adapter.On("ValidateStateInfoMessage", mock.Anything).Return(nil)
+	adapter.On("GetMembership").Return([]discovery.NetworkMember{peer2, peer3})
+	adapter.On("DeMultiplex", mock.Anything)
+	adapter.On("Gossip", mock.Anything)
+	adapter.On("GetConf").Return(conf)
+
+	gc := NewGossipChannel(pkiID1, orgInChannelA, cs, channelA, adapter, jcm)
+	gc.UpdateStateInfo(createStateInfoMsg(1, pkiID1, channelA))
+	// Receive StateInfo messages from other peers
+	gc.HandleMessage(&receivedMsg{PKIID: pkiID2, msg: createStateInfoMsg(1, pkiID2, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiID3, msg: createStateInfoMsg(1, pkiID3, channelA)})
+
+	simulateStateInfoRequest := func(pkiID []byte, outChan chan *proto.SignedGossipMessage) {
+		sentMessages := make(chan *proto.GossipMessage, 1)
+		// Ensure we respond to stateInfoSnapshot requests with valid MAC
+		snapshotReq := &receivedMsg{
+			PKIID: pkiID,
+			msg: (&proto.GossipMessage{
+				Tag: proto.GossipMessage_CHAN_OR_ORG,
+				Content: &proto.GossipMessage_StateInfoPullReq{
+					StateInfoPullReq: &proto.StateInfoPullRequest{
+						Channel_MAC: GenerateMAC(pkiID, channelA),
+					},
+				},
+			}).NoopSign(),
+		}
+		snapshotReq.On("Respond", mock.Anything).Run(func(args mock.Arguments) {
+			sentMessages <- args.Get(0).(*proto.GossipMessage)
+		})
+
+		go gc.HandleMessage(snapshotReq)
+		select {
+		case <-time.After(time.Second):
+			t.Fatal("Haven't received a state info snapshot on time")
+		case msg := <-sentMessages:
+			for _, el := range msg.GetStateSnapshot().Elements {
+				sMsg, err := el.ToGossipMessage()
+				assert.NoError(t, err)
+				outChan <- sMsg
+			}
+		}
+	}
+
+	c := make(chan *proto.SignedGossipMessage, 3)
+	simulateStateInfoRequest(pkiID2, c)
+	assert.Len(t, c, 3)
+
+	c = make(chan *proto.SignedGossipMessage, 3)
+	simulateStateInfoRequest(pkiID3, c)
+	assert.Len(t, c, 3)
+
+	// Now simulate an expiration of peer 3 in the membership view
+	adapter.On("Lookup", pkiID1).Return(&peer1)
+	adapter.On("Lookup", pkiID2).Return(&peer2)
+	adapter.On("Lookup", pkiID3).Return(nil)
+	// Ensure that we got at least 1 sweep before continuing
+	// the test
+	time.Sleep(conf.StateInfoCacheSweepInterval * 2)
+
+	c = make(chan *proto.SignedGossipMessage, 3)
+	simulateStateInfoRequest(pkiID2, c)
+	assert.Len(t, c, 2)
+
+	c = make(chan *proto.SignedGossipMessage, 3)
+	simulateStateInfoRequest(pkiID3, c)
+	assert.Len(t, c, 2)
+}
+
 func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	t.Parallel()
 	ledgerHeight := 5
@@ -290,6 +391,7 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{})
 	stateInfoMsg := createStateInfoMsg(ledgerHeight, pkiIDInOrg1, channelA)
 	gc.UpdateStateInfo(stateInfoMsg)
+	defer gc.Stop()
 
 	var msg *proto.SignedGossipMessage
 	select {
@@ -303,14 +405,6 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	height, err := strconv.ParseInt(string(md), 10, 64)
 	assert.NoError(t, err, "ReceivedMetadata is invalid")
 	assert.Equal(t, ledgerHeight, int(height), "Received different ledger height than expected")
-
-	// We will not update StateInfo in store, so store will become empty
-	time.Sleep(conf.StateInfoExpirationInterval + time.Second)
-	//Store is empty
-	assert.Equal(t, 0, gc.(*gossipChannel).stateInfoMsgStore.MessageStore.Size(), "StateInfo MessageStore should be empty")
-	assert.Equal(t, 0, gc.(*gossipChannel).stateInfoMsgStore.MembershipStore.Size(), "StateInfo MembershipStore should be empty")
-
-	gc.Stop()
 }
 
 func TestChannelMsgStoreEviction(t *testing.T) {
@@ -733,7 +827,7 @@ func TestChannelAddToMessageStore(t *testing.T) {
 	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
 }
 
-func TestChannelAddToMessageStoreExpire(t *testing.T) {
+func TestChannelBlockExpiration(t *testing.T) {
 	t.Parallel()
 
 	cs := &cryptoService{}
@@ -747,7 +841,6 @@ func TestChannelAddToMessageStoreExpire(t *testing.T) {
 	adapter.On("DeMultiplex", mock.Anything).Run(func(arg mock.Arguments) {
 		demuxedMsgs <- arg.Get(0).(*proto.SignedGossipMessage)
 	})
-
 	respondedChan := make(chan *proto.GossipMessage, 1)
 	messageRelayer := func(arg mock.Arguments) {
 		msg := arg.Get(0).(*proto.GossipMessage)
@@ -1061,45 +1154,10 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	// Ensure we don't crash if we got a stateInfoMessage from a peer that its org isn't known
 	invalidStateInfoSnapshot = stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, common.PKIidType("unknown"), channelA))
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: invalidStateInfoSnapshot})
-	// Lets expire msg in store
-	time.Sleep(gc.(*gossipChannel).GetConf().StateInfoExpirationInterval + time.Second)
-
-	// Lets check is state info store can't add expired msg but appear as empty to outside world
-	gc.HandleMessage(stateInfoMsg)
-	assert.Empty(t, gc.GetPeers())
-	// Lets see if snapshot now empty, after message in store expired
-	go gc.HandleMessage(snapshotReq)
-	select {
-	case <-time.After(time.Second):
-		t.Fatal("Haven't received a state info snapshot on time")
-	case msg := <-sentMessages:
-		elements := msg.GetStateSnapshot().Elements
-		assert.Len(t, elements, 0, "StateInfo snapshot should contain zero messages")
-	}
-
-	// Lets make sure msg removed from store
-	time.Sleep(gc.(*gossipChannel).GetConf().StateInfoExpirationInterval + time.Second)
-
-	// Lets check is state info store add just expired msg
-	gc.HandleMessage(stateInfoMsg)
-	assert.NotEmpty(t, gc.GetPeers())
-	// Lets see if snapshot is not empty now, after message was added back to store
-	go gc.HandleMessage(snapshotReq)
-	select {
-	case <-time.After(time.Second):
-		t.Fatal("Haven't received a state info snapshot on time")
-	case msg := <-sentMessages:
-		elements := msg.GetStateSnapshot().Elements
-		assert.Len(t, elements, 1)
-		sMsg, err := elements[0].ToGossipMessage()
-		assert.NoError(t, err)
-		assert.Equal(t, []byte("4"), sMsg.GetStateInfo().Metadata)
-	}
 }
 
 func TestInterOrgExternalEndpointDisclosure(t *testing.T) {
 	t.Parallel()
-
 	cs := &cryptoService{}
 	adapter := new(gossipAdapterMock)
 	pkiID1 := common.PKIidType("withExternalEndpoint")
@@ -1107,6 +1165,7 @@ func TestInterOrgExternalEndpointDisclosure(t *testing.T) {
 	pkiID3 := common.PKIidType("pkiIDinOrg2")
 	adapter.On("Lookup", pkiID1).Return(&discovery.NetworkMember{Endpoint: "localhost:5000"})
 	adapter.On("Lookup", pkiID2).Return(&discovery.NetworkMember{})
+	adapter.On("Lookup", pkiID3).Return(&discovery.NetworkMember{})
 	adapter.On("GetOrgOfPeer", pkiID1).Return(orgInChannelA)
 	adapter.On("GetOrgOfPeer", pkiID2).Return(orgInChannelA)
 	adapter.On("GetOrgOfPeer", pkiID3).Return(api.OrgIdentityType("ORG2"))

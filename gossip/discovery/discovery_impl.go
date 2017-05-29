@@ -137,6 +137,9 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 
 // Lookup returns a network member, or nil if not found
 func (d *gossipDiscoveryImpl) Lookup(PKIID common.PKIidType) *NetworkMember {
+	if bytes.Equal(PKIID, d.self.PKIid) {
+		return &d.self
+	}
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 	nm := d.id2Member[string(PKIID)]
