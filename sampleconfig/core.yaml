@@ -38,7 +38,7 @@ logging:
     policies:   warning
     grpc:       error
 
-    # Format for the peer logs
+    # Message format for the peer logs
     format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
 
 ###############################################################################
@@ -52,11 +52,10 @@ peer:
     id: jdoe
 
     # The networkId allows for logical seperation of networks
-    # networkId: dev
-    # networkId: test
     networkId: dev
 
-    # The Address this Peer will listen on
+    # The Address at local network interface this Peer will listen on.
+    # By default, it will listen on all network interfaces
     listenAddress: 0.0.0.0:7051
     # When used as peer config, represents the endpoint to other peers in the same organization
     # for peers in other organization, see gossip.externalEndpoint
@@ -154,8 +153,7 @@ peer:
             # Time between peer sends propose message and declare itself as a leader (sends declaration message) (unit: second)
             leaderElectionDuration: 5s
 
-    # Validator defines whether this peer is a validating peer or not, and if
-    # it is enabled, what consensus plugin to load
+    # EventHub related configuration
     events:
         # The address that the Event service will be enabled on the validator
         address: 0.0.0.0:7053
