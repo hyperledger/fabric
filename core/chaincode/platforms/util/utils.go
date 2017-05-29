@@ -20,13 +20,12 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"io"
-
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -147,7 +146,6 @@ func DockerBuild(opts DockerBuildOptions) error {
 	if err != nil {
 		return fmt.Errorf("Error creating docker client: %s", err)
 	}
-
 	if opts.Image == "" {
 		opts.Image = cutil.GetDockerfileFromConfig("chaincode.builder")
 		if opts.Image == "" {
