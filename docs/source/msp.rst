@@ -69,6 +69,10 @@ verification. These parameters are deduced by
 - And they *list* one or more of the Organizational Units of the MSP configuration
   in the ``OU`` field of their X.509 certificate structure.
 
+For more information on the validity of identities in the current MSP implementation
+we refer the reader to the identity validation
+rules :doc:`msp-identity-validity-rules`.
+
 In addition to verification related parameters, for the MSP to enable
 the node on which it is instantiated to sign or authenticate, one needs to
 specify:
