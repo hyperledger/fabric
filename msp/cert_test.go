@@ -67,63 +67,10 @@ func TestSanitizeCertInvalidInput(t *testing.T) {
 }
 
 func TestSanitizeCert(t *testing.T) {
-	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	assert.NoError(t, err)
-
+	var k *ecdsa.PrivateKey
 	var cert *x509.Certificate
 	for {
-		// Generate a self-signed certificate
-		testExtKeyUsage := []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}
-		testUnknownExtKeyUsage := []asn1.ObjectIdentifier{[]int{1, 2, 3}, []int{2, 59, 1}}
-		extraExtensionData := []byte("extra extension")
-		commonName := "test.example.com"
-		template := x509.Certificate{
-			SerialNumber: big.NewInt(1),
-			Subject: pkix.Name{
-				CommonName:   commonName,
-				Organization: []string{"Σ Acme Co"},
-				Country:      []string{"US"},
-				ExtraNames: []pkix.AttributeTypeAndValue{
-					{
-						Type:  []int{2, 5, 4, 42},
-						Value: "Gopher",
-					},
-					// This should override the Country, above.
-					{
-						Type:  []int{2, 5, 4, 6},
-						Value: "NL",
-					},
-				},
-			},
-			NotBefore:             time.Now().Add(-1 * time.Hour),
-			NotAfter:              time.Now().Add(1 * time.Hour),
-			SignatureAlgorithm:    x509.ECDSAWithSHA256,
-			SubjectKeyId:          []byte{1, 2, 3, 4},
-			KeyUsage:              x509.KeyUsageCertSign,
-			ExtKeyUsage:           testExtKeyUsage,
-			UnknownExtKeyUsage:    testUnknownExtKeyUsage,
-			BasicConstraintsValid: true,
-			IsCA:                  true,
-			OCSPServer:            []string{"http://ocurrentBCCSP.example.com"},
-			IssuingCertificateURL: []string{"http://crt.example.com/ca1.crt"},
-			DNSNames:              []string{"test.example.com"},
-			EmailAddresses:        []string{"gopher@golang.org"},
-			IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1).To4(), net.ParseIP("2001:4860:0:2001::68")},
-			PolicyIdentifiers:     []asn1.ObjectIdentifier{[]int{1, 2, 3}},
-			PermittedDNSDomains:   []string{".example.com", "example.com"},
-			CRLDistributionPoints: []string{"http://crl1.example.com/ca1.crl", "http://crl2.example.com/ca1.crl"},
-			ExtraExtensions: []pkix.Extension{
-				{
-					Id:    []int{1, 2, 3, 4},
-					Value: extraExtensionData,
-				},
-			},
-		}
-		certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &k.PublicKey, k)
-		assert.NoError(t, err)
-
-		cert, err = x509.ParseCertificate(certRaw)
-		assert.NoError(t, err)
+		k, cert = generateSelfSignedCert(t, time.Now())
 
 		_, s, err := sw.UnmarshalECDSASignature(cert.Signature)
 		assert.NoError(t, err)
@@ -146,4 +93,91 @@ func TestSanitizeCert(t *testing.T) {
 	lowS, err := sw.IsLowS(&k.PublicKey, s)
 	assert.NoError(t, err)
 	assert.True(t, lowS)
+}
+
+func TestCertExpiration(t *testing.T) {
+	msp := &bccspmsp{}
+	msp.opts = &x509.VerifyOptions{}
+	msp.opts.DNSName = "test.example.com"
+
+	// Certificate is in the future
+	_, cert := generateSelfSignedCert(t, time.Now().Add(24*time.Hour))
+	msp.opts.Roots = x509.NewCertPool()
+	msp.opts.Roots.AddCert(cert)
+	_, err := msp.getUniqueValidationChain(cert)
+	assert.NoError(t, err)
+
+	// Certificate is in the past
+	_, cert = generateSelfSignedCert(t, time.Now().Add(-24*time.Hour))
+	msp.opts.Roots = x509.NewCertPool()
+	msp.opts.Roots.AddCert(cert)
+	_, err = msp.getUniqueValidationChain(cert)
+	assert.NoError(t, err)
+
+	// Certificate is in the middle
+	_, cert = generateSelfSignedCert(t, time.Now())
+	msp.opts.Roots = x509.NewCertPool()
+	msp.opts.Roots.AddCert(cert)
+	_, err = msp.getUniqueValidationChain(cert)
+	assert.NoError(t, err)
+}
+
+func generateSelfSignedCert(t *testing.T, now time.Time) (*ecdsa.PrivateKey, *x509.Certificate) {
+	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	assert.NoError(t, err)
+
+	// Generate a self-signed certificate
+	testExtKeyUsage := []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}
+	testUnknownExtKeyUsage := []asn1.ObjectIdentifier{[]int{1, 2, 3}, []int{2, 59, 1}}
+	extraExtensionData := []byte("extra extension")
+	commonName := "test.example.com"
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			CommonName:   commonName,
+			Organization: []string{"Σ Acme Co"},
+			Country:      []string{"US"},
+			ExtraNames: []pkix.AttributeTypeAndValue{
+				{
+					Type:  []int{2, 5, 4, 42},
+					Value: "Gopher",
+				},
+				// This should override the Country, above.
+				{
+					Type:  []int{2, 5, 4, 6},
+					Value: "NL",
+				},
+			},
+		},
+		NotBefore:             now.Add(-1 * time.Hour),
+		NotAfter:              now.Add(1 * time.Hour),
+		SignatureAlgorithm:    x509.ECDSAWithSHA256,
+		SubjectKeyId:          []byte{1, 2, 3, 4},
+		KeyUsage:              x509.KeyUsageCertSign,
+		ExtKeyUsage:           testExtKeyUsage,
+		UnknownExtKeyUsage:    testUnknownExtKeyUsage,
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		OCSPServer:            []string{"http://ocurrentBCCSP.example.com"},
+		IssuingCertificateURL: []string{"http://crt.example.com/ca1.crt"},
+		DNSNames:              []string{"test.example.com"},
+		EmailAddresses:        []string{"gopher@golang.org"},
+		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1).To4(), net.ParseIP("2001:4860:0:2001::68")},
+		PolicyIdentifiers:     []asn1.ObjectIdentifier{[]int{1, 2, 3}},
+		PermittedDNSDomains:   []string{".example.com", "example.com"},
+		CRLDistributionPoints: []string{"http://crl1.example.com/ca1.crl", "http://crl2.example.com/ca1.crl"},
+		ExtraExtensions: []pkix.Extension{
+			{
+				Id:    []int{1, 2, 3, 4},
+				Value: extraExtensionData,
+			},
+		},
+	}
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &k.PublicKey, k)
+	assert.NoError(t, err)
+
+	cert, err := x509.ParseCertificate(certRaw)
+	assert.NoError(t, err)
+
+	return k, cert
 }
