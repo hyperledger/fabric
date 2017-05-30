@@ -63,17 +63,6 @@ func (s *SBFT) cutAndMaybeSend() {
 	s.maybeSendNextBatch()
 }
 
-func (s *SBFT) batchSize() uint64 {
-	size := uint64(0)
-	if len(s.batches) == 0 {
-		return size
-	}
-	for _, req := range s.batches[0] {
-		size += uint64(len(req.Payload))
-	}
-	return size
-}
-
 func (s *SBFT) maybeSendNextBatch() {
 	if s.batchTimer != nil {
 		s.batchTimer.Cancel()
