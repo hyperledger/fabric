@@ -8,6 +8,14 @@ First things first, please review the Hyperledger Project's `Code of
 Conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
 before participating. It is important that we keep things civil.
 
+Install prerequisites
+---------------------
+
+Before we begin, if you haven't already done so, you may wish to check that
+you have all the :doc:`prerequisites <prereqs>` installed on the platform(s)
+on which you'll be developing blockchain applications and/or operating
+Hyperledger Fabric.
+
 Getting a Linux Foundation account
 ----------------------------------
 
