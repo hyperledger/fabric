@@ -26,6 +26,7 @@ import (
 )
 
 func TestExecuteInvokeOnManyChains(t *testing.T) {
+	testForSkip(t)
 	//lets use 2 chains to test multi chains
 	chains := []string{"chain1", "chain2"}
 	lis, err := initPeer(chains...)
