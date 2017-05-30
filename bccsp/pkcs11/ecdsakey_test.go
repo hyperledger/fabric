@@ -60,8 +60,11 @@ func TestECDSAPKIXPublicKeyImportOptsKeyImporter(t *testing.T) {
 }
 
 func TestECDSAPrivateKeyImportOptsKeyImporter(t *testing.T) {
+	if currentBCCSP.(*impl).noPrivImport {
+		t.Skip("Key import turned off. Skipping Private Key Importer tests as they currently require Key Import.")
+	}
+
 	ki := currentBCCSP
-	ki.(*impl).noPrivImport = false
 
 	_, err := ki.KeyImport("Hello World", &bccsp.ECDSAPrivateKeyImportOpts{})
 	assert.Error(t, err)

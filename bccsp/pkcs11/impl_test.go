@@ -636,6 +636,14 @@ func TestECDSASign(t *testing.T) {
 	if len(signature) == 0 {
 		t.Fatal("Failed generating ECDSA key. Signature must be different from nil")
 	}
+
+	_, err = currentBCCSP.Sign(nil, digest, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid Key. It must not be nil.")
+
+	_, err = currentBCCSP.Sign(k, nil, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid digest. Cannot be empty.")
 }
 
 func TestECDSAVerify(t *testing.T) {
@@ -678,6 +686,18 @@ func TestECDSAVerify(t *testing.T) {
 		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
 	}
 
+	_, err = currentBCCSP.Verify(nil, signature, digest, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid Key. It must not be nil.")
+
+	_, err = currentBCCSP.Verify(pk, nil, digest, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid signature. Cannot be empty.")
+
+	_, err = currentBCCSP.Verify(pk, signature, nil, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid digest. Cannot be empty.")
+
 	// Import the exported public key
 	pkRaw, err := pk.Bytes()
 	if err != nil {
@@ -719,6 +739,14 @@ func TestECDSAKeyDeriv(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
 	}
+
+	_, err = currentBCCSP.KeyDeriv(nil, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid Key. It must not be nil.")
+
+	_, err = currentBCCSP.KeyDeriv(k, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid Opts parameter. It must not be nil.")
 
 	msg := []byte("Hello World")
 

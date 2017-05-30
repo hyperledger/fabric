@@ -174,6 +174,10 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 		t.Fatalf("Failed signing message [%s]", err)
 	}
 
+	_, _, err = currentBCCSP.(*impl).signP11ECDSA(nil, hash1)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Private key not found")
+
 	pass, err := currentBCCSP.(*impl).verifyP11ECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 1 [%s]", err)
