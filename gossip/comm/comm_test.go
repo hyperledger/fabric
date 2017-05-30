@@ -105,7 +105,8 @@ func (*naiveSecProvider) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityTyp
 
 func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 	endpoint := fmt.Sprintf("localhost:%d", port)
-	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec), []byte(endpoint), nil)
+	id := []byte(endpoint)
+	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec, id), id, nil)
 	return inst, err
 }
 
@@ -285,7 +286,8 @@ func TestProdConstructor(t *testing.T) {
 	srv, lsnr, dialOpts, certHash := createGRPCLayer(20000)
 	defer srv.Stop()
 	defer lsnr.Close()
-	comm1, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec), []byte("localhost:20000"), dialOpts)
+	id := []byte("localhost:20000")
+	comm1, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id), id, dialOpts)
 	comm1.(*commImpl).selfCertHash = certHash
 	go srv.Serve(lsnr)
 
@@ -293,7 +295,8 @@ func TestProdConstructor(t *testing.T) {
 	srv, lsnr, dialOpts, certHash = createGRPCLayer(30000)
 	defer srv.Stop()
 	defer lsnr.Close()
-	comm2, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec), []byte("localhost:30000"), dialOpts)
+	id = []byte("localhost:30000")
+	comm2, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id), id, dialOpts)
 	comm2.(*commImpl).selfCertHash = certHash
 	go srv.Serve(lsnr)
 	defer comm1.Stop()

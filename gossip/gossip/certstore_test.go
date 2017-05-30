@@ -122,7 +122,7 @@ func TestCertStoreShouldSucceed(t *testing.T) {
 	testCertificateUpdate(t, true, cs)
 }
 
-func TestCertExpiration(t *testing.T) {
+func TestCertRevocation(t *testing.T) {
 	identityExpCheckInterval := identityExpirationCheckInterval
 	defer func() {
 		identityExpirationCheckInterval = identityExpCheckInterval
@@ -222,6 +222,67 @@ func TestCertExpiration(t *testing.T) {
 	case <-time.After(time.Second * 5):
 		assert.Fail(t, "Didn't ask for identity, but should have. Looks like identity hasn't expired")
 	case <-askedForIdentity:
+	}
+}
+
+func TestCertExpiration(t *testing.T) {
+	// Scenario: In this test we make sure that a peer may not expire
+	// its own identity.
+	// This is important because the only way identities are gossiped
+	// transitively is via the pull mechanism.
+	// If a peer's own identity disappears from the pull mediator,
+	// it will never be sent to peers transitively.
+	// The test ensures that self identities don't expire
+	// in the following manner:
+	// It starts a peer and then sleeps twice the identity usage threshold,
+	// in order to make sure that its own identity should be expired.
+	// Then, it starts another peer, and listens to the messages sent
+	// between both peers, and looks for a few identity digests of the first peer.
+	// If such identity digest are detected, it means that the peer
+	// didn't expire its own identity.
+
+	// Backup original usageThreshold value
+	idUsageThreshold := identity.GetIdentityUsageThreshold()
+	identity.SetIdentityUsageThreshold(time.Second)
+	// Restore original usageThreshold value
+	defer identity.SetIdentityUsageThreshold(idUsageThreshold)
+
+	// Backup original identityInactivityCheckInterval value
+	inactivityCheckInterval := identityInactivityCheckInterval
+	identityInactivityCheckInterval = time.Second * 1
+	// Restore original identityInactivityCheckInterval value
+	defer func() {
+		identityInactivityCheckInterval = inactivityCheckInterval
+	}()
+
+	g1 := newGossipInstance(4321, 0, 0, 1)
+	defer g1.Stop()
+	time.Sleep(identity.GetIdentityUsageThreshold() * 2)
+	g2 := newGossipInstance(4322, 0, 0)
+	defer g2.Stop()
+
+	identities2Detect := 3
+	// Make the channel bigger than needed so goroutines won't get stuck
+	identitiesGotViaPull := make(chan struct{}, identities2Detect+100)
+	acceptIdentityPullMsgs := func(o interface{}) bool {
+		m := o.(proto.ReceivedMessage).GetGossipMessage()
+		if m.IsPullMsg() && m.IsDigestMsg() {
+			for _, dig := range m.GetDataDig().Digests {
+				if dig == "localhost:4321" {
+					identitiesGotViaPull <- struct{}{}
+				}
+			}
+		}
+		return false
+	}
+	g1.Accept(acceptIdentityPullMsgs, true)
+	for i := 0; i < identities2Detect; i++ {
+		select {
+		case <-identitiesGotViaPull:
+		case <-time.After(time.Second * 15):
+			assert.Fail(t, "Didn't detect an identity gossiped via pull in a timely manner")
+			return
+		}
 	}
 }
 
@@ -396,9 +457,10 @@ func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons pro
 		MemSvc: memberSvc,
 	}
 	pullMediator := pull.NewPullMediator(config, adapter)
+	selfIdentity := api.PeerIdentityType("SELF")
 	certStore = newCertStore(&pullerMock{
 		Mediator: pullMediator,
-	}, identity.NewIdentityMapper(cs), api.PeerIdentityType("SELF"), cs)
+	}, identity.NewIdentityMapper(cs, selfIdentity), selfIdentity, cs)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
