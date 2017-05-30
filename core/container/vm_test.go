@@ -29,14 +29,13 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flag.BoolVar(&runTests, "run-controller-tests", false, "run tests")
+	flag.BoolVar(&runTests, "run-controller-tests", true, "run tests")
 	flag.Parse()
 	testutil.SetupTestConfig()
 	os.Exit(m.Run())
 }
 
 func TestVM_ListImages(t *testing.T) {
-	t.Skip("No need to invoke list images.")
 	vm, err := NewVM()
 	if err != nil {
 		t.Fail()
@@ -84,12 +83,25 @@ func TestVM_GetChaincodePackageBytes(t *testing.T) {
 	assert.Error(t, err,
 		"GetChaincodePackageBytes did not return error when chaincode spec is nil")
 
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
+	spec := &pb.ChaincodeSpec{ChaincodeId: nil}
+	_, err = GetChaincodePackageBytes(spec)
+	assert.Error(t, err, "Error expected when GetChaincodePackageBytes is called with nil chaincode ID")
+	assert.Contains(t, err.Error(), "invalid chaincode spec")
+
+	spec = &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
 		ChaincodeId: nil,
 		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
 	_, err = GetChaincodePackageBytes(spec)
 	assert.Error(t, err,
 		"GetChaincodePackageBytes did not return error when chaincode ID is nil")
+}
+
+func TestVM_BuildChaincodeContainer(t *testing.T) {
+	vm, err := NewVM()
+	assert.NoError(t, err)
+	err = vm.BuildChaincodeContainer(nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Error getting chaincode package bytes")
 }
 
 func TestVM_Chaincode_Compile(t *testing.T) {
