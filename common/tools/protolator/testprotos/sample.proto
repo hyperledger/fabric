@@ -27,3 +27,10 @@ message SimpleMsg {
     map<string, string> map_field = 2;
     repeated string slice_field = 3;
 }
+
+// NestedMsg is designed to test the nested message component
+message NestedMsg {
+	SimpleMsg plain_nested_field = 1;
+	map<string,SimpleMsg> map_nested_field = 2;
+	repeated SimpleMsg slice_nested_field = 3;
+}
