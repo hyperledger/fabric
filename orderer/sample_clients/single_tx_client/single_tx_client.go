@@ -31,7 +31,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var logger = logging.MustGetLogger("sbft_test")
+var logger = logging.MustGetLogger("single_tx_client")
 
 var UPDATE byte = 0
 var SEND byte = 1

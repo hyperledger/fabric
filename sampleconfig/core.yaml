@@ -194,7 +194,7 @@ peer:
             # SHA2 is hardcoded in several places, not only BCCSP
             Hash: SHA2
             Security: 256
-            # Location of Key Store, can be subdirectory of SbftLocal.DataDir
+            # Location of Key Store
             FileKeyStore:
                 # If "", defaults to 'mspConfigPath'/keystore
                 # TODO: Ensure this is read with fabric/core/config.GetPath() once ready
