@@ -17,12 +17,14 @@
 package channel
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"testing"
 
@@ -31,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
 
@@ -203,7 +206,6 @@ func TestCreateChainWithDefaultAnchorPeers(t *testing.T) {
 }
 
 func TestCreateChainWithWaitSuccess(t *testing.T) {
-	t.Skip("intermittent UT failure FAB-4128")
 	InitMSP()
 
 	mockchain := "mockchain"
@@ -219,14 +221,14 @@ func TestCreateChainWithWaitSuccess(t *testing.T) {
 		Signer:           signer,
 		DeliverClient:    &mockDeliverClient{sendErr},
 	}
-	fakeOrderer := newOrderer(7050, t)
+	fakeOrderer := newOrderer(8101, t)
 	defer fakeOrderer.Shutdown()
 
 	cmd := createCmd(mockCF)
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchain, "-o", "localhost:7050"}
+	args := []string{"-c", mockchain, "-o", "localhost:8101", "-t", "10"}
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err != nil {
@@ -251,14 +253,14 @@ func TestCreateChainWithTimeoutErr(t *testing.T) {
 		Signer:           signer,
 		DeliverClient:    &mockDeliverClient{sendErr},
 	}
-	fakeOrderer := newOrderer(8050, t)
+	fakeOrderer := newOrderer(8102, t)
 	defer fakeOrderer.Shutdown()
 
 	cmd := createCmd(mockCF)
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchain, "-o", "localhost:8050", "-t", "1"}
+	args := []string{"-c", mockchain, "-o", "localhost:8102", "-t", "1"}
 	cmd.SetArgs(args)
 
 	expectedErrMsg := sendErr.Error()
@@ -379,12 +381,10 @@ func TestCreateChainFromTx(t *testing.T) {
 	InitMSP()
 
 	mockchannel := "mockchannel"
-
 	dir, err := ioutil.TempDir("/tmp", "createtestfromtx-")
 	if err != nil {
 		t.Fatalf("couldn't create temp dir")
 	}
-
 	defer os.RemoveAll(dir) // clean up
 
 	//this could be created by the create command
@@ -396,7 +396,6 @@ func TestCreateChainFromTx(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get default signer error: %v", err)
 	}
-
 	mockCF := &ChannelCmdFactory{
 		BroadcastFactory: mockBroadcastClientFactory,
 		Signer:           signer,
@@ -404,19 +403,36 @@ func TestCreateChainFromTx(t *testing.T) {
 	}
 
 	cmd := createCmd(mockCF)
-
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050"}
+	// Error case 0
+	args := []string{"-c", "", "-f", file, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
+	err = cmd.Execute()
+	assert.Error(t, err, "Create command should have failed because channel ID is not specified")
+	assert.Contains(t, err.Error(), "Must supply channel ID")
 
-	if _, err = createTxFile(file, cb.HeaderType_CONFIG_UPDATE, mockchannel); err != nil {
-		t.Fatalf("couldn't create tx file")
-	}
+	// Error case 1
+	args = []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050"}
+	cmd.SetArgs(args)
+	err = cmd.Execute()
+	assert.Error(t, err, "Create command should have failed because tx file does not exist")
+	var msgExpr = regexp.MustCompile(`channel create configuration tx file not found.*no such file or directory`)
+	assert.True(t, msgExpr.MatchString(err.Error()))
 
-	if err := cmd.Execute(); err != nil {
-		t.Errorf("create chain failed")
-	}
+	// Success case: -f option is empty
+	args = []string{"-c", mockchannel, "-f", "", "-o", "localhost:7050"}
+	cmd.SetArgs(args)
+	err = cmd.Execute()
+	assert.NoError(t, err)
+
+	// Success case
+	args = []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050"}
+	cmd.SetArgs(args)
+	_, err = createTxFile(file, cb.HeaderType_CONFIG_UPDATE, mockchannel)
+	assert.NoError(t, err, "Couldn't create tx file")
+	err = cmd.Execute()
+	assert.NoError(t, err)
 }
 
 func TestCreateChainInvalidTx(t *testing.T) {
@@ -488,4 +504,88 @@ func TestCreateChainInvalidTx(t *testing.T) {
 	} else if _, ok := err.(InvalidCreateTx); !ok {
 		t.Errorf("invalid error")
 	}
+}
+
+func TestCreateChainNilCF(t *testing.T) {
+	InitMSP()
+	mockchannel := "mockchannel"
+	dir, err := ioutil.TempDir("/tmp", "createinvaltest-")
+	assert.NoError(t, err, "Couldn't create temp dir")
+	defer os.RemoveAll(dir) // clean up
+
+	//this is created by create command
+	defer os.Remove(mockchannel + ".block")
+	file := filepath.Join(dir, mockchannel)
+
+	// Error case: grpc error
+	cmd := createCmd(nil)
+	AddFlags(cmd)
+	args := []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050"}
+	cmd.SetArgs(args)
+	err = cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "RPC failed fast due to transport failure")
+
+	// Error case: invalid ordering service endpoint
+	args = []string{"-c", mockchannel, "-f", file, "-o", "localhost"}
+	cmd.SetArgs(args)
+	err = cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Ordering service endpoint localhost is not valid or missing")
+
+	// Error case: invalid ca file
+	defer os.RemoveAll(dir) // clean up
+	args = []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050", "--tls", "true", "--cafile", dir + "/ca.pem"}
+	cmd.SetArgs(args)
+	err = cmd.Execute()
+	assert.Error(t, err)
+	var msgExpr = regexp.MustCompile(`Error connecting.*no such file or directory.*`)
+	assert.True(t, msgExpr.MatchString(err.Error()))
+}
+
+func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
+	// Error case 1
+	env := &cb.Envelope{}
+	env.Payload = make([]byte, 10)
+	var err error
+	env, err = sanityCheckAndSignChannelCreateTx(env)
+	assert.Error(t, err, "Error expected for nil payload")
+	assert.Contains(t, err.Error(), "bad payload")
+
+	// Error case 2
+	p := &cb.Payload{Header: nil}
+	data, err1 := proto.Marshal(p)
+	assert.NoError(t, err1)
+	env = &cb.Envelope{Payload: data}
+	env, err = sanityCheckAndSignChannelCreateTx(env)
+	assert.Error(t, err, "Error expected for bad payload header")
+	assert.Contains(t, err.Error(), "bad header")
+
+	// Error case 3
+	bites := bytes.NewBufferString("foo").Bytes()
+	p = &cb.Payload{Header: &cb.Header{ChannelHeader: bites}}
+	data, err = proto.Marshal(p)
+	assert.NoError(t, err)
+	env = &cb.Envelope{Payload: data}
+	env, err = sanityCheckAndSignChannelCreateTx(env)
+	assert.Error(t, err, "Error expected for bad channel header")
+	assert.Contains(t, err.Error(), "could not unmarshall channel header")
+
+	// Error case 4
+	mockchannel := "mockchannel"
+	cid := chainID
+	chainID = mockchannel
+	defer func() {
+		chainID = cid
+	}()
+	ch := &cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIG_UPDATE), ChannelId: mockchannel}
+	data, err = proto.Marshal(ch)
+	assert.NoError(t, err)
+	p = &cb.Payload{Header: &cb.Header{ChannelHeader: data}, Data: bytes.NewBufferString("foo").Bytes()}
+	data, err = proto.Marshal(p)
+	assert.NoError(t, err)
+	env = &cb.Envelope{Payload: data}
+	env, err = sanityCheckAndSignChannelCreateTx(env)
+	assert.Error(t, err, "Error expected for bad payload data")
+	assert.Contains(t, err.Error(), "Bad config update env")
 }

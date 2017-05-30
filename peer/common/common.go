@@ -41,6 +41,36 @@ import (
 // UndefinedParamValue defines what undefined parameters in the command line will initialise to
 const UndefinedParamValue = ""
 
+var (
+	// These function variables (xyzFnc) can be used to invoke corresponding xyz function
+	// this will allow the invoking packages to mock these functions in their unit test cases
+
+	// GetEndorserClientFnc is a function that returns a new endorser client connection,
+	// by default it is set to GetEndorserClient function
+	GetEndorserClientFnc func() (pb.EndorserClient, error)
+
+	// GetDefaultSignerFnc is a function that returns a default Signer(Default/PERR)
+	// by default it is set to GetDefaultSigner function
+	GetDefaultSignerFnc func() (msp.SigningIdentity, error)
+
+	// GetBroadcastClientFnc returns an instance of the BroadcastClient interface
+	// by default it is set to GetBroadcastClient function
+	GetBroadcastClientFnc func(orderingEndpoint string, tlsEnabled bool,
+		caFile string) (BroadcastClient, error)
+
+	// GetOrdererEndpointOfChainFnc returns orderer endpoints of given chain
+	// by default it is set to GetOrdererEndpointOfChain function
+	GetOrdererEndpointOfChainFnc func(chainID string, signer msp.SigningIdentity,
+		endorserClient pb.EndorserClient) ([]string, error)
+)
+
+func init() {
+	GetEndorserClientFnc = GetEndorserClient
+	GetDefaultSignerFnc = GetDefaultSigner
+	GetBroadcastClientFnc = GetBroadcastClient
+	GetOrdererEndpointOfChainFnc = GetOrdererEndpointOfChain
+}
+
 //InitConfig initializes viper config
 func InitConfig(cmdRoot string) error {
 	config.InitViper(nil, cmdRoot)
@@ -90,31 +120,6 @@ func GetAdminClient() (pb.AdminClient, error) {
 	}
 	adminClient := pb.NewAdminClient(clientConn)
 	return adminClient, nil
-}
-
-// SetLogLevelFromViper sets the log level for 'module' logger to the value in
-// core.yaml
-func SetLogLevelFromViper(module string) error {
-	var err error
-	if module == "" {
-		return fmt.Errorf("log level not set, no module name provided")
-	}
-	logLevelFromViper := viper.GetString("logging." + module)
-	err = CheckLogLevel(logLevelFromViper)
-	if err != nil {
-		return err
-	}
-	_, err = flogging.SetModuleLevel(module, logLevelFromViper)
-	return err
-}
-
-// CheckLogLevel checks that a given log level string is valid
-func CheckLogLevel(level string) error {
-	_, err := logging.LogLevel(level)
-	if err != nil {
-		err = errors.ErrorWithCallstack("LOG", "400", "Invalid log level provided - %s", level)
-	}
-	return err
 }
 
 // GetDefaultSigner return a default Signer(Default/PERR) for cli
@@ -188,4 +193,29 @@ func GetOrdererEndpointOfChain(chainID string, signer msp.SigningIdentity, endor
 	}
 
 	return configtxManager.ChannelConfig().OrdererAddresses(), nil
+}
+
+// SetLogLevelFromViper sets the log level for 'module' logger to the value in
+// core.yaml
+func SetLogLevelFromViper(module string) error {
+	var err error
+	if module == "" {
+		return fmt.Errorf("log level not set, no module name provided")
+	}
+	logLevelFromViper := viper.GetString("logging." + module)
+	err = CheckLogLevel(logLevelFromViper)
+	if err != nil {
+		return err
+	}
+	_, err = flogging.SetModuleLevel(module, logLevelFromViper)
+	return err
+}
+
+// CheckLogLevel checks that a given log level string is valid
+func CheckLogLevel(level string) error {
+	_, err := logging.LogLevel(level)
+	if err != nil {
+		err = errors.ErrorWithCallstack("LOG", "400", "Invalid log level provided - %s", level)
+	}
+	return err
 }

@@ -101,24 +101,24 @@ type ChannelCmdFactory struct {
 	BroadcastFactory BroadcastClientFactory
 }
 
-// InitCmdFactory init the ChannelCmdFactor with clients to endorser and orderer according to params
+// InitCmdFactory init the ChannelCmdFactory with clients to endorser and orderer according to params
 func InitCmdFactory(isEndorserRequired EndorserRequirement, isOrdererRequired OrdererRequirement) (*ChannelCmdFactory, error) {
 	var err error
 
 	cmdFact := &ChannelCmdFactory{}
 
-	cmdFact.Signer, err = common.GetDefaultSigner()
+	cmdFact.Signer, err = common.GetDefaultSignerFnc()
 	if err != nil {
 		return nil, fmt.Errorf("Error getting default signer: %s", err)
 	}
 
 	cmdFact.BroadcastFactory = func() (common.BroadcastClient, error) {
-		return common.GetBroadcastClient(orderingEndpoint, tls, caFile)
+		return common.GetBroadcastClientFnc(orderingEndpoint, tls, caFile)
 	}
 
 	//for join and list, we need the endorser as well
 	if isEndorserRequired {
-		cmdFact.EndorserClient, err = common.GetEndorserClient()
+		cmdFact.EndorserClient, err = common.GetEndorserClientFnc()
 		if err != nil {
 			return nil, fmt.Errorf("Error getting endorser client %s: %s", channelFuncName, err)
 		}
