@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -688,7 +689,7 @@ func (msp *bccspmsp) getUniqueValidationChain(cert *x509.Certificate) ([]*x509.C
 	if msp.opts == nil {
 		return nil, fmt.Errorf("The supplied identity has no verify options")
 	}
-	validationChains, err := cert.Verify(*(msp.opts))
+	validationChains, err := cert.Verify(msp.getValidityOptsForCert(cert))
 	if err != nil {
 		return nil, fmt.Errorf("The supplied identity is not valid, Verify() returned %s", err)
 	}
@@ -991,4 +992,20 @@ func (msp *bccspmsp) validateIdentityOUs(id *identity) error {
 	}
 
 	return nil
+}
+
+func (msp *bccspmsp) getValidityOptsForCert(cert *x509.Certificate) x509.VerifyOptions {
+	// First copy the opts to override the CurrentTime field
+	// in order to make the certificate passing the expiration test
+	// independently from the real local current time.
+	// This is a temporary workaround for FAB-3678
+
+	var tempOpts x509.VerifyOptions
+	tempOpts.Roots = msp.opts.Roots
+	tempOpts.DNSName = msp.opts.DNSName
+	tempOpts.Intermediates = msp.opts.Intermediates
+	tempOpts.KeyUsages = msp.opts.KeyUsages
+	tempOpts.CurrentTime = cert.NotBefore.Add(time.Second)
+
+	return tempOpts
 }
