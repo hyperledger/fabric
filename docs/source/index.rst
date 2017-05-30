@@ -73,7 +73,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
 
    arch-deep-dive
    txflow
-   Setup/ca-setup
+   Fabric CA's User Guide <http://hyperledger-fabric-ca.readthedocs.io/en/latest>
    endorsement-policies
    nodesdk
    orderingservice
