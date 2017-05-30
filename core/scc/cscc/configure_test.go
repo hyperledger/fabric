@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
+	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -180,18 +181,18 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout)
 
 	// Init the policy checker
-	policyManagerGetter := &policy.MockChannelPolicyManagerGetter{
+	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
 		Managers: map[string]policies.Manager{
-			"mytestchainid": &policy.MockChannelPolicyManager{MockPolicy: &policy.MockPolicy{Deserializer: &policy.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
+			"mytestchainid": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
 		},
 	}
 
-	identityDeserializer := &policy.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
+	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
 
 	e.policyChecker = policy.NewPolicyChecker(
 		policyManagerGetter,
 		identityDeserializer,
-		&policy.MockMSPPrincipalGetter{Principal: []byte("Alice")},
+		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
 	)
 
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
@@ -234,7 +235,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		t.Fatalf("cscc invoke JoinChain failed with: %v", err)
 	}
 	args = [][]byte{[]byte("GetConfigBlock"), []byte(chainID)}
-	policyManagerGetter.Managers["mytestchainid"].(*policy.MockChannelPolicyManager).MockPolicy.(*policy.MockPolicy).Deserializer.(*policy.MockIdentityDeserializer).Msg = sProp.ProposalBytes
+	policyManagerGetter.Managers["mytestchainid"].(*policymocks.MockChannelPolicyManager).MockPolicy.(*policymocks.MockPolicy).Deserializer.(*policymocks.MockIdentityDeserializer).Msg = sProp.ProposalBytes
 	if res := stub.MockInvokeWithSignedProposal("2", args, sProp); res.Status != shim.OK {
 		t.Fatalf("cscc invoke GetConfigBlock failed with: %v", res.Message)
 	}
@@ -263,24 +264,24 @@ func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
 	stub := shim.NewMockStub("PeerConfiger", e)
 
 	// Init the policy checker
-	policyManagerGetter := &policy.MockChannelPolicyManagerGetter{
+	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
 		Managers: map[string]policies.Manager{
-			"mytestchainid": &policy.MockChannelPolicyManager{MockPolicy: &policy.MockPolicy{Deserializer: &policy.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
+			"mytestchainid": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
 		},
 	}
 
-	identityDeserializer := &policy.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
+	identityDeserializer := &policymocks.MockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}
 
 	e.policyChecker = policy.NewPolicyChecker(
 		policyManagerGetter,
 		identityDeserializer,
-		&policy.MockMSPPrincipalGetter{Principal: []byte("Alice")},
+		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
 	)
 
 	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	identityDeserializer.Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
-	policyManagerGetter.Managers["mytestchainid"].(*policy.MockChannelPolicyManager).MockPolicy.(*policy.MockPolicy).Deserializer.(*policy.MockIdentityDeserializer).Msg = sProp.ProposalBytes
+	policyManagerGetter.Managers["mytestchainid"].(*policymocks.MockChannelPolicyManager).MockPolicy.(*policymocks.MockPolicy).Deserializer.(*policymocks.MockIdentityDeserializer).Msg = sProp.ProposalBytes
 
 	// Failed path: Not enough parameters
 	args := [][]byte{[]byte("UpdateConfigBlock")}
