@@ -102,9 +102,10 @@ func list(cf *ChannelCmdFactory) error {
 	if channels, err := client.getChannels(); err != nil {
 		return err
 	} else {
-		fmt.Println("Channels peers has joined to:")
+		logger.Infof("Channels peers has joined to: ")
+
 		for _, channel := range channels {
-			fmt.Println("\t", channel.ChannelId)
+			logger.Infof("%s ", channel.ChannelId)
 		}
 	}
 

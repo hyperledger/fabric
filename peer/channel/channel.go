@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -35,6 +36,8 @@ const (
 	shortDes        = "Operate a channel: create|fetch|update|join|list."
 	longDes         = "Operate a channel: create|fetch|update|join|list."
 )
+
+var logger = flogging.MustGetLogger("channelCmd")
 
 type OrdererRequirement bool
 type EndorserRequirement bool
@@ -151,12 +154,11 @@ func InitCmdFactory(isEndorserRequired EndorserRequirement, isOrdererRequired Or
 
 		client, err := ab.NewAtomicBroadcastClient(conn).Deliver(context.TODO())
 		if err != nil {
-			fmt.Println("Error connecting:", err)
-			return nil, err
+			return nil, fmt.Errorf("Error connecting due to  %s", err)
 		}
 
 		cmdFact.DeliverClient = newDeliverClient(conn, client, chainID)
 	}
-
+	logger.Infof("Endorser and orderer connections initialized")
 	return cmdFact, nil
 }
