@@ -13,3 +13,7 @@ privacy and confidentiality.
 Refer to the `multichannel design
 document <https://docs.google.com/document/d/1eRNxxQ0P8yp4Wh__Vi6ddaN_vhN2RQHP-IruHNUwyhc/edit#heading=h.hml58k6zw29h>`__
 for more detailed explanation on the mechanics and architecture.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

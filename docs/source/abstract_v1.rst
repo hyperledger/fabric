@@ -106,3 +106,7 @@ that will spawn the capabilities in v1.0:
 
 .. |HYPERLEDGERv1.0\_ANIMATION| image:: http://img.youtube.com/vi/EKa5Gh9whgU/0.jpg
    :target: http://www.youtube.com/watch?v=EKa5Gh9whgU
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

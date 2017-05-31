@@ -78,3 +78,7 @@ the security section of the membersrvc.yaml file)
 
 3. Last, make sure that path to the corresponding TLS Server Certificate
    is specified under ``security.client.cert.file``
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

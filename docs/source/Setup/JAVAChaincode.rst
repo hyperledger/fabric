@@ -176,3 +176,7 @@ Developing new JAVA chaincode
 5. Build this project using ``gradle -b build.gradle build``
 6. Run this chaincode after starting a peer in dev-mode as above using
    ``gradle -b build.gradle run``
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

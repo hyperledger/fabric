@@ -26,3 +26,7 @@ logic may be required – such that only contract counterparties and
 auditors can access and interpret their chaincode. Under these
 scenarios, counter parties would need to spin off a new child chain with
 only themselves as validators.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

@@ -167,3 +167,7 @@ What does this demonstrate?
    channel - even those that do not have the chaincode installed.
 -  Once the chaincode is installed on a peer, invokes and queries can
    access those states normally.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

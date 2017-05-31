@@ -52,3 +52,6 @@ These may both be built simply by typing `go build` in their respective director
 Profiling the ordering service is possible through a standard HTTP interface documented [here](https://golang.org/pkg/net/http/pprof). The profiling service can be configured using the **orderer.yaml** file, or through environment variables. To enable profiling set `ORDERER_GENERAL_PROFILE_ENABLED=true`, and optionally set `ORDERER_GENERAL_PROFILE_ADDRESS` to the desired network address for the profiling service. The default address is `0.0.0.0:6060` as in the Golang documentation.
 
 Note that failures of the profiling service, either at startup or anytime during the run, will cause the overall orderer service to fail. Therefore it is currently not recommended to enable profiling in production settings.
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+s

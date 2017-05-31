@@ -162,3 +162,6 @@ executed from Jenkins by Continuous Improvement processes.
   cd $GOPATH/src/github.com/hyperledger/fabric/bddtests/regression/ote
   go test -v -timeout 120m | go-junit-report > ote_report.xml
 ```
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+s

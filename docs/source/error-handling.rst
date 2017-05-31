@@ -144,3 +144,7 @@ General guidelines for error handling in Fabric
 - A panic should be handled within the same layer by throwing an internal error
   code/start a recovery process and should not be allowed to propagate to other
   packages.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

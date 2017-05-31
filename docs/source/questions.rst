@@ -12,3 +12,7 @@ the `mailing
 list <http://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__,
 or ask on `RocketChat <https://chat.hyperledger.org/>`__ (an
 alternative to Slack).
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

@@ -65,3 +65,7 @@ correctly. Always submit the full set of changes via Gerrit.
 
 When a change is included in the set to enable other changes, but it
 will not be part of the final set, please let the reviewers know this.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

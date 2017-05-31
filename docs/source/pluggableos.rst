@@ -10,3 +10,7 @@ kafka-based method.
 This JIRA issue outlines the proposal for a Simplified Byzantine Fault
 Tolerant consensus protocol -
 https://jira.hyperledger.org/browse/FAB-378
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

@@ -1848,3 +1848,6 @@
 * [5d674e4](https://github.com/hyperledger/fabric/commit/5d674e4) Log debug message when KDFKey is missing
 * [fb7da0d](https://github.com/hyperledger/fabric/commit/fb7da0d) Clarify process for adding and removing maintainers
 * [0716064](https://github.com/hyperledger/fabric/commit/0716064) transfer from GitHub hyperledger/fabric
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+s

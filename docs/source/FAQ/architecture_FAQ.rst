@@ -89,3 +89,7 @@ queried may be recovering and catching up on block processing?
 
 A. The client can query multiple peers, compare their block heights, compare their query results,
 and favor the peers at the higher block heights.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

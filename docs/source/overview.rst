@@ -21,3 +21,7 @@ fulfill its promise of a comprehensive, yet customizable, enterprise blockchain 
   be detected and traced by authorized regulators and auditors.
 * :ref:`Consensus` - Fabric's unique approach to consensus enables the
   flexibility and scalability needed for the enterprise.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

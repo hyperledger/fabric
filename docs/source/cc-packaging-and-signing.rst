@@ -89,3 +89,7 @@ The peer will support use of both raw ChaincodeDeploymentSpec and the
 package structure described in this document. This will allow existing
 commands and workflows to work which is especially useful in development
 and test phases.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

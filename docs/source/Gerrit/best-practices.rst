@@ -369,3 +369,7 @@ Author line.
 To make these configuration changes specifically for the current Git
 user, you must add the path option ``--global`` to ``config`` as
 follows:
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

@@ -66,3 +66,7 @@ If there is an item you are interested in working on, want more
 information or have questions, or if there is an item that you feel
 needs to be in higher priority, please add comments directly to the Jira
 item. All feedback and help is very much appreciated.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

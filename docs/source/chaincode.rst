@@ -510,3 +510,7 @@ Deploy a chaincode
 
 [WIP] - the CLI commands need to be refactored based on the new
 deployment model. Channel Create and Channel Join will remain the same.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

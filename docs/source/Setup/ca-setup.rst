@@ -1306,3 +1306,7 @@ for the Fabric CA server, set the ``db.tls.client.certfile``,
 and ``db.tls.client.keyfile`` configuration properties.
 
 `Back to Top`_
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

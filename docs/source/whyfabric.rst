@@ -50,3 +50,7 @@ retail industries.
 We welcome you to the Hyperledger Fabric community and are keen to learn
 of your architectural and business requirements, and help determine how
 Hyperledger Fabric can be leveraged to support your use cases.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

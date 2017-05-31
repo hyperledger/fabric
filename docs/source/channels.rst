@@ -37,3 +37,7 @@ verifiable membership on the channel. This isolation of peers and ledger data,
 by channel, allows network members that require private and confidential
 transactions to coexist with business competitors and other restricted members,
 on the same blockchain network.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

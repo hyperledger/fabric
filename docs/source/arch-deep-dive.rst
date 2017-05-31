@@ -829,3 +829,7 @@ also be combined:
       orderers.
 
 .. |Illustration of the transaction flow (common-case path).| image:: http://vukolic.com/hyperledger/blocks-3.png
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

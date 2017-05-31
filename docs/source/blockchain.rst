@@ -270,3 +270,7 @@ Hyperledger Fabric blockchain. You’ll understand the key factors to consider
 when planning a blockchain solution, such as compute, storage and network
 requirements. You’ll also understand the key non-functional requirements,
 including maintainability, performance, availability and disaster recovery.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

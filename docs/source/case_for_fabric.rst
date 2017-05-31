@@ -69,3 +69,7 @@ from diamond provenance to equities trading.  Explore the documentation and see 
 to craft a PoC for your own business network.
 
 
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

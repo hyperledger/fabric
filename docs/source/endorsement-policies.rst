@@ -99,3 +99,7 @@ we plan to move to a more intuitive syntax ``. AND .`` - we plan to
 expose generalized threshold gates in the language as well alongside
 ``AND`` (which is the special ``n``-out-of-``n`` gate) and ``OR`` (which
 is the special ``1``-out-of-``n`` gate)
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

@@ -33,3 +33,7 @@ instructions for setting up a network are `here <Network-setup.md>`__.
 You may also use the
 `Fabric-starter-kit <../starter/fabric-starter-kit.md>`__ that provides
 the network.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+
