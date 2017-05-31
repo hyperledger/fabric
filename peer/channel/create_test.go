@@ -524,7 +524,7 @@ func TestCreateChainNilCF(t *testing.T) {
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "RPC failed fast due to transport failure")
+	assert.Contains(t, err.Error(), "error: code = Unavailable desc = grpc: the connection is unavailable")
 
 	// Error case: invalid ordering service endpoint
 	args = []string{"-c", mockchannel, "-f", file, "-o", "localhost"}
