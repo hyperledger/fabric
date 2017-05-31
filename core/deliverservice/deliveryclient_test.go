@@ -38,7 +38,7 @@ func init() {
 }
 
 const (
-	goRoutineTestWaitTimeout = time.Second * 10
+	goRoutineTestWaitTimeout = time.Second * 15
 )
 
 var (

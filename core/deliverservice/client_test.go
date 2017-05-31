@@ -50,7 +50,7 @@ func newConnection() *grpc.ClientConn {
 type balancer struct {
 }
 
-func (*balancer) Start(target string) error {
+func (*balancer) Start(target string, config grpc.BalancerConfig) error {
 	return nil
 }
 

@@ -93,10 +93,7 @@ func TestCertificateExtraction(t *testing.T) {
 		Certificates:       []tls.Certificate{clientCert},
 		InsecureSkipVerify: true,
 	})
-	ac := &authCreds{tlsCreds: ta}
-	assert.Equal(t, "1.2", ac.Info().SecurityVersion)
-	assert.Equal(t, "tls", ac.Info().SecurityProtocol)
-	conn, err := grpc.Dial("localhost:5611", grpc.WithTransportCredentials(ac), grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	conn, err := grpc.Dial("localhost:5611", grpc.WithTransportCredentials(ta), grpc.WithBlock(), grpc.WithTimeout(time.Second))
 	assert.NoError(t, err, "%v", err)
 
 	cl := proto.NewGossipClient(conn)

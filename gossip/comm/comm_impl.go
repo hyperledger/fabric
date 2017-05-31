@@ -629,7 +629,7 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, api.PeerSecureDialOp
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
 	})
-	dialOpts = append(dialOpts, grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}))
+	dialOpts = append(dialOpts, grpc.WithTransportCredentials(ta))
 
 	listenAddress := fmt.Sprintf("%s:%d", "", port)
 	ll, err = net.Listen("tcp", listenAddress)
