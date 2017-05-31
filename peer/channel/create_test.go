@@ -551,7 +551,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	env := &cb.Envelope{}
 	env.Payload = make([]byte, 10)
 	var err error
-	env, err = sanityCheckAndSignChannelCreateTx(env)
+	env, err = sanityCheckAndSignConfigTx(env)
 	assert.Error(t, err, "Error expected for nil payload")
 	assert.Contains(t, err.Error(), "bad payload")
 
@@ -560,7 +560,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	data, err1 := proto.Marshal(p)
 	assert.NoError(t, err1)
 	env = &cb.Envelope{Payload: data}
-	env, err = sanityCheckAndSignChannelCreateTx(env)
+	env, err = sanityCheckAndSignConfigTx(env)
 	assert.Error(t, err, "Error expected for bad payload header")
 	assert.Contains(t, err.Error(), "bad header")
 
@@ -570,7 +570,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	data, err = proto.Marshal(p)
 	assert.NoError(t, err)
 	env = &cb.Envelope{Payload: data}
-	env, err = sanityCheckAndSignChannelCreateTx(env)
+	env, err = sanityCheckAndSignConfigTx(env)
 	assert.Error(t, err, "Error expected for bad channel header")
 	assert.Contains(t, err.Error(), "could not unmarshall channel header")
 
@@ -588,7 +588,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	data, err = proto.Marshal(p)
 	assert.NoError(t, err)
 	env = &cb.Envelope{Payload: data}
-	env, err = sanityCheckAndSignChannelCreateTx(env)
+	env, err = sanityCheckAndSignConfigTx(env)
 	assert.Error(t, err, "Error expected for bad payload data")
 	assert.Contains(t, err.Error(), "Bad config update env")
 }
