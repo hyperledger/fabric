@@ -33,3 +33,7 @@ with the error string "state may be inconsistent, cannot query".
 
 In the future, more sophisticated reporting mechanisms may be introduced
 such as returning the stale value and a flag that the value is stale.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

@@ -51,3 +51,7 @@ CLIs Known Key Bugs and work in progress
 -  1911 - Missing peer event listener on the client SDK
 -  889 - The attributes in the TCert are not encrypted. This work is
    still on-going
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

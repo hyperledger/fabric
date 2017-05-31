@@ -483,3 +483,7 @@ request and performs the following.
 6. The new ``CONFIG`` transaction with the new channel config is wrapped
    and sent for ordering on the ordering system channel. After ordering,
    the channel is created.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

@@ -177,3 +177,7 @@ If the ``vagrant up`` command fails it may be because you do not have
 the Microsoft Visual C++ Redistributable package installed. You can
 download the missing package at the following address:
 http://www.microsoft.com/en-us/download/details.aspx?id=8328
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

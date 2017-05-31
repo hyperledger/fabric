@@ -133,3 +133,7 @@ commitment.
 
 Check out the :doc:`txflow` diagram for a visual representation
 of consensus.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

@@ -244,3 +244,7 @@ those from the Hyperledger Fabric Project.
 List all current changes you submitted, or list just those changes in
 need of your input by clicking on ``My --> Changes`` or `open this
 link <https://gerrit.hyperledger.org/r/#/dashboard/self>`__
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

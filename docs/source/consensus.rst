@@ -12,3 +12,7 @@ It is achieved as a byproduct of the various steps and verifications
 that occur during a transaction's lifecycle from proposal to commitment.
 More information on the high-level data flows is available
 `here <https://jira.hyperledger.org/browse/FAB-37>`__.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

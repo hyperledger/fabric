@@ -351,3 +351,7 @@ Transaction
 
 An invoke or instantiate operation.  Invokes are requests to read/write data from
 the ledger.  Instantiate is a request to start a chaincode container on a peer.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

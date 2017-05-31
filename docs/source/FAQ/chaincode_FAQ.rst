@@ -56,3 +56,7 @@ native currency with chaincode. One common attribute of native currency
 is that some amount will get transacted (the chaincode defining that
 currency will get called) every time a transaction is processed on its
 chain.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

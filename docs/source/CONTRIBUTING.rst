@@ -276,3 +276,7 @@ submitter accepts the DCO:
 
 You can include this automatically when you commit a change to your
 local git repository using ``git commit -s``.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

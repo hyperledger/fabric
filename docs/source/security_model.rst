@@ -14,3 +14,7 @@ protocols for issuing and validating certificates and identities
 throughout the blockchain network. Identities issued in the scope of a
 membership service provider can be evaluated within that membership
 service provider’s rules validation policies.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

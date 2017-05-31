@@ -226,3 +226,6 @@ Developing a query language to support such a diverse range of queries will not 
 2. There are two nearly disjoint classes of query:
     1. Find a single value matching a set of constraints. Amenable to existing SQL and NoSQL grammars.
     2. Find a chain or chains of transactions satisfying a set of constraints. Amenable to graph query languages, such as Neo4J's Cypher or SPARQL.
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+s

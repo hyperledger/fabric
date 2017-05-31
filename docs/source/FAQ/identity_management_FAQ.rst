@@ -33,3 +33,7 @@ these certificates are used in any particular network.
 However, because certificates are the way networks regulate and manage
 their users, the module serves a central regulatory and organizational
 role.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

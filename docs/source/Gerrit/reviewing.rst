@@ -50,3 +50,7 @@ highlighted to add comments to that section.
    sends an email to the change-submitter and all listed reviewers.
    Finally, it logs the review for future reference. All individual
    comments are saved as *Draft* until the ``Post`` button is clicked.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

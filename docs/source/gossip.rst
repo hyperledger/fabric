@@ -80,3 +80,7 @@ on peers' channel subscriptions.
   TLS session binds with fabric membership identity. This essentially
   authenticates each peer to the connecting peer, with respect to
   membership in the network and channel.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+

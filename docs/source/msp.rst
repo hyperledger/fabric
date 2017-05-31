@@ -280,3 +280,7 @@ considered for that MSP's identity validation:
 
 In the current MSP implementation we only support method (1) as it is simpler
 and does not require blacklisting the no longer considered intermediate CA.
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
+
