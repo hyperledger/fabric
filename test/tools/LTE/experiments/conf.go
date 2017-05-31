@@ -19,7 +19,7 @@ package experiments
 import (
 	"flag"
 
-	"github.com/hyperledger/fabric/test/tools/ledgerbenchmarks/chainmgmt"
+	"github.com/hyperledger/fabric/test/tools/LTE/chainmgmt"
 )
 
 // txConf captures the transaction related configurations

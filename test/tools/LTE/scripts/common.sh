@@ -19,25 +19,26 @@ set -e
 # FUNCTION_NAME - Name of the Benchmark function
 # TEST_PARAMS - Parameters for the test
 # RESULTANT_DIRS - An optional list of dirs whose size needs to be captured in the results in the RESULTS_FILE
-# 
-# The default values for some of the above variables are set in this script and can be overrideen by a test specific
-# script. For remaining variables, a test specific script needs to set the appropriate values before calling the 
+#
+# The default values for some of the above variables are set in this script and can be overridden by a test specific
+# script. For remaining variables, a test specific script needs to set the appropriate values before calling the
 # function 'executeTest' of this script
-# 
+#
 # The result file for a test gets created in a csv format in the folder
 # $OUTPUT_DIR_ROOT/<last_element_of>$PKG_NAME<segment>/$FUNCTION_NAME
 #############################################################################################################################
 
 
-OUTPUT_DIR_ROOT=`echo /tmp/fabric/test/tools/ledgerbenchmarks/results`
+OUTPUT_DIR_ROOT=`echo /tmp/fabric/test/tools/LTE/results`
 RAW_OUTPUT_FILE="output.txt"
 RESULTS_FILE="results.csv"
 
 benchmarkLineRegex="^Benchmark.*[[:blank:]]+[[:digit:]]+[[:blank:]]+([[:digit:]]+).*$"
 testParamRegex="-\([^=]*\)=\([^,]*\)"
 
-ulimit -n 10000
-echo "ulimit=`ulimit -n`"
+echo "**Note**: This is a Benchmark test. Please make sure to set an appropriate value for ulimit in your OS."
+echo "Recommended value is 10000 for default parameters."
+echo "Current ulimit=`ulimit -n`"
 TESTS_SETUP_DONE=()
 
 ## Execute test and generate data file

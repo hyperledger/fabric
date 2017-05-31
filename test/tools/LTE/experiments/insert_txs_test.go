@@ -22,8 +22,8 @@ import (
 
 	"fmt"
 
-	"github.com/hyperledger/fabric/test/tools/ledgerbenchmarks/chainmgmt"
-	"github.com/hyperledger/fabric/test/tools/ledgerbenchmarks/common"
+	"github.com/hyperledger/fabric/test/tools/LTE/chainmgmt"
+	"github.com/hyperledger/fabric/test/tools/LTE/common"
 )
 
 // BenchmarkInsertTxs starts fresh chains and inserts the Key-values by simulating writes-only transactions

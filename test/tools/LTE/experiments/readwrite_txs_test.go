@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/test/tools/ledgerbenchmarks/chainmgmt"
-	"github.com/hyperledger/fabric/test/tools/ledgerbenchmarks/common"
+	"github.com/hyperledger/fabric/test/tools/LTE/chainmgmt"
+	"github.com/hyperledger/fabric/test/tools/LTE/common"
 )
 
 // BenchmarkReadWriteTxs opens the existing chains and modifies the Key-values by simulating read-write transactions
