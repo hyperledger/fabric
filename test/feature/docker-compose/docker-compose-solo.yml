@@ -1,0 +1,155 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '2'
+
+services:
+
+    orderer.example.com:
+        container_name: orderer.example.com
+        image: hyperledger/fabric-orderer
+        environment:
+            - CONFIGTX_ORDERER_ORDERERTYPE=solo
+            - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+            - ORDERER_GENERAL_LISTENPORT=7050
+            - ORDERER_GENERAL_LOGLEVEL=debug
+            - ORDERER_GENERAL_LEDGERTYPE=ram
+            - ORDERER_GENERAL_GENESISMETHOD=file
+            - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/config/orderer.block
+            - ORDERER_GENERAL_QUEUESIZE=1000
+            - ORDERER_GENERAL_MAXWINDOWSIZE=1000
+            - ORDERER_RAMLEDGER_HISTORY_SIZE=100
+            - ORDERER_GENERAL_BATCHSIZE=10
+            - ORDERER_GENERAL_BATCHTIMEOUT=10s
+            - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/msp
+            - ORDERER_GENERAL_LOCALMSPID=example.com
+            - ORDERER_GENERAL_TLS_ENABLED=false
+        volumes:
+            - ../configs/${CORE_PEER_NETWORKID}:/var/hyperledger/config
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/msp
+        working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+        command: orderer
+        ports:
+          - '7050'
+
+    peer0.org1.example.com:
+        container_name: peer0.org1.example.com
+        image: hyperledger/fabric-peer
+        environment:
+            - CORE_PEER_ID=vp0
+            - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org2.example.com:7051
+            - CORE_PEER_PROFILE_ENABLED=true
+            - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer.example.com:7050
+            - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/msp
+            - CORE_PEER_LOCALMSPID=org1.example.com
+            - CORE_NEXT=true
+            - CORE_PEER_ENDORSER_ENABLED=true
+            - CORE_PEER_GOSSIP_ORGLEADER=false
+            - CORE_PEER_GOSSIP_USELEADERELECTION=true
+            - CORE_PEER_ADDRESSAUTODETECT=true
+            - CORE_LOGGING_LEVEL=DEBUG
+            - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
+            - CORE_PEER_TLS_ENABLED=false
+            - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+        volumes:
+            - ../configs:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/var/hyperledger/msp
+            - /var/run/docker.sock:/var/run/docker.sock
+        ports:
+            - '7051'
+            - '7053'
+        depends_on:
+            - orderer.example.com
+        command: peer node start --peer-defaultchain=false
+
+    peer0.org2.example.com:
+        image: hyperledger/fabric-peer
+        container_name: peer0.org2.example.com
+        environment:
+            - CORE_PEER_ID=vp1
+            - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
+            - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer.example.com:7050
+            - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/msp
+            - CORE_PEER_LOCALMSPID=org2.example.com
+            - CORE_NEXT=true
+            - CORE_PEER_ENDORSER_ENABLED=true
+            - CORE_PEER_GOSSIP_ORGLEADER=false
+            - CORE_PEER_GOSSIP_USELEADERELECTION=true
+            - CORE_PEER_ADDRESSAUTODETECT=true
+            - CORE_LOGGING_LEVEL=DEBUG
+            - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
+            - CORE_PEER_TLS_ENABLED=false
+            - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+        volumes:
+            - ../configs:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp:/var/hyperledger/msp
+            - /var/run/docker.sock:/var/run/docker.sock
+        ports:
+            - '7051'
+            - '7053'
+        depends_on:
+            - orderer.example.com
+            - peer0.org1.example.com
+        command: peer node start --peer-defaultchain=false
+
+    peer1.org1.example.com:
+        image: hyperledger/fabric-peer
+        container_name: peer1.org1.example.com
+        environment:
+            - CORE_PEER_ID=vp2
+            - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.org2.example.com:7051
+            - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer.example.com:7050
+            - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/msp
+            - CORE_PEER_LOCALMSPID=org1.example.com
+            - CORE_NEXT=true
+            - CORE_PEER_ENDORSER_ENABLED=true
+            - CORE_PEER_GOSSIP_ORGLEADER=false
+            - CORE_PEER_GOSSIP_USELEADERELECTION=true
+            - CORE_PEER_ADDRESSAUTODETECT=true
+            - CORE_LOGGING_LEVEL=DEBUG
+            - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
+            - CORE_PEER_TLS_ENABLED=false
+            - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+        volumes:
+            - ../configs:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/msp:/var/hyperledger/msp
+            - /var/run/docker.sock:/var/run/docker.sock
+        ports:
+            - '7051'
+            - '7053'
+        depends_on:
+            - orderer.example.com
+            - peer0.org1.example.com
+        command: peer node start --peer-defaultchain=false
+
+    peer1.org2.example.com:
+        image: hyperledger/fabric-peer
+        container_name: peer1.org2.example.com
+        environment:
+            - CORE_PEER_ID=vp3
+            - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.org0.example.com:7051
+            - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer.example.com:7050
+            - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/msp
+            - CORE_PEER_LOCALMSPID=org2.example.com
+            - CORE_NEXT=true
+            - CORE_PEER_ENDORSER_ENABLED=true
+            - CORE_PEER_GOSSIP_ORGLEADER=false
+            - CORE_PEER_GOSSIP_USELEADERELECTION=true
+            - CORE_PEER_ADDRESSAUTODETECT=true
+            - CORE_LOGGING_LEVEL=DEBUG
+            - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
+            - CORE_PEER_TLS_ENABLED=false
+            - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+        volumes:
+            - ../configs:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/msp:/var/hyperledger/msp
+            - /var/run/docker.sock:/var/run/docker.sock
+        ports:
+            - '7051'
+            - '7053'
+        depends_on:
+            - orderer.example.com
+            - peer0.org1.example.com
+        command: peer node start --peer-defaultchain=false

@@ -137,6 +137,10 @@ class DocumentGenerator:
             #Now get the config for the composition and dump out.
             self.composition = composition
             configAsYaml = composition.getConfig()
+            (dokerComposeYmlFileName, fileExists) = self.contextHelper.getTmpPathForName(name="docker-compose", extension="yml")
+            with open(dokerComposeYmlFileName, 'w') as f:
+                f.write(configAsYaml)
+            self.output.write(env.get_template("html/composition-py.html").render(compose_project_name= self.composition.projectName,docker_compose_yml_file=dokerComposeYmlFileName))
             self.output.write(env.get_template("html/header.html").render(text="Configuration", level=4))
             self.output.write(env.get_template("html/cli.html").render(command=configAsYaml))
             #Inject the graph
@@ -180,8 +184,23 @@ class DocumentGenerator:
         self.output.write(env.get_template("html/user.html").render(user=newlyRegisteredUser, private_key_href=self._getLinkInfoForFile(fileName)))
         return newlyRegisteredUser
 
+    def _dump_context(self):
+        (dirPickleFileName, fileExists) = self.contextHelper.getTmpPathForName("dir", extension="pickle")
+        with open(dirPickleFileName, 'w') as f:
+            self.directory.dump(f)
+        #Now the jinja output
+        self.output.write(env.get_template("html/directory.html").render(directory=self.directory, path_to_pickle=dirPickleFileName))
+        if self.composition:
+            (dokerComposeYmlFileName, fileExists) = self.contextHelper.getTmpPathForName(name="docker-compose", extension="yml")
+            self.output.write(env.get_template("html/appendix-py.html").render(directory=self.directory,
+                                                                               path_to_pickle=dirPickleFileName,
+                                                                               compose_project_name=self.composition.projectName,
+                                                                               docker_compose_yml_file=dokerComposeYmlFileName))
+
+
     def afterScenarioAdvice(self, joinpoint):
         scenario = joinpoint.kwargs['scenario']
+        self._dump_context()
         #Render with jinja
         header = env.get_template("html/scenario.html").render(scenario=scenario, steps=scenario.steps)
         main = env.get_template("html/main.html").render(header=header, body=self.output.getvalue())

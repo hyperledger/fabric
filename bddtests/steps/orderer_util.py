@@ -103,7 +103,7 @@ class StreamHelper:
 
 class DeliverStreamHelper(StreamHelper):
 
-    def __init__(self, ordererStub, entity, directory, nodeAdminTuple, timeout = 110):
+    def __init__(self, ordererStub, entity, directory, nodeAdminTuple, timeout = 600):
         StreamHelper.__init__(self)
         self.nodeAdminTuple = nodeAdminTuple
         self.directory = directory
@@ -118,8 +118,6 @@ class DeliverStreamHelper(StreamHelper):
             stop = seekPosition(end),
             behavior = ab_pb2.SeekInfo.SeekBehavior.Value(behavior),
         )
-        print("SeekInfo = {0}".format(seekInfo))
-        print("")
         return seekInfo
 
     def seekToRange(self, chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest'):
@@ -138,7 +136,7 @@ class DeliverStreamHelper(StreamHelper):
                 else:
                     if reply.status != common_pb2.SUCCESS:
                         print("Got error: {0}".format(reply.status))
-                    print("Done receiving blocks")
+                    # print("Done receiving blocks")
                     break
         except Exception as e:
             print("getBlocks got error: {0}".format(e) )
@@ -163,7 +161,7 @@ class UserRegistration:
         for compose_service, deliverStreamHelper in self.abDeliversStreamHelperDict.iteritems():
             deliverStreamHelper.sendQueue.put(None)
 
-    def connectToDeliverFunction(self, context, composeService, certAlias, nodeAdminTuple, timeout=1):
+    def connectToDeliverFunction(self, context, composeService, nodeAdminTuple, timeout=1):
         'Connect to the deliver function and drain messages to associated orderer queue'
         assert not composeService in self.abDeliversStreamHelperDict, "Already connected to deliver stream on {0}".format(composeService)
         streamHelper = DeliverStreamHelper(directory=self.directory,
@@ -200,7 +198,7 @@ class UserRegistration:
         # Get the IP address of the server that the user registered on
         root_certificates = self.directory.getTrustedRootsForOrdererNetworkAsPEM()
         ipAddress, port = bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050)
-        print("ipAddress in getABStubForComposeService == {0}:{1}".format(ipAddress, port))
+        # print("ipAddress in getABStubForComposeService == {0}:{1}".format(ipAddress, port))
         channel = bdd_grpc_util.getGRPCChannel(ipAddress=ipAddress, port=port, root_certificates=root_certificates, ssl_target_name_override=composeService)
         newABStub = ab_pb2_grpc.AtomicBroadcastStub(channel)
         self.atomicBroadcastStubsDict[composeService] = newABStub

@@ -25,9 +25,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
-
 	"regexp"
+	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -84,14 +83,18 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	if path.Scheme == "" {
 		gopath := os.Getenv("GOPATH")
 		// Only take the first element of GOPATH
-		gopath = filepath.SplitList(gopath)[0]
+		splitGoPath := filepath.SplitList(gopath)
+		if len(splitGoPath) == 0 {
+			return fmt.Errorf("invalid GOPATH environment variable value:[%s]", gopath)
+		}
+		gopath = splitGoPath[0]
 		pathToCheck := filepath.Join(gopath, "src", spec.ChaincodeId.Path)
 		exists, err := pathExists(pathToCheck)
 		if err != nil {
-			return fmt.Errorf("Error validating chaincode path: %s", err)
+			return fmt.Errorf("error validating chaincode path: %s", err)
 		}
 		if !exists {
-			return fmt.Errorf("Path to chaincode does not exist: %s", spec.ChaincodeId.Path)
+			return fmt.Errorf("path to chaincode does not exist: %s", spec.ChaincodeId.Path)
 		}
 	}
 	return nil
@@ -133,7 +136,7 @@ func (goPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSp
 		// Check name for conforming path
 		// --------------------------------------------------------------------------------------
 		if !re.MatchString(header.Name) {
-			return fmt.Errorf("Illegal file detected in payload: \"%s\"", header.Name)
+			return fmt.Errorf("illegal file detected in payload: \"%s\"", header.Name)
 		}
 
 		// --------------------------------------------------------------------------------------
@@ -146,7 +149,7 @@ func (goPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSp
 		// Anything else is suspect in this context and will be rejected
 		// --------------------------------------------------------------------------------------
 		if header.Mode&^0100666 != 0 {
-			return fmt.Errorf("Illegal file mode detected for file %s: %o", header.Name, header.Mode)
+			return fmt.Errorf("illegal file mode detected for file %s: %o", header.Name, header.Mode)
 		}
 	}
 

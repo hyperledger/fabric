@@ -105,18 +105,14 @@ func (*naiveSecProvider) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityTyp
 
 func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 	endpoint := fmt.Sprintf("localhost:%d", port)
-	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec), []byte(endpoint), nil)
+	id := []byte(endpoint)
+	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec, id), id, nil)
 	return inst, err
 }
 
 func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte, mutualTLS bool) <-chan proto.ReceivedMessage {
 	c := &commImpl{}
-	err := generateCertificates("key.pem", "cert.pem")
-	assert.NoError(t, err, "%v", err)
-	defer os.Remove("cert.pem")
-	defer os.Remove("key.pem")
-	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
-	assert.NoError(t, err, "%v", err)
+	cert := GenerateCertificatesOrPanic()
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
 	}
@@ -286,28 +282,21 @@ func TestBasic(t *testing.T) {
 
 func TestProdConstructor(t *testing.T) {
 	t.Parallel()
-	keyFileName := fmt.Sprintf("key.%d.pem", util.RandomUInt64())
-	certFileName := fmt.Sprintf("cert.%d.pem", util.RandomUInt64())
-
-	generateCertificates(keyFileName, certFileName)
-	cert, _ := tls.LoadX509KeyPair(certFileName, keyFileName)
-	os.Remove(keyFileName)
-	os.Remove(certFileName)
+	peerIdentity := GenerateCertificatesOrPanic()
 	srv, lsnr, dialOpts, certHash := createGRPCLayer(20000)
 	defer srv.Stop()
 	defer lsnr.Close()
-	comm1, _ := NewCommInstance(srv, &cert, identity.NewIdentityMapper(naiveSec), []byte("localhost:20000"), dialOpts)
+	id := []byte("localhost:20000")
+	comm1, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id), id, dialOpts)
 	comm1.(*commImpl).selfCertHash = certHash
 	go srv.Serve(lsnr)
 
-	generateCertificates(keyFileName, certFileName)
-	cert, _ = tls.LoadX509KeyPair(certFileName, keyFileName)
-	os.Remove(keyFileName)
-	os.Remove(certFileName)
+	peerIdentity = GenerateCertificatesOrPanic()
 	srv, lsnr, dialOpts, certHash = createGRPCLayer(30000)
 	defer srv.Stop()
 	defer lsnr.Close()
-	comm2, _ := NewCommInstance(srv, &cert, identity.NewIdentityMapper(naiveSec), []byte("localhost:30000"), dialOpts)
+	id = []byte("localhost:30000")
+	comm2, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id), id, dialOpts)
 	comm2.(*commImpl).selfCertHash = certHash
 	go srv.Serve(lsnr)
 	defer comm1.Stop()
@@ -350,12 +339,7 @@ func TestCloseConn(t *testing.T) {
 	defer comm1.Stop()
 	acceptChan := comm1.Accept(acceptAll)
 
-	err := generateCertificates("key.pem", "cert.pem")
-	assert.NoError(t, err, "%v", err)
-	defer os.Remove("cert.pem")
-	defer os.Remove("key.pem")
-	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
-	assert.NoError(t, err, "%v", err)
+	cert := GenerateCertificatesOrPanic()
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
 		Certificates:       []tls.Certificate{cert},
@@ -447,9 +431,13 @@ func TestResponses(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
+	wg := sync.WaitGroup{}
+
 	msg := createGossipMsg()
+	wg.Add(1)
 	go func() {
 		inChan := comm1.Accept(acceptAll)
+		wg.Done()
 		for m := range inChan {
 			reply := createGossipMsg()
 			reply.Nonce = m.GetGossipMessage().Nonce + 1
@@ -459,9 +447,9 @@ func TestResponses(t *testing.T) {
 	expectedNOnce := uint64(msg.Nonce + 1)
 	responsesFromComm1 := comm2.Accept(acceptAll)
 
-	ticker := time.NewTicker(time.Duration(6000) * time.Millisecond)
+	ticker := time.NewTicker(10 * time.Second)
+	wg.Wait()
 	comm2.Send(msg, remotePeer(8611))
-	time.Sleep(time.Duration(100) * time.Millisecond)
 
 	select {
 	case <-ticker.C:
@@ -615,8 +603,24 @@ func TestPresumedDead(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(4611, naiveSec)
 	comm2, _ := newCommInstance(4612, naiveSec)
-	go comm1.Send(createGossipMsg(), remotePeer(4612))
-	<-comm2.Accept(acceptAll)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		wg.Wait()
+		comm1.Send(createGossipMsg(), remotePeer(4612))
+	}()
+
+	ticker := time.NewTicker(time.Duration(10) * time.Second)
+	acceptCh := comm2.Accept(acceptAll)
+	wg.Done()
+	select {
+	case <-acceptCh:
+		ticker.Stop()
+	case <-ticker.C:
+		assert.Fail(t, "Didn't get first message")
+	}
+
 	comm2.Stop()
 	go func() {
 		for i := 0; i < 5; i++ {
@@ -625,7 +629,7 @@ func TestPresumedDead(t *testing.T) {
 		}
 	}()
 
-	ticker := time.NewTicker(time.Second * time.Duration(3))
+	ticker = time.NewTicker(time.Second * time.Duration(3))
 	select {
 	case <-ticker.C:
 		assert.Fail(t, "Didn't get a presumed dead message within a timely manner")

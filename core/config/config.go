@@ -113,7 +113,7 @@ func TranslatePathInPlace(base string, p *string) {
 // a key "msp.configPath" = "msp/config.yaml".
 //
 // This function will return:
-//      GetConfigPath("msp.configPath") -> /etc/hyperledger/fabric/msp/config.yaml
+//      GetPath("msp.configPath") -> /etc/hyperledger/fabric/msp/config.yaml
 //
 //----------------------------------------------------------------------------------
 func GetPath(key string) string {

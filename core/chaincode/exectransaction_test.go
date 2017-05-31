@@ -17,6 +17,9 @@ limitations under the License.
 package chaincode
 
 import (
+	"bytes"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"math/rand"
 	"net"
@@ -24,15 +27,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"encoding/json"
-	"strings"
-
 	"github.com/golang/protobuf/proto"
-
+	"github.com/hyperledger/fabric/bccsp/factory"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -41,21 +42,20 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
+	"github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/core/scc"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	putils "github.com/hyperledger/fabric/protos/utils"
-
-	"bytes"
-
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/testutil"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
+	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -1782,8 +1782,36 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	SetupTestConfig()
+	setupTestConfig()
 	os.Exit(m.Run())
+}
+
+func setupTestConfig() {
+	flag.Parse()
+
+	// Now set the configuration file
+	viper.SetEnvPrefix("CORE")
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.SetConfigName("chaincodetest") // name of config file (without extension)
+	viper.AddConfigPath("./")            // path to look for the config file in
+	err := viper.ReadInConfig()          // Find and read the config file
+	if err != nil {                      // Handle errors reading the config file
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
+
+	testutil.SetupTestLogging()
+
+	// Set the number of maxprocs
+	var numProcsDesired = viper.GetInt("peer.gomaxprocs")
+	chaincodeLogger.Debugf("setting Number of procs to %d, was %d\n", numProcsDesired, runtime.GOMAXPROCS(2))
+
+	// Init the BCCSP
+	err = factory.InitFactories(nil)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 }
 
 func deployChaincode(ctx context.Context, name string, version string, chaincodeType pb.ChaincodeSpec_Type, path string, args [][]byte, creator []byte, channel string, nextBlockNumber uint64) ([]byte, *ccprovider.CCContext, error) {
@@ -1846,7 +1874,7 @@ type mockPolicyCheckerFactory struct{}
 func (f *mockPolicyCheckerFactory) NewPolicyChecker() policy.PolicyChecker {
 	return policy.NewPolicyChecker(
 		peer.NewChannelPolicyManagerGetter(),
-		&policy.MockIdentityDeserializer{[]byte("Admin"), []byte("msg1")},
-		&policy.MockMSPPrincipalGetter{Principal: []byte("Admin")},
+		&mocks.MockIdentityDeserializer{[]byte("Admin"), []byte("msg1")},
+		&mocks.MockMSPPrincipalGetter{Principal: []byte("Admin")},
 	)
 }

@@ -41,9 +41,6 @@ func ConstructMarbleAppInstance(ledger ledger.PeerLedger) *MarbleApp {
 	return &MarbleApp{"marbles_app", ledger}
 }
 
-var marbleIndexStr = "_marbleindex" //name for the key/value that will store a list of all known marbles
-var openTradesStr = "_opentrades"   //name for the key/value that will store all open trades
-
 type Marble struct {
 	Name  string `json:"asset_name"` //the fieldtags are needed to keep case from bouncing around
 	Color string `json:"color"`

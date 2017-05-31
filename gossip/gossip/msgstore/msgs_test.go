@@ -34,12 +34,8 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func alwaysNoAction(this interface{}, that interface{}) common.InvalidationResult {
+func alwaysNoAction(_ interface{}, _ interface{}) common.InvalidationResult {
 	return common.MessageNoAction
-}
-
-func noopTrigger(m interface{}) {
-
 }
 
 func compareInts(this interface{}, that interface{}) common.InvalidationResult {
@@ -66,7 +62,7 @@ func nonReplaceInts(this interface{}, that interface{}) common.InvalidationResul
 }
 
 func TestSize(t *testing.T) {
-	msgStore := NewMessageStore(alwaysNoAction, noopTrigger)
+	msgStore := NewMessageStore(alwaysNoAction, Noop)
 	msgStore.Add(0)
 	msgStore.Add(1)
 	msgStore.Add(2)
@@ -97,7 +93,7 @@ func TestMessagesGet(t *testing.T) {
 		return false
 	}
 
-	msgStore := NewMessageStore(alwaysNoAction, noopTrigger)
+	msgStore := NewMessageStore(alwaysNoAction, Noop)
 	expected := []int{}
 	for i := 0; i < 2; i++ {
 		n := rand.Int()
@@ -112,7 +108,7 @@ func TestMessagesGet(t *testing.T) {
 }
 
 func TestNewMessagesInvalidated(t *testing.T) {
-	msgStore := NewMessageStore(compareInts, noopTrigger)
+	msgStore := NewMessageStore(compareInts, Noop)
 	assert.True(t, msgStore.Add(10))
 	for i := 9; i >= 0; i-- {
 		assert.False(t, msgStore.Add(i))
@@ -124,7 +120,7 @@ func TestNewMessagesInvalidated(t *testing.T) {
 func TestConcurrency(t *testing.T) {
 	t.Parallel()
 	stopFlag := int32(0)
-	msgStore := NewMessageStore(compareInts, noopTrigger)
+	msgStore := NewMessageStore(compareInts, Noop)
 	looper := func(f func()) func() {
 		return func() {
 			for {
@@ -162,7 +158,7 @@ func TestExpiration(t *testing.T) {
 	expired := make([]int, 0)
 	msgTTL := time.Second * 3
 
-	msgStore := NewMessageStoreExpirable(nonReplaceInts, noopTrigger, msgTTL, nil, nil, func(m interface{}) {
+	msgStore := NewMessageStoreExpirable(nonReplaceInts, Noop, msgTTL, nil, nil, func(m interface{}) {
 		expired = append(expired, m.(int))
 	})
 
@@ -216,7 +212,7 @@ func TestExpirationConcurrency(t *testing.T) {
 	msgTTL := time.Second * 3
 	lock := &sync.RWMutex{}
 
-	msgStore := NewMessageStoreExpirable(nonReplaceInts, noopTrigger, msgTTL,
+	msgStore := NewMessageStoreExpirable(nonReplaceInts, Noop, msgTTL,
 		func() {
 			lock.Lock()
 		},
@@ -265,7 +261,7 @@ func TestStop(t *testing.T) {
 	expired := make([]int, 0)
 	msgTTL := time.Second * 3
 
-	msgStore := NewMessageStoreExpirable(nonReplaceInts, noopTrigger, msgTTL, nil, nil, func(m interface{}) {
+	msgStore := NewMessageStoreExpirable(nonReplaceInts, Noop, msgTTL, nil, nil, func(m interface{}) {
 		expired = append(expired, m.(int))
 	})
 
@@ -283,4 +279,35 @@ func TestStop(t *testing.T) {
 	assert.Equal(t, 0, len(expired), "Wrong number of expired msgs - after first batch expiration, but store was stopped, so no expiration")
 
 	msgStore.Stop()
+}
+
+func TestPurge(t *testing.T) {
+	t.Parallel()
+	purged := make(chan int, 5)
+	msgStore := NewMessageStore(alwaysNoAction, func(o interface{}) {
+		purged <- o.(int)
+	})
+	for i := 0; i < 10; i++ {
+		assert.True(t, msgStore.Add(i))
+	}
+	// Purge all numbers greater than 9 - shouldn't do anything
+	msgStore.Purge(func(o interface{}) bool {
+		return o.(int) > 9
+	})
+	assert.Len(t, msgStore.Get(), 10)
+	// Purge all even numbers
+	msgStore.Purge(func(o interface{}) bool {
+		return o.(int)%2 == 0
+	})
+	// Ensure only odd numbers are left
+	assert.Len(t, msgStore.Get(), 5)
+	for _, o := range msgStore.Get() {
+		assert.Equal(t, 1, o.(int)%2)
+	}
+	close(purged)
+	i := 0
+	for n := range purged {
+		assert.Equal(t, i, n)
+		i += 2
+	}
 }

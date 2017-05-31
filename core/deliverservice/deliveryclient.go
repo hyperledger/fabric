@@ -140,7 +140,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		return errors.New(errMsg)
 	} else {
 		client := d.newClient(chainID, ledgerInfo)
-		logger.Debug("This peer will pass blocks from orderer service to other peers")
+		logger.Debug("This peer will pass blocks from orderer service to other peers for channel", chainID)
 		d.blockProviders[chainID] = blocksprovider.NewBlocksProvider(chainID, client, d.conf.Gossip, d.conf.CryptoSvc)
 		go d.blockProviders[chainID].DeliverBlocks()
 	}

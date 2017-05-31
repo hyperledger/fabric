@@ -66,14 +66,6 @@ type dummyCommModule struct {
 	mock         *mock.Mock
 }
 
-type gossipMsg struct {
-	*proto.GossipMessage
-}
-
-func (m *gossipMsg) GetGossipMessage() *proto.GossipMessage {
-	return m.GossipMessage
-}
-
 type gossipInstance struct {
 	comm *dummyCommModule
 	Discovery
@@ -392,7 +384,9 @@ func TestConnect(t *testing.T) {
 		j := (i + 1) % 10
 		endpoint := fmt.Sprintf("localhost:%d", 7611+j)
 		netMember2Connect2 := NetworkMember{Endpoint: endpoint, PKIid: []byte(endpoint)}
-		inst.Connect(netMember2Connect2, func() bool { return false })
+		inst.Connect(netMember2Connect2, func() (identification *PeerIdentification, err error) {
+			return &PeerIdentification{SelfOrg: false, ID: nil}, nil
+		})
 	}
 
 	time.Sleep(time.Second * 3)

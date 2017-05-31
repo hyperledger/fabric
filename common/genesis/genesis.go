@@ -27,8 +27,7 @@ const (
 	msgVersion = int32(1)
 
 	// These values are fixed for the genesis block.
-	lastModified = 0
-	epoch        = 0
+	epoch = 0
 )
 
 // Factory facilitates the creation of genesis blocks.

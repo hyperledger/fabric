@@ -1,4 +1,15 @@
 #!/bin/bash
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+
+#
+# This script is used on Debian based linux distros.
+# (i.e., linux that supports the apt packaging manager.)
+#
 
 # Update system
 apt-get update -qq
@@ -11,6 +22,7 @@ apt-get install --yes libyaml-dev
 
 apt-get install --yes python-setuptools
 apt-get install --yes python-pip
+apt-get install --yes build-essential
 pip install --upgrade pip
 pip install behave
 pip install nose
@@ -25,6 +37,10 @@ pip install --upgrade 'grpcio==0.13.1'
 
 # Pip packages required for some behave tests
 pip install ecdsa python-slugify b3j0f.aop
+pip install google
+pip install protobuf
+pip install pyyaml
+pip install pykafka
 
 # install ruby and apiaryio
 #apt-get install --yes ruby ruby-dev gcc

@@ -1,3 +1,18 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 ###############################################################################
 #
 #    LOGGING section
@@ -37,6 +52,10 @@ logging:
     error:      warning
     msp:        warning
     gossip:     warning
+    grpc:       warning
+    ledger:     warning
+    policies:   warning
+    cauthdsl:   warning
 
     format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
 
@@ -62,7 +81,7 @@ peer:
     address: 0.0.0.0:7051
     # Whether the Peer should programmatically determine its address
     # This case is useful for docker containers.
-    addressAutoDetect: true
+    addressAutoDetect: false
 
     # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the current setting
     gomaxprocs: -1

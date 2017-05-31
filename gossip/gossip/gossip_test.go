@@ -53,7 +53,8 @@ func init() {
 	discovery.SetAliveExpirationCheckInterval(aliveTimeInterval)
 	discovery.SetAliveExpirationTimeout(aliveTimeInterval * 10)
 	discovery.SetReconnectInterval(aliveTimeInterval)
-	testWG.Add(5)
+	discovery.SetMaxConnAttempts(5)
+	testWG.Add(6)
 	factory.InitFactories(nil)
 	identityExpirationCheckInterval = time.Second
 }
@@ -217,10 +218,10 @@ func newGossipInstanceWithCustomMCS(portPrefix int, id int, maxMsgCount int, mcs
 		PublishStateInfoInterval:   time.Duration(1) * time.Second,
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 	}
-
-	idMapper := identity.NewIdentityMapper(mcs)
+	selfId := api.PeerIdentityType(conf.InternalEndpoint)
+	idMapper := identity.NewIdentityMapper(mcs, selfId)
 	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, mcs, idMapper,
-		api.PeerIdentityType(conf.InternalEndpoint), nil)
+		selfId, nil)
 
 	return g
 }
@@ -250,10 +251,11 @@ func newGossipInstanceWithOnlyPull(portPrefix int, id int, maxMsgCount int, boot
 	}
 
 	cryptoService := &naiveCryptoService{}
-	idMapper := identity.NewIdentityMapper(cryptoService)
+	selfId := api.PeerIdentityType(conf.InternalEndpoint)
+	idMapper := identity.NewIdentityMapper(cryptoService, selfId)
 
 	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService, idMapper,
-		api.PeerIdentityType(conf.InternalEndpoint), nil)
+		selfId, nil)
 	return g
 }
 
@@ -359,7 +361,6 @@ func TestPull(t *testing.T) {
 }
 
 func TestConnectToAnchorPeers(t *testing.T) {
-	t.Skip()
 	t.Parallel()
 	// Scenario: spawn 10 peers, and have them join a channel
 	// of 3 anchor peers that don't exist yet.

@@ -1,19 +1,6 @@
 Usage
 -----
 
-* What are the expected performance figures for the fabric?
-
-The performance of any chain network depends on several factors: proximity
-of the validating nodes, number of validators, encryption method,
-transaction message size, security level set, business logic running,
-and the consensus algorithm deployed, among others.
-
-The current performance goal for the fabric is to achieve 100,000
-transactions per second in a standard production environment of about 15
-validating nodes running in close proximity. The team is committed to
-continuously improving the performance and the scalability of the
-system.
-
 * Do I have to own a validating node to transact on a chain
 network?
 

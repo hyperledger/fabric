@@ -41,20 +41,9 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 		cctyp = pb.ChaincodeMessage_TRANSACTION
 	}
 
-	cID, cMsg, err := theChaincodeSupport.Launch(ctxt, cccid, spec)
+	_, cMsg, err := theChaincodeSupport.Launch(ctxt, cccid, spec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s", err)
-	}
-
-	//this should work because it worked above...
-	chaincode := cID.Name
-
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to stablish stream to container %s", chaincode)
-	}
-
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to retrieve chaincode spec(%s)", err)
 	}
 
 	var ccMsg *pb.ChaincodeMessage

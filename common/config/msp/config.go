@@ -108,10 +108,7 @@ func (bh *MSPConfigHandler) ProposeMSP(tx interface{}, mspConfig *mspprotos.MSPC
 	}
 
 	// add the MSP to the map of pending MSPs
-	mspID, err := mspInst.GetIdentifier()
-	if err != nil {
-		return nil, fmt.Errorf("Could not extract msp identifier, err %s", err)
-	}
+	mspID, _ := mspInst.GetIdentifier()
 
 	existingPendingMSPConfig, ok := pendingConfig.idMap[mspID]
 	if ok && !reflect.DeepEqual(existingPendingMSPConfig.mspConfig, mspConfig) {

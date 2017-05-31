@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
@@ -32,8 +33,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
-
-	"errors"
 
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	logging "github.com/op/go-logging"
@@ -61,18 +60,6 @@ type mockCryptoHelper struct {
 
 func (mch mockCryptoHelper) VerifySignature(sd *cb.SignedData) error {
 	return nil
-}
-
-func mockCryptoRejector() *mockCryptoRejectorHelper {
-	return &mockCryptoRejectorHelper{LocalSigner: mockcrypto.FakeLocalSigner}
-}
-
-type mockCryptoRejectorHelper struct {
-	*mockcrypto.LocalSigner
-}
-
-func (mch mockCryptoRejectorHelper) VerifySignature(sd *cb.SignedData) error {
-	return errors.New("Nope")
 }
 
 func NewRAMLedgerAndFactory(maxSize int) (ledger.Factory, ledger.ReadWriter) {
@@ -213,44 +200,180 @@ func TestManagerImpl(t *testing.T) {
 	}
 }
 
-/*
-// This test makes sure that the signature filter works
-func TestSignatureFilter(t *testing.T) {
-	lf, rl := NewRAMLedgerAndFactory(10)
+func TestNewChannelConfig(t *testing.T) {
+
+	lf, _ := NewRAMLedgerAndFactory(3)
 
 	consenters := make(map[string]Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
+	manager := NewManagerImpl(lf, consenters, mockCrypto())
 
-	manager := NewManagerImpl(lf, consenters, mockCryptoRejector())
+	t.Run("BadPayload", func(t *testing.T) {
+		_, err := manager.NewChannelConfig(&cb.Envelope{Payload: []byte("bad payload")})
+		assert.Error(t, err, "Should bot be able to create new channel config from bad payload.")
+	})
 
-	cs, ok := manager.GetChain(provisional.TestChainID)
-
-	if !ok {
-		t.Fatalf("Should have gotten chain which was initialized by ramledger")
+	for _, tc := range []struct {
+		name    string
+		payload *cb.Payload
+		regex   string
+	}{
+		{
+			"BadPayloadData",
+			&cb.Payload{
+				Data: []byte("bad payload data"),
+			},
+			"^Failing initial channel config creation because of config update envelope unmarshaling error:",
+		},
+		{
+			"BadConfigUpdate",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: []byte("bad config update envelope data"),
+				}),
+			},
+			"^Failing initial channel config creation because of config update unmarshaling error:",
+		},
+		{
+			"EmptyConfigUpdateWriteSet",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{},
+					),
+				}),
+			},
+			"^Config update has an empty writeset$",
+		},
+		{
+			"WriteSetNoGroups",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{},
+						},
+					),
+				}),
+			},
+			"^Config update has missing application group$",
+		},
+		{
+			"WriteSetNoApplicationGroup",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{},
+							},
+						},
+					),
+				}),
+			},
+			"^Config update has missing application group$",
+		},
+		{
+			"BadWriteSetApplicationGroupVersion",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 100,
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"^Config update for channel creation does not set application group version to 1,",
+		},
+		{
+			"MissingWriteSetConsortiumValue",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{},
+							},
+						},
+					),
+				}),
+			},
+			"^Consortium config value missing$",
+		},
+		{
+			"BadWriteSetConsortiumValueValue",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{
+									config.ConsortiumKey: &cb.ConfigValue{
+										Value: []byte("bad consortium value"),
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"^Error reading unmarshaling consortium name:",
+		},
+		{
+			"UnknownConsortiumName",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{
+									config.ConsortiumKey: &cb.ConfigValue{
+										Value: utils.MarshalOrPanic(
+											&cb.Consortium{
+												Name: "NotTheNameYouAreLookingFor",
+											},
+										),
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"^Unknown consortium name:",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := manager.NewChannelConfig(&cb.Envelope{Payload: utils.MarshalOrPanic(tc.payload)})
+			if assert.Error(t, err) {
+				assert.Regexp(t, tc.regex, err.Error())
+			}
+		})
 	}
-
-	messages := make([]*cb.Envelope, conf.Orderer.BatchSize.MaxMessageCount)
-	for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
-		messages[i] = makeSignaturelessTx(provisional.TestChainID, i)
-	}
-
-	for _, message := range messages {
-		cs.Enqueue(message)
-	}
-
-	// Causes the consenter thread to exit after it processes all messages
-	close(cs.(*chainSupport).chain.(*mockChain).queue)
-
-	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
-	select {
-	case <-it.ReadyChan():
-		// Will unblock if a block is created
-		t.Fatalf("Block 1 should not have been created")
-	case <-cs.(*chainSupport).chain.(*mockChain).done:
-		// Will unblock once the consenter thread has exited
-	}
+	// SampleConsortium
 }
-*/
 
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain
 func TestNewChain(t *testing.T) {

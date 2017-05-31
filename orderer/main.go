@@ -27,10 +27,12 @@ import (
 
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/kafka"
+	"github.com/hyperledger/fabric/orderer/ledger"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/sbft"
@@ -49,28 +51,38 @@ var logger = logging.MustGetLogger("orderer/main")
 
 func main() {
 	conf := config.Load()
+	initializeLoggingLevel(conf)
+	initializeProfilingService(conf)
+	grpcServer := initializeGrpcServer(conf)
+	initializeLocalMsp(conf)
+	signer := localmsp.NewSigner()
+	manager := initializeMultiChainManager(conf, signer)
+	server := NewServer(manager, signer)
+	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
+	logger.Info("Beginning to serve requests")
+	grpcServer.Start()
+}
 
-	// Set the logging level
+// Set the logging level
+func initializeLoggingLevel(conf *config.TopLevel) {
 	flogging.InitFromSpec(conf.General.LogLevel)
 	if conf.Kafka.Verbose {
 		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Lshortfile)
 	}
+}
 
-	// Start the profiling service if enabled.
-	// The ListenAndServe() call does not return unless an error occurs.
+// Start the profiling service if enabled.
+func initializeProfilingService(conf *config.TopLevel) {
 	if conf.General.Profile.Enabled {
 		go func() {
 			logger.Info("Starting Go pprof profiling service on:", conf.General.Profile.Address)
+			// The ListenAndServe() call does not return unless an error occurs.
 			logger.Panic("Go pprof service failed:", http.ListenAndServe(conf.General.Profile.Address, nil))
 		}()
 	}
+}
 
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
-	if err != nil {
-		logger.Error("Failed to listen:", err)
-		return
-	}
-
+func initializeSecureServerConfig(conf *config.TopLevel) comm.SecureServerConfig {
 	// secure server config
 	secureConfig := comm.SecureServerConfig{
 		UseTLS:            conf.General.TLS.Enabled,
@@ -114,52 +126,67 @@ func main() {
 		secureConfig.ServerRootCAs = serverRootCAs
 		secureConfig.ClientRootCAs = clientRootCAs
 	}
+	return secureConfig
+}
+
+func initializeBootstrapChannel(conf *config.TopLevel, lf ledger.Factory) {
+	var genesisBlock *cb.Block
+
+	// Select the bootstrapping mechanism
+	switch conf.General.GenesisMethod {
+	case "provisional":
+		genesisBlock = provisional.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlock()
+	case "file":
+		genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
+	default:
+		logger.Panic("Unknown genesis method:", conf.General.GenesisMethod)
+	}
+
+	chainID, err := utils.GetChainIDFromBlock(genesisBlock)
+	if err != nil {
+		logger.Fatal("Failed to parse chain ID from genesis block:", err)
+	}
+	gl, err := lf.GetOrCreate(chainID)
+	if err != nil {
+		logger.Fatal("Failed to create the system chain:", err)
+	}
+
+	err = gl.Append(genesisBlock)
+	if err != nil {
+		logger.Fatal("Could not write genesis block to ledger:", err)
+	}
+}
+
+func initializeGrpcServer(conf *config.TopLevel) comm.GRPCServer {
+	secureConfig := initializeSecureServerConfig(conf)
+
+	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
+	if err != nil {
+		logger.Fatal("Failed to listen:", err)
+	}
 
 	// Create GRPC server - return if an error occurs
 	grpcServer, err := comm.NewGRPCServerFromListener(lis, secureConfig)
 	if err != nil {
-		logger.Error("Failed to return new GRPC server:", err)
-		return
+		logger.Fatal("Failed to return new GRPC server:", err)
 	}
 
+	return grpcServer
+}
+
+func initializeLocalMsp(conf *config.TopLevel) {
 	// Load local MSP
-	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
+	err := mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
 	if err != nil { // Handle errors reading the config file
-		logger.Panic("Failed to initialize local MSP:", err)
+		logger.Fatal("Failed to initialize local MSP:", err)
 	}
+}
 
+func initializeMultiChainManager(conf *config.TopLevel, signer crypto.LocalSigner) multichain.Manager {
 	lf, _ := createLedgerFactory(conf)
-
 	// Are we bootstrapping?
 	if len(lf.ChainIDs()) == 0 {
-		var genesisBlock *cb.Block
-
-		// Select the bootstrapping mechanism
-		switch conf.General.GenesisMethod {
-		case "provisional":
-			genesisBlock = provisional.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlock()
-		case "file":
-			genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
-		default:
-			logger.Panic("Unknown genesis method:", conf.General.GenesisMethod)
-		}
-
-		chainID, err := utils.GetChainIDFromBlock(genesisBlock)
-		if err != nil {
-			logger.Error("Failed to parse chain ID from genesis block:", err)
-			return
-		}
-		gl, err := lf.GetOrCreate(chainID)
-		if err != nil {
-			logger.Error("Failed to create the system chain:", err)
-			return
-		}
-
-		err = gl.Append(genesisBlock)
-		if err != nil {
-			logger.Error("Could not write genesis block to ledger:", err)
-			return
-		}
+		initializeBootstrapChannel(conf, lf)
 	} else {
 		logger.Info("Not bootstrapping because of existing chains")
 	}
@@ -169,16 +196,5 @@ func main() {
 	consenters["kafka"] = kafka.New(conf.Kafka.Version, conf.Kafka.Retry, conf.Kafka.TLS)
 	consenters["sbft"] = sbft.New(makeSbftConsensusConfig(conf), makeSbftStackConfig(conf))
 
-	signer := localmsp.NewSigner()
-
-	manager := multichain.NewManagerImpl(lf, consenters, signer)
-
-	server := NewServer(
-		manager,
-		signer,
-	)
-
-	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
-	logger.Info("Beginning to serve requests")
-	grpcServer.Start()
+	return multichain.NewManagerImpl(lf, consenters, signer)
 }

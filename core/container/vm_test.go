@@ -22,29 +22,27 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
 
 func TestMain(m *testing.M) {
-	flag.BoolVar(&runTests, "run-controller-tests", false, "run tests")
+	flag.BoolVar(&runTests, "run-controller-tests", true, "run tests")
 	flag.Parse()
-	SetupTestConfig()
+	testutil.SetupTestConfig()
 	os.Exit(m.Run())
 }
 
 func TestVM_ListImages(t *testing.T) {
-	t.Skip("No need to invoke list images.")
 	vm, err := NewVM()
 	if err != nil {
 		t.Fail()
 		t.Logf("Error getting VM: %s", err)
 	}
 	err = vm.ListImages(context.TODO())
-	if err != nil {
-		t.Fail()
-		t.Logf("Error listing images: %s", err)
-	}
+	assert.NoError(t, err, "Error listing images")
 }
 
 func TestVM_BuildImage_ChaincodeLocal(t *testing.T) {
@@ -56,11 +54,11 @@ func TestVM_BuildImage_ChaincodeLocal(t *testing.T) {
 	}
 	// Build the spec
 	chaincodePath := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath}, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
-	if err := vm.BuildChaincodeContainer(spec); err != nil {
-		t.Fail()
-		t.Log(err)
-	}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
+		ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath},
+		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
+	err = vm.BuildChaincodeContainer(spec)
+	assert.NoError(t, err)
 }
 
 func TestVM_BuildImage_ChaincodeRemote(t *testing.T) {
@@ -73,11 +71,37 @@ func TestVM_BuildImage_ChaincodeRemote(t *testing.T) {
 	}
 	// Build the spec
 	chaincodePath := "https://github.com/prjayach/chaincode_examples/chaincode_example02"
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "ex02", Path: chaincodePath}, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
-	if err := vm.BuildChaincodeContainer(spec); err != nil {
-		t.Fail()
-		t.Log(err)
-	}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
+		ChaincodeId: &pb.ChaincodeID{Name: "ex02", Path: chaincodePath},
+		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
+	err = vm.BuildChaincodeContainer(spec)
+	assert.NoError(t, err)
+}
+
+func TestVM_GetChaincodePackageBytes(t *testing.T) {
+	_, err := GetChaincodePackageBytes(nil)
+	assert.Error(t, err,
+		"GetChaincodePackageBytes did not return error when chaincode spec is nil")
+
+	spec := &pb.ChaincodeSpec{ChaincodeId: nil}
+	_, err = GetChaincodePackageBytes(spec)
+	assert.Error(t, err, "Error expected when GetChaincodePackageBytes is called with nil chaincode ID")
+	assert.Contains(t, err.Error(), "invalid chaincode spec")
+
+	spec = &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
+		ChaincodeId: nil,
+		Input:       &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
+	_, err = GetChaincodePackageBytes(spec)
+	assert.Error(t, err,
+		"GetChaincodePackageBytes did not return error when chaincode ID is nil")
+}
+
+func TestVM_BuildChaincodeContainer(t *testing.T) {
+	vm, err := NewVM()
+	assert.NoError(t, err)
+	err = vm.BuildChaincodeContainer(nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Error getting chaincode package bytes")
 }
 
 func TestVM_Chaincode_Compile(t *testing.T) {

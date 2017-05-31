@@ -193,7 +193,7 @@ class Composition:
         return output
 
     def rebuildContainerData(self):
-        self.containerDataList = []
+        self.containerDataList[:] = []
         for containerID in self.refreshContainerIDs():
 
             # get container metadata

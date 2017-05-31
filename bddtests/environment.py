@@ -1,3 +1,8 @@
+# Copyright IBM Corp. 2017 All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 import subprocess
 
 from steps.docgen import DocumentGenerator
@@ -38,26 +43,27 @@ def after_scenario(context, scenario):
     contextHelper.after_scenario(scenario)
 
     get_logs = context.config.userdata.get("logs", "N")
-    if get_logs.lower() == "force" or (scenario.status == "failed" and get_logs.lower() == "y" and "compose_containers" in context):
-        print("Scenario {0} failed. Getting container logs".format(scenario.name))
-        file_suffix = "_" + scenario.name.replace(" ", "_") + ".log"
-        # get logs from the peer containers
-        for containerData in context.compose_containers:
-            (fileName, fileExists) = contextHelper.getTmpPathForName(name="{0}_{1}".format(containerData.containerName, scenario.name), extension="log", path_relative_to_tmp="logs")
-            with open(fileName, "w+") as logfile:
-                sys_rc = subprocess.call(["docker", "logs", containerData.containerName], stdout=logfile, stderr=logfile)
-                if sys_rc !=0 :
-                    print("Cannot get logs for {0}. Docker rc = {1}".format(containerData.containerName,sys_rc))
-        # get logs from the chaincode containers
-        cc_output, cc_error, cc_returncode = \
-            cli_call(["docker",  "ps", "-f",  "name=dev-", "--format", "{{.Names}}"], expect_success=True)
-        for containerName in cc_output.splitlines():
-            namePart,sep,junk = containerName.rpartition("-")
-            (fileName, fileExists) = contextHelper.getTmpPathForName(name="{0}_{1}".format(namePart, scenario.name), extension="log", path_relative_to_tmp="logs")
-            with open(fileName, "w+") as logfile:
-                sys_rc = subprocess.call(["docker", "logs", containerName], stdout=logfile, stderr=logfile)
-                if sys_rc !=0 :
-                    print("Cannot get logs for {0}. Docker rc = {1}".format(namepart,sys_rc))
+    if "compose_containers" in context:
+        if get_logs.lower() == "force" or (scenario.status == "failed" and get_logs.lower() == "y"):
+            print("Scenario {0} failed. Getting container logs".format(scenario.name))
+            file_suffix = "_" + scenario.name.replace(" ", "_") + ".log"
+            # get logs from the peer containers
+            for containerData in context.compose_containers:
+                (fileName, fileExists) = contextHelper.getTmpPathForName(name="{0}_{1}".format(containerData.containerName, scenario.name), extension="log", path_relative_to_tmp="logs")
+                with open(fileName, "w+") as logfile:
+                    sys_rc = subprocess.call(["docker", "logs", containerData.containerName], stdout=logfile, stderr=logfile)
+                    if sys_rc !=0 :
+                        print("Cannot get logs for {0}. Docker rc = {1}".format(containerData.containerName,sys_rc))
+            # get logs from the chaincode containers
+            cc_output, cc_error, cc_returncode = \
+                cli_call(["docker",  "ps", "-f",  "name=dev-", "--format", "{{.Names}}"], expect_success=True)
+            for containerName in cc_output.splitlines():
+                namePart,sep,junk = containerName.rpartition("-")
+                (fileName, fileExists) = contextHelper.getTmpPathForName(name="{0}_{1}".format(namePart, scenario.name), extension="log", path_relative_to_tmp="logs")
+                with open(fileName, "w+") as logfile:
+                    sys_rc = subprocess.call(["docker", "logs", containerName], stdout=logfile, stderr=logfile)
+                    if sys_rc !=0 :
+                        print("Cannot get logs for {0}. Docker rc = {1}".format(namepart,sys_rc))
     if 'doNotDecompose' in scenario.tags:
         if 'compose_yaml' in context:
             print("Not going to decompose after scenario {0}, with yaml '{1}'".format(scenario.name, context.compose_yaml))

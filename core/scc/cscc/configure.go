@@ -22,9 +22,8 @@ limitations under the License.
 package cscc
 
 import (
-	"fmt"
-
 	"errors"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -34,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -147,11 +147,7 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 // Since it is the first block, it is the genesis block containing configuration
 // for this chain, so we want to update the Chain object with this info
 func joinChain(blockBytes []byte) pb.Response {
-	if blockBytes == nil {
-		return shim.Error("Genesis block must not be nil.")
-	}
-
-	block, err := utils.GetBlockFromBlockBytes(blockBytes)
+	block, err := extractBlock(blockBytes)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to reconstruct the genesis block, %s", err))
 	}
@@ -174,26 +170,8 @@ func joinChain(blockBytes []byte) pb.Response {
 	return shim.Success(nil)
 }
 
-func getChannelFromConfigBlock(blockBytes []byte) (string, error) {
-	if blockBytes == nil {
-		return "", errors.New("Configuration block must not be nil.")
-	}
-	block, err := utils.GetBlockFromBlockBytes(blockBytes)
-	if err != nil {
-		return "", fmt.Errorf("Failed to reconstruct the configuration block, %s", err)
-	}
-	chainID, err := utils.GetChainIDFromBlock(block)
-	if err != nil {
-		return "", fmt.Errorf("Failed to get the chain ID from the configuration block, %s", err)
-	}
-	return chainID, nil
-}
-
 func updateConfigBlock(blockBytes []byte) pb.Response {
-	if blockBytes == nil {
-		return shim.Error("Configuration block must not be nil.")
-	}
-	block, err := utils.GetBlockFromBlockBytes(blockBytes)
+	block, err := extractBlock(blockBytes)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to reconstruct the configuration block, %s", err))
 	}
@@ -208,6 +186,19 @@ func updateConfigBlock(blockBytes []byte) pb.Response {
 	}
 
 	return shim.Success(nil)
+}
+
+func extractBlock(bytes []byte) (*common.Block, error) {
+	if bytes == nil {
+		return nil, errors.New("Genesis block must not be nil.")
+	}
+
+	block, err := utils.GetBlockFromBlockBytes(bytes)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Failed to reconstruct the genesis block, %s", err))
+	}
+
+	return block, nil
 }
 
 // Return the current configuration block for the specified chainID. If the

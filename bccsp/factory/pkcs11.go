@@ -36,46 +36,52 @@ type FactoryOpts struct {
 // Error is returned only if defaultBCCSP cannot be found
 func InitFactories(config *FactoryOpts) error {
 	factoriesInitOnce.Do(func() {
-		// Take some precautions on default opts
-		if config == nil {
-			config = &DefaultOpts
-		}
-
-		if config.ProviderName == "" {
-			config.ProviderName = "SW"
-		}
-
-		if config.SwOpts == nil {
-			config.SwOpts = DefaultOpts.SwOpts
-		}
-
-		// Initialize factories map
-		bccspMap = make(map[string]bccsp.BCCSP)
-
-		// Software-Based BCCSP
-		if config.SwOpts != nil {
-			f := &SWFactory{}
-			err := initBCCSP(f, config)
-			if err != nil {
-				factoriesInitError = fmt.Errorf("[%s]", err)
-			}
-		}
-
-		// PKCS11-Based BCCSP
-		if config.Pkcs11Opts != nil {
-			f := &PKCS11Factory{}
-			err := initBCCSP(f, config)
-			if err != nil {
-				factoriesInitError = fmt.Errorf("%s\n[%s]", factoriesInitError, err)
-			}
-		}
-
-		var ok bool
-		defaultBCCSP, ok = bccspMap[config.ProviderName]
-		if !ok {
-			factoriesInitError = fmt.Errorf("%s\nCould not find default `%s` BCCSP", factoriesInitError, config.ProviderName)
-		}
+		setFactories(config)
 	})
+
+	return factoriesInitError
+}
+
+func setFactories(config *FactoryOpts) error {
+	// Take some precautions on default opts
+	if config == nil {
+		config = &DefaultOpts
+	}
+
+	if config.ProviderName == "" {
+		config.ProviderName = "SW"
+	}
+
+	if config.SwOpts == nil {
+		config.SwOpts = DefaultOpts.SwOpts
+	}
+
+	// Initialize factories map
+	bccspMap = make(map[string]bccsp.BCCSP)
+
+	// Software-Based BCCSP
+	if config.SwOpts != nil {
+		f := &SWFactory{}
+		err := initBCCSP(f, config)
+		if err != nil {
+			factoriesInitError = fmt.Errorf("Failed initializing SW.BCCSP [%s]", err)
+		}
+	}
+
+	// PKCS11-Based BCCSP
+	if config.Pkcs11Opts != nil {
+		f := &PKCS11Factory{}
+		err := initBCCSP(f, config)
+		if err != nil {
+			factoriesInitError = fmt.Errorf("Failed initializing PKCS11.BCCSP %s\n[%s]", factoriesInitError, err)
+		}
+	}
+
+	var ok bool
+	defaultBCCSP, ok = bccspMap[config.ProviderName]
+	if !ok {
+		factoriesInitError = fmt.Errorf("%s\nCould not find default `%s` BCCSP", factoriesInitError, config.ProviderName)
+	}
 
 	return factoriesInitError
 }

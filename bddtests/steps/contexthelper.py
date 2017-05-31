@@ -1,8 +1,33 @@
+# Copyright IBM Corp. 2017 All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 
 import uuid
 import os
 import shutil
 from slugify import slugify
+
+
+class Context(object):
+    def __init__(self):
+        pass
+
+    def __setattr__(self, attr, value):
+        self.__dict__[attr] = value
+
+    def __getattr__(self, attr):
+        return self.__dict__[attr]
+        # raise AttributeError(e)
+
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, value):
+        return self.__dict__.update(value)
+
+    def __contains__(self, attr):
+        return attr in self.__dict__
 
 class ContextHelper:
 

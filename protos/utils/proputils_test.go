@@ -18,16 +18,14 @@ package utils_test
 
 import (
 	"bytes"
-	"testing"
-
-	"reflect"
-
-	"fmt"
-	"os"
-
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"os"
+	"reflect"
+	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -44,6 +42,206 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 			Type:        pb.ChaincodeSpec_GOLANG,
 			ChaincodeId: &pb.ChaincodeID{Name: "chaincode_name"},
 			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
+}
+
+func TestNilProposal(t *testing.T) {
+	// pass nil to all function which accept *peer.Proposal
+	_, err := utils.GetChaincodeInvocationSpec(nil)
+	assert.Error(t, err, "Expected error with nil proposal")
+	_, _, err = utils.GetChaincodeProposalContext(nil)
+	assert.Error(t, err, "Expected error with nil proposal")
+	_, err = utils.GetNonce(nil)
+	assert.Error(t, err, "Expected error with nil proposal")
+	_, err = utils.GetBytesProposal(nil)
+	assert.Error(t, err, "Expected error with nil proposal")
+	_, err = utils.ComputeProposalBinding(nil)
+	assert.Error(t, err, "Expected error with nil proposal")
+}
+
+func TestBadProposalHeaders(t *testing.T) {
+	// NOTE:  There is a lot of repetitive proposal validation code
+	// in multiple functions which should be refactored in the future.
+	// For now, simply consolidating the test cases
+
+	// emty header
+	prop := &pb.Proposal{
+		Header: []byte{},
+	}
+	_, _, err := utils.GetChaincodeProposalContext(prop)
+	assert.Error(t, err, "Expected error with empty proposal header")
+	_, err = utils.ComputeProposalBinding(prop)
+	assert.Error(t, err, "Expected error with empty proposal header")
+
+	// malformed proposal header
+	prop = &pb.Proposal{
+		Header:  []byte("bad header"),
+		Payload: []byte("payload"),
+	}
+	_, err = utils.GetHeader(prop.Header)
+	assert.Error(t, err, "Expected error with malformed proposal header")
+	_, err = utils.GetChaincodeInvocationSpec(prop)
+	assert.Error(t, err, "Expected error with malformed proposal header")
+	_, _, err = utils.GetChaincodeProposalContext(prop)
+	assert.Error(t, err, "Expected error with malformed proposal header")
+	_, err = utils.GetNonce(prop)
+	assert.Error(t, err, "Expected error with malformed proposal header")
+	_, err = utils.ComputeProposalBinding(prop)
+	assert.Error(t, err, "Expected error with malformed proposal header")
+
+	// malformed signature header
+	chdr, _ := proto.Marshal(&common.ChannelHeader{
+		Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
+	})
+	hdr := &common.Header{
+		ChannelHeader:   chdr,
+		SignatureHeader: []byte("bad signature header"),
+	}
+	_, err = utils.GetSignatureHeader(hdr.SignatureHeader)
+	assert.Error(t, err, "Expected error with malformed signature header")
+	hdrBytes, _ := proto.Marshal(hdr)
+	prop.Header = hdrBytes
+	_, err = utils.GetChaincodeInvocationSpec(prop)
+	assert.Error(t, err, "Expected error with malformed signature header")
+	_, _, err = utils.GetChaincodeProposalContext(prop)
+	assert.Error(t, err, "Expected error with malformed signature header")
+	_, err = utils.GetNonce(prop)
+	assert.Error(t, err, "Expected error with malformed signature header")
+	_, err = utils.ComputeProposalBinding(prop)
+	assert.Error(t, err, "Expected error with malformed signature header")
+
+	// wrong channel header type
+	chdr, _ = proto.Marshal(&common.ChannelHeader{
+		Type: int32(common.HeaderType_DELIVER_SEEK_INFO),
+	})
+	hdr.ChannelHeader = chdr
+	hdrBytes, _ = proto.Marshal(hdr)
+	prop.Header = hdrBytes
+	_, _, err = utils.GetChaincodeProposalContext(prop)
+	assert.Error(t, err, "Expected error with wrong header type")
+	_, err = utils.GetNonce(prop)
+	assert.Error(t, err, "Expected error with wrong header type")
+
+	// malformed channel header
+	hdr.ChannelHeader = []byte("bad channel header")
+	hdrBytes, _ = proto.Marshal(hdr)
+	prop.Header = hdrBytes
+	_, _, err = utils.GetChaincodeProposalContext(prop)
+	assert.Error(t, err, "Expected error with malformed channel header")
+	_, err = utils.GetNonce(prop)
+	assert.Error(t, err, "Expected error with malformed channel header")
+	_, err = utils.GetChaincodeHeaderExtension(hdr)
+	assert.Error(t, err, "Expected error with malformed channel header")
+	_, err = utils.ComputeProposalBinding(prop)
+	assert.Error(t, err, "Expected error with malformed channel header")
+
+}
+
+func TestGetNonce(t *testing.T) {
+	chdr, _ := proto.Marshal(&common.ChannelHeader{
+		Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
+	})
+	hdr, _ := proto.Marshal(&common.Header{
+		ChannelHeader:   chdr,
+		SignatureHeader: []byte{},
+	})
+	prop := &pb.Proposal{
+		Header: hdr,
+	}
+	_, err := utils.GetNonce(prop)
+	assert.Error(t, err, "Expected error with nil signature header")
+
+	shdr, _ := proto.Marshal(&common.SignatureHeader{
+		Nonce: []byte("nonce"),
+	})
+	hdr, _ = proto.Marshal(&common.Header{
+		ChannelHeader:   chdr,
+		SignatureHeader: shdr,
+	})
+	prop = &pb.Proposal{
+		Header: hdr,
+	}
+	nonce, err := utils.GetNonce(prop)
+	assert.NoError(t, err, "Unexpected error getting nonce")
+	assert.Equal(t, "nonce", string(nonce), "Failed to return the expected nonce")
+
+}
+
+func TestGetChaincodeDeploymentSpec(t *testing.T) {
+	_, err := utils.GetChaincodeDeploymentSpec([]byte("bad spec"))
+	assert.Error(t, err, "Expected error with malformed spec")
+
+	cds, _ := proto.Marshal(&pb.ChaincodeDeploymentSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type: pb.ChaincodeSpec_GOLANG,
+		},
+	})
+	_, err = utils.GetChaincodeDeploymentSpec(cds)
+	assert.NoError(t, err, "Unexpected error getting deployment spec")
+
+	cds, _ = proto.Marshal(&pb.ChaincodeDeploymentSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type: pb.ChaincodeSpec_UNDEFINED,
+		},
+	})
+	_, err = utils.GetChaincodeDeploymentSpec(cds)
+	assert.Error(t, err, "Expected error with invalid spec type")
+
+}
+
+func TestCDSProposals(t *testing.T) {
+	var prop *pb.Proposal
+	var err error
+	var txid string
+	creator := []byte("creator")
+	cds := &pb.ChaincodeDeploymentSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type: pb.ChaincodeSpec_GOLANG,
+		},
+	}
+	policy := []byte("policy")
+	escc := []byte("escc")
+	vscc := []byte("vscc")
+	chainID := "testchainid"
+
+	// install
+	prop, txid, err = utils.CreateInstallProposalFromCDS(cds, creator)
+	assert.NotNil(t, prop, "Install proposal should not be nil")
+	assert.NoError(t, err, "Unexpected error creating install proposal")
+	assert.NotEqual(t, "", txid, "txid should not be empty")
+
+	// deploy
+	prop, txid, err = utils.CreateDeployProposalFromCDS(chainID, cds, creator, policy, escc, vscc)
+	assert.NotNil(t, prop, "Deploy proposal should not be nil")
+	assert.NoError(t, err, "Unexpected error creating deploy proposal")
+	assert.NotEqual(t, "", txid, "txid should not be empty")
+
+	// upgrade
+	prop, txid, err = utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, policy, escc, vscc)
+	assert.NotNil(t, prop, "Upgrade proposal should not be nil")
+	assert.NoError(t, err, "Unexpected error creating upgrade proposal")
+	assert.NotEqual(t, "", txid, "txid should not be empty")
+
+}
+
+func TestComputeProposalBinding(t *testing.T) {
+	expectedDigestHex := "5093dd4f4277e964da8f4afbde0a9674d17f2a6a5961f0670fc21ae9b67f2983"
+	expectedDigest, _ := hex.DecodeString(expectedDigestHex)
+	chdr, _ := proto.Marshal(&common.ChannelHeader{
+		Epoch: uint64(10),
+	})
+	shdr, _ := proto.Marshal(&common.SignatureHeader{
+		Nonce:   []byte("nonce"),
+		Creator: []byte("creator"),
+	})
+	hdr, _ := proto.Marshal(&common.Header{
+		ChannelHeader:   chdr,
+		SignatureHeader: shdr,
+	})
+	prop := &pb.Proposal{
+		Header: hdr,
+	}
+	binding, _ := utils.ComputeProposalBinding(prop)
+	assert.Equal(t, expectedDigest, binding, "Binding does not match expected digest")
 }
 
 func TestProposal(t *testing.T) {
@@ -100,6 +298,11 @@ func TestProposal(t *testing.T) {
 	shdr, err := utils.GetSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
 		t.Fatalf("Could not unmarshal signature header, err %s", err)
+	}
+
+	_, err = utils.GetBytesSignatureHeader(shdr)
+	if err != nil {
+		t.Fatalf("Could not marshal signature header, err %s", err)
 	}
 
 	// sanity check on header
@@ -172,6 +375,20 @@ func TestProposalResponse(t *testing.T) {
 	eventBytes, err := utils.GetBytesChaincodeEvent(events)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
+		return
+	}
+
+	// get the bytes of the response
+	pResponseBytes, err := utils.GetBytesResponse(pResponse)
+	if err != nil {
+		t.Fatalf("Failure while marshalling the Response")
+		return
+	}
+
+	// get the response from bytes
+	_, err = utils.GetResponse(pResponseBytes)
+	if err != nil {
+		t.Fatalf("Failure while unmarshalling the Response")
 		return
 	}
 

@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 
 # Development on Power (ppc64le) systems is done outside of vagrant, on the
 # native OS. This script helps setup the dev env on ppc64le Ubuntu.

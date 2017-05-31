@@ -17,10 +17,12 @@ limitations under the License.
 package endorser
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,6 +31,7 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -38,6 +41,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/peer"
 	syscc "github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/core/testutil"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -673,7 +677,7 @@ func newTempDir() string {
 }
 
 func TestMain(m *testing.M) {
-	SetupTestConfig()
+	setupTestConfig()
 
 	chainID := util.GetTestChainID()
 	tev, err := initPeer(chainID)
@@ -707,4 +711,39 @@ func TestMain(m *testing.M) {
 	finitPeer(tev)
 
 	os.Exit(retVal)
+}
+
+func setupTestConfig() {
+	flag.Parse()
+
+	// Now set the configuration file
+	viper.SetEnvPrefix("CORE")
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.SetConfigName("endorser_test") // name of config file (without extension)
+	viper.AddConfigPath("./")            // path to look for the config file in
+	err := viper.ReadInConfig()          // Find and read the config file
+	if err != nil {                      // Handle errors reading the config file
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
+
+	testutil.SetupTestLogging()
+
+	// Set the number of maxprocs
+	viper.GetInt("peer.gomaxprocs")
+
+	// Init the BCCSP
+	var bccspConfig *factory.FactoryOpts
+	err = viper.UnmarshalKey("peer.BCCSP", &bccspConfig)
+	if err != nil {
+		bccspConfig = nil
+	}
+
+	msp.SetupBCCSPKeystoreConfig(bccspConfig, viper.GetString("peer.mspConfigPath")+"/keystore")
+
+	err = factory.InitFactories(bccspConfig)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 }

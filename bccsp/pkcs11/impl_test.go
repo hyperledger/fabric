@@ -38,7 +38,10 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -56,8 +59,11 @@ type testConfig struct {
 }
 
 func TestMain(m *testing.M) {
-	ks := &FileBasedKeyStore{}
-	if err := ks.Init(nil, os.TempDir(), false); err != nil {
+	// Activate DEBUG level to cover listAttrs function
+	logging.SetLevel(logging.DEBUG, "bccsp_p11")
+
+	ks, err := sw.NewFileBasedKeyStore(nil, os.TempDir(), false)
+	if err != nil {
 		fmt.Printf("Failed initiliazing KeyStore [%s]", err)
 		os.Exit(-1)
 	}
@@ -104,6 +110,61 @@ func TestMain(m *testing.M) {
 		}
 	}
 	os.Exit(0)
+}
+
+func TestNew(t *testing.T) {
+	opts := PKCS11Opts{
+		HashFamily: "SHA2",
+		SecLevel:   256,
+		SoftVerify: false,
+		Sensitive:  true,
+		Library:    "lib",
+		Label:      "ForFabric",
+		Pin:        "98765432",
+	}
+
+	// Setup PKCS11 library and provide initial set of values
+	lib, _, _ := FindPKCS11Lib()
+	opts.Library = lib
+
+	// Test for nil keystore
+	_, err := New(opts, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid bccsp.KeyStore instance. It must be different from nil.")
+
+	// Test for invalid PKCS11 loadLib
+	opts.Library = ""
+	_, err = New(opts, currentKS)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Failed initializing PKCS11 library")
+}
+
+func TestFindPKCS11LibEnvVars(t *testing.T) {
+	const (
+		dummy_PKCS11_LIB   = "/usr/lib/pkcs11"
+		dummy_PKCS11_PIN   = "98765432"
+		dummy_PKCS11_LABEL = "testing"
+	)
+
+	// Set environment variables used for test and preserve
+	// original values for restoration after test completion
+	orig_PKCS11_LIB := os.Getenv("PKCS11_LIB")
+	os.Setenv("PKCS11_LIB", dummy_PKCS11_LIB)
+
+	orig_PKCS11_PIN := os.Getenv("PKCS11_PIN")
+	os.Setenv("PKCS11_PIN", dummy_PKCS11_PIN)
+
+	orig_PKCS11_LABEL := os.Getenv("PKCS11_LABEL")
+	os.Setenv("PKCS11_LABEL", dummy_PKCS11_LABEL)
+
+	lib, pin, label := FindPKCS11Lib()
+	assert.EqualValues(t, dummy_PKCS11_LIB, lib, "FindPKCS11Lib did not return expected library")
+	assert.EqualValues(t, dummy_PKCS11_PIN, pin, "FindPKCS11Lib did not return expected pin")
+	assert.EqualValues(t, dummy_PKCS11_LABEL, label, "FindPKCS11Lib did not return expected label")
+
+	os.Setenv("PKCS11_LIB", orig_PKCS11_LIB)
+	os.Setenv("PKCS11_PIN", orig_PKCS11_PIN)
+	os.Setenv("PKCS11_LABEL", orig_PKCS11_LABEL)
 }
 
 func TestInvalidNewParameter(t *testing.T) {
@@ -233,17 +294,6 @@ func TestKeyGenRSAOpts(t *testing.T) {
 		t.Fatal("Failed generating RSA 1024 key. Key should be asymmetric")
 	}
 
-	rsaKey := k.(*rsaPrivateKey).privKey
-	if rsaKey.N.BitLen() != 1024 {
-		t.Fatal("1024 RSA generated key in invalid. Modulus be of length 1024.")
-	}
-	if rsaKey.D.Cmp(big.NewInt(0)) == 0 {
-		t.Fatal("1024 RSA generated key in invalid. Private key must be different from 0.")
-	}
-	if rsaKey.E < 3 {
-		t.Fatal("1024 RSA generated key in invalid. Private key must be different from 0.")
-	}
-
 	// 2048
 	k, err = currentBCCSP.KeyGen(&bccsp.RSA2048KeyGenOpts{Temporary: false})
 	if err != nil {
@@ -258,72 +308,6 @@ func TestKeyGenRSAOpts(t *testing.T) {
 	if k.Symmetric() {
 		t.Fatal("Failed generating RSA 2048 key. Key should be asymmetric")
 	}
-
-	rsaKey = k.(*rsaPrivateKey).privKey
-	if rsaKey.N.BitLen() != 2048 {
-		t.Fatal("2048 RSA generated key in invalid. Modulus be of length 2048.")
-	}
-	if rsaKey.D.Cmp(big.NewInt(0)) == 0 {
-		t.Fatal("2048 RSA generated key in invalid. Private key must be different from 0.")
-	}
-	if rsaKey.E < 3 {
-		t.Fatal("2048 RSA generated key in invalid. Private key must be different from 0.")
-	}
-
-	/*
-		// Skipping these tests because they take too much time to run.
-		// 3072
-		k, err = currentBCCSP.KeyGen(&bccsp.RSA3072KeyGenOpts{Temporary: false})
-		if err != nil {
-			t.Fatalf("Failed generating RSA 3072 key [%s]", err)
-		}
-		if k == nil {
-			t.Fatal("Failed generating RSA 3072 key. Key must be different from nil")
-		}
-		if !k.Private() {
-			t.Fatal("Failed generating RSA 3072 key. Key should be private")
-		}
-		if k.Symmetric() {
-			t.Fatal("Failed generating RSA 3072 key. Key should be asymmetric")
-		}
-
-		rsaKey = k.(*rsaPrivateKey).privKey
-		if rsaKey.N.BitLen() != 3072 {
-			t.Fatal("3072 RSA generated key in invalid. Modulus be of length 3072.")
-		}
-		if rsaKey.D.Cmp(big.NewInt(0)) == 0 {
-			t.Fatal("3072 RSA generated key in invalid. Private key must be different from 0.")
-		}
-		if rsaKey.E < 3 {
-			t.Fatal("3072 RSA generated key in invalid. Private key must be different from 0.")
-		}
-
-		// 4096
-		k, err = currentBCCSP.KeyGen(&bccsp.RSA4096KeyGenOpts{Temporary: false})
-		if err != nil {
-			t.Fatalf("Failed generating RSA 4096 key [%s]", err)
-		}
-		if k == nil {
-			t.Fatal("Failed generating RSA 4096 key. Key must be different from nil")
-		}
-		if !k.Private() {
-			t.Fatal("Failed generating RSA 4096 key. Key should be private")
-		}
-		if k.Symmetric() {
-			t.Fatal("Failed generating RSA 4096 key. Key should be asymmetric")
-		}
-
-		rsaKey = k.(*rsaPrivateKey).privKey
-		if rsaKey.N.BitLen() != 4096 {
-			t.Fatal("4096 RSA generated key in invalid. Modulus be of length 4096.")
-		}
-		if rsaKey.D.Cmp(big.NewInt(0)) == 0 {
-			t.Fatal("4096 RSA generated key in invalid. Private key must be different from 0.")
-		}
-		if rsaKey.E < 3 {
-			t.Fatal("4096 RSA generated key in invalid. Private key must be different from 0.")
-		}
-	*/
 }
 
 func TestKeyGenAESOpts(t *testing.T) {
@@ -342,11 +326,6 @@ func TestKeyGenAESOpts(t *testing.T) {
 		t.Fatal("Failed generating AES 128 key. Key should be symmetric")
 	}
 
-	aesKey := k.(*aesPrivateKey).privKey
-	if len(aesKey) != 16 {
-		t.Fatal("AES Key generated key in invalid. The key must have length 16.")
-	}
-
 	// AES 192
 	k, err = currentBCCSP.KeyGen(&bccsp.AES192KeyGenOpts{Temporary: false})
 	if err != nil {
@@ -362,11 +341,6 @@ func TestKeyGenAESOpts(t *testing.T) {
 		t.Fatal("Failed generating AES 192 key. Key should be symmetric")
 	}
 
-	aesKey = k.(*aesPrivateKey).privKey
-	if len(aesKey) != 24 {
-		t.Fatal("AES Key generated key in invalid. The key must have length 16.")
-	}
-
 	// AES 256
 	k, err = currentBCCSP.KeyGen(&bccsp.AES256KeyGenOpts{Temporary: false})
 	if err != nil {
@@ -380,11 +354,6 @@ func TestKeyGenAESOpts(t *testing.T) {
 	}
 	if !k.Symmetric() {
 		t.Fatal("Failed generating AES 256 key. Key should be symmetric")
-	}
-
-	aesKey = k.(*aesPrivateKey).privKey
-	if len(aesKey) != 32 {
-		t.Fatal("AES Key generated key in invalid. The key must have length 16.")
 	}
 }
 
@@ -1316,7 +1285,7 @@ func TestHMACKeyDerivOverAES256Key(t *testing.T) {
 
 func TestAES256KeyImport(t *testing.T) {
 
-	raw, err := GetRandomBytes(32)
+	raw, err := sw.GetRandomBytes(32)
 	if err != nil {
 		t.Fatalf("Failed generating AES key [%s]", err)
 	}
@@ -1406,7 +1375,7 @@ func TestAES256KeyGenSKI(t *testing.T) {
 func TestSHA(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
-		b, err := GetRandomBytes(i)
+		b, err := sw.GetRandomBytes(i)
 		if err != nil {
 			t.Fatalf("Failed getting random bytes [%s]", err)
 		}
@@ -1479,17 +1448,6 @@ func TestRSAKeyGenEphemeral(t *testing.T) {
 		t.Fatal("Secret keys cannot be exported. It must be nil")
 	}
 
-}
-
-func TestRSAPublicKeyInvalidBytes(t *testing.T) {
-	rsaKey := &rsaPublicKey{nil}
-	b, err := rsaKey.Bytes()
-	if err == nil {
-		t.Fatal("It must fail in this case")
-	}
-	if len(b) != 0 {
-		t.Fatal("It must be nil")
-	}
 }
 
 func TestRSAPrivateKeySKI(t *testing.T) {
@@ -1874,51 +1832,6 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 	}
 	if !valid {
 		t.Fatal("Failed verifying RSA signature. Signature not valid.")
-	}
-}
-
-func TestGetHashAndHashCompatibility(t *testing.T) {
-
-	msg1 := []byte("abcd")
-	msg2 := []byte("efgh")
-	msg := []byte("abcdefgh")
-
-	digest1, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
-	if err != nil {
-		t.Fatalf("Failed computing HASH [%s]", err)
-	}
-
-	digest2, err := currentBCCSP.Hash(msg, nil)
-	if err != nil {
-		t.Fatalf("Failed computing HASH [%s]", err)
-	}
-
-	if !bytes.Equal(digest1, digest2) {
-		t.Fatalf("Different hash computed. [%x][%x]", digest1, digest2)
-	}
-
-	h, err := currentBCCSP.GetHash(nil)
-	if err != nil {
-		t.Fatalf("Failed getting hash.Hash instance [%s]", err)
-	}
-	h.Write(msg1)
-	h.Write(msg2)
-	digest3 := h.Sum(nil)
-
-	h2, err := currentBCCSP.GetHash(&bccsp.SHAOpts{})
-	if err != nil {
-		t.Fatalf("Failed getting SHA hash.Hash instance [%s]", err)
-	}
-	h2.Write(msg1)
-	h2.Write(msg2)
-	digest4 := h2.Sum(nil)
-
-	if !bytes.Equal(digest3, digest4) {
-		t.Fatalf("Different hash computed. [%x][%x]", digest3, digest4)
-	}
-
-	if !bytes.Equal(digest1, digest3) {
-		t.Fatalf("Different hash computed. [%x][%x]", digest1, digest3)
 	}
 }
 

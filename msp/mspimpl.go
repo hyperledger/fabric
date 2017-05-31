@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -680,12 +681,15 @@ func (msp *bccspmsp) getCertificationChainForBCCSPIdentity(id *identity) ([]*x50
 		return nil, errors.New("A CA certificate cannot be used directly by this MSP")
 	}
 
-	return msp.getValidationChain(id.cert)
+	return msp.getValidationChain(id.cert, false)
 }
 
 func (msp *bccspmsp) getUniqueValidationChain(cert *x509.Certificate) ([]*x509.Certificate, error) {
 	// ask golang to validate the cert for us based on the options that we've built at setup time
-	validationChains, err := cert.Verify(*(msp.opts))
+	if msp.opts == nil {
+		return nil, fmt.Errorf("The supplied identity has no verify options")
+	}
+	validationChains, err := cert.Verify(msp.getValidityOptsForCert(cert))
 	if err != nil {
 		return nil, fmt.Errorf("The supplied identity is not valid, Verify() returned %s", err)
 	}
@@ -700,7 +704,7 @@ func (msp *bccspmsp) getUniqueValidationChain(cert *x509.Certificate) ([]*x509.C
 	return validationChains[0], nil
 }
 
-func (msp *bccspmsp) getValidationChain(cert *x509.Certificate) ([]*x509.Certificate, error) {
+func (msp *bccspmsp) getValidationChain(cert *x509.Certificate, isIntermediateChain bool) ([]*x509.Certificate, error) {
 	validationChain, err := msp.getUniqueValidationChain(cert)
 	if err != nil {
 		return nil, fmt.Errorf("Failed getting validation chain %s", err)
@@ -712,10 +716,14 @@ func (msp *bccspmsp) getValidationChain(cert *x509.Certificate) ([]*x509.Certifi
 	}
 
 	// check that the parent is a leaf of the certification tree
-	if msp.certificationTreeInternalNodesMap[string(validationChain[1].Raw)] {
+	// if validating an intermediate chain, the first certificate will the parent
+	parentPosition := 1
+	if isIntermediateChain {
+		parentPosition = 0
+	}
+	if msp.certificationTreeInternalNodesMap[string(validationChain[parentPosition].Raw)] {
 		return nil, fmt.Errorf("Invalid validation chain. Parent certificate should be a leaf of the certification tree [%v].", cert.Raw)
 	}
-
 	return validationChain, nil
 }
 
@@ -753,14 +761,21 @@ func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*x509.Cert
 func (msp *bccspmsp) setupOUs(conf m.FabricMSPConfig) error {
 	msp.ouIdentifiers = make(map[string][][]byte)
 	for _, ou := range conf.OrganizationalUnitIdentifiers {
-		// 1. check that it registered in msp.rootCerts or msp.intermediateCerts
+
+		// 1. check that certificate is registered in msp.rootCerts or msp.intermediateCerts
 		cert, err := msp.getCertFromPem(ou.Certificate)
 		if err != nil {
 			return fmt.Errorf("Failed getting certificate for [%v]: [%s]", ou, err)
 		}
 
+		// 2. Sanitize it to ensure like for like comparison
+		cert, err = msp.sanitizeCert(cert)
+		if err != nil {
+			return fmt.Errorf("sanitizeCert failed %s", err)
+		}
+
 		found := false
-		root := true
+		root := false
 		// Search among root certificates
 		for _, v := range msp.rootCerts {
 			if v.(*identity).cert.Equal(cert) {
@@ -783,19 +798,19 @@ func (msp *bccspmsp) setupOUs(conf m.FabricMSPConfig) error {
 			return fmt.Errorf("Failed adding OU. Certificate [%v] not in root or intermediate certs.", ou.Certificate)
 		}
 
-		// 2. get the certification path for it
+		// 3. get the certification path for it
 		var certifiersIdentitifer []byte
 		var chain []*x509.Certificate
 		if root {
 			chain = []*x509.Certificate{cert}
 		} else {
-			chain, err = msp.getValidationChain(cert)
+			chain, err = msp.getValidationChain(cert, true)
 			if err != nil {
 				return fmt.Errorf("Failed computing validation chain for [%v]. [%s]", cert, err)
 			}
 		}
 
-		// 3. compute the hash of the certification path
+		// 4. compute the hash of the certification path
 		certifiersIdentitifer, err = msp.getCertificationChainIdentifierFromChain(chain)
 		if err != nil {
 			return fmt.Errorf("Failed computing Certifiers Identifier for [%v]. [%s]", ou.Certificate, err)
@@ -969,9 +984,28 @@ func (msp *bccspmsp) validateIdentityOUs(id *identity) error {
 		}
 
 		if !found {
+			if len(id.GetOrganizationalUnits()) == 0 {
+				return fmt.Errorf("The identity certificate does not contain an Organizational Unit (OU)")
+			}
 			return fmt.Errorf("None of the identity's organizational units [%v] are in MSP %s", id.GetOrganizationalUnits(), msp.name)
 		}
 	}
 
 	return nil
+}
+
+func (msp *bccspmsp) getValidityOptsForCert(cert *x509.Certificate) x509.VerifyOptions {
+	// First copy the opts to override the CurrentTime field
+	// in order to make the certificate passing the expiration test
+	// independently from the real local current time.
+	// This is a temporary workaround for FAB-3678
+
+	var tempOpts x509.VerifyOptions
+	tempOpts.Roots = msp.opts.Roots
+	tempOpts.DNSName = msp.opts.DNSName
+	tempOpts.Intermediates = msp.opts.Intermediates
+	tempOpts.KeyUsages = msp.opts.KeyUsages
+	tempOpts.CurrentTime = cert.NotBefore.Add(time.Second)
+
+	return tempOpts
 }

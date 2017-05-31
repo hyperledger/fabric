@@ -115,10 +115,7 @@ func (oc *OrganizationConfig) validateMSP(tx interface{}) error {
 		return err
 	}
 
-	oc.mspID, err = oc.msp.GetIdentifier()
-	if err != nil {
-		return fmt.Errorf("Could not extract msp identifier for org %s: %s", oc.organizationGroup.name, err)
-	}
+	oc.mspID, _ = oc.msp.GetIdentifier()
 
 	if oc.mspID == "" {
 		return fmt.Errorf("MSP for org %s has empty MSP ID", oc.organizationGroup.name)

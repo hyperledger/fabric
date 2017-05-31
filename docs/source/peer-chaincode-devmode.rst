@@ -28,7 +28,7 @@ Start the peer in dev mode
 
 ::
 
-    peer node start --peer-defaultchain=false --peer-chaincodedev=true
+    peer node start --peer-chaincodedev=true
 
 The above command starts the peer using the default ``sampleconfig/msp``
 MSP. The ``--peer-chaincodedev=true`` puts it in “dev” mode.
@@ -77,13 +77,13 @@ Use the chaincode
 
 Even though you are in ``--peer-chaincodedev`` mode, you still have to install the chaincode so the life-cycle system
 chaincode can go through its checks normally. This requirement may be removed in future when in ``--peer-chaincodedev``
-mode. 
+mode.
 
 ::
 
     peer chaincode install -n mycc -v 0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
 
-Once installed, the chaincode is ready to be instantiated. 
+Once installed, the chaincode is ready to be instantiated.
 
 ::
 

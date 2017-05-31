@@ -1,3 +1,8 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 version: '2'
 
 services:
@@ -34,7 +39,7 @@ services:
 
   cli:
     container_name: cli
-    image: hyperledger/fabric-testenv
+    image: hyperledger/fabric-peer
     tty: true
     environment:
       - GOPATH=/opt/gopath
@@ -52,7 +57,7 @@ services:
     command: /bin/bash -c './scripts/script.sh ${CHANNEL_NAME}; sleep $TIMEOUT'
     volumes:
         - /var/run/:/host/var/run/
-        - ./examples:/opt/gopath/src/github.com/hyperledger/fabric/examples
+        - ../chaincode/go/:/opt/gopath/src/github.com/hyperledger/fabric/examples/chaincode/go
         - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
         - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/
         - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts

@@ -1,0 +1,8 @@
+sdk=node userInputs/samplecc-chan1-install1.json
+sdk=node userInputs/samplecc-chan1-install2.json
+sdk=node userInputs/samplecc-chan2-install1.json
+sdk=node userInputs/samplecc-chan2-install2.json
+#sdk=node userInputs/samplecc-chan1-install1-TLS.json
+#sdk=node userInputs/samplecc-chan1-install2-TLS.json
+#sdk=node userInputs/samplecc-chan2-install1-TLS.json
+#sdk=node userInputs/samplecc-chan2-install2-TLS.json

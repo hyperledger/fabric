@@ -1,0 +1,3 @@
+OrganizationalUnitIdentifiers:
+  - Certificate: "intermediatecerts/intermediatecert.pem"
+    OrganizationalUnitIdentifier: "Hyperledger Testing"

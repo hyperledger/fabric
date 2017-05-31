@@ -8,12 +8,6 @@
 			"revisionTime": "2015-05-01T06:40:42-04:00"
 		},
 		{
-			"checksumSHA1": "Kos2ch8973PnyyQ2JPAgWKtQV1A=",
-			"path": "github.com/DATA-DOG/godog",
-			"revision": "6e3b3f764a57d37691c0dfd007e7e586d3e452dc",
-			"revisionTime": "2016-08-07T16:35:39Z"
-		},
-		{
 			"checksumSHA1": "Zi1ZEYvoDhlK2+AaxrNeqmyZ4wY=",
 			"path": "github.com/DATA-DOG/godog/cmd/godog",
 			"revision": "6e3b3f764a57d37691c0dfd007e7e586d3e452dc",
@@ -304,11 +298,6 @@
 			"path": "github.com/manudrijvers/amcl/go",
 			"revision": "765b9c1a68e0d5b22dc09dc7fa7bb46b69b700a8",
 			"revisionTime": "2017-01-30T13:11:20Z"
-		},
-		{
-			"path": "github.com/mattn/go-sqlite3",
-			"revision": "5651a9d9d49ec25811d08220ee972080378d52ea",
-			"revisionTime": "2015-11-06T23:54:04+09:00"
 		},
 		{
 			"checksumSHA1": "yOED17cgEIwsqkhg16Y0xiTHiZ0=",

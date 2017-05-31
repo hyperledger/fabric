@@ -42,11 +42,6 @@ var (
 	blkMgrInfoKey = []byte("blkMgrInfo")
 )
 
-type conf struct {
-	blockfilesDir    string
-	maxBlockfileSize int
-}
-
 type blockfileMgr struct {
 	rootDir           string
 	conf              *Conf

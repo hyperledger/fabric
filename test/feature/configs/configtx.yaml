@@ -1,22 +1,33 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 ---
 ################################################################################
 #
-#   Profile
+#   Profiles
 #
 #   - Different configuration profiles may be encoded here to be specified
-#   as parameters to the configtxgen tool.
+#   as parameters to the configtxgen tool.  The profiles which specify consortiums
+#   are to be used for generating the orderer genesis block.  With the correct
+#   consortium members defined in the orderer genesis block, channel creation
+#   requests may be generated with only the org member names and a consortium name
 #
 ################################################################################
 Profiles:
 
     # SampleInsecureSolo defines a configuration which uses the Solo orderer,
     # contains no MSP definitions, and allows all transactions and channel
-    # creation requests.
+    # creation requests for the consortium SampleConsortium.
     SampleInsecureSolo:
         Orderer:
             <<: *OrdererDefaults
         Application:
             <<: *ApplicationDefaults
+        Consortiums:
+            SampleConsortium:
+                Organizations:
 
     # SampleInsecureKafka defines a configuration that differs from the
     # SampleInsecureSolo one only in that is uses the Kafka-based orderer.
@@ -26,9 +37,13 @@ Profiles:
             OrdererType: kafka
         Application:
             <<: *ApplicationDefaults
+        Consortiums:
+            SampleConsortium:
+                Organizations:
 
     # SampleSingleMSPSolo defines a configuration which uses the Solo orderer,
     # and contains a single MSP definition (the MSP sampleconfig).
+    # The Consortium SampleConsortium has only a single member, SampleOrg
     SampleSingleMSPSolo:
         Orderer:
             <<: *OrdererDefaults
@@ -36,6 +51,26 @@ Profiles:
                 - *SampleOrg
         Application:
             <<: *ApplicationDefaults
+            Organizations:
+                - *SampleOrg
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *SampleOrg
+
+    # SampleEmptyInsecureChannel defines a channel with no members
+    # and therefore no access control
+    SampleEmptyInsecureChannel:
+        Consortium: SampleConsortium
+        Application:
+            Organizations:
+
+    # SampleSingleMSPChannel defines a channel with only the sample org as a
+    # member.  It is designed to be used in conjunction with SampleSingleMSPSolo
+    # and SampleSingleMSPKafka orderer profiles
+    SampleSingleMSPChannel:
+        Consortium: SampleConsortium
+        Application:
             Organizations:
                 - *SampleOrg
 
@@ -60,27 +95,34 @@ Organizations:
         ID: DEFAULT
 
         # MSPDir is the filesystem path which contains the MSP configuration.
-        MSPDir: msp/sampleconfig
+        MSPDir: msp
+
+        # AdminPrincipal dictates the type of principal used for an
+        # organization's Admins policy. Today, only the values of Role.ADMIN and
+        # Role.MEMBER are accepted, which indicates a principal of role type
+        # ADMIN and role type MEMBER respectively.
+        AdminPrincipal: Role.ADMIN
 
         # BCCSP: Select which crypto implementation or library to use for the
         # blockchain crypto service provider.
         BCCSP:
             Default: SW
             SW:
-                # TODO: The default Hash and Security level needs refactoring to be
-                # fully configurable. Changing these defaults requires coordination
-                # SHA2 is hardcoded in several places, not only BCCSP
+                # TODO: The default Hash and Security level needs refactoring to
+                # be fully configurable. Changing these defaults requires
+                # coordination SHA2 is hardcoded in several places, not only
+                # BCCSP.
                 Hash: SHA2
                 Security: 256
-                # Location of key store. If this is unset, a location will
-                # be chosen using: 'MSPDir'/keystore
+                # Location of key store. If this is unset, a location will be
+                # chosen using: 'MSPDir'/keystore
                 FileKeyStore:
                     KeyStore:
 
         AnchorPeers:
-            # AnchorPeers defines the location of peers which can be used
-            # for cross org gossip communication. Note, this value is only
-            # encoded in the genesis block in the Application section context.
+            # AnchorPeers defines the location of peers which can be used for
+            # cross-org gossip communication. Note, this value is only encoded
+            # in the genesis block in the Application section context.
             - Host: 127.0.0.1
               Port: 7051
 
@@ -112,7 +154,9 @@ Orderer: &OrdererDefaults
         MaxMessageCount: 10
 
         # Absolute Max Bytes: The absolute maximum number of bytes allowed for
-        # the serialized messages in a batch.
+        # the serialized messages in a batch. If the "kafka" OrdererType is
+        # selected, set 'message.max.bytes' and 'replica.fetch.max.bytes' on the
+        # Kafka brokers to a value that is equal to or larger than this one.
         AbsoluteMaxBytes: 99 MB
 
         # Preferred Max Bytes: The preferred maximum number of bytes allowed for
@@ -121,8 +165,8 @@ Orderer: &OrdererDefaults
         # bytes.
         PreferredMaxBytes: 512 KB
 
-    # Max Channels is the maximum number of channels to allow on the ordering network
-    # When set to 0, this implies no maximum number of channels
+    # Max Channels is the maximum number of channels to allow on the ordering
+    # network. When set to 0, this implies no maximum number of channels.
     MaxChannels: 0
 
     Kafka:

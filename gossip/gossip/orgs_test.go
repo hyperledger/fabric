@@ -119,9 +119,9 @@ func newGossipInstanceWithExternalEndpoint(portPrefix int, id int, mcs *configur
 		PublishStateInfoInterval:   time.Duration(1) * time.Second,
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 	}
-
-	idMapper := identity.NewIdentityMapper(mcs)
-	g := NewGossipServiceWithServer(conf, mcs, mcs, idMapper, api.PeerIdentityType(conf.InternalEndpoint),
+	selfId := api.PeerIdentityType(conf.InternalEndpoint)
+	idMapper := identity.NewIdentityMapper(mcs, selfId)
+	g := NewGossipServiceWithServer(conf, mcs, mcs, idMapper, selfId,
 		nil)
 
 	return g

@@ -64,7 +64,7 @@ func SetupTestConfig() {
 	flag.Parse()
 
 	// Now set the configuration file
-	viper.SetEnvPrefix("HYPERLEDGER")
+	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)

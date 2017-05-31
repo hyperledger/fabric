@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 
 set -e
 ARCH=`uname -m`
@@ -11,15 +17,21 @@ echo -n "Obtaining list of tests to run for the following packages: ${TEST_PKGS}
 PKGS=`go list ${TEST_PKGS} 2> /dev/null | \
                                                   grep -v /vendor/ | \
                                                   grep -v /build/ | \
+                                                  grep -v /bccsp/mocks | \
                                                   grep -v /bddtests | \
                                                   grep -v /orderer/mocks | \
+                                                  grep -v /orderer/sample_clients | \
                                                   grep -v /common/mocks | \
+                                                  grep -v /common/ledger/testutil | \
                                                   grep -v /core/mocks | \
+                                                  grep -v /core/testutil | \
+                                                  grep -v /core/ledger/testutil | \
+                                                  grep -v /core/ledger/kvledger/example | \
+                                                  grep -v /core/ledger/kvledger/marble_example | \
+                                                  grep -v /core/deliverservice/mocks | \
+                                                  grep -v /core/scc/samplesyscc | \
                                                   grep -v /test | \
-                                                  grep -v /examples/chaincode/chaintool/ | \
-                                                  grep -v /examples/chaincode/go/asset_management | \
-                                                  grep -v /examples/chaincode/go/utxo | \
-                                                  grep -v /examples/chaincode/go/rbac_tcerts_no_attrs`
+                                                  grep -v /examples`
 
 if [ x$ARCH == xppc64le -o x$ARCH == xs390x ]
 then
@@ -30,5 +42,5 @@ fi
 echo "DONE!"
 
 echo "Running tests..."
+#go test -cover -ldflags "$GO_LDFLAGS" $PKGS -p 1 -timeout=20m
 gocov test -ldflags "$GO_LDFLAGS" $PKGS -p 1 -timeout=20m | gocov-xml > report.xml
-

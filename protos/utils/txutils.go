@@ -50,7 +50,7 @@ func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayloa
 	}
 
 	if pRespPayload.Extension == nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("response payload is missing extension")
 	}
 
 	respPayload := &peer.ChaincodeAction{}

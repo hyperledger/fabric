@@ -53,6 +53,28 @@ func TestMSPWithIntermediateCAs(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestMSPWithExternalIntermediateCAs(t *testing.T) {
+	// testdata/external contains the credentials for a test MSP setup
+	// identical to testdata/intermediate with the exception that it has
+	// been generated independently of the fabric environment using
+	// openssl.  Sanitizing certificates may cause a change in the
+	// signature algorithm used from that used in original
+	// certificate file.  Hashes of raw certificate bytes and
+	// byte to byte comparisons between the raw certificate and the
+	// one imported into the MSP could falsely fail.
+
+	thisMSP := getLocalMSP(t, "testdata/external")
+
+	// This MSP will trust any cert signed only by the intermediate
+
+	id, err := thisMSP.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	// ensure that we validate correctly the identity
+	err = thisMSP.Validate(id.GetPublicVersion())
+	assert.NoError(t, err)
+}
+
 func TestIntermediateCAIdentityValidity(t *testing.T) {
 	// testdata/intermediate contains the credentials for a test MSP setup that has
 	// 1) a key and a signcert (used to populate the default signing identity);

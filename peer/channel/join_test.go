@@ -19,18 +19,23 @@ package channel
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestJoin(t *testing.T) {
 	InitMSP()
 
-	mockblockfile := "/tmp/mockjointest.block"
-	ioutil.WriteFile(mockblockfile, []byte(""), 0644)
-	defer os.Remove(mockblockfile)
+	dir, err := ioutil.TempDir("/tmp", "jointest")
+	assert.NoError(t, err, "Could not create the directory %s", dir)
+	mockblockfile := filepath.Join(dir, "mockjointest.block")
+	err = ioutil.WriteFile(mockblockfile, []byte(""), 0644)
+	assert.NoError(t, err, "Could not write to the file %s", mockblockfile)
+	defer os.RemoveAll(dir)
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
 		t.Fatalf("Get default signer error: %v", err)
@@ -137,4 +142,19 @@ func TestBadProposalResponse(t *testing.T) {
 		t.Fail()
 		t.Error("expected proposal failure error")
 	}
+}
+func TestJoinNilCF(t *testing.T) {
+	InitMSP()
+
+	dir, err := ioutil.TempDir("/tmp", "jointest")
+	assert.NoError(t, err, "Could not create the directory %s", dir)
+	mockblockfile := filepath.Join(dir, "mockjointest.block")
+	defer os.RemoveAll(dir)
+	cmd := joinCmd(nil)
+	AddFlags(cmd)
+	args := []string{"-b", mockblockfile}
+	cmd.SetArgs(args)
+	err = cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Error trying to connect to local peer")
 }

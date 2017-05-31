@@ -41,9 +41,9 @@
 #   - unit-test-clean - cleans unit test state (particularly from docker)
 
 PROJECT_NAME   = hyperledger/fabric
-BASE_VERSION   = 1.0.0-alpha2
-PREV_VERSION   = 1.0.0-alpha
-IS_RELEASE     = true
+BASE_VERSION   = 1.0.0-alpha3
+PREV_VERSION   = 1.0.0-alpha2
+IS_RELEASE     = false
 
 ifneq ($(IS_RELEASE),true)
 EXTRA_VERSION ?= snapshot-$(shell git rev-parse --short HEAD)
@@ -151,14 +151,7 @@ test-cmd:
 docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 native: peer orderer configtxgen cryptogen
 
-BEHAVE_ENVIRONMENTS = kafka orderer orderer-1-kafka-1 orderer-1-kafka-3
-BEHAVE_ENVIRONMENT_TARGETS = $(patsubst %,bddtests/environments/%, $(BEHAVE_ENVIRONMENTS))
-.PHONY: behave-environments $(BEHAVE_ENVIRONMENT_TARGETS)
-behave-environments: $(BEHAVE_ENVIRONMENT_TARGETS)
-$(BEHAVE_ENVIRONMENT_TARGETS):
-	@docker-compose --file $@/docker-compose.yml build
-
-behave-deps: docker peer build/bin/block-listener behave-environments
+behave-deps: docker peer build/bin/block-listener configtxgen cryptogen
 behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)

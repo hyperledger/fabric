@@ -72,18 +72,15 @@ type ChaincodeStub struct {
 // Peer address derived from command line or env var
 var peerAddress string
 
-// Start is the entry point for chaincodes bootstrap. It is not an API for
-// chaincodes.
-func Start(cc Chaincode) error {
-	// If Start() is called, we assume this is a standalone chaincode and set
-	// up formatted logging.
-	SetupChaincodeLogging()
+//this separates the chaincode stream interface establishment
+//so we can replace it with a mock peer stream
+type peerStreamGetter func(name string) (PeerChaincodeStream, error)
 
-	err := factory.InitFactories(&factory.DefaultOpts)
-	if err != nil {
-		return fmt.Errorf("Internal error, BCCSP could not be initialized with default options: %s", err)
-	}
+//UTs to setup mock peer stream getter
+var streamGetter peerStreamGetter
 
+//the non-mock user CC stream establishment func
+func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 	flag.StringVar(&peerAddress, "peer.address", "", "peer address")
 
 	flag.Parse()
@@ -94,7 +91,7 @@ func Start(cc Chaincode) error {
 	clientConn, err := newPeerClientConnection()
 	if err != nil {
 		chaincodeLogger.Errorf("Error trying to connect to local peer: %s", err)
-		return fmt.Errorf("Error trying to connect to local peer: %s", err)
+		return nil, fmt.Errorf("Error trying to connect to local peer: %s", err)
 	}
 
 	chaincodeLogger.Debugf("os.Args returns: %s", os.Args)
@@ -104,13 +101,38 @@ func Start(cc Chaincode) error {
 	// Establish stream with validating peer
 	stream, err := chaincodeSupportClient.Register(context.Background())
 	if err != nil {
-		return fmt.Errorf("Error chatting with leader at address=%s:  %s", getPeerAddress(), err)
+		return nil, fmt.Errorf("Error chatting with leader at address=%s:  %s", getPeerAddress(), err)
 	}
+
+	return stream, nil
+}
+
+// chaincodes.
+func Start(cc Chaincode) error {
+	// If Start() is called, we assume this is a standalone chaincode and set
+	// up formatted logging.
+	SetupChaincodeLogging()
 
 	chaincodename := viper.GetString("chaincode.id.name")
 	if chaincodename == "" {
 		return fmt.Errorf("Error chaincode id not provided")
 	}
+
+	err := factory.InitFactories(&factory.DefaultOpts)
+	if err != nil {
+		return fmt.Errorf("Internal error, BCCSP could not be initialized with default options: %s", err)
+	}
+
+	//mock stream not set up ... get real stream
+	if streamGetter == nil {
+		streamGetter = userChaincodeStreamGetter
+	}
+
+	stream, err := streamGetter(chaincodename)
+	if err != nil {
+		return err
+	}
+
 	err = chatWithPeer(chaincodename, stream, cc)
 
 	return err
@@ -187,8 +209,9 @@ func StartInProc(env []string, args []string, cc Chaincode, recv <-chan *pb.Chai
 	if chaincodename == "" {
 		return fmt.Errorf("Error chaincode id not provided")
 	}
-	chaincodeLogger.Debugf("starting chat with peer using name=%s", chaincodename)
+
 	stream := newInProcStream(recv, send)
+	chaincodeLogger.Debugf("starting chat with peer using name=%s", chaincodename)
 	err := chatWithPeer(chaincodename, stream, cc)
 	return err
 }

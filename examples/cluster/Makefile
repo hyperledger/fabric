@@ -46,7 +46,7 @@ compose-up: nodes
 	@echo "Booting docker-compose environment"
 	$(COMPOSE) up -d $(DAEMONS)
 	$(DRUN) ./configure.sh $(CHANNEL_NAME) "$(CHANNEL_TXNS)" "$(PEERS)" $(TLS)
-	@./compose/report-env.sh "$(DAEMONS)"
+	@./compose/report-env.sh "$(DAEMONS)" build/client.config $(TLS)
 
 compose-down:
 	$(COMPOSE) down

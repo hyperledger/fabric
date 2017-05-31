@@ -74,14 +74,6 @@ func (mch *mockChain) Halt() {
 	close(mch.queue)
 }
 
-type mockLedgerWriter struct {
-}
-
-func (mlw *mockLedgerWriter) Append(blockContents []*cb.Envelope, metadata [][]byte) *cb.Block {
-	logger.Debugf("Committed block")
-	return nil
-}
-
 func makeConfigTx(chainID string, i int) *cb.Envelope {
 	group := cb.NewConfigGroup()
 	group.Groups[config.OrdererGroupKey] = cb.NewConfigGroup()
@@ -127,21 +119,6 @@ func makeNormalTx(chainID string, i int) *cb.Envelope {
 				ChannelId: chainID,
 			}),
 			SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
-		},
-		Data: []byte(fmt.Sprintf("%d", i)),
-	}
-	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(payload),
-	}
-}
-
-func makeSignaturelessTx(chainID string, i int) *cb.Envelope {
-	payload := &cb.Payload{
-		Header: &cb.Header{
-			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
-				Type:      int32(cb.HeaderType_ENDORSER_TRANSACTION),
-				ChannelId: chainID,
-			}),
 		},
 		Data: []byte(fmt.Sprintf("%d", i)),
 	}

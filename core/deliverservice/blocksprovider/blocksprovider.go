@@ -117,26 +117,26 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 	for !b.isDone() {
 		msg, err := b.client.Recv()
 		if err != nil {
-			logger.Warningf("Receive error: %s", err.Error())
+			logger.Warningf("[%s] Receive error: %s", b.chainID, err.Error())
 			return
 		}
 		switch t := msg.Type.(type) {
 		case *orderer.DeliverResponse_Status:
 			if t.Status == common.Status_SUCCESS {
-				logger.Warning("ERROR! Received success for a seek that should never complete")
+				logger.Warningf("[%s] ERROR! Received success for a seek that should never complete", b.chainID)
 				return
 			}
-			logger.Warning("Got error ", t)
+			logger.Warningf("[%s] Got error %v", b.chainID, t)
 		case *orderer.DeliverResponse_Block:
 			seqNum := t.Block.Header.Number
 
 			marshaledBlock, err := proto.Marshal(t.Block)
 			if err != nil {
-				logger.Errorf("Error serializing block with sequence number %d, due to %s", seqNum, err)
+				logger.Errorf("[%s] Error serializing block with sequence number %d, due to %s", b.chainID, seqNum, err)
 				continue
 			}
 			if err := b.mcs.VerifyBlock(gossipcommon.ChainID(b.chainID), seqNum, marshaledBlock); err != nil {
-				logger.Errorf("Error verifying block with sequnce number %d, due to %s", seqNum, err)
+				logger.Errorf("[%s] Error verifying block with sequnce number %d, due to %s", b.chainID, seqNum, err)
 				continue
 			}
 
@@ -146,15 +146,15 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 			// Use payload to create gossip message
 			gossipMsg := createGossipMsg(b.chainID, payload)
 
-			logger.Debugf("Adding payload locally, buffer seqNum = [%d], peers number [%d]", seqNum, numberOfPeers)
+			logger.Debugf("[%s] Adding payload locally, buffer seqNum = [%d], peers number [%d]", b.chainID, seqNum, numberOfPeers)
 			// Add payload to local state payloads buffer
 			b.gossip.AddPayload(b.chainID, payload)
 
 			// Gossip messages with other nodes
-			logger.Debugf("Gossiping block [%d], peers number [%d]", seqNum, numberOfPeers)
+			logger.Debugf("[%s] Gossiping block [%d], peers number [%d]", b.chainID, seqNum, numberOfPeers)
 			b.gossip.Gossip(gossipMsg)
 		default:
-			logger.Warning("Received unknown: ", t)
+			logger.Warningf("[%s] Received unknown: ", b.chainID, t)
 			return
 		}
 	}

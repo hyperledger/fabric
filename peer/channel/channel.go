@@ -36,6 +36,16 @@ const (
 	longDes         = "Operate a channel: create|fetch|join|list."
 )
 
+type OrdererRequirement bool
+type EndorserRequirement bool
+
+const (
+	EndorserRequired    EndorserRequirement = true
+	EndorserNotRequired EndorserRequirement = false
+	OrdererRequired     OrdererRequirement  = true
+	OrdererNotRequired  OrdererRequirement  = false
+)
+
 var (
 	// join related variables.
 	genesisBlockPath string
@@ -91,29 +101,31 @@ type ChannelCmdFactory struct {
 	BroadcastFactory BroadcastClientFactory
 }
 
-// InitCmdFactory init the ChannelCmdFactor with default clients
-func InitCmdFactory(isOrdererRequired bool) (*ChannelCmdFactory, error) {
+// InitCmdFactory init the ChannelCmdFactory with clients to endorser and orderer according to params
+func InitCmdFactory(isEndorserRequired EndorserRequirement, isOrdererRequired OrdererRequirement) (*ChannelCmdFactory, error) {
 	var err error
 
 	cmdFact := &ChannelCmdFactory{}
 
-	cmdFact.Signer, err = common.GetDefaultSigner()
+	cmdFact.Signer, err = common.GetDefaultSignerFnc()
 	if err != nil {
 		return nil, fmt.Errorf("Error getting default signer: %s", err)
 	}
 
 	cmdFact.BroadcastFactory = func() (common.BroadcastClient, error) {
-		return common.GetBroadcastClient(orderingEndpoint, tls, caFile)
+		return common.GetBroadcastClientFnc(orderingEndpoint, tls, caFile)
 	}
 
-	//for join, we need the endorser as well
-	if isOrdererRequired {
-		cmdFact.EndorserClient, err = common.GetEndorserClient()
+	//for join and list, we need the endorser as well
+	if isEndorserRequired {
+		cmdFact.EndorserClient, err = common.GetEndorserClientFnc()
 		if err != nil {
 			return nil, fmt.Errorf("Error getting endorser client %s: %s", channelFuncName, err)
 		}
-	} else {
+	}
 
+	//for create and fetch, we need the orderer as well
+	if isOrdererRequired {
 		if len(strings.Split(orderingEndpoint, ":")) != 2 {
 			return nil, fmt.Errorf("Ordering service endpoint %s is not valid or missing", orderingEndpoint)
 		}

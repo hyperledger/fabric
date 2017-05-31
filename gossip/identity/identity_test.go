@@ -30,7 +30,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var msgCryptoService = &naiveCryptoService{revokedIdentities: map[string]struct{}{}}
+var (
+	msgCryptoService = &naiveCryptoService{revokedIdentities: map[string]struct{}{}}
+	dummyID          = api.PeerIdentityType{}
+)
 
 type naiveCryptoService struct {
 	revokedIdentities map[string]struct{}
@@ -82,7 +85,7 @@ func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, 
 }
 
 func TestPut(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -95,7 +98,7 @@ func TestPut(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -110,7 +113,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -123,7 +126,7 @@ func TestVerify(t *testing.T) {
 }
 
 func TestListInvalidIdentities(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID)
 	identity := []byte("yacovm")
 	// Test for a revoked identity
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -150,7 +153,7 @@ func TestListInvalidIdentities(t *testing.T) {
 	pkiID = msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
 	assert.NoError(t, idStore.Put(pkiID, api.PeerIdentityType(identity)))
 	// set the time-based expiration time limit to something small
-	identityUsageThreshold = time.Millisecond * 500
+	usageThreshold = time.Millisecond * 500
 	idStore.ListInvalidIdentities(func(_ api.PeerIdentityType) bool {
 		return false
 	})

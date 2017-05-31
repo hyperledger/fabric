@@ -60,6 +60,12 @@ func SetReconnectInterval(interval time.Duration) {
 	viper.Set("peer.gossip.reconnectInterval", interval)
 }
 
+// SetMaxConnAttempts sets the maximum number of connection
+// attempts the peer would perform when invoking Connect()
+func SetMaxConnAttempts(attempts int) {
+	maxConnectionAttempts = attempts
+}
+
 type timestamp struct {
 	incTime  time.Time
 	seqNum   uint64
@@ -82,8 +88,6 @@ type gossipDiscoveryImpl struct {
 
 	msgStore *aliveMsgStore
 
-	bootstrapPeers []string
-
 	comm  CommService
 	crypt CryptoService
 	lock  *sync.RWMutex
@@ -92,6 +96,7 @@ type gossipDiscoveryImpl struct {
 	toDieFlag        int32
 	logger           *logging.Logger
 	disclosurePolicy DisclosurePolicy
+	pubsub           *util.PubSub
 }
 
 // NewDiscoveryService returns a new discovery service with the comm module passed and the crypto service passed
@@ -112,6 +117,7 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 		toDieFlag:        int32(0),
 		logger:           util.GetLogger(util.LoggingDiscoveryModule, self.InternalEndpoint),
 		disclosurePolicy: disPol,
+		pubsub:           util.NewPubSub(),
 	}
 
 	d.msgStore = newAliveMsgStore(d)
@@ -131,36 +137,54 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 
 // Lookup returns a network member, or nil if not found
 func (d *gossipDiscoveryImpl) Lookup(PKIID common.PKIidType) *NetworkMember {
+	if bytes.Equal(PKIID, d.self.PKIid) {
+		return &d.self
+	}
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 	nm := d.id2Member[string(PKIID)]
 	return nm
 }
 
-func (d *gossipDiscoveryImpl) Connect(member NetworkMember, sendInternalEndpoint func() bool) {
+func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
 	d.logger.Debug("Entering", member)
 	defer d.logger.Debug("Exiting")
-
 	go func() {
 		for i := 0; i < maxConnectionAttempts && !d.toDie(); i++ {
-			peer := &NetworkMember{
-				InternalEndpoint: member.InternalEndpoint,
-				Endpoint:         member.Endpoint,
-			}
-
-			if !d.comm.Ping(peer) {
+			id, err := id()
+			if err != nil {
 				if d.toDie() {
 					return
 				}
-				d.logger.Warning("Could not connect to", member)
+				d.logger.Warning("Could not connect to", member, ":", err)
 				time.Sleep(getReconnectInterval())
 				continue
 			}
-			req := d.createMembershipRequest(sendInternalEndpoint()).NoopSign()
-			d.comm.SendToPeer(peer, req)
+			peer := &NetworkMember{
+				InternalEndpoint: member.InternalEndpoint,
+				Endpoint:         member.Endpoint,
+				PKIid:            id.ID,
+			}
+			req := d.createMembershipRequest(id.SelfOrg).NoopSign()
+			req.Nonce = util.RandomUInt64()
+			req.NoopSign()
+			go d.sendUntilAcked(peer, req)
 			return
 		}
+
 	}()
+}
+
+func (d *gossipDiscoveryImpl) sendUntilAcked(peer *NetworkMember, message *proto.SignedGossipMessage) {
+	nonce := message.Nonce
+	for i := 0; i < maxConnectionAttempts && !d.toDie(); i++ {
+		sub := d.pubsub.Subscribe(fmt.Sprintf("%d", nonce), time.Second*5)
+		d.comm.SendToPeer(peer, message)
+		if _, timeoutErr := sub.Listen(); timeoutErr == nil {
+			return
+		}
+		time.Sleep(getReconnectInterval())
+	}
 }
 
 func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
@@ -319,7 +343,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 		// Sending a membership response to a peer may block this routine
 		// in case the sending is deliberately slow (i.e attack).
 		// will keep this async until I'll write a timeout detector in the comm layer
-		go d.sendMemResponse(selfInfoGossipMsg.GetAliveMsg().Membership, internalEndpoint)
+		go d.sendMemResponse(selfInfoGossipMsg.GetAliveMsg().Membership, internalEndpoint, m.Nonce)
 		return
 	}
 
@@ -335,6 +359,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 	}
 
 	if memResp := m.GetMemRes(); memResp != nil {
+		d.pubsub.Publish(fmt.Sprintf("%d", m.Nonce), m.Nonce)
 		for _, env := range memResp.Alive {
 			am, err := env.ToGossipMessage()
 			if err != nil {
@@ -378,7 +403,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 	}
 }
 
-func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, internalEndpoint string) {
+func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, internalEndpoint string, nonce uint64) {
 	d.logger.Debug("Entering", targetMember)
 
 	targetPeer := &NetworkMember{
@@ -400,7 +425,7 @@ func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, intern
 
 	d.comm.SendToPeer(targetPeer, (&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
-		Nonce: uint64(0),
+		Nonce: nonce,
 		Content: &proto.GossipMessage_MemRes{
 			MemRes: memResp,
 		},

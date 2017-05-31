@@ -1,9 +1,8 @@
 Java chaincode
 --------------
 
-Note: This guide generally assumes you have followed the Chaincode
-development environment setup tutorial
-`here <https://github.com/hyperledger/fabric/blob/master/docs/Setup/Chaincode-setup.md>`__.
+Note: This guide generally assumes you have followed the :doc:`Chaincode
+development environment setup tutorial <Chaincode-setup>`.
 
 To get started developing Java chaincode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
