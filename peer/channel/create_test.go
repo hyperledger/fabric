@@ -114,13 +114,16 @@ func (m *mockDeliverClient) readBlock() (*cb.Block, error) {
 	return &cb.Block{}, nil
 }
 
-func (m *mockDeliverClient) getBlock() (*cb.Block, error) {
-	b, err := m.readBlock()
-	if err != nil {
-		return nil, err
-	}
+func (m *mockDeliverClient) getSpecifiedBlock(num uint64) (*cb.Block, error) {
+	return m.readBlock()
+}
 
-	return b, nil
+func (m *mockDeliverClient) getOldestBlock() (*cb.Block, error) {
+	return m.readBlock()
+}
+
+func (m *mockDeliverClient) getNewestBlock() (*cb.Block, error) {
+	return m.readBlock()
 }
 
 func (m *mockDeliverClient) Close() error {
