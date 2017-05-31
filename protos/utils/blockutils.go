@@ -35,19 +35,22 @@ func GetChainIDFromBlockBytes(bytes []byte) (string, error) {
 
 // GetChainIDFromBlock returns chain ID in the block
 func GetChainIDFromBlock(block *cb.Block) (string, error) {
-	if block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
-		return "", fmt.Errorf("Failed to find chain ID because the block is empty.")
+	if block == nil || block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
+		return "", fmt.Errorf("failed to retrieve channel id - block is empty")
 	}
 	var err error
 	envelope := &cb.Envelope{}
 	if err = proto.Unmarshal(block.Data.Data[0], envelope); err != nil {
-		return "", fmt.Errorf("Error reconstructing envelope(%s)", err)
+		return "", fmt.Errorf("error reconstructing envelope(%s)", err)
 	}
 	payload := &cb.Payload{}
 	if err = proto.Unmarshal(envelope.Payload, payload); err != nil {
-		return "", fmt.Errorf("Error reconstructing payload(%s)", err)
+		return "", fmt.Errorf("error reconstructing payload(%s)", err)
 	}
 
+	if payload.Header == nil {
+		return "", fmt.Errorf("failed to retrieve channel id - payload header is empty")
+	}
 	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return "", err
