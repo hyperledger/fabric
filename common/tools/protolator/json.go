@@ -57,6 +57,7 @@ type protoField interface {
 var (
 	protoMsgType           = reflect.TypeOf((*proto.Message)(nil)).Elem()
 	mapStringInterfaceType = reflect.TypeOf(map[string]interface{}{})
+	bytesType              = reflect.TypeOf([]byte{})
 )
 
 type baseField struct {
@@ -201,6 +202,15 @@ func (sf *sliceField) PopulateTo() (interface{}, error) {
 	return result, nil
 }
 
+func stringInSlice(target string, slice []string) bool {
+	for _, name := range slice {
+		if name == target {
+			return true
+		}
+	}
+	return false
+}
+
 // protoToJSON is a simple shortcut wrapper around the proto JSON marshaler
 func protoToJSON(msg proto.Message) ([]byte, error) {
 	var b bytes.Buffer
@@ -241,6 +251,9 @@ func jsonToMap(marshaled []byte) (map[string]interface{}, error) {
 // Factories listed lower, may depend on factories listed higher being
 // evaluated first.
 var fieldFactories = []protoFieldFactory{
+	staticallyOpaqueSliceFieldFactory{},
+	staticallyOpaqueMapFieldFactory{},
+	staticallyOpaqueFieldFactory{},
 	nestedSliceFieldFactory{},
 	nestedMapFieldFactory{},
 	nestedFieldFactory{},
