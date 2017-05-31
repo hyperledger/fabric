@@ -10,6 +10,11 @@ tags
 .tags
 .vagrant/
 /build
+/release/darwin-amd64
+/release/linux-amd64
+/release/linux-s390x
+/release/linux-ppc64le
+/release/windows-amd64
 # Emacs backup files
 *~
 *#

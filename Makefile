@@ -349,6 +349,7 @@ release/%/install: $(PROJECT_FILES)
 		| sed -e 's/_NS_/$(DOCKER_NS)/g' \
 		| sed -e 's/_ARCH_/$(DOCKER_ARCH)/g' \
 		| sed -e 's/_VERSION_/$(PROJECT_VERSION)/g' \
+		| sed -e 's/_BASE_DOCKER_TAG_/$(BASE_DOCKER_TAG)/g' \
 		> $@/get-docker-images.sh
 		@chmod +x $@/get-docker-images.sh
 
