@@ -17,6 +17,7 @@ limitations under the License.
 package kafka
 
 import (
+	"crypto/tls"
 	"testing"
 
 	"github.com/Shopify/sarama"
@@ -132,7 +133,7 @@ func TestTLSConfigEnabled(t *testing.T) {
 	assert.Len(t, config.Net.TLS.Config.Certificates, 1)
 	assert.Len(t, config.Net.TLS.Config.RootCAs.Subjects(), 1)
 	assert.Equal(t, uint16(0), config.Net.TLS.Config.MaxVersion)
-	assert.Equal(t, uint16(0), config.Net.TLS.Config.MinVersion)
+	assert.Equal(t, uint16(tls.VersionTLS12), config.Net.TLS.Config.MinVersion)
 }
 
 func TestTLSConfigDisabled(t *testing.T) {
