@@ -57,3 +57,54 @@ func (som *StaticallyOpaqueMsg) StaticallyOpaqueSliceFieldProto(name string, ind
 
 	return &SimpleMsg{}, nil
 }
+
+func typeSwitch(typeName string) (proto.Message, error) {
+	switch typeName {
+	case "SimpleMsg":
+		return &SimpleMsg{}, nil
+	case "NestedMsg":
+		return &NestedMsg{}, nil
+	case "StaticallyOpaqueMsg":
+		return &StaticallyOpaqueMsg{}, nil
+	case "VariablyOpaqueMsg":
+		return &VariablyOpaqueMsg{}, nil
+	default:
+		return nil, fmt.Errorf("unknown message type: %s", typeName)
+	}
+}
+
+func (vom *VariablyOpaqueMsg) VariablyOpaqueFields() []string {
+	return []string{"plain_opaque_field"}
+}
+
+func (vom *VariablyOpaqueMsg) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
+	if name != vom.VariablyOpaqueFields()[0] {
+		return nil, fmt.Errorf("not a statically opaque field: %s", name)
+	}
+
+	return typeSwitch(vom.OpaqueType)
+}
+
+func (vom *VariablyOpaqueMsg) VariablyOpaqueMapFields() []string {
+	return []string{"map_opaque_field"}
+}
+
+func (vom *VariablyOpaqueMsg) VariablyOpaqueMapFieldProto(name string, key string) (proto.Message, error) {
+	if name != vom.VariablyOpaqueMapFields()[0] {
+		return nil, fmt.Errorf("not a statically opaque field: %s", name)
+	}
+
+	return typeSwitch(vom.OpaqueType)
+}
+
+func (vom *VariablyOpaqueMsg) VariablyOpaqueSliceFields() []string {
+	return []string{"slice_opaque_field"}
+}
+
+func (vom *VariablyOpaqueMsg) VariablyOpaqueSliceFieldProto(name string, index int) (proto.Message, error) {
+	if name != vom.VariablyOpaqueSliceFields()[0] {
+		return nil, fmt.Errorf("not a statically opaque field: %s", name)
+	}
+
+	return typeSwitch(vom.OpaqueType)
+}

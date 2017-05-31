@@ -27,6 +27,19 @@ import (
 // opaque byte fields are represented as their expanded proto contents) and back once again
 // to standard proto messages.
 //
+// There are currently two different types of interfaces available for protos to implement:
+//
+// 1. StaticallyOpaque*FieldProto:  These interfaces should be implemented by protos which have
+// opaque byte fields whose marshaled type is known at compile time.  This is mostly true
+// for the signature oriented fields like the Envelope.Payload, or Header.ChannelHeader
+//
+// 2. VariablyOpaque*FieldProto: These interfaces are identical to the StaticallyOpaque*FieldProto
+// definitions, with the exception that they are guaranteed to be evaluated after the
+// StaticallyOpaque*FieldProto definitions.  In particular, this allows for the type selection of
+// a VariablyOpaque*FieldProto to depend on data populated by the StaticallyOpaque*FieldProtos.
+// For example, the Payload.data field depends upon the Payload.Header.ChannelHeader.type field,
+// which is along a statically marshaled path.
+//
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // StaticallyOpaqueFieldProto should be implemented by protos which have bytes fields which
@@ -60,4 +73,37 @@ type StaticallyOpaqueSliceFieldProto interface {
 	// StaticallyOpaqueFieldProto returns a newly allocated proto message of the correct
 	// type for the field name.
 	StaticallyOpaqueSliceFieldProto(name string, index int) (proto.Message, error)
+}
+
+// VariablyOpaqueFieldProto should be implemented by protos which have bytes fields which
+// are the marshaled value depends upon the other contents of the proto
+type VariablyOpaqueFieldProto interface {
+	// VariablyOpaqueFields returns the field names which contain opaque data
+	VariablyOpaqueFields() []string
+
+	// VariablyOpaqueFieldProto returns a newly allocated proto message of the correct
+	// type for the field name.
+	VariablyOpaqueFieldProto(name string) (proto.Message, error)
+}
+
+// VariablyOpaqueMapFieldProto should be implemented by protos which have maps to bytes fields
+// which are the marshaled value of a a message type determined by the other contents of the proto
+type VariablyOpaqueMapFieldProto interface {
+	// VariablyOpaqueFields returns the field names which contain opaque data
+	VariablyOpaqueMapFields() []string
+
+	// VariablyOpaqueFieldProto returns a newly allocated proto message of the correct
+	// type for the field name.
+	VariablyOpaqueMapFieldProto(name string, key string) (proto.Message, error)
+}
+
+// VariablyOpaqueSliceFieldProto should be implemented by protos which have maps to bytes fields
+// which are the marshaled value of a a message type determined by the other contents of the proto
+type VariablyOpaqueSliceFieldProto interface {
+	// VariablyOpaqueFields returns the field names which contain opaque data
+	VariablyOpaqueSliceFields() []string
+
+	// VariablyOpaqueFieldProto returns a newly allocated proto message of the correct
+	// type for the field name.
+	VariablyOpaqueSliceFieldProto(name string, index int) (proto.Message, error)
 }
