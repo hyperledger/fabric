@@ -44,7 +44,7 @@ type MockResponseSet struct {
 //and response to send (optional)
 type MockResponse struct {
 	RecvMsg *pb.ChaincodeMessage
-	RespMsg *pb.ChaincodeMessage
+	RespMsg interface{}
 }
 
 // MockCCComm implements the mock communication between chaincode and peer
@@ -58,6 +58,10 @@ type MockCCComm struct {
 	sendStream  chan *pb.ChaincodeMessage
 	respIndex   int
 	respSet     *MockResponseSet
+}
+
+func (s *MockCCComm) SetName(newname string) {
+	s.name = newname
 }
 
 //Send sends a message
@@ -143,7 +147,17 @@ func (s *MockCCComm) respond(msg *pb.ChaincodeMessage) error {
 		}
 
 		if mockResp.RespMsg != nil {
-			err = s.Send(mockResp.RespMsg)
+			var ccMsg *pb.ChaincodeMessage
+			if ccMsg, _ = mockResp.RespMsg.(*pb.ChaincodeMessage); ccMsg == nil {
+				if ccMsgFunc, ok := mockResp.RespMsg.(func(*pb.ChaincodeMessage) *pb.ChaincodeMessage); ok && ccMsgFunc != nil {
+					ccMsg = ccMsgFunc(msg)
+				}
+			}
+
+			if ccMsg == nil {
+				panic("----no pb.ChaincodeMessage---")
+			}
+			err = s.Send(ccMsg)
 		}
 
 		s.respIndex = s.respIndex + 1

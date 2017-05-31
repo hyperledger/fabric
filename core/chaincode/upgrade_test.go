@@ -126,6 +126,7 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 //     re-initializtion of the same chaincode "mycc"
 //     upgrade when "mycc" is up and running (test version based namespace)
 func TestUpgradeCC(t *testing.T) {
+	testForSkip(t)
 	chainID := util.GetTestChainID()
 
 	lis, err := initPeer(chainID)
@@ -219,6 +220,7 @@ func TestUpgradeCC(t *testing.T) {
 //     upgrade to exampl02 when "mycc" is not deployed
 //     look for "not found" failure
 func TestInvalUpgradeCC(t *testing.T) {
+	testForSkip(t)
 	chainID := util.GetTestChainID()
 
 	lis, err := initPeer(chainID)

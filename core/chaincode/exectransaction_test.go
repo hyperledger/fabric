@@ -62,6 +62,15 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+var runTests bool
+
+func testForSkip(t *testing.T) {
+	//run tests
+	if !runTests {
+		t.SkipNow()
+	}
+}
+
 //initialize peer and start up. If security==enabled, login as vp
 func initPeer(chainIDs ...string) (net.Listener, error) {
 	//start clean
@@ -796,6 +805,7 @@ func TestGopathExecuteDeployTransaction(t *testing.T) {
 }
 
 func TestExecuteInvokeTransaction(t *testing.T) {
+	testForSkip(t)
 
 	testCases := []struct {
 		chaincodeType pb.ChaincodeSpec_Type
@@ -847,6 +857,8 @@ func TestExecuteInvokeTransaction(t *testing.T) {
 
 // Test the execution of an invalid transaction.
 func TestExecuteInvokeInvalidTransaction(t *testing.T) {
+	testForSkip(t)
+
 	chainID := util.GetTestChainID()
 
 	lis, err := initPeer(chainID)
@@ -892,6 +904,7 @@ type tcicTc struct {
 
 // Test the execution of a chaincode that invokes another chaincode.
 func TestChaincodeInvokeChaincode(t *testing.T) {
+	testForSkip(t)
 	channel := util.GetTestChainID()
 	channel2 := channel + "2"
 	lis, err := initPeer(channel, channel2)
@@ -965,6 +978,7 @@ func stopChaincode(ctx context.Context, chaincodeCtx *ccprovider.CCContext) {
 // Test the execution of a chaincode that invokes another chaincode with wrong parameters. Should receive error from
 // from the called chaincode
 func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
+	testForSkip(t)
 	chainID := util.GetTestChainID()
 
 	lis, err := initPeer(chainID)
@@ -1057,6 +1071,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 // Test the invocation of a transaction.
 func TestQueries(t *testing.T) {
+	testForSkip(t)
 
 	chainID := util.GetTestChainID()
 
@@ -1394,7 +1409,7 @@ func TestQueries(t *testing.T) {
 }
 
 func TestGetEvent(t *testing.T) {
-
+	testForSkip(t)
 	testCases := []struct {
 		chaincodeType pb.ChaincodeSpec_Type
 		chaincodePath string
@@ -1479,6 +1494,7 @@ func TestGetEvent(t *testing.T) {
 // Test the execution of a chaincode that queries another chaincode
 // example02 implements "query" as a function in Invoke. example05 calls example02
 func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
+	testForSkip(t)
 	//this is essentially same as the ChaincodeInvokeChaincode now that
 	//we don't distinguish between Invoke and Query (there's no separate "Query")
 	t.Skip()
@@ -1603,6 +1619,7 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 
 // test that invoking a security-sensitive system chaincode fails
 func TestChaincodeInvokesForbiddenSystemChaincode(t *testing.T) {
+	testForSkip(t)
 	chainID := util.GetTestChainID()
 
 	lis, err := initPeer(chainID)
@@ -1658,6 +1675,7 @@ func TestChaincodeInvokesForbiddenSystemChaincode(t *testing.T) {
 // Test the execution of a chaincode that invokes system chaincode
 // uses the "pthru" chaincode to query "lscc" for the "pthru" chaincode
 func TestChaincodeInvokesSystemChaincode(t *testing.T) {
+	testForSkip(t)
 	chainID := util.GetTestChainID()
 
 	lis, err := initPeer(chainID)
@@ -1721,6 +1739,7 @@ func TestChaincodeInvokesSystemChaincode(t *testing.T) {
 }
 
 func TestChaincodeInitializeInitError(t *testing.T) {
+	testForSkip(t)
 	testCases := []struct {
 		name          string
 		chaincodeType pb.ChaincodeSpec_Type

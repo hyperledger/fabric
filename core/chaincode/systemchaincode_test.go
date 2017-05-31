@@ -140,6 +140,7 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 
 // Test deploy of a transaction.
 func TestExecuteDeploySysChaincode(t *testing.T) {
+	testForSkip(t)
 	sysccinfo, lis, err := initSysCCTests()
 	if err != nil {
 		t.Fail()
@@ -171,6 +172,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 
 // Test multichains
 func TestMultichains(t *testing.T) {
+	testForSkip(t)
 	sysccinfo, lis, err := initSysCCTests()
 	if err != nil {
 		t.Fail()
