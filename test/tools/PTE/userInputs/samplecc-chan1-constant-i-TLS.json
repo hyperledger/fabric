@@ -12,7 +12,7 @@
     "nPeer": "4",
     "nOrg": "2",
     "nPeerPerOrg": "2",
-    "nThread": "2",
+    "nProc": "2",
     "nRequest": "1000",
     "runDur": "600",
     "TLS": "enabled",

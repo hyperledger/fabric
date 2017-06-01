@@ -10,12 +10,13 @@
     "invokeType": "Move",
     "nOrderer": "1",
     "nPeer": "4",
-    "nThread": "4",
+    "nProc": "4",
     "nRequest": "1000",
     "runDur": "600",
     "TLS": "enabled",
     "channelOpt": {
         "name": "testOrgsChannel2",
+        "channelTX": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/testOrgsChannel2.tx",
         "action":  "create",
         "orgName": [
             "org1"

@@ -45,7 +45,7 @@ var FabricCAServices = require('fabric-ca-client/lib/FabricCAClientImpl');
 var FabricCAClient = FabricCAServices.FabricCAClient;
 var User = require('fabric-client/lib/User.js');
 var Client = require('fabric-client/lib/Client.js');
-var _commonProto = grpc.load(path.join(__dirname, '../../fabric-client/lib/protos/common/common.proto')).common;
+var _commonProto = grpc.load(path.join(__dirname, 'node_modules/fabric-client/lib/protos/common/common.proto')).common;
 
 const crypto = require('crypto');
 
@@ -139,7 +139,7 @@ var transMode = uiContent.transMode;
 var transType = uiContent.transType;
 var invokeType = uiContent.invokeType;
 var nRequest = parseInt(uiContent.nRequest);
-var nThread = parseInt(uiContent.nThread);
+var nProc = parseInt(uiContent.nProc);
 var nOrg = parseInt(uiContent.nOrg);
 var nPeerPerOrg = parseInt(uiContent.nPeerPerOrg);
 var nPeer = nOrg * nPeerPerOrg;
@@ -450,6 +450,7 @@ function channelAddAnchorPeer(chain, client, org) {
     var data;
     for (let key in ORGS) {
         if (ORGS.hasOwnProperty(key) && typeof ORGS[key].peer1 !== 'undefined') {
+                if ( key == org ) {
                 if (TLS.toUpperCase() == 'ENABLED') {
                     data = fs.readFileSync(ORGS[key].peer1['tls_cacerts']);
                     peerTmp = client.newPeer(
@@ -466,6 +467,7 @@ function channelAddAnchorPeer(chain, client, org) {
                     peerTmp = client.newPeer( ORGS[key].peer1.requests);
                     targets.push(peerTmp);
                     chain.addPeer(peerTmp);
+                }
                 }
 
                 if ( (invokeType.toUpperCase() == 'MOVE') && ( key == org ) ) {
@@ -487,7 +489,7 @@ function channelAddAnchorPeer(chain, client, org) {
                 }
         }
     }
-    //console.log('[[Nid:id=%d:%d] channelAddAnchorPeer] get peer: ', Nid, pid, chain.getPeers());
+    console.log('[[Nid:id=%d:%d] channelAddAnchorPeer] get peer: ', Nid, pid, chain.getPeers());
     //console.log('[[Nid:id=%d:%d] channelAddAnchorPeer] event: ', Nid, pid, eventHubs);
 }
 
@@ -551,6 +553,8 @@ function execTransMode() {
                             execModeBurst();
                         } else if (transMode.toUpperCase() == 'LATENCY') {
                             execModeLatency();
+                        } else if (transMode.toUpperCase() == 'PROPOSAL') {
+                            execModeProposal();
                         } else {
                             // invalid transaction request
                             console.log(util.format("[Nid:id:chan:org=%d:%d:%s:%s execTransMode] Transaction %j and/or mode %s invalid", Nid, pid, channelName, org, transType, transMode));
@@ -1168,6 +1172,66 @@ function execModeMix() {
     }
 }
 
+
+// invoke_move_latency
+function invoke_move_proposal() {
+
+    inv_m++;
+
+    getMoveRequest();
+
+    chain.sendTransactionProposal(request_invoke)
+    .then(
+        function(results) {
+            var proposalResponses = results[0];
+
+            isExecDone('Move');
+            if ( IDone == 1 ) {
+               tCurr = new Date().getTime();
+               console.log('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_proposal] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+               evtDisconnect();
+               return;
+            } else {
+                    invoke_move_proposal();
+                    return results[0];
+            }
+
+
+        },
+        function(err) {
+            console.log('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_proposal] Failed to send transaction proposal due to error: ', Nid, pid, channelName, org, err.stack ? err.stack : err);
+            evtDisconnect();
+        });
+
+
+}
+
+
+function execModeProposal() {
+
+    // send proposal to endorser
+    if ( transType.toUpperCase() == 'INVOKE' ) {
+        tLocal = new Date().getTime();
+        if ( runDur > 0 ) {
+            tEnd = tLocal + runDur;
+        }
+        console.log('[Nid:id:chan:org=%d:%d:%s:%s execModeProposal] tStart %d, tLocal %d', Nid, pid, channelName, org, tStart, tLocal);
+        if ( invokeType.toUpperCase() == 'MOVE' ) {
+            var freq = 20000;
+            if ( ccType == 'ccchecker' ) {
+                freq = 0;
+            }
+            invoke_move_latency();
+            invoke_move_proposal();
+        } else if ( invokeType.toUpperCase() == 'QUERY' ) {
+            console.log('[Nid:id:chan:org=%d:%d:%s:%s execModeProposal] invalid invokeType= %s', Nid, pid, channelName, org, invokeType);
+            evtDisconnect();
+        }
+    } else {
+        console.log('[Nid:id:chan:org=%d:%d:%s:%s execModeProposal] invalid transType= %s', Nid, pid, channelName, org, transType);
+        evtDisconnect();
+    }
+}
 
 // Burst mode vars
 var burstFreq0;
