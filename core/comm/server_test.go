@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -34,6 +35,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/transport"
 
 	"github.com/hyperledger/fabric/core/comm"
 	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
@@ -1356,4 +1358,62 @@ func TestSetClientRootCAs(t *testing.T) {
 		}
 	}
 
+}
+
+func TestKeepaliveNoClientResponse(t *testing.T) {
+	t.Parallel()
+	// set up GRPCServer instance
+	kap := comm.KeepaliveOptions{
+		ServerKeepaliveTime:    2,
+		ServerKeepaliveTimeout: 1,
+	}
+	comm.SetKeepaliveOptions(kap)
+	testAddress := "localhost:9400"
+	srv, err := comm.NewGRPCServer(testAddress, comm.SecureServerConfig{})
+	assert.NoError(t, err, "Unexpected error starting GRPCServer")
+	go srv.Start()
+	defer srv.Stop()
+
+	// test connection close if client does not response to ping
+	// net client will not response to keepalive
+	client, err := net.Dial("tcp", testAddress)
+	assert.NoError(t, err, "Unexpected error dialing GRPCServer")
+	defer client.Close()
+	// sleep past keepalive timeout
+	time.Sleep(4 * time.Second)
+	data := make([]byte, 24)
+	for {
+		_, err = client.Read(data)
+		if err == nil {
+			continue
+		}
+		assert.EqualError(t, err, io.EOF.Error(), "Expected io.EOF")
+		break
+	}
+}
+
+func TestKeepaliveClientResponse(t *testing.T) {
+	t.Parallel()
+	// set up GRPCServer instance
+	kap := comm.KeepaliveOptions{
+		ServerKeepaliveTime:    2,
+		ServerKeepaliveTimeout: 1,
+	}
+	comm.SetKeepaliveOptions(kap)
+	testAddress := "localhost:9401"
+	srv, err := comm.NewGRPCServer(testAddress, comm.SecureServerConfig{})
+	assert.NoError(t, err, "Unexpected error starting GRPCServer")
+	go srv.Start()
+	defer srv.Stop()
+
+	// test that connection does not close with response to ping
+	clientTransport, err := transport.NewClientTransport(context.Background(),
+		transport.TargetInfo{Addr: testAddress}, transport.ConnectOptions{})
+	assert.NoError(t, err, "Unexpected error creating client transport")
+	defer clientTransport.Close()
+	// sleep past keepalive timeout
+	time.Sleep(4 * time.Second)
+	// try to create a stream
+	_, err = clientTransport.NewStream(context.Background(), &transport.CallHdr{})
+	assert.NoError(t, err, "Unexpected error creating stream")
 }
