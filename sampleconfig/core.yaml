@@ -73,8 +73,8 @@ peer:
         # Bootstrap set to initialize gossip with.
         # This is a list of peers that the peer reaches out to at startup.
         # Important: The endpoints here have to be endpoints of peers in the same
-        # organization, because the connection establishment process to these peers
-        # exposes the internal endpoint of this peer.
+        # organization, because the peer would refuse connecting to these endpoints
+        # unless they are in the same organization as the peer.
         bootstrap: 127.0.0.1:7051
 
         # NOTE: orgLeader and useLeaderElection parameters are mutual exclusive
