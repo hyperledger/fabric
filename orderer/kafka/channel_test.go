@@ -17,21 +17,20 @@ limitations under the License.
 package kafka
 
 import (
+	"fmt"
 	"testing"
 
-	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestProducerSend(t *testing.T) {
-	mp := mockNewProducer(t, cp, testMiddleOffset, make(chan *ab.KafkaMessage))
-	defer testClose(t, mp)
+func TestChannel(t *testing.T) {
+	chn := newChannel("channelFoo", defaultPartition)
 
-	go func() {
-		<-mp.(*mockProducerImpl).disk // Retrieve the message that we'll be sending below
-	}()
+	expectedTopic := fmt.Sprintf("%s", "channelFoo")
+	actualTopic := chn.topic()
+	assert.Equal(t, expectedTopic, actualTopic, "Got the wrong topic, expected %s, got %s instead", expectedTopic, actualTopic)
 
-	if err := mp.Send(cp, utils.MarshalOrPanic(newRegularMessage([]byte("foo")))); err != nil {
-		t.Fatalf("Mock producer was not initialized correctly: %s", err)
-	}
+	expectedPartition := int32(defaultPartition)
+	actualPartition := chn.partition()
+	assert.Equal(t, expectedPartition, actualPartition, "Got the wrong partition, expected %d, got %d instead", expectedPartition, actualPartition)
 }
