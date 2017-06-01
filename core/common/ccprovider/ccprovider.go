@@ -26,6 +26,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"bytes"
+
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -215,6 +217,37 @@ func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
 		_, err := ccInfoFSProvider.PutChaincode(depSpec)
 		return err
 	}
+}
+
+func CheckInsantiationPolicy(name, version string, cdLedger *ChaincodeData) error {
+	// we retrieve info about this chaincode from the file system
+	ccpack, err := GetChaincodeFromFS(name, version)
+	if err != nil {
+		return fmt.Errorf("Chaincode data for cc %s/%s was not found, error %s", name, version, err)
+	}
+
+	// ccpack is guaranteed to be non-nil
+	cdLocalFS := ccpack.GetChaincodeData()
+
+	// we have the info from the fs, check that the policy
+	// matches the one on the file system if one was specified;
+	// this check is required because the admin of this peer
+	// might have specified instantiation policies for their
+	// chaincode, for example to make sure that the chaincode
+	// is only instantiated on certain channels; a malicious
+	// peer on the other hand might have created a deploy
+	// transaction that attempts to bypass the instantiation
+	// policy. This check is there to ensure that this will not
+	// happen, i.e. that the peer will refuse to invoke the
+	// chaincode under these conditions. More info on
+	// https://jira.hyperledger.org/browse/FAB-3156
+	if cdLocalFS.InstantiationPolicy != nil {
+		if !bytes.Equal(cdLocalFS.InstantiationPolicy, cdLedger.InstantiationPolicy) {
+			return fmt.Errorf("Instantiation policy mismatch for cc %s/%s", name, version)
+		}
+	}
+
+	return nil
 }
 
 // GetCCPackage tries each known package implementation one by one

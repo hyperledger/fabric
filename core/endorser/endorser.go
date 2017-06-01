@@ -15,8 +15,6 @@ import (
 
 	"errors"
 
-	"bytes"
-
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -234,30 +232,9 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		}
 		version = cdLedger.Version
 
-		// we retrieve info about this chaincode from the file system
-		ccpack, err := ccprovider.GetChaincodeFromFS(cid.Name, version)
+		err = ccprovider.CheckInsantiationPolicy(cid.Name, version, cdLedger)
 		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("chaincode %s/%s not found on the file system, error %s", cid.Name, version, err)
-		}
-		// ccpack is guaranteed to be non-nil
-		cdLocalFS := ccpack.GetChaincodeData()
-
-		// we have the info from the fs, check that the policy
-		// matches the one on the file system if one was specified;
-		// this check is required because the admin of this peer
-		// might have specified instantiation policies for their
-		// chaincode, for example to make sure that the chaincode
-		// is only instantiated on certain channels; a malicious
-		// peer on the other hand might have created a deploy
-		// transaction that attempts to bypass the instantiation
-		// policy. This check is there to ensure that this will not
-		// happen, i.e. that the peer will refuse to invoke the
-		// chaincode under these conditions. More info on
-		// https://jira.hyperledger.org/browse/FAB-3156
-		if cdLocalFS.InstantiationPolicy != nil {
-			if !bytes.Equal(cdLocalFS.InstantiationPolicy, cdLedger.InstantiationPolicy) {
-				return nil, nil, nil, nil, fmt.Errorf("instantiation policy mismatch for cc %s/%s", cid.Name, version)
-			}
+			return nil, nil, nil, nil, err
 		}
 	} else {
 		version = util.GetSysCCVersion()
