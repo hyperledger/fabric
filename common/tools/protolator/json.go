@@ -251,6 +251,9 @@ func jsonToMap(marshaled []byte) (map[string]interface{}, error) {
 // Factories listed lower, may depend on factories listed higher being
 // evaluated first.
 var fieldFactories = []protoFieldFactory{
+	dynamicSliceFieldFactory{},
+	dynamicMapFieldFactory{},
+	dynamicFieldFactory{},
 	variablyOpaqueSliceFieldFactory{},
 	variablyOpaqueMapFieldFactory{},
 	variablyOpaqueFieldFactory{},
@@ -326,6 +329,10 @@ func recursivelyCreateTreeFromMessage(msg proto.Message) (tree map[string]interf
 	}()
 
 	uMsg := msg
+	decorated, ok := msg.(DecoratedProto)
+	if ok {
+		uMsg = decorated.Underlying()
+	}
 
 	fields, err := protoFields(msg, uMsg)
 	if err != nil {
@@ -381,6 +388,10 @@ func recursivelyPopulateMessageFromTree(tree map[string]interface{}, msg proto.M
 	}()
 
 	uMsg := msg
+	decorated, ok := msg.(DecoratedProto)
+	if ok {
+		uMsg = decorated.Underlying()
+	}
 
 	fields, err := protoFields(msg, uMsg)
 	if err != nil {

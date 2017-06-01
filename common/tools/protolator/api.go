@@ -27,7 +27,7 @@ import (
 // opaque byte fields are represented as their expanded proto contents) and back once again
 // to standard proto messages.
 //
-// There are currently two different types of interfaces available for protos to implement:
+// There are currently three different types of interfaces available for protos to implement:
 //
 // 1. StaticallyOpaque*FieldProto:  These interfaces should be implemented by protos which have
 // opaque byte fields whose marshaled type is known at compile time.  This is mostly true
@@ -39,6 +39,13 @@ import (
 // a VariablyOpaque*FieldProto to depend on data populated by the StaticallyOpaque*FieldProtos.
 // For example, the Payload.data field depends upon the Payload.Header.ChannelHeader.type field,
 // which is along a statically marshaled path.
+//
+// 3. Dynamic*FieldProto: These interfaces are for messages which contain other messages whose
+// attributes cannot be determined at compile time.  For example, a ConfigValue message may evaluate
+// the map field values["MSP"] successfully in an organization context, but not at all in a channel
+// context.  Because go is not a dynamic language, this dynamic behavior must be simulated by
+// wrapping the underlying proto message in another type which can be configured at runtime with
+// different contextual behavior. (See tests for examples)
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -106,4 +113,45 @@ type VariablyOpaqueSliceFieldProto interface {
 	// VariablyOpaqueFieldProto returns a newly allocated proto message of the correct
 	// type for the field name.
 	VariablyOpaqueSliceFieldProto(name string, index int) (proto.Message, error)
+}
+
+// DynamicFieldProto should be implemented by protos which have nested fields whose attributes
+// (such as their opaque types) cannot be determined until runtime
+type DynamicFieldProto interface {
+	// DynamicFields returns the field names which are dynamic
+	DynamicFields() []string
+
+	// DynamicFieldProto returns a newly allocated dynamic message, decorating an underlying
+	// proto message with the runtime determined function
+	DynamicFieldProto(name string, underlying proto.Message) (proto.Message, error)
+}
+
+// DynamicMapFieldProto should be implemented by protos which have maps to messages whose attributes
+// (such as their opaque types) cannot be determined until runtime
+type DynamicMapFieldProto interface {
+	// DynamicFields returns the field names which are dynamic
+	DynamicMapFields() []string
+
+	// DynamicMapFieldProto returns a newly allocated dynamic message, decorating an underlying
+	// proto message with the runtime determined function
+	DynamicMapFieldProto(name string, key string, underlying proto.Message) (proto.Message, error)
+}
+
+// DynamicSliceFieldProto should be implemented by protos which have slices of messages whose attributes
+// (such as their opaque types) cannot be determined until runtime
+type DynamicSliceFieldProto interface {
+	// DynamicFields returns the field names which are dynamic
+	DynamicSliceFields() []string
+
+	// DynamicSliceFieldProto returns a newly allocated dynamic message, decorating an underlying
+	// proto message with the runtime determined function
+	DynamicSliceFieldProto(name string, index int, underlying proto.Message) (proto.Message, error)
+}
+
+// DecoreatedProto should be implemented by the dynamic wrappers applied by the Dynamic*FieldProto interfaces
+// This is necessary for the proto system to unmarshal, because it discovers proto message type by reflection
+// (Rather than by interface definition as it probably should ( https://github.com/golang/protobuf/issues/291 )
+type DecoratedProto interface {
+	// Underlying returns the underlying proto message which is being dynamically decorated
+	Underlying() proto.Message
 }

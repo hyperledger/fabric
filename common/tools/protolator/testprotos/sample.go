@@ -108,3 +108,72 @@ func (vom *VariablyOpaqueMsg) VariablyOpaqueSliceFieldProto(name string, index i
 
 	return typeSwitch(vom.OpaqueType)
 }
+
+func (cm *ContextlessMsg) VariablyOpaqueFields() []string {
+	return []string{"opaque_field"}
+}
+
+type DynamicMessageWrapper struct {
+	*ContextlessMsg
+	typeName string
+}
+
+func (dmw *DynamicMessageWrapper) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
+	if name != dmw.ContextlessMsg.VariablyOpaqueFields()[0] {
+		return nil, fmt.Errorf("not a statically opaque field: %s", name)
+	}
+
+	return typeSwitch(dmw.typeName)
+}
+
+func (dmw *DynamicMessageWrapper) Underlying() proto.Message {
+	return dmw.ContextlessMsg
+}
+
+func wrapContextless(underlying proto.Message, typeName string) (*DynamicMessageWrapper, error) {
+	cm, ok := underlying.(*ContextlessMsg)
+	if !ok {
+		return nil, fmt.Errorf("unknown dynamic message to wrap (%T) requires *ContextlessMsg", underlying)
+	}
+
+	return &DynamicMessageWrapper{
+		ContextlessMsg: cm,
+		typeName:       typeName,
+	}, nil
+}
+
+func (vom *DynamicMsg) DynamicFields() []string {
+	return []string{"plain_dynamic_field"}
+}
+
+func (vom *DynamicMsg) DynamicFieldProto(name string, underlying proto.Message) (proto.Message, error) {
+	if name != vom.DynamicFields()[0] {
+		return nil, fmt.Errorf("not a dynamic field: %s", name)
+	}
+
+	return wrapContextless(underlying, vom.DynamicType)
+}
+
+func (vom *DynamicMsg) DynamicMapFields() []string {
+	return []string{"map_dynamic_field"}
+}
+
+func (vom *DynamicMsg) DynamicMapFieldProto(name string, key string, underlying proto.Message) (proto.Message, error) {
+	if name != vom.DynamicMapFields()[0] {
+		return nil, fmt.Errorf("not a dynamic map field: %s", name)
+	}
+
+	return wrapContextless(underlying, vom.DynamicType)
+}
+
+func (vom *DynamicMsg) DynamicSliceFields() []string {
+	return []string{"slice_dynamic_field"}
+}
+
+func (vom *DynamicMsg) DynamicSliceFieldProto(name string, index int, underlying proto.Message) (proto.Message, error) {
+	if name != vom.DynamicSliceFields()[0] {
+		return nil, fmt.Errorf("not a dynamic slice field: %s", name)
+	}
+
+	return wrapContextless(underlying, vom.DynamicType)
+}

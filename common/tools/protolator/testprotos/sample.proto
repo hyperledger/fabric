@@ -51,3 +51,20 @@ message VariablyOpaqueMsg {
 	map<string, bytes> map_opaque_field = 3;
 	repeated bytes slice_opaque_field = 4;
 }
+
+// DynamicMsg is designed to test the dynamic message component
+// The dynamic wrapper applied to ContextlessMsg is determined by
+// dynamic_type
+message DynamicMsg {
+	string dynamic_type = 1;
+	ContextlessMsg plain_dynamic_field = 2;
+	map<string,ContextlessMsg> map_dynamic_field = 3;
+	repeated ContextlessMsg slice_dynamic_field = 4;
+}
+
+// ContextlessMsg is designed to carry a message of completely arbitrary type
+// Because there is no context for the type embedded in the message, the opaque
+// type must be dynamically added at runtime
+message ContextlessMsg {
+	bytes opaque_field = 1;
+}
