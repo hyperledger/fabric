@@ -63,8 +63,6 @@ const (
 	ConsensusTypeSolo = "solo"
 	// ConsensusTypeKafka identifies the Kafka-based consensus implementation.
 	ConsensusTypeKafka = "kafka"
-	// ConsensusTypeSbft identifies the SBFT consensus implementation.
-	ConsensusTypeSbft = "sbft"
 
 	// TestChainID is the default value of ChainID. It is used by all testing
 	// networks. It it necessary to set and export this variable so that test
@@ -131,7 +129,7 @@ func New(conf *genesisconfig.Profile) Generator {
 		}
 
 		switch conf.Orderer.OrdererType {
-		case ConsensusTypeSolo, ConsensusTypeSbft:
+		case ConsensusTypeSolo:
 		case ConsensusTypeKafka:
 			bs.ordererGroups = append(bs.ordererGroups, config.TemplateKafkaBrokers(conf.Orderer.Kafka.Brokers))
 		default:

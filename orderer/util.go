@@ -27,10 +27,6 @@ import (
 	jsonledger "github.com/hyperledger/fabric/orderer/ledger/json"
 	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	config "github.com/hyperledger/fabric/orderer/localconfig"
-	"github.com/hyperledger/fabric/orderer/sbft"
-	"github.com/hyperledger/fabric/orderer/sbft/backend"
-	sbftcrypto "github.com/hyperledger/fabric/orderer/sbft/crypto"
-	"github.com/hyperledger/fabric/orderer/sbft/simplebft"
 )
 
 func createLedgerFactory(conf *config.TopLevel) (ledger.Factory, string) {
@@ -86,25 +82,4 @@ func createSubDir(parentDirPath string, subDir string) (string, bool) {
 		logger.Debugf("Found %s sub-dir and using it", fsblkstorage.ChainsDir)
 	}
 	return subDirPath, created
-}
-
-// XXX The functions below need to be moved to the SBFT package ASAP
-
-func makeSbftConsensusConfig(conf *config.TopLevel) *sbft.ConsensusConfig {
-	cfg := simplebft.Config{N: conf.Genesis.SbftShared.N, F: conf.Genesis.SbftShared.F,
-		BatchDurationNsec:  uint64(conf.Genesis.DeprecatedBatchTimeout),
-		BatchSizeBytes:     uint64(conf.Genesis.DeprecatedBatchSize),
-		RequestTimeoutNsec: conf.Genesis.SbftShared.RequestTimeoutNsec}
-	peers := make(map[string][]byte)
-	for addr, cert := range conf.Genesis.SbftShared.Peers {
-		peers[addr], _ = sbftcrypto.ParseCertPEM(cert)
-	}
-	return &sbft.ConsensusConfig{Consensus: &cfg, Peers: peers}
-}
-
-func makeSbftStackConfig(conf *config.TopLevel) *backend.StackConfig {
-	return &backend.StackConfig{ListenAddr: conf.SbftLocal.PeerCommAddr,
-		CertFile: conf.SbftLocal.CertFile,
-		KeyFile:  conf.SbftLocal.KeyFile,
-		DataDir:  conf.SbftLocal.DataDir}
 }

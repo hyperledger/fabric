@@ -64,8 +64,6 @@ type TopLevel struct {
 	FileLedger FileLedger
 	RAMLedger  RAMLedger
 	Kafka      Kafka
-	Genesis    Genesis
-	SbftLocal  SbftLocal
 }
 
 // General contains config which should be common among all orderer types.
@@ -125,32 +123,6 @@ type Retry struct {
 	Stop   time.Duration
 }
 
-// Genesis is a deprecated structure which was used to put
-// values into the genesis block, but this is now handled elsewhere.
-// SBFT did not reference these values via the genesis block however
-// so it is being left here for backwards compatibility purposes.
-type Genesis struct {
-	DeprecatedBatchTimeout time.Duration
-	DeprecatedBatchSize    uint32
-	SbftShared             SbftShared
-}
-
-// SbftLocal contains configuration for the SBFT peer/replica.
-type SbftLocal struct {
-	PeerCommAddr string
-	CertFile     string
-	KeyFile      string
-	DataDir      string
-}
-
-// SbftShared contains config for the SBFT network.
-type SbftShared struct {
-	N                  uint64
-	F                  uint64
-	RequestTimeoutNsec uint64
-	Peers              map[string]string // Address to Cert mapping
-}
-
 var defaults = TopLevel{
 	General: General{
 		LedgerType:     "file",
@@ -185,20 +157,6 @@ var defaults = TopLevel{
 		TLS: TLS{
 			Enabled: false,
 		},
-	},
-	Genesis: Genesis{
-		SbftShared: SbftShared{
-			N:                  1,
-			F:                  0,
-			RequestTimeoutNsec: uint64(time.Second.Nanoseconds()),
-			Peers:              map[string]string{":6101": "sbft/testdata/cert1.pem"},
-		},
-	},
-	SbftLocal: SbftLocal{
-		PeerCommAddr: ":6101",
-		CertFile:     "sbft/testdata/cert1.pem",
-		KeyFile:      "sbft/testdata/key.pem",
-		DataDir:      "/tmp",
 	},
 }
 
