@@ -78,18 +78,17 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 	for {
 		msg, err := srv.Recv()
 		if err == io.EOF {
+			logger.Debugf("Received EOF, hangup")
 			return nil
 		}
 		if err != nil {
+			logger.Warningf("Error reading from stream: %s", err)
 			return err
 		}
 
-		payload := &cb.Payload{}
-		err = proto.Unmarshal(msg.Payload, payload)
+		payload, err := utils.UnmarshalPayload(msg.Payload)
 		if err != nil {
-			if logger.IsEnabledFor(logging.WARNING) {
-				logger.Warningf("Received malformed message, dropping connection: %s", err)
-			}
+			logger.Warningf("Received malformed message, dropping connection: %s", err)
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
@@ -100,9 +99,7 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 
 		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 		if err != nil {
-			if logger.IsEnabledFor(logging.WARNING) {
-				logger.Warningf("Received malformed message (bad channel header), dropping connection: %s", err)
-			}
+			logger.Warningf("Received malformed message (bad channel header), dropping connection: %s", err)
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
@@ -110,9 +107,7 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			logger.Debugf("Preprocessing CONFIG_UPDATE")
 			msg, err = bh.sm.Process(msg)
 			if err != nil {
-				if logger.IsEnabledFor(logging.WARNING) {
-					logger.Warningf("Rejecting CONFIG_UPDATE because: %s", err)
-				}
+				logger.Warningf("Rejecting CONFIG_UPDATE because: %s", err)
 				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 			}
 
@@ -136,23 +131,17 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 
 		support, ok := bh.sm.GetChain(chdr.ChannelId)
 		if !ok {
-			if logger.IsEnabledFor(logging.WARNING) {
-				logger.Warningf("Rejecting broadcast because channel %s was not found", chdr.ChannelId)
-			}
+			logger.Warningf("Rejecting broadcast because channel %s was not found", chdr.ChannelId)
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
 		}
 
-		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast is filtering message of type %s for channel %s", cb.HeaderType_name[chdr.Type], chdr.ChannelId)
-		}
+		logger.Debugf("Broadcast is filtering message of type %s for channel %s", cb.HeaderType_name[chdr.Type], chdr.ChannelId)
 
 		// Normal transaction for existing chain
 		_, filterErr := support.Filters().Apply(msg)
 
 		if filterErr != nil {
-			if logger.IsEnabledFor(logging.WARNING) {
-				logger.Warningf("Rejecting broadcast message because of filter error: %s", filterErr)
-			}
+			logger.Warningf("Rejecting broadcast message because of filter error: %s", filterErr)
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
@@ -166,8 +155,8 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 
 		err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
-
 		if err != nil {
+			logger.Warningf("Error sending to stream: %s", err)
 			return err
 		}
 	}
