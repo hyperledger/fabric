@@ -27,12 +27,12 @@ Scenario Outline: FAB-3505: Test chaincode example02 deploy, invoke, and query
   And a user queries on the chaincode named "mycc" with args ["query", "a"]
   Then a user receives expected response of 990
 
-  Given "peer1" is taken down
+  Given "peer1.org1.example.com" is taken down
   When a user invokes on the chaincode named "mycc" with args ["txId1", "invoke", "a", 10]
   And I wait "15" seconds
-  And "peer1" comes back up
-  When a user queries on the chaincode named "mycc" with args ["query", "a"] on "peer1"
-  Then a user receives expected response is 980
+  Given "peer1.org1.example.com" comes back up
+  When a user queries on the chaincode named "mycc" with args ["query", "a"] on "peer1.org1.example.com"
+  Then a user receives expected response of 980
   Examples:
     | type  |
     | solo  |
