@@ -66,14 +66,6 @@ func (id *mockIdentity) Verify(msg []byte, sig []byte) error {
 	}
 }
 
-func (id *mockIdentity) VerifyOpts(msg []byte, sig []byte, opts msp.SignatureOpts) error {
-	return nil
-}
-
-func (id *mockIdentity) VerifyAttributes(proof []byte, spec *msp.AttributeProofSpec) error {
-	return nil
-}
-
 func (id *mockIdentity) Serialize() ([]byte, error) {
 	return id.idBytes, nil
 }

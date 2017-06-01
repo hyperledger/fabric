@@ -344,26 +344,6 @@ func TestIdentitiesGetters(t *testing.T) {
 	assert.NotNil(t, mspid)
 }
 
-func TestUnimplementedMethods(t *testing.T) {
-	id, err := localMsp.GetDefaultSigningIdentity()
-	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
-		return
-	}
-
-	// these methods are currently unimplemented - we assert that they return an error
-	err = id.VerifyOpts(nil, nil, SignatureOpts{})
-	assert.Error(t, err)
-	err = id.VerifyAttributes(nil, nil)
-	assert.Error(t, err)
-	_, err = id.SignOpts(nil, SignatureOpts{})
-	assert.Error(t, err)
-	_, err = id.GetAttributeProof(nil)
-	assert.Error(t, err)
-	err = id.Renew()
-	assert.Error(t, err)
-}
-
 func TestSignAndVerify(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {

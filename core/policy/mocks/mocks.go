@@ -127,14 +127,6 @@ func (id *MockIdentity) Verify(msg []byte, sig []byte) error {
 	return errors.New("Invalid Signature")
 }
 
-func (id *MockIdentity) VerifyOpts(msg []byte, sig []byte, opts msp.SignatureOpts) error {
-	return nil
-}
-
-func (id *MockIdentity) VerifyAttributes(proof []byte, spec *msp.AttributeProofSpec) error {
-	return nil
-}
-
 func (id *MockIdentity) Serialize() ([]byte, error) {
 	return []byte("cert"), nil
 }
