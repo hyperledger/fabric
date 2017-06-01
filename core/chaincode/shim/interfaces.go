@@ -26,119 +26,181 @@ import (
 // Chaincode interface must be implemented by all chaincodes. The fabric runs
 // the transactions by calling these functions as specified.
 type Chaincode interface {
-	// Init is called during Deploy transaction after the container has been
-	// established, allowing the chaincode to initialize its internal data
+	// Init is called during Instantiate transaction after the chaincode container
+	// has been established for the first time, allowing the chaincode to
+	// initialize its internal data
 	Init(stub ChaincodeStubInterface) pb.Response
-	// Invoke is called for every Invoke transactions. The chaincode may change
-	// its state variables
+
+	// Invoke is called to update or query the ledger in a proposal transaction.
+	// Updated state variables are not committed to the ledger until the
+	// transaction is committed.
 	Invoke(stub ChaincodeStubInterface) pb.Response
 }
 
-// ChaincodeStubInterface is used by deployable chaincode apps to access and modify their ledgers
+// ChaincodeStubInterface is used by deployable chaincode apps to access and
+// modify their ledgers
 type ChaincodeStubInterface interface {
-	// Get the arguments to the stub call as a 2D byte array
+	// GetArgs returns the arguments intended for the chaincode Init and Invoke
+	// as an array of byte arrays.
 	GetArgs() [][]byte
 
-	// Get the arguments to the stub call as a string array
+	// GetStringArgs returns the arguments intended for the chaincode Init and
+	// Invoke as a string array. Only use GetStringArgs if the client passes
+	// arguments intended to be used as strings.
 	GetStringArgs() []string
 
-	// Get the function which is the first argument and the rest of the arguments
-	// as parameters
+	// GetFunctionAndParameters returns the first argument as the function
+	// name and the rest of the arguments as parameters in a string array.
+	// Only use GetFunctionAndParameters if the client passes arguments intended
+	// to be used as strings.
 	GetFunctionAndParameters() (string, []string)
 
-	// Get the transaction ID
+	// GetArgsSlice returns the arguments intended for the chaincode Init and
+	// Invoke as a byte array
+	GetArgsSlice() ([]byte, error)
+
+	// GetTxID returns the tx_id of the transaction proposal (see ChannelHeader
+	// in protos/common/common.proto)
 	GetTxID() string
 
 	// InvokeChaincode locally calls the specified chaincode `Invoke` using the
 	// same transaction context; that is, chaincode calling chaincode doesn't
-	// create a new transaction message. If the called chaincode is on a different
-	// channel, only the Response is returned to the caller; any PutState calls
-	// will not have any effect on the ledger of the channel; effectively it is
-	// a `Query`. If `channel` is empty, the caller's channel is assumed.
+	// create a new transaction message.
+	// If the called chaincode is on the same channel, it simply adds the called
+	// chaincode read set and write set to the calling transaction.
+	// If the called chaincode is on a different channel,
+	// only the Response is returned to the calling chaincode; any PutState calls
+	// from the called chaincode will not have any effect on the ledger; that is,
+	// the called chaincode on a different channel will not have its read set
+	// and write set applied to the transaction. Only the calling chaincode's
+	// read set and write set will be applied to the transaction. Effectively
+	// the called chaincode on a different channel is a `Query`, which does not
+	// participate in state validation checks in subsequent commit phase.
+	// If `channel` is empty, the caller's channel is assumed.
 	InvokeChaincode(chaincodeName string, args [][]byte, channel string) pb.Response
 
-	// GetState returns the byte array value specified by the `key`.
+	// GetState returns the value of the specified `key` from the
+	// ledger. Note that GetState doesn't read data from the writeset, which
+	// has not been committed to the ledger. In other words, GetState doesn't
+	// consider data modified by PutState that has not been committed.
 	GetState(key string) ([]byte, error)
 
-	// PutState writes the specified `value` and `key` into the ledger.
+	// PutState puts the specified `key` and `value` into the transaction's
+	// writeset as a data-write proposal. PutState doesn't effect the ledger
+	// until the transaction is validated and successfully committed.
+	// Simple keys must not be an empty string and must not start with null
+	// character (0x00), in order to avoid range query collisions with
+	// composite keys, which internally get prefixed with 0x00 as composite
+	// key namespace.
 	PutState(key string, value []byte) error
 
-	// DelState removes the specified `key` and its value from the ledger.
+	// DelState records the specified `key` to be deleted in the writeset of
+	// the transaction proposal. The `key` and its value will be deleted from
+	// the ledger when the transaction is validated and successfully committed.
 	DelState(key string) error
 
-	// GetStateByRange function can be invoked by a chaincode to query of a range
-	// of keys in the state. Assuming the startKey and endKey are in lexical
-	// an iterator will be returned that can be used to iterate over all keys
-	// between the startKey (inclusive) and endKey (exclusive). The order in which keys are
-	// returned by the iterator is random.
+	// GetStateByRange returns a range iterator over a set of keys in the
+	// ledger. The iterator can be used to iterate over all keys
+	// between the startKey (inclusive) and endKey (exclusive).
+	// The keys are returned by the iterator in lexical order. Note
+	// that startKey and endKey can be empty string, which implies unbounded range
+	// query on start or end.
+	// Call Close() on the returned StateQueryIteratorInterface object when done.
+	// The query is re-executed during validation phase to ensure result set
+	// has not changed since transaction endorsement (phantom reads detected).
 	GetStateByRange(startKey, endKey string) (StateQueryIteratorInterface, error)
 
-	// GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
-	// state based on a given partial composite key. This function returns an
-	// iterator which can be used to iterate over all composite keys whose prefix
-	// matches the given partial composite key. This function should be used only for
-	// a partial composite key. For a full composite key, an iter with empty response
-	// would be returned. The objectType and attributes are expected to have only
-	// valid utf8 strings and should not contain U+0000 (nil byte) and U+10FFFF (biggest and unallocated code point)
+	// GetStateByPartialCompositeKey queries the state in the ledger based on
+	// a given partial composite key. This function returns an iterator
+	// which can be used to iterate over all composite keys whose prefix matches
+	// the given partial composite key. The `objectType` and attributes are
+	// expected to have only valid utf8 strings and should not contain
+	// U+0000 (nil byte) and U+10FFFF (biggest and unallocated code point).
+	// See related functions SplitCompositeKey and CreateCompositeKey.
+	// Call Close() on the returned StateQueryIteratorInterface object when done.
+	// The query is re-executed during validation phase to ensure result set
+	// has not changed since transaction endorsement (phantom reads detected).
 	GetStateByPartialCompositeKey(objectType string, keys []string) (StateQueryIteratorInterface, error)
 
-	// Given a list of attributes, CreateCompositeKey function combines these attributes
-	// to form a composite key. The objectType and attributes are expected to have only
-	// valid utf8 strings and should not contain U+0000 (nil byte) and U+10FFFF (biggest and unallocated code point)
+	// CreateCompositeKey combines the given `attributes` to form a composite
+	// key. The objectType and attributes are expected to have only valid utf8
+	// strings and should not contain U+0000 (nil byte) and U+10FFFF
+	// (biggest and unallocated code point).
+	// The resulting composite key can be used as the key in PutState().
 	CreateCompositeKey(objectType string, attributes []string) (string, error)
 
-	// Given a composite key, SplitCompositeKey function splits the key into attributes
-	// on which the composite key was formed.
+	// SplitCompositeKey splits the specified key into attributes on which the
+	// composite key was formed. Composite keys found during range queries
+	// or partial composite key queries can therefore be split into their
+	// composite parts.
 	SplitCompositeKey(compositeKey string) (string, []string, error)
 
-	// GetQueryResult function can be invoked by a chaincode to perform a
-	// rich query against state database.  Only supported by state database implementations
-	// that support rich query.  The query string is in the syntax of the underlying
-	// state database. An iterator is returned which can be used to iterate (next) over
-	// the query result set
+	// GetQueryResult performs a "rich" query against a state database. It is
+	// only supported for state databases that support rich query,
+	// e.g.CouchDB. The query string is in the native syntax
+	// of the underlying state database. An iterator is returned
+	// which can be used to iterate (next) over the query result set.
+	// The query is NOT re-executed during validation phase, phantom reads are
+	// not detected. That is, other committed transactions may have added,
+	// updated, or removed keys that impact the result set, and this would not
+	// be detected at validation/commit time.  Applications susceptible to this
+	// should therefore not use GetQueryResult as part of transactions that update
+	// ledger, and should limit use to read-only chaincode operations.
 	GetQueryResult(query string) (StateQueryIteratorInterface, error)
 
-	// GetHistoryForKey function can be invoked by a chaincode to return a history of
-	// key values across time. GetHistoryForKey is intended to be used for read-only queries.
+	// GetHistoryForKey returns a history of key values across time.
+	// For each historic key update, the historic value and associated
+	// transaction id and timestamp are returned. The timestamp is the
+	// timestamp provided by the client in the proposal header.
+	// GetHistoryForKey requires peer configuration
+	// core.ledger.history.enableHistoryDatabase to be true.
+	// The query is NOT re-executed during validation phase, phantom reads are
+	// not detected. That is, other committed transactions may have updated
+	// the key concurrently, impacting the result set, and this would not be
+	// detected at validation/commit time. Applications susceptible to this
+	// should therefore not use GetHistoryForKey as part of transactions that
+	// update ledger, and should limit use to read-only chaincode operations.
 	GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error)
 
-	// GetCreator returns SignatureHeader.Creator of the signedProposal
-	// this Stub refers to.
+	// GetCreator returns `SignatureHeader.Creator` (e.g. an identity)
+	// of the `SignedProposal`. This is the identity of the agent (or user)
+	// submitting the transaction.
 	GetCreator() ([]byte, error)
 
-	// GetTransient returns the ChaincodeProposalPayload.transient field.
+	// GetTransient returns the `ChaincodeProposalPayload.Transient` field.
 	// It is a map that contains data (e.g. cryptographic material)
-	// that might be used to implement some form of application-level confidentiality. The contents
-	// of this field, as prescribed by ChaincodeProposalPayload, are supposed to always
+	// that might be used to implement some form of application-level
+	// confidentiality. The contents of this field, as prescribed by
+	// `ChaincodeProposalPayload`, are supposed to always
 	// be omitted from the transaction and excluded from the ledger.
 	GetTransient() (map[string][]byte, error)
 
 	// GetBinding returns the transaction binding
 	GetBinding() ([]byte, error)
 
-	// GetSignedProposal return the signed signedProposal this stub refers to.
+	// GetSignedProposal returns the SignedProposal object, which contains all
+	// data elements part of a transaction proposal.
 	GetSignedProposal() (*pb.SignedProposal, error)
 
-	// GetArgsSlice returns the arguments to the stub call as a byte array
-	GetArgsSlice() ([]byte, error)
-
 	// GetTxTimestamp returns the timestamp when the transaction was created. This
-	// is taken from the transaction ChannelHeader, so it will be the same across
-	// all endorsers.
+	// is taken from the transaction ChannelHeader, therefore it will indicate the
+	// client's timestamp, and will have the same value across all endorsers.
 	GetTxTimestamp() (*timestamp.Timestamp, error)
 
-	// SetEvent saves the event to be sent when a transaction is made part of a block
+	// SetEvent allows the chaincode to propose an event on the transaction
+	// proposal. If the transaction is validated and successfully committed,
+	// the event will be delivered to the current event listeners.
 	SetEvent(name string, payload []byte) error
 }
 
 // CommonIteratorInterface allows a chaincode to check whether any more result
-//to be fetched from an iterate and close it when needed.
+// to be fetched from an iterator and close it when done.
 type CommonIteratorInterface interface {
 	// HasNext returns true if the range query iterator contains additional keys
 	// and values.
 	HasNext() bool
 
-	// Close closes the range query iterator. This should be called when done
+	// Close closes the iterator. This should be called when done
 	// reading from the iterator to free up resources.
 	Close() error
 }
