@@ -181,6 +181,32 @@ func TestRetrieval(t *testing.T) {
 	}
 }
 
+// Without file lock in the implementation, this test is flaky due to
+// a race condition of concurrent write and read of block file. With
+// the fix, running this test repeatedly should not yield failure.
+func TestRaceCondition(t *testing.T) {
+	tev, fl := initialize(t)
+	defer tev.tearDown()
+
+	it, _ := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+
+	var block *cb.Block
+	var status cb.Status
+
+	complete := make(chan struct{})
+	go func() {
+		block, status = it.Next()
+		close(complete)
+	}()
+
+	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
+	<-complete
+
+	if status != cb.Status_SUCCESS {
+		t.Fatalf("Expected to successfully read the block")
+	}
+}
+
 func TestBlockedRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
