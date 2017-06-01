@@ -985,6 +985,8 @@ The enroll command stores an enrollment certificate (ECert), corresponding priva
 certificate chain PEM files in the subdirectories of the Fabric CA client's ``msp`` directory.
 You will see messages indicating where the PEM files are stored.
 
+If you specify server name using ``--ca.name`` option of ``fabric-ca-server`` command, you must specfiy the name using ``--caname`` option of ``fabric-ca-client``.
+
 Registering a new identity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
