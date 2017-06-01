@@ -29,6 +29,7 @@ import (
 )
 
 var regex *regexp.Regexp = regexp.MustCompile("^([[:alnum:]]+)([.])(member|admin)$")
+var regexErr *regexp.Regexp = regexp.MustCompile("^No parameter '([^']+)' found[.]$")
 
 func and(args ...interface{}) (interface{}, error) {
 	toret := "outof(" + strconv.Itoa(len(args))
@@ -209,8 +210,16 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 		return nil, err
 	}
 
-	intermediateRes, err := intermediate.Evaluate(nil)
+	intermediateRes, err := intermediate.Evaluate(map[string]interface{}{})
 	if err != nil {
+		// attempt to produce a meaningful error
+		if regexErr.MatchString(err.Error()) {
+			sm := regexErr.FindStringSubmatch(err.Error())
+			if len(sm) == 2 {
+				return nil, fmt.Errorf("unrecognized token '%s' in policy string", sm[1])
+			}
+		}
+
 		return nil, err
 	}
 
@@ -225,8 +234,16 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 		return nil, err
 	}
 
-	res, err := exp.Evaluate(nil)
+	res, err := exp.Evaluate(map[string]interface{}{})
 	if err != nil {
+		// attempt to produce a meaningful error
+		if regexErr.MatchString(err.Error()) {
+			sm := regexErr.FindStringSubmatch(err.Error())
+			if len(sm) == 2 {
+				return nil, fmt.Errorf("unrecognized token '%s' in policy string", sm[1])
+			}
+		}
+
 		return nil, err
 	}
 
@@ -241,6 +258,14 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 
 	res, err = exp.Evaluate(parameters)
 	if err != nil {
+		// attempt to produce a meaningful error
+		if regexErr.MatchString(err.Error()) {
+			sm := regexErr.FindStringSubmatch(err.Error())
+			if len(sm) == 2 {
+				return nil, fmt.Errorf("unrecognized token '%s' in policy string", sm[1])
+			}
+		}
+
 		return nil, err
 	}
 
