@@ -168,7 +168,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	peer.MockInitialize()
 	ledgermgmt.InitializeTestEnv()
 	defer ledgermgmt.CleanupTestEnv()
-	defer os.RemoveAll("/tmp/hyperledgerest/")
+	defer os.RemoveAll("/tmp/hyperledgertest/")
 
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
