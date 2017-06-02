@@ -18,7 +18,6 @@ package channel
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/hyperledger/fabric/common/localmsp"
@@ -29,7 +28,9 @@ import (
 )
 
 type deliverClientIntf interface {
-	getBlock() (*common.Block, error)
+	getSpecifiedBlock(num uint64) (*common.Block, error)
+	getOldestBlock() (*common.Block, error)
+	getNewestBlock() (*common.Block, error)
 	Close() error
 }
 
@@ -43,10 +44,10 @@ func newDeliverClient(conn *grpc.ClientConn, client ab.AtomicBroadcast_DeliverCl
 	return &deliverClient{conn: conn, client: client, chainID: chainID}
 }
 
-func seekHelper(chainID string, start *ab.SeekPosition) *common.Envelope {
+func seekHelper(chainID string, position *ab.SeekPosition) *common.Envelope {
 	seekInfo := &ab.SeekInfo{
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
+		Start:    position,
+		Stop:     position,
 		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 	}
 
@@ -61,8 +62,16 @@ func seekHelper(chainID string, start *ab.SeekPosition) *common.Envelope {
 	return env
 }
 
-func (r *deliverClient) seek(blockNumber uint64) error {
+func (r *deliverClient) seekSpecified(blockNumber uint64) error {
 	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: blockNumber}}}))
+}
+
+func (r *deliverClient) seekOldest() error {
+	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}}))
+}
+
+func (r *deliverClient) seekNewest() error {
+	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}}))
 }
 
 func (r *deliverClient) readBlock() (*common.Block, error) {
@@ -77,26 +86,42 @@ func (r *deliverClient) readBlock() (*common.Block, error) {
 		fmt.Println("Got status ", t)
 		return nil, fmt.Errorf("can't read the block")
 	case *ab.DeliverResponse_Block:
-		fmt.Println("Received block: ", t.Block)
+		fmt.Println("Received block: ", t.Block.Header.Number)
+		r.client.Recv() // Flush the success message
 		return t.Block, nil
 	default:
 		return nil, fmt.Errorf("response error")
 	}
 }
 
-func (r *deliverClient) getBlock() (*common.Block, error) {
-	err := r.seek(0)
+func (r *deliverClient) getSpecifiedBlock(num uint64) (*common.Block, error) {
+	err := r.seekSpecified(num)
 	if err != nil {
 		fmt.Println("Received error:", err)
 		return nil, err
 	}
 
-	b, err := r.readBlock()
+	return r.readBlock()
+}
+
+func (r *deliverClient) getOldestBlock() (*common.Block, error) {
+	err := r.seekOldest()
 	if err != nil {
+		fmt.Println("Received error:", err)
 		return nil, err
 	}
 
-	return b, nil
+	return r.readBlock()
+}
+
+func (r *deliverClient) getNewestBlock() (*common.Block, error) {
+	err := r.seekNewest()
+	if err != nil {
+		fmt.Println("Received error:", err)
+		return nil, err
+	}
+
+	return r.readBlock()
 }
 
 func (r *deliverClient) Close() error {
@@ -113,7 +138,7 @@ func getGenesisBlock(cf *ChannelCmdFactory) (*common.Block, error) {
 			cf.DeliverClient.Close()
 			return nil, fmt.Errorf("timeout waiting for channel creation")
 		default:
-			if block, err := cf.DeliverClient.getBlock(); err != nil {
+			if block, err := cf.DeliverClient.getSpecifiedBlock(0); err != nil {
 				cf.DeliverClient.Close()
 				cf, err = InitCmdFactory(EndorserNotRequired, OrdererRequired)
 				if err != nil {

@@ -76,11 +76,11 @@ createChannel() {
     if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
 		peer channel create -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/channel$CH_NUM.tx >&log.txt
 		wait 5
-		peer channel fetch -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/channel$CH_NUM.tx >>log.txt
+		peer channel fetch config $CHANNEL_NAME$CH_NUM.block -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/channel$CH_NUM.tx >>log.txt
 	else
 		peer channel create -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/channel$CH_NUM.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
 		wait 5
-		peer channel fetch -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/channel$CH_NUM.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >>log.txt
+		peer channel fetch config $CHANNEL_NAME$CH_NUM.block -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/channel$CH_NUM.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >>log.txt
 	fi
 	
 	res=$?
