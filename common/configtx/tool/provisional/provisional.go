@@ -88,7 +88,6 @@ func New(conf *genesisconfig.Profile) Generator {
 			// Chain Config Types
 			config.DefaultHashingAlgorithm(),
 			config.DefaultBlockDataHashingStructure(),
-			config.TemplateOrdererAddresses(conf.Orderer.Addresses), // TODO, move to conf.Channel when it exists
 
 			// Default policies
 			policies.TemplateImplicitMetaAnyPolicy([]string{}, configvaluesmsp.ReadersPolicyKey),
@@ -99,6 +98,9 @@ func New(conf *genesisconfig.Profile) Generator {
 
 	if conf.Orderer != nil {
 		bs.ordererGroups = []*cb.ConfigGroup{
+			// Orderer addresses
+			config.TemplateOrdererAddresses(conf.Orderer.Addresses),
+
 			// Orderer Config Types
 			config.TemplateConsensusType(conf.Orderer.OrdererType),
 			config.TemplateBatchSize(&ab.BatchSize{

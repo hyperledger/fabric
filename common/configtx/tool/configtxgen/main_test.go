@@ -51,6 +51,16 @@ func TestInspectBlock(t *testing.T) {
 	assert.NoError(t, doInspectBlock(blockDest), "Good block inspection request")
 }
 
+func TestMissingOrdererSection(t *testing.T) {
+	blockDest := tmpDir + string(os.PathSeparator) + "block"
+
+	factory.InitFactories(nil)
+	config := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	config.Orderer = nil
+
+	assert.Error(t, doOutputBlock(config, "foo", blockDest), "Missing orderer section")
+}
+
 func TestInspectConfigTx(t *testing.T) {
 	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
 
