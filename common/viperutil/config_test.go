@@ -217,10 +217,7 @@ func TestPEMBlocksFromFile(t *testing.T) {
 	numberOfCertificates := 3
 	var pems []byte
 	for i := 0; i < numberOfCertificates; i++ {
-		publicKeyCert, _, err := util.GenerateMockPublicPrivateKeyPairPEM(true)
-		if err != nil {
-			t.Fatalf("Enable to generate a signer certificate: %v", err)
-		}
+		publicKeyCert, _, _ := util.GenerateMockPublicPrivateKeyPairPEM(true)
 		pems = append(pems, publicKeyCert...)
 	}
 
@@ -259,10 +256,7 @@ func TestPEMBlocksFromFileEnv(t *testing.T) {
 	numberOfCertificates := 3
 	var pems []byte
 	for i := 0; i < numberOfCertificates; i++ {
-		publicKeyCert, _, err := util.GenerateMockPublicPrivateKeyPairPEM(true)
-		if err != nil {
-			t.Fatalf("Enable to generate a signer certificate: %v", err)
-		}
+		publicKeyCert, _, _ := util.GenerateMockPublicPrivateKeyPairPEM(true)
 		pems = append(pems, publicKeyCert...)
 	}
 
