@@ -25,6 +25,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -115,10 +116,11 @@ func TestGetDefault(t *testing.T) {
 
 func TestGetBCCSP(t *testing.T) {
 	bccsp, err := GetBCCSP("SW")
-	if err != nil {
-		t.Fatalf("Failed getting default BCCSP [%s]", err)
-	}
-	if bccsp == nil {
-		t.Fatal("Failed Software BCCSP. Nil instance.")
-	}
+	assert.NoError(t, err)
+	assert.NotNil(t, bccsp)
+
+	bccsp, err = GetBCCSP("BadName")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Could not find BCCSP, no 'BadName' provider")
+	assert.Nil(t, bccsp)
 }

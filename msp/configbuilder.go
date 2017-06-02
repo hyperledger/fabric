@@ -109,14 +109,14 @@ const (
 	configfilename    = "config.yaml"
 )
 
-func SetupBCCSPKeystoreConfig(bccspConfig *factory.FactoryOpts, keystoreDir string) {
+func SetupBCCSPKeystoreConfig(bccspConfig *factory.FactoryOpts, keystoreDir string) *factory.FactoryOpts {
 	if bccspConfig == nil {
-		bccspConfig = &factory.DefaultOpts
+		bccspConfig = factory.GetDefaultOpts()
 	}
 
 	if bccspConfig.ProviderName == "SW" {
 		if bccspConfig.SwOpts == nil {
-			bccspConfig.SwOpts = factory.DefaultOpts.SwOpts
+			bccspConfig.SwOpts = factory.GetDefaultOpts().SwOpts
 		}
 
 		// Only override the KeyStorePath if it was left empty
@@ -126,12 +126,14 @@ func SetupBCCSPKeystoreConfig(bccspConfig *factory.FactoryOpts, keystoreDir stri
 			bccspConfig.SwOpts.FileKeystore = &factory.FileKeystoreOpts{KeyStorePath: keystoreDir}
 		}
 	}
+
+	return bccspConfig
 }
 
 func GetLocalMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) (*msp.MSPConfig, error) {
 	signcertDir := filepath.Join(dir, signcerts)
 	keystoreDir := filepath.Join(dir, keystore)
-	SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
+	bccspConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
 
 	err := factory.InitFactories(bccspConfig)
 	if err != nil {
