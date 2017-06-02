@@ -18,41 +18,50 @@ package config
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/viperutil"
-	cf "github.com/hyperledger/fabric/core/config"
-
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGoodConfig(t *testing.T) {
-	config := Load()
-	if config == nil {
-		t.Fatalf("Could not load config")
-	}
-	t.Logf("%+v", config)
+	assert.NotNil(t, Load(), "Could not load config")
 }
 
-func TestBadConfig(t *testing.T) {
-	config := viper.New()
-	config.SetConfigName("orderer")
-	cf.AddDevConfigPath(config)
+func TestMissingConfigFile(t *testing.T) {
+	envVar1 := "FABRIC_CFG_PATH"
+	envVal1 := "invalid fabric cfg path"
+	os.Setenv(envVar1, envVal1)
+	defer os.Unsetenv(envVar1)
 
-	err := config.ReadInConfig()
-	if err != nil {
-		t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
+	assert.Panics(t, func() { Load() }, "Should panic")
+}
+
+func TestMalformedConfigFile(t *testing.T) {
+	name, err := ioutil.TempDir("", "hyperledger_fabric")
+	assert.Nil(t, err, "Error creating temp dir: %s", err)
+	defer func() {
+		err = os.RemoveAll(name)
+		assert.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
+	}()
+
+	{
+		// Create a malformed orderer.yaml file in temp dir
+		f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+		assert.Nil(t, err, "Error creating file: %s", err)
+		f.WriteString("General: 42")
+		assert.NoError(t, f.Close(), "Error closing file")
 	}
 
-	var uconf struct{}
+	envVar1 := "FABRIC_CFG_PATH"
+	envVal1 := name
+	os.Setenv(envVar1, envVal1)
+	defer os.Unsetenv(envVar1)
 
-	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
-	if err == nil {
-		t.Fatalf("Should have failed to unmarshal")
-	}
+	assert.Panics(t, func() { Load() }, "Should panic")
 }
 
 // TestEnvInnerVar verifies that with the Unmarshal function that
@@ -70,17 +79,11 @@ func TestEnvInnerVar(t *testing.T) {
 	defer os.Unsetenv(envVar2)
 	config := Load()
 
-	if config == nil {
-		t.Fatalf("Could not load config")
-	}
+	assert.NotNil(t, config, "Could not load config")
+	assert.Equal(t, config.General.ListenPort, envVal1, "Environmental override of inner config test 1 did not work")
 
-	if config.General.ListenPort != envVal1 {
-		t.Fatalf("Environmental override of inner config test 1 did not work")
-	}
 	v2, _ := time.ParseDuration(envVal2)
-	if config.Kafka.Retry.Period != v2 {
-		t.Fatalf("Environmental override of inner config test 2 did not work")
-	}
+	assert.Equal(t, config.Kafka.Retry.Period, v2, "Environmental override of inner config test 2 did not work")
 }
 
 const DummyPath = "/dummy/path"
@@ -106,4 +109,10 @@ func TestKafkaTLSConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProfileConfig(t *testing.T) {
+	uconf := &TopLevel{General: General{Profile: Profile{Enabled: true}}}
+	uconf.completeInitialization(DummyPath)
+	assert.Equal(t, defaults.General.Profile.Address, uconf.General.Profile.Address, "Expected profile address to be filled with default value")
 }
