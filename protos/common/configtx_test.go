@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package common
@@ -27,15 +17,21 @@ func TestConfigGroup(t *testing.T) {
 
 	cg = nil
 
+	assert.Equal(t, uint64(0), cg.GetVersion())
+	assert.Equal(t, "", cg.GetModPolicy())
 	assert.Nil(t, cg.GetGroups())
 	assert.Nil(t, cg.GetValues())
 	assert.Nil(t, cg.GetPolicies())
 
 	cg = &ConfigGroup{
-		Groups:   make(map[string]*ConfigGroup),
-		Values:   make(map[string]*ConfigValue),
-		Policies: make(map[string]*ConfigPolicy),
+		Version:   uint64(1),
+		ModPolicy: "ModPolicy",
+		Groups:    make(map[string]*ConfigGroup),
+		Values:    make(map[string]*ConfigValue),
+		Policies:  make(map[string]*ConfigPolicy),
 	}
+	assert.Equal(t, uint64(1), cg.GetVersion())
+	assert.Equal(t, "ModPolicy", cg.GetModPolicy())
 	assert.NotNil(t, cg.GetGroups())
 	assert.NotNil(t, cg.GetValues())
 	assert.NotNil(t, cg.GetPolicies())
@@ -60,7 +56,19 @@ func TestConfigGroup(t *testing.T) {
 }
 
 func TestConfigValue(t *testing.T) {
-	cv := &ConfigValue{}
+	var cv *ConfigValue
+	cv = nil
+	assert.Equal(t, uint64(0), cv.GetVersion())
+	assert.Equal(t, "", cv.GetModPolicy())
+	assert.Nil(t, cv.GetValue())
+	cv = &ConfigValue{
+		Version:   uint64(1),
+		ModPolicy: "ModPolicy",
+		Value:     []byte{},
+	}
+	assert.Equal(t, uint64(1), cv.GetVersion())
+	assert.Equal(t, "ModPolicy", cv.GetModPolicy())
+	assert.NotNil(t, cv.GetValue())
 	cv.Reset()
 	_ = cv.String()
 	_, _ = cv.Descriptor()
@@ -133,11 +141,14 @@ func TestConfig(t *testing.T) {
 
 	c = nil
 	assert.Nil(t, c.GetChannelGroup())
+	assert.Equal(t, uint64(0), c.GetSequence())
 
 	c = &Config{
 		ChannelGroup: &ConfigGroup{},
+		Sequence:     uint64(1),
 	}
 	assert.NotNil(t, c.GetChannelGroup())
+	assert.Equal(t, uint64(1), c.GetSequence())
 
 	c.Reset()
 	assert.Nil(t, c.GetChannelGroup())
@@ -152,13 +163,16 @@ func TestConfigUpdateEnvelope(t *testing.T) {
 
 	env = nil
 	assert.Nil(t, env.GetSignatures())
+	assert.Nil(t, env.GetConfigUpdate())
 
 	env = &ConfigUpdateEnvelope{
 		Signatures: []*ConfigSignature{
 			&ConfigSignature{},
 		},
+		ConfigUpdate: []byte("configupdate"),
 	}
 	assert.NotNil(t, env.GetSignatures())
+	assert.NotNil(t, env.GetConfigUpdate())
 
 	env.Reset()
 	assert.Nil(t, env.GetSignatures())
@@ -172,13 +186,16 @@ func TestConfigUpdate(t *testing.T) {
 	var c *ConfigUpdate
 
 	c = nil
+	assert.Equal(t, "", c.GetChannelId())
 	assert.Nil(t, c.GetReadSet())
 	assert.Nil(t, c.GetWriteSet())
 
 	c = &ConfigUpdate{
-		ReadSet:  &ConfigGroup{},
-		WriteSet: &ConfigGroup{},
+		ChannelId: "ChannelId",
+		ReadSet:   &ConfigGroup{},
+		WriteSet:  &ConfigGroup{},
 	}
+	assert.Equal(t, "ChannelId", c.GetChannelId())
 	assert.NotNil(t, c.GetReadSet())
 	assert.NotNil(t, c.GetWriteSet())
 
@@ -194,12 +211,18 @@ func TestConfigPolicy(t *testing.T) {
 	var cp *ConfigPolicy
 
 	cp = nil
+	assert.Equal(t, uint64(0), cp.GetVersion())
 	assert.Nil(t, cp.GetPolicy())
+	assert.Equal(t, "", cp.GetModPolicy())
 
 	cp = &ConfigPolicy{
-		Policy: &Policy{},
+		Version:   uint64(1),
+		Policy:    &Policy{},
+		ModPolicy: "ModPolicy",
 	}
+	assert.Equal(t, uint64(1), cp.GetVersion())
 	assert.NotNil(t, cp.GetPolicy())
+	assert.Equal(t, "ModPolicy", cp.GetModPolicy())
 
 	cp.Reset()
 	assert.Nil(t, cp.GetPolicy())
@@ -210,9 +233,20 @@ func TestConfigPolicy(t *testing.T) {
 }
 
 func TestConfigSignature(t *testing.T) {
-	cs := &ConfigSignature{}
+	var cs *ConfigSignature
+
+	cs = nil
+	assert.Nil(t, cs.GetSignature())
+	assert.Nil(t, cs.GetSignatureHeader())
+	cs = &ConfigSignature{
+		Signature:       []byte{},
+		SignatureHeader: []byte{},
+	}
+	assert.NotNil(t, cs.GetSignature())
+	assert.NotNil(t, cs.GetSignatureHeader())
 
 	cs.Reset()
+	assert.Nil(t, cs.GetSignature())
 	_ = cs.String()
 	_, _ = cs.Descriptor()
 	cs.ProtoMessage()
