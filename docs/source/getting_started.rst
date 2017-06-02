@@ -1,51 +1,35 @@
 Getting Started
 ===============
 
-.. note:: These instructions have been verified to work against the version "1.0.0-alpha2" tagged docker
-          images and the pre-compiled setup utilities within the supplied tarball file.
-          If you run these commands with images or tools from the current master
-          branch, it is possible that you will see configuration and panic errors.
+.. note:: These instructions have been verified to work against the
+          version "1.0.0-alpha2" tagged docker images and the pre-compiled
+          setup utilities within the supplied tarball file. If you run
+          these commands with images or tools from the current master
+          branch, it is possible that you will see configuration and panic
+          errors.
 
 The getting started scenario provisions a sample Fabric network consisting of
-two organizations, each maintaining two peers, and a "solo" ordering service.
+two organizations, each maintaining two peer nodes, and a "solo" ordering
+service.
 
-Prior to launching the network, we will demonstrate the usage of two fundamental tools
-which are necessary to create a functioning transactional network with digital
-signature validation and access control:
+Install prerequisites
+---------------------
 
-- cryptogen - generates the x509 certificates AND keys used to identify and
-  authenticate the various components in the network.
-- `configtxgen <https://github.com/hyperledger/fabric/blob/master/docs/source/configtxgen.rst>`__ -
-  generates the requisite configuration artifacts for orderer bootstrap and
-  channel creation.
-
-Each tool consumes a configuration yaml file, within which we specify the topology
-of our network (cryptogen) and the location of our certificates for various
-configuration operations (configtxgen).  Once the tools have been successfully run,
-we are able to launch our network.  More detail on the tools and the structure of
-the network will be provided later in this document.  For now, let's get going...
-
-Prerequisites and setup
------------------------
-
-- `Docker <https://www.docker.com/products/overview>`__ - v1.12 or higher
-- `Docker Compose <https://docs.docker.com/compose/overview/>`__ - v1.8 or higher
-- `Docker Toolbox <https://docs.docker.com/toolbox/toolbox_install_windows/>`__ - Windows users only
-- `Go <https://golang.org/>`__ - 1.7 or higher
-
-On Windows machines you will also need the following which provides a better alternative to the Windows command prompt:
-
-- `Git Bash <https://git-scm.com/downloads>`__
-- `make for MinGW <http://sourceforge.net/projects/mingw/files/MinGW/Extension/make/make-3.82.90-cvs/make-3.82.90-2-mingw32-cvs-20120902-bin.tar.lzma>`__ to be added to Git Bash
+Before we begin, if you haven't already done so, you may wish to check that
+you have all the :doc:`prereqs` installed on the platform(s)
+on which you'll be developing blockchain applications and/or operating
+Hyperledger Fabric.
 
 Download the artifacts and binaries & pull the docker images
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. note:: If you are running on Windows you will want to make use of your Git
-          Bash shell for the upcoming terminal commands.
+.. note:: If you are running on Windows you will want to make use of the ``Git
+          Bash shell`` extension for the upcoming terminal commands. Visit the
+          :doc:`prereqs` if you haven't previously installed
+          it.
 
-- Download the `cURL <https://curl.haxx.se/download.html>`__ tool if not already installed.
-- Determine a location on your machine where you want to place the artifacts and binaries.
+Determine a location on your machine where you want to place the artifacts
+and binaries.
 
 .. code:: bash
 
@@ -63,7 +47,7 @@ extract all of the necessary artifacts to set up your network and place them
 into a folder named ``release``.
 
 It also retrieves the two platform-specific binaries - ``cryptogen`` and
-``configtxgen`` - which are briefly described above. Finally, the script will
+``configtxgen`` - which we'll use later. Finally, the script will
 download the Hyperledger Fabric docker images into your local Docker registry.
 
 The script lists out the docker images upon conclusion.  You should see the
@@ -112,9 +96,10 @@ and requirements to build a fully-functional Fabric.
 Crypto Generator
 ----------------
 
-We will use the cryptogen tool to generate the cryptographic material (x509 certs)
-for our various network entities.  The certificates are based on a standard PKI
-implementation where validation is achieved by reaching a common trust anchor.
+We will use the ``cryptogen`` tool to generate the cryptographic material
+(x509 certs) for our various network entities.  The certificates are based on
+a standard PKI implementation where validation is achieved by reaching a
+common trust anchor.
 
 How does it work?
 ^^^^^^^^^^^^^^^^^
