@@ -43,20 +43,25 @@ cryptographic credentials to produce a unique signature for this transaction pro
 
 2. **Endorsing peers verify signature & execute the transaction**
 
-The endorsing peers verify the signature (using MSP) and determine if the
-submitter is properly authorized to perform the proposed operation (using the
-channel's ACL). The endorsing peers take the transaction proposal arguments as
-inputs and execute them against the current state database to produce transaction
+The endorsing peers verify (1) that the transaction proposal is well formed,
+(2) it has not been submitted already in the past (replay-attack protection),
+(3) the signature is valid (using MSP), and (4) that the
+submitter (Client A, in the example) is properly authorized to perform
+the proposed operation on that channel (namely, each endorsing peer ensures that
+the submitter satisfies the channel's *Writers* policy).
+The endorsing peers take the transaction proposal inputs as
+arguments to the invoked chaincode's function. The chaincode is then
+executed against the current state database to produce transaction
 results including a response value, read set, and write set.  No updates are
 made to the ledger at this point. The set of these values, along with the
 endorsing peer’s signature and a YES/NO endorsement statement is passed back as
 a “proposal response” to the SDK which parses the payload for the application to
 consume.
 
-*{The MSP is a local process running on the peers which allows them to verify
+*{The MSP is a peer component that allows them to verify
 transaction requests arriving from clients and to sign transaction results(endorsements).
-The ACL (Access Control List) is defined at channel creation time, and determines
-which peers and end users are permitted to perform certain actions.}*
+The *Writing* policy is defined at channel creation time, and determines
+which user is entitled to submit a transaction to that channel.}*
 
 
 .. image:: images/step3.png
@@ -78,7 +83,8 @@ and upheld at the commit validation phase.
 The application “broadcasts” the transaction proposal and response within a
 “transaction message” to the Ordering Service. The transaction will contain the
 read/write sets, the endorsing peers signatures and the Channel ID.  The
-Ordering Service does not read the transaction details, it simply receives
+Ordering Service does not need to inspect the entire content of a transaction in order to perform
+its operation, it simply receives
 transactions from all channels in the network, orders them chronologically by
 channel, and creates blocks of transactions per channel.
 
