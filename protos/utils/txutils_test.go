@@ -23,6 +23,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	mockmsp "github.com/hyperledger/fabric/common/mocks/msp"
+	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -424,6 +425,35 @@ func TestGetProposalHash1(t *testing.T) {
 	propHash, err = utils.GetProposalHash1(&cb.Header{},
 		[]byte("ccproppayload"), []byte{})
 	assert.Error(t, err, "Expected error with nil arguments")
+}
+
+func TestCreateProposalResponseFailure(t *testing.T) {
+	// create a proposal from a ChaincodeInvocationSpec
+	prop, _, err := utils.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), signerSerialized)
+	if err != nil {
+		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
+		return
+	}
+
+	response := &pb.Response{Status: 502, Payload: []byte("Invalid function name")}
+	result := []byte("res")
+	ccid := &pb.ChaincodeID{Name: "foo", Version: "v1"}
+
+	prespFailure, err := utils.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, ccid, nil)
+	if err != nil {
+		t.Fatalf("Could not create proposal response failure, err %s\n", err)
+		return
+	}
+
+	assert.Equal(t, int32(500), prespFailure.Response.Status)
+	// drilldown into the response to find the chaincode response
+	pRespPayload, err := utils.GetProposalResponsePayload(prespFailure.Payload)
+	assert.NoError(t, err, "Error while unmarshaling proposal response payload: %s", err)
+	ca, err := utils.GetChaincodeAction(pRespPayload.Extension)
+	assert.NoError(t, err, "Error while unmarshaling chaincode action: %s", err)
+
+	assert.Equal(t, int32(502), ca.Response.Status)
+	assert.Equal(t, "Invalid function name", string(ca.Response.Payload))
 }
 
 // mock
