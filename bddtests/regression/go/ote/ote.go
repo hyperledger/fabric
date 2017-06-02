@@ -199,10 +199,10 @@ func seekHelper(chainID string, start *ab.SeekPosition) *cb.Envelope {
 				//ChainHeader: &cb.ChainHeader{
 				//        ChainID: b.chainID,
 				//},
-				ChannelHeader: &cb.ChannelHeader{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 					ChannelId: chainID,
-				},
-				SignatureHeader: &cb.SignatureHeader{},
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
 
 			Data: utils.MarshalOrPanic(&ab.SeekInfo{
@@ -262,10 +262,10 @@ func (b *broadcastClient) broadcast(transaction []byte) error {
 			//ChainHeader: &cb.ChainHeader{
 			//        ChainID: b.chainID,
 			//},
-			ChannelHeader: &cb.ChannelHeader{
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 				ChannelId: b.chainID,
-			},
-			SignatureHeader: &cb.SignatureHeader{},
+			}),
+			SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 		},
 		Data: transaction,
 	})
@@ -778,8 +778,8 @@ func ote(testname string, txs int64, chans int, orderers int, ordType string, kb
 
 	// Establish the default configuration from yaml files - and this also
 	// picks up any variables overridden on command line or in environment
-	ordConf = config.Load()
-	genConf = genesisconfig.Load()
+	ordConf := config.Load()
+	genConf := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
 	var launchAppendFlags string
 
 	////////////////////////////////////////////////////////////////////////
