@@ -418,7 +418,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		err = errors.New("Invalid txID. It must be different from the empty string.")
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
-
+	endorserLogger.Debugf("processing txid: %s", txid)
 	if chainID != "" {
 		// here we handle uniqueness check and ACLs for proposals targeting a chain
 		lgr := peer.GetLedger(chainID)
