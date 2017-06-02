@@ -48,7 +48,7 @@ func newBrokerConfig(kafkaVersion sarama.KafkaVersion, chosenStaticPartition int
 		brokerConfig.Net.TLS.Config = &tls.Config{
 			Certificates: []tls.Certificate{keyPair},
 			RootCAs:      rootCAs,
-			MinVersion:   0, // TLS 1.0 (no SSL support)
+			MinVersion:   tls.VersionTLS12,
 			MaxVersion:   0, // Latest supported TLS version
 		}
 	}
