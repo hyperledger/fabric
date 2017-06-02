@@ -168,6 +168,9 @@ func NewGRPCServerFromListener(listener net.Listener, secureConfig SecureServerC
 	// set max send and recv msg sizes
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(MaxSendMsgSize()))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(MaxRecvMsgSize()))
+	// set the keepalive options
+	serverOpts = append(serverOpts, ServerKeepaliveOptions()...)
+
 	grpcServer.server = grpc.NewServer(serverOpts...)
 
 	return grpcServer, nil

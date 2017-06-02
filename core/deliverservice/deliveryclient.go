@@ -194,6 +194,8 @@ func DefaultConnectionFactory(endpoint string) (*grpc.ClientConn, error) {
 	// set max send/recv msg sizes
 	dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
 		grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
+	// set the keepalive options
+	dialOpts = append(dialOpts, comm.ClientKeepaliveOptions()...)
 
 	if comm.TLSEnabled() {
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCASupport().GetDeliverServiceCredentials()))
