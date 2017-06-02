@@ -18,7 +18,9 @@ package protolator
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 
@@ -234,4 +236,12 @@ func TestFailFactory(t *testing.T) {
 
 	var buffer bytes.Buffer
 	assert.Error(t, DeepMarshalJSON(&buffer, &testprotos.SimpleMsg{}))
+}
+
+func TestJSONUnmarshalMaxUint32(t *testing.T) {
+	fieldName := "numField"
+	jsonString := fmt.Sprintf("{\"%s\":%d}", fieldName, math.MaxUint32)
+	m, err := jsonToMap([]byte(jsonString))
+	assert.NoError(t, err)
+	assert.IsType(t, json.Number(""), m[fieldName])
 }
