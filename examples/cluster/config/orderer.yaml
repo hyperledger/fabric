@@ -41,31 +41,35 @@ General:
     # per: fabric/docs/Setup/logging-control.md
     LogLevel: debug
 
-    # Genesis method: The method by which to retrieve/generate the genesis
-    # block. Available values are "provisional", "file". Provisional utilizes
-    # the parameters in the Genesis section to dynamically generate a new
-    # genesis block. File uses the file provided by GenesisFile as the genesis
-    # block.
+    # Genesis method: The method by which the genesis block for the orderer
+    # system channel is specified. Available options are "provisional", "file":
+    #  - provisional: Utilizes a genesis profile, specified by GenesisProfile,
+    #                 to dynamically generate a new genesis block.
+    #  - file: Uses the file provided by GenesisFile as the genesis block.
     GenesisMethod: file
 
-    # Genesis profile: The profile to use when using the provisional
-    # GenesisMethod, See the configtx.yaml file for the descriptions of the
-    # available profiles.
+    # Genesis profile: The profile to use to dynamically generate the genesis
+    # block to use when initializing the orderer system channel and
+    # GenesisMethod is set to "provisional". See the configtx.yaml file for the
+    # descriptions of the available profiles. Ignored if GenesisMethod is set to
+    # "file".
     GenesisProfile: SampleSingleMSPSolo
 
-    # Genesis file: The file containing the genesis block. Used by the orderer
-    # when GenesisMethod is set to "file".
+    # Genesis file: The file containing the genesis block to use when
+    # initializing the orderer system channel and GenesisMethod is set to
+    # "file". Ignored if GenesisMethod is set to "provisional".
     GenesisFile: genesis.block
 
-    # LocalMSPDir is where to find the crypto material needed for signing in the
+    # LocalMSPDir is where to find the private crypto material needed by the
     # orderer. It is set relative here as a default for dev environments but
     # should be changed to the real location in production.
     LocalMSPDir: msp
 
     # LocalMSPID is the identity to register the local MSP material with the MSP
-    # manager. IMPORTANT: Deployers need to change the value of the localMspId
-    # string. In particular, the name of the local MSP ID of an orderer needs to
-    # match the name of one of the MSPs in the ordering system channel.
+    # manager. IMPORTANT: The local MSP ID of an orderer needs to match the MSP
+    # ID of one of the organizations defined in the in the orderer system
+    # channel's /Channel/Orderer configuration. The sample organization defined
+    # in the sample configuration provided has an MSP ID of "DEFAULT".
     LocalMSPID: OrdererMSP
 
     # Enable an HTTP service for Go "pprof" profiling as documented at:
@@ -74,10 +78,17 @@ General:
         Enabled: false
         Address: 0.0.0.0:6060
 
-    # BCCSP: Select which crypto implementation or library to use for the
-    # blockchain crypto service provider.
+    # BCCSP configures the blockchain crypto service providers.
     BCCSP:
+        # Default specifies the preferred blockchain crypto service provider
+        # to use. If the preferred provider is not available, the software
+        # based provider ("SW") will be used.
+        # Valid providers are:
+        #  - SW: a software based crypto provider
+        #  - PKCS11: a CA hardware security module crypto provider.
         Default: SW
+
+        # SW configures the software based blockchain crypto provider.
         SW:
             # TODO: The default Hash and Security level needs refactoring to be
             # fully configurable. Changing these defaults requires coordination
@@ -91,22 +102,9 @@ General:
 
 ################################################################################
 #
-#   SECTION: RAM Ledger
-#
-#   - This section applies to the configuration of the RAM ledger.
-#
-################################################################################
-RAMLedger:
-
-    # History Size: The number of blocks that the RAM ledger is set to retain.
-    HistorySize: 1000
-
-
-################################################################################
-#
 #   SECTION: File Ledger
 #
-#   - This section applies to the configuration of the file or json ledgers
+#   - This section applies to the configuration of the file or json ledgers.
 #
 ################################################################################
 FileLedger:
@@ -122,6 +120,22 @@ FileLedger:
 
 ################################################################################
 #
+#   SECTION: RAM Ledger
+#
+#   - This section applies to the configuration of the RAM ledger.
+#
+################################################################################
+RAMLedger:
+
+    # History Size: The number of blocks that the RAM ledger is set to retain.
+    # WARNING: Appending a block to the ledger might cause the oldest block in
+    # the ledger to be dropped in order to limit the number total number blocks
+    # to HistorySize. For example, if history size is 10, when appending block
+    # 10, block 0 (the genesis block!) will be dropped to make room for block 10.
+    HistorySize: 1000
+
+################################################################################
+#
 #   SECTION: Kafka
 #
 #   - This section applies to the configuration of the Kafka-based orderer.
@@ -131,31 +145,40 @@ Kafka:
 
     # Retry: What to do if none of the Kafka brokers are available.
     Retry:
-        # The producer should attempt to reconnect every <Period>
+        # The orderer should attempt to reconnect every <Period>
         Period: 3s
         # Panic if <Stop> has elapsed and no connection has been established
         Stop: 60s
 
-    # Verbose: Turn on logging for sarama, the client library that we use to
-    # interact with the Kafka cluster.
+    # Verbose: Enable logging for interactions with the Kafka cluster.
     Verbose: false
 
-    # TLS: TLS settings for the Kafka client
+    # TLS: TLS settings for the orderer's connection to the Kafka cluster.
     TLS:
 
-      # Enabled: set to true enable TLS
+      # Enabled: Use TLS when connecting to the Kafka cluster.
       Enabled: false
 
-      # PrivateKey: PEM-encoded private key orderer will use for authentication.
+      # PrivateKey: PEM-encoded private key the orderer will use for
+      # authentication.
       PrivateKey:
-        #File: uncomment to read PrivateKey from a file
+        # As an alternative to specifying the PrivateKey here, uncomment the
+        # following "File" key and specify the file name from which to load the
+        # value of PrivateKey.
+        #File: path/to/PrivateKey
 
-      # Certificate: PEM-encoded signed public key vertificate orderer will use
-      # for authentication.
+      # Certificate: PEM-encoded signed public key certificate the orderer will
+      # use for authentication.
       Certificate:
-        #File: uncomment to read Certificate from a file
+        # As an alternative to specifying the Certificate here, uncomment the
+        # following "File" key and specify the file name from which to load the
+        # value of Certificate.
+        #File: path/to/Certificate
 
-      # RootCAs: PEM encoded trusted signer certificates used to validate
+      # RootCAs: PEM-encoded trusted root certificates used to validate
       # certificates from the Kafka cluster.
       RootCAs:
-        #File: uncomment to read Certificate from a file
+        # As an alternative to specifying the RootCAs here, uncomment the
+        # following "File" key and specify the file name from which to load the
+        # value of RootCAs.
+        #File: path/to/RootCAs
