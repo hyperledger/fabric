@@ -20,11 +20,14 @@ import (
 )
 
 const (
-	// If status code less than 500, endorser will endorse it.
+	// OK constant - status code less than 400, endorser will endorse it.
 	// OK means init or invoke successfully.
 	OK = 200
 
-	// Code that greater than or equal to 500 will be considered an error and rejected by endorser.
+	// ERRORTHRESHOLD constant - status code greater than or equal to 400 will be considered an error and rejected by endorser.
+	ERRORTHRESHOLD = 400
+
+	// ERROR constant - default error value
 	ERROR = 500
 )
 

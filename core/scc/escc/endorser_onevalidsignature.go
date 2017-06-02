@@ -57,7 +57,6 @@ func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Re
 // args[5] - binary blob of simulation results
 // args[6] - serialized events
 // args[7] - payloadVisibility
-
 //
 // NOTE: this chaincode is meant to sign another chaincode's simulation
 // results. It should not manipulate state as any state change will be
@@ -101,7 +100,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 	}
 
 	// handle executing chaincode result
-	// Status code < 500 can be endorsed
+	// Status code < shim.ERRORTHRESHOLD can be endorsed
 	if args[4] == nil {
 		return shim.Error("Response of chaincode executing is null")
 	}
@@ -111,8 +110,8 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 		return shim.Error(fmt.Sprintf("Failed to get Response of executing chaincode: %s", err.Error()))
 	}
 
-	if response.Status >= shim.ERROR {
-		return shim.Error(fmt.Sprintf("Status code less than 500 will be endorsed, get status code: %d", response.Status))
+	if response.Status >= shim.ERRORTHRESHOLD {
+		return shim.Error(fmt.Sprintf("Status code less than %d will be endorsed, received status code: %d", shim.ERRORTHRESHOLD, response.Status))
 	}
 
 	// handle simulation results
@@ -164,7 +163,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 	// marshall the proposal response so that we return its bytes
 	prBytes, err := utils.GetBytesProposalResponse(presp)
 	if err != nil {
-		return shim.Error(fmt.Sprintf("Could not marshall ProposalResponse: err %s", err))
+		return shim.Error(fmt.Sprintf("Could not marshal ProposalResponse: err %s", err))
 	}
 
 	pResp, err := utils.GetProposalResponse(prBytes)
