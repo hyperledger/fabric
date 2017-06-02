@@ -62,12 +62,12 @@ def bootstrapped_impl(context, networkType):
     config_util.generateConfig(channelID, profile, projectName)
     compose_impl(context, context.composeFile, projectName=projectName)
 
-@given(u'{component} is taken down')
+@given(u'"{component}" is taken down')
 def step_impl(context, component):
     assert component in context.composition.collectServiceNames(), "Unknown component '{0}'".format(component)
     context.composition.stop([component])
 
-@given(u'{component} comes back up')
+@given(u'"{component}" comes back up')
 def step_impl(context, component):
     assert component in context.composition.collectServiceNames(), "Unknown component '{0}'".format(component)
     context.composition.start([component])
