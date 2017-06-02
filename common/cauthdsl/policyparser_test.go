@@ -129,3 +129,10 @@ func TestComplex2(t *testing.T) {
 
 	assert.True(t, reflect.DeepEqual(p1, p2))
 }
+
+func TestBadStringsNoPanic(t *testing.T) {
+	_, err := FromString("OR('A.member', 'Bmember')")
+	assert.Error(t, err)
+	_, err = FromString("OR('A.member', Bmember)")
+	assert.Error(t, err)
+}
