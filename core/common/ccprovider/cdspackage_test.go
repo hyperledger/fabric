@@ -24,6 +24,7 @@ import (
 
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func setupccdir() string {
@@ -75,7 +76,8 @@ func TestPutCDSErrorPaths(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)
 
-	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
+		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
 	ccpack, b, _, err := processCDS(cds, true)
 	if err != nil {
@@ -173,4 +175,46 @@ func TestCDSSwitchChaincodes(t *testing.T) {
 		t.Fatalf("expected goodcd to fail against bad package but succeeded!")
 		return
 	}
+}
+
+func TestPutChaincodeToFSErrorPaths(t *testing.T) {
+	ccpack := &CDSPackage{}
+	err := ccpack.PutChaincodeToFS()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "uninitialized package", "Unexpected error returned")
+
+	ccpack.buf = []byte("hello")
+	err = ccpack.PutChaincodeToFS()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "id cannot be nil if buf is not nil", "Unexpected error returned")
+
+	ccpack.id = []byte("cc123")
+	err = ccpack.PutChaincodeToFS()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "depspec cannot be nil if buf is not nil", "Unexpected error returned")
+
+	ccpack.depSpec = &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
+		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
+	err = ccpack.PutChaincodeToFS()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "nil data", "Unexpected error returned")
+
+	ccpack.data = &CDSData{}
+	err = ccpack.PutChaincodeToFS()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "nil data bytes", "Unexpected error returned")
+}
+
+func TestValidateCCErrorPaths(t *testing.T) {
+	cpack := &CDSPackage{}
+	ccdata := &ChaincodeData{}
+	err := cpack.ValidateCC(ccdata)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "uninitialized package", "Unexpected error returned")
+
+	cpack.depSpec = &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
+		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
+	err = cpack.ValidateCC(ccdata)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "nil data", "Unexpected error returned")
 }

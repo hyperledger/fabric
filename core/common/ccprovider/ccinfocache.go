@@ -75,11 +75,11 @@ func (c *ccInfoCacheImpl) PutChaincode(depSpec *peer.ChaincodeDeploymentSpec) (C
 	ccversion := depSpec.ChaincodeSpec.ChaincodeId.Version
 
 	if ccname == "" {
-		return nil, fmt.Errorf("the chaincode name cannot be an emoty string")
+		return nil, fmt.Errorf("the chaincode name cannot be an empty string")
 	}
 
 	if ccversion == "" {
-		return nil, fmt.Errorf("the chaincode version cannot be an emoty string")
+		return nil, fmt.Errorf("the chaincode version cannot be an empty string")
 	}
 
 	key := ccname + "/" + ccversion
