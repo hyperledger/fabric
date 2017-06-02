@@ -17,17 +17,15 @@ limitations under the License.
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"time"
-
-	cb "github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
-
-	"errors"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/crypto"
+	cb "github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // MarshalOrPanic serializes a protobuf message and panics if this operation fails.
@@ -258,4 +256,25 @@ func UnmarshalChaincodeID(bytes []byte) (*pb.ChaincodeID, error) {
 	}
 
 	return ccid, nil
+}
+
+// IsConfigBlock validates whenever given block contains configuration
+// update transaction
+func IsConfigBlock(block *cb.Block) bool {
+	envelope, err := ExtractEnvelope(block, 0)
+	if err != nil {
+		return false
+	}
+
+	payload, err := GetPayload(envelope)
+	if err != nil {
+		return false
+	}
+
+	hdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return false
+	}
+
+	return cb.HeaderType(hdr.Type) == cb.HeaderType_CONFIG
 }

@@ -17,16 +17,18 @@ limitations under the License.
 package committer
 
 import (
+	"sync/atomic"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/mocks/validator"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKVLedgerBlockStorage(t *testing.T) {
@@ -72,4 +74,33 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	block1Hash := block1.Header.Hash()
 	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash})
+}
+
+func TestNewLedgerCommitterReactive(t *testing.T) {
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/committertest")
+	chainID := "TestLedger"
+
+	ledgermgmt.InitializeTestEnv()
+	defer ledgermgmt.CleanupTestEnv()
+	gb, _ := test.MakeGenesisBlock(chainID)
+
+	ledger, err := ledgermgmt.CreateLedger(gb)
+	assert.NoError(t, err, "Error while creating ledger: %s", err)
+	defer ledger.Close()
+
+	var configArrived int32
+	committer := NewLedgerCommitterReactive(ledger, &validator.MockValidator{}, func(_ *common.Block) error {
+		atomic.AddInt32(&configArrived, 1)
+		return nil
+	})
+
+	height, err := committer.LedgerHeight()
+	assert.Equal(t, uint64(1), height)
+	assert.NoError(t, err)
+
+	profile := localconfig.Load(localconfig.SampleSingleMSPSoloProfile)
+	block := provisional.New(profile).GenesisBlockForChannel(chainID)
+
+	committer.Commit(block)
+	assert.Equal(t, int32(1), atomic.LoadInt32(&configArrived))
 }
