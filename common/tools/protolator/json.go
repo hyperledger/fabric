@@ -240,7 +240,9 @@ func mapToProto(tree map[string]interface{}, msg proto.Message) error {
 // and returns it, or error
 func jsonToMap(marshaled []byte) (map[string]interface{}, error) {
 	tree := make(map[string]interface{})
-	err := json.Unmarshal(marshaled, &tree)
+	d := json.NewDecoder(bytes.NewReader(marshaled))
+	d.UseNumber()
+	err := d.Decode(&tree)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling intermediate JSON: %s", err)
 	}
