@@ -224,7 +224,7 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			logger.Panicf("General.Kafka.TLS.PrivateKey must be set if General.Kafka.TLS.Enabled is set to true.")
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.RootCAs == nil:
 			logger.Panicf("General.Kafka.TLS.CertificatePool must be set if General.Kafka.TLS.Enabled is set to true.")
-		case c.General.Profile.Enabled && (c.General.Profile.Address == ""):
+		case c.General.Profile.Enabled && c.General.Profile.Address == "":
 			logger.Infof("Profiling enabled and General.Profile.Address unset, setting to %s", defaults.General.Profile.Address)
 			c.General.Profile.Address = defaults.General.Profile.Address
 		case c.General.LocalMSPDir == "":
@@ -252,7 +252,7 @@ func (c *TopLevel) completeInitialization(configDir string) {
 }
 
 func translateCAs(configDir string, certificateAuthorities []string) []string {
-	results := make([]string, 0)
+	var results []string
 	for _, ca := range certificateAuthorities {
 		result := cf.TranslatePath(configDir, ca)
 		results = append(results, result)
