@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package inproccontroller
@@ -38,9 +28,11 @@ type inprocContainer struct {
 }
 
 var (
-	inprocLogger = flogging.MustGetLogger("inproccontroller")
-	typeRegistry = make(map[string]*inprocContainer)
-	instRegistry = make(map[string]*inprocContainer)
+	inprocLogger        = flogging.MustGetLogger("inproccontroller")
+	typeRegistry        = make(map[string]*inprocContainer)
+	instRegistry        = make(map[string]*inprocContainer)
+	_shimStartInProc    = shim.StartInProc
+	_inprocLoggerErrorf = inprocLogger.Errorf
 )
 
 // errors
@@ -117,10 +109,10 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 		if env == nil {
 			env = ipc.env
 		}
-		err := shim.StartInProc(env, args, ipc.chaincode, ccRcvPeerSend, peerRcvCCSend)
+		err := _shimStartInProc(env, args, ipc.chaincode, ccRcvPeerSend, peerRcvCCSend)
 		if err != nil {
 			err = fmt.Errorf("chaincode-support ended with err: %s", err)
-			inprocLogger.Errorf("%s", err)
+			_inprocLoggerErrorf("%s", err)
 		}
 		inprocLogger.Debugf("chaincode ended with for  %s with err: %s", id, err)
 	}()
@@ -132,7 +124,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 		err := ccSupport.HandleChaincodeStream(ctxt, inprocStream)
 		if err != nil {
 			err = fmt.Errorf("chaincode ended with err: %s", err)
-			inprocLogger.Errorf("%s", err)
+			_inprocLoggerErrorf("%s", err)
 		}
 		inprocLogger.Debugf("chaincode-support ended with for  %s with err: %s", id, err)
 	}()
@@ -149,7 +141,6 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 		close(peerRcvCCSend)
 		inprocLogger.Debugf("chaincode %s stopped", id)
 	}
-
 	return err
 }
 
