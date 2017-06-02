@@ -39,7 +39,7 @@ services:
 
   cli:
     container_name: cli
-    image: hyperledger/fabric-peer
+    image: hyperledger/fabric-tools
     tty: true
     environment:
       - GOPATH=/opt/gopath

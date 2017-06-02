@@ -26,10 +26,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/pkg/testutil/assert"
 	"github.com/hyperledger/fabric/core/config"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 )
 
 func testerr(err error, succ bool) error {
@@ -118,25 +118,61 @@ func TestPlatform_GoPathNotSet(t *testing.T) {
 	defer os.Setenv("GOPATH", gopath)
 	os.Setenv("GOPATH", "")
 
-	f := func() {
-		p.ValidateSpec(spec)
-	}
-	assert.NotPanics(t, f)
-	assert.Contains(t, p.ValidateSpec(spec).Error(), "invalid GOPATH environment variable value")
+	err := p.ValidateSpec(spec)
+	assert.Contains(t, err.Error(), "invalid GOPATH environment variable value")
 }
 
-func Test_writeGopathSrc(t *testing.T) {
-
-	inputbuf := bytes.NewBuffer(nil)
-	tw := tar.NewWriter(inputbuf)
-
-	err := writeGopathSrc(tw, "")
+func Test_findSource(t *testing.T) {
+	gopath, err := getGopath()
 	if err != nil {
-		t.Fail()
-		t.Logf("Error writing gopath src: %s", err)
+		t.Errorf("failed to get GOPATH: %s", err)
 	}
-	//ioutil.WriteFile("/tmp/chaincode_deployment.tar", inputbuf.Bytes(), 0644)
 
+	var source SourceMap
+
+	source, err = findSource(gopath, "github.com/hyperledger/fabric/peer")
+	if err != nil {
+		t.Errorf("failed to find source: %s", err)
+	}
+
+	if _, ok := source["src/github.com/hyperledger/fabric/peer/main.go"]; !ok {
+		t.Errorf("Failed to find expected source file: %v", source)
+	}
+
+	source, err = findSource(gopath, "acme.com/this/should/not/exist")
+	if err == nil {
+		t.Errorf("Success when failure was expected")
+	}
+}
+
+func Test_DeploymentPayload(t *testing.T) {
+	platform := &Platform{}
+	spec := &pb.ChaincodeSpec{
+		ChaincodeId: &pb.ChaincodeID{
+			Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+		},
+	}
+
+	payload, err := platform.GetDeploymentPayload(spec)
+	assert.NilError(t, err)
+
+	t.Logf("payload size: %d", len(payload))
+
+	is := bytes.NewReader(payload)
+	gr, err := gzip.NewReader(is)
+	if err == nil {
+		tr := tar.NewReader(gr)
+
+		for {
+			header, err := tr.Next()
+			if err != nil {
+				// We only get here if there are no more entries to scan
+				break
+			}
+
+			t.Logf("%s (%d)", header.Name, header.Size)
+		}
+	}
 }
 
 func Test_decodeUrl(t *testing.T) {
@@ -205,6 +241,7 @@ func TestGetDeploymentPayload(t *testing.T) {
 	}{
 		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/examples/chaincode/go/map"}}, succ: true},
 		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/examples/bad/go/map"}}, succ: false},
+		{spec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "Test Chaincode", Path: "github.com/hyperledger/fabric/test/chaincodes/BadImport"}}, succ: false},
 	}
 
 	for _, tst := range tests {
