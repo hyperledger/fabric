@@ -20,20 +20,30 @@ set -e
 PARENTDIR=$(pwd)
 ARCH=`uname -m`
 
-function getProxyHost {
-  ADDR=${1#*://}
-  echo ${ADDR%:*}
-}
+pattern='(https?://)?((([^:\/]+)(:([^\/]*))?@)?([^:\/?]+)(:([0-9]+))?)'
 
-function getProxyPort {
-  ADDR=${1#*://}
-  echo ${ADDR#*:}
-}
+[ -n "$http_proxy" ] && HTTPPROXY=$http_proxy
+[ -n "$HTTP_PROXY" ] && HTTPPROXY=$HTTP_PROXY
+[ -n "$https_proxy" ] && HTTPSPROXY=$https_proxy
+[ -n "$HTTPS_PROXY" ] && HTTPSPROXY=$HTTPS_PROXY
 
-[ -n "$http_proxy" ] && JAVA_OPTS="$JAVA_OPTS -Dhttp.proxyHost=$(getProxyHost $http_proxy) -Dhttp.proxyPort=$(getProxyPort $http_proxy)"
-[ -n "$https_proxy" ] && JAVA_OPTS="$JAVA_OPTS -Dhttps.proxyHost=$(getProxyHost $https_proxy) -Dhttps.proxyPort=$(getProxyPort $https_proxy)"
-[ -n "$HTTP_PROXY" ] && JAVA_OPTS="$JAVA_OPTS -Dhttp.proxyHost=$(getProxyHost $HTTP_PROXY) -Dhttp.proxyPort=$(getProxyPort $HTTP_PROXY)"
-[ -n "$HTTPS_PROXY" ] && JAVA_OPTS="$JAVA_OPTS -Dhttps.proxyHost=$(getProxyHost $HTTPS_PROXY) -Dhttps.proxyPort=$(getProxyPort $HTTPS_PROXY)"
+if [ -n "$HTTPPROXY" ]; then
+	if [[ "$HTTPPROXY" =~ $pattern ]]; then
+		[ -n "${BASH_REMATCH[4]}" ] && JAVA_OPTS="$JAVA_OPTS -Dhttp.proxyUser=${BASH_REMATCH[4]}"
+		[ -n "${BASH_REMATCH[6]}" ] && JAVA_OPTS="$JAVA_OPTS -Dhttp.proxyPass=${BASH_REMATCH[6]}"
+		[ -n "${BASH_REMATCH[7]}" ] && JAVA_OPTS="$JAVA_OPTS -Dhttp.proxyHost=${BASH_REMATCH[7]}"
+		[ -n "${BASH_REMATCH[9]}" ] && JAVA_OPTS="$JAVA_OPTS -Dhttp.proxyPort=${BASH_REMATCH[9]}"
+	fi
+fi
+if [ -n "$HTTPSPROXY" ]; then
+	if [[ "$HTTPSPROXY" =~ $pattern ]]; then
+		[ -n "${BASH_REMATCH[4]}" ] && JAVA_OPTS="$JAVA_OPTS -Dhttps.proxyUser=${BASH_REMATCH[4]}"
+		[ -n "${BASH_REMATCH[6]}" ] && JAVA_OPTS="$JAVA_OPTS -Dhttps.proxyPass=${BASH_REMATCH[6]}"
+		[ -n "${BASH_REMATCH[7]}" ] && JAVA_OPTS="$JAVA_OPTS -Dhttps.proxyHost=${BASH_REMATCH[7]}"
+		[ -n "${BASH_REMATCH[9]}" ] && JAVA_OPTS="$JAVA_OPTS -Dhttps.proxyPort=${BASH_REMATCH[9]}"
+	fi
+fi
+
 export JAVA_OPTS
 
 if [ x$ARCH == xx86_64 ]
