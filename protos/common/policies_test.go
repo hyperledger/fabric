@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package common
@@ -49,23 +39,32 @@ func TestPoliciesEnums(t *testing.T) {
 }
 
 func TestPoliciesStructs(t *testing.T) {
-	policy := &Policy{
+	var policy *Policy
+	assert.Equal(t, int32(0), policy.GetType())
+	assert.Nil(t, policy.GetPolicy())
+	policy = &Policy{
 		Policy: []byte("policy"),
+		Type:   int32(1),
 	}
+	assert.Equal(t, int32(1), policy.GetType())
+	assert.NotNil(t, policy.GetPolicy())
 	policy.Reset()
-	assert.Nil(t, policy.Policy)
+	assert.Nil(t, policy.GetPolicy())
 	_, _ = policy.Descriptor()
 	_ = policy.String()
 	policy.ProtoMessage()
 
 	var env *SignaturePolicyEnvelope
 	env = nil
+	assert.Equal(t, int32(0), env.GetVersion())
 	assert.Nil(t, env.GetIdentities())
 	assert.Nil(t, env.GetPolicy())
 	env = &SignaturePolicyEnvelope{
 		Policy:     &SignaturePolicy{},
 		Identities: []*common1.MSPPrincipal{&common1.MSPPrincipal{}},
+		Version:    int32(1),
 	}
+	assert.Equal(t, int32(1), env.GetVersion())
 	assert.NotNil(t, env.GetIdentities())
 	assert.NotNil(t, env.GetPolicy())
 	env.Reset()
@@ -108,10 +107,13 @@ func TestPoliciesStructs(t *testing.T) {
 
 	var n *SignaturePolicy_NOutOf
 	n = nil
+	assert.Equal(t, int32(0), n.GetN())
 	assert.Nil(t, n.GetPolicies())
 	n = &SignaturePolicy_NOutOf{
 		Policies: []*SignaturePolicy{&SignaturePolicy{}},
+		N:        int32(1),
 	}
+	assert.Equal(t, int32(1), n.GetN())
 	assert.NotNil(t, n.GetPolicies())
 	n.Reset()
 	assert.Nil(t, n.GetPolicies())
@@ -119,11 +121,18 @@ func TestPoliciesStructs(t *testing.T) {
 	_ = n.String()
 	n.ProtoMessage()
 
-	impolicy := &ImplicitMetaPolicy{
+	var impolicy *ImplicitMetaPolicy
+	impolicy = nil
+	assert.Equal(t, "", impolicy.GetSubPolicy())
+	assert.Equal(t, ImplicitMetaPolicy_ANY, impolicy.GetRule())
+	impolicy = &ImplicitMetaPolicy{
 		SubPolicy: "subpolicy",
+		Rule:      ImplicitMetaPolicy_MAJORITY,
 	}
+	assert.Equal(t, "subpolicy", impolicy.GetSubPolicy())
+	assert.Equal(t, ImplicitMetaPolicy_MAJORITY, impolicy.GetRule())
 	impolicy.Reset()
-	assert.Equal(t, "", impolicy.SubPolicy)
+	assert.Equal(t, "", impolicy.GetSubPolicy())
 	_, _ = impolicy.Descriptor()
 	_ = impolicy.String()
 	impolicy.ProtoMessage()
