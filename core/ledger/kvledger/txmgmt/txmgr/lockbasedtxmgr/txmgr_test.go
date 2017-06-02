@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package commontests
+package lockbasedtxmgr
 
 import (
 	"encoding/json"
@@ -23,6 +23,7 @@ import (
 
 	"os"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
@@ -31,6 +32,8 @@ import (
 
 func TestMain(m *testing.M) {
 	ledgertestutil.SetupCoreYAMLConfig()
+	flogging.SetModuleLevel("lockbasedtxmgr", "debug")
+
 	os.Exit(m.Run())
 }
 
