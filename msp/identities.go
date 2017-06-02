@@ -150,16 +150,6 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 	return nil
 }
 
-func (id *identity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) error {
-	// TODO
-	return errors.New("This method is unimplemented")
-}
-
-func (id *identity) VerifyAttributes(proof []byte, spec *AttributeProofSpec) error {
-	// TODO
-	return errors.New("This method is unimplemented")
-}
-
 // Serialize returns a byte array representation of this identity
 func (id *identity) Serialize() ([]byte, error) {
 	// mspIdentityLogger.Infof("Serializing identity %s", id.id)
@@ -233,21 +223,6 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	return id.signer.Sign(rand.Reader, digest, nil)
 }
 
-func (id *signingidentity) SignOpts(msg []byte, opts SignatureOpts) ([]byte, error) {
-	// TODO
-	return nil, errors.New("This method is unimplemented")
-}
-
-func (id *signingidentity) GetAttributeProof(spec *AttributeProofSpec) (proof []byte, err error) {
-	// TODO
-	return nil, errors.New("This method is unimplemented")
-}
-
 func (id *signingidentity) GetPublicVersion() Identity {
 	return &id.identity
-}
-
-func (id *signingidentity) Renew() error {
-	// TODO
-	return errors.New("This method is unimplemented")
 }

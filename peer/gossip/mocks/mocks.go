@@ -150,14 +150,6 @@ func (id *Identity) Verify(msg []byte, sig []byte) error {
 	return errors.New("Invalid Signature")
 }
 
-func (id *Identity) VerifyOpts(msg []byte, sig []byte, opts msp.SignatureOpts) error {
-	return nil
-}
-
-func (id *Identity) VerifyAttributes(proof []byte, spec *msp.AttributeProofSpec) error {
-	return nil
-}
-
 func (id *Identity) Serialize() ([]byte, error) {
 	return []byte("cert"), nil
 }
