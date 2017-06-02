@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	"os"
-
 	"errors"
 
 	cutil "github.com/hyperledger/fabric/core/container/util"
@@ -32,24 +30,7 @@ import (
 //tw is expected to have the chaincode in it from GenerateHashcode.
 //This method will just package the dockerfile
 func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
-
-	var urlLocation string
-	var err error
-
-	if strings.HasPrefix(spec.ChaincodeId.Path, "http://") ||
-		strings.HasPrefix(spec.ChaincodeId.Path, "https://") {
-
-		urlLocation, err = getCodeFromHTTP(spec.ChaincodeId.Path)
-		defer func() {
-			os.RemoveAll(urlLocation)
-		}()
-		if err != nil {
-			return err
-		}
-	} else {
-		urlLocation = spec.ChaincodeId.Path
-	}
-
+	urlLocation := spec.ChaincodeId.Path
 	if urlLocation == "" {
 		return errors.New("ChaincodeSpec's path/URL cannot be empty")
 	}
@@ -58,7 +39,7 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 		urlLocation = urlLocation[:len(urlLocation)-1]
 	}
 
-	err = cutil.WriteJavaProjectToPackage(tw, urlLocation)
+	err := cutil.WriteJavaProjectToPackage(tw, urlLocation)
 	if err != nil {
 		return fmt.Errorf("Error writing Chaincode package contents: %s", err)
 	}

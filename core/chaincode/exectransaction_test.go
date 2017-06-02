@@ -540,18 +540,6 @@ func _(chainID string, _ string) error {
 	return nil
 }
 
-// Disable this temporarily.
-// TODO: Need to enable this after update chaincode interface of chaincode repo.
-// Test deploy of a transaction with a chaincode over HTTP.
-//func TestHTTPExecuteDeployTransaction(t *testing.T) {
-//	chainID := util.GetTestChainID()
-
-//	// The chaincode used here cannot be from the fabric repo
-//	// itself or it won't be downloaded because it will be found
-//	// in GOPATH, which would defeat the test
-//	executeDeployTransaction(t, chainID, "example01", "http://gopkg.in/mastersingh24/fabric-test-resources.v1")
-//}
-
 // Check the correctness of the final state after transaction execution.
 func checkFinalState(cccid *ccprovider.CCContext, a int, b int) error {
 	_, txsim, err := startTxSimulation(context.Background(), cccid.ChainID)

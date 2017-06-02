@@ -187,7 +187,9 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 	if err != nil {
 		return nil, err
 	}
-	defer code.Cleanup()
+	if code.Cleanup != nil {
+		defer code.Cleanup()
+	}
 
 	// --------------------------------------------------------------------------------------
 	// Update our environment for the purposes of executing go-list directives

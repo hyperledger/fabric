@@ -18,12 +18,9 @@ package java
 
 import (
 	"archive/tar"
-	"bytes"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"os/exec"
 	"strings"
 
 	"errors"
@@ -37,28 +34,8 @@ import (
 
 var logger = flogging.MustGetLogger("java/hash")
 
-func getCodeFromHTTP(path string) (codegopath string, err error) {
-
-	codegopath, err = ioutil.TempDir("", "javachaincode")
-
-	if err != nil {
-		return "", fmt.Errorf("Error creating temporary file: %s", err)
-	}
-	var out bytes.Buffer
-
-	cmd := exec.Command("git", "clone", path, codegopath)
-	cmd.Stderr = &out
-	cmderr := cmd.Run()
-	if cmderr != nil {
-		return "", fmt.Errorf("Error cloning git repository %s", cmderr)
-	}
-
-	return codegopath, nil
-
-}
-
 //collectChaincodeFiles collects chaincode files and generates hashcode for the
-//package. If path is a HTTP(s) url it downloads the code first.
+//package.
 //NOTE: for dev mode, user builds and runs chaincode manually. The name provided
 //by the user is equivalent to the path. This method will treat the name
 //as codebytes and compute the hash from it. ie, user cannot run the chaincode
@@ -75,19 +52,8 @@ func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, erro
 
 	codepath := chaincodeID.Path
 
-	var ishttp bool
-	defer func() {
-		if ishttp {
-			os.RemoveAll(codepath)
-		}
-	}()
-
 	var err error
-	if strings.HasPrefix(codepath, "http://") ||
-		strings.HasPrefix(codepath, "https://") {
-		ishttp = true
-		codepath, err = getCodeFromHTTP(codepath)
-	} else if !strings.HasPrefix(codepath, "/") {
+	if !strings.HasPrefix(codepath, "/") {
 		wd := ""
 		wd, err = os.Getwd()
 		codepath = wd + "/" + codepath
@@ -116,7 +82,7 @@ func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, erro
 
 	hash, err = ccutil.HashFilesInDir("", codepath, hash, tw)
 	if err != nil {
-		return "", fmt.Errorf("Could not get hashcode for %s - %s\n", codepath, err)
+		return "", fmt.Errorf("could not get hashcode for %s - %s", codepath, err)
 	}
 
 	return hex.EncodeToString(hash[:]), nil
