@@ -35,6 +35,7 @@
 #   - docker[-clean] - ensures all docker images are available[/cleaned]
 #   - peer-docker[-clean] - ensures the peer container is available[/cleaned]
 #   - orderer-docker[-clean] - ensures the orderer container is available[/cleaned]
+#   - tools-docker[-clean] - ensures the tools container is available[/cleaned]
 #   - protos - generate all protobuf artifacts based on .proto files
 #   - clean - cleans the build area
 #   - dist-clean - superset of 'clean' that also removes persistent state
@@ -81,7 +82,7 @@ GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka couchdb
+IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka couchdb tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s390x
 RELEASE_PKGS = configtxgen cryptogen
 
@@ -129,6 +130,8 @@ configtxgen: GO_TAGS+= nopkcs11
 configtxgen: build/bin/configtxgen
 
 cryptogen: build/bin/cryptogen
+
+tools-docker: build/image/tools/$(DUMMY)
 
 javaenv: build/image/javaenv/$(DUMMY)
 
@@ -232,6 +235,10 @@ build/image/kafka/payload:      images/kafka/docker-entrypoint.sh \
 build/image/couchdb/payload:	images/couchdb/docker-entrypoint.sh \
 				images/couchdb/local.ini \
 				images/couchdb/vm.args
+build/image/tools/payload:      build/docker/bin/cryptogen \
+	                        build/docker/bin/configtxgen \
+				build/docker/bin/peer \
+				build/sampleconfig.tar.bz2
 
 build/image/%/payload:
 	mkdir -p $@
