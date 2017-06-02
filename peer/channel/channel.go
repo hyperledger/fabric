@@ -32,8 +32,8 @@ import (
 
 const (
 	channelFuncName = "channel"
-	shortDes        = "Operate a channel: create|fetch|join|list."
-	longDes         = "Operate a channel: create|fetch|join|list."
+	shortDes        = "Operate a channel: create|fetch|update|join|list."
+	longDes         = "Operate a channel: create|fetch|update|join|list."
 )
 
 type OrdererRequirement bool
@@ -65,6 +65,7 @@ func Cmd(cf *ChannelCmdFactory) *cobra.Command {
 	AddFlags(channelCmd)
 	channelCmd.AddCommand(joinCmd(cf))
 	channelCmd.AddCommand(createCmd(cf))
+	channelCmd.AddCommand(updateCmd(cf))
 	channelCmd.AddCommand(fetchCmd(cf))
 	channelCmd.AddCommand(listCmd(cf))
 
