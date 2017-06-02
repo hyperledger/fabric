@@ -136,7 +136,7 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 	}
 
 	if ml.systemChannelID == "" {
-		logger.Panicf("No system chain found")
+		logger.Panicf("No system chain found.  If bootstrapping, does your system channel contain a consortiums group definition?")
 	}
 
 	return ml

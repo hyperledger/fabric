@@ -44,6 +44,9 @@ var logger = flogging.MustGetLogger("common/configtx/tool")
 func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock string) error {
 	pgen := provisional.New(config)
 	logger.Info("Generating genesis block")
+	if config.Consortiums == nil {
+		logger.Warning("Genesis block does not contain a consortiums group definition.  This block cannot be used for orderer bootstrap.")
+	}
 	genesisBlock := pgen.GenesisBlockForChannel(channelID)
 	logger.Info("Writing genesis block")
 	err := ioutil.WriteFile(outputBlock, utils.MarshalOrPanic(genesisBlock), 0644)
