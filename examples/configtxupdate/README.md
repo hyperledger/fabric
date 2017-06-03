@@ -1,4 +1,4 @@
-# Reconfiguraing with configtxlator
+# Reconfiguring with configtxlator
 
 ## Overview
 
@@ -92,7 +92,7 @@ curl -X POST --data-binary @genesis_block.proto http://127.0.0.1:7059/protolator
 ```
 Edit the `genesis_block.json` file in your favorite JSON editor, or manipulate it programatically, here, we use the JSON CLI tool `jq`.  For simplicity, we are editing the batch size for the channel, because it is a single numeric field, but any edits, including policy and MSP edits may be made here.
 ```
-$ export MAXBATCHSIZEPATH=".data.data[0].payload.data.config.channel_group.groups.Orderer.values.BatchSize.value.maxMessageCount"
+$ export MAXBATCHSIZEPATH=".data.data[0].payload.data.config.channel_group.groups.Orderer.values.BatchSize.value.max_message_count"
 # Display the old batch size
 $ jq "$MAXBATCHSIZEPATH" genesis_block.json 
 10
@@ -176,7 +176,7 @@ jq .data.data[0].payload.data.config config_block.json > config.json
 Edit the config, saving it as a new `updated_config.json`.  Here, we set the batch size to 30.
 
 ```
-jq ".channel_group.groups.Orderer.values.BatchSize.value.maxMessageCount = 30" config.json  > updated_config.json
+jq ".channel_group.groups.Orderer.values.BatchSize.value.max_message_count = 30" config.json  > updated_config.json
 ```
 
 Re-encode both the original config, and the updated config into proto.

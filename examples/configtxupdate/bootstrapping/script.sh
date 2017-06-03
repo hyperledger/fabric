@@ -29,7 +29,7 @@ curl -X POST --data-binary @genesis_block.proto http://127.0.0.1:7059/protolator
 
 bigMsg "Updating genesis config"
 
-jq ".data.data[0].payload.data.config.channel_group.groups.Orderer.values.BatchSize.value.maxMessageCount" genesis_block.json > updated_genesis_block.json
+jq ".data.data[0].payload.data.config.channel_group.groups.Orderer.values.BatchSize.value.max_message_count = 20" genesis_block.json > updated_genesis_block.json
 
 bigMsg "Re-encoding the updated genesis block"
 
