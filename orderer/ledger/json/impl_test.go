@@ -17,10 +17,10 @@ limitations under the License.
 package jsonledger
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/orderer/ledger"
@@ -28,6 +28,7 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	logging "github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 )
 
 var genesisBlock = cb.NewBlock(0, nil)
@@ -66,16 +67,13 @@ func (tev *testEnv) tearDown() {
 func TestInitialization(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
-	if fl.height != 1 {
-		t.Fatalf("Block height should be 1")
-	}
+	assert.Equal(t, uint64(1), fl.height, "Block height should be 1")
+
 	block, found := fl.readBlock(0)
-	if block == nil || !found {
-		t.Fatalf("Error retrieving genesis block")
-	}
-	if !bytes.Equal(block.Header.Hash(), fl.lastHash) {
-		t.Fatalf("Block hashes did no match")
-	}
+	assert.NotNil(t, block, "Error retrieving genesis block")
+	assert.True(t, found, "Error retrieving genesis block")
+	assert.Equal(t, fl.lastHash, block.Header.Hash(), "Block hashes did no match")
+
 }
 
 func TestReinitialization(t *testing.T) {
@@ -84,26 +82,18 @@ func TestReinitialization(t *testing.T) {
 	ofl.Append(ledger.CreateNextBlock(ofl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	flf := New(tev.location)
 	chains := flf.ChainIDs()
-	if len(chains) != 1 {
-		t.Fatalf("Should have recovered the chain")
-	}
+	assert.Len(t, chains, 1, "Should have recovered the chain")
 
 	tfl, err := flf.GetOrCreate(chains[0])
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
+	assert.Nil(t, err, "Unexpected error: %s", err)
 
 	fl := tfl.(*jsonLedger)
-	if fl.height != 2 {
-		t.Fatalf("Block height should be 2")
-	}
+	assert.Equal(t, uint64(2), fl.height, "Block height should be 2")
+
 	block, found := fl.readBlock(1)
-	if block == nil || !found {
-		t.Fatalf("Error retrieving block 1")
-	}
-	if !bytes.Equal(block.Header.Hash(), fl.lastHash) {
-		t.Fatalf("Block hashes did no match")
-	}
+	assert.NotNil(t, block, "Error retrieving block")
+	assert.True(t, found, "Error retrieving block")
+	assert.Equal(t, fl.lastHash, block.Header.Hash(), "Block hashes did no match")
 }
 
 func TestMultiReinitialization(t *testing.T) {
@@ -112,20 +102,13 @@ func TestMultiReinitialization(t *testing.T) {
 	flf := New(tev.location)
 
 	_, err := flf.GetOrCreate("foo")
-	if err != nil {
-		t.Fatalf("Error creating chain")
-	}
+	assert.Nil(t, err, "Error creating chain")
 
 	_, err = flf.GetOrCreate("bar")
-	if err != nil {
-		t.Fatalf("Error creating chain")
-	}
+	assert.Nil(t, err, "Error creating chain")
 
 	flf = New(tev.location)
-	chains := flf.ChainIDs()
-	if len(chains) != 3 {
-		t.Fatalf("Should have recovered the chains")
-	}
+	assert.Len(t, flf.ChainIDs(), 3, "Should have recovered the chains")
 }
 
 func TestAddition(t *testing.T) {
@@ -133,16 +116,12 @@ func TestAddition(t *testing.T) {
 	defer tev.tearDown()
 	prevHash := fl.lastHash
 	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
-	if fl.height != 2 {
-		t.Fatalf("Block height should be 2")
-	}
+	assert.Equal(t, uint64(2), fl.height, "Block height should be 2")
+
 	block, found := fl.readBlock(1)
-	if block == nil || !found {
-		t.Fatalf("Error retrieving genesis block")
-	}
-	if !bytes.Equal(block.Header.PreviousHash, prevHash) {
-		t.Fatalf("Block hashes did no match")
-	}
+	assert.NotNil(t, block, "Error retrieving genesis block")
+	assert.True(t, found, "Error retrieving genesis block")
+	assert.Equal(t, prevHash, block.Header.PreviousHash, "Block hashes did no match")
 }
 
 func TestRetrieval(t *testing.T) {
@@ -150,35 +129,29 @@ func TestRetrieval(t *testing.T) {
 	defer tev.tearDown()
 	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
-	if num != 0 {
-		t.Fatalf("Expected genesis block iterator, but got %d", num)
-	}
+	assert.Equal(t, uint64(0), num, "Expected genesis block iterator, but got %d", num)
+
 	signal := it.ReadyChan()
 	select {
 	case <-signal:
 	default:
 		t.Fatalf("Should be ready for block read")
 	}
+
 	block, status := it.Next()
-	if status != cb.Status_SUCCESS {
-		t.Fatalf("Expected to successfully read the genesis block")
-	}
-	if block.Header.Number != 0 {
-		t.Fatalf("Expected to successfully retrieve the genesis block")
-	}
+	assert.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the genesis block")
+	assert.Equal(t, uint64(0), block.Header.Number, "Expected to successfully retrieve the genesis block")
+
 	signal = it.ReadyChan()
 	select {
 	case <-signal:
 	default:
 		t.Fatalf("Should still be ready for block read")
 	}
+
 	block, status = it.Next()
-	if status != cb.Status_SUCCESS {
-		t.Fatalf("Expected to successfully read the second block")
-	}
-	if block.Header.Number != 1 {
-		t.Fatalf("Expected to successfully retrieve the second block but got block number %d", block.Header.Number)
-	}
+	assert.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the second block")
+	assert.Equal(t, uint64(1), block.Header.Number, "Expected to successfully retrieve the second block but got block number %d", block.Header.Number)
 }
 
 // Without file lock in the implementation, this test is flaky due to
@@ -202,35 +175,94 @@ func TestRaceCondition(t *testing.T) {
 	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
 	<-complete
 
-	if status != cb.Status_SUCCESS {
-		t.Fatalf("Expected to successfully read the block")
-	}
+	assert.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the block")
 }
 
 func TestBlockedRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
-	if num != 1 {
-		t.Fatalf("Expected block iterator at 1, but got %d", num)
-	}
+	assert.Equal(t, uint64(1), num, "Expected block iterator at 1, but got %d", num)
+
 	signal := it.ReadyChan()
 	select {
 	case <-signal:
 		t.Fatalf("Should not be ready for block read")
 	default:
 	}
-	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+
+	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}}))
 	select {
 	case <-signal:
 	default:
 		t.Fatalf("Should now be ready for block read")
 	}
+
 	block, status := it.Next()
-	if status != cb.Status_SUCCESS {
-		t.Fatalf("Expected to successfully read the second block")
+	assert.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the second block")
+	assert.Equal(t, uint64(1), block.Header.Number, "Expected to successfully retrieve the second block")
+
+	go func() {
+		// Add explicit sleep here to make sure `it.Next` is actually blocked waiting
+		// for new block. According to Golang sched, `it.Next()` is run before this
+		// goroutine, however it's not guaranteed to run till the channel operation
+		// we desire, due to I/O operation in the middle. Consider making the
+		// implementation more testable so we don't need to sleep here.
+		time.Sleep(100 * time.Millisecond)
+		fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("Another Data")}}))
+	}()
+
+	block, status = it.Next()
+	assert.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the third block")
+	assert.Equal(t, uint64(2), block.Header.Number, "Expected to successfully retrieve the third block")
+}
+
+func TestInvalidRetrieval(t *testing.T) {
+	tev, fl := initialize(t)
+	defer tev.tearDown()
+
+	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 2}}})
+	assert.Equal(t, uint64(0), num, "Expected block number to be zero for invalid iterator")
+
+	_, status := it.Next()
+	assert.Equal(t, cb.Status_NOT_FOUND, status, "Expected status_NOT_FOUND for invalid iterator")
+}
+
+func TestBrokenBlockFile(t *testing.T) {
+	tev, fl := initialize(t)
+	defer tev.tearDown()
+
+	// Pollute block file so that unmarshalling would fail.
+	file, err := os.OpenFile(fl.blockFilename(0), os.O_RDWR, 0700)
+	assert.Nil(t, err, "Expected to successfully open block file")
+
+	_, err = file.WriteString("Hello, world!")
+	assert.Nil(t, err, "Expected to successfully write to block file")
+
+	assert.NoError(t, file.Close(), "Expected to successfully close block file")
+
+	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
+	assert.Equal(t, uint64(0), num, "Expected genesis block iterator, but got %d", num)
+
+	_, status := it.Next()
+	assert.Equal(t, cb.Status_SERVICE_UNAVAILABLE, status, "Expected reading the genesis block to fail")
+}
+
+func TestInvalidAddition(t *testing.T) {
+	tev, fl := initialize(t)
+	defer tev.tearDown()
+
+	// Append block with invalid number
+	{
+		block := ledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}})
+		block.Header.Number++
+		assert.Error(t, fl.Append(block), "Addition of block with invalid number should fail")
 	}
-	if block.Header.Number != 1 {
-		t.Fatalf("Expected to successfully retrieve the second block")
+
+	// Append block with invalid previousHash
+	{
+		block := ledger.CreateNextBlock(fl, []*cb.Envelope{{Payload: []byte("My Data")}})
+		block.Header.PreviousHash = nil
+		assert.Error(t, fl.Append(block), "Addition of block with invalid previousHash should fail")
 	}
 }
