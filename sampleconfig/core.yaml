@@ -379,5 +379,7 @@ ledger:
 
   history:
     # enableHistoryDatabase - options are true or false
-    # Indicates if the history of key updates should be stored in goleveldb
+    # Indicates if the history of key updates should be stored.
+    # All history 'index' will be stored in goleveldb, regardless if using
+    # CouchDB or alternate database for the state.
     enableHistoryDatabase: true
