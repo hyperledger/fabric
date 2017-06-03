@@ -42,6 +42,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
+	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
@@ -212,6 +213,20 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	// Try fail path with nil block
 	res := stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), nil}, sProp)
+	assert.Equal(t, res.Status, int32(shim.ERROR))
+
+	// Try fail path with block and nil payload header
+	payload, _ := proto.Marshal(&cb.Payload{})
+	env, _ := proto.Marshal(&cb.Envelope{
+		Payload: payload,
+	})
+	badBlock := &cb.Block{
+		Data: &cb.BlockData{
+			Data: [][]byte{env},
+		},
+	}
+	badBlockBytes := utils.MarshalOrPanic(badBlock)
+	res = stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), badBlockBytes}, sProp)
 	assert.Equal(t, res.Status, int32(shim.ERROR))
 
 	// Now, continue with valid execution path

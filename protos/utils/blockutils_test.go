@@ -48,6 +48,10 @@ func TestGetChainIDFromBlock(t *testing.T) {
 	var gb *common.Block
 	var cid string
 
+	// nil block
+	_, err = utils.GetChainIDFromBlock(gb)
+	assert.Error(t, err, "Expected error getting channel id from nil block")
+
 	gb, err = configtxtest.MakeGenesisBlock(testChainID)
 	assert.NoError(t, err, "Failed to create test configuration block")
 
@@ -98,6 +102,19 @@ func TestGetChainIDFromBlock(t *testing.T) {
 	}
 	_, err = utils.GetChainIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error with malformed channel header")
+
+	// nil payload header
+	payload, _ = proto.Marshal(&cb.Payload{})
+	env, _ = proto.Marshal(&cb.Envelope{
+		Payload: payload,
+	})
+	badBlock = &cb.Block{
+		Data: &cb.BlockData{
+			Data: [][]byte{env},
+		},
+	}
+	_, err = utils.GetChainIDFromBlock(badBlock)
+	assert.Error(t, err, "Expected error when payload header is nil")
 }
 
 func TestGetBlockFromBlockBytes(t *testing.T) {
