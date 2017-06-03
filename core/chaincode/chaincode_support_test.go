@@ -199,7 +199,9 @@ func setupcc(name string) (*mockpeer.MockCCComm, *mockpeer.MockCCComm) {
 	recv := make(chan *pb.ChaincodeMessage)
 	peerSide, _ := mockPeerCCSupport.AddCC(name, recv, send)
 	peerSide.SetName("peer")
-	return peerSide, mockPeerCCSupport.GetCCMirror(name)
+	ccSide := mockPeerCCSupport.GetCCMirror(name)
+	ccSide.SetPong(true)
+	return peerSide, ccSide
 }
 
 //assign this to done and failNow and keep using them
@@ -208,7 +210,10 @@ func setuperror() chan error {
 }
 
 func processDone(t *testing.T, done chan error, expecterr bool) {
-	err := <-done
+	var err error
+	if done != nil {
+		err = <-done
+	}
 	if expecterr != (err != nil) {
 		if err == nil {
 			t.Fatalf("Expected error but got success")
@@ -353,7 +358,10 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 	resp.RespMsg.(*pb.ChaincodeMessage).Txid = "1"
 
 	badcccid := ccprovider.NewCCContext(chainID, ccname, "unknownver", "1", false, sprop, prop)
-	execCC(t, ctxt, ccSide, badcccid, false, true, done, cis, respSet)
+
+	//we are not going to reach the chaincode and so won't get a response from it. processDone will not
+	//be triggered by the chaincode stream.  We just expect an error from fabric. Hence pass nil for done
+	execCC(t, ctxt, ccSide, badcccid, false, true, nil, cis, respSet)
 
 	//---------try a successful init at last-------
 	//everything lined up
