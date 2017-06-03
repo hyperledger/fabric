@@ -172,7 +172,8 @@ for the sake of convenience we will also provide them here.
 
 First let's run the cryptogen tool.  Our binary is in the ``bin``
 directory, so we need to provide the relative path to where the tool resides.
-Make sure you are in ``<your_platform>:
+Make sure you are in the directory correlated to your platform.  For example,
+OSX users would be in ``release/darwin-amd64`` when running the following commands:
 
 .. code:: bash
 
@@ -190,7 +191,7 @@ present working directory:
 
 .. code:: bash
 
-    FABRIC_CFG_PATH=$PWD
+    export FABRIC_CFG_PATH=$PWD
 
 Create the orderer genesis block:
 
@@ -231,9 +232,13 @@ Run the shell script
 ^^^^^^^^^^^^^^^^^^^^
 
 You can skip this step if you just manually generated the crypto and artifacts.
-However, if you want to see this script in action, delete the ``crypto-config``
-folder and remove the four artifacts from your ``channel-artifacts`` folder.
-Then proceed...
+However, if you want to see this script in action, delete your crypto material
+and channel artifacts with the following command:
+
+.. code:: bash
+    ./network_setup.sh down
+
+Now proceed...
 
 Make sure you are in the ``<your_platform>`` directory where the script resides.
 Decide upon a unique name for your channel and replace the <channel-ID> parm
@@ -281,7 +286,7 @@ Start the network
 
 We will leverage a docker-compose script to spin up our network. The docker-compose
 points to the images that we have already downloaded, and bootstraps the orderer
-with our previously generated orderer.block. Before launching the network, open
+with our previously generated ``orderer.block``. Before launching the network, open
 the ``docker-compose-cli.yaml`` file and comment out the script.sh in the CLI
 container. Your docker-compose should look like this:
 
@@ -405,7 +410,7 @@ container for the targeted peer.  Take note of the ``-P`` argument. This is our 
 level of endorsement for a transaction against this chaincode to be validated.
 In the command below you’ll notice that we specify our policy as
 ``-P "OR ('Org0MSP.member','Org1MSP.member')"``. This means that we need
-“endorsement” from a peer belonging to Org1 OR Org2 (i.e. only one endorsement).
+“endorsement” from a peer belonging to Org1 **OR** Org2 (i.e. only one endorsement).
 If we changed the syntax to ``AND`` then we would need two endorsements.
 
 .. code:: bash
@@ -422,7 +427,7 @@ documentation for more details on policy implementation.
 Query
 ^^^^^
 
-Let's query for the value of “a” to make sure the chaincode was properly
+Let's query for the value of ``a`` to make sure the chaincode was properly
 instantiated and the state DB was populated. The syntax for query is as follows:
 
 .. code:: bash
@@ -435,7 +440,7 @@ instantiated and the state DB was populated. The syntax for query is as follows:
 Invoke
 ^^^^^^
 
-Now let's move "10" from "a" to "b".  This transaction will cut a new block and
+Now let's move ``10`` from ``a`` to ``b``.  This transaction will cut a new block and
 update the state DB. The syntax for invoke is as follows:
 
 .. code:: bash
@@ -448,8 +453,9 @@ Query
 ^^^^^
 
 Let's confirm that our previous invocation executed properly. We initialized the
-key “a” with a value of “100”. Therefore, removing “10” should return a value of
-“90” when we query “a”. The syntax for query is as follows.
+key ``a`` with a value of ``100`` and just removed ``10`` with our previous
+invocation. Therefore, a query against ``a`` should reveal ``90``. The syntax
+for query is as follows.
 
 .. code:: bash
 
@@ -479,40 +485,8 @@ Clean up
 
 Let's clean up first...
 
-Exit the currently-running containers:
-
-.. code:: bash
-
-    docker rm -f $(docker ps -aq)
-
-Execute a ``docker images`` command in your terminal to view the
-chaincode images. They will look similar to the following:
-
-.. code:: bash
-
-  REPOSITORY                            TAG                              IMAGE ID            CREATED             SIZE
-  dev-peer1.org2.example.com-mycc-1.0   latest                           4bc5e9b5dd97        5 seconds ago       176 MB
-  dev-peer0.org1.example.com-mycc-1.0   latest                           6f2aeb032076        22 seconds ago      176 MB
-  dev-peer0.org2.example.com-mycc-1.0   latest                           509b8e393cc6        39 seconds ago      176 MB
-
-Remove these images:
-
-.. code:: bash
-
-    docker rmi <IMAGE ID> <IMAGE ID> <IMAGE ID>
-
-For example:
-
-.. code:: bash
-
-    docker rmi -f 4bc 6f2 509
-
-Lastly, remove the ``crypto-config`` folder and the four artifacts within the
-``channel-artifacts`` folder.
-
-**OR**
-
-You can execute the following command which will do all of the above:
+The following script will kill our containers, remove the crypto material and
+four artifacts, and remove our three chaincode images:
 
 .. code:: bash
 
@@ -966,9 +940,25 @@ back and recreate your channel artifacts.
 
        ./network_setup.sh down
 
+- If you see an error stating that you still have "active endpoints", then prune
+  your docker networks.  This will wipe your previous networks and start you with a 
+  fresh environment:
+
+.. code:: bash
+
+        docker network prune
+
+You will see the following message:
+
+.. code:: bash
+
+  WARNING! This will remove all networks not used by at least one container.
+  Are you sure you want to continue? [y/N]
+
+Select ``y``.
+
 - If you continue to see errors, share your logs on the **# fabric-questions**
   channel on `Hyperledger Rocket Chat <https://chat.hyperledger.org/home>`__.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-
