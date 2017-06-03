@@ -122,16 +122,28 @@ func newChainSupport(
 		signer:          signer,
 	}
 
+	cs.lastConfigSeq = cs.Sequence()
+
 	var err error
 
 	lastBlock := ledger.GetBlock(cs.Reader(), cs.Reader().Height()-1)
+
+	// If this is the genesis block, the lastconfig field may be empty, and, the last config is necessary 0
+	// so no need to initialize lastConfig
+	if lastBlock.Header.Number != 0 {
+		cs.lastConfig, err = utils.GetLastConfigIndexFromBlock(lastBlock)
+		if err != nil {
+			logger.Fatalf("[channel: %s] Error extracting last config block from block metadata: %s", cs.ChainID(), err)
+		}
+	}
+
 	metadata, err := utils.GetMetadataFromBlock(lastBlock, cb.BlockMetadataIndex_ORDERER)
 	// Assuming a block created with cb.NewBlock(), this should not
 	// error even if the orderer metadata is an empty byte slice
 	if err != nil {
 		logger.Fatalf("[channel: %s] Error extracting orderer metadata: %s", cs.ChainID(), err)
 	}
-	logger.Debugf("[channel: %s] Retrieved metadata for tip of chain (block #%d): %+v", cs.ChainID(), cs.Reader().Height()-1, metadata)
+	logger.Debugf("[channel: %s] Retrieved metadata for tip of chain (blockNumber=%d, lastConfig=%d, lastConfigSeq=%d): %+v", cs.ChainID(), lastBlock.Header.Number, cs.lastConfig, cs.lastConfigSeq, metadata)
 
 	cs.chain, err = consenter.HandleChain(cs, metadata)
 	if err != nil {
@@ -222,6 +234,7 @@ func (cs *chainSupport) addBlockSignature(block *cb.Block) {
 func (cs *chainSupport) addLastConfigSignature(block *cb.Block) {
 	configSeq := cs.Sequence()
 	if configSeq > cs.lastConfigSeq {
+		logger.Debugf("[channel: %s] Detected lastConfigSeq transitioning from %d to %d, setting lastConfig from %d to %d", cs.ChainID(), cs.lastConfigSeq, configSeq, cs.lastConfig, block.Header.Number)
 		cs.lastConfig = block.Header.Number
 		cs.lastConfigSeq = configSeq
 	}
