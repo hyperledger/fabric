@@ -10,7 +10,7 @@
     "invokeType": "Move",
     "nOrderer": "1",
     "nPeer": "4",
-    "nThread": "4",
+    "nProc": "4",
     "nRequest": "1000",
     "runDur": "600",
     "TLS": "enabled",

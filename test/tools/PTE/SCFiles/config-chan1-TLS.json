@@ -5,8 +5,9 @@
 			"mspid": "OrdererOrg1",
 			"mspPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config",
 			"adminPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp",
+			"comName": "example.com",
                         "url": "grpcs://10.120.223.35:5005",
-                        "server-hostname": "orderer1.example.com",
+                        "server-hostname": "example.com",
                         "tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/example.com/orderers/orderer1.example.com/msp/cacerts/ca.example.com-cert.pem"
                 },
 		"org1": {
@@ -14,6 +15,7 @@
 			"mspid": "PeerOrg1",
 			"mspPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config",
 			"adminPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp",
+			"comName": "example.com",
 			"ca": {
                              "url":"https://10.120.223.35:7054",
 			     "name": "ca-org1"
@@ -38,6 +40,7 @@
 			"mspid": "PeerOrg2",
 			"mspPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config",
 			"adminPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp",
+			"comName": "example.com",
 			"ca": {
                              "url":"https://10.120.223.35:7055",
 			     "name": "ca-org2"

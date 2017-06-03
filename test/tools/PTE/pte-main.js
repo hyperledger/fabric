@@ -96,7 +96,7 @@ var users =  hfc.getConfigSetting('users');
 
 var transType = uiContent.transType;
 var nRequest = parseInt(uiContent.nRequest);
-var nThread = parseInt(uiContent.nThread);
+var nProc = parseInt(uiContent.nProc);
 var tCurr;
 
 
@@ -109,7 +109,7 @@ var tx_id = null;
 var nonce = null;
 
 var the_user = null;
-var g_len = nThread;
+var g_len = nProc;
 
 var cfgtxFile;
 var allEventhubs = [];
@@ -731,15 +731,17 @@ function pushMSP(client, msps) {
         console.log('[pushMSP] key: %s, ORGS[key].mspid: %s', key, ORGS[key].mspid);
         if (key.indexOf('orderer') === 0) {
             var msp = {};
+            var comName = ORGS[key].comName;
             msp.id = ORGS[key].mspid;
-            msp.rootCerts = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/example.com/msp/', 'cacerts'));
-            msp.admin = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/example.com/msp/', 'admincerts'));
+            msp.rootCerts = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/'+comName+'/msp/', 'cacerts'));
+            msp.admin = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/'+comName+'/msp/', 'admincerts'));
             msps.push(client.newMSP(msp));
         } else if (key.indexOf('org') === 0) {
             var msp = {};
+            var comName = ORGS[key].comName;
             msp.id = ORGS[key].mspid;
-            msp.rootCerts = readAllFiles(path.join(ORGS[key].mspPath+'/peerOrganizations/'+key+'.example.com/msp/', 'cacerts'));
-            msp.admin = readAllFiles(path.join(ORGS[key].mspPath+'/peerOrganizations/'+key+'.example.com/msp/', 'admincerts'));
+            msp.rootCerts = readAllFiles(path.join(ORGS[key].mspPath+'/peerOrganizations/'+key+'.'+comName+'/msp/', 'cacerts'));
+            msp.admin = readAllFiles(path.join(ORGS[key].mspPath+'/peerOrganizations/'+key+'.'+comName+'/msp/', 'admincerts'));
             msps.push(client.newMSP(msp));
         }
     }
@@ -755,42 +757,8 @@ function createOneChannel(client, org) {
 
         clientNewOrderer(client, org);
 
-        var ACCEPT_ALL = {
-                identities: [],
-                policy: {
-                        '0-of': []
-                }
-        };
-
-
-        var test_input3 = {
-                channel : {
-                        name : channelName,
-                        consortium : 'SampleConsortium',
-                        peers : {
-                                organizations : [{
-                                        id : ORGS['org1'].name,
-                                        //msp : { mspid : 'Org1MSP'},
-                                        policies : {
-
-                                        }
-                                },{
-                                        id : ORGS['org2'].name,
-                                        //msp : { mspid : 'Org2MSP'},
-                                        policies : {
-
-                                        }
-                                }],
-                                policies : {
-                                        Admins  : {threshold : 'MAJORITY'},
-                                        Writers : {threshold : 'ANY'},
-                                        Readers : {threshold : 'ANY'},
-                                },
-                        }
-                }
-        };
-
         var config = null;
+        var envelope_bytes = null;
         var signatures = [];
         var msps = [];
         var key;
@@ -804,18 +772,6 @@ function createOneChannel(client, org) {
             })
             .then((store) => {
                 client.setStateStore(store);
-                return testUtil.getOrderAdminSubmitter(client, org, svcFile);
-            })
-            .then((admin) => {
-                console.log('[createOneChannel] Successfully enrolled user \'admin\' for orderer');
-                //console.log('test_input3: ', test_input3);
-                //console.log('orderer: ', orderer);
-                //console.log('msps: ', msps);
-                return client.buildChannelConfig(test_input3, orderer, msps);
-            }).then((config_bytes) => {
-                console.log('\n***\n built config \n***\n');
-                console.log('Successfully built config update');
-                config = config_bytes;
 
                 key = 'org1';
                 username=ORGS[key].username;
@@ -824,8 +780,13 @@ function createOneChannel(client, org) {
                 return testUtil.getSubmitter(username, secret, client, true, key, svcFile);
             }).then((admin) => {
                 //the_user = admin;
-                console.log('[createOneChannel] admin : ', admin);
                 console.log('[createOneChannel] Successfully enrolled user \'admin\' for', key);
+                var channelTX=channelOpt.channelTX;
+                console.log('[createOneChannel] channelTX: ', channelTX);
+                envelope_bytes = fs.readFileSync(channelTX);
+                config = client.extractChannelConfig(envelope_bytes);
+                console.log('[createOneChannel] Successfull extracted the config update from the configtx envelope: ', channelTX);
+
                 var signature = client.signChannelConfig(config);
                 console.log('[createOneChannel] Successfully signed config update: ', key);
                 // collect signature from org1 admin
@@ -1190,7 +1151,7 @@ function performance_main() {
             }
         } else if ( transType.toUpperCase() == 'INVOKE' ) {
             // spawn off processes for transactions
-            for (var j = 0; j < nThread; j++) {
+            for (var j = 0; j < nProc; j++) {
                 var workerProcess = child_process.spawn('node', ['./pte-execRequest.js', j, Nid, uiFile, tStart, org]);
 
                 workerProcess.stdout.on('data', function (data) {

@@ -46,7 +46,7 @@ do
 
 done < $1
 
-echo "Node Array: ${nodeArray[@]}, ${nodeArray[*]}"
+echo "Node Array: ${nodeArray[@]}"
 
 # node requests
 function nodeProc {
