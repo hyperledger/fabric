@@ -471,6 +471,15 @@ func TestNewChain(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatalf("Block 1 not produced after timeout on new chain")
 	}
+
+	testRestartedChainSupport(t, chainSupport, consenters, expectedLastConfigSeq)
+}
+
+func testRestartedChainSupport(t *testing.T, cs ChainSupport, consenters map[string]Consenter, expectedLastConfigSeq uint64) {
+	ccs, ok := cs.(*chainSupport)
+	assert.True(t, ok, "Casting error")
+	rcs := newChainSupport(ccs.filters, ccs.ledgerResources, consenters, mockCrypto())
+	assert.Equal(t, expectedLastConfigSeq, rcs.lastConfigSeq, "On restart, incorrect lastConfigSeq")
 }
 
 func testLastConfigBlockNumber(t *testing.T, block *cb.Block, expectedBlockNumber uint64) {
