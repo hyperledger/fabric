@@ -227,14 +227,14 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	if !syscc.IsSysCC(cid.Name) {
 		cdLedger, err = e.getCDSFromLSCC(ctx, chainID, txid, signedProp, prop, cid.Name, txsim)
 		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("failed to obtain cds for %s - %s", cid.Name, err)
+			return nil, nil, nil, nil, fmt.Errorf("%s - make sure the chaincode %s has been successfully instantiated and try again", err, cid.Name)
 		}
 		version = cdLedger.Version
 
 		// we retrieve info about this chaincode from the file system
 		ccpack, err := ccprovider.GetChaincodeFromFS(cid.Name, version)
 		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("Chaincode data for cc %s/%s was not found, error %s", cid.Name, version, err)
+			return nil, nil, nil, nil, fmt.Errorf("chaincode %s/%s not found on the file system, error %s", cid.Name, version, err)
 		}
 		// ccpack is guaranteed to be non-nil
 		cdLocalFS := ccpack.GetChaincodeData()
@@ -253,7 +253,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		// https://jira.hyperledger.org/browse/FAB-3156
 		if cdLocalFS.InstantiationPolicy != nil {
 			if !bytes.Equal(cdLocalFS.InstantiationPolicy, cdLedger.InstantiationPolicy) {
-				return nil, nil, nil, nil, fmt.Errorf("Instantiation policy mismatch for cc %s/%s", cid.Name, version)
+				return nil, nil, nil, nil, fmt.Errorf("instantiation policy mismatch for cc %s/%s", cid.Name, version)
 			}
 		}
 	} else {
@@ -266,7 +266,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	var ccevent *pb.ChaincodeEvent
 	res, ccevent, err = e.callChaincode(ctx, chainID, version, txid, signedProp, prop, cis, cid, txsim)
 	if err != nil {
-		endorserLogger.Errorf("callChaincode() failed for txid: %s error: %s", txid, err)
+		endorserLogger.Errorf("failed to invoke chaincode %s on transaction %s, error: %s", cid, txid, err)
 		return nil, nil, nil, nil, err
 	}
 
@@ -423,7 +423,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		// here we handle uniqueness check and ACLs for proposals targeting a chain
 		lgr := peer.GetLedger(chainID)
 		if lgr == nil {
-			return nil, errors.New(fmt.Sprintf("Failure while looking up the ledger %s", chainID))
+			return nil, fmt.Errorf("failure while looking up the ledger %s", chainID)
 		}
 		if _, err := lgr.GetTransactionByID(txid); err == nil {
 			return nil, fmt.Errorf("Duplicate transaction found [%s]. Creator [%x]. [%s]", txid, shdr.Creator, err)
