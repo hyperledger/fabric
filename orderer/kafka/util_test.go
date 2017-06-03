@@ -112,14 +112,8 @@ func TestNewBrokerConfig(t *testing.T) {
 }
 
 func TestTLSConfigEnabled(t *testing.T) {
-	publicKey, privateKey, err := util.GenerateMockPublicPrivateKeyPairPEM(false)
-	if err != nil {
-		t.Fatalf("Enable to generate a public/private key pair: %v", err)
-	}
-	caPublicKey, _, err := util.GenerateMockPublicPrivateKeyPairPEM(true)
-	if err != nil {
-		t.Fatalf("Enable to generate a signer certificate: %v", err)
-	}
+	publicKey, privateKey, _ := util.GenerateMockPublicPrivateKeyPairPEM(false)
+	caPublicKey, _, _ := util.GenerateMockPublicPrivateKeyPairPEM(true)
 
 	config := newBrokerConfig(testConf.Kafka.Version, 0, config.TLS{
 		Enabled:     true,
@@ -137,14 +131,8 @@ func TestTLSConfigEnabled(t *testing.T) {
 }
 
 func TestTLSConfigDisabled(t *testing.T) {
-	publicKey, privateKey, err := util.GenerateMockPublicPrivateKeyPairPEM(false)
-	if err != nil {
-		t.Fatalf("Enable to generate a public/private key pair: %v", err)
-	}
-	caPublicKey, _, err := util.GenerateMockPublicPrivateKeyPairPEM(true)
-	if err != nil {
-		t.Fatalf("Enable to generate a signer certificate: %v", err)
-	}
+	publicKey, privateKey, _ := util.GenerateMockPublicPrivateKeyPairPEM(false)
+	caPublicKey, _, _ := util.GenerateMockPublicPrivateKeyPairPEM(true)
 
 	config := newBrokerConfig(testConf.Kafka.Version, 0, config.TLS{
 		Enabled:     false,
@@ -159,14 +147,8 @@ func TestTLSConfigDisabled(t *testing.T) {
 }
 
 func TestTLSConfigBadCert(t *testing.T) {
-	publicKey, privateKey, err := util.GenerateMockPublicPrivateKeyPairPEM(false)
-	if err != nil {
-		t.Fatalf("Enable to generate a public/private key pair: %v", err)
-	}
-	caPublicKey, _, err := util.GenerateMockPublicPrivateKeyPairPEM(true)
-	if err != nil {
-		t.Fatalf("Enable to generate a signer certificate: %v", err)
-	}
+	publicKey, privateKey, _ := util.GenerateMockPublicPrivateKeyPairPEM(false)
+	caPublicKey, _, _ := util.GenerateMockPublicPrivateKeyPairPEM(true)
 
 	t.Run("BadPrivateKey", func(t *testing.T) {
 		assert.Panics(t, func() {
