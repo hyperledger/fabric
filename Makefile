@@ -84,10 +84,11 @@ PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 PROJECT_FILES = $(shell git ls-files)
 IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka couchdb tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s390x
-RELEASE_PKGS = configtxgen cryptogen
+RELEASE_PKGS = configtxgen cryptogen configtxlator
 
 pkgmap.cryptogen      := $(PKGNAME)/common/tools/cryptogen
 pkgmap.configtxgen    := $(PKGNAME)/common/configtx/tool/configtxgen
+pkgmap.configtxlator  := $(PKGNAME)/common/tools/configtxlator
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
 pkgmap.block-listener := $(PKGNAME)/examples/events/block-listener
@@ -129,6 +130,8 @@ orderer-docker: build/image/orderer/$(DUMMY)
 configtxgen: GO_TAGS+= nopkcs11
 configtxgen: build/bin/configtxgen
 
+configtxlator: build/bin/configtxlator
+
 cryptogen: build/bin/cryptogen
 
 tools-docker: build/image/tools/$(DUMMY)
@@ -152,7 +155,7 @@ test-cmd:
 	@echo "go test -ldflags \"$(GO_LDFLAGS)\""
 
 docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
-native: peer orderer configtxgen cryptogen
+native: peer orderer configtxgen cryptogen configtxlator
 
 behave-deps: docker peer build/bin/block-listener configtxgen cryptogen
 behave: behave-deps
@@ -311,6 +314,11 @@ release/linux-s390x: GOARCH=s390x
 release/linux-s390x: DOCKER_ARCH=s390x
 release/linux-s390x: GO_TAGS+= nopkcs11
 release/linux-s390x: $(patsubst %,release/linux-s390x/bin/%, $(RELEASE_PKGS)) release/linux-s390x/install
+
+release/%/bin/configtxlator: $(PROJECT_FILES)
+	@echo "Building $@ for $(GOOS)-$(GOARCH)"
+	mkdir -p $(@D)
+	$(CGO_FLAGS) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(abspath $@) -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 
 release/%/bin/configtxgen: $(PROJECT_FILES)
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
