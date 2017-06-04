@@ -262,12 +262,16 @@ func (ml *multiLedger) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxa
 		return nil, fmt.Errorf("Proposed configuration has no application group members, but consortium contains members")
 	}
 
-	for orgName := range configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups {
-		consortiumGroup, ok := systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups[orgName]
-		if !ok {
-			return nil, fmt.Errorf("Attempted to include a member which is not in the consortium")
+	// If the consortium has no members, allow the source request to contain arbitrary members
+	// Otherwise, require that the supplied members are a subset of the consortium members
+	if len(systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 {
+		for orgName := range configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups {
+			consortiumGroup, ok := systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups[orgName]
+			if !ok {
+				return nil, fmt.Errorf("Attempted to include a member which is not in the consortium")
+			}
+			applicationGroup.Groups[orgName] = consortiumGroup
 		}
-		applicationGroup.Groups[orgName] = consortiumGroup
 	}
 
 	channelGroup := cb.NewConfigGroup()
