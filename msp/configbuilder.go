@@ -151,14 +151,14 @@ func GetLocalMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) 
 
 	sigid := &msp.SigningIdentityInfo{PublicSigner: signcert[0], PrivateSigner: nil}
 
-	return getMspConfig(dir, bccspConfig, ID, sigid)
+	return getMspConfig(dir, ID, sigid)
 }
 
-func GetVerifyingMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) (*msp.MSPConfig, error) {
-	return getMspConfig(dir, bccspConfig, ID, nil)
+func GetVerifyingMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
+	return getMspConfig(dir, ID, nil)
 }
 
-func getMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string, sigid *msp.SigningIdentityInfo) (*msp.MSPConfig, error) {
+func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.MSPConfig, error) {
 	cacertDir := filepath.Join(dir, cacerts)
 	signcertDir := filepath.Join(dir, signcerts)
 	admincertDir := filepath.Join(dir, admincerts)

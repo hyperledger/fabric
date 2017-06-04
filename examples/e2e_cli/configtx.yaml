@@ -55,18 +55,6 @@ Organizations:
         # MSPDir is the filesystem path which contains the MSP configuration
         MSPDir: crypto-config/ordererOrganizations/example.com/msp
 
-        # BCCSP (Blockchain crypto provider): Select which crypto implementation or
-        # library to use
-        BCCSP:
-            Default: SW
-            SW:
-                Hash: SHA2
-                Security: 256
-                # Location of Key Store. If this is unset, a location will
-                # be chosen using 'MSPDir'/keystore
-                FileKeyStore:
-                    KeyStore:
-
     - &Org1
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
@@ -76,18 +64,6 @@ Organizations:
         ID: Org1MSP
 
         MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
-
-        # BCCSP (Blockchain crypto provider): Select which crypto implementation or
-        # library to use
-        BCCSP:
-            Default: SW
-            SW:
-                Hash: SHA2
-                Security: 256
-                # Location of Key Store. If this is unset, a location will
-                # be chosen using 'MSPDir'/keystore
-                FileKeyStore:
-                    KeyStore:
 
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used
@@ -105,18 +81,6 @@ Organizations:
         ID: Org2MSP
 
         MSPDir: crypto-config/peerOrganizations/org2.example.com/msp
-
-        # BCCSP (Blockchain crypto provider): Select which crypto implementation or
-        # library to use
-        BCCSP:
-            Default: SW
-            SW:
-                Hash: SHA2
-                Security: 256
-                # Location of Key Store. If this is unset, a location will
-                # be chosen using 'MSPDir'/keystore
-                FileKeyStore:
-                    KeyStore:
 
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used

@@ -95,22 +95,6 @@ Organizations:
         # ADMIN and role type MEMBER respectively.
         AdminPrincipal: Role.ADMIN
 
-        # BCCSP: Select which crypto implementation or library to use for the
-        # blockchain crypto service provider.
-        BCCSP:
-            Default: SW
-            SW:
-                # TODO: The default Hash and Security level needs refactoring to
-                # be fully configurable. Changing these defaults requires
-                # coordination SHA2 is hardcoded in several places, not only
-                # BCCSP.
-                Hash: SHA2
-                Security: 256
-                # Location of key store. If this is unset, a location will be
-                # chosen using: 'MSPDir'/keystore
-                FileKeyStore:
-                    KeyStore:
-
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used for
             # cross-org gossip communication. Note, this value is only encoded

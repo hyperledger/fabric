@@ -30,7 +30,6 @@ import (
 
 	"path/filepath"
 
-	bccsp "github.com/hyperledger/fabric/bccsp/factory"
 	cf "github.com/hyperledger/fabric/core/config"
 )
 
@@ -101,11 +100,10 @@ type Application struct {
 
 // Organization encodes the organization-level configuration needed in config transactions.
 type Organization struct {
-	Name           string             `yaml:"Name"`
-	ID             string             `yaml:"ID"`
-	MSPDir         string             `yaml:"MSPDir"`
-	AdminPrincipal string             `yaml:"AdminPrincipal"`
-	BCCSP          *bccsp.FactoryOpts `yaml:"BCCSP"`
+	Name           string `yaml:"Name"`
+	ID             string `yaml:"ID"`
+	MSPDir         string `yaml:"MSPDir"`
+	AdminPrincipal string `yaml:"AdminPrincipal"`
 
 	// Note: Viper deserialization does not seem to care for
 	// embedding of types, so we use one organization struct
@@ -267,5 +265,4 @@ func (p *Profile) completeInitialization(configDir string) {
 
 func translatePaths(configDir string, org *Organization) {
 	cf.TranslatePathInPlace(configDir, &org.MSPDir)
-	cf.TranslatePathInPlace(configDir, &org.BCCSP.SwOpts.FileKeystore.KeyStorePath)
 }

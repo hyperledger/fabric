@@ -125,7 +125,7 @@ func New(conf *genesisconfig.Profile) Generator {
 		}
 
 		for _, org := range conf.Orderer.Organizations {
-			mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.BCCSP, org.ID)
+			mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.ID)
 			if err != nil {
 				logger.Panicf("1 - Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
@@ -154,7 +154,7 @@ func New(conf *genesisconfig.Profile) Generator {
 			policies.TemplateImplicitMetaMajorityPolicy([]string{config.ApplicationGroupKey}, configvaluesmsp.AdminsPolicyKey),
 		}
 		for _, org := range conf.Application.Organizations {
-			mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.BCCSP, org.ID)
+			mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.ID)
 			if err != nil {
 				logger.Panicf("2- Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
@@ -193,7 +193,7 @@ func New(conf *genesisconfig.Profile) Generator {
 			bs.consortiumsGroups = append(bs.consortiumsGroups, cg)
 
 			for _, org := range consortium.Organizations {
-				mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.BCCSP, org.ID)
+				mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.ID)
 				if err != nil {
 					logger.Panicf("3 - Error loading MSP configuration for org %s: %s", org.Name, err)
 				}

@@ -56,18 +56,6 @@ Organizations:
 
         AdminPrincipal: Role.ADMIN
 
-        # BCCSP (Blockchain crypto provider): Select which crypto implementation or
-        # library to use
-        BCCSP:
-            Default: SW
-            SW:
-                Hash: SHA2
-                Security: 256
-                # Location of Key Store. If this is unset, a location will
-                # be chosen using 'MSPDir'/keystore
-                FileKeyStore:
-                    KeyStore:
-
     - &Org1
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
@@ -79,18 +67,6 @@ Organizations:
         MSPDir: cryptogen/peerOrganizations/org1.net/msp
 
         AdminPrincipal: Role.ADMIN
-
-        # BCCSP (Blockchain crypto provider): Select which crypto implementation or
-        # library to use
-        BCCSP:
-            Default: SW
-            SW:
-                Hash: SHA2
-                Security: 256
-                # Location of Key Store. If this is unset, a location will
-                # be chosen using 'MSPDir'/keystore
-                FileKeyStore:
-                    KeyStore:
 
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used

@@ -43,7 +43,7 @@ func TestOrganization(t *testing.T) {
 
 	mspDir, err := fabricconfig.GetDevMspDir()
 	assert.NoError(t, err, "Error getting MSP dev directory")
-	mspConf, err := msp.GetVerifyingMspConfig(mspDir, nil, "TestMSP")
+	mspConf, err := msp.GetVerifyingMspConfig(mspDir, "TestMSP")
 	assert.NoError(t, err, "Error loading MSP config")
 	oc.(*OrganizationConfig).protos.MSP = mspConf
 	mspHandler.BeginConfig(t)
@@ -57,7 +57,7 @@ func TestOrganization(t *testing.T) {
 	err = oc.Validate(t, nil)
 	assert.Error(t, err, "Validate should have returned error for attempt to change MSPID")
 
-	mspConf, err = msp.GetVerifyingMspConfig(mspDir, nil, "")
+	mspConf, err = msp.GetVerifyingMspConfig(mspDir, "")
 	oc.(*OrganizationConfig).protos.MSP = mspConf
 	err = oc.Validate(t, nil)
 	assert.Error(t, err, "Validate should have returned error for empty MSP ID")
