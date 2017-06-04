@@ -71,6 +71,35 @@ func (m *mockD) Recv() (*cb.Envelope, error) {
 	return msg, nil
 }
 
+type erroneousRecvMockD struct {
+	grpc.ServerStream
+}
+
+func (m *erroneousRecvMockD) Send(br *ab.DeliverResponse) error {
+	return nil
+}
+
+func (m *erroneousRecvMockD) Recv() (*cb.Envelope, error) {
+	// The point here is to simulate an error other than EOF.
+	// We don't bother to create a new custom error type.
+	return nil, io.ErrUnexpectedEOF
+}
+
+type erroneousSendMockD struct {
+	grpc.ServerStream
+	recvVal *cb.Envelope
+}
+
+func (m *erroneousSendMockD) Send(br *ab.DeliverResponse) error {
+	// The point here is to simulate an error other than EOF.
+	// We don't bother to create a new custom error type.
+	return io.ErrUnexpectedEOF
+}
+
+func (m *erroneousSendMockD) Recv() (*cb.Envelope, error) {
+	return m.recvVal, nil
+}
+
 type mockSupportManager struct {
 	chains map[string]*mockSupport
 }
@@ -143,7 +172,7 @@ func makeSeek(chainID string, seekInfo *ab.SeekInfo) *cb.Envelope {
 	}
 }
 
-func TestOldestSeek(t *testing.T) {
+func TestWholeChainSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
@@ -254,7 +283,7 @@ func TestUnauthorizedSeek(t *testing.T) {
 	}
 }
 
-func TestBadSeek(t *testing.T) {
+func TestOutOfBoundSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
@@ -377,6 +406,163 @@ func TestReversedSeqSeek(t *testing.T) {
 		if deliverReply.GetStatus() != cb.Status_BAD_REQUEST {
 			t.Fatalf("Received wrong error on the reply channel")
 		}
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestBadStreamRecv(t *testing.T) {
+	bh := NewHandlerImpl(nil)
+	assert.Error(t, bh.Handle(&erroneousRecvMockD{}), "Should catch unexpected stream error")
+}
+
+func TestBadStreamSend(t *testing.T) {
+	m := &erroneousSendMockD{recvVal: makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})}
+	ds := initializeDeliverHandler()
+	assert.Error(t, ds.Handle(m), "Should catch unexpected stream error")
+}
+
+func TestOldestSeek(t *testing.T) {
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := initializeDeliverHandler()
+	go ds.Handle(m)
+
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekOldest, Stop: seekOldest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.NotEqual(t, nil, deliverReply.GetBlock(), "Received an error on the reply channel")
+		assert.Equal(t, uint64(0), deliverReply.GetBlock().Header.Number, "Expected only the most recent block")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestNoPayloadSeek(t *testing.T) {
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := initializeDeliverHandler()
+	go ds.Handle(m)
+
+	m.recvChan <- &cb.Envelope{Payload: []byte("Foo")}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestNilPayloadHeaderSeek(t *testing.T) {
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := initializeDeliverHandler()
+	go ds.Handle(m)
+
+	m.recvChan <- &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{})}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestBadChannelHeader(t *testing.T) {
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := initializeDeliverHandler()
+	go ds.Handle(m)
+
+	m.recvChan <- &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{
+		Header: &cb.Header{ChannelHeader: []byte("Foo")},
+	})}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestChainNotFound(t *testing.T) {
+	mm := &mockSupportManager{
+		chains: make(map[string]*mockSupport),
+	}
+
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := NewHandlerImpl(mm)
+	go ds.Handle(m)
+
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_NOT_FOUND, deliverReply.GetStatus(), "Received wrong error on the reply channel")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestBadSeekInfoPayload(t *testing.T) {
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := initializeDeliverHandler()
+	go ds.Handle(m)
+
+	m.recvChan <- &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId: systemChainID,
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
+			},
+			Data: []byte("Foo"),
+		}),
+	}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestMissingSeekPosition(t *testing.T) {
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := initializeDeliverHandler()
+	go ds.Handle(m)
+
+	m.recvChan <- &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId: systemChainID,
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
+			},
+			Data: nil,
+		}),
+	}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
 	}
