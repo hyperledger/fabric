@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"flag"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -65,7 +66,7 @@ func TestInspectConfigTx(t *testing.T) {
 	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
 
 	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
 
 	assert.NoError(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Good outputChannelCreateTx generation request")
 	assert.NoError(t, doInspectChannelCreateTx(configTxDest), "Good configtx inspection request")
@@ -75,30 +76,50 @@ func TestGenerateAnchorPeersUpdate(t *testing.T) {
 	configTxDest := tmpDir + string(os.PathSeparator) + "anchorPeerUpdate"
 
 	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
+	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
 
 	assert.NoError(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "Good anchorPeerUpdate request")
 }
 
-func TestFlags(t *testing.T) {
-	blockDest := tmpDir + string(os.PathSeparator) + "block"
+func TestConfigTxFlags(t *testing.T) {
 	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
+	configTxDestAnchorPeers := tmpDir + string(os.PathSeparator) + "configtxAnchorPeers"
 	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
+	defer func() {
+		os.Args = oldArgs
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	}()
 	os.Args = []string{
 		"cmd",
-		"-outputBlock=" + blockDest,
 		"-outputCreateChannelTx=" + configTxDest,
-		"-profile=" + genesisconfig.SampleSingleMSPSoloProfile,
-		"-inspectBlock=" + blockDest,
+		"-profile=" + genesisconfig.SampleSingleMSPChannelProfile,
 		"-inspectChannelCreateTx=" + configTxDest,
-		"-outputAnchorPeersUpdate=" + configTxDest,
+		"-outputAnchorPeersUpdate=" + configTxDestAnchorPeers,
 		"-asOrg=" + genesisconfig.SampleOrgName,
+	}
+	main()
+
+	_, err := os.Stat(configTxDest)
+	assert.NoError(t, err, "Configtx file is written successfully")
+	_, err = os.Stat(configTxDestAnchorPeers)
+	assert.NoError(t, err, "Configtx anchor peers file is written successfully")
+}
+
+func TestBlockFlags(t *testing.T) {
+	blockDest := tmpDir + string(os.PathSeparator) + "block"
+	oldArgs := os.Args
+	defer func() {
+		os.Args = oldArgs
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	}()
+	os.Args = []string{
+		"cmd",
+		"-profile=" + genesisconfig.SampleSingleMSPSoloProfile,
+		"-outputBlock=" + blockDest,
+		"-inspectBlock=" + blockDest,
 	}
 	main()
 
 	_, err := os.Stat(blockDest)
 	assert.NoError(t, err, "Block file is written successfully")
-	_, err = os.Stat(configTxDest)
-	assert.NoError(t, err, "Configtx file is written successfully")
 }

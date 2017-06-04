@@ -104,7 +104,9 @@ func copyGroup(source *cb.ConfigGroup, target *cb.ConfigGroup) error {
 	for key, group := range source.Groups {
 		_, ok := target.Groups[key]
 		if !ok {
-			target.Groups[key] = cb.NewConfigGroup()
+			newGroup := cb.NewConfigGroup()
+			newGroup.ModPolicy = group.ModPolicy
+			target.Groups[key] = newGroup
 		}
 
 		err := copyGroup(group, target.Groups[key])
@@ -151,7 +153,7 @@ type modPolicySettingTemplate struct {
 }
 
 // NewModPolicySettingTemplate wraps another template and sets the ModPolicy of
-// every ConfigGroup/ConfigValue/ConfigPolicy to modPolicy
+// every ConfigGroup/ConfigValue/ConfigPolicy without a modPolicy to modPolicy
 func NewModPolicySettingTemplate(modPolicy string, template Template) Template {
 	return &modPolicySettingTemplate{
 		modPolicy: modPolicy,
@@ -160,13 +162,21 @@ func NewModPolicySettingTemplate(modPolicy string, template Template) Template {
 }
 
 func setGroupModPolicies(modPolicy string, group *cb.ConfigGroup) {
-	group.ModPolicy = modPolicy
+	if group.ModPolicy == "" {
+		group.ModPolicy = modPolicy
+	}
 
 	for _, value := range group.Values {
+		if value.ModPolicy != "" {
+			continue
+		}
 		value.ModPolicy = modPolicy
 	}
 
 	for _, policy := range group.Policies {
+		if policy.ModPolicy != "" {
+			continue
+		}
 		policy.ModPolicy = modPolicy
 	}
 

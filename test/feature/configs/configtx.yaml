@@ -23,8 +23,6 @@ Profiles:
     SampleInsecureSolo:
         Orderer:
             <<: *OrdererDefaults
-        Application:
-            <<: *ApplicationDefaults
         Consortiums:
             SampleConsortium:
                 Organizations:
@@ -35,8 +33,6 @@ Profiles:
         Orderer:
             <<: *OrdererDefaults
             OrdererType: kafka
-        Application:
-            <<: *ApplicationDefaults
         Consortiums:
             SampleConsortium:
                 Organizations:
@@ -47,10 +43,6 @@ Profiles:
     SampleSingleMSPSolo:
         Orderer:
             <<: *OrdererDefaults
-            Organizations:
-                - *SampleOrg
-        Application:
-            <<: *ApplicationDefaults
             Organizations:
                 - *SampleOrg
         Consortiums:

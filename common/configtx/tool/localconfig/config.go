@@ -59,6 +59,8 @@ const (
 	SampleInsecureProfile = "SampleInsecureSolo"
 	// SampleSingleMSPSoloProfile references the sample profile which includes only the sample MSP and uses solo for ordering.
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
+	// SampleSingleMSPChannelProfile references the sample profile which includes only the sample MSP and is used to create a channel
+	SampleSingleMSPChannelProfile = "SampleSingleMSPChannel"
 
 	// SampleConsortiumName is the sample consortium from the sample configtx.yaml
 	SampleConsortiumName = "SampleConsortium"

@@ -67,6 +67,10 @@ func doOutputChannelCreateTx(conf *genesisconfig.Profile, channelID string, outp
 		return fmt.Errorf("Error getting signing identity: %s", err)
 	}
 
+	if conf.Application == nil {
+		return fmt.Errorf("Cannot define a new channel with no application section")
+	}
+
 	// XXX we ignore the non-application org names here, once the tool supports configuration updates
 	// we should come up with a cleaner way to handle this, but leaving as is for the moment to not break
 	// backwards compatibility
@@ -90,6 +94,10 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 	logger.Info("Generating anchor peer update")
 	if asOrg == "" {
 		return fmt.Errorf("Must specify an organization to update the anchor peer for")
+	}
+
+	if conf.Application == nil {
+		return fmt.Errorf("Cannot update anchor peers without an application section")
 	}
 
 	var org *genesisconfig.Organization
