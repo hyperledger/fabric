@@ -39,8 +39,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var conf *genesisconfig.Profile
-var genesisBlock = cb.NewBlock(0, nil) // *cb.Block
+var conf, singleMSPConf *genesisconfig.Profile
+var genesisBlock, singleMSPGenesisBlock *cb.Block
 var mockSigningIdentity msp.SigningIdentity
 
 func init() {
@@ -48,6 +48,10 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 	genesisBlock = provisional.New(conf).GenesisBlock()
 	mockSigningIdentity, _ = mmsp.NewNoopMsp().GetDefaultSigningIdentity()
+
+	singleMSPConf = genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
+	logging.SetLevel(logging.DEBUG, "")
+	singleMSPGenesisBlock = provisional.New(singleMSPConf).GenesisBlock()
 }
 
 func mockCrypto() *mockCryptoHelper {
@@ -69,6 +73,20 @@ func NewRAMLedgerAndFactory(maxSize int) (ledger.Factory, ledger.ReadWriter) {
 		panic(err)
 	}
 	err = rl.Append(genesisBlock)
+	if err != nil {
+		panic(err)
+	}
+	return rlf, rl
+}
+
+func NewRAMLedgerAndFactoryWithMSP() (ledger.Factory, ledger.ReadWriter) {
+	rlf := ramledger.New(10)
+
+	rl, err := rlf.GetOrCreate(provisional.TestChainID)
+	if err != nil {
+		panic(err)
+	}
+	err = rl.Append(singleMSPGenesisBlock)
 	if err != nil {
 		panic(err)
 	}
@@ -202,7 +220,7 @@ func TestManagerImpl(t *testing.T) {
 
 func TestNewChannelConfig(t *testing.T) {
 
-	lf, _ := NewRAMLedgerAndFactory(3)
+	lf, _ := NewRAMLedgerAndFactoryWithMSP()
 
 	consenters := make(map[string]Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
@@ -363,6 +381,65 @@ func TestNewChannelConfig(t *testing.T) {
 				}),
 			},
 			"^Unknown consortium name:",
+		},
+		{
+			"Missing consortium members",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{
+									config.ConsortiumKey: &cb.ConfigValue{
+										Value: utils.MarshalOrPanic(
+											&cb.Consortium{
+												Name: genesisconfig.SampleConsortiumName,
+											},
+										),
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"Proposed configuration has no application group members, but consortium contains members",
+		},
+		{
+			"Member not in consortium",
+			&cb.Payload{
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+										Groups: map[string]*cb.ConfigGroup{
+											"BadOrgName": &cb.ConfigGroup{},
+										},
+									},
+								},
+								Values: map[string]*cb.ConfigValue{
+									config.ConsortiumKey: &cb.ConfigValue{
+										Value: utils.MarshalOrPanic(
+											&cb.Consortium{
+												Name: genesisconfig.SampleConsortiumName,
+											},
+										),
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"Attempted to include a member which is not in the consortium",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
