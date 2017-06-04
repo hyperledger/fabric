@@ -77,15 +77,23 @@ func TestCompositeTemplate(t *testing.T) {
 }
 
 func TestModPolicySettingTemplate(t *testing.T) {
+	existingModPolicy := "bar"
+
 	subGroup := "group"
+	subGroupExistingModPolicy := "otherGroup"
 	input := cb.NewConfigGroup()
 	input.Groups[subGroup] = cb.NewConfigGroup()
+	input.Groups[subGroupExistingModPolicy] = &cb.ConfigGroup{ModPolicy: existingModPolicy}
 
 	policyName := "policy"
 	valueName := "value"
+	policyExistingModPolicy := "otherPolicy"
+	valueExistingModPolicy := "otherValue"
 	for _, group := range []*cb.ConfigGroup{input, input.Groups[subGroup]} {
 		group.Values[valueName] = &cb.ConfigValue{}
 		group.Policies[policyName] = &cb.ConfigPolicy{}
+		group.Values[valueExistingModPolicy] = &cb.ConfigValue{ModPolicy: existingModPolicy}
+		group.Policies[policyExistingModPolicy] = &cb.ConfigPolicy{ModPolicy: existingModPolicy}
 	}
 
 	modPolicyName := "foo"
@@ -98,9 +106,14 @@ func TestModPolicySettingTemplate(t *testing.T) {
 	assert.Equal(t, modPolicyName, configUpdate.WriteSet.ModPolicy)
 	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Values[valueName].ModPolicy)
 	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Policies[policyName].ModPolicy)
+	assert.Equal(t, existingModPolicy, configUpdate.WriteSet.Values[valueExistingModPolicy].ModPolicy)
+	assert.Equal(t, existingModPolicy, configUpdate.WriteSet.Policies[policyExistingModPolicy].ModPolicy)
 	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].ModPolicy)
 	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].Values[valueName].ModPolicy)
 	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].Policies[policyName].ModPolicy)
+	assert.Equal(t, existingModPolicy, configUpdate.WriteSet.Groups[subGroup].Values[valueExistingModPolicy].ModPolicy)
+	assert.Equal(t, existingModPolicy, configUpdate.WriteSet.Groups[subGroup].Policies[policyExistingModPolicy].ModPolicy)
+	assert.Equal(t, existingModPolicy, configUpdate.WriteSet.Groups[subGroupExistingModPolicy].ModPolicy)
 }
 
 func TestNewChainTemplate(t *testing.T) {

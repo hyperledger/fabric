@@ -19,10 +19,6 @@ Profiles:
         <<: *OrdererDefaults
         Organizations:
           - *OrdererOrg
-      Application:
-        <<: *ApplicationDefaults
-        Organizations:
-          - *Org1
       Consortiums:
         SampleConsortium:
           Organizations:
