@@ -44,6 +44,19 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
+// >>>>> begin errors section >>>>>
+//chaincodeError is a fabric error signifying error from chaincode
+type chaincodeError struct {
+	status int32
+	msg    string
+}
+
+func (ce chaincodeError) Error() string {
+	return fmt.Sprintf("chaincode error (status: %d, message: %s)", ce.status, ce.msg)
+}
+
+// <<<<< end errors section <<<<<<
+
 var endorserLogger = flogging.MustGetLogger("endorser")
 
 // The Jira issue that documents Endorser flow along with its relationship to
@@ -477,7 +490,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	}
 	if res != nil {
 		if res.Status >= shim.ERROR {
-			endorserLogger.Debugf("simulateProposal() resulted in chaincode error for txid: %s", txid)
+			endorserLogger.Errorf("simulateProposal() resulted in chaincode response status %d for txid: %s", res.Status, txid)
 			var cceventBytes []byte
 			if ccevent != nil {
 				cceventBytes, err = putils.GetBytesChaincodeEvent(ccevent)
@@ -489,7 +502,8 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 			if err != nil {
 				return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 			}
-			return pResp, nil
+
+			return pResp, &chaincodeError{res.Status, res.Message}
 		}
 	}
 
@@ -508,7 +522,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		if pResp != nil {
 			if res.Status >= shim.ERROR {
 				endorserLogger.Debugf("endorseProposal() resulted in chaincode error for txid: %s", txid)
-				return pResp, nil
+				return pResp, &chaincodeError{res.Status, res.Message}
 			}
 		}
 	}

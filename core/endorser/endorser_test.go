@@ -288,7 +288,7 @@ func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.Proposal, *pb.ProposalR
 
 	resp, err := endorserServer.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, nil, "", nil, fmt.Errorf("Error endorsing %s: %s\n", spec.ChaincodeId, err)
+		return nil, nil, "", nil, err
 	}
 
 	return prop, resp, txID, nonce, err
@@ -484,12 +484,18 @@ func TestDeployAndInvoke(t *testing.T) {
 	invokeArgs = append([]string{f}, args...)
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(invokeArgs...)}}
 	prop, resp, txid, nonce, err = invoke(chainID, spec)
-	if err != nil {
+	if err == nil {
 		t.Fail()
-		t.Logf("Error invoking transaction: %s", err)
+		t.Logf("expecting fabric to report error from chaincode failure")
+		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		return
+	} else if _, ok := err.(*chaincodeError); !ok {
+		t.Fail()
+		t.Logf("expecting chaincode error but found %v", err)
 		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
+
 	if resp != nil {
 		assert.Equal(t, int32(500), resp.Response.Status, "Unexpected response status")
 	}
