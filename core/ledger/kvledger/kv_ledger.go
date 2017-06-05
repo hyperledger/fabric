@@ -101,7 +101,7 @@ func (l *kvLedger) recoverDBs() error {
 		recoverers[0], recoverers[1] = recoverers[1], recoverers[0]
 	}
 	if recoverers[0].firstBlockNum != recoverers[1].firstBlockNum {
-		// bring the lagger db equal to the the other db
+		// bring the lagger db equal to the other db
 		if err := l.recommitLostBlocks(recoverers[0].firstBlockNum, recoverers[1].firstBlockNum-1,
 			recoverers[0].recoverable); err != nil {
 			return err

@@ -145,7 +145,7 @@ func GetLocalMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) 
 
 	/* FIXME: for now we're making the following assumptions
 	1) there is exactly one signing cert
-	2) BCCSP's KeyStore has the the private key that matches SKI of
+	2) BCCSP's KeyStore has the private key that matches SKI of
 	   signing cert
 	*/
 

@@ -589,7 +589,7 @@ func GetBid(stub shim.ChaincodeStubInterface, function string, args []string) pb
 
 	var err error
 
-	// Check there are 2 Arguments provided as per the the struct - two are computed
+	// Check there are 2 Arguments provided as per the struct - two are computed
 	// See example
 	if len(args) < 2 {
 		fmt.Println("GetBid(): Incorrect number of arguments. Expecting 2 ")
@@ -782,7 +782,7 @@ func CreateItemObject(args []string) (ItemObject, error) {
 	var err error
 	var myItem ItemObject
 
-	// Check there are 13 Arguments provided as per the the struct - two are computed
+	// Check there are 13 Arguments provided as per the struct - two are computed
 	if len(args) != 13 {
 		fmt.Println("CreateItemObject(): Incorrect number of arguments. Expecting 13 ")
 		return myItem, errors.New("CreateItemObject(): Incorrect number of arguments. Expecting 13 ")
@@ -1889,7 +1889,7 @@ func GetListOfOpenAucs(stub shim.ChaincodeStubInterface, function string, args [
 ////////////////////////////////////////////////////////////////////////////
 func GetItemLog(stub shim.ChaincodeStubInterface, function string, args []string) pb.Response {
 
-	// Check there are 1 Arguments provided as per the the struct - two are computed
+	// Check there are 1 Arguments provided as per the struct - two are computed
 	// See example
 	if len(args) < 1 {
 		fmt.Println("GetItemLog(): Incorrect number of arguments. Expecting 1 ")
@@ -1947,7 +1947,7 @@ func GetItemLog(stub shim.ChaincodeStubInterface, function string, args []string
 ////////////////////////////////////////////////////////////////////////////
 func GetItemListByCat(stub shim.ChaincodeStubInterface, function string, args []string) pb.Response {
 
-	// Check there are 1 Arguments provided as per the the struct - two are computed
+	// Check there are 1 Arguments provided as per the struct - two are computed
 	// See example
 	if len(args) < 1 {
 		fmt.Println("GetItemListByCat(): Incorrect number of arguments. Expecting 1 ")
@@ -2002,7 +2002,7 @@ func GetItemListByCat(stub shim.ChaincodeStubInterface, function string, args []
 ////////////////////////////////////////////////////////////////////////////
 func GetUserListByCat(stub shim.ChaincodeStubInterface, function string, args []string) pb.Response {
 
-	// Check there are 1 Arguments provided as per the the struct - two are computed
+	// Check there are 1 Arguments provided as per the struct - two are computed
 	// See example
 	if len(args) < 1 {
 		fmt.Println("GetUserListByCat(): Incorrect number of arguments. Expecting 1 ")

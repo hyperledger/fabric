@@ -45,7 +45,7 @@ func NewEventsServer(bufferSize uint, timeout time.Duration) *EventsServer {
 	return globalEventsServer
 }
 
-// Chat implementation of the the Chat bidi streaming RPC function
+// Chat implementation of the Chat bidi streaming RPC function
 func (p *EventsServer) Chat(stream pb.Events_ChatServer) error {
 	handler, err := newEventHandler(stream)
 	if err != nil {

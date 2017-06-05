@@ -462,7 +462,7 @@ func GetList(stub shim.ChaincodeStubInterface, objectType string, keys []string)
 
 ////////////////////////////////////////////////////////////////////////////
 // This function verifies if the number of key provided is at least 1 and
-// < the the max keys defined for the Object
+// < the max keys defined for the Object
 ////////////////////////////////////////////////////////////////////////////
 
 func VerifyAtLeastOneKeyIsPresent(objectType string, args []string) error {
