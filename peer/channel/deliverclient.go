@@ -56,7 +56,7 @@ func seekHelper(chainID string, position *ab.SeekPosition) *common.Envelope {
 	epoch := uint64(0)
 	env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch)
 	if err != nil {
-		fmt.Printf("Error signing envelope %s\n", err)
+		logger.Errorf("Error signing envelope:  %s", err)
 		return nil
 	}
 	return env
@@ -77,16 +77,15 @@ func (r *deliverClient) seekNewest() error {
 func (r *deliverClient) readBlock() (*common.Block, error) {
 	msg, err := r.client.Recv()
 	if err != nil {
-		fmt.Println("Error receiving:", err)
-		return nil, err
+		return nil, fmt.Errorf("Error receiving: %s", err)
 	}
 
 	switch t := msg.Type.(type) {
 	case *ab.DeliverResponse_Status:
-		fmt.Println("Got status ", t)
+		logger.Debugf("Got status:%T ", t)
 		return nil, fmt.Errorf("can't read the block")
 	case *ab.DeliverResponse_Block:
-		fmt.Println("Received block: ", t.Block.Header.Number)
+		logger.Debugf("Received block:%v ", t.Block.Header.Number)
 		r.client.Recv() // Flush the success message
 		return t.Block, nil
 	default:
@@ -97,7 +96,7 @@ func (r *deliverClient) readBlock() (*common.Block, error) {
 func (r *deliverClient) getSpecifiedBlock(num uint64) (*common.Block, error) {
 	err := r.seekSpecified(num)
 	if err != nil {
-		fmt.Println("Received error:", err)
+		logger.Errorf("Received error: %s", err)
 		return nil, err
 	}
 
@@ -107,8 +106,7 @@ func (r *deliverClient) getSpecifiedBlock(num uint64) (*common.Block, error) {
 func (r *deliverClient) getOldestBlock() (*common.Block, error) {
 	err := r.seekOldest()
 	if err != nil {
-		fmt.Println("Received error:", err)
-		return nil, err
+		return nil, fmt.Errorf("Received error: %s ", err)
 	}
 
 	return r.readBlock()
@@ -117,7 +115,7 @@ func (r *deliverClient) getOldestBlock() (*common.Block, error) {
 func (r *deliverClient) getNewestBlock() (*common.Block, error) {
 	err := r.seekNewest()
 	if err != nil {
-		fmt.Println("Received error:", err)
+		logger.Errorf("Received error: %s", err)
 		return nil, err
 	}
 

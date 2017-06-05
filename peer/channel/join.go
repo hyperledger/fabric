@@ -60,14 +60,13 @@ func (e ProposalFailedErr) Error() string {
 
 func getJoinCCSpec() (*pb.ChaincodeSpec, error) {
 	if genesisBlockPath == common.UndefinedParamValue {
-		return nil, errors.New("Must supply genesis block file.")
+		return nil, errors.New("Must supply genesis block file")
 	}
 
 	gb, err := ioutil.ReadFile(genesisBlockPath)
 	if err != nil {
 		return nil, GBFileNotFoundErr(err.Error())
 	}
-
 	// Build the spec
 	input := &pb.ChaincodeInput{Args: [][]byte{[]byte(cscc.JoinChain), gb}}
 
@@ -119,9 +118,7 @@ func executeJoin(cf *ChannelCmdFactory) (err error) {
 	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != 200 {
 		return ProposalFailedErr(fmt.Sprintf("bad proposal response %d", proposalResp.Response.Status))
 	}
-
-	fmt.Println("Peer joined the channel!")
-
+	logger.Infof("Peer joined the channel!")
 	return nil
 }
 
