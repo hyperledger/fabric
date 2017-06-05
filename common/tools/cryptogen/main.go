@@ -30,6 +30,7 @@ import (
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
+	"github.com/hyperledger/fabric/common/tools/cryptogen/metadata"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/msp"
 )
 
@@ -198,6 +199,8 @@ var (
 	configFile = gen.Flag("config", "The configuration template to use").File()
 
 	showtemplate = app.Command("showtemplate", "Show the default configuration template")
+
+	version = app.Command("version", "Show version information")
 )
 
 func main() {
@@ -212,6 +215,10 @@ func main() {
 	case showtemplate.FullCommand():
 		fmt.Print(defaultConfig)
 		os.Exit(0)
+
+	// "version" command
+	case version.FullCommand():
+		printVersion()
 	}
 
 }
@@ -536,4 +543,8 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return cerr
+}
+
+func printVersion() {
+	fmt.Println(metadata.GetVersionInfo())
 }

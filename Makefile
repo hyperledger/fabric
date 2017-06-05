@@ -289,6 +289,8 @@ release: $(patsubst %,release/%, $(shell go env GOOS)-$(shell go env GOARCH))
 # builds release packages for all target platforms
 release-all: $(patsubst %,release/%, $(RELEASE_PLATFORMS))
 
+release/%: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
+
 release/windows-amd64: GOOS=windows
 release/windows-amd64: GO_TAGS+= nopkcs11
 release/windows-amd64: $(patsubst %,release/windows-amd64/bin/%, $(RELEASE_PKGS)) release/windows-amd64/install
