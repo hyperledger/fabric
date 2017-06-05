@@ -220,6 +220,7 @@ func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
 					InternalEndpoint: endpoint,
 				}
 				if !d.comm.Ping(peer) {
+					d.logger.Warning("Failed connecting to bootstrap peer", endpoint)
 					return
 				}
 				d.comm.SendToPeer(peer, req)
