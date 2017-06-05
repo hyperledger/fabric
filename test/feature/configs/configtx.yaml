@@ -1,15 +1,10 @@
-# Copyright IBM Corp. All Rights Reserved.
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-
 ---
 ################################################################################
 #
 #   Profiles
 #
 #   - Different configuration profiles may be encoded here to be specified
-#   as parameters to the configtxgen tool.  The profiles which specify consortiums
+#   as parameters to the configtxgen tool. The profiles which specify consortiums
 #   are to be used for generating the orderer genesis block.  With the correct
 #   consortium members defined in the orderer genesis block, channel creation
 #   requests may be generated with only the org member names and a consortium name
@@ -23,9 +18,13 @@ Profiles:
     SampleInsecureSolo:
         Orderer:
             <<: *OrdererDefaults
+            Organizations:
+                - *ExampleCom
         Consortiums:
             SampleConsortium:
                 Organizations:
+                    - *Org1ExampleCom
+                    - *Org2ExampleCom
 
     # SampleInsecureKafka defines a configuration that differs from the
     # SampleInsecureSolo one only in that is uses the Kafka-based orderer.
@@ -33,9 +32,18 @@ Profiles:
         Orderer:
             <<: *OrdererDefaults
             OrdererType: kafka
+            Organizations:
+                - *ExampleCom
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *ExampleCom
         Consortiums:
             SampleConsortium:
                 Organizations:
+                    - *ExampleCom
+                    - *Org1ExampleCom
+                    - *Org2ExampleCom
 
     # SampleSingleMSPSolo defines a configuration which uses the Solo orderer,
     # and contains a single MSP definition (the MSP sampleconfig).
@@ -44,11 +52,17 @@ Profiles:
         Orderer:
             <<: *OrdererDefaults
             Organizations:
-                - *SampleOrg
+                - *ExampleCom
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *ExampleCom
         Consortiums:
             SampleConsortium:
                 Organizations:
-                    - *SampleOrg
+                    - *ExampleCom
+                    - *Org1ExampleCom
+                    - *Org2ExampleCom
 
     # SampleEmptyInsecureChannel defines a channel with no members
     # and therefore no access control
@@ -56,6 +70,15 @@ Profiles:
         Consortium: SampleConsortium
         Application:
             Organizations:
+                - *ExampleCom
+
+    # SysTestChannel defines a channel for use with the System Test Orgs
+    SysTestChannel:
+        Consortium: SampleConsortium
+        Application:
+            Organizations:
+                - *Org1ExampleCom
+                - *Org2ExampleCom
 
     # SampleSingleMSPChannel defines a channel with only the sample org as a
     # member.  It is designed to be used in conjunction with SampleSingleMSPSolo
@@ -63,8 +86,10 @@ Profiles:
     SampleSingleMSPChannel:
         Consortium: SampleConsortium
         Application:
+            <<: *ApplicationDefaults
             Organizations:
-                - *SampleOrg
+                - *Org1ExampleCom
+                - *Org2ExampleCom
 
 ################################################################################
 #
@@ -76,30 +101,43 @@ Profiles:
 ################################################################################
 Organizations:
 
-    # SampleOrg defines an MSP using the sampleconfig. It should never be used
-    # in production but may be used as a template for other definitions.
-    - &SampleOrg
-        # DefaultOrg defines the organization which is used in the sampleconfig
-        # of the fabric.git development environment.
-        Name: SampleOrg
-
-        # ID to load the MSP definition as.
-        ID: DEFAULT
-
-        # MSPDir is the filesystem path which contains the MSP configuration.
-        MSPDir: msp
-
-        # AdminPrincipal dictates the type of principal used for an
-        # organization's Admins policy. Today, only the values of Role.ADMIN and
-        # Role.MEMBER are accepted, which indicates a principal of role type
-        # ADMIN and role type MEMBER respectively.
-        AdminPrincipal: Role.ADMIN
-
+    - &Org1
+        Name: Organization1
+        ID: Org1
+        MSPDir: ./peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp
+        AdminPrincipal: Role.MEMBER
         AnchorPeers:
-            # AnchorPeers defines the location of peers which can be used for
-            # cross-org gossip communication. Note, this value is only encoded
-            # in the genesis block in the Application section context.
-            - Host: 127.0.0.1
+            - Host: peer0.org1.example.com
+              Port: 7051
+
+    - &Org2
+        Name: Organization2
+        ID: Org2
+        MSPDir: ./peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp
+        AdminPrincipal: Role.MEMBER
+        AnchorPeers:
+            - Host: peer0.org2.example.com
+              Port: 7051
+
+    - &ExampleCom
+        Name: ExampleCom
+        ID: example.com
+        MSPDir: ./ordererOrganizations/example.com/msp
+
+    - &Org1ExampleCom
+        Name: Org1ExampleCom
+        ID: org1.example.com
+        MSPDir: ./peerOrganizations/org1.example.com/msp
+        AnchorPeers:
+            - Host: peer0.org1.example.com
+              Port: 7051
+
+    - &Org2ExampleCom
+        Name: Org2ExampleCom
+        ID: org2.example.com
+        MSPDir: ./peerOrganizations/org2.example.com/msp
+        AnchorPeers:
+            - Host: peer0.org2.example.com
               Port: 7051
 
 ################################################################################
@@ -117,7 +155,7 @@ Orderer: &OrdererDefaults
     OrdererType: solo
 
     Addresses:
-        - 127.0.0.1:7050
+        - orderer.example.com:7050
 
     # Batch Timeout: The amount of time to wait before creating a batch.
     BatchTimeout: 2s
