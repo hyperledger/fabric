@@ -77,7 +77,7 @@ notation.
 
 ::
 
-    // Assume the the following groups are defined
+    // Assume the following groups are defined
     var root, child1, child2, grandChild1, grandChild2, grandChild3 *ConfigGroup
 
     // Set the following values

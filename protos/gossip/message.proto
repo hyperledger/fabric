@@ -191,7 +191,7 @@ message GossipHello {
     PullMsgType msg_type = 3;
 }
 
-// DataUpdate is the the final message in the pull phase
+// DataUpdate is the final message in the pull phase
 // sent from the receiver to the initiator
 message DataUpdate {
     uint64 nonce                = 1;

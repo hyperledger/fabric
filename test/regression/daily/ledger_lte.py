@@ -5,7 +5,7 @@ class perf_goleveldb(unittest.TestCase):
 
     def test_FAB_3790_VaryNumParallelTxPerChain(self):
         '''
-         In this Performance test, we observe the the performance (time to
+         In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the number of parallel
          transactions per chain and observe the performance.
@@ -21,7 +21,7 @@ class perf_goleveldb(unittest.TestCase):
 
     def test_FAB_3795_VaryNumChain(self):
         '''
-         In this Performance test, we observe the the performance (time to
+         In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the number of chains
          (ledgers).
@@ -37,7 +37,7 @@ class perf_goleveldb(unittest.TestCase):
 
     def test_FAB_3798_VaryNumParallelTxWithSingleChain(self):
         '''
-         In this Performance test, we observe the the performance (time to
+         In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the number of parallel
          transactions on a single chain.
@@ -53,7 +53,7 @@ class perf_goleveldb(unittest.TestCase):
 
     def test_FAB_3799_VaryNumChainWithNoParallelism(self):
         '''
-         In this Performance test, we observe the the performance (time to
+         In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the number of chains
          without any parallelism within a single chain.
@@ -69,7 +69,7 @@ class perf_goleveldb(unittest.TestCase):
 
     def test_FAB_3801_VaryKVSize(self):
         '''
-         In this Performance test, we observe the the performance (time to
+         In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the size of key-value.
 
@@ -84,7 +84,7 @@ class perf_goleveldb(unittest.TestCase):
 
     def test_FAB_3802_VaryBatchSize(self):
         '''
-         In this Performance test, we observe the the performance (time to
+         In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the value of the batch
          size
@@ -100,7 +100,7 @@ class perf_goleveldb(unittest.TestCase):
 
     def test_FAB_3800_VaryNumKeysInEachTX(self):
         '''
-         In this Performance test, we observe the the performance (time to
+         In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the number of keys in
          each transaction.
@@ -116,7 +116,7 @@ class perf_goleveldb(unittest.TestCase):
 
     def test_FAB_3803_VaryNumTxs(self):
         '''
-         In this Performance test, we observe the the performance (time to
+         In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the number of
          transactions carried out.
@@ -135,7 +135,7 @@ class perf_couchdb(unittest.TestCase):
     @unittest.skip("WIP, skipping")
     def test_FAB_3870_VaryNumParallelTxPerChain(self):
         '''
-         In this Performance test, we observe the the performance (operations
+         In this Performance test, we observe the performance (operations
          per second) of the Ledger component, with CouchDB as the state
          database, as we vary the number of parallel transactions per chain.
         '''
@@ -144,7 +144,7 @@ class perf_couchdb(unittest.TestCase):
     @unittest.skip("WIP, skipping")
     def test_FAB_3871_VaryNumChain(self):
         '''
-         In this Performance test, we observe the the performance (operations
+         In this Performance test, we observe the performance (operations
          per second) of the Ledger component, with CouchDB as the state
          database, as we vary the number of chains (ledgers).
         '''
@@ -153,7 +153,7 @@ class perf_couchdb(unittest.TestCase):
     @unittest.skip("WIP, skipping")
     def test_FAB_3872_VaryNumParallelTxWithSingleChain(self):
         '''
-         In this Performance test, we observe the the performance (operations
+         In this Performance test, we observe the performance (operations
          per second) of the Ledger component, with CouchDB as the state
          database, vary the number of parallel transactions on a single chain.
         '''
@@ -162,7 +162,7 @@ class perf_couchdb(unittest.TestCase):
     @unittest.skip("WIP, skipping")
     def test_FAB_3873_VaryNumChainWithNoParallelism(self):
         '''
-         In this Performance test, we observe the the performance (operations
+         In this Performance test, we observe the performance (operations
          per second) of the Ledger component, with CouchDB as the state
          database, as we vary the number of chains without any parallelism.
          within a single chain.
@@ -172,7 +172,7 @@ class perf_couchdb(unittest.TestCase):
     @unittest.skip("WIP, skipping")
     def test_FAB_3874_VaryKVSize(self):
         '''
-         In this Performance test, we observe the the performance (operations
+         In this Performance test, we observe the performance (operations
          per second) of the Ledger component, with CouchDB as the state
          database, varying the size of key-value.
         '''
@@ -181,7 +181,7 @@ class perf_couchdb(unittest.TestCase):
     @unittest.skip("WIP, skipping")
     def test_FAB_3875_VaryBatchSize(self):
         '''
-         In this Performance test, we observe the the performance (operations
+         In this Performance test, we observe the performance (operations
          per second) of the Ledger component, with CouchDB as the state
          database, as we vary the value of the batch size.
         '''
@@ -190,7 +190,7 @@ class perf_couchdb(unittest.TestCase):
     @unittest.skip("WIP, skipping")
     def test_FAB_3876_VaryNumKeysInEachTX(self):
         '''
-         In this Performance test, we observe the the performance (operations
+         In this Performance test, we observe the performance (operations
          per second) of the Ledger component, with CouchDB as the state
          database, as we vary the number of keys in each transaction.
         '''
@@ -199,7 +199,7 @@ class perf_couchdb(unittest.TestCase):
     @unittest.skip("WIP, skipping")
     def test_FAB_3877_VaryNumTxs(self):
         '''
-         In this Performance test, we observe the the performance (operations
+         In this Performance test, we observe the performance (operations
          per second) of the Ledger component, with CouchDB as the state
          database, as we vary the number of transactions carried out.
         '''
