@@ -94,7 +94,7 @@ class ChaincodeAPI(unittest.TestCase):
         self.assertIn('Invoke transaction on PEER3 on channel1/myccex020 is successful', output)
         self.assertIn('End-2-End for chaincode example02 completed successfully', output)
 
-    #@unittest.skip("skipping")
+    @unittest.skip("skipping")
     def test_FAB3791_example03_negative_test_disallow_write_attempt_in_query(self):
         ''' Test writing to ledger via query fails as expected
         '''
@@ -105,7 +105,7 @@ class ChaincodeAPI(unittest.TestCase):
         output = self.runIt("invokeQuery", "fabricFeatureChaincodes/e2e_test_example03.sh")
         self.assertIn('Query result on PEER0 is INVALID', output)
 
-    #@unittest.skip("skipping")
+    @unittest.skip("skipping")
     def test_FAB3796_example04_chaincode_to_chaincode_call_on_occurrence_of_an_event(self):
         ''' Test chaincode to chaincode calling when an event is generated.
         '''
@@ -116,7 +116,7 @@ class ChaincodeAPI(unittest.TestCase):
         output = self.runIt("invokeQuery", "fabricFeatureChaincodes/e2e_test_example04.sh")
         self.assertIn("successfully", output)
 
-    #@unittest.skip("skipping")
+    @unittest.skip("skipping")
     def test_FAB3797_example05_chaincode_to_chaincode_call_on_same_and_different_channel(self):
         ''' Test chaincode to chaincode calling, when second chaincode exists
             on a different channel.
@@ -135,7 +135,7 @@ class ChaincodeAPI(unittest.TestCase):
         output = self.runIt("invokeQuery", "fabricFeatureChaincodes/e2e_test_example05.sh")
         self.assertIn("successfully", output)
 
-    #@unittest.skip("skipping")
+    @unittest.skip("skipping")
     def test_FAB3792_marbles02_init_query_transfer_marbles(self):
         ''' This test few basic operations from marbles02 chaincode.
         '''
@@ -156,7 +156,7 @@ class ChaincodeAPI(unittest.TestCase):
         output = self.runIt("queryAfterTxfrMarble", "fabricFeatureChaincodes/e2e_test_marbles02.sh")
         self.assertIn("Query marble1 on PEER2 on channel0 on chaincode mymarbles020 is successful", output)
 
-    #@unittest.skip("skipping")
+    @unittest.skip("skipping")
     def test_FAB3793_chaincodeAPIDriver_exercise_chaincode_api_calls_as_invoke_functions(self):
         ''' Calling functions in shim/chaincode.go.
         '''
@@ -175,7 +175,7 @@ class ChaincodeAPI(unittest.TestCase):
         output = self.runIt("invoke_getTransient", "fabricFeatureChaincodes/e2e_test_ccapidriver.sh")
         self.assertIn("successful", output)
 
-    #@unittest.skip("skipping")
+    @unittest.skip("skipping")
     def test_FAB3793_chaincodeAPIDriver_2_exercise_chaincode_api_calls_as_direct_calls(self):
         ''' Calling functions in shim/chaincode.go.
         '''
@@ -193,12 +193,6 @@ class ChaincodeAPI(unittest.TestCase):
         self.assertIn("successful", output)
         output = self.runIt("invoke_getTransient", "fabricFeatureChaincodes/e2e_test_ccapidriver_two.sh")
         self.assertIn("successful", output)
-
-    @unittest.skip("skipping")
-    def test_FABXXXX_Joe_Chaincode(self):
-        ''' Calling functions in shim/chaincode.go.
-        '''
-        pass
 
     @unittest.skip("skipping")
     def test_FABXXXX_Laurie_Chaincode(self):

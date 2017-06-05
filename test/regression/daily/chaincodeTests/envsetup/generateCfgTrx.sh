@@ -63,7 +63,7 @@ function generateChannelArtifacts() {
 	fi
 
 	echo "Generating genesis block"
-	$CONFIGTXGEN -profile TwoOrgsOrdererGenesis -outputBlock $ARTIFACTS/orderer.genesis.block
+	$CONFIGTXGEN -profile TwoOrgsOrdererGenesis -outputBlock $ARTIFACTS/genesis.block
 
 	for (( i=0; $i<$CHANNEL_COUNT; i++))
 	do
