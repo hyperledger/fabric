@@ -19,6 +19,7 @@ package discovery
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -94,13 +95,14 @@ type gossipDiscoveryImpl struct {
 
 	toDieChan        chan struct{}
 	toDieFlag        int32
+	port             int
 	logger           *logging.Logger
 	disclosurePolicy DisclosurePolicy
 	pubsub           *util.PubSub
 }
 
 // NewDiscoveryService returns a new discovery service with the comm module passed and the crypto service passed
-func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommService, crypt CryptoService, disPol DisclosurePolicy) Discovery {
+func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoService, disPol DisclosurePolicy) Discovery {
 	d := &gossipDiscoveryImpl{
 		self:             self,
 		incTime:          uint64(time.Now().UnixNano()),
@@ -120,6 +122,7 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 		pubsub:           util.NewPubSub(),
 	}
 
+	d.validateSelfConfig()
 	d.msgStore = newAliveMsgStore(d)
 
 	go d.periodicalSendAlive()
@@ -127,8 +130,6 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 	go d.handleMessages()
 	go d.periodicalReconnectToDead()
 	go d.handlePresumedDeadPeers()
-
-	go d.connect2BootstrapPeers(bootstrapPeers)
 
 	d.logger.Info("Started", self, "incTime is", d.incTime)
 
@@ -147,6 +148,13 @@ func (d *gossipDiscoveryImpl) Lookup(PKIID common.PKIidType) *NetworkMember {
 }
 
 func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
+	for _, endpoint := range []string{member.InternalEndpoint, member.Endpoint} {
+		if d.isMyOwnEndpoint(endpoint) {
+			d.logger.Debug("Skipping connecting to myself")
+			return
+		}
+	}
+
 	d.logger.Debug("Entering", member)
 	defer d.logger.Debug("Exiting")
 	go func() {
@@ -175,6 +183,33 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
 	}()
 }
 
+func (d *gossipDiscoveryImpl) isMyOwnEndpoint(endpoint string) bool {
+	return endpoint == fmt.Sprintf("127.0.0.1:%d", d.port) || endpoint == fmt.Sprintf("localhost:%d", d.port) ||
+		endpoint == d.self.InternalEndpoint || endpoint == d.self.Endpoint
+}
+
+func (d *gossipDiscoveryImpl) validateSelfConfig() {
+	endpoint := d.self.InternalEndpoint
+	if len(endpoint) == 0 {
+		d.logger.Panic("Internal endpoint is empty:", endpoint)
+	}
+
+	internalEndpointSplit := strings.Split(endpoint, ":")
+	if len(internalEndpointSplit) != 2 {
+		d.logger.Panicf("Self endpoint %s isn't formatted as 'host:port'", endpoint)
+	}
+	myPort, err := strconv.ParseInt(internalEndpointSplit[1], 10, 64)
+	if err != nil {
+		d.logger.Panicf("Self endpoint %s has not valid port'", endpoint)
+	}
+
+	if myPort > int64(math.MaxUint16) {
+		d.logger.Panicf("Self endpoint %s's port takes more than 16 bits", endpoint)
+	}
+
+	d.port = int(myPort)
+}
+
 func (d *gossipDiscoveryImpl) sendUntilAcked(peer *NetworkMember, message *proto.SignedGossipMessage) {
 	nonce := message.Nonce
 	for i := 0; i < maxConnectionAttempts && !d.toDie(); i++ {
@@ -183,50 +218,6 @@ func (d *gossipDiscoveryImpl) sendUntilAcked(peer *NetworkMember, message *proto
 		if _, timeoutErr := sub.Listen(); timeoutErr == nil {
 			return
 		}
-		time.Sleep(getReconnectInterval())
-	}
-}
-
-func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
-	if len(d.self.InternalEndpoint) == 0 {
-		d.logger.Panic("Internal endpoint is empty:", d.self.InternalEndpoint)
-	}
-
-	if len(strings.Split(d.self.InternalEndpoint, ":")) != 2 {
-		d.logger.Panicf("Self endpoint %s isn't formatted as 'host:port'", d.self.InternalEndpoint)
-	}
-
-	myPort, err := strconv.ParseInt(strings.Split(d.self.InternalEndpoint, ":")[1], 10, 64)
-	if err != nil {
-		d.logger.Panicf("Self endpoint %s has not valid port'", d.self.InternalEndpoint)
-	}
-
-	d.logger.Info("Entering:", endpoints)
-	defer d.logger.Info("Exiting")
-	endpoints = filterOutLocalhost(endpoints, int(myPort))
-	if len(endpoints) == 0 {
-		return
-	}
-
-	for i := 0; i < maxConnectionAttempts && !d.somePeerIsKnown() && !d.toDie(); i++ {
-		var wg sync.WaitGroup
-		req := d.createMembershipRequest(true).NoopSign()
-		wg.Add(len(endpoints))
-		for _, endpoint := range endpoints {
-			go func(endpoint string) {
-				defer wg.Done()
-				peer := &NetworkMember{
-					Endpoint:         endpoint,
-					InternalEndpoint: endpoint,
-				}
-				if !d.comm.Ping(peer) {
-					d.logger.Warning("Failed connecting to bootstrap peer", endpoint)
-					return
-				}
-				d.comm.SendToPeer(peer, req)
-			}(endpoint)
-		}
-		wg.Wait()
 		time.Sleep(getReconnectInterval())
 	}
 }
@@ -960,17 +951,6 @@ func getAliveExpirationCheckInterval() time.Duration {
 
 func getReconnectInterval() time.Duration {
 	return util.GetDurationOrDefault("peer.gossip.reconnectInterval", getAliveExpirationTimeout())
-}
-
-func filterOutLocalhost(endpoints []string, port int) []string {
-	var returnedEndpoints []string
-	for _, endpoint := range endpoints {
-		if endpoint == fmt.Sprintf("127.0.0.1:%d", port) || endpoint == fmt.Sprintf("localhost:%d", port) {
-			continue
-		}
-		returnedEndpoints = append(returnedEndpoints, endpoint)
-	}
-	return returnedEndpoints
 }
 
 type aliveMsgStore struct {

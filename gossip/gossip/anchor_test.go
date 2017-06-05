@@ -287,3 +287,69 @@ func TestAnchorPeer(t *testing.T) {
 	pm1.finishedSignal.Wait()
 	pm2.finishedSignal.Wait()
 }
+
+func TestBootstrapPeerMisConfiguration(t *testing.T) {
+	t.Parallel()
+	// Scenario:
+	// The peer 'p' is a peer in orgA
+	// Peers bs1 and bs2 are bootstrap peers.
+	// bs1 is in orgB, so p shouldn't connect to it.
+	// bs2 is in orgA, so p should connect to it.
+	// We test by intercepting *all* messages that bs1 and bs2 get from p, that:
+	// 1) At least 3 connection attempts were sent from p to bs1
+	// 2) A membership request was sent from p to bs2
+
+	cs := &configurableCryptoService{m: make(map[string]api.OrgIdentityType)}
+	portPrefix := 43478
+	orgA := "orgA"
+	orgB := "orgB"
+	cs.putInOrg(portPrefix, orgA)
+	cs.putInOrg(portPrefix+1, orgB)
+	cs.putInOrg(portPrefix+2, orgA)
+
+	onlyHandshakes := func(t *testing.T, index int, m *receivedMsg) {
+		// Ensure all messages sent are connection establishment messages
+		// that are probing attempts
+		assert.NotNil(t, m.GetConn())
+		// If the logic we test in this test- fails,
+		// the first message would be a membership request,
+		// so this assertion would capture it and print a corresponding failure
+		assert.Nil(t, m.GetMemReq())
+	}
+	// Initialize a peer mock that would wait for 3 messages sent to it
+	bs1 := newPeerMock(portPrefix+1, 3, t, onlyHandshakes)
+	defer bs1.stop()
+
+	membershipRequestsSent := make(chan struct{}, 100)
+	detectMembershipRequest := func(t *testing.T, index int, m *receivedMsg) {
+		if m.GetMemReq() != nil {
+			membershipRequestsSent <- struct{}{}
+		}
+	}
+
+	bs2 := newPeerMock(portPrefix+2, 0, t, detectMembershipRequest)
+	defer bs2.stop()
+
+	p := newGossipInstanceWithExternalEndpoint(portPrefix, 0, cs, fmt.Sprintf("localhost:%d", portPrefix), 1, 2)
+	defer p.Stop()
+
+	// Wait for 3 handshake attempts from the bootstrap peer from orgB,
+	// to prove that the peer did try to probe the bootstrap peer from orgB
+	got3Handshakes := make(chan struct{})
+	go func() {
+		bs1.finishedSignal.Wait()
+		got3Handshakes <- struct{}{}
+	}()
+
+	select {
+	case <-got3Handshakes:
+	case <-time.After(time.Second * 15):
+		assert.Fail(t, "Didn't detect 3 handshake attempts to the bootstrap peer from orgB")
+	}
+
+	select {
+	case <-membershipRequestsSent:
+	case <-time.After(time.Second * 15):
+		assert.Fail(t, "Bootstrap peer didn't receive a membership request from the peer within a timely manner")
+	}
+}

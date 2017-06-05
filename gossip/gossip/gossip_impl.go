@@ -124,7 +124,7 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 
 	g.discAdapter = g.newDiscoveryAdapter()
 	g.disSecAdap = g.newDiscoverySecurityAdapter()
-	g.disc = discovery.NewDiscoveryService(conf.BootstrapPeers, g.selfNetworkMember(), g.discAdapter, g.disSecAdap, g.disclosurePolicy)
+	g.disc = discovery.NewDiscoveryService(g.selfNetworkMember(), g.discAdapter, g.disSecAdap, g.disclosurePolicy)
 	g.logger.Info("Creating gossip service with self membership of", g.selfNetworkMember())
 
 	g.certStore = newCertStore(g.createCertStorePuller(), idMapper, selfIdentity, mcs)
@@ -135,6 +135,7 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 
 	go g.start()
 	go g.periodicalIdentityValidationAndExpiration()
+	go g.connect2BootstrapPeers()
 
 	return g
 }
@@ -1031,6 +1032,32 @@ func (g *gossipServiceImpl) sameOrgOrOurOrgPullFilter(msg proto.ReceivedMessage)
 		// Peer from our org or identity from our org or identity from peer's org
 		return bytes.Equal(msgsOrg, g.selfOrg) || bytes.Equal(msgsOrg, peersOrg)
 	}
+}
+
+func (g *gossipServiceImpl) connect2BootstrapPeers() {
+	for _, endpoint := range g.conf.BootstrapPeers {
+		endpoint := endpoint
+		identifier := func() (*discovery.PeerIdentification, error) {
+			remotePeerIdentity, err := g.comm.Handshake(&comm.RemotePeer{Endpoint: endpoint})
+			if err != nil {
+				return nil, err
+			}
+			sameOrg := bytes.Equal(g.selfOrg, g.secAdvisor.OrgByPeerIdentity(remotePeerIdentity))
+			if !sameOrg {
+				return nil, fmt.Errorf("%s isn't in our organization, cannot be a bootstrap peer", endpoint)
+			}
+			pkiID := g.mcs.GetPKIidOfCert(remotePeerIdentity)
+			if len(pkiID) == 0 {
+				return nil, fmt.Errorf("Wasn't able to extract PKI-ID of remote peer with identity of %v", remotePeerIdentity)
+			}
+			return &discovery.PeerIdentification{ID: pkiID, SelfOrg: sameOrg}, nil
+		}
+		g.disc.Connect(discovery.NetworkMember{
+			InternalEndpoint: endpoint,
+			Endpoint:         endpoint,
+		}, identifier)
+	}
+
 }
 
 func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID) (*proto.SignedGossipMessage, error) {
