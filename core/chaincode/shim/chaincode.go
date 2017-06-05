@@ -371,9 +371,7 @@ func (stub *ChaincodeStub) GetTxID() string {
 
 // ------------- Call Chaincode functions ---------------
 
-// InvokeChaincode locally calls the specified chaincode `Invoke` using the
-// same transaction context; that is, chaincode calling chaincode doesn't
-// create a new transaction message.
+// InvokeChaincode documentation can be found in interfaces.go
 func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte, channel string) pb.Response {
 	// Internally we handle chaincode name as a composite name
 	if channel != "" {
@@ -384,16 +382,12 @@ func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte, 
 
 // --------- State functions ----------
 
-// GetState returns the byte array value specified by the `key`.
+// GetState documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetState(key string) ([]byte, error) {
 	return stub.handler.handleGetState(key, stub.TxID)
 }
 
-// PutState writes the specified `value` and `key` into the ledger.
-// Simple keys must not be an empty string and must not start with null
-// character (0x00), in order to avoid range query collisions with
-// composite keys, which internally get prefixed with 0x00 as composite
-// key namespace.
+// PutState documentation can be found in interfaces.go
 func (stub *ChaincodeStub) PutState(key string, value []byte) error {
 	if key == "" {
 		return fmt.Errorf("key must not be an empty string")
@@ -401,13 +395,12 @@ func (stub *ChaincodeStub) PutState(key string, value []byte) error {
 	return stub.handler.handlePutState(key, value, stub.TxID)
 }
 
-// DelState removes the specified `key` and its value from the ledger.
+// DelState documentation can be found in interfaces.go
 func (stub *ChaincodeStub) DelState(key string) error {
 	return stub.handler.handleDelState(key, stub.TxID)
 }
 
-// CommonIterator allows a chaincode to iterate over a set of
-// key/value pairs in the state.
+// CommonIterator documentation can be found in interfaces.go
 type CommonIterator struct {
 	handler    *Handler
 	uuid       string
@@ -415,14 +408,12 @@ type CommonIterator struct {
 	currentLoc int
 }
 
-//GeneralQueryIterator allows a chaincode to iterate the result
-//of range and execute query.
+// StateQueryIterator documentation can be found in interfaces.go
 type StateQueryIterator struct {
 	*CommonIterator
 }
 
-//GeneralQueryIterator allows a chaincode to iterate the result
-//of history query.
+// HistoryQueryIterator documentation can be found in interfaces.go
 type HistoryQueryIterator struct {
 	*CommonIterator
 }
@@ -442,13 +433,7 @@ func (stub *ChaincodeStub) handleGetStateByRange(startKey, endKey string) (State
 	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
-// GetStateByRange function can be invoked by a chaincode to query of a range
-// of keys in the state. Assuming the startKey and endKey are in lexical order,
-// an iterator will be returned that can be used to iterate over all keys
-// between the startKey and endKey. The startKey is inclusive whereas the endKey
-// is exclusive. The keys are returned by the iterator in lexical order. Note
-// that startKey and endKey can be empty string, which implies unbounded range
-// query on start or end.
+// GetStateByRange documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryIteratorInterface, error) {
 	if startKey == "" {
 		startKey = emptyKeySubstitute
@@ -459,11 +444,7 @@ func (stub *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryI
 	return stub.handleGetStateByRange(startKey, endKey)
 }
 
-// GetQueryResult function can be invoked by a chaincode to perform a
-// rich query against state database.  Only supported by state database implementations
-// that support rich query.  The query string is in the syntax of the underlying
-// state database. An iterator is returned which can be used to iterate (next) over
-// the query result set
+// GetQueryResult documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInterface, error) {
 	response, err := stub.handler.handleGetQueryResult(query, stub.TxID)
 	if err != nil {
@@ -472,8 +453,7 @@ func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInter
 	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
-// GetHistoryForKey function can be invoked by a chaincode to return a history of
-// key values across time. GetHistoryForKey is intended to be used for read-only queries.
+// GetHistoryForKey documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error) {
 	response, err := stub.handler.handleGetHistoryForKey(key, stub.TxID)
 	if err != nil {
@@ -482,12 +462,12 @@ func (stub *ChaincodeStub) GetHistoryForKey(key string) (HistoryQueryIteratorInt
 	return &HistoryQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
 }
 
-//CreateCompositeKey combines the given attributes to form a composite key.
+//CreateCompositeKey documentation can be found in interfaces.go
 func (stub *ChaincodeStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
 	return createCompositeKey(objectType, attributes)
 }
 
-//SplitCompositeKey splits the key into attributes on which the composite key was formed.
+//SplitCompositeKey documentation can be found in interfaces.go
 func (stub *ChaincodeStub) SplitCompositeKey(compositeKey string) (string, []string, error) {
 	return splitCompositeKey(compositeKey)
 }
@@ -574,8 +554,7 @@ func (iter *HistoryQueryIterator) Next() (*queryresult.KeyModification, error) {
 	}
 }
 
-// HasNext returns true if the range query iterator contains additional keys
-// and values.
+// HasNext documentation can be found in interfaces.go
 func (iter *CommonIterator) HasNext() bool {
 	if iter.currentLoc < len(iter.response.Results) || iter.response.HasMore {
 		return true
@@ -649,19 +628,18 @@ func (iter *CommonIterator) nextResult(rType resultType) (commonledger.QueryResu
 	return nil, errors.New("Invalid iterator state")
 }
 
-// Close closes the range query iterator. This should be called when done
-// reading from the iterator to free up resources.
+// Close documentation can be found in interfaces.go
 func (iter *CommonIterator) Close() error {
 	_, err := iter.handler.handleQueryStateClose(iter.response.Id, iter.uuid)
 	return err
 }
 
-// GetArgs returns the argument list
+// GetArgs documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetArgs() [][]byte {
 	return stub.args
 }
 
-// GetStringArgs returns the arguments as array of strings
+// GetStringArgs documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetStringArgs() []string {
 	args := stub.GetArgs()
 	strargs := make([]string, 0, len(args))
@@ -671,8 +649,7 @@ func (stub *ChaincodeStub) GetStringArgs() []string {
 	return strargs
 }
 
-// GetFunctionAndParameters returns the first arg as the function and the rest
-// as argument string array
+// GetFunctionAndParameters documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetFunctionAndParameters() (function string, params []string) {
 	allargs := stub.GetStringArgs()
 	function = ""
@@ -684,32 +661,27 @@ func (stub *ChaincodeStub) GetFunctionAndParameters() (function string, params [
 	return
 }
 
-// GetCreator returns SignatureHeader.Creator of the signedProposal
-// this Stub refers to.
+// GetCreator documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetCreator() ([]byte, error) {
 	return stub.creator, nil
 }
 
-// GetTransient returns the ChaincodeProposalPayload.transient field.
-// It is a map that contains data (e.g. cryptographic material)
-// that might be used to implement some form of application-level confidentiality. The contents
-// of this field, as prescribed by ChaincodeProposalPayload, are supposed to always
-// be omitted from the transaction and excluded from the ledger.
+// GetTransient documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetTransient() (map[string][]byte, error) {
 	return stub.transient, nil
 }
 
-// GetBinding returns the transaction binding
+// GetBinding documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetBinding() ([]byte, error) {
 	return stub.binding, nil
 }
 
-// GetSignedProposal return the signed signedProposal this stub refers to.
+// GetSignedProposal documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetSignedProposal() (*pb.SignedProposal, error) {
 	return stub.signedProposal, nil
 }
 
-// GetArgsSlice returns the arguments to the stub call as a byte array
+// GetArgsSlice documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetArgsSlice() ([]byte, error) {
 	args := stub.GetArgs()
 	res := []byte{}
@@ -719,9 +691,7 @@ func (stub *ChaincodeStub) GetArgsSlice() ([]byte, error) {
 	return res, nil
 }
 
-// GetTxTimestamp returns the timestamp when the transaction was created. This
-// is taken from the transaction ChannelHeader, so it will be the same across
-// all endorsers.
+// GetTxTimestamp documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
 	hdr, err := utils.GetHeader(stub.proposal.Header)
 	if err != nil {
@@ -737,7 +707,7 @@ func (stub *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
 
 // ------------- ChaincodeEvent API ----------------------
 
-// SetEvent saves the event to be sent when a transaction is made part of a block
+// SetEvent documentation can be found in interfaces.go
 func (stub *ChaincodeStub) SetEvent(name string, payload []byte) error {
 	if name == "" {
 		return errors.New("Event name can not be nil string.")

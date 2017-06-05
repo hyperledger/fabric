@@ -69,7 +69,7 @@ with the following command:
 
 However, it also includes functions from chaincode.pb.go (protobuffer
 functions) that are not intended as public APIs. The best practice is to
-look at the function definitions in chaincode.go and and the
+look at the function definitions and comments in interfaces.go and the
 `examples <https://github.com/hyperledger/fabric/tree/master/examples/chaincode/go>`__
 directory.
 
@@ -513,4 +513,3 @@ deployment model. Channel Create and Channel Join will remain the same.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-
