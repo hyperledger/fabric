@@ -43,3 +43,5 @@ bin/
 examples/e2e_cli/channel-artifacts/*.tx
 examples/e2e_cli/channel-artifacts/*.block
 examples/e2e_cli/crypto-config/*
+# vscode settings
+.vscode
