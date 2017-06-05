@@ -48,7 +48,7 @@ function generateCerts (){
             echo "Using cryptogen -> $CRYPTOGEN"
 	else
 	    echo "Building cryptogen"
-	    make -C $FABRIC_ROOT release-all
+	    make -C $FABRIC_ROOT release
 	fi
 
 	echo
@@ -67,7 +67,7 @@ function generateChannelArtifacts() {
             echo "Using configtxgen -> $CONFIGTXGEN"
 	else
 	    echo "Building configtxgen"
-	    make -C $FABRIC_ROOT release-all
+	    make -C $FABRIC_ROOT release
 	fi
 
 	echo "##########################################################"

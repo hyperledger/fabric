@@ -351,7 +351,7 @@ protos: buildenv
 docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
 
 .PHONY: clean
-clean: docker-clean unit-test-clean
+clean: docker-clean unit-test-clean release-clean
 	-@rm -rf build ||:
 
 .PHONY: dist-clean
