@@ -123,7 +123,7 @@ the sharing of information and processes.
 What is Hyperledger Fabric?
 ---------------------------
 
-The Linux Foundation founded the Hyperledger Project in 2015 to advance
+The Linux Foundation founded Hyperledger in 2015 to advance
 cross-industry blockchain technologies. Rather than declaring a single
 blockchain standard, it encourages a collaborative approach to developing
 blockchain technologies via a community process, with intellectual property
@@ -135,9 +135,9 @@ Like other blockchain technologies, it has a ledger, uses smart contracts,
 and is a system by which participants manage their transactions.
 
 Where Hyperledger Fabric breaks from some other blockchain systems is that
-it is **private** and **permissioned**. Rather than the “proof of work” some 
-blockchain networks use to verify identity (allowing anyone who meets those 
-criteria to join the network), the members of a Fabric network enroll through 
+it is **private** and **permissioned**. Rather than the “proof of work” some
+blockchain networks use to verify identity (allowing anyone who meets those
+criteria to join the network), the members of a Fabric network enroll through
 a **membership services provider**.
 
 Fabric also offers several pluggable options. Ledger data can be stored in
@@ -221,7 +221,7 @@ which defines the order that all processes subsequently build upon.
 Hyperledger Fabric has been designed to allow network starters to choose a
 consensus mechanism that best represents the relationships that exist between
 participants. As with privacy, there is a spectrum of needs; from networks
-that are highly structured in their relationships to those that are more 
+that are highly structured in their relationships to those that are more
 peer-to-peer.
 
 We’ll learn more about the Hyperledger Fabric consensus mechanisms, which
@@ -273,4 +273,3 @@ including maintainability, performance, availability and disaster recovery.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-
