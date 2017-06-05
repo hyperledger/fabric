@@ -1,23 +1,14 @@
 # Copyright IBM Corp All Rights Reserved.
 # Copyright London Stock Exchange Group All Rights Reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------
 # This makefile defines the following targets
 #
 #   - all (default) - builds all targets and runs all tests/checks
 #   - checks - runs all tests/checks
+#   - desk-check - runs linters and verify to test changed packages
 #   - configtxgen - builds a native configtxgen binary
 #   - cryptogen  -  builds a native cryptogen binary
 #   - peer - builds a native fabric peer binary
@@ -25,6 +16,7 @@
 #   - release - builds release packages for the host platform
 #   - release-all - builds release packages for all target platforms
 #   - unit-test - runs the go-test based unit tests
+#   - verify - runs unit tests for only the changed package tree
 #   - test-cmd - generates a "go test" string suitable for manual customization
 #   - behave - runs the behave test
 #   - behave-deps - ensures pre-requisites are available for running behave manually
@@ -81,7 +73,11 @@ K := $(foreach exec,$(EXECUTABLES),\
 GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
-PROJECT_FILES = $(shell git ls-files)
+# No sense rebuilding when non production code is changed
+PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
+	grep -v ^bddtests | grep -v ^docs | grep -v _test.go$ | grep -v .md$ | \
+	grep -v ^.git | grep -v ^examples | grep -v ^devenv | grep -v .png$ | \
+	grep -v ^LICENSE )
 IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka couchdb tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s390x
 RELEASE_PKGS = configtxgen cryptogen configtxlator
@@ -98,12 +94,16 @@ include docker-env.mk
 
 all: native docker checks
 
-checks: linter license spelling unit-test behave
+checks: license spelling linter unit-test behave
 
-spelling: buildenv
+desk-check: license spelling linter verify behave
+
+.PHONY: spelling
+spelling:
 	@scripts/check_spelling.sh
 
-license: buildenv
+.PHONY: license
+license:
 	@scripts/check_license.sh
 
 .PHONY: gotools
@@ -111,6 +111,7 @@ gotools:
 	mkdir -p build/bin
 	cd gotools && $(MAKE) install BINDIR=$(GOPATH)/bin
 
+.PHONY: gotools-clean
 gotools-clean:
 	cd gotools && $(MAKE) clean
 
@@ -145,10 +146,17 @@ testenv: build/image/testenv/$(DUMMY)
 
 couchdb: build/image/couchdb/$(DUMMY)
 
+kafka: build/image/kafka/$(DUMMY)
+
+zookeeper: build/image/zookeeper/$(DUMMY)
+
 unit-test: unit-test-clean peer-docker testenv couchdb
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
+
+verify: unit-test-clean peer-docker testenv couchdb
+	cd unit-test && JOB_TYPE=VERIFY docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 # Generates a string to the terminal suitable for manual augmentation / re-issue, useful for running tests by hand
 test-cmd:

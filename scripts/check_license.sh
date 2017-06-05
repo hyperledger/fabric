@@ -5,13 +5,24 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+CHECK=$(git diff --name-only HEAD * | grep -v .png$ | grep -v .rst$ | grep -v .git \
+  | grep -v .md$ | grep -v ^vendor/ | grep -v ^build/ | grep -v .pb.go$ | sort -u)
 
-echo "Checking Go files for license headers ..."
-missing=`find . -name "*.go" | grep -v build/ | grep -v vendor/ | grep -v ".pb.go" | grep -v "examples/chaincode/go/utxo/consensus/consensus.go" | xargs grep -l -L "Apache License"`
+if [[ -z "$CHECK" ]]; then
+  CHECK=$(git diff-tree --no-commit-id --name-only -r $(git log -2 \
+    --pretty=format:"%h") | grep -v .png$ | grep -v .rst$ | grep -v .git \
+    | grep -v .md$ | grep -v ^vendor/ | grep -v ^build/ | grep -v .pb.go$ | sort -u)
+fi
+
+echo "Checking committed files for SPDX-License-Identifier headers ..."
+missing=`echo $CHECK | xargs grep -L "SPDX-License-Identifier"`
 if [ -z "$missing" ]; then
-   echo "All go files have license headers"
+   echo "All files have SPDX-License-Identifier headers"
    exit 0
 fi
-echo "The following files are missing license headers:"
+echo "The following files are missing SPDX-License-Identifier headers:"
 echo "$missing"
+echo
+echo "Please replace the Apache license header comment text with:"
+echo "SPDX-License-Identifier: Apache-2.0"
 exit 1
