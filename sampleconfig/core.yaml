@@ -141,10 +141,6 @@ peer:
         # This is an endpoint that is published to peers outside of the organization.
         # If this isn't set, the peer will not be known to other organizations.
         externalEndpoint:
-        # Makes gossip skip verification of remote peer signature when performing
-        # the authentication handshake with remote peers
-        skipHandshake: false
-
         # Leader election service configuration
         election:
             # Longest time peer wait for stable membership during leader election startup (unit: second)

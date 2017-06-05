@@ -122,9 +122,9 @@ func (p *peerMock) connEstablishMsg(pkiID common.PKIidType, hash []byte, cert ap
 		Nonce: 0,
 		Content: &proto.GossipMessage_Conn{
 			Conn: &proto.ConnEstablish{
-				Hash:  hash,
-				Cert:  cert,
-				PkiId: pkiID,
+				TlsCertHash: hash,
+				Identity:    cert,
+				PkiId:       pkiID,
 			},
 		},
 	}

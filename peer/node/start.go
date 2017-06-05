@@ -161,7 +161,8 @@ func serve(args []string) error {
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions()...)
 
 		if comm.TLSEnabled() {
-			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCASupport().GetPeerCredentials()))
+			tlsCert := peerServer.ServerCertificate()
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCASupport().GetPeerCredentials(tlsCert)))
 		} else {
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}

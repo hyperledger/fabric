@@ -102,9 +102,11 @@ func (cas *CASupport) GetDeliverServiceCredentials() credentials.TransportCreden
 
 // GetPeerCredentials returns GRPC transport credentials for use by GRPC
 // clients which communicate with remote peer endpoints.
-func (cas *CASupport) GetPeerCredentials() credentials.TransportCredentials {
+func (cas *CASupport) GetPeerCredentials(tlsCert tls.Certificate) credentials.TransportCredentials {
 	var creds credentials.TransportCredentials
-	var tlsConfig = &tls.Config{}
+	var tlsConfig = &tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+	}
 	var certPool = x509.NewCertPool()
 	// loop through the orderer CAs
 	roots, _ := cas.GetServerRootCAs()
