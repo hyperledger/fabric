@@ -1,6 +1,34 @@
 Release Notes
 =============
 
+`v1.0.0-beta <https://github.com/hyperledger/fabric/releases/tag/v1.0.0-beta>`__
+June 8, 2017
+
+Bug fixes, documentation and test coverage improvements, UX improvements based on user feedback and changes to address a variety of static scan findings (unused code, static security scanning, spelling, linting and more).
+
+Upgraded to `latest version <https://github.com/grpc/grpc-go/releases/>`__ (a precursor to 1.4.0) of gRPC-go and implemented keep-alive feature for improved resiliency.
+
+Added a `new tool <https://github.com/hyperledger/fabric/tree/master/examples/configtxupdate>`__ `configtxlator` to enable users to translate the contents of a channel configuration transaction into a human readable form.
+
+Known Vulnerabilities
+~~~~~~~~~~~~~~~~~~~~~
+
+none
+
+Resolved Vulnerabilities
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+none
+
+Known Issues & Workarounds
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+BCCSP content in the configtx.yaml has been `removed <https://github.com/hyperledger/fabric/commit/a997c30>`__. This change will cause a panic when running `configtxgen` tool with a configtx.yaml file that includes the removed BCCSP content.
+
+Java Chaincode support has been disabled until post 1.0.0 as it is not yet fully mature. It may be re-enabled for experimentation by cloning the hyperledger/fabric repository, reversing `this commit <https://github.com/hyperledger/fabric/commit/29e0c40>`__ and building your own fork.
+
+`Change Log <https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v100-beta>`__
+
 `v1.0.0-alpha2 <https://github.com/hyperledger/fabric/releases/tag/v1.0.0-alpha2>`__
 
 The second alpha release of the v1.0.0 Hyperledger Fabric project. The code is
@@ -54,4 +82,3 @@ CLIs Known Key Bugs and work in progress
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-
