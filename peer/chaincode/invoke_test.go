@@ -139,31 +139,35 @@ func TestInvokeCmdEndorsementError(t *testing.T) {
 
 func TestInvokeCmdEndorsementFailure(t *testing.T) {
 	InitMSP()
-	ccRespStatus := int32(502)
-	ccRespPayload := []byte("Invalid function name")
-	mockCF, err := getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus, ccRespPayload)
-	assert.NoError(t, err, "Error getting mock chaincode command factory")
+	ccRespStatus := [2]int32{502, 400}
+	ccRespPayload := [][]byte{[]byte("Invalid function name"), []byte("Incorrect parameters")}
 
-	cmd := invokeCmd(mockCF)
-	AddFlags(cmd)
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-		"-c", "{\"Args\": [\"invokeinvalid\",\"a\",\"b\",\"10\"]}"}
-	cmd.SetArgs(args)
+	for i := 0; i < 2; i++ {
+		mockCF, err := getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus[i], ccRespPayload[i])
+		assert.NoError(t, err, "Error getting mock chaincode command factory")
 
-	// set logger to logger with a backend that writes to a byte buffer
-	var buffer bytes.Buffer
-	logger.SetBackend(logging.AddModuleLevel(logging.NewLogBackend(&buffer, "", 0)))
-	// reset the logger after test
-	defer func() {
-		flogging.Reset()
-	}()
-	// make sure buffer is "clean" before running the invoke
-	buffer.Reset()
+		cmd := invokeCmd(mockCF)
+		AddFlags(cmd)
+		args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+			"-c", "{\"Args\": [\"invokeinvalid\",\"a\",\"b\",\"10\"]}"}
+		cmd.SetArgs(args)
 
-	err = cmd.Execute()
-	assert.NoError(t, err)
-	assert.Regexp(t, "Endorsement failure during invoke", buffer.String())
-	assert.Regexp(t, fmt.Sprintf("chaincode result: status:%d payload:\"%s\"", ccRespStatus, ccRespPayload), buffer.String())
+		// set logger to logger with a backend that writes to a byte buffer
+		var buffer bytes.Buffer
+		logger.SetBackend(logging.AddModuleLevel(logging.NewLogBackend(&buffer, "", 0)))
+		// reset the logger after test
+		defer func() {
+			flogging.Reset()
+		}()
+		// make sure buffer is "clean" before running the invoke
+		buffer.Reset()
+
+		err = cmd.Execute()
+		assert.NoError(t, err)
+		assert.Regexp(t, "Endorsement failure during invoke", buffer.String())
+		assert.Regexp(t, fmt.Sprintf("chaincode result: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]), buffer.String())
+	}
+
 }
 
 // Returns mock chaincode command factory

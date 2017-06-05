@@ -129,10 +129,10 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 		return nil, nil, err
 	}
 
-	//per doc anything < 500 can be sent as TX.
-	//fabric errors will always be >= 500 (ie, unambiguous errors )
-	//"lscc" will respond with status 200 or >=500 (ie, unambiguous OK or ERROR)
-	if res.Status >= shim.ERROR {
+	//per doc anything < 400 can be sent as TX.
+	//fabric errors will always be >= 400 (ie, unambiguous errors )
+	//"lscc" will respond with status 200 or 500 (ie, unambiguous OK or ERROR)
+	if res.Status >= shim.ERRORTHRESHOLD {
 		return res, nil, nil
 	}
 
@@ -370,7 +370,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 		return nil, err
 	}
 
-	if res.Status >= shim.ERROR {
+	if res.Status >= shim.ERRORTHRESHOLD {
 		return &pb.ProposalResponse{Response: res}, nil
 	}
 
@@ -520,7 +520,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 		}
 		if pResp != nil {
-			if res.Status >= shim.ERROR {
+			if res.Status >= shim.ERRORTHRESHOLD {
 				endorserLogger.Debugf("endorseProposal() resulted in chaincode error for txid: %s", txid)
 				return pResp, &chaincodeError{res.Status, res.Message}
 			}

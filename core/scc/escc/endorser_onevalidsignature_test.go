@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInit(t *testing.T) {
@@ -49,8 +50,10 @@ func TestInvoke(t *testing.T) {
 	stub := shim.NewMockStub("endorseronevalidsignature", e)
 	successResponse := &pb.Response{Status: 200, Payload: []byte("payload")}
 	failResponse := &pb.Response{Status: 500, Message: "error"}
+	ccFailResponse := &pb.Response{Status: 400, Message: "chaincode error"}
 	successRes, _ := putils.GetBytesResponse(successResponse)
 	failRes, _ := putils.GetBytesResponse(failResponse)
+	ccFailRes, _ := putils.GetBytesResponse(ccFailResponse)
 	ccid := &pb.ChaincodeID{Name: "foo", Version: "v1"}
 	ccidBytes, err := proto.Marshal(ccid)
 	if err != nil {
@@ -152,12 +155,17 @@ func TestInvoke(t *testing.T) {
 		t.Fatalf("escc invoke should have failed with a null action struct.  args: %v", args)
 	}
 
-	// Failed path: status code >=500
+	// Failed path: status code = 500
 	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), ccidBytes, failRes, []byte("test")}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
-		fmt.Println("Invoke", args, "failed", string(res.Message))
-		t.Fatalf("escc invoke should have failed with a null response.  args: %v", args)
-	}
+	res := stub.MockInvoke("1", args)
+	assert.NotEqual(t, res.Status, shim.OK, "Invoke should have failed with status code: %d", ccFailResponse.Status)
+	assert.Contains(t, res.Message, fmt.Sprintf("Status code less than %d will be endorsed", shim.ERRORTHRESHOLD))
+
+	// Failed path: status code = 400
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), ccidBytes, ccFailRes, []byte("test")}
+	res = stub.MockInvoke("1", args)
+	assert.NotEqual(t, res.Status, shim.OK, "Invoke should have failed with status code: %d", ccFailResponse.Status)
+	assert.Contains(t, res.Message, fmt.Sprintf("Status code less than %d will be endorsed", shim.ERRORTHRESHOLD))
 
 	// Successful path - create a proposal
 	cs := &pb.ChaincodeSpec{
@@ -199,7 +207,7 @@ func TestInvoke(t *testing.T) {
 
 	// success test 1: invocation with mandatory args only
 	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, ccidBytes, successRes, simRes}
-	res := stub.MockInvoke("1", args)
+	res = stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
 		t.Fail()
 		t.Fatalf("escc invoke failed with: %s", res.Message)

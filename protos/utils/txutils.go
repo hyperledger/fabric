@@ -252,7 +252,7 @@ func CreateProposalResponse(hdrbytes []byte, payl []byte, response *peer.Respons
 
 // CreateProposalResponseFailure creates a proposal response for cases where
 // endorsement proposal fails either due to a endorsement failure or a chaincode
-// failure (chaincode response status >=500)
+// failure (chaincode response status >= shim.ERRORTHRESHOLD)
 func CreateProposalResponseFailure(hdrbytes []byte, payl []byte, response *peer.Response, results []byte, events []byte, ccid *peer.ChaincodeID, visibility []byte) (*peer.ProposalResponse, error) {
 	hdr, err := GetHeader(hdrbytes)
 	if err != nil {
