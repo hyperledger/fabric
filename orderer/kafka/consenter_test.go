@@ -26,8 +26,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var mockRetryOptions = localconfig.Retry{
+	ShortInterval: 50 * time.Millisecond,
+	ShortTotal:    200 * time.Millisecond,
+	LongInterval:  200 * time.Millisecond,
+	LongTotal:     1 * time.Second,
+	NetworkTimeouts: localconfig.NetworkTimeouts{
+		DialTimeout:  5 * time.Millisecond,
+		ReadTimeout:  5 * time.Millisecond,
+		WriteTimeout: 5 * time.Millisecond,
+	},
+	Metadata: localconfig.Metadata{
+		RetryMax:     2,
+		RetryBackoff: 40 * time.Millisecond,
+	},
+	Producer: localconfig.Producer{
+		RetryMax:     2,
+		RetryBackoff: 30 * time.Millisecond,
+	},
+	Consumer: localconfig.Consumer{
+		RetryBackoff: 20 * time.Millisecond,
+	},
+}
+
 func init() {
-	mockLocalConfig = newMockLocalConfig(false, 50, 200, false)
+	mockLocalConfig = newMockLocalConfig(false, mockRetryOptions, false)
 	mockBrokerConfig = newMockBrokerConfig(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
 	mockConsenter = newMockConsenter(mockBrokerConfig, mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version)
 	setupTestLogging("ERROR", mockLocalConfig.Kafka.Verbose)
@@ -113,7 +136,7 @@ func newMockEnvelope(content string) *cb.Envelope {
 	return &cb.Envelope{Payload: []byte(content)}
 }
 
-func newMockLocalConfig(enableTLS bool, retryPeriod int, retryStop int, verboseLog bool) *localconfig.TopLevel {
+func newMockLocalConfig(enableTLS bool, retryOptions localconfig.Retry, verboseLog bool) *localconfig.TopLevel {
 	return &localconfig.TopLevel{
 		General: localconfig.General{
 			TLS: localconfig.TLS{
@@ -121,10 +144,7 @@ func newMockLocalConfig(enableTLS bool, retryPeriod int, retryStop int, verboseL
 			},
 		},
 		Kafka: localconfig.Kafka{
-			Retry: localconfig.Retry{
-				Period: time.Duration(retryPeriod) * time.Millisecond,
-				Stop:   time.Duration(retryStop) * time.Millisecond,
-			},
+			Retry:   retryOptions,
 			Verbose: verboseLog,
 			Version: sarama.V0_9_0_1,
 		},

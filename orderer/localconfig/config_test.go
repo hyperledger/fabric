@@ -71,7 +71,7 @@ func TestMalformedConfigFile(t *testing.T) {
 func TestEnvInnerVar(t *testing.T) {
 	envVar1 := "ORDERER_GENERAL_LISTENPORT"
 	envVal1 := uint16(80)
-	envVar2 := "ORDERER_KAFKA_RETRY_PERIOD"
+	envVar2 := "ORDERER_KAFKA_RETRY_SHORTINTERVAL"
 	envVal2 := "42s"
 	os.Setenv(envVar1, fmt.Sprintf("%d", envVal1))
 	os.Setenv(envVar2, envVal2)
@@ -83,7 +83,7 @@ func TestEnvInnerVar(t *testing.T) {
 	assert.Equal(t, config.General.ListenPort, envVal1, "Environmental override of inner config test 1 did not work")
 
 	v2, _ := time.ParseDuration(envVal2)
-	assert.Equal(t, config.Kafka.Retry.Period, v2, "Environmental override of inner config test 2 did not work")
+	assert.Equal(t, config.Kafka.Retry.ShortInterval, v2, "Environmental override of inner config test 2 did not work")
 }
 
 const DummyPath = "/dummy/path"

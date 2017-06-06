@@ -20,9 +20,18 @@ func newBrokerConfig(tlsConfig localconfig.TLS, retryOptions localconfig.Retry, 
 	// FIXME https://jira.hyperledger.org/browse/FAB-4136
 	// Use retryOptions to populate `Net`
 
+	brokerConfig.Consumer.Retry.Backoff = retryOptions.Consumer.RetryBackoff
+
 	// Allows us to retrieve errors that occur when consuming a channel, via the
 	// channel's `listenForErrors` goroutine.
 	brokerConfig.Consumer.Return.Errors = true
+
+	brokerConfig.Metadata.Retry.Backoff = retryOptions.Metadata.RetryBackoff
+	brokerConfig.Metadata.Retry.Max = retryOptions.Metadata.RetryMax
+
+	brokerConfig.Net.DialTimeout = retryOptions.NetworkTimeouts.DialTimeout
+	brokerConfig.Net.ReadTimeout = retryOptions.NetworkTimeouts.ReadTimeout
+	brokerConfig.Net.WriteTimeout = retryOptions.NetworkTimeouts.WriteTimeout
 
 	brokerConfig.Net.TLS.Enable = tlsConfig.Enabled
 	if brokerConfig.Net.TLS.Enable {
@@ -49,6 +58,10 @@ func newBrokerConfig(tlsConfig localconfig.TLS, retryOptions localconfig.Retry, 
 	// Set equivalent of Kafka producer config max.request.bytes to the default
 	// value of a Kafka broker's socket.request.max.bytes property (100 MiB).
 	brokerConfig.Producer.MaxMessageBytes = int(sarama.MaxRequestSize) // FIXME https://jira.hyperledger.org/browse/FAB-4083
+
+	brokerConfig.Producer.Retry.Backoff = retryOptions.Producer.RetryBackoff
+	brokerConfig.Producer.Retry.Max = retryOptions.Producer.RetryMax
+
 	// A partitioner is actually not needed the way we do things now,
 	// but we're adding it now to allow for flexibility in the future.
 	brokerConfig.Producer.Partitioner = newStaticPartitioner(chosenStaticPartition)
