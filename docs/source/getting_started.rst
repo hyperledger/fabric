@@ -2,8 +2,8 @@ Getting Started
 ===============
 
 .. note:: These instructions have been verified to work against the
-          version "1.0.0-alpha2" tagged docker images and the pre-compiled
-          setup utilities within the supplied tarball file. If you run
+          version "1.0.0-beta" tagged docker images and the pre-compiled
+          setup utilities within the supplied tar file. If you run
           these commands with images or tools from the current master
           branch, it is possible that you will see configuration and panic
           errors.
@@ -40,44 +40,23 @@ Next, execute the following command:
 
 .. code:: bash
 
-  curl -sSL https://goo.gl/NIKLiU | bash
+  curl -sSL https://goo.gl/LQkuoh | bash
 
 This command downloads and executes a bash script (``bootstrap.sh``) that will
 extract all of the necessary artifacts to set up your network and place them
 into a folder named ``release``.
 
-It also retrieves the two platform-specific binaries - ``cryptogen`` and
-``configtxgen`` - which we'll use later. Finally, the script will
-download the Hyperledger Fabric docker images into your local Docker registry.
+It also retrieves the two platform-specific binaries - ``cryptogen``,
+``configtxgen`` and ``configtxlator`` - which we'll use later. Finally, the
+script will download the Hyperledger Fabric docker images from
+`DockerHub <https://hub.docker.com/u/hyperledger/>`__ into
+your local Docker registry.
 
-The script lists out the docker images upon conclusion.  You should see the
-following:
-
-.. code:: bash
-
-  jdoe-mbp:<your_platform> johndoe$ docker images
-  REPOSITORY                     TAG                  IMAGE ID            CREATED             SIZE
-  hyperledger/fabric-couchdb     latest                3d89ac4895f9        3 days ago          1.51 GB
-  hyperledger/fabric-couchdb     x86_64-1.0.0-alpha2   3d89ac4895f9        3 days ago          1.51 GB
-  hyperledger/fabric-ca          latest                86f4e4280690        3 days ago          241 MB
-  hyperledger/fabric-ca          x86_64-1.0.0-alpha2   86f4e4280690        3 days ago          241 MB
-  hyperledger/fabric-kafka       latest                b77440c116b3        3 days ago          1.3 GB
-  hyperledger/fabric-kafka       x86_64-1.0.0-alpha2   b77440c116b3        3 days ago          1.3 GB
-  hyperledger/fabric-zookeeper   latest                fb8ae6cea9bf        3 days ago          1.31 GB
-  hyperledger/fabric-zookeeper   x86_64-1.0.0-alpha2   fb8ae6cea9bf        3 days ago          1.31 GB
-  hyperledger/fabric-orderer     latest                9a63e8bac1f5        3 days ago          182 MB
-  hyperledger/fabric-orderer     x86_64-1.0.0-alpha2   9a63e8bac1f5        3 days ago          182 MB
-  hyperledger/fabric-peer        latest                23b4aedef57f        3 days ago          185 MB
-  hyperledger/fabric-peer        x86_64-1.0.0-alpha2   23b4aedef57f        3 days ago          185 MB
-  hyperledger/fabric-javaenv     latest                a9ca2c90a6bf        3 days ago          1.43 GB
-  hyperledger/fabric-javaenv     x86_64-1.0.0-alpha2   a9ca2c90a6bf        3 days ago          1.43 GB
-  hyperledger/fabric-ccenv       latest                c984ae2a1936        3 days ago          1.29 GB
-  hyperledger/fabric-ccenv       x86_64-1.0.0-alpha2   c984ae2a1936        3 days ago          1.29 GB
-
+The script lists out the docker images installed upon conclusion.
 
 Look at the names for each image; these are the components that will ultimately
 comprise our Fabric network.  You will also notice that you have two instances
-of the same image ID - one tagged as "x86_64-1.0.0-alpha2" and one tagged as "latest".
+of the same image ID - one tagged as "x86_64-1.0.0-beta" and one tagged as "latest".
 (Note that on different architectures, the x86_64 would be replaced with the string
 identifying your architecture).
 
@@ -86,8 +65,35 @@ Want to run it now?
 
 We provide a script that leverages these docker images to quickly bootstrap
 a Fabric network, join peers to a channel, and drive transactions.  If you're
-already familiar with Fabric or just want to see it in action, feel free to jump
-down to the :ref:`Network-Setup` section and run the script.
+already familiar with Fabric or just want to see it in action, we have provided
+a script that runs an end-to-end sample application.
+
+This script literally does it all.  It calls ``generateArtifacts.sh`` to exercise
+the ``cryptogen`` and ``configtxgen`` tools, followed by ``script.sh`` which
+launches the network, joins peers to a generated channel and then drives
+transactions.  If you choose not to supply a channel ID, then the
+script will use a default name of ``mychannel``.  The cli timeout parameter
+is an optional value; if you choose not to set it, then your cli container
+will exit upon conclusion of the script.
+
+.. code:: bash
+
+              ./network_setup.sh up
+
+OR
+
+.. code:: bash
+
+              ./network_setup.sh up <channel-ID> <timeout-value>
+
+Once the demo has completed execution, run it again to clean up...
+
+The following will kill your containers, remove the crypto material and
+four artifacts, and remove our the created chaincode images:
+
+.. code:: bash
+
+              ./network_setup.sh down
 
 If you'd like to learn more about the underlying tooling and bootstrap mechanics,
 continue reading.  In these next sections we'll walk through the various steps
@@ -481,18 +487,6 @@ the underlying flow and the appropriate syntax. Entering the commands manually
 through the CLI is quite onerous, therefore we provide a few scripts to do the
 entirety of the heavy lifting.
 
-Clean up
-^^^^^^^^
-
-Let's clean up first...
-
-The following script will kill our containers, remove the crypto material and
-four artifacts, and remove our three chaincode images:
-
-.. code:: bash
-
-  ./network_setup.sh down
-
 .. _Network-Setup:
 
 All in one
@@ -518,9 +512,13 @@ OR
 
 Now clean up...
 
+The following script will kill our containers, remove the crypto material and
+four artifacts, and remove our three chaincode images:
+
 .. code:: bash
 
               ./network_setup.sh down
+
 
 Config only
 ^^^^^^^^^^^
@@ -921,7 +919,7 @@ again.
       Error connecting: rpc error: code = 14 desc = grpc: RPC failed fast due to transport failure
       Error: rpc error: code = 14 desc = grpc: RPC failed fast due to transport failure
 
-Make sure you are running your network against "alpha2" images that have been
+Make sure you are running your network against the "beta" images that have been
 retagged as "latest".
 
 If you see the below error:
@@ -942,7 +940,7 @@ back and recreate your channel artifacts.
        ./network_setup.sh down
 
 - If you see an error stating that you still have "active endpoints", then prune
-  your docker networks.  This will wipe your previous networks and start you with a 
+  your docker networks.  This will wipe your previous networks and start you with a
   fresh environment:
 
 .. code:: bash
