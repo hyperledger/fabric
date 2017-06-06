@@ -31,7 +31,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
-	"github.com/spf13/viper"
 )
 
 const defaultHelloInterval = time.Duration(5) * time.Second
@@ -42,12 +41,12 @@ var maxConnectionAttempts = 120
 
 // SetAliveTimeInterval sets the alive time interval
 func SetAliveTimeInterval(interval time.Duration) {
-	viper.Set("peer.gossip.aliveTimeInterval", interval)
+	util.SetDuration("peer.gossip.aliveTimeInterval", interval)
 }
 
 // SetAliveExpirationTimeout sets the expiration timeout
 func SetAliveExpirationTimeout(timeout time.Duration) {
-	viper.Set("peer.gossip.aliveExpirationTimeout", timeout)
+	util.SetDuration("peer.gossip.aliveExpirationTimeout", timeout)
 	aliveExpirationCheckInterval = time.Duration(timeout / 10)
 }
 
@@ -58,7 +57,7 @@ func SetAliveExpirationCheckInterval(interval time.Duration) {
 
 // SetReconnectInterval sets the reconnect interval
 func SetReconnectInterval(interval time.Duration) {
-	viper.Set("peer.gossip.reconnectInterval", interval)
+	util.SetDuration("peer.gossip.reconnectInterval", interval)
 }
 
 // SetMaxConnAttempts sets the maximum number of connection
