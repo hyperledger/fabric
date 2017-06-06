@@ -80,6 +80,13 @@ func (ec *EventsClient) send(emsg *ehpb.Event) error {
 		return fmt.Errorf("could not obtain the default signing identity, err %s", err)
 	}
 
+	//pass the signer's cert to Creator
+	signerCert, err := signer.Serialize()
+	if err != nil {
+		return fmt.Errorf("fail to serialize the default signing identity, err %s", err)
+	}
+	emsg.Creator = signerCert
+
 	signedEvt, err := utils.GetSignedEvent(emsg, signer)
 	if err != nil {
 		return fmt.Errorf("could not sign outgoing event, err %s", err)

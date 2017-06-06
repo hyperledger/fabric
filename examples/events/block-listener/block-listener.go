@@ -24,6 +24,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/events/consumer"
+	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -135,9 +137,29 @@ func getChainCodeEvents(tdata []byte) (*pb.ChaincodeEvent, error) {
 func main() {
 	var eventAddress string
 	var chaincodeID string
+	var mspDir string
+	var mspId string
 	flag.StringVar(&eventAddress, "events-address", "0.0.0.0:7053", "address of events server")
 	flag.StringVar(&chaincodeID, "events-from-chaincode", "", "listen to events from given chaincode")
+	flag.StringVar(&mspDir, "events-mspdir", "", "set up the msp direction")
+	flag.StringVar(&mspId, "events-mspid", "", "set up the mspid")
 	flag.Parse()
+
+	//if no msp info provided, we use the default MSP under fabric/sampleconfig
+	if mspDir == "" {
+		err := msptesttools.LoadMSPSetupForTesting()
+		if err != nil {
+			fmt.Printf("Could not initialize msp, err %s", err)
+			os.Exit(-1)
+		}
+	} else {
+		//load msp info
+		err := mgmt.LoadLocalMsp(mspDir, nil, mspId)
+		if err != nil {
+			fmt.Printf("Could not initialize msp, err %s", err)
+			os.Exit(-1)
+		}
+	}
 
 	fmt.Printf("Event Address: %s\n", eventAddress)
 
