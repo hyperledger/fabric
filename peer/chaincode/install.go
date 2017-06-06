@@ -88,8 +88,8 @@ func install(msg proto.Message, cf *ChaincodeCmdFactory) error {
 	return nil
 }
 
-//generateChaincode creates ChaincodeDeploymentSpec as the package to install
-func generateChaincode(cmd *cobra.Command, chaincodeName, chaincodeVersion string) (*pb.ChaincodeDeploymentSpec, error) {
+//genChaincodeDeploymentSpec creates ChaincodeDeploymentSpec as the package to install
+func genChaincodeDeploymentSpec(cmd *cobra.Command, chaincodeName, chaincodeVersion string) (*pb.ChaincodeDeploymentSpec, error) {
 	if existed, _ := ccprovider.ChaincodePackageExists(chaincodeName, chaincodeVersion); existed {
 		return nil, fmt.Errorf("chaincode %s:%s already exists", chaincodeName, chaincodeVersion)
 	}
@@ -167,7 +167,7 @@ func chaincodeInstall(cmd *cobra.Command, ccpackfile string, cf *ChaincodeCmdFac
 			return fmt.Errorf("Must supply value for %s name, path and version parameters.", chainFuncName)
 		}
 		//generate a raw ChaincodeDeploymentSpec
-		ccpackmsg, err = generateChaincode(cmd, chaincodeName, chaincodeVersion)
+		ccpackmsg, err = genChaincodeDeploymentSpec(cmd, chaincodeName, chaincodeVersion)
 		if err != nil {
 			return err
 		}
