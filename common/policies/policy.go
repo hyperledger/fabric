@@ -345,7 +345,7 @@ func (pm *ManagerImpl) ProposePolicy(tx interface{}, key string, configPolicy *c
 	var deserialized proto.Message
 
 	if policy.Type == int32(cb.Policy_IMPLICIT_META) {
-		imp, err := newImplicitMetaPolicy(policy.Policy)
+		imp, err := newImplicitMetaPolicy(policy.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -359,7 +359,7 @@ func (pm *ManagerImpl) ProposePolicy(tx interface{}, key string, configPolicy *c
 		}
 
 		var err error
-		cPolicy, deserialized, err = provider.NewPolicy(policy.Policy)
+		cPolicy, deserialized, err = provider.NewPolicy(policy.Value)
 		if err != nil {
 			return nil, err
 		}

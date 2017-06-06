@@ -26,8 +26,8 @@ func TemplatePolicy(key string, sigPolicyEnv *cb.SignaturePolicyEnvelope) *cb.Co
 	configGroup := cb.NewConfigGroup()
 	configGroup.Policies[key] = &cb.ConfigPolicy{
 		Policy: &cb.Policy{
-			Type:   int32(cb.Policy_SIGNATURE),
-			Policy: utils.MarshalOrPanic(sigPolicyEnv),
+			Type:  int32(cb.Policy_SIGNATURE),
+			Value: utils.MarshalOrPanic(sigPolicyEnv),
 		},
 	}
 	return configGroup

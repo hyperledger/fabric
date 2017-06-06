@@ -67,8 +67,8 @@ func TemplateGroupMSPWithAdminRolePrincipal(configPath []string, mspConfig *mspp
 
 	memberPolicy := &cb.ConfigPolicy{
 		Policy: &cb.Policy{
-			Type:   int32(cb.Policy_SIGNATURE),
-			Policy: utils.MarshalOrPanic(cauthdsl.SignedByMspMember(mspID)),
+			Type:  int32(cb.Policy_SIGNATURE),
+			Value: utils.MarshalOrPanic(cauthdsl.SignedByMspMember(mspID)),
 		},
 	}
 
@@ -81,8 +81,8 @@ func TemplateGroupMSPWithAdminRolePrincipal(configPath []string, mspConfig *mspp
 
 	adminPolicy := &cb.ConfigPolicy{
 		Policy: &cb.Policy{
-			Type:   int32(cb.Policy_SIGNATURE),
-			Policy: adminSigPolicy,
+			Type:  int32(cb.Policy_SIGNATURE),
+			Value: adminSigPolicy,
 		},
 	}
 

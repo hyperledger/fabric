@@ -191,8 +191,8 @@ func New(conf *genesisconfig.Profile) Generator {
 		// is not AcceptAll
 		tcg.Groups[config.ConsortiumsGroupKey].Policies[configvaluesmsp.AdminsPolicyKey] = &cb.ConfigPolicy{
 			Policy: &cb.Policy{
-				Type:   int32(cb.Policy_SIGNATURE),
-				Policy: utils.MarshalOrPanic(cauthdsl.AcceptAllPolicy),
+				Type:  int32(cb.Policy_SIGNATURE),
+				Value: utils.MarshalOrPanic(cauthdsl.AcceptAllPolicy),
 			},
 		}
 

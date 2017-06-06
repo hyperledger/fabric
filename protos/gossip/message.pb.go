@@ -1111,7 +1111,7 @@ func (m *GossipHello) GetMsgType() PullMsgType {
 	return PullMsgType_UNDEFINED
 }
 
-// DataUpdate is the the final message in the pull phase
+// DataUpdate is the final message in the pull phase
 // sent from the receiver to the initiator
 type DataUpdate struct {
 	Nonce   uint64      `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`

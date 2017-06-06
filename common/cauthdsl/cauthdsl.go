@@ -31,8 +31,8 @@ var cauthdslLogger = flogging.MustGetLogger("cauthdsl")
 func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal, deserializer msp.IdentityDeserializer) (func([]*cb.SignedData, []bool) bool, error) {
 	switch t := policy.Type.(type) {
 	case *cb.SignaturePolicy_NOutOf_:
-		policies := make([]func([]*cb.SignedData, []bool) bool, len(t.NOutOf.Policies))
-		for i, policy := range t.NOutOf.Policies {
+		policies := make([]func([]*cb.SignedData, []bool) bool, len(t.NOutOf.Rules))
+		for i, policy := range t.NOutOf.Rules {
 			compiledPolicy, err := compile(policy, identities, deserializer)
 			if err != nil {
 				return nil, err

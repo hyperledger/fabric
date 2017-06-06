@@ -51,8 +51,8 @@ func makePolicySource(policyResult bool) *cb.Policy {
 		policyData = RejectAllPolicy
 	}
 	return &cb.Policy{
-		Type:   int32(cb.Policy_SIGNATURE),
-		Policy: marshalOrPanic(policyData),
+		Type:  int32(cb.Policy_SIGNATURE),
+		Value: marshalOrPanic(policyData),
 	}
 }
 

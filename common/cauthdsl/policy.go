@@ -49,7 +49,7 @@ func (pr *provider) NewPolicy(data []byte) (policies.Policy, proto.Message, erro
 		return nil, nil, fmt.Errorf("This evaluator only understands messages of version 0, but version was %d", sigPolicy.Version)
 	}
 
-	compiled, err := compile(sigPolicy.Policy, sigPolicy.Identities, pr.deserializer)
+	compiled, err := compile(sigPolicy.Rule, sigPolicy.Identities, pr.deserializer)
 	if err != nil {
 		return nil, nil, err
 	}
