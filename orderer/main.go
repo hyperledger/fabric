@@ -88,7 +88,7 @@ func main() {
 func initializeLoggingLevel(conf *config.TopLevel) {
 	flogging.InitFromSpec(conf.General.LogLevel)
 	if conf.Kafka.Verbose {
-		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Lshortfile)
+		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Ldate|log.Lmicroseconds|log.Lshortfile)
 	}
 }
 
@@ -214,7 +214,7 @@ func initializeMultiChainManager(conf *config.TopLevel, signer crypto.LocalSigne
 
 	consenters := make(map[string]multichain.Consenter)
 	consenters["solo"] = solo.New()
-	consenters["kafka"] = kafka.New(conf.Kafka.Version, conf.Kafka.Retry, conf.Kafka.TLS)
+	consenters["kafka"] = kafka.New(conf.Kafka.TLS, conf.Kafka.Retry, conf.Kafka.Version)
 
 	return multichain.NewManagerImpl(lf, consenters, signer)
 }

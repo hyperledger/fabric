@@ -1,59 +1,144 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package kafka
 
 import (
+	"crypto/tls"
 	"testing"
-	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/orderer/localconfig"
-	cb "github.com/hyperledger/fabric/protos/common"
+	localconfig "github.com/hyperledger/fabric/orderer/localconfig"
+	"github.com/hyperledger/fabric/orderer/mocks/util"
+	"github.com/stretchr/testify/assert"
 )
 
-var (
-	testBrokerID     = int32(0)
-	testOldestOffset = int64(100)                                    // The oldest block available on the broker
-	testNewestOffset = int64(1100)                                   // The offset that will be assigned to the next block
-	testMiddleOffset = (testOldestOffset + testNewestOffset - 1) / 2 // Just an offset in the middle
+func TestBrokerConfig(t *testing.T) {
+	mockChannel1 := newChannel("channelFoo", defaultPartition)
+	// Use a partition ID that is not the 'default' (defaultPartition)
+	var differentPartition int32 = defaultPartition + 1
+	mockChannel2 := newChannel("channelFoo", differentPartition)
 
-	// Amount of time to wait for block processing when doing time-based tests
-	// We generally want this value to be as small as possible so as to make tests execute faster
-	// But this may have to be bumped up in slower machines
-	testTimePadding = 200 * time.Millisecond
-)
+	mockBroker := sarama.NewMockBroker(t, 0)
+	defer func() { mockBroker.Close() }()
 
-var testConf = &config.TopLevel{
-	Kafka: config.Kafka{
-		Retry: config.Retry{
-			Period: 3 * time.Second,
-			Stop:   60 * time.Second,
-		},
-		Verbose: false,
-		Version: sarama.V0_9_0_1,
-	},
-}
+	mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
+		"MetadataRequest": sarama.NewMockMetadataResponse(t).
+			SetBroker(mockBroker.Addr(), mockBroker.BrokerID()).
+			SetLeader(mockChannel1.topic(), mockChannel1.partition(), mockBroker.BrokerID()).
+			SetLeader(mockChannel2.topic(), mockChannel2.partition(), mockBroker.BrokerID()),
+		"ProduceRequest": sarama.NewMockProduceResponse(t),
+	})
 
-func testClose(t *testing.T, x Closeable) {
-	if err := x.Close(); err != nil {
-		t.Fatal("Cannot close mock resource:", err)
+	t.Run("New", func(t *testing.T) {
+		producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
+		assert.NoError(t, err, "Failed to create producer with given config:", err)
+		producer.Close()
+	})
+
+	t.Run("Partitioner", func(t *testing.T) {
+		mockBrokerConfig2 := newBrokerConfig(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, differentPartition)
+		producer, _ := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig2)
+		defer func() { producer.Close() }()
+
+		for i := 0; i < 10; i++ {
+			assignedPartition, _, err := producer.SendMessage(&sarama.ProducerMessage{Topic: mockChannel2.topic()})
+			assert.NoError(t, err, "Failed to send message:", err)
+			assert.Equal(t, differentPartition, assignedPartition, "Message wasn't posted to the right partition - expected %d, got %v", differentPartition, assignedPartition)
+		}
+	})
+
+	producer, _ := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
+	defer func() { producer.Close() }()
+
+	testCases := []struct {
+		name string
+		size int
+		err  error
+	}{
+		{"TypicalDeploy", 4 * 1024, nil},
+		{"TooBig", int(sarama.MaxRequestSize + 1), sarama.ErrMessageSizeTooLarge},
+	}
+
+	for _, tc := range testCases {
+		t.Run("ProducerMessageMaxBytes"+tc.name, func(t *testing.T) {
+			_, _, err := producer.SendMessage(&sarama.ProducerMessage{
+				Topic: mockChannel1.topic(),
+				Value: sarama.ByteEncoder(make([]byte, tc.size)),
+			})
+			assert.Equal(t, tc.err, err)
+		})
 	}
 }
 
-func newTestEnvelope(content string) *cb.Envelope {
-	return &cb.Envelope{Payload: []byte(content)}
+func TestBrokerConfigTLSConfigEnabled(t *testing.T) {
+	publicKey, privateKey, _ := util.GenerateMockPublicPrivateKeyPairPEM(false)
+	caPublicKey, _, _ := util.GenerateMockPublicPrivateKeyPairPEM(true)
+
+	t.Run("Enabled", func(t *testing.T) {
+		testBrokerConfig := newBrokerConfig(localconfig.TLS{
+			Enabled:     true,
+			PrivateKey:  privateKey,
+			Certificate: publicKey,
+			RootCAs:     []string{caPublicKey},
+		}, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
+
+		assert.True(t, testBrokerConfig.Net.TLS.Enable)
+		assert.NotNil(t, testBrokerConfig.Net.TLS.Config)
+		assert.Len(t, testBrokerConfig.Net.TLS.Config.Certificates, 1)
+		assert.Len(t, testBrokerConfig.Net.TLS.Config.RootCAs.Subjects(), 1)
+		assert.Equal(t, uint16(0), testBrokerConfig.Net.TLS.Config.MaxVersion)
+		assert.Equal(t, uint16(tls.VersionTLS12), testBrokerConfig.Net.TLS.Config.MinVersion)
+	})
+
+	t.Run("Disabled", func(t *testing.T) {
+		testBrokerConfig := newBrokerConfig(localconfig.TLS{
+			Enabled:     false,
+			PrivateKey:  privateKey,
+			Certificate: publicKey,
+			RootCAs:     []string{caPublicKey},
+		}, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
+
+		assert.False(t, testBrokerConfig.Net.TLS.Enable)
+		assert.Zero(t, testBrokerConfig.Net.TLS.Config)
+	})
+}
+
+func TestBrokerConfigTLSConfigBadCert(t *testing.T) {
+	publicKey, privateKey, _ := util.GenerateMockPublicPrivateKeyPairPEM(false)
+	caPublicKey, _, _ := util.GenerateMockPublicPrivateKeyPairPEM(true)
+
+	t.Run("BadPrivateKey", func(t *testing.T) {
+		assert.Panics(t, func() {
+			newBrokerConfig(localconfig.TLS{
+				Enabled:     true,
+				PrivateKey:  privateKey,
+				Certificate: "TRASH",
+				RootCAs:     []string{caPublicKey},
+			}, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
+		})
+	})
+	t.Run("BadPublicKey", func(t *testing.T) {
+		assert.Panics(t, func() {
+			newBrokerConfig(localconfig.TLS{
+				Enabled:     true,
+				PrivateKey:  "TRASH",
+				Certificate: publicKey,
+				RootCAs:     []string{caPublicKey},
+			}, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
+		})
+	})
+	t.Run("BadRootCAs", func(t *testing.T) {
+		assert.Panics(t, func() {
+			newBrokerConfig(localconfig.TLS{
+				Enabled:     true,
+				PrivateKey:  privateKey,
+				Certificate: publicKey,
+				RootCAs:     []string{"TRASH"},
+			}, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
+		})
+	})
 }
