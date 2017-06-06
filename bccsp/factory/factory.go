@@ -62,9 +62,9 @@ func GetDefault() bccsp.BCCSP {
 		bootBCCSPInitOnce.Do(func() {
 			var err error
 			f := &SWFactory{}
-			bootBCCSP, err = f.Get(&DefaultOpts)
+			bootBCCSP, err = f.Get(GetDefaultOpts())
 			if err != nil {
-				panic("BCCSP Internal error, failed initialization with DefaultOpts!")
+				panic("BCCSP Internal error, failed initialization with GetDefaultOpts!")
 			}
 		})
 		return bootBCCSP
@@ -74,7 +74,11 @@ func GetDefault() bccsp.BCCSP {
 
 // GetBCCSP returns a BCCSP created according to the options passed in input.
 func GetBCCSP(name string) (bccsp.BCCSP, error) {
-	return bccspMap[name], nil
+	csp, ok := bccspMap[name]
+	if !ok {
+		return nil, fmt.Errorf("Could not find BCCSP, no '%s' provider", name)
+	}
+	return csp, nil
 }
 
 func initBCCSP(f BCCSPFactory, config *FactoryOpts) error {

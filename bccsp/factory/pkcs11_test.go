@@ -24,6 +24,9 @@ import (
 )
 
 func TestInitFactories(t *testing.T) {
+	// Reset errors from previous negative test runs
+	factoriesInitError = nil
+
 	err := InitFactories(nil)
 	assert.NoError(t, err)
 }
@@ -53,21 +56,32 @@ func TestSetFactoriesInvalidArgs(t *testing.T) {
 }
 
 func TestGetBCCSPFromOpts(t *testing.T) {
-	opts := &DefaultOpts
+	opts := GetDefaultOpts()
 	opts.SwOpts.FileKeystore = &FileKeystoreOpts{KeyStorePath: os.TempDir()}
 	opts.SwOpts.Ephemeral = false
 	csp, err := GetBCCSPFromOpts(opts)
 	assert.NoError(t, err)
 	assert.NotNil(t, csp)
 
+	lib, pin, label := pkcs11.FindPKCS11Lib()
 	csp, err = GetBCCSPFromOpts(&FactoryOpts{
 		ProviderName: "PKCS11",
 		Pkcs11Opts: &pkcs11.PKCS11Opts{
 			SecLevel:   256,
 			HashFamily: "SHA2",
 			Ephemeral:  true,
+			Library:    lib,
+			Pin:        pin,
+			Label:      label,
 		},
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, csp)
+
+	csp, err = GetBCCSPFromOpts(&FactoryOpts{
+		ProviderName: "BadName",
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Could not find BCCSP, no 'BadName' provider")
+	assert.Nil(t, csp)
 }

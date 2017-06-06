@@ -118,7 +118,7 @@ func Start(cc Chaincode) error {
 		return fmt.Errorf("Error chaincode id not provided")
 	}
 
-	err := factory.InitFactories(&factory.DefaultOpts)
+	err := factory.InitFactories(factory.GetDefaultOpts())
 	if err != nil {
 		return fmt.Errorf("Internal error, BCCSP could not be initialized with default options: %s", err)
 	}

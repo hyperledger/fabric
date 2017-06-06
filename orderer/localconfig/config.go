@@ -138,7 +138,7 @@ var defaults = TopLevel{
 		LogLevel:    "INFO",
 		LocalMSPDir: "msp",
 		LocalMSPID:  "DEFAULT",
-		BCCSP:       &bccsp.DefaultOpts,
+		BCCSP:       bccsp.GetDefaultOpts(),
 	},
 	RAMLedger: RAMLedger{
 		HistorySize: 10000,

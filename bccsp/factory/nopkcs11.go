@@ -36,7 +36,7 @@ func InitFactories(config *FactoryOpts) error {
 	factoriesInitOnce.Do(func() {
 		// Take some precautions on default opts
 		if config == nil {
-			config = &DefaultOpts
+			config = GetDefaultOpts()
 		}
 
 		if config.ProviderName == "" {
@@ -44,7 +44,7 @@ func InitFactories(config *FactoryOpts) error {
 		}
 
 		if config.SwOpts == nil {
-			config.SwOpts = DefaultOpts.SwOpts
+			config.SwOpts = GetDefaultOpts().SwOpts
 		}
 
 		// Initialize factories map
@@ -75,6 +75,8 @@ func GetBCCSPFromOpts(config *FactoryOpts) (bccsp.BCCSP, error) {
 	switch config.ProviderName {
 	case "SW":
 		f = &SWFactory{}
+	default:
+		return nil, fmt.Errorf("Could not find BCCSP, no '%s' provider", config.ProviderName)
 	}
 
 	csp, err := f.Get(config)

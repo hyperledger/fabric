@@ -15,15 +15,18 @@ limitations under the License.
 */
 package factory
 
-// DefaultOpts offers a default implementation for Opts
-var DefaultOpts = FactoryOpts{
-	ProviderName: "SW",
-	SwOpts: &SwOpts{
-		HashFamily: "SHA2",
-		SecLevel:   256,
+// GetDefaultOpts offers a default implementation for Opts
+// returns a new instance every time
+func GetDefaultOpts() *FactoryOpts {
+	return &FactoryOpts{
+		ProviderName: "SW",
+		SwOpts: &SwOpts{
+			HashFamily: "SHA2",
+			SecLevel:   256,
 
-		Ephemeral: true,
-	},
+			Ephemeral: true,
+		},
+	}
 }
 
 // FactoryName returns the name of the provider
