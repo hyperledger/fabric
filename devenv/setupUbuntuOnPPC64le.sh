@@ -56,7 +56,7 @@ systemctl restart docker
 ####################################
 # Golang binaries for ppc64le are publicly available from Unicamp and is recommended as it includes certain platform specific tuning/optimization.
 # Alternativley package part of Ubuntu disto repo can also be used.
-wget ftp://ftp.unicamp.br/pub/linuxpatch/toolchain/at/ubuntu/dists/xenial/at10.0/binary-ppc64el/advance-toolchain-golang-at_10.0-2_ppc64el.deb
+wget http://ftp.unicamp.br/pub/linuxpatch/toolchain/at/ubuntu/dists/xenial/at10.0/binary-ppc64el/advance-toolchain-golang-at_10.0-2_ppc64el.deb
 dpkg -i advance-toolchain-golang-at_10.0-2_ppc64el.deb
 rm -f advance-toolchain-golang-at_10.0-2_ppc64el.deb
 
