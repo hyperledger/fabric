@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
-	"strings"
 	"sync"
 
 	"github.com/miekg/pkcs11"
@@ -392,10 +391,8 @@ func (csp *impl) importECKey(curve asn1.ObjectIdentifier, privKey, ecPt []byte, 
 		hash := sha256.Sum256(ecPt)
 		ski = hash[:]
 
-		if strings.Contains(csp.lib, "softhsm") {
-			// Probably SoftHSM, some handcrafting necessary
-			ecPt = append([]byte{0x04, byte(len(ecPt))}, ecPt...)
-		}
+		// Add DER encoding for the CKA_EC_POINT
+		ecPt = append([]byte{0x04, byte(len(ecPt))}, ecPt...)
 
 		keyTemplate = []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
