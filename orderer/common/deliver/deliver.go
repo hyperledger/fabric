@@ -50,6 +50,9 @@ type Support interface {
 
 	// Reader returns the chain Reader for the chain
 	Reader() ledger.Reader
+
+	// Errored returns a channel which closes when the backing consenter has errored
+	Errored() <-chan struct{}
 }
 
 type deliverServer struct {
@@ -103,6 +106,15 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 			return sendStatusReply(srv, cb.Status_NOT_FOUND)
 		}
 
+		erroredChan := chain.Errored()
+		select {
+		case <-erroredChan:
+			logger.Warningf("Rejecting deliver request because of consenter error")
+			return sendStatusReply(srv, cb.Status_SERVICE_UNAVAILABLE)
+		default:
+
+		}
+
 		sf := sigfilter.New(policies.ChannelReaders, chain.PolicyManager())
 		result, _ := sf.Apply(envelope)
 		if result != filter.Forward {
@@ -140,7 +152,12 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 
 		for {
 			if seekInfo.Behavior == ab.SeekInfo_BLOCK_UNTIL_READY {
-				<-cursor.ReadyChan()
+				select {
+				case <-erroredChan:
+					logger.Warningf("Aborting deliver request because of consenter error")
+					return sendStatusReply(srv, cb.Status_SERVICE_UNAVAILABLE)
+				case <-cursor.ReadyChan():
+				}
 			} else {
 				select {
 				case <-cursor.ReadyChan():

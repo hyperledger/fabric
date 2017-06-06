@@ -68,6 +68,11 @@ type chainImpl struct {
 	startCompleted bool // For testing
 }
 
+// Errored currently only closes on halt
+func (chain *chainImpl) Errored() <-chan struct{} {
+	return chain.exitChan
+}
+
 // Start allocates the necessary resources for staying up to date with this
 // Chain. Implements the multichain.Chain interface. Called by
 // multichain.NewManagerImpl() which is invoked when the ordering process is

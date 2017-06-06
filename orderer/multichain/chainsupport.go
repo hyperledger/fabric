@@ -50,8 +50,13 @@ type Consenter interface {
 // 1. Messages are ordered into a stream, the stream is cut into blocks, the blocks are committed (solo, kafka)
 // 2. Messages are cut into blocks, the blocks are ordered, then the blocks are committed (sbft)
 type Chain interface {
-	// Enqueue accepts a message and returns true on acceptance, or false on shutdown
+	// Enqueue accepts a message and returns true on acceptance, or false on failure
 	Enqueue(env *cb.Envelope) bool
+
+	// Errored returns a channel which will close when an error has occurred
+	// This is especially useful for the Deliver client, who must terminate waiting
+	// clients when the consenter is not up to date
+	Errored() <-chan struct{}
 
 	// Start should allocate whatever resources are needed for staying up to date with the chain
 	// Typically, this involves creating a thread which reads from the ordering source, passes those
@@ -83,6 +88,9 @@ type ChainSupport interface {
 
 	// Reader returns the chain Reader for the chain
 	Reader() ledger.Reader
+
+	// Errored returns whether the backing consenter has errored
+	Errored() <-chan struct{}
 
 	broadcast.Support
 	ConsenterSupport
@@ -203,6 +211,10 @@ func (cs *chainSupport) Reader() ledger.Reader {
 
 func (cs *chainSupport) Enqueue(env *cb.Envelope) bool {
 	return cs.chain.Enqueue(env)
+}
+
+func (cs *chainSupport) Errored() <-chan struct{} {
+	return cs.chain.Errored()
 }
 
 func (cs *chainSupport) CreateNextBlock(messages []*cb.Envelope) *cb.Block {

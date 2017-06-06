@@ -112,6 +112,11 @@ func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 type mockSupport struct {
 	ledger        ledger.ReadWriter
 	policyManager *mockpolicies.Manager
+	erroredChan   chan struct{}
+}
+
+func (mcs *mockSupport) Errored() <-chan struct{} {
+	return mcs.erroredChan
 }
 
 func (mcs *mockSupport) PolicyManager() policies.Manager {
@@ -147,6 +152,7 @@ func newMockMultichainManager() *mockSupportManager {
 	mm.chains[systemChainID] = &mockSupport{
 		ledger:        rl,
 		policyManager: &mockpolicies.Manager{Policy: &mockpolicies.Policy{}},
+		erroredChan:   make(chan struct{}),
 	}
 	return mm
 }
@@ -379,6 +385,64 @@ func TestBlockingSeek(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestErroredSeek(t *testing.T) {
+	mm := newMockMultichainManager()
+	ms := mm.chains[systemChainID]
+	l := ms.ledger
+	close(ms.erroredChan)
+	for i := 1; i < ledgerSize; i++ {
+		l.Append(ledger.CreateNextBlock(l, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
+	}
+
+	m := newMockD()
+	defer close(m.recvChan)
+	ds := NewHandlerImpl(mm)
+
+	go ds.Handle(m)
+
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_SERVICE_UNAVAILABLE, deliverReply.GetStatus(), "Mock support errored")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting for error response")
+	}
+}
+
+func TestErroredBlockingSeek(t *testing.T) {
+	mm := newMockMultichainManager()
+	ms := mm.chains[systemChainID]
+	l := ms.ledger
+	for i := 1; i < ledgerSize; i++ {
+		l.Append(ledger.CreateNextBlock(l, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
+	}
+
+	m := newMockD()
+	defer close(m.recvChan)
+	ds := NewHandlerImpl(mm)
+
+	go ds.Handle(m)
+
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.NotNil(t, deliverReply.GetBlock(), "Expected first block")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get first block")
+	}
+
+	close(ms.erroredChan)
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_SERVICE_UNAVAILABLE, deliverReply.GetStatus(), "Mock support errored")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting for error response")
 	}
 }
 
