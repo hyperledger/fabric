@@ -22,8 +22,7 @@ Like most other modules on Fabric, you can always replace the
 default module with another membership service option should the need
 arise.
 
-* Does its Membership Service make Fabric a centralized
-solution?
+* Does its Membership Service make Fabric a centralized solution?
 
 No. The only role of the Membership Service module is to issue digital
 certificates to validated entities that want to participate in the

@@ -236,6 +236,7 @@ However, if you want to see this script in action, delete your crypto material
 and channel artifacts with the following command:
 
 .. code:: bash
+
     ./network_setup.sh down
 
 Now proceed...

@@ -19,7 +19,7 @@ In addition, NV-nodes retain full copies of the ledger, enabling local
 queries of the ledger data.
 
 * What does the error string "state may be inconsistent, cannot
-query" as a query result mean?
+  query" as a query result mean?
 
 Sometimes, a validating peer will be out
 of sync with the rest of the network. Although determining this
