@@ -47,7 +47,7 @@ func createInstantiationPolicy(mspid string, role mspprotos.MSPRole_MSPRoleType)
 	// create the policy: it requires exactly 1 signature from any of the principals
 	p := &common.SignaturePolicyEnvelope{
 		Version:    0,
-		Policy:     cauthdsl.NOutOf(1, sigspolicy),
+		Rule:       cauthdsl.NOutOf(1, sigspolicy),
 		Identities: principals,
 	}
 

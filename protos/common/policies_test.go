@@ -41,15 +41,15 @@ func TestPoliciesEnums(t *testing.T) {
 func TestPoliciesStructs(t *testing.T) {
 	var policy *Policy
 	assert.Equal(t, int32(0), policy.GetType())
-	assert.Nil(t, policy.GetPolicy())
+	assert.Nil(t, policy.GetValue())
 	policy = &Policy{
-		Policy: []byte("policy"),
-		Type:   int32(1),
+		Value: []byte("policy"),
+		Type:  int32(1),
 	}
 	assert.Equal(t, int32(1), policy.GetType())
-	assert.NotNil(t, policy.GetPolicy())
+	assert.NotNil(t, policy.GetValue())
 	policy.Reset()
-	assert.Nil(t, policy.GetPolicy())
+	assert.Nil(t, policy.GetValue())
 	_, _ = policy.Descriptor()
 	_ = policy.String()
 	policy.ProtoMessage()
@@ -58,18 +58,18 @@ func TestPoliciesStructs(t *testing.T) {
 	env = nil
 	assert.Equal(t, int32(0), env.GetVersion())
 	assert.Nil(t, env.GetIdentities())
-	assert.Nil(t, env.GetPolicy())
+	assert.Nil(t, env.GetRule())
 	env = &SignaturePolicyEnvelope{
-		Policy:     &SignaturePolicy{},
+		Rule:       &SignaturePolicy{},
 		Identities: []*common1.MSPPrincipal{&common1.MSPPrincipal{}},
 		Version:    int32(1),
 	}
 	assert.Equal(t, int32(1), env.GetVersion())
 	assert.NotNil(t, env.GetIdentities())
-	assert.NotNil(t, env.GetPolicy())
+	assert.NotNil(t, env.GetRule())
 	env.Reset()
 	assert.Nil(t, env.GetIdentities())
-	assert.Nil(t, env.GetPolicy())
+	assert.Nil(t, env.GetRule())
 	_, _ = env.Descriptor()
 	_ = env.String()
 	env.ProtoMessage()
@@ -108,15 +108,15 @@ func TestPoliciesStructs(t *testing.T) {
 	var n *SignaturePolicy_NOutOf
 	n = nil
 	assert.Equal(t, int32(0), n.GetN())
-	assert.Nil(t, n.GetPolicies())
+	assert.Nil(t, n.GetRules())
 	n = &SignaturePolicy_NOutOf{
-		Policies: []*SignaturePolicy{&SignaturePolicy{}},
-		N:        int32(1),
+		Rules: []*SignaturePolicy{&SignaturePolicy{}},
+		N:     int32(1),
 	}
 	assert.Equal(t, int32(1), n.GetN())
-	assert.NotNil(t, n.GetPolicies())
+	assert.NotNil(t, n.GetRules())
 	n.Reset()
-	assert.Nil(t, n.GetPolicies())
+	assert.Nil(t, n.GetRules())
 	_, _ = n.Descriptor()
 	_ = n.String()
 	n.ProtoMessage()
