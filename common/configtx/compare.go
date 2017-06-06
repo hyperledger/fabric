@@ -98,7 +98,7 @@ func equalConfigPolicies(lhs, rhs *cb.ConfigPolicy) bool {
 	}
 
 	return lhs.Policy.Type == rhs.Policy.Type &&
-		bytes.Equal(lhs.Policy.Policy, rhs.Policy.Policy)
+		bytes.Equal(lhs.Policy.Value, rhs.Policy.Value)
 }
 
 // The subset functions check if inner is a subset of outer

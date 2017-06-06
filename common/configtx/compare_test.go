@@ -94,16 +94,16 @@ func TestCompareConfigPolicy(t *testing.T) {
 			Version:   0,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("foo"),
+				Type:  1,
+				Value: []byte("foo"),
 			},
 		}}.equals(comparable{
 		ConfigPolicy: &cb.ConfigPolicy{
 			Version:   0,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("foo"),
+				Type:  1,
+				Value: []byte("foo"),
 			},
 		}}), "Should have found identical config policies to be identical")
 
@@ -113,16 +113,16 @@ func TestCompareConfigPolicy(t *testing.T) {
 			Version:   0,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("foo"),
+				Type:  1,
+				Value: []byte("foo"),
 			},
 		}}.equals(comparable{
 		ConfigPolicy: &cb.ConfigPolicy{
 			Version:   0,
 			ModPolicy: "bar",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("foo"),
+				Type:  1,
+				Value: []byte("foo"),
 			},
 		}}), "Should have detected different mod policy")
 
@@ -132,16 +132,16 @@ func TestCompareConfigPolicy(t *testing.T) {
 			Version:   0,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("foo"),
+				Type:  1,
+				Value: []byte("foo"),
 			},
 		}}.equals(comparable{
 		ConfigPolicy: &cb.ConfigPolicy{
 			Version:   1,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("foo"),
+				Type:  1,
+				Value: []byte("foo"),
 			},
 		}}), "Should have detected different version")
 
@@ -151,16 +151,16 @@ func TestCompareConfigPolicy(t *testing.T) {
 			Version:   0,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("foo"),
+				Type:  1,
+				Value: []byte("foo"),
 			},
 		}}.equals(comparable{
 		ConfigPolicy: &cb.ConfigPolicy{
 			Version:   0,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   2,
-				Policy: []byte("foo"),
+				Type:  2,
+				Value: []byte("foo"),
 			},
 		}}), "Should have detected different policy type")
 
@@ -170,16 +170,16 @@ func TestCompareConfigPolicy(t *testing.T) {
 			Version:   0,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("foo"),
+				Type:  1,
+				Value: []byte("foo"),
 			},
 		}}.equals(comparable{
 		ConfigPolicy: &cb.ConfigPolicy{
 			Version:   0,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("bar"),
+				Type:  1,
+				Value: []byte("bar"),
 			},
 		}}), "Should have detected different policy value")
 
@@ -189,8 +189,8 @@ func TestCompareConfigPolicy(t *testing.T) {
 			Version:   0,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("foo"),
+				Type:  1,
+				Value: []byte("foo"),
 			},
 		}}.equals(comparable{}), "Should have detected one nil value")
 
@@ -200,8 +200,8 @@ func TestCompareConfigPolicy(t *testing.T) {
 			Version:   0,
 			ModPolicy: "foo",
 			Policy: &cb.Policy{
-				Type:   1,
-				Policy: []byte("foo"),
+				Type:  1,
+				Value: []byte("foo"),
 			},
 		}}.equals(comparable{
 		ConfigPolicy: &cb.ConfigPolicy{

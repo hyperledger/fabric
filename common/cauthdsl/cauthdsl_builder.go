@@ -63,7 +63,7 @@ func Envelope(policy *cb.SignaturePolicy, identities [][]byte) *cb.SignaturePoli
 
 	return &cb.SignaturePolicyEnvelope{
 		Version:    0,
-		Policy:     policy,
+		Rule:       policy,
 		Identities: ids,
 	}
 }
@@ -88,7 +88,7 @@ func SignedByMspMember(mspId string) *cb.SignaturePolicyEnvelope {
 	// create the policy: it requires exactly 1 signature from the first (and only) principal
 	p := &cb.SignaturePolicyEnvelope{
 		Version:    0,
-		Policy:     NOutOf(1, []*cb.SignaturePolicy{SignedBy(0)}),
+		Rule:       NOutOf(1, []*cb.SignaturePolicy{SignedBy(0)}),
 		Identities: []*msp.MSPPrincipal{principal},
 	}
 
@@ -106,7 +106,7 @@ func SignedByMspAdmin(mspId string) *cb.SignaturePolicyEnvelope {
 	// create the policy: it requires exactly 1 signature from the first (and only) principal
 	p := &cb.SignaturePolicyEnvelope{
 		Version:    0,
-		Policy:     NOutOf(1, []*cb.SignaturePolicy{SignedBy(0)}),
+		Rule:       NOutOf(1, []*cb.SignaturePolicy{SignedBy(0)}),
 		Identities: []*msp.MSPPrincipal{principal},
 	}
 
@@ -130,7 +130,7 @@ func signedByAnyOfGivenRole(role msp.MSPRole_MSPRoleType, ids []string) *cb.Sign
 	// create the policy: it requires exactly 1 signature from any of the principals
 	p := &cb.SignaturePolicyEnvelope{
 		Version:    0,
-		Policy:     NOutOf(1, sigspolicy),
+		Rule:       NOutOf(1, sigspolicy),
 		Identities: principals,
 	}
 
@@ -166,8 +166,8 @@ func NOutOf(n int32, policies []*cb.SignaturePolicy) *cb.SignaturePolicy {
 	return &cb.SignaturePolicy{
 		Type: &cb.SignaturePolicy_NOutOf_{
 			NOutOf: &cb.SignaturePolicy_NOutOf{
-				N:        n,
-				Policies: policies,
+				N:     n,
+				Rules: policies,
 			},
 		},
 	}

@@ -272,7 +272,7 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 	p := &common.SignaturePolicyEnvelope{
 		Identities: ctx.principals,
 		Version:    0,
-		Policy:     res.(*common.SignaturePolicy),
+		Rule:       res.(*common.SignaturePolicy),
 	}
 
 	return p, nil

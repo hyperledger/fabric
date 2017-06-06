@@ -95,7 +95,7 @@ func TestTemplates(t *testing.T) {
 
 	configGroup = TemplateGroupMSPWithAdminRolePrincipal([]string{"TestPath"}, mspConf, false)
 	expectedPolicyValue := utils.MarshalOrPanic(cauthdsl.SignedByMspMember("DEFAULT"))
-	actualPolicyValue := configGroup.Groups["TestPath"].Policies[AdminsPolicyKey].Policy.Policy
+	actualPolicyValue := configGroup.Groups["TestPath"].Policies[AdminsPolicyKey].Policy.Value
 	assert.Equal(t, expectedPolicyValue, actualPolicyValue, "Expected SignedByMspMemberPolicy")
 
 	mspConf = &mspprotos.MSPConfig{}

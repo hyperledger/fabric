@@ -33,13 +33,13 @@ message Policy {
         IMPLICIT_META = 3;
     }
     int32 type = 1; // For outside implementors, consider the first 1000 types reserved, otherwise one of PolicyType
-    bytes policy = 2;
+    bytes value = 2;
 }
 
 // SignaturePolicyEnvelope wraps a SignaturePolicy and includes a version for future enhancements
 message SignaturePolicyEnvelope {
     int32 version = 1;
-    SignaturePolicy policy = 2;
+    SignaturePolicy rule = 2;
     repeated MSPPrincipal identities = 3;
 }
 
@@ -52,7 +52,7 @@ message SignaturePolicyEnvelope {
 message SignaturePolicy {
     message NOutOf {
         int32 n = 1;
-        repeated SignaturePolicy policies = 2;
+        repeated SignaturePolicy rules = 2;
     }
     oneof Type {
         int32 signed_by = 1;

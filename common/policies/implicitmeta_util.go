@@ -26,7 +26,7 @@ func ImplicitMetaPolicyWithSubPolicy(subPolicyName string, rule cb.ImplicitMetaP
 	return &cb.ConfigPolicy{
 		Policy: &cb.Policy{
 			Type: int32(cb.Policy_IMPLICIT_META),
-			Policy: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+			Value: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 				Rule:      rule,
 				SubPolicy: subPolicyName,
 			}),

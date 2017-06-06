@@ -23,7 +23,7 @@ import (
 )
 
 func (p *Policy) VariablyOpaqueFields() []string {
-	return []string{"policy"}
+	return []string{"value"}
 }
 
 func (p *Policy) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
