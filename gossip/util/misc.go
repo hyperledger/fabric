@@ -33,6 +33,8 @@ import (
 // Equals returns whether a and b are the same
 type Equals func(a interface{}, b interface{}) bool
 
+var viperLock sync.RWMutex
+
 // IndexInSlice returns the index of given object o in array
 func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 	arr := reflect.ValueOf(array)
@@ -145,6 +147,9 @@ func PrintStackTrace() {
 
 // GetIntOrDefault returns the int value from config if present otherwise default value
 func GetIntOrDefault(key string, defVal int) int {
+	viperLock.RLock()
+	defer viperLock.RUnlock()
+
 	if val := viper.GetInt(key); val != 0 {
 		return val
 	}
@@ -154,11 +159,21 @@ func GetIntOrDefault(key string, defVal int) int {
 
 // GetDurationOrDefault returns the Duration value from config if present otherwise default value
 func GetDurationOrDefault(key string, defVal time.Duration) time.Duration {
+	viperLock.RLock()
+	defer viperLock.RUnlock()
+
 	if val := viper.GetDuration(key); val != 0 {
 		return val
 	}
 
 	return defVal
+}
+
+// SetDuration stores duration key value to viper
+func SetDuration(key string, val time.Duration) {
+	viperLock.Lock()
+	defer viperLock.Unlock()
+	viper.Set(key, val)
 }
 
 // RandomInt returns, as an int, a non-negative pseudo-random integer in [0,n)
