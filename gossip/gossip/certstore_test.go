@@ -169,7 +169,8 @@ func TestCertRevocation(t *testing.T) {
 					},
 				},
 			}
-			go cStore.handleMessage(&sentMsg{msg: dig.NoopSign()})
+			sMsg, _ := dig.NoopSign()
+			go cStore.handleMessage(&sentMsg{msg: sMsg})
 		}
 
 		if dataReq := msg.GetDataReq(); dataReq != nil {
@@ -263,18 +264,19 @@ func TestCertExpiration(t *testing.T) {
 }
 
 func testCertificateUpdate(t *testing.T, shouldSucceed bool, certStore *certStore) {
-	hello := &sentMsg{
-		msg: (&proto.GossipMessage{
-			Channel: []byte(""),
-			Tag:     proto.GossipMessage_EMPTY,
-			Content: &proto.GossipMessage_Hello{
-				Hello: &proto.GossipHello{
-					Nonce:    0,
-					Metadata: nil,
-					MsgType:  proto.PullMsgType_IDENTITY_MSG,
-				},
+	msg, _ := (&proto.GossipMessage{
+		Channel: []byte(""),
+		Tag:     proto.GossipMessage_EMPTY,
+		Content: &proto.GossipMessage_Hello{
+			Hello: &proto.GossipHello{
+				Nonce:    0,
+				Metadata: nil,
+				MsgType:  proto.PullMsgType_IDENTITY_MSG,
 			},
-		}).NoopSign(),
+		},
+	}).NoopSign()
+	hello := &sentMsg{
+		msg: msg,
 	}
 	responseChan := make(chan *proto.GossipMessage, 1)
 	hello.On("Respond", mock.Anything).Run(func(arg mock.Arguments) {
@@ -387,7 +389,8 @@ func createUpdateMessage(nonce uint64, idMsg *proto.SignedGossipMessage) proto.R
 			},
 		},
 	}
-	return &sentMsg{msg: update.NoopSign()}
+	sMsg, _ := update.NoopSign()
+	return &sentMsg{msg: sMsg}
 }
 
 func createDigest(nonce uint64) proto.ReceivedMessage {
@@ -401,7 +404,8 @@ func createDigest(nonce uint64) proto.ReceivedMessage {
 			},
 		},
 	}
-	return &sentMsg{msg: digest.NoopSign()}
+	sMsg, _ := digest.NoopSign()
+	return &sentMsg{msg: sMsg}
 }
 
 func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons proto.MsgConsumer) (pull.Mediator, *certStore, *senderMock) {

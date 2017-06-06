@@ -85,10 +85,11 @@ func NewCommMock(id string, members map[string]*socketMock) comm.Comm {
 
 // Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
 func (packet *packetMock) Respond(msg *proto.GossipMessage) {
+	sMsg, _ := msg.NoopSign()
 	packet.src.socket <- &packetMock{
 		src: packet.dst,
 		dst: packet.src,
-		msg: msg.NoopSign(),
+		msg: sMsg,
 	}
 }
 

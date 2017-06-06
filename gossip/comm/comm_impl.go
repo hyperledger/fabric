@@ -433,7 +433,10 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 		return nil, errors.New("No TLS certificate")
 	}
 
-	cMsg = c.createConnectionMsg(c.PKIID, c.selfCertHash, c.peerIdentity, signer)
+	cMsg, err = c.createConnectionMsg(c.PKIID, c.selfCertHash, c.peerIdentity, signer)
+	if err != nil {
+		return nil, err
+	}
 
 	c.logger.Debug("Sending", cMsg, "to", remoteAddress)
 	stream.Send(cMsg.Envelope)
@@ -580,7 +583,7 @@ func readWithTimeout(stream interface{}, timeout time.Duration, address string) 
 	}
 }
 
-func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, certHash []byte, cert api.PeerIdentityType, signer proto.Signer) *proto.SignedGossipMessage {
+func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, certHash []byte, cert api.PeerIdentityType, signer proto.Signer) (*proto.SignedGossipMessage, error) {
 	m := &proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
@@ -595,8 +598,8 @@ func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, certHash []byte, 
 	sMsg := &proto.SignedGossipMessage{
 		GossipMessage: m,
 	}
-	sMsg.Sign(signer)
-	return sMsg
+	_, err := sMsg.Sign(signer)
+	return sMsg, err
 }
 
 type stream interface {

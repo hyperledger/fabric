@@ -56,7 +56,11 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 		certStore.logger.Panic("Failed associating self PKIID to cert:", err)
 	}
 
-	puller.Add(certStore.createIdentityMessage())
+	selfIdMsg, err := certStore.createIdentityMessage()
+	if err != nil {
+		logger.Panic("Failed creating self identity message:", err)
+	}
+	puller.Add(selfIdMsg)
 	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
 		for _, msg := range msgs {
 			pkiID := common.PKIidType(msg.GetPeerIdentity().PkiId)
@@ -115,7 +119,7 @@ func (cs *certStore) validateIdentityMsg(msg *proto.SignedGossipMessage) error {
 	return cs.mcs.ValidateIdentity(api.PeerIdentityType(idMsg.Cert))
 }
 
-func (cs *certStore) createIdentityMessage() *proto.SignedGossipMessage {
+func (cs *certStore) createIdentityMessage() (*proto.SignedGossipMessage, error) {
 	identity := &proto.PeerIdentity{
 		Cert:     cs.selfIdentity,
 		Metadata: nil,
@@ -135,8 +139,8 @@ func (cs *certStore) createIdentityMessage() *proto.SignedGossipMessage {
 	sMsg := &proto.SignedGossipMessage{
 		GossipMessage: m,
 	}
-	sMsg.Sign(signer)
-	return sMsg
+	_, err := sMsg.Sign(signer)
+	return sMsg, err
 }
 
 func (cs *certStore) listRevokedPeers(isSuspected api.PeerSuspector) []common.PKIidType {

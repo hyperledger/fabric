@@ -38,7 +38,12 @@ func (m *ReceivedMessageImpl) GetSourceEnvelope() *proto.Envelope {
 
 // Respond sends a msg to the source that sent the ReceivedMessageImpl
 func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
-	m.conn.send(msg.NoopSign(), func(e error) {})
+	sMsg, err := msg.NoopSign()
+	if err != nil {
+		m.conn.logger.Error("Failed creating SignedGossipMessage:", err)
+		return
+	}
+	m.conn.send(sMsg, func(e error) {})
 }
 
 // GetGossipMessage returns the inner GossipMessage
