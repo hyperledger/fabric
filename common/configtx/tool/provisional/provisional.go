@@ -19,6 +19,7 @@ package provisional
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/config"
 	configvaluesmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -31,6 +32,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	logging "github.com/op/go-logging"
 )
 
@@ -180,6 +182,20 @@ func New(conf *genesisconfig.Profile) Generator {
 	if conf.Consortiums != nil {
 		tcg := config.TemplateConsortiumsGroup()
 		tcg.Groups[config.ConsortiumsGroupKey].ModPolicy = OrdererAdminsPolicy
+
+		// Fix for https://jira.hyperledger.org/browse/FAB-4373
+		// Note, AcceptAllPolicy in this context, does not grant any unrestricted
+		// access, but allows the /Channel/Admins policy to evaluate to true
+		// for the ordering system channel while set to MAJORITY with the addition
+		// to the successful evaluation of the /Channel/Orderer/Admins policy (which
+		// is not AcceptAll
+		tcg.Groups[config.ConsortiumsGroupKey].Policies[configvaluesmsp.AdminsPolicyKey] = &cb.ConfigPolicy{
+			Policy: &cb.Policy{
+				Type:   int32(cb.Policy_SIGNATURE),
+				Policy: utils.MarshalOrPanic(cauthdsl.AcceptAllPolicy),
+			},
+		}
+
 		bs.consortiumsGroups = append(bs.consortiumsGroups, tcg)
 
 		for consortiumName, consortium := range conf.Consortiums {
