@@ -57,8 +57,6 @@ type server struct {
 
 // NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
 func NewServer(ml multichain.Manager, signer crypto.LocalSigner) ab.AtomicBroadcastServer {
-	logger.Infof("Starting orderer")
-
 	s := &server{
 		dh: deliver.NewHandlerImpl(deliverSupport{Manager: ml}),
 		bh: broadcast.NewHandlerImpl(broadcastSupport{
