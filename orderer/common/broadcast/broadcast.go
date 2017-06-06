@@ -146,7 +146,6 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 
 		if !support.Enqueue(msg) {
-			logger.Infof("Consenter instructed us to shut down")
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
 		}
 

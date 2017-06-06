@@ -22,16 +22,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var hitBranch = 50 * time.Millisecond
+var (
+	shortTimeout = 1 * time.Second
+	longTimeout  = 1 * time.Hour
+	hitBranch    = 50 * time.Millisecond
+)
 
 func TestChain(t *testing.T) {
-	oldestOffset := int64(0)
-	newestOffset := int64(5)
-	message := sarama.StringEncoder("messageFoo")
-
 	mockChannel := newChannel("channelFoo", defaultPartition)
 
+	oldestOffset := int64(0)
+	newestOffset := int64(5)
+
+	message := sarama.StringEncoder("messageFoo")
+
 	mockBroker := sarama.NewMockBroker(t, 0)
+	defer func() { mockBroker.Close() }()
+
 	mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 		"MetadataRequest": sarama.NewMockMetadataResponse(t).
 			SetBroker(mockBroker.Addr(), mockBroker.BrokerID()).
@@ -58,31 +65,57 @@ func TestChain(t *testing.T) {
 
 	t.Run("Start", func(t *testing.T) {
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1) // -1 because we haven't set the CONNECT message yet
+
 		chain.Start()
-		assert.Equal(t, true, chain.startCompleted, "Expected chain.startCompleted flag to be set to true")
-		assert.Equal(t, false, chain.halted, "Expected chain.halted flag to be set to false")
-		close(chain.exitChan)
+		select {
+		case <-time.After(shortTimeout):
+			t.Fatal("Chain should have started by now")
+		case <-chain.startChan:
+			logger.Debug("startChan closed")
+		}
+
+		_, ok := <-chain.startChan // Redundant, but let's be paranoid
+		assert.False(t, ok, "Expected chain.startChan to be closed")
+		assert.True(t, chain.started, "Expected chain.started flag to be set to true")
+
+		close(chain.exitChan) // Trigger the exitChan clause in the processMessagesToBlock goroutine
 	})
 
 	t.Run("Halt", func(t *testing.T) {
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
+
 		chain.Start()
+		select {
+		case <-time.After(shortTimeout):
+			t.Fatal("Chain should have started by now")
+		case <-chain.startChan:
+			logger.Debug("startChan closed")
+		}
 		chain.Halt()
+
 		_, ok := <-chain.exitChan
-		assert.Equal(t, false, ok, "Expected chain.exitChan to be closed")
-		time.Sleep(50 * time.Millisecond) // Let closeLoop() do its thing -- TODO Hacky, revise approach
-		assert.Equal(t, true, chain.halted, "Expected chain.halted flag to be set true")
+		assert.False(t, ok, "Expected chain.exitChan to be closed")
+		assert.True(t, chain.halted, "Expected chain.halted flag to be set true")
 	})
 
 	t.Run("DoubleHalt", func(t *testing.T) {
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
+
 		chain.Start()
+		select {
+		case <-time.After(shortTimeout):
+			t.Fatal("Chain should have started by now")
+		case <-chain.startChan:
+			logger.Debug("startChan closed")
+		}
+
 		chain.Halt()
 
 		assert.NotPanics(t, func() { chain.Halt() }, "Calling Halt() more than once shouldn't panic")
 
 		_, ok := <-chain.exitChan
-		assert.Equal(t, false, ok, "Expected chain.exitChan to be closed")
+		assert.False(t, ok, "Expected chain.exitChan to be closed")
+		assert.True(t, chain.halted, "Expected chain.halted flag to be set true")
 	})
 
 	t.Run("StartWithProducerForChannelError", func(t *testing.T) {
@@ -91,12 +124,9 @@ func TestChain(t *testing.T) {
 
 		chain, _ := newChain(mockConsenter, &mockSupportCopy, newestOffset-1)
 
-		chain.Start()
-
-		assert.Equal(t, false, chain.startCompleted, "Expected chain.startCompleted flag to be set to false")
-		assert.Equal(t, true, chain.halted, "Expected chain.halted flag to be set to set to true")
-		_, ok := <-chain.exitChan
-		assert.Equal(t, false, ok, "Expected chain.exitChan to be closed")
+		// The production path will actually call `chain.Start`. This is
+		// functionally equivalent and allows us to run assertions on it.
+		assert.Panics(t, func() { startThread(chain) }, "Expected the Start() call to result in panic")
 	})
 
 	t.Run("StartWithConnectMessageError", func(t *testing.T) {
@@ -116,12 +146,27 @@ func TestChain(t *testing.T) {
 				SetMessage(mockChannel.topic(), mockChannel.partition(), newestOffset, message),
 		})
 
-		chain.Start()
+		assert.Panics(t, func() { startThread(chain) }, "Expected the Start() call to result in panic")
+	})
 
-		assert.Equal(t, false, chain.startCompleted, "Expected chain.startCompleted flag to be set to false")
-		assert.Equal(t, true, chain.halted, "Expected chain.halted flag to be set to true")
-		_, ok := <-chain.exitChan
-		assert.Equal(t, false, ok, "Expected chain.exitChan to be closed")
+	t.Run("EnqueueIfNotStarted", func(t *testing.T) {
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
+
+		// Assume a CONNECT error
+		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
+			"MetadataRequest": sarama.NewMockMetadataResponse(t).
+				SetBroker(mockBroker.Addr(), mockBroker.BrokerID()).
+				SetLeader(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID()),
+			"ProduceRequest": sarama.NewMockProduceResponse(t).
+				SetError(mockChannel.topic(), mockChannel.partition(), sarama.ErrNotLeaderForPartition),
+			"OffsetRequest": sarama.NewMockOffsetResponse(t).
+				SetOffset(mockChannel.topic(), mockChannel.partition(), sarama.OffsetOldest, oldestOffset).
+				SetOffset(mockChannel.topic(), mockChannel.partition(), sarama.OffsetNewest, newestOffset),
+			"FetchRequest": sarama.NewMockFetchResponse(t, 1).
+				SetMessage(mockChannel.topic(), mockChannel.partition(), newestOffset, message),
+		})
+
+		assert.False(t, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return false")
 	})
 
 	t.Run("StartWithConsumerForChannelError", func(t *testing.T) {
@@ -141,37 +186,51 @@ func TestChain(t *testing.T) {
 				SetMessage(mockChannel.topic(), mockChannel.partition(), newestOffset, message),
 		})
 
-		chain.Start()
-
-		assert.Equal(t, false, chain.startCompleted, "Expected chain.startCompleted flag to be set to false")
-		assert.Equal(t, true, chain.halted, "Expected chain.halted flag to be set to set to true")
-		_, ok := <-chain.exitChan
-		assert.Equal(t, false, ok, "Expected chain.exitChan to be closed")
+		assert.Panics(t, func() { startThread(chain) }, "Expected the Start() call to result in panic")
 	})
 
 	t.Run("Enqueue", func(t *testing.T) {
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
-		chain.Start()
 
-		assert.Equal(t, true, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return true")
+		chain.Start()
+		select {
+		case <-time.After(shortTimeout):
+			t.Fatal("Chain should have started by now")
+		case <-chain.startChan:
+			logger.Debug("startChan closed")
+		}
+
+		assert.True(t, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return true")
 
 		chain.Halt()
 	})
 
 	t.Run("EnqueueIfHalted", func(t *testing.T) {
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
+
 		chain.Start()
-
+		select {
+		case <-time.After(shortTimeout):
+			t.Fatal("Chain should have started by now")
+		case <-chain.startChan:
+			logger.Debug("startChan closed")
+		}
 		chain.Halt()
-		time.Sleep(50 * time.Millisecond) // Let closeLoop() do its thing -- TODO Hacky, revise approach
-		assert.Equal(t, true, chain.halted, "Expected chain.halted flag to be set true")
 
-		assert.Equal(t, false, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return false")
+		assert.True(t, chain.halted, "Expected chain.halted flag to be set true")
+		assert.False(t, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return false")
 	})
 
 	t.Run("EnqueueError", func(t *testing.T) {
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
+
 		chain.Start()
+		select {
+		case <-time.After(shortTimeout):
+			t.Fatal("Chain should have started by now")
+		case <-chain.startChan:
+			logger.Debug("startChan closed")
+		}
 
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 			"MetadataRequest": sarama.NewMockMetadataResponse(t).
@@ -186,20 +245,22 @@ func TestChain(t *testing.T) {
 				SetMessage(mockChannel.topic(), mockChannel.partition(), newestOffset, message),
 		})
 
-		assert.Equal(t, false, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return false")
+		assert.False(t, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return false")
 	})
 }
 
 func TestCloseLoop(t *testing.T) {
-	startFrom := int64(3)
+	mockChannel := newChannel("channelFoo", defaultPartition)
+
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
 
-	mockChannel := newChannel("channelFoo", defaultPartition)
+	startFrom := int64(3)
 	message := sarama.StringEncoder("messageFoo")
 
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
 	mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 		"MetadataRequest": sarama.NewMockMetadataResponse(t).
 			SetBroker(mockBroker.Addr(), mockBroker.BrokerID()).
@@ -211,19 +272,24 @@ func TestCloseLoop(t *testing.T) {
 			SetMessage(mockChannel.topic(), mockChannel.partition(), startFrom, message),
 	})
 
-	t.Run("Proper", func(t *testing.T) {
-		producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
-		assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
+	exitChan := make(chan struct{})
 
-		parentConsumer, channelConsumer, err := setupConsumerForChannel([]string{mockBroker.Addr()}, mockBrokerConfig, mockChannel, startFrom)
-		assert.NoError(t, err, "Expected no error when setting up the consumer")
+	t.Run("Proper", func(t *testing.T) {
+		producer, err := setupProducerForChannel(mockConsenter.retryOptions(), exitChan, []string{mockBroker.Addr()}, mockBrokerConfig, mockChannel)
+		assert.NoError(t, err, "Expected no error when setting up the producer")
+
+		parentConsumer, err := setupParentConsumerForChannel(mockConsenter.retryOptions(), exitChan, []string{mockBroker.Addr()}, mockBrokerConfig, mockChannel)
+		assert.NoError(t, err, "Expected no error when setting up the parent consumer")
+
+		channelConsumer, err := setupChannelConsumerForChannel(mockConsenter.retryOptions(), exitChan, parentConsumer, mockChannel, startFrom)
+		assert.NoError(t, err, "Expected no error when setting up the channel consumer")
 
 		haltedFlag := false
 
 		errs := closeLoop(mockChannel.topic(), producer, parentConsumer, channelConsumer, &haltedFlag)
 
 		assert.Len(t, errs, 0, "Expected zero errors")
-		assert.Equal(t, true, haltedFlag, "Expected halted flag to be set to true")
+		assert.True(t, haltedFlag, "Expected halted flag to be set to true")
 
 		assert.Panics(t, func() {
 			channelConsumer.Close()
@@ -258,7 +324,7 @@ func TestCloseLoop(t *testing.T) {
 		errs := closeLoop(mockChannel.topic(), producer, mockParentConsumer, mockChannelConsumer, &haltedFlag)
 
 		assert.Len(t, errs, 1, "Expected 1 error returned")
-		assert.Equal(t, true, haltedFlag, "Expected halted flag to be set to true")
+		assert.True(t, haltedFlag, "Expected halted flag to be set to true")
 
 		assert.NotPanics(t, func() {
 			mockChannelConsumer.Close()
@@ -332,15 +398,10 @@ func TestListenForErrors(t *testing.T) {
 }
 
 func TestProcessLoopConnect(t *testing.T) {
-	newestOffset := int64(5)
-	lastCutBlockNumber := uint64(2)
-	haltedFlag := false
-	exitChan := make(chan struct{})
-
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
-
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
@@ -353,6 +414,8 @@ func TestProcessLoopConnect(t *testing.T) {
 	mockBrokerConfigCopy := *mockBrokerConfig
 	mockBrokerConfigCopy.ChannelBufferSize = 0
 
+	newestOffset := int64(5)
+
 	mockParentConsumer := mocks.NewConsumer(t, &mockBrokerConfigCopy)
 	mpc := mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	mockChannelConsumer, err := mockParentConsumer.ConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
@@ -360,8 +423,13 @@ func TestProcessLoopConnect(t *testing.T) {
 
 	mockSupport := &mockmultichain.ConsenterSupport{}
 
+	lastCutBlockNumber := uint64(2)
+	haltedFlag := false
+	exitChan := make(chan struct{})
+
 	var counts []uint64
 	done := make(chan struct{})
+
 	go func() {
 		counts, err = processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
 		done <- struct{}{}
@@ -381,15 +449,10 @@ func TestProcessLoopConnect(t *testing.T) {
 }
 
 func TestProcessLoopRegularError(t *testing.T) {
-	newestOffset := int64(5)
-	lastCutBlockNumber := uint64(3)
-	haltedFlag := false
-	exitChan := make(chan struct{})
-
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
-
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
@@ -402,10 +465,14 @@ func TestProcessLoopRegularError(t *testing.T) {
 	mockBrokerConfigCopy := *mockBrokerConfig
 	mockBrokerConfigCopy.ChannelBufferSize = 0
 
+	newestOffset := int64(5)
+
 	mockParentConsumer := mocks.NewConsumer(t, &mockBrokerConfigCopy)
 	mpc := mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	mockChannelConsumer, err := mockParentConsumer.ConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
+
+	lastCutBlockNumber := uint64(3)
 
 	mockSupport := &mockmultichain.ConsenterSupport{
 		Blocks:         make(chan *cb.Block), // WriteBlock will post here
@@ -418,8 +485,12 @@ func TestProcessLoopRegularError(t *testing.T) {
 	}
 	defer close(mockSupport.BlockCutterVal.Block)
 
+	haltedFlag := false
+	exitChan := make(chan struct{})
+
 	var counts []uint64
 	done := make(chan struct{})
+
 	go func() {
 		counts, err = processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
 		done <- struct{}{}
@@ -439,16 +510,10 @@ func TestProcessLoopRegularError(t *testing.T) {
 }
 
 func TestProcessLoopRegularQueueEnvelope(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("100s") // Something big
-	newestOffset := int64(5)
-	lastCutBlockNumber := uint64(3)
-	haltedFlag := false
-	exitChan := make(chan struct{})
-
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
-
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
@@ -458,11 +523,15 @@ func TestProcessLoopRegularQueueEnvelope(t *testing.T) {
 	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
 
+	newestOffset := int64(5)
+
 	mockParentConsumer := mocks.NewConsumer(t, nil)
 	mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset).
 		YieldMessage(newMockConsumerMessage(newRegularMessage(utils.MarshalOrPanic(newMockEnvelope("fooMessage"))))) // This is the wrappedMessage that the for loop will process
 	mockChannelConsumer, err := mockParentConsumer.ConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
+
+	lastCutBlockNumber := uint64(3)
 
 	mockSupport := &mockmultichain.ConsenterSupport{
 		Blocks:         make(chan *cb.Block), // WriteBlock will post here
@@ -470,11 +539,13 @@ func TestProcessLoopRegularQueueEnvelope(t *testing.T) {
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
 		SharedConfigVal: &mockconfig.Orderer{
-			BatchTimeoutVal: batchTimeout,
+			BatchTimeoutVal: longTimeout,
 			KafkaBrokersVal: []string{mockBroker.Addr()},
 		},
 	}
 	defer close(mockSupport.BlockCutterVal.Block)
+
+	exitChan := make(chan struct{})
 
 	go func() { // Note: Unlike the CONNECT test case, the following does NOT introduce a race condition, so we're good
 		mockSupport.BlockCutterVal.Block <- struct{}{} // Let the `mockblockcutter.Ordered` call return
@@ -484,6 +555,8 @@ func TestProcessLoopRegularQueueEnvelope(t *testing.T) {
 		logger.Debug("exitChan closed")
 	}()
 
+	haltedFlag := false
+
 	counts, err := processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
 	assert.NoError(t, err, "Expected the processMessagesToBlock call to return without errors")
 	assert.Equal(t, uint64(1), counts[indexRecvPass], "Expected 1 message received and unmarshaled")
@@ -491,17 +564,10 @@ func TestProcessLoopRegularQueueEnvelope(t *testing.T) {
 }
 
 func TestProcessLoopRegularCutBlock(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1s")
-	newestOffset := int64(5)
-	lastCutBlockNumber := uint64(3)
-	lastCutBlockNumberEnd := lastCutBlockNumber + 1
-	haltedFlag := false
-	exitChan := make(chan struct{})
-
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
-
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
@@ -511,11 +577,16 @@ func TestProcessLoopRegularCutBlock(t *testing.T) {
 	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
 
+	newestOffset := int64(5)
+
 	mockParentConsumer := mocks.NewConsumer(t, nil)
 	mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset).
 		YieldMessage(newMockConsumerMessage(newRegularMessage(utils.MarshalOrPanic(newMockEnvelope("fooMessage"))))) // This is the wrappedMessage that the for loop will process
 	mockChannelConsumer, err := mockParentConsumer.ConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
+
+	lastCutBlockNumber := uint64(3)
+	lastCutBlockNumberEnd := lastCutBlockNumber + 1
 
 	mockSupport := &mockmultichain.ConsenterSupport{
 		Blocks:         make(chan *cb.Block), // WriteBlock will post here
@@ -523,13 +594,15 @@ func TestProcessLoopRegularCutBlock(t *testing.T) {
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
 		SharedConfigVal: &mockconfig.Orderer{
-			BatchTimeoutVal: batchTimeout,
+			BatchTimeoutVal: shortTimeout,
 			KafkaBrokersVal: []string{mockBroker.Addr()},
 		},
 	}
 	defer close(mockSupport.BlockCutterVal.Block)
 
 	mockSupport.BlockCutterVal.CutNext = true
+
+	exitChan := make(chan struct{})
 
 	go func() { // Note: Unlike the CONNECT test case, the following does NOT introduce a race condition, so we're good
 		mockSupport.BlockCutterVal.Block <- struct{}{} // Let the `mockblockcutter.Ordered` call return
@@ -539,6 +612,8 @@ func TestProcessLoopRegularCutBlock(t *testing.T) {
 		close(exitChan)                                                // Identical to chain.Halt()
 		logger.Debug("exitChan closed")
 	}()
+
+	haltedFlag := false
 
 	counts, err := processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
 	assert.NoError(t, err, "Expected the processMessagesToBlock call to return without errors")
@@ -552,17 +627,10 @@ func TestProcessLoopRegularCutTwoBlocks(t *testing.T) {
 		t.Skip("Skipping test in short mode")
 	}
 
-	batchTimeout, _ := time.ParseDuration("100s") // Something big
-	newestOffset := int64(0)
-	lastCutBlockNumber := uint64(0)
-	lastCutBlockNumberEnd := lastCutBlockNumber + 2
-	haltedFlag := false
-	exitChan := make(chan struct{})
-
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
-
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
@@ -572,10 +640,14 @@ func TestProcessLoopRegularCutTwoBlocks(t *testing.T) {
 	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
 
+	newestOffset := int64(0)
+
 	mockParentConsumer := mocks.NewConsumer(t, nil)
 	mpc := mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	mockChannelConsumer, err := mockParentConsumer.ConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
+
+	lastCutBlockNumber := uint64(0)
 
 	mockSupport := &mockmultichain.ConsenterSupport{
 		Blocks:         make(chan *cb.Block), // WriteBlock will post here
@@ -583,46 +655,55 @@ func TestProcessLoopRegularCutTwoBlocks(t *testing.T) {
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
 		SharedConfigVal: &mockconfig.Orderer{
-			BatchTimeoutVal: batchTimeout,
+			BatchTimeoutVal: longTimeout,
 			KafkaBrokersVal: []string{mockBroker.Addr()},
 		},
 	}
 	defer close(mockSupport.BlockCutterVal.Block)
 
+	exitChan := make(chan struct{})
 	var block1, block2 *cb.Block
 
-	go func() { // Note: Unlike the CONNECT test case, the following does NOT introduce a race condition, so we're good
-		mpc.YieldMessage(newMockConsumerMessage(newRegularMessage(utils.MarshalOrPanic(newMockEnvelope("fooMessage"))))) // This is the wrappedMessage that the for loop will process)
-		mockSupport.BlockCutterVal.Block <- struct{}{}
+	go func() {
+		// Push the wrappedMessage that the for-loop will process
+		mpc.YieldMessage(newMockConsumerMessage(newRegularMessage(utils.MarshalOrPanic(newMockEnvelope("fooMessage")))))
+		mockSupport.BlockCutterVal.Block <- struct{}{} // Let the `mockblockcutter.Ordered` call return
 		logger.Debugf("Mock blockcutter's Ordered call has returned")
+
 		mockSupport.BlockCutterVal.IsolatedTx = true
 
 		mpc.YieldMessage(newMockConsumerMessage(newRegularMessage(utils.MarshalOrPanic(newMockEnvelope("fooMessage")))))
-		mockSupport.BlockCutterVal.Block <- struct{}{} // Let the `mockblockcutter.Ordered` call return once again
+		mockSupport.BlockCutterVal.Block <- struct{}{}
 		logger.Debugf("Mock blockcutter's Ordered call has returned for the second time")
 
 		select {
 		case block1 = <-mockSupport.Blocks: // Let the `mockConsenterSupport.WriteBlock` proceed
-		case <-time.After(hitBranch):
+		case <-time.After(shortTimeout):
 			logger.Fatalf("Did not receive a block from the blockcutter as expected")
 		}
 
 		select {
 		case block2 = <-mockSupport.Blocks:
-		case <-time.After(hitBranch):
+		case <-time.After(shortTimeout):
 			logger.Fatalf("Did not receive a block from the blockcutter as expected")
 		}
 
-		logger.Debug("Closing exitChan to exit the infinite for loop") // We are guaranteed to hit the exitChan branch after hitting the REGULAR branch at least once
-		close(exitChan)                                                // Identical to chain.Halt()
+		logger.Debug("Closing exitChan to exit the infinite for-loop")
+		close(exitChan) // Identical to chain.Halt()
 		logger.Debug("exitChan closed")
 	}()
 
+	haltedFlag := false
+	lastCutBlockNumberEnd := lastCutBlockNumber + 2
+
 	counts, err := processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
+
 	assert.NoError(t, err, "Expected the processMessagesToBlock call to return without errors")
 	assert.Equal(t, uint64(2), counts[indexRecvPass], "Expected 2 messages received and unmarshaled")
 	assert.Equal(t, uint64(2), counts[indexProcessRegularPass], "Expected 2 REGULAR messages processed")
 	assert.Equal(t, lastCutBlockNumberEnd, lastCutBlockNumber, "Expected lastCutBlockNumber to be bumped up by two")
+	// assert.NotEqual(t, block1, block2, "Expect these two blocks to not be equal, got\n%+v\nand\n%+v", block1, block2)
+	// assert.NotEqual(t, block1.GetMetadata(), block2.GetMetadata(), "Expect these two metadata values to not be equal")
 	assert.Equal(t, newestOffset+1, extractEncodedOffset(block1.GetMetadata().Metadata[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in first block to be %d", newestOffset+1)
 	assert.Equal(t, newestOffset+2, extractEncodedOffset(block2.GetMetadata().Metadata[cb.BlockMetadataIndex_ORDERER]), "Expected encoded offset in first block to be %d", newestOffset+2)
 }
@@ -632,17 +713,10 @@ func TestProcessLoopRegularAndSendTimeToCutRegular(t *testing.T) {
 		t.Skip("Skipping test in short mode")
 	}
 
-	batchTimeout, _ := time.ParseDuration("1ms")
-	newestOffset := int64(5)
-	lastCutBlockNumber := uint64(3)
-	lastCutBlockNumberEnd := lastCutBlockNumber
-	haltedFlag := false
-	exitChan := make(chan struct{})
-
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
-
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
@@ -656,11 +730,18 @@ func TestProcessLoopRegularAndSendTimeToCutRegular(t *testing.T) {
 	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
 
+	newestOffset := int64(5)
+
 	mockParentConsumer := mocks.NewConsumer(t, nil)
 	mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset).
 		YieldMessage(newMockConsumerMessage(newRegularMessage(utils.MarshalOrPanic(newMockEnvelope("fooMessage"))))) // This is the wrappedMessage that the for loop will process
 	mockChannelConsumer, err := mockParentConsumer.ConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
+
+	lastCutBlockNumber := uint64(3)
+	lastCutBlockNumberEnd := lastCutBlockNumber
+
+	batchTimeout, _ := time.ParseDuration("1ms")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
 		Blocks:         make(chan *cb.Block), // WriteBlock will post here
@@ -674,6 +755,8 @@ func TestProcessLoopRegularAndSendTimeToCutRegular(t *testing.T) {
 	}
 	defer close(mockSupport.BlockCutterVal.Block)
 
+	exitChan := make(chan struct{})
+
 	go func() { // TODO Hacky, see comments below, revise approach
 		mockSupport.BlockCutterVal.Block <- struct{}{} // Let the `mockblockcutter.Ordered` call return (in `processRegular`)
 		logger.Debugf("Mock blockcutter's Ordered call has returned")
@@ -682,6 +765,8 @@ func TestProcessLoopRegularAndSendTimeToCutRegular(t *testing.T) {
 		close(exitChan) // Identical to chain.Halt()
 		logger.Debug("exitChan closed")
 	}()
+
+	haltedFlag := false
 
 	counts, err := processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
 	assert.NoError(t, err, "Expected the processMessagesToBlock call to return without errors")
@@ -695,13 +780,6 @@ func TestProcessLoopRegularAndSendTimeToCutError(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode.")
 	}
-
-	batchTimeout, _ := time.ParseDuration("1ms")
-	newestOffset := int64(5)
-	lastCutBlockNumber := uint64(3)
-	lastCutBlockNumberEnd := lastCutBlockNumber
-	haltedFlag := false
-	exitChan := make(chan struct{})
 
 	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
@@ -722,11 +800,18 @@ func TestProcessLoopRegularAndSendTimeToCutError(t *testing.T) {
 	failureResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), sarama.ErrNotEnoughReplicas)
 	mockBroker.Returns(failureResponse)
 
+	newestOffset := int64(5)
+
 	mockParentConsumer := mocks.NewConsumer(t, nil)
 	mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset).
 		YieldMessage(newMockConsumerMessage(newRegularMessage(utils.MarshalOrPanic(newMockEnvelope("fooMessage"))))) // This is the wrappedMessage that the for loop will process
 	mockChannelConsumer, err := mockParentConsumer.ConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
+
+	lastCutBlockNumber := uint64(3)
+	lastCutBlockNumberEnd := lastCutBlockNumber
+
+	batchTimeout, _ := time.ParseDuration("1ms")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
 		Blocks:         make(chan *cb.Block), // WriteBlock will post here
@@ -740,6 +825,8 @@ func TestProcessLoopRegularAndSendTimeToCutError(t *testing.T) {
 	}
 	defer close(mockSupport.BlockCutterVal.Block)
 
+	exitChan := make(chan struct{})
+
 	go func() { // TODO Hacky, see comments below, revise approach
 		mockSupport.BlockCutterVal.Block <- struct{}{} // Let the `mockblockcutter.Ordered` call return (in `processRegular`)
 		logger.Debugf("Mock blockcutter's Ordered call has returned")
@@ -748,6 +835,8 @@ func TestProcessLoopRegularAndSendTimeToCutError(t *testing.T) {
 		close(exitChan) // Identical to chain.Halt()
 		logger.Debug("exitChan closed")
 	}()
+
+	haltedFlag := false
 
 	counts, err := processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
 	assert.NoError(t, err, "Expected the processMessagesToBlock call to return without errors")
@@ -758,12 +847,6 @@ func TestProcessLoopRegularAndSendTimeToCutError(t *testing.T) {
 }
 
 func TestProcessLoopTimeToCutFromReceivedMessageRegular(t *testing.T) {
-	newestOffset := int64(5)
-	lastCutBlockNumber := uint64(3)
-	lastCutBlockNumberEnd := lastCutBlockNumber + 1
-	haltedFlag := false
-	exitChan := make(chan struct{})
-
 	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	mockBroker := sarama.NewMockBroker(t, 0)
@@ -776,6 +859,11 @@ func TestProcessLoopTimeToCutFromReceivedMessageRegular(t *testing.T) {
 
 	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
+
+	newestOffset := int64(5)
+
+	lastCutBlockNumber := uint64(3)
+	lastCutBlockNumberEnd := lastCutBlockNumber + 1
 
 	mockParentConsumer := mocks.NewConsumer(t, nil)
 	mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset).
@@ -800,12 +888,16 @@ func TestProcessLoopTimeToCutFromReceivedMessageRegular(t *testing.T) {
 	}()
 	mockSupport.BlockCutterVal.Ordered(newMockEnvelope("fooMessage"))
 
+	exitChan := make(chan struct{})
+
 	go func() { // Note: Unlike the CONNECT test case, the following does NOT introduce a race condition, so we're good
 		<-mockSupport.Blocks                                           // Let the `mockConsenterSupport.WriteBlock` proceed
 		logger.Debug("Closing exitChan to exit the infinite for loop") // We are guaranteed to hit the exitChan branch after hitting the REGULAR branch at least once
 		close(exitChan)                                                // Identical to chain.Halt()
 		logger.Debug("exitChan closed")
 	}()
+
+	haltedFlag := false
 
 	counts, err := processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
 	assert.NoError(t, err, "Expected the processMessagesToBlock call to return without errors")
@@ -815,16 +907,10 @@ func TestProcessLoopTimeToCutFromReceivedMessageRegular(t *testing.T) {
 }
 
 func TestProcessLoopTimeToCutFromReceivedMessageZeroBatch(t *testing.T) {
-	newestOffset := int64(5)
-	lastCutBlockNumber := uint64(3)
-	lastCutBlockNumberEnd := lastCutBlockNumber
-	haltedFlag := false
-	exitChan := make(chan struct{})
-
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
-
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
@@ -833,6 +919,11 @@ func TestProcessLoopTimeToCutFromReceivedMessageZeroBatch(t *testing.T) {
 
 	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
+
+	newestOffset := int64(5)
+
+	lastCutBlockNumber := uint64(3)
+	lastCutBlockNumberEnd := lastCutBlockNumber
 
 	mockParentConsumer := mocks.NewConsumer(t, nil)
 	mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset).
@@ -851,6 +942,9 @@ func TestProcessLoopTimeToCutFromReceivedMessageZeroBatch(t *testing.T) {
 	}
 	defer close(mockSupport.BlockCutterVal.Block)
 
+	haltedFlag := false
+	exitChan := make(chan struct{})
+
 	counts, err := processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
 	assert.Error(t, err, "Expected the processMessagesToBlock call to return an error")
 	assert.Equal(t, uint64(1), counts[indexRecvPass], "Expected 1 message received and unmarshaled")
@@ -859,16 +953,10 @@ func TestProcessLoopTimeToCutFromReceivedMessageZeroBatch(t *testing.T) {
 }
 
 func TestProcessLoopTimeToCutFromReceivedMessageLargerThanExpected(t *testing.T) {
-	newestOffset := int64(5)
-	lastCutBlockNumber := uint64(3)
-	lastCutBlockNumberEnd := lastCutBlockNumber
-	haltedFlag := false
-	exitChan := make(chan struct{})
-
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
-
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
@@ -877,6 +965,11 @@ func TestProcessLoopTimeToCutFromReceivedMessageLargerThanExpected(t *testing.T)
 
 	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
+
+	newestOffset := int64(5)
+
+	lastCutBlockNumber := uint64(3)
+	lastCutBlockNumberEnd := lastCutBlockNumber
 
 	mockParentConsumer := mocks.NewConsumer(t, nil)
 	mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset).
@@ -895,6 +988,9 @@ func TestProcessLoopTimeToCutFromReceivedMessageLargerThanExpected(t *testing.T)
 	}
 	defer close(mockSupport.BlockCutterVal.Block)
 
+	haltedFlag := false
+	exitChan := make(chan struct{})
+
 	counts, err := processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
 	assert.Error(t, err, "Expected the processMessagesToBlock call to return an error")
 	assert.Equal(t, uint64(1), counts[indexRecvPass], "Expected 1 message received and unmarshaled")
@@ -903,16 +999,10 @@ func TestProcessLoopTimeToCutFromReceivedMessageLargerThanExpected(t *testing.T)
 }
 
 func TestProcessLoopTimeToCutFromReceivedMessageStale(t *testing.T) {
-	newestOffset := int64(5)
-	lastCutBlockNumber := uint64(3)
-	lastCutBlockNumberEnd := lastCutBlockNumber
-	haltedFlag := false
-	exitChan := make(chan struct{})
-
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
-
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
@@ -925,10 +1015,15 @@ func TestProcessLoopTimeToCutFromReceivedMessageStale(t *testing.T) {
 	mockBrokerConfigCopy := *mockBrokerConfig
 	mockBrokerConfigCopy.ChannelBufferSize = 0
 
+	newestOffset := int64(5)
+
 	mockParentConsumer := mocks.NewConsumer(t, &mockBrokerConfigCopy)
 	mpc := mockParentConsumer.ExpectConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	mockChannelConsumer, err := mockParentConsumer.ConsumePartition(mockChannel.topic(), mockChannel.partition(), newestOffset)
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
+
+	lastCutBlockNumber := uint64(3)
+	lastCutBlockNumberEnd := lastCutBlockNumber
 
 	mockSupport := &mockmultichain.ConsenterSupport{
 		Blocks:         make(chan *cb.Block), // WriteBlock will post here
@@ -941,14 +1036,18 @@ func TestProcessLoopTimeToCutFromReceivedMessageStale(t *testing.T) {
 	}
 	defer close(mockSupport.BlockCutterVal.Block)
 
+	haltedFlag := false
+	exitChan := make(chan struct{})
+
 	var counts []uint64
 	done := make(chan struct{})
+
 	go func() {
 		counts, err = processMessagesToBlock(mockSupport, producer, mockParentConsumer, mockChannelConsumer, mockChannel, &lastCutBlockNumber, &haltedFlag, &exitChan)
 		done <- struct{}{}
 	}()
 
-	// This is the wrappedMessage that the for loop will process
+	// This is the wrappedMessage that the for-loop will process
 	mpc.YieldMessage(newMockConsumerMessage(newTimeToCutMessage(lastCutBlockNumber)))
 
 	logger.Debug("Closing exitChan to exit the infinite for loop")
@@ -963,51 +1062,54 @@ func TestProcessLoopTimeToCutFromReceivedMessageStale(t *testing.T) {
 }
 
 func TestSendConnectMessage(t *testing.T) {
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
 	metadataResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID(), nil, nil, sarama.ErrNoError)
 	mockBroker.Returns(metadataResponse)
 
-	// Affected by Net.ReadTimeout, Consumer.Retry.Backoff, and Metadata.Retry.Max
-
 	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
+	defer func() { producer.Close() }()
+
+	exitChan := make(chan struct{})
 
 	t.Run("Proper", func(t *testing.T) {
 		successResponse := new(sarama.ProduceResponse)
 		successResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), sarama.ErrNoError)
 		mockBroker.Returns(successResponse)
 
-		assert.NoError(t, sendConnectMessage(producer, mockChannel), "Expected the sendConnectMessage call to return without errors")
+		assert.NoError(t, sendConnectMessage(mockConsenter.retryOptions(), exitChan, producer, mockChannel), "Expected the sendConnectMessage call to return without errors")
 	})
 
 	t.Run("WithError", func(t *testing.T) {
+		// Affected by Net.ReadTimeout, Consumer.Retry.Backoff, and Metadata.Retry.Max
 		failureResponse := new(sarama.ProduceResponse)
 		failureResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), sarama.ErrNotEnoughReplicas)
 		mockBroker.Returns(failureResponse)
-		err := sendConnectMessage(producer, mockChannel)
-		assert.Error(t, err, "Expected the sendConnectMessage call to return an error")
+
+		assert.Error(t, sendConnectMessage(mockConsenter.retryOptions(), exitChan, producer, mockChannel), "Expected the sendConnectMessage call to return an error")
 	})
 }
 
 func TestSendTimeToCut(t *testing.T) {
-	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("mockChannelFoo", defaultPartition)
 
 	metadataResponse := new(sarama.MetadataResponse)
 	metadataResponse.AddBroker(mockBroker.Addr(), mockBroker.BrokerID())
 	metadataResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID(), nil, nil, sarama.ErrNoError)
 	mockBroker.Returns(metadataResponse)
 
-	// Affected by Net.ReadTimeout, Consumer.Retry.Backoff, and Metadata.Retry.Max
-
 	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
+	defer func() { producer.Close() }()
 
 	timeToCutBlockNumber := uint64(3)
 	var timer <-chan time.Time
@@ -1017,18 +1119,19 @@ func TestSendTimeToCut(t *testing.T) {
 		successResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), sarama.ErrNoError)
 		mockBroker.Returns(successResponse)
 
-		timer = time.After(1 * time.Hour) // Just a very long amount of time
+		timer = time.After(longTimeout)
 
 		assert.NoError(t, sendTimeToCut(producer, mockChannel, timeToCutBlockNumber, &timer), "Expected the sendTimeToCut call to return without errors")
 		assert.Nil(t, timer, "Expected the sendTimeToCut call to nil the timer")
 	})
 
 	t.Run("WithError", func(t *testing.T) {
+		// Affected by Net.ReadTimeout, Consumer.Retry.Backoff, and Metadata.Retry.Max
 		failureResponse := new(sarama.ProduceResponse)
 		failureResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), sarama.ErrNotEnoughReplicas)
 		mockBroker.Returns(failureResponse)
 
-		timer = time.After(1 * time.Hour) // Just a very long amount of time
+		timer = time.After(longTimeout)
 
 		assert.Error(t, sendTimeToCut(producer, mockChannel, timeToCutBlockNumber, &timer), "Expected the sendTimeToCut call to return an error")
 		assert.Nil(t, timer, "Expected the sendTimeToCut call to nil the timer")
@@ -1036,15 +1139,17 @@ func TestSendTimeToCut(t *testing.T) {
 }
 
 func TestSetupConsumerForChannel(t *testing.T) {
-	startFrom := int64(3)
+	mockBroker := sarama.NewMockBroker(t, 0)
+	defer func() { mockBroker.Close() }()
+
+	mockChannel := newChannel("channelFoo", defaultPartition)
+
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
 
-	mockChannel := newChannel("channelFoo", defaultPartition)
+	startFrom := int64(3)
 	message := sarama.StringEncoder("messageFoo")
 
-	mockBroker := sarama.NewMockBroker(t, 0)
-	defer func() { mockBroker.Close() }()
 	mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 		"MetadataRequest": sarama.NewMockMetadataResponse(t).
 			SetBroker(mockBroker.Addr(), mockBroker.BrokerID()).
@@ -1056,35 +1161,34 @@ func TestSetupConsumerForChannel(t *testing.T) {
 			SetMessage(mockChannel.topic(), mockChannel.partition(), startFrom, message),
 	})
 
-	t.Run("Proper", func(t *testing.T) {
-		parentConsumer, channelConsumer, err := setupConsumerForChannel([]string{mockBroker.Addr()}, mockBrokerConfig, mockChannel, startFrom)
-		assert.NoError(t, err, "Expected the setupConsumerForChannel call to return without errors")
-		assert.NoError(t, channelConsumer.Close(), "Expected to close the channelConsumer without errors")
+	exitChan := make(chan struct{})
+
+	t.Run("ProperParent", func(t *testing.T) {
+		parentConsumer, err := setupParentConsumerForChannel(mockConsenter.retryOptions(), exitChan, []string{mockBroker.Addr()}, mockBrokerConfig, mockChannel)
+		assert.NoError(t, err, "Expected the setupParentConsumerForChannel call to return without errors")
 		assert.NoError(t, parentConsumer.Close(), "Expected to close the parentConsumer without errors")
+	})
+
+	t.Run("ProperChannel", func(t *testing.T) {
+		parentConsumer, _ := setupParentConsumerForChannel(mockConsenter.retryOptions(), exitChan, []string{mockBroker.Addr()}, mockBrokerConfig, mockChannel)
+		defer func() { parentConsumer.Close() }()
+		channelConsumer, err := setupChannelConsumerForChannel(mockConsenter.retryOptions(), exitChan, parentConsumer, mockChannel, newestOffset)
+		assert.NoError(t, err, "Expected the setupChannelConsumerForChannel call to return without errors")
+		assert.NoError(t, channelConsumer.Close(), "Expected to close the channelConsumer without errors")
 	})
 
 	t.Run("WithParentConsumerError", func(t *testing.T) {
 		// Provide an empty brokers list
-		parentConsumer, channelConsumer, err := setupConsumerForChannel([]string{}, mockBrokerConfig, mockChannel, startFrom)
-		defer func() {
-			if err == nil {
-				channelConsumer.Close()
-				parentConsumer.Close()
-			}
-		}()
-		assert.Error(t, err, "Expected the setupConsumerForChannel call to return an error")
+		_, err := setupParentConsumerForChannel(mockConsenter.retryOptions(), exitChan, []string{}, mockBrokerConfig, mockChannel)
+		assert.Error(t, err, "Expected the setupParentConsumerForChannel call to return an error")
 	})
 
 	t.Run("WithChannelConsumerError", func(t *testing.T) {
 		// Provide an out-of-range offset
-		parentConsumer, channelConsumer, err := setupConsumerForChannel([]string{mockBroker.Addr()}, mockBrokerConfig, mockChannel, newestOffset+1)
-		defer func() {
-			if err == nil {
-				channelConsumer.Close()
-				parentConsumer.Close()
-			}
-		}()
-		assert.Error(t, err, "Expected the setupConsumerForChannel call to return an error")
+		parentConsumer, _ := setupParentConsumerForChannel(mockConsenter.retryOptions(), exitChan, []string{mockBroker.Addr()}, mockBrokerConfig, mockChannel)
+		_, err := setupChannelConsumerForChannel(mockConsenter.retryOptions(), exitChan, parentConsumer, mockChannel, newestOffset+1)
+		defer func() { parentConsumer.Close() }()
+		assert.Error(t, err, "Expected the setupChannelConsumerForChannel call to return an error")
 	})
 }
 
@@ -1093,10 +1197,12 @@ func TestSetupProducerForChannel(t *testing.T) {
 		t.Skip("Skipping test in short mode")
 	}
 
-	mockChannel := newChannel("channelFoo", defaultPartition)
-
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer mockBroker.Close()
+
+	mockChannel := newChannel("channelFoo", defaultPartition)
+
+	exitChan := make(chan struct{})
 
 	t.Run("Proper", func(t *testing.T) {
 		metadataResponse := new(sarama.MetadataResponse)
@@ -1104,13 +1210,13 @@ func TestSetupProducerForChannel(t *testing.T) {
 		metadataResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID(), nil, nil, sarama.ErrNoError)
 		mockBroker.Returns(metadataResponse)
 
-		producer, err := setupProducerForChannel([]string{mockBroker.Addr()}, mockBrokerConfig, mockChannel, mockConsenter.retryOptions())
+		producer, err := setupProducerForChannel(mockConsenter.retryOptions(), exitChan, []string{mockBroker.Addr()}, mockBrokerConfig, mockChannel)
 		assert.NoError(t, err, "Expected the setupProducerForChannel call to return without errors")
 		assert.NoError(t, producer.Close(), "Expected to close the producer without errors")
 	})
 
 	t.Run("WithError", func(t *testing.T) {
-		_, err := setupProducerForChannel([]string{}, mockBrokerConfig, mockChannel, mockConsenter.retryOptions())
+		_, err := setupProducerForChannel(mockConsenter.retryOptions(), exitChan, []string{}, mockBrokerConfig, mockChannel)
 		assert.Error(t, err, "Expected the setupProducerForChannel call to return an error")
 	})
 }

@@ -156,8 +156,10 @@ Feature: Bootstrap
 
     And the user "dev0Org0" using cert alias "consortium1-cert" broadcasts ConfigUpdate Tx "configUpdateTx1" to orderer "<orderer0>" to create channel "com.acme.blockchain.jdoe.Channel1"
 
-    # Sleep as the local orderer ledger needs to create the block that corresponds to the start number of the seek request
-    And I wait "<BroadcastWaitTime>" seconds
+    # Sleep as the local orderer needs to bring up the resources that correspond to the new channel
+    # For the Kafka orderer, this includes setting up a producer and consumer for the channel's partition
+    # Requesting a deliver earlier may result in a SERVICE_UNAVAILABLE response and a connection drop
+    And I wait "<ChannelJoinDelay>" seconds
 
     When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "<orderer0>"
     And user "dev0Org0" sends deliver a seek request on orderer "<orderer0>" with properties:
@@ -342,8 +344,8 @@ Feature: Bootstrap
     # TODO: Once events are working, consider listen event listener as well.
 
     Examples: Orderer Options
-      |          ComposeFile                                                                                                                       |  SystemUpWaitTime   | ConsensusType | BroadcastWaitTime | orderer0 | orderer1 | orderer2 |Orderer Specific Info|
-      |   dc-base.yml                                                                                                                              |        0            |     solo      |      2            | orderer0 | orderer0 | orderer0 |                     |
-#      |   dc-base.yml  dc-peer-couchdb.yml                                                                                                         |        10           |     solo      |      2            | orderer0 | orderer0 | orderer0 |                     |
-#      |   dc-base.yml  dc-orderer-kafka.yml                                                                                                        |        30           |     kafka     |      7            | orderer0 | orderer1 | orderer2 |                     |
-#      |   dc-base.yml  dc-peer-couchdb.yml dc-orderer-kafka.yml                                                                                    |        30           |     kafka     |      7            | orderer0 | orderer1 | orderer2 |                     |
+      |          ComposeFile                                                                                                                       |  SystemUpWaitTime   | ConsensusType | ChannelJoinDelay | BroadcastWaitTime | orderer0 | orderer1 | orderer2 |Orderer Specific Info|
+      |   dc-base.yml                                                                                                                              |        0            |     solo      |      2           |      2            | orderer0 | orderer0 | orderer0 |                     |
+#      |   dc-base.yml  dc-peer-couchdb.yml                                                                                                         |        10           |     solo      |      2           |      2            | orderer0 | orderer0 | orderer0 |                     |
+#      |   dc-base.yml  dc-orderer-kafka.yml                                                                                                        |        40           |     kafka     |     10           |      5            | orderer0 | orderer1 | orderer2 |                     |
+#      |   dc-base.yml  dc-peer-couchdb.yml dc-orderer-kafka.yml                                                                                    |        40           |     kafka     |     10           |      5            | orderer0 | orderer1 | orderer2 |                     |
