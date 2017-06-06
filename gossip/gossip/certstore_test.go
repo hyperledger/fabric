@@ -151,8 +151,8 @@ func TestCertRevocation(t *testing.T) {
 
 	sentHello := false
 	l := sync.Mutex{}
-	senderMock := mock.Mock{}
-	senderMock.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
+	sender.Mock = mock.Mock{}
+	sender.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
 		msg := arg.Get(0).(*proto.SignedGossipMessage)
 		l.Lock()
 		defer l.Unlock()
@@ -176,11 +176,10 @@ func TestCertRevocation(t *testing.T) {
 			askedForIdentity <- struct{}{}
 		}
 	})
-	sender.Mock = senderMock
 	testCertificateUpdate(t, true, cStore)
 	// Shouldn't have asked, because already got identity
 	select {
-	case <-time.After(time.Second * 3):
+	case <-time.After(time.Second * 5):
 	case <-askedForIdentity:
 		assert.Fail(t, "Shouldn't have asked for an identity, becase we already have it")
 	}
@@ -190,33 +189,10 @@ func TestCertRevocation(t *testing.T) {
 	cStore.listRevokedPeers(func(id api.PeerIdentityType) bool {
 		return string(id) == "B"
 	})
+
+	l.Lock()
 	sentHello = false
-	l = sync.Mutex{}
-	senderMock = mock.Mock{}
-	senderMock.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
-		msg := arg.Get(0).(*proto.SignedGossipMessage)
-		l.Lock()
-		defer l.Unlock()
-
-		if hello := msg.GetHello(); hello != nil && !sentHello {
-			sentHello = true
-			dig := &proto.GossipMessage{
-				Tag: proto.GossipMessage_EMPTY,
-				Content: &proto.GossipMessage_DataDig{
-					DataDig: &proto.DataDigest{
-						Nonce:   hello.Nonce,
-						MsgType: proto.PullMsgType_IDENTITY_MSG,
-						Digests: []string{"B"},
-					},
-				},
-			}
-			go cStore.handleMessage(&sentMsg{msg: dig.NoopSign()})
-		}
-
-		if dataReq := msg.GetDataReq(); dataReq != nil {
-			askedForIdentity <- struct{}{}
-		}
-	})
+	l.Unlock()
 
 	select {
 	case <-time.After(time.Second * 5):
@@ -435,7 +411,7 @@ func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons pro
 	config := pull.Config{
 		MsgType:           proto.PullMsgType_IDENTITY_MSG,
 		PeerCountToSelect: 1,
-		PullInterval:      time.Millisecond * 500,
+		PullInterval:      time.Second,
 		Tag:               proto.GossipMessage_EMPTY,
 		Channel:           nil,
 		ID:                "id1",
