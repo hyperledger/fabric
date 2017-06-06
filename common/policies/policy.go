@@ -132,6 +132,10 @@ type ManagerImpl struct {
 	config        *policyConfig
 	pendingConfig map[interface{}]*policyConfig
 	pendingLock   sync.RWMutex
+
+	// SuppressSanityLogMessages when set to true will prevent the sanity checking log
+	// messages.  Useful for novel cases like channel templates
+	SuppressSanityLogMessages bool
 }
 
 // NewManagerImpl creates a new ManagerImpl with the given CryptoHelper
@@ -290,7 +294,7 @@ func (pm *ManagerImpl) CommitProposals(tx interface{}) {
 	pm.config = pendingConfig
 	delete(pm.pendingConfig, tx)
 
-	if pm.parent == nil && pm.basePath == ChannelPrefix {
+	if pm.parent == nil && pm.basePath == ChannelPrefix && !pm.SuppressSanityLogMessages {
 		for _, policyName := range []string{ChannelReaders, ChannelWriters} {
 			_, ok := pm.GetPolicy(policyName)
 			if !ok {

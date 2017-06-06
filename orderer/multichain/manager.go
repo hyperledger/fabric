@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -300,5 +301,17 @@ func (ml *multiLedger) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxa
 		},
 	}, msgVersion, epoch)
 
-	return configtx.NewManagerImpl(templateConfig, configtx.NewInitializer(), nil)
+	initializer := configtx.NewInitializer()
+
+	// This is a very hacky way to disable the sanity check logging in the policy manager
+	// for the template configuration, but it is the least invasive near a release
+	pm, ok := initializer.PolicyManager().(*policies.ManagerImpl)
+	if ok {
+		pm.SuppressSanityLogMessages = true
+		defer func() {
+			pm.SuppressSanityLogMessages = false
+		}()
+	}
+
+	return configtx.NewManagerImpl(templateConfig, initializer, nil)
 }
