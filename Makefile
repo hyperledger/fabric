@@ -129,10 +129,13 @@ orderer-docker: build/image/orderer/$(DUMMY)
 
 .PHONY: configtxgen
 configtxgen: GO_TAGS+= nopkcs11
+configtxgen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
 configtxgen: build/bin/configtxgen
 
+configtxlator: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
 configtxlator: build/bin/configtxlator
 
+cryptogen: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
 cryptogen: build/bin/cryptogen
 
 tools-docker: build/image/tools/$(DUMMY)
