@@ -62,7 +62,7 @@ var mainCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if versionFlag {
-			version.Print()
+			fmt.Print(version.GetInfo())
 		} else {
 			cmd.HelpFunc()(cmd, args)
 		}
