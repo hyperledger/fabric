@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"google.golang.org/grpc"
@@ -91,22 +92,10 @@ func (cp *connProducer) UpdateEndpoints(endpoints []string) {
 func shuffle(a []string) []string {
 	n := len(a)
 	returnedSlice := make([]string, n)
+	rand.Seed(time.Now().UnixNano())
 	indices := rand.Perm(n)
 	for i, idx := range indices {
 		returnedSlice[i] = a[idx]
 	}
 	return returnedSlice
-}
-
-// filterOut receives a slice of strings and a string to filter out
-// and returns the slice without the string
-func filterOut(a []string, filteredOut string) []string {
-	var slice2Return []string
-	for _, s := range a {
-		if s == filteredOut {
-			continue
-		}
-		slice2Return = append(slice2Return, s)
-	}
-	return slice2Return
 }

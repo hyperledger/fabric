@@ -36,6 +36,8 @@ type Orderer struct {
 	t                *testing.T
 	blockChannel     chan uint64
 	stopChan         chan struct{}
+	failFlag         int32
+	connCount        uint32
 }
 
 func NewOrderer(port int, t *testing.T) *Orderer {
@@ -62,6 +64,19 @@ func (o *Orderer) Shutdown() {
 	o.Listener.Close()
 }
 
+func (o *Orderer) Fail() {
+	atomic.StoreInt32(&o.failFlag, int32(1))
+	o.blockChannel <- 0
+}
+
+func (o *Orderer) ConnCount() int {
+	return int(atomic.LoadUint32(&o.connCount))
+}
+
+func (o *Orderer) hasFailed() bool {
+	return atomic.LoadInt32(&o.failFlag) == int32(1)
+}
+
 func (*Orderer) Broadcast(orderer.AtomicBroadcast_BroadcastServer) error {
 	panic("Should not have ben called")
 }
@@ -75,9 +90,13 @@ func (o *Orderer) SendBlock(seq uint64) {
 }
 
 func (o *Orderer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) error {
+	atomic.AddUint32(&o.connCount, 1)
 	envlp, err := stream.Recv()
 	if err != nil {
 		return nil
+	}
+	if o.hasFailed() {
+		return stream.Send(statusUnavailable())
 	}
 	payload := &common.Payload{}
 	proto.Unmarshal(envlp.Payload, payload)
@@ -91,8 +110,19 @@ func (o *Orderer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) error {
 		case <-o.stopChan:
 			return nil
 		case seq := <-o.blockChannel:
+			if o.hasFailed() {
+				return stream.Send(statusUnavailable())
+			}
 			o.sendBlock(stream, seq)
 		}
+	}
+}
+
+func statusUnavailable() *orderer.DeliverResponse {
+	return &orderer.DeliverResponse{
+		Type: &orderer.DeliverResponse_Status{
+			Status: common.Status_SERVICE_UNAVAILABLE,
+		},
 	}
 }
 

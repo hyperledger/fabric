@@ -120,7 +120,7 @@ func (bc *broadcastClient) doAction(action func() (interface{}, error)) (interfa
 	}
 	resp, err := action()
 	if err != nil {
-		bc.disconnect()
+		bc.Disconnect()
 		return nil, err
 	}
 	return resp, nil
@@ -151,7 +151,7 @@ func (bc *broadcastClient) connect() error {
 	}
 	// If we reached here, lets make sure connection is closed
 	// and nullified before we return
-	bc.disconnect()
+	bc.Disconnect()
 	return err
 }
 
@@ -191,6 +191,7 @@ func (bc *broadcastClient) shouldStop() bool {
 	return atomic.LoadInt32(&bc.stopFlag) == int32(1)
 }
 
+// Close makes the client close its connection and shut down
 func (bc *broadcastClient) Close() {
 	bc.Lock()
 	defer bc.Unlock()
@@ -205,7 +206,8 @@ func (bc *broadcastClient) Close() {
 	bc.conn.Close()
 }
 
-func (bc *broadcastClient) disconnect() {
+// Disconnect makes the client close the existing connection
+func (bc *broadcastClient) Disconnect() {
 	bc.Lock()
 	defer bc.Unlock()
 	if bc.conn == nil {
