@@ -153,6 +153,12 @@ func TestUnmarshalEnvelopeOfType(t *testing.T) {
 
 }
 
+func TestExtractEnvelopeNilData(t *testing.T) {
+	block := &cb.Block{}
+	_, err := ExtractEnvelope(block, 0)
+	assert.Error(t, err, "Nil data")
+}
+
 func TestExtractEnvelopeWrongIndex(t *testing.T) {
 	block := testBlock()
 	if _, err := ExtractEnvelope(block, len(block.GetData().Data)); err == nil {

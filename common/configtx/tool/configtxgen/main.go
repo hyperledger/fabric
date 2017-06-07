@@ -174,6 +174,10 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 func doInspectBlock(inspectBlock string) error {
 	logger.Info("Inspecting block")
 	data, err := ioutil.ReadFile(inspectBlock)
+	if err != nil {
+		return fmt.Errorf("Could not read block %s", inspectBlock)
+	}
+
 	logger.Info("Parsing genesis block")
 	block := &cb.Block{}
 	err = proto.Unmarshal(data, block)

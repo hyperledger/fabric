@@ -138,6 +138,10 @@ func ExtractEnvelopeOrPanic(block *cb.Block, index int) *cb.Envelope {
 
 // ExtractEnvelope retrieves the requested envelope from a given block and unmarshals it.
 func ExtractEnvelope(block *cb.Block, index int) (*cb.Envelope, error) {
+	if block.Data == nil {
+		return nil, fmt.Errorf("No data in block")
+	}
+
 	envelopeCount := len(block.Data.Data)
 	if index < 0 || index >= envelopeCount {
 		return nil, fmt.Errorf("Envelope index out of bounds")
