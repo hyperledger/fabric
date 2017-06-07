@@ -39,8 +39,8 @@ type ConsenterSupport struct {
 	// BlockCutterVal is the value returned by BlockCutter()
 	BlockCutterVal *mockblockcutter.Receiver
 
-	// Batches is the channel which WriteBlock writes data to
-	Batches chan []*cb.Envelope
+	// Blocks is the channel where WriteBlock writes the most recently created block
+	Blocks chan *cb.Block
 
 	// ChainIDVal is the value returned by ChainID()
 	ChainIDVal string
@@ -50,9 +50,6 @@ type ConsenterSupport struct {
 
 	// NextBlockVal stores the block created by the most recent CreateNextBlock() call
 	NextBlockVal *cb.Block
-
-	// WriteBlockVal stores the block created by the most recent WriteBlock() call
-	WriteBlockVal *cb.Block
 }
 
 // BlockCutter returns BlockCutterVal
@@ -77,20 +74,14 @@ func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
 	return block
 }
 
-// WriteBlock writes data to the Batches channel
+// WriteBlock writes data to the Blocks channel
 // Note that _committers is ignored by this mock implementation
 func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Committer, encodedMetadataValue []byte) *cb.Block {
-	logger.Debugf("mockWriter: attempting to write batch")
-	umtxs := make([]*cb.Envelope, len(block.Data.Data))
-	for i := range block.Data.Data {
-		umtxs[i] = utils.UnmarshalEnvelopeOrPanic(block.Data.Data[i])
-	}
-	mcs.HeightVal++
 	if encodedMetadataValue != nil {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
-	mcs.WriteBlockVal = block
-	mcs.Batches <- umtxs
+	mcs.HeightVal++
+	mcs.Blocks <- block
 	return block
 }
 
