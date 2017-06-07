@@ -21,7 +21,9 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/config"
+	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -145,4 +147,48 @@ func TestNewChainTemplate(t *testing.T) {
 		_, ok := configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org]
 		assert.True(t, ok, "Expected to find %s but did not", org)
 	}
+}
+
+func TestMakeChainCreationTransactionWithSigner(t *testing.T) {
+	channelID := "foo"
+
+	signer, err := mmsp.NewNoopMsp().GetDefaultSigningIdentity()
+	assert.NoError(t, err, "Creating noop MSP")
+
+	cct, err := MakeChainCreationTransaction(channelID, "test", signer)
+	assert.NoError(t, err, "Making chain creation tx")
+
+	assert.NotEmpty(t, cct.Signature, "Should have signature")
+
+	payload, err := utils.UnmarshalPayload(cct.Payload)
+	assert.NoError(t, err, "Unmarshaling payload")
+
+	configUpdateEnv, err := UnmarshalConfigUpdateEnvelope(payload.Data)
+	assert.NoError(t, err, "Unmarshaling ConfigUpdateEnvelope")
+
+	assert.NotEmpty(t, configUpdateEnv.Signatures, "Should have config env sigs")
+
+	sigHeader, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
+	assert.NoError(t, err, "Unmarshaling SignatureHeader")
+	assert.NotEmpty(t, sigHeader.Creator, "Creator specified")
+}
+
+func TestMakeChainCreationTransactionNoSigner(t *testing.T) {
+	channelID := "foo"
+	cct, err := MakeChainCreationTransaction(channelID, "test", nil)
+	assert.NoError(t, err, "Making chain creation tx")
+
+	assert.Empty(t, cct.Signature, "Should have empty signature")
+
+	payload, err := utils.UnmarshalPayload(cct.Payload)
+	assert.NoError(t, err, "Unmarshaling payload")
+
+	configUpdateEnv, err := UnmarshalConfigUpdateEnvelope(payload.Data)
+	assert.NoError(t, err, "Unmarshaling ConfigUpdateEnvelope")
+
+	assert.Empty(t, configUpdateEnv.Signatures, "Should have no config env sigs")
+
+	sigHeader, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
+	assert.NoError(t, err, "Unmarshaling SignatureHeader")
+	assert.Empty(t, sigHeader.Creator, "No creator specified")
 }
