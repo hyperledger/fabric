@@ -28,7 +28,7 @@ Maintainers
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
 | Kostas Christidis         | kchristidis         | kchristidis      | kostas         | kostas@gmail.com               |
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
-| Manish Sethi              | manish              | manish-sethi     | manish-sethi   | manish.sethi@gmail.com         |
+| Manish Sethi              | manish-sethi        | manish-sethi     | manish-sethi   | manish.sethi@gmail.com         |
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
 | Sheehan Anderson          | sheehan             | srderson         | sheehan        | sranderson@gmail.com           |
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
