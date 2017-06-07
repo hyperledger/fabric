@@ -70,6 +70,10 @@ function generateChannelArtifacts() {
 	    make -C $FABRIC_ROOT release
 	fi
 
+	if [ ! -d ./channel-artifacts ]; then
+		mkdir channel-artifacts
+	fi
+
 	echo "##########################################################"
 	echo "#########  Generating Orderer Genesis block ##############"
 	echo "##########################################################"
