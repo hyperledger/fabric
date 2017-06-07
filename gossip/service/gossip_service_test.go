@@ -41,7 +41,6 @@ import (
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -331,9 +330,6 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	// Run additional leader election services for new channel
 	// Check correct leader still exist for first channel and new correct leader chosen in second channel
 	// Stop gossip instances of leader peers for both channels and see that new leader chosen for both
-
-	logging.SetLevel(logging.DEBUG, util.LoggingElectionModule)
-	logging.SetLevel(logging.DEBUG, util.LoggingServiceModule)
 
 	// Creating gossip service instances for peers
 	n := 10
