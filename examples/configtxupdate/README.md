@@ -68,7 +68,7 @@ CGO_CFLAGS=" " GOBIN=/home/yellickj/go/src/github.com/hyperledger/fabric/build/b
 Binary available as build/bin/configtxlator
 ```
 ```
-$ configtxlator
+$ configtxlator start
 2017-05-31 12:57:22.499 EDT [configtxlator] main -> INFO 001 Serving HTTP requests on port: 7059
 ```
 
@@ -124,7 +124,7 @@ CGO_CFLAGS=" " GOBIN=/home/yellickj/go/src/github.com/hyperledger/fabric/build/b
 Binary available as build/bin/configtxlator
 ```
 ```
-$ configtxlator
+$ configtxlator start
 2017-05-31 12:57:22.499 EDT [configtxlator] main -> INFO 001 Serving HTTP requests on port: 7059
 ```
 
