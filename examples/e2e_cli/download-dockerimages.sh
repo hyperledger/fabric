@@ -17,7 +17,7 @@ ARCH=`uname -m`
 
 dockerFabricPull() {
   local FABRIC_TAG=$1
-  for IMAGES in peer orderer couchdb ccenv javaenv kafka zookeeper; do
+  for IMAGES in peer orderer couchdb ccenv javaenv kafka tools zookeeper; do
       echo "==> FABRIC IMAGE: $IMAGES"
       echo
       docker pull hyperledger/fabric-$IMAGES:$FABRIC_TAG
@@ -46,9 +46,9 @@ usage() {
       echo
       echo
       echo "EXAMPLE:"
-      echo "./download-dockerimages.sh -c x86_64-1.0.0-alpha -f x86_64-1.0.0-alpha"
+      echo "./download-dockerimages.sh -c x86_64-1.0.0-beta -f x86_64-1.0.0-beta"
       echo
-      echo "By default, pulls fabric-ca and fabric 1.0.0-alpha docker images"
+      echo "By default, pulls fabric-ca and fabric 1.0.0-beta docker images"
       echo "from hyperledger dockerhub"
       exit 0
 }
@@ -68,8 +68,8 @@ while getopts "\?hc:f:" opt; do
   esac
 done
 
-: ${CA_TAG:="$ARCH-1.0.0-alpha"}
-: ${FABRIC_TAG:="$ARCH-1.0.0-alpha"}
+: ${CA_TAG:="$ARCH-1.0.0-beta"}
+: ${FABRIC_TAG:="$ARCH-1.0.0-beta"}
 
 echo "===> Pulling fabric Images"
 dockerFabricPull ${FABRIC_TAG}

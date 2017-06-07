@@ -5,12 +5,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-CHECK=$(git diff --name-only HEAD * | grep -v .png$ | grep -v .git \
+CHECK=$(git diff --name-only HEAD * | grep -v .png$ | grep -v .git | grep -v ^CHANGELOG \
   | grep -v ^vendor/ | grep -v ^build/ | sort -u)
 
 if [[ -z "$CHECK" ]]; then
   CHECK=$(git diff-tree --no-commit-id --name-only -r $(git log -2 \
-    --pretty=format:"%h") | grep -v .png$ | grep -v .git \
+    --pretty=format:"%h") | grep -v .png$ | grep -v .git | grep -v ^CHANGELOG \
     | grep -v ^vendor/ | grep -v ^build/ | sort -u)
 fi
 
@@ -22,4 +22,4 @@ if [ -z "$errs" ]; then
 fi
 echo "The following files are have spelling errors:"
 echo "$errs"
-exit 1
+exit 0

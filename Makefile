@@ -34,9 +34,9 @@
 #   - unit-test-clean - cleans unit test state (particularly from docker)
 
 PROJECT_NAME   = hyperledger/fabric
-BASE_VERSION   = 1.0.0-alpha3
+BASE_VERSION   = 1.0.0-beta
 PREV_VERSION   = 1.0.0-alpha2
-IS_RELEASE     = false
+IS_RELEASE     = true
 
 ifneq ($(IS_RELEASE),true)
 EXTRA_VERSION ?= snapshot-$(shell git rev-parse --short HEAD)
