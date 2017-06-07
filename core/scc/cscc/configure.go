@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -104,19 +105,33 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 	switch fname {
 	case JoinChain:
-		// 2. check local MSP Admins policy
-		if err = e.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
-			cid, e := utils.GetChainIDFromBlockBytes(args[1])
-			errorString := fmt.Sprintf("\"JoinChain\" request failed authorization check "+
-				"for channel [%s]: [%s]", cid, err)
-			if e != nil {
-				errorString = fmt.Sprintf("\"JoinChain\" request failed authorization [%s] and unable "+
-					"to extract channel id from the block due to [%s]", err, e)
-			}
-			return shim.Error(errorString)
+		if args[1] == nil {
+			return shim.Error("Cannot join the channel <nil> configuration block provided")
 		}
 
-		return joinChain(args[1])
+		block, err := utils.GetBlockFromBlockBytes(args[1])
+		if err != nil {
+			return shim.Error(fmt.Sprintf("Failed to reconstruct the genesis block, %s", err))
+		}
+
+		cid, err := utils.GetChainIDFromBlock(block)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("\"JoinChain\" request failed to extract "+
+				"channel id from the block due to [%s]", err))
+		}
+
+		if err := validateConfigBlock(block); err != nil {
+			return shim.Error(fmt.Sprintf("\"JoinChain\" for chainID = %s failed because of validation "+
+				"of configuration block, because of %s", cid, err))
+		}
+
+		// 2. check local MSP Admins policy
+		if err = e.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
+			return shim.Error(fmt.Sprintf("\"JoinChain\" request failed authorization check "+
+				"for channel [%s]: [%s]", cid, err))
+		}
+
+		return joinChain(cid, block)
 	case GetConfigBlock:
 		// 2. check the channel reader policy
 		if err = e.policyChecker.CheckPolicy(string(args[1]), policies.ChannelApplicationReaders, sp); err != nil {
@@ -135,22 +150,46 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Error(fmt.Sprintf("Requested function %s not found.", fname))
 }
 
+// validateConfigBlock validate configuration block to see whenever it's contains valid config transaction
+func validateConfigBlock(block *common.Block) error {
+	envelopeConfig, err := utils.ExtractEnvelope(block, 0)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Failed to %s", err))
+	}
+
+	configEnv := &common.ConfigEnvelope{}
+	_, err = utils.UnmarshalEnvelopeOfType(envelopeConfig, common.HeaderType_CONFIG, configEnv)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Bad configuration envelope: %s", err))
+	}
+
+	if configEnv.Config == nil {
+		return errors.New("Nil config envelope Config")
+	}
+
+	if configEnv.Config.ChannelGroup == nil {
+		return errors.New("Nil channel group")
+	}
+
+	if configEnv.Config.ChannelGroup.Groups == nil {
+		return errors.New("No channel configuration groups are available")
+	}
+
+	_, exists := configEnv.Config.ChannelGroup.Groups[config.ApplicationGroupKey]
+	if !exists {
+		return errors.New(fmt.Sprintf("Invalid configuration block, missing %s "+
+			"configuration group", config.ApplicationGroupKey))
+	}
+
+	return nil
+}
+
 // joinChain will join the specified chain in the configuration block.
 // Since it is the first block, it is the genesis block containing configuration
 // for this chain, so we want to update the Chain object with this info
-func joinChain(blockBytes []byte) pb.Response {
-	block, err := extractBlock(blockBytes)
-	if err != nil {
-		return shim.Error(fmt.Sprintf("Failed to reconstruct the genesis block, %s", err))
-	}
-
-	if err = peer.CreateChainFromBlock(block); err != nil {
+func joinChain(chainID string, block *common.Block) pb.Response {
+	if err := peer.CreateChainFromBlock(block); err != nil {
 		return shim.Error(err.Error())
-	}
-
-	chainID, err := utils.GetChainIDFromBlock(block)
-	if err != nil {
-		return shim.Error(fmt.Sprintf("Failed to get the chain ID from the configuration block, %s", err))
 	}
 
 	peer.InitChain(chainID)
@@ -160,19 +199,6 @@ func joinChain(blockBytes []byte) pb.Response {
 	}
 
 	return shim.Success(nil)
-}
-
-func extractBlock(bytes []byte) (*common.Block, error) {
-	if bytes == nil {
-		return nil, errors.New("Genesis block must not be nil.")
-	}
-
-	block, err := utils.GetBlockFromBlockBytes(bytes)
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Failed to reconstruct the genesis block, %s", err))
-	}
-
-	return block, nil
 }
 
 // Return the current configuration block for the specified chainID. If the

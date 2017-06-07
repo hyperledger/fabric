@@ -275,6 +275,10 @@ func IsConfigBlock(block *cb.Block) bool {
 		return false
 	}
 
+	if payload.Header == nil {
+		return false
+	}
+
 	hdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return false
