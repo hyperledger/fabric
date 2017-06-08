@@ -29,6 +29,10 @@ var cauthdslLogger = flogging.MustGetLogger("cauthdsl")
 
 // compile recursively builds a go evaluatable function corresponding to the policy specified
 func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal, deserializer msp.IdentityDeserializer) (func([]*cb.SignedData, []bool) bool, error) {
+	if policy == nil {
+		return nil, fmt.Errorf("Empty policy element")
+	}
+
 	switch t := policy.Type.(type) {
 	case *cb.SignaturePolicy_NOutOf_:
 		policies := make([]func([]*cb.SignedData, []bool) bool, len(t.NOutOf.Rules))
@@ -81,10 +85,11 @@ func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal, deserial
 					cauthdslLogger.Debugf("Principal matched by identity: (%v) for %v", t, sd.Identity)
 					err = identity.Verify(sd.Data, sd.Signature)
 					if err == nil {
-						cauthdslLogger.Debugf("Principal evaluation succeeds: (%v) (used %v)", t, used)
 						used[i] = true
+						cauthdslLogger.Debugf("Principal evaluation succeeds: (%v) (used %v)", t, used)
 						return true
 					}
+					cauthdslLogger.Debugf("Invalid signature for identity: (%v)", t)
 				} else {
 					cauthdslLogger.Debugf("Identity (%v) does not satisfy principal: %s", sd.Identity, err)
 				}
