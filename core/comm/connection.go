@@ -10,17 +10,17 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"os"
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/grpclog"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/grpclog"
 )
 
 const defaultTimeout = time.Second * 3
@@ -74,16 +74,25 @@ func (cas *CASupport) GetServerRootCAs() (appRootCAs, ordererRootCAs [][]byte) {
 	return appRootCAs, ordererRootCAs
 }
 
-// GetDeliverServiceCredentials returns GRPC transport credentials for use by GRPC
+// GetDeliverServiceCredentials returns GRPC transport credentials for given channel to be used by GRPC
 // clients which communicate with ordering service endpoints.
-func (cas *CASupport) GetDeliverServiceCredentials() credentials.TransportCredentials {
+// If the channel isn't found, error is returned.
+func (cas *CASupport) GetDeliverServiceCredentials(channelID string) (credentials.TransportCredentials, error) {
+	cas.RLock()
+	defer cas.RUnlock()
+
 	var creds credentials.TransportCredentials
 	var tlsConfig = &tls.Config{}
 	var certPool = x509.NewCertPool()
-	// loop through the orderer CAs
-	_, roots := cas.GetServerRootCAs()
-	for _, root := range roots {
-		block, _ := pem.Decode(root)
+
+	rootCACerts, exists := cas.OrdererRootCAsByChain[channelID]
+	if !exists {
+		commLogger.Errorf("Attempted to obtain root CA certs of a non existent channel: %s", channelID)
+		return nil, fmt.Errorf("didn't find any root CA certs for channel %s", channelID)
+	}
+
+	for _, cert := range rootCACerts {
+		block, _ := pem.Decode(cert)
 		if block != nil {
 			cert, err := x509.ParseCertificate(block.Bytes)
 			if err == nil {
@@ -97,7 +106,7 @@ func (cas *CASupport) GetDeliverServiceCredentials() credentials.TransportCreden
 	}
 	tlsConfig.RootCAs = certPool
 	creds = credentials.NewTLS(tlsConfig)
-	return creds
+	return creds, nil
 }
 
 // GetPeerCredentials returns GRPC transport credentials for use by GRPC
