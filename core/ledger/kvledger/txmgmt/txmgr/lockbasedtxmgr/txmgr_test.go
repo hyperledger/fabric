@@ -587,26 +587,37 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 
 	itr, err := queryExecuter.ExecuteQuery("ns1", queryString)
 	testutil.AssertNoError(t, err, "Error upon ExecuteQuery()")
-
 	counter := 0
 	for {
 		queryRecord, _ := itr.Next()
 		if queryRecord == nil {
 			break
 		}
-
 		//Unmarshal the document to Asset structure
 		assetResp := &Asset{}
 		json.Unmarshal(queryRecord.(*queryresult.KV).Value, &assetResp)
-
 		//Verify the owner retrieved matches
 		testutil.AssertEquals(t, assetResp.Owner, "bob")
-
 		counter++
-
 	}
-
 	//Ensure the query returns 3 documents
 	testutil.AssertEquals(t, counter, 3)
+}
 
+func TestValidateKey(t *testing.T) {
+	nonUTF8Key := string([]byte{0xff, 0xff})
+	dummyValue := []byte("dummyValue")
+	for _, testEnv := range testEnvs {
+		testLedgerID := "TestValidateKey"
+		testEnv.init(t, testLedgerID)
+		txSimulator, _ := testEnv.getTxMgr().NewTxSimulator()
+		err := txSimulator.SetState("ns1", nonUTF8Key, dummyValue)
+		if testEnv.getName() == levelDBtestEnvName {
+			testutil.AssertNoError(t, err, "")
+		}
+		if testEnv.getName() == couchDBtestEnvName {
+			testutil.AssertError(t, err, "")
+		}
+		testEnv.cleanup()
+	}
 }

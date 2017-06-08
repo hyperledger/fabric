@@ -51,6 +51,9 @@ type VersionedDB interface {
 	// GetLatestSavePoint returns the height of the highest transaction upto which
 	// the state db is consistent
 	GetLatestSavePoint() (*version.Height, error)
+	// ValidateKey tests whether the key is supported by the db implementation.
+	// For instance, leveldb supports any bytes for the key while the couchdb supports only valid utf-8 string
+	ValidateKey(key string) error
 	// Open opens the db
 	Open() error
 	// Close closes the db

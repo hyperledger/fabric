@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -111,6 +112,14 @@ func (vdb *VersionedDB) Open() error {
 // Close implements method in VersionedDB interface
 func (vdb *VersionedDB) Close() {
 	// no need to close db since a shared couch instance is used
+}
+
+// ValidateKey implements method in VersionedDB interface
+func (vdb *VersionedDB) ValidateKey(key string) error {
+	if !utf8.ValidString(key) {
+		return fmt.Errorf("Key should be a valid utf8 string: [%x]", key)
+	}
+	return nil
 }
 
 // GetState implements method in VersionedDB interface

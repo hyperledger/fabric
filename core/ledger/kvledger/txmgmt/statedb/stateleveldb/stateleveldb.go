@@ -79,6 +79,11 @@ func (vdb *versionedDB) Close() {
 	// do nothing because shared db is used
 }
 
+// ValidateKey implements method in VersionedDB interface
+func (vdb *versionedDB) ValidateKey(key string) error {
+	return nil
+}
+
 // GetState implements method in VersionedDB interface
 func (vdb *versionedDB) GetState(namespace string, key string) (*statedb.VersionedValue, error) {
 	logger.Debugf("GetState(). ns=%s, key=%s", namespace, key)
