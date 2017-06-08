@@ -57,7 +57,11 @@ type configResources struct {
 }
 
 func (cr *configResources) SharedConfig() config.Orderer {
-	return cr.OrdererConfig()
+	oc, ok := cr.OrdererConfig()
+	if !ok {
+		logger.Panicf("[channel %s] has no orderer configuration", cr.ChainID())
+	}
+	return oc
 }
 
 type ledgerResources struct {

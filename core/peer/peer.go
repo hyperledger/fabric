@@ -185,9 +185,14 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 
 	gossipCallbackWrapper := func(cm configtxapi.Manager) {
+		ac, ok := configtxInitializer.ApplicationConfig()
+		if !ok {
+			// TODO, handle a missing ApplicationConfig more gracefully
+			ac = nil
+		}
 		gossipEventer.ProcessConfigUpdate(&chainSupport{
 			Manager:     cm,
-			Application: configtxInitializer.ApplicationConfig(),
+			Application: ac,
 		})
 		service.GetGossipService().SuspectPeers(func(identity api.PeerIdentityType) bool {
 			// TODO: this is a place-holder that would somehow make the MSP layer suspect
@@ -214,9 +219,13 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	// TODO remove once all references to mspmgmt are gone from peer code
 	mspmgmt.XXXSetMSPManager(cid, configtxManager.MSPManager())
 
+	ac, ok := configtxInitializer.ApplicationConfig()
+	if !ok {
+		ac = nil
+	}
 	cs := &chainSupport{
 		Manager:     configtxManager,
-		Application: configtxManager.ApplicationConfig(), // TODO, refactor as this is accessible through Manager
+		Application: ac, // TODO, refactor as this is accessible through Manager
 		ledger:      ledger,
 	}
 
@@ -386,10 +395,14 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 	ordererRootCAs := [][]byte{}
 	appOrgMSPs := make(map[string]struct{})
 
-	//loop through app orgs and build map of MSPIDs
-	for _, appOrg := range cm.ApplicationConfig().Organizations() {
-		appOrgMSPs[appOrg.MSPID()] = struct{}{}
+	ac, ok := cm.ApplicationConfig()
+	if ok {
+		//loop through app orgs and build map of MSPIDs
+		for _, appOrg := range ac.Organizations() {
+			appOrgMSPs[appOrg.MSPID()] = struct{}{}
+		}
 	}
+
 	cid := cm.ChainID()
 	peerLogger.Debugf("updating root CAs for channel [%s]", cid)
 	msps, err := cm.MSPManager().GetMSPs()
@@ -452,13 +465,15 @@ func GetMSPIDs(cid string) []string {
 		return mockMSPIDGetter(cid)
 	}
 	if c, ok := chains.list[cid]; ok {
-		if c == nil || c.cs == nil ||
-			c.cs.ApplicationConfig() == nil ||
-			c.cs.ApplicationConfig().Organizations() == nil {
+		if c == nil || c.cs == nil {
+			return nil
+		}
+		ac, ok := c.cs.ApplicationConfig()
+		if !ok || ac.Organizations() == nil {
 			return nil
 		}
 
-		orgs := c.cs.ApplicationConfig().Organizations()
+		orgs := ac.Organizations()
 		toret := make([]string, len(orgs))
 		i := 0
 		for _, org := range orgs {

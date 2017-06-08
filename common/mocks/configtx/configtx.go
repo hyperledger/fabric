@@ -57,13 +57,13 @@ func (r *Resources) ChannelConfig() config.Channel {
 }
 
 // Returns the OrdererConfigVal
-func (r *Resources) OrdererConfig() config.Orderer {
-	return r.OrdererConfigVal
+func (r *Resources) OrdererConfig() (config.Orderer, bool) {
+	return r.OrdererConfigVal, r.OrdererConfigVal == nil
 }
 
 // Returns the ApplicationConfigVal
-func (r *Resources) ApplicationConfig() config.Application {
-	return r.ApplicationConfigVal
+func (r *Resources) ApplicationConfig() (config.Application, bool) {
+	return r.ApplicationConfigVal, r.ApplicationConfigVal == nil
 }
 
 func (r *Resources) ConsortiumsConfig() (config.Consortiums, bool) {
