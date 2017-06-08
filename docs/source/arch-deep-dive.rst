@@ -1,7 +1,7 @@
 Architecture Explained
 ======================
 
-The v1 architecture delivers the following advantages:
+The Hyperledger Fabric architecture delivers the following advantages:
 
 -  **Chaincode trust flexibility.** The architecture separates *trust
    assumptions* for chaincodes (blockchain applications) from trust
@@ -832,4 +832,3 @@ also be combined:
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-

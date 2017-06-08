@@ -26,12 +26,6 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
 
 .. toctree::
    :maxdepth: 2
-   :caption: Get the Code
-
-   releases
-
-.. toctree::
-   :maxdepth: 2
    :caption: Getting Started
 
    prereqs
@@ -41,18 +35,15 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    :maxdepth: 2
    :caption: Key Concepts
 
-   overview
    blockchain
    capabilities
    fabric_model
    usecases
 
-
 .. toctree::
    :maxdepth: 2
    :caption: Tutorials
 
-   demos
    chaincode
    videos
 
@@ -65,6 +56,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    configtx
    configtxgen
    cc-packaging-and-signing
+   endorsement-policies
    error-handling
    Setup/logging-control
 
@@ -75,8 +67,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    arch-deep-dive
    txflow
    Fabric CA's User Guide <http://hyperledger-fabric-ca.readthedocs.io/en/latest>
-   endorsement-policies
-   nodesdk
+   fabric-sdks
    orderingservice
    channels
    ledger
@@ -87,10 +78,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    :maxdepth: 2
    :caption: Troubleshooting and FAQs
 
-   troubleshooting
    FAQ/architecture_FAQ
-   FAQ/chaincode_FAQ
-   FAQ/identity_management_FAQ
 
 .. toctree::
    :maxdepth: 2
@@ -117,4 +105,3 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-

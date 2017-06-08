@@ -1,11 +1,6 @@
 What is chaincode?
 ==================
 
-[WIP]
-
-coming soon ... end-to-end examples of chaincode demonstrating the
-available APIs.
-
 Chaincode is a piece of code that is written in one of the supported
 languages such as Go or Java. It is installed and instantiated through
 an SDK or CLI onto a network of Hyperledger Fabric peer nodes, enabling
