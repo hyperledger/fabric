@@ -98,6 +98,10 @@ func NewManagerImpl(envConfig *cb.Envelope, initializer api.Initializer, callOnU
 		return nil, fmt.Errorf("Nil config envelope Config")
 	}
 
+	if configEnv.Config.ChannelGroup == nil {
+		return nil, fmt.Errorf("nil channel group")
+	}
+
 	if err := validateChainID(header.ChannelId); err != nil {
 		return nil, fmt.Errorf("Bad channel id: %s", err)
 	}
