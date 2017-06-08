@@ -62,7 +62,7 @@ func createEventClient(eventAddress string, _ string) *adapter {
 	adapter := &adapter{notfy: done}
 	obcEHClient, _ = consumer.NewEventsClient(eventAddress, 5, adapter)
 	if err := obcEHClient.Start(); err != nil {
-		fmt.Printf("could not start chat %s\n", err)
+		fmt.Printf("could not start chat. err: %s\n", err)
 		obcEHClient.Stop()
 		return nil
 	}
@@ -149,14 +149,14 @@ func main() {
 	if mspDir == "" {
 		err := msptesttools.LoadMSPSetupForTesting()
 		if err != nil {
-			fmt.Printf("Could not initialize msp, err %s", err)
+			fmt.Printf("Could not initialize msp, err: %s\n", err)
 			os.Exit(-1)
 		}
 	} else {
 		//load msp info
 		err := mgmt.LoadLocalMsp(mspDir, nil, mspId)
 		if err != nil {
-			fmt.Printf("Could not initialize msp, err %s", err)
+			fmt.Printf("Could not initialize msp, err: %s\n", err)
 			os.Exit(-1)
 		}
 	}
@@ -188,16 +188,16 @@ func main() {
 					if txsFltr.IsInvalid(i) {
 						fmt.Println("")
 						fmt.Println("")
-						fmt.Printf("Received invalid transaction from channel %s\n", chdr.ChannelId)
+						fmt.Printf("Received invalid transaction from channel '%s'\n", chdr.ChannelId)
 						fmt.Println("--------------")
 						fmt.Printf("Transaction invalid: TxID: %s\n", chdr.TxId)
 					} else {
-						fmt.Printf("Received transaction from channel %s: \n\t[%v]\n", chdr.ChannelId, tx)
+						fmt.Printf("Received transaction from channel '%s': \n\t[%v]\n", chdr.ChannelId, tx)
 						if event, err := getChainCodeEvents(r); err == nil {
 							if len(chaincodeID) != 0 && event.ChaincodeId == chaincodeID {
 								fmt.Println("")
 								fmt.Println("")
-								fmt.Printf("Received chaincode event from channel %s\n", chdr.ChannelId)
+								fmt.Printf("Received chaincode event from channel '%s'\n", chdr.ChannelId)
 								fmt.Println("------------------------")
 								fmt.Printf("Chaincode Event:%+v\n", event)
 							}
