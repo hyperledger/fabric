@@ -19,6 +19,7 @@ package config
 import (
 	"time"
 
+	"github.com/hyperledger/fabric/common/config"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
@@ -34,6 +35,8 @@ type Orderer struct {
 	KafkaBrokersVal []string
 	// MaxChannelsCountVal is returns as the result of MaxChannelsCount()
 	MaxChannelsCountVal uint64
+	// OrganizationsVal is returned as the result of Organizations()
+	OrganizationsVal map[string]config.Org
 }
 
 // ConsensusType returns the ConsensusTypeVal
@@ -59,4 +62,9 @@ func (scm *Orderer) KafkaBrokers() []string {
 // MaxChannelsCount returns the MaxChannelsCountVal
 func (scm *Orderer) MaxChannelsCount() uint64 {
 	return scm.MaxChannelsCountVal
+}
+
+// Organizations returns OrganizationsVal
+func (scm *Orderer) Organizations() map[string]config.Org {
+	return scm.OrganizationsVal
 }
