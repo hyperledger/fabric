@@ -30,7 +30,7 @@ composition.rebuildContainerData()
 context.compose_containers=composition.containerDataList
 
 user = directory.getUser("configAdminOrdererOrg0")
-channel_id = user.tags['OrdererSystemChainId']
+channel_id = user.tags['ordererSystemChannelId']
 deliverer_stream_helper = user.connectToDeliverFunction(context, 'orderer0', user.tags['config-admin-cert'])
 latest_orderer_config_block = bootstrap_util.get_latest_configuration_block(deliverer_stream_helper, channel_id)
 latest_orderer_config_group = bootstrap_util.get_channel_group_from_config_block(latest_orderer_config_block)

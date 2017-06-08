@@ -16,6 +16,7 @@
 import time
 import sys
 import hashlib
+import uuid
 
 if sys.version_info < (3, 6):
     import sha3
@@ -65,6 +66,12 @@ class Network(Enum):
 def GetUUID():
     return compose.Composition.GetUUID()
 
+def GetUniqueChannelName():
+    while True:
+        guiid = uuid.uuid4().hex[:6].lower()
+        if guiid[:1].isalpha():
+            break
+    return guiid
 
 def createRSAKey():
     # Create RSA key, 2048 bit
@@ -90,7 +97,7 @@ def computeCryptoHash(data):
     return s.digest()
 
 
-def createCertRequest(pkey, digest="sha256", **name):
+def createCertRequest(pkey, extensions=[], digest="sha256", **name):
     """
     Create a certificate request.
     Arguments: pkey   - The key to associate with the request
@@ -112,12 +119,14 @@ def createCertRequest(pkey, digest="sha256", **name):
     for key, value in name.items():
         setattr(subj, key, value)
 
+    req.add_extensions(extensions)
+
     req.set_pubkey(pkey)
     req.sign(pkey, digest)
     return req
 
 
-def createCertificate(req, issuerCertKey, serial, validityPeriod, digest="sha256", isCA=False):
+def createCertificate(req, issuerCertKey, serial, validityPeriod, digest="sha256", isCA=False, extensions=[]):
     """
     Generate a certificate given a certificate request.
     Arguments: req        - Certificate request to use
@@ -155,6 +164,7 @@ def createCertificate(req, issuerCertKey, serial, validityPeriod, digest="sha256
                                                   subject=cert)])
         cert.add_extensions([crypto.X509Extension("authorityKeyIdentifier", False, "keyid:always", issuer=issuerCert)])
 
+    cert.add_extensions(extensions)
     cert.sign(issuerKey, digest)
     return cert
 
@@ -174,9 +184,8 @@ class Entity:
         self.sigencode = ecdsa.util.sigencode_der_canonize
         self.sigdecode = ecdsa.util.sigdecode_der
 
-    def createCertRequest(self, nodeName):
-        req = createCertRequest(self.pKey, C="US", ST="North Carolina", L="RTP", O="IBM", CN=nodeName)
-        # print("request => {0}".format(crypto.dump_certificate_request(crypto.FILETYPE_PEM, req)))
+    def createCertRequest(self, nodeName, extensions = []):
+        req = createCertRequest(self.pKey, extensions=extensions, C="US", ST="North Carolina", L="RTP", O="IBM", CN=nodeName)
         return req
 
     def createTLSCertRequest(self, nodeName):
@@ -259,9 +268,9 @@ class Organization(Entity):
             principal=mspRole.SerializeToString())
         return mspPrincipal
 
-    def createCertificate(self, certReq):
+    def createCertificate(self, certReq, extensions=[]):
         numYrs = 1
-        return createCertificate(certReq, (self.signedCert, self.pKey), 1000, (0, 60 * 60 * 24 * 365 * numYrs))
+        return createCertificate(certReq, (self.signedCert, self.pKey), 1000, (0, 60 * 60 * 24 * 365 * numYrs), extensions=extensions)
 
     def addToNetwork(self, network):
         'Used to track which network this organization is defined in.'
@@ -339,6 +348,14 @@ class Directory:
         return "".join(pems)
 
 
+    def _get_cert_extensions_ip_sans(self, user_name, node_name):
+        extensions = []
+        if 'signer' in user_name.lower():
+            if ('peer' in node_name.lower() or 'orderer' in node_name.lower()):
+                san_list = ["DNS:{0}".format(node_name)]
+                extensions.append(crypto.X509Extension(b"subjectAltName", False, ", ".join(san_list)))
+        return extensions
+
     def registerOrdererAdminTuple(self, userName, ordererName, organizationName):
         ' Assign the user as orderer admin'
         ordererAdminTuple = NodeAdminTuple(user=userName, nodeName=ordererName, organization=organizationName)
@@ -347,8 +364,10 @@ class Directory:
         assert organizationName in self.organizations, "Orderer Organization not defined {0}".format(organizationName)
 
         user = self.getUser(userName, shouldCreate=True)
-        certReq = user.createCertRequest(ordererAdminTuple.nodeName)
-        userCert = self.getOrganization(organizationName).createCertificate(certReq)
+        # Add the subjectAlternativeName if the current entity is a signer, and the nodeName contains peer or orderer
+        extensions = self._get_cert_extensions_ip_sans(userName, ordererName)
+        certReq = user.createCertRequest(ordererAdminTuple.nodeName, extensions=extensions)
+        userCert = self.getOrganization(organizationName).createCertificate(certReq, extensions=extensions)
 
         # Verify the newly created certificate
         store = crypto.X509Store()
@@ -560,7 +579,7 @@ def getOrdererBootstrapAdminOrgReferences(context):
         ordererBootstrapAdmin.tags['OrgReferences'] = {}
     return ordererBootstrapAdmin.tags['OrgReferences']
 
-def getAnchorPeersConfigGroup(context, nodeAdminTuples):
+def getAnchorPeersConfigGroup(context, nodeAdminTuples, peer_port=7051, mod_policy=BootstrapHelper.KEY_POLICY_ADMINS):
     directory = getDirectory(context)
     config_group = common_dot_configtx_pb2.ConfigGroup()
     for orgName, group in groupby([(nat.organization, nat) for nat in nodeAdminTuples], lambda x: x[0]):
@@ -568,16 +587,18 @@ def getAnchorPeersConfigGroup(context, nodeAdminTuples):
         for (k,nodeAdminTuple) in group:
             anchorPeer = anchorPeers.anchor_peers.add()
             anchorPeer.host = nodeAdminTuple.nodeName
-            anchorPeer.port = 7051
+            anchorPeer.port = peer_port
             # anchorPeer.cert = crypto.dump_certificate(crypto.FILETYPE_PEM,
             #                                           directory.findCertForNodeAdminTuple(nodeAdminTuple))
         config_group.groups[ApplicationGroup].groups[orgName].values[BootstrapHelper.KEY_ANCHOR_PEERS].value=toValue(anchorPeers)
-    return [config_group]
+        config_group.groups[ApplicationGroup].groups[orgName].values[BootstrapHelper.KEY_ANCHOR_PEERS].mod_policy = BootstrapHelper.KEY_POLICY_ADMINS
+    return config_group
 
 def setDefaultPoliciesForOrgs(channel, orgs, group_name, version=0, policy_version=0):
     for org in orgs:
         groupName = group_name
         channel.groups[groupName].groups[org.name].version=version
+        channel.groups[groupName].groups[org.name].mod_policy = BootstrapHelper.KEY_POLICY_ADMINS
         mspPrincipalForMemberRole = org.getMspPrincipalAsRole(mspRoleTypeAsString='MEMBER')
         signedBy = AuthDSLHelper.SignedBy(0)
 
@@ -732,19 +753,20 @@ def createNewConfigUpdateEnvelope(channelConfig, chainId, readset_version=0):
     return configUpdateEnvelope
 
 
-def mergeConfigGroups(configGroupTarget, configGroupSource):
+def mergeConfigGroups(configGroupTarget, configGroupSource, allow_value_overwrite=False):
     for k, v in configGroupSource.groups.iteritems():
         if k in configGroupTarget.groups.keys():
-            mergeConfigGroups(configGroupTarget.groups[k], configGroupSource.groups[k])
+            mergeConfigGroups(configGroupTarget.groups[k], configGroupSource.groups[k], allow_value_overwrite=allow_value_overwrite)
         else:
             configGroupTarget.groups[k].MergeFrom(v)
     for k, v in configGroupSource.policies.iteritems():
         if k in configGroupTarget.policies.keys():
-            mergeConfigGroups(configGroupTarget.policies[k], configGroupSource.policies[k])
+            mergeConfigGroups(configGroupTarget.policies[k], configGroupSource.policies[k], allow_value_overwrite=allow_value_overwrite)
         else:
             configGroupTarget.policies[k].MergeFrom(v)
     for k, v in configGroupSource.values.iteritems():
-        assert not k in configGroupTarget.values.keys(), "Value already exists in target config group: {0}".format(k)
+        if not allow_value_overwrite:
+            assert not k in configGroupTarget.values.keys(), "Value already exists in target config group: {0}".format(k)
         configGroupTarget.values[k].CopyFrom(v)
 
 
@@ -820,35 +842,35 @@ class CallbackHelper:
         self.volumeRootPathInContainer = volumeRootPathInContainer
         self.discriminator = discriminator
 
-    def getVolumePath(self, composition, pathType=PathType.Local):
+    def getVolumePath(self, project_name, pathType=PathType.Local):
         assert pathType in PathType, "Expected pathType of {0}".format(PathType)
         basePath = "."
         if pathType == PathType.Container:
             basePath = self.volumeRootPathInContainer
-        return "{0}/volumes/{1}/{2}".format(basePath, self.discriminator, composition.projectName)
+        return "{0}/volumes/{1}/{2}".format(basePath, self.discriminator, project_name)
 
-    def getLocalMspConfigPath(self, composition, compose_service, pathType=PathType.Local):
-        return "{0}/{1}/localMspConfig".format(self.getVolumePath(composition, pathType), compose_service)
+    def getLocalMspConfigPath(self, project_name, compose_service, pathType=PathType.Local):
+        return "{0}/{1}/localMspConfig".format(self.getVolumePath(project_name=project_name, pathType=pathType), compose_service)
 
-    def getLocalTLSConfigPath(self, composition, compose_service, pathType=PathType.Local):
-        return os.path.join(self.getVolumePath(composition, pathType), compose_service, "tls_config")
+    def getLocalTLSConfigPath(self, project_name, compose_service, pathType=PathType.Local):
+        return os.path.join(self.getVolumePath(project_name=project_name, pathType=pathType), compose_service, "tls_config")
 
-    def _getPathAndUserInfo(self, directory , composition, compose_service, nat_discriminator="Signer", pathType=PathType.Local):
+    def _getPathAndUserInfo(self, directory , project_name, compose_service, nat_discriminator="Signer", pathType=PathType.Local):
         matchingNATs = [nat for nat in directory.getNamedCtxTuples() if ((compose_service in nat.user) and (nat_discriminator in nat.user) and ((compose_service in nat.nodeName)))]
         assert len(matchingNATs)==1, "Unexpected number of matching NodeAdminTuples: {0}".format(matchingNATs)
-        localMspConfigPath = self.getLocalMspConfigPath(composition=composition, compose_service=compose_service,pathType=pathType)
+        localMspConfigPath = self.getLocalMspConfigPath(project_name=project_name, compose_service=compose_service,pathType=pathType)
         return (localMspConfigPath, matchingNATs[0])
 
-    def getLocalMspConfigPrivateKeyPath(self, directory , composition, compose_service, pathType=PathType.Local):
-        (localMspConfigPath, nodeAdminTuple) = self._getPathAndUserInfo(directory=directory, composition=composition, compose_service=compose_service, pathType=pathType)
+    def getLocalMspConfigPrivateKeyPath(self, directory , project_name, compose_service, pathType=PathType.Local):
+        (localMspConfigPath, nodeAdminTuple) = self._getPathAndUserInfo(directory=directory, project_name=project_name, compose_service=compose_service, pathType=pathType)
         return "{0}/keystore/{1}.pem".format(localMspConfigPath, nodeAdminTuple.user)
 
-    def getLocalMspConfigPublicCertPath(self, directory , composition, compose_service, pathType=PathType.Local):
-        (localMspConfigPath, nodeAdminTuple) = self._getPathAndUserInfo(directory=directory, composition=composition, compose_service=compose_service, pathType=pathType)
+    def getLocalMspConfigPublicCertPath(self, directory , project_name, compose_service, pathType=PathType.Local):
+        (localMspConfigPath, nodeAdminTuple) = self._getPathAndUserInfo(directory=directory, project_name=project_name, compose_service=compose_service, pathType=pathType)
         return "{0}/signcerts/{1}.pem".format(localMspConfigPath, nodeAdminTuple.user)
 
-    def getTLSKeyPaths(self, pnt , composition, compose_service, pathType=PathType.Local):
-        localTLSConfigPath = self.getLocalTLSConfigPath(composition, compose_service, pathType=pathType)
+    def getTLSKeyPaths(self, pnt , project_name, compose_service, pathType=PathType.Local):
+        localTLSConfigPath = self.getLocalTLSConfigPath(project_name=project_name, compose_service=compose_service, pathType=pathType)
         certPath = os.path.join(localTLSConfigPath,
                                 "{0}-{1}-{2}-tls.crt".format(pnt.user, pnt.nodeName, pnt.organization))
         keyPath = os.path.join(localTLSConfigPath,
@@ -856,16 +878,16 @@ class CallbackHelper:
         return (keyPath, certPath)
 
 
-    def getLocalMspConfigRootCertPath(self, directory , composition, compose_service, pathType=PathType.Local):
-        (localMspConfigPath, nodeAdminTuple) = self._getPathAndUserInfo(directory=directory, composition=composition, compose_service=compose_service, pathType=pathType)
+    def getLocalMspConfigRootCertPath(self, directory , project_name, compose_service, pathType=PathType.Local):
+        (localMspConfigPath, nodeAdminTuple) = self._getPathAndUserInfo(directory=directory, project_name=project_name, compose_service=compose_service, pathType=pathType)
         return "{0}/cacerts/{1}.pem".format(localMspConfigPath, nodeAdminTuple.organization)
 
-    def _createCryptoMaterial(self,directory , composition, compose_service, network):
-        self._writeMspFiles(directory , composition, compose_service, network)
-        self._writeTLSFiles(directory , composition, compose_service, network)
+    def _createCryptoMaterial(self,directory , project_name, compose_service, network):
+        self._writeMspFiles(directory , project_name=project_name, compose_service=compose_service, network=network)
+        self._writeTLSFiles(directory , project_name=project_name, compose_service=compose_service, network=network)
 
-    def _writeMspFiles(self, directory , composition, compose_service, network):
-        localMspConfigPath = self.getLocalMspConfigPath(composition, compose_service)
+    def _writeMspFiles(self, directory , project_name, compose_service, network):
+        localMspConfigPath = self.getLocalMspConfigPath(project_name, compose_service)
         os.makedirs("{0}/{1}".format(localMspConfigPath, "signcerts"))
         os.makedirs("{0}/{1}".format(localMspConfigPath, "admincerts"))
         os.makedirs("{0}/{1}".format(localMspConfigPath, "cacerts"))
@@ -894,15 +916,17 @@ class CallbackHelper:
             with open("{0}/admincerts/{1}.pem".format(localMspConfigPath, pnt.user), "w") as f:
                 f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
 
-    def _writeTLSFiles(self, directory , composition, compose_service, network):
-        localTLSConfigPath = self.getLocalTLSConfigPath(composition, compose_service)
+    def _writeTLSFiles(self, directory , project_name, compose_service, network):
+        localTLSConfigPath = self.getLocalTLSConfigPath(project_name, compose_service)
         os.makedirs(localTLSConfigPath)
         # Find the peer signer Tuple for this peer and add to signcerts folder
         for pnt, cert in [(peerNodeTuple, cert) for peerNodeTuple, cert in directory.ordererAdminTuples.items() if
                           compose_service in peerNodeTuple.user and "signer" in peerNodeTuple.user.lower()]:
             user = directory.getUser(userName=pnt.user)
-            userTLSCert = directory.getOrganization(pnt.organization).createCertificate(user.createTLSCertRequest(pnt.nodeName))
-            (keyPath, certPath) = self.getTLSKeyPaths(pnt=pnt, composition=composition, compose_service=compose_service, pathType=PathType.Local)
+            # Add the subjectAlternativeName if the current entity is a signer, and the nodeName contains peer or orderer
+            extensions = directory._get_cert_extensions_ip_sans(user.name, pnt.nodeName)
+            userTLSCert = directory.getOrganization(pnt.organization).createCertificate(user.createTLSCertRequest(pnt.nodeName), extensions=extensions)
+            (keyPath, certPath) = self.getTLSKeyPaths(pnt=pnt, project_name=project_name, compose_service=compose_service, pathType=PathType.Local)
             with open(keyPath, 'w') as f:
                 f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, user.rsaSigningKey))
             with open(certPath, 'w') as f:
@@ -924,44 +948,44 @@ class OrdererGensisBlockCompositionCallback(compose.CompositionCallback, Callbac
         self.genesisBlock = genesisBlock
         compose.Composition.RegisterCallbackInContext(context, self)
 
-    def getGenesisFilePath(self, composition, pathType=PathType.Local):
-        return "{0}/{1}".format(self.getVolumePath(composition, pathType), self.genesisFileName)
+    def getGenesisFilePath(self, project_name, pathType=PathType.Local):
+        return "{0}/{1}".format(self.getVolumePath(project_name=project_name, pathType=pathType), self.genesisFileName)
 
     def getOrdererList(self, composition):
         return [serviceName for serviceName in composition.getServiceNames() if "orderer" in serviceName]
 
     def composing(self, composition, context):
         print("Will copy gensisiBlock over at this point ")
-        os.makedirs(self.getVolumePath(composition))
-        with open(self.getGenesisFilePath(composition), "wb") as f:
+        os.makedirs(self.getVolumePath(composition.projectName))
+        with open(self.getGenesisFilePath(composition.projectName), "wb") as f:
             f.write(self.genesisBlock.SerializeToString())
         directory = getDirectory(context)
 
         for ordererService in self.getOrdererList(composition):
             self._createCryptoMaterial(directory=directory,
                                        compose_service=ordererService,
-                                       composition=composition,
+                                       project_name=composition.projectName,
                                        network=Network.Orderer)
 
     def decomposing(self, composition, context):
         'Will remove the orderer volume path folder for the context'
-        shutil.rmtree(self.getVolumePath(composition))
+        shutil.rmtree(self.getVolumePath(composition.projectName))
 
     def getEnv(self, composition, context, env):
         directory = getDirectory(context)
         env["ORDERER_GENERAL_GENESISMETHOD"] = "file"
-        env["ORDERER_GENERAL_GENESISFILE"] = self.getGenesisFilePath(composition, pathType=PathType.Container)
+        env["ORDERER_GENERAL_GENESISFILE"] = self.getGenesisFilePath(composition.projectName, pathType=PathType.Container)
         for ordererService in self.getOrdererList(composition):
-            localMspConfigPath = self.getLocalMspConfigPath(composition, ordererService, pathType=PathType.Container)
+            localMspConfigPath = self.getLocalMspConfigPath(composition.projectName, ordererService, pathType=PathType.Container)
             env["{0}_ORDERER_GENERAL_LOCALMSPDIR".format(ordererService.upper())] = localMspConfigPath
             env["{0}_ORDERER_GENERAL_LOCALMSPID".format(ordererService.upper())] = self._getMspId(compose_service=ordererService, directory=directory)
             # TLS Settings
-            (_, pnt) = self._getPathAndUserInfo(directory=directory, composition=composition, compose_service=ordererService, pathType=PathType.Container)
-            (keyPath, certPath) = self.getTLSKeyPaths(pnt=pnt, composition=composition, compose_service=ordererService, pathType=PathType.Container)
+            (_, pnt) = self._getPathAndUserInfo(directory=directory, project_name=composition.projectName, compose_service=ordererService, pathType=PathType.Container)
+            (keyPath, certPath) = self.getTLSKeyPaths(pnt=pnt, project_name=composition.projectName, compose_service=ordererService, pathType=PathType.Container)
             env["{0}_ORDERER_GENERAL_TLS_CERTIFICATE".format(ordererService.upper())] = certPath
             env["{0}_ORDERER_GENERAL_TLS_PRIVATEKEY".format(ordererService.upper())] = keyPath
             env["{0}_ORDERER_GENERAL_TLS_ROOTCAS".format(ordererService.upper())] = "[{0}]".format(self.getLocalMspConfigRootCertPath(
-                directory=directory, composition=composition, compose_service=ordererService, pathType=PathType.Container))
+                directory=directory, project_name=composition.projectName, compose_service=ordererService, pathType=PathType.Container))
 
 class PeerCompositionCallback(compose.CompositionCallback, CallbackHelper):
     'Responsible for setting up Peer nodes upon composition'
@@ -982,28 +1006,28 @@ class PeerCompositionCallback(compose.CompositionCallback, CallbackHelper):
         for peerService in self.getPeerList(composition):
             self._createCryptoMaterial(directory=directory,
                                        compose_service=peerService,
-                                       composition=composition,
+                                       project_name=composition.projectName,
                                        network=Network.Peer)
 
     def decomposing(self, composition, context):
         'Will remove the orderer volume path folder for the context'
-        shutil.rmtree(self.getVolumePath(composition))
+        shutil.rmtree(self.getVolumePath(composition.projectName))
 
     def getEnv(self, composition, context, env):
         directory = getDirectory(context)
         # First figure out which organization provided the signer cert for this
         for peerService in self.getPeerList(composition):
-            localMspConfigPath = self.getLocalMspConfigPath(composition, peerService, pathType=PathType.Container)
+            localMspConfigPath = self.getLocalMspConfigPath(composition.projectName, peerService, pathType=PathType.Container)
             env["{0}_CORE_PEER_MSPCONFIGPATH".format(peerService.upper())] = localMspConfigPath
             env["{0}_CORE_PEER_LOCALMSPID".format(peerService.upper())] = self._getMspId(compose_service=peerService, directory=directory)
             # TLS Settings
             # env["{0}_CORE_PEER_TLS_ENABLED".format(peerService.upper())] = self._getMspId(compose_service=peerService, directory=directory)
-            (_, pnt) = self._getPathAndUserInfo(directory=directory, composition=composition, compose_service=peerService, pathType=PathType.Container)
-            (keyPath, certPath) = self.getTLSKeyPaths(pnt=pnt, composition=composition, compose_service=peerService, pathType=PathType.Container)
+            (_, pnt) = self._getPathAndUserInfo(directory=directory, project_name=composition.projectName, compose_service=peerService, pathType=PathType.Container)
+            (keyPath, certPath) = self.getTLSKeyPaths(pnt=pnt, project_name=composition.projectName, compose_service=peerService, pathType=PathType.Container)
             env["{0}_CORE_PEER_TLS_CERT_FILE".format(peerService.upper())] = certPath
             env["{0}_CORE_PEER_TLS_KEY_FILE".format(peerService.upper())] = keyPath
             env["{0}_CORE_PEER_TLS_ROOTCERT_FILE".format(peerService.upper())] = self.getLocalMspConfigRootCertPath(
-                directory=directory, composition=composition, compose_service=peerService, pathType=PathType.Container)
+                directory=directory, project_name=composition.projectName, compose_service=peerService, pathType=PathType.Container)
             env["{0}_CORE_PEER_TLS_SERVERHOSTOVERRIDE".format(peerService.upper())] = peerService
 
 
@@ -1068,10 +1092,85 @@ def create_channel_config_update(system_channel_version, channel_id, consortium_
         Policy(type=typeImplicitMeta, value=IMP(
             rule=ruleMajority, sub_policy=BootstrapHelper.KEY_POLICY_ADMINS).SerializeToString()))
     write_set.groups[ApplicationGroup].mod_policy = "Admins"
+    for k, v in write_set.groups[ApplicationGroup].groups.iteritems():
+        v.mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
     config_update = common_dot_configtx_pb2.ConfigUpdate(channel_id=channel_id,
                                                          read_set=read_set,
                                                          write_set=write_set)
     return config_update
+
+def get_group_paths_from_config_group(config_group, paths, current_path = ""):
+    if len(config_group.groups)==0:
+        paths.append(current_path)
+    else:
+        for group_name, group in config_group.groups.iteritems():
+            get_group_paths_from_config_group(config_group=group, current_path="{0}/{1}".format(current_path, group_name), paths=paths)
+    return paths
+
+
+def get_group_from_config_path(config_group, config_path):
+    from os import path
+    current_config_group = config_group
+    for group_id in [g.strip("/") for g in path.split(config_path)]:
+        current_config_group = current_config_group.groups[group_id]
+    return current_config_group
+
+def create_existing_channel_config_update(system_channel_version, channel_id, input_config_update, config_groups):
+    # First make a copy of the input config update msg to manipulate
+    read_set = common_dot_configtx_pb2.ConfigGroup()
+    read_set.version = system_channel_version
+    read_set.CopyFrom(input_config_update)
+
+    # Now the write_set
+    write_set = common_dot_configtx_pb2.ConfigGroup()
+    write_set.CopyFrom(read_set)
+
+    # Merge all of the supplied config_groups
+    for config_group in config_groups:
+        mergeConfigGroups(write_set, config_group)
+
+    # Will build a unique list of group paths from the supplied config_groups
+    group_paths = list(set([p for sublist in [get_group_paths_from_config_group(cg, paths=[]) for cg in config_groups] for p in sublist]))
+
+    # Now increment the version for each path.
+    # TODO: This logic will only work for the case of insertions
+    for group in [get_group_from_config_path(write_set, g) for g in group_paths]:
+        group.version += 1
+
+    # For now, setting same policies for each 'Non-Org' group
+    config_update = common_dot_configtx_pb2.ConfigUpdate(channel_id=channel_id,
+                                                         read_set=read_set,
+                                                         write_set=write_set)
+    return config_update
+
+def update_config_group_version_info(input_config_update, proposed_config_group):
+    for k,v in proposed_config_group.groups.iteritems():
+        if k in input_config_update.groups.keys():
+            # Make sure all keys of the current group match those of the proposed, if not either added or deleted.
+            if not set(proposed_config_group.groups[k].groups.keys()) == set(input_config_update.groups[k].groups.keys()):
+                proposed_config_group.groups[k].version +=1
+            # Now recurse
+            update_config_group_version_info(input_config_update.groups[k], proposed_config_group.groups[k])
+
+# def create_existing_channel_config_update2(system_channel_version, channel_id, input_config_update, config_group):
+#     # First make a copy of the input config update msg to manipulate
+#     read_set = common_dot_configtx_pb2.ConfigGroup()
+#     read_set.version = system_channel_version
+#     read_set.CopyFrom(config_group)
+#
+#     # Now the write_set
+#     write_set = common_dot_configtx_pb2.ConfigGroup()
+#     write_set.CopyFrom(read_set)
+#     mergeConfigGroups(write_set, config_groups[0])
+#     write_set.groups['Application'].groups['peerOrg0'].version +=1
+#
+#     # write_set.groups[ApplicationGroup].version += 1
+#     # For now, setting same policies for each 'Non-Org' group
+#     config_update = common_dot_configtx_pb2.ConfigUpdate(channel_id=channel_id,
+#                                                          read_set=read_set,
+#                                                          write_set=write_set)
+#     return config_update
+
 
 def createConsortium(context, consortium_name, org_names, mod_policy):
     channel = common_dot_configtx_pb2.ConfigGroup()
@@ -1102,9 +1201,9 @@ def setOrdererBootstrapGenesisBlock(genesisBlock):
     'Responsible for setting the GensisBlock for the Orderer nodes upon composition'
 
 
-def broadcastCreateChannelConfigTx(context, certAlias, composeService, chainId, configTxEnvelope, user):
+def broadcastCreateChannelConfigTx(context, certAlias, composeService, configTxEnvelope, user):
     dataFunc = lambda x: configTxEnvelope
-    user.broadcastMessages(context=context, numMsgsToBroadcast=1, composeService=composeService, chainID=chainId,
+    user.broadcastMessages(context=context, numMsgsToBroadcast=1, composeService=composeService,
                            dataFunc=dataFunc)
 
 def get_latest_configuration_block(deliverer_stream_helper, channel_id):
@@ -1160,6 +1259,24 @@ def getArgsFromContextForUser(context, userName):
                     # No tag referenced, pass the arg
                     args.append(arg)
     return args
+
+
+def get_args_for_user(args_input, user):
+    args = []
+    pattern = re.compile('\{(.*)\}$')
+    for arg in args_input:
+        m = pattern.match(arg)
+        if m:
+            # tagName reference found in args list
+            tagName = m.groups()[0]
+            # make sure the tagName is found in the users tags
+            assert tagName in user.tags, "TagName '{0}' not found for user '{1}'".format(tagName,
+                                                                                         user.getUserName())
+            args.append(user.tags[tagName])
+        else:
+            # No tag referenced, pass the arg
+            args.append(arg)
+    return tuple(args)
 
 
 def getChannelIdFromConfigUpdateEnvelope(config_update_envelope):

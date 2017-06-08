@@ -204,9 +204,9 @@ class UserRegistration:
         assert composeService in self.abDeliversStreamHelperDict, "NOT connected to deliver stream on {0}".format(composeService)
         return self.abDeliversStreamHelperDict[composeService]
 
-    def broadcastMessages(self, context, numMsgsToBroadcast, composeService, chainID=TEST_CHAIN_ID, dataFunc=_defaultDataFunction):
+    def broadcastMessages(self, context, numMsgsToBroadcast, composeService, dataFunc=_defaultDataFunction):
         abStub = self.getABStubForComposeService(context, composeService)
-        replyGenerator = abStub.Broadcast(generateBroadcastMessages(chainID=chainID, numToGenerate = int(numMsgsToBroadcast), dataFunc=dataFunc), 2)
+        replyGenerator = abStub.Broadcast(generateBroadcastMessages(numToGenerate = int(numMsgsToBroadcast), dataFunc=dataFunc), 2)
         counter = 0
         try:
             for reply in replyGenerator:
@@ -289,7 +289,7 @@ def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  b
     )
 
 
-def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 3, timeToHoldOpen = 1, dataFunc =_defaultDataFunction):
+def generateBroadcastMessages(numToGenerate = 3, timeToHoldOpen = 1, dataFunc =_defaultDataFunction):
     messages = []
     for i in range(0, numToGenerate):
         messages.append(dataFunc(i))
