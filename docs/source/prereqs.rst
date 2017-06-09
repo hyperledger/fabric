@@ -7,6 +7,9 @@ Install cURL
 Download the `cURL <https://curl.haxx.se/download.html>`__ tool if not
 already installed.
 
+.. note:: If you're on Windows please see the specific note on `Windows
+   extras`_ below.
+
 Docker and Docker Compose
 -------------------------
 
@@ -71,10 +74,23 @@ installed.
 Windows extras
 --------------
 
-If you are developng on Windows, you may also need the following which
+If you are developing on Windows, you may also need the following which
 provides a better alternative to the built-in Windows tools:
 
   - `Git Bash <https://git-scm.com/downloads>`__
-  - `make for MinGW <http://sourceforge.net/projects/mingw/files/MinGW/Extension/make/make-3.82.90-cvs/make-3.82.90-2-mingw32-cvs-20120902-bin.tar.lzma>`__ to be added to Git Bash
+
+.. note:: On older versions of Windows, such as Windows 7, you
+          typically get this as part of installing Docker
+          Toolbox. However experience has shown this to be a poor
+          development environment with limited functionality. It is
+          suitable to run docker based scenarios, such as
+          :doc:`getting_started`, but you may not be able to find a
+          suitable ``make`` command.
+
+.. note:: The ``curl`` command that comes with Git and Docker Toolbox
+          is old and does not handle properly the redirect used in
+          :doc:`getting_started`. Make sure you install and use a
+          newer version from the `cURL downloads page
+          <https://curl.haxx.se/download.html>`__
 
 .. Licensed under Creative Commons Attribution 4.0 International License
