@@ -420,7 +420,7 @@ func TestProcessLoopRegularError(t *testing.T) {
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope), // WriteBlock will post here
+		Blocks:         make(chan *cb.Block), // WriteBlock will post here
 		BlockCutterVal: mockblockcutter.NewReceiver(),
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
@@ -477,7 +477,7 @@ func TestProcessLoopRegularQueueEnvelope(t *testing.T) {
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope), // WriteBlock will post here
+		Blocks:         make(chan *cb.Block), // WriteBlock will post here
 		BlockCutterVal: mockblockcutter.NewReceiver(),
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
@@ -530,7 +530,7 @@ func TestProcessLoopRegularCutBlock(t *testing.T) {
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope), // WriteBlock will post here
+		Blocks:         make(chan *cb.Block), // WriteBlock will post here
 		BlockCutterVal: mockblockcutter.NewReceiver(),
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
@@ -546,7 +546,7 @@ func TestProcessLoopRegularCutBlock(t *testing.T) {
 	go func() { // Note: Unlike the CONNECT test case, the following does NOT introduce a race condition, so we're good
 		mockSupport.BlockCutterVal.Block <- struct{}{} // Let the `mockblockcutter.Ordered` call return
 		logger.Debugf("Mock blockcutter's Ordered call has returned")
-		<-mockSupport.Batches                                          // Let the `mockConsenterSupport.WriteBlock` proceed
+		<-mockSupport.Blocks                                           // Let the `mockConsenterSupport.WriteBlock` proceed
 		logger.Debug("Closing exitChan to exit the infinite for loop") // We are guaranteed to hit the exitChan branch after hitting the REGULAR branch at least once
 		close(exitChan)                                                // Identical to chain.Halt()
 		logger.Debug("exitChan closed")
@@ -590,7 +590,7 @@ func TestProcessLoopRegularCutTwoBlocks(t *testing.T) {
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope), // WriteBlock will post here
+		Blocks:         make(chan *cb.Block), // WriteBlock will post here
 		BlockCutterVal: mockblockcutter.NewReceiver(),
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
@@ -614,15 +614,13 @@ func TestProcessLoopRegularCutTwoBlocks(t *testing.T) {
 		logger.Debugf("Mock blockcutter's Ordered call has returned for the second time")
 
 		select {
-		case <-mockSupport.Batches: // Let the `mockConsenterSupport.WriteBlock` proceed
-			block1 = mockSupport.WriteBlockVal
+		case block1 = <-mockSupport.Blocks: // Let the `mockConsenterSupport.WriteBlock` proceed
 		case <-time.After(hitBranch):
 			logger.Fatalf("Did not receive a block from the blockcutter as expected")
 		}
 
 		select {
-		case <-mockSupport.Batches:
-			block2 = mockSupport.WriteBlockVal
+		case block2 = <-mockSupport.Blocks:
 		case <-time.After(hitBranch):
 			logger.Fatalf("Did not receive a block from the blockcutter as expected")
 		}
@@ -677,7 +675,7 @@ func TestProcessLoopRegularAndSendTimeToCutRegular(t *testing.T) {
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope), // WriteBlock will post here
+		Blocks:         make(chan *cb.Block), // WriteBlock will post here
 		BlockCutterVal: mockblockcutter.NewReceiver(),
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
@@ -746,7 +744,7 @@ func TestProcessLoopRegularAndSendTimeToCutError(t *testing.T) {
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope), // WriteBlock will post here
+		Blocks:         make(chan *cb.Block), // WriteBlock will post here
 		BlockCutterVal: mockblockcutter.NewReceiver(),
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
@@ -801,7 +799,7 @@ func TestProcessLoopTimeToCutFromReceivedMessageRegular(t *testing.T) {
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope), // WriteBlock will post here
+		Blocks:         make(chan *cb.Block), // WriteBlock will post here
 		BlockCutterVal: mockblockcutter.NewReceiver(),
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
@@ -818,7 +816,7 @@ func TestProcessLoopTimeToCutFromReceivedMessageRegular(t *testing.T) {
 	mockSupport.BlockCutterVal.Ordered(newMockEnvelope("fooMessage"))
 
 	go func() { // Note: Unlike the CONNECT test case, the following does NOT introduce a race condition, so we're good
-		<-mockSupport.Batches                                          // Let the `mockConsenterSupport.WriteBlock` proceed
+		<-mockSupport.Blocks                                           // Let the `mockConsenterSupport.WriteBlock` proceed
 		logger.Debug("Closing exitChan to exit the infinite for loop") // We are guaranteed to hit the exitChan branch after hitting the REGULAR branch at least once
 		close(exitChan)                                                // Identical to chain.Halt()
 		logger.Debug("exitChan closed")
@@ -858,7 +856,7 @@ func TestProcessLoopTimeToCutFromReceivedMessageZeroBatch(t *testing.T) {
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope), // WriteBlock will post here
+		Blocks:         make(chan *cb.Block), // WriteBlock will post here
 		BlockCutterVal: mockblockcutter.NewReceiver(),
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
@@ -902,7 +900,7 @@ func TestProcessLoopTimeToCutFromReceivedMessageLargerThanExpected(t *testing.T)
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope), // WriteBlock will post here
+		Blocks:         make(chan *cb.Block), // WriteBlock will post here
 		BlockCutterVal: mockblockcutter.NewReceiver(),
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
@@ -948,7 +946,7 @@ func TestProcessLoopTimeToCutFromReceivedMessageStale(t *testing.T) {
 	assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 	mockSupport := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope), // WriteBlock will post here
+		Blocks:         make(chan *cb.Block), // WriteBlock will post here
 		BlockCutterVal: mockblockcutter.NewReceiver(),
 		ChainIDVal:     mockChannel.topic(),
 		HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call

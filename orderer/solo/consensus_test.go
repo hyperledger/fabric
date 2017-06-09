@@ -57,7 +57,7 @@ func goWithWait(target func()) *waitableGo {
 func TestEmptyBatch(t *testing.T) {
 	batchTimeout, _ := time.ParseDuration("1ms")
 	support := &mockmultichain.ConsenterSupport{
-		Batches:         make(chan []*cb.Envelope),
+		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
 	}
@@ -69,7 +69,7 @@ func TestEmptyBatch(t *testing.T) {
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 	bs.Halt()
 	select {
-	case <-support.Batches:
+	case <-support.Blocks:
 		t.Fatalf("Expected no invocations of Append")
 	case <-wg.done:
 	}
@@ -78,7 +78,7 @@ func TestEmptyBatch(t *testing.T) {
 func TestBatchTimer(t *testing.T) {
 	batchTimeout, _ := time.ParseDuration("1ms")
 	support := &mockmultichain.ConsenterSupport{
-		Batches:         make(chan []*cb.Envelope),
+		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
 	}
@@ -90,21 +90,21 @@ func TestBatchTimer(t *testing.T) {
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 
 	select {
-	case <-support.Batches:
+	case <-support.Blocks:
 	case <-time.After(time.Second):
 		t.Fatalf("Expected a block to be cut because of batch timer expiration but did not")
 	}
 
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 	select {
-	case <-support.Batches:
+	case <-support.Blocks:
 	case <-time.After(time.Second):
 		t.Fatalf("Did not create the second batch, indicating that the timer was not appopriately reset")
 	}
 
 	bs.Halt()
 	select {
-	case <-support.Batches:
+	case <-support.Blocks:
 		t.Fatalf("Expected no invocations of Append")
 	case <-wg.done:
 	}
@@ -113,7 +113,7 @@ func TestBatchTimer(t *testing.T) {
 func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 	batchTimeout, _ := time.ParseDuration("1h")
 	support := &mockmultichain.ConsenterSupport{
-		Batches:         make(chan []*cb.Envelope),
+		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
 	}
@@ -128,7 +128,7 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 
 	select {
-	case <-support.Batches:
+	case <-support.Blocks:
 	case <-time.After(time.Second):
 		t.Fatalf("Expected a block to be cut because the batch was filled, but did not")
 	}
@@ -140,7 +140,7 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 
 	select {
-	case <-support.Batches:
+	case <-support.Blocks:
 	case <-time.After(time.Second):
 		t.Fatalf("Did not create the second batch, indicating that the old timer was still running")
 	}
@@ -156,7 +156,7 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 func TestConfigStyleMultiBatch(t *testing.T) {
 	batchTimeout, _ := time.ParseDuration("1h")
 	support := &mockmultichain.ConsenterSupport{
-		Batches:         make(chan []*cb.Envelope),
+		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
 	}
@@ -170,13 +170,13 @@ func TestConfigStyleMultiBatch(t *testing.T) {
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 
 	select {
-	case <-support.Batches:
+	case <-support.Blocks:
 	case <-time.After(time.Second):
 		t.Fatalf("Expected two blocks to be cut but never got the first")
 	}
 
 	select {
-	case <-support.Batches:
+	case <-support.Blocks:
 	case <-time.After(time.Second):
 		t.Fatalf("Expected the config type tx to create two blocks, but only go the first")
 	}
