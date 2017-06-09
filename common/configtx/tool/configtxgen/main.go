@@ -37,7 +37,6 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
-	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	logging "github.com/op/go-logging"
 )
 
@@ -65,11 +64,6 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 
 func doOutputChannelCreateTx(conf *genesisconfig.Profile, channelID string, outputChannelCreateTx string) error {
 	logger.Info("Generating new channel configtx")
-	// TODO, use actual MSP eventually
-	signer, err := mmsp.NewNoopMsp().GetDefaultSigningIdentity()
-	if err != nil {
-		return fmt.Errorf("Error getting signing identity: %s", err)
-	}
 
 	if conf.Application == nil {
 		return fmt.Errorf("Cannot define a new channel with no Application section")
@@ -86,7 +80,7 @@ func doOutputChannelCreateTx(conf *genesisconfig.Profile, channelID string, outp
 	for _, org := range conf.Application.Organizations {
 		orgNames = append(orgNames, org.Name)
 	}
-	configtx, err := configtx.MakeChainCreationTransaction(channelID, conf.Consortium, signer, orgNames...)
+	configtx, err := configtx.MakeChainCreationTransaction(channelID, conf.Consortium, nil, orgNames...)
 	if err != nil {
 		return fmt.Errorf("Error generating configtx: %s", err)
 	}
