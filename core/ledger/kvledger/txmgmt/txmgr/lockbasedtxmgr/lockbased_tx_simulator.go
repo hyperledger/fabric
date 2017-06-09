@@ -45,6 +45,9 @@ func (s *lockBasedTxSimulator) GetState(ns string, key string) ([]byte, error) {
 // SetState implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) SetState(ns string, key string, value []byte) error {
 	s.helper.checkDone()
+	if err := s.helper.txmgr.db.ValidateKey(key); err != nil {
+		return err
+	}
 	s.rwsetBuilder.AddToWriteSet(ns, key, value)
 	return nil
 }
