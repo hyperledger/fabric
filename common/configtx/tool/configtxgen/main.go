@@ -116,7 +116,7 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 	}
 
 	if org == nil {
-		return fmt.Errorf("No org matching: %s", asOrg)
+		return fmt.Errorf("No organization name matching: %s", asOrg)
 	}
 
 	anchorPeers := make([]*pb.AnchorPeer, len(org.AnchorPeers))
@@ -347,7 +347,7 @@ func main() {
 	flag.StringVar(&inspectBlock, "inspectBlock", "", "Prints the configuration contained in the block at the specified path")
 	flag.StringVar(&inspectChannelCreateTx, "inspectChannelCreateTx", "", "Prints the configuration contained in the transaction at the specified path")
 	flag.StringVar(&outputAnchorPeersUpdate, "outputAnchorPeersUpdate", "", "Creates an config update to update an anchor peer (works only with the default channel creation, and only for the first update)")
-	flag.StringVar(&asOrg, "asOrg", "", "Performs the config generation as a particular organization, only including values in the write set that org (likely) has privilege to set")
+	flag.StringVar(&asOrg, "asOrg", "", "Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set")
 
 	version := flag.Bool("version", false, "Show version information")
 
