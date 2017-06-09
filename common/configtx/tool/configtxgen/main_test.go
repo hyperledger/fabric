@@ -42,6 +42,10 @@ func TestMain(m *testing.M) {
 	os.Exit(testResult)
 }
 
+func TestInspectMissing(t *testing.T) {
+	assert.Error(t, doInspectBlock("NonSenseBlockFileThatDoesn'tActuallyExist"), "Missing block")
+}
+
 func TestInspectBlock(t *testing.T) {
 	blockDest := tmpDir + string(os.PathSeparator) + "block"
 
