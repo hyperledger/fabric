@@ -22,11 +22,13 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/config"
 	mspconfig "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/configtx/tool/configtxgen/metadata"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -38,6 +40,8 @@ import (
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	logging "github.com/op/go-logging"
 )
+
+var exitCode = 0
 
 var logger = flogging.MustGetLogger("common/configtx/tool")
 
@@ -341,6 +345,8 @@ func main() {
 	flag.StringVar(&outputAnchorPeersUpdate, "outputAnchorPeersUpdate", "", "Creates an config update to update an anchor peer (works only with the default channel creation, and only for the first update)")
 	flag.StringVar(&asOrg, "asOrg", "", "Performs the config generation as a particular organization, only including values in the write set that org (likely) has privilege to set")
 
+	version := flag.Bool("version", false, "Show version information")
+
 	flag.Parse()
 
 	logging.SetLevel(logging.INFO, "")
@@ -348,6 +354,11 @@ func main() {
 	logger.Info("Loading configuration")
 	factory.InitFactories(nil)
 	config := genesisconfig.Load(profile)
+
+	if *version {
+		printVersion()
+		os.Exit(exitCode)
+	}
 
 	if outputBlock != "" {
 		if err := doOutputBlock(config, channelID, outputBlock); err != nil {
@@ -378,4 +389,8 @@ func main() {
 			logger.Fatalf("Error on inspectChannelCreateTx: %s", err)
 		}
 	}
+}
+
+func printVersion() {
+	fmt.Println(metadata.GetVersionInfo())
 }
