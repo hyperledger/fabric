@@ -95,10 +95,12 @@ func TestNewDeliverService(t *testing.T) {
 		return &mocks.MockAtomicBroadcastClient{blocksDeliverer}
 	}
 
-	connFactory := func(endpoint string) (*grpc.ClientConn, error) {
-		lock.Lock()
-		defer lock.Unlock()
-		return newConnection(), nil
+	connFactory := func(_ string) func(string) (*grpc.ClientConn, error) {
+		return func(endpoint string) (*grpc.ClientConn, error) {
+			lock.Lock()
+			defer lock.Unlock()
+			return newConnection(), nil
+		}
 	}
 	service, err := NewDeliverService(&Config{
 		Endpoints:   []string{"a"},

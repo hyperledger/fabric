@@ -63,8 +63,8 @@ type deliverServiceImpl struct {
 // how it verifies messages received from it,
 // and how it disseminates the messages to other peers
 type Config struct {
-	// ConnFactory creates a connection to an endpoint
-	ConnFactory func(endpoint string) (*grpc.ClientConn, error)
+	// ConnFactory returns a function that creates a connection to an endpoint
+	ConnFactory func(channelID string) func(endpoint string) (*grpc.ClientConn, error)
 	// ABCFactory creates an AtomicBroadcastClient out of a connection
 	ABCFactory func(*grpc.ClientConn) orderer.AtomicBroadcastClient
 	// CryptoSvc performs cryptographic actions like message verification and signing
@@ -183,27 +183,33 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		}
 		return time.Duration(math.Pow(2, float64(attemptNum))) * time.Millisecond * 500, true
 	}
-	connProd := comm.NewConnectionProducer(d.conf.ConnFactory, d.conf.Endpoints)
+	connProd := comm.NewConnectionProducer(d.conf.ConnFactory(chainID), d.conf.Endpoints)
 	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)
 	requester.client = bClient
 	return bClient
 }
 
-func DefaultConnectionFactory(endpoint string) (*grpc.ClientConn, error) {
-	dialOpts := []grpc.DialOption{grpc.WithTimeout(connTimeout), grpc.WithBlock()}
-	// set max send/recv msg sizes
-	dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
-		grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
-	// set the keepalive options
-	dialOpts = append(dialOpts, comm.ClientKeepaliveOptions()...)
+func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
+	return func(endpoint string) (*grpc.ClientConn, error) {
+		dialOpts := []grpc.DialOption{grpc.WithTimeout(connTimeout), grpc.WithBlock()}
+		// set max send/recv msg sizes
+		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
+			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
+		// set the keepalive options
+		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions()...)
 
-	if comm.TLSEnabled() {
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCASupport().GetDeliverServiceCredentials()))
-	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		if comm.TLSEnabled() {
+			creds, err := comm.GetCASupport().GetDeliverServiceCredentials(channelID)
+			if err != nil {
+				return nil, fmt.Errorf("Failed obtaining credentials for channel %s: %v", channelID, err)
+			}
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(creds))
+		} else {
+			dialOpts = append(dialOpts, grpc.WithInsecure())
+		}
+		grpc.EnableTracing = true
+		return grpc.Dial(endpoint, dialOpts...)
 	}
-	grpc.EnableTracing = true
-	return grpc.Dial(endpoint, dialOpts...)
 }
 
 func DefaultABCFactory(conn *grpc.ClientConn) orderer.AtomicBroadcastClient {
