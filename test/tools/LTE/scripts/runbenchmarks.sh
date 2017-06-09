@@ -122,4 +122,5 @@ runLargeDataExperiment\n"
     runLargeDataExperiment ;;
   *)
     printf "Error: test name empty/incorrect!\n"  >> /dev/stderr
+    exit 1 ;;
 esac
