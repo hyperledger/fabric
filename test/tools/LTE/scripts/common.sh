@@ -29,8 +29,8 @@ set -e
 #############################################################################################################################
 
 
-OUTPUT_DIR_ROOT=`echo /tmp/fabric/test/tools/LTE/results`
-RAW_OUTPUT_FILE="output.txt"
+OUTPUT_DIR_ROOT=`echo /tmp`
+RAW_OUTPUT_FILE="output_LTE.log"
 RESULTS_FILE="results.csv"
 
 benchmarkLineRegex="^Benchmark.*[[:blank:]]+[[:digit:]]+[[:blank:]]+([[:digit:]]+).*$"

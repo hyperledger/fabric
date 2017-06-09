@@ -15,30 +15,38 @@ class perf_goleveldb(unittest.TestCase):
          with goleveldb as the state database. We vary the number of parallel
          transactions per chain and observe the performance.
 
-         Passing criteria: all subtests (8) completed successfully
+         Passing criteria: Underlying LTE test completed successfully with
+         exit code 0
         '''
-        result = subprocess.check_output(
+        logfile = open("output_VaryNumParallelTxPerChain.log", "w")
+        returncode = subprocess.call(
                 "./runbenchmarks.sh varyNumParallelTxPerChain",
-                shell=True, stderr=subprocess.STDOUT,
+                shell=True, stderr=subprocess.STDOUT, stdout=logfile,
                 cwd='../../tools/LTE/scripts')
-        completion_count = result.count("PASS")
-        self.assertEqual(completion_count, 8)
+        logfile.close()
+        self.assertEqual(returncode, 0, msg="VaryNumParallelTxPerChain "
+                "performance test failed. \nPlease check the logfile "
+                +logfile.name+" for more details.")
 
-    def test_FAB_3795_VaryNumChain(self):
+    def test_FAB_3795_VaryNumChains(self):
         '''
          In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the number of chains
          (ledgers).
 
-         Passing criteria: all subtests (8) completed successfully
+         Passing criteria: Underlying LTE test completed successfully with
+         exit code 0
         '''
-        result = subprocess.check_output(
-                "./runbenchmarks.sh varyNumChain",
-                shell=True, stderr=subprocess.STDOUT,
+        logfile = open("output_VaryNumChains.log", "w")
+        returncode = subprocess.call(
+                "./runbenchmarks.sh varyNumChains",
+                shell=True, stderr=subprocess.STDOUT, stdout=logfile,
                 cwd='../../tools/LTE/scripts')
-        completion_count = result.count("PASS")
-        self.assertEqual(completion_count, 8)
+        logfile.close()
+        self.assertEqual(returncode, 0, msg="VaryNumChains performance test"
+                " failed. \nPlease check the logfile "+logfile.name+" for more "
+                "details.")
 
     def test_FAB_3798_VaryNumParallelTxWithSingleChain(self):
         '''
@@ -47,30 +55,38 @@ class perf_goleveldb(unittest.TestCase):
          with goleveldb as the state database. We vary the number of parallel
          transactions on a single chain.
 
-         Passing criteria: all subtests (8) completed successfully
+         Passing criteria: Underlying LTE test completed successfully with
+         exit code 0
         '''
-        result = subprocess.check_output(
+        logfile = open("output_VaryNumParallelTxWithSingleChain.log", "w")
+        returncode = subprocess.call(
                 "./runbenchmarks.sh varyNumParallelTxWithSingleChain",
-                shell=True, stderr=subprocess.STDOUT,
+                shell=True, stderr=subprocess.STDOUT, stdout=logfile,
                 cwd='../../tools/LTE/scripts')
-        completion_count = result.count("PASS")
-        self.assertEqual(completion_count, 8)
+        logfile.close()
+        self.assertEqual(returncode, 0, msg="VaryNumParallelTxWithSingleChain "
+                "performance test failed. \nPlease check the logfile "
+                +logfile.name+" for more details.")
 
-    def test_FAB_3799_VaryNumChainWithNoParallelism(self):
+    def test_FAB_3799_VaryNumChainsWithNoParallelism(self):
         '''
          In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the number of chains
          without any parallelism within a single chain.
 
-         Passing criteria: all subtests (8) completed successfully
+         Passing criteria: Underlying LTE test completed successfully with
+         exit code 0
         '''
-        result = subprocess.check_output(
-                "./runbenchmarks.sh varyNumChainWithNoParallelism",
-                shell=True, stderr=subprocess.STDOUT,
+        logfile = open("output_VaryNumChainsWithNoParallelism.log", "w")
+        returncode = subprocess.call(
+                "./runbenchmarks.sh varyNumChainsWithNoParallelism",
+                shell=True, stderr=subprocess.STDOUT, stdout=logfile,
                 cwd='../../tools/LTE/scripts')
-        completion_count = result.count("PASS")
-        self.assertEqual(completion_count, 8)
+        logfile.close()
+        self.assertEqual(returncode, 0, msg="varyNumChainsWithNoParallelism "
+                "performance test failed. \nPlease check the logfile "
+                +logfile.name+" for more details.")
 
     def test_FAB_3801_VaryKVSize(self):
         '''
@@ -78,14 +94,18 @@ class perf_goleveldb(unittest.TestCase):
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the size of key-value.
 
-         Passing criteria: all subtests (5) completed successfully
+         Passing criteria: Underlying LTE test completed successfully with
+         exit code 0
         '''
-        result = subprocess.check_output(
+        logfile = open("output_VaryKVSize.log", "w")
+        returncode = subprocess.call(
                 "./runbenchmarks.sh varyKVSize",
-                shell=True, stderr=subprocess.STDOUT,
+                shell=True, stderr=subprocess.STDOUT, stdout=logfile,
                 cwd='../../tools/LTE/scripts')
-        completion_count = result.count("PASS")
-        self.assertEqual(completion_count, 5)
+        logfile.close()
+        self.assertEqual(returncode, 0, msg="varyKVSize performance test"
+                " failed. \nPlease check the logfile "+logfile.name+" for more "
+                "details.")
 
     def test_FAB_3802_VaryBatchSize(self):
         '''
@@ -94,30 +114,38 @@ class perf_goleveldb(unittest.TestCase):
          with goleveldb as the state database. We vary the value of the batch
          size
 
-         Passing criteria: all subtests (4) completed successfully
+         Passing criteria: Underlying LTE test completed successfully with
+         exit code 0
         '''
-        result = subprocess.check_output(
+        logfile = open("output_VaryBatchSize.log", "w")
+        returncode = subprocess.call(
                 "./runbenchmarks.sh varyBatchSize",
-                shell=True, stderr=subprocess.STDOUT,
+                shell=True, stderr=subprocess.STDOUT, stdout=logfile,
                 cwd='../../tools/LTE/scripts')
-        completion_count = result.count("PASS")
-        self.assertEqual(completion_count, 4)
+        logfile.close()
+        self.assertEqual(returncode, 0, msg="varyBatchSize performance test"
+                " failed. \nPlease check the logfile "+logfile.name+" for more "
+                "details.")
 
-    def test_FAB_3800_VaryNumKeysInEachTX(self):
+    def test_FAB_3800_VaryNumKeysInEachTx(self):
         '''
          In this Performance test, we observe the performance (time to
          complete a set number of Ledger operations) of the Ledger component,
          with goleveldb as the state database. We vary the number of keys in
          each transaction.
 
-         Passing criteria: all subtests (5) completed successfully
+         Passing criteria: Underlying LTE test completed successfully with
+         exit code 0
         '''
-        result = subprocess.check_output(
-                "./runbenchmarks.sh varyNumKeysInEachTX",
-                shell=True, stderr=subprocess.STDOUT,
+        logfile = open("output_VaryNumKeysInEachTx.log", "w")
+        returncode = subprocess.call(
+                "./runbenchmarks.sh varyNumKeysInEachTx",
+                shell=True, stderr=subprocess.STDOUT, stdout=logfile,
                 cwd='../../tools/LTE/scripts')
-        completion_count = result.count("PASS")
-        self.assertEqual(completion_count, 5)
+        logfile.close()
+        self.assertEqual(returncode, 0, msg="varyNumKeysInEachTx performance "
+                "test failed. \nPlease check the logfile "+logfile.name
+                +" for more details.")
 
     def test_FAB_3803_VaryNumTxs(self):
         '''
@@ -126,14 +154,18 @@ class perf_goleveldb(unittest.TestCase):
          with goleveldb as the state database. We vary the number of
          transactions carried out.
 
-         Passing criteria: all subtests (4) completed successfully
+         Passing criteria: Underlying LTE test completed successfully with
+         exit code 0
         '''
-        result = subprocess.check_output(
+        logfile = open("output_VaryNumTxs.log", "w")
+        returncode = subprocess.call(
                 "./runbenchmarks.sh varyNumTxs",
-                shell=True, stderr=subprocess.STDOUT,
+                shell=True, stderr=subprocess.STDOUT, stdout=logfile,
                 cwd='../../tools/LTE/scripts')
-        completion_count = result.count("PASS")
-        self.assertEqual(completion_count, 4)
+        logfile.close()
+        self.assertEqual(returncode, 0, msg="varyNumTxs performance test"
+                " failed. \nPlease check the logfile "+logfile.name+" for more "
+                "details.")
 
 
 class perf_couchdb(unittest.TestCase):
