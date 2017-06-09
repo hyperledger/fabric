@@ -284,7 +284,7 @@ build/goshim.tar.bz2: $(GOSHIM_DEPS)
 	@echo "Creating $@"
 	@tar -jhc -C $(GOPATH)/src $(patsubst $(GOPATH)/src/%,%,$(GOSHIM_DEPS)) > $@
 
-build/sampleconfig.tar.bz2:
+build/sampleconfig.tar.bz2: $(shell find sampleconfig -type f)
 	(cd sampleconfig && tar -jc *) > $@
 
 build/javashim.tar.bz2: $(JAVASHIM_DEPS)
