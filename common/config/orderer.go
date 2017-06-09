@@ -89,6 +89,7 @@ type OrdererConfig struct {
 	*standardValues
 	protos       *OrdererProtos
 	ordererGroup *OrdererGroup
+	orgs         map[string]Org
 
 	batchTimeout time.Duration
 }
@@ -140,6 +141,11 @@ func (oc *OrdererConfig) MaxChannelsCount() uint64 {
 	return oc.protos.ChannelRestrictions.MaxCount
 }
 
+// Organizations returns a map of the orgs in the channel
+func (oc *OrdererConfig) Organizations() map[string]Org {
+	return oc.orgs
+}
+
 func (oc *OrdererConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
 	for _, validator := range []func() error{
 		oc.validateConsensusType,
@@ -149,6 +155,15 @@ func (oc *OrdererConfig) Validate(tx interface{}, groups map[string]ValuePropose
 	} {
 		if err := validator(); err != nil {
 			return err
+		}
+	}
+
+	var ok bool
+	oc.orgs = make(map[string]Org)
+	for key, value := range groups {
+		oc.orgs[key], ok = value.(*OrganizationGroup)
+		if !ok {
+			return fmt.Errorf("Organization sub-group %s was not an OrgGroup, actually %T", key, value)
 		}
 	}
 

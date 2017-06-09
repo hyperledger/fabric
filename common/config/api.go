@@ -93,6 +93,9 @@ type Orderer interface {
 	// Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
 	// used for ordering
 	KafkaBrokers() []string
+
+	// Organizations returns the organizations for the ordering service
+	Organizations() map[string]Org
 }
 
 type ValueProposer interface {
