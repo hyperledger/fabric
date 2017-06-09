@@ -59,14 +59,16 @@ type Resources interface {
 	ChannelConfig() config.Channel
 
 	// OrdererConfig returns the config.Orderer for the channel
-	OrdererConfig() config.Orderer
+	// and whether the Orderer config exists
+	OrdererConfig() (config.Orderer, bool)
 
 	// ConsortiumsConfig() returns the config.Consortiums for the channel
 	// and whether the consortiums config exists
 	ConsortiumsConfig() (config.Consortiums, bool)
 
 	// ApplicationConfig returns the configtxapplication.SharedConfig for the channel
-	ApplicationConfig() config.Application
+	// and whether the Application config exists
+	ApplicationConfig() (config.Application, bool)
 
 	// MSPManager returns the msp.MSPManager for the chain
 	MSPManager() msp.MSPManager
