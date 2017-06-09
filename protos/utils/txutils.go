@@ -77,9 +77,14 @@ func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 func CreateSignedEnvelope(txType common.HeaderType, channelID string, signer crypto.LocalSigner, dataMsg proto.Message, msgVersion int32, epoch uint64) (*common.Envelope, error) {
 	payloadChannelHeader := MakeChannelHeader(txType, msgVersion, channelID, epoch)
 
-	payloadSignatureHeader, err := signer.NewSignatureHeader()
-	if err != nil {
-		return nil, err
+	var err error
+	payloadSignatureHeader := &common.SignatureHeader{}
+
+	if signer != nil {
+		payloadSignatureHeader, err = signer.NewSignatureHeader()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	data, err := proto.Marshal(dataMsg)
@@ -92,9 +97,12 @@ func CreateSignedEnvelope(txType common.HeaderType, channelID string, signer cry
 		Data:   data,
 	})
 
-	sig, err := signer.Sign(paylBytes)
-	if err != nil {
-		return nil, err
+	var sig []byte
+	if signer != nil {
+		sig, err = signer.Sign(paylBytes)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &common.Envelope{Payload: paylBytes, Signature: sig}, nil

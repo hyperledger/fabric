@@ -256,6 +256,25 @@ func TestCreateSignedEnvelope(t *testing.T) {
 	assert.Error(t, err, "Expected sign error")
 }
 
+func TestCreateSignedEnvelopeNilSigner(t *testing.T) {
+	var env *cb.Envelope
+	channelID := "mychannelID"
+	msg := &cb.ConfigEnvelope{}
+
+	env, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID,
+		nil, msg, int32(1), uint64(1))
+	assert.NoError(t, err, "Unexpected error creating signed envelope")
+	assert.NotNil(t, env, "Envelope should not be nil")
+	assert.Empty(t, env.Signature, "Signature should have been empty")
+	payload := &cb.Payload{}
+	err = proto.Unmarshal(env.Payload, payload)
+	assert.NoError(t, err, "Failed to unmarshal payload")
+	data := &cb.ConfigEnvelope{}
+	err = proto.Unmarshal(payload.Data, data)
+	assert.NoError(t, err, "Expected payload data to be a config envelope")
+	assert.Equal(t, msg, data, "Payload data does not match expected value")
+}
+
 func TestGetSignedProposal(t *testing.T) {
 	var signedProp *pb.SignedProposal
 	var err error
