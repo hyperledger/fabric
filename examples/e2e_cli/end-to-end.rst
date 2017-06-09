@@ -31,7 +31,7 @@ Prerequisites
 On Windows machines you will also need the following which provides a better alternative to the Windows command prompt:
 
 - `Git Bash <https://git-scm.com/downloads>`__
-- `make for MinGW <http://sourceforge.net/projects/mingw/files/MinGW/Extension/make/make-3.82.90-cvs/make-3.82.90-2-mingw32-cvs-20120902-bin.tar.lzma>`__ to be added to Git Bash
+- `make for MinGW <http://sourceforge.net/projects/mingw/files/MinGW/Extension/make/make-3.82.90-cvs/make-3.82.90-2-mingw32-cvs-20120902-bin.tar.lzma>`__ to be added to Git Bash by adding the content as meake,exe into <yourGit>\mingw64\bin. You may also try  the make found at https://sourceforge.net/projects/ezwinports/files/, as described in https://gist.github.com/evanwill/0207876c3243bbb6863e65ec5dc3f058 
 
 Setting the $GOPATH
 ^^^^^^^^^^^^^^^^^^^
