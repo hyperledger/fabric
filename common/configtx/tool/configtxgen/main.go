@@ -241,6 +241,10 @@ func configGroupAsJSON(group *cb.ConfigGroup) (string, error) {
 func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 	logger.Info("Inspecting transaction")
 	data, err := ioutil.ReadFile(inspectChannelCreateTx)
+	if err != nil {
+		return fmt.Errorf("could not read channel create tx: %s", err)
+	}
+
 	logger.Info("Parsing transaction")
 	env, err := utils.UnmarshalEnvelope(data)
 	if err != nil {

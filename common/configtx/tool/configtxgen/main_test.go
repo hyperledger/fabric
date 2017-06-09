@@ -72,6 +72,10 @@ func TestMissingConsortiumSection(t *testing.T) {
 	assert.Error(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Missing Consortium section in Application Profile definition")
 }
 
+func TestInspectMissingConfigTx(t *testing.T) {
+	assert.Error(t, doInspectChannelCreateTx("ChannelCreateTxFileWhichDoesn'tReallyExist"), "Missing channel create tx file")
+}
+
 func TestInspectConfigTx(t *testing.T) {
 	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
 
