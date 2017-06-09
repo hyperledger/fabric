@@ -428,9 +428,9 @@ func setupProducerForChannel(brokers []string, brokerConfig *sarama.Config, chan
 	var producer sarama.SyncProducer
 
 	// This will be revised in: https://jira.hyperledger.org/browse/FAB-4136
-	repeatTick := time.NewTicker(retryOptions.Period)
-	panicTick := time.NewTicker(retryOptions.Stop)
-	logger.Debugf("[channel: %s] Retrying every %s for a total of %s", channel.topic(), retryOptions.Period.String(), retryOptions.Stop.String())
+	repeatTick := time.NewTicker(retryOptions.ShortInterval)
+	panicTick := time.NewTicker(retryOptions.ShortTotal)
+	logger.Debugf("[channel: %s] Retrying every %s for a total of %s", channel.topic(), retryOptions.ShortInterval.String(), retryOptions.ShortTotal.String())
 	defer repeatTick.Stop()
 	defer panicTick.Stop()
 

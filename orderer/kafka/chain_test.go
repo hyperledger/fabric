@@ -100,14 +100,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("StartWithConnectMessageError", func(t *testing.T) {
-		mockBrokerConfigCopy := *mockBrokerConfig
-		mockBrokerConfigCopy.Net.ReadTimeout = 5 * time.Millisecond
-		mockBrokerConfigCopy.Consumer.Retry.Backoff = 5 * time.Millisecond
-		mockBrokerConfigCopy.Metadata.Retry.Max = 1
-
-		mockConsenterCopy := newMockConsenter(&mockBrokerConfigCopy, mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version)
-
-		chain, _ := newChain(mockConsenterCopy, mockSupport, newestOffset-1)
+		// Affected by Net.ReadTimeout, Consumer.Retry.Backoff, and Metadata.Retry.Max
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
 
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 			"MetadataRequest": sarama.NewMockMetadataResponse(t).
@@ -131,14 +125,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("StartWithConsumerForChannelError", func(t *testing.T) {
-		mockBrokerConfigCopy := *mockBrokerConfig
-		mockBrokerConfigCopy.Net.ReadTimeout = 5 * time.Millisecond
-		mockBrokerConfigCopy.Consumer.Retry.Backoff = 5 * time.Millisecond
-		mockBrokerConfigCopy.Metadata.Retry.Max = 1
-
-		mockConsenterCopy := newMockConsenter(&mockBrokerConfigCopy, mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version)
-
-		chain, _ := newChain(mockConsenterCopy, mockSupport, newestOffset) // Provide an out-of-range offset
+		// Affected by Net.ReadTimeout, Consumer.Retry.Backoff, and Metadata.Retry.Max
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset) // Provide an out-of-range offset
 
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 			"MetadataRequest": sarama.NewMockMetadataResponse(t).
@@ -451,7 +439,7 @@ func TestProcessLoopRegularError(t *testing.T) {
 }
 
 func TestProcessLoopRegularQueueEnvelope(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1s")
+	batchTimeout, _ := time.ParseDuration("100s") // Something big
 	newestOffset := int64(5)
 	lastCutBlockNumber := uint64(3)
 	haltedFlag := false
@@ -725,12 +713,9 @@ func TestProcessLoopRegularAndSendTimeToCutError(t *testing.T) {
 	metadataResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID(), nil, nil, sarama.ErrNoError)
 	mockBroker.Returns(metadataResponse)
 
-	mockBrokerConfigCopy := *mockBrokerConfig
-	mockBrokerConfigCopy.Net.ReadTimeout = 5 * time.Millisecond
-	mockBrokerConfigCopy.Consumer.Retry.Backoff = 5 * time.Millisecond
-	mockBrokerConfigCopy.Metadata.Retry.Max = 1
+	// Affected by Net.ReadTimeout, Consumer.Retry.Backoff, and Metadata.Retry.Max
 
-	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, &mockBrokerConfigCopy)
+	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
 
 	failureResponse := new(sarama.ProduceResponse)
@@ -987,12 +972,9 @@ func TestSendConnectMessage(t *testing.T) {
 	metadataResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID(), nil, nil, sarama.ErrNoError)
 	mockBroker.Returns(metadataResponse)
 
-	mockBrokerConfigCopy := *mockBrokerConfig
-	mockBrokerConfigCopy.Net.ReadTimeout = 5 * time.Millisecond
-	mockBrokerConfigCopy.Consumer.Retry.Backoff = 5 * time.Millisecond
-	mockBrokerConfigCopy.Metadata.Retry.Max = 1
+	// Affected by Net.ReadTimeout, Consumer.Retry.Backoff, and Metadata.Retry.Max
 
-	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, &mockBrokerConfigCopy)
+	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
 
 	t.Run("Proper", func(t *testing.T) {
@@ -1022,12 +1004,9 @@ func TestSendTimeToCut(t *testing.T) {
 	metadataResponse.AddTopicPartition(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID(), nil, nil, sarama.ErrNoError)
 	mockBroker.Returns(metadataResponse)
 
-	mockBrokerConfigCopy := *mockBrokerConfig
-	mockBrokerConfigCopy.Net.ReadTimeout = 5 * time.Millisecond
-	mockBrokerConfigCopy.Consumer.Retry.Backoff = 5 * time.Millisecond
-	mockBrokerConfigCopy.Metadata.Retry.Max = 1
+	// Affected by Net.ReadTimeout, Consumer.Retry.Backoff, and Metadata.Retry.Max
 
-	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, &mockBrokerConfigCopy)
+	producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
 	assert.NoError(t, err, "Expected no error when setting up the sarama SyncProducer")
 
 	timeToCutBlockNumber := uint64(3)

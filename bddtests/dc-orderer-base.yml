@@ -14,8 +14,10 @@ services:
       - ORDERER_GENERAL_GENESISFILE=${ORDERER_GENERAL_GENESISFILE}
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENERAL_LOGLEVEL=debug
-      - ORDERER_KAFKA_VERBOSE=true
       - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s
+      - ORDERER_KAFKA_RETRY_SHORTTOTAL=30s
+      - ORDERER_KAFKA_VERBOSE=true
     volumes:
       - ./volumes/orderer:/var/hyperledger/bddtests/volumes/orderer
       - /etc/hyperledger/msp:/etc/hyperledger/msp
