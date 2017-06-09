@@ -48,6 +48,10 @@ type mockChain struct {
 	done     chan struct{}
 }
 
+func (mch *mockChain) Errored() <-chan struct{} {
+	return nil
+}
+
 func (mch *mockChain) Enqueue(env *cb.Envelope) bool {
 	mch.queue <- env
 	return true
