@@ -76,6 +76,10 @@ script will use a default name of ``mychannel``.  The cli timeout parameter
 is an optional value; if you choose not to set it, then your cli container
 will exit upon conclusion of the script.
 
+Change to the release subdirectory corresponding to your architecture
+that was created in the first step, such as ``release/windows-amd64``,
+then execute one of the following commands:
+
 .. code:: bash
 
               ./network_setup.sh up
