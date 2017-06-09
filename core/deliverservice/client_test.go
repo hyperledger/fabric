@@ -490,11 +490,14 @@ func TestCloseWhileRecv(t *testing.T) {
 	}
 	bc := NewBroadcastClient(cp, clFactory, setup, backoffStrategy)
 	var flag int32
-	time.AfterFunc(time.Second, func() {
+	go func() {
+		for fakeOrderer.ConnCount() == 0 {
+			time.Sleep(time.Second)
+		}
 		atomic.StoreInt32(&flag, int32(1))
 		bc.Close()
 		bc.Close() // Try to close a second time
-	})
+	}()
 	resp, err := bc.Recv()
 	// Ensure we returned because bc.Close() was called and not because some other reason
 	assert.Equal(t, int32(1), atomic.LoadInt32(&flag), "Recv returned before bc.Close() was called")
@@ -593,6 +596,72 @@ func TestProductionUsage(t *testing.T) {
 	assert.Equal(t, uint64(5), resp.GetBlock().Header.Number)
 	os.Shutdown()
 	cl.Close()
+}
+
+func TestDisconnect(t *testing.T) {
+	// Scenario: spawn 2 ordering service instances
+	// and a client.
+	// Have the client try to Recv() from one of them,
+	// and disconnect the client until it tries connecting
+	// to the other instance.
+
+	defer ensureNoGoroutineLeak(t)()
+	os1 := mocks.NewOrderer(5613, t)
+	os1.SetNextExpectedSeek(5)
+	os2 := mocks.NewOrderer(5614, t)
+	os2.SetNextExpectedSeek(5)
+
+	defer os1.Shutdown()
+	defer os2.Shutdown()
+
+	waitForConnectionToSomeOSN := func() {
+		for {
+			if os1.ConnCount() > 0 || os2.ConnCount() > 0 {
+				return
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+	}
+
+	connFact := func(endpoint string) (*grpc.ClientConn, error) {
+		return grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithBlock())
+	}
+	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5613", "localhost:5614"})
+	clFact := func(cc *grpc.ClientConn) orderer.AtomicBroadcastClient {
+		return orderer.NewAtomicBroadcastClient(cc)
+	}
+	onConnect := func(bd blocksprovider.BlocksDeliverer) error {
+		return nil
+	}
+	retryPol := func(attemptNum int, elapsedTime time.Duration) (time.Duration, bool) {
+		return time.Millisecond * 10, attemptNum < 100
+	}
+
+	cl := NewBroadcastClient(prod, clFact, onConnect, retryPol)
+	stopChan := make(chan struct{})
+	go func() {
+		cl.Recv()
+		stopChan <- struct{}{}
+	}()
+	waitForConnectionToSomeOSN()
+	cl.Disconnect()
+
+	i := 0
+	for (os1.ConnCount() == 0 || os2.ConnCount() == 0) && i < 100 {
+		t.Log("Attempt", i, "os1ConnCount()=", os1.ConnCount(), "os2ConnCount()=", os2.ConnCount())
+		i++
+		if i == 100 {
+			assert.Fail(t, "Didn't switch to other instance after many attempts")
+		}
+		cl.Disconnect()
+		time.Sleep(time.Millisecond * 500)
+	}
+	cl.Close()
+	select {
+	case <-stopChan:
+	case <-time.After(time.Second * 20):
+		assert.Fail(t, "Didn't stop within a timely manner")
+	}
 }
 
 func newTestSeekInfo() *orderer.SeekInfo {

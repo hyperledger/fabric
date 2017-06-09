@@ -127,7 +127,7 @@ func TestBlocksProvider_CheckTerminationDeliveryResponseStatus(t *testing.T) {
 	tmp := struct{ mocks.MockBlocksDeliverer }{}
 
 	// Making mocked Recv() function to return DeliverResponse_Status to force block
-	// provider to fail and exit, cheking that in that case to block was actually
+	// provider to fail and exit, checking that in that case to block was actually
 	// delivered.
 	tmp.MockRecv = func(mock *mocks.MockBlocksDeliverer) (*orderer.DeliverResponse, error) {
 		return &orderer.DeliverResponse{
@@ -177,6 +177,71 @@ func TestBlocksProvider_CheckTerminationDeliveryResponseStatus(t *testing.T) {
 			t.Fatal("Test hasn't finished in timely manner, failing.")
 		}
 	}
+}
+
+func TestBlocksProvider_DeliveryServiceUnavailable(t *testing.T) {
+	sendBlock := func(seqNum uint64) *orderer.DeliverResponse {
+		return &orderer.DeliverResponse{
+			Type: &orderer.DeliverResponse_Block{
+				Block: &common.Block{
+					Header: &common.BlockHeader{
+						Number:       seqNum,
+						DataHash:     []byte{},
+						PreviousHash: []byte{},
+					},
+					Data: &common.BlockData{
+						Data: [][]byte{},
+					},
+				}},
+		}
+	}
+	sendStatus := func(status common.Status) *orderer.DeliverResponse {
+		return &orderer.DeliverResponse{
+			Type: &orderer.DeliverResponse_Status{
+				Status: status,
+			},
+		}
+	}
+
+	bd := mocks.MockBlocksDeliverer{DisconnectCalled: make(chan struct{}, 1)}
+	mcs := &mockMCS{}
+	mcs.On("VerifyBlock", mock.Anything).Return(nil)
+	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64, 2)}
+	provider := &blocksProviderImpl{
+		chainID: "***TEST_CHAINID***",
+		gossip:  gossipServiceAdapter,
+		client:  &bd,
+		mcs:     mcs,
+	}
+
+	attempts := int32(0)
+	bd.MockRecv = func(mock *mocks.MockBlocksDeliverer) (*orderer.DeliverResponse, error) {
+		atomic.AddInt32(&attempts, 1)
+		switch atomic.LoadInt32(&attempts) {
+		case int32(1):
+			return sendBlock(0), nil
+		case int32(2):
+			return sendStatus(common.Status_SERVICE_UNAVAILABLE), nil
+		case int32(3):
+			return sendBlock(1), nil
+		default:
+			provider.Stop()
+			return nil, errors.New("Stopping")
+		}
+	}
+
+	go provider.DeliverBlocks()
+	assert.Len(t, bd.DisconnectCalled, 0)
+	for i := 0; i < 2; i++ {
+		select {
+		case seq := <-gossipServiceAdapter.GossipBlockDisseminations:
+			assert.Equal(t, uint64(i), seq)
+		case <-time.After(time.Second * 3):
+			assert.Fail(t, "Didn't receive a block within a timely manner")
+		}
+	}
+	// Make sure disconnect was called in between the deliveries
+	assert.Len(t, bd.DisconnectCalled, 1)
 }
 
 func TestBlockFetchFailure(t *testing.T) {

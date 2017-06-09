@@ -79,6 +79,9 @@ type streamClient interface {
 
 	// Close closes the stream and its underlying connection
 	Close()
+
+	// Disconnect disconnects from the remote node
+	Disconnect()
 }
 
 // blocksProviderImpl the actual implementation for BlocksProvider interface
@@ -127,6 +130,10 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 				return
 			}
 			logger.Warningf("[%s] Got error %v", b.chainID, t)
+			if t.Status == common.Status_SERVICE_UNAVAILABLE {
+				b.client.Disconnect()
+				continue
+			}
 		case *orderer.DeliverResponse_Block:
 			seqNum := t.Block.Header.Number
 

@@ -245,6 +245,67 @@ func TestDeliverServiceFailover(t *testing.T) {
 	service.Stop()
 }
 
+func TestDeliverServiceServiceUnavailable(t *testing.T) {
+	defer ensureNoGoroutineLeak(t)()
+	// Scenario: bring up 2 ordering service instances,
+	// Make the instance the client connects to fail after a delivery of a block and send SERVICE_UNAVAILABLE
+	// whenever subsequent seeks are sent to it.
+	// The client is expected to connect to the other instance, and to ask for a block sequence that is the next block
+	// after the last block it got from the first ordering service node.
+
+	os1 := mocks.NewOrderer(5615, t)
+	os2 := mocks.NewOrderer(5616, t)
+
+	time.Sleep(time.Second)
+	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
+
+	service, err := NewDeliverService(&Config{
+		Endpoints:   []string{"localhost:5615", "localhost:5616"},
+		Gossip:      gossipServiceAdapter,
+		CryptoSvc:   &mockMCS{},
+		ABCFactory:  DefaultABCFactory,
+		ConnFactory: DefaultConnectionFactory,
+	})
+	assert.NoError(t, err)
+	li := &mocks.MockLedgerInfo{Height: 100}
+	os1.SetNextExpectedSeek(100)
+	os2.SetNextExpectedSeek(100)
+
+	err = service.StartDeliverForChannel("TEST_CHAINID", li)
+	assert.NoError(t, err, "can't start delivery")
+	// We need to discover to which instance the client connected to
+	go os1.SendBlock(100)
+	// Is it the first instance?
+	instance2fail := os1
+	nextBlockSeek := uint64(100)
+	select {
+	case seq := <-gossipServiceAdapter.GossipBlockDisseminations:
+		// Just for sanity check, ensure we got block seq 100
+		assert.Equal(t, uint64(100), seq)
+		// Connected to the first instance
+		// Advance ledger's height by 1
+		atomic.StoreUint64(&li.Height, 101)
+		// Backup instance should expect a seek of 101 since we got 100
+		os2.SetNextExpectedSeek(uint64(101))
+		nextBlockSeek = uint64(101)
+		// Have backup instance prepare to send a block
+		os2.SendBlock(101)
+	case <-time.After(time.Second * 5):
+		// We didn't get a block on time, so seems like we're connected to the 2nd instance
+		// and not to the first.
+		instance2fail = os2
+	}
+
+	instance2fail.Fail()
+	// Ensure the client asks blocks from the other ordering service node
+	assertBlockDissemination(nextBlockSeek, gossipServiceAdapter.GossipBlockDisseminations, t)
+
+	// Cleanup
+	os1.Shutdown()
+	os2.Shutdown()
+	service.Stop()
+}
+
 func TestDeliverServiceShutdown(t *testing.T) {
 	defer ensureNoGoroutineLeak(t)()
 	// Scenario: Launch an ordering service node and let the client pull some blocks.
