@@ -18,10 +18,12 @@ Start the orderer
 
 ::
 
-    orderer
+    ORDERER_GENERAL_GENESISPROFILE=SampleDevModeSolo orderer
 
-The above starts the orderer in the local environment using default
-orderer configuration as defined in ``sampleconfig/orderer.yaml``.
+The above starts the orderer in the local environment the orderer
+configuration as defined in ``sampleconfig/orderer.yaml`` with the
+genesisprofile directive overridden to use the SampleDevModeSolo profile
+for bootstrapping the network.
 
 Start the peer in dev mode
 --------------------------

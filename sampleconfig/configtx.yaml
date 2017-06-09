@@ -37,6 +37,21 @@ Profiles:
             SampleConsortium:
                 Organizations:
 
+    # SampleDevModeSolo defines a configuration which uses the Solo orderer,
+    # contains the sample MSP as both orderer and consortium member, and
+    # requires only basic membership for admin privileges
+    SampleDevModeSolo:
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  AdminPrincipal: Role.MEMBER
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - <<: *SampleOrg
+                      AdminPrincipal: Role.MEMBER
+
     # SampleSingleMSPSolo defines a configuration which uses the Solo orderer,
     # and contains a single MSP definition (the MSP sampleconfig).
     # The Consortium SampleConsortium has only a single member, SampleOrg
