@@ -397,8 +397,8 @@ class Directory:
                                         rsaSigningKey=priv_key_from_pem(keyTuple[1]))
             self.users[userName].tags = keyTuple[2]
         for orgName, tuple in data['organizations'].iteritems():
-            org = Organization(orgName, ecdsaSigningKey=ecdsa.SigningKey.from_pem(keyTuple[0]),
-                               rsaSigningKey=priv_key_from_pem(keyTuple[0]))
+            org = Organization(orgName, ecdsaSigningKey=ecdsa.SigningKey.from_pem(tuple[0]),
+                               rsaSigningKey=priv_key_from_pem(tuple[0]))
             org.signedCert = crypto.load_certificate(crypto.FILETYPE_PEM, tuple[2])
             org.networks = [Network[name] for name in tuple[3]]
             self.organizations[orgName] = org
@@ -411,7 +411,7 @@ class AuthDSLHelper:
         'Envelope builds an envelope message embedding a SignaturePolicy'
         return common_dot_policies_pb2.SignaturePolicyEnvelope(
             version=0,
-            policy=signaturePolicy,
+            rule=signaturePolicy,
             identities=identities)
 
     @classmethod
@@ -420,7 +420,7 @@ class AuthDSLHelper:
         return common_dot_policies_pb2.SignaturePolicy(
             n_out_of=common_dot_policies_pb2.SignaturePolicy.NOutOf(
                 n=n,
-                policies=policies,
+                rules=policies,
             ),
         )
 
@@ -584,7 +584,7 @@ def setDefaultPoliciesForOrgs(channel, orgs, group_name, version=0, policy_versi
         memberSignaturePolicyEnvelope = AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(1, [signedBy]), identities=[mspPrincipalForMemberRole])
         memberPolicy = common_dot_policies_pb2.Policy(
             type=common_dot_policies_pb2.Policy.PolicyType.Value("SIGNATURE"),
-            policy=memberSignaturePolicyEnvelope.SerializeToString())
+            value=memberSignaturePolicyEnvelope.SerializeToString())
         channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_READERS].version=policy_version
         channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(memberPolicy)
         channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_WRITERS].version=policy_version
@@ -594,7 +594,7 @@ def setDefaultPoliciesForOrgs(channel, orgs, group_name, version=0, policy_versi
         adminSignaturePolicyEnvelope = AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(1, [signedBy]), identities=[mspPrincipalForAdminRole])
         adminPolicy = common_dot_policies_pb2.Policy(
             type=common_dot_policies_pb2.Policy.PolicyType.Value("SIGNATURE"),
-            policy=adminSignaturePolicyEnvelope.SerializeToString())
+            value=adminSignaturePolicyEnvelope.SerializeToString())
         channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_ADMINS].version=policy_version
         channel.groups[groupName].groups[org.name].policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(adminPolicy)
 
@@ -627,7 +627,7 @@ def createChannelConfigGroup(directory, service_names, hashingAlgoName="SHA256",
     channel.groups[OrdererGroup].values[BootstrapHelper.KEY_CHANNEL_RESTRICTIONS].value = toValue(orderer_dot_configuration_pb2.ChannelRestrictions(max_count=channel_max_count))
 
 
-    acceptAllPolicy = common_dot_policies_pb2.Policy(type=1, policy=AuthDSLHelper.Envelope(
+    acceptAllPolicy = common_dot_policies_pb2.Policy(type=1, value=AuthDSLHelper.Envelope(
         signaturePolicy=AuthDSLHelper.NOutOf(0, []), identities=[]).SerializeToString())
     # channel.policies[BootstrapHelper.KEY_ACCEPT_ALL_POLICY].policy.CopyFrom(acceptAllPolicy)
 
@@ -638,17 +638,17 @@ def createChannelConfigGroup(directory, service_names, hashingAlgoName="SHA256",
     ruleAny = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("ANY")
     ruleMajority = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("MAJORITY")
     for group in [channel, channel.groups[OrdererGroup]]:
-        group.policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
+        group.policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(Policy(type=typeImplicitMeta, value=IMP(
             rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_READERS).SerializeToString()))
-        group.policies[BootstrapHelper.KEY_POLICY_WRITERS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
+        group.policies[BootstrapHelper.KEY_POLICY_WRITERS].policy.CopyFrom(Policy(type=typeImplicitMeta, value=IMP(
             rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
-        group.policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
+        group.policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(Policy(type=typeImplicitMeta, value=IMP(
             rule=ruleMajority, sub_policy=BootstrapHelper.KEY_POLICY_ADMINS).SerializeToString()))
         for pKey, pVal in group.policies.iteritems():
             pVal.mod_policy = BootstrapHelper.KEY_POLICY_ADMINS
 
     # Setting block validation policy for the orderer group
-    channel.groups[OrdererGroup].policies[BootstrapHelper.KEY_POLICY_BLOCK_VALIDATION].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
+    channel.groups[OrdererGroup].policies[BootstrapHelper.KEY_POLICY_BLOCK_VALIDATION].policy.CopyFrom(Policy(type=typeImplicitMeta, value=IMP(
         rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
     channel.groups[OrdererGroup].policies[BootstrapHelper.KEY_POLICY_BLOCK_VALIDATION].mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
 
@@ -870,16 +870,6 @@ class CallbackHelper:
         os.makedirs("{0}/{1}".format(localMspConfigPath, "admincerts"))
         os.makedirs("{0}/{1}".format(localMspConfigPath, "cacerts"))
         os.makedirs("{0}/{1}".format(localMspConfigPath, "keystore"))
-        # Loop through directory and place Organization Certs into cacerts folder
-        for targetOrg in [org for orgName, org in directory.organizations.items() if network in org.networks]:
-            with open("{0}/cacerts/{1}.pem".format(localMspConfigPath, targetOrg.name), "w") as f:
-                f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, targetOrg.getSelfSignedCert()))
-
-        # Loop through directory and place Organization Certs into admincerts folder
-        # TODO: revisit this, ASO recommended for now
-        for targetOrg in [org for orgName, org in directory.organizations.items() if network in org.networks]:
-            with open("{0}/admincerts/{1}.pem".format(localMspConfigPath, targetOrg.name), "w") as f:
-                f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, targetOrg.getSelfSignedCert()))
 
         # Find the peer signer Tuple for this peer and add to signcerts folder
         for pnt, cert in [(peerNodeTuple, cert) for peerNodeTuple, cert in directory.ordererAdminTuples.items() if
@@ -891,6 +881,11 @@ class CallbackHelper:
             user = directory.getUser(pnt.user, shouldCreate=False)
             with open("{0}/keystore/{1}.pem".format(localMspConfigPath, pnt.user), "w") as f:
                 f.write(user.ecdsaSigningKey.to_pem())
+
+            #Now put the signing Orgs cert in the cacerts folder
+            org_cert_as_pem =  directory.getOrganization(pnt.organization).getCertAsPEM()
+            with open("{0}/cacerts/{1}.pem".format(localMspConfigPath, pnt.organization), "w") as f:
+                f.write(org_cert_as_pem)
 
         # Find the peer admin Tuple for this peer and add to admincerts folder
         for pnt, cert in [(peerNodeTuple, cert) for peerNodeTuple, cert in directory.ordererAdminTuples.items() if
@@ -1064,13 +1059,13 @@ def create_channel_config_update(system_channel_version, channel_id, consortium_
     ruleAny = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("ANY")
     ruleMajority = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("MAJORITY")
     write_set.groups[ApplicationGroup].policies[BootstrapHelper.KEY_POLICY_READERS].policy.CopyFrom(
-        Policy(type=typeImplicitMeta, policy=IMP(
+        Policy(type=typeImplicitMeta, value=IMP(
             rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_READERS).SerializeToString()))
     write_set.groups[ApplicationGroup].policies[BootstrapHelper.KEY_POLICY_WRITERS].policy.CopyFrom(
-        Policy(type=typeImplicitMeta, policy=IMP(
+        Policy(type=typeImplicitMeta, value=IMP(
             rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
     write_set.groups[ApplicationGroup].policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(
-        Policy(type=typeImplicitMeta, policy=IMP(
+        Policy(type=typeImplicitMeta, value=IMP(
             rule=ruleMajority, sub_policy=BootstrapHelper.KEY_POLICY_ADMINS).SerializeToString()))
     write_set.groups[ApplicationGroup].mod_policy = "Admins"
     config_update = common_dot_configtx_pb2.ConfigUpdate(channel_id=channel_id,
@@ -1095,7 +1090,7 @@ def createConsortium(context, consortium_name, org_names, mod_policy):
     ruleAll = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("ALL")
     ruleMajority = common_dot_policies_pb2.ImplicitMetaPolicy.Rule.Value("MAJORITY")
     channel.groups[ConsortiumsGroup].groups[consortium_name].values[BootstrapHelper.KEY_CHANNEL_CREATION_POLICY].value = toValue(
-        Policy(type=typeImplicitMeta, policy=IMP(
+        Policy(type=typeImplicitMeta, value=IMP(
             rule=ruleAll, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
     channel.groups[ConsortiumsGroup].groups[consortium_name].values[BootstrapHelper.KEY_CHANNEL_CREATION_POLICY].mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
     # For now, setting same policies for each 'Non-Org' group
@@ -1119,7 +1114,9 @@ def get_latest_configuration_block(deliverer_stream_helper, channel_id):
     assert len(blocks) == 1, "Expected single block, received: {0} blocks".format(len(blocks))
     newest_block = blocks[0]
     last_config = common_dot_common_pb2.LastConfig()
-    last_config.ParseFromString(newest_block.metadata.metadata[common_dot_common_pb2.BlockMetadataIndex.Value('LAST_CONFIG')])
+    metadata = common_dot_common_pb2.Metadata()
+    metadata.ParseFromString(newest_block.metadata.metadata[common_dot_common_pb2.BlockMetadataIndex.Value('LAST_CONFIG')])
+    last_config.ParseFromString(metadata.value)
     if last_config.index == newest_block.header.number:
         latest_config_block = newest_block
     else:

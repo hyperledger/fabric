@@ -30,6 +30,9 @@ Feature: Bootstrap
       | orderer0Signer         | orderer0    | ordererOrg0  |                   |
       | orderer1Signer         | orderer1    | ordererOrg0  |                   |
       | orderer2Signer         | orderer2    | ordererOrg0  |                   |
+      | orderer0Admin          | orderer0    | ordererOrg0  |                   |
+      | orderer1Admin          | orderer1    | ordererOrg0  |                   |
+      | orderer2Admin          | orderer2    | ordererOrg0  |                   |
       | configAdminOrdererOrg0 | configAdmin | ordererOrg0  | config-admin-cert |
 #      | configAdminOrdererOrg1 | configAdmin | ordererOrg1  | config-admin-cert |
 
@@ -39,7 +42,7 @@ Feature: Bootstrap
       | Organization  |  Readers  | Writers  | Admins  |
       |  peerOrg0     |   member  |  member  |  admin  |
       |  peerOrg1     |   member  |  member  |  admin  |
-#      |  peerOrg2     |   member  |  member  |  admin  |
+      |  peerOrg2     |   member  |  member  |  admin  |
 
 
 
@@ -91,7 +94,7 @@ Feature: Bootstrap
         | Organization  |
         |  peerOrg0     |
         |  peerOrg1     |
-#      |  peerOrg2     |
+        |  peerOrg2     |
 
     And user "configAdminOrdererOrg0" using cert alias "config-admin-cert" connects to deliver function on orderer "<orderer0>"
 
@@ -114,9 +117,9 @@ Feature: Bootstrap
 
 
     Given the following application developers are defined for peer organizations and each saves their cert as alias
-      | Developer       | Consortium     | Organization  |  AliasSavedUnder   |
-      | dev0Org0        | consortium1    |  peerOrg0     |    dev0Org0App1    |
-      | dev0Org1        | consortium1    |  peerOrg1     |    dev0Org1App1    |
+      | Developer | Consortium  | Organization | AliasSavedUnder  |
+      | dev0Org0  | consortium1 | peerOrg0     | consortium1-cert |
+      | dev0Org1  | consortium1 | peerOrg1     | consortium1-cert |
 
     And user "configAdminOrdererOrg0" gives "consortium1" to user "dev0Org0"
 
@@ -125,38 +128,38 @@ Feature: Bootstrap
     # ChannelReaders ConfigItem (using ChannelReaders ref name)AnchorPeers ConfigItem
     # and the ChaincodeLifecyclePolicy Config Item
     # NOTE: Template1 will simply hold refs to peer orgs that can create in this channel at the moment
-    And the user "dev0Org0" creates a peer template "template1" with chaincode deployment policy using consortium "consortium1" and peer organizations:
+    And the user "dev0Org0" creates a peer organization set "peerOrgSet1" with peer organizations:
       | Organization  |
       |  peerOrg0     |
       |  peerOrg1     |
+#      |  peerOrg2     |
 
-    And the user "dev0Org0" creates an peer anchor set "anchors1" for channel "com.acme.blockchain.jdoe.Channel1" for orgs:
+    And the user "dev0Org0" creates an peer anchor set "anchors1" for orgs:
       | User            | Peer     | Organization  |
 #      | peer0Signer     | peer0    | peerOrg0      |
 #      | peer2Signer     | peer2    | peerOrg1      |
 
-    # TODO: grab the peer orgs from template1 and put into Murali's MSP info SCIs.
-    # Entry point for creating a channel from existing templates
-    And the user "dev0Org0" creates a new channel ConfigUpdate "createChannelConfigUpdate1" using consortium config "consortium1"
-      | ChannelID                         | Template  | Anchors  |
-      | com.acme.blockchain.jdoe.Channel1 | template1 | anchors1 |
+    # Entry point for creating a channel
+    And the user "dev0Org0" creates a new channel ConfigUpdate "createChannelConfigUpdate1" using consortium "consortium1"
+      | ChannelID                         | PeerOrgSet  | PeerAnchorSet |
+      | com.acme.blockchain.jdoe.Channel1 | peerOrgSet1 | anchors1      |
 
     And the user "dev0Org0" creates a configUpdateEnvelope "createChannelConfigUpdate1Envelope" using configUpdate "createChannelConfigUpdate1"
 
 
     And the user "dev0Org0" collects signatures for ConfigUpdateEnvelope "createChannelConfigUpdate1Envelope" from developers:
-      |   Developer     |    Cert Alias    |
-      |  dev0Org0       |   dev0Org0App1   |
-      |  dev0Org1       |   dev0Org1App1   |
+      | Developer | Cert Alias       |
+      | dev0Org0  | consortium1-cert |
+      | dev0Org1  | consortium1-cert |
 
-    And the user "dev0Org0" creates a ConfigUpdate Tx "configUpdateTx1" using cert alias "dev0Org0App1" using signed ConfigUpdateEnvelope "createChannelConfigUpdate1Envelope"
+    And the user "dev0Org0" creates a ConfigUpdate Tx "configUpdateTx1" using cert alias "consortium1-cert" using signed ConfigUpdateEnvelope "createChannelConfigUpdate1Envelope"
 
-    And the user "dev0Org0" using cert alias "dev0Org0App1" broadcasts ConfigUpdate Tx "configUpdateTx1" to orderer "<orderer0>" to create channel "com.acme.blockchain.jdoe.Channel1"
+    And the user "dev0Org0" using cert alias "consortium1-cert" broadcasts ConfigUpdate Tx "configUpdateTx1" to orderer "<orderer0>" to create channel "com.acme.blockchain.jdoe.Channel1"
 
     # Sleep as the local orderer ledger needs to create the block that corresponds to the start number of the seek request
     And I wait "<BroadcastWaitTime>" seconds
 
-    When user "dev0Org0" using cert alias "dev0Org0App1" connects to deliver function on orderer "<orderer0>"
+    When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "<orderer0>"
     And user "dev0Org0" sends deliver a seek request on orderer "<orderer0>" with properties:
       | ChainId                               | Start |  End    |
       | com.acme.blockchain.jdoe.Channel1     |   0   |  0      |
@@ -281,9 +284,9 @@ Feature: Bootstrap
         |   query   |  a   |
 
     # Under the covers, create a deployment spec, etc.
-    And user "dev0Org0" using cert alias "dev0Org0App1" creates a proposal "queryProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "querySpec1"
+    And user "dev0Org0" using cert alias "consortium1-cert" creates a proposal "queryProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "querySpec1"
 
-    And user "dev0Org0" using cert alias "dev0Org0App1" sends proposal "queryProposal1" to endorsers with timeout of "30" seconds with proposal responses "queryProposal1Responses":
+    And user "dev0Org0" using cert alias "consortium1-cert" sends proposal "queryProposal1" to endorsers with timeout of "30" seconds with proposal responses "queryProposal1Responses":
         | Endorser |
         | peer0    |
         | peer2    |
@@ -305,9 +308,9 @@ Feature: Bootstrap
         |   invoke   |  a   |  b   |   10   |
 
     # Under the covers, create a deployment spec, etc.
-      And user "dev0Org0" using cert alias "dev0Org0App1" creates a proposal "invokeProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "invocationSpec1"
+      And user "dev0Org0" using cert alias "consortium1-cert" creates a proposal "invokeProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "invocationSpec1"
 
-      And user "dev0Org0" using cert alias "dev0Org0App1" sends proposal "invokeProposal1" to endorsers with timeout of "30" seconds with proposal responses "invokeProposal1Responses":
+      And user "dev0Org0" using cert alias "consortium1-cert" sends proposal "invokeProposal1" to endorsers with timeout of "30" seconds with proposal responses "invokeProposal1Responses":
         | Endorser |
         | peer0    |
         | peer2    |
