@@ -139,13 +139,14 @@ func (bc *broadcastClient) connect() error {
 		logger.Error("Failed obtaining connection:", err)
 		return err
 	}
-	abc, err := bc.createClient(conn).Deliver(context.Background())
+	ctx, cf := context.WithCancel(context.Background())
+	abc, err := bc.createClient(conn).Deliver(ctx)
 	if err != nil {
 		logger.Error("Connection to ", endpoint, "established but was unable to create gRPC stream:", err)
 		conn.Close()
 		return err
 	}
-	err = bc.afterConnect(conn, abc)
+	err = bc.afterConnect(conn, abc, cf)
 	if err == nil {
 		return nil
 	}
@@ -155,9 +156,9 @@ func (bc *broadcastClient) connect() error {
 	return err
 }
 
-func (bc *broadcastClient) afterConnect(conn *grpc.ClientConn, abc orderer.AtomicBroadcast_DeliverClient) error {
+func (bc *broadcastClient) afterConnect(conn *grpc.ClientConn, abc orderer.AtomicBroadcast_DeliverClient, cf context.CancelFunc) error {
 	bc.Lock()
-	bc.conn = &connection{ClientConn: conn}
+	bc.conn = &connection{ClientConn: conn, cancel: cf}
 	bc.BlocksDeliverer = abc
 	if bc.shouldStop() {
 		bc.Unlock()
@@ -219,13 +220,15 @@ func (bc *broadcastClient) Disconnect() {
 }
 
 type connection struct {
-	*grpc.ClientConn
 	sync.Once
+	*grpc.ClientConn
+	cancel context.CancelFunc
 }
 
 func (c *connection) Close() error {
 	var err error
 	c.Once.Do(func() {
+		c.cancel()
 		err = c.ClientConn.Close()
 	})
 	return err
