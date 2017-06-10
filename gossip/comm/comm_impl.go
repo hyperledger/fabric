@@ -187,7 +187,8 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 		return nil, err
 	}
 
-	if stream, err = cl.GossipStream(context.Background()); err == nil {
+	ctx, cf := context.WithCancel(context.Background())
+	if stream, err = cl.GossipStream(ctx); err == nil {
 		connInfo, err = c.authenticateRemotePeer(stream)
 		if err == nil {
 			pkiID = connInfo.ID
@@ -201,6 +202,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			conn.pkiID = pkiID
 			conn.info = connInfo
 			conn.logger = c.logger
+			conn.cancel = cf
 
 			h := func(m *proto.SignedGossipMessage) {
 				c.logger.Debug("Got message:", m)
