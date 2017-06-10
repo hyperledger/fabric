@@ -460,9 +460,13 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 				logger.Error("Cannot obtain ledger height, due to", err)
 				continue
 			}
+			if current == 0 {
+				logger.Error("Ledger reported block height of 0 but this should be impossible")
+				continue
+			}
 			max := s.maxAvailableLedgerHeight()
 
-			if current == max {
+			if current-1 >= max {
 				continue
 			}
 
