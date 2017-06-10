@@ -103,7 +103,7 @@ Orderer: &OrdererDefaults
 
         # Absolute Max Bytes: The absolute maximum number of bytes allowed for
         # the serialized messages in a batch.
-        AbsoluteMaxBytes: 99 MB
+        AbsoluteMaxBytes: 98 MB
 
         # Preferred Max Bytes: The preferred maximum number of bytes allowed for
         # the serialized messages in a batch. A message larger than the preferred
