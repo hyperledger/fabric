@@ -34,7 +34,7 @@ import (
 
 // Consenter defines the backing ordering mechanism
 type Consenter interface {
-	// HandleChain should create a return a reference to a Chain for the given set of resources
+	// HandleChain should create and return a reference to a Chain for the given set of resources
 	// It will only be invoked for a given chain once per process.  In general, errors will be treated
 	// as irrecoverable and cause system shutdown.  See the description of Chain for more details
 	// The second argument to HandleChain is a pointer to the metadata stored on the `ORDERER` slot of
