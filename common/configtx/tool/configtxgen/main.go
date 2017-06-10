@@ -70,7 +70,7 @@ func doOutputChannelCreateTx(conf *genesisconfig.Profile, channelID string, outp
 	}
 
 	if conf.Consortium == "" {
-		return fmt.Errorf("Cannot define a new channel with no Consortium section")
+		return fmt.Errorf("Cannot define a new channel with no Consortium value")
 	}
 
 	// XXX we ignore the non-application org names here, once the tool supports configuration updates

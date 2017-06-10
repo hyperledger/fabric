@@ -66,14 +66,14 @@ func TestMissingOrdererSection(t *testing.T) {
 	assert.Error(t, doOutputBlock(config, "foo", blockDest), "Missing orderer section")
 }
 
-func TestMissingConsortiumSection(t *testing.T) {
+func TestMissingConsortiumValue(t *testing.T) {
 	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
 
 	factory.InitFactories(nil)
 	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
 	config.Consortium = ""
 
-	assert.Error(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Missing Consortium section in Application Profile definition")
+	assert.Error(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Missing Consortium value in Application Profile definition")
 }
 
 func TestInspectMissingConfigTx(t *testing.T) {
