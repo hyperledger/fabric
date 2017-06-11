@@ -23,11 +23,12 @@ import (
 // Used for capturing metrics -- see processMessagesToBlocks
 const (
 	indexRecvError = iota
+	indexUnmarshalError
 	indexRecvPass
 	indexProcessConnectPass
 	indexProcessTimeToCutError
 	indexProcessTimeToCutPass
-	indexPprocessRegularError
+	indexProcessRegularError
 	indexProcessRegularPass
 	indexSendTimeToCutError
 	indexSendTimeToCutPass
@@ -39,16 +40,19 @@ func newChain(consenter commonConsenter, support multichain.ConsenterSupport, la
 	logger.Infof("[channel: %s] Starting chain with last persisted offset %d and last recorded block %d",
 		support.ChainID(), lastOffsetPersisted, lastCutBlockNumber)
 
+	errorChan := make(chan struct{})
+	close(errorChan) // We need this closed when starting up
+
 	return &chainImpl{
 		consenter:           consenter,
 		support:             support,
 		channel:             newChannel(support.ChainID(), defaultPartition),
 		lastOffsetPersisted: lastOffsetPersisted,
 		lastCutBlockNumber:  lastCutBlockNumber,
-		started:             false, // Redundant as the default value for booleans is false but added for readability
-		startChan:           make(chan struct{}),
-		halted:              false,
-		exitChan:            make(chan struct{}),
+
+		errorChan: errorChan,
+		haltChan:  make(chan struct{}),
+		startChan: make(chan struct{}),
 	}, nil
 }
 
@@ -64,17 +68,21 @@ type chainImpl struct {
 	parentConsumer  sarama.Consumer
 	channelConsumer sarama.PartitionConsumer
 
-	// Set the flag to true and close the channel when the retriable steps in `Start` have completed successfully
-	started   bool
+	// When the partition consumer errors, close the channel. Otherwise, make
+	// this an open, unbuffered channel.
+	errorChan chan struct{}
+	// When a Halt() request comes, close the channel. Unlike errorChan, this
+	// channel never re-opens when closed. Its closing triggers the exit of the
+	// processMessagesToBlock loop.
+	haltChan chan struct{}
+	// // Close when the retriable steps in Start have completed.
 	startChan chan struct{}
-
-	halted   bool
-	exitChan chan struct{}
 }
 
-// Errored currently only closes on halt
+// Errored returns a channel which will close when a partition consumer error
+// has occurred. Checked by Deliver().
 func (chain *chainImpl) Errored() <-chan struct{} {
-	return chain.exitChan
+	return chain.errorChan
 }
 
 // Start allocates the necessary resources for staying up to date with this
@@ -86,189 +94,212 @@ func (chain *chainImpl) Start() {
 	go startThread(chain)
 }
 
+// Halt frees the resources which were allocated for this Chain. Implements the
+// multichain.Chain interface.
+func (chain *chainImpl) Halt() {
+	select {
+	case <-chain.haltChan:
+		// This construct is useful because it allows Halt() to be called
+		// multiple times (by a single thread) w/o panicking. Recal that a
+		// receive from a closed channel returns (the zero value) immediately.
+		logger.Warningf("[channel: %s] Halting of chain requested again", chain.support.ChainID())
+	default:
+		logger.Criticalf("[channel: %s] Halting of chain requested", chain.support.ChainID())
+		close(chain.haltChan)
+		chain.closeKafkaObjects() // Also close the producer and the consumer
+		logger.Debugf("[channel: %s] Closed the haltChan", chain.support.ChainID())
+	}
+}
+
+// Enqueue accepts a message and returns true on acceptance, or false otheriwse.
+// Implements the multichain.Chain interface. Called by Broadcast().
+func (chain *chainImpl) Enqueue(env *cb.Envelope) bool {
+	logger.Debugf("[channel: %s] Enqueueing envelope...", chain.support.ChainID())
+	select {
+	case <-chain.startChan: // The Start phase has completed
+		select {
+		case <-chain.haltChan: // The chain has been halted, stop here
+			logger.Warningf("[channel: %s] Will not enqueue, consenter for this channel has been halted", chain.support.ChainID())
+			return false
+		default: // The post path
+			marshaledEnv, err := utils.Marshal(env)
+			if err != nil {
+				logger.Errorf("[channel: %s] cannot enqueue, unable to marshal envelope = %s", chain.support.ChainID(), err)
+				return false
+			}
+			// We're good to go
+			payload := utils.MarshalOrPanic(newRegularMessage(marshaledEnv))
+			message := newProducerMessage(chain.channel, payload)
+			if _, _, err := chain.producer.SendMessage(message); err != nil {
+				logger.Errorf("[channel: %s] cannot enqueue envelope = %s", chain.support.ChainID(), err)
+				return false
+			}
+			logger.Debugf("[channel: %s] Envelope enqueued successfully", chain.support.ChainID())
+			return true
+		}
+	default: // Not ready yet
+		logger.Warningf("[channel: %s] Will not enqueue, consenter for this channel hasn't started yet", chain.support.ChainID())
+		return false
+	}
+}
+
 // Called by Start().
 func startThread(chain *chainImpl) {
 	var err error
 
 	// Set up the producer
-	chain.producer, err = setupProducerForChannel(chain.consenter.retryOptions(), chain.exitChan, chain.support.SharedConfig().KafkaBrokers(), chain.consenter.brokerConfig(), chain.channel)
+	chain.producer, err = setupProducerForChannel(chain.consenter.retryOptions(), chain.haltChan, chain.support.SharedConfig().KafkaBrokers(), chain.consenter.brokerConfig(), chain.channel)
 	if err != nil {
 		logger.Panicf("[channel: %s] Cannot set up producer = %s", chain.channel.topic(), err)
 	}
 	logger.Infof("[channel: %s] Producer set up successfully", chain.support.ChainID())
 
 	// Have the producer post the CONNECT message
-	if err = sendConnectMessage(chain.consenter.retryOptions(), chain.exitChan, chain.producer, chain.channel); err != nil {
+	if err = sendConnectMessage(chain.consenter.retryOptions(), chain.haltChan, chain.producer, chain.channel); err != nil {
 		logger.Panicf("[channel: %s] Cannot post CONNECT message = %s", chain.channel.topic(), err)
 	}
 	logger.Infof("[channel: %s] CONNECT message posted successfully", chain.channel.topic())
 
 	// Set up the parent consumer
-	chain.parentConsumer, err = setupParentConsumerForChannel(chain.consenter.retryOptions(), chain.exitChan, chain.support.SharedConfig().KafkaBrokers(), chain.consenter.brokerConfig(), chain.channel)
+	chain.parentConsumer, err = setupParentConsumerForChannel(chain.consenter.retryOptions(), chain.haltChan, chain.support.SharedConfig().KafkaBrokers(), chain.consenter.brokerConfig(), chain.channel)
 	if err != nil {
 		logger.Panicf("[channel: %s] Cannot set up parent consumer = %s", chain.channel.topic(), err)
 	}
 	logger.Infof("[channel: %s] Parent consumer set up successfully", chain.channel.topic())
 
 	// Set up the channel consumer
-	chain.channelConsumer, err = setupChannelConsumerForChannel(chain.consenter.retryOptions(), chain.exitChan, chain.parentConsumer, chain.channel, chain.lastOffsetPersisted+1)
+	chain.channelConsumer, err = setupChannelConsumerForChannel(chain.consenter.retryOptions(), chain.haltChan, chain.parentConsumer, chain.channel, chain.lastOffsetPersisted+1)
 	if err != nil {
 		logger.Panicf("[channel: %s] Cannot set up channel consumer = %s", chain.channel.topic(), err)
 	}
 	logger.Infof("[channel: %s] Channel consumer set up successfully", chain.channel.topic())
 
-	chain.started = true
-	close(chain.startChan)
+	close(chain.startChan)                // Broadcast requests will now go through
+	chain.errorChan = make(chan struct{}) // Deliver requests will also go through
 
-	go listenForErrors(chain.channelConsumer.Errors(), chain.exitChan)
+	logger.Infof("[channel: %s] Start phase completed successfully", chain.channel.topic())
 
-	// Keep up to date with the channel
-	processMessagesToBlock(chain.support, chain.producer, chain.parentConsumer, chain.channelConsumer,
-		chain.channel, &chain.lastCutBlockNumber, &chain.halted, &chain.exitChan)
-}
-
-// Halt frees the resources which were allocated for this Chain. Implements the
-// multichain.Chain interface.
-func (chain *chainImpl) Halt() {
-	select {
-	case <-chain.exitChan:
-		// This construct is useful because it allows Halt() to be called
-		// multiple times w/o panicking. Recal that a receive from a closed
-		// channel returns (the zero value) immediately.
-		logger.Warningf("[channel: %s] Halting of chain requested again", chain.support.ChainID())
-	default:
-		logger.Criticalf("[channel: %s] Halting of chain requested", chain.support.ChainID())
-		chain.halted = true
-		close(chain.exitChan)
-	}
-}
-
-// Enqueue accepts a message and returns true on acceptance, or false on
-// shutdown. Implements the multichain.Chain interface. Called by Broadcast.
-func (chain *chainImpl) Enqueue(env *cb.Envelope) bool {
-	if !chain.started {
-		logger.Warningf("[channel: %s] Will not enqueue because the chain hasn't completed its initialization yet", chain.support.ChainID())
-		return false
-	}
-
-	if chain.halted {
-		logger.Warningf("[channel: %s] Will not enqueue because the chain has been halted", chain.support.ChainID())
-		return false
-	}
-
-	logger.Debugf("[channel: %s] Enqueueing envelope...", chain.support.ChainID())
-	marshaledEnv, err := utils.Marshal(env)
-	if err != nil {
-		return false
-	}
-	payload := utils.MarshalOrPanic(newRegularMessage(marshaledEnv))
-	message := newProducerMessage(chain.channel, payload)
-	if _, _, err := chain.producer.SendMessage(message); err != nil {
-		logger.Errorf("[channel: %s] cannot enqueue envelope = %s", chain.support.ChainID(), err)
-		return false
-	}
-	logger.Debugf("[channel: %s] Envelope enqueued successfully", chain.support.ChainID())
-
-	return !chain.halted // If ch.halted has been set to true while sending, we should return false
+	chain.processMessagesToBlocks() // Keep up to date with the channel
 }
 
 // processMessagesToBlocks drains the Kafka consumer for the given channel, and
 // takes care of converting the stream of ordered messages into blocks for the
-// channel's ledger. NOTE: May need to rethink the model here, and turn this
-// into a method. For the time being, we optimize for testability.
-func processMessagesToBlock(support multichain.ConsenterSupport, producer sarama.SyncProducer,
-	parentConsumer sarama.Consumer, channelConsumer sarama.PartitionConsumer,
-	chn channel, lastCutBlockNumber *uint64, haltedFlag *bool, exitChan *chan struct{}) ([]uint64, error) {
+// channel's ledger.
+func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
+	counts := make([]uint64, 11) // For metrics and tests
 	msg := new(ab.KafkaMessage)
 	var timer <-chan time.Time
 
-	counts := make([]uint64, 10) // For metrics and tests
-
-	defer func() {
-		_ = closeLoop(chn.topic(), producer, parentConsumer, channelConsumer, haltedFlag)
-		logger.Infof("[channel: %s] Closed producer/consumer threads for channel and exiting loop", chn.topic())
+	defer func() { // When Halt() is called
+		select {
+		case <-chain.errorChan: // If already closed, don't do anything
+		default:
+			close(chain.errorChan)
+		}
 	}()
 
 	for {
 		select {
-		case in := <-channelConsumer.Messages():
+		case <-chain.haltChan:
+			logger.Warningf("[channel: %s] Consenter for channel exiting", chain.support.ChainID())
+			counts[indexExitChanPass]++
+			return counts, nil
+		case kafkaErr := <-chain.channelConsumer.Errors():
+			logger.Error(kafkaErr)
+			counts[indexRecvError]++
+			select {
+			case <-chain.errorChan: // If already closed, don't do anything
+			default:
+				close(chain.errorChan)
+			}
+			logger.Warningf("[channel: %s] Closed the errorChan", chain.support.ChainID())
+			// This covers the edge case where (1) a consumption error has
+			// closed the errorChan and thus rendered the chain unavailable to
+			// deliver clients, (2) we're already at the newest offset, and (3)
+			// there are no new Broadcast requests coming in. In this case,
+			// there is no trigger that can recreate the errorChan again and
+			// mark the chain as available, so we have to force that trigger via
+			// the emission of a CONNECT message. TODO Consider rate limiting
+			go sendConnectMessage(chain.consenter.retryOptions(), chain.haltChan, chain.producer, chain.channel)
+		case in := <-chain.channelConsumer.Messages():
+			select {
+			case <-chain.errorChan: // If this channel was closed...
+				chain.errorChan = make(chan struct{}) // ...make a new one.
+				logger.Infof("[channel: %s] Marked consenter as available again", chain.support.ChainID())
+			default:
+			}
+
 			if err := proto.Unmarshal(in.Value, msg); err != nil {
 				// This shouldn't happen, it should be filtered at ingress
-				logger.Criticalf("[channel: %s] Unable to unmarshal consumed message = %s", chn.topic(), err)
-				counts[indexRecvError]++
+				logger.Criticalf("[channel: %s] Unable to unmarshal consumed message = %s", chain.support.ChainID(), err)
+				counts[indexUnmarshalError]++
 			} else {
-				logger.Debugf("[channel: %s] Successfully unmarshalled consumed message, offset is %d. Inspecting type...", chn.topic(), in.Offset)
+				logger.Debugf("[channel: %s] Successfully unmarshalled consumed message, offset is %d. Inspecting type...", chain.support.ChainID(), in.Offset)
 				counts[indexRecvPass]++
 			}
 			switch msg.Type.(type) {
 			case *ab.KafkaMessage_Connect:
-				_ = processConnect(chn.topic())
+				_ = processConnect(chain.support.ChainID())
 				counts[indexProcessConnectPass]++
 			case *ab.KafkaMessage_TimeToCut:
-				if err := processTimeToCut(msg.GetTimeToCut(), support, lastCutBlockNumber, &timer, in.Offset); err != nil {
-					logger.Warningf("[channel: %s] %s", chn.topic(), err)
-					logger.Criticalf("[channel: %s] Consenter for channel exiting", chn.topic())
+				if err := processTimeToCut(msg.GetTimeToCut(), chain.support, &chain.lastCutBlockNumber, &timer, in.Offset); err != nil {
+					logger.Warningf("[channel: %s] %s", chain.support.ChainID(), err)
+					logger.Criticalf("[channel: %s] Consenter for channel exiting", chain.support.ChainID())
 					counts[indexProcessTimeToCutError]++
 					return counts, err // TODO Revisit whether we should indeed stop processing the chain at this point
 				}
 				counts[indexProcessTimeToCutPass]++
 			case *ab.KafkaMessage_Regular:
-				if err := processRegular(msg.GetRegular(), support, &timer, in.Offset, lastCutBlockNumber); err != nil {
-					logger.Warningf("[channel: %s] Error when processing incoming message of type REGULAR = %s", chn.topic(), err)
-					counts[indexPprocessRegularError]++
+				if err := processRegular(msg.GetRegular(), chain.support, &timer, in.Offset, &chain.lastCutBlockNumber); err != nil {
+					logger.Warningf("[channel: %s] Error when processing incoming message of type REGULAR = %s", chain.support.ChainID(), err)
+					counts[indexProcessRegularError]++
 				} else {
 					counts[indexProcessRegularPass]++
 				}
 			}
 		case <-timer:
-			if err := sendTimeToCut(producer, chn, (*lastCutBlockNumber)+1, &timer); err != nil {
-				logger.Errorf("[channel: %s] cannot post time-to-cut message = %s", chn.topic(), err)
+			if err := sendTimeToCut(chain.producer, chain.channel, chain.lastCutBlockNumber+1, &timer); err != nil {
+				logger.Errorf("[channel: %s] cannot post time-to-cut message = %s", chain.support.ChainID(), err)
 				// Do not return though
 				counts[indexSendTimeToCutError]++
 			} else {
 				counts[indexSendTimeToCutPass]++
 			}
-		case <-*exitChan: // When Halt() is called
-			logger.Warningf("[channel: %s] Consenter for channel exiting", chn.topic())
-			counts[indexExitChanPass]++
-			return counts, nil
 		}
 	}
 }
 
-// Helper functions
-
-func closeLoop(channelName string, producer sarama.SyncProducer, parentConsumer sarama.Consumer, channelConsumer sarama.PartitionConsumer, haltedFlag *bool) []error {
+func (chain *chainImpl) closeKafkaObjects() []error {
 	var errs []error
 
-	*haltedFlag = true
-
-	err := channelConsumer.Close()
+	err := chain.channelConsumer.Close()
 	if err != nil {
-		logger.Errorf("[channel: %s] could not close channelConsumer cleanly = %s", channelName, err)
+		logger.Errorf("[channel: %s] could not close channelConsumer cleanly = %s", chain.support.ChainID(), err)
 		errs = append(errs, err)
 	} else {
-		logger.Debugf("[channel: %s] Closed the channel consumer", channelName)
+		logger.Debugf("[channel: %s] Closed the channel consumer", chain.support.ChainID())
 	}
 
-	err = parentConsumer.Close()
+	err = chain.parentConsumer.Close()
 	if err != nil {
-		logger.Errorf("[channel: %s] could not close parentConsumer cleanly = %s", channelName, err)
+		logger.Errorf("[channel: %s] could not close parentConsumer cleanly = %s", chain.support.ChainID(), err)
 		errs = append(errs, err)
 	} else {
-		logger.Debugf("[channel: %s] Closed the parent consumer", channelName)
+		logger.Debugf("[channel: %s] Closed the parent consumer", chain.support.ChainID())
 	}
 
-	err = producer.Close()
+	err = chain.producer.Close()
 	if err != nil {
-		logger.Errorf("[channel: %s] could not close producer cleanly = %s", channelName, err)
+		logger.Errorf("[channel: %s] could not close producer cleanly = %s", chain.support.ChainID(), err)
 		errs = append(errs, err)
 	} else {
-		logger.Debugf("[channel: %s] Closed the producer", channelName)
+		logger.Debugf("[channel: %s] Closed the producer", chain.support.ChainID())
 	}
 
 	return errs
 }
+
+// Helper functions
 
 func getLastCutBlockNumber(blockchainHeight uint64) uint64 {
 	return blockchainHeight - 1
@@ -285,16 +316,6 @@ func getLastOffsetPersisted(metadataValue []byte, chainID string) int64 {
 		return kafkaMetadata.LastOffsetPersisted
 	}
 	return (sarama.OffsetOldest - 1) // default
-}
-
-func listenForErrors(errChan <-chan *sarama.ConsumerError, exitChan <-chan struct{}) error {
-	select {
-	case <-exitChan:
-		return nil
-	case err := <-errChan:
-		logger.Error(err)
-		return err
-	}
 }
 
 func newConnectMessage() *ab.KafkaMessage {
@@ -327,10 +348,10 @@ func newTimeToCutMessage(blockNumber uint64) *ab.KafkaMessage {
 	}
 }
 
-func newProducerMessage(chn channel, pld []byte) *sarama.ProducerMessage {
+func newProducerMessage(channel channel, pld []byte) *sarama.ProducerMessage {
 	return &sarama.ProducerMessage{
-		Topic: chn.topic(),
-		Key:   sarama.StringEncoder(strconv.Itoa(int(chn.partition()))), // TODO Consider writing an IntEncoder?
+		Topic: channel.topic(),
+		Key:   sarama.StringEncoder(strconv.Itoa(int(channel.partition()))), // TODO Consider writing an IntEncoder?
 		Value: sarama.ByteEncoder(pld),
 	}
 }
@@ -396,22 +417,6 @@ func processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, support multichain.C
 	return nil
 }
 
-// Sets up the partition consumer for a channel using the given retry options.
-func setupChannelConsumerForChannel(retryOptions localconfig.Retry, exitChan chan struct{}, parentConsumer sarama.Consumer, channel channel, startFrom int64) (sarama.PartitionConsumer, error) {
-	var err error
-	var channelConsumer sarama.PartitionConsumer
-
-	logger.Infof("[channel: %s] Setting up the channel consumer for this channel...", channel.topic())
-
-	retryMsg := "Connecting to the Kafka cluster"
-	setupChannelConsumer := newRetryProcess(retryOptions, exitChan, channel, retryMsg, func() error {
-		channelConsumer, err = parentConsumer.ConsumePartition(channel.topic(), channel.partition(), startFrom)
-		return err
-	})
-
-	return channelConsumer, setupChannelConsumer.retry()
-}
-
 // Post a CONNECT message to the channel using the given retry options. This
 // prevents the panicking that would occur if we were to set up a consumer and
 // seek on a partition that hadn't been written to yet.
@@ -439,15 +444,31 @@ func sendTimeToCut(producer sarama.SyncProducer, channel channel, timeToCutBlock
 	return err
 }
 
+// Sets up the partition consumer for a channel using the given retry options.
+func setupChannelConsumerForChannel(retryOptions localconfig.Retry, haltChan chan struct{}, parentConsumer sarama.Consumer, channel channel, startFrom int64) (sarama.PartitionConsumer, error) {
+	var err error
+	var channelConsumer sarama.PartitionConsumer
+
+	logger.Infof("[channel: %s] Setting up the channel consumer for this channel (start offset: %d)...", channel.topic(), startFrom)
+
+	retryMsg := "Connecting to the Kafka cluster"
+	setupChannelConsumer := newRetryProcess(retryOptions, haltChan, channel, retryMsg, func() error {
+		channelConsumer, err = parentConsumer.ConsumePartition(channel.topic(), channel.partition(), startFrom)
+		return err
+	})
+
+	return channelConsumer, setupChannelConsumer.retry()
+}
+
 // Sets up the parent consumer for a channel using the given retry options.
-func setupParentConsumerForChannel(retryOptions localconfig.Retry, exitChan chan struct{}, brokers []string, brokerConfig *sarama.Config, channel channel) (sarama.Consumer, error) {
+func setupParentConsumerForChannel(retryOptions localconfig.Retry, haltChan chan struct{}, brokers []string, brokerConfig *sarama.Config, channel channel) (sarama.Consumer, error) {
 	var err error
 	var parentConsumer sarama.Consumer
 
 	logger.Infof("[channel: %s] Setting up the parent consumer for this channel...", channel.topic())
 
 	retryMsg := "Connecting to the Kafka cluster"
-	setupParentConsumer := newRetryProcess(retryOptions, exitChan, channel, retryMsg, func() error {
+	setupParentConsumer := newRetryProcess(retryOptions, haltChan, channel, retryMsg, func() error {
 		parentConsumer, err = sarama.NewConsumer(brokers, brokerConfig)
 		return err
 	})
@@ -456,14 +477,14 @@ func setupParentConsumerForChannel(retryOptions localconfig.Retry, exitChan chan
 }
 
 // Sets up the writer/producer for a channel using the given retry options.
-func setupProducerForChannel(retryOptions localconfig.Retry, exitChan chan struct{}, brokers []string, brokerConfig *sarama.Config, channel channel) (sarama.SyncProducer, error) {
+func setupProducerForChannel(retryOptions localconfig.Retry, haltChan chan struct{}, brokers []string, brokerConfig *sarama.Config, channel channel) (sarama.SyncProducer, error) {
 	var err error
 	var producer sarama.SyncProducer
 
 	logger.Infof("[channel: %s] Setting up the producer for this channel...", channel.topic())
 
 	retryMsg := "Connecting to the Kafka cluster"
-	setupProducer := newRetryProcess(retryOptions, exitChan, channel, retryMsg, func() error {
+	setupProducer := newRetryProcess(retryOptions, haltChan, channel, retryMsg, func() error {
 		producer, err = sarama.NewSyncProducer(brokers, brokerConfig)
 		return err
 	})
