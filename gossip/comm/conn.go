@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -206,6 +207,7 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_Go
 }
 
 type connection struct {
+	cancel       context.CancelFunc
 	info         *proto.ConnectionInfo
 	outBuff      chan *msgSending
 	logger       *logging.Logger                 // logger
@@ -239,6 +241,10 @@ func (conn *connection) close() {
 	}
 	if conn.conn != nil {
 		conn.conn.Close()
+	}
+
+	if conn.cancel != nil {
+		conn.cancel()
 	}
 
 	conn.Unlock()
