@@ -1114,6 +1114,9 @@ var clientConn = func(g goroutine) bool {
 }
 
 var testingg = func(g goroutine) bool {
+	if len(g.stack) == 0 {
+		return false
+	}
 	return strings.Index(g.stack[len(g.stack)-1], "testing.go") != -1
 }
 
