@@ -47,9 +47,10 @@ func (jlf *jsonLedgerFactory) GetOrCreate(chainID string) (ledger.ReadWriter, er
 
 	directory := filepath.Join(jlf.directory, fmt.Sprintf(chainDirectoryFormatString, chainID))
 
-	logger.Debugf("Initializing chain at: %s", directory)
+	logger.Debugf("Initializing chain %s at: %s", chainID, directory)
 
 	if err := os.MkdirAll(directory, 0700); err != nil {
+		logger.Warningf("Failed initializing chain %s: %s", chainID, err)
 		return nil, err
 	}
 
@@ -130,7 +131,7 @@ func (jlf *jsonLedgerFactory) Close() {
 func New(directory string) ledger.Factory {
 	logger.Debugf("Initializing ledger at: %s", directory)
 	if err := os.MkdirAll(directory, 0700); err != nil {
-		logger.Fatalf("Could not create directory %s: %s", directory, err)
+		logger.Panicf("Could not create directory %s: %s", directory, err)
 	}
 
 	jlf := &jsonLedgerFactory{
@@ -152,12 +153,7 @@ func New(directory string) ledger.Factory {
 		if err != nil {
 			continue
 		}
-		jl, err := jlf.GetOrCreate(chainID)
-		if err != nil {
-			logger.Warningf("Failed to initialize chain from %s: %s", chainID, err)
-			continue
-		}
-		jlf.ledgers[chainID] = jl
+		jlf.GetOrCreate(chainID)
 	}
 
 	return jlf
