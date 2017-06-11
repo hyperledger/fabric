@@ -113,10 +113,15 @@ type mockSupport struct {
 	ledger        ledger.ReadWriter
 	policyManager *mockpolicies.Manager
 	erroredChan   chan struct{}
+	configSeq     uint64
 }
 
 func (mcs *mockSupport) Errored() <-chan struct{} {
 	return mcs.erroredChan
+}
+
+func (mcs *mockSupport) Sequence() uint64 {
+	return mcs.configSeq
 }
 
 func (mcs *mockSupport) PolicyManager() policies.Manager {
@@ -287,6 +292,42 @@ func TestUnauthorizedSeek(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
 	}
+}
+
+func TestRevokedAuthorizationSeek(t *testing.T) {
+	mm := newMockMultichainManager()
+	for i := 1; i < ledgerSize; i++ {
+		l := mm.chains[systemChainID].ledger
+		l.Append(ledger.CreateNextBlock(l, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
+	}
+
+	m := newMockD()
+	defer close(m.recvChan)
+	ds := NewHandlerImpl(mm)
+
+	go ds.Handle(m)
+
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.NotNil(t, deliverReply.GetBlock(), "First should succeed")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+
+	mm.chains[systemChainID].policyManager.Policy.Err = fmt.Errorf("Fail to evaluate policy")
+	mm.chains[systemChainID].configSeq++
+	l := mm.chains[systemChainID].ledger
+	l.Append(ledger.CreateNextBlock(l, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", ledgerSize+1))}}))
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_FORBIDDEN, deliverReply.GetStatus(), "Second should been forbidden ")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+
 }
 
 func TestOutOfBoundSeek(t *testing.T) {
