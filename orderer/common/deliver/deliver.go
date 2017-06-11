@@ -45,6 +45,9 @@ type SupportManager interface {
 
 // Support provides the backing resources needed to support deliver on a chain
 type Support interface {
+	// Sequence returns the current config sequence number, can be used to detect config changes
+	Sequence() uint64
+
 	// PolicyManager returns the current policy manager as specified by the chain configuration
 	PolicyManager() policies.Manager
 
@@ -115,6 +118,8 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 
 		}
 
+		lastConfigSequence := chain.Sequence()
+
 		sf := sigfilter.New(policies.ChannelReaders, chain.PolicyManager())
 		result, _ := sf.Apply(envelope)
 		if result != filter.Forward {
@@ -163,6 +168,17 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 				case <-cursor.ReadyChan():
 				default:
 					return sendStatusReply(srv, cb.Status_NOT_FOUND)
+				}
+			}
+
+			currentConfigSequence := chain.Sequence()
+			if currentConfigSequence > lastConfigSequence {
+				lastConfigSequence = currentConfigSequence
+				sf := sigfilter.New(policies.ChannelReaders, chain.PolicyManager())
+				result, _ := sf.Apply(envelope)
+				if result != filter.Forward {
+					logger.Warningf("Client authorization revoked for deliver request for channel %s", chdr.ChannelId)
+					return sendStatusReply(srv, cb.Status_FORBIDDEN)
 				}
 			}
 

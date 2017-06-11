@@ -95,6 +95,9 @@ type ChainSupport interface {
 	broadcast.Support
 	ConsenterSupport
 
+	// Sequence returns the current config sequence number
+	Sequence() uint64
+
 	// ProposeConfigUpdate applies a CONFIG_UPDATE to an existing config to produce a *cb.ConfigEnvelope
 	ProposeConfigUpdate(env *cb.Envelope) (*cb.ConfigEnvelope, error)
 }
