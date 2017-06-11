@@ -629,9 +629,15 @@ func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 		GossipMessage: msg,
 	}
 
-	_, err := sMsg.Sign(func(msg []byte) ([]byte, error) {
-		return g.mcs.Sign(msg)
-	})
+	var err error
+	if sMsg.IsDataMsg() {
+		sMsg, err = sMsg.NoopSign()
+	} else {
+		_, err = sMsg.Sign(func(msg []byte) ([]byte, error) {
+			return g.mcs.Sign(msg)
+		})
+	}
+
 	if err != nil {
 		g.logger.Warning("Failed signing message:", err)
 		return
