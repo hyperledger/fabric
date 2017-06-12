@@ -44,31 +44,36 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
+	mspproto "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
 
-func createTx() (*common.Envelope, *peer.ProposalResponse, error) {
+func createTx(endorsedByDuplicatedIdentity bool) (*common.Envelope, error) {
 	ccid := &peer.ChaincodeID{Name: "foo", Version: "v1"}
 	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: ccid}}
 
 	prop, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, []byte("res"), nil, ccid, nil, id)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	env, err := utils.CreateSignedTx(prop, id, presp)
+	var env *common.Envelope
+	if endorsedByDuplicatedIdentity {
+		env, err = utils.CreateSignedTx(prop, id, presp, presp)
+	} else {
+		env, err = utils.CreateSignedTx(prop, id, presp)
+	}
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	return env, presp, err
+	return env, err
 }
 
 func processSignedCDS(cds *peer.ChaincodeDeploymentSpec, policy *common.SignaturePolicyEnvelope) ([]byte, error) {
@@ -217,6 +222,24 @@ func getSignedByMSPMemberPolicy(mspID string) ([]byte, error) {
 	return b, err
 }
 
+func getSignedByOneMemberTwicePolicy(mspID string) ([]byte, error) {
+	principal := &mspproto.MSPPrincipal{
+		PrincipalClassification: mspproto.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&mspproto.MSPRole{Role: mspproto.MSPRole_MEMBER, MspIdentifier: mspID})}
+
+	p := &common.SignaturePolicyEnvelope{
+		Version:    0,
+		Rule:       cauthdsl.NOutOf(2, []*common.SignaturePolicy{cauthdsl.SignedBy(0), cauthdsl.SignedBy(0)}),
+		Identities: []*mspproto.MSPPrincipal{principal},
+	}
+	b, err := utils.Marshal(p)
+	if err != nil {
+		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
+	}
+
+	return b, err
+}
+
 func getSignedByMSPAdminPolicy(mspID string) ([]byte, error) {
 	p := cauthdsl.SignedByMspAdmin(mspID)
 
@@ -276,7 +299,7 @@ func TestInvoke(t *testing.T) {
 		t.Fatalf("vscc invoke should have failed")
 	}
 
-	tx, _, err := createTx()
+	tx, err := createTx(false)
 	if err != nil {
 		t.Fatalf("createTx returned err %s", err)
 	}
@@ -327,6 +350,24 @@ func TestInvoke(t *testing.T) {
 	args = [][]byte{[]byte("dv"), envBytes, policy}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("vscc invoke should have failed")
+	}
+
+	// bad path: signed by duplicated MSP identity
+	policy, err = getSignedByOneMemberTwicePolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+	tx, err = createTx(true)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+	envBytes, err = utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+	args = [][]byte{[]byte("dv"), envBytes, policy}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK || res.Message != DUPLICATED_IDENTITY_ERROR {
+		t.Fatalf("vscc invoke should have failed due to policy evaluation failure caused by duplicated identity")
 	}
 }
 
