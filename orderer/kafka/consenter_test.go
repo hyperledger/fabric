@@ -28,13 +28,13 @@ import (
 
 var mockRetryOptions = localconfig.Retry{
 	ShortInterval: 50 * time.Millisecond,
-	ShortTotal:    200 * time.Millisecond,
-	LongInterval:  200 * time.Millisecond,
-	LongTotal:     1 * time.Second,
+	ShortTotal:    100 * time.Millisecond,
+	LongInterval:  60 * time.Millisecond,
+	LongTotal:     120 * time.Millisecond,
 	NetworkTimeouts: localconfig.NetworkTimeouts{
-		DialTimeout:  5 * time.Millisecond,
-		ReadTimeout:  5 * time.Millisecond,
-		WriteTimeout: 5 * time.Millisecond,
+		DialTimeout:  40 * time.Millisecond,
+		ReadTimeout:  40 * time.Millisecond,
+		WriteTimeout: 40 * time.Millisecond,
 	},
 	Metadata: localconfig.Metadata{
 		RetryMax:     2,
@@ -42,10 +42,10 @@ var mockRetryOptions = localconfig.Retry{
 	},
 	Producer: localconfig.Producer{
 		RetryMax:     2,
-		RetryBackoff: 30 * time.Millisecond,
+		RetryBackoff: 40 * time.Millisecond,
 	},
 	Consumer: localconfig.Consumer{
-		RetryBackoff: 20 * time.Millisecond,
+		RetryBackoff: 40 * time.Millisecond,
 	},
 }
 
