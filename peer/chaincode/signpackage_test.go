@@ -39,7 +39,7 @@ func signExistingPackage(env *pcommon.Envelope, infile, outfile string) error {
 	mockCF := &ChaincodeCmdFactory{Signer: signer}
 
 	cmd := signpackageCmd(mockCF)
-	AddFlags(cmd)
+	addFlags(cmd)
 
 	cmd.SetArgs([]string{infile, outfile})
 

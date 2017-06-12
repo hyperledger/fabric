@@ -28,21 +28,32 @@ import (
 
 var chaincodeInstantiateCmd *cobra.Command
 
-const instantiate_cmdname = "instantiate"
+const instantiateCmdName = "instantiate"
 
-const instantiate_desc = "Deploy the specified chaincode to the network."
+const instantiateDesc = "Deploy the specified chaincode to the network."
 
 // instantiateCmd returns the cobra command for Chaincode Deploy
 func instantiateCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeInstantiateCmd = &cobra.Command{
-		Use:       instantiate_cmdname,
-		Short:     fmt.Sprint(instantiate_desc),
-		Long:      fmt.Sprint(instantiate_desc),
+		Use:       instantiateCmdName,
+		Short:     fmt.Sprint(instantiateDesc),
+		Long:      fmt.Sprint(instantiateDesc),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeDeploy(cmd, args, cf)
 		},
 	}
+	flagList := []string{
+		"lang",
+		"ctor",
+		"name",
+		"channelID",
+		"version",
+		"policy",
+		"escc",
+		"vscc",
+	}
+	attachFlags(chaincodeInstantiateCmd, flagList)
 
 	return chaincodeInstantiateCmd
 }

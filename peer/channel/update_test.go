@@ -28,8 +28,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const mockChannel = "mockChannel"
+
 func TestUpdateChannel(t *testing.T) {
 	InitMSP()
+	resetFlags()
 
 	dir, err := ioutil.TempDir("/tmp", "createinvaltest-")
 	if err != nil {
@@ -37,10 +40,8 @@ func TestUpdateChannel(t *testing.T) {
 	}
 	defer os.RemoveAll(dir) // clean up
 
-	mockchannel := "mockchannel"
-
-	configtxFile := filepath.Join(dir, mockchannel)
-	if _, err = createTxFile(configtxFile, cb.HeaderType_CONFIG_UPDATE, mockchannel); err != nil {
+	configtxFile := filepath.Join(dir, mockChannel)
+	if _, err = createTxFile(configtxFile, cb.HeaderType_CONFIG_UPDATE, mockChannel); err != nil {
 		t.Fatalf("couldn't create tx file")
 	}
 
@@ -59,7 +60,7 @@ func TestUpdateChannel(t *testing.T) {
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchannel, "-f", configtxFile, "-o", "localhost:7050"}
+	args := []string{"-c", mockChannel, "-f", configtxFile, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
 
 	assert.NoError(t, cmd.Execute())
@@ -67,7 +68,7 @@ func TestUpdateChannel(t *testing.T) {
 
 func TestUpdateChannelMissingConfigTxFlag(t *testing.T) {
 	InitMSP()
-	mockchannel := "mockchannel"
+	resetFlags()
 
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
@@ -84,7 +85,7 @@ func TestUpdateChannelMissingConfigTxFlag(t *testing.T) {
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchannel, "-o", "localhost:7050"}
+	args := []string{"-c", mockChannel, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
 
 	assert.Error(t, cmd.Execute())
@@ -92,7 +93,7 @@ func TestUpdateChannelMissingConfigTxFlag(t *testing.T) {
 
 func TestUpdateChannelMissingConfigTxFile(t *testing.T) {
 	InitMSP()
-	mockchannel := "mockchannel"
+	resetFlags()
 
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
@@ -105,11 +106,11 @@ func TestUpdateChannelMissingConfigTxFile(t *testing.T) {
 		DeliverClient:    &mockDeliverClient{},
 	}
 
-	cmd := createCmd(mockCF)
+	cmd := updateCmd(mockCF)
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchannel, "-f", "Non-existant", "-o", "localhost:7050"}
+	args := []string{"-c", mockChannel, "-f", "Non-existant", "-o", "localhost:7050"}
 	cmd.SetArgs(args)
 
 	assert.Error(t, cmd.Execute())
@@ -117,6 +118,7 @@ func TestUpdateChannelMissingConfigTxFile(t *testing.T) {
 
 func TestUpdateChannelMissingChannelID(t *testing.T) {
 	InitMSP()
+	resetFlags()
 
 	dir, err := ioutil.TempDir("/tmp", "createinvaltest-")
 	if err != nil {
@@ -124,10 +126,8 @@ func TestUpdateChannelMissingChannelID(t *testing.T) {
 	}
 	defer os.RemoveAll(dir) // clean up
 
-	mockchannel := "mockchannel"
-
-	configtxFile := filepath.Join(dir, mockchannel)
-	if _, err = createTxFile(configtxFile, cb.HeaderType_CONFIG_UPDATE, mockchannel); err != nil {
+	configtxFile := filepath.Join(dir, mockChannel)
+	if _, err = createTxFile(configtxFile, cb.HeaderType_CONFIG_UPDATE, mockChannel); err != nil {
 		t.Fatalf("couldn't create tx file")
 	}
 

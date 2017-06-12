@@ -27,8 +27,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMissingBlockFile(t *testing.T) {
+	resetFlags()
+
+	cmd := joinCmd(nil)
+	AddFlags(cmd)
+	args := []string{}
+	cmd.SetArgs(args)
+
+	assert.Error(t, cmd.Execute(), "expected join command to fail due to missing blockfilepath")
+}
+
 func TestJoin(t *testing.T) {
 	InitMSP()
+	resetFlags()
 
 	dir, err := ioutil.TempDir("/tmp", "jointest")
 	assert.NoError(t, err, "Could not create the directory %s", dir)
@@ -37,9 +49,7 @@ func TestJoin(t *testing.T) {
 	assert.NoError(t, err, "Could not write to the file %s", mockblockfile)
 	defer os.RemoveAll(dir)
 	signer, err := common.GetDefaultSigner()
-	if err != nil {
-		t.Fatalf("Get default signer error: %v", err)
-	}
+	assert.NoError(t, err, "Get default signer error: %v", err)
 
 	mockResponse := &pb.ProposalResponse{
 		Response:    &pb.Response{Status: 200},
@@ -55,20 +65,17 @@ func TestJoin(t *testing.T) {
 	}
 
 	cmd := joinCmd(mockCF)
-
 	AddFlags(cmd)
 
 	args := []string{"-b", mockblockfile}
 	cmd.SetArgs(args)
 
-	if err := cmd.Execute(); err != nil {
-		t.Fail()
-		t.Error("expected join command to succeed")
-	}
+	assert.NoError(t, cmd.Execute(), "expected join command to succeed")
 }
 
 func TestJoinNonExistentBlock(t *testing.T) {
 	InitMSP()
+	resetFlags()
 
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
@@ -95,25 +102,20 @@ func TestJoinNonExistentBlock(t *testing.T) {
 	args := []string{"-b", "mockchain.block"}
 	cmd.SetArgs(args)
 
-	if err := cmd.Execute(); err == nil {
-		t.Fail()
-		t.Error("expected join command to fail")
-	} else if err, _ = err.(GBFileNotFoundErr); err == nil {
-		t.Fail()
-		t.Error("expected file not found error")
-	}
+	err = cmd.Execute()
+	assert.Error(t, err, "expected join command to fail")
+	assert.IsType(t, GBFileNotFoundErr(err.Error()), err, "expected error type of GBFileNotFoundErr")
 }
 
 func TestBadProposalResponse(t *testing.T) {
 	InitMSP()
+	resetFlags()
 
 	mockblockfile := "/tmp/mockjointest.block"
 	ioutil.WriteFile(mockblockfile, []byte(""), 0644)
 	defer os.Remove(mockblockfile)
 	signer, err := common.GetDefaultSigner()
-	if err != nil {
-		t.Fatalf("Get default signer error: %v", err)
-	}
+	assert.NoError(t, err, "Get default signer error: %v", err)
 
 	mockResponse := &pb.ProposalResponse{
 		Response:    &pb.Response{Status: 500},
@@ -135,16 +137,13 @@ func TestBadProposalResponse(t *testing.T) {
 	args := []string{"-b", mockblockfile}
 	cmd.SetArgs(args)
 
-	if err := cmd.Execute(); err == nil {
-		t.Fail()
-		t.Error("expected join command to fail")
-	} else if err, _ = err.(ProposalFailedErr); err == nil {
-		t.Fail()
-		t.Error("expected proposal failure error")
-	}
+	err = cmd.Execute()
+	assert.Error(t, err, "expected join command to fail")
+	assert.IsType(t, ProposalFailedErr(err.Error()), err, "expected error type of ProposalFailedErr")
 }
 func TestJoinNilCF(t *testing.T) {
 	InitMSP()
+	resetFlags()
 
 	dir, err := ioutil.TempDir("/tmp", "jointest")
 	assert.NoError(t, err, "Could not create the directory %s", dir)
@@ -154,6 +153,7 @@ func TestJoinNilCF(t *testing.T) {
 	AddFlags(cmd)
 	args := []string{"-b", mockblockfile}
 	cmd.SetArgs(args)
+
 	err = cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Error trying to connect to local peer")

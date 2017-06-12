@@ -28,12 +28,12 @@ import (
 
 var chaincodeUpgradeCmd *cobra.Command
 
-const upgrade_cmdname = "upgrade"
+const upgradeCmdName = "upgrade"
 
 // upgradeCmd returns the cobra command for Chaincode Upgrade
 func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeUpgradeCmd = &cobra.Command{
-		Use:       upgrade_cmdname,
+		Use:       upgradeCmdName,
 		Short:     "Upgrade chaincode.",
 		Long:      "Upgrade an existing chaincode with the specified one. The new chaincode will immediately replace the existing chaincode upon the transaction committed.",
 		ValidArgs: []string{"1"},
@@ -41,6 +41,18 @@ func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 			return chaincodeUpgrade(cmd, args, cf)
 		},
 	}
+	flagList := []string{
+		"lang",
+		"ctor",
+		"path",
+		"name",
+		"channelID",
+		"version",
+		"policy",
+		"escc",
+		"vscc",
+	}
+	attachFlags(chaincodeUpgradeCmd, flagList)
 
 	return chaincodeUpgradeCmd
 }

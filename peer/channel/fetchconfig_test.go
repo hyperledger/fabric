@@ -26,6 +26,7 @@ import (
 
 func TestFetchChain(t *testing.T) {
 	InitMSP()
+	resetFlags()
 
 	mockchain := "mockchain"
 

@@ -50,7 +50,7 @@ func initInstallTest(fsPath string, t *testing.T) (*cobra.Command, *ChaincodeCmd
 	}
 
 	cmd := installCmd(mockCF)
-	AddFlags(cmd)
+	addFlags(cmd)
 
 	return cmd, mockCF
 }
@@ -179,7 +179,7 @@ func installEx02() error {
 	}
 
 	cmd := installCmd(mockCF)
-	AddFlags(cmd)
+	addFlags(cmd)
 
 	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-v", "anotherversion"}
 	cmd.SetArgs(args)

@@ -65,7 +65,7 @@ func TestUpgradeCmd(t *testing.T) {
 	}
 
 	cmd := upgradeCmd(mockCF)
-	AddFlags(cmd)
+	addFlags(cmd)
 
 	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
 		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
@@ -99,7 +99,7 @@ func TestUpgradeCmdEndorseFail(t *testing.T) {
 	}
 
 	cmd := upgradeCmd(mockCF)
-	AddFlags(cmd)
+	addFlags(cmd)
 
 	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
 		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
@@ -140,7 +140,7 @@ func TestUpgradeCmdSendTXFail(t *testing.T) {
 	}
 
 	cmd := upgradeCmd(mockCF)
-	AddFlags(cmd)
+	addFlags(cmd)
 
 	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)

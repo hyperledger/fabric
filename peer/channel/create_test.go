@@ -260,7 +260,6 @@ func TestCreateChainWithTimeoutErr(t *testing.T) {
 	defer fakeOrderer.Shutdown()
 
 	cmd := createCmd(mockCF)
-
 	AddFlags(cmd)
 
 	args := []string{"-c", mockchain, "-o", "localhost:8102", "-t", "1"}

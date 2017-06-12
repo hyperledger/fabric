@@ -38,8 +38,8 @@ var createSignedCCDepSpec bool
 var signCCDepSpec bool
 var instantiationPolicy string
 
-const package_cmdname = "package"
-const package_desc = "Package the specified chaincode into a deployment spec."
+const packageCmdName = "package"
+const packageDesc = "Package the specified chaincode into a deployment spec."
 
 type ccDepSpecFactory func(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error)
 
@@ -51,8 +51,8 @@ func defaultCDSFactory(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, err
 func packageCmd(cf *ChaincodeCmdFactory, cdsFact ccDepSpecFactory) *cobra.Command {
 	chaincodePackageCmd = &cobra.Command{
 		Use:       "package",
-		Short:     package_desc,
-		Long:      package_desc,
+		Short:     packageDesc,
+		Long:      packageDesc,
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {
@@ -65,10 +65,18 @@ func packageCmd(cf *ChaincodeCmdFactory, cdsFact ccDepSpecFactory) *cobra.Comman
 			return chaincodePackage(cmd, args, cdsFact, cf)
 		},
 	}
+	flagList := []string{
+		"lang",
+		"ctor",
+		"path",
+		"name",
+		"version",
+	}
+	attachFlags(chaincodePackageCmd, flagList)
 
 	chaincodePackageCmd.Flags().BoolVarP(&createSignedCCDepSpec, "cc-package", "s", false, "create CC deployment spec for owner endorsements instead of raw CC deployment spec")
 	chaincodePackageCmd.Flags().BoolVarP(&signCCDepSpec, "sign", "S", false, "if creating CC deployment spec package for owner endorsements, also sign it with local MSP")
-	chaincodePackageCmd.Flags().StringVarP(&instantiationPolicy, "instantiate-policy", "i", "", "instatiation policy for the chaincode")
+	chaincodePackageCmd.Flags().StringVarP(&instantiationPolicy, "instantiate-policy", "i", "", "instantiation policy for the chaincode")
 
 	return chaincodePackageCmd
 }

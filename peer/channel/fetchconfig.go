@@ -36,6 +36,10 @@ func fetchCmd(cf *ChannelCmdFactory) *cobra.Command {
 			return fetch(cmd, args, cf)
 		},
 	}
+	flagList := []string{
+		"channelID",
+	}
+	attachFlags(fetchCmd, flagList)
 
 	return fetchCmd
 }
@@ -92,7 +96,7 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	}
 
 	var file string
-	if len(args) <= 1 {
+	if len(args) == 1 {
 		file = chainID + "_" + args[0] + ".block"
 	} else {
 		file = args[1]

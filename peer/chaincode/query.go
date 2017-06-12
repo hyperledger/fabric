@@ -35,6 +35,13 @@ func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 			return chaincodeQuery(cmd, args, cf)
 		},
 	}
+	flagList := []string{
+		"ctor",
+		"name",
+		"tid",
+		"channelID",
+	}
+	attachFlags(chaincodeQueryCmd, flagList)
 
 	chaincodeQueryCmd.Flags().BoolVarP(&chaincodeQueryRaw, "raw", "r", false,
 		"If true, output the query value as raw bytes, otherwise format as a printable string")
