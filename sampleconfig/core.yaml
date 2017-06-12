@@ -91,13 +91,15 @@ peer:
         # its own organization
         orgLeader: true
 
-        # ID of this instance
+        # Overrides the endpoint that the peer publishes to peers
+        # in its organization. For peers in foreign organizations
+        # see 'externalEndpoint'
         endpoint:
-        # Maximum count of blocks we store in memory
+        # Maximum count of blocks stored in memory
         maxBlockCountToStore: 100
         # Max time between consecutive message pushes(unit: millisecond)
         maxPropagationBurstLatency: 10ms
-        # Max number of messages stored until it triggers a push to remote peers
+        # Max number of messages stored until a push is triggered to remote peers
         maxPropagationBurstSize: 10
         # Number of times a message is pushed to remote peers
         propagateIterations: 1
@@ -115,7 +117,7 @@ peer:
         stateInfoRetentionInterval:
         # Time from startup certificates are included in Alive messages(unit: second)
         publishCertPeriod: 10s
-        # Should we skip verifying block messages or not
+        # Should we skip verifying block messages or not (currently not in use)
         skipBlockVerification: false
         # Dial timeout(unit: second)
         dialTimeout: 3s
@@ -142,13 +144,13 @@ peer:
         externalEndpoint:
         # Leader election service configuration
         election:
-            # Longest time peer wait for stable membership during leader election startup (unit: second)
+            # Longest time peer waits for stable membership during leader election startup (unit: second)
             startupGracePeriod: 15s
-            # Interval gossip membership sampled to check its stability (unit: second)
+            # Interval gossip membership samples to check its stability (unit: second)
             membershipSampleInterval: 1s
-            # Time pass since last declaration message before peer decide to go to election (unit: second)
+            # Time passes since last declaration message before peer decides to perform leader election (unit: second)
             leaderAliveThreshold: 10s
-            # Time between peer sends propose message and declare itself as a leader (sends declaration message) (unit: second)
+            # Time between peer sends propose message and declares itself as a leader (sends declaration message) (unit: second)
             leaderElectionDuration: 5s
 
     # EventHub related configuration
@@ -166,7 +168,7 @@ peer:
         # if > 0, if buffer full, blocks till timeout
         timeout: 10ms
 
-    # TLS Settings for p2p communications
+    # TLS Settings
     tls:
         enabled:  false
         cert:
