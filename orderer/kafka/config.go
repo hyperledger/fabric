@@ -15,15 +15,14 @@ import (
 )
 
 func newBrokerConfig(tlsConfig localconfig.TLS, retryOptions localconfig.Retry, kafkaVersion sarama.KafkaVersion, chosenStaticPartition int32) *sarama.Config {
-	brokerConfig := sarama.NewConfig()
+	// Max. size for request headers, etc. Set in bytes. Too big on purpose.
+	paddingDelta := 1 * 1024 * 1024
 
-	// FIXME https://jira.hyperledger.org/browse/FAB-4136
-	// Use retryOptions to populate `Net`
+	brokerConfig := sarama.NewConfig()
 
 	brokerConfig.Consumer.Retry.Backoff = retryOptions.Consumer.RetryBackoff
 
-	// Allows us to retrieve errors that occur when consuming a channel, via the
-	// channel's `listenForErrors` goroutine.
+	// Allows us to retrieve errors that occur when consuming a channel
 	brokerConfig.Consumer.Return.Errors = true
 
 	brokerConfig.Metadata.Retry.Backoff = retryOptions.Metadata.RetryBackoff
@@ -57,7 +56,7 @@ func newBrokerConfig(tlsConfig localconfig.TLS, retryOptions localconfig.Retry, 
 
 	// Set equivalent of Kafka producer config max.request.bytes to the default
 	// value of a Kafka broker's socket.request.max.bytes property (100 MiB).
-	brokerConfig.Producer.MaxMessageBytes = int(sarama.MaxRequestSize) // FIXME https://jira.hyperledger.org/browse/FAB-4083
+	brokerConfig.Producer.MaxMessageBytes = int(sarama.MaxRequestSize) - paddingDelta
 
 	brokerConfig.Producer.Retry.Backoff = retryOptions.Producer.RetryBackoff
 	brokerConfig.Producer.Retry.Max = retryOptions.Producer.RetryMax

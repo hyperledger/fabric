@@ -154,7 +154,7 @@ var genesisDefaults = TopLevel{
 		BatchTimeout: 2 * time.Second,
 		BatchSize: BatchSize{
 			MaxMessageCount:   10,
-			AbsoluteMaxBytes:  100000000,
+			AbsoluteMaxBytes:  10 * 1024 * 1024,
 			PreferredMaxBytes: 512 * 1024,
 		},
 		Kafka: Kafka{
