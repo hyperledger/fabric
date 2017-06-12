@@ -289,10 +289,12 @@ func (g *gossipServiceImpl) amIinChannel(myOrg string, config Config) bool {
 func (g *gossipServiceImpl) onStatusChangeFactory(chainID string, committer blocksprovider.LedgerInfo) func(bool) {
 	return func(isLeader bool) {
 		if isLeader {
+			logger.Info("Elected as a leader, starting delivery service for channel", chainID)
 			if err := g.deliveryService.StartDeliverForChannel(chainID, committer); err != nil {
 				logger.Error("Delivery service is not able to start blocks delivery for chain, due to", err)
 			}
 		} else {
+			logger.Info("Renounced leadership, stopping delivery service for channel", chainID)
 			if err := g.deliveryService.StopDeliverForChannel(chainID); err != nil {
 				logger.Error("Delivery service is not able to stop blocks delivery for chain, due to", err)
 			}
