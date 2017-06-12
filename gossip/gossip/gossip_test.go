@@ -761,7 +761,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 
 	// Now, create a membership request message
 	memRequestSpoofFactory := func(aliveMsgEnv *proto.Envelope) *proto.SignedGossipMessage {
-		return (&proto.GossipMessage{
+		sMsg, _ := (&proto.GossipMessage{
 			Tag:   proto.GossipMessage_EMPTY,
 			Nonce: uint64(0),
 			Content: &proto.GossipMessage_MemReq{
@@ -771,6 +771,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 				},
 			},
 		}).NoopSign()
+		return sMsg
 	}
 	spoofedMemReq := memRequestSpoofFactory(aliveMsg.GetSourceEnvelope())
 	g2.Send(spoofedMemReq.GossipMessage, &comm.RemotePeer{Endpoint: "localhost:2000", PKIID: common.PKIidType("localhost:2000")})

@@ -270,8 +270,9 @@ func TestNilDirectMsg(t *testing.T) {
 	defer p.shutdown()
 	p.s.(*GossipStateProviderImpl).handleStateRequest(nil)
 	p.s.(*GossipStateProviderImpl).directMessage(nil)
+	sMsg, _ := p.s.(*GossipStateProviderImpl).stateRequestMessage(uint64(10), uint64(8)).NoopSign()
 	req := &comm.ReceivedMessageImpl{
-		SignedGossipMessage: p.s.(*GossipStateProviderImpl).stateRequestMessage(uint64(10), uint64(8)).NoopSign(),
+		SignedGossipMessage: sMsg,
 	}
 	p.s.(*GossipStateProviderImpl).directMessage(req)
 }

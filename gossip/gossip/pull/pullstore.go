@@ -262,7 +262,12 @@ func (p *pullMediatorImpl) Hello(dest string, nonce uint64) {
 	}
 
 	p.logger.Debug("Sending", p.config.MsgType, "hello to", dest)
-	p.Sndr.Send(helloMsg.NoopSign(), p.peersWithEndpoints(dest)...)
+	sMsg, err := helloMsg.NoopSign()
+	if err != nil {
+		p.logger.Error("Failed creating SignedGossipMessage:", err)
+		return
+	}
+	p.Sndr.Send(sMsg, p.peersWithEndpoints(dest)...)
 }
 
 // SendDigest sends a digest to a remote PullEngine.
@@ -301,7 +306,12 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 		},
 	}
 	p.logger.Debug("Sending", req, "to", dest)
-	p.Sndr.Send(req.NoopSign(), p.peersWithEndpoints(dest)...)
+	sMsg, err := req.NoopSign()
+	if err != nil {
+		p.logger.Warning("Failed creating SignedGossipMessage:", err)
+		return
+	}
+	p.Sndr.Send(sMsg, p.peersWithEndpoints(dest)...)
 }
 
 // SendRes sends an array of items to a remote PullEngine identified by a context.
@@ -314,7 +324,6 @@ func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce ui
 			items2return = append(items2return, msg.Envelope)
 		}
 	}
-
 	returnedUpdate := &proto.GossipMessage{
 		Channel: p.config.Channel,
 		Tag:     p.config.Tag,

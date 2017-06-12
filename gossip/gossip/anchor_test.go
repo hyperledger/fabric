@@ -169,19 +169,20 @@ func memResp(nonce uint64, endpoint string) *proto.SignedGossipMessage {
 		},
 	}
 
-	gMsg := &proto.SignedGossipMessage{
+	m, _ := fakePeerAliveMsg.Sign((&configurableCryptoService{}).Sign)
+	sMsg, _ := (&proto.SignedGossipMessage{
 		GossipMessage: &proto.GossipMessage{
 			Tag:   proto.GossipMessage_EMPTY,
 			Nonce: nonce,
 			Content: &proto.GossipMessage_MemRes{
 				MemRes: &proto.MembershipResponse{
-					Alive: []*proto.Envelope{fakePeerAliveMsg.Sign((&configurableCryptoService{}).Sign)},
+					Alive: []*proto.Envelope{m},
 					Dead:  []*proto.Envelope{},
 				},
 			},
 		},
-	}
-	return gMsg.NoopSign()
+	}).NoopSign()
+	return sMsg
 }
 
 type msgInspection func(t *testing.T, index int, m *receivedMsg)
