@@ -48,6 +48,7 @@ endif
 PKGNAME = github.com/$(PROJECT_NAME)
 CGO_FLAGS = CGO_CFLAGS=" "
 ARCH=$(shell uname -m)
+MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
 CHAINTOOL_RELEASE=v0.10.3
 BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 
@@ -295,7 +296,7 @@ build/%.tar.bz2:
 	@tar -jc $^ > $@
 
 # builds release packages for the host platform
-release: $(patsubst %,release/%, $(shell go env GOOS)-$(shell go env GOARCH))
+release: $(patsubst %,release/%, $(MARCH))
 
 # builds release packages for all target platforms
 release-all: $(patsubst %,release/%, $(RELEASE_PLATFORMS))
@@ -344,14 +345,35 @@ release/%/bin/cryptogen: $(PROJECT_FILES)
 	$(CGO_FLAGS) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(abspath $@) -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 
 release/%/install: $(PROJECT_FILES)
-	mkdir -p $@
-	@cat $@/../../templates/get-docker-images.in \
+	mkdir -p $(@D)/bin
+	@cat $(@D)/../templates/get-docker-images.in \
 		| sed -e 's/_NS_/$(DOCKER_NS)/g' \
 		| sed -e 's/_ARCH_/$(DOCKER_ARCH)/g' \
 		| sed -e 's/_VERSION_/$(PROJECT_VERSION)/g' \
 		| sed -e 's/_BASE_DOCKER_TAG_/$(BASE_DOCKER_TAG)/g' \
-		> $@/get-docker-images.sh
-		@chmod +x $@/get-docker-images.sh
+		> $(@D)/bin/get-docker-images.sh
+		@chmod +x $(@D)/bin/get-docker-images.sh
+
+.PHONY: dist
+dist: dist-clean release
+	cd release/$(MARCH) && tar -czvf hyperledger-fabric-$(MARCH).$(BASE_VERSION).tar.gz *
+
+dist-all: dist-clean release-all $(patsubst %,dist/%, $(RELEASE_PLATFORMS))
+
+dist/windows-amd64:
+	cd release/windows-amd64 && tar -czvf hyperledger-fabric-windows-amd64.$(BASE_VERSION).tar.gz *
+
+dist/darwin-amd64:
+	cd release/darwin-amd64 && tar -czvf hyperledger-fabric-darwin-amd64.$(BASE_VERSION).tar.gz *
+
+dist/linux-amd64:
+	cd release/linux-amd64 && tar -czvf hyperledger-fabric-linux-amd64.$(BASE_VERSION).tar.gz *
+
+dist/linux-ppc64le:
+	cd release/linux-ppc64le && tar -czvf hyperledger-fabric-linux-ppc64le.$(BASE_VERSION).tar.gz *
+
+dist/linux-s390x:
+	cd release/linux-s390x && tar -czvf hyperledger-fabric-linux-s390x.$(BASE_VERSION).tar.gz *
 
 .PHONY: protos
 protos: buildenv
@@ -368,9 +390,17 @@ docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
 clean: docker-clean unit-test-clean release-clean
 	-@rm -rf build ||:
 
-.PHONY: dist-clean
-dist-clean: clean gotools-clean
+.PHONY: clean-all
+clean-all: clean gotools-clean dist-clean release-clean unit-test-clean
 	-@rm -rf /var/hyperledger/* ||:
+
+.PHONY: dist-clean
+dist-clean:
+	-@rm -rf release/windows-amd64/hyperledger-fabric-windows-amd64.$(BASE_VERSION).tar.gz ||:
+	-@rm -rf release/darwin-amd64/hyperledger-fabric-darwin-amd64.$(BASE_VERSION).tar.gz ||:
+	-@rm -rf release/linux-amd64/hyperledger-fabric-linux-amd64.$(BASE_VERSION).tar.gz ||:
+	-@rm -rf release/linux-ppc64le/hyperledger-fabric-linux-ppc64le.$(BASE_VERSION).tar.gz ||:
+	-@rm -rf release/linux-s390x/hyperledger-fabric-linux-s390x.$(BASE_VERSION).tar.gz ||:
 
 %-release-clean:
 	$(eval TARGET = ${patsubst %-release-clean,%,${@}})
