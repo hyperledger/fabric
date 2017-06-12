@@ -126,9 +126,6 @@ message StateInfo {
     // channel_MAC is an authentication code that proves
     // that the peer that sent this message knows
     // the name of the channel.
-    // The channel name that this message relates to
-    // can only be computed by a peer that has joined
-    // the channel
     bytes channel_MAC  = 4;
 }
 
@@ -143,9 +140,6 @@ message StateInfoPullRequest {
     // channel_MAC is an authentication code that proves
     // that the peer that sent this message knows
     // the name of the channel.
-    // The channel name that this message relates to
-    // can only be computed by a peer that has joined
-    // the channel
     bytes channel_MAC  = 1;
 }
 
