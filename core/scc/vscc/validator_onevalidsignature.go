@@ -33,11 +33,16 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
 var logger = flogging.MustGetLogger("vscc")
+
+const (
+	DUPLICATED_IDENTITY_ERROR = "Endorsement policy evaluation failure might be caused by duplicated identities"
+)
 
 // ValidatorOneValidSignature implements the default transaction validation policy,
 // which is to check the correctness of the read-write set and the endorsement
@@ -62,7 +67,7 @@ func (vscc *ValidatorOneValidSignature) Init(stub shim.ChaincodeStubInterface) p
 // chaincodes to provide more sophisticated policy processing such as enabling
 // policy specification to be coded as a transaction of the chaincode and the client
 // selecting which policy to use for validation using parameter function
-// @return serialized Block of valid and invalid transactions indentified
+// @return serialized Block of valid and invalid transactions identified
 // Note that Peer calls this function with 3 arguments, where args[0] is the
 // function name, args[1] is the Envelope and args[2] is the validation policy
 func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
@@ -134,27 +139,19 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 			return shim.Error(err.Error())
 		}
 
-		// this is the first part of the signed message
-		prespBytes := cap.Action.ProposalResponsePayload
-
-		// build the signature set for the evaluation
-		signatureSet := make([]*common.SignedData, len(cap.Action.Endorsements))
-
-		// loop through each of the endorsements and build the signature set
-		for i, endorsement := range cap.Action.Endorsements {
-			signatureSet[i] = &common.SignedData{
-				// set the data that is signed; concatenation of proposal response bytes and endorser ID
-				Data: append(prespBytes, endorsement.Endorser...),
-				// set the identity that signs the message: it's the endorser
-				Identity: endorsement.Endorser,
-				// set the signature
-				Signature: endorsement.Signature,
-			}
+		signatureSet, err := vscc.deduplicateIdentity(cap)
+		if err != nil {
+			return shim.Error(err.Error())
 		}
 
 		// evaluate the signature set against the policy
 		err = policy.Evaluate(signatureSet)
 		if err != nil {
+			logger.Warningf("Endorsement policy failure for transaction txid=%s, err: %s", chdr.GetTxId(), err.Error())
+			if len(signatureSet) < len(cap.Action.Endorsements) {
+				// Warning: duplicated identities exist, endorsement failure might be cause by this reason
+				return shim.Error(DUPLICATED_IDENTITY_ERROR)
+			}
 			return shim.Error(fmt.Sprintf("VSCC error: policy evaluation failed, err %s", err))
 		}
 
@@ -424,4 +421,39 @@ func (vscc *ValidatorOneValidSignature) getInstantiatedCC(chid, ccid string) (cd
 
 	exists = true
 	return
+}
+
+func (vscc *ValidatorOneValidSignature) deduplicateIdentity(cap *pb.ChaincodeActionPayload) ([]*common.SignedData, error) {
+	// this is the first part of the signed message
+	prespBytes := cap.Action.ProposalResponsePayload
+
+	// build the signature set for the evaluation
+	signatureSet := []*common.SignedData{}
+	signatureMap := make(map[string]struct{})
+	// loop through each of the endorsements and build the signature set
+	for _, endorsement := range cap.Action.Endorsements {
+		//unmarshal endorser bytes
+		serializedIdentity := &msp.SerializedIdentity{}
+		if err := proto.Unmarshal(endorsement.Endorser, serializedIdentity); err != nil {
+			logger.Errorf("Unmarshal endorser error: %s", err)
+			return nil, fmt.Errorf("Unmarshal endorser error: %s", err)
+		}
+		identity := serializedIdentity.Mspid + string(serializedIdentity.IdBytes)
+		if _, ok := signatureMap[identity]; ok {
+			// Endorsement with the same identity has already been added
+			logger.Warningf("Ignoring duplicated identity, Mspid: %s, pem:\n%s", serializedIdentity.Mspid, serializedIdentity.IdBytes)
+			continue
+		}
+		signatureSet = append(signatureSet, &common.SignedData{
+			// set the data that is signed; concatenation of proposal response bytes and endorser ID
+			Data: append(prespBytes, endorsement.Endorser...),
+			// set the identity that signs the message: it's the endorser
+			Identity: endorsement.Endorser,
+			// set the signature
+			Signature: endorsement.Signature})
+		signatureMap[identity] = struct{}{}
+	}
+
+	logger.Debugf("Signature set is of size %d out of %d endorsement(s)", len(signatureSet), len(cap.Action.Endorsements))
+	return signatureSet, nil
 }
