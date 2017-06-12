@@ -413,9 +413,11 @@ func TestConnect(t *testing.T) {
 	waitUntilOrFail(t, fullMembership)
 
 	discInst := instances[rand.Intn(len(instances))].Discovery.(*gossipDiscoveryImpl)
-	am, _ := discInst.createMembershipRequest(true).GetMemReq().SelfInformation.ToGossipMessage()
+	mr, _ := discInst.createMembershipRequest(true)
+	am, _ := mr.GetMemReq().SelfInformation.ToGossipMessage()
 	assert.NotNil(t, am.SecretEnvelope)
-	am, _ = discInst.createMembershipRequest(false).GetMemReq().SelfInformation.ToGossipMessage()
+	mr2, _ := discInst.createMembershipRequest(false)
+	am, _ = mr2.GetMemReq().SelfInformation.ToGossipMessage()
 	assert.Nil(t, am.SecretEnvelope)
 	stopInstances(t, instances)
 }
@@ -920,13 +922,13 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 
 	// Creating MembershipRequest messages
 	for i := 0; i < peersNum; i++ {
-		memReqMsg := instances[i].discoveryImpl().createMembershipRequest(true)
+		memReqMsg, _ := instances[i].discoveryImpl().createMembershipRequest(true)
 		sMsg, _ := memReqMsg.NoopSign()
 		memReqMsgs = append(memReqMsgs, sMsg)
 	}
 	// Creating Alive messages
 	for i := 0; i < peersNum; i++ {
-		aliveMsg := instances[i].discoveryImpl().createAliveMessage(true)
+		aliveMsg, _ := instances[i].discoveryImpl().createAliveMessage(true)
 		aliveMsgs = append(aliveMsgs, aliveMsg)
 	}
 
@@ -989,7 +991,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 				return k == i
 			},
 			func(k int) {
-				aliveMsg := instances[k].discoveryImpl().createAliveMessage(true)
+				aliveMsg, _ := instances[k].discoveryImpl().createAliveMessage(true)
 				memResp := instances[k].discoveryImpl().createMembershipResponse(aliveMsg, peerToResponse)
 				memRespMsgs[i] = append(memRespMsgs[i], memResp)
 			})
@@ -997,7 +999,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 
 	// Re-creating Alive msgs with highest seq_num, to make sure Alive msgs in memReq and memResp are older
 	for i := 0; i < peersNum; i++ {
-		aliveMsg := instances[i].discoveryImpl().createAliveMessage(true)
+		aliveMsg, _ := instances[i].discoveryImpl().createAliveMessage(true)
 		newAliveMsgs = append(newAliveMsgs, aliveMsg)
 	}
 
@@ -1104,13 +1106,13 @@ func TestAliveMsgStore(t *testing.T) {
 
 	// Creating MembershipRequest messages
 	for i := 0; i < peersNum; i++ {
-		memReqMsg := instances[i].discoveryImpl().createMembershipRequest(true)
+		memReqMsg, _ := instances[i].discoveryImpl().createMembershipRequest(true)
 		sMsg, _ := memReqMsg.NoopSign()
 		memReqMsgs = append(memReqMsgs, sMsg)
 	}
 	// Creating Alive messages
 	for i := 0; i < peersNum; i++ {
-		aliveMsg := instances[i].discoveryImpl().createAliveMessage(true)
+		aliveMsg, _ := instances[i].discoveryImpl().createAliveMessage(true)
 		aliveMsgs = append(aliveMsgs, aliveMsg)
 	}
 
