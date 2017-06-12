@@ -218,28 +218,41 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 		}
 	}
 
-	time.Sleep(time.Second * 10)
-
-	for _, peers := range orgs2Peers {
-		for _, p := range peers {
-			peerNetMember := p.(*gossipServiceImpl).selfNetworkMember()
-			pkiID := peerNetMember.PKIid
-			peersKnown := p.Peers()
-			assert.Equal(t, amountOfPeersShouldKnow(pkiID), len(peersKnown), "peer %v doesn't know the needed amount of peers", peerNetMember.Endpoint)
-			for _, knownPeer := range peersKnown {
-				assert.True(t, shouldAKnowB(pkiID, knownPeer.PKIid))
-				if shouldKnowInternalEndpoint(pkiID, knownPeer.PKIid) {
-					errMsg := fmt.Sprintf("peer: %v doesn't know internal endpoint of %v",
-						peerNetMember.InternalEndpoint, string(knownPeer.PKIid))
-					assert.NotZero(t, knownPeer.InternalEndpoint, errMsg)
-				} else {
-					errMsg := fmt.Sprintf("peer: %v knows internal endpoint of %v",
-						peerNetMember.InternalEndpoint, string(knownPeer.PKIid))
-					assert.Zero(t, knownPeer.InternalEndpoint, errMsg)
+	membershipCheck := func() bool {
+		for _, peers := range orgs2Peers {
+			for _, p := range peers {
+				peerNetMember := p.(*gossipServiceImpl).selfNetworkMember()
+				pkiID := peerNetMember.PKIid
+				peersKnown := p.Peers()
+				peersToKnow := amountOfPeersShouldKnow(pkiID)
+				if peersToKnow != len(peersKnown) {
+					t.Logf("peer %#v doesn't know the needed amount of peers, extected %#v, actual %#v", peerNetMember.Endpoint, peersToKnow, len(peersKnown))
+					return false
+				}
+				for _, knownPeer := range peersKnown {
+					if !shouldAKnowB(pkiID, knownPeer.PKIid) {
+						assert.Fail(t, fmt.Sprintf("peer %#v doesn't know %#v", peerNetMember.Endpoint, knownPeer.Endpoint))
+						return false
+					}
+					internalEndpointLen := len(knownPeer.InternalEndpoint)
+					if shouldKnowInternalEndpoint(pkiID, knownPeer.PKIid) {
+						if internalEndpointLen == 0 {
+							t.Logf("peer: %v doesn't know internal endpoint of %v", peerNetMember.InternalEndpoint, string(knownPeer.PKIid))
+							return false
+						}
+					} else {
+						if internalEndpointLen != 0 {
+							assert.Fail(t, fmt.Sprintf("peer: %v knows internal endpoint of %v (%#v)", peerNetMember.InternalEndpoint, string(knownPeer.PKIid), knownPeer.InternalEndpoint))
+							return false
+						}
+					}
 				}
 			}
 		}
+		return true
 	}
+
+	waitUntilOrFail(t, membershipCheck)
 
 	for _, peers := range orgs2Peers {
 		for _, p := range peers {
