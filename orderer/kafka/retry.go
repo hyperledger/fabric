@@ -44,6 +44,14 @@ func (rp *retryProcess) retry() error {
 }
 
 func (rp *retryProcess) try(interval, total time.Duration) error {
+	// Configuration validation will not allow non-positive ticker values
+	// (which would result in panic). The path below is for those test cases
+	// when we cannot avoid the creation of a retriable process but we wish
+	// to terminate it right away.
+	if rp.shortPollingInterval == 0*time.Second {
+		return fmt.Errorf("illegal value")
+	}
+
 	var err = fmt.Errorf("process has not been executed yet")
 
 	tickInterval := time.NewTicker(interval)
