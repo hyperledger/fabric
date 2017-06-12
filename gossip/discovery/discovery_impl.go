@@ -18,6 +18,7 @@ package discovery
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -172,7 +173,12 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
 				Endpoint:         member.Endpoint,
 				PKIid:            id.ID,
 			}
-			req, err := d.createMembershipRequest(id.SelfOrg).NoopSign()
+			m, err := d.createMembershipRequest(id.SelfOrg)
+			if err != nil {
+				d.logger.Warning("Failed creating membership request:", err)
+				continue
+			}
+			req, err := m.NoopSign()
 			if err != nil {
 				d.logger.Warning("Failed creating SignedGossipMessage:", err)
 				continue
@@ -234,7 +240,12 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 		return
 	}
 	var peers2SendTo []*NetworkMember
-	memReq, err := d.createMembershipRequest(true).NoopSign()
+	m, err := d.createMembershipRequest(true)
+	if err != nil {
+		d.logger.Warning("Failed creating membership request:", err)
+		return
+	}
+	memReq, err := m.NoopSign()
 	if err != nil {
 		d.logger.Warning("Failed creating SignedGossipMessage:", err)
 		return
@@ -409,8 +420,9 @@ func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, intern
 		InternalEndpoint: internalEndpoint,
 	}
 
-	aliveMsg := d.createAliveMessage(true)
-	if aliveMsg == nil {
+	aliveMsg, err := d.createAliveMessage(true)
+	if err != nil {
+		d.logger.Warning("Failed creating alive message:", err)
 		return
 	}
 	memResp := d.createMembershipResponse(aliveMsg, targetPeer)
@@ -607,7 +619,12 @@ func (d *gossipDiscoveryImpl) periodicalReconnectToDead() {
 }
 
 func (d *gossipDiscoveryImpl) sendMembershipRequest(member *NetworkMember, includeInternalEndpoint bool) {
-	req, err := d.createMembershipRequest(includeInternalEndpoint).NoopSign()
+	m, err := d.createMembershipRequest(includeInternalEndpoint)
+	if err != nil {
+		d.logger.Warning("Failed creating membership request:", err)
+		return
+	}
+	req, err := m.NoopSign()
 	if err != nil {
 		d.logger.Error("Failed creating SignedGossipMessage:", err)
 		return
@@ -615,9 +632,13 @@ func (d *gossipDiscoveryImpl) sendMembershipRequest(member *NetworkMember, inclu
 	d.comm.SendToPeer(member, req)
 }
 
-func (d *gossipDiscoveryImpl) createMembershipRequest(includeInternalEndpoint bool) *proto.GossipMessage {
+func (d *gossipDiscoveryImpl) createMembershipRequest(includeInternalEndpoint bool) (*proto.GossipMessage, error) {
+	am, err := d.createAliveMessage(includeInternalEndpoint)
+	if err != nil {
+		return nil, err
+	}
 	req := &proto.MembershipRequest{
-		SelfInformation: d.createAliveMessage(includeInternalEndpoint).Envelope,
+		SelfInformation: am.Envelope,
 		// TODO: sending the known peers is not secure because the remote peer might shouldn't know
 		// TODO: about the known peers. I'm deprecating this until a secure mechanism will be implemented.
 		// TODO: See FAB-2570 for tracking this issue.
@@ -629,7 +650,7 @@ func (d *gossipDiscoveryImpl) createMembershipRequest(includeInternalEndpoint bo
 		Content: &proto.GossipMessage_MemReq{
 			MemReq: req,
 		},
-	}
+	}, nil
 }
 
 func (d *gossipDiscoveryImpl) copyLastSeen(lastSeenMap map[string]*timestamp) []NetworkMember {
@@ -711,15 +732,16 @@ func (d *gossipDiscoveryImpl) periodicalSendAlive() {
 	for !d.toDie() {
 		d.logger.Debug("Sleeping", getAliveTimeInterval())
 		time.Sleep(getAliveTimeInterval())
-		msg := d.createAliveMessage(true)
-		if msg == nil {
+		msg, err := d.createAliveMessage(true)
+		if err != nil {
+			d.logger.Warning("Failed creating alive message:", err)
 			return
 		}
 		d.comm.Gossip(msg)
 	}
 }
 
-func (d *gossipDiscoveryImpl) createAliveMessage(includeInternalEndpoint bool) *proto.SignedGossipMessage {
+func (d *gossipDiscoveryImpl) createAliveMessage(includeInternalEndpoint bool) (*proto.SignedGossipMessage, error) {
 	d.lock.Lock()
 	d.seqNum++
 	seqNum := d.seqNum
@@ -750,7 +772,7 @@ func (d *gossipDiscoveryImpl) createAliveMessage(includeInternalEndpoint bool) *
 
 	envp := d.crypt.SignMessage(msg2Gossip, internalEndpoint)
 	if envp == nil {
-		return nil
+		return nil, errors.New("Failed signing message")
 	}
 	signedMsg := &proto.SignedGossipMessage{
 		GossipMessage: msg2Gossip,
@@ -761,7 +783,7 @@ func (d *gossipDiscoveryImpl) createAliveMessage(includeInternalEndpoint bool) *
 		signedMsg.Envelope.SecretEnvelope = nil
 	}
 
-	return signedMsg
+	return signedMsg, nil
 }
 
 func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*proto.SignedGossipMessage) {
