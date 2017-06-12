@@ -17,7 +17,6 @@ limitations under the License.
 package mocks
 
 import (
-	"context"
 	"math"
 	"sync/atomic"
 	"testing"
@@ -29,6 +28,7 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
 
 func TestMockBlocksDeliverer(t *testing.T) {

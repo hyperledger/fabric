@@ -17,6 +17,9 @@ limitations under the License.
 package blocksprovider
 
 import (
+	"math"
+	"time"
+
 	"sync/atomic"
 
 	"github.com/golang/protobuf/proto"
@@ -95,7 +98,13 @@ type blocksProviderImpl struct {
 	mcs api.MessageCryptoService
 
 	done int32
+
+	wrongStatusThreshold int
 }
+
+const wrongStatusThreshold = 10
+
+var maxRetryDelay = time.Second * 10
 
 var logger *logging.Logger // package-level logger
 
@@ -106,16 +115,19 @@ func init() {
 // NewBlocksProvider constructor function to create blocks deliverer instance
 func NewBlocksProvider(chainID string, client streamClient, gossip GossipServiceAdapter, mcs api.MessageCryptoService) BlocksProvider {
 	return &blocksProviderImpl{
-		chainID: chainID,
-		client:  client,
-		gossip:  gossip,
-		mcs:     mcs,
+		chainID:              chainID,
+		client:               client,
+		gossip:               gossip,
+		mcs:                  mcs,
+		wrongStatusThreshold: wrongStatusThreshold,
 	}
 }
 
 // DeliverBlocks used to pull out blocks from the ordering service to
 // distributed them across peers
 func (b *blocksProviderImpl) DeliverBlocks() {
+	errorStatusCounter := 0
+	statusCounter := 0
 	defer b.client.Close()
 	for !b.isDone() {
 		msg, err := b.client.Recv()
@@ -129,12 +141,26 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 				logger.Warningf("[%s] ERROR! Received success for a seek that should never complete", b.chainID)
 				return
 			}
-			logger.Warningf("[%s] Got error %v", b.chainID, t)
-			if t.Status == common.Status_SERVICE_UNAVAILABLE {
-				b.client.Disconnect()
-				continue
+			if t.Status == common.Status_BAD_REQUEST || t.Status == common.Status_FORBIDDEN {
+				logger.Errorf("[%s] Got error %v", b.chainID, t)
+				errorStatusCounter++
+				if errorStatusCounter > b.wrongStatusThreshold {
+					logger.Criticalf("[%s] Wrong statuses threshold passed, stopping block provider", b.chainID)
+					return
+				}
+			} else {
+				errorStatusCounter = 0
+				logger.Warningf("[%s] Got error %v", b.chainID, t)
 			}
+			maxDelay := float64(maxRetryDelay)
+			currDelay := float64(time.Duration(math.Pow(2, float64(statusCounter))) * 100 * time.Millisecond)
+			time.Sleep(time.Duration(math.Min(maxDelay, currDelay)))
+			statusCounter++
+			b.client.Disconnect()
+			continue
 		case *orderer.DeliverResponse_Block:
+			errorStatusCounter = 0
+			statusCounter = 0
 			seqNum := t.Block.Header.Number
 
 			marshaledBlock, err := proto.Marshal(t.Block)
