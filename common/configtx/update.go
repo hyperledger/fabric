@@ -55,6 +55,10 @@ func ComputeDeltaSet(readSet, writeSet map[string]comparable) map[string]compara
 }
 
 func (cm *configManager) verifyDeltaSet(deltaSet map[string]comparable, signedData []*cb.SignedData) error {
+	if len(deltaSet) == 0 {
+		return fmt.Errorf("Delta set was empty.  Update would have no effect.")
+	}
+
 	for key, value := range deltaSet {
 		existing, ok := cm.current.configMap[key]
 		if !ok {
