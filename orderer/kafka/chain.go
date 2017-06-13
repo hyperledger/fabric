@@ -233,6 +233,7 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 				// This shouldn't happen, it should be filtered at ingress
 				logger.Criticalf("[channel: %s] Unable to unmarshal consumed message = %s", chain.support.ChainID(), err)
 				counts[indexUnmarshalError]++
+				continue
 			} else {
 				logger.Debugf("[channel: %s] Successfully unmarshalled consumed message, offset is %d. Inspecting type...", chain.support.ChainID(), in.Offset)
 				counts[indexRecvPass]++
