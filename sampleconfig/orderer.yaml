@@ -110,8 +110,8 @@ General:
 FileLedger:
 
     # Location: The directory to store the blocks in.
-    # NOTE: If this is unset, a temporary location will be chosen using
-    # the prefix specified by Prefix.
+    # NOTE: If this is unset, a new temporary location will be chosen every time
+    # the orderer is restarted, using the prefix specified by Prefix.
     Location: /var/hyperledger/production/orderer
 
     # The prefix to use when generating a ledger directory in temporary space.
