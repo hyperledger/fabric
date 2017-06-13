@@ -1,9 +1,23 @@
 Introduction
 ============
-This section provides an introduction to blockchain that will allow you to
-quickly determine whether it might be useful for you or your business. It also
-explains the characteristics of the Hyperledger Fabric blockchain and suggests
-some ways to increase your knowledge and understanding.
+Hyperledger Fabric is a platform for distributed ledger solutions underpinned 
+by a modular architecture delivering high degrees of confidentiality,
+resiliency, flexibility and scalability. It is designed to support pluggable
+implementations of different components and accommodate the complexity and
+intricacies that exist across the economic ecosystem.
+
+Fabric delivers a uniquely elastic and extensible architecture, distinguishing
+it from alternative blockchain solutions. Planning for the future of enterprise
+blockchain requires building on top of a fully vetted, open-source architecture;
+Hyperledger Fabric is your starting point.
+
+We recommended first-time users begin by going through the rest of the 
+introduction below in order to gain familiarity with how blockchains work 
+and with the specific features and components of Fabric. 
+
+Once comfortable -- or if you're already familiar with blockchain and 
+Hyperledger Fabric -- go to :doc:`getting_started` and from there explore the 
+demos, technical specifications, APIs, etc.
 
 What is a Blockchain?
 ---------------------
