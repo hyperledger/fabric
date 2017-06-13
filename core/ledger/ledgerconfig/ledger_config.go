@@ -66,9 +66,9 @@ func GetMaxBlockfileSize() int {
 
 //GetQueryLimit exposes the queryLimit variable
 func GetQueryLimit() int {
-	queryLimit := viper.GetInt("ledger.state.queryLimit")
+	queryLimit := viper.GetInt("ledger.state.couchDBConfig.queryLimit")
 	// if queryLimit was unset, default to 10000
-	if queryLimit == 0 {
+	if !viper.IsSet("ledger.state.couchDBConfig.queryLimit") {
 		queryLimit = 10000
 	}
 	return queryLimit

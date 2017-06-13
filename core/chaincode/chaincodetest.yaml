@@ -446,9 +446,9 @@ ledger:
        maxRetriesOnStartup: 10
        # CouchDB request timeout (unit: duration, e.g. 20s)
        requestTimeout: 35s
+       # Limit on the number of records to return per query
+       queryLimit: 10000
 
-    # Limit on the number of records to return per query
-    queryLimit: 10000
 
   history:
     # enableHistoryDatabase - options are true or false
