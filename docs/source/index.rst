@@ -30,6 +30,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
 
    prereqs
    getting_started
+   samples
 
 .. toctree::
    :maxdepth: 2
@@ -44,6 +45,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    :maxdepth: 2
    :caption: Tutorials
 
+   build_network
    chaincode
    videos
 
