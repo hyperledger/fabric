@@ -60,6 +60,7 @@ var tLocal;
 var i = 0;
 var inv_m = 0;    // counter of invoke move
 var inv_q = 0;    // counter of invoke query
+var evtTimeout = 0;    // counter of event timeout
 var IDone=0;
 var QDone=0;
 var recHist;
@@ -644,12 +645,12 @@ function eventRegister(tx, cb) {
                 evtRcv++;
 
                 if (code !== 'VALID') {
-                    console.log('[Nid:id:chan:org=%d:%d:%s%s eventRegister] The invoke transaction was invalid, code = ', Nid, pid, channelName, org,  code);
+                    console.log('[Nid:id:chan:org=%d:%d:%s:%s eventRegister] The invoke transaction was invalid, code = ', Nid, pid, channelName, org,  code);
                     reject();
                 } else {
                     if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
                         tCurr = new Date().getTime();
-                        console.log('[Nid:id:chan:org=%d:%d:%s%s eventRegister] completed %d(%d) %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org,  evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                        console.log('[Nid:id:chan:org=%d:%d:%s:%s eventRegister] completed Rcvd(sent)=%d(%d) %s(%s) in %d ms, timestamp: start %d end %d, #event timeout: %d', Nid, pid, channelName, org,  evtRcv, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr, evtTimeout);
                         if (invokeCheck.toUpperCase() == 'TRUE') {
                             arg0 = keyStart + inv_m - 1;
                             inv_q = inv_m - 1;
@@ -660,6 +661,9 @@ function eventRegister(tx, cb) {
                     }
                 }
             });
+        }).catch((err) => {
+            evtTimeout++;
+            //console.log('[Nid:id:chan:org=%d:%d:%s:%s eventRegister] number of events timeout=%d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org, evtTimeout, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
         });
 
         eventPromises.push(txPromise);
@@ -695,12 +699,12 @@ function eventRegister_latency(tx, cb) {
                 eh.unregisterTxEvent(deployId);
 
                 if (code !== 'VALID') {
-                    console.log('[Nid:id:chan:org=%d:%d:%s%s eventRegister_latency] The invoke transaction was invalid, code = ', Nid, pid, channelName, org, code);
+                    console.log('[Nid:id:chan:org=%d:%d:%s:%s eventRegister_latency] The invoke transaction was invalid, code = ', Nid, pid, channelName, org, code);
                     reject();
                 } else {
                     if ( ( IDone == 1 ) && ( inv_m == evtRcv ) ) {
                         tCurr = new Date().getTime();
-                        console.log('[Nid:id:chan:org=%d:%d:%s%s eventRegister_latency] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
+                        console.log('[Nid:id:chan:org=%d:%d:%s:%s eventRegister_latency] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
                         if (invokeCheck.toUpperCase() == 'TRUE') {
                             arg0 = keyStart + inv_m - 1;
                             inv_q = inv_m - 1;
@@ -923,6 +927,7 @@ function getRandomNum(min0, max0) {
 function invoke_move_const(freq) {
     inv_m++;
 
+    var t1 = new Date().getTime();
     getMoveRequest();
 
     chain.sendTransactionProposal(request_invoke)
@@ -956,9 +961,11 @@ function invoke_move_const(freq) {
                         if ( devFreq > 0 ) {
                             freq_n=getRandomNum(freq-devFreq, freq+devFreq);
                         }
+                        tCurr = new Date().getTime();
+                        t1 = tCurr - t1;
                         setTimeout(function(){
                             invoke_move_const(freq);
-                        },freq_n);
+                        },freq_n-t1);
                     } else {
                         tCurr = new Date().getTime();
                         console.log('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_const] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
