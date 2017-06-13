@@ -75,14 +75,14 @@ func (advisor *mspSecurityAdvisor) OrgByPeerIdentity(peerIdentity api.PeerIdenti
 		// Deserialize identity
 		identity, err := mspManager.DeserializeIdentity([]byte(peerIdentity))
 		if err != nil {
-			saLogger.Debug("Failed deserialization identity [% x] on [%s]: [%s]", peerIdentity, chainID, err)
+			saLogger.Debugf("Failed deserialization identity [% x] on [%s]: [%s]", peerIdentity, chainID, err)
 			continue
 		}
 
 		return []byte(identity.GetMSPIdentifier())
 	}
 
-	saLogger.Warning("Peer Identity [% x] cannot be desirialized. No MSP found able to do that.", peerIdentity)
+	saLogger.Warningf("Peer Identity [% x] cannot be desirialized. No MSP found able to do that.", peerIdentity)
 
 	return nil
 }

@@ -404,7 +404,7 @@ func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, 
 	if err != nil {
 		dockerLogger.Errorf("error while destroying image: %s", err)
 	} else {
-		dockerLogger.Debug("Destroyed image %s", id)
+		dockerLogger.Debugf("Destroyed image %s", id)
 	}
 
 	return err
