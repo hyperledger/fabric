@@ -46,10 +46,10 @@ var FabricCAServices = require('fabric-ca-client/lib/FabricCAClientImpl');
 var FabricCAClient = FabricCAServices.FabricCAClient;
 var User = require('fabric-client/lib/User.js');
 var Client = require('fabric-client/lib/Client.js');
-var _commonProto = grpc.load(path.join(__dirname, '../../fabric-client/lib/protos/common/common.proto')).common;
+var _commonProto = grpc.load(path.join(__dirname, 'node_modules/fabric-client/lib/protos/common/common.proto')).common;
 
-var gopath=process.env.GOPATH;
-console.log('GOPATH: ', gopath);
+//var gopath=process.env.GOPATH;
+//console.log('GOPATH: ', gopath);
 
 utils.setConfigSetting('crypto-keysize', 256);
 
@@ -97,6 +97,7 @@ var users =  hfc.getConfigSetting('users');
 var transType = uiContent.transType;
 var nRequest = parseInt(uiContent.nRequest);
 var nProc = parseInt(uiContent.nProc);
+console.log('nProc ', nProc);
 var tCurr;
 
 
@@ -129,43 +130,46 @@ function printChainInfo(chain) {
 }
 
 function clientNewOrderer(client, org) {
+    var ordererID = ORGS[org].ordererID;
+    console.log('[clientNewOrderer] org: %s, ordererID: %s', org, ordererID);
     if (TLS.toUpperCase() == 'ENABLED') {
-        var caRootsPath = ORGS.orderer.tls_cacerts;
+        var caRootsPath = ORGS['orderer'][ordererID].tls_cacerts;
         let data = fs.readFileSync(caRootsPath);
         let caroots = Buffer.from(data).toString();
 
         orderer = client.newOrderer(
-            ORGS.orderer.url,
+            ORGS['orderer'][ordererID].url,
             {
                 'pem': caroots,
-                'ssl-target-name-override': ORGS.orderer['server-hostname']
+                'ssl-target-name-override': ORGS['orderer'][ordererID]['server-hostname']
             }
         );
     } else {
-        orderer = client.newOrderer(ORGS.orderer.url);
+        orderer = client.newOrderer(ORGS['orderer'][ordererID].url);
     }
-    console.log('[clientNewOrderer] orderer: %s', ORGS.orderer.url);
+    console.log('[clientNewOrderer] orderer: %s', ORGS['orderer'][ordererID].url);
 }
 
 function chainAddOrderer(chain, client, org) {
     console.log('[chainAddOrderer] chain name: ', chain.getName());
+    var ordererID = ORGS[org].ordererID;
     if (TLS.toUpperCase() == 'ENABLED') {
-        var caRootsPath = ORGS.orderer.tls_cacerts;
+        var caRootsPath = ORGS['orderer'][ordererID].tls_cacerts;
         var data = fs.readFileSync(caRootsPath);
         let caroots = Buffer.from(data).toString();
 
         chain.addOrderer(
             client.newOrderer(
-                ORGS.orderer.url,
+                ORGS['orderer'][ordererID].url,
                 {
                     'pem': caroots,
-                    'ssl-target-name-override': ORGS.orderer['server-hostname']
+                    'ssl-target-name-override': ORGS['orderer'][ordererID]['server-hostname']
                 }
             )
         );
     } else {
         chain.addOrderer(
-            client.newOrderer(ORGS.orderer.url)
+            client.newOrderer(ORGS['orderer'][ordererID].url)
         );
     }
 }
@@ -491,6 +495,9 @@ function chaincodeInstall(chain, client, org) {
     channelAddPeer(chain, client, org);
     //printChainInfo(chain);
 
+    //TODO: Probably this property is configurable ?
+    process.env.GOPATH = __dirname;
+
     nonce = utils.getNonce();
     tx_id = hfc.buildTransactionID(nonce, the_user);
     nonce = utils.getNonce();
@@ -648,7 +655,7 @@ function chaincodeInstantiate(chain, client, org) {
 
                         eh.registerTxEvent(deployId.toString(), (tx, code) => {
                             var tCurr1=new Date().getTime();
-                            console.log('[chaincodeInstantiate] tCurr=%d, The chaincode instantiate transaction time=%d', tCurr, tCurr1-tCurr);
+                            //console.log('[chaincodeInstantiate] tCurr=%d, The chaincode instantiate transaction time=%d', tCurr, tCurr1-tCurr);
                             //console.log('[chaincodeInstantiate] The chaincode instantiate transaction has been committed on peer '+ eh.ep.addr);
                             clearTimeout(handle);
                             eh.unregisterTxEvent(deployId);
@@ -729,17 +736,19 @@ function pushMSP(client, msps) {
 
     for (let key in ORGS) {
         console.log('[pushMSP] key: %s, ORGS[key].mspid: %s', key, ORGS[key].mspid);
-        if (key.indexOf('orderer') === 0) {
+        if (key.indexOf('org') === 0) {
+            //orderer
             var msp = {};
-            var comName = ORGS[key].comName;
-            msp.id = ORGS[key].mspid;
-            msp.rootCerts = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/'+comName+'/msp/', 'cacerts'));
-            msp.admin = readAllFiles(path.join(ORGS[key].mspPath+'/ordererOrganizations/'+comName+'/msp/', 'admincerts'));
+            var ordererID = ORGS[key].ordererID;
+            msp.id = ORGS['orderer'][ordererID].mspid;
+            var comName = ORGS['orderer'][ordererID].comName;
+            msp.rootCerts = readAllFiles(path.join(ORGS['orderer'][ordererID].mspPath+'/ordererOrganizations/'+comName+'/msp/', 'cacerts'));
+            msp.admin = readAllFiles(path.join(ORGS['orderer'][ordererID].mspPath+'/ordererOrganizations/'+comName+'/msp/', 'admincerts'));
             msps.push(client.newMSP(msp));
-        } else if (key.indexOf('org') === 0) {
+            // org
             var msp = {};
-            var comName = ORGS[key].comName;
             msp.id = ORGS[key].mspid;
+            var comName = ORGS[key].comName;
             msp.rootCerts = readAllFiles(path.join(ORGS[key].mspPath+'/peerOrganizations/'+key+'.'+comName+'/msp/', 'cacerts'));
             msp.admin = readAllFiles(path.join(ORGS[key].mspPath+'/peerOrganizations/'+key+'.'+comName+'/msp/', 'admincerts'));
             msps.push(client.newMSP(msp));
@@ -815,7 +824,23 @@ function createOneChannel(client, org) {
                 signatures.push(signature);
                 //console.log('[createOneChannel] org-signature: ', signature);
 
-                key='orderer';
+                key='org1';
+                client._userContext = null;
+                return testUtil.getOrderAdminSubmitter(client, key, svcFile);
+            }).then((admin) => {
+                the_user = admin;
+                console.log('[createOneChannel] Successfully enrolled user \'admin\' for', key);
+                var signature = client.signChannelConfig(config);
+                console.log('[createOneChannel] Successfully signed config update: ', key);
+                console.log('[createOneChannel] admin : ', admin);
+                // collect signature from org1 admin
+                // TODO: signature counting against policies on the orderer
+                // at the moment is being investigated, but it requires this
+                // weird double-signature from each org admin
+                signatures.push(signature);
+                signatures.push(signature);
+                //console.log('[createOneChannel] orderer-signature: ', signature);
+                key='org2';
                 client._userContext = null;
                 return testUtil.getOrderAdminSubmitter(client, key, svcFile);
             }).then((admin) => {
