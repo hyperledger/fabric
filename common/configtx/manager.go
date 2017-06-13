@@ -29,11 +29,12 @@ import (
 
 var logger = flogging.MustGetLogger("common/configtx")
 
-// Constraints for valid chain IDs
+// Constraints for valid channel and config IDs
 var (
-	allowedChars = "[a-zA-Z0-9.-]+"
-	maxLength    = 249
-	illegalNames = map[string]struct{}{
+	channelAllowedChars = "[a-z][a-z0-9.-]*"
+	configAllowedChars  = "[a-zA-Z0-9.-]+"
+	maxLength           = 249
+	illegalNames        = map[string]struct{}{
 		".":  struct{}{},
 		"..": struct{}{},
 	}
@@ -53,31 +54,57 @@ type configManager struct {
 	current      *configSet
 }
 
-// validateChainID makes sure that proposed chain IDs (i.e. channel names)
-// comply with the following restrictions:
+// validateConfigID makes sure that the config element names (ie map key of
+// ConfigGroup) comply with the following restrictions
 //      1. Contain only ASCII alphanumerics, dots '.', dashes '-'
 //      2. Are shorter than 250 characters.
 //      3. Are not the strings "." or "..".
-//
-// Our hand here is forced by:
-// https://github.com/apache/kafka/blob/trunk/core/src/main/scala/kafka/common/Topic.scala#L29
-func validateChainID(chainID string) error {
-	re, _ := regexp.Compile(allowedChars)
+func validateConfigID(configID string) error {
+	re, _ := regexp.Compile(configAllowedChars)
 	// Length
-	if len(chainID) <= 0 {
-		return fmt.Errorf("chain ID illegal, cannot be empty")
+	if len(configID) <= 0 {
+		return fmt.Errorf("config ID illegal, cannot be empty")
 	}
-	if len(chainID) > maxLength {
-		return fmt.Errorf("chain ID illegal, cannot be longer than %d", maxLength)
+	if len(configID) > maxLength {
+		return fmt.Errorf("config ID illegal, cannot be longer than %d", maxLength)
 	}
 	// Illegal name
-	if _, ok := illegalNames[chainID]; ok {
-		return fmt.Errorf("name '%s' for chain ID is not allowed", chainID)
+	if _, ok := illegalNames[configID]; ok {
+		return fmt.Errorf("name '%s' for config ID is not allowed", configID)
 	}
 	// Illegal characters
-	matched := re.FindString(chainID)
-	if len(matched) != len(chainID) {
-		return fmt.Errorf("Chain ID '%s' contains illegal characters", chainID)
+	matched := re.FindString(configID)
+	if len(matched) != len(configID) {
+		return fmt.Errorf("config ID '%s' contains illegal characters", configID)
+	}
+
+	return nil
+}
+
+// validateChannelID makes sure that proposed channel IDs comply with the
+// following restrictions:
+//      1. Contain only lower case ASCII alphanumerics, dots '.', and dashes '-'
+//      2. Are shorter than 250 characters.
+//      3. Start with a letter
+//
+// This is the intersection of the Kafka restrictions and CouchDB restrictions
+// with the following exception: '.' is converted to '_' in the CouchDB naming
+// This is to accomodate existing channel names with '.', especially in the
+// behave tests which rely on the dot notation for their sluggification.
+func validateChannelID(channelID string) error {
+	re, _ := regexp.Compile(channelAllowedChars)
+	// Length
+	if len(channelID) <= 0 {
+		return fmt.Errorf("channel ID illegal, cannot be empty")
+	}
+	if len(channelID) > maxLength {
+		return fmt.Errorf("channel ID illegal, cannot be longer than %d", maxLength)
+	}
+
+	// Illegal characters
+	matched := re.FindString(channelID)
+	if len(matched) != len(channelID) {
+		return fmt.Errorf("channel ID '%s' contains illegal characters", channelID)
 	}
 
 	return nil
@@ -102,7 +129,7 @@ func NewManagerImpl(envConfig *cb.Envelope, initializer api.Initializer, callOnU
 		return nil, fmt.Errorf("nil channel group")
 	}
 
-	if err := validateChainID(header.ChannelId); err != nil {
+	if err := validateChannelID(header.ChannelId); err != nil {
 		return nil, fmt.Errorf("Bad channel id: %s", err)
 	}
 

@@ -83,7 +83,7 @@ func (mcc *mockChainCreator) NewChannelConfig(envConfigUpdate *cb.Envelope) (con
 }
 
 func TestGoodProposal(t *testing.T) {
-	newChainID := "NewChainID"
+	newChainID := "new-chain-id"
 
 	mcc := newMockChainCreator()
 
