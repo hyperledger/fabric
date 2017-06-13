@@ -12,7 +12,6 @@ services:
       - CORE_PEER_TLS_ENABLED=${TLS_ENABLED}
       - CORE_LOGGING_LEVEL=WARNING
       - CORE_NEXT=true
-      - CORE_PEER_ENDORSER_ENABLED=true
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer1:7051
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=compose_default
     volumes:

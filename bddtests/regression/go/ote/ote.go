@@ -1007,7 +1007,7 @@ func ote(testname string, txs int64, chans int, orderers int, ordType string, kb
 		logger(fmt.Sprintf("Using %d new channelIDs, e.g. test-chan.00023", numChannels))
 		for c := 0; c < numChannels; c++ {
 			channelIDs[c] = fmt.Sprintf("test-chan.%05d", c)
-			cmd := fmt.Sprintf("cd $GOPATH/src/github.com/hyperledger/fabric && CORE_PEER_COMMITTER_LEDGER_ORDERER=127.0.0.1:%d peer channel create -c %s", ordStartPort, channelIDs[c])
+			cmd := fmt.Sprintf("cd $GOPATH/src/github.com/hyperledger/fabric && peer channel create -c %s", channelIDs[c])
 			_ = executeCmd(cmd)
 			//executeCmdAndDisplay(cmd)
 		}
