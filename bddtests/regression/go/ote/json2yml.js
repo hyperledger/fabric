@@ -1,3 +1,8 @@
+//
+// Copyright IBM Corp. All Rights Reserved.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
 var fs = require('fs');
 
 var cfgFile = process.argv[2];
