@@ -84,35 +84,29 @@ func TestCreateCouchDBSystemDBs(t *testing.T) {
 
 }
 func TestDatabaseMapping(t *testing.T) {
-
 	//create a new instance and database object using a database name mixed case
-	databaseName, err := mapAndValidateDatabaseName("testDB")
-	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to map database name"))
-	testutil.AssertEquals(t, databaseName, "testdb")
-
-	//create a new instance and database object using a database name with numerics
-	databaseName, err = mapAndValidateDatabaseName("test1234DB")
-	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to map database name"))
-	testutil.AssertEquals(t, databaseName, "test1234db")
+	_, err := mapAndValidateDatabaseName("testDB")
+	testutil.AssertError(t, err, "Error expected because the name contains capital letters")
 
 	//create a new instance and database object using a database name with special characters
-	databaseName, err = mapAndValidateDatabaseName("test1234_$(),+-/~!@#%^&*[]{}.")
-	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to map database name"))
-	testutil.AssertEquals(t, databaseName, "test1234_$(),+-/_____________")
+	_, err = mapAndValidateDatabaseName("test1234_1")
+	testutil.AssertError(t, err, "Error expected because the name contains illegal chars")
 
 	//create a new instance and database object using a database name with special characters
-	databaseName, err = mapAndValidateDatabaseName("5test1234")
-	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to map database name"))
-	testutil.AssertEquals(t, databaseName, "db_5test1234")
+	_, err = mapAndValidateDatabaseName("5test1234")
+	testutil.AssertError(t, err, "Error expected because the name starts with a number")
 
 	//create a new instance and database object using an empty string
 	_, err = mapAndValidateDatabaseName("")
 	testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for an invalid name"))
 
-	_, err = mapAndValidateDatabaseName("A12345678901234567890123456789012345678901234" +
+	_, err = mapAndValidateDatabaseName("a12345678901234567890123456789012345678901234" +
 		"56789012345678901234567890123456789012345678901234567890123456789012345678901234567890" +
 		"12345678901234567890123456789012345678901234567890123456789012345678901234567890123456" +
 		"78901234567890123456789012345678901234567890")
 	testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for an invalid name"))
 
+	transformedName, err := mapAndValidateDatabaseName("test.my.db-1")
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertEquals(t, transformedName, "test_my_db-1")
 }

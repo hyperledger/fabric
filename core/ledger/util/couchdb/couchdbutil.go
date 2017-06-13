@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-var validNamePattern = `^[a-z][a-z0-9_$(),+/-]+`
+var expectedChannelNamePattern = `[a-z][a-z0-9.-]*`
 var maxLength = 249
 
 //CreateCouchInstance creates a CouchDB instance
@@ -142,13 +142,12 @@ func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
 //_, $, (, ), +, -, and / are allowed. Must begin with a letter.
 //
 //Restictions have already been applied to the database name from Orderer based on
-//restrictions required by Kafka
+//restrictions required by Kafka and couchDB (except a '.' char). The databaseName
+// passed in here is expected to follow `[a-z][a-z0-9.-]*` pattern.
 //
-//The validation will validate upper case, the string will be lower cased
-//Replace any characters not allowed in CouchDB with an "_"
-//Check for a leading letter, if not present, the prepend "db_"
+//This validation will simply check whether the database name matches the above pattern and will replace
+// all occurence of '.' by '-'. This will not cause collisions in the trnasformed named
 func mapAndValidateDatabaseName(databaseName string) (string, error) {
-
 	// test Length
 	if len(databaseName) <= 0 {
 		return "", fmt.Errorf("Database name is illegal, cannot be empty")
@@ -156,30 +155,15 @@ func mapAndValidateDatabaseName(databaseName string) (string, error) {
 	if len(databaseName) > maxLength {
 		return "", fmt.Errorf("Database name is illegal, cannot be longer than %d", maxLength)
 	}
-
-	//force the name to all lowercase
-	databaseName = strings.ToLower(databaseName)
-
-	//Replace any characters not allowed in CouchDB with an "_"
-	replaceString := regexp.MustCompile(`[^a-z0-9_$(),+/-]`)
-
-	//Set up the replace pattern for special characters
-	validatedDatabaseName := replaceString.ReplaceAllString(databaseName, "_")
-
-	//if the first character is not a letter, then prepend "db_"
-	testLeadingLetter := regexp.MustCompile("^[a-z]")
-	isLeadingLetter := testLeadingLetter.MatchString(validatedDatabaseName)
-	if !isLeadingLetter {
-		validatedDatabaseName = "db_" + validatedDatabaseName
+	re, err := regexp.Compile(expectedChannelNamePattern)
+	if err != nil {
+		return "", err
 	}
-
-	//create the expression for valid characters
-	validString := regexp.MustCompile(validNamePattern)
-
-	// Illegal characters
-	matched := validString.MatchString(validatedDatabaseName)
-	if !matched {
-		return "", fmt.Errorf("Database name '%s' contains illegal characters", validatedDatabaseName)
+	matched := re.FindString(databaseName)
+	if len(matched) != len(databaseName) {
+		return "", fmt.Errorf("databaseName '%s' does not matches pattern '%s'", databaseName, expectedChannelNamePattern)
 	}
-	return validatedDatabaseName, nil
+	// replace all '.' to '_'. The databaseName passed in will never contain an '_'. So, this translation will not cause collisions
+	databaseName = strings.Replace(databaseName, ".", "_", -1)
+	return databaseName, nil
 }
