@@ -262,7 +262,7 @@ func (g *gossipServiceImpl) Stop() {
 	}
 
 	for chainID, electionService := range g.leaderElection {
-		logger.Info("Stopping leader election for %s", chainID)
+		logger.Infof("Stopping leader election for %s", chainID)
 		electionService.Stop()
 	}
 	g.gossipSvc.Stop()

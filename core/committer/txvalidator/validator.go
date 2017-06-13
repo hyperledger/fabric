@@ -141,13 +141,13 @@ func (v *txValidator) Validate(block *common.Block) error {
 
 				chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 				if err != nil {
-					logger.Warning("Could not unmarshal channel header, err %s, skipping", err)
+					logger.Warningf("Could not unmarshal channel header, err %s, skipping", err)
 					txsfltr.SetFlag(tIdx, peer.TxValidationCode_INVALID_OTHER_REASON)
 					continue
 				}
 
 				channel := chdr.ChannelId
-				logger.Debug("Transaction is for chain %s", channel)
+				logger.Debugf("Transaction is for chain %s", channel)
 
 				if !v.chainExists(channel) {
 					logger.Errorf("Dropping transaction for non-existent chain %s", channel)
