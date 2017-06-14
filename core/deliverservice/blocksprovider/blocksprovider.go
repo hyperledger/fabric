@@ -155,7 +155,9 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 			maxDelay := float64(maxRetryDelay)
 			currDelay := float64(time.Duration(math.Pow(2, float64(statusCounter))) * 100 * time.Millisecond)
 			time.Sleep(time.Duration(math.Min(maxDelay, currDelay)))
-			statusCounter++
+			if currDelay < maxDelay {
+				statusCounter++
+			}
 			b.client.Disconnect()
 			continue
 		case *orderer.DeliverResponse_Block:
