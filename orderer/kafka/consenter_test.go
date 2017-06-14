@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -67,7 +69,7 @@ func TestHandleChain(t *testing.T) {
 	newestOffset := int64(5)
 	message := sarama.StringEncoder("messageFoo")
 
-	mockChannel := newChannel("foo.channel", defaultPartition)
+	mockChannel := newChannel(channelNameForTest(t), defaultPartition)
 
 	mockBroker := sarama.NewMockBroker(t, 0)
 	mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
@@ -170,4 +172,9 @@ func syncQueueMessage(message *cb.Envelope, chain *chainImpl, mockBlockcutter *m
 func tamperBytes(original []byte) []byte {
 	byteCount := len(original)
 	return original[:byteCount-1]
+}
+
+func channelNameForTest(t *testing.T) string {
+	name := strings.Split(fmt.Sprint(t), " ")[18] // w/golang 1.8, use t.Name()
+	return fmt.Sprintf("%s.channel", strings.Replace(strings.ToLower(name), "/", ".", -1))
 }

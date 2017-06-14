@@ -205,7 +205,7 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 			counts[indexExitChanPass]++
 			return counts, nil
 		case kafkaErr := <-chain.channelConsumer.Errors():
-			logger.Error(kafkaErr)
+			logger.Errorf("[channel: %s] Error during consumption: %s", chain.support.ChainID(), kafkaErr)
 			counts[indexRecvError]++
 			select {
 			case <-chain.errorChan: // If already closed, don't do anything
@@ -221,14 +221,17 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 			// mark the chain as available, so we have to force that trigger via
 			// the emission of a CONNECT message. TODO Consider rate limiting
 			go sendConnectMessage(chain.consenter.retryOptions(), chain.haltChan, chain.producer, chain.channel)
-		case in := <-chain.channelConsumer.Messages():
+		case in, ok := <-chain.channelConsumer.Messages():
+			if !ok {
+				logger.Criticalf("[channel: %s] Kafka consumer closed.", chain.support.ChainID())
+				return counts, nil
+			}
 			select {
 			case <-chain.errorChan: // If this channel was closed...
 				chain.errorChan = make(chan struct{}) // ...make a new one.
 				logger.Infof("[channel: %s] Marked consenter as available again", chain.support.ChainID())
 			default:
 			}
-
 			if err := proto.Unmarshal(in.Value, msg); err != nil {
 				// This shouldn't happen, it should be filtered at ingress
 				logger.Criticalf("[channel: %s] Unable to unmarshal consumed message = %s", chain.support.ChainID(), err)

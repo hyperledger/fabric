@@ -16,7 +16,7 @@ import (
 func TestRetry(t *testing.T) {
 	var rp *retryProcess
 
-	mockChannel := newChannel("foo.channel", defaultPartition)
+	mockChannel := newChannel(channelNameForTest(t), defaultPartition)
 	flag := false
 
 	noErrorFn := func() error {

@@ -31,36 +31,38 @@ var (
 )
 
 func TestChain(t *testing.T) {
-	mockChannel := newChannel("foo.channel", defaultPartition)
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
 
 	message := sarama.StringEncoder("messageFoo")
 
-	mockBroker := sarama.NewMockBroker(t, 0)
-	defer func() { mockBroker.Close() }()
-
-	mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
-		"MetadataRequest": sarama.NewMockMetadataResponse(t).
-			SetBroker(mockBroker.Addr(), mockBroker.BrokerID()).
-			SetLeader(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID()),
-		"ProduceRequest": sarama.NewMockProduceResponse(t).
-			SetError(mockChannel.topic(), mockChannel.partition(), sarama.ErrNoError),
-		"OffsetRequest": sarama.NewMockOffsetResponse(t).
-			SetOffset(mockChannel.topic(), mockChannel.partition(), sarama.OffsetOldest, oldestOffset).
-			SetOffset(mockChannel.topic(), mockChannel.partition(), sarama.OffsetNewest, newestOffset),
-		"FetchRequest": sarama.NewMockFetchResponse(t, 1).
-			SetMessage(mockChannel.topic(), mockChannel.partition(), newestOffset, message),
-	})
-
-	mockSupport := &mockmultichain.ConsenterSupport{
-		ChainIDVal:      mockChannel.topic(),
-		HeightVal:       uint64(3),
-		SharedConfigVal: &mockconfig.Orderer{KafkaBrokersVal: []string{mockBroker.Addr()}},
+	newMocks := func(t *testing.T) (mockChannel channel, mockBroker *sarama.MockBroker, mockSupport *mockmultichain.ConsenterSupport) {
+		mockChannel = newChannel(channelNameForTest(t), defaultPartition)
+		mockBroker = sarama.NewMockBroker(t, 0)
+		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
+			"MetadataRequest": sarama.NewMockMetadataResponse(t).
+				SetBroker(mockBroker.Addr(), mockBroker.BrokerID()).
+				SetLeader(mockChannel.topic(), mockChannel.partition(), mockBroker.BrokerID()),
+			"ProduceRequest": sarama.NewMockProduceResponse(t).
+				SetError(mockChannel.topic(), mockChannel.partition(), sarama.ErrNoError),
+			"OffsetRequest": sarama.NewMockOffsetResponse(t).
+				SetOffset(mockChannel.topic(), mockChannel.partition(), sarama.OffsetOldest, oldestOffset).
+				SetOffset(mockChannel.topic(), mockChannel.partition(), sarama.OffsetNewest, newestOffset),
+			"FetchRequest": sarama.NewMockFetchResponse(t, 1).
+				SetMessage(mockChannel.topic(), mockChannel.partition(), newestOffset, message),
+		})
+		mockSupport = &mockmultichain.ConsenterSupport{
+			ChainIDVal:      mockChannel.topic(),
+			HeightVal:       uint64(3),
+			SharedConfigVal: &mockconfig.Orderer{KafkaBrokersVal: []string{mockBroker.Addr()}},
+		}
+		return
 	}
 
 	t.Run("New", func(t *testing.T) {
+		_, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
 		chain, err := newChain(mockConsenter, mockSupport, newestOffset-1)
 
 		assert.NoError(t, err, "Expected newChain to return without errors")
@@ -87,6 +89,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("Start", func(t *testing.T) {
+		_, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
 		// Set to -1 because we haven't sent the CONNECT message yet
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
 
@@ -103,6 +107,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("Halt", func(t *testing.T) {
+		_, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
 
 		chain.Start()
@@ -132,6 +138,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("DoubleHalt", func(t *testing.T) {
+		_, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
 
 		chain.Start()
@@ -148,6 +156,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("StartWithProducerForChannelError", func(t *testing.T) {
+		_, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
 		// Point to an empty brokers list
 		mockSupportCopy := *mockSupport
 		mockSupportCopy.SharedConfigVal = &mockconfig.Orderer{KafkaBrokersVal: []string{}}
@@ -164,6 +174,8 @@ func TestChain(t *testing.T) {
 		// - Net.ReadTimeout
 		// - Consumer.Retry.Backoff
 		// - Metadata.Retry.Max
+		mockChannel, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
 
 		// Have the broker return an ErrNotLeaderForPartition error
@@ -184,6 +196,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("EnqueueIfNotStarted", func(t *testing.T) {
+		mockChannel, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
 
 		// As in StartWithConnectMessageError, have the broker return an
@@ -211,6 +225,9 @@ func TestChain(t *testing.T) {
 		// - Consumer.Retry.Backoff
 		// - Metadata.Retry.Max
 
+		mockChannel, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
+
 		// Provide an out-of-range offset
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset)
 
@@ -231,8 +248,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("EnqueueProper", func(t *testing.T) {
-		t.Skip("Skipping test until FAB-4537 is resolved")
-
+		mockChannel, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
 
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
@@ -264,6 +281,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("EnqueueIfHalted", func(t *testing.T) {
+		mockChannel, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
 
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
@@ -293,6 +312,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("EnqueueError", func(t *testing.T) {
+		mockChannel, mockBroker, mockSupport := newMocks(t)
+		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
 
 		// Use the "good" handler map that allows the Stage to complete without
@@ -336,7 +357,7 @@ func TestSetupProducerForChannel(t *testing.T) {
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer mockBroker.Close()
 
-	mockChannel := newChannel("foo.channel", defaultPartition)
+	mockChannel := newChannel(channelNameForTest(t), defaultPartition)
 
 	haltChan := make(chan struct{})
 
@@ -361,7 +382,7 @@ func TestSetupConsumerForChannel(t *testing.T) {
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
 
-	mockChannel := newChannel("foo.channel", defaultPartition)
+	mockChannel := newChannel(channelNameForTest(t), defaultPartition)
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
@@ -412,7 +433,7 @@ func TestSetupConsumerForChannel(t *testing.T) {
 }
 
 func TestCloseKafkaObjects(t *testing.T) {
-	mockChannel := newChannel("foo.channel", defaultPartition)
+	mockChannel := newChannel(channelNameForTest(t), defaultPartition)
 
 	mockSupport := &mockmultichain.ConsenterSupport{
 		ChainIDVal: mockChannel.topic(),
@@ -526,7 +547,7 @@ func TestGetLastCutBlockNumber(t *testing.T) {
 }
 
 func TestGetLastOffsetPersisted(t *testing.T) {
-	mockChannel := newChannel("foo.channel", defaultPartition)
+	mockChannel := newChannel(channelNameForTest(t), defaultPartition)
 	mockMetadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: int64(5)})}
 
 	testCases := []struct {
