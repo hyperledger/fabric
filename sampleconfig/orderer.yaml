@@ -148,19 +148,16 @@ Kafka:
     # or if a metadata request to the Kafka cluster needs to be repeated.
     Retry:
         # When a new channel is created, or when an existing channel is reloaded
-        # (as part of the orderer's bootstrapping), the orderer interacts with
-        # the Kafka cluster in the following ways:
+        # (in case of a just-restarted orderer), the orderer interacts with the
+        # Kafka cluster in the following ways:
         # 1. It creates a Kafka producer (writer) for the Kafka partition that
         # corresponds to the channel.
         # 2. It uses that producer to post a no-op CONNECT message to that
         # partition
         # 3. It creates a Kafka consumer (reader) for that partition.
-        # If any of these steps fails, they will be re-attempted every
+        # If any of these steps fail, they will be re-attempted every
         # <ShortInterval> for a total of <ShortTotal>, and then every
-        # <LongInterval> for a total of <LongTotal> until they succeed:
-        # 1. Creation of Kafka producer (writer) for the channel
-        # 2. Creation of Kafka consumer (reader) for the channel
-        # 3. Posting of no-op CONNECT message to the channel
+        # <LongInterval> for a total of <LongTotal> until they succeed.
         # Note that the orderer will be unable to write to or read from a
         # channel until all of the steps above have been completed successfully.
         ShortInterval: 5s
