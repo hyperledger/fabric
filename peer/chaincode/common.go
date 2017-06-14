@@ -102,8 +102,14 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 		return err
 	}
 
-	proposalResp, err := ChaincodeInvokeOrQuery(spec, chainID, invoke,
-		cf.Signer, cf.EndorserClient, cf.BroadcastClient)
+	proposalResp, err := ChaincodeInvokeOrQuery(
+		spec,
+		chainID,
+		invoke,
+		cf.Signer,
+		cf.EndorserClient,
+		cf.BroadcastClient)
+
 	if err != nil {
 		return fmt.Errorf("%s - %v", err, proposalResp)
 	}
@@ -139,8 +145,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 
 		if chaincodeQueryRaw {
 			if chaincodeQueryHex {
-				err = errors.New("Options --raw (-r) and --hex (-x) are not compatible")
-				return
+				return fmt.Errorf("Options --raw (-r) and --hex (-x) are not compatible")
 			}
 			fmt.Print("Query Result (Raw): ")
 			os.Stdout.Write(proposalResp.Response.Payload)
@@ -152,7 +157,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 			}
 		}
 	}
-	return err
+	return nil
 }
 
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
@@ -161,48 +166,33 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		return fmt.Errorf("Must supply value for %s name parameter.", chainFuncName)
 	}
 
-	if cmd.Name() == instantiate_cmdname || cmd.Name() == install_cmdname ||
-		cmd.Name() == upgrade_cmdname || cmd.Name() == package_cmdname {
+	if cmd.Name() == instantiateCmdName || cmd.Name() == installCmdName ||
+		cmd.Name() == upgradeCmdName || cmd.Name() == packageCmdName {
 		if chaincodeVersion == common.UndefinedParamValue {
 			return fmt.Errorf("Chaincode version is not provided for %s", cmd.Name())
 		}
 	}
 
-	// if it's not a deploy or an upgrade we don't need policy, escc and vscc
-	if cmd.Name() != instantiate_cmdname && cmd.Name() != upgrade_cmdname {
-		if escc != common.UndefinedParamValue {
-			return errors.New("escc should be supplied only to chaincode deploy requests")
-		}
-
-		if vscc != common.UndefinedParamValue {
-			return errors.New("vscc should be supplied only to chaincode deploy requests")
-		}
-
-		if policy != common.UndefinedParamValue {
-			return errors.New("policy should be supplied only to chaincode deploy requests")
-		}
+	if escc != common.UndefinedParamValue {
+		logger.Infof("Using escc %s", escc)
 	} else {
-		if escc != common.UndefinedParamValue {
-			logger.Infof("Using escc %s", escc)
-		} else {
-			logger.Info("Using default escc")
-			escc = "escc"
-		}
+		logger.Info("Using default escc")
+		escc = "escc"
+	}
 
-		if vscc != common.UndefinedParamValue {
-			logger.Infof("Using vscc %s", vscc)
-		} else {
-			logger.Info("Using default vscc")
-			vscc = "vscc"
-		}
+	if vscc != common.UndefinedParamValue {
+		logger.Infof("Using vscc %s", vscc)
+	} else {
+		logger.Info("Using default vscc")
+		vscc = "vscc"
+	}
 
-		if policy != common.UndefinedParamValue {
-			p, err := cauthdsl.FromString(policy)
-			if err != nil {
-				return fmt.Errorf("Invalid policy %s", policy)
-			}
-			policyMarhsalled = putils.MarshalOrPanic(p)
+	if policy != common.UndefinedParamValue {
+		p, err := cauthdsl.FromString(policy)
+		if err != nil {
+			return fmt.Errorf("Invalid policy %s", policy)
 		}
+		policyMarhsalled = putils.MarshalOrPanic(p)
 	}
 
 	// Check that non-empty chaincode parameters contain only Args as a key.
@@ -294,8 +284,14 @@ func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFa
 //
 // NOTE - Query will likely go away as all interactions with the endorser are
 // Proposal and ProposalResponses
-func ChaincodeInvokeOrQuery(spec *pb.ChaincodeSpec, cID string, invoke bool,
-	signer msp.SigningIdentity, endorserClient pb.EndorserClient, bc common.BroadcastClient) (*pb.ProposalResponse, error) {
+func ChaincodeInvokeOrQuery(
+	spec *pb.ChaincodeSpec,
+	cID string,
+	invoke bool,
+	signer msp.SigningIdentity,
+	endorserClient pb.EndorserClient,
+	bc common.BroadcastClient,
+) (*pb.ProposalResponse, error) {
 	// Build the ChaincodeInvocationSpec message
 	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
 	if customIDGenAlg != common.UndefinedParamValue {

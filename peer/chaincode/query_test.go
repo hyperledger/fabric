@@ -30,36 +30,32 @@ func TestQueryCmd(t *testing.T) {
 
 	// Success case: run query command with -r option
 	cmd := queryCmd(mockCF)
-	AddFlags(cmd)
-	args := []string{"-r", "-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-		"-c", "{\"Args\": [\"query\",\"a\"]}"}
+	addFlags(cmd)
+	args := []string{"-r", "-n", "example02", "-c", "{\"Args\": [\"query\",\"a\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.NoError(t, err, "Run chaincode query cmd error")
 
 	// Success case: run query command with -x option
 	cmd = queryCmd(mockCF)
-	AddFlags(cmd)
-	args = []string{"-x", "-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-		"-c", "{\"Args\": [\"query\",\"a\"]}"}
+	addFlags(cmd)
+	args = []string{"-x", "-n", "example02", "-c", "{\"Args\": [\"query\",\"a\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.NoError(t, err, "Run chaincode query cmd error")
 
 	// Success case: run query command with out -r or -x option
 	cmd = queryCmd(mockCF)
-	AddFlags(cmd)
-	args = []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-		"-c", "{\"Args\": [\"query\",\"a\"]}"}
+	addFlags(cmd)
+	args = []string{"-n", "example02", "-c", "{\"Args\": [\"query\",\"a\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.NoError(t, err, "Expected error executing query command")
 
 	// Failure case: run query command with both -x and -r options
 	cmd = queryCmd(mockCF)
-	AddFlags(cmd)
-	args = []string{"-r", "-x", "-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-		"-c", "{\"Args\": [\"query\",\"a\"]}"}
+	addFlags(cmd)
+	args = []string{"-r", "-x", "-n", "example02", "-c", "{\"Args\": [\"query\",\"a\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.Error(t, err, "Expected error executing query command with both -r and -x options")
@@ -68,9 +64,8 @@ func TestQueryCmd(t *testing.T) {
 	mockCF, err = getMockChaincodeCmdFactoryWithErr()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
 	cmd = queryCmd(mockCF)
-	AddFlags(cmd)
-	args = []string{"-r", "-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-		"-c", "{\"Args\": [\"query\",\"a\"]}"}
+	addFlags(cmd)
+	args = []string{"-r", "-n", "example02", "-c", "{\"Args\": [\"query\",\"a\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.Error(t, err, "Expected error executing query command with both -r and -x options")

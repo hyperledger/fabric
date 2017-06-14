@@ -39,9 +39,8 @@ func TestInvokeCmd(t *testing.T) {
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
 
 	cmd := invokeCmd(mockCF)
-	AddFlags(cmd)
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-		"-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
+	addFlags(cmd)
+	args := []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.NoError(t, err, "Run chaincode invoke cmd error")
@@ -65,9 +64,8 @@ func TestInvokeCmd(t *testing.T) {
 		return []string{}, nil
 	}
 	cmd = invokeCmd(nil)
-	AddFlags(cmd)
-	args = []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-		"-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
+	addFlags(cmd)
+	args = []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.Error(t, err)
@@ -129,9 +127,8 @@ func TestInvokeCmdEndorsementError(t *testing.T) {
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
 
 	cmd := invokeCmd(mockCF)
-	AddFlags(cmd)
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-		"-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
+	addFlags(cmd)
+	args := []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.Error(t, err, "Expected error executing invoke command")
@@ -147,9 +144,8 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 		assert.NoError(t, err, "Error getting mock chaincode command factory")
 
 		cmd := invokeCmd(mockCF)
-		AddFlags(cmd)
-		args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-			"-c", "{\"Args\": [\"invokeinvalid\",\"a\",\"b\",\"10\"]}"}
+		addFlags(cmd)
+		args := []string{"-n", "example02", "-c", "{\"Args\": [\"invokeinvalid\",\"a\",\"b\",\"10\"]}"}
 		cmd.SetArgs(args)
 
 		// set logger to logger with a backend that writes to a byte buffer

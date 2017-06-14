@@ -30,46 +30,51 @@ func TestInstantiateCmd(t *testing.T) {
 
 	// basic function tests
 	var tests = []struct {
+		name          string
 		args          []string
 		errorExpected bool
 		errMsg        string
 	}{
 		{
-			args: []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-				"-v", "anotherversion", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
+			name:          "successful",
+			args:          []string{"-n", "example02", "-v", "anotherversion", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
 			errorExpected: false,
 			errMsg:        "Run chaincode instantiate cmd error",
 		},
 		{
+			name:          "no option",
 			args:          []string{},
 			errorExpected: true,
 			errMsg:        "Expected error executing instantiate command without required options",
 		},
 		{
-			args: []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-				"-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
+			name:          "missing version",
+			args:          []string{"-n", "example02", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
 			errorExpected: true,
 			errMsg:        "Expected error executing instantiate command without the -v option",
 		},
 		{
-			args: []string{"-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-				"-v", "anotherversion", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
+			name:          "missing name",
+			args:          []string{"-v", "anotherversion", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
 			errorExpected: true,
 			errMsg:        "Expected error executing instantiate command without the -n option",
 		},
 		{
-			args: []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
-				"-v", "anotherversion"},
+			name:          "missing ctor",
+			args:          []string{"-n", "example02", "-v", "anotherversion"},
 			errorExpected: true,
 			errMsg:        "Expected error executing instantiate command without the -c option",
 		},
 	}
 	for _, test := range tests {
-		cmd := instantiateCmd(mockCF)
-		AddFlags(cmd)
-		cmd.SetArgs(test.args)
-		err = cmd.Execute()
-		checkError(t, err, test.errorExpected, test.errMsg)
+		t.Run(test.name, func(t *testing.T) {
+			resetFlags()
+			cmd := instantiateCmd(mockCF)
+			addFlags(cmd)
+			cmd.SetArgs(test.args)
+			err = cmd.Execute()
+			checkError(t, err, test.errorExpected, test.errMsg)
+		})
 	}
 }
 

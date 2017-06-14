@@ -37,6 +37,11 @@ func updateCmd(cf *ChannelCmdFactory) *cobra.Command {
 			return update(cmd, args, cf)
 		},
 	}
+	flagList := []string{
+		"channelID",
+		"file",
+	}
+	attachFlags(updateCmd, flagList)
 
 	return updateCmd
 }

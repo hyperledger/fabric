@@ -59,6 +59,12 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 			return create(cmd, args, cf)
 		},
 	}
+	flagList := []string{
+		"channelID",
+		"file",
+		"timeout",
+	}
+	attachFlags(createCmd, flagList)
 
 	return createCmd
 }

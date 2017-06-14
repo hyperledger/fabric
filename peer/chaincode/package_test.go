@@ -102,7 +102,7 @@ func createSignedCDSPackage(args []string, sign bool) error {
 	mockCF := &ChaincodeCmdFactory{Signer: signer}
 
 	cmd := packageCmd(mockCF, mockCDSFactory)
-	AddFlags(cmd)
+	addFlags(cmd)
 
 	cmd.SetArgs(args)
 
