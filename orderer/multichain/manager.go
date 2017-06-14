@@ -109,7 +109,7 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 		}
 		configTx := getConfigTx(rl)
 		if configTx == nil {
-			logger.Panicf("Could not find config transaction for chain %s", chainID)
+			logger.Panic("Programming error, configTx should never be nil here")
 		}
 		ledgerResources := ml.newLedgerResources(configTx)
 		chainID := ledgerResources.ChainID()
@@ -123,7 +123,7 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 				consenters,
 				signer)
 			logger.Infof("Starting with system channel %s and orderer type %s", chainID, chain.SharedConfig().ConsensusType())
-			ml.chains[string(chainID)] = chain
+			ml.chains[chainID] = chain
 			ml.systemChannelID = chainID
 			ml.systemChannel = chain
 			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built
@@ -134,7 +134,7 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 				ledgerResources,
 				consenters,
 				signer)
-			ml.chains[string(chainID)] = chain
+			ml.chains[chainID] = chain
 			chain.start()
 		}
 

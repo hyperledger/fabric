@@ -27,6 +27,12 @@ Profiles:
             SampleConsortium:
                 Organizations:
 
+    # SampleNoConsortium is very similar to SampleInsecureSolo, except it
+    # does not define Consortiums.
+    SampleNoConsortium:
+        Orderer:
+            <<: *OrdererDefaults
+
     # SampleInsecureKafka defines a configuration that differs from the
     # SampleInsecureSolo one only in that is uses the Kafka-based orderer.
     SampleInsecureKafka:
