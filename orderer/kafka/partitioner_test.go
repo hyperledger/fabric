@@ -18,7 +18,7 @@ func TestStaticPartitioner(t *testing.T) {
 	var numberOfPartitions int32 = 6
 
 	partitionerConstructor := newStaticPartitioner(partition)
-	partitioner := partitionerConstructor("channelFoo")
+	partitioner := partitionerConstructor("foo.channel")
 
 	for i := 0; i < 10; i++ {
 		assignedPartition, err := partitioner.Partition(new(sarama.ProducerMessage), numberOfPartitions)
