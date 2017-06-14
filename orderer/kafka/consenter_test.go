@@ -67,7 +67,7 @@ func TestHandleChain(t *testing.T) {
 	newestOffset := int64(5)
 	message := sarama.StringEncoder("messageFoo")
 
-	mockChannel := newChannel("channelFoo", defaultPartition)
+	mockChannel := newChannel("foo.channel", defaultPartition)
 
 	mockBroker := sarama.NewMockBroker(t, 0)
 	mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
@@ -113,7 +113,6 @@ func extractEncodedOffset(marshalledOrdererMetadata []byte) int64 {
 func newMockBrokerConfig(tlsConfig localconfig.TLS, retryOptions localconfig.Retry, kafkaVersion sarama.KafkaVersion, chosenStaticPartition int32) *sarama.Config {
 	brokerConfig := newBrokerConfig(tlsConfig, retryOptions, kafkaVersion, chosenStaticPartition)
 	brokerConfig.ClientID = "test"
-	brokerConfig.Producer.MaxMessageBytes-- // FIXME https://jira.hyperledger.org/browse/FAB-4083
 	return brokerConfig
 }
 

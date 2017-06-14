@@ -24,9 +24,9 @@ import (
 )
 
 func TestChannel(t *testing.T) {
-	chn := newChannel("channelFoo", defaultPartition)
+	chn := newChannel("foo.channel", defaultPartition)
 
-	expectedTopic := fmt.Sprintf("%s", "channelFoo")
+	expectedTopic := fmt.Sprintf("%s", "foo.channel")
 	actualTopic := chn.topic()
 	assert.Equal(t, expectedTopic, actualTopic, "Got the wrong topic, expected %s, got %s instead", expectedTopic, actualTopic)
 

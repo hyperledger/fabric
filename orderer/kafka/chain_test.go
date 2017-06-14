@@ -31,7 +31,7 @@ var (
 )
 
 func TestChain(t *testing.T) {
-	mockChannel := newChannel("channelFoo", defaultPartition)
+	mockChannel := newChannel("foo.channel", defaultPartition)
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
@@ -334,7 +334,7 @@ func TestSetupProducerForChannel(t *testing.T) {
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer mockBroker.Close()
 
-	mockChannel := newChannel("channelFoo", defaultPartition)
+	mockChannel := newChannel("foo.channel", defaultPartition)
 
 	haltChan := make(chan struct{})
 
@@ -359,7 +359,7 @@ func TestSetupConsumerForChannel(t *testing.T) {
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
 
-	mockChannel := newChannel("channelFoo", defaultPartition)
+	mockChannel := newChannel("foo.channel", defaultPartition)
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
@@ -410,7 +410,7 @@ func TestSetupConsumerForChannel(t *testing.T) {
 }
 
 func TestCloseKafkaObjects(t *testing.T) {
-	mockChannel := newChannel("channelFoo", defaultPartition)
+	mockChannel := newChannel("foo.channel", defaultPartition)
 
 	mockSupport := &mockmultichain.ConsenterSupport{
 		ChainIDVal: mockChannel.topic(),
@@ -524,7 +524,7 @@ func TestGetLastCutBlockNumber(t *testing.T) {
 }
 
 func TestGetLastOffsetPersisted(t *testing.T) {
-	mockChannel := newChannel("channelFoo", defaultPartition)
+	mockChannel := newChannel("foo.channel", defaultPartition)
 	mockMetadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: int64(5)})}
 
 	testCases := []struct {
