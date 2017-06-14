@@ -256,7 +256,7 @@ func TestDBBadDatabaseName(t *testing.T) {
 			couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
 		_, dberr := CreateCouchDatabase(*couchInstance, "testDB")
-		testutil.AssertNoError(t, dberr, fmt.Sprintf("Error when testing a valid database name"))
+		testutil.AssertError(t, dberr, "Error should have been thrown for an invalid db name")
 
 		//create a new instance and database object using a valid database name letters and numbers
 		couchInstance, err = CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
@@ -270,20 +270,19 @@ func TestDBBadDatabaseName(t *testing.T) {
 			couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
 		_, dberr = CreateCouchDatabase(*couchInstance, "test1234~!@#$%^&*()[]{}.")
-		testutil.AssertNoError(t, dberr, fmt.Sprintf("Error when testing a valid database name"))
+		testutil.AssertError(t, dberr, "Error should have been thrown for an invalid db name")
 
 		//create a new instance and database object using a invalid database name - too long	/*
 		couchInstance, err = CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
 			couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-		_, dberr = CreateCouchDatabase(*couchInstance, "A12345678901234567890123456789012345678901234"+
+		_, dberr = CreateCouchDatabase(*couchInstance, "a12345678901234567890123456789012345678901234"+
 			"56789012345678901234567890123456789012345678901234567890123456789012345678901234567890"+
 			"12345678901234567890123456789012345678901234567890123456789012345678901234567890123456"+
 			"78901234567890123456789012345678901234567890")
 		testutil.AssertError(t, dberr, fmt.Sprintf("Error should have been thrown for invalid database name"))
 
 	}
-
 }
 
 func TestDBBadConnection(t *testing.T) {

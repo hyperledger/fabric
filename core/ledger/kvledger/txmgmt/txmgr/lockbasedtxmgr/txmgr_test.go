@@ -278,27 +278,27 @@ func TestIterator(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
 
-		testLedgerID := "testiterator_1"
+		testLedgerID := "testiterator.1"
 		testEnv.init(t, testLedgerID)
 		testIterator(t, testEnv, 10, 2, 7)
 		testEnv.cleanup()
 
-		testLedgerID = "testiterator_2"
+		testLedgerID = "testiterator.2"
 		testEnv.init(t, testLedgerID)
 		testIterator(t, testEnv, 10, 1, 11)
 		testEnv.cleanup()
 
-		testLedgerID = "testiterator_3"
+		testLedgerID = "testiterator.3"
 		testEnv.init(t, testLedgerID)
 		testIterator(t, testEnv, 10, 0, 0)
 		testEnv.cleanup()
 
-		testLedgerID = "testiterator_4"
+		testLedgerID = "testiterator.4"
 		testEnv.init(t, testLedgerID)
 		testIterator(t, testEnv, 10, 5, 0)
 		testEnv.cleanup()
 
-		testLedgerID = "testiterator_5"
+		testLedgerID = "testiterator.5"
 		testEnv.init(t, testLedgerID)
 		testIterator(t, testEnv, 10, 0, 5)
 		testEnv.cleanup()
@@ -608,7 +608,7 @@ func TestValidateKey(t *testing.T) {
 	nonUTF8Key := string([]byte{0xff, 0xff})
 	dummyValue := []byte("dummyValue")
 	for _, testEnv := range testEnvs {
-		testLedgerID := "TestValidateKey"
+		testLedgerID := "test.validate.key"
 		testEnv.init(t, testLedgerID)
 		txSimulator, _ := testEnv.getTxMgr().NewTxSimulator()
 		err := txSimulator.SetState("ns1", nonUTF8Key, dummyValue)
