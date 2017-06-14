@@ -47,5 +47,13 @@ services:
       # overwriting the offsets that the previous leader produced, and --as a
       # result-- rewriting the blockchain that the orderers produce.
       - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+      #
+      # log.retention.ms
+      # Until the ordering service in Fabric adds support for pruning of the
+      # Kafka logs, time-based retention should be disabled so as to prevent
+      # segments from expiring. (Size-based retention -- see
+      # log.retention.bytes -- is disabled by default so there is no need to set
+      # it explicitly.)
+      # - KAFKA_LOG_RETENTION_MS=-1
     ports:
       - '9092'

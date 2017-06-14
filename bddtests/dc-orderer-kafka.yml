@@ -62,23 +62,27 @@ services:
       # it is written to at least M replicas (which are then considered in-sync
       # and belong to the in-sync replica set, or ISR). In any other case, the
       # write operation returns an error. Then:
-      # 1. if just one replica out of the N (see default.replication.factor
-      # below) that the channel data is written to becomes unavailable,
+      # 1. If up to M-N replicas -- out of the N (see default.replication.factor
+      # below) that the channel data is written to -- become unavailable,
       # operations proceed normally.
-      # 2. If N - M + 1 (or more) replicas become unavailable, Kafka cannot
-      # maintain an ISR set of M, so it stops accepting writes. Reads work
-      # without issues. The cluster becomes writeable again when M replicas get
-      # in-sync.
+      # 2. If more replicas become unavailable, Kafka cannot maintain an ISR set
+      # of M, so it stops accepting writes. Reads work without issues. The
+      # channel becomes writeable again when M replicas get in-sync.
       - KAFKA_MIN_INSYNC_REPLICAS=2
       #
       # default.replication.factor
-      # Let the value of this setting be M. This means that:
-      # 1. Each channel will have its data replicated to N brokers. These are
-      # the candidates for the ISR set for a channel. As we've noted in the
+      # Let the value of this setting be N. A replication factor of N means that
+      # each channel will have its data replicated to N brokers. These are the
+      # candidates for the ISR set of a channel. As we noted in the
       # min.insync.replicas section above, not all of these brokers have to be
-      # available all the time. We choose a default.replication.factor of N so
-      # as to have the largest possible candidate set for a channel's ISR.
-      # 2. Channel creations cannot go forward if less than N brokers are up.
+      # available all the time. In this sample configuration we choose a
+      # default.replication.factor of K-1 (where K is the total number of brokers in
+      # our Kafka cluster) so as to have the largest possible candidate set for
+      # a channel's ISR. We explicitly avoid setting N equal to K because
+      # channel creations cannot go forward if less than N brokers are up. If N
+      # were set equal to K, a single broker going down would mean that we would
+      # not be able to create new channels, i.e. the crash fault tolerance of
+      # the ordering service would be non-existent.
       - KAFKA_DEFAULT_REPLICATION_FACTOR=3
       #
       # zookeper.connect
