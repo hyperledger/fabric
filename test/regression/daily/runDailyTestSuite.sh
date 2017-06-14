@@ -5,7 +5,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-
 DAILYDIR="$GOPATH/src/github.com/hyperledger/fabric/test/regression/daily"
 
 #echo "========== Sample Tests..."
@@ -21,3 +20,6 @@ cd -
 
 echo "========== Ledger component performance tests..."
 py.test -v --junitxml results_ledger_lte.xml ledger_lte.py
+
+echo "========== Test Auction Chaincode ..."
+py.test -v --junitxml results_auction_daily.xml testAuctionChaincode.py
