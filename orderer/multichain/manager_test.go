@@ -456,7 +456,7 @@ func TestNewChannelConfig(t *testing.T) {
 func TestNewChain(t *testing.T) {
 	expectedLastConfigBlockNumber := uint64(0)
 	expectedLastConfigSeq := uint64(1)
-	newChainID := "TestNewChain"
+	newChainID := "test-new-chain"
 
 	lf, rl := NewRAMLedgerAndFactory(10)
 

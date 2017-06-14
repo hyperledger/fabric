@@ -59,8 +59,7 @@ func addToMap(cg comparable, result map[string]comparable) error {
 		fqPath = PolicyPrefix
 	}
 
-	// TODO rename validateChainID to validateConfigID
-	if err := validateChainID(cg.key); err != nil {
+	if err := validateConfigID(cg.key); err != nil {
 		return fmt.Errorf("Illegal characters in key: %s", fqPath)
 	}
 

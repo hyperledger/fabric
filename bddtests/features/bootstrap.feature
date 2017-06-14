@@ -52,7 +52,7 @@ Feature: Bootstrap
         | Organization     |
         |  ordererOrg0     |
 
-    And the ordererBootstrapAdmin generates a GUUID to identify the orderer system chain and refer to it by name as "OrdererSystemChainId"
+    And the ordererBootstrapAdmin generates a GUUID to identify the orderer system chain and refer to it by name as "orderer-system-chain-id"
 
     # We now have an orderer network with NO peers.  Now need to configure and start the peer network
     # This can be currently automated through folder creation of the proper form and placing PEMs.
@@ -72,22 +72,22 @@ Feature: Bootstrap
 
     # Order info includes orderer admin/orderer information and address (host:port) from previous steps
     # Only the peer organizations can vary.
-    And the ordererBootstrapAdmin using cert alias "bootstrapCertAlias" creates the genesis block "ordererGenesisBlock" for chain "OrdererSystemChainId" for composition "<ComposeFile>" and consensus "<ConsensusType>" with consortiums modification policy "/Channel/Orderer/Admins" using consortiums:
+    And the ordererBootstrapAdmin using cert alias "bootstrapCertAlias" creates the genesis block "ordererGenesisBlock" for chain "orderer-system-chain-id" for composition "<ComposeFile>" and consensus "<ConsensusType>" with consortiums modification policy "/Channel/Orderer/Admins" using consortiums:
       | Consortium  |
 #      | consortium1 |
 
 
-    And the orderer admins inspect and approve the genesis block for chain "OrdererSystemChainId"
+    And the orderer admins inspect and approve the genesis block for chain "orderer-system-chain-id"
 
     # to be used for setting the orderer genesis block path parameter in composition
-    And the orderer admins use the genesis block for chain "OrdererSystemChainId" to configure orderers
+    And the orderer admins use the genesis block for chain "orderer-system-chain-id" to configure orderers
 
     And we compose "<ComposeFile>"
 
     # Sleep as to allow system up time
     And I wait "<SystemUpWaitTime>" seconds
 
-    Given user "ordererBootstrapAdmin" gives "OrdererSystemChainId" to user "configAdminOrdererOrg0"
+    Given user "ordererBootstrapAdmin" gives "orderer-system-chain-id" to user "configAdminOrdererOrg0"
     And user "ordererBootstrapAdmin" gives "ordererGenesisBlock" to user "configAdminOrdererOrg0"
 
     And the orderer config admin "configAdminOrdererOrg0" creates a consortium "consortium1" with modification policy "/Channel/Orderer/Admins" for peer orgs who wish to form a network:
@@ -98,9 +98,9 @@ Feature: Bootstrap
 
     And user "configAdminOrdererOrg0" using cert alias "config-admin-cert" connects to deliver function on orderer "<orderer0>"
 
-    And user "configAdminOrdererOrg0" retrieves the latest configuration "latestOrdererConfig" from orderer "<orderer0>" for channel "OrdererSystemChainId"
+    And user "configAdminOrdererOrg0" retrieves the latest configuration "latestOrdererConfig" from orderer "<orderer0>" for channel "orderer-system-chain-id"
 
-    And the orderer config admin "configAdminOrdererOrg0" creates a consortiums config update "consortiumsConfigUpdate1" using config "latestOrdererConfig" using orderer system channel ID "OrdererSystemChainId" to add consortiums:
+    And the orderer config admin "configAdminOrdererOrg0" creates a consortiums config update "consortiumsConfigUpdate1" using config "latestOrdererConfig" using orderer system channel ID "orderer-system-chain-id" to add consortiums:
       | Consortium  |
       | consortium1 |
 
@@ -113,7 +113,7 @@ Feature: Bootstrap
 
     And the user "configAdminOrdererOrg0" creates a ConfigUpdate Tx "consortiumsConfigUpdateTx1" using cert alias "config-admin-cert" using signed ConfigUpdateEnvelope "consortiumsConfigUpdate1Envelope"
 
-    And the user "configAdminOrdererOrg0" using cert alias "config-admin-cert" broadcasts ConfigUpdate Tx "consortiumsConfigUpdateTx1" to orderer "<orderer0>" to create channel "com.acme.blockchain.jdoe.Channel1"
+    And the user "configAdminOrdererOrg0" using cert alias "config-admin-cert" broadcasts ConfigUpdate Tx "consortiumsConfigUpdateTx1" to orderer "<orderer0>" to create channel "com.acme.blockchain.jdoe.channel1"
 
 
     Given the following application developers are defined for peer organizations and each saves their cert as alias
@@ -142,7 +142,7 @@ Feature: Bootstrap
     # Entry point for creating a channel
     And the user "dev0Org0" creates a new channel ConfigUpdate "createChannelConfigUpdate1" using consortium "consortium1"
       | ChannelID                         | PeerOrgSet  | PeerAnchorSet |
-      | com.acme.blockchain.jdoe.Channel1 | peerOrgSet1 | anchors1      |
+      | com.acme.blockchain.jdoe.channel1 | peerOrgSet1 | anchors1      |
 
     And the user "dev0Org0" creates a configUpdateEnvelope "createChannelConfigUpdate1Envelope" using configUpdate "createChannelConfigUpdate1"
 
@@ -154,7 +154,7 @@ Feature: Bootstrap
 
     And the user "dev0Org0" creates a ConfigUpdate Tx "configUpdateTx1" using cert alias "consortium1-cert" using signed ConfigUpdateEnvelope "createChannelConfigUpdate1Envelope"
 
-    And the user "dev0Org0" using cert alias "consortium1-cert" broadcasts ConfigUpdate Tx "configUpdateTx1" to orderer "<orderer0>" to create channel "com.acme.blockchain.jdoe.Channel1"
+    And the user "dev0Org0" using cert alias "consortium1-cert" broadcasts ConfigUpdate Tx "configUpdateTx1" to orderer "<orderer0>" to create channel "com.acme.blockchain.jdoe.channel1"
 
     # Sleep as the local orderer needs to bring up the resources that correspond to the new channel
     # For the Kafka orderer, this includes setting up a producer and consumer for the channel's partition
@@ -164,7 +164,7 @@ Feature: Bootstrap
     When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "<orderer0>"
     And user "dev0Org0" sends deliver a seek request on orderer "<orderer0>" with properties:
       | ChainId                               | Start |  End    |
-      | com.acme.blockchain.jdoe.Channel1     |   0   |  0      |
+      | com.acme.blockchain.jdoe.channel1     |   0   |  0      |
 
     Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannel" from "<orderer0>" of "1" blocks with "1" messages within "1" seconds
 
@@ -216,7 +216,7 @@ Feature: Bootstrap
       |   init   |  a   |  100  |  b   |  200 |
 
     # Under the covers, create a deployment spec, etc.
-    And user "peer0Admin" using cert alias "peer-admin-cert" creates a install proposal "installProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
+    And user "peer0Admin" using cert alias "peer-admin-cert" creates a install proposal "installProposal1" for channel "com.acme.blockchain.jdoe.channel1" using chaincode spec "cc_spec"
 
     And user "peer0Admin" using cert alias "peer-admin-cert" sends proposal "installProposal1" to endorsers with timeout of "90" seconds with proposal responses "installProposalResponses":
         | Endorser |
@@ -229,7 +229,7 @@ Feature: Bootstrap
     Given user "peer0Admin" gives "cc_spec" to user "peer2Admin"
 
     # Under the covers, create a deployment spec, etc.
-    When user "peer2Admin" using cert alias "peer-admin-cert" creates a install proposal "installProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
+    When user "peer2Admin" using cert alias "peer-admin-cert" creates a install proposal "installProposal1" for channel "com.acme.blockchain.jdoe.channel1" using chaincode spec "cc_spec"
 
     And user "peer2Admin" using cert alias "peer-admin-cert" sends proposal "installProposal1" to endorsers with timeout of "90" seconds with proposal responses "installProposalResponses":
       | Endorser |
@@ -244,7 +244,7 @@ Feature: Bootstrap
       And user "peer0Admin" gives "cc_spec" to user "configAdminPeerOrg0"
 
 
-    When user "configAdminPeerOrg0" using cert alias "config-admin-cert" creates a instantiate proposal "instantiateProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
+    When user "configAdminPeerOrg0" using cert alias "config-admin-cert" creates a instantiate proposal "instantiateProposal1" for channel "com.acme.blockchain.jdoe.channel1" using chaincode spec "cc_spec"
 
     And user "configAdminPeerOrg0" using cert alias "config-admin-cert" sends proposal "instantiateProposal1" to endorsers with timeout of "90" seconds with proposal responses "instantiateProposalResponses":
       | Endorser |
@@ -262,9 +262,9 @@ Feature: Bootstrap
       | peer0    |
       | peer2    |
 
-    When the user "configAdminPeerOrg0" creates transaction "instantiateTx1" from proposal "instantiateProposal1" and proposal responses "instantiateProposalResponses" for channel "com.acme.blockchain.jdoe.Channel1"
+    When the user "configAdminPeerOrg0" creates transaction "instantiateTx1" from proposal "instantiateProposal1" and proposal responses "instantiateProposalResponses" for channel "com.acme.blockchain.jdoe.channel1"
 
-    And the user "configAdminPeerOrg0" broadcasts transaction "instantiateTx1" to orderer "<orderer1>" on channel "com.acme.blockchain.jdoe.Channel1"
+    And the user "configAdminPeerOrg0" broadcasts transaction "instantiateTx1" to orderer "<orderer1>" on channel "com.acme.blockchain.jdoe.channel1"
 
     # Sleep as the local orderer ledger needs to create the block that corresponds to the start number of the seek request
     And I wait "<BroadcastWaitTime>" seconds
@@ -273,7 +273,7 @@ Feature: Bootstrap
 
     And user "configAdminPeerOrg0" sends deliver a seek request on orderer "<orderer0>" with properties:
         | ChainId                               |   Start    |  End    |
-        | com.acme.blockchain.jdoe.Channel1     |   1   |  1      |
+        | com.acme.blockchain.jdoe.channel1     |   1   |  1      |
 
     Then user "configAdminPeerOrg0" should get a delivery "deliveredInstantiateTx1Block" from "<orderer0>" of "1" blocks with "1" messages within "1" seconds
 
@@ -286,7 +286,7 @@ Feature: Bootstrap
         |   query   |  a   |
 
     # Under the covers, create a deployment spec, etc.
-    And user "dev0Org0" using cert alias "consortium1-cert" creates a proposal "queryProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "querySpec1"
+    And user "dev0Org0" using cert alias "consortium1-cert" creates a proposal "queryProposal1" for channel "com.acme.blockchain.jdoe.channel1" using chaincode spec "querySpec1"
 
     And user "dev0Org0" using cert alias "consortium1-cert" sends proposal "queryProposal1" to endorsers with timeout of "30" seconds with proposal responses "queryProposal1Responses":
         | Endorser |
@@ -310,7 +310,7 @@ Feature: Bootstrap
         |   invoke   |  a   |  b   |   10   |
 
     # Under the covers, create a deployment spec, etc.
-      And user "dev0Org0" using cert alias "consortium1-cert" creates a proposal "invokeProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "invocationSpec1"
+      And user "dev0Org0" using cert alias "consortium1-cert" creates a proposal "invokeProposal1" for channel "com.acme.blockchain.jdoe.channel1" using chaincode spec "invocationSpec1"
 
       And user "dev0Org0" using cert alias "consortium1-cert" sends proposal "invokeProposal1" to endorsers with timeout of "30" seconds with proposal responses "invokeProposal1Responses":
         | Endorser |
@@ -327,16 +327,16 @@ Feature: Bootstrap
         | peer0    |
         | peer2    |
 
-      When the user "dev0Org0" creates transaction "invokeTx1" from proposal "invokeProposal1" and proposal responses "invokeProposal1Responses" for channel "com.acme.blockchain.jdoe.Channel1"
+      When the user "dev0Org0" creates transaction "invokeTx1" from proposal "invokeProposal1" and proposal responses "invokeProposal1Responses" for channel "com.acme.blockchain.jdoe.channel1"
 
-      And the user "dev0Org0" broadcasts transaction "invokeTx1" to orderer "<orderer2>" on channel "com.acme.blockchain.jdoe.Channel1"
+      And the user "dev0Org0" broadcasts transaction "invokeTx1" to orderer "<orderer2>" on channel "com.acme.blockchain.jdoe.channel1"
 
       # Sleep as the local orderer ledger needs to create the block that corresponds to the start number of the seek request
       And I wait "<BroadcastWaitTime>" seconds
 
       And user "dev0Org0" sends deliver a seek request on orderer "<orderer0>" with properties:
         | ChainId                               |   Start    |  End    |
-        | com.acme.blockchain.jdoe.Channel1     |   2        |  2      |
+        | com.acme.blockchain.jdoe.channel1     |   2        |  2      |
 
       Then user "dev0Org0" should get a delivery "deliveredInvokeTx1Block" from "<orderer0>" of "1" blocks with "1" messages within "1" seconds
 

@@ -30,7 +30,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var defaultChain = "DefaultChainID"
+var defaultChain = "default.chain.id"
 
 func defaultInitializer() *mockconfigtx.Initializer {
 	return &mockconfigtx.Initializer{
