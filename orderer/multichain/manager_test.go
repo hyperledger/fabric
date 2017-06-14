@@ -44,7 +44,7 @@ var conf, singleMSPConf, noConsortiumConf *genesisconfig.Profile
 var genesisBlock, singleMSPGenesisBlock, noConsortiumGenesisBlock *cb.Block
 var mockSigningIdentity msp.SigningIdentity
 
-const NoConsortiumChain = "NoConsortiumChain"
+const NoConsortiumChain = "no-consortium-chain"
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
