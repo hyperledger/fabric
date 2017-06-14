@@ -594,6 +594,28 @@ func TestDBTimeoutConflictRetry(t *testing.T) {
 	}
 }
 
+func TestDBBadNumberOfRetries(t *testing.T) {
+
+	if ledgerconfig.IsCouchDBEnabled() {
+
+		database := "testdbbadretries"
+		err := cleanup(database)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
+		defer cleanup(database)
+
+		// if there was an error upon cleanup, return here
+		if err != nil {
+			return
+		}
+
+		//create a new instance and database object
+		_, err = CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
+			0, 3, couchDBDef.RequestTimeout)
+		testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown while attempting to create a database"))
+
+	}
+}
+
 func TestDBBadJSON(t *testing.T) {
 
 	if ledgerconfig.IsCouchDBEnabled() {

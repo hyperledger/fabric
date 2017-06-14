@@ -1223,6 +1223,10 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	//set initial wait duration for retries
 	waitDuration := retryWaitTime * time.Millisecond
 
+	if maxRetries < 1 {
+		return nil, nil, fmt.Errorf("Number of retries must be greater than zero.")
+	}
+
 	//attempt the http request for the max number of retries
 	for attempts := 0; attempts < maxRetries; attempts++ {
 
@@ -1285,6 +1289,11 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 		//Execute http request
 		resp, errResp = couchInstance.client.Do(req)
 
+		//check to see if the return from CouchDB is valid
+		if invalidCouchDBReturn(resp, errResp) {
+			continue
+		}
+
 		//if there is no golang http error and no CouchDB 500 error, then drop out of the retry
 		if errResp == nil && resp != nil && resp.StatusCode < 500 {
 			break
@@ -1329,6 +1338,14 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 		return nil, nil, errResp
 	}
 
+	//This situation should not occur according to the golang spec.
+	//if this error returned (errResp) from an http call, then the resp should be not nil,
+	//this is a structure and StatusCode is an int
+	//This is meant to provide a more graceful error if this should occur
+	if invalidCouchDBReturn(resp, errResp) {
+		return nil, nil, fmt.Errorf("Unable to connect to CouchDB, check the hostname and port.")
+	}
+
 	//set the return code for the couchDB request
 	couchDBReturn.StatusCode = resp.StatusCode
 
@@ -1362,6 +1379,14 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 
 	//If no errors, then return the http response and the couchdb return object
 	return resp, couchDBReturn, nil
+}
+
+//invalidCouchDBResponse checks to make sure either a valid response or error is returned
+func invalidCouchDBReturn(resp *http.Response, errResp error) bool {
+	if resp == nil && errResp == nil {
+		return true
+	}
+	return false
 }
 
 //IsJSON tests a string to determine if a valid JSON
