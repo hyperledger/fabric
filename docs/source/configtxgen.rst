@@ -1,5 +1,5 @@
-Configuring using the configtxgen tool
-======================================
+Channel Configuration (configtxgen)
+===================================
 
 This document describe the usage for the ``configtxgen`` utility for
 manipulating fabric channel configuration.
@@ -8,13 +8,6 @@ For now, the tool is primarily focused on generating the genesis block
 for bootstrapping the orderer, but it is intended to be enhanced in the
 future for generating new channel configurations as well as
 reconfiguring existing channels.
-
-Building the tool
------------------
-
-Building the tool is as simple as ``make configtxgen``. This will create
-a ``configtxgen`` binary at ``build/bin/configtxgen`` which is included
-in the Vagrant development environment path by default.
 
 Configuration Profiles
 ----------------------
@@ -208,4 +201,3 @@ example:
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-
