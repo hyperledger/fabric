@@ -31,6 +31,7 @@ func init() {
 var (
 	reConnectTotalTimeThreshold = time.Second * 60 * 5
 	connTimeout                 = time.Second * 3
+	reConnectBackoffThreshold   = float64(time.Hour)
 )
 
 // DeliverService used to communicate with orderers to obtain
@@ -181,7 +182,9 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		if elapsedTime.Nanoseconds() > reConnectTotalTimeThreshold.Nanoseconds() {
 			return 0, false
 		}
-		return time.Duration(math.Pow(2, float64(attemptNum))) * time.Millisecond * 500, true
+		sleepIncrement := float64(time.Millisecond * 500)
+		attempt := float64(attemptNum)
+		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, reConnectBackoffThreshold)), true
 	}
 	connProd := comm.NewConnectionProducer(d.conf.ConnFactory(chainID), d.conf.Endpoints)
 	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)

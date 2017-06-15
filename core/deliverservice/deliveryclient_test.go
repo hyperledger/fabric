@@ -17,6 +17,7 @@ limitations under the License.
 package deliverclient
 
 import (
+	"errors"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -404,6 +405,20 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Nil(t, service)
+}
+
+func TestRetryPolicyOverflow(t *testing.T) {
+	connFactory := func(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
+		return func(_ string) (*grpc.ClientConn, error) {
+			return nil, errors.New("")
+		}
+	}
+	client := (&deliverServiceImpl{conf: &Config{ConnFactory: connFactory}}).newClient("TEST", &mocks.MockLedgerInfo{Height: uint64(100)})
+	assert.NotNil(t, client.shouldRetry)
+	for i := 0; i < 100; i++ {
+		retryTime, _ := client.shouldRetry(i, time.Second)
+		assert.True(t, retryTime <= time.Hour && retryTime > 0)
+	}
 }
 
 func assertBlockDissemination(expectedSeq uint64, ch chan uint64, t *testing.T) {
