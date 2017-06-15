@@ -162,7 +162,6 @@ func GetVerifyingMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 
 func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.MSPConfig, error) {
 	cacertDir := filepath.Join(dir, cacerts)
-	signcertDir := filepath.Join(dir, signcerts)
 	admincertDir := filepath.Join(dir, admincerts)
 	intermediatecertsDir := filepath.Join(dir, intermediatecerts)
 	crlsDir := filepath.Join(dir, crlsfolder)
@@ -171,11 +170,6 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	cacerts, err := getPemMaterialFromDir(cacertDir)
 	if err != nil || len(cacerts) == 0 {
 		return nil, fmt.Errorf("Could not load a valid ca certificate from directory %s, err %s", cacertDir, err)
-	}
-
-	signcert, err := getPemMaterialFromDir(signcertDir)
-	if err != nil || len(signcert) == 0 {
-		return nil, fmt.Errorf("Could not load a valid signer certificate from directory %s, err %s", signcertDir, err)
 	}
 
 	admincert, err := getPemMaterialFromDir(admincertDir)
