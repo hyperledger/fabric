@@ -135,13 +135,13 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
 		}
 
-		logger.Debugf("Broadcast is filtering message of type %s for channel %s", cb.HeaderType_name[chdr.Type], chdr.ChannelId)
+		logger.Debugf("[channel: %s] Broadcast is filtering message of type %s", chdr.ChannelId, cb.HeaderType_name[chdr.Type])
 
 		// Normal transaction for existing chain
 		_, filterErr := support.Filters().Apply(msg)
 
 		if filterErr != nil {
-			logger.Warningf("Rejecting broadcast message because of filter error: %s", filterErr)
+			logger.Warningf("[channel: %s] Rejecting broadcast message because of filter error: %s", chdr.ChannelId, filterErr)
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
@@ -150,12 +150,12 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast has successfully enqueued message of type %s for chain %s", cb.HeaderType_name[chdr.Type], chdr.ChannelId)
+			logger.Debugf("[channel: %s] Broadcast has successfully enqueued message of type %s", chdr.ChannelId, cb.HeaderType_name[chdr.Type])
 		}
 
 		err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
 		if err != nil {
-			logger.Warningf("Error sending to stream: %s", err)
+			logger.Warningf("[channel: %s] Error sending to stream: %s", chdr.ChannelId, err)
 			return err
 		}
 	}
