@@ -589,7 +589,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 				}
 
 				cds = ccpack.GetDepSpec()
-				chaincodeLogger.Debugf("launchAndWaitForRegister fetched %d from file system", len(cds.CodePackage), err)
+				chaincodeLogger.Debugf("launchAndWaitForRegister fetched %d bytes from file system", len(cds.CodePackage))
 			}
 		}
 
