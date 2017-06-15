@@ -112,7 +112,6 @@ func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 }
 
 type msgMutator func(*proto.SignedGossipMessage) *proto.SignedGossipMessage
-type msgConsumer func(*proto.SignedGossipMessage)
 
 type tlsType int
 
@@ -221,6 +220,7 @@ func TestHandshake(t *testing.T) {
 
 	// Positive path 1 - check authentication without TLS
 	ll, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 9611))
+	assert.NoError(t, err)
 	s := grpc.NewServer()
 	go s.Serve(ll)
 

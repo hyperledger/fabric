@@ -155,7 +155,6 @@ type commImpl struct {
 	subscriptions  []chan proto.ReceivedMessage
 	port           int
 	stopping       int32
-	skipHandshake  bool
 }
 
 func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
