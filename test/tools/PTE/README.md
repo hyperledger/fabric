@@ -1,7 +1,8 @@
 
 # Performance Traffic Engine - PTE
 
-The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) Node SDK](http://hyperledger-fabric.readthedocs.io/en/latest/nodesdk.html) to interact with a [Hyperledger Fabric](http://hyperledger-fabric.readthedocs.io/en/latest/) network.
+The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) Node SDK](https://fabric-sdk-node.github.io/index.html)
+to interact with a [Hyperledger Fabric](http://hyperledger-fabric.readthedocs.io/en/latest/) network.
 
 ## Table Of Contents:
 - [Prerequisites](#prerequisites)
@@ -28,7 +29,7 @@ The Performance Traffic Engine (PTE) uses [Hyperledger Fabric Client (HFC) Node 
 - PTE commit level: `latest`
 
 ### Code Base for v1.0.0-alpha
-For v1.0.0-alpha support, use v1performance commit level `aa73747ccf5f511fbcd10a962dd1e588bde1a8b0`. 
+For v1.0.0-alpha support, use v1performance commit level `aa73747ccf5f511fbcd10a962dd1e588bde1a8b0`.
 Below is the v1.0.0-alpha commit levels.
 
 - Fabric commit level: `fa3d88cde177750804c7175ae000e0923199735c`
@@ -258,7 +259,7 @@ Although PTE's primary use case is to drive transactions into a Fabric network, 
         ```
         "transMode": "Simple",
         "transType": "instantiate",
-        "invokeType": "Move", 
+        "invokeType": "Move",
         ```
         and set channelOpt name to the channel name:
         ```
@@ -516,4 +517,3 @@ The service credentials contain the information of the network and are stored in
 ---
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
-
