@@ -232,11 +232,13 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 		//if image not found try to create image and retry
 		if err == docker.ErrNoSuchImage {
 			if builder != nil {
-				dockerLogger.Debugf("start-could not find image ...attempt to recreate image %s", err)
+				dockerLogger.Debugf("start-could not find image <%s> (container id <%s>), because of <%s>..."+
+					"attempt to recreate image", imageID, containerID, err)
 
 				reader, err1 := builder()
 				if err1 != nil {
-					dockerLogger.Errorf("Error creating image builder: %s", err1)
+					dockerLogger.Errorf("Error creating image builder for image <%s> (container id <%s>), "+
+						"because of <%s>", imageID, containerID, err1)
 				}
 
 				if err1 = vm.deployImage(client, ccid, args, env, reader); err1 != nil {
@@ -249,11 +251,11 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 					return err1
 				}
 			} else {
-				dockerLogger.Errorf("start-could not find image: %s", err)
+				dockerLogger.Errorf("start-could not find image <%s>, because of %s", imageID, err)
 				return err
 			}
 		} else {
-			dockerLogger.Errorf("start-could not recreate container: %s", err)
+			dockerLogger.Errorf("start-could not recreate container <%s>, because of %s", containerID, err)
 			return err
 		}
 	}
