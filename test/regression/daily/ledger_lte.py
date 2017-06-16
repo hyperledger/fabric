@@ -6,6 +6,8 @@
 import unittest
 import subprocess
 
+tool_directory = '../../tools/LTE/scripts'
+
 class perf_goleveldb(unittest.TestCase):
 
     def test_FAB_3790_VaryNumParallelTxPerChain(self):
@@ -20,9 +22,9 @@ class perf_goleveldb(unittest.TestCase):
         '''
         logfile = open("output_VaryNumParallelTxPerChain.log", "w")
         returncode = subprocess.call(
-                "./runbenchmarks.sh varyNumParallelTxPerChain",
+                "./runbenchmarks.sh -f parameters_daily_CI.sh varyNumParallelTxPerChain",
                 shell=True, stderr=subprocess.STDOUT, stdout=logfile,
-                cwd='../../tools/LTE/scripts')
+                cwd=tool_directory)
         logfile.close()
         self.assertEqual(returncode, 0, msg="VaryNumParallelTxPerChain "
                 "performance test failed. \nPlease check the logfile "
@@ -40,9 +42,9 @@ class perf_goleveldb(unittest.TestCase):
         '''
         logfile = open("output_VaryNumChains.log", "w")
         returncode = subprocess.call(
-                "./runbenchmarks.sh varyNumChains",
+                "./runbenchmarks.sh -f parameters_daily_CI.sh varyNumChains",
                 shell=True, stderr=subprocess.STDOUT, stdout=logfile,
-                cwd='../../tools/LTE/scripts')
+                cwd=tool_directory)
         logfile.close()
         self.assertEqual(returncode, 0, msg="VaryNumChains performance test"
                 " failed. \nPlease check the logfile "+logfile.name+" for more "
@@ -60,9 +62,9 @@ class perf_goleveldb(unittest.TestCase):
         '''
         logfile = open("output_VaryNumParallelTxWithSingleChain.log", "w")
         returncode = subprocess.call(
-                "./runbenchmarks.sh varyNumParallelTxWithSingleChain",
+                "./runbenchmarks.sh -f parameters_daily_CI.sh varyNumParallelTxWithSingleChain",
                 shell=True, stderr=subprocess.STDOUT, stdout=logfile,
-                cwd='../../tools/LTE/scripts')
+                cwd=tool_directory)
         logfile.close()
         self.assertEqual(returncode, 0, msg="VaryNumParallelTxWithSingleChain "
                 "performance test failed. \nPlease check the logfile "
@@ -80,9 +82,9 @@ class perf_goleveldb(unittest.TestCase):
         '''
         logfile = open("output_VaryNumChainsWithNoParallelism.log", "w")
         returncode = subprocess.call(
-                "./runbenchmarks.sh varyNumChainsWithNoParallelism",
+                "./runbenchmarks.sh -f parameters_daily_CI.sh varyNumChainsWithNoParallelism",
                 shell=True, stderr=subprocess.STDOUT, stdout=logfile,
-                cwd='../../tools/LTE/scripts')
+                cwd=tool_directory)
         logfile.close()
         self.assertEqual(returncode, 0, msg="varyNumChainsWithNoParallelism "
                 "performance test failed. \nPlease check the logfile "
@@ -99,9 +101,9 @@ class perf_goleveldb(unittest.TestCase):
         '''
         logfile = open("output_VaryKVSize.log", "w")
         returncode = subprocess.call(
-                "./runbenchmarks.sh varyKVSize",
+                "./runbenchmarks.sh -f parameters_daily_CI.sh varyKVSize",
                 shell=True, stderr=subprocess.STDOUT, stdout=logfile,
-                cwd='../../tools/LTE/scripts')
+                cwd=tool_directory)
         logfile.close()
         self.assertEqual(returncode, 0, msg="varyKVSize performance test"
                 " failed. \nPlease check the logfile "+logfile.name+" for more "
@@ -119,9 +121,9 @@ class perf_goleveldb(unittest.TestCase):
         '''
         logfile = open("output_VaryBatchSize.log", "w")
         returncode = subprocess.call(
-                "./runbenchmarks.sh varyBatchSize",
+                "./runbenchmarks.sh -f parameters_daily_CI.sh varyBatchSize",
                 shell=True, stderr=subprocess.STDOUT, stdout=logfile,
-                cwd='../../tools/LTE/scripts')
+                cwd=tool_directory)
         logfile.close()
         self.assertEqual(returncode, 0, msg="varyBatchSize performance test"
                 " failed. \nPlease check the logfile "+logfile.name+" for more "
@@ -139,9 +141,9 @@ class perf_goleveldb(unittest.TestCase):
         '''
         logfile = open("output_VaryNumKeysInEachTx.log", "w")
         returncode = subprocess.call(
-                "./runbenchmarks.sh varyNumKeysInEachTx",
+                "./runbenchmarks.sh -f parameters_daily_CI.sh varyNumKeysInEachTx",
                 shell=True, stderr=subprocess.STDOUT, stdout=logfile,
-                cwd='../../tools/LTE/scripts')
+                cwd=tool_directory)
         logfile.close()
         self.assertEqual(returncode, 0, msg="varyNumKeysInEachTx performance "
                 "test failed. \nPlease check the logfile "+logfile.name
@@ -159,9 +161,9 @@ class perf_goleveldb(unittest.TestCase):
         '''
         logfile = open("output_VaryNumTxs.log", "w")
         returncode = subprocess.call(
-                "./runbenchmarks.sh varyNumTxs",
+                "./runbenchmarks.sh -f parameters_daily_CI.sh varyNumTxs",
                 shell=True, stderr=subprocess.STDOUT, stdout=logfile,
-                cwd='../../tools/LTE/scripts')
+                cwd=tool_directory)
         logfile.close()
         self.assertEqual(returncode, 0, msg="varyNumTxs performance test"
                 " failed. \nPlease check the logfile "+logfile.name+" for more "
