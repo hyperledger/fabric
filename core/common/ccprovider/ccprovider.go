@@ -112,20 +112,13 @@ func ChaincodePackageExists(ccname string, ccversion string) (bool, error) {
 	return false, err
 }
 
-// CCInfoProvider is responsible to provide backend storage for information
-// about chaincodes. Multiple implementations can persist data to a file system
-// or store them in a cache
-type CCInfoProvider interface {
-	// GetChaincode returns information for the chaincode with the
-	// supplied name and version
+type CCCacheSupport interface {
+	//GetChaincode is needed by the cache to get chaincode data
 	GetChaincode(ccname string, ccversion string) (CCPackage, error)
-
-	// PutChaincode stores the supplied chaincode info
-	PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackage, error)
 }
 
-// CCInfoFSStorageMgr is an implementation of CCInfoProvider
-// backed by the file system
+// CCInfoFSImpl provides the implementation for CC on the FS and the access to it
+// It implements CCCacheSupport
 type CCInfoFSImpl struct{}
 
 // GetChaincodeFromFS this is a wrapper for hiding package implementation.
@@ -195,39 +188,38 @@ func EnableCCInfoCache() {
 	ccInfoCacheEnabled = true
 }
 
-// GetChaincodeFromFS retrieves chaincode information from the cache (or the
-// file system in case of a cache miss) if the cache is enabled, or directly
-// from the file system otherwise
+// GetChaincodeFromFS retrieves chaincode information from the file system
 func GetChaincodeFromFS(ccname string, ccversion string) (CCPackage, error) {
-	if ccInfoCacheEnabled {
-		return ccInfoCache.GetChaincode(ccname, ccversion)
-	} else {
-		return ccInfoFSProvider.GetChaincode(ccname, ccversion)
-	}
+	return ccInfoFSProvider.GetChaincode(ccname, ccversion)
 }
 
 // PutChaincodeIntoFS puts chaincode information in the file system (and
 // also in the cache to prime it) if the cache is enabled, or directly
 // from the file system otherwise
 func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
+	_, err := ccInfoFSProvider.PutChaincode(depSpec)
+	return err
+}
+
+// GetChaincodeData gets chaincode data from cache if there's one
+func GetChaincodeData(ccname string, ccversion string) (*ChaincodeData, error) {
 	if ccInfoCacheEnabled {
-		_, err := ccInfoCache.PutChaincode(depSpec)
-		return err
+		ccproviderLogger.Debugf("Getting chaincode data for <%s, %s> from cache", ccname, ccversion)
+		return ccInfoCache.GetChaincodeData(ccname, ccversion)
+	}
+	if ccpack, err := ccInfoFSProvider.GetChaincode(ccname, ccversion); err != nil {
+		return nil, err
 	} else {
-		_, err := ccInfoFSProvider.PutChaincode(depSpec)
-		return err
+		ccproviderLogger.Infof("Putting chaincode data for <%s, %s> into cache", ccname, ccversion)
+		return ccpack.GetChaincodeData(), nil
 	}
 }
 
 func CheckInsantiationPolicy(name, version string, cdLedger *ChaincodeData) error {
-	// we retrieve info about this chaincode from the file system
-	ccpack, err := GetChaincodeFromFS(name, version)
+	ccdata, err := GetChaincodeData(name, version)
 	if err != nil {
-		return fmt.Errorf("Chaincode data for cc %s/%s was not found, error %s", name, version, err)
+		return err
 	}
-
-	// ccpack is guaranteed to be non-nil
-	cdLocalFS := ccpack.GetChaincodeData()
 
 	// we have the info from the fs, check that the policy
 	// matches the one on the file system if one was specified;
@@ -241,8 +233,8 @@ func CheckInsantiationPolicy(name, version string, cdLedger *ChaincodeData) erro
 	// happen, i.e. that the peer will refuse to invoke the
 	// chaincode under these conditions. More info on
 	// https://jira.hyperledger.org/browse/FAB-3156
-	if cdLocalFS.InstantiationPolicy != nil {
-		if !bytes.Equal(cdLocalFS.InstantiationPolicy, cdLedger.InstantiationPolicy) {
+	if ccdata.InstantiationPolicy != nil {
+		if !bytes.Equal(ccdata.InstantiationPolicy, cdLedger.InstantiationPolicy) {
 			return fmt.Errorf("Instantiation policy mismatch for cc %s/%s", name, version)
 		}
 	}

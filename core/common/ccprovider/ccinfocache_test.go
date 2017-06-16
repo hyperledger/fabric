@@ -20,7 +20,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"errors"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -70,27 +69,7 @@ func buildPackage(name string, path string, version string, initArgs [][]byte) (
 }
 
 type mockCCInfoFSStorageMgrImpl struct {
-	CCMap           map[string]CCPackage
-	putchaincodeErr bool
-}
-
-func (m *mockCCInfoFSStorageMgrImpl) PutChaincode(depSpec *peer.ChaincodeDeploymentSpec) (CCPackage, error) {
-	if m.putchaincodeErr {
-		return nil, errors.New("Error putting the chaincode")
-	}
-
-	buf, err := proto.Marshal(depSpec)
-	if err != nil {
-		return nil, err
-	}
-	cccdspack := &CDSPackage{}
-	if _, err := cccdspack.InitFromBuffer(buf); err != nil {
-		return nil, err
-	}
-
-	m.CCMap[depSpec.ChaincodeSpec.ChaincodeId.Name+depSpec.ChaincodeSpec.ChaincodeId.Version] = cccdspack
-
-	return cccdspack, nil
+	CCMap map[string]CCPackage
 }
 
 func (m *mockCCInfoFSStorageMgrImpl) GetChaincode(ccname string, ccversion string) (CCPackage, error) {
@@ -109,7 +88,7 @@ func TestCCInfoCache(t *testing.T) {
 	// test the get side
 
 	// the cc data is not yet in the cache
-	_, err := cccache.GetChaincode(ccname, ccver)
+	_, err := cccache.GetChaincodeData(ccname, ccver)
 	assert.Error(t, err)
 
 	// put it in the file system
@@ -118,11 +97,11 @@ func TestCCInfoCache(t *testing.T) {
 	ccinfoFs.CCMap[ccname+ccver] = pack
 
 	// expect it to be in the cache now
-	cd1, err := cccache.GetChaincode(ccname, ccver)
+	cd1, err := cccache.GetChaincodeData(ccname, ccver)
 	assert.NoError(t, err)
 
 	// it should still be in the cache
-	cd2, err := cccache.GetChaincode(ccname, ccver)
+	cd2, err := cccache.GetChaincodeData(ccname, ccver)
 	assert.NoError(t, err)
 
 	// they are not null
@@ -131,21 +110,21 @@ func TestCCInfoCache(t *testing.T) {
 
 	// test the put side now..
 	ccver = "2.0"
+	// put it in the file system
+	pack, err = buildPackage(ccname, ccpath, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	assert.NoError(t, err)
+	ccinfoFs.CCMap[ccname+ccver] = pack
 
 	// create a dep spec to put
-	ds, err := getDepSpec(ccname, ccpath, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	_, err = getDepSpec(ccname, ccpath, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	assert.NoError(t, err)
 
-	// put it
-	_, err = cccache.PutChaincode(ds)
-	assert.NoError(t, err)
-
-	// expect it to be in the cache
-	cd1, err = cccache.GetChaincode(ccname, ccver)
+	// expect it to be cached
+	cd1, err = cccache.GetChaincodeData(ccname, ccver)
 	assert.NoError(t, err)
 
 	// it should still be in the cache
-	cd2, err = cccache.GetChaincode(ccname, ccver)
+	cd2, err = cccache.GetChaincodeData(ccname, ccver)
 	assert.NoError(t, err)
 
 	// they are not null
@@ -159,36 +138,27 @@ func TestPutChaincode(t *testing.T) {
 	ccpath := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
 	ccinfoFs := &mockCCInfoFSStorageMgrImpl{CCMap: map[string]CCPackage{}}
-	cccache := NewCCInfoCache(ccinfoFs)
+	NewCCInfoCache(ccinfoFs)
 
 	// Error case 1: ccname is empty
 	// create a dep spec to put
-	ds, err := getDepSpec(ccname, ccpath, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	_, err := getDepSpec(ccname, ccpath, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	assert.NoError(t, err)
-	_, err = cccache.PutChaincode(ds)
-	assert.Error(t, err)
-	assert.Equal(t, "the chaincode name cannot be an empty string", err.Error(), "Unexpected error received")
 
 	// Error case 2: ccver is empty
 	ccname = "foo"
 	ccver = ""
-	ds, err = getDepSpec(ccname, ccpath, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	_, err = getDepSpec(ccname, ccpath, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	assert.NoError(t, err)
-	_, err = cccache.PutChaincode(ds)
-	assert.Error(t, err)
-	assert.Equal(t, "the chaincode version cannot be an empty string", err.Error(), "Unexpected error received")
 
 	// Error case 3: ccfs.PutChainCode returns an error
-	ccinfoFs = &mockCCInfoFSStorageMgrImpl{CCMap: map[string]CCPackage{}, putchaincodeErr: true}
-	cccache = NewCCInfoCache(ccinfoFs)
+	ccinfoFs = &mockCCInfoFSStorageMgrImpl{CCMap: map[string]CCPackage{}}
+	NewCCInfoCache(ccinfoFs)
 
 	ccname = "foo"
 	ccver = "1.0"
-	ds, err = getDepSpec(ccname, ccpath, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	_, err = getDepSpec(ccname, ccpath, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	assert.NoError(t, err)
-	_, err = cccache.PutChaincode(ds)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "PutChaincodeIntoFS failed", "Unexpected error received")
 }
 
 // here we test the peer's built-in cache after enabling it
@@ -208,33 +178,6 @@ func TestCCInfoFSPeerInstance(t *testing.T) {
 	// put it
 	err = PutChaincodeIntoFS(ds)
 	assert.NoError(t, err)
-}
-
-// here we test the peer's built-in cache after enabling it
-func TestCCInfoCachePeerInstance(t *testing.T) {
-	// enable the cache first: it's disabled by default
-	EnableCCInfoCache()
-
-	ccname := "foo"
-	ccver := "1.0"
-	ccpath := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-
-	// the cc data is not yet in the cache
-	_, err := GetChaincodeFromFS(ccname, ccver)
-	assert.Error(t, err)
-
-	// create a dep spec to put
-	ds, err := getDepSpec(ccname, ccpath, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
-	assert.NoError(t, err)
-
-	// put it
-	err = PutChaincodeIntoFS(ds)
-	assert.NoError(t, err)
-
-	// Check if chain code package exists
-	exists, err := ChaincodePackageExists(ccname, ccver)
-	assert.NoError(t, err)
-	assert.True(t, exists, "ChaincodePackageExists should have returned true for an existing package")
 
 	// Get all installed chaincodes, it should not return 0 chain codes
 	resp, err := GetInstalledChaincodes()
@@ -242,10 +185,9 @@ func TestCCInfoCachePeerInstance(t *testing.T) {
 	assert.NotNil(t, resp)
 	assert.NotZero(t, len(resp.Chaincodes), "GetInstalledChaincodes should not have returned 0 chain codes")
 
-	// expect it to be in the cache
-	cd, err := GetChaincodeFromFS(ccname, ccver)
+	//get chaincode data
+	_, err = GetChaincodeData(ccname, ccver)
 	assert.NoError(t, err)
-	assert.NotNil(t, cd)
 }
 
 func TestGetInstalledChaincodesErrorPaths(t *testing.T) {

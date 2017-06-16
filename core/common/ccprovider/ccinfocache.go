@@ -19,34 +19,34 @@ package ccprovider
 import (
 	"fmt"
 	"sync"
-
-	"github.com/hyperledger/fabric/protos/peer"
 )
 
-// ccInfoCacheImpl implements CCInfoProvider by providing an in-memory
-// cache layer on top of the internal CCInfoProvider instance
+// ccInfoCacheImpl implements in-memory cache for ChaincodeData
+// needed by endorser to verify if the local instantiation policy
+// matches the instantiation policy on a channel before honoring
+// an invoke
 type ccInfoCacheImpl struct {
 	sync.RWMutex
 
-	cache map[string]CCPackage
-	ccfs  CCInfoProvider
+	cache        map[string]*ChaincodeData
+	cacheSupport CCCacheSupport
 }
 
 // NewCCInfoCache returns a new cache on top of the supplied CCInfoProvider instance
-func NewCCInfoCache(ccfs CCInfoProvider) CCInfoProvider {
+func NewCCInfoCache(cs CCCacheSupport) *ccInfoCacheImpl {
 	return &ccInfoCacheImpl{
-		cache: make(map[string]CCPackage),
-		ccfs:  ccfs,
+		cache:        make(map[string]*ChaincodeData),
+		cacheSupport: cs,
 	}
 }
 
-func (c *ccInfoCacheImpl) GetChaincode(ccname string, ccversion string) (CCPackage, error) {
+func (c *ccInfoCacheImpl) GetChaincodeData(ccname string, ccversion string) (*ChaincodeData, error) {
 	// c.cache is guaranteed to be non-nil
 
 	key := ccname + "/" + ccversion
 
 	c.RLock()
-	ccpack, in := c.cache[key]
+	ccdata, in := c.cache[key]
 	c.RUnlock()
 
 	if !in {
@@ -54,53 +54,17 @@ func (c *ccInfoCacheImpl) GetChaincode(ccname string, ccversion string) (CCPacka
 
 		// the chaincode data is not in the cache
 		// try to look it up from the file system
-		ccpack, err = c.ccfs.GetChaincode(ccname, ccversion)
+		ccpack, err := c.cacheSupport.GetChaincode(ccname, ccversion)
 		if err != nil || ccpack == nil {
 			return nil, fmt.Errorf("cannot retrieve package for chaincode %s/%s, error %s", ccname, ccversion, err)
 		}
 
-		// we have a non-nil CCPackage, put it in the cache
+		// we have a non-nil ChaincodeData, put it in the cache
 		c.Lock()
-		c.cache[key] = ccpack
+		ccdata = ccpack.GetChaincodeData()
+		c.cache[key] = ccdata
 		c.Unlock()
 	}
 
-	return ccpack, nil
-}
-
-func (c *ccInfoCacheImpl) PutChaincode(depSpec *peer.ChaincodeDeploymentSpec) (CCPackage, error) {
-	// c.cache is guaranteed to be non-nil
-
-	ccname := depSpec.ChaincodeSpec.ChaincodeId.Name
-	ccversion := depSpec.ChaincodeSpec.ChaincodeId.Version
-
-	if ccname == "" {
-		return nil, fmt.Errorf("the chaincode name cannot be an empty string")
-	}
-
-	if ccversion == "" {
-		return nil, fmt.Errorf("the chaincode version cannot be an empty string")
-	}
-
-	key := ccname + "/" + ccversion
-
-	c.RLock()
-	_, in := c.cache[key]
-	c.RUnlock()
-
-	if in {
-		return nil, fmt.Errorf("attempted to put chaincode data twice for %s/%s", ccname, ccversion)
-	}
-
-	ccpack, err := c.ccfs.PutChaincode(depSpec)
-	if err != nil || ccpack == nil {
-		return nil, fmt.Errorf("PutChaincodeIntoFS failed, error %s", err)
-	}
-
-	// we have a non-nil CCPackage, put it in the cache
-	c.Lock()
-	c.cache[key] = ccpack
-	c.Unlock()
-
-	return ccpack, nil
+	return ccdata, nil
 }
