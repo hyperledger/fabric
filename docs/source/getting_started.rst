@@ -42,7 +42,7 @@ Next, execute the following command:
 
   curl -sSL https://goo.gl/LQkuoh | bash
 
-This command downloads and executes a bash script (``bootstrap.sh``) that will
+This command downloads and executes a bash script that will
 extract all of the necessary artifacts to set up your network and place them
 into a folder named ``release``.
 
