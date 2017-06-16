@@ -1,3 +1,7 @@
+# Copyright Greg Haskins All Rights Reserved
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 FROM _BASE_NS_/fabric-baseimage:_BASE_TAG_
 # Based on https://github.com/31z4/zookeeper-docker/blob/master/3.4.9/Dockerfile
 

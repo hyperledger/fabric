@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-
+#
+# Copyright IBM Corp All Rights Reserved
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 couchDbContainerStatus() {
   for s in created restarting running paused exited dead ; do
     if [ -n "$(docker ps --all --quiet --filter name=couchdb --filter status=$s)" ] ; then
