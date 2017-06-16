@@ -26,8 +26,13 @@ import (
 	mb "github.com/hyperledger/fabric/protos/msp"
 
 	"github.com/golang/protobuf/proto"
+	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
 
 var invalidSignature = []byte("badsigned")
 
