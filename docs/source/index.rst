@@ -68,7 +68,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    txflow
    Fabric CA's User Guide <http://hyperledger-fabric-ca.readthedocs.io/en/latest>
    fabric-sdks
-   orderingservice
+   kafka
    channels
    ledger
    readwrite
