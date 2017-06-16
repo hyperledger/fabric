@@ -27,3 +27,14 @@ func Test_splitEnvPath(t *testing.T) {
 	paths := splitEnvPaths("foo" + string(os.PathListSeparator) + "bar" + string(os.PathListSeparator) + "baz")
 	assert.Equal(t, len(paths), 3)
 }
+
+func Test_getGoEnv(t *testing.T) {
+	goenv, err := getGoEnv()
+	assert.NilError(t, err)
+
+	_, ok := goenv["GOPATH"]
+	assert.Equal(t, ok, true)
+
+	_, ok = goenv["GOROOT"]
+	assert.Equal(t, ok, true)
+}

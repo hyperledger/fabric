@@ -73,11 +73,14 @@ func decodeUrl(spec *pb.ChaincodeSpec) (string, error) {
 }
 
 func getGopath() (string, error) {
-	gopath := os.Getenv("GOPATH")
+	env, err := getGoEnv()
+	if err != nil {
+		return "", err
+	}
 	// Only take the first element of GOPATH
-	splitGoPath := filepath.SplitList(gopath)
+	splitGoPath := filepath.SplitList(env["GOPATH"])
 	if len(splitGoPath) == 0 {
-		return "", fmt.Errorf("invalid GOPATH environment variable value:[%s]", gopath)
+		return "", fmt.Errorf("invalid GOPATH environment variable value:[%s]", env["GOPATH"])
 	}
 	return splitGoPath[0], nil
 }
@@ -194,7 +197,10 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 	// --------------------------------------------------------------------------------------
 	// Update our environment for the purposes of executing go-list directives
 	// --------------------------------------------------------------------------------------
-	env := getEnv()
+	env, err := getGoEnv()
+	if err != nil {
+		return nil, err
+	}
 	gopaths := splitEnvPaths(env["GOPATH"])
 	goroots := splitEnvPaths(env["GOROOT"])
 	gopaths[code.Gopath] = true
