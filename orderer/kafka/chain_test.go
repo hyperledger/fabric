@@ -231,6 +231,8 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("EnqueueProper", func(t *testing.T) {
+		t.Skip("Skipping test until FAB-4537 is resolved")
+
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
 
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
