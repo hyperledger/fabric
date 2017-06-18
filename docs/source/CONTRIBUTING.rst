@@ -132,10 +132,10 @@ you should be ready to set up your local development
 Next, try :doc:`building the project <dev-setup/build>` in your local
 development environment to ensure that everything is set up correctly.
 
-:doc:`Logging control <Setup/logging-control>` describes how to tweak
+The :doc:`logging-control` document describes how to tweak
 the logging levels of various components within the Fabric. Finally,
-every source file needs to include a `license header
-<https://github.com/hyperledger/fabric/blob/master/docs/source/dev-setup/headers.txt>`__: modified to include a copyright
+every source file needs to include a
+`license header <https://github.com/hyperledger/fabric/blob/master/docs/source/dev-setup/headers.txt>`__: modified to include a copyright
 statement for the principle author(s).
 
 What makes a good change request?
@@ -287,4 +287,3 @@ local git repository using ``git commit -s``.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-

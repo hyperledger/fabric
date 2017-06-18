@@ -163,9 +163,9 @@ library.
 The available log levels in order of increasing verbosity are: *CRITICAL
 \| ERROR \| WARNING \| NOTICE \| INFO \| DEBUG*
 
-See :doc:`specific logging control <../Setup/logging-control>`
-instructions when running the peer process.
+See the :doc:`logging-control` document for
+instructions on tweaking the level of log messages to output when running
+the various Fabric components.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-

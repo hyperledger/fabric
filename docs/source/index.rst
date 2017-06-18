@@ -58,7 +58,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    cc-packaging-and-signing
    endorsement-policies
    error-handling
-   Setup/logging-control
+   logging-control
 
 .. toctree::
    :maxdepth: 2
@@ -78,14 +78,12 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    :maxdepth: 2
    :caption: Troubleshooting and FAQs
 
-   FAQ/architecture_FAQ
+   Fabric-FAQ
 
 .. toctree::
    :maxdepth: 2
-   :caption: Appendix
+   :caption: Contributing
 
-   glossary
-   releases
    CONTRIBUTING
    MAINTAINERS
    jira_navigation
@@ -98,8 +96,14 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    Gerrit/best-practices
    testing
    Style-guides/go-style
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Appendix
+
+   glossary
+   releases
    questions
-   quality
    status
    license
 
