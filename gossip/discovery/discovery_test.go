@@ -1206,15 +1206,30 @@ func stopInstances(t *testing.T, instances []*gossipInstance) {
 }
 
 func assertMembership(t *testing.T, instances []*gossipInstance, expectedNum int) {
-	fullMembership := func() bool {
-		for _, inst := range instances {
-			if len(inst.GetMembership()) != expectedNum {
-				return false
+	wg := sync.WaitGroup{}
+	wg.Add(len(instances))
+
+	ctx, cancelation := context.WithTimeout(context.Background(), timeout)
+	defer cancelation()
+
+	for _, inst := range instances {
+		go func(ctx context.Context, i *gossipInstance) {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(timeout / 10):
+					if len(i.GetMembership()) == expectedNum {
+						return
+					}
+				}
 			}
-		}
-		return true
+		}(ctx, inst)
 	}
-	waitUntilOrFail(t, fullMembership)
+
+	wg.Wait()
+	assert.NoError(t, ctx.Err(), "Timeout expired!")
 }
 
 func portsOfMembers(members []NetworkMember) []int {
