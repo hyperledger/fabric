@@ -106,19 +106,19 @@ func Test_Start(t *testing.T) {
 	// case 1: getMockClient returns error
 	dvm.getClientFnc = getMockClient
 	getClientErr = true
-	err := dvm.Start(ctx, ccid, args, env, nil)
+	err := dvm.Start(ctx, ccid, args, env, nil, nil)
 	testerr(t, err, false)
 	getClientErr = false
 
 	// case 2: dockerClient.CreateContainer returns error
 	createErr = true
-	err = dvm.Start(ctx, ccid, args, env, nil)
+	err = dvm.Start(ctx, ccid, args, env, nil, nil)
 	testerr(t, err, false)
 	createErr = false
 
 	// case 3: dockerClient.CreateContainer returns docker.noSuchImgErr
 	noSuchImgErr = true
-	err = dvm.Start(ctx, ccid, args, env, nil)
+	err = dvm.Start(ctx, ccid, args, env, nil, nil)
 	testerr(t, err, false)
 
 	chaincodePath := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
@@ -136,35 +136,53 @@ func Test_Start(t *testing.T) {
 	// docker.noSuchImgErr and dockerClient.Start returns error
 	viper.Set("vm.docker.attachStdout", true)
 	startErr = true
-	err = dvm.Start(ctx, ccid, args, env, bldr)
+	err = dvm.Start(ctx, ccid, args, env, bldr, nil)
 	testerr(t, err, false)
 	startErr = false
 
 	// Success cases
-	err = dvm.Start(ctx, ccid, args, env, bldr)
+	err = dvm.Start(ctx, ccid, args, env, bldr, nil)
 	testerr(t, err, true)
 	noSuchImgErr = false
 
 	// dockerClient.StopContainer returns error
 	stopErr = true
-	err = dvm.Start(ctx, ccid, args, env, nil)
+	err = dvm.Start(ctx, ccid, args, env, nil, nil)
 	testerr(t, err, true)
 	stopErr = false
 
 	// dockerClient.KillContainer returns error
 	killErr = true
-	err = dvm.Start(ctx, ccid, args, env, nil)
+	err = dvm.Start(ctx, ccid, args, env, nil, nil)
 	testerr(t, err, true)
 	killErr = false
 
 	// dockerClient.RemoveContainer returns error
 	removeErr = true
-	err = dvm.Start(ctx, ccid, args, env, nil)
+	err = dvm.Start(ctx, ccid, args, env, nil, nil)
 	testerr(t, err, true)
 	removeErr = false
 
-	err = dvm.Start(ctx, ccid, args, env, nil)
+	err = dvm.Start(ctx, ccid, args, env, nil, nil)
 	testerr(t, err, true)
+
+	//test preLaunchFunc works correctly
+	preLaunchStr := "notset"
+	preLaunchFunc := func() error {
+		preLaunchStr = "set"
+		return nil
+	}
+
+	err = dvm.Start(ctx, ccid, args, env, nil, preLaunchFunc)
+	testerr(t, err, true)
+	assert.Equal(t, preLaunchStr, "set")
+
+	preLaunchFunc = func() error {
+		return fmt.Errorf("testing error path")
+	}
+
+	err = dvm.Start(ctx, ccid, args, env, nil, preLaunchFunc)
+	testerr(t, err, false)
 }
 
 func Test_Stop(t *testing.T) {
