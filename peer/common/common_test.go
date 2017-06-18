@@ -7,8 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package common_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
@@ -48,6 +51,13 @@ func TestInitConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestINitCryptoMissingDir(t *testing.T) {
+	dir := os.TempDir() + "/" + util.GenerateUUID()
+	err := common.InitCrypto(dir, "DEFAULT")
+	assert.Error(t, err, "Should be able to initialize crypto with non-existing directory")
+	assert.Contains(t, err.Error(), fmt.Sprintf("missing %s folder", dir))
 }
 
 func TestInitCrypto(t *testing.T) {
