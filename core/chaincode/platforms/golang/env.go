@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Env map[string]string
@@ -27,13 +28,34 @@ type Env map[string]string
 func getEnv() Env {
 	env := make(Env)
 	for _, entry := range os.Environ() {
-		tokens := strings.Split(entry, "=")
+		tokens := strings.SplitN(entry, "=", 2)
 		if len(tokens) > 1 {
 			env[tokens[0]] = tokens[1]
 		}
 	}
 
 	return env
+}
+
+func getGoEnv() (Env, error) {
+	env := getEnv()
+
+	goenvbytes, err := runProgram(env, 10*time.Second, "go", "env")
+	if err != nil {
+		return nil, err
+	}
+
+	goenv := make(Env)
+
+	envout := strings.Split(string(goenvbytes), "\n")
+	for _, entry := range envout {
+		tokens := strings.SplitN(entry, "=", 2)
+		if len(tokens) > 1 {
+			goenv[tokens[0]] = strings.Trim(tokens[1], "\"")
+		}
+	}
+
+	return goenv, nil
 }
 
 func flattenEnv(env Env) []string {

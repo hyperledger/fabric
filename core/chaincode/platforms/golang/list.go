@@ -25,17 +25,15 @@ import (
 	"time"
 )
 
-// Logic inspired by: https://dave.cheney.net/2014/09/14/go-list-your-swiss-army-knife
-func list(env Env, template, pkg string) ([]string, error) {
-
+//runProgram non-nil Env, timeout (typically secs or millisecs), program name and args
+func runProgram(env Env, timeout time.Duration, pgm string, args ...string) ([]byte, error) {
 	if env == nil {
-		env = getEnv()
+		return nil, fmt.Errorf("<%s, %v>: nil env provided", pgm, args)
 	}
-
 	var stdOut bytes.Buffer
 	var stdErr bytes.Buffer
 
-	cmd := exec.Command("go", "list", "-f", template, pkg)
+	cmd := exec.Command(pgm, args...)
 	cmd.Env = flattenEnv(env)
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr
@@ -48,19 +46,33 @@ func list(env Env, template, pkg string) ([]string, error) {
 	}()
 
 	select {
-	case <-time.After(60 * time.Second):
+	case <-time.After(timeout):
 		if err = cmd.Process.Kill(); err != nil {
-			return nil, fmt.Errorf("go list: failed to kill: %s", err)
+			return nil, fmt.Errorf("<%s, %v>: failed to kill: %s", pgm, args, err)
 		} else {
-			return nil, errors.New("go list: timeout")
+			return nil, errors.New(fmt.Sprintf("<%s, %v>: timeout(%d msecs)", pgm, args, timeout/time.Millisecond))
 		}
 	case err = <-done:
 		if err != nil {
-			return nil, fmt.Errorf("go list: failed with error: \"%s\"\n%s", err, string(stdErr.Bytes()))
+			return nil, fmt.Errorf("<%s, %v>: failed with error: \"%s\"\n%s", pgm, args, err, string(stdErr.Bytes()))
 		}
 
-		return strings.Split(string(stdOut.Bytes()), "\n"), nil
+		return stdOut.Bytes(), nil
 	}
+}
+
+// Logic inspired by: https://dave.cheney.net/2014/09/14/go-list-your-swiss-army-knife
+func list(env Env, template, pkg string) ([]string, error) {
+	if env == nil {
+		env = getEnv()
+	}
+
+	lst, err := runProgram(env, 60*time.Second, "go", "list", "-f", template, pkg)
+	if err != nil {
+		return nil, err
+	}
+
+	return strings.Split(strings.Trim(string(lst), "\n"), "\n"), nil
 }
 
 func listDeps(env Env, pkg string) ([]string, error) {
