@@ -67,7 +67,7 @@ func TestChannelConfig(t *testing.T) {
 
 	ag := NewApplicationGroup(nil)
 	og := NewOrdererGroup(nil)
-	csg := NewConsortiumsGroup()
+	csg := NewConsortiumsGroup(nil)
 	good := make(map[string]ValueProposer)
 	good[ApplicationGroupKey] = ag
 	good[OrdererGroupKey] = og
@@ -75,9 +75,9 @@ func TestChannelConfig(t *testing.T) {
 
 	err := cc.Validate(nil, good)
 	assert.NoError(t, err, "Unexpected error validating good config groups")
-	err = cc.Validate(nil, map[string]ValueProposer{ApplicationGroupKey: NewConsortiumsGroup()})
+	err = cc.Validate(nil, map[string]ValueProposer{ApplicationGroupKey: NewConsortiumsGroup(nil)})
 	assert.Error(t, err, "Expected error validating bad config group")
-	err = cc.Validate(nil, map[string]ValueProposer{OrdererGroupKey: NewConsortiumsGroup()})
+	err = cc.Validate(nil, map[string]ValueProposer{OrdererGroupKey: NewConsortiumsGroup(nil)})
 	assert.Error(t, err, "Expected error validating bad config group")
 	err = cc.Validate(nil, map[string]ValueProposer{ConsortiumsGroupKey: NewOrdererGroup(nil)})
 	assert.Error(t, err, "Expected error validating bad config group")

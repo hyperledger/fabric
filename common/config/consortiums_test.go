@@ -23,7 +23,7 @@ import (
 
 func TestConsortiums(t *testing.T) {
 
-	csg := NewConsortiumsGroup()
+	csg := NewConsortiumsGroup(nil)
 	cg, err := csg.NewGroup("testCG")
 	assert.NoError(t, err, "NewGroup shuld not have returned error")
 	_, ok := cg.(*ConsortiumGroup)

@@ -18,6 +18,8 @@ package config
 
 import (
 	"fmt"
+
+	"github.com/hyperledger/fabric/common/config/msp"
 )
 
 const (
@@ -29,18 +31,22 @@ const (
 type ConsortiumsGroup struct {
 	*Proposer
 	*ConsortiumsConfig
+
+	mspConfig *msp.MSPConfigHandler
 }
 
 // NewConsortiumsGroup creates a new *ConsortiumsGroup
-func NewConsortiumsGroup() *ConsortiumsGroup {
-	cg := &ConsortiumsGroup{}
+func NewConsortiumsGroup(mspConfig *msp.MSPConfigHandler) *ConsortiumsGroup {
+	cg := &ConsortiumsGroup{
+		mspConfig: mspConfig,
+	}
 	cg.Proposer = NewProposer(cg)
 	return cg
 }
 
 // NewGroup returns a Consortium instance
 func (cg *ConsortiumsGroup) NewGroup(name string) (ValueProposer, error) {
-	return NewConsortiumGroup(cg), nil
+	return NewConsortiumGroup(cg.mspConfig), nil
 }
 
 // Allocate returns the resources for a new config proposal

@@ -122,7 +122,7 @@ func (cg *ChannelGroup) NewGroup(group string) (ValueProposer, error) {
 	case OrdererGroupKey:
 		return NewOrdererGroup(cg.mspConfigHandler), nil
 	case ConsortiumsGroupKey:
-		return NewConsortiumsGroup(), nil
+		return NewConsortiumsGroup(cg.mspConfigHandler), nil
 	default:
 		return nil, fmt.Errorf("Disallowed channel group: %s", group)
 	}

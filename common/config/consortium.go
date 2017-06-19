@@ -33,15 +33,13 @@ type ConsortiumGroup struct {
 	*Proposer
 	*ConsortiumConfig
 
-	mspConfig        *msp.MSPConfigHandler
-	consortiumsGroup *ConsortiumsGroup
+	mspConfig *msp.MSPConfigHandler
 }
 
 // NewConsortiumGroup creates a new *ConsortiumGroup
-func NewConsortiumGroup(consortiumsGroup *ConsortiumsGroup) *ConsortiumGroup {
+func NewConsortiumGroup(mspConfig *msp.MSPConfigHandler) *ConsortiumGroup {
 	cg := &ConsortiumGroup{
-		mspConfig:        msp.NewMSPConfigHandler(),
-		consortiumsGroup: consortiumsGroup,
+		mspConfig: mspConfig,
 	}
 	cg.Proposer = NewProposer(cg)
 	return cg
@@ -59,28 +57,21 @@ func (cg *ConsortiumGroup) Allocate() Values {
 
 // BeginValueProposals calls through to Proposer after calling into the MSP config Handler
 func (cg *ConsortiumGroup) BeginValueProposals(tx interface{}, groups []string) (ValueDeserializer, []ValueProposer, error) {
-	cg.mspConfig.BeginConfig(tx)
 	return cg.Proposer.BeginValueProposals(tx, groups)
 }
 
 // PreCommit intercepts the precommit request and commits the MSP config handler before calling the underlying proposer
 func (cg *ConsortiumGroup) PreCommit(tx interface{}) error {
-	err := cg.mspConfig.PreCommit(tx)
-	if err != nil {
-		return err
-	}
 	return cg.Proposer.PreCommit(tx)
 }
 
 // RollbackProposals intercepts the rollback request and commits the MSP config handler before calling the underlying proposer
 func (cg *ConsortiumGroup) RollbackProposals(tx interface{}) {
-	cg.mspConfig.RollbackProposals(tx)
 	cg.Proposer.RollbackProposals(tx)
 }
 
 // CommitProposals intercepts the commit request and commits the MSP config handler before calling the underlying proposer
 func (cg *ConsortiumGroup) CommitProposals(tx interface{}) {
-	cg.mspConfig.CommitProposals(tx)
 	cg.Proposer.CommitProposals(tx)
 }
 
