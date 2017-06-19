@@ -18,6 +18,7 @@ package common
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -33,7 +34,7 @@ import (
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
-	logging "github.com/op/go-logging"
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
@@ -85,16 +86,24 @@ func InitConfig(cmdRoot string) error {
 
 //InitCrypto initializes crypto for this peer
 func InitCrypto(mspMgrConfigDir string, localMSPID string) error {
+	var err error
+	// Check whenever msp folder exists
+	_, err = os.Stat(mspMgrConfigDir)
+	if os.IsNotExist(err) {
+		// No need to try to load MSP from folder which is not available
+		return fmt.Errorf("cannot init crypto, missing %s folder", mspMgrConfigDir)
+	}
+
 	// Init the BCCSP
 	var bccspConfig *factory.FactoryOpts
-	err := viperutil.EnhancedExactUnmarshalKey("peer.BCCSP", &bccspConfig)
+	err = viperutil.EnhancedExactUnmarshalKey("peer.BCCSP", &bccspConfig)
 	if err != nil {
-		return fmt.Errorf("Could not parse YAML config [%s]", err)
+		return fmt.Errorf("could not parse YAML config [%s]", err)
 	}
 
 	err = mspmgmt.LoadLocalMsp(mspMgrConfigDir, bccspConfig, localMSPID)
 	if err != nil {
-		return fmt.Errorf("Error when setting up MSP from directory %s: err %s", mspMgrConfigDir, err)
+		return fmt.Errorf("error when setting up MSP from directory %s: err %s", mspMgrConfigDir, err)
 	}
 
 	return nil
