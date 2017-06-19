@@ -166,6 +166,7 @@ func (m *ChaincodeHeaderExtension) GetChaincodeId() *ChaincodeID {
 type ChaincodeProposalPayload struct {
 	// Input contains the arguments for this invocation. If this invocation
 	// deploys a new chaincode, ESCC/VSCC are part of this field.
+	// This is usually a marshaled ChaincodeInvocationSpec
 	Input []byte `protobuf:"bytes,1,opt,name=input,proto3" json:"input,omitempty"`
 	// TransientMap contains data (e.g. cryptographic material) that might be used
 	// to implement some form of application-level confidentiality. The contents

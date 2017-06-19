@@ -72,7 +72,7 @@ func Main() {
 func Start(cmd string, conf *config.TopLevel) {
 	signer := localmsp.NewSigner()
 	manager := initializeMultichannelRegistrar(conf, signer)
-	server := NewServer(manager, signer)
+	server := NewServer(manager, signer, &conf.Debug)
 
 	switch cmd {
 	case start.FullCommand(): // "start" command

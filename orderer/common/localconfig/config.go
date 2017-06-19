@@ -65,6 +65,7 @@ type TopLevel struct {
 	FileLedger FileLedger
 	RAMLedger  RAMLedger
 	Kafka      Kafka
+	Debug      Debug
 }
 
 // General contains config which should be common among all orderer types.
@@ -162,6 +163,12 @@ type Consumer struct {
 	RetryBackoff time.Duration
 }
 
+// Debug contains configuration for the orderer's debug parameters
+type Debug struct {
+	BroadcastTraceDir string
+	DeliverTraceDir   string
+}
+
 var defaults = TopLevel{
 	General: General{
 		LedgerType:     "file",
@@ -215,6 +222,10 @@ var defaults = TopLevel{
 		TLS: TLS{
 			Enabled: false,
 		},
+	},
+	Debug: Debug{
+		BroadcastTraceDir: "",
+		DeliverTraceDir:   "",
 	},
 }
 
