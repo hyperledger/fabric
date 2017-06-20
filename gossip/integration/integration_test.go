@@ -64,12 +64,15 @@ func TestNewGossipCryptoService(t *testing.T) {
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	idMapper := identity.NewIdentityMapper(cryptSvc, peerIdentity)
 
-	g1 := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc, idMapper,
+	g1, err := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc, idMapper,
 		defaultSecureDialOpts)
-	g2 := NewGossipComponent(peerIdentity, endpoint2, s2, secAdv, cryptSvc, idMapper,
+	assert.NoError(t, err)
+	g2, err := NewGossipComponent(peerIdentity, endpoint2, s2, secAdv, cryptSvc, idMapper,
 		defaultSecureDialOpts, endpoint1)
-	g3 := NewGossipComponent(peerIdentity, endpoint3, s3, secAdv, cryptSvc, idMapper,
+	assert.NoError(t, err)
+	g3, err := NewGossipComponent(peerIdentity, endpoint3, s3, secAdv, cryptSvc, idMapper,
 		defaultSecureDialOpts, endpoint1)
+	assert.NoError(t, err)
 	defer g1.Stop()
 	defer g2.Stop()
 	defer g3.Stop()
@@ -83,14 +86,12 @@ func TestBadInitialization(t *testing.T) {
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	s1 := grpc.NewServer()
 	idMapper := identity.NewIdentityMapper(cryptSvc, peerIdentity)
-	assert.Panics(t, func() {
-		newConfig("anEndpointWithoutAPort", "anEndpointWithoutAPort")
-	})
-	assert.Panics(t, func() {
-		viper.Set("peer.tls.enabled", true)
-		NewGossipComponent(peerIdentity, "localhost:5000", s1, secAdv, cryptSvc, idMapper,
-			defaultSecureDialOpts)
-	})
+	_, err := newConfig("anEndpointWithoutAPort", "anEndpointWithoutAPort")
+
+	viper.Set("peer.tls.enabled", true)
+	_, err = NewGossipComponent(peerIdentity, "localhost:5000", s1, secAdv, cryptSvc, idMapper,
+		defaultSecureDialOpts)
+	assert.Error(t, err)
 }
 
 func setupTestEnv() {

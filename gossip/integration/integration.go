@@ -18,8 +18,9 @@ package integration
 
 import (
 	"crypto/tls"
+	"fmt"
+	"net"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/hyperledger/fabric/core/config"
@@ -33,17 +34,23 @@ import (
 
 // This file is used to bootstrap a gossip instance and/or leader election service instance
 
-func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string) *gossip.Config {
-	port, err := strconv.ParseInt(strings.Split(selfEndpoint, ":")[1], 10, 64)
+func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string) (*gossip.Config, error) {
+	_, p, err := net.SplitHostPort(selfEndpoint)
+
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("misconfigured endpoint %s, the error is %s", selfEndpoint, err)
+	}
+
+	port, err := strconv.ParseInt(p, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("misconfigured endpoint %s, failed to parse port number due to %s", selfEndpoint, err)
 	}
 
 	var cert *tls.Certificate
 	if viper.GetBool("peer.tls.enabled") {
 		certTmp, err := tls.LoadX509KeyPair(config.GetPath("peer.tls.cert.file"), config.GetPath("peer.tls.key.file"))
 		if err != nil {
-			panic(err)
+			return nil, fmt.Errorf("failed to load certificates because of %s", err)
 		}
 		cert = &certTmp
 	}
@@ -66,19 +73,22 @@ func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string
 		PublishStateInfoInterval:   util.GetDurationOrDefault("peer.gossip.publishStateInfoInterval", 4*time.Second),
 		SkipBlockVerification:      viper.GetBool("peer.gossip.skipBlockVerification"),
 		TLSServerCert:              cert,
-	}
+	}, nil
 }
 
 // NewGossipComponent creates a gossip component that attaches itself to the given gRPC server
 func NewGossipComponent(peerIdentity []byte, endpoint string, s *grpc.Server,
 	secAdv api.SecurityAdvisor, cryptSvc api.MessageCryptoService, idMapper identity.Mapper,
-	secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) gossip.Gossip {
+	secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) (gossip.Gossip, error) {
 
 	externalEndpoint := viper.GetString("peer.gossip.externalEndpoint")
 
-	conf := newConfig(endpoint, externalEndpoint, bootPeers...)
+	conf, err := newConfig(endpoint, externalEndpoint, bootPeers...)
+	if err != nil {
+		return nil, err
+	}
 	gossipInstance := gossip.NewGossipService(conf, s, secAdv, cryptSvc, idMapper,
 		peerIdentity, secureDialOpts)
 
-	return gossipInstance
+	return gossipInstance, nil
 }

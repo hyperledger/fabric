@@ -157,10 +157,12 @@ func TestCreateChainFromBlock(t *testing.T) {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 		return dialOpts
 	}
-	service.InitGossipServiceCustomDeliveryFactory(
+	err = service.InitGossipServiceCustomDeliveryFactory(
 		identity, "localhost:13611", grpcServer,
 		&mockDeliveryClientFactory{},
 		messageCryptoService, secAdv, defaultSecureDialOpts)
+
+	assert.NoError(t, err)
 
 	err = CreateChainFromBlock(block)
 	if err != nil {

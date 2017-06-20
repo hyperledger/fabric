@@ -175,8 +175,11 @@ func serve(args []string) error {
 		}
 		return dialOpts
 	}
-	service.InitGossipService(serializedIdentity, peerEndpoint.Address, peerServer.Server(),
+	err = service.InitGossipService(serializedIdentity, peerEndpoint.Address, peerServer.Server(),
 		messageCryptoService, secAdv, secureDialOpts, bootstrap...)
+	if err != nil {
+		return err
+	}
 	defer service.GetGossipService().Stop()
 
 	//initialize system chaincodes
