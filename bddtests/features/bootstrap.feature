@@ -16,7 +16,7 @@ Feature: Bootstrap
   As a blockchain entrepreneur
   I want to bootstrap a new blockchain network
 
-    @doNotDecompose
+#    @doNotDecompose
     @generateDocs
   Scenario Outline: Bootstrap a development network with 4 peers (2 orgs)  and 1 orderer (1 org), each having a single independent root of trust (No fabric-ca, just openssl)
     #creates 1 self-signed key/cert pair per orderer organization
