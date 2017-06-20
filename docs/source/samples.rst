@@ -23,7 +23,7 @@ To do this, execute the following command:
 
 .. code:: bash
 
-  curl -sSL https://goo.gl/LQkuoh | bash
+  curl -sSL https://goo.gl/PabWJX | bash
 
 The curl command above downloads and executes a bash script
 that will download and extract all of the platform-specific binaries you

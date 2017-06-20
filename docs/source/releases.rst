@@ -1,27 +1,53 @@
 Release Notes
 =============
 
+`v1.0.0-rc1 <https://github.com/hyperledger/fabric/releases/tag/v1.0.0-rc1>`__
+June 23, 2017
+
+Bug fixes, documentation and test coverage improvements, UX improvements
+based on user feedback and changes to address a variety of static scan
+findings (unused code, static security scanning, spelling, linting and more).
+
+Known Vulnerabilities
+none
+
+Resolved Vulnerabilities
+https://jira.hyperledger.org/browse/FAB-4856
+https://jira.hyperledger.org/browse/FAB-4848
+https://jira.hyperledger.org/browse/FAB-4751
+https://jira.hyperledger.org/browse/FAB-4626
+https://jira.hyperledger.org/browse/FAB-4567
+https://jira.hyperledger.org/browse/FAB-3715
+
+Known Issues & Workarounds
+none
+
+`Change Log <https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v100-rc1>`__
+
 `v1.0.0-beta <https://github.com/hyperledger/fabric/releases/tag/v1.0.0-beta>`__
 June 8, 2017
 
-Bug fixes, documentation and test coverage improvements, UX improvements based on user feedback and changes to address a variety of static scan findings (unused code, static security scanning, spelling, linting and more).
+Bug fixes, documentation and test coverage improvements, UX improvements based
+on user feedback and changes to address a variety of static scan findings (unused
+code, static security scanning, spelling, linting and more).
 
-Upgraded to `latest version <https://github.com/grpc/grpc-go/releases/>`__ (a precursor to 1.4.0) of gRPC-go and implemented keep-alive feature for improved resiliency.
+Upgraded to `latest version <https://github.com/grpc/grpc-go/releases/>`__ (a
+precursor to 1.4.0) of gRPC-go and implemented keep-alive feature for improved
+resiliency.
 
-Added a `new tool <https://github.com/hyperledger/fabric/tree/master/examples/configtxupdate>`__ `configtxlator` to enable users to translate the contents of a channel configuration transaction into a human readable form.
+Added a `new tool <https://github.com/hyperledger/fabric/tree/master/examples/configtxupdate>`__
+`configtxlator` to enable users to translate the contents of a channel configuration transaction
+into a human readable form.
 
 Known Vulnerabilities
-~~~~~~~~~~~~~~~~~~~~~
 
 none
 
 Resolved Vulnerabilities
-~~~~~~~~~~~~~~~~~~~~~~~~
 
 none
 
 Known Issues & Workarounds
-~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 BCCSP content in the configtx.yaml has been `removed <https://github.com/hyperledger/fabric/commit/a997c30>`__. This change will cause a panic when running `configtxgen` tool with a configtx.yaml file that includes the removed BCCSP content.
 
