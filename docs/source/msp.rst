@@ -14,7 +14,8 @@ generation and verification).
 
 A Fabric blockchain network can be governed by one or more MSPs. In this
 way Fabric offers modularity of membership operations, and interoperability
-across different membership standards and architectures.
+across different membership standards and architectures. Fabric currently
+supports PKCS #11 libraries.
 
 In the rest of this document we elaborate on the setup of the MSP
 implementation supported by Fabric, and discuss best practices concerning
@@ -31,8 +32,8 @@ members.
 
 Firstly, for each MSP a name needs to be specified in order to reference that MSP
 in the network (e.g. ``msp1``, ``org2``, and ``org3.divA``). This is the name under
-which membership rules of an MSP representing a consortium, organisation or
-organisation division is to be referenced in a channel. This is also referred
+which membership rules of an MSP representing a consortium, organization or
+organization division is to be referenced in a channel. This is also referred
 to as the *MSP Identifier* or *MSP ID*. MSP Identifiers are required to be unique per MSP
 instance. For example, shall two MSP instances with the same identifier be
 detected at the system channel genesis, orderer setup will fail.
@@ -287,4 +288,3 @@ and does not require blacklisting the no longer considered intermediate CA.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-
