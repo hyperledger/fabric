@@ -58,6 +58,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    msp
    configtx
    configtxgen
+   configtxlator
    cc-packaging-and-signing
    endorsement-policies
    error-handling
