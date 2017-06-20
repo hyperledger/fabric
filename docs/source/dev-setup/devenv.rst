@@ -71,6 +71,10 @@ Make sure you have properly setup your Host's `GOPATH environment
 variable <https://github.com/golang/go/wiki/GOPATH>`__. This allows for
 both building within the Host and the VM.
 
+In case you installed Go into a different location from the standard one
+your Go distribution assumes, make sure that you also set `GOROOT
+environment variable <https://golang.org/doc/install#install>`__.
+
 Note to Windows users
 ^^^^^^^^^^^^^^^^^^^^^
 
