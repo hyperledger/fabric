@@ -439,6 +439,16 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 		return err
 	}
 
+	// make sure that admins are valid members as well
+	// this way, when we validate an admin MSP principal
+	// we can simply check for exact match of certs
+	for i, admin := range msp.admins {
+		err = admin.Validate()
+		if err != nil {
+			return fmt.Errorf("admin %d is invalid, validation error %s", i, err)
+		}
+	}
+
 	return nil
 }
 
@@ -593,6 +603,9 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) 
 			// id is exactly one of our admins
 			for _, admincert := range msp.admins {
 				if bytes.Equal(id.(*identity).cert.Raw, admincert.(*identity).cert.Raw) {
+					// we do not need to check whether the admin is a valid identity
+					// according to this MSP, since we already check this at Setup time
+					// if there is a match, we can just return
 					return nil
 				}
 			}
