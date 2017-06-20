@@ -17,7 +17,6 @@ services:
       - CORE_PEER_TLS_ENABLED=true
       # This disables mutual auth for gossip
       - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
-      - CORE_PEER_ENDORSER_ENABLED=true
       - CORE_PEER_GOSSIP_ORGLEADER=false
       - CORE_PEER_GOSSIP_USELEADERELECTION=true
     ports:
