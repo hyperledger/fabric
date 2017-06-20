@@ -153,15 +153,16 @@ func (bp CreateImageReq) getCCID() ccintf.CCID {
 //StartImageReq - properties for starting a container.
 type StartImageReq struct {
 	ccintf.CCID
-	Builder api.BuildSpecFactory
-	Args    []string
-	Env     []string
+	Builder       api.BuildSpecFactory
+	Args          []string
+	Env           []string
+	PrelaunchFunc api.PrelaunchFunc
 }
 
 func (si StartImageReq) do(ctxt context.Context, v api.VM) VMCResp {
 	var resp VMCResp
 
-	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.Builder); err != nil {
+	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.Builder, si.PrelaunchFunc); err != nil {
 		resp = VMCResp{Err: err}
 	} else {
 		resp = VMCResp{}

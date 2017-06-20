@@ -207,7 +207,7 @@ func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID,
 
 //Start starts a container using a previously created docker image
 func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
-	args []string, env []string, builder container.BuildSpecFactory) error {
+	args []string, env []string, builder container.BuildSpecFactory, prelaunchFunc container.PrelaunchFunc) error {
 	imageID, err := vm.GetVMName(ccid)
 	if err != nil {
 		return err
@@ -328,6 +328,12 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 				containerLogger.Info(line)
 			}
 		}()
+	}
+
+	if prelaunchFunc != nil {
+		if err = prelaunchFunc(); err != nil {
+			return err
+		}
 	}
 
 	// start container with HostConfig was deprecated since v1.10 and removed in v1.2
