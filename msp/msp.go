@@ -92,6 +92,12 @@ type MSP interface {
 	// GetIntermediateCerts returns the intermediate root certificates for this MSP
 	GetIntermediateCerts() []Identity
 
+	// GetTLSRootCerts returns the TLS root certificates for this MSP
+	GetTLSRootCerts() [][]byte
+
+	// GetTLSIntermediateCerts returns the TLS intermediate root certificates for this MSP
+	GetTLSIntermediateCerts() [][]byte
+
 	// Validate checks whether the supplied identity is valid
 	Validate(id Identity) error
 

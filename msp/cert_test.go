@@ -104,21 +104,21 @@ func TestCertExpiration(t *testing.T) {
 	_, cert := generateSelfSignedCert(t, time.Now().Add(24*time.Hour))
 	msp.opts.Roots = x509.NewCertPool()
 	msp.opts.Roots.AddCert(cert)
-	_, err := msp.getUniqueValidationChain(cert)
+	_, err := msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
 	assert.NoError(t, err)
 
 	// Certificate is in the past
 	_, cert = generateSelfSignedCert(t, time.Now().Add(-24*time.Hour))
 	msp.opts.Roots = x509.NewCertPool()
 	msp.opts.Roots.AddCert(cert)
-	_, err = msp.getUniqueValidationChain(cert)
+	_, err = msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
 	assert.NoError(t, err)
 
 	// Certificate is in the middle
 	_, cert = generateSelfSignedCert(t, time.Now())
 	msp.opts.Roots = x509.NewCertPool()
 	msp.opts.Roots.AddCert(cert)
-	_, err = msp.getUniqueValidationChain(cert)
+	_, err = msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
 	assert.NoError(t, err)
 }
 

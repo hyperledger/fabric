@@ -100,13 +100,15 @@ func getPemMaterialFromDir(dir string) ([][]byte, error) {
 }
 
 const (
-	cacerts           = "cacerts"
-	admincerts        = "admincerts"
-	signcerts         = "signcerts"
-	keystore          = "keystore"
-	intermediatecerts = "intermediatecerts"
-	crlsfolder        = "crls"
-	configfilename    = "config.yaml"
+	cacerts              = "cacerts"
+	admincerts           = "admincerts"
+	signcerts            = "signcerts"
+	keystore             = "keystore"
+	intermediatecerts    = "intermediatecerts"
+	crlsfolder           = "crls"
+	configfilename       = "config.yaml"
+	tlscacerts           = "tlscacerts"
+	tlsintermediatecerts = "tlsintermediatecerts"
 )
 
 func SetupBCCSPKeystoreConfig(bccspConfig *factory.FactoryOpts, keystoreDir string) *factory.FactoryOpts {
@@ -166,6 +168,8 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	intermediatecertsDir := filepath.Join(dir, intermediatecerts)
 	crlsDir := filepath.Join(dir, crlsfolder)
 	configFile := filepath.Join(dir, configfilename)
+	tlscacertDir := filepath.Join(dir, tlscacerts)
+	tlsintermediatecertsDir := filepath.Join(dir, tlsintermediatecerts)
 
 	cacerts, err := getPemMaterialFromDir(cacertDir)
 	if err != nil || len(cacerts) == 0 {
@@ -177,18 +181,35 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 		return nil, fmt.Errorf("Could not load a valid admin certificate from directory %s, err %s", admincertDir, err)
 	}
 
-	intermediatecert, err := getPemMaterialFromDir(intermediatecertsDir)
+	intermediatecerts, err := getPemMaterialFromDir(intermediatecertsDir)
 	if os.IsNotExist(err) {
-		mspLogger.Infof("intermediate certs folder not found at [%s]. Skipping.: [%s]", intermediatecertsDir, err)
+		mspLogger.Warningf("Intermediate certs folder not found at [%s]. Skipping. [%s]", intermediatecertsDir, err)
 	} else if err != nil {
 		return nil, fmt.Errorf("Failed loading intermediate ca certs at [%s]: [%s]", intermediatecertsDir, err)
 	}
 
+	tlsCACerts, err := getPemMaterialFromDir(tlscacertDir)
+	tlsIntermediateCerts := [][]byte{}
+	if os.IsNotExist(err) {
+		mspLogger.Warningf("TLS CA certs folder not found at [%s]. Skipping and ignoring TLS intermediate CA folder. [%s]", tlsintermediatecertsDir, err)
+	} else if err != nil {
+		return nil, fmt.Errorf("Failed loading TLS ca certs at [%s]: [%s]", tlsintermediatecertsDir, err)
+	} else if len(tlsCACerts) != 0 {
+		tlsIntermediateCerts, err = getPemMaterialFromDir(tlsintermediatecertsDir)
+		if os.IsNotExist(err) {
+			mspLogger.Warningf("TLS intermediate certs folder not found at [%s]. Skipping. [%s]", tlsintermediatecertsDir, err)
+		} else if err != nil {
+			return nil, fmt.Errorf("Failed loading TLS intermediate ca certs at [%s]: [%s]", tlsintermediatecertsDir, err)
+		}
+	} else {
+		mspLogger.Warningf("TLS CA certs folder at [%s] is empty. Skipping.", tlsintermediatecertsDir)
+	}
+
 	crls, err := getPemMaterialFromDir(crlsDir)
 	if os.IsNotExist(err) {
-		mspLogger.Infof("crls folder not found at [%s]. Skipping.: [%s]", intermediatecertsDir, err)
+		mspLogger.Warningf("crls folder not found at [%s]. Skipping. [%s]", crlsDir, err)
 	} else if err != nil {
-		return nil, fmt.Errorf("Failed loading crls ca certs at [%s]: [%s]", intermediatecertsDir, err)
+		return nil, fmt.Errorf("Failed loading crls at [%s]: [%s]", crlsDir, err)
 	}
 
 	// Load configuration file
@@ -239,12 +260,15 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	fmspconf := &msp.FabricMSPConfig{
 		Admins:            admincert,
 		RootCerts:         cacerts,
-		IntermediateCerts: intermediatecert,
+		IntermediateCerts: intermediatecerts,
 		SigningIdentity:   sigid,
 		Name:              ID,
 		OrganizationalUnitIdentifiers: ouis,
 		RevocationList:                crls,
-		CryptoConfig:                  cryptoConfig}
+		CryptoConfig:                  cryptoConfig,
+		TlsRootCerts:                  tlsCACerts,
+		TlsIntermediateCerts:          tlsIntermediateCerts,
+	}
 
 	fmpsjs, _ := proto.Marshal(fmspconf)
 

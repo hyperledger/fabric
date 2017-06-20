@@ -61,6 +61,16 @@ func (msp *noopmsp) GetIntermediateCerts() []m.Identity {
 	return nil
 }
 
+// GetTLSRootCerts returns the root certificates for this MSP
+func (msp *noopmsp) GetTLSRootCerts() [][]byte {
+	return nil
+}
+
+// GetTLSIntermediateCerts returns the intermediate root certificates for this MSP
+func (msp *noopmsp) GetTLSIntermediateCerts() [][]byte {
+	return nil
+}
+
 func (msp *noopmsp) DeserializeIdentity(serializedID []byte) (m.Identity, error) {
 	id, _ := newNoopIdentity()
 	return id, nil

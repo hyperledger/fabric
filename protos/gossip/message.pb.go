@@ -893,9 +893,6 @@ type StateInfo struct {
 	// channel_MAC is an authentication code that proves
 	// that the peer that sent this message knows
 	// the name of the channel.
-	// The channel name that this message relates to
-	// can only be computed by a peer that has joined
-	// the channel
 	Channel_MAC []byte `protobuf:"bytes,4,opt,name=channel_MAC,json=channelMAC,proto3" json:"channel_MAC,omitempty"`
 }
 
@@ -955,9 +952,6 @@ type StateInfoPullRequest struct {
 	// channel_MAC is an authentication code that proves
 	// that the peer that sent this message knows
 	// the name of the channel.
-	// The channel name that this message relates to
-	// can only be computed by a peer that has joined
-	// the channel
 	Channel_MAC []byte `protobuf:"bytes,1,opt,name=channel_MAC,json=channelMAC,proto3" json:"channel_MAC,omitempty"`
 }
 

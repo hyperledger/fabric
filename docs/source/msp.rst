@@ -61,6 +61,12 @@ verification. These parameters are deduced by
 - A list of certificate revocation lists (CRLs) each corresponding to
   exactly one of the listed (intermediate or root) MSP Certificate
   Authorities; this is an optional parameter
+- A list of self-signed (X.509) certificates to constitute the *TLS root of
+  trust* for TLS certificate.
+- A list of X.509 certificates to represent intermediate TLS CAs this provider
+  considers; these certificates ought to be
+  certified by exactly one of the certificates in the TLS root of trust;
+  intermediate CAs are optional parameters.
 
 *Valid*  identities for this MSP instance are required to satisfy the following conditions:
 
@@ -81,6 +87,10 @@ specify:
 - The signing key used for signing by the node, and
 - The node's X.509 certificate, that is a valid identity under the
   verification parameters of this MSP
+
+It is important to note that MSP identities never expire, they can only be revoked
+by adding them the appropriate CRLs. In addition, for TLS certificates,
+fabric does not offer support for revocation.
 
 How to generate MSP certificates and their signing keys?
 --------------------------------------------------------
@@ -120,6 +130,10 @@ and a file:
 6. a folder ``keystore`` to include a PEM file with the node's signing key
 7. a folder ``signcerts`` to include a PEM file with the node's X.509
    certificate
+8. (optional) a folder ``tlscacerts`` to include PEM files each corresponding to a TLS root
+   CA's certificate
+9. (optional) a folder ``tlsintermediatecerts`` to include PEM files each
+   corresponding to an intermediate TLS CA's certificate
 
 In the configuration file of the node (core.yaml file for the peer, and
 orderer.yaml for the orderer), one needs to specify the path to the
@@ -285,6 +299,14 @@ considered for that MSP's identity validation:
 
 In the current MSP implementation we only support method (1) as it is simpler
 and does not require blacklisting the no longer considered intermediate CA.
+
+**5) CAs and TLS CAs
+
+MSP identities' root CAs and MSP TLS certificates' root CAs (and relative intermediate CAs)
+need to be declared in different folders. This is to avoid confusion between
+different classes of certificates. Fabric does not forbid to reuse the same
+CAs for both MSP identities and TLS certificates but best practices suggest
+to avoid this in production.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

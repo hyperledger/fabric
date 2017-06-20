@@ -84,6 +84,14 @@ message FabricMSPConfig {
     // FabricCryptoConfig contains the configuration parameters
     // for the cryptographic algorithms used by this MSP
     FabricCryptoConfig crypto_config = 8;
+
+    // List of TLS root certificates trusted by this MSP.
+    // They are returned by GetTLSRootCerts.
+    repeated bytes tls_root_certs = 9;
+
+    // List of TLS intermediate certificates trusted by this MSP;
+    // They are returned by GetTLSIntermediateCerts.
+    repeated bytes tls_intermediate_certs = 10;
 }
 
 // FabricCryptoConfig contains configuration parameters

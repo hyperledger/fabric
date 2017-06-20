@@ -122,8 +122,8 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 func TestGetters(t *testing.T) {
 	typ := localMsp.GetType()
 	assert.Equal(t, typ, FABRIC)
-	assert.NotNil(t, localMsp.GetRootCerts())
-	assert.NotNil(t, localMsp.GetIntermediateCerts())
+	assert.NotNil(t, localMsp.GetTLSRootCerts())
+	assert.NotNil(t, localMsp.GetTLSIntermediateCerts())
 }
 
 func TestMSPSetupBad(t *testing.T) {
