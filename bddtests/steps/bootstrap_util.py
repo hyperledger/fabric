@@ -824,7 +824,9 @@ class PathType(Enum):
 
 
 def getMSPConfig(org, directory):
-    adminCerts = [org.getCertAsPEM()]
+    # CA certificates can't be admins of an MSP
+    # adminCerts = [org.getCertAsPEM()]
+    adminCerts = []
     # Find the mspAdmin Tuple for org and add to admincerts folder
     for pnt, cert in [(nat, cert) for nat, cert in directory.ordererAdminTuples.items() if
                       org.name == nat.organization and "configadmin" in nat.nodeName.lower()]:

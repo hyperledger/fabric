@@ -25,6 +25,7 @@ import (
 	"io"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 )
@@ -66,9 +67,26 @@ func GenerateLocalMSP(baseDir, name string, sans []string, rootCA *ca.CA) error 
 	}
 
 	// write artifacts to MSP folders
-	folders := []string{"admincerts", "cacerts"}
+
+	// the CA certificate goes into cacerts
+	folders := []string{"cacerts"}
 	for _, folder := range folders {
 		err = x509Export(filepath.Join(mspDir, folder, x509Filename(rootCA.Name)), rootCA.SignCert)
+		if err != nil {
+			return err
+		}
+	}
+
+	// the signing identity goes into admincerts.
+	// This means that the signing identity
+	// of this MSP is also an admin of this MSP
+	// NOTE: the admincerts folder is going to be
+	// cleared up anyway by copyAdminCert, but
+	// we leave a valid admin for now for the sake
+	// of unit tests
+	folders = []string{"admincerts"}
+	for _, folder := range folders {
+		err = x509Export(filepath.Join(mspDir, folder, x509Filename(rootCA.Name)), cert)
 		if err != nil {
 			return err
 		}
@@ -99,13 +117,29 @@ func GenerateVerifyingMSP(baseDir string, rootCA *ca.CA) error {
 	err := createFolderStructure(baseDir)
 	if err == nil {
 		// write MSP cert to appropriate folders
-		folders := []string{"admincerts", "cacerts", "signcerts"}
+		folders := []string{"cacerts", "signcerts"}
 		for _, folder := range folders {
 			err = x509Export(filepath.Join(baseDir, folder, x509Filename(rootCA.Name)), rootCA.SignCert)
 			if err != nil {
 				return err
 			}
 		}
+	}
+
+	// create a throwaway cert to act as an admin cert
+	// NOTE: the admincerts folder is going to be
+	// cleared up anyway by copyAdminCert, but
+	// we leave a valid admin for now for the sake
+	// of unit tests
+	bcsp := factory.GetDefault()
+	priv, err := bcsp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: true})
+	ecPubKey, err := csp.GetECPublicKey(priv)
+	if err != nil {
+		return err
+	}
+	_, err = rootCA.SignCertificate(filepath.Join(baseDir, "admincerts"), rootCA.Name, []string{""}, ecPubKey)
+	if err != nil {
+		return err
 	}
 
 	return nil

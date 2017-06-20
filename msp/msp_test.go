@@ -269,6 +269,22 @@ func TestValidateCAIdentity(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestBadAdminIdentity(t *testing.T) {
+	conf, err := GetLocalMspConfig("testdata/badadmin", nil, "DEFAULT")
+	assert.NoError(t, err)
+
+	thisMSP, err := NewBccspMsp()
+	assert.NoError(t, err)
+	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/badadmin", "keystore"), true)
+	assert.NoError(t, err)
+	csp, err := sw.New(256, "SHA2", ks)
+	assert.NoError(t, err)
+	thisMSP.(*bccspmsp).bccsp = csp
+
+	err = thisMSP.Setup(conf)
+	assert.Error(t, err)
+}
+
 func TestValidateAdminIdentity(t *testing.T) {
 	caID := getIdentity(t, admincerts)
 
