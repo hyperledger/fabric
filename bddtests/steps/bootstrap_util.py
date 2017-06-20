@@ -830,9 +830,10 @@ def getMSPConfig(org, directory):
                       org.name == nat.organization and "configadmin" in nat.nodeName.lower()]:
         adminCerts.append(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
     cacerts = [org.getCertAsPEM()]
+    tls_root_certs = [org.getCertAsPEM()]
     # Currently only 1 component, CN=<orgName>
     # name = self.getSelfSignedCert().get_subject().getComponents()[0][1]
-    fabricMSPConfig = msp_config_pb2.FabricMSPConfig(admins=adminCerts, root_certs=cacerts, name=org.name)
+    fabricMSPConfig = msp_config_pb2.FabricMSPConfig(admins=adminCerts, root_certs=cacerts, name=org.name, tls_root_certs=tls_root_certs)
     mspConfig = msp_config_pb2.MSPConfig(config=fabricMSPConfig.SerializeToString(), type=0)
     return mspConfig
 
@@ -891,7 +892,12 @@ class CallbackHelper:
         os.makedirs("{0}/{1}".format(localMspConfigPath, "signcerts"))
         os.makedirs("{0}/{1}".format(localMspConfigPath, "admincerts"))
         os.makedirs("{0}/{1}".format(localMspConfigPath, "cacerts"))
+        #TODO: Consider how to accomodate intermediate CAs
+        os.makedirs("{0}/{1}".format(localMspConfigPath, "intermediatecacerts"))
         os.makedirs("{0}/{1}".format(localMspConfigPath, "keystore"))
+        os.makedirs("{0}/{1}".format(localMspConfigPath, "tlscacerts"))
+        #TODO: Consider how to accomodate intermediate CAs
+        os.makedirs("{0}/{1}".format(localMspConfigPath, "tlsintermediatecacerts"))
 
         # Find the peer signer Tuple for this peer and add to signcerts folder
         for pnt, cert in [(peerNodeTuple, cert) for peerNodeTuple, cert in directory.ordererAdminTuples.items() if
@@ -907,6 +913,8 @@ class CallbackHelper:
             #Now put the signing Orgs cert in the cacerts folder
             org_cert_as_pem =  directory.getOrganization(pnt.organization).getCertAsPEM()
             with open("{0}/cacerts/{1}.pem".format(localMspConfigPath, pnt.organization), "w") as f:
+                f.write(org_cert_as_pem)
+            with open("{0}/tlscacerts/{1}.pem".format(localMspConfigPath, pnt.organization), "w") as f:
                 f.write(org_cert_as_pem)
 
         # Find the peer admin Tuple for this peer and add to admincerts folder
