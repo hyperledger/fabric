@@ -94,3 +94,4 @@ provides a better alternative to the built-in Windows tools:
           <https://curl.haxx.se/download.html>`__
 
 .. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
