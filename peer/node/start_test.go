@@ -32,6 +32,7 @@ import (
 func TestStartCmd(t *testing.T) {
 	viper.Set("peer.address", "0.0.0.0:6051")
 	viper.Set("peer.listenAddress", "0.0.0.0:6051")
+	viper.Set("peer.chaincodeListenAddress", "0.0.0.0:6052")
 	viper.Set("peer.fileSystemPath", "/tmp/hyperledger/test")
 	viper.Set("chaincode.executetimeout", "30s")
 	overrideLogModules := []string{"msp", "gossip", "ledger", "cauthdsl", "policies", "grpc"}

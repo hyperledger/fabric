@@ -120,7 +120,7 @@ func (chaincodeSupport *ChaincodeSupport) chaincodeHasBeenLaunched(chaincode str
 }
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance
-func NewChaincodeSupport(getPeerEndpoint func() (*pb.PeerEndpoint, error), userrunsCC bool, ccstartuptimeout time.Duration) *ChaincodeSupport {
+func NewChaincodeSupport(getCCEndpoint func() (*pb.PeerEndpoint, error), userrunsCC bool, ccstartuptimeout time.Duration) *ChaincodeSupport {
 	ccprovider.SetChaincodesPath(config.GetPath("peer.fileSystemPath") + string(filepath.Separator) + "chaincodes")
 
 	pnid := viper.GetString("peer.networkId")
@@ -130,12 +130,12 @@ func NewChaincodeSupport(getPeerEndpoint func() (*pb.PeerEndpoint, error), userr
 
 	//initialize global chain
 
-	peerEndpoint, err := getPeerEndpoint()
+	ccEndpoint, err := getCCEndpoint()
 	if err != nil {
-		chaincodeLogger.Errorf("Error getting PeerEndpoint, using peer.address: %s", err)
-		theChaincodeSupport.peerAddress = viper.GetString("peer.address")
+		chaincodeLogger.Errorf("Error getting chaincode endpoint, using chaincode.peerAddress: %s", err)
+		theChaincodeSupport.peerAddress = viper.GetString("chaincode.peerAddress")
 	} else {
-		theChaincodeSupport.peerAddress = peerEndpoint.Address
+		theChaincodeSupport.peerAddress = ccEndpoint.Address
 	}
 	chaincodeLogger.Infof("Chaincode support using peerAddress: %s\n", theChaincodeSupport.peerAddress)
 	//peerAddress = viper.GetString("peer.address")

@@ -57,6 +57,18 @@ peer:
     # The Address at local network interface this Peer will listen on.
     # By default, it will listen on all network interfaces
     listenAddress: 0.0.0.0:7051
+
+    # The endpoint this peer uses to listen for inbound chaincode connections.
+    #
+    # If chaincodeListenAddress is commented out or equals listenAddress, listenAddress will
+    # be used for chaincode connections.  Otherwise a new listener different from peer's listener
+    # on listenAddress will be used.
+    #
+    # The chaincode connection does not support TLS-mutual auth. Having a separate listener for
+    # the chaincode environment helps isolate the chaincode enviroment for enhanced security.
+    #
+    # chaincodeListenAddress: 127.0.0.1:7052
+
     # When used as peer config, represents the endpoint to other peers in the same organization
     # for peers in other organization, see gossip.externalEndpoint
     # When used as cli config, will mean the peer node's endpoint to interact with
@@ -270,6 +282,9 @@ vm:
 #
 ###############################################################################
 chaincode:
+    # This is used if chaincode endpoint resolution fails with the chaincodeListenAddress
+    # property
+    peerAddress:
 
     # The id is used by the Chaincode stub to register the executing Chaincode
     # ID with the Peerand is generally supplied through ENV variables

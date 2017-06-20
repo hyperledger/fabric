@@ -76,7 +76,8 @@ func TestConnection_Correct(t *testing.T) {
 func TestConnection_WrongAddress(t *testing.T) {
 	testutil.SetupTestConfig()
 	viper.Set("ledger.blockchain.deploy-system-chaincode", "false")
-	peerAddress := GetPeerTestingAddress("7052")
+	//some random port
+	peerAddress := GetPeerTestingAddress("10287")
 	var tmpConn *grpc.ClientConn
 	var err error
 	if TLSEnabled() {
