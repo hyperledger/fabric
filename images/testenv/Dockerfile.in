@@ -1,3 +1,7 @@
+# Copyright Greg Haskins All Rights Reserved
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 FROM _NS_/fabric-buildenv:_TAG_
 
 # fabric configuration locations

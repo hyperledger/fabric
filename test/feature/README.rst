@@ -115,7 +115,7 @@ The docker images for ``peer``, ``orderer``, ``kafka``, and ``zookeeper`` are ne
 =========================
 Building tool executables
 =========================
-The **configtxgen** and **cryptogen** tools are used when bootstrapping the networks in these tests. As a result, you must perform a ``make configtxgen && make cryptogen`` in the ``/path/to/hyperledger/fabric`` directory. 
+The **configtxgen** and **cryptogen** tools are used when bootstrapping the networks in these tests. As a result, you must perform a ``make configtxgen && make cryptogen`` in the ``/path/to/hyperledger/fabric`` directory.
 
 
 How to Contribute
@@ -204,7 +204,7 @@ Python implementation steps are identified using decorators which match the keyw
 ====================
 Docker-Compose Files
 ====================
-These docker composition files are used when setting up and tearing down networks of different configurations. Different tests can use different docker compose files depending on the test scenario. We are currently using `version 2 docker compose`_ files. 
+These docker composition files are used when setting up and tearing down networks of different configurations. Different tests can use different docker compose files depending on the test scenario. We are currently using `version 2 docker compose`_ files.
 
 .. _version 2 docker compose: https://docs.docker.com/compose/compose-file/compose-file-v2/
 
@@ -274,3 +274,6 @@ Helpful Docker Commands
       * ``$ docker networks ls``
    * Remove a specific residual network
       * ``$ docker networks rm <network_name>``
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/

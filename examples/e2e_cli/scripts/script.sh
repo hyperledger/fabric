@@ -1,5 +1,8 @@
 #!/bin/bash
-
+# Copyright London Stock Exchange Group All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 echo
 echo " ____    _____      _      ____    _____           _____   ____    _____ "
 echo "/ ___|  |_   _|    / \    |  _ \  |_   _|         | ____| |___ \  | ____|"

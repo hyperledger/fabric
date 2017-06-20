@@ -66,3 +66,5 @@ In case of trouble, here is how to deactivate docker network manually:
     ``cd /path/to/fabric/test/regression/daily/chaincodeTests/envsetup``
      ``./network_setup.sh down``
 
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/
