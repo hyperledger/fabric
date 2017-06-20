@@ -57,8 +57,10 @@ func NewCA(baseDir, org, name string) (*CA, error) {
 				template := x509Template()
 				//this is a CA
 				template.IsCA = true
-				template.KeyUsage |= x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-				template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny, x509.ExtKeyUsageServerAuth}
+				template.KeyUsage |= x509.KeyUsageDigitalSignature |
+					x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign |
+					x509.KeyUsageCRLSign
+				template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
 
 				//set the organization for the subject
 				subject := subjectTemplate()
@@ -86,10 +88,12 @@ func NewCA(baseDir, org, name string) (*CA, error) {
 
 // SignCertificate creates a signed certificate based on a built-in template
 // and saves it in baseDir/name
-func (ca *CA) SignCertificate(baseDir, name string, sans []string, pub *ecdsa.PublicKey) (*x509.Certificate, error) {
+func (ca *CA) SignCertificate(baseDir, name string, sans []string, pub *ecdsa.PublicKey,
+	ku x509.KeyUsage, eku []x509.ExtKeyUsage) (*x509.Certificate, error) {
 
 	template := x509Template()
-	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
+	template.KeyUsage = ku
+	template.ExtKeyUsage = eku
 
 	//set the organization for the subject
 	subject := subjectTemplate()
@@ -130,7 +134,6 @@ func x509Template() x509.Certificate {
 		SerialNumber:          serialNumber,
 		NotBefore:             now,
 		NotAfter:              now.Add(3650 * 24 * time.Hour), //~ten years
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		BasicConstraintsValid: true,
 	}
 	return x509
