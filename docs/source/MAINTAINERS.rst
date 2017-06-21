@@ -36,7 +36,7 @@ Maintainers
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
 | Tamas Blummer             | TamasBlummer        | tamasblummer     | tamas          | tamas@digitalasset.com         |
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
-| Yacov Manevich            | yacovm              | yacovm           | yacovm         | yacovm@il.ibm.com              |
+| Yaoguo Jiang              | jangyaoguo          | jangyaoguo       | jiangyaoguo    | jiangyaoguo@gmail.com          |
 +---------------------------+---------------------+------------------+----------------+--------------------------------+
 
 .. Licensed under Creative Commons Attribution 4.0 International License
