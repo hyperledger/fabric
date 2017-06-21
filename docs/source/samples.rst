@@ -30,10 +30,18 @@ that will download and extract all of the platform-specific binaries you
 will need to set up your network and place them into the cloned repo you
 created above. It retrieves the three platform-specific binaries:
   * ``cryptogen``,
-  * ``configtxgen`` and,
-  * ``configtxlator``
+  * ``configtxgen``,
+  * ``configtxlator``, and
+  * ``peer``
 
 and places them in the ``fabric-samples/bin`` directory.
+
+You may want to add that to your PATH environment variable so that these
+can be picked up without fully qualifying the path to each binary. e.g.:
+
+.. code:: bash
+
+  export PATH=<path to fabric-samples>/bin:$PATH
 
 Finally, the script will download the Hyperledger Fabric docker images from
 `DockerHub <https://hub.docker.com/u/hyperledger/>`__ into
@@ -43,7 +51,8 @@ The script lists out the docker images installed upon conclusion.
 
 Look at the names for each image; these are the components that will ultimately
 comprise our Fabric network.  You will also notice that you have two instances
-of the same image ID - one tagged as "x86_64-1.0.0-rc1" and one tagged as "latest".
+of the same image ID - one tagged as "x86_64-1.0.0-rc1" and one tagged as
+"latest".
 
 .. note:: Note that on different architectures, the x86_64 would be replaced
           with the string identifying your architecture.
