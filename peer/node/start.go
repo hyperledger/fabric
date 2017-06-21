@@ -8,11 +8,13 @@ package node
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -370,33 +372,11 @@ func writePid(fileName string, pid int) error {
 		return err
 	}
 
-	fd, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer fd.Close()
-	if err := syscall.Flock(int(fd.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		return fmt.Errorf("can't lock '%s', lock is held", fd.Name())
-	}
-
-	if _, err := fd.Seek(0, 0); err != nil {
+	buf := strconv.Itoa(pid)
+	if err = ioutil.WriteFile(fileName, []byte(buf), 0644); err != nil {
+		logger.Errorf("Cannot write pid to %s (err:%s)", fileName, err)
 		return err
 	}
 
-	if err := fd.Truncate(0); err != nil {
-		return err
-	}
-
-	if _, err := fmt.Fprintf(fd, "%d", pid); err != nil {
-		return err
-	}
-
-	if err := fd.Sync(); err != nil {
-		return err
-	}
-
-	if err := syscall.Flock(int(fd.Fd()), syscall.LOCK_UN); err != nil {
-		return fmt.Errorf("can't release lock '%s', lock is held", fd.Name())
-	}
 	return nil
 }
