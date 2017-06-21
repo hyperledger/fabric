@@ -50,7 +50,7 @@ func TestGenerateLocalMSP(t *testing.T) {
 
 	// check to see that the right files were generated/saved
 	files := []string{
-		filepath.Join(mspDir, "admincerts", testCAName+"-cert.pem"),
+		filepath.Join(mspDir, "admincerts", testName+"-cert.pem"),
 		filepath.Join(mspDir, "cacerts", testCAName+"-cert.pem"),
 		filepath.Join(mspDir, "keystore"),
 		filepath.Join(mspDir, "signcerts", testName+"-cert.pem"),
@@ -91,7 +91,6 @@ func TestGenerateVerifyingMSP(t *testing.T) {
 	files := []string{
 		filepath.Join(mspDir, "admincerts", testCAName+"-cert.pem"),
 		filepath.Join(mspDir, "cacerts", testCAName+"-cert.pem"),
-		filepath.Join(mspDir, "signcerts", testCAName+"-cert.pem"),
 	}
 
 	for _, file := range files {

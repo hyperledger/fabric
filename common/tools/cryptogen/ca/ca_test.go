@@ -71,15 +71,27 @@ func TestGenerateSignCertificate(t *testing.T) {
 	rootCA, err := ca.NewCA(caDir, testCA2Name, testCA2Name)
 	assert.NoError(t, err, "Error generating CA")
 
-	_, err = rootCA.SignCertificate(certDir, testName, nil, ecPubKey)
+	cert, err := rootCA.SignCertificate(certDir, testName, nil, ecPubKey,
+		x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
+		[]x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	assert.NoError(t, err, "Failed to generate signed certificate")
+	// KeyUsage should be x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment
+	assert.Equal(t, x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
+		cert.KeyUsage)
+	assert.Contains(t, cert.ExtKeyUsage, x509.ExtKeyUsageAny)
+
+	cert, err = rootCA.SignCertificate(certDir, testName, nil, ecPubKey,
+		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
+	assert.NoError(t, err, "Failed to generate signed certificate")
+	assert.Equal(t, 0, len(cert.ExtKeyUsage))
 
 	// check to make sure the signed public key was stored
 	pemFile := filepath.Join(certDir, testName+"-cert.pem")
 	assert.Equal(t, true, checkForFile(pemFile),
 		"Expected to find file "+pemFile)
 
-	_, err = rootCA.SignCertificate(certDir, "empty/CA", nil, ecPubKey)
+	_, err = rootCA.SignCertificate(certDir, "empty/CA", nil, ecPubKey,
+		x509.KeyUsageKeyEncipherment, []x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	assert.Error(t, err, "Bad name should fail")
 
 	// use an empty CA to test error path
@@ -87,7 +99,8 @@ func TestGenerateSignCertificate(t *testing.T) {
 		Name:     "badCA",
 		SignCert: &x509.Certificate{},
 	}
-	_, err = badCA.SignCertificate(certDir, testName, nil, &ecdsa.PublicKey{})
+	_, err = badCA.SignCertificate(certDir, testName, nil, &ecdsa.PublicKey{},
+		x509.KeyUsageKeyEncipherment, []x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	assert.Error(t, err, "Empty CA should not be able to sign")
 	cleanup(testDir)
 
