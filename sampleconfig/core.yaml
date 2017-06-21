@@ -60,12 +60,14 @@ peer:
 
     # The endpoint this peer uses to listen for inbound chaincode connections.
     #
-    # If chaincodeListenAddress is commented out or equals listenAddress, listenAddress will
-    # be used for chaincode connections.  Otherwise a new listener different from peer's listener
-    # on listenAddress will be used.
+    # The chaincode connection does not support TLS-mutual auth. Having a
+    # separate listener for the chaincode helps isolate the chaincode
+    # environment for enhanced security, so it is strongly recommended to
+    # uncomment chaincodeListenAddress and specify a protected endpoint.
     #
-    # The chaincode connection does not support TLS-mutual auth. Having a separate listener for
-    # the chaincode environment helps isolate the chaincode enviroment for enhanced security.
+    # If chaincodeListenAddress is not configured or equals to the listenAddress,
+    # listenAddress will be used for chaincode connections. This is not
+    # recommended for production.
     #
     # chaincodeListenAddress: 127.0.0.1:7052
 
@@ -167,11 +169,10 @@ peer:
 
     # EventHub related configuration
     events:
-        # The address that the Event service will be enabled on the validator
+        # The address that the Event service will be enabled on the peer
         address: 0.0.0.0:7053
 
-        # total number of events that could be buffered without blocking the
-        # validator sends
+        # total number of events that could be buffered without blocking send
         buffersize: 100
 
         # timeout duration for producer to send an event.
@@ -181,6 +182,8 @@ peer:
         timeout: 10ms
 
     # TLS Settings
+    # Note that peer-chaincode connections through chaincodeListenAddress is
+    # not mutual TLS auth. See comments on chaincodeListenAddress for more info
     tls:
         enabled:  false
         cert:
