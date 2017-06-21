@@ -178,6 +178,74 @@ func (goPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSp
 	return nil
 }
 
+// Vendor any packages that are not already within our chaincode's primary package
+// or vendored by it.  We take the name of the primary package and a list of files
+// that have been previously determined to comprise the package's dependencies.
+// For anything that needs to be vendored, we simply update its path specification.
+// Everything else, we pass through untouched.
+func vendorDependencies(pkg string, files Sources) {
+
+	exclusions := make([]string, 0)
+	elements := strings.Split(pkg, "/")
+
+	// --------------------------------------------------------------------------------------
+	// First, add anything already vendored somewhere within our primary package to the
+	// "exclusions".  For a package "foo/bar/baz", we want to ensure we don't auto-vendor
+	// any of the following:
+	//
+	//     [ "foo/vendor", "foo/bar/vendor", "foo/bar/baz/vendor"]
+	//
+	// and we therefore employ a recursive path building process to form this list
+	// --------------------------------------------------------------------------------------
+	prev := filepath.Join("src")
+	for _, element := range elements {
+		curr := filepath.Join(prev, element)
+		vendor := filepath.Join(curr, "vendor")
+		exclusions = append(exclusions, vendor)
+		prev = curr
+	}
+
+	// --------------------------------------------------------------------------------------
+	// Next add our primary package to the list of "exclusions"
+	// --------------------------------------------------------------------------------------
+	exclusions = append(exclusions, filepath.Join("src", pkg))
+
+	count := len(files)
+	sem := make(chan bool, count)
+
+	// --------------------------------------------------------------------------------------
+	// Now start a parallel process which checks each file in files to see if it matches
+	// any of the excluded patterns.  Any that match are renamed such that they are vendored
+	// under src/$pkg/vendor.
+	// --------------------------------------------------------------------------------------
+	vendorPath := filepath.Join("src", pkg, "vendor")
+	for i, file := range files {
+		go func(i int, file SourceDescriptor) {
+			excluded := false
+
+			for _, exclusion := range exclusions {
+				if strings.HasPrefix(file.Name, exclusion) == true {
+					excluded = true
+					break
+				}
+			}
+
+			if excluded == false {
+				origName := file.Name
+				file.Name = strings.Replace(origName, "src", vendorPath, 1)
+				logger.Debugf("vendoring %s -> %s", origName, file.Name)
+			}
+
+			files[i] = file
+			sem <- true
+		}(i, file)
+	}
+
+	for i := 0; i < count; i++ {
+		<-sem
+	}
+}
+
 // Generates a deployment payload for GOLANG as a series of src/$pkg entries in .tar.gz format
 func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
 
@@ -320,30 +388,21 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 	logger.Debugf("done")
 
 	// --------------------------------------------------------------------------------------
-	// Reclassify and sort the files:
-	//
-	// Two goals:
-	//   * Remap non-package dependencies to package/vendor
-	//   * Sort the final filename so the tarball at least looks sane in terms of package grouping
+	// Reprocess into a list for easier handling going forward
 	// --------------------------------------------------------------------------------------
 	files := make(Sources, 0)
-	pkgPath := filepath.Join("src", code.Pkg)
-	vendorPath := filepath.Join(pkgPath, "vendor")
 	for _, file := range fileMap {
-		// Vendor any packages that are not already within our chaincode's primary package.  We
-		// detect this by checking the path-prefix.  Anything that is prefixed by "src/$pkg"
-		// (which includes the package itself and anything explicitly vendored in "src/$pkg/vendor")
-		// are left unperturbed.  Everything else is implicitly vendored under src/$pkg/vendor by
-		// simply remapping "src" -> "src/$pkg/vendor" in the tarball index.
-		if strings.HasPrefix(file.Name, pkgPath) == false {
-			origName := file.Name
-			file.Name = strings.Replace(origName, "src", vendorPath, 1)
-			logger.Debugf("vendoring %s -> %s", origName, file.Name)
-		}
-
 		files = append(files, file)
 	}
 
+	// --------------------------------------------------------------------------------------
+	// Remap non-package dependencies to package/vendor
+	// --------------------------------------------------------------------------------------
+	vendorDependencies(code.Pkg, files)
+
+	// --------------------------------------------------------------------------------------
+	// Sort on the filename so the tarball at least looks sane in terms of package grouping
+	// --------------------------------------------------------------------------------------
 	sort.Sort(files)
 
 	// --------------------------------------------------------------------------------------
