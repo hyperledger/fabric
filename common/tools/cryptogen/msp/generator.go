@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 
 	"encoding/hex"
-	"io"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -30,7 +29,8 @@ import (
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 )
 
-func GenerateLocalMSP(baseDir, name string, sans []string, rootCA *ca.CA) error {
+func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
+	tlsCA *ca.CA) error {
 
 	// create folder structure
 	mspDir := filepath.Join(baseDir, "msp")
@@ -63,8 +63,8 @@ func GenerateLocalMSP(baseDir, name string, sans []string, rootCA *ca.CA) error 
 	if err != nil {
 		return err
 	}
-	// generate X509 certificate
-	cert, err := rootCA.SignCertificate(filepath.Join(mspDir, "signcerts"),
+	// generate X509 certificate using signing CA
+	cert, err := signCA.SignCertificate(filepath.Join(mspDir, "signcerts"),
 		name, []string{}, ecPubKey, x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 	if err != nil {
 		return err
@@ -72,8 +72,13 @@ func GenerateLocalMSP(baseDir, name string, sans []string, rootCA *ca.CA) error 
 
 	// write artifacts to MSP folders
 
-	// the CA certificate goes into cacerts
-	err = x509Export(filepath.Join(mspDir, "cacerts", x509Filename(rootCA.Name)), rootCA.SignCert)
+	// the signing CA certificate goes into cacerts
+	err = x509Export(filepath.Join(mspDir, "cacerts", x509Filename(signCA.Name)), signCA.SignCert)
+	if err != nil {
+		return err
+	}
+	// the TLS CA certificate goes into tlscacerts
+	err = x509Export(filepath.Join(mspDir, "tlscacerts", x509Filename(tlsCA.Name)), tlsCA.SignCert)
 	if err != nil {
 		return err
 	}
@@ -104,14 +109,14 @@ func GenerateLocalMSP(baseDir, name string, sans []string, rootCA *ca.CA) error 
 	if err != nil {
 		return err
 	}
-	// generate X509 certificate
-	_, err = rootCA.SignCertificate(filepath.Join(tlsDir),
+	// generate X509 certificate using TLS CA
+	_, err = tlsCA.SignCertificate(filepath.Join(tlsDir),
 		name, sans, tlsPubKey, x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
 		[]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth})
 	if err != nil {
 		return err
 	}
-	err = x509Export(filepath.Join(tlsDir, "ca.crt"), rootCA.SignCert)
+	err = x509Export(filepath.Join(tlsDir, "ca.crt"), tlsCA.SignCert)
 	if err != nil {
 		return err
 	}
@@ -119,7 +124,6 @@ func GenerateLocalMSP(baseDir, name string, sans []string, rootCA *ca.CA) error 
 	// rename the generated TLS X509 cert
 	err = os.Rename(filepath.Join(tlsDir, x509Filename(name)),
 		filepath.Join(tlsDir, "server.crt"))
-	//err = x509Export(filepath.Join(tlsDir, "server.crt"), tlsCert)
 	if err != nil {
 		return err
 	}
@@ -132,19 +136,20 @@ func GenerateLocalMSP(baseDir, name string, sans []string, rootCA *ca.CA) error 
 	return nil
 }
 
-func GenerateVerifyingMSP(baseDir string, rootCA *ca.CA) error {
+func GenerateVerifyingMSP(baseDir string, signCA *ca.CA, tlsCA *ca.CA) error {
 
-	// create folder structure
+	// create folder structure and write artifacts to proper locations
 	err := createFolderStructure(baseDir, false)
 	if err == nil {
-		// write MSP cert to appropriate folders
-		//folders := []string{"cacerts", "signcerts"}
-		folders := []string{"cacerts"}
-		for _, folder := range folders {
-			err = x509Export(filepath.Join(baseDir, folder, x509Filename(rootCA.Name)), rootCA.SignCert)
-			if err != nil {
-				return err
-			}
+		// the signing CA certificate goes into cacerts
+		err = x509Export(filepath.Join(baseDir, "cacerts", x509Filename(signCA.Name)), signCA.SignCert)
+		if err != nil {
+			return err
+		}
+		// the TLS CA certificate goes into tlscacerts
+		err = x509Export(filepath.Join(baseDir, "tlscacerts", x509Filename(tlsCA.Name)), tlsCA.SignCert)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -153,13 +158,14 @@ func GenerateVerifyingMSP(baseDir string, rootCA *ca.CA) error {
 	// cleared up anyway by copyAdminCert, but
 	// we leave a valid admin for now for the sake
 	// of unit tests
+	factory.InitFactories(nil)
 	bcsp := factory.GetDefault()
 	priv, err := bcsp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: true})
 	ecPubKey, err := csp.GetECPublicKey(priv)
 	if err != nil {
 		return err
 	}
-	_, err = rootCA.SignCertificate(filepath.Join(baseDir, "admincerts"), rootCA.Name,
+	_, err = signCA.SignCertificate(filepath.Join(baseDir, "admincerts"), signCA.Name,
 		[]string{""}, ecPubKey, x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 	if err != nil {
 		return err
@@ -175,6 +181,7 @@ func createFolderStructure(rootDir string, local bool) error {
 	folders = []string{
 		filepath.Join(rootDir, "admincerts"),
 		filepath.Join(rootDir, "cacerts"),
+		filepath.Join(rootDir, "tlscacerts"),
 	}
 	if local {
 		folders = append(folders, filepath.Join(rootDir, "keystore"),
@@ -197,25 +204,6 @@ func x509Filename(name string) string {
 
 func x509Export(path string, cert *x509.Certificate) error {
 	return pemExport(path, "CERTIFICATE", cert.Raw)
-}
-
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	cerr := out.Close()
-	if err != nil {
-		return err
-	}
-	return cerr
 }
 
 func keyExport(keystore, output string, key bccsp.Key) error {

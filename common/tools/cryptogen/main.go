@@ -381,25 +381,35 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	orgName := orgSpec.Domain
 
 	fmt.Println(orgName)
-	// generate CA
+	// generate CAs
 	orgDir := filepath.Join(baseDir, "peerOrganizations", orgName)
 	caDir := filepath.Join(orgDir, "ca")
+	tlsCADir := filepath.Join(orgDir, "tlsca")
 	mspDir := filepath.Join(orgDir, "msp")
 	peersDir := filepath.Join(orgDir, "peers")
 	usersDir := filepath.Join(orgDir, "users")
 	adminCertsDir := filepath.Join(mspDir, "admincerts")
-	rootCA, err := ca.NewCA(caDir, orgName, orgSpec.CA.CommonName)
+	// generate signing CA
+	signCA, err := ca.NewCA(caDir, orgName, orgSpec.CA.CommonName)
 	if err != nil {
-		fmt.Printf("Error generating CA for org %s:\n%v\n", orgName, err)
+		fmt.Printf("Error generating signCA for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
 	}
-	err = msp.GenerateVerifyingMSP(mspDir, rootCA)
+	// generate TLS CA
+	tlsCA, err := ca.NewCA(tlsCADir, orgName, "tls"+orgSpec.CA.CommonName)
+	if err != nil {
+		fmt.Printf("Error generating tlsCA for org %s:\n%v\n", orgName, err)
+		os.Exit(1)
+	}
+	// TODO remove the following line once MSP and peer changes are done
+	tlsCA = signCA
+	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA)
 	if err != nil {
 		fmt.Printf("Error generating MSP for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
 	}
 
-	generateNodes(peersDir, orgSpec.Specs, rootCA)
+	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA)
 
 	// TODO: add ability to specify usernames
 	users := []NodeSpec{}
@@ -416,7 +426,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	}
 
 	users = append(users, adminUser)
-	generateNodes(usersDir, users, rootCA)
+	generateNodes(usersDir, users, signCA, tlsCA)
 
 	// copy the admin cert to the org's MSP admincerts
 	err = copyAdminCert(usersDir, adminCertsDir, adminUser.CommonName)
@@ -459,11 +469,11 @@ func copyAdminCert(usersDir, adminCertsDir, adminUserName string) error {
 
 }
 
-func generateNodes(baseDir string, nodes []NodeSpec, rootCA *ca.CA) {
+func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA) {
 
 	for _, node := range nodes {
 		nodeDir := filepath.Join(baseDir, node.CommonName)
-		err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, rootCA)
+		err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA)
 		if err != nil {
 			fmt.Printf("Error generating local MSP for %s:\n%v\n", node, err)
 			os.Exit(1)
@@ -475,25 +485,35 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 
 	orgName := orgSpec.Domain
 
-	// generate CA
+	// generate CAs
 	orgDir := filepath.Join(baseDir, "ordererOrganizations", orgName)
 	caDir := filepath.Join(orgDir, "ca")
+	tlsCADir := filepath.Join(orgDir, "tlsca")
 	mspDir := filepath.Join(orgDir, "msp")
 	orderersDir := filepath.Join(orgDir, "orderers")
 	usersDir := filepath.Join(orgDir, "users")
 	adminCertsDir := filepath.Join(mspDir, "admincerts")
-	rootCA, err := ca.NewCA(caDir, orgName, orgSpec.CA.CommonName)
+	// generate signing CA
+	signCA, err := ca.NewCA(caDir, orgName, orgSpec.CA.CommonName)
 	if err != nil {
-		fmt.Printf("Error generating CA for org %s:\n%v\n", orgName, err)
+		fmt.Printf("Error generating signCA for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
 	}
-	err = msp.GenerateVerifyingMSP(mspDir, rootCA)
+	// generate TLS CA
+	tlsCA, err := ca.NewCA(tlsCADir, orgName, "tls"+orgSpec.CA.CommonName)
+	if err != nil {
+		fmt.Printf("Error generating tlsCA for org %s:\n%v\n", orgName, err)
+		os.Exit(1)
+	}
+	// TODO remove the following line once MSP and peer changes are done
+	tlsCA = signCA
+	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA)
 	if err != nil {
 		fmt.Printf("Error generating MSP for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
 	}
 
-	generateNodes(orderersDir, orgSpec.Specs, rootCA)
+	generateNodes(orderersDir, orgSpec.Specs, signCA, tlsCA)
 
 	adminUser := NodeSpec{
 		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
@@ -503,7 +523,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 	users := []NodeSpec{}
 	// add an admin user
 	users = append(users, adminUser)
-	generateNodes(usersDir, users, rootCA)
+	generateNodes(usersDir, users, signCA, tlsCA)
 
 	// copy the admin cert to the org's MSP admincerts
 	err = copyAdminCert(usersDir, adminCertsDir, adminUser.CommonName)
