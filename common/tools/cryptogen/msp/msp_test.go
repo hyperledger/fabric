@@ -38,20 +38,28 @@ func TestGenerateLocalMSP(t *testing.T) {
 
 	cleanup(testDir)
 
-	err := msp.GenerateLocalMSP(testDir, testName, nil, &ca.CA{})
+	err := msp.GenerateLocalMSP(testDir, testName, nil, &ca.CA{}, &ca.CA{})
 	assert.Error(t, err, "Empty CA should have failed")
 
 	caDir := filepath.Join(testDir, "ca")
+	tlsCADir := filepath.Join(testDir, "tlsca")
 	mspDir := filepath.Join(testDir, "msp")
-	rootCA, err := ca.NewCA(caDir, testCAOrg, testCAName)
+
+	// generate signing CA
+	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName)
 	assert.NoError(t, err, "Error generating CA")
-	err = msp.GenerateLocalMSP(testDir, testName, nil, rootCA)
+	// generate TLS CA
+	tlsCA, err := ca.NewCA(tlsCADir, testCAOrg, testCAName)
+	assert.NoError(t, err, "Error generating CA")
+	// generate local MSP
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA)
 	assert.NoError(t, err, "Failed to generate local MSP")
 
 	// check to see that the right files were generated/saved
 	files := []string{
 		filepath.Join(mspDir, "admincerts", testName+"-cert.pem"),
 		filepath.Join(mspDir, "cacerts", testCAName+"-cert.pem"),
+		filepath.Join(mspDir, "tlscacerts", testCAName+"-cert.pem"),
 		filepath.Join(mspDir, "keystore"),
 		filepath.Join(mspDir, "signcerts", testName+"-cert.pem"),
 	}
@@ -69,8 +77,11 @@ func TestGenerateLocalMSP(t *testing.T) {
 	err = testMSP.Setup(testMSPConfig)
 	assert.NoError(t, err, "Error setting up local MSP")
 
-	rootCA.Name = "test/fail"
-	err = msp.GenerateLocalMSP(testDir, testName, nil, rootCA)
+	tlsCA.Name = "test/fail"
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA)
+	assert.Error(t, err, "Should have failed with CA name 'test/fail'")
+	signCA.Name = "test/fail"
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA)
 	assert.Error(t, err, "Should have failed with CA name 'test/fail'")
 	t.Log(err)
 	cleanup(testDir)
@@ -80,17 +91,23 @@ func TestGenerateLocalMSP(t *testing.T) {
 func TestGenerateVerifyingMSP(t *testing.T) {
 
 	caDir := filepath.Join(testDir, "ca")
+	tlsCADir := filepath.Join(testDir, "tlsca")
 	mspDir := filepath.Join(testDir, "msp")
-	rootCA, err := ca.NewCA(caDir, testCAOrg, testCAName)
-	assert.NoError(t, err, "Failed to create new CA")
+	// generate signing CA
+	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName)
+	assert.NoError(t, err, "Error generating CA")
+	// generate TLS CA
+	tlsCA, err := ca.NewCA(tlsCADir, testCAOrg, testCAName)
+	assert.NoError(t, err, "Error generating CA")
 
-	err = msp.GenerateVerifyingMSP(mspDir, rootCA)
+	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA)
 	assert.NoError(t, err, "Failed to generate verifying MSP")
 
 	// check to see that the right files were generated/saved
 	files := []string{
 		filepath.Join(mspDir, "admincerts", testCAName+"-cert.pem"),
 		filepath.Join(mspDir, "cacerts", testCAName+"-cert.pem"),
+		filepath.Join(mspDir, "tlscacerts", testCAName+"-cert.pem"),
 	}
 
 	for _, file := range files {
@@ -105,8 +122,11 @@ func TestGenerateVerifyingMSP(t *testing.T) {
 	err = testMSP.Setup(testMSPConfig)
 	assert.NoError(t, err, "Error setting up verifying MSP")
 
-	rootCA.Name = "test/fail"
-	err = msp.GenerateVerifyingMSP(mspDir, rootCA)
+	tlsCA.Name = "test/fail"
+	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA)
+	assert.Error(t, err, "Should have failed with CA name 'test/fail'")
+	signCA.Name = "test/fail"
+	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA)
 	assert.Error(t, err, "Should have failed with CA name 'test/fail'")
 	t.Log(err)
 	cleanup(testDir)

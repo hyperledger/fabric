@@ -23,36 +23,37 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/signer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 )
 
 // GeneratePrivateKey creates a private key and stores it in keystorePath
 func GeneratePrivateKey(keystorePath string) (bccsp.Key,
 	crypto.Signer, error) {
 
-	csp := factory.GetDefault()
-	var response error
+	var err error
 	var priv bccsp.Key
 	var s crypto.Signer
 
-	// generate a key
-	priv, err := csp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: true})
-	response = err
+	opts := &factory.FactoryOpts{
+		ProviderName: "SW",
+		SwOpts: &factory.SwOpts{
+			HashFamily: "SHA2",
+			SecLevel:   256,
+
+			FileKeystore: &factory.FileKeystoreOpts{
+				KeyStorePath: keystorePath,
+			},
+		},
+	}
+	csp, err := factory.GetBCCSPFromOpts(opts)
 	if err == nil {
-		// write it to the keystore
-		ks, err := sw.NewFileBasedKeyStore(nil, keystorePath, false)
-		response = err
+		// generate a key
+		priv, err = csp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
 		if err == nil {
-			err = ks.StoreKey(priv)
-			response = err
-			if err == nil {
-				// create a crypto.Signer
-				s, response = signer.New(csp, priv)
-			}
+			// create a crypto.Signer
+			s, err = signer.New(csp, priv)
 		}
 	}
-	return priv, s, response
-
+	return priv, s, err
 }
 
 func GetECPublicKey(priv bccsp.Key) (*ecdsa.PublicKey, error) {
