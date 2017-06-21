@@ -8,6 +8,7 @@ vp:
   log_driver: none
   expose:
     - 7051
+    - 7052
   environment:
     - CORE_PEER_ADDRESSAUTODETECT=true
   volumes:
