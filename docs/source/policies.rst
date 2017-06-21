@@ -221,6 +221,42 @@ may be expressed using the SignaturePolicy policy type. For code which
 constructs signature policies, consult
 ``fabric/common/cauthdsl/cauthdsl_builder.go``.
 
+---------
+
+**Limitations**: When evaluating a signature policy against a signature set,
+signatures are 'consumed', in the order in which they appear, regardless of
+whether they satisfy multiple policy principals.
+
+For example.  Consider a policy which requires
+
+::
+
+ 2 of [org1.Member, org1.Admin]
+
+The naive intent of this policy is to require that both an admin, and a member
+sign. For the signature set
+
+::
+
+ [org1.MemberSignature, org1.AdminSignature]
+
+the policy evaluates to true, just as expected.  However, consider the
+signature set
+
+::
+
+ [org1.AdminSignature, org1.MemberSignature]
+
+This signature set does not satisfy the policy.  This failure is because when
+``org1.AdminSignature`` satisfies the ``org1.Member`` role it is considered
+'consumed' by the ``org1.Member`` requirement.  Because the ``org1.Admin``
+principal cannot be satisfied by the ``org1.MemberSignature``, the policy
+evaluates to false.
+
+To avoid this pitfall, identities should be specified from most privileged to
+least privileged in the policy identities specification, and signatures should
+be ordered from least privileged to most privileged in the signature set.
+
 MSP Principals
 --------------
 
