@@ -26,10 +26,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/pkg/testutil/assert"
 	"github.com/hyperledger/fabric/core/config"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func testerr(err error, succ bool) error {
@@ -154,7 +154,7 @@ func Test_DeploymentPayload(t *testing.T) {
 	}
 
 	payload, err := platform.GetDeploymentPayload(spec)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	t.Logf("payload size: %d", len(payload))
 

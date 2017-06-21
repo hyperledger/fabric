@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/docker/docker/pkg/testutil/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_splitEnvPath(t *testing.T) {
@@ -30,7 +30,7 @@ func Test_splitEnvPath(t *testing.T) {
 
 func Test_getGoEnv(t *testing.T) {
 	goenv, err := getGoEnv()
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	_, ok := goenv["GOPATH"]
 	assert.Equal(t, ok, true)
