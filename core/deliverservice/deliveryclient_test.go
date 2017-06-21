@@ -17,6 +17,7 @@ limitations under the License.
 package deliverclient
 
 import (
+	"context"
 	"errors"
 	"runtime"
 	"sync"
@@ -259,7 +260,6 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 	os1 := mocks.NewOrderer(5615, t)
 	os2 := mocks.NewOrderer(5616, t)
 
-	time.Sleep(time.Second)
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
 
 	service, err := NewDeliverService(&Config{
@@ -271,37 +271,63 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	li := &mocks.MockLedgerInfo{Height: 100}
-	os1.SetNextExpectedSeek(100)
-	os2.SetNextExpectedSeek(100)
+	os1.SetNextExpectedSeek(li.Height)
+	os2.SetNextExpectedSeek(li.Height)
 
 	err = service.StartDeliverForChannel("TEST_CHAINID", li)
 	assert.NoError(t, err, "can't start delivery")
-	// We need to discover to which instance the client connected to
-	go os1.SendBlock(100)
-	// Is it the first instance?
-	instance2fail := os1
-	nextBlockSeek := uint64(100)
-	select {
-	case seq := <-gossipServiceAdapter.GossipBlockDisseminations:
-		// Just for sanity check, ensure we got block seq 100
-		assert.Equal(t, uint64(100), seq)
-		// Connected to the first instance
-		// Advance ledger's height by 1
-		atomic.StoreUint64(&li.Height, 101)
-		// Backup instance should expect a seek of 101 since we got 100
-		os2.SetNextExpectedSeek(uint64(101))
-		nextBlockSeek = uint64(101)
-		// Have backup instance prepare to send a block
-		os2.SendBlock(101)
-	case <-time.After(time.Second * 5):
-		// We didn't get a block on time, so seems like we're connected to the 2nd instance
-		// and not to the first.
-		instance2fail = os2
+
+	waitForConnectionToSomeOSN := func() (*mocks.Orderer, *mocks.Orderer) {
+		for {
+			if os1.ConnCount() > 0 {
+				return os1, os2
+			}
+			if os2.ConnCount() > 0 {
+				return os2, os1
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
 	}
 
-	instance2fail.Fail()
+	activeInstance, backupInstance := waitForConnectionToSomeOSN()
+	assert.NotNil(t, activeInstance)
+	assert.NotNil(t, backupInstance)
+
+	// Send first block
+	go activeInstance.SendBlock(li.Height)
+
+	assertBlockDissemination(li.Height, gossipServiceAdapter.GossipBlockDisseminations, t)
+	li.Height++
+
+	// Backup instance should expect a seek of 101 since we got 100
+	backupInstance.SetNextExpectedSeek(li.Height)
+	// Have backup instance prepare to send a block
+	backupInstance.SendBlock(li.Height)
+
+	// Fail instance delivery client connected to
+	activeInstance.Fail()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	go func(ctx context.Context) {
+		defer wg.Done()
+		select {
+		case <-time.After(time.Millisecond * 100):
+			if backupInstance.ConnCount() > 0 {
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}(ctx)
+
+	wg.Wait()
+	assert.NoError(t, ctx.Err(), "Delivery client has not failed over to alive ordering service")
 	// Ensure the client asks blocks from the other ordering service node
-	assertBlockDissemination(nextBlockSeek, gossipServiceAdapter.GossipBlockDisseminations, t)
+	assertBlockDissemination(li.Height, gossipServiceAdapter.GossipBlockDisseminations, t)
 
 	// Cleanup
 	os1.Shutdown()
