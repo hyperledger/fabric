@@ -19,8 +19,8 @@ package state
 import (
 	"testing"
 
-	"github.com/docker/docker/pkg/testutil/assert"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -44,7 +44,7 @@ func TestNodeMetastateImpl_Bytes(t *testing.T) {
 	metastate := NewNodeMetastate(0)
 	// Encode state into bytes and check there is no errors
 	_, err := metastate.Bytes()
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 }
 
 // Check the deserialization of the meta stats structure
@@ -52,7 +52,7 @@ func TestNodeMetastate_FromBytes(t *testing.T) {
 	metastate := NewNodeMetastate(0)
 	// Serialize into bytes array
 	bytes, err := metastate.Bytes()
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	if bytes == nil {
 		t.Fatal("Was not able to serialize meta state into byte array.")
 	}
@@ -60,14 +60,14 @@ func TestNodeMetastate_FromBytes(t *testing.T) {
 	// Deserialize back and check, that state still have same
 	// height value
 	state, err := FromBytes(bytes)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	assert.Equal(t, state.Height(), uint64(0))
 
 	// Update state to the new height and serialize it again
 	state.Update(17)
 	bytes, err = state.Bytes()
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	if bytes == nil {
 		t.Fatal("Was not able to serialize meta state into byte array.")
 	}
@@ -75,6 +75,6 @@ func TestNodeMetastate_FromBytes(t *testing.T) {
 	// Restore state from byte array and validate
 	// that stored height is still the same
 	updatedState, err := FromBytes(bytes)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, updatedState.Height(), uint64(17))
 }

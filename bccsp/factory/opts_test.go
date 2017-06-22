@@ -18,7 +18,7 @@ package factory
 import (
 	"testing"
 
-	"github.com/docker/docker/pkg/testutil/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFactoryOptsFactoryName(t *testing.T) {
