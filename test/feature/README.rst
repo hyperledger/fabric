@@ -32,7 +32,7 @@ The following are links to the Jenkins execution of these tests:
 Pre-requisites
 --------------
 You must have the following installed:
-    * `python`_
+    * `python`_ (You must have 2.7 due to package incompatibilities)
     * `docker`_
     * `docker-compose`_
 
@@ -71,6 +71,19 @@ You should also clone the following repositories
 
 .. _hyperledger-fabric: https://github.com/hyperledger/fabric
 .. _hyperledger-fabric-ca: https://github.com/hyperledger/fabric-ca
+
+================
+Using VirtualEnv
+================
+It is also possible to execute these tests using `virtualenv`_. This allows for you to control your environment and ensure that the version of python and any other environment settings will be exactly what is needed regardless of the environment of the native machine.
+
+.. _virtualenv: http://docs.python-guide.org/en/latest/dev/virtualenvs/
+
+There are instructions for setting up a virtualenv for executing behave tests located at ``bddtests/README.md``.  Once these steps are completed and you have successfully setup the ``behave_venv`` virtual environment, execute the following before executing these behave tests.
+
+::
+
+    $ workon behave_venv
 
 
 Getting Started
