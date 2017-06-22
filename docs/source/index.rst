@@ -46,6 +46,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    :caption: Tutorials
 
    build_network
+   write_first_app
    chaincode
    videos
 
