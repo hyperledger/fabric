@@ -340,10 +340,11 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			logger.Infof("Kafka.Retry.Consumer.RetryBackoff unset, setting to %v", defaults.Kafka.Retry.Consumer.RetryBackoff)
 			c.Kafka.Retry.Consumer.RetryBackoff = defaults.Kafka.Retry.Consumer.RetryBackoff
 
-		default:
-			// A bit hacky, but its type makes it impossible to test for a nil value.
-			// This may be overwritten by the Kafka orderer upon instantiation.
+		case c.Kafka.Version == sarama.KafkaVersion{}:
+			logger.Infof("Kafka.Version unset, setting to %v", defaults.Kafka.Version)
 			c.Kafka.Version = defaults.Kafka.Version
+
+		default:
 			return
 		}
 	}
