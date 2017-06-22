@@ -30,7 +30,6 @@ PROFILE_TYPES = {"solo": "SampleInsecureSolo",
                  "kafka": "SampleInsecureKafka",
                  "solo-msp": "SampleSingleMSPSolo"}
 
-
 @given(u'I wait "{seconds}" seconds')
 @when(u'I wait "{seconds}" seconds')
 @then(u'I wait "{seconds}" seconds')
@@ -55,11 +54,11 @@ def bootstrapped_impl(context, networkType):
     curpath = os.path.realpath('.')
     context.composeFile = "%s/docker-compose/docker-compose-%s.yml" % (curpath, networkType)
     assert os.path.exists(context.composeFile), "The docker compose file does not exist: {0}".format(context.composeFile)
-    profile = PROFILE_TYPES.get(networkType, "SampleInsecureSolo")
-    channelID = endorser_util.TEST_CHANNEL_ID
+    context.ordererProfile = PROFILE_TYPES.get(networkType, "SampleInsecureSolo")
+    channelID = endorser_util.SYS_CHANNEL_ID
     projectName = str(uuid.uuid1()).replace('-','')
     config_util.generateCrypto(projectName)
-    config_util.generateConfig(channelID, profile, projectName)
+    config_util.generateConfig(channelID, config_util.CHANNEL_PROFILE, context.ordererProfile, projectName)
     compose_impl(context, context.composeFile, projectName=projectName)
 
 @given(u'"{component}" is taken down')

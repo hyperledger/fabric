@@ -27,6 +27,7 @@ except:
     sys.exit(1)
 
 # The default channel ID
+SYS_CHANNEL_ID = "behavesyschan"
 TEST_CHANNEL_ID = "behavesystest"
 
 
@@ -44,6 +45,7 @@ def get_chaincode_deploy_spec(projectDir, ccType, path, name, args):
 
 def install_chaincode(context, chaincode, peers):
     configDir = "/var/hyperledger/configs/{0}".format(context.composition.projectName)
+    output = {}
     for peer in peers:
         peerParts = peer.split('.')
         org = '.'.join(peerParts[1:])
@@ -56,7 +58,7 @@ def install_chaincode(context, chaincode, peers):
                    #"--lang", chaincode['language'],
                    "--name", chaincode['name'],
                    "--version", str(chaincode.get('version', 0)),
-                   "--chainID", str(chaincode.get('channelID', TEST_CHANNEL_ID)),
+                   #"--channelID", str(chaincode.get('channelID', TEST_CHANNEL_ID)),
                    "--path", chaincode['path']]
         if "orderers" in chaincode:
             command = command + ["--orderer", '{0}:7050'.format(chaincode["orderers"][0])]
@@ -66,7 +68,10 @@ def install_chaincode(context, chaincode, peers):
             command = command + ["--policy", chaincode["policy"]]
         command.append('"')
         ret = context.composition.docker_exec(command, ['cli'])
-        assert "Error occurred" not in str(ret['cli']), str(ret['cli'])
+        output[peer] = ret['cli']
+#        assert "Error occurred" not in str(ret['cli']), str(ret['cli'])
+    print("[{0}]: {1}".format(" ".join(command), output))
+    return output
 
 
 def instantiate_chaincode(context, chaincode, containers):
@@ -74,6 +79,7 @@ def instantiate_chaincode(context, chaincode, containers):
     args = chaincode.get('args', '[]').replace('"', r'\"')
     command = ["/bin/bash", "-c",
                '"CORE_PEER_MSPCONFIGPATH={0}/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp'.format(configDir),
+               'CORE_PEER_TLS_ROOTCERT_FILE={0}/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt'.format(configDir),
                'CORE_PEER_LOCALMSPID=org1.example.com',
                'CORE_PEER_ID=peer0.org1.example.com',
                'CORE_PEER_ADDRESS=peer0.org1.example.com:7051',
@@ -81,7 +87,7 @@ def instantiate_chaincode(context, chaincode, containers):
                #"--lang", chaincode['language'],
                "--name", chaincode['name'],
                "--version", str(chaincode.get('version', 0)),
-               "--chainID", str(chaincode.get('channelID', TEST_CHANNEL_ID)),
+               "--channelID", str(chaincode.get('channelID', TEST_CHANNEL_ID)),
                "--ctor", r"""'{\"Args\": %s}'""" % (args)]
     if "orderers" in chaincode:
         command = command + ["--orderer", '{0}:7050'.format(chaincode["orderers"][0])]
@@ -91,7 +97,9 @@ def instantiate_chaincode(context, chaincode, containers):
         command = command + ["--policy", chaincode["policy"]]
     command.append('"')
     ret = context.composition.docker_exec(command, ['peer0.org1.example.com'])
-    assert "Error occurred" not in str(ret['peer0.org1.example.com']), str(ret['peer0.org1.example.com'])
+#    assert "Error occurred" not in str(ret['peer0.org1.example.com']), str(ret['peer0.org1.example.com'])
+    print("[{0}]: {1}".format(" ".join(command), ret))
+    return ret
 
 
 def create_channel(context, containers, orderers, channelId=TEST_CHANNEL_ID):
@@ -105,21 +113,24 @@ def create_channel(context, containers, orderers, channelId=TEST_CHANNEL_ID):
                'CORE_PEER_ADDRESS=peer0.org1.example.com:7051',
                "peer", "channel", "create",
                "--file", "/var/hyperledger/configs/{0}/{1}.tx".format(context.composition.projectName, channelId),
-               "--chain", channelId,
+               "--channelID", channelId,
+               "--timeout", "120", # This sets the timeout for the channel creation instead of the default 5 seconds
                "--orderer", '{0}:7050"'.format(orderers[0])]
     print("Create command: {0}".format(command))
     output = context.composition.docker_exec(command, ['cli'])
 
-    for item in output:
-        assert "Error occurred" not in str(output[item]), str(output[item])
+#    for item in output:
+#        assert "Error occurred" not in str(output[item]), str(output[item])
 
     # For now, copy the channel block to the config directory
     output = context.composition.docker_exec(["cp",
                                               "{0}.block".format(channelId),
                                               configDir],
                                              ['cli'])
-    output = context.composition.docker_exec(["ls", configDir], ['cli'])
-    print("Create: {0}".format(output))
+    #output = context.composition.docker_exec(["ls", configDir], ['cli'])
+    #print("Create: {0}".format(output))
+    print("[{0}]: {1}".format(" ".join(command), output))
+    return output
 
 
 def fetch_channel(context, peers, orderers, channelId=TEST_CHANNEL_ID):
@@ -132,17 +143,17 @@ def fetch_channel(context, peers, orderers, channelId=TEST_CHANNEL_ID):
                    "peer", "channel", "fetch", "config",
                    "/var/hyperledger/configs/{0}/{1}.block".format(context.composition.projectName, channelId),
                    "--file", "/var/hyperledger/configs/{0}/{1}.tx".format(context.composition.projectName, channelId),
-                   "--chain", channelId,
+                   "--channelID", channelId,
                    "--orderer", '{0}:7050"'.format(orderers[0])]
         output = context.composition.docker_exec(command, [peer])
         print("Fetch: {0}".format(str(output)))
-        assert "Error occurred" not in str(output[peer]), str(output[peer])
+#        assert "Error occurred" not in str(output[peer]), str(output[peer])
+    print("[{0}]: {1}".format(" ".join(command), output))
+    return output
 
 
 def join_channel(context, peers, orderers, channelId=TEST_CHANNEL_ID):
     configDir = "/var/hyperledger/configs/{0}".format(context.composition.projectName)
-
-#    fetch_channel(context, peers, orderers, channelId)
 
     for peer in peers:
         peerParts = peer.split('.')
@@ -155,14 +166,16 @@ def join_channel(context, peers, orderers, channelId=TEST_CHANNEL_ID):
         output = "Error"
         while count < 5 and "Error" in output:
             output = context.composition.docker_exec(command, [peer])
-            print("Join: {0}".format(str(output)))
+            #print("Join: {0}".format(str(output)))
             time.sleep(2)
             count = count + 1
             output = output[peer]
 
         # If the LedgerID doesn't already exist check for other errors
-        if "due to LedgerID already exists" not in output:
-            assert "Error occurred" not in str(output), str(output)
+#        if "due to LedgerID already exists" not in output:
+#            assert "Error occurred" not in str(output), str(output)
+    print("[{0}]: {1}".format(" ".join(command), output))
+    return output
 
 
 def invoke_chaincode(context, chaincode, orderers, peer, channelId=TEST_CHANNEL_ID):
@@ -175,11 +188,12 @@ def invoke_chaincode(context, chaincode, orderers, peer, channelId=TEST_CHANNEL_
                "peer", "chaincode", "invoke",
                "--name", chaincode['name'],
                "--ctor", r"""'{\"Args\": %s}'""" % (args),
-               "--chainID", channelId,
+               "--channelID", channelId,
                "--orderer", '{0}:7050"'.format(orderers[0])]
     output = context.composition.docker_exec(command, [peer])
-    print("Invoke[{0}]: {1}".format(command, str(output)))
-    assert "Error occurred" not in output[peer], output[peer]
+    print("Invoke[{0}]: {1}".format(" ".join(command), str(output)))
+    #assert "Error occurred" not in output[peer], output[peer]
+    return output
 
 
 def query_chaincode(context, chaincode, peer, channelId=TEST_CHANNEL_ID):
@@ -189,11 +203,12 @@ def query_chaincode(context, chaincode, peer, channelId=TEST_CHANNEL_ID):
     args = chaincode.get('args', '[]').replace('"', r'\"')
     command = ["/bin/bash", "-c",
                '"CORE_PEER_MSPCONFIGPATH={0}/peerOrganizations/{1}/users/Admin@{1}/msp'.format(configDir, org),
+               'CORE_PEER_TLS_ROOTCERT_FILE={0}/peerOrganizations/{1}/peers/{2}/tls/ca.crt'.format(configDir, org, peer),
                "peer", "chaincode", "query",
                "--name", chaincode['name'],
                "--ctor", r"""'{\"Args\": %s}'""" % (args),
-               "--chainID", channelId, '"']
-    print("Query Exec command: {0}".format(command))
+               "--channelID", channelId, '"']
+    print("Query Exec command: {0}".format(" ".join(command)))
     return context.composition.docker_exec(command, [peer])
 
 
@@ -225,6 +240,7 @@ def deploy_chaincode(context, chaincode, containers, channelId=TEST_CHANNEL_ID):
                       "channelID": channelId,
                       })
     create_channel(context, containers, orderers, channelId)
+    #fetch_channel(context, peers, orderers, channelId)
     join_channel(context, peers, orderers, channelId)
     install_chaincode(context, chaincode, peers)
     instantiate_chaincode(context, chaincode, containers)

@@ -10,8 +10,8 @@ networks:
 
 services:
 
-    orderer.example.com:
-        container_name: orderer.example.com
+    orderer0.example.com:
+        container_name: orderer0.example.com
         image: hyperledger/fabric-orderer
         environment:
             - ORDERER_GENERAL_LOGLEVEL=debug
@@ -29,8 +29,8 @@ services:
             - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/tls/ca.crt]
         volumes:
             - ../configs/${CORE_PEER_NETWORKID}:/var/hyperledger/configs
-            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/msp
-            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer.example.com/tls:/var/hyperledger/tls
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer0.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer0.example.com/tls:/var/hyperledger/tls
         working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
         command: orderer
         ports:
@@ -73,9 +73,9 @@ services:
             - '7051'
             - '7053'
         depends_on:
-            - orderer.example.com
+            - orderer0.example.com
         links:
-            - orderer.example.com
+            - orderer0.example.com
         command: peer node start
         networks:
           default:
@@ -115,10 +115,10 @@ services:
             - '7051'
             - '7053'
         depends_on:
-            - orderer.example.com
+            - orderer0.example.com
             - peer0.org1.example.com
         links:
-            - orderer.example.com
+            - orderer0.example.com
         command: peer node start
         networks:
           default:
@@ -157,10 +157,10 @@ services:
             - '7051'
             - '7053'
         depends_on:
-            - orderer.example.com
+            - orderer0.example.com
             - peer0.org1.example.com
         links:
-            - orderer.example.com
+            - orderer0.example.com
         command: peer node start
         networks:
           default:
@@ -199,10 +199,10 @@ services:
             - '7051'
             - '7053'
         depends_on:
-            - orderer.example.com
+            - orderer0.example.com
             - peer0.org2.example.com
         links:
-            - orderer.example.com
+            - orderer0.example.com
         command: peer node start
         networks:
           default:
@@ -229,7 +229,7 @@ services:
             - ../configs:/var/hyperledger/configs
             - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/var/hyperledger/tls
         depends_on:
-          - orderer.example.com
+          - orderer0.example.com
           - peer0.org1.example.com
           - peer1.org1.example.com
           - peer0.org2.example.com
