@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package peer
@@ -22,7 +12,6 @@ import (
 	"net"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
@@ -41,7 +30,6 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
-	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
@@ -394,7 +382,6 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 	appRootCAs := [][]byte{}
 	ordererRootCAs := [][]byte{}
 	appOrgMSPs := make(map[string]struct{})
-
 	ac, ok := cm.ApplicationConfig()
 	if ok {
 		//loop through app orgs and build map of MSPIDs
@@ -413,38 +400,24 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 		for k, v := range msps {
 			// check to see if this is a FABRIC MSP
 			if v.GetType() == msp.FABRIC {
-				for _, root := range v.GetRootCerts() {
-					sid, err := root.Serialize()
-					if err == nil {
-						id := &mspprotos.SerializedIdentity{}
-						err = proto.Unmarshal(sid, id)
-						if err == nil {
-							// check to see of this is an app org MSP
-							if _, ok := appOrgMSPs[k]; ok {
-								peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
-								appRootCAs = append(appRootCAs, id.IdBytes)
-							} else {
-								peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
-								ordererRootCAs = append(ordererRootCAs, id.IdBytes)
-							}
-						}
+				for _, root := range v.GetTLSRootCerts() {
+					// check to see of this is an app org MSP
+					if _, ok := appOrgMSPs[k]; ok {
+						peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
+						appRootCAs = append(appRootCAs, root)
+					} else {
+						peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
+						ordererRootCAs = append(ordererRootCAs, root)
 					}
 				}
-				for _, intermediate := range v.GetIntermediateCerts() {
-					sid, err := intermediate.Serialize()
-					if err == nil {
-						id := &mspprotos.SerializedIdentity{}
-						err = proto.Unmarshal(sid, id)
-						if err == nil {
-							// check to see of this is an app org MSP
-							if _, ok := appOrgMSPs[k]; ok {
-								peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
-								appRootCAs = append(appRootCAs, id.IdBytes)
-							} else {
-								peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
-								ordererRootCAs = append(ordererRootCAs, id.IdBytes)
-							}
-						}
+				for _, intermediate := range v.GetTLSIntermediateCerts() {
+					// check to see of this is an app org MSP
+					if _, ok := appOrgMSPs[k]; ok {
+						peerLogger.Debugf("adding app root CAs for MSP [%s]", k)
+						appRootCAs = append(appRootCAs, intermediate)
+					} else {
+						peerLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
+						ordererRootCAs = append(ordererRootCAs, intermediate)
 					}
 				}
 			}

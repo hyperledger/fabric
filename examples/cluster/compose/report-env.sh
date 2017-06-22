@@ -59,7 +59,7 @@ includefile() {
     prefix=$2
 
     echo "|"
-    
+
     while IFS= read -r line; do
         printf '%s%s\n' "$prefix" "$line"
     done < "$file"
@@ -77,7 +77,11 @@ cat <<EOF > $CONFIG
 #
 ca:
         url: $(http "ca" "7054")
-        certificate: $(includefile build/nodes/cli/tls/ca.crt "              ")
+        certificate: $(includefile build/nodes/ca/ca.crt "              ")
+
+tlsca:
+        url: $(http "tlsca" "7054")
+        certificate: $(includefile build/nodes/tlsca/ca.crt "              ")
 
 orderer:
         url:  $(grpc "orderer" "7050")

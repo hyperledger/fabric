@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package peer_test
@@ -96,13 +86,14 @@ func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Emp
 }
 
 // helper function to build an MSPConfig given root certs
-func createMSPConfig(rootCerts, intermediateCerts [][]byte,
+func createMSPConfig(rootCerts, tlsRootCerts, tlsIntermediateCerts [][]byte,
 	mspID string) (*mspproto.MSPConfig, error) {
 
 	fmspconf := &mspproto.FabricMSPConfig{
-		RootCerts:         rootCerts,
-		IntermediateCerts: intermediateCerts,
-		Name:              mspID}
+		RootCerts:            rootCerts,
+		TlsRootCerts:         tlsRootCerts,
+		TlsIntermediateCerts: tlsIntermediateCerts,
+		Name:                 mspID}
 
 	fmpsjs, err := proto.Marshal(fmspconf)
 	if err != nil {
@@ -147,12 +138,14 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	}
 
 	// create test MSPConfigs
-	org1MSPConf, err := createMSPConfig([][]byte{org1CA}, [][]byte{}, "Org1MSP")
-	org2MSPConf, err := createMSPConfig([][]byte{org2CA}, [][]byte{}, "Org2MSP")
-	org2IntermediateMSPConf, err := createMSPConfig([][]byte{org2CA},
-		[][]byte{org2IntermediateCA}, "Org2IntermediateMSP")
-	ordererOrgMSPConf, err := createMSPConfig([][]byte{ordererOrgCA},
-		[][]byte{}, "OrdererOrgMSP")
+	org1MSPConf, err := createMSPConfig([][]byte{org2CA}, [][]byte{org1CA},
+		[][]byte{}, "Org1MSP")
+	org2MSPConf, err := createMSPConfig([][]byte{org1CA}, [][]byte{org2CA},
+		[][]byte{}, "Org2MSP")
+	org2IntermediateMSPConf, err := createMSPConfig([][]byte{org1CA},
+		[][]byte{org2CA}, [][]byte{org2IntermediateCA}, "Org2IntermediateMSP")
+	ordererOrgMSPConf, err := createMSPConfig([][]byte{org1CA},
+		[][]byte{ordererOrgCA}, [][]byte{}, "OrdererOrgMSP")
 	if err != nil {
 		t.Fatalf("Failed to create MSPConfigs (%s)", err)
 	}

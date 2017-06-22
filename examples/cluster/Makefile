@@ -7,6 +7,7 @@ NODES += $(PEERS)
 NODES += orderer
 NODES += cli
 NODES += ca
+NODES += tlsca
 
 DAEMONS = $(filter-out cli,$(NODES))
 
@@ -17,6 +18,7 @@ ORDERER_ORG = $(CRYPTOOUTPUT)/ordererOrganizations/orderer.net
 PEER_ORG= $(CRYPTOOUTPUT)/peerOrganizations/org1.net
 
 CA_PATH = $(PEER_ORG)/ca
+TLSCA_PATH= $(PEER_ORG)/tlsca
 ORDERER_PATH = $(ORDERER_ORG)/orderers
 PEER_PATH = $(PEER_ORG)/peers
 USERS_PATH = $(PEER_ORG)/users
@@ -106,8 +108,15 @@ build/nodes/ca: build/nodes/ca/fabric-ca-server-config.yaml
 	cp $(CA_PATH)/*_sk $@/ca.key
 	cp $(CA_PATH)/*.pem $@/ca.crt
 
+build/nodes/tlsca: build/nodes/tlsca/fabric-tlsca-server-config.yaml
+	@mkdir -p $@
+	cp $(TLSCA_PATH)/*_sk $@/ca.key
+	cp $(TLSCA_PATH)/*.pem $@/ca.crt
+	mv $@/fabric-tlsca-server-config.yaml $@/fabric-ca-server-config.yaml
+
 build/nodes/%: build/nodes/%/msp build/nodes/%/configtx.yaml build/nodes/%/core.yaml
 	@echo "Built $@"
 
 clean: compose-down
 	rm -rf build
+	rm $(CHANNEL_NAME).block
