@@ -71,33 +71,40 @@ peer:
     #
     # chaincodeListenAddress: 127.0.0.1:7052
 
-    # When used as peer config, represents the endpoint to other peers in the same organization
-    # for peers in other organization, see gossip.externalEndpoint
-    # When used as cli config, will mean the peer node's endpoint to interact with
+    # When used as peer config, this represents the endpoint to other peers
+    # in the same organization for peers in other organization, see
+    # gossip.externalEndpoint for more info.
+    # When used as CLI config, this means the peer's endpoint to interact with
     address: 0.0.0.0:7051
+
     # Whether the Peer should programmatically determine its address
     # This case is useful for docker containers.
     addressAutoDetect: false
-    # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the current setting
+
+    # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the
+    # current setting
     gomaxprocs: -1
 
     # Gossip related configuration
     gossip:
         # Bootstrap set to initialize gossip with.
-        # This is a list of peers that the peer reaches out to at startup.
+        # This is a list of other peers that this peer reaches out to at startup.
         # Important: The endpoints here have to be endpoints of peers in the same
         # organization, because the peer would refuse connecting to these endpoints
         # unless they are in the same organization as the peer.
         bootstrap: 127.0.0.1:7051
 
-        # NOTE: orgLeader and useLeaderElection parameters are mutual exclusive
-        # setting both to true would result in the termination of the peer, since this is undefined
-        # state.
+        # NOTE: orgLeader and useLeaderElection parameters are mutual exclusive.
+        # Setting both to true would result in the termination of the peer
+        # since this is undefined state. If the peers are configured with
+        # useLeaderElection=false, make sure there is at least 1 peer in the
+        # organization that its orgLeader is set to true.
 
         # Defines whenever peer will initialize dynamic algorithm for
         # "leader" selection, where leader is the peer to establish
         # connection with ordering service and use delivery protocol
-        # to pull ledger blocks from ordering service
+        # to pull ledger blocks from ordering service. It is recommended to
+        # use leader election for large networks of peers.
         useLeaderElection: false
         # Statically defines peer to be an organization "leader",
         # where this means that current peer will maintain connection
@@ -196,7 +203,9 @@ peer:
         # The server name use to verify the hostname returned by TLS handshake
         serverhostoverride:
 
-    # Path on the file system where peer will store data (eg ledger)
+    # Path on the file system where peer will store data (eg ledger). This
+    # location must be access control protected to prevent unintended
+    # modification that might corrupt the peer operations.
     fileSystemPath: /var/hyperledger/production
 
     # BCCSP (Blockchain crypto provider): Select which crypto implementation or
@@ -257,17 +266,21 @@ vm:
             key:
                 file: docker/tls.key
 
-        # Enables/disables the standard out/err from chaincode containers for debugging purposes
+        # Enables/disables the standard out/err from chaincode containers for
+        # debugging purposes
         attachStdout: false
 
-        # Parameters of docker container creating. For docker can created by custom parameters
-        # If you have your own ipam & dns-server for cluster you can use them to create container efficient.
-        # NetworkMode Sets the networking mode for the container. Supported standard values are: `host`(default),`bridge`,`ipvlan`,`none`
-        # dns A list of DNS servers for the container to use.
-        # note: not support customize for `Privileged` `Binds` `Links` `PortBindings`
-        # not support set LogConfig using Environment Variables
-        # LogConfig sets the logging driver (Type) and related options (Config) for Docker
-        # you can refer https://docs.docker.com/engine/admin/logging/overview/ for more detail configruation.
+        # Parameters on creating docker container.
+        # Container may be efficiently created using ipam & dns-server for cluster
+        # NetworkMode - sets the networking mode for the container. Supported
+        # standard values are: `host`(default),`bridge`,`ipvlan`,`none`.
+        # Dns - a list of DNS servers for the container to use.
+        # Note:  `Privileged` `Binds` `Links` and `PortBindings` properties of
+        # Docker Host Config are not supported and will not be used if set.
+        # LogConfig - sets the logging driver (Type) and related options
+        # (Config) for Docker. For more info,
+        # https://docs.docker.com/engine/admin/logging/overview/
+        # Note: Set LogConfig using Environment Variables is not supported.
         hostConfig:
             NetworkMode: host
             Dns:
@@ -285,16 +298,14 @@ vm:
 #
 ###############################################################################
 chaincode:
-    # This is used if chaincode endpoint resolution fails with the chaincodeListenAddress
-    # property
+    # This is used if chaincode endpoint resolution fails with the
+    # chaincodeListenAddress property
     peerAddress:
 
     # The id is used by the Chaincode stub to register the executing Chaincode
-    # ID with the Peerand is generally supplied through ENV variables
-    # the Path form of ID is provided when deploying the chaincode. The name is
-    # used for all other requests. The name is really a hashcode
-    # returned by the system in response to the deploy transaction. In
-    # development mode where user runs the chaincode, the name can be any string
+    # ID with the Peer and is generally supplied through ENV variables
+    # the `path` form of ID is provided when installing the chaincode.
+    # The `name` is used for all other requests and can be any string.
     id:
         path:
         name:
@@ -319,23 +330,24 @@ chaincode:
         Dockerfile:  |
             from $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
 
-    # timeout duration for starting up a container and waiting for Register
+    # Timeout duration for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
     startuptimeout: 300s
 
-    # timeout duration for invokes and initialize commands
-    # this timeout is used by all chaincodes in all the channels including
-    # system chaincodes. Default is 30 seconds
+    # Timeout duration for Invoke and Init calls to prevent runaway.
+    # This timeout is used by all chaincodes in all the channels, including
+    # system chaincodes.
+    # Note that during Invoke, if the image is not available (e.g. being
+    # cleaned up when in development environment), the peer will automatically
+    # build the image, which might take more time. In production environment,
+    # the chaincode image is unlikely to be deleted, so the timeout could be
+    # reduced accordingly.
     executetimeout: 30s
 
-    #timeout duration for deploying chaincode from a remote repository.
-    deploytimeout: 30s
-
-    #mode - options are "dev", "net"
-    #dev - in dev mode, user runs the chaincode after starting validator from
-    # command line on local machine
-    #net - in net mode validator will run chaincode in a docker container
-
+    # There are 2 modes: "dev" and "net".
+    # In dev mode, user runs the chaincode after starting peer from
+    # command line on local machine.
+    # In net mode, peer will run chaincode in a docker container.
     mode: net
 
     # keepalive in seconds. In situations where the communiction goes through a
@@ -379,8 +391,17 @@ ledger:
     # CouchDB - store state database in CouchDB
     stateDatabase: goleveldb
     couchDBConfig:
+       # It is recommended to run CouchDB on the same server as the peer, and
+       # not map the CouchDB container port to a server port in docker-compose.
+       # Otherwise proper security must be provided on the connection between
+       # CouchDB client (on the peer) and server.
        couchDBAddress: 127.0.0.1:5984
+       # This username must have read and write authority on CouchDB
        username:
+       # The password is recommended to pass as an environment variable
+       # during start up (eg LEDGER_COUCHDBCONFIG_PASSWORD).
+       # If it is stored here, the file must be access control protected
+       # to prevent unintended users from discovering the password.
        password:
        # Number of retries for CouchDB errors
        maxRetries: 3
