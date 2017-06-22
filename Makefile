@@ -371,24 +371,24 @@ release/%/install: $(PROJECT_FILES)
 
 .PHONY: dist
 dist: dist-clean release
-	cd release/$(MARCH) && tar -czvf hyperledger-fabric-$(MARCH).$(BASE_VERSION).tar.gz *
+	cd release/$(MARCH) && tar -czvf hyperledger-fabric-$(MARCH).$(PROJECT_VERSION).tar.gz *
 
 dist-all: dist-clean release-all $(patsubst %,dist/%, $(RELEASE_PLATFORMS))
 
 dist/windows-amd64:
-	cd release/windows-amd64 && tar -czvf hyperledger-fabric-windows-amd64.$(BASE_VERSION).tar.gz *
+	cd release/windows-amd64 && tar -czvf hyperledger-fabric-windows-amd64.$(PROJECT_VERSION).tar.gz *
 
 dist/darwin-amd64:
-	cd release/darwin-amd64 && tar -czvf hyperledger-fabric-darwin-amd64.$(BASE_VERSION).tar.gz *
+	cd release/darwin-amd64 && tar -czvf hyperledger-fabric-darwin-amd64.$(PROJECT_VERSION).tar.gz *
 
 dist/linux-amd64:
-	cd release/linux-amd64 && tar -czvf hyperledger-fabric-linux-amd64.$(BASE_VERSION).tar.gz *
+	cd release/linux-amd64 && tar -czvf hyperledger-fabric-linux-amd64.$(PROJECT_VERSION).tar.gz *
 
 dist/linux-ppc64le:
-	cd release/linux-ppc64le && tar -czvf hyperledger-fabric-linux-ppc64le.$(BASE_VERSION).tar.gz *
+	cd release/linux-ppc64le && tar -czvf hyperledger-fabric-linux-ppc64le.$(PROJECT_VERSION).tar.gz *
 
 dist/linux-s390x:
-	cd release/linux-s390x && tar -czvf hyperledger-fabric-linux-s390x.$(BASE_VERSION).tar.gz *
+	cd release/linux-s390x && tar -czvf hyperledger-fabric-linux-s390x.$(PROJECT_VERSION).tar.gz *
 
 .PHONY: protos
 protos: buildenv
@@ -411,11 +411,11 @@ clean-all: clean gotools-clean dist-clean release-clean unit-test-clean
 
 .PHONY: dist-clean
 dist-clean:
-	-@rm -rf release/windows-amd64/hyperledger-fabric-windows-amd64.$(BASE_VERSION).tar.gz ||:
-	-@rm -rf release/darwin-amd64/hyperledger-fabric-darwin-amd64.$(BASE_VERSION).tar.gz ||:
-	-@rm -rf release/linux-amd64/hyperledger-fabric-linux-amd64.$(BASE_VERSION).tar.gz ||:
-	-@rm -rf release/linux-ppc64le/hyperledger-fabric-linux-ppc64le.$(BASE_VERSION).tar.gz ||:
-	-@rm -rf release/linux-s390x/hyperledger-fabric-linux-s390x.$(BASE_VERSION).tar.gz ||:
+	-@rm -rf release/windows-amd64/hyperledger-fabric-windows-amd64.$(PROJECT_VERSION).tar.gz ||:
+	-@rm -rf release/darwin-amd64/hyperledger-fabric-darwin-amd64.$(PROJECT_VERSION).tar.gz ||:
+	-@rm -rf release/linux-amd64/hyperledger-fabric-linux-amd64.$(PROJECT_VERSION).tar.gz ||:
+	-@rm -rf release/linux-ppc64le/hyperledger-fabric-linux-ppc64le.$(PROJECT_VERSION).tar.gz ||:
+	-@rm -rf release/linux-s390x/hyperledger-fabric-linux-s390x.$(PROJECT_VERSION).tar.gz ||:
 
 %-release-clean:
 	$(eval TARGET = ${patsubst %-release-clean,%,${@}})
