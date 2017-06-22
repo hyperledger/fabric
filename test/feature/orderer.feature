@@ -71,6 +71,40 @@ Scenario: FAB-3851: Message Payloads Greater than 1MB
     When a user deploys chaincode
     Then the chaincode is deployed
 
+@daily
+Scenario: FAB-4686: Test taking down all kafka brokers and bringing back last 3
+    Given I have a bootstrapped fabric network of type kafka
+    And I wait "60" seconds
+    When a user deploys chaincode at path "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with ["init","a","1000","b","2000"] with name "mycc"
+    And I wait "30" seconds
+    Then the chaincode is deployed
+    When a user invokes on the chaincode named "mycc" with args ["invoke","a","b","10"]
+    And a user queries on the chaincode named "mycc" with args ["query","a"]
+    Then a user receives expected response of 990
+
+    Given "kafka0" is taken down
+    And I wait "5" seconds
+    When a user invokes on the chaincode named "mycc" with args ["invoke","a","b","10"]
+    When a user queries on the chaincode with args ["query","a"]
+    Then a user receives expected response of 980
+
+    Given "kafka1" is taken down
+    And "kafka2" is taken down
+    And "kafka3" is taken down
+    And I wait "5" seconds
+    When a user invokes on the chaincode named "mycc" with args ["invoke","a","b","10"]
+    And a user queries on the chaincode named "mycc" with args ["query","a"]
+    Then a user receives expected response of 980
+    And I wait "5" seconds
+
+    Given "kafka3" comes back up
+    And "kafka2" comes back up
+    And "kafka1" comes back up
+    And I wait "240" seconds
+    When a user invokes on the chaincode named "mycc" with args ["invoke","a","b","10"]
+    When a user queries on the chaincode named "mycc" with args ["query","a"]
+    Then a user receives expected response of 970
+
 @skip
 #@doNotDecompose
 Scenario Outline: FAB-3937: Message Broadcast
