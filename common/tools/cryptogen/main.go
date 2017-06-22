@@ -401,8 +401,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 		fmt.Printf("Error generating tlsCA for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
 	}
-	// TODO remove the following line once MSP and peer changes are done
-	tlsCA = signCA
+
 	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA)
 	if err != nil {
 		fmt.Printf("Error generating MSP for org %s:\n%v\n", orgName, err)
@@ -505,8 +504,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 		fmt.Printf("Error generating tlsCA for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
 	}
-	// TODO remove the following line once MSP and peer changes are done
-	tlsCA = signCA
+
 	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA)
 	if err != nil {
 		fmt.Printf("Error generating MSP for org %s:\n%v\n", orgName, err)

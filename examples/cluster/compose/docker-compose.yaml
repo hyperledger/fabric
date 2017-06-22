@@ -21,6 +21,17 @@ services:
     volumes:
       - ../build/nodes/ca:/etc/hyperledger/fabric-ca-server
 
+  tlsca:
+    container_name: tlsca
+    image: hyperledger/fabric-ca
+    dns_search: .
+    environment:
+      - FABRIC_CA_SERVER_TLS_ENABLED=${TLS_ENABLED}
+    logging:
+      <<: *logging
+    volumes:
+      - ../build/nodes/tlsca:/etc/hyperledger/fabric-ca-server
+
   orderer:
     container_name: orderer
     image: hyperledger/fabric-orderer
