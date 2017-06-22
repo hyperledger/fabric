@@ -85,7 +85,7 @@ prompt. Respond with a ``y`` to execute the described action.
   Generating certs and genesis block for with channel 'mychannel' and CLI timeout of '10000'
   Continue (y/n)?y
   proceeding ...
-  /Users/xxx/dev/byfn/bin/cryptogen
+  /Users/xxx/dev/fabric-samples/bin/cryptogen
 
   ##########################################################
   ##### Generate certificates using cryptogen tool #########
@@ -94,7 +94,7 @@ prompt. Respond with a ``y`` to execute the described action.
   2017-06-12 21:01:37.334 EDT [bccsp] GetDefault -> WARN 001 Before using BCCSP, please call InitFactories(). Falling back to bootBCCSP.
   ...
 
-  /Users/xxx/dev/byfn/bin/configtxgen
+  /Users/xxx/dev/fabric-samples/bin/configtxgen
   ##########################################################
   #########  Generating Orderer Genesis block ##############
   ##########################################################
@@ -143,7 +143,7 @@ will be prompted as to whether you wish to continue or abort. Respond with a
   Starting with channel 'mychannel' and CLI timeout of '10000'
   Continue (y/n)?y
   proceeding ...
-  Creating network "byfntest_default" with the default driver
+  Creating network "net_byfn" with the default driver
   Creating peer0.org1.example.com
   Creating peer1.org1.example.com
   Creating peer0.org2.example.com
@@ -204,7 +204,7 @@ Once again, you will be prompted to continue, respond with a ``y``:
   proceeding ...
   WARNING: The CHANNEL_NAME variable is not set. Defaulting to a blank string.
   WARNING: The TIMEOUT variable is not set. Defaulting to a blank string.
-  Removing network byfn_default
+  Removing network net_byfn
   468aaa6201ed
   ...
   Untagged: dev-peer1.org2.example.com-mycc-1.0:latest
@@ -344,7 +344,7 @@ directory, so we need to provide the relative path to where the tool resides.
 
 .. code:: bash
 
-    ./bin/cryptogen generate --config=./crypto-config.yaml
+    ../bin/cryptogen generate --config=./crypto-config.yaml
 
 You will likely see the following warning.  It's innocuous, ignore it:
 
@@ -363,7 +363,7 @@ should look for the configtx.yaml configuration file. Then, we'll invoke the
 .. code:: bash
 
     export FABRIC_CFG_PATH=$PWD
-    ./bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
+    ../bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
 
 You can ignore the log warnings regarding intermediate certificates, certificate
 revocation lists (crls) and MSP configurations. We are not using any of those
@@ -381,7 +381,7 @@ Next, we need to create the channel transaction artifact. Be sure to set the
 .. code:: bash
 
     # this file contains the definitions for our sample channel
-    ./bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID <channel-ID>
+    ../bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID <channel-ID>
 
 Next, we will define the anchor peer for Org1 on the channel that we are
 constructing. Again, be sure to set the <channel-ID> parameter as appropriate
@@ -389,13 +389,13 @@ for the following commands:
 
 .. code:: bash
 
-    ./bin/configtxgen -profile TwoOrgsChannel -outputAnchorPeersUpdate ./channel-artifacts/Org1MSPanchors.tx -channelID <channel-ID> -asOrg Org1MSP
+    ../bin/configtxgen -profile TwoOrgsChannel -outputAnchorPeersUpdate ./channel-artifacts/Org1MSPanchors.tx -channelID <channel-ID> -asOrg Org1MSP
 
 Now, we will define the anchor peer for Org2 on the same channel:
 
 .. code:: bash
 
-    ./bin/configtxgen -profile TwoOrgsChannel -outputAnchorPeersUpdate ./channel-artifacts/Org2MSPanchors.tx -channelID <channel-ID> -asOrg Org2MSP
+    ../bin/configtxgen -profile TwoOrgsChannel -outputAnchorPeersUpdate ./channel-artifacts/Org2MSPanchors.tx -channelID <channel-ID> -asOrg Org2MSP
 
 Start the network
 -----------------
@@ -451,8 +451,10 @@ paths:
     CORE_PEER_LOCALMSPID="Org1MSP"
     CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 
+.. _createandjoin:
+
 Create & Join Channel
-^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
 
 We will enter the CLI container using the ``docker exec`` command:
 
@@ -539,7 +541,7 @@ If we changed the syntax to ``AND`` then we would need two endorsements.
     # be sure to replace the $CHANNEL_NAME environment variable
     # if you did not install your chaincode with a name of mycc, then modify that argument as well
 
-    peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org1MSP.member','Org2MSP.member')"
+    peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org1MSP.member','Org2MSP.member')"
 
 See the `endorsement
 policies <http://hyperledger-fabric.readthedocs.io/en/latest/endorsement-policies.html>`__
@@ -740,9 +742,8 @@ Understanding the docker-compose topology
 The BYFN sample offers us two flavors of docker-compose files, both of which
 are extended from the ``docker-compose-base.yaml`` (located in the ``base``
 folder).  Our first flavor, ``docker-compose-cli.yaml``, provides us with a
-CLI container, along with an orderer, four peers, and the optional couchDB
-containers.  We use this docker-compose for the entirety of the instructions
-on this page.
+CLI container, along with an orderer, four peers.  We use this docker-compose
+for the entirety of the instructions on this page.
 
 .. note:: the remainder of this section covers a docker-compose file designed for the
           SDK.  Refer to the `Node.js SDK <https://github.com/hyperledger/fabric-sdk-node>`__
@@ -754,7 +755,7 @@ is that there are containers for the fabric-ca servers.  As a result, we are abl
 to send REST calls to the organizational CAs for user registration and enrollment.
 
 If you want to use the ``docker-compose-e2e.yaml`` without first running the
-**All in one** script, then we will need to make four slight modifications.
+byfn.sh script, then we will need to make four slight modifications.
 We need to point to the private keys for our Organization's CA's.  You can locate
 these values in your crypto-config folder.  For example, to locate the private
 key for Org1 we would follow this path - ``crypto-config/peerOrganizations/org1.example.com/ca/``.
@@ -799,9 +800,8 @@ capabilities you will need to use a chaincode that has data modeled as JSON,
 ``fabric/examples/chaincode/go`` directory.
 
 We will follow the same process to create and join the channel as outlined in the
-**Manually exercise the commands** section above.  Once you have joined your
-peer(s) to the channel, use the following steps to interact with the **marbles02**
-chaincode:
+:ref:`createandjoin` section above.  Once you have joined your peer(s) to the
+channel, use the following steps to interact with the **marbles02** chaincode:
 
 -  Install and instantiate the chaincode on ``peer0.org1.example.com``:
 
@@ -810,7 +810,7 @@ chaincode:
        # be sure to modify the $CHANNEL_NAME variable accordingly for the instantiate command
 
        peer chaincode install -o orderer.example.com:7050 -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02
-       peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02 -c '{"Args":["init"]}' -P "OR ('Org0MSP.member','Org1MSP.member')"
+       peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem -C $CHANNEL_NAME -n marbles -v 1.0 -c '{"Args":["init"]}' -P "OR ('Org0MSP.member','Org1MSP.member')"
 
 -  Create some marbles and move them around:
 
