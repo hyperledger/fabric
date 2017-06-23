@@ -167,7 +167,6 @@ class Composition:
                     raise Exception(_error)
         except:
             err = "Error occurred {0}: {1}".format(cmd, sys.exc_info()[1])
-            #print(err)
             output = err
 
         # Don't rebuild if ps command
@@ -204,8 +203,6 @@ class Composition:
         self.issueCommand(["rm", "-f"])
         env = self.getEnv()
 
-        print("Current env:", env)
-
         # Now remove associated chaincode containers if any
         cmd = ["docker", "ps", "-qa", "--filter", "name={0}".format(self.projectName)]
         output = str(subprocess.check_output(cmd, env=env))
@@ -213,3 +210,7 @@ class Composition:
         for container in container_list:
             if container != '':
                 subprocess.call(['docker', 'rm', '-f', container], env=env)
+
+        # Need to remove the chaincode images: docker rmi -f $(docker images | grep "example.com-" | awk '{print $3}')
+        cmd = ['docker images | grep ".example.com-" | awk \'{print $3}\' | xargs docker rmi']
+        subprocess.call(cmd, shell=True, env=env)
