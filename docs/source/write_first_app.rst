@@ -8,11 +8,11 @@ At the most basic level, applications on a blockchain network are what enable
 users to **query** a ledger (asking for specific records it contains), or to
 **update** it (adding records to it).
 
-Our application, composed in Javascript, leverages the node.js SDK to interact
+Our application, composed in Javascript, leverages the Node.js SDK to interact
 with the network (where our ledger exists). This tutorial will guide you through
 the three steps involved in writing your first application.
 
-  **1. Starting a test fabric blockchain network.** We need some basic components
+  **1. Starting a test Fabric blockchain network.** We need some basic components
   in our Fabric in order to query and update the ledger.  These components --
   a peer node, ordering node and Certificate Authority -- serve as the backbone of
   our network; we'll also have a CLI container used for a few administrative commands.
@@ -23,9 +23,9 @@ the three steps involved in writing your first application.
   in different ways.  For example, we can read data holistically or on a more granular
   level.
 
-  **3. Developing the application to be able to query and update fabric records.**
+  **3. Developing the application to be able to query and update Fabric records.**
   We provide two sample applications -- one for querying the ledger and another for
-  updating it. Our app will use the SDK APIs to interact with the network and
+  updating it. Our apps will use the SDK APIs to interact with the network and
   ultimately call these functions.
 
 After completing this tutorial, you should have a basic understanding of how
