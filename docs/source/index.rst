@@ -48,6 +48,8 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
    build_network
    write_first_app
    chaincode
+   chaincode4ade
+   chaincode4noah
    videos
 
 .. toctree::
