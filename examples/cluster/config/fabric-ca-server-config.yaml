@@ -100,7 +100,7 @@ ca:
 #############################################################################
 registry:
   # Maximum number of times a password/secret can be reused for enrollment
-  # (default: 0, which means there is no limit)
+  # (default: -1, which means there is no limit)
   maxEnrollments: -1
 
   # Contains identity information which is used when LDAP is disabled
