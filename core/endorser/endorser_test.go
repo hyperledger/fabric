@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -750,7 +751,7 @@ func setupTestConfig() {
 	testutil.SetupTestLogging()
 
 	// Set the number of maxprocs
-	viper.GetInt("peer.gomaxprocs")
+	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 
 	// Init the BCCSP
 	var bccspConfig *factory.FactoryOpts
