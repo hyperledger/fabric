@@ -376,7 +376,7 @@ in this sample network.
   2017-06-12 21:01:37.562 EDT [msp] getMspConfig -> INFO 004 MSP configuration file not found at [/Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/config.yaml]: [stat /Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/config.yaml: no such file or directory]
 
 Next, we need to create the channel transaction artifact. Be sure to replace $CHANNEL_NAME or
-set CHANNEL_NAME as an environment variable that can be used throughout these instructions::
+set CHANNEL_NAME as an environment variable that can be used throughout these instructions:
 
 .. code:: bash
 
@@ -484,6 +484,8 @@ you can mount your own configuration transaction with a different name.
 
 .. code:: bash
 
+        export CHANNEL_NAME=mychannel
+
         # the channel.tx file is mounted in the channel-artifacts directory within your CLI container
         # as a result, we pass the full path for the file
         # we also pass the path for the orderer ca-cert in order to verify the TLS handshake
@@ -514,7 +516,8 @@ changes in the four environment variables.
 Install & Instantiate Chaincode
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. note:: TODO - link to new chaincode for developers tutorial.
+.. note:: We will utilize a simple existing chaincode. To learn how to write
+          your own chaincode, see the :doc:`chaincode4ade` tutorial.
 
 Applications interact with the blockchain ledger through ``chaincode``.  As
 such we need to install the chaincode on every peer that will execute and
