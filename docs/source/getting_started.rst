@@ -23,7 +23,7 @@ We offer two initial tutorials to get you started with Hyperledger Fabric.
 The first is oriented to the Hyperledger Fabric **application developer**,
 :doc:`write_first_app`. It takes you through the process of writing your first
 blockchain application for Hyperledger Fabric using the Hyperledger Fabric's
-`Node.js SDK <https://github.com/hyperledger/fabric-sdk-java>`__.
+`Node.js SDK <https://github.com/hyperledger/fabric-sdk-node>`__.
 
 The second tutorial is oriented towards the Hyperledger Fabric network
 operators, :doc:`build_network`. This one walks you through the process of
