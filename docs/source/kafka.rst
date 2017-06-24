@@ -185,22 +185,15 @@ Supported Kafka versions for v1 are ``0.9`` and ``0.10``. (Fabric uses the
 version of it that supports Kafka 0.9 and 0.10.)
 
 Out of the box the Kafka version defaults to ``0.9.0.1``. If you wish to use a
-different supported version, you will have to edit the source code (modify the
-``Version`` field of the ``defaults`` struct in
-``orderer/localconfig/config.go``) and rebuild the ``orderer`` binary. For
-example, if you wish to run the ordering service in a Kafka cluster running
-0.10.0.1, you would edit the file like so:
+different supported version, specify a supported version using the
+``Kafka.Version`` key in ``orderer.yaml``.
 
-::
+The current supported Kafka versions are:
 
-    ...
-    Verbose: false,
-    Version: sarama.V0_10_0_1,
-    TLS: TLS{
-    ...
-
-And then rebuild the binary. (This process will be improved with
-`FAB-4619 <https://jira.hyperledger.org/browse/FAB-4619>`_.)
+* ``Version: 0.9.0.1``
+* ``Version: 0.10.0.0``
+* ``Version: 0.10.0.1``
+* ``Version: 0.10.1.0``
 
 Debugging
 ---------

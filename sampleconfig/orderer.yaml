@@ -67,7 +67,7 @@ General:
 
     # LocalMSPID is the identity to register the local MSP material with the MSP
     # manager. IMPORTANT: The local MSP ID of an orderer needs to match the MSP
-    # ID of one of the organizations defined in the orderer system channel's 
+    # ID of one of the organizations defined in the orderer system channel's
     # /Channel/Orderer configuration. The sample organization defined in the
     # sample configuration provided has an MSP ID of "DEFAULT".
     LocalMSPID: DEFAULT
@@ -221,3 +221,6 @@ Kafka:
         # following "File" key and specify the file name from which to load the
         # value of RootCAs.
         #File: path/to/RootCAs
+
+    # Kafka version of the Kafka cluster brokers (defaults to 0.9.0.1)
+    Version:
