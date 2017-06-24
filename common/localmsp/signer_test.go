@@ -20,24 +20,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/common/crypto"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	// 1. Determine MSP configuration
-	var mspMgrConfigDir string
-	var alternativeCfgPath = os.Getenv("ORDERER_CFG_PATH")
-	if alternativeCfgPath != "" {
-		mspMgrConfigDir = alternativeCfgPath + "/../msp/sampleconfig/"
-	} else if _, err := os.Stat("./msp/sampleconfig/"); err == nil {
-		mspMgrConfigDir = "./msp/sampleconfig/"
-	} else {
-		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
-
-	if err := mspmgmt.LoadLocalMsp(mspMgrConfigDir); err != nil {
+	if err := mspmgmt.LoadDevMsp(); err != nil {
 		os.Exit(-1)
 	}
 
@@ -58,7 +47,7 @@ func TestMspSigner_NewSignatureHeader(t *testing.T) {
 	}
 
 	assert.NotNil(t, sh, "SignatureHeader must be different from nil")
-	assert.Len(t, sh.Nonce, primitives.NonceSize, "SignatureHeader.Nonce must be of length %d", primitives.NonceSize)
+	assert.Len(t, sh.Nonce, crypto.NonceSize, "SignatureHeader.Nonce must be of length %d", crypto.NonceSize)
 
 	mspIdentity, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	assert.NoError(t, err, "Failed getting default MSP Identity")

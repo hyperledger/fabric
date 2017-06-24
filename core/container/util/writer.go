@@ -26,19 +26,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/op/go-logging"
-	"github.com/spf13/viper"
+	"github.com/hyperledger/fabric/common/flogging"
 )
 
-var vmLogger = logging.MustGetLogger("container")
-
-var includeFileTypes = map[string]bool{
-	".c":    true,
-	".h":    true,
-	".go":   true,
-	".yaml": true,
-	".json": true,
-}
+var vmLogger = flogging.MustGetLogger("container")
 
 // These filetypes are excluded while creating the tar package sent to Docker
 // Generated .class and other temporary files can be excluded
@@ -109,36 +100,6 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 	return nil
 }
 
-//WriteGopathSrc tars up files under gopath src
-func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
-	gopath := os.Getenv("GOPATH")
-	// Only take the first element of GOPATH
-	gopath = filepath.SplitList(gopath)[0]
-
-	rootDirectory := filepath.Join(gopath, "src")
-	vmLogger.Infof("rootDirectory = %s", rootDirectory)
-
-	if err := WriteFolderToTarPackage(tw, rootDirectory, excludeDir, includeFileTypes, nil); err != nil {
-		vmLogger.Errorf("Error writing folder to tar package %s", err)
-		return err
-	}
-
-	// Add the certificates to tar
-	if viper.GetBool("peer.tls.enabled") {
-		err := WriteFileToPackage(viper.GetString("peer.tls.cert.file"), "src/certs/cert.pem", tw)
-		if err != nil {
-			return fmt.Errorf("Error writing cert file to package: %s", err)
-		}
-	}
-
-	// Write the tar file out
-	if err := tw.Close(); err != nil {
-		return err
-	}
-	//ioutil.WriteFile("/tmp/chaincode_deployment.tar", inputbuf.Bytes(), 0644)
-	return nil
-}
-
 //Package Java project to tar file from the source path
 func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 
@@ -148,13 +109,6 @@ func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 
 		vmLogger.Errorf("Error writing folder to tar package %s", err)
 		return err
-	}
-	// Add the ca for self signed cert to tar
-	if viper.GetBool("peer.tls.enabled") && viper.GetString("peer.tls.rootcert.file") != "" {
-		err := WriteFileToPackage(viper.GetString("peer.tls.rootcert.file"), "src/certs/rootcert.pem", tw)
-		if err != nil {
-			return fmt.Errorf("Error writing cert file to package: %s", err)
-		}
 	}
 	// Write the tar file out
 	if err := tw.Close(); err != nil {
@@ -195,6 +149,7 @@ func WriteStreamToPackage(is io.Reader, localpath string, packagepath string, tw
 	header.ModTime = zeroTime
 	header.ChangeTime = zeroTime
 	header.Name = packagepath
+	header.Mode = 0100644
 
 	if err = tw.WriteHeader(header); err != nil {
 		return fmt.Errorf("Error write header for (path: %s, oldname:%s,newname:%s,sz:%d) : %s", localpath, oldname, packagepath, header.Size, err)
@@ -202,6 +157,15 @@ func WriteStreamToPackage(is io.Reader, localpath string, packagepath string, tw
 	if _, err := io.Copy(tw, is); err != nil {
 		return fmt.Errorf("Error copy (path: %s, oldname:%s,newname:%s,sz:%d) : %s", localpath, oldname, packagepath, header.Size, err)
 	}
+
+	return nil
+}
+
+func WriteBytesToPackage(name string, payload []byte, tw *tar.Writer) error {
+	//Make headers identical by using zero time
+	var zeroTime time.Time
+	tw.WriteHeader(&tar.Header{Name: name, Size: int64(len(payload)), ModTime: zeroTime, AccessTime: zeroTime, ChangeTime: zeroTime})
+	tw.Write(payload)
 
 	return nil
 }

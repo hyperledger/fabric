@@ -25,6 +25,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -49,7 +50,7 @@ func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayloa
 	}
 
 	if pRespPayload.Extension == nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("response payload is missing extension")
 	}
 
 	respPayload := &peer.ChaincodeAction{}
@@ -70,6 +71,41 @@ func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 	}
 
 	return env, nil
+}
+
+// CreateSignedEnvelope creates a signed envelope of the desired type, with marshaled dataMsg and signs it
+func CreateSignedEnvelope(txType common.HeaderType, channelID string, signer crypto.LocalSigner, dataMsg proto.Message, msgVersion int32, epoch uint64) (*common.Envelope, error) {
+	payloadChannelHeader := MakeChannelHeader(txType, msgVersion, channelID, epoch)
+
+	var err error
+	payloadSignatureHeader := &common.SignatureHeader{}
+
+	if signer != nil {
+		payloadSignatureHeader, err = signer.NewSignatureHeader()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	data, err := proto.Marshal(dataMsg)
+	if err != nil {
+		return nil, err
+	}
+
+	paylBytes := MarshalOrPanic(&common.Payload{
+		Header: MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader),
+		Data:   data,
+	})
+
+	var sig []byte
+	if signer != nil {
+		sig, err = signer.Sign(paylBytes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &common.Envelope{Payload: paylBytes, Signature: sig}, nil
 }
 
 // CreateSignedTx assembles an Envelope message from proposal, endorsements, and a signer.
@@ -99,7 +135,12 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 		return nil, err
 	}
 
-	if bytes.Compare(signerBytes, hdr.SignatureHeader.Creator) != 0 {
+	shdr, err := GetSignatureHeader(hdr.SignatureHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	if bytes.Compare(signerBytes, shdr.Creator) != 0 {
 		return nil, fmt.Errorf("The signer needs to be the same as the one referenced in the header")
 	}
 
@@ -140,12 +181,6 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 		return nil, err
 	}
 
-	// get the bytes of the signature header, that will be the header of the TransactionAction
-	sHdrBytes, err := GetBytesSignatureHeader(hdr.SignatureHeader)
-	if err != nil {
-		return nil, err
-	}
-
 	// serialize the chaincode action payload
 	cap := &peer.ChaincodeActionPayload{ChaincodeProposalPayload: propPayloadBytes, Action: cea}
 	capBytes, err := GetBytesChaincodeActionPayload(cap)
@@ -154,7 +189,7 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 	}
 
 	// create a transaction
-	taa := &peer.TransactionAction{Header: sHdrBytes, Payload: capBytes}
+	taa := &peer.TransactionAction{Header: hdr.SignatureHeader, Payload: capBytes}
 	taas := make([]*peer.TransactionAction, 1)
 	taas[0] = taa
 	tx := &peer.Transaction{Actions: taas}
@@ -183,7 +218,12 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 }
 
 // CreateProposalResponse creates a proposal response.
-func CreateProposalResponse(hdr []byte, payl []byte, response *peer.Response, results []byte, events []byte, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
+func CreateProposalResponse(hdrbytes []byte, payl []byte, response *peer.Response, results []byte, events []byte, ccid *peer.ChaincodeID, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
+	hdr, err := GetHeader(hdrbytes)
+	if err != nil {
+		return nil, err
+	}
+
 	// obtain the proposal hash given proposal header, payload and the requested visibility
 	pHashBytes, err := GetProposalHash1(hdr, payl, visibility)
 	if err != nil {
@@ -191,9 +231,9 @@ func CreateProposalResponse(hdr []byte, payl []byte, response *peer.Response, re
 	}
 
 	// get the bytes of the proposal response payload - we need to sign them
-	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, response, results, events)
+	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, response, results, events, ccid)
 	if err != nil {
-		return nil, errors.New("Failure while unmarshalling the ProposalResponsePayload")
+		return nil, errors.New("Failure while marshaling the ProposalResponsePayload")
 	}
 
 	// serialize the signing identity
@@ -218,6 +258,35 @@ func CreateProposalResponse(hdr []byte, payl []byte, response *peer.Response, re
 	return resp, nil
 }
 
+// CreateProposalResponseFailure creates a proposal response for cases where
+// endorsement proposal fails either due to a endorsement failure or a chaincode
+// failure (chaincode response status >= shim.ERRORTHRESHOLD)
+func CreateProposalResponseFailure(hdrbytes []byte, payl []byte, response *peer.Response, results []byte, events []byte, ccid *peer.ChaincodeID, visibility []byte) (*peer.ProposalResponse, error) {
+	hdr, err := GetHeader(hdrbytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// obtain the proposal hash given proposal header, payload and the requested visibility
+	pHashBytes, err := GetProposalHash1(hdr, payl, visibility)
+	if err != nil {
+		return nil, fmt.Errorf("Could not compute proposal hash: err %s", err)
+	}
+
+	// get the bytes of the proposal response payload
+	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, response, results, events, ccid)
+	if err != nil {
+		return nil, errors.New("Failure while marshaling the ProposalResponsePayload")
+	}
+
+	resp := &peer.ProposalResponse{
+		// Timestamp: TODO!
+		Payload:  prpBytes,
+		Response: &peer.Response{Status: 500, Message: "Chaincode Error"}}
+
+	return resp, nil
+}
+
 // GetSignedProposal returns a signed proposal given a Proposal message and a signing identity
 func GetSignedProposal(prop *peer.Proposal, signer msp.SigningIdentity) (*peer.SignedProposal, error) {
 	// check for nil argument
@@ -238,6 +307,68 @@ func GetSignedProposal(prop *peer.Proposal, signer msp.SigningIdentity) (*peer.S
 	return &peer.SignedProposal{ProposalBytes: propBytes, Signature: signature}, nil
 }
 
+// GetSignedEvent returns a signed event given an Event message and a signing identity
+func GetSignedEvent(evt *peer.Event, signer msp.SigningIdentity) (*peer.SignedEvent, error) {
+	// check for nil argument
+	if evt == nil || signer == nil {
+		return nil, errors.New("nil arguments")
+	}
+
+	evtBytes, err := proto.Marshal(evt)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := signer.Sign(evtBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &peer.SignedEvent{EventBytes: evtBytes, Signature: signature}, nil
+}
+
+// MockSignedEndorserProposalOrPanic creates a SignedProposal with the passed arguments
+func MockSignedEndorserProposalOrPanic(chainID string, cs *peer.ChaincodeSpec, creator, signature []byte) (*peer.SignedProposal, *peer.Proposal) {
+	prop, _, err := CreateChaincodeProposal(
+		common.HeaderType_ENDORSER_TRANSACTION,
+		chainID,
+		&peer.ChaincodeInvocationSpec{ChaincodeSpec: cs},
+		creator)
+	if err != nil {
+		panic(err)
+	}
+
+	propBytes, err := GetBytesProposal(prop)
+	if err != nil {
+		panic(err)
+	}
+
+	return &peer.SignedProposal{ProposalBytes: propBytes, Signature: signature}, prop
+}
+
+func MockSignedEndorserProposal2OrPanic(chainID string, cs *peer.ChaincodeSpec, signer msp.SigningIdentity) (*peer.SignedProposal, *peer.Proposal) {
+	serializedSigner, err := signer.Serialize()
+	if err != nil {
+		panic(err)
+	}
+
+	prop, _, err := CreateChaincodeProposal(
+		common.HeaderType_ENDORSER_TRANSACTION,
+		chainID,
+		&peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{}},
+		serializedSigner)
+	if err != nil {
+		panic(err)
+	}
+
+	sProp, err := GetSignedProposal(prop, signer)
+	if err != nil {
+		panic(err)
+	}
+
+	return sProp, prop
+}
+
 // GetBytesProposalPayloadForTx takes a ChaincodeProposalPayload and returns its serialized
 // version according to the visibility field
 func GetBytesProposalPayloadForTx(payload *peer.ChaincodeProposalPayload, visibility []byte) ([]byte, error) {
@@ -247,48 +378,55 @@ func GetBytesProposalPayloadForTx(payload *peer.ChaincodeProposalPayload, visibi
 	}
 
 	// strip the transient bytes off the payload - this needs to be done no matter the visibility mode
-	cppNoTransient := &peer.ChaincodeProposalPayload{Input: payload.Input, Transient: nil}
+	cppNoTransient := &peer.ChaincodeProposalPayload{Input: payload.Input, TransientMap: nil}
 	cppBytes, err := GetBytesChaincodeProposalPayload(cppNoTransient)
 	if err != nil {
 		return nil, errors.New("Failure while marshalling the ChaincodeProposalPayload!")
 	}
 
-	// TODO: handle payload visibility - it needs to be defined first!
-	// here, as an example, I'll code the visibility policy that allows the
-	// full header but only the hash of the payload
+	// currently the fabric only supports full visibility: this means that
+	// there are no restrictions on which parts of the proposal payload will
+	// be visible in the final transaction; this default approach requires
+	// no additional instructions in the PayloadVisibility field; however
+	// the fabric may be extended to encode more elaborate visibility
+	// mechanisms that shall be encoded in this field (and handled
+	// appropriately by the peer)
 
-	digest, err := factory.GetDefaultOrPanic().Hash(cppBytes, &bccsp.SHAOpts{})
-	if err != nil {
-		return nil, fmt.Errorf("Failed computing digest [%s]", err)
-	}
-	return digest, nil
+	return cppBytes, nil
 }
 
 // GetProposalHash2 gets the proposal hash - this version
 // is called by the committer where the visibility policy
 // has already been enforced and so we already get what
 // we have to get in ccPropPayl
-func GetProposalHash2(header []byte, ccPropPayl []byte) ([]byte, error) {
+func GetProposalHash2(header *common.Header, ccPropPayl []byte) ([]byte, error) {
 	// check for nil argument
-	if header == nil || ccPropPayl == nil {
+	if header == nil ||
+		header.ChannelHeader == nil ||
+		header.SignatureHeader == nil ||
+		ccPropPayl == nil {
 		return nil, fmt.Errorf("Nil arguments")
 	}
 
-	hash, err := factory.GetDefaultOrPanic().GetHash(&bccsp.SHAOpts{})
+	hash, err := factory.GetDefault().GetHash(&bccsp.SHA256Opts{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
 	}
-	hash.Write(header)     // hash the serialized Header object
-	hash.Write(ccPropPayl) // hash the bytes of the chaincode proposal payload that we are given
+	hash.Write(header.ChannelHeader)   // hash the serialized Channel Header object
+	hash.Write(header.SignatureHeader) // hash the serialized Signature Header object
+	hash.Write(ccPropPayl)             // hash the bytes of the chaincode proposal payload that we are given
 
 	return hash.Sum(nil), nil
 }
 
 // GetProposalHash1 gets the proposal hash bytes after sanitizing the
 // chaincode proposal payload according to the rules of visibility
-func GetProposalHash1(header []byte, ccPropPayl []byte, visibility []byte) ([]byte, error) {
+func GetProposalHash1(header *common.Header, ccPropPayl []byte, visibility []byte) ([]byte, error) {
 	// check for nil argument
-	if header == nil || ccPropPayl == nil /* || visibility == nil */ {
+	if header == nil ||
+		header.ChannelHeader == nil ||
+		header.SignatureHeader == nil ||
+		ccPropPayl == nil /* || visibility == nil */ {
 		return nil, fmt.Errorf("Nil arguments")
 	}
 
@@ -304,13 +442,13 @@ func GetProposalHash1(header []byte, ccPropPayl []byte, visibility []byte) ([]by
 		return nil, err
 	}
 
-	// TODO: use bccsp interfaces and providers as soon as they are ready!
-	hash2, err := factory.GetDefaultOrPanic().GetHash(&bccsp.SHAOpts{})
+	hash2, err := factory.GetDefault().GetHash(&bccsp.SHA256Opts{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
 	}
-	hash2.Write(header)  // hash the serialized Header object
-	hash2.Write(ppBytes) // hash of the part of the chaincode proposal payload that will go to the tx
+	hash2.Write(header.ChannelHeader)   // hash the serialized Channel Header object
+	hash2.Write(header.SignatureHeader) // hash the serialized Signature Header object
+	hash2.Write(ppBytes)                // hash of the part of the chaincode proposal payload that will go to the tx
 
 	return hash2.Sum(nil), nil
 }

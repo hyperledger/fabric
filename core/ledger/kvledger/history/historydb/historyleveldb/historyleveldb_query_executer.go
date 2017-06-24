@@ -18,22 +18,27 @@ package historyleveldb
 
 import (
 	"errors"
-	"fmt"
 
-	"github.com/hyperledger/fabric/core/ledger"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
+	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
 // LevelHistoryDBQueryExecutor is a query executor against the LevelDB history DB
 type LevelHistoryDBQueryExecutor struct {
-	historyDB *historyDB
+	historyDB  *historyDB
+	blockStore blkstorage.BlockStore
 }
 
 // GetHistoryForKey implements method in interface `ledger.HistoryQueryExecutor`
-func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key string) (ledger.ResultsIterator, error) {
+func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
 
 	if ledgerconfig.IsHistoryDBEnabled() == false {
 		return nil, errors.New("History tracking not enabled - historyDatabase is false")
@@ -46,20 +51,24 @@ func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key str
 
 	// range scan to find any history records starting with namespace~key
 	dbItr := q.historyDB.db.GetIterator(compositeStartKey, compositeEndKey)
-	return newHistoryScanner(compositeStartKey, dbItr), nil
+	return newHistoryScanner(compositeStartKey, namespace, key, dbItr, q.blockStore), nil
 }
 
 //historyScanner implements ResultsIterator for iterating through history results
 type historyScanner struct {
 	compositePartialKey []byte //compositePartialKey includes namespace~key
+	namespace           string
+	key                 string
 	dbItr               iterator.Iterator
+	blockStore          blkstorage.BlockStore
 }
 
-func newHistoryScanner(compositePartialKey []byte, dbItr iterator.Iterator) *historyScanner {
-	return &historyScanner{compositePartialKey, dbItr}
+func newHistoryScanner(compositePartialKey []byte, namespace string, key string,
+	dbItr iterator.Iterator, blockStore blkstorage.BlockStore) *historyScanner {
+	return &historyScanner{compositePartialKey, namespace, key, dbItr, blockStore}
 }
 
-func (scanner *historyScanner) Next() (ledger.QueryResult, error) {
+func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 	if !scanner.dbItr.Next() {
 		return nil, nil
 	}
@@ -69,15 +78,78 @@ func (scanner *historyScanner) Next() (ledger.QueryResult, error) {
 	_, blockNumTranNumBytes := historydb.SplitCompositeHistoryKey(historyKey, scanner.compositePartialKey)
 	blockNum, bytesConsumed := util.DecodeOrderPreservingVarUint64(blockNumTranNumBytes[0:])
 	tranNum, _ := util.DecodeOrderPreservingVarUint64(blockNumTranNumBytes[bytesConsumed:])
+	logger.Debugf("Found history record for namespace:%s key:%s at blockNumTranNum %v:%v\n",
+		scanner.namespace, scanner.key, blockNum, tranNum)
 
-	blockNumTranNum := fmt.Sprintf("%v:%v", blockNum, tranNum)
-	logger.Debugf("Got history record for key %s: %s\n", scanner.compositePartialKey, blockNumTranNum)
+	// Get the transaction from block storage that is associated with this history record
+	tranEnvelope, err := scanner.blockStore.RetrieveTxByBlockNumTranNum(blockNum, tranNum)
+	if err != nil {
+		return nil, err
+	}
 
-	// For initial test return the blockNumTranNum as TxID.
-	// TODO query block storage to get and return the TxID and value
-	return &ledger.KeyModification{TxID: blockNumTranNum}, nil
+	// Get the txid, key write value, timestamp, and delete indicator associated with this transaction
+	queryResult, err := getKeyModificationFromTran(tranEnvelope, scanner.namespace, scanner.key)
+	if err != nil {
+		return nil, err
+	}
+	logger.Debugf("Found historic key value for namespace:%s key:%s from transaction %s\n",
+		scanner.namespace, scanner.key, queryResult.(*queryresult.KeyModification).TxId)
+	return queryResult, nil
 }
 
 func (scanner *historyScanner) Close() {
 	scanner.dbItr.Release()
+}
+
+// getTxIDandKeyWriteValueFromTran inspects a transaction for writes to a given key
+func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string, key string) (commonledger.QueryResult, error) {
+	logger.Debugf("Entering getKeyModificationFromTran()\n", namespace, key)
+
+	// extract action from the envelope
+	payload, err := putils.GetPayload(tranEnvelope)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := putils.GetTransaction(payload.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	_, respPayload, err := putils.GetPayloads(tx.Actions[0])
+	if err != nil {
+		return nil, err
+	}
+
+	chdr, err := putils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	txID := chdr.TxId
+	timestamp := chdr.Timestamp
+
+	txRWSet := &rwsetutil.TxRwSet{}
+
+	// Get the Result from the Action and then Unmarshal
+	// it into a TxReadWriteSet using custom unmarshalling
+	if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+		return nil, err
+	}
+
+	// look for the namespace and key by looping through the transaction's ReadWriteSets
+	for _, nsRWSet := range txRWSet.NsRwSets {
+		if nsRWSet.NameSpace == namespace {
+			// got the correct namespace, now find the key write
+			for _, kvWrite := range nsRWSet.KvRwSet.Writes {
+				if kvWrite.Key == key {
+					return &queryresult.KeyModification{TxId: txID, Value: kvWrite.Value,
+						Timestamp: timestamp, IsDelete: kvWrite.IsDelete}, nil
+				}
+			} // end keys loop
+			return nil, errors.New("Key not found in namespace's writeset")
+		} // end if
+	} //end namespaces loop
+	return nil, errors.New("Namespace not found in transaction's ReadWriteSets")
+
 }

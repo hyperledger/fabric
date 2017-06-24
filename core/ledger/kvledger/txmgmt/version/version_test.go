@@ -19,7 +19,7 @@ package version
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 )
 
 func TestVersionSerialization(t *testing.T) {
@@ -35,6 +35,10 @@ func TestVersionComparison(t *testing.T) {
 	testutil.AssertEquals(t, NewHeight(10, 100).Compare(NewHeight(10, 90)), 1)
 	testutil.AssertEquals(t, NewHeight(10, 100).Compare(NewHeight(11, 1)), -1)
 	testutil.AssertEquals(t, NewHeight(10, 100).Compare(NewHeight(10, 100)), 0)
+
+	testutil.AssertEquals(t, AreSame(NewHeight(10, 100), NewHeight(10, 100)), true)
+	testutil.AssertEquals(t, AreSame(nil, nil), true)
+	testutil.AssertEquals(t, AreSame(NewHeight(10, 100), nil), false)
 }
 
 func TestVersionExtraBytes(t *testing.T) {

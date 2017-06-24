@@ -17,8 +17,8 @@ limitations under the License.
 package blockcutter
 
 import (
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/op/go-logging"
@@ -52,15 +52,15 @@ type Receiver interface {
 }
 
 type receiver struct {
-	sharedConfigManager   sharedconfig.Manager
+	sharedConfigManager   config.Orderer
 	filters               *filter.RuleSet
 	pendingBatch          []*cb.Envelope
 	pendingBatchSizeBytes uint32
 	pendingCommitters     []filter.Committer
 }
 
-// NewReceiverImpl creates a Receiver implementation based on the given sharedconfig manager and filters
-func NewReceiverImpl(sharedConfigManager sharedconfig.Manager, filters *filter.RuleSet) Receiver {
+// NewReceiverImpl creates a Receiver implementation based on the given configtxorderer manager and filters
+func NewReceiverImpl(sharedConfigManager config.Orderer, filters *filter.RuleSet) Receiver {
 	return &receiver{
 		sharedConfigManager: sharedConfigManager,
 		filters:             filters,

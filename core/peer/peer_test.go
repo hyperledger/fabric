@@ -20,15 +20,24 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/localmsp"
+	mscc "github.com/hyperledger/fabric/common/mocks/scc"
+	"github.com/hyperledger/fabric/core/comm"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/mocks/ccprovider"
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	peergossip "github.com/hyperledger/fabric/peer/gossip"
+	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -37,10 +46,15 @@ import (
 type mockDeliveryClient struct {
 }
 
-// JoinChain once peer joins the chain it should need to check whenever
-// it has been selected as a leader and open connection to the configured
-// ordering service endpoint
-func (*mockDeliveryClient) JoinChain(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+// StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
+// to channel peers.
+func (ds *mockDeliveryClient) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+	return nil
+}
+
+// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
+// to channel peers.
+func (ds *mockDeliveryClient) StopDeliverForChannel(chainID string) error {
 	return nil
 }
 
@@ -52,8 +66,58 @@ func (*mockDeliveryClient) Stop() {
 type mockDeliveryClientFactory struct {
 }
 
-func (*mockDeliveryClientFactory) Service(g service.GossipService) (deliverclient.DeliverService, error) {
+func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
 	return &mockDeliveryClient{}, nil
+}
+
+func TestCreatePeerServer(t *testing.T) {
+
+	server, err := CreatePeerServer(":4050", comm.SecureServerConfig{})
+	assert.NoError(t, err, "CreatePeerServer returned unexpected error")
+	assert.Equal(t, "[::]:4050", server.Address(),
+		"CreatePeerServer returned the wrong address")
+	server.Stop()
+
+	_, err = CreatePeerServer("", comm.SecureServerConfig{})
+	assert.Error(t, err, "expected CreatePeerServer to return error with missing address")
+
+}
+
+func TestGetSecureConfig(t *testing.T) {
+
+	// good config without TLS
+	viper.Set("peer.tls.enabled", false)
+	sc, _ := GetSecureConfig()
+	assert.Equal(t, false, sc.UseTLS, "SecureConfig.UseTLS should be false")
+
+	// good config with TLS
+	viper.Set("peer.tls.enabled", true)
+	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org1-server1-cert.pem"))
+	viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
+	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org1-cert.pem"))
+	sc, _ = GetSecureConfig()
+	assert.Equal(t, true, sc.UseTLS, "SecureConfig.UseTLS should be true")
+
+	// bad config with TLS
+	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org11-cert.pem"))
+	_, err := GetSecureConfig()
+	assert.Error(t, err, "GetSecureConfig should return error with bad root cert path")
+	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org11-cert.pem"))
+	_, err = GetSecureConfig()
+	assert.Error(t, err, "GetSecureConfig should return error with bad tls cert path")
+
+	// disable TLS for remaining tests
+	viper.Set("peer.tls.enabled", false)
+
+}
+
+func TestInitChain(t *testing.T) {
+
+	chainId := "testChain"
+	chainInitializer = func(cid string) {
+		assert.Equal(t, chainId, cid, "chainInitializer received unexpected cid")
+	}
+	InitChain(chainId)
 }
 
 func TestInitialize(t *testing.T) {
@@ -61,6 +125,7 @@ func TestInitialize(t *testing.T) {
 
 	// we mock this because we can't import the chaincode package lest we create an import cycle
 	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{})
+	sysccprovider.RegisterSystemChaincodeProviderFactory(&mscc.MocksccProviderFactory{})
 
 	Initialize(nil)
 }
@@ -82,10 +147,22 @@ func TestCreateChainFromBlock(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	mgmt.LoadFakeSetupWithLocalMspAndTestChainMsp("../../msp/sampleconfig")
+	msptesttools.LoadMSPSetupForTesting()
 
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
-	service.InitGossipServiceCustomDeliveryFactory(identity, "localhost:13611", grpcServer, &mockDeliveryClientFactory{})
+	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	var defaultSecureDialOpts = func() []grpc.DialOption {
+		var dialOpts []grpc.DialOption
+		dialOpts = append(dialOpts, grpc.WithInsecure())
+		return dialOpts
+	}
+	err = service.InitGossipServiceCustomDeliveryFactory(
+		identity, "localhost:13611", grpcServer,
+		&mockDeliveryClientFactory{},
+		messageCryptoService, secAdv, defaultSecureDialOpts)
+
+	assert.NoError(t, err)
 
 	err = CreateChainFromBlock(block)
 	if err != nil {
@@ -97,6 +174,12 @@ func TestCreateChainFromBlock(t *testing.T) {
 	if ledger == nil {
 		t.Fatalf("failed to get correct ledger")
 	}
+
+	// Get config block from ledger
+	block, err = getCurrConfigBlockFromLedger(ledger)
+	assert.NoError(t, err, "Failed to get config block from ledger")
+	assert.NotNil(t, block, "Config block should not be nil")
+	assert.Equal(t, uint64(0), block.Header.Number, "config block should have been block 0")
 
 	// Bad ledger
 	ledger = GetLedger("BogusChain")
@@ -116,10 +199,35 @@ func TestCreateChainFromBlock(t *testing.T) {
 		t.Fatalf("got a bogus block")
 	}
 
+	// Correct PolicyManager
+	pmgr := GetPolicyManager(testChainID)
+	if pmgr == nil {
+		t.Fatal("failed to get PolicyManager")
+	}
+
+	// Bad PolicyManager
+	pmgr = GetPolicyManager("BogusChain")
+	if pmgr != nil {
+		t.Fatal("got a bogus PolicyManager")
+	}
+
+	// PolicyManagerGetter
+	pmg := NewChannelPolicyManagerGetter()
+	assert.NotNil(t, pmg, "PolicyManagerGetter should not be nil")
+
+	pmgr, ok := pmg.Manager(testChainID)
+	assert.NotNil(t, pmgr, "PolicyManager should not be nil")
+	assert.Equal(t, true, ok, "expected Manage() to return true")
+
 	// Chaos monkey test
 	Initialize(nil)
 
 	SetCurrConfigBlock(block, testChainID)
+
+	channels := GetChannelsInfo()
+	if len(channels) != 1 {
+		t.Fatalf("incorrect number of channels")
+	}
 }
 
 func TestNewPeerClientConnection(t *testing.T) {

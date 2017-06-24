@@ -1,9 +1,10 @@
-FROM hyperledger/fabric-baseos:_BASE_TAG_
-ENV PEER_CFG_PATH /etc/hyperledger/fabric
-ENV CORE_PEER_MSPCONFIGPATH $PEER_CFG_PATH/msp/sampleconfig
-RUN mkdir -p /var/hyperledger/production $PEER_CFG_PATH
+# Copyright Greg Haskins All Rights Reserved
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+FROM _BASE_NS_/fabric-baseos:_BASE_TAG_
+ENV FABRIC_CFG_PATH /etc/hyperledger/fabric
+RUN mkdir -p /var/hyperledger/production $FABRIC_CFG_PATH
 COPY payload/peer /usr/local/bin
-COPY payload/core.yaml $PEER_CFG_PATH
-ADD  payload/msp-sampleconfig.tar.bz2 $PEER_CFG_PATH
-ADD  payload/genesis-sampleconfig.tar.bz2 $PEER_CFG_PATH
-CMD peer node start
+ADD  payload/sampleconfig.tar.bz2 $FABRIC_CFG_PATH
+CMD ["peer","node","start"]

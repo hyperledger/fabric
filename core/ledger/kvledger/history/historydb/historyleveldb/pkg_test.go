@@ -17,34 +17,38 @@ limitations under the License.
 package historyleveldb
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/spf13/viper"
 )
 
+/////// levelDBLockBasedHistoryEnv //////
+
 type levelDBLockBasedHistoryEnv struct {
 	t                     testing.TB
-	TestDBEnv             *stateleveldb.TestVDBEnv
-	TestDB                statedb.VersionedDB
-	Txmgr                 txmgr.TxMgr
-	TestHistoryDBProvider historydb.HistoryDBProvider
-	TestHistoryDB         historydb.HistoryDB
+	testBlockStorageEnv   *testBlockStoreEnv
+	testDBEnv             *stateleveldb.TestVDBEnv
+	txmgr                 txmgr.TxMgr
+	testHistoryDBProvider historydb.HistoryDBProvider
+	testHistoryDB         historydb.HistoryDB
 }
 
 func NewTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 
-	//testutil.SetupCoreYAMLConfig("./../../../../../../peer")
-	viper.Set("ledger.state.historyDatabase", "true")
+	viper.Set("ledger.history.enableHistoryDatabase", "true")
 
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgerhistorytests")
+	blockStorageTestEnv := newBlockStorageTestEnv(t)
+
 	testDBEnv := stateleveldb.NewTestVDBEnv(t)
 	testDB, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
 	testutil.AssertNoError(t, err, "")
@@ -55,16 +59,16 @@ func NewTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	testHistoryDB, err := testHistoryDBProvider.GetDBHandle("TestHistoryDB")
 	testutil.AssertNoError(t, err, "")
 
-	return &levelDBLockBasedHistoryEnv{t, testDBEnv, testDB, txMgr, testHistoryDBProvider, testHistoryDB}
-
+	return &levelDBLockBasedHistoryEnv{t, blockStorageTestEnv, testDBEnv, txMgr, testHistoryDBProvider, testHistoryDB}
 }
 
 func (env *levelDBLockBasedHistoryEnv) cleanup() {
-	defer env.Txmgr.Shutdown()
-	defer env.TestDBEnv.Cleanup()
+	defer env.txmgr.Shutdown()
+	defer env.testDBEnv.Cleanup()
+	defer env.testBlockStorageEnv.cleanup()
 
 	// clean up history
-	env.TestHistoryDBProvider.Close()
+	env.testHistoryDBProvider.Close()
 	removeDBPath(env.t, "Cleanup")
 }
 
@@ -75,4 +79,43 @@ func removeDBPath(t testing.TB, caller string) {
 		t.FailNow()
 	}
 	logger.Debugf("Removed folder [%s] for history test environment for %s", dbPath, caller)
+}
+
+/////// testBlockStoreEnv//////
+
+type testBlockStoreEnv struct {
+	t               testing.TB
+	provider        *fsblkstorage.FsBlockstoreProvider
+	blockStorageDir string
+}
+
+func newBlockStorageTestEnv(t testing.TB) *testBlockStoreEnv {
+
+	testPath, err := ioutil.TempDir("", "historyleveldb-")
+	if err != nil {
+		panic(err)
+	}
+	conf := fsblkstorage.NewConf(testPath, 0)
+
+	attrsToIndex := []blkstorage.IndexableAttr{
+		blkstorage.IndexableAttrBlockHash,
+		blkstorage.IndexableAttrBlockNum,
+		blkstorage.IndexableAttrTxID,
+		blkstorage.IndexableAttrBlockNumTranNum,
+	}
+	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
+
+	blockStorageProvider := fsblkstorage.NewProvider(conf, indexConfig).(*fsblkstorage.FsBlockstoreProvider)
+
+	return &testBlockStoreEnv{t, blockStorageProvider, testPath}
+}
+
+func (env *testBlockStoreEnv) cleanup() {
+	env.provider.Close()
+	env.removeFSPath()
+}
+
+func (env *testBlockStoreEnv) removeFSPath() {
+	fsPath := env.blockStorageDir
+	os.RemoveAll(fsPath)
 }

@@ -29,10 +29,48 @@ under the License.
 
 // ==== Query marbles ====
 // peer chaincode query -C myc1 -n marbles -c '{"Args":["readMarble","marble1"]}'
+// peer chaincode query -C myc1 -n marbles -c '{"Args":["getMarblesByRange","marble1","marble3"]}'
+// peer chaincode query -C myc1 -n marbles -c '{"Args":["getHistoryForMarble","marble1"]}'
 
 // Rich Query (Only supported if CouchDB is used as state database):
 //   peer chaincode query -C myc1 -n marbles -c '{"Args":["queryMarblesByOwner","tom"]}'
 //   peer chaincode query -C myc1 -n marbles -c '{"Args":["queryMarbles","{\"selector\":{\"owner\":\"tom\"}}"]}'
+
+//The following examples demonstrate creating indexes on CouchDB
+//Example hostname:port configurations
+//
+//Docker or vagrant environments:
+// http://couchdb:5984/
+//
+//Inside couchdb docker container
+// http://127.0.0.1:5984/
+
+// Index for chaincodeid, docType, owner.
+// Note that docType and owner fields must be prefixed with the "data" wrapper
+// chaincodeid must be added for all queries
+//
+// Definition for use with Fauxton interface
+// {"index":{"fields":["chaincodeid","data.docType","data.owner"]},"ddoc":"indexOwnerDoc", "name":"indexOwner","type":"json"}
+//
+// example curl definition for use with command line
+// curl -i -X POST -H "Content-Type: application/json" -d "{\"index\":{\"fields\":[\"chaincodeid\",\"data.docType\",\"data.owner\"]},\"name\":\"indexOwner\",\"ddoc\":\"indexOwnerDoc\",\"type\":\"json\"}" http://hostname:port/myc1/_index
+//
+
+// Index for chaincodeid, docType, owner, size (descending order).
+// Note that docType, owner and size fields must be prefixed with the "data" wrapper
+// chaincodeid must be added for all queries
+//
+// Definition for use with Fauxton interface
+// {"index":{"fields":[{"data.size":"desc"},{"chaincodeid":"desc"},{"data.docType":"desc"},{"data.owner":"desc"}]},"ddoc":"indexSizeSortDoc", "name":"indexSizeSortDesc","type":"json"}
+//
+// example curl definition for use with command line
+// curl -i -X POST -H "Content-Type: application/json" -d "{\"index\":{\"fields\":[{\"data.size\":\"desc\"},{\"chaincodeid\":\"desc\"},{\"data.docType\":\"desc\"},{\"data.owner\":\"desc\"}]},\"ddoc\":\"indexSizeSortDoc\", \"name\":\"indexSizeSortDesc\",\"type\":\"json\"}" http://hostname:port/myc1/_index
+
+// Rich Query with index design doc and index name specified (Only supported if CouchDB is used as state database):
+//   peer chaincode query -C myc1 -n marbles -c '{"Args":["queryMarbles","{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}"]}'
+
+// Rich Query with index design doc specified only (Only supported if CouchDB is used as state database):
+//   peer chaincode query -C myc1 -n marbles -c '{"Args":["queryMarbles","{\"selector\":{\"docType\":{\"$eq\":\"marble\"},\"owner\":{\"$eq\":\"tom\"},\"size\":{\"$gt\":0}},\"fields\":[\"docType\",\"owner\",\"size\"],\"sort\":[{\"size\":\"desc\"}],\"use_index\":\"_design/indexSizeSortDoc\"}"]}'
 
 package main
 
@@ -42,6 +80,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -96,6 +135,10 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return t.queryMarblesByOwner(stub, args)
 	} else if function == "queryMarbles" { //find marbles based on an ad hoc rich query
 		return t.queryMarbles(stub, args)
+	} else if function == "getHistoryForMarble" { //get history of values for a marble
+		return t.getHistoryForMarble(stub, args)
+	} else if function == "getMarblesByRange" { //get marbles based on range query
+		return t.getMarblesByRange(stub, args)
 	}
 
 	fmt.Println("invoke did not find func: " + function) //error
@@ -210,16 +253,46 @@ func (t *SimpleChaincode) readMarble(stub shim.ChaincodeStubInterface, args []st
 // delete - remove a marble key/value pair from state
 // ==================================================
 func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var jsonResp string
+	var marbleJSON marble
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
-
 	marbleName := args[0]
-	err := stub.DelState(marbleName) //remove the marble from chaincode state
+
+	// to maintain the color~name index, we need to read the marble first and get its color
+	valAsbytes, err := stub.GetState(marbleName) //get the marble from chaincode state
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to get state for " + marbleName + "\"}"
+		return shim.Error(jsonResp)
+	} else if valAsbytes == nil {
+		jsonResp = "{\"Error\":\"Marble does not exist: " + marbleName + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	err = json.Unmarshal([]byte(valAsbytes), &marbleJSON)
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to decode JSON of: " + marbleName + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	err = stub.DelState(marbleName) //remove the marble from chaincode state
 	if err != nil {
 		return shim.Error("Failed to delete state:" + err.Error())
 	}
 
+	// maintain the index
+	indexName := "color~name"
+	colorNameIndexKey, err := stub.CreateCompositeKey(indexName, []string{marbleJSON.Color, marbleJSON.Name})
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	//  Delete index entry to state.
+	err = stub.DelState(colorNameIndexKey)
+	if err != nil {
+		return shim.Error("Failed to delete state:" + err.Error())
+	}
 	return shim.Success(nil)
 }
 
@@ -262,9 +335,67 @@ func (t *SimpleChaincode) transferMarble(stub shim.ChaincodeStubInterface, args 
 	return shim.Success(nil)
 }
 
-// ==== Example: PartialCompositeKeyQuery/RangeQuery =========================================
+// ===========================================================================================
+// getMarblesByRange performs a range query based on the start and end keys provided.
+
+// Read-only function results are not typically submitted to ordering. If the read-only
+// results are submitted to ordering, or if the query is used in an update transaction
+// and submitted to ordering, then the committing peers will re-execute to guarantee that
+// result sets are stable between endorsement time and commit time. The transaction is
+// invalidated by the committing peers if the result set has changed between endorsement
+// time and commit time.
+// Therefore, range queries are a safe option for performing update transactions based on query results.
+// ===========================================================================================
+func (t *SimpleChaincode) getMarblesByRange(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+
+	if len(args) < 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	startKey := args[0]
+	endKey := args[1]
+
+	resultsIterator, err := stub.GetStateByRange(startKey, endKey)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing QueryResults
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"Key\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(queryResponse.Key)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Record\":")
+		// Record is a JSON object, so we write as-is
+		buffer.WriteString(string(queryResponse.Value))
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	fmt.Printf("- getMarblesByRange queryResult:\n%s\n", buffer.String())
+
+	return shim.Success(buffer.Bytes())
+}
+
+// ==== Example: GetStateByPartialCompositeKey/RangeQuery =========================================
 // transferMarblesBasedOnColor will transfer marbles of a given color to a certain new owner.
-// Uses a PartialCompositeKeyQuery (range query) against color~name 'index'.
+// Uses a GetStateByPartialCompositeKey (range query) against color~name 'index'.
 // Committing peers will re-execute range queries to guarantee that result sets are stable
 // between endorsement time and commit time. The transaction is invalidated by the
 // committing peers if the result set has changed between endorsement time and commit time.
@@ -284,7 +415,7 @@ func (t *SimpleChaincode) transferMarblesBasedOnColor(stub shim.ChaincodeStubInt
 
 	// Query the color~name index by color
 	// This will execute a key range query on all keys starting with 'color'
-	coloredMarbleResultsIterator, err := stub.PartialCompositeKeyQuery("color~name", []string{color})
+	coloredMarbleResultsIterator, err := stub.GetStateByPartialCompositeKey("color~name", []string{color})
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -294,13 +425,13 @@ func (t *SimpleChaincode) transferMarblesBasedOnColor(stub shim.ChaincodeStubInt
 	var i int
 	for i = 0; coloredMarbleResultsIterator.HasNext(); i++ {
 		// Note that we don't get the value (2nd return variable), we'll just get the marble name from the composite key
-		colorNameKey, _, err := coloredMarbleResultsIterator.Next()
+		responseRange, err := coloredMarbleResultsIterator.Next()
 		if err != nil {
 			return shim.Error(err.Error())
 		}
 
 		// get the color and name from color~name composite key
-		objectType, compositeKeyParts, err := stub.SplitCompositeKey(colorNameKey)
+		objectType, compositeKeyParts, err := stub.SplitCompositeKey(responseRange.Key)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -404,7 +535,7 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 
 	bArrayMemberAlreadyWritten := false
 	for resultsIterator.HasNext() {
-		queryResultKey, queryResultRecord, err := resultsIterator.Next()
+		queryResponse, err := resultsIterator.Next()
 		if err != nil {
 			return nil, err
 		}
@@ -414,12 +545,12 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 		}
 		buffer.WriteString("{\"Key\":")
 		buffer.WriteString("\"")
-		buffer.WriteString(queryResultKey)
+		buffer.WriteString(queryResponse.Key)
 		buffer.WriteString("\"")
 
 		buffer.WriteString(", \"Record\":")
 		// Record is a JSON object, so we write as-is
-		buffer.WriteString(string(queryResultRecord))
+		buffer.WriteString(string(queryResponse.Value))
 		buffer.WriteString("}")
 		bArrayMemberAlreadyWritten = true
 	}
@@ -428,4 +559,69 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 	fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", buffer.String())
 
 	return buffer.Bytes(), nil
+}
+
+func (t *SimpleChaincode) getHistoryForMarble(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+
+	if len(args) < 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	marbleName := args[0]
+
+	fmt.Printf("- start getHistoryForMarble: %s\n", marbleName)
+
+	resultsIterator, err := stub.GetHistoryForKey(marbleName)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing historic values for the marble
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		response, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"TxId\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(response.TxId)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Value\":")
+		// if it was a delete operation on given key, then we need to set the
+		//corresponding value null. Else, we will write the response.Value
+		//as-is (as the Value itself a JSON marble)
+		if response.IsDelete {
+			buffer.WriteString("null")
+		} else {
+			buffer.WriteString(string(response.Value))
+		}
+
+		buffer.WriteString(", \"Timestamp\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).String())
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"IsDelete\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(strconv.FormatBool(response.IsDelete))
+		buffer.WriteString("\"")
+
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	fmt.Printf("- getHistoryForMarble returning:\n%s\n", buffer.String())
+
+	return shim.Success(buffer.Bytes())
 }

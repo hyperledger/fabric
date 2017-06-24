@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -46,7 +47,7 @@ var accounts = []string{"account1", "account2", "account3", "account4"}
 func init() {
 
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../../../peer")
+	testutil.SetupCoreYAMLConfig()
 
 	// Initialization will get a handle to the ledger at the specified path
 	// Note, if subledgers are supported in the future,
@@ -54,7 +55,9 @@ func init() {
 	cleanup()
 	ledgermgmt.Initialize()
 	var err error
-	peerLedger, err = ledgermgmt.CreateLedger(ledgerID)
+
+	gb, _ := configtxtest.MakeGenesisBlock(ledgerID)
+	peerLedger, err = ledgermgmt.CreateLedger(gb)
 	if err != nil {
 		panic(fmt.Errorf("Error in NewKVLedger(): %s", err))
 	}
@@ -148,11 +151,11 @@ func tryDoubleSpend() {
 func printBlocksInfo(block *common.Block) {
 	logger.Debug("Entering printBlocksInfo()")
 	// Read invalid transactions filter
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	numOfInvalid := 0
 	// Count how many transaction indeed invalid
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			numOfInvalid++
 		}
 	}

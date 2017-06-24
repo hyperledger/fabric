@@ -19,6 +19,7 @@ syntax = "proto3";
 import "common/common.proto";
 
 option go_package = "github.com/hyperledger/fabric/protos/orderer";
+option java_package = "org.hyperledger.fabric.protos.orderer";
 
 package orderer;
 
@@ -26,7 +27,7 @@ message BroadcastResponse {
     common.Status status = 1;
 }
 
-message SeekNewest { } 
+message SeekNewest { }
 
 message SeekOldest { }
 

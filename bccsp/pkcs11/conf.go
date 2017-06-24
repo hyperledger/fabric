@@ -26,10 +26,6 @@ import (
 )
 
 type config struct {
-	keyStorePath  string
-	securityLevel int
-	hashFamily    string
-
 	ellipticCurve asn1.ObjectIdentifier
 	hashFunction  func() hash.Hash
 	aesBitLength  int
@@ -83,3 +79,30 @@ func (conf *config) setSecurityLevelSHA3(level int) (err error) {
 	}
 	return
 }
+
+// PKCS11Opts contains options for the P11Factory
+type PKCS11Opts struct {
+	// Default algorithms when not specified (Deprecated?)
+	SecLevel   int    `mapstructure:"security" json:"security"`
+	HashFamily string `mapstructure:"hash" json:"hash"`
+
+	// Keystore options
+	Ephemeral     bool               `mapstructure:"tempkeys,omitempty" json:"tempkeys,omitempty"`
+	FileKeystore  *FileKeystoreOpts  `mapstructure:"filekeystore,omitempty" json:"filekeystore,omitempty"`
+	DummyKeystore *DummyKeystoreOpts `mapstructure:"dummykeystore,omitempty" json:"dummykeystore,omitempty"`
+
+	// PKCS11 options
+	Library    string `mapstructure:"library" json:"library"`
+	Label      string `mapstructure:"label" json:"label"`
+	Pin        string `mapstructure:"pin" json:"pin"`
+	Sensitive  bool   `mapstructure:"sensitivekeys,omitempty" json:"sensitivekeys,omitempty"`
+	SoftVerify bool   `mapstructure:"softwareverify,omitempty" json:"softwareverify,omitempty"`
+}
+
+// Since currently only ECDSA operations go to PKCS11, need a keystore still
+// Pluggable Keystores, could add JKS, P12, etc..
+type FileKeystoreOpts struct {
+	KeyStorePath string `mapstructure:"keystore" json:"keystore" yaml:"KeyStore"`
+}
+
+type DummyKeystoreOpts struct{}

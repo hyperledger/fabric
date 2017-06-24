@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/proto"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
 // Gossip is the interface of the gossip component
@@ -56,10 +56,14 @@ type Gossip interface {
 	// If passThrough is false, the messages are processed by the gossip layer beforehand.
 	// If passThrough is true, the gossip layer doesn't intervene and the messages
 	// can be used to send a reply back to the sender
-	Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan comm.ReceivedMessage)
+	Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage)
 
 	// JoinChan makes the Gossip instance join a channel
 	JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID)
+
+	// SuspectPeers makes the gossip instance validate identities of suspected peers, and close
+	// any connections to peers with identities that are found invalid
+	SuspectPeers(s api.PeerSuspector)
 
 	// Stop stops the gossip component
 	Stop()
@@ -69,13 +73,11 @@ type Gossip interface {
 type Config struct {
 	BindPort            int      // Port we bind to, used only for tests
 	ID                  string   // ID of this instance
-	SelfEndpoint        string   // Endpoint we publish to remote peers
 	BootstrapPeers      []string // Peers we connect to at startup
 	PropagateIterations int      // Number of times a message is pushed to remote peers
 	PropagatePeerNum    int      // Number of peers selected to push messages to
 
-	MaxBlockCountToStore       int           // Maximum count of blocks we store in memory
-	StateInfoRetentionInterval time.Duration // TODO: this would be a maximum time a stateInfo message is kept until expired
+	MaxBlockCountToStore int // Maximum count of blocks we store in memory
 
 	MaxPropagationBurstSize    int           // Max number of messages stored until it triggers a push to remote peers
 	MaxPropagationBurstLatency time.Duration // Max time between consecutive message pushes
@@ -89,4 +91,7 @@ type Config struct {
 	PublishStateInfoInterval time.Duration    // Determines frequency of pushing state info messages to peers
 	RequestStateInfoInterval time.Duration    // Determines frequency of pulling state info messages from peers
 	TLSServerCert            *tls.Certificate // TLS certificate of the peer
+
+	InternalEndpoint string // Endpoint we publish to peers in our organization
+	ExternalEndpoint string // Peer publishes this endpoint instead of SelfEndpoint to foreign organizations
 }

@@ -1,0 +1,24 @@
+<!--
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+-->
+<div>
+    {% set msgClassModule = msg.__class__.__module__ %}
+    {% set msgClassName = msg.__class__.__name__ %}
+    {% set msgVarName = [msgClassName[0]|lower,msgClassName[1:]]|join('') %}
+    <div class="scrollBox">
+<code>
+from {{ msgClassModule }} import {{ msgClassName }}
+{{ msgVarName }} = {{ msgClassName }}()
+data = None
+with open('{{ path_to_protobuf }}') as f:
+    data = f.read()
+
+{{ msgVarName }}.ParseFromString(data)
+
+</code>
+    </div>
+</div>

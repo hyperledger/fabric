@@ -17,39 +17,76 @@ limitations under the License.
 package channel
 
 import (
+	"fmt"
 	"io/ioutil"
+	"strconv"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
 )
 
 func fetchCmd(cf *ChannelCmdFactory) *cobra.Command {
-	createCmd := &cobra.Command{
-		Use:   "fetch",
-		Short: "Fetch configuration block.",
-		Long:  `Fetch configuration block.`,
+	fetchCmd := &cobra.Command{
+		Use:   "fetch <newest|oldest|config|(number)> [outputfile]",
+		Short: "Fetch a block",
+		Long:  "Fetch a specified block, writing it to a file.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return fetch(cmd, args, cf)
 		},
 	}
+	flagList := []string{
+		"channelID",
+	}
+	attachFlags(fetchCmd, flagList)
 
-	return createCmd
+	return fetchCmd
 }
 
 func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(false)
+		cf, err = InitCmdFactory(EndorserNotRequired, OrdererRequired)
 		if err != nil {
 			return err
 		}
 	}
 
-	defer cf.BroadcastClient.Close()
+	if len(args) == 0 {
+		return fmt.Errorf("fetch target required, oldest, newest, config, or a number")
+	}
+
+	if len(args) > 2 {
+		return fmt.Errorf("trailing args detected")
+	}
 
 	var block *cb.Block
-	if block, err = cf.DeliverClient.getBlock(); err != nil {
+
+	switch args[0] {
+	case "oldest":
+		block, err = cf.DeliverClient.getOldestBlock()
+	case "newest":
+		block, err = cf.DeliverClient.getNewestBlock()
+	case "config":
+		iBlock, err := cf.DeliverClient.getNewestBlock()
+		if err != nil {
+			return err
+		}
+		lc, err := utils.GetLastConfigIndexFromBlock(iBlock)
+		if err != nil {
+			return err
+		}
+		block, err = cf.DeliverClient.getSpecifiedBlock(lc)
+	default:
+		num, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("fetch target illegal: %s", args[0])
+		}
+		block, err = cf.DeliverClient.getSpecifiedBlock(uint64(num))
+	}
+
+	if err != nil {
 		return err
 	}
 
@@ -58,7 +95,13 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		return err
 	}
 
-	file := chainID + ".block"
+	var file string
+	if len(args) == 1 {
+		file = chainID + "_" + args[0] + ".block"
+	} else {
+		file = args[1]
+	}
+
 	if err = ioutil.WriteFile(file, b, 0644); err != nil {
 		return err
 	}

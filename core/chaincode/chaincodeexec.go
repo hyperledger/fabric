@@ -31,32 +31,32 @@ import (
 //create a chaincode invocation spec
 func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error) {
 	var err error
-	spec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: ccname}, Input: &pb.ChaincodeInput{Args: args}}}
+	spec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: ccname}, Input: &pb.ChaincodeInput{Args: args}}}
 	if nil != err {
 		return nil, err
 	}
 	return spec, nil
 }
 
-// GetCDSFromLCCC gets chaincode deployment spec from LCCC
-func GetCDSFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
+// GetCDSFromLSCC gets chaincode deployment spec from LSCC
+func GetCDSFromLSCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
 	version := util.GetSysCCVersion()
-	cccid := ccprovider.NewCCContext(chainID, "lccc", version, txid, true, prop)
+	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
 	res, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
 	if err != nil {
-		return nil, fmt.Errorf("Execute getdepspec(%s, %s) of LCCC error: %s", chainID, chaincodeID, err)
+		return nil, fmt.Errorf("Execute getdepspec(%s, %s) of LSCC error: %s", chainID, chaincodeID, err)
 	}
 	if res.Status != shim.OK {
-		return nil, fmt.Errorf("Get ChaincodeDeploymentSpec for %s/%s from LCCC error: %s", chaincodeID, chainID, res.Message)
+		return nil, fmt.Errorf("Get ChaincodeDeploymentSpec for %s/%s from LSCC error: %s", chaincodeID, chainID, res.Message)
 	}
 
 	return res.Payload, nil
 }
 
-// GetChaincodeDataFromLCCC gets chaincode data from LCCC given name
-func GetChaincodeDataFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) (*ccprovider.ChaincodeData, error) {
+// GetChaincodeDataFromLSCC gets chaincode data from LSCC given name
+func GetChaincodeDataFromLSCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (*ccprovider.ChaincodeData, error) {
 	version := util.GetSysCCVersion()
-	cccid := ccprovider.NewCCContext(chainID, "lccc", version, txid, true, prop)
+	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
 	res, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})
 	if err == nil {
 		if res.Status != shim.OK {

@@ -16,7 +16,10 @@ limitations under the License.
 
 package validator
 
-import "github.com/hyperledger/fabric/protos/common"
+import (
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
+)
 
 // MockValidator implements a mock validation useful for testing
 type MockValidator struct {
@@ -32,6 +35,6 @@ type MockVsccValidator struct {
 }
 
 // VSCCValidateTx does nothing
-func (v *MockVsccValidator) VSCCValidateTx(payload *common.Payload, envBytes []byte) error {
-	return nil
+func (v *MockVsccValidator) VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) (error, peer.TxValidationCode) {
+	return nil, peer.TxValidationCode_VALID
 }

@@ -20,41 +20,46 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/common/config"
+	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
 
 func verifyItemsResult(t *testing.T, template Template, count int) {
 	newChainID := "foo"
 
-	result, err := template.Items(newChainID)
+	configEnv, err := template.Envelope(newChainID)
 	if err != nil {
-		t.Fatalf("Should not have errored")
+		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	if len(result) != count {
-		t.Errorf("Expected %d items, but got %d", count, len(result))
+	configNext, err := UnmarshalConfigUpdate(configEnv.ConfigUpdate)
+	if err != nil {
+		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	for i, signedItem := range result {
-		item := utils.UnmarshalConfigurationItemOrPanic(signedItem.ConfigurationItem)
-		assert.Equal(t, newChainID, item.Header.ChainID, "Should have appropriately set new chainID")
-		expected := fmt.Sprintf("%d", i)
-		assert.Equal(t, expected, string(item.Value), "Expected %s but got %s", expected, item.Value)
-		assert.Equal(t, int32(cb.HeaderType_CONFIGURATION_ITEM), item.Header.Type)
+	assert.Equal(t, len(configNext.WriteSet.Values), count, "Not the right number of config values")
+
+	for i := 0; i < len(configNext.WriteSet.Values); i++ {
+		_, ok := configNext.WriteSet.Values[fmt.Sprintf("%d", i)]
+		assert.True(t, ok, "Expected %d but did not find it", i)
 	}
 }
 
+func simpleGroup(index int) *cb.ConfigGroup {
+	group := cb.NewConfigGroup()
+	group.Values[fmt.Sprintf("%d", index)] = &cb.ConfigValue{}
+	return group
+}
+
 func TestSimpleTemplate(t *testing.T) {
-	hdr := &cb.ChainHeader{
-		ChainID: "foo",
-		Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
-	}
 	simple := NewSimpleTemplate(
-		&cb.ConfigurationItem{Value: []byte("0"), Header: hdr},
-		&cb.ConfigurationItem{Value: []byte("1"), Header: hdr},
+		simpleGroup(0),
+		simpleGroup(1),
 	)
 	verifyItemsResult(t, simple, 2)
 }
@@ -62,49 +67,128 @@ func TestSimpleTemplate(t *testing.T) {
 func TestCompositeTemplate(t *testing.T) {
 	composite := NewCompositeTemplate(
 		NewSimpleTemplate(
-			&cb.ConfigurationItem{Value: []byte("0")},
-			&cb.ConfigurationItem{Value: []byte("1")},
+			simpleGroup(0),
+			simpleGroup(1),
 		),
 		NewSimpleTemplate(
-			&cb.ConfigurationItem{Value: []byte("2")},
+			simpleGroup(2),
 		),
 	)
 
 	verifyItemsResult(t, composite, 3)
 }
 
-func TestNewChainTemplate(t *testing.T) {
-	simple := NewSimpleTemplate(
-		&cb.ConfigurationItem{Value: []byte("1")},
-		&cb.ConfigurationItem{Value: []byte("2")},
-	)
+func TestModPolicySettingTemplate(t *testing.T) {
+	existingModPolicy := "bar"
 
-	creationPolicy := "Test"
-	nct := NewChainCreationTemplate(creationPolicy, util.ComputeCryptoHash, simple)
+	subGroup := "group"
+	subGroupExistingModPolicy := "otherGroup"
+	input := cb.NewConfigGroup()
+	input.Groups[subGroup] = cb.NewConfigGroup()
+	input.Groups[subGroupExistingModPolicy] = &cb.ConfigGroup{ModPolicy: existingModPolicy}
+
+	policyName := "policy"
+	valueName := "value"
+	policyExistingModPolicy := "otherPolicy"
+	valueExistingModPolicy := "otherValue"
+	for _, group := range []*cb.ConfigGroup{input, input.Groups[subGroup]} {
+		group.Values[valueName] = &cb.ConfigValue{}
+		group.Policies[policyName] = &cb.ConfigPolicy{}
+		group.Values[valueExistingModPolicy] = &cb.ConfigValue{ModPolicy: existingModPolicy}
+		group.Policies[policyExistingModPolicy] = &cb.ConfigPolicy{ModPolicy: existingModPolicy}
+	}
+
+	modPolicyName := "foo"
+	mpst := NewModPolicySettingTemplate(modPolicyName, NewSimpleTemplate(input))
+	output, err := mpst.Envelope("bar")
+	assert.NoError(t, err, "Creating envelope")
+
+	configUpdate := UnmarshalConfigUpdateOrPanic(output.ConfigUpdate)
+
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Values[valueName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Policies[policyName].ModPolicy)
+	assert.Equal(t, existingModPolicy, configUpdate.WriteSet.Values[valueExistingModPolicy].ModPolicy)
+	assert.Equal(t, existingModPolicy, configUpdate.WriteSet.Policies[policyExistingModPolicy].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].Values[valueName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].Policies[policyName].ModPolicy)
+	assert.Equal(t, existingModPolicy, configUpdate.WriteSet.Groups[subGroup].Values[valueExistingModPolicy].ModPolicy)
+	assert.Equal(t, existingModPolicy, configUpdate.WriteSet.Groups[subGroup].Policies[policyExistingModPolicy].ModPolicy)
+	assert.Equal(t, existingModPolicy, configUpdate.WriteSet.Groups[subGroupExistingModPolicy].ModPolicy)
+}
+
+func TestNewChainTemplate(t *testing.T) {
+	consortiumName := "Test"
+	orgs := []string{"org1", "org2", "org3"}
+	nct := NewChainCreationTemplate(consortiumName, orgs)
 
 	newChainID := "foo"
-	items, err := nct.Items(newChainID)
+	configEnv, err := nct.Envelope(newChainID)
 	if err != nil {
-		t.Fatalf("Error creation a chain creation configuration")
+		t.Fatalf("Error creation a chain creation config")
 	}
 
-	if expected := 3; len(items) != expected {
-		t.Fatalf("Expected %d items, but got %d", expected, len(items))
+	configUpdate, err := UnmarshalConfigUpdate(configEnv.ConfigUpdate)
+	if err != nil {
+		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	for i, signedItem := range items {
-		item := utils.UnmarshalConfigurationItemOrPanic(signedItem.ConfigurationItem)
-		if item.Header.ChainID != newChainID {
-			t.Errorf("Should have appropriately set new chainID")
-		}
-		if i == 0 {
-			if item.Key != CreationPolicyKey {
-				t.Errorf("First item should have been the creation policy")
-			}
-		} else {
-			if expected := fmt.Sprintf("%d", i); string(item.Value) != expected {
-				t.Errorf("Expected %s but got %s", expected, item.Value)
-			}
-		}
+	consortiumProto := &cb.Consortium{}
+	err = proto.Unmarshal(configUpdate.WriteSet.Values[config.ConsortiumKey].Value, consortiumProto)
+	assert.NoError(t, err)
+	assert.Equal(t, consortiumName, consortiumProto.Name, "Should have set correct consortium name")
+
+	assert.Equal(t, configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Version, uint64(1))
+
+	assert.Len(t, configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups, len(orgs))
+
+	for _, org := range orgs {
+		_, ok := configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org]
+		assert.True(t, ok, "Expected to find %s but did not", org)
 	}
+}
+
+func TestMakeChainCreationTransactionWithSigner(t *testing.T) {
+	channelID := "foo"
+
+	signer, err := mmsp.NewNoopMsp().GetDefaultSigningIdentity()
+	assert.NoError(t, err, "Creating noop MSP")
+
+	cct, err := MakeChainCreationTransaction(channelID, "test", signer)
+	assert.NoError(t, err, "Making chain creation tx")
+
+	assert.NotEmpty(t, cct.Signature, "Should have signature")
+
+	payload, err := utils.UnmarshalPayload(cct.Payload)
+	assert.NoError(t, err, "Unmarshaling payload")
+
+	configUpdateEnv, err := UnmarshalConfigUpdateEnvelope(payload.Data)
+	assert.NoError(t, err, "Unmarshaling ConfigUpdateEnvelope")
+
+	assert.NotEmpty(t, configUpdateEnv.Signatures, "Should have config env sigs")
+
+	sigHeader, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
+	assert.NoError(t, err, "Unmarshaling SignatureHeader")
+	assert.NotEmpty(t, sigHeader.Creator, "Creator specified")
+}
+
+func TestMakeChainCreationTransactionNoSigner(t *testing.T) {
+	channelID := "foo"
+	cct, err := MakeChainCreationTransaction(channelID, "test", nil)
+	assert.NoError(t, err, "Making chain creation tx")
+
+	assert.Empty(t, cct.Signature, "Should have empty signature")
+
+	payload, err := utils.UnmarshalPayload(cct.Payload)
+	assert.NoError(t, err, "Unmarshaling payload")
+
+	configUpdateEnv, err := UnmarshalConfigUpdateEnvelope(payload.Data)
+	assert.NoError(t, err, "Unmarshaling ConfigUpdateEnvelope")
+
+	assert.Empty(t, configUpdateEnv.Signatures, "Should have no config env sigs")
+
+	sigHeader, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
+	assert.NoError(t, err, "Unmarshaling SignatureHeader")
+	assert.Empty(t, sigHeader.Creator, "No creator specified")
 }

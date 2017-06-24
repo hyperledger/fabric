@@ -79,6 +79,11 @@ func (ch *chain) Enqueue(env *cb.Envelope) bool {
 	}
 }
 
+// Errored only closes on exit
+func (ch *chain) Errored() <-chan struct{} {
+	return ch.exitChan
+}
+
 func (ch *chain) main() {
 	var timer <-chan time.Time
 

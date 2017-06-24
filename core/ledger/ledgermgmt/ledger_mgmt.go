@@ -22,12 +22,14 @@ import (
 
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	logging "github.com/op/go-logging"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
-var logger = logging.MustGetLogger("ledgermgmt")
+var logger = flogging.MustGetLogger("ledgermgmt")
 
 // ErrLedgerAlreadyOpened is thrown by a CreateLedger call if a ledger with the given id is already opened
 var ErrLedgerAlreadyOpened = errors.New("Ledger already opened")
@@ -62,27 +64,34 @@ func initialize() {
 	logger.Info("ledger mgmt initialized")
 }
 
-// CreateLedger creates a new ledger with the given id
-func CreateLedger(id string) (ledger.PeerLedger, error) {
-	logger.Infof("Creating leadger with id = %s", id)
+// CreateLedger creates a new ledger with the given genesis block.
+// This function guarantees that the creation of ledger and committing the genesis block would an atomic action
+// The chain id retrieved from the genesis block is treated as a ledger id
+func CreateLedger(genesisBlock *common.Block) (ledger.PeerLedger, error) {
 	lock.Lock()
 	defer lock.Unlock()
 	if !initialized {
 		return nil, ErrLedgerMgmtNotInitialized
 	}
-	l, err := ledgerProvider.Create(id)
+	id, err := utils.GetChainIDFromBlock(genesisBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Infof("Creating ledger [%s] with genesis block", id)
+	l, err := ledgerProvider.Create(genesisBlock)
 	if err != nil {
 		return nil, err
 	}
 	l = wrapLedger(id, l)
 	openedLedgers[id] = l
-	logger.Infof("Created leadger with id = %s", id)
+	logger.Infof("Created ledger [%s] with genesis block", id)
 	return l, nil
 }
 
 // OpenLedger returns a ledger for the given id
 func OpenLedger(id string) (ledger.PeerLedger, error) {
-	logger.Infof("Opening leadger with id = %s", id)
+	logger.Infof("Opening ledger with id = %s", id)
 	lock.Lock()
 	defer lock.Unlock()
 	if !initialized {
@@ -98,7 +107,7 @@ func OpenLedger(id string) (ledger.PeerLedger, error) {
 	}
 	l = wrapLedger(id, l)
 	openedLedgers[id] = l
-	logger.Infof("Opened leadger with id = %s", id)
+	logger.Infof("Opened ledger with id = %s", id)
 	return l, nil
 }
 

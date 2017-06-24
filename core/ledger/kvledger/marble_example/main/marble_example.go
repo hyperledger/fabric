@@ -21,6 +21,7 @@ import (
 
 	"os"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -50,12 +51,14 @@ func init() {
 	logger.Debugf("Marble Example main init()")
 
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../../../peer")
+	testutil.SetupCoreYAMLConfig()
 
 	cleanup()
 	ledgermgmt.Initialize()
 	var err error
-	peerLedger, err = ledgermgmt.CreateLedger(ledgerID)
+	gb, _ := configtxtest.MakeGenesisBlock(ledgerID)
+	peerLedger, err = ledgermgmt.CreateLedger(gb)
+
 	if err != nil {
 		panic(fmt.Errorf("Error in NewKVLedger(): %s", err))
 	}
@@ -99,11 +102,11 @@ func transferMarble() {
 
 func printBlocksInfo(block *common.Block) {
 	// Read invalid transactions filter
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	numOfInvalid := 0
 	// Count how many transaction indeed invalid
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			numOfInvalid++
 		}
 	}

@@ -1,5 +1,5 @@
 /*
-Copyright DTCC 2016 All Rights Reserved.
+Copyright DTCC, IBM 2016, 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,146 +16,125 @@ limitations under the License.
 
 package example;
 
-import org.hyperledger.java.shim.ChaincodeBase;
-import org.hyperledger.java.shim.ChaincodeStub;
+import static java.lang.String.format;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import javax.json.Json;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.hyperledger.fabric.shim.ChaincodeBase;
+import org.hyperledger.fabric.shim.ChaincodeStub;
 
 /**
- * <h1>Classic "transfer" sample chaincode</h1>
- * (java implementation of <A href="https://github.com/hyperledger/fabric/blob/master/examples/chaincode/go/chaincode_example02/chaincode_example02.go">chaincode_example02.go</A>)
+ * <h1>Classic "transfer" sample chaincode</h1> (java implementation of <A href=
+ * "https://github.com/hyperledger/fabric/blob/master/examples/chaincode/go/chaincode_example02/chaincode_example02.go">chaincode_example02.go</A>)
+ *
  * @author Sergey Pomytkin spomytkin@gmail.com
  *
  */
 public class SimpleSample extends ChaincodeBase {
-	 private static Log log = LogFactory.getLog(SimpleSample.class);
+	private static Log log = LogFactory.getLog(SimpleSample.class);
 
 	@Override
-	public String run(ChaincodeStub stub, String function, String[] args) {
-		log.info("In run, function:"+function);
-		
-		switch (function) {
-		case "init":
-			init(stub, function, args);
-			break;
-		case "transfer":
-			String re = transfer(stub, args);	
-			System.out.println(re);
-			return re;					
-		case "put":
-			for (int i = 0; i < args.length; i += 2)
-				stub.putState(args[i], args[i + 1]);
-			break;
-		case "del":
-			for (String arg : args)
-				stub.delState(arg);
-			break;
-		default: 
-			return transfer(stub, args);
+	public Response init(ChaincodeStub stub) {
+		final String function = stub.getFunction();
+		if (!function.equals("init")) {
+			return newErrorResponse(format("Unknown function: %s", function));
 		}
-	 
-		return null;
-	}
-
-	private String  transfer(ChaincodeStub stub, String[] args) {
-		System.out.println("in transfer");
-		if(args.length!=3){
-			System.out.println("Incorrect number of arguments:"+args.length);
-			return "{\"Error\":\"Incorrect number of arguments. Expecting 3: from, to, amount\"}";
-		}
-		String fromName =args[0];
-		String fromAm=stub.getState(fromName);
-		String toName =args[1];
-		String toAm=stub.getState(toName);
-		String am =args[2];
-		int valFrom=0;
-		if (fromAm!=null&&!fromAm.isEmpty()){			
-			try{
-				valFrom = Integer.parseInt(fromAm);
-			}catch(NumberFormatException e ){
-				System.out.println("{\"Error\":\"Expecting integer value for asset holding of "+fromName+" \"}"+e);		
-				return "{\"Error\":\"Expecting integer value for asset holding of "+fromName+" \"}";		
-			}		
-		}else{
-			return "{\"Error\":\"Failed to get state for " +fromName + "\"}";
-		}
-
-		int valTo=0;
-		if (toAm!=null&&!toAm.isEmpty()){			
-			try{
-				valTo = Integer.parseInt(toAm);
-			}catch(NumberFormatException e ){
-				e.printStackTrace();
-				return "{\"Error\":\"Expecting integer value for asset holding of "+toName+" \"}";		
-			}		
-		}else{
-			return "{\"Error\":\"Failed to get state for " +toName + "\"}";
-		}
-		
-		int valA =0;
-		try{
-			valA = Integer.parseInt(am);
-		}catch(NumberFormatException e ){
-			e.printStackTrace();
-			return "{\"Error\":\"Expecting integer value for amount \"}";
-		}		
-		if(valA>valFrom)
-			return "{\"Error\":\"Insufficient asset holding value for requested transfer amount \"}";
-		valFrom = valFrom-valA;
-		valTo = valTo+valA;
-		System.out.println("Transfer "+fromName+">"+toName+" am='"+am+"' new values='"+valFrom+"','"+ valTo+"'");
-		stub.putState(fromName,""+ valFrom);
-		stub.putState(toName, ""+valTo);		
-
-		System.out.println("Transfer complete");
-
-		return null;
-		
-	}
-
-	public String init(ChaincodeStub stub, String function, String[] args) {
-		if(args.length!=4){
-			return "{\"Error\":\"Incorrect number of arguments. Expecting 4\"}";
-		}
-		try{
-			int valA = Integer.parseInt(args[1]);
-			int valB = Integer.parseInt(args[3]);
-			stub.putState(args[0], args[1]);
-			stub.putState(args[2], args[3]);		
-		}catch(NumberFormatException e ){
-			return "{\"Error\":\"Expecting integer value for asset holding\"}";
-		}		
-		return null;
-	}
-
-	
-	@Override
-	public String query(ChaincodeStub stub, String function, String[] args) {
-		if(args.length!=1){
-			return "{\"Error\":\"Incorrect number of arguments. Expecting name of the person to query\"}";
-		}
-		String am =stub.getState(args[0]);
-		if (am!=null&&!am.isEmpty()){
-			try{
-				int valA = Integer.parseInt(am);
-				return  "{\"Name\":\"" + args[0] + "\",\"Amount\":\"" + am + "\"}";
-			}catch(NumberFormatException e ){
-				return "{\"Error\":\"Expecting integer value for asset holding\"}";		
-			}		}else{
-			return "{\"Error\":\"Failed to get state for " + args[0] + "\"}";
-		}
-		
-
+		return init(stub, stub.getParameters().stream().toArray(String[]::new));
 	}
 
 	@Override
-	public String getChaincodeID() {
-		return "SimpleSample";
+	public Response invoke(ChaincodeStub stub) {
+		try {
+			final String function = stub.getFunction();
+			final String[] args = stub.getParameters().stream().toArray(String[]::new);
+
+			switch (function) {
+			case "transfer":
+				return transfer(stub, args);
+			case "put":
+				for (int i = 0; i < args.length; i += 2)
+					stub.putStringState(args[i], args[i + 1]);
+				return newSuccessResponse();
+			case "del":
+				for (String arg : args)
+					stub.delState(arg);
+				return newSuccessResponse();
+			case "query":
+				return query(stub, function, args);
+			default:
+				return newErrorResponse(format("Unknown function: %s", function));
+			}
+		} catch (Throwable e) {
+			return newErrorResponse(e);
+		}
+	}
+
+	private Response transfer(ChaincodeStub stub, String[] args) {
+		if (args.length != 3) throw new IllegalArgumentException("Incorrect number of arguments. Expecting: transfer(from, to, amount)");
+
+		final String fromKey = args[0];
+		final String toKey = args[1];
+		final String amount = args[2];
+
+		// get state of the from/to keys
+		final String fromKeyState = stub.getStringState(fromKey);
+		final String toKeyState = stub.getStringState(toKey);
+
+		// parse states as integers
+		int fromAccountBalance = Integer.parseInt(fromKeyState);
+		int toAccountBalance = Integer.parseInt(toKeyState);
+
+		// parse the transfer amount as an integer
+		int transferAmount = Integer.parseInt(amount);
+
+		// make sure the transfer is possible
+		if (transferAmount > fromAccountBalance) {
+			throw new IllegalArgumentException("Insufficient asset holding value for requested transfer amount.");
+		}
+
+		// perform the transfer
+		log.info(String.format("Tranferring %d holdings from %s to %s", transferAmount, fromKey, toKey));
+		int newFromAccountBalance = fromAccountBalance - transferAmount;
+		int newToAccountBalance = toAccountBalance + transferAmount;
+		log.info(String.format("New holding values will be: %s = %d, %s = %d", fromKey, newFromAccountBalance, toKey, newToAccountBalance));
+		stub.putStringState(fromKey, Integer.toString(newFromAccountBalance));
+		stub.putStringState(toKey, Integer.toString(newToAccountBalance));
+		log.info("Transfer complete.");
+
+		return newSuccessResponse(format("Successfully transferred %d assets from %s to %s.", transferAmount, fromKey, toKey));
+	}
+
+	private Response init(ChaincodeStub stub, String[] args) {
+		if (args.length != 4) throw new IllegalArgumentException("Incorrect number of arguments. Expecting: init(account1, amount1, account2, amount2)");
+
+		final String accountKey1 = args[0];
+		final String accountKey2 = args[2];
+		final String account1Balance = args[1];
+		final String account2Balance = args[3];
+
+		stub.putStringState(accountKey1, new Integer(account1Balance).toString());
+		stub.putStringState(accountKey2, new Integer(account2Balance).toString());
+
+		return newSuccessResponse();
+	}
+
+	public Response query(ChaincodeStub stub, String function, String[] args) {
+		if (args.length != 1) throw new IllegalArgumentException("Incorrect number of arguments. Expecting: query(account)");
+
+		final String accountKey = args[0];
+
+		return newSuccessResponse(Json.createObjectBuilder()
+				.add("Name", accountKey)
+				.add("Amount", Integer.parseInt(stub.getStringState(accountKey)))
+				.build().toString().getBytes(UTF_8));
+
 	}
 
 	public static void main(String[] args) throws Exception {
 		new SimpleSample().start(args);
 	}
-
 
 }

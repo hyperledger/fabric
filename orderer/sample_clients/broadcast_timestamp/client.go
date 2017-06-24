@@ -22,10 +22,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -43,10 +44,10 @@ func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient, chainID strin
 func (s *broadcastClient) broadcast(transaction []byte) error {
 	payload, err := proto.Marshal(&cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				ChainID: s.chainID,
-			},
-			SignatureHeader: &cb.SignatureHeader{},
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelId: s.chainID,
+			}),
+			SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 		},
 		Data: transaction,
 	})
@@ -76,7 +77,7 @@ func main() {
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
 	flag.StringVar(&chainID, "chainID", provisional.TestChainID, "The chain ID to broadcast to.")
-	flag.Uint64Var(&messages, "messages", 1, "The number of messages to braodcast.")
+	flag.Uint64Var(&messages, "messages", 1, "The number of messages to broadcast.")
 	flag.Parse()
 
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())

@@ -26,10 +26,6 @@ import (
 )
 
 type config struct {
-	keyStorePath  string
-	securityLevel int
-	hashFamily    string
-
 	ellipticCurve elliptic.Curve
 	hashFunction  func() hash.Hash
 	aesBitLength  int

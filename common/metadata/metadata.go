@@ -16,4 +16,9 @@ limitations under the License.
 
 package metadata
 
-var Version string // defined by the Makefile and passed in with ldflags
+// Variables defined by the Makefile and passed in with ldflags
+var Version string
+var BaseVersion string
+var BaseDockerLabel string
+var DockerNamespace string
+var BaseDockerNamespace string

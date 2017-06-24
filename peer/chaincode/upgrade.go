@@ -19,66 +19,76 @@ package chaincode
 import (
 	"fmt"
 
-	"golang.org/x/net/context"
-
-	"github.com/hyperledger/fabric/common/util"
 	protcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 var chaincodeUpgradeCmd *cobra.Command
 
+const upgradeCmdName = "upgrade"
+
 // upgradeCmd returns the cobra command for Chaincode Upgrade
 func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeUpgradeCmd = &cobra.Command{
-		Use:       "upgrade",
-		Short:     fmt.Sprintf("Upgrade chaincode."),
-		Long:      fmt.Sprintf(`Upgrade an existing chaincode with the specified one. The new chaincode will immediately replace the existing chaincode upon the transaction committed.`),
+		Use:       upgradeCmdName,
+		Short:     "Upgrade chaincode.",
+		Long:      "Upgrade an existing chaincode with the specified one. The new chaincode will immediately replace the existing chaincode upon the transaction committed.",
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeUpgrade(cmd, args, cf)
 		},
 	}
+	flagList := []string{
+		"lang",
+		"ctor",
+		"path",
+		"name",
+		"channelID",
+		"version",
+		"policy",
+		"escc",
+		"vscc",
+	}
+	attachFlags(chaincodeUpgradeCmd, flagList)
 
 	return chaincodeUpgradeCmd
 }
 
 //upgrade the command via Endorser
 func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, error) {
-	spec, err := getChaincodeSpecification(cmd)
+	spec, err := getChaincodeSpec(cmd)
 	if err != nil {
 		return nil, err
 	}
 
-	cds, err := getChaincodeBytes(spec)
+	cds, err := getChaincodeDeploymentSpec(spec, false)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
 	}
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.GetIdentifier(), err)
+		return nil, fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
-	uuid := util.GenerateUUID()
-
-	prop, err := utils.CreateUpgradeProposalFromCDS(uuid, chainID, cds, creator)
+	prop, _, err := utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, policyMarhsalled, []byte(escc), []byte(vscc))
 	if err != nil {
-		return nil, fmt.Errorf("Error creating proposal %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error creating proposal %s: %s", chainFuncName, err)
 	}
-	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.ChaincodeID)
+	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.ChaincodeId)
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error creating signed proposal  %s: %s", chainFuncName, err)
 	}
 
 	proposalResponse, err := cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error endorsing %s: %s", chainFuncName, err)
 	}
 	logger.Debugf("endorse upgrade proposal, get response <%v>", proposalResponse.Response)
 
@@ -100,7 +110,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 func chaincodeUpgrade(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory()
+		cf, err = InitCmdFactory(true, true)
 		if err != nil {
 			return err
 		}

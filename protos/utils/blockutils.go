@@ -18,32 +18,45 @@ package utils
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 
 	"github.com/golang/protobuf/proto"
-
-	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
 )
+
+// GetChainIDFromBlockBytes returns chain ID given byte array which represents the block
+func GetChainIDFromBlockBytes(bytes []byte) (string, error) {
+	block, err := GetBlockFromBlockBytes(bytes)
+	if err != nil {
+		return "", err
+	}
+
+	return GetChainIDFromBlock(block)
+}
 
 // GetChainIDFromBlock returns chain ID in the block
 func GetChainIDFromBlock(block *cb.Block) (string, error) {
-	if block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
-		return "", fmt.Errorf("Failed to find chain ID because the block is empty.")
+	if block == nil || block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
+		return "", fmt.Errorf("failed to retrieve channel id - block is empty")
 	}
 	var err error
 	envelope := &cb.Envelope{}
 	if err = proto.Unmarshal(block.Data.Data[0], envelope); err != nil {
-		return "", fmt.Errorf("Error reconstructing envelope(%s)", err)
+		return "", fmt.Errorf("error reconstructing envelope(%s)", err)
 	}
 	payload := &cb.Payload{}
 	if err = proto.Unmarshal(envelope.Payload, payload); err != nil {
-		return "", fmt.Errorf("Error reconstructing payload(%s)", err)
+		return "", fmt.Errorf("error reconstructing payload(%s)", err)
 	}
 
-	return payload.Header.ChainHeader.ChainID, nil
+	if payload.Header == nil {
+		return "", fmt.Errorf("failed to retrieve channel id - payload header is empty")
+	}
+	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return "", err
+	}
+
+	return chdr.ChannelId, nil
 }
 
 // GetMetadataFromBlock retrieves metadata at the specified index.
@@ -58,21 +71,20 @@ func GetMetadataFromBlock(block *cb.Block, index cb.BlockMetadataIndex) (*cb.Met
 
 // GetMetadataFromBlockOrPanic retrieves metadata at the specified index, or panics on error.
 func GetMetadataFromBlockOrPanic(block *cb.Block, index cb.BlockMetadataIndex) *cb.Metadata {
-	md := &cb.Metadata{}
-	err := proto.Unmarshal(block.Metadata.Metadata[index], md)
+	md, err := GetMetadataFromBlock(block, index)
 	if err != nil {
 		panic(err)
 	}
 	return md
 }
 
-// GetLastConfigurationIndexFromBlock retrieves the index of the last configuration block as encoded in the block metadata
-func GetLastConfigurationIndexFromBlock(block *cb.Block) (uint64, error) {
-	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIGURATION)
+// GetLastConfigIndexFromBlock retrieves the index of the last config block as encoded in the block metadata
+func GetLastConfigIndexFromBlock(block *cb.Block) (uint64, error) {
+	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIG)
 	if err != nil {
 		return 0, err
 	}
-	lc := &cb.LastConfiguration{}
+	lc := &cb.LastConfig{}
 	err = proto.Unmarshal(md.Value, lc)
 	if err != nil {
 		return 0, err
@@ -80,18 +92,13 @@ func GetLastConfigurationIndexFromBlock(block *cb.Block) (uint64, error) {
 	return lc.Index, nil
 }
 
-// GetLastConfigurationIndexFromBlockOrPanic retrieves the index of the last configuration block as encoded in the block metadata, or panics on error.
-func GetLastConfigurationIndexFromBlockOrPanic(block *cb.Block) uint64 {
-	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIGURATION)
+// GetLastConfigIndexFromBlockOrPanic retrieves the index of the last config block as encoded in the block metadata, or panics on error.
+func GetLastConfigIndexFromBlockOrPanic(block *cb.Block) uint64 {
+	index, err := GetLastConfigIndexFromBlock(block)
 	if err != nil {
 		panic(err)
 	}
-	lc := &cb.LastConfiguration{}
-	err = proto.Unmarshal(md.Value, lc)
-	if err != nil {
-		panic(err)
-	}
-	return lc.Index
+	return index
 }
 
 // GetBlockFromBlockBytes marshals the bytes into Block
@@ -118,89 +125,4 @@ func InitBlockMetadata(block *cb.Block) {
 			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}
-}
-
-const (
-	AnchorPeerConfItemKey          = "AnchorPeers"
-	epoch                          = uint64(0)
-	messageVersion                 = int32(1)
-	lastModified                   = uint64(0)
-	mspKey                         = "MSP"
-	xxxDefaultModificationPolicyID = "DefaultModificationPolicy" // Break an import cycle during work to remove the below configtx construction methods
-)
-
-func createConfigItem(chainID string,
-	configItemKey string,
-	configItemValue []byte,
-	modPolicy string, configItemType cb.ConfigurationItem_ConfigurationType) *cb.ConfigurationItem {
-
-	ciChainHeader := MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM,
-		messageVersion, chainID, epoch)
-	configItem := MakeConfigurationItem(ciChainHeader,
-		configItemType, lastModified, modPolicy,
-		configItemKey, configItemValue)
-
-	return configItem
-}
-
-func createSignedConfigItem(chainID string,
-	configItemKey string,
-	configItemValue []byte,
-	modPolicy string, configItemType cb.ConfigurationItem_ConfigurationType) *cb.SignedConfigurationItem {
-	configItem := createConfigItem(chainID, configItemKey, configItemValue, modPolicy, configItemType)
-	return &cb.SignedConfigurationItem{
-		ConfigurationItem: MarshalOrPanic(configItem),
-		Signatures:        nil}
-}
-
-// GetTESTMSPConfigPath This function is needed to locate the MSP test configuration when running
-// in CI build env or local with "make unit-test". A better way to manage this
-// is to define a config path in yaml that may point to test or production
-// location of the config
-func GetTESTMSPConfigPath() string {
-	cfgPath := os.Getenv("PEER_CFG_PATH") + "/msp/sampleconfig/"
-	if _, err := ioutil.ReadDir(cfgPath); err != nil {
-		cfgPath = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
-	return cfgPath
-}
-
-// EncodeMSPUnsigned gets the unsigned configuration item with the default MSP
-func EncodeMSPUnsigned(chainID string) *cb.ConfigurationItem {
-	cfgPath := GetTESTMSPConfigPath()
-	conf, err := msp.GetLocalMspConfig(cfgPath)
-	if err != nil {
-		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
-	}
-	// TODO: once https://gerrit.hyperledger.org/r/#/c/3941 is merged, change this to MSP
-	// Right now we don't have an MSP type there
-	return createConfigItem(chainID,
-		mspKey,
-		MarshalOrPanic(conf),
-		xxxDefaultModificationPolicyID, cb.ConfigurationItem_MSP)
-}
-
-// EncodeMSP gets the signed configuration item with the default MSP
-func EncodeMSP(chainID string) *cb.SignedConfigurationItem {
-	cfgPath := GetTESTMSPConfigPath()
-	conf, err := msp.GetLocalMspConfig(cfgPath)
-	if err != nil {
-		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
-	}
-	// TODO: once https://gerrit.hyperledger.org/r/#/c/3941 is merged, change this to MSP
-	// Right now we don't have an MSP type there
-	return createSignedConfigItem(chainID,
-		mspKey,
-		MarshalOrPanic(conf),
-		xxxDefaultModificationPolicyID, cb.ConfigurationItem_MSP)
-}
-
-// EncodeAnchorPeers returns a configuration item with anchor peers
-func EncodeAnchorPeers(anchorPeers []*peer.AnchorPeer) *cb.ConfigurationItem {
-	apConfig := &peer.AnchorPeers{
-		AnchorPeers: anchorPeers,
-	}
-	rawAnchorPeers := MarshalOrPanic(apConfig)
-	// We don't populate the chainID because that value is over-written later on anyway
-	return createConfigItem("", AnchorPeerConfItemKey, rawAnchorPeers, xxxDefaultModificationPolicyID, cb.ConfigurationItem_Peer)
 }

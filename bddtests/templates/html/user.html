@@ -1,0 +1,11 @@
+<!--
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+-->
+<div id="{{ user.name }}">
+    <h4>Created new user {{ user.name }} with <a href="{{ private_key_href }}">private key</a></h4>
+    <code>{{ user.getPrivateKeyAsPEM() }}</code>
+</div>

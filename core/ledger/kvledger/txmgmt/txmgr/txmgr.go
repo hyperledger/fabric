@@ -18,6 +18,7 @@ package txmgr
 
 import (
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/common"
 )
 
@@ -26,7 +27,9 @@ type TxMgr interface {
 	NewQueryExecutor() (ledger.QueryExecutor, error)
 	NewTxSimulator() (ledger.TxSimulator, error)
 	ValidateAndPrepare(block *common.Block, doMVCCValidation bool) error
-	GetBlockNumFromSavepoint() (uint64, error)
+	GetLastSavepoint() (*version.Height, error)
+	ShouldRecover(lastAvailableBlock uint64) (bool, uint64, error)
+	CommitLostBlock(block *common.Block) error
 	Commit() error
 	Rollback()
 	Shutdown()

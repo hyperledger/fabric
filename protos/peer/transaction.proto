@@ -17,11 +17,14 @@ limitations under the License.
 syntax = "proto3";
 
 option go_package = "github.com/hyperledger/fabric/protos/peer";
+option java_package = "org.hyperledger.fabric.protos.peer";
+option java_outer_classname = "TransactionPackage";
 
 package protos;
 
 import "google/protobuf/timestamp.proto";
 import "peer/proposal_response.proto";
+import "common/common.proto";
 
 // This message is necessary to facilitate the verification of the signature
 // (in the signature field) over the bytes of the transaction (in the
@@ -29,7 +32,7 @@ import "peer/proposal_response.proto";
 message SignedTransaction {
 
 	// The bytes of the Transaction. NDD
-	bytes transactionBytes = 1;
+	bytes transaction_bytes = 1;
 
 	// Signature of the transactionBytes The public key of the signature is in
 	// the header field of TransactionAction There might be multiple
@@ -38,14 +41,18 @@ message SignedTransaction {
 	bytes signature = 2;
 }
 
-// This is used to wrap an invalid Transaction with the cause
-message InvalidTransaction {
-	enum Cause {
-		TxIdAlreadyExists = 0;
-		RWConflictDuringCommit = 1;
-	}
-	Transaction transaction = 1;
-	Cause cause = 2;
+// ProcessedTransaction wraps an Envelope that includes a transaction along with an indication
+// of whether the transaction was validated or invalidated by committing peer.
+// The use case is that GetTransactionByID API needs to retrieve the transaction Envelope
+// from block storage, and return it to a client, and indicate whether the transaction
+// was validated or invalidated by committing peer. So that the originally submitted
+// transaction Envelope is not modified, the ProcessedTransaction wrapper is returned.
+message ProcessedTransaction {
+    // An Envelope which includes a processed transaction
+    common.Envelope transactionEnvelope = 1;
+
+    // An indication of whether the transaction was validated or invalidated by committing peer
+    int32 validationCode = 2;
 }
 
 // The transaction to be sent to the ordering service. A transaction contains
@@ -62,16 +69,9 @@ message InvalidTransaction {
 // to ensure that they are treated atomically.
 message Transaction {
 
-	// Version indicates message protocol version.
-	int32 version = 1;
-
-	// Timestamp is the local time that the
-	// message was created by the sender
-	google.protobuf.Timestamp timestamp = 2;
-
 	// The payload is an array of TransactionAction. An array is necessary to
 	// accommodate multiple actions per transaction
-	repeated TransactionAction actions = 3;
+	repeated TransactionAction actions = 1;
 }
 
 // TransactionAction binds a proposal to its action.  The type field in the
@@ -102,7 +102,7 @@ message ChaincodeActionPayload {
 	// ProposalResponsePayload.proposalHash.  For the CHAINCODE type,
 	// ProposalResponsePayload.proposalHash is supposed to be H(ProposalHeader ||
 	// f(ChaincodeProposalPayload)) where f is the visibility function.
-	bytes chaincodeProposalPayload = 1;
+	bytes chaincode_proposal_payload = 1;
 
 	// The list of actions to apply to the ledger
 	ChaincodeEndorsedAction action = 2;
@@ -115,9 +115,37 @@ message ChaincodeEndorsedAction {
 	// This is the bytes of the ProposalResponsePayload message signed by the
 	// endorsers.  Recall that for the CHAINCODE type, the
 	// ProposalResponsePayload's extenstion field carries a ChaincodeAction
-	bytes proposalResponsePayload = 1;
+	bytes proposal_response_payload = 1;
 
 	// The endorsement of the proposal, basically the endorser's signature over
 	// proposalResponsePayload
 	repeated Endorsement endorsements = 2;
+}
+
+enum TxValidationCode {
+	VALID = 0;
+	NIL_ENVELOPE = 1;
+	BAD_PAYLOAD = 2;
+	BAD_COMMON_HEADER = 3;
+	BAD_CREATOR_SIGNATURE = 4;
+	INVALID_ENDORSER_TRANSACTION = 5;
+	INVALID_CONFIG_TRANSACTION = 6;
+	UNSUPPORTED_TX_PAYLOAD = 7;
+	BAD_PROPOSAL_TXID = 8;
+	DUPLICATE_TXID = 9;
+	ENDORSEMENT_POLICY_FAILURE = 10;
+	MVCC_READ_CONFLICT = 11;
+	PHANTOM_READ_CONFLICT = 12;
+	UNKNOWN_TX_TYPE = 13;
+	TARGET_CHAIN_NOT_FOUND = 14;
+	MARSHAL_TX_ERROR = 15;
+	NIL_TXACTION = 16;
+	EXPIRED_CHAINCODE = 17;
+	CHAINCODE_VERSION_CONFLICT = 18;
+	BAD_HEADER_EXTENSION = 19;
+	BAD_CHANNEL_HEADER = 20;
+	BAD_RESPONSE_PAYLOAD = 21;
+	BAD_RWSET = 22;
+	ILLEGAL_WRITESET = 23;
+	INVALID_OTHER_REASON = 255;
 }

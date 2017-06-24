@@ -26,7 +26,9 @@ import (
 )
 
 func TestExecuteInvokeOnManyChains(t *testing.T) {
-	chains := []string{"chain1", "chain2", "chain3", "chain4"}
+	testForSkip(t)
+	//lets use 2 chains to test multi chains
+	chains := []string{"chain1", "chain2"}
 	lis, err := initPeer(chains...)
 	if err != nil {
 		t.Fail()
@@ -38,19 +40,19 @@ func TestExecuteInvokeOnManyChains(t *testing.T) {
 	var ctxt = context.Background()
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url}
+	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url, Version: "0"}
 
 	args := []string{"a", "b", "10"}
 	for _, c := range chains {
-		cccid := ccprovider.NewCCContext(c, "example02", "0", "", false, nil)
-		err = invokeExample02Transaction(ctxt, cccid, chaincodeID, args, false)
+		cccid := ccprovider.NewCCContext(c, "example02", "0", "", false, nil, nil)
+		err = invokeExample02Transaction(ctxt, cccid, chaincodeID, pb.ChaincodeSpec_GOLANG, args, false)
 		if err != nil {
 			t.Fail()
 			t.Logf("Error invoking transaction: %s", err)
 		} else {
 			t.Logf("Invoke test passed for chain %s", c)
 		}
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 	}
 
 }

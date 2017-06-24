@@ -20,10 +20,11 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	container "github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/op/go-logging"
 
 	"golang.org/x/net/context"
 )
@@ -37,7 +38,7 @@ type inprocContainer struct {
 }
 
 var (
-	inprocLogger = logging.MustGetLogger("inproccontroller")
+	inprocLogger = flogging.MustGetLogger("inproccontroller")
 	typeRegistry = make(map[string]*inprocContainer)
 	instRegistry = make(map[string]*inprocContainer)
 )
@@ -81,7 +82,7 @@ func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContain
 
 //Deploy verifies chaincode is registered and creates an instance for it. Currently only one instance can be created
 func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
-	path := ccid.ChaincodeSpec.ChaincodeID.Path
+	path := ccid.ChaincodeSpec.ChaincodeId.Path
 
 	ipctemplate := typeRegistry[path]
 	if ipctemplate == nil {
@@ -153,8 +154,8 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 }
 
 //Start starts a previously registered system codechain
-func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
-	path := ccid.ChaincodeSpec.ChaincodeID.Path
+func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, builder container.BuildSpecFactory, prelaunchFunc container.PrelaunchFunc) error {
+	path := ccid.ChaincodeSpec.ChaincodeId.Path
 
 	ipctemplate := typeRegistry[path]
 
@@ -181,6 +182,12 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 		return fmt.Errorf("in-process communication generator not supplied")
 	}
 
+	if prelaunchFunc != nil {
+		if err = prelaunchFunc(); err != nil {
+			return err
+		}
+	}
+
 	ipc.running = true
 
 	go func() {
@@ -197,7 +204,7 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 
 //Stop stops a system codechain
 func (vm *InprocVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
-	path := ccid.ChaincodeSpec.ChaincodeID.Path
+	path := ccid.ChaincodeSpec.ChaincodeId.Path
 
 	ipctemplate := typeRegistry[path]
 	if ipctemplate == nil {

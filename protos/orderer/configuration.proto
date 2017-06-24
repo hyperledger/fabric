@@ -16,9 +16,8 @@ limitations under the License.
 
 syntax = "proto3";
 
-import "common/common.proto";
-
 option go_package = "github.com/hyperledger/fabric/protos/orderer";
+option java_package = "org.hyperledger.fabric.protos.orderer";
 
 package orderer;
 
@@ -36,13 +35,13 @@ message ConsensusType {
 message BatchSize {
     // Simply specified as number of messages for now, in the future
     // we may want to allow this to be specified by size in bytes
-    uint32 maxMessageCount = 1;
+    uint32 max_message_count = 1;
     // The byte count of the serialized messages in a batch cannot
     // exceed this value.
-    uint32 absoluteMaxBytes = 2;
+    uint32 absolute_max_bytes = 2;
     // The byte count of the serialized messages in a batch should not
     // exceed this value.
-    uint32 preferredMaxBytes = 3;
+    uint32 preferred_max_bytes = 3;
 }
 
 message BatchTimeout {
@@ -51,47 +50,15 @@ message BatchTimeout {
     string timeout = 1;
 }
 
-// When submitting a new chain configuration transaction to create a new chain,
-// the first configuration item must be of type Orderer with Key CreationPolicy
-// and contents of a Marshaled CreationPolicy. The policy should be set to the
-// policy which was supplied by the ordering service for the client's chain
-// creation. The digest should be the hash of the concatenation of the remaining
-// ConfigurationItem bytes. The signatures of the configuration item should
-// satisfy the policy for chain creation.
-message CreationPolicy {
-    // The name of the policy which should be used to validate the creation of
-    // this chain
-    string policy = 1;
-
-    // The hash of the concatenation of remaining configuration item bytes
-    bytes digest = 2;
-}
-
-// IngressPolicyNames is the set of policy names which incoming Broadcast signatures are filtered against
-message IngressPolicyNames {
-    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
-    // because implementing referential policies in a general way is difficult, and dangerous
-    repeated string names = 1;
-}
-
-// EgressPolicyNames is the set of policy names which incoming Deliver signatures are filtered against
-message EgressPolicyNames {
-    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
-    // because implementing referential policies in a general way is difficult, and dangerous
-    repeated string names = 1;
-}
-
-// ChainCreationPolicyNames is the set of policies which may be invoked for chain creation
-message ChainCreationPolicyNames {
-    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
-    // because implementing referential policies in a general way is difficult, and dangerous
-    repeated string names = 1;
-}
-
 // Carries a list of bootstrap brokers, i.e. this is not the exclusive set of
 // brokers an ordering service
 message KafkaBrokers {
     // Each broker here should be identified using the (IP|host):port notation,
     // e.g. 127.0.0.1:7050, or localhost:7050 are valid entries
     repeated string brokers = 1;
+}
+
+// ChannelRestrictions is the mssage which conveys restrictions on channel creation for an orderer
+message ChannelRestrictions {
+    uint64 max_count = 1; // The max count of channels to allow to be created, a value of 0 indicates no limit
 }

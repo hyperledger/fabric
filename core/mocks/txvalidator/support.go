@@ -17,6 +17,8 @@ limitations under the License.
 package support
 
 import (
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -39,6 +41,14 @@ func (ms *Support) MSPManager() msp.MSPManager {
 }
 
 // Apply returns ApplyVal
-func (ms *Support) Apply(configtx *common.ConfigurationEnvelope) error {
+func (ms *Support) Apply(configtx *common.ConfigEnvelope) error {
 	return ms.ApplyVal
+}
+
+func (ms *Support) PolicyManager() policies.Manager {
+	return &mockpolicies.Manager{}
+}
+
+func (cs *Support) GetMSPIDs(cid string) []string {
+	return []string{"DEFAULT"}
 }

@@ -19,8 +19,9 @@ package comm
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/proto"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
 // Comm is an object that enables to communicate with other peers
@@ -31,14 +32,19 @@ type Comm interface {
 	GetPKIid() common.PKIidType
 
 	// Send sends a message to remote peers
-	Send(msg *proto.GossipMessage, peers ...*RemotePeer)
+	Send(msg *proto.SignedGossipMessage, peers ...*RemotePeer)
 
-	// Probe probes a remote node and returns nil if its responsive
+	// Probe probes a remote node and returns nil if its responsive,
+	// and an error if it's not.
 	Probe(peer *RemotePeer) error
+
+	// Handshake authenticates a remote peer and returns
+	// (its identity, nil) on success and (nil, error)
+	Handshake(peer *RemotePeer) (api.PeerIdentityType, error)
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// Each message from the channel can be used to send a reply back to the sender
-	Accept(common.MessageAcceptor) <-chan ReceivedMessage
+	Accept(common.MessageAcceptor) <-chan proto.ReceivedMessage
 
 	// PresumedDead returns a read-only channel for node endpoints that are suspected to be offline
 	PresumedDead() <-chan common.PKIidType
@@ -48,9 +54,6 @@ type Comm interface {
 
 	// Stop stops the module
 	Stop()
-
-	// BlackListPKIid prohibits the module communicating with the given PKIid
-	BlackListPKIid(PKIid common.PKIidType)
 }
 
 // RemotePeer defines a peer's endpoint and its PKIid
@@ -62,21 +65,4 @@ type RemotePeer struct {
 // String converts a RemotePeer to a string
 func (p *RemotePeer) String() string {
 	return fmt.Sprintf("%s, PKIid:%v", p.Endpoint, p.PKIID)
-}
-
-// ReceivedMessage is a GossipMessage wrapper that
-// enables the user to send a message to the origin from which
-// the ReceivedMessage was sent from.
-// It also allows to know the identity of the sender
-type ReceivedMessage interface {
-
-	// Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
-	Respond(msg *proto.GossipMessage)
-
-	// GetGossipMessage returns the underlying GossipMessage
-	GetGossipMessage() *proto.GossipMessage
-
-	// GetPKIID returns the PKI-ID of the remote peer
-	// that sent the message
-	GetPKIID() common.PKIidType
 }

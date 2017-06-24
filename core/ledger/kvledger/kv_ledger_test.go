@@ -18,12 +18,16 @@ package kvledger
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
-	ledgerpackage "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/queryresult"
+	"github.com/hyperledger/fabric/protos/peer"
+	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,12 +36,15 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	defer env.cleanup()
 	provider, _ := NewProvider()
 	defer provider.Close()
-	ledger, _ := provider.Create("testLedger")
+
+	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	gbHash := gb.Header.Hash()
+	ledger, _ := provider.Create(gb)
 	defer ledger.Close()
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil})
 
 	simulator, _ := ledger.NewTxSimulator()
 	simulator.SetState("ns1", "key1", []byte("value1"))
@@ -45,14 +52,13 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.SetState("ns1", "key3", []byte("value3"))
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
-	bg := testutil.NewBlockGenerator(t)
-	block1 := bg.NextBlock([][]byte{simRes}, false)
+	block1 := bg.NextBlock([][]byte{simRes})
 	ledger.Commit(block1)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash})
 
 	simulator, _ = ledger.NewTxSimulator()
 	simulator.SetState("ns1", "key1", []byte("value4"))
@@ -60,56 +66,82 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.SetState("ns1", "key3", []byte("value6"))
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
-	block2 := bg.NextBlock([][]byte{simRes}, false)
+	block2 := bg.NextBlock([][]byte{simRes})
 	ledger.Commit(block2)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: block1.Header.Hash()})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash})
+
+	b0, _ := ledger.GetBlockByHash(gbHash)
+	testutil.AssertEquals(t, b0, gb)
 
 	b1, _ := ledger.GetBlockByHash(block1Hash)
 	testutil.AssertEquals(t, b1, block1)
 
-	b2, _ := ledger.GetBlockByHash(block2Hash)
-	testutil.AssertEquals(t, b2, block2)
+	b0, _ = ledger.GetBlockByNumber(0)
+	testutil.AssertEquals(t, b0, gb)
 
 	b1, _ = ledger.GetBlockByNumber(1)
 	testutil.AssertEquals(t, b1, block1)
 
-	b2, _ = ledger.GetBlockByNumber(2)
-	testutil.AssertEquals(t, b2, block2)
+	// get the tran id from the 2nd block, then use it to test GetTransactionByID()
+	txEnvBytes2 := block1.Data.Data[0]
+	txEnv2, err := putils.GetEnvelopeFromBlock(txEnvBytes2)
+	testutil.AssertNoError(t, err, "Error upon GetEnvelopeFromBlock")
+	payload2, err := putils.GetPayload(txEnv2)
+	testutil.AssertNoError(t, err, "Error upon GetPayload")
+	chdr, err := putils.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
+	testutil.AssertNoError(t, err, "Error upon GetChannelHeaderFromBytes")
+	txID2 := chdr.TxId
+	processedTran2, err := ledger.GetTransactionByID(txID2)
+	testutil.AssertNoError(t, err, "Error upon GetTransactionByID")
+	// get the tran envelope from the retrieved ProcessedTransaction
+	retrievedTxEnv2 := processedTran2.TransactionEnvelope
+	testutil.AssertEquals(t, retrievedTxEnv2, txEnv2)
+
+	//  get the tran id from the 2nd block, then use it to test GetBlockByTxID
+	b1, _ = ledger.GetBlockByTxID(txID2)
+	testutil.AssertEquals(t, b1, block1)
+
+	// get the transaction validation code for this transaction id
+	validCode, _ := ledger.GetTxValidationCodeByTxID(txID2)
+	testutil.AssertEquals(t, validCode, peer.TxValidationCode_VALID)
+
 }
 
 func TestKVLedgerDBRecovery(t *testing.T) {
-	testutil.SetupCoreYAMLConfig("./../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig()
 	env := newTestEnv(t)
 	defer env.cleanup()
 	provider, _ := NewProvider()
 	defer provider.Close()
-	ledger, _ := provider.Create("testLedger")
-	defer ledger.Close()
 
-	bcInfo, _ := ledger.GetBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
+	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	ledger, _ := provider.Create(gb)
+	defer ledger.Close()
+	gbHash := gb.Header.Hash()
+	bcInfo, err := ledger.GetBlockchainInfo()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil})
 	//creating and committing the first block
 	simulator, _ := ledger.NewTxSimulator()
 	//simulating a transaction
-	simulator.SetState("ns1", "key1", []byte("value1"))
-	simulator.SetState("ns1", "key2", []byte("value2"))
-	simulator.SetState("ns1", "key3", []byte("value3"))
+	simulator.SetState("ns1", "key1", []byte("value1.1"))
+	simulator.SetState("ns1", "key2", []byte("value2.1"))
+	simulator.SetState("ns1", "key3", []byte("value3.1"))
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
 	//generating a block based on the simulation result
-	bg := testutil.NewBlockGenerator(t)
-	block1 := bg.NextBlock([][]byte{simRes}, false)
+	block1 := bg.NextBlock([][]byte{simRes})
 	//performing validation of read and write set to find valid transactions
 	ledger.Commit(block1)
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash})
 
 	//======================================================================================
 	//SCENARIO 1: peer fails before committing the second block to state DB
@@ -117,57 +149,64 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//======================================================================================
 	simulator, _ = ledger.NewTxSimulator()
 	//simulating transaction
-	simulator.SetState("ns1", "key1", []byte("value4"))
-	simulator.SetState("ns1", "key2", []byte("value5"))
-	simulator.SetState("ns1", "key3", []byte("value6"))
+	simulator.SetState("ns1", "key1", []byte("value1.2"))
+	simulator.SetState("ns1", "key2", []byte("value2.2"))
+	simulator.SetState("ns1", "key3", []byte("value3.2"))
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
 	//generating a block based on the simulation result
-	block2 := bg.NextBlock([][]byte{simRes}, false)
+	block2 := bg.NextBlock([][]byte{simRes})
+
 	//performing validation of read and write set to find valid transactions
 	ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(block2, true)
 	//writing the validated block to block storage but not committing the transaction
 	//to state DB and history DB (if exist)
-	err := ledger.(*kvLedger).blockStore.AddBlock(block2)
+	err = ledger.(*kvLedger).blockStore.AddBlock(block2)
+
 	//assume that peer fails here before committing the transaction
 	assert.NoError(t, err)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: block1.Header.Hash()})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash})
 
 	simulator, _ = ledger.NewTxSimulator()
 	value, _ := simulator.GetState("ns1", "key1")
 	//value for 'key1' should be 'value1' as the last commit failed
-	testutil.AssertEquals(t, value, []byte("value1"))
+	testutil.AssertEquals(t, value, []byte("value1.1"))
 	value, _ = simulator.GetState("ns1", "key2")
 	//value for 'key2' should be 'value2' as the last commit failed
-	testutil.AssertEquals(t, value, []byte("value2"))
+	testutil.AssertEquals(t, value, []byte("value2.1"))
 	value, _ = simulator.GetState("ns1", "key3")
 	//value for 'key3' should be 'value3' as the last commit failed
-	testutil.AssertEquals(t, value, []byte("value3"))
-	//savepoint in state DB should 1 as the last commit failed
-	stateDBSavepoint, _ := ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
-	testutil.AssertEquals(t, stateDBSavepoint, uint64(1))
+	testutil.AssertEquals(t, value, []byte("value3.1"))
+	//savepoint in state DB should 0 as the last commit failed
+	stateDBSavepoint, _ := ledger.(*kvLedger).txtmgmt.GetLastSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint.BlockNum, uint64(1))
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		qhistory, _ := ledger.NewHistoryQueryExecutor()
 		itr, _ := qhistory.GetHistoryForKey("ns1", "key1")
-		//TODO: once GetHistoryForKey() returns values we can compare the values. For now, we just count
 		count := 0
 		for {
-			if kmod, _ := itr.Next(); kmod == nil {
+			kmod, err := itr.Next()
+			testutil.AssertNoError(t, err, "Error upon Next()")
+			if kmod == nil {
 				break
 			}
+			retrievedValue := kmod.(*queryresult.KeyModification).Value
 			count++
+			expectedValue := []byte("value1." + strconv.Itoa(count))
+			testutil.AssertEquals(t, retrievedValue, expectedValue)
 		}
 		testutil.AssertEquals(t, count, 1)
 
-		//savepoint in history DB should 1 as the last commit failed
-		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetBlockNumFromSavepoint()
-		testutil.AssertEquals(t, historyDBSavepoint, uint64(1))
+		//savepoint in history DB should 0 as the last commit failed
+		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetLastSavepoint()
+		testutil.AssertEquals(t, historyDBSavepoint.BlockNum, uint64(1))
 	}
+
 	simulator.Done()
 	ledger.Close()
 	provider.Close()
@@ -176,36 +215,43 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//State DB should be recovered before returning from NewKVLedger call
 	provider, _ = NewProvider()
 	ledger, _ = provider.Open("testLedger")
+
 	simulator, _ = ledger.NewTxSimulator()
 	value, _ = simulator.GetState("ns1", "key1")
 	//value for 'key1' should be 'value4' after recovery
-	testutil.AssertEquals(t, value, []byte("value4"))
+	testutil.AssertEquals(t, value, []byte("value1.2"))
 	value, _ = simulator.GetState("ns1", "key2")
 	//value for 'key2' should be 'value5' after recovery
-	testutil.AssertEquals(t, value, []byte("value5"))
+	testutil.AssertEquals(t, value, []byte("value2.2"))
 	value, _ = simulator.GetState("ns1", "key3")
 	//value for 'key3' should be 'value6' after recovery
-	testutil.AssertEquals(t, value, []byte("value6"))
+	testutil.AssertEquals(t, value, []byte("value3.2"))
 	//savepoint in state DB should 2 after recovery
-	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
-	testutil.AssertEquals(t, stateDBSavepoint, uint64(2))
+	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetLastSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint.BlockNum, uint64(2))
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		qhistory, _ := ledger.NewHistoryQueryExecutor()
 		itr, _ := qhistory.GetHistoryForKey("ns1", "key1")
 		count := 0
 		for {
-			if kmod, _ := itr.Next(); kmod == nil {
+			kmod, err := itr.Next()
+			testutil.AssertNoError(t, err, "Error upon Next()")
+			if kmod == nil {
 				break
 			}
+			retrievedValue := kmod.(*queryresult.KeyModification).Value
 			count++
+			expectedValue := []byte("value1." + strconv.Itoa(count))
+			testutil.AssertEquals(t, retrievedValue, expectedValue)
 		}
 		testutil.AssertEquals(t, count, 2)
 
 		//savepoint in history DB should 2 after recovery
-		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetBlockNumFromSavepoint()
-		testutil.AssertEquals(t, historyDBSavepoint, uint64(2))
+		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetLastSavepoint()
+		testutil.AssertEquals(t, historyDBSavepoint.BlockNum, uint64(2))
 	}
+
 	simulator.Done()
 
 	//======================================================================================
@@ -215,13 +261,13 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	simulator, _ = ledger.NewTxSimulator()
 	//simulating transaction
-	simulator.SetState("ns1", "key1", []byte("value7"))
-	simulator.SetState("ns1", "key2", []byte("value8"))
-	simulator.SetState("ns1", "key3", []byte("value9"))
+	simulator.SetState("ns1", "key1", []byte("value1.3"))
+	simulator.SetState("ns1", "key2", []byte("value2.3"))
+	simulator.SetState("ns1", "key3", []byte("value3.3"))
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
 	//generating a block based on the simulation result
-	block3 := bg.NextBlock([][]byte{simRes}, false)
+	block3 := bg.NextBlock([][]byte{simRes})
 	//performing validation of read and write set to find valid transactions
 	ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(block3, true)
 	//writing the validated block to block storage
@@ -234,39 +280,43 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block3Hash := block3.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 3, CurrentBlockHash: block3Hash, PreviousBlockHash: block2.Header.Hash()})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 4, CurrentBlockHash: block3Hash, PreviousBlockHash: block2Hash})
 
 	simulator, _ = ledger.NewTxSimulator()
 	value, _ = simulator.GetState("ns1", "key1")
 	//value for 'key1' should be 'value7'
-	testutil.AssertEquals(t, value, []byte("value7"))
+	testutil.AssertEquals(t, value, []byte("value1.3"))
 	value, _ = simulator.GetState("ns1", "key2")
 	//value for 'key2' should be 'value8'
-	testutil.AssertEquals(t, value, []byte("value8"))
+	testutil.AssertEquals(t, value, []byte("value2.3"))
 	value, _ = simulator.GetState("ns1", "key3")
 	//value for 'key3' should be 'value9'
-	testutil.AssertEquals(t, value, []byte("value9"))
+	testutil.AssertEquals(t, value, []byte("value3.3"))
 	//savepoint in state DB should 3
-	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
-	testutil.AssertEquals(t, stateDBSavepoint, uint64(3))
+	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetLastSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint.BlockNum, uint64(3))
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		qhistory, _ := ledger.NewHistoryQueryExecutor()
 		itr, _ := qhistory.GetHistoryForKey("ns1", "key1")
-		//TODO: once GetHistoryForKey() returns values we can compare the values. For now, we just count
 		count := 0
 		for {
-			if kmod, _ := itr.Next(); kmod == nil {
+			kmod, err := itr.Next()
+			testutil.AssertNoError(t, err, "Error upon Next()")
+			if kmod == nil {
 				break
 			}
+			retrievedValue := kmod.(*queryresult.KeyModification).Value
 			count++
+			expectedValue := []byte("value1." + strconv.Itoa(count))
+			testutil.AssertEquals(t, retrievedValue, expectedValue)
 		}
 		testutil.AssertEquals(t, count, 2)
 
 		//savepoint in history DB should 2 as the last commit failed
-		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetBlockNumFromSavepoint()
-		testutil.AssertEquals(t, historyDBSavepoint, uint64(2))
+		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetLastSavepoint()
+		testutil.AssertEquals(t, historyDBSavepoint.BlockNum, uint64(2))
 	}
 	simulator.Done()
 	ledger.Close()
@@ -277,24 +327,29 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	provider, _ = NewProvider()
 	ledger, _ = provider.Open("testLedger")
 	simulator, _ = ledger.NewTxSimulator()
-	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
-	testutil.AssertEquals(t, stateDBSavepoint, uint64(3))
+	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetLastSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint.BlockNum, uint64(3))
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		qhistory, _ := ledger.NewHistoryQueryExecutor()
 		itr, _ := qhistory.GetHistoryForKey("ns1", "key1")
 		count := 0
 		for {
-			if kmod, _ := itr.Next(); kmod == nil {
+			kmod, err := itr.Next()
+			testutil.AssertNoError(t, err, "Error upon Next()")
+			if kmod == nil {
 				break
 			}
+			retrievedValue := kmod.(*queryresult.KeyModification).Value
 			count++
+			expectedValue := []byte("value1." + strconv.Itoa(count))
+			testutil.AssertEquals(t, retrievedValue, expectedValue)
 		}
 		testutil.AssertEquals(t, count, 3)
 
 		//savepoint in history DB should 3 after recovery
-		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetBlockNumFromSavepoint()
-		testutil.AssertEquals(t, historyDBSavepoint, uint64(3))
+		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetLastSavepoint()
+		testutil.AssertEquals(t, historyDBSavepoint.BlockNum, uint64(3))
 	}
 	simulator.Done()
 
@@ -306,13 +361,13 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//======================================================================================
 	simulator, _ = ledger.NewTxSimulator()
 	//simulating transaction
-	simulator.SetState("ns1", "key1", []byte("value10"))
-	simulator.SetState("ns1", "key2", []byte("value11"))
-	simulator.SetState("ns1", "key3", []byte("value12"))
+	simulator.SetState("ns1", "key1", []byte("value1.4"))
+	simulator.SetState("ns1", "key2", []byte("value2.4"))
+	simulator.SetState("ns1", "key3", []byte("value3.4"))
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
 	//generating a block based on the simulation result
-	block4 := bg.NextBlock([][]byte{simRes}, false)
+	block4 := bg.NextBlock([][]byte{simRes})
 	//performing validation of read and write set to find valid transactions
 	ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(block4, true)
 	//writing the validated block to block storage but fails to commit to state DB but
@@ -325,38 +380,42 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block4Hash := block4.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 4, CurrentBlockHash: block4Hash, PreviousBlockHash: block3.Header.Hash()})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 5, CurrentBlockHash: block4Hash, PreviousBlockHash: block3Hash})
 
 	simulator, _ = ledger.NewTxSimulator()
 	value, _ = simulator.GetState("ns1", "key1")
 	//value for 'key1' should be 'value7' as the last commit to State DB failed
-	testutil.AssertEquals(t, value, []byte("value7"))
+	testutil.AssertEquals(t, value, []byte("value1.3"))
 	value, _ = simulator.GetState("ns1", "key2")
 	//value for 'key2' should be 'value8' as the last commit to State DB failed
-	testutil.AssertEquals(t, value, []byte("value8"))
+	testutil.AssertEquals(t, value, []byte("value2.3"))
 	value, _ = simulator.GetState("ns1", "key3")
 	//value for 'key3' should be 'value9' as the last commit to State DB failed
-	testutil.AssertEquals(t, value, []byte("value9"))
+	testutil.AssertEquals(t, value, []byte("value3.3"))
 	//savepoint in state DB should 3 as the last commit failed
-	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
-	testutil.AssertEquals(t, stateDBSavepoint, uint64(3))
+	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetLastSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint.BlockNum, uint64(3))
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		qhistory, _ := ledger.NewHistoryQueryExecutor()
 		itr, _ := qhistory.GetHistoryForKey("ns1", "key1")
-		//TODO: once GetHistoryForKey() returns values we can compare the values. For now, we just count
 		count := 0
 		for {
-			if kmod, _ := itr.Next(); kmod == nil {
+			kmod, err := itr.Next()
+			testutil.AssertNoError(t, err, "Error upon Next()")
+			if kmod == nil {
 				break
 			}
+			retrievedValue := kmod.(*queryresult.KeyModification).Value
 			count++
+			expectedValue := []byte("value1." + strconv.Itoa(count))
+			testutil.AssertEquals(t, retrievedValue, expectedValue)
 		}
 		testutil.AssertEquals(t, count, 4)
 		//savepoint in history DB should 4
-		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetBlockNumFromSavepoint()
-		testutil.AssertEquals(t, historyDBSavepoint, uint64(4))
+		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetLastSavepoint()
+		testutil.AssertEquals(t, historyDBSavepoint.BlockNum, uint64(4))
 	}
 	simulator.Done()
 	ledger.Close()
@@ -369,23 +428,23 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	simulator, _ = ledger.NewTxSimulator()
 	value, _ = simulator.GetState("ns1", "key1")
 	//value for 'key1' should be 'value10' after state DB recovery
-	testutil.AssertEquals(t, value, []byte("value10"))
+	testutil.AssertEquals(t, value, []byte("value1.4"))
 	value, _ = simulator.GetState("ns1", "key2")
 	//value for 'key2' should be 'value11' after state DB recovery
-	testutil.AssertEquals(t, value, []byte("value11"))
+	testutil.AssertEquals(t, value, []byte("value2.4"))
 	value, _ = simulator.GetState("ns1", "key3")
 	//value for 'key3' should be 'value12' after state DB recovery
-	testutil.AssertEquals(t, value, []byte("value12"))
+	testutil.AssertEquals(t, value, []byte("value3.4"))
 	//savepoint in state DB should 4 after the recovery
-	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
-	testutil.AssertEquals(t, stateDBSavepoint, uint64(4))
+	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetLastSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint.BlockNum, uint64(4))
 	simulator.Done()
 }
 
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig()
 
 	logger.Debugf("TestLedgerWithCouchDbEnabledWithBinaryAndJSONData  IsCouchDBEnabled()value: %v , IsHistoryDBEnabled()value: %v\n",
 		ledgerconfig.IsCouchDBEnabled(), ledgerconfig.IsHistoryDBEnabled())
@@ -394,12 +453,14 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	defer env.cleanup()
 	provider, _ := NewProvider()
 	defer provider.Close()
-	ledger, _ := provider.Create("testLedger")
+	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	gbHash := gb.Header.Hash()
+	ledger, _ := provider.Create(gb)
 	defer ledger.Close()
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil})
 
 	simulator, _ := ledger.NewTxSimulator()
 	simulator.SetState("ns1", "key4", []byte("value1"))
@@ -408,15 +469,14 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	simulator.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"AIR MAYBE\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
-	bg := testutil.NewBlockGenerator(t)
-	block1 := bg.NextBlock([][]byte{simRes}, false)
+	block1 := bg.NextBlock([][]byte{simRes})
 
 	ledger.Commit(block1)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash})
 
 	simulationResults := [][]byte{}
 	simulator, _ = ledger.NewTxSimulator()
@@ -437,19 +497,25 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	simRes2, _ := simulator2.GetTxSimulationResults()
 	simulationResults = append(simulationResults, simRes2)
 
-	block2 := bg.NextBlock(simulationResults, false)
+	block2 := bg.NextBlock(simulationResults)
 	ledger.Commit(block2)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: block1.Header.Hash()})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
+		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash})
+
+	b0, _ := ledger.GetBlockByHash(gbHash)
+	testutil.AssertEquals(t, b0, gb)
 
 	b1, _ := ledger.GetBlockByHash(block1Hash)
 	testutil.AssertEquals(t, b1, block1)
 
 	b2, _ := ledger.GetBlockByHash(block2Hash)
 	testutil.AssertEquals(t, b2, block2)
+
+	b0, _ = ledger.GetBlockByNumber(0)
+	testutil.AssertEquals(t, b0, gb)
 
 	b1, _ = ledger.GetBlockByNumber(1)
 	testutil.AssertEquals(t, b1, block1)
@@ -466,18 +532,20 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 		itr, err2 := qhistory.GetHistoryForKey("ns1", "key7")
 		testutil.AssertNoError(t, err2, fmt.Sprintf("Error upon GetHistoryForKey"))
 
+		var retrievedValue []byte
 		count := 0
 		for {
 			kmod, _ := itr.Next()
 			if kmod == nil {
 				break
 			}
-			txid := kmod.(*ledgerpackage.KeyModification).TxID
-			//v := kmod.(*ledger.KeyModification).Value TODO value not populated yet
-			t.Logf("Retrieved history record for key=key7 at TxId=%s", txid)
+			retrievedValue = kmod.(*queryresult.KeyModification).Value
 			count++
 		}
 		testutil.AssertEquals(t, count, 3)
-		// TODO add assertions for exact history values once it is populated
+		// test the last value in the history matches the last value set for key7
+		expectedValue := []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"TRAIN\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")
+		testutil.AssertEquals(t, retrievedValue, expectedValue)
+
 	}
 }

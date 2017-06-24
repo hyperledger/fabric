@@ -22,13 +22,13 @@ import (
 )
 
 // TemplatePolicy creates a headerless configuration item representing a policy for a given key
-func TemplatePolicy(key string, sigPolicyEnv *cb.SignaturePolicyEnvelope) *cb.ConfigurationItem {
-	return &cb.ConfigurationItem{
-		Type: cb.ConfigurationItem_Policy,
-		Key:  key,
-		Value: utils.MarshalOrPanic(&cb.Policy{
-			Type:   int32(cb.Policy_SIGNATURE),
-			Policy: utils.MarshalOrPanic(sigPolicyEnv),
-		}),
+func TemplatePolicy(key string, sigPolicyEnv *cb.SignaturePolicyEnvelope) *cb.ConfigGroup {
+	configGroup := cb.NewConfigGroup()
+	configGroup.Policies[key] = &cb.ConfigPolicy{
+		Policy: &cb.Policy{
+			Type:  int32(cb.Policy_SIGNATURE),
+			Value: utils.MarshalOrPanic(sigPolicyEnv),
+		},
 	}
+	return configGroup
 }

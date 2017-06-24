@@ -17,15 +17,14 @@
 package chaincode
 
 import (
+	"errors"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	//	"github.com/hyperledger/fabric/protos/utils"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 )
 
 var once sync.Once
@@ -36,20 +35,9 @@ func InitMSP() {
 }
 
 func initMSP() {
-	// TODO: determine the location of this config file
-	var alternativeCfgPath = os.Getenv("PEER_CFG_PATH")
-	var mspMgrConfigDir string
-	if alternativeCfgPath != "" {
-		mspMgrConfigDir = alternativeCfgPath + "/msp/sampleconfig/"
-	} else if _, err := os.Stat("./msp/sampleconfig/"); err == nil {
-		mspMgrConfigDir = "./msp/sampleconfig/"
-	} else {
-		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
-
-	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
-		panic(fmt.Errorf("Fatal error when reading MSP config file %s: err %s\n", mspMgrConfigDir, err))
+		panic(fmt.Errorf("Fatal error when reading MSP config: %s\n", err))
 	}
 }
 
@@ -77,9 +65,10 @@ func TestUpgradeCmd(t *testing.T) {
 	}
 
 	cmd := upgradeCmd(mockCF)
-	AddFlags(cmd)
+	addFlags(cmd)
 
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
+	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err != nil {
@@ -110,9 +99,10 @@ func TestUpgradeCmdEndorseFail(t *testing.T) {
 	}
 
 	cmd := upgradeCmd(mockCF)
-	AddFlags(cmd)
+	addFlags(cmd)
 
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
+	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
 
 	expectErrMsg := fmt.Sprintf("Could not assemble transaction, err Proposal response was not successful, error code %d, msg %s", errCode, errMsg)
@@ -140,7 +130,7 @@ func TestUpgradeCmdSendTXFail(t *testing.T) {
 
 	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
 
-	sendErr := fmt.Errorf("send tx failed")
+	sendErr := errors.New("send tx failed")
 	mockBroadcastClient := common.GetMockBroadcastClient(sendErr)
 
 	mockCF := &ChaincodeCmdFactory{
@@ -150,9 +140,9 @@ func TestUpgradeCmdSendTXFail(t *testing.T) {
 	}
 
 	cmd := upgradeCmd(mockCF)
-	AddFlags(cmd)
+	addFlags(cmd)
 
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
+	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
 
 	expectErrMsg := sendErr.Error()

@@ -16,6 +16,7 @@ limitations under the License.
 package pkcs11
 
 import (
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"encoding/asn1"
 	"errors"
@@ -73,7 +74,7 @@ func unmarshalECDSASignature(raw []byte) (*big.Int, *big.Int, error) {
 }
 
 func (csp *impl) signECDSA(k ecdsaPrivateKey, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
-	r, s, err := signECDSA(k.ski, digest)
+	r, s, err := csp.signP11ECDSA(k.ski, digest)
 	if err != nil {
 		return nil, err
 	}
@@ -111,5 +112,9 @@ func (csp *impl) verifyECDSA(k ecdsaPublicKey, signature, digest []byte, opts bc
 		return false, fmt.Errorf("Invalid S. Must be smaller than half the order [%s][%s].", s, halfOrder)
 	}
 
-	return verifyECDSA(k.ski, digest, r, s, k.pub.Curve.Params().BitSize/8)
+	if csp.softVerify {
+		return ecdsa.Verify(k.pub, digest, r, s), nil
+	} else {
+		return csp.verifyP11ECDSA(k.ski, digest, r, s, k.pub.Curve.Params().BitSize/8)
+	}
 }

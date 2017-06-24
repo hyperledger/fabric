@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package comm
@@ -26,14 +16,11 @@ import (
 	"sync"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 //A SecureServerConfig structure is used to configure security (e.g. TLS) for a
 //GRPCServer instance
 type SecureServerConfig struct {
-	//Whether or not to use TLS for communication
-	UseTLS bool
 	//PEM-encoded X509 public key to be used by the server for TLS communication
 	ServerCertificate []byte
 	//PEM-encoded private key to be used by the server for TLS communication
@@ -41,11 +28,13 @@ type SecureServerConfig struct {
 	//Set of PEM-encoded X509 certificate authorities to optionally send
 	//as part of the server handshake
 	ServerRootCAs [][]byte
-	//Whether or not TLS client must present certificates for authentication
-	RequireClientCert bool
 	//Set of PEM-encoded X509 certificate authorities to use when verifying
 	//client certificates
 	ClientRootCAs [][]byte
+	//Whether or not to use TLS for communication
+	UseTLS bool
+	//Whether or not TLS client must present certificates for authentication
+	RequireClientCert bool
 }
 
 //GRPCServer defines an interface representing a GRPC-based server
@@ -151,6 +140,7 @@ func NewGRPCServerFromListener(listener net.Listener, secureConfig SecureServerC
 				Certificates:           certificates,
 				SessionTicketsDisabled: true,
 			}
+			grpcServer.tlsConfig.ClientAuth = tls.RequestClientCert
 			//checkif client authentication is required
 			if secureConfig.RequireClientCert {
 				//require TLS client auth
@@ -168,17 +158,20 @@ func NewGRPCServerFromListener(listener net.Listener, secureConfig SecureServerC
 				}
 			}
 
-			//create credentials
-			creds := credentials.NewTLS(grpcServer.tlsConfig)
-
-			//add to server options
+			// create credentials and add to server options
+			creds := NewServerTransportCredentials(grpcServer.tlsConfig)
 			serverOpts = append(serverOpts, grpc.Creds(creds))
-
 		} else {
 			return nil, errors.New("secureConfig must contain both ServerKey and " +
 				"ServerCertificate when UseTLS is true")
 		}
 	}
+	// set max send and recv msg sizes
+	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(MaxSendMsgSize()))
+	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(MaxRecvMsgSize()))
+	// set the keepalive options
+	serverOpts = append(serverOpts, ServerKeepaliveOptions()...)
+
 	grpcServer.server = grpc.NewServer(serverOpts...)
 
 	return grpcServer, nil
@@ -352,9 +345,11 @@ func pemToX509Certs(pemCerts []byte) ([]*x509.Certificate, []string, error) {
 		if block == nil {
 			break
 		}
+		/** TODO: check why msp does not add type to PEM header
 		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
 			continue
 		}
+		*/
 
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {

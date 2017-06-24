@@ -16,96 +16,106 @@ limitations under the License.
 package signer
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"os"
+	"errors"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/bccsp/mocks"
+	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/stretchr/testify/assert"
 )
 
-var (
-	swBCCSPInstance bccsp.BCCSP
-)
+func TestInitFailures(t *testing.T) {
+	_, err := New(nil, &mocks.MockKey{})
+	assert.Error(t, err)
 
-func getBCCSP(t *testing.T) bccsp.BCCSP {
-	if swBCCSPInstance == nil {
-		var err error
-		swBCCSPInstance, err = sw.NewDefaultSecurityLevel(os.TempDir())
-		if err != nil {
-			t.Fatalf("Failed initializing key store [%s]", err)
-		}
-	}
+	_, err = New(&mocks.MockBCCSP{}, nil)
+	assert.Error(t, err)
 
-	return swBCCSPInstance
+	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{Symm: true})
+	assert.Error(t, err)
+
+	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PKErr: errors.New("No PK")})
+	assert.Error(t, err)
+	assert.Equal(t, "failed getting public key [No PK]", err.Error())
+
+	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesErr: errors.New("No bytes")}})
+	assert.Error(t, err)
+	assert.Equal(t, "failed marshalling public key [No bytes]", err.Error())
+
+	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesValue: []byte{0, 1, 2, 3}}})
+	assert.Error(t, err)
 }
 
 func TestInit(t *testing.T) {
-	csp := getBCCSP(t)
+	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	assert.NoError(t, err)
+	pkRaw, err := utils.PublicKeyToDER(&k.PublicKey)
+	assert.NoError(t, err)
 
-	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: true})
-	if err != nil {
-		t.Fatalf("Failed generating ECDSA key [%s]", err)
-	}
+	signer, err := New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesValue: pkRaw}})
+	assert.NoError(t, err)
+	assert.NotNil(t, signer)
 
-	signer := &CryptoSigner{}
-	err = signer.Init(csp, k)
-	if err != nil {
-		t.Fatalf("Failed initializing CryptoSigner [%s]", err)
-	}
+	// Test public key
+	R, S, err := ecdsa.Sign(rand.Reader, k, []byte{0, 1, 2, 3})
+	assert.NoError(t, err)
+
+	assert.True(t, ecdsa.Verify(signer.Public().(*ecdsa.PublicKey), []byte{0, 1, 2, 3}, R, S))
 }
 
 func TestPublic(t *testing.T) {
-	csp := getBCCSP(t)
+	pk := &mocks.MockKey{}
+	signer := &bccspCryptoSigner{pk: pk}
 
-	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: true})
-	if err != nil {
-		t.Fatalf("Failed generating ECDSA key [%s]", err)
-	}
-
-	signer := &CryptoSigner{}
-	err = signer.Init(csp, k)
-	if err != nil {
-		t.Fatalf("Failed initializing CryptoSigner [%s]", err)
-	}
-
-	pk := signer.Public()
-	if pk == nil {
-		t.Fatal("Failed getting PublicKey. Nil.")
-	}
+	pk2 := signer.Public()
+	assert.NotNil(t, pk, pk2)
 }
 
 func TestSign(t *testing.T) {
-	csp := getBCCSP(t)
+	expectedSig := []byte{0, 1, 2, 3, 4}
+	expectedKey := &mocks.MockKey{}
+	expectedDigest := []byte{0, 1, 2, 3, 4, 5}
+	expectedOpts := &mocks.SignerOpts{}
 
-	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: true})
-	if err != nil {
-		t.Fatalf("Failed generating ECDSA key [%s]", err)
-	}
+	signer := &bccspCryptoSigner{
+		key: expectedKey,
+		csp: &mocks.MockBCCSP{
+			SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts,
+			SignValue: expectedSig}}
+	signature, err := signer.Sign(nil, expectedDigest, expectedOpts)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedSig, signature)
 
-	signer := &CryptoSigner{}
-	err = signer.Init(csp, k)
-	if err != nil {
-		t.Fatalf("Failed initializing CryptoSigner [%s]", err)
-	}
+	signer = &bccspCryptoSigner{
+		key: expectedKey,
+		csp: &mocks.MockBCCSP{
+			SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts,
+			SignErr: errors.New("no signature")}}
+	signature, err = signer.Sign(nil, expectedDigest, expectedOpts)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "no signature")
 
-	msg := []byte("Hello World")
+	signer = &bccspCryptoSigner{
+		key: nil,
+		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts}}
+	_, err = signer.Sign(nil, expectedDigest, expectedOpts)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "invalid key")
 
-	digest, err := csp.Hash(msg, nil)
-	if err != nil {
-		t.Fatalf("Failed generating digest [%s]", err)
-	}
+	signer = &bccspCryptoSigner{
+		key: expectedKey,
+		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts}}
+	_, err = signer.Sign(nil, nil, expectedOpts)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "invalid digest")
 
-	signature, err := signer.Sign(rand.Reader, digest, nil)
-	if err != nil {
-		t.Fatalf("Failed generating ECDSA signature [%s]", err)
-	}
-
-	valid, err := csp.Verify(k, signature, digest, nil)
-	if err != nil {
-		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
-	}
-	if !valid {
-		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
-	}
+	signer = &bccspCryptoSigner{
+		key: expectedKey,
+		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts}}
+	_, err = signer.Sign(nil, expectedDigest, nil)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "invalid opts")
 }

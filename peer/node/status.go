@@ -34,8 +34,8 @@ var nodeStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Returns status of the node.",
 	Long:  `Returns the status of the running node.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		status()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return status()
 	},
 }
 

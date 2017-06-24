@@ -17,87 +17,78 @@ limitations under the License.
 package integration
 
 import (
+	"crypto/tls"
+	"fmt"
+	"net"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
-	"github.com/hyperledger/fabric/peer/gossip/mcs"
-	"github.com/hyperledger/fabric/peer/gossip/sa"
+	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
-// This file is used to bootstrap a gossip instance for integration/demo purposes ONLY
+// This file is used to bootstrap a gossip instance and/or leader election service instance
 
-func newConfig(selfEndpoint string, bootPeers ...string) *gossip.Config {
-	port, err := strconv.ParseInt(strings.Split(selfEndpoint, ":")[1], 10, 64)
+func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string) (*gossip.Config, error) {
+	_, p, err := net.SplitHostPort(selfEndpoint)
+
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("misconfigured endpoint %s, the error is %s", selfEndpoint, err)
+	}
+
+	port, err := strconv.ParseInt(p, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("misconfigured endpoint %s, failed to parse port number due to %s", selfEndpoint, err)
+	}
+
+	var cert *tls.Certificate
+	if viper.GetBool("peer.tls.enabled") {
+		certTmp, err := tls.LoadX509KeyPair(config.GetPath("peer.tls.cert.file"), config.GetPath("peer.tls.key.file"))
+		if err != nil {
+			return nil, fmt.Errorf("failed to load certificates because of %s", err)
+		}
+		cert = &certTmp
 	}
 
 	return &gossip.Config{
 		BindPort:                   int(port),
 		BootstrapPeers:             bootPeers,
 		ID:                         selfEndpoint,
-		MaxBlockCountToStore:       100,
-		MaxPropagationBurstLatency: time.Duration(10) * time.Millisecond,
-		MaxPropagationBurstSize:    10,
-		PropagateIterations:        1,
-		PropagatePeerNum:           3,
-		PullInterval:               time.Duration(4) * time.Second,
-		PullPeerNum:                3,
-		SelfEndpoint:               selfEndpoint,
-		PublishCertPeriod:          10 * time.Second,
-		RequestStateInfoInterval:   4 * time.Second,
-		PublishStateInfoInterval:   4 * time.Second,
-	}
+		MaxBlockCountToStore:       util.GetIntOrDefault("peer.gossip.maxBlockCountToStore", 100),
+		MaxPropagationBurstLatency: util.GetDurationOrDefault("peer.gossip.maxPropagationBurstLatency", 10*time.Millisecond),
+		MaxPropagationBurstSize:    util.GetIntOrDefault("peer.gossip.maxPropagationBurstSize", 10),
+		PropagateIterations:        util.GetIntOrDefault("peer.gossip.propagateIterations", 1),
+		PropagatePeerNum:           util.GetIntOrDefault("peer.gossip.propagatePeerNum", 3),
+		PullInterval:               util.GetDurationOrDefault("peer.gossip.pullInterval", 4*time.Second),
+		PullPeerNum:                util.GetIntOrDefault("peer.gossip.pullPeerNum", 3),
+		InternalEndpoint:           selfEndpoint,
+		ExternalEndpoint:           externalEndpoint,
+		PublishCertPeriod:          util.GetDurationOrDefault("peer.gossip.publishCertPeriod", 10*time.Second),
+		RequestStateInfoInterval:   util.GetDurationOrDefault("peer.gossip.requestStateInfoInterval", 4*time.Second),
+		PublishStateInfoInterval:   util.GetDurationOrDefault("peer.gossip.publishStateInfoInterval", 4*time.Second),
+		SkipBlockVerification:      viper.GetBool("peer.gossip.skipBlockVerification"),
+		TLSServerCert:              cert,
+	}, nil
 }
 
 // NewGossipComponent creates a gossip component that attaches itself to the given gRPC server
-func NewGossipComponent(identity []byte, endpoint string, s *grpc.Server, dialOpts []grpc.DialOption, bootPeers ...string) gossip.Gossip {
-	conf := newConfig(endpoint, bootPeers...)
-	cryptSvc := mcs.NewMessageCryptoService()
-	secAdv := sa.NewSecurityAdvisor()
-	if viper.GetBool("peer.gossip.ignoresecurity") {
-		sec := &secImpl{[]byte(endpoint)}
-		cryptSvc = sec
-		secAdv = sec
-		identity = []byte(endpoint)
+func NewGossipComponent(peerIdentity []byte, endpoint string, s *grpc.Server,
+	secAdv api.SecurityAdvisor, cryptSvc api.MessageCryptoService, idMapper identity.Mapper,
+	secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) (gossip.Gossip, error) {
+
+	externalEndpoint := viper.GetString("peer.gossip.externalEndpoint")
+
+	conf, err := newConfig(endpoint, externalEndpoint, bootPeers...)
+	if err != nil {
+		return nil, err
 	}
-	return gossip.NewGossipService(conf, s, secAdv, cryptSvc, identity, dialOpts...)
-}
+	gossipInstance := gossip.NewGossipService(conf, s, secAdv, cryptSvc, idMapper,
+		peerIdentity, secureDialOpts)
 
-type secImpl struct {
-	identity []byte
-}
-
-func (*secImpl) OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityType {
-	return api.OrgIdentityType("DEFAULT")
-}
-
-func (s *secImpl) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
-	return common.PKIidType(peerIdentity)
-}
-
-func (s *secImpl) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
-	return nil
-}
-
-func (s *secImpl) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
-}
-
-func (s *secImpl) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
-	return nil
-}
-
-func (s *secImpl) VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
-	return nil
-}
-
-func (s *secImpl) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
-	return nil
+	return gossipInstance, nil
 }

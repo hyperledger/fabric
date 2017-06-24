@@ -1,0 +1,187 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+@import "theme.css";
+
+/* Highlights */
+
+.highlight .k,
+.highlight .kd {
+    color: #263673;
+}
+
+
+/* Text */
+
+body,
+h1,
+h2,
+.rst-content .toctree-wrapper p.caption,
+h3,
+h4,
+h5,
+h6,
+legend,
+input {
+    color: #010101;
+    letter-spacing: 0.3px
+}
+
+p {
+    font-size: 100%; /* Get rid of RTD rule that assumes nobody changes their browser font size */
+}
+
+
+/* Links */
+
+a {
+    color: #6ca158
+}
+
+a:hover {
+    color: #6ca158
+}
+
+a:visited {
+    color: #ADAFB3
+}
+
+
+/* Side navigation bar */
+
+.wy-side-nav-search {
+    background-color: #252627;
+}
+
+.wy-side-nav-search a.icon-home {
+    color: transparent;
+/*    background-image: url('../images/fabric1.png'); */
+    background-repeat: no-repeat;
+    background-size: Auto 20px;
+    background-position: center top;
+    background-origin: content box;
+    height: 20px;
+    width: 100%
+}
+
+.wy-side-nav-search input[type=text] {
+    border-radius: 5px
+}
+
+.wy-menu-vertical a:hover {
+    background-color: #ADAFB3;
+    color: #FFF
+}
+
+.wy-nav-content {
+    background-color: #fff max-width: 1000px;
+}
+
+.wy-nav-side {
+    background-color: #252627;
+}
+
+
+/* Navigation headers */
+
+.rst-content tt.literal,
+.rst-content tt.literal,
+.rst-content code.literal {
+    color: ##d43232;
+    text-transform: none;
+}
+
+.wy-menu-vertical header,
+.wy-menu-vertical p.caption {
+    color: #6ca158;
+}
+
+
+/* Code snippets */
+
+.codesnippet-widgets {
+    min-width: 100%;
+    display: block;
+    background: #005CAB;
+    color: white;
+    padding: 10px 0;
+    margin: 0 0 -1px 0;
+}
+
+.codesnippet-widgets > span {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.codesnippet-widgets > .current {
+    background: #263673;
+}
+
+.codeset > .highlight-java {
+    display: none;
+}
+
+
+/* Notification boxes */
+
+.wy-alert.wy-alert-warning .wy-alert-title,
+.rst-content .wy-alert-warning.note .wy-alert-title,
+.rst-content .attention .wy-alert-title,
+.rst-content .caution .wy-alert-title,
+.rst-content .wy-alert-warning.danger .wy-alert-title,
+.rst-content .wy-alert-warning.error .wy-alert-title,
+.rst-content .wy-alert-warning.hint .wy-alert-title,
+.rst-content .wy-alert-warning.important .wy-alert-title,
+.rst-content .wy-alert-warning.tip .wy-alert-title,
+.rst-content .warning .wy-alert-title,
+.rst-content .wy-alert-warning.seealso .wy-alert-title,
+.rst-content .admonition-todo .wy-alert-title,
+.wy-alert.wy-alert-warning .rst-content .admonition-title,
+.rst-content .wy-alert.wy-alert-warning .admonition-title,
+.rst-content .wy-alert-warning.note .admonition-title,
+.rst-content .attention .admonition-title,
+.rst-content .caution .admonition-title,
+.rst-content .wy-alert-warning.danger .admonition-title,
+.rst-content .wy-alert-warning.error .admonition-title,
+.rst-content .wy-alert-warning.hint .admonition-title,
+.rst-content .wy-alert-warning.important .admonition-title,
+.rst-content .wy-alert-warning.tip .admonition-title,
+.rst-content .warning .admonition-title,
+.rst-content .wy-alert-warning.seealso .admonition-title,
+.rst-content .admonition-todo .admonition-title {
+    background-color: #263673
+}
+
+.wy-alert,
+.rst-content .note,
+.rst-content .attention,
+.rst-content .caution,
+.rst-content .danger,
+.rst-content .error,
+.rst-content .hint,
+.rst-content .important,
+.rst-content .tip,
+.rst-content .warning,
+.rst-content .seealso,
+.rst-content .admonition-todo {
+    background-color: #d9e5ef
+}
+
+
+/* Mobile view */
+
+.wy-nav-top {
+    background-color: #252627;
+}
+
+.wy-nav-top a {
+    color: transparent;
+/*    background-image: url('../images/fabric1.png'); */
+    background-repeat: no-repeat;
+    background-size: Auto 19px;
+    background-position: center top;
+    background-origin: content box;
+}

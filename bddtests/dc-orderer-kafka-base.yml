@@ -1,0 +1,59 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '2'
+
+services:
+
+  zookeeper:
+    image: hyperledger/fabric-zookeeper
+    restart: always
+    ports:
+      - '2181'
+      - '2888'
+      - '3888'
+
+  kafka:
+    image: hyperledger/fabric-kafka
+    restart: always
+    environment:
+      # ========================================================================
+      #     Reference: https://kafka.apache.org/documentation/#configuration
+      # ========================================================================
+      #
+      # socket.request.max.bytes
+      # The maximum number of bytes in a socket request. ATTN: If you set this
+      # env var, make sure to update `brokerConfig.Producer.MaxMessageBytes` in
+      # `newBrokerConfig()` in `fabric/orderer/kafka/config.go` accordingly.
+      #- KAFKA_SOCKET_REQUEST_MAX_BYTES=104857600 # 100 * 1024 * 1024 B
+      #
+      # message.max.bytes
+      # The maximum size of envelope that the broker can receive.
+      - KAFKA_MESSAGE_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+      #
+      # replica.fetch.max.bytes
+      # The number of bytes of messages to attempt to fetch for each channel.
+      # This is not an absolute maximum, if the fetched envelope is larger than
+      # this value, the envelope will still be returned to ensure that progress
+      # can be made. The maximum message size accepted by the broker is defined
+      # via message.max.bytes above.
+      - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024 # 99 * 1024 * 1024 B
+      #
+      # unclean.leader.election.enable
+      # Data consistency is key in a blockchain environment. We cannot have a
+      # leader chosen outside of the in-sync replica set, or we run the risk of
+      # overwriting the offsets that the previous leader produced, and --as a
+      # result-- rewriting the blockchain that the orderers produce.
+      - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+      #
+      # log.retention.ms
+      # Until the ordering service in Fabric adds support for pruning of the
+      # Kafka logs, time-based retention should be disabled so as to prevent
+      # segments from expiring. (Size-based retention -- see
+      # log.retention.bytes -- is disabled by default so there is no need to set
+      # it explicitly.)
+      # - KAFKA_LOG_RETENTION_MS=-1
+    ports:
+      - '9092'

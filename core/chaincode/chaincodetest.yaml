@@ -1,3 +1,8 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # CA server parameters
 #
 server:
@@ -134,8 +139,8 @@ logging:
     #   info                                       - Set default to INFO
     #   warning:main,db=debug:chaincode=info       - Override default WARNING in main,db,chaincode
     #   chaincode=info:main=debug:db=debug:warning - Same as above
-    peer:      debug
-    crypto:    info
+    peer:      warning
+    crypto:    warning
     status:    warning
     stop:      warning
     login:     warning
@@ -331,7 +336,7 @@ vm:
                 file: /path/to/ca.pem
             key:
                 file: /path/to/server-key.pem
-
+        attachStdout: true
 ###############################################################################
 #
 #    Chaincode section
@@ -349,25 +354,35 @@ chaincode:
         path:
         name:
 
-    golang:
+    # Generic builder environment, suitable for most chaincode types
+    builder: $(DOCKER_NS)/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
 
-        # This is the basis for the Golang Dockerfile.  Additional commands will
-        # be appended depedendent upon the chaincode specification.
-        Dockerfile:  |
-          FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
-          COPY src $GOPATH/src
-          WORKDIR $GOPATH
+    golang:
+        # golang will never need more than baseos
+        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
     car:
+        # car may need more facilities (JVM, etc) in the future as the catalog
+        # of platforms are expanded.  For now, we can just use baseos
+        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
-        # This is the basis for the CAR Dockerfile.  Additional commands will
-        # be appended depedendent upon the chaincode specification.
+    java:
+        # This is an image based on java:openjdk-8 with addition compiler
+        # tools added for java shim layer packaging.
+        # This image is packed with shim layer libraries that are necessary
+        # for Java chaincode runtime.
         Dockerfile:  |
-          FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+            from $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
     startuptimeout: 1000
+
+    # timeout in millisecs for invokes and initialize commands
+    # this timeout is used by all chaincodes in all the channels including
+    # system chaincodes. Default is 30000ms (30 seconds)
+    executetimeout: 30000
+
 
     #timeout in millisecs for deploying chaincode from a remote repository.
     deploytimeout: 60000
@@ -393,9 +408,19 @@ chaincode:
     # whitelist, add "myscc: enable" to the list
     system:
         cscc: enable
-        lccc: enable
+        lscc: enable
         escc: enable
         vscc: enable
+
+    # Logging section for the chaincode container
+    logging:
+      # Default level for all loggers within the chaincode container
+      level:  info
+      # Override default level for the 'shim' module
+      shim:   warning
+      # Format for the chaincode container logs
+      format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+
 ###############################################################################
 #
 #    Ledger section - ledger configuration encompases both the blockchain
@@ -406,84 +431,29 @@ ledger:
 
   blockchain:
 
-    # Setting the deploy-system-chaincode property to false will prevent the
-    # deploying of system chaincode at genesis time.
-    deploy-system-chaincode: false
-
   state:
-
-    # Control the number state deltas that are maintained. This takes additional
-    # disk space, but allow the state to be rolled backwards and forwards
-    # without the need to replay transactions.
-    deltaHistorySize: 500
-
-    # The data structure in which the state will be stored. Different data
-    # structures may offer different performance characteristics.
-    # Options are 'buckettree', 'trie' and 'raw'.
-    # ( Note:'raw' is experimental and incomplete. )
-    # If not set, the default data structure is the 'buckettree'.
-    # This CANNOT be changed after the DB has been created.
-    dataStructure:
-      # The name of the data structure is for storing the state
-      name: buckettree
-      # The data structure specific configurations
-      configs:
-        # configurations for 'bucketree'. These CANNOT be changed after the DB
-        # has been created. 'numBuckets' defines the number of bins that the
-        # state key-values are to be divided
-        numBuckets: 1000003
-        # 'maxGroupingAtEachLevel' defines the number of bins that are grouped
-        #together to construct next level of the merkle-tree (this is applied
-        # repeatedly for constructing the entire tree).
-        maxGroupingAtEachLevel: 5
-        # 'bucketCacheSize' defines the size (in MBs) of the cache that is used to keep
-        # the buckets (from root upto secondlast level) in memory. This cache helps
-        # in making state hash computation faster. A value less than or equals to zero
-        # leads to disabling this caching. This caching helps more if transactions
-        # perform significant writes.
-        bucketCacheSize: 100
-
-        # configurations for 'trie'
-        # 'tire' has no additional configurations exposed as yet
+    # stateDatabase - options are "goleveldb", "CouchDB"
+    # goleveldb - default state database stored in goleveldb.
+    # CouchDB - store state database in CouchDB
+    stateDatabase: goleveldb
+    couchDBConfig:
+       couchDBAddress: 127.0.0.1:5984
+       username:
+       password:
+       # Number of retries for CouchDB errors
+       maxRetries: 3
+       # Number of retries for CouchDB errors during peer startup
+       maxRetriesOnStartup: 10
+       # CouchDB request timeout (unit: duration, e.g. 20s)
+       requestTimeout: 35s
+       # Limit on the number of records to return per query
+       queryLimit: 10000
 
 
-###############################################################################
-#
-#    Security section - Applied to all entities (client, NVP, VP)
-#
-###############################################################################
-security:
-    # Enable security will force every entity on the network to enroll with obc-ca
-    # and maintain a valid set of certificates in order to communicate with
-    # other peers
-    enabled: false
-    # To enroll NVP or VP with membersrvc. These parameters are for 1 time use.
-    # They will not be valid on subsequent times without un-enroll first.
-    # The values come from off-line registration with obc-ca. For testing, make
-    # sure the values are in membersrvc/membersrvc.yaml file eca.users
-    enrollID: vp
-    enrollSecret: f3489fy98ghf
-    # To enable privacy of transactions (requires security to be enabled). This
-    # encrypts the transaction content during transit and at rest. The state
-    # data is also encrypted
-    privacy: false
-
-    # Can be 256 or 384. If you change here, you have to change also
-    # the same property in membersrvc.yaml to the same value
-    level: 256
-
-    # Can be SHA2 or SHA3. If you change here, you have to change also
-    # the same property in membersrvc.yaml to the same value
-    hashAlgorithm: SHA3
-
-    # TCerts related configuration
-    tcert:
-      batch:
-        # The size of the batch of TCerts
-        size:  200
-      attributes:
-        company: IBM
-        position: "Software Engineer"
+  history:
+    # enableHistoryDatabase - options are true or false
+    # Indicates if the history of key updates should be stored in goleveldb
+    enableHistoryDatabase: true
 
 
 ################################################################################

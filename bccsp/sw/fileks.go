@@ -16,6 +16,7 @@ limitations under the License.
 package sw
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -33,14 +34,23 @@ import (
 	"github.com/hyperledger/fabric/bccsp/utils"
 )
 
-// FileBasedKeyStore is a folder-based KeyStore.
+// NewFileBasedKeyStore instantiated a file-based key store at a given position.
+// The key store can be encrypted if a non-empty password is specifiec.
+// It can be also be set as read only. In this case, any store operation
+// will be forbidden
+func NewFileBasedKeyStore(pwd []byte, path string, readOnly bool) (bccsp.KeyStore, error) {
+	ks := &fileBasedKeyStore{}
+	return ks, ks.Init(pwd, path, readOnly)
+}
+
+// fileBasedKeyStore is a folder-based KeyStore.
 // Each key is stored in a separated file whose name contains the key's SKI
 // and flags to identity the key's type. All the keys are stored in
 // a folder whose path is provided at initialization time.
 // The KeyStore can be initialized with a password, this password
 // is used to encrypt and decrypt the files storing the keys.
 // A KeyStore can be read only to avoid the overwriting of keys.
-type FileBasedKeyStore struct {
+type fileBasedKeyStore struct {
 	path string
 
 	readOnly bool
@@ -62,7 +72,7 @@ type FileBasedKeyStore struct {
 // key-store is initialized without a password, then retrieving keys from the
 // KeyStore will fail.
 // A KeyStore can be read only to avoid the overwriting of keys.
-func (ks *FileBasedKeyStore) Init(pwd []byte, path string, readOnly bool) error {
+func (ks *fileBasedKeyStore) Init(pwd []byte, path string, readOnly bool) error {
 	// Validate inputs
 	// pwd can be nil
 
@@ -97,12 +107,12 @@ func (ks *FileBasedKeyStore) Init(pwd []byte, path string, readOnly bool) error 
 
 // ReadOnly returns true if this KeyStore is read only, false otherwise.
 // If ReadOnly is true then StoreKey will fail.
-func (ks *FileBasedKeyStore) ReadOnly() bool {
+func (ks *fileBasedKeyStore) ReadOnly() bool {
 	return ks.readOnly
 }
 
 // GetKey returns a key object whose SKI is the one passed.
-func (ks *FileBasedKeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
+func (ks *fileBasedKeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
 	// Validate arguments
 	if len(ski) == 0 {
 		return nil, errors.New("Invalid SKI. Cannot be of zero length.")
@@ -150,13 +160,13 @@ func (ks *FileBasedKeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
 			return nil, errors.New("Public key type not recognized")
 		}
 	default:
-		return nil, errors.New("Key type not recognized")
+		return ks.searchKeystoreForSKI(ski)
 	}
 }
 
 // StoreKey stores the key k in this KeyStore.
 // If this KeyStore is read only then the method will fail.
-func (ks *FileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
+func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	if ks.readOnly {
 		return errors.New("Read only KeyStore.")
 	}
@@ -212,7 +222,42 @@ func (ks *FileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	return
 }
 
-func (ks *FileBasedKeyStore) getSuffix(alias string) string {
+func (ks *fileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err error) {
+
+	files, _ := ioutil.ReadDir(ks.path)
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		raw, err := ioutil.ReadFile(filepath.Join(ks.path, f.Name()))
+		if err != nil {
+			continue
+		}
+
+		key, err := utils.PEMtoPrivateKey(raw, ks.pwd)
+		if err != nil {
+			continue
+		}
+
+		switch key.(type) {
+		case *ecdsa.PrivateKey:
+			k = &ecdsaPrivateKey{key.(*ecdsa.PrivateKey)}
+		case *rsa.PrivateKey:
+			k = &rsaPrivateKey{key.(*rsa.PrivateKey)}
+		default:
+			continue
+		}
+
+		if !bytes.Equal(k.SKI(), ski) {
+			continue
+		}
+
+		return k, nil
+	}
+	return nil, errors.New("Key type not recognized")
+}
+
+func (ks *fileBasedKeyStore) getSuffix(alias string) string {
 	files, _ := ioutil.ReadDir(ks.path)
 	for _, f := range files {
 		if strings.HasPrefix(f.Name(), alias) {
@@ -231,7 +276,7 @@ func (ks *FileBasedKeyStore) getSuffix(alias string) string {
 	return ""
 }
 
-func (ks *FileBasedKeyStore) storePrivateKey(alias string, privateKey interface{}) error {
+func (ks *fileBasedKeyStore) storePrivateKey(alias string, privateKey interface{}) error {
 	rawKey, err := utils.PrivateKeyToPEM(privateKey, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting private key to PEM [%s]: [%s]", alias, err)
@@ -247,7 +292,7 @@ func (ks *FileBasedKeyStore) storePrivateKey(alias string, privateKey interface{
 	return nil
 }
 
-func (ks *FileBasedKeyStore) storePublicKey(alias string, publicKey interface{}) error {
+func (ks *fileBasedKeyStore) storePublicKey(alias string, publicKey interface{}) error {
 	rawKey, err := utils.PublicKeyToPEM(publicKey, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting public key to PEM [%s]: [%s]", alias, err)
@@ -263,7 +308,7 @@ func (ks *FileBasedKeyStore) storePublicKey(alias string, publicKey interface{})
 	return nil
 }
 
-func (ks *FileBasedKeyStore) storeKey(alias string, key []byte) error {
+func (ks *fileBasedKeyStore) storeKey(alias string, key []byte) error {
 	pem, err := utils.AEStoEncryptedPEM(key, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting key to PEM [%s]: [%s]", alias, err)
@@ -279,7 +324,7 @@ func (ks *FileBasedKeyStore) storeKey(alias string, key []byte) error {
 	return nil
 }
 
-func (ks *FileBasedKeyStore) loadPrivateKey(alias string) (interface{}, error) {
+func (ks *fileBasedKeyStore) loadPrivateKey(alias string) (interface{}, error) {
 	path := ks.getPathForAlias(alias, "sk")
 	logger.Debugf("Loading private key [%s] at [%s]...", alias, path)
 
@@ -300,7 +345,7 @@ func (ks *FileBasedKeyStore) loadPrivateKey(alias string) (interface{}, error) {
 	return privateKey, nil
 }
 
-func (ks *FileBasedKeyStore) loadPublicKey(alias string) (interface{}, error) {
+func (ks *fileBasedKeyStore) loadPublicKey(alias string) (interface{}, error) {
 	path := ks.getPathForAlias(alias, "pk")
 	logger.Debugf("Loading public key [%s] at [%s]...", alias, path)
 
@@ -321,7 +366,7 @@ func (ks *FileBasedKeyStore) loadPublicKey(alias string) (interface{}, error) {
 	return privateKey, nil
 }
 
-func (ks *FileBasedKeyStore) loadKey(alias string) ([]byte, error) {
+func (ks *fileBasedKeyStore) loadKey(alias string) ([]byte, error) {
 	path := ks.getPathForAlias(alias, "key")
 	logger.Debugf("Loading key [%s] at [%s]...", alias, path)
 
@@ -342,19 +387,14 @@ func (ks *FileBasedKeyStore) loadKey(alias string) ([]byte, error) {
 	return key, nil
 }
 
-func (ks *FileBasedKeyStore) close() error {
-	ks.isOpen = false
-	logger.Debug("Closing keystore...done!")
-	return nil
-}
-
-func (ks *FileBasedKeyStore) createKeyStoreIfNotExists() error {
+func (ks *fileBasedKeyStore) createKeyStoreIfNotExists() error {
 	// Check keystore directory
 	ksPath := ks.path
 	missing, err := utils.DirMissingOrEmpty(ksPath)
-	logger.Infof("KeyStore path [%s] missing [%t]: [%s]", ksPath, missing, utils.ErrToString(err))
 
 	if missing {
+		logger.Debugf("KeyStore path [%s] missing [%t]: [%s]", ksPath, missing, utils.ErrToString(err))
+
 		err := ks.createKeyStore()
 		if err != nil {
 			logger.Errorf("Failed creating KeyStore At [%s]: [%s]", ksPath, err.Error())
@@ -365,7 +405,7 @@ func (ks *FileBasedKeyStore) createKeyStoreIfNotExists() error {
 	return nil
 }
 
-func (ks *FileBasedKeyStore) createKeyStore() error {
+func (ks *fileBasedKeyStore) createKeyStore() error {
 	// Create keystore directory root if it doesn't exist yet
 	ksPath := ks.path
 	logger.Debugf("Creating KeyStore at [%s]...", ksPath)
@@ -376,13 +416,7 @@ func (ks *FileBasedKeyStore) createKeyStore() error {
 	return nil
 }
 
-func (ks *FileBasedKeyStore) deleteKeyStore() error {
-	logger.Debugf("Removing KeyStore at [%s].", ks.path)
-
-	return os.RemoveAll(ks.path)
-}
-
-func (ks *FileBasedKeyStore) openKeyStore() error {
+func (ks *fileBasedKeyStore) openKeyStore() error {
 	if ks.isOpen {
 		return nil
 	}
@@ -392,6 +426,6 @@ func (ks *FileBasedKeyStore) openKeyStore() error {
 	return nil
 }
 
-func (ks *FileBasedKeyStore) getPathForAlias(alias, suffix string) string {
+func (ks *fileBasedKeyStore) getPathForAlias(alias, suffix string) string {
 	return filepath.Join(ks.path, alias+"_"+suffix)
 }

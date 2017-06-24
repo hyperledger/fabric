@@ -1,0 +1,27 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '2'
+
+services:
+
+  orderer:
+    image: hyperledger/fabric-orderer
+    environment:
+      - ORDERER_GENERAL_GENESISMETHOD=${ORDERER_GENERAL_GENESISMETHOD}
+      - ORDERER_GENERAL_GENESISFILE=${ORDERER_GENERAL_GENESISFILE}
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LOGLEVEL=debug
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s
+      - ORDERER_KAFKA_RETRY_SHORTTOTAL=30s
+      - ORDERER_KAFKA_VERBOSE=true
+    volumes:
+      - ./volumes/orderer:/var/hyperledger/bddtests/volumes/orderer
+      - /etc/hyperledger/msp:/etc/hyperledger/msp
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+    command: orderer
+    ports:
+      - '7050'

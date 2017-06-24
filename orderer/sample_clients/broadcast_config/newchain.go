@@ -18,23 +18,12 @@ package main
 
 import (
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-func newChainRequest(consensusType, creationPolicy, newChainID string) *cb.Envelope {
-	conf.Genesis.OrdererType = consensusType
-	generator := provisional.New(conf)
-	items := generator.TemplateItems()
-	simpleTemplate := configtx.NewSimpleTemplate(items...)
-
-	signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
-	if err != nil {
-		panic(err)
-	}
-
-	env, err := configtx.MakeChainCreationTransaction(creationPolicy, newChainID, signer, simpleTemplate)
+func newChainRequest(consensusType, creationPolicy, newChannelId string) *cb.Envelope {
+	env, err := configtx.MakeChainCreationTransaction(newChannelId, genesisconfig.SampleConsortiumName, signer)
 	if err != nil {
 		panic(err)
 	}

@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 )
 
-type ecdsaSignature struct {
+type ECDSASignature struct {
 	R, S *big.Int
 }
 
@@ -44,13 +44,13 @@ var (
 	}
 )
 
-func marshalECDSASignature(r, s *big.Int) ([]byte, error) {
-	return asn1.Marshal(ecdsaSignature{r, s})
+func MarshalECDSASignature(r, s *big.Int) ([]byte, error) {
+	return asn1.Marshal(ECDSASignature{r, s})
 }
 
-func unmarshalECDSASignature(raw []byte) (*big.Int, *big.Int, error) {
+func UnmarshalECDSASignature(raw []byte) (*big.Int, *big.Int, error) {
 	// Unmarshal
-	sig := new(ecdsaSignature)
+	sig := new(ECDSASignature)
 	_, err := asn1.Unmarshal(raw, sig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed unmashalling signature [%s]", err)
@@ -74,44 +74,98 @@ func unmarshalECDSASignature(raw []byte) (*big.Int, *big.Int, error) {
 	return sig.R, sig.S, nil
 }
 
-func (csp *impl) signECDSA(k *ecdsa.PrivateKey, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
+func signECDSA(k *ecdsa.PrivateKey, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
 	r, s, err := ecdsa.Sign(rand.Reader, k, digest)
 	if err != nil {
 		return nil, err
 	}
 
-	// check for low-S
-	halfOrder, ok := curveHalfOrders[k.Curve]
-	if !ok {
-		return nil, fmt.Errorf("Curve not recognized [%s]", k.Curve)
+	s, _, err = ToLowS(&k.PublicKey, s)
+	if err != nil {
+		return nil, err
 	}
 
-	// is s > halfOrder Then
-	if s.Cmp(halfOrder) == 1 {
-		// Set s to N - s that will be then in the lower part of signature space
-		// less or equal to half order
-		s.Sub(k.Params().N, s)
-	}
-
-	return marshalECDSASignature(r, s)
+	return MarshalECDSASignature(r, s)
 }
 
-func (csp *impl) verifyECDSA(k *ecdsa.PublicKey, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
-	r, s, err := unmarshalECDSASignature(signature)
+func verifyECDSA(k *ecdsa.PublicKey, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
+	r, s, err := UnmarshalECDSASignature(signature)
 	if err != nil {
 		return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
 	}
 
-	// check for low-S
+	lowS, err := IsLowS(k, s)
+	if err != nil {
+		return false, err
+	}
+
+	if !lowS {
+		return false, fmt.Errorf("Invalid S. Must be smaller than half the order [%s][%s].", s, curveHalfOrders[k.Curve])
+	}
+
+	return ecdsa.Verify(k, digest, r, s), nil
+}
+
+func SignatureToLowS(k *ecdsa.PublicKey, signature []byte) ([]byte, error) {
+	r, s, err := UnmarshalECDSASignature(signature)
+	if err != nil {
+		return nil, err
+	}
+
+	s, modified, err := ToLowS(k, s)
+	if err != nil {
+		return nil, err
+	}
+
+	if modified {
+		return MarshalECDSASignature(r, s)
+	}
+
+	return signature, nil
+}
+
+// IsLow checks that s is a low-S
+func IsLowS(k *ecdsa.PublicKey, s *big.Int) (bool, error) {
 	halfOrder, ok := curveHalfOrders[k.Curve]
 	if !ok {
 		return false, fmt.Errorf("Curve not recognized [%s]", k.Curve)
 	}
 
-	// If s > halfOrder Then
-	if s.Cmp(halfOrder) == 1 {
-		return false, fmt.Errorf("Invalid S. Must be smaller than half the order [%s][%s].", s, halfOrder)
+	return s.Cmp(halfOrder) != 1, nil
+
+}
+
+func ToLowS(k *ecdsa.PublicKey, s *big.Int) (*big.Int, bool, error) {
+	lowS, err := IsLowS(k, s)
+	if err != nil {
+		return nil, false, err
 	}
 
-	return ecdsa.Verify(k, digest, r, s), nil
+	if !lowS {
+		// Set s to N - s that will be then in the lower part of signature space
+		// less or equal to half order
+		s.Sub(k.Params().N, s)
+
+		return s, true, nil
+	}
+
+	return s, false, nil
+}
+
+type ecdsaSigner struct{}
+
+func (s *ecdsaSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
+	return signECDSA(k.(*ecdsaPrivateKey).privKey, digest, opts)
+}
+
+type ecdsaPrivateKeyVerifier struct{}
+
+func (v *ecdsaPrivateKeyVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
+	return verifyECDSA(&(k.(*ecdsaPrivateKey).privKey.PublicKey), signature, digest, opts)
+}
+
+type ecdsaPublicKeyKeyVerifier struct{}
+
+func (v *ecdsaPublicKeyKeyVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
+	return verifyECDSA(k.(*ecdsaPublicKey).pubKey, signature, digest, opts)
 }

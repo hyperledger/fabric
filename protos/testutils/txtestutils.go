@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"os"
 
-	"path/filepath"
-
+	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -36,13 +36,7 @@ var (
 func init() {
 	var err error
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigDir, err := getMSPMgrConfigDir()
-	if err != nil {
-		fmt.Printf("Could not get location of msp manager config file")
-		os.Exit(-1)
-		return
-	}
-	err = mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	err = msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
 		fmt.Printf("Could not load msp config, err %s", err)
 		os.Exit(-1)
@@ -56,66 +50,65 @@ func init() {
 	}
 }
 
-func getMSPMgrConfigDir() (string, error) {
-	var pwd string
-	var err error
-	if pwd, err = os.Getwd(); err != nil {
-		return "", err
-	}
-	path := pwd
-	dir := ""
-	for {
-		path, dir = filepath.Split(path)
-		path = filepath.Clean(path)
-		fmt.Printf("path=%s, dir=%s\n", path, dir)
-		if dir == "fabric" {
-			break
-		}
-	}
-	filePath := filepath.Join(path, "fabric/msp/sampleconfig/")
-	fmt.Printf("filePath=%s\n", filePath)
-	return filePath, nil
-}
-
-// ConstructSingedTxEnvWithDefaultSigner constructs a transaction envelop for tests with a default signer.
-// This method helps other modules to construct a transaction with supplied parameters
-func ConstructSingedTxEnvWithDefaultSigner(txid string, chainID, ccName string, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
-	return ConstructSingedTxEnv(txid, chainID, ccName, response, simulationResults, events, visibility, signer)
-}
-
-// ConstructSingedTxEnv constructs a transaction envelop for tests
-func ConstructSingedTxEnv(txid string, chainID string, ccName string, pResponse *pb.Response, simulationResults []byte, events []byte, visibility []byte, signer msp.SigningIdentity) (*common.Envelope, error) {
+// ConstractBytesProposalResponsePayload constructs a ProposalResponsePayload byte for tests with a default signer.
+func ConstractBytesProposalResponsePayload(chainID string, ccid *pb.ChaincodeID, pResponse *pb.Response, simulationResults []byte) ([]byte, error) {
 	ss, err := signer.Serialize()
 	if err != nil {
 		return nil, err
 	}
 
-	prop, err := putils.CreateChaincodeProposal(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: ccName}}}, ss)
+	prop, _, err := putils.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccid}}, ss)
 	if err != nil {
 		return nil, err
 	}
 
-	presp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, nil, signer)
+	presp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, ccid, nil, signer)
 	if err != nil {
 		return nil, err
+	}
+
+	return presp.Payload, nil
+}
+
+// ConstructSingedTxEnvWithDefaultSigner constructs a transaction envelop for tests with a default signer.
+// This method helps other modules to construct a transaction with supplied parameters
+func ConstructSingedTxEnvWithDefaultSigner(chainID string, ccid *pb.ChaincodeID, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, string, error) {
+	return ConstructSingedTxEnv(chainID, ccid, response, simulationResults, events, visibility, signer)
+}
+
+// ConstructSingedTxEnv constructs a transaction envelop for tests
+func ConstructSingedTxEnv(chainID string, ccid *pb.ChaincodeID, pResponse *pb.Response, simulationResults []byte, events []byte, visibility []byte, signer msp.SigningIdentity) (*common.Envelope, string, error) {
+	ss, err := signer.Serialize()
+	if err != nil {
+		return nil, "", err
+	}
+
+	prop, txid, err := putils.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccid}}, ss)
+	if err != nil {
+		return nil, "", err
+	}
+
+	presp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, ccid, nil, signer)
+	if err != nil {
+		return nil, "", err
 	}
 
 	env, err := putils.CreateSignedTx(prop, signer, presp)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return env, nil
+	return env, txid, nil
 }
 
 var mspLcl msp.MSP
 var sigId msp.SigningIdentity
 
 // ConstructUnsingedTxEnv creates a Transaction envelope from given inputs
-func ConstructUnsingedTxEnv(txid string, chainID string, ccName string, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
+func ConstructUnsingedTxEnv(chainID string, ccid *pb.ChaincodeID, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, string, error) {
 	if mspLcl == nil {
-		mspLcl = msp.NewNoopMsp()
+		mspLcl = mmsp.NewNoopMsp()
 		sigId, _ = mspLcl.GetDefaultSigningIdentity()
 	}
 
-	return ConstructSingedTxEnv(txid, chainID, ccName, response, simulationResults, events, visibility, sigId)
+	return ConstructSingedTxEnv(chainID, ccid, response, simulationResults, events, visibility, sigId)
 }

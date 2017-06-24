@@ -17,8 +17,8 @@ limitations under the License.
 package lockbasedtxmgr
 
 import (
+	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/ledger"
 )
 
 // LockBasedQueryExecutor is a query executor used in `LockBasedTxMgr`
@@ -28,7 +28,7 @@ type lockBasedQueryExecutor struct {
 }
 
 func newQueryExecutor(txmgr *LockBasedTxMgr) *lockBasedQueryExecutor {
-	helper := &queryHelper{txmgr: txmgr, rwset: nil}
+	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: nil}
 	id := util.GenerateUUID()
 	logger.Debugf("constructing new query executor [%s]", id)
 	return &lockBasedQueryExecutor{helper, id}
@@ -53,12 +53,12 @@ func (q *lockBasedQueryExecutor) GetStateRangeScanIterator(namespace string, sta
 }
 
 // ExecuteQuery implements method in interface `ledger.QueryExecutor`
-func (q *lockBasedQueryExecutor) ExecuteQuery(query string) (ledger.ResultsIterator, error) {
-	return q.helper.executeQuery(query)
+func (q *lockBasedQueryExecutor) ExecuteQuery(namespace, query string) (ledger.ResultsIterator, error) {
+	return q.helper.executeQuery(namespace, query)
 }
 
 // Done implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) Done() {
-	logger.Debugf("Done query executer/ tx simulator [%s]", q.id)
+	logger.Debugf("Done with transaction simulation / query execution [%s]", q.id)
 	q.helper.done()
 }

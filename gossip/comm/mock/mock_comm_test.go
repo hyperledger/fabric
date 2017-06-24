@@ -21,7 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/proto"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,22 +37,25 @@ func TestMockComm(t *testing.T) {
 	defer comm1.Stop()
 
 	msgCh := comm1.Accept(func(message interface{}) bool {
-		return message.(comm.ReceivedMessage).GetGossipMessage().GetStateRequest() != nil ||
-			message.(comm.ReceivedMessage).GetGossipMessage().GetStateResponse() != nil
+		return message.(proto.ReceivedMessage).GetGossipMessage().GetStateRequest() != nil ||
+			message.(proto.ReceivedMessage).GetGossipMessage().GetStateResponse() != nil
 	})
 
 	comm2 := NewCommMock(second.endpoint, members)
 	defer comm2.Stop()
 
-	comm2.Send(&proto.GossipMessage{
+	sMsg, _ := (&proto.GossipMessage{
 		Content: &proto.GossipMessage_StateRequest{&proto.RemoteStateRequest{
-			SeqNums: []uint64{1, 2, 3},
+			StartSeqNum: 1,
+			EndSeqNum:   3,
 		}},
-	}, &comm.RemotePeer{"first", common.PKIidType("first")})
+	}).NoopSign()
+	comm2.Send(sMsg, &comm.RemotePeer{"first", common.PKIidType("first")})
 
 	msg := <-msgCh
 
 	assert.NotNil(t, msg.GetGossipMessage().GetStateRequest())
+	assert.Equal(t, "first", string(comm1.GetPKIid()))
 }
 
 func TestMockComm_PingPong(t *testing.T) {
@@ -71,12 +74,16 @@ func TestMockComm_PingPong(t *testing.T) {
 	rcvChA := peerA.Accept(all)
 	rcvChB := peerB.Accept(all)
 
-	peerA.Send(&proto.GossipMessage{
+	sMsg, _ := (&proto.GossipMessage{
 		Content: &proto.GossipMessage_DataMsg{
 			&proto.DataMessage{
-				&proto.Payload{1, "", []byte("Ping")},
+				&proto.Payload{
+					SeqNum: 1,
+					Data:   []byte("Ping"),
+				},
 			}},
-	}, &comm.RemotePeer{"peerB", common.PKIidType("peerB")})
+	}).NoopSign()
+	peerA.Send(sMsg, &comm.RemotePeer{"peerB", common.PKIidType("peerB")})
 
 	msg := <-rcvChB
 	dataMsg := msg.GetGossipMessage().GetDataMsg()
@@ -86,7 +93,10 @@ func TestMockComm_PingPong(t *testing.T) {
 	msg.Respond(&proto.GossipMessage{
 		Content: &proto.GossipMessage_DataMsg{
 			&proto.DataMessage{
-				&proto.Payload{1, "", []byte("Pong")},
+				&proto.Payload{
+					SeqNum: 1,
+					Data:   []byte("Pong"),
+				},
 			}},
 	})
 

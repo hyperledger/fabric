@@ -21,32 +21,24 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/peer"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-var sysccLogger = logging.MustGetLogger("sysccapi")
+var sysccLogger = flogging.MustGetLogger("sccapi")
 
 // SystemChaincode defines the metadata needed to initialize system chaincode
 // when the fabric comes up. SystemChaincodes are installed by adding an
 // entry in importsysccs.go
 type SystemChaincode struct {
-	//Global, once only not tied to chains. Such chaincodes cannot
-	//save state in the ledger. CSCC is an example
-	ChainlessCC bool
-
-	// Enabled a convenient switch to enable/disable system chaincode without
-	// having to remove entry from importsysccs.go
-	Enabled bool
-
 	//Unique name of the system chaincode
 	Name string
 
@@ -58,6 +50,21 @@ type SystemChaincode struct {
 
 	// Chaincode is the actual chaincode object
 	Chaincode shim.Chaincode
+
+	// InvokableExternal keeps track of whether
+	// this system chaincode can be invoked
+	// through a proposal sent to this peer
+	InvokableExternal bool
+
+	// InvokableCC2CC keeps track of whether
+	// this system chaincode can be invoked
+	// by way of a chaincode-to-chaincode
+	// invocation
+	InvokableCC2CC bool
+
+	// Enabled a convenient switch to enable/disable system chaincode without
+	// having to remove entry from importsysccs.go
+	Enabled bool
 }
 
 // RegisterSysCC registers the given system chaincode with the peer
@@ -88,18 +95,12 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 		return nil
 	}
 
-	if chainID == "" && !syscc.ChainlessCC {
-		return fmt.Errorf("cannot deploy system chaincode %s without chain id", syscc.Name)
-	} else if chainID != "" && syscc.ChainlessCC {
-		return fmt.Errorf("cannot deploy chainless system chaincode %s with chain id %s", syscc.Name, chainID)
-	}
-
 	var err error
 
 	ccprov := ccprovider.GetChaincodeProvider()
 
 	ctxt := context.Background()
-	if !syscc.ChainlessCC {
+	if chainID != "" {
 		lgr := peer.GetLedger(chainID)
 		if lgr == nil {
 			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name, chainID))
@@ -114,7 +115,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 	}
 
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
 	// First build and get the deployment spec
 	chaincodeDeploymentSpec, err := buildSysCC(ctxt, spec)
@@ -128,7 +129,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 
 	version := util.GetSysCCVersion()
 
-	cccid := ccprov.GetCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name, version, txid, true, nil)
+	cccid := ccprov.GetCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, true, nil, nil)
 
 	_, _, err = ccprov.ExecuteWithErrorFilter(ctxt, cccid, chaincodeDeploymentSpec)
 
@@ -140,7 +141,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 // DeDeploySysCC stops the system chaincode and deregisters it from inproccontroller
 func DeDeploySysCC(chainID string, syscc *SystemChaincode) error {
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
 	ctx := context.Background()
 	// First build and get the deployment spec
@@ -155,7 +156,7 @@ func DeDeploySysCC(chainID string, syscc *SystemChaincode) error {
 
 	version := util.GetSysCCVersion()
 
-	cccid := ccprov.GetCCContext(chainID, syscc.Name, version, "", true, nil)
+	cccid := ccprov.GetCCContext(chainID, syscc.Name, version, "", true, nil, nil)
 
 	err = ccprov.Stop(ctx, cccid, chaincodeDeploymentSpec)
 

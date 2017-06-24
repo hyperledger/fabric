@@ -17,10 +17,11 @@ limitations under the License.
 package channel
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 
-	cutil "github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/peer/common"
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -29,20 +30,24 @@ import (
 	"golang.org/x/net/context"
 )
 
-const joinFuncName = "join"
+const commandDescription = "Joins the peer to a chain."
 
 func joinCmd(cf *ChannelCmdFactory) *cobra.Command {
 	// Set the flags on the channel start command.
-
-	channelJoinCmd := &cobra.Command{
+	joinCmd := &cobra.Command{
 		Use:   "join",
-		Short: "Joins the peer to a chain.",
-		Long:  `Joins the peer to a chain.`,
+		Short: commandDescription,
+		Long:  commandDescription,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return join(cmd, args, cf)
 		},
 	}
-	return channelJoinCmd
+	flagList := []string{
+		"blockpath",
+	}
+	attachFlags(joinCmd, flagList)
+
+	return joinCmd
 }
 
 //GBFileNotFoundErr genesis block file not found
@@ -61,22 +66,19 @@ func (e ProposalFailedErr) Error() string {
 
 func getJoinCCSpec() (*pb.ChaincodeSpec, error) {
 	if genesisBlockPath == common.UndefinedParamValue {
-		return nil, fmt.Errorf("Must supply genesis block file.\n")
+		return nil, errors.New("Must supply genesis block file")
 	}
 
 	gb, err := ioutil.ReadFile(genesisBlockPath)
 	if err != nil {
 		return nil, GBFileNotFoundErr(err.Error())
 	}
-
-	spec := &pb.ChaincodeSpec{}
-
 	// Build the spec
-	input := &pb.ChaincodeInput{Args: [][]byte{[]byte("JoinChain"), gb}}
+	input := &pb.ChaincodeInput{Args: [][]byte{[]byte(cscc.JoinChain), gb}}
 
-	spec = &pb.ChaincodeSpec{
+	spec := &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]),
-		ChaincodeID: &pb.ChaincodeID{Name: "cscc"},
+		ChaincodeId: &pb.ChaincodeID{Name: "cscc"},
 		Input:       input,
 	}
 
@@ -94,21 +96,19 @@ func executeJoin(cf *ChannelCmdFactory) (err error) {
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.GetIdentifier(), err)
+		return fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
-	uuid := cutil.GenerateUUID()
-
 	var prop *pb.Proposal
-	prop, err = putils.CreateProposalFromCIS(uuid, pcommon.HeaderType_CONFIGURATION_TRANSACTION, "", invocation, creator)
+	prop, _, err = putils.CreateProposalFromCIS(pcommon.HeaderType_CONFIG, "", invocation, creator)
 	if err != nil {
-		return fmt.Errorf("Error creating proposal for join %s\n", err)
+		return fmt.Errorf("Error creating proposal for join %s", err)
 	}
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = putils.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
-		return fmt.Errorf("Error creating signed proposal  %s\n", err)
+		return fmt.Errorf("Error creating signed proposal %s", err)
 	}
 
 	var proposalResp *pb.ProposalResponse
@@ -124,16 +124,18 @@ func executeJoin(cf *ChannelCmdFactory) (err error) {
 	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != 200 {
 		return ProposalFailedErr(fmt.Sprintf("bad proposal response %d", proposalResp.Response.Status))
 	}
-
-	fmt.Printf("Join Result: %s\n", string(proposalResp.Response.Payload))
-
+	logger.Infof("Peer joined the channel!")
 	return nil
 }
 
 func join(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
+	if genesisBlockPath == common.UndefinedParamValue {
+		return errors.New("Must supply genesis block path")
+	}
+
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(true)
+		cf, err = InitCmdFactory(EndorserRequired, OrdererNotRequired)
 		if err != nil {
 			return err
 		}

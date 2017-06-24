@@ -29,12 +29,19 @@ func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeQueryCmd = &cobra.Command{
 		Use:       "query",
 		Short:     fmt.Sprintf("Query using the specified %s.", chainFuncName),
-		Long:      fmt.Sprintf(`Get endorsed result of %s function call and print it. It won't generate transaction.`, chainFuncName),
+		Long:      fmt.Sprintf("Get endorsed result of %s function call and print it. It won't generate transaction.", chainFuncName),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeQuery(cmd, args, cf)
 		},
 	}
+	flagList := []string{
+		"ctor",
+		"name",
+		"tid",
+		"channelID",
+	}
+	attachFlags(chaincodeQueryCmd, flagList)
 
 	chaincodeQueryCmd.Flags().BoolVarP(&chaincodeQueryRaw, "raw", "r", false,
 		"If true, output the query value as raw bytes, otherwise format as a printable string")
@@ -47,12 +54,11 @@ func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 func chaincodeQuery(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory()
+		cf, err = InitCmdFactory(true, false)
 		if err != nil {
 			return err
 		}
 	}
-	defer cf.BroadcastClient.Close()
 
 	return chaincodeInvokeOrQuery(cmd, args, false, cf)
 }

@@ -16,7 +16,7 @@ limitations under the License.
 
 package version
 
-import "github.com/hyperledger/fabric/core/ledger/util"
+import "github.com/hyperledger/fabric/common/ledger/util"
 
 // Height represents the height of a transaction in blockchain
 type Height struct {
@@ -44,7 +44,7 @@ func (h *Height) ToBytes() []byte {
 }
 
 // Compare return a -1, zero, or +1 based on whether this height is
-// less than, equals to, or greater than the specified height repectively.
+// less than, equals to, or greater than the specified height respectively.
 func (h *Height) Compare(h1 *Height) int {
 	res := 0
 	switch {

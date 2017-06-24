@@ -1,82 +1,57 @@
 # What is block-listener
-block-listener.go will connect to a peer and receive blocks events, transaction rejection events and chaincode events (if a chaincode emits events).
+block-listener.go connects to a peer in order to receive block and chaincode
+events (if there are chaincode events being sent). Currently, this example only
+works with TLS disabled in the environment.
 
 # To Run
 ```sh
 1. go build
 
-2. ./block-listener -events-address=< event address > -listen-to-rejections=< true | false > -events-from-chaincode=< chaincode ID >
+2. ./block-listener -events-address=<peer-address> -events-from-chaincode=<chaincode-id> -events-mspdir=<msp-directory> -events-mspid=<msp-id>
+```
+Please note that the default MSP under fabric/sampleconfig will be used if no
+MSP parameters are provided.
+
+# Example with the e2e_cli example
+In order to use the block listener with the e2e_cli example, make sure that TLS
+has been disabled by setting CORE_PEER_TLS_ENABLED=***false*** in
+``docker-compose-cli.yaml``, ``base/docker-compose-base.yaml`` and
+``base/peer-base.yaml``.
+
+Next, run the [e2e_cli example](https://github.com/hyperledger/fabric/tree/master/examples/e2e_cli).
+
+Once the "All in one" command:
+```sh
+./network_setup.sh up
+```
+has completed, attach the event client to peer peer0.org1.example.com by doing
+the following (assuming you are running block-listener in the host environment):
+```sh
+./block-listener -events-address=127.0.0.1:7053 -events-mspdir=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp -events-mspid=Org1MSP
 ```
 
-# Example with PBFT
+The event client should output "Event Address: 127.0.0.1:7053" and wait for
+events.
 
-## Run 4 docker peers with PBFT
-```sh
-docker run --rm -it -e CORE_VM_ENDPOINT=http://172.17.0.1:2375 -e CORE_PEER_ID=vp0 -e CORE_PEER_ADDRESSAUTODETECT=true -e CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=pbft hyperledger/fabric-peer peer node start
-
-docker run --rm -it -e CORE_VM_ENDPOINT=http://172.17.0.1:2375 -e CORE_PEER_ID=vp1 -e CORE_PEER_ADDRESSAUTODETECT=true -e CORE_PEER_DISCOVERY_ROOTNODE=172.17.0.2:7051 -e CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=pbft hyperledger/fabric-peer peer node start
-
-docker run --rm -it -e CORE_VM_ENDPOINT=http://172.17.0.1:2375 -e CORE_PEER_ID=vp2 -e CORE_PEER_ADDRESSAUTODETECT=true -e CORE_PEER_DISCOVERY_ROOTNODE=172.17.0.2:7051 -e CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=pbft hyperledger/fabric-peer peer node start
-
-docker run --rm -it -e CORE_VM_ENDPOINT=http://172.17.0.1:2375 -e CORE_PEER_ID=vp3 -e CORE_PEER_ADDRESSAUTODETECT=true -e CORE_PEER_DISCOVERY_ROOTNODE=172.17.0.2:7051 -e CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=pbft hyperledger/fabric-peer peer node start
-
-## Attach event client to a Peer
-```sh
-./block-listener -events-address=172.17.0.2:7053 -listen-to-rejections=true
-```
-
-Event client should output "Event Address: 172.17.0.2:7053" and wait for events.
-
-## Create a deploy transaction
-Submit a transaction to deploy chaincode_example02.
-
-```sh
-CORE_PEER_ADDRESS=172.17.0.2:7051 peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
-```
-
-Notice success transaction in the events client.
-
-## Create an invoke transaction - good
-Send a valid invoke transaction to chaincode_example02.
+Exec into the cli container:
 
 ```sh
-CORE_PEER_ADDRESS=172.17.0.2:7051 peer chaincode invoke -n 1edd7021ab71b766f4928a9ef91182c018dffb86fef7a4b5a5516ac590a87957e21a62d939df817f5105f524abddcddfc7b1a60d780f02d8235bd7af9db81b66 -c '{"Function":"invoke", "Args": ["a","b","10"]}'
+docker exec -it cli bash
 ```
-Notice success transaction in events client.
+Setup the environment variables for peer0.org1.example.com
+```sh
+CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+CORE_PEER_LOCALMSPID="Org1MSP"
+```
 
-## Create an invoke transaction - bad
-Send an invoke transaction with invalid parameters to chaincode_example02.
+Create an invoke transaction:
 
 ```sh
-CORE_PEER_ADDRESS=172.17.0.2:7051 peer chaincode invoke -n 1edd7021ab71b766f4928a9ef91182c018dffb86fef7a4b5a5516ac590a87957e21a62d939df817f5105f524abddcddfc7b1a60d780f02d8235bd7af9db81b66 -c '{"Function":"invoke", "Args": ["a","b"]}'
+peer chaincode invoke -o orderer.example.com:7050 -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}'
 ```
-
-Notice error transaction in events client.
-
-# Tesing chaincode events
-Chaincode github.com/hyperledger/fabric/examples/chaincode/go/eventsender can be used to test event sender.
-## Deploy eventsender chaincode
-Stop the event listener and restart it as follows  
-
-```
-CORE_PEER_ADDRESS=172.17.0.2:7051 ./peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/eventsender -c '{"Function":"init", "Args":[]}'
-```
-
-```
-Note the chaincode ID of the eventsender chaincode. This will be used in the commands below.
-```
-## Restart event listener
-Stop the event listener if running and restart it with `-events-from-chaincode` option
-
-```sh
-./block-listener -events-address=172.17.0.2:7053 -listen-to-rejections=true -events-from-chaincode=< event sender chaincode ID>
-```
+Now you should see the block content displayed in the terminal running the block
+listener.
 
 
-##Send an invoke request to event sender
-
-```sh
-CORE_PEER_ADDRESS=172.17.0.2:7051 ./peer chaincode invoke -n < eventsender chaincode ID > -c '{"Function":"greet", "Args":["hello","world"]}'
-```
-
-Note the output from the event listener terminal showing a chaincode event from the event sender chaincode in addition to the block event generated by the transaction.
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.

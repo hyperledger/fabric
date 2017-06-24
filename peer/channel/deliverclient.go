@@ -18,43 +18,52 @@ package channel
 
 import (
 	"fmt"
-	"math"
+	"time"
 
+	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"google.golang.org/grpc"
 )
 
 type deliverClientIntf interface {
-	getBlock() (*common.Block, error)
+	getSpecifiedBlock(num uint64) (*common.Block, error)
+	getOldestBlock() (*common.Block, error)
+	getNewestBlock() (*common.Block, error)
+	Close() error
 }
 
 type deliverClient struct {
+	conn    *grpc.ClientConn
 	client  ab.AtomicBroadcast_DeliverClient
 	chainID string
 }
 
-func newDeliverClient(client ab.AtomicBroadcast_DeliverClient, chainID string) *deliverClient {
-	return &deliverClient{client: client, chainID: chainID}
+func newDeliverClient(conn *grpc.ClientConn, client ab.AtomicBroadcast_DeliverClient, chainID string) *deliverClient {
+	return &deliverClient{conn: conn, client: client, chainID: chainID}
 }
 
-func seekHelper(chainID string, start *ab.SeekPosition) *common.Envelope {
-	return &common.Envelope{
-		Payload: utils.MarshalOrPanic(&common.Payload{
-			Header: &common.Header{
-				ChainHeader: &common.ChainHeader{
-					ChainID: chainID,
-				},
-				SignatureHeader: &common.SignatureHeader{},
-			},
-
-			Data: utils.MarshalOrPanic(&ab.SeekInfo{
-				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
-				Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
-				Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
-			}),
-		}),
+func seekHelper(chainID string, position *ab.SeekPosition) *common.Envelope {
+	seekInfo := &ab.SeekInfo{
+		Start:    position,
+		Stop:     position,
+		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 	}
+
+	//TODO- epoch and msgVersion may need to be obtained for nowfollowing usage in orderer/configupdate/configupdate.go
+	msgVersion := int32(0)
+	epoch := uint64(0)
+	env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch)
+	if err != nil {
+		logger.Errorf("Error signing envelope:  %s", err)
+		return nil
+	}
+	return env
+}
+
+func (r *deliverClient) seekSpecified(blockNumber uint64) error {
+	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: blockNumber}}}))
 }
 
 func (r *deliverClient) seekOldest() error {
@@ -65,40 +74,79 @@ func (r *deliverClient) seekNewest() error {
 	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}}))
 }
 
-func (r *deliverClient) seek(blockNumber uint64) error {
-	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: blockNumber}}}))
-}
-
 func (r *deliverClient) readBlock() (*common.Block, error) {
-	for {
-		msg, err := r.client.Recv()
-		if err != nil {
-			fmt.Println("Error receiving:", err)
-			return nil, err
-		}
+	msg, err := r.client.Recv()
+	if err != nil {
+		return nil, fmt.Errorf("Error receiving: %s", err)
+	}
 
-		switch t := msg.Type.(type) {
-		case *ab.DeliverResponse_Status:
-			fmt.Println("Got status ", t)
-			continue
-		case *ab.DeliverResponse_Block:
-			fmt.Println("Received block: ", t.Block)
-			return t.Block, nil
-		}
+	switch t := msg.Type.(type) {
+	case *ab.DeliverResponse_Status:
+		logger.Debugf("Got status:%T ", t)
+		return nil, fmt.Errorf("can't read the block")
+	case *ab.DeliverResponse_Block:
+		logger.Debugf("Received block:%v ", t.Block.Header.Number)
+		r.client.Recv() // Flush the success message
+		return t.Block, nil
+	default:
+		return nil, fmt.Errorf("response error")
 	}
 }
 
-func (r *deliverClient) getBlock() (*common.Block, error) {
-	err := r.seek(0)
+func (r *deliverClient) getSpecifiedBlock(num uint64) (*common.Block, error) {
+	err := r.seekSpecified(num)
 	if err != nil {
-		fmt.Println("Received error:", err)
+		logger.Errorf("Received error: %s", err)
 		return nil, err
 	}
 
-	b, err := r.readBlock()
+	return r.readBlock()
+}
+
+func (r *deliverClient) getOldestBlock() (*common.Block, error) {
+	err := r.seekOldest()
 	if err != nil {
+		return nil, fmt.Errorf("Received error: %s ", err)
+	}
+
+	return r.readBlock()
+}
+
+func (r *deliverClient) getNewestBlock() (*common.Block, error) {
+	err := r.seekNewest()
+	if err != nil {
+		logger.Errorf("Received error: %s", err)
 		return nil, err
 	}
 
-	return b, nil
+	return r.readBlock()
+}
+
+func (r *deliverClient) Close() error {
+	return r.conn.Close()
+}
+
+func getGenesisBlock(cf *ChannelCmdFactory) (*common.Block, error) {
+	timer := time.NewTimer(time.Second * time.Duration(timeout))
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-timer.C:
+			cf.DeliverClient.Close()
+			return nil, fmt.Errorf("timeout waiting for channel creation")
+		default:
+			if block, err := cf.DeliverClient.getSpecifiedBlock(0); err != nil {
+				cf.DeliverClient.Close()
+				cf, err = InitCmdFactory(EndorserNotRequired, OrdererRequired)
+				if err != nil {
+					return nil, fmt.Errorf("failed connecting: %v", err)
+				}
+				time.Sleep(200 * time.Millisecond)
+			} else {
+				cf.DeliverClient.Close()
+				return block, nil
+			}
+		}
+	}
 }

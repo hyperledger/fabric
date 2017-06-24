@@ -1,0 +1,4 @@
+sdk=node userInputs/samplecc-chan1-instantiate.json
+sdk=node userInputs/samplecc-chan2-instantiate.json
+#sdk=node userInputs/samplecc-chan1-instantiate-TLS.json
+#sdk=node userInputs/samplecc-chan2-instantiate-TLS.json

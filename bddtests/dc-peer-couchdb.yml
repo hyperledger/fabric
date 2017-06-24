@@ -1,0 +1,56 @@
+# Copyright IBM Corp. 2017 All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '2'
+
+services:
+
+  couchdb0:
+    image: hyperledger/fabric-couchdb
+    ports:
+      - '5984'
+
+  peer0:
+    environment:
+       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
+    depends_on:
+       - couchdb0
+
+  couchdb1:
+    image: hyperledger/fabric-couchdb
+    ports:
+      - '5984'
+
+  peer1:
+    environment:
+       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb1:5984
+    depends_on:
+       - couchdb1
+
+  couchdb2:
+    image: hyperledger/fabric-couchdb
+    ports:
+      - '5984'
+
+  peer2:
+    environment:
+       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb2:5984
+    depends_on:
+       - couchdb2
+
+  couchdb3:
+    image: hyperledger/fabric-couchdb
+    ports:
+      - '5984'
+
+  peer3:
+    environment:
+       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb3:5984
+    depends_on:
+       - couchdb3

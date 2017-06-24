@@ -19,12 +19,13 @@ package msp
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/op/go-logging"
+
+	"github.com/golang/protobuf/proto"
 )
 
-var mspLogger = logging.MustGetLogger("msp")
+var mspLogger = flogging.MustGetLogger("msp")
 
 type mspManagerImpl struct {
 	// map that contains all MSPs that we have setup or otherwise added
@@ -42,7 +43,7 @@ func NewMSPManager() MSPManager {
 }
 
 // Setup initializes the internal data structures of this manager and creates MSPs
-func (mgr *mspManagerImpl) Setup(msps []*msp.MSPConfig) error {
+func (mgr *mspManagerImpl) Setup(msps []MSP) error {
 	if mgr.up {
 		mspLogger.Infof("MSP manager already up")
 		return nil
@@ -56,31 +57,12 @@ func (mgr *mspManagerImpl) Setup(msps []*msp.MSPConfig) error {
 		return fmt.Errorf("Setup error: at least one MSP configuration item is required")
 	}
 
-	mspLogger.Infof("Setting up the MSP manager (%d msps)", len(msps))
+	mspLogger.Debugf("Setting up the MSP manager (%d msps)", len(msps))
 
 	// create the map that assigns MSP IDs to their manager instance - once
 	mgr.mspsMap = make(map[string]MSP)
 
-	for _, mspConf := range msps {
-		// check that the type for that MSP is supported
-		if mspConf.Type != int32(FABRIC) {
-			return fmt.Errorf("Setup error: unsupported msp type %d", mspConf.Type)
-		}
-
-		mspLogger.Infof("Setting up MSP")
-
-		// create the msp instance
-		msp, err := NewBccspMsp()
-		if err != nil {
-			return fmt.Errorf("Creating the MSP manager failed, err %s", err)
-		}
-
-		// set it up
-		err = msp.Setup(mspConf)
-		if err != nil {
-			return fmt.Errorf("Setting up the MSP manager failed, err %s", err)
-		}
-
+	for _, msp := range msps {
 		// add the MSP to the map of active MSPs
 		mspID, err := msp.GetIdentifier()
 		if err != nil {
@@ -91,7 +73,7 @@ func (mgr *mspManagerImpl) Setup(msps []*msp.MSPConfig) error {
 
 	mgr.up = true
 
-	mspLogger.Infof("MSP manager setup complete, setup %d msps", len(msps))
+	mspLogger.Debugf("MSP manager setup complete, setup %d msps", len(msps))
 
 	return nil
 }
@@ -104,7 +86,7 @@ func (mgr *mspManagerImpl) GetMSPs() (map[string]MSP, error) {
 // DeserializeIdentity returns an identity given its serialized version supplied as argument
 func (mgr *mspManagerImpl) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	// We first deserialize to a SerializedIdentity to get the MSP ID
-	sId := &SerializedIdentity{}
+	sId := &msp.SerializedIdentity{}
 	err := proto.Unmarshal(serializedID, sId)
 	if err != nil {
 		return nil, fmt.Errorf("Could not deserialize a SerializedIdentity, err %s", err)
@@ -116,6 +98,10 @@ func (mgr *mspManagerImpl) DeserializeIdentity(serializedID []byte) (Identity, e
 		return nil, fmt.Errorf("MSP %s is unknown", sId.Mspid)
 	}
 
-	// if we have this MSP, we ask it to deserialize
-	return msp.DeserializeIdentity(serializedID)
+	switch t := msp.(type) {
+	case *bccspmsp:
+		return t.deserializeIdentityInternal(sId.IdBytes)
+	default:
+		return t.DeserializeIdentity(serializedID)
+	}
 }

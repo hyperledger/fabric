@@ -1,3 +1,8 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 ca:
   image: hyperledger/fabric-ca
   ports:
@@ -26,7 +31,6 @@ vp:
     - 7053:7053
   environment:
     - CORE_PEER_ADDRESSAUTODETECT=true
-    - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
   command: peer node start --peer-chaincodedev

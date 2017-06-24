@@ -1,5 +1,5 @@
 /*
-Copyright DTCC 2016 All Rights Reserved.
+Copyright DTCC, IBM 2016, 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -89,13 +89,49 @@ task copyToLib(type: Copy) {
 
 
 task copyProtos(type:Copy){
+    into "peer", {
+        from ("${rootDir}/protos/peer"){
+            include 'chaincode_event.proto'
+            include 'chaincode.proto'
+            include 'chaincode_shim.proto'
+            include 'proposal.proto'
+            include 'proposal_response.proto'
+        }
+    }
+    into "common", {
+        from ("${rootDir}/protos/common"){
+            include 'common.proto'
+        }
+    }
+    into "ledger/queryresult", {
+        from ("${rootDir}/protos/ledger/queryresult"){
+            include 'kv_query_result.proto'
+        }
+    }
+    into "${projectDir}/src/main/proto"
+}
 
- from ("${rootDir}/protos/peer"){
-     include '**/chaincodeevent.proto'
-     include '**/chaincode.proto'
- }
-    into "${projectDir}/src/main/proto/peer"
-
+task copyProtosFromDevEnv(type:Copy){
+    into "peer", {
+        from ("../../../../protos/peer"){
+            include 'chaincode_event.proto'
+            include 'chaincode.proto'
+            include 'chaincode_shim.proto'
+            include 'proposal.proto'
+            include 'proposal_response.proto'
+        }
+    }
+    into "common", {
+        from ("../../../../protos/common"){
+            include 'common.proto'
+        }
+    }
+    into "ledger/queryresult", {
+        from ("../../../../protos/ledger/queryresult"){
+            include 'kv_query_result.proto'
+        }
+    }
+    into "${projectDir}/protos"
 }
 
 tasks['build'].mustRunAfter tasks['copyProtos']
@@ -105,9 +141,12 @@ build.finalizedBy(publishToMavenLocal)
 
 dependencies {
     compile 'com.google.protobuf:protobuf-java:3.0.0'
+    compile 'com.google.protobuf:protobuf-java-util:3.0.0'
     compile 'io.grpc:grpc-all:0.13.2'
     compile 'commons-cli:commons-cli:1.3.1'
     compile 'io.netty:netty-tcnative-boringssl-static:1.1.33.Fork21:' + tcnative_classifier
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.hamcrest:hamcrest-library:1.3'
 }
 
 publishing {

@@ -1,0 +1,36 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '2'
+
+services:
+
+  peer:
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_PEER_ADDRESSAUTODETECT=true
+      #- CORE_VM_ENDPOINT=http://172.17.0.1:2375
+      - CORE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
+      - CORE_PEER_TLS_ENABLED=true
+      # This disables mutual auth for gossip
+      - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+      - CORE_PEER_GOSSIP_ORGLEADER=false
+      - CORE_PEER_GOSSIP_USELEADERELECTION=true
+    ports:
+      - '7051'
+      - '7053'
+    volumes:
+      - ./volumes/peer:/var/hyperledger/bddtests/volumes/peer
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Script will wait until membersrvc is up (if it exists) before starting
+    # $$GOPATH (double dollar) required to prevent docker-compose doing its own
+    # substitution before the value gets to the container
+    #command: sh -c "exec $$GOPATH/src/github.com/hyperledger/fabric/bddtests/scripts/start-peer.sh"
+    command: peer node start
+
+    # Use these options if coverage desired for peers
+    #image: hyperledger/fabric-peer-coverage
+    #command: ./peer.test --test.coverprofile=coverage.cov node start

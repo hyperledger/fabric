@@ -22,7 +22,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/mocks"
 	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestCBCPKCS7EncryptCBCPKCS7Decrypt encrypts using CBCPKCS7Encrypt and decrypts using CBCPKCS7Decrypt.
@@ -270,7 +273,7 @@ func TestCBCPKCS7Encrypt_EmptyPlaintext(t *testing.T) {
 	// As part of the padding, at least one block gets encrypted (while the first block is the IV)
 	const expectedLength = aes.BlockSize + aes.BlockSize
 	if len(ciphertext) != expectedLength {
-		t.Fatalf("Wrong ciphertext length. Expected %d, recieved %d", expectedLength, len(ciphertext))
+		t.Fatalf("Wrong ciphertext length. Expected %d, received %d", expectedLength, len(ciphertext))
 	}
 
 	t.Log("Ciphertext length: ", len(ciphertext))
@@ -288,8 +291,7 @@ func TestCBCEncrypt_EmptyPlaintext(t *testing.T) {
 	t.Log("Message length: ", len(emptyPlaintext))
 
 	ciphertext, encErr := aesCBCEncrypt(key, emptyPlaintext)
-	if encErr != nil {
-	}
+	assert.NoError(t, encErr)
 
 	t.Log("Ciphertext length: ", len(ciphertext))
 
@@ -475,4 +477,64 @@ func TestVariousAESKeyEncoding(t *testing.T) {
 	if 0 != bytes.Compare(key, keyFromPEM) {
 		t.Fatalf("Failed converting encrypted PEM to AES key. Keys are different [%x][%x]", key, keyFromPEM)
 	}
+}
+
+func TestPkcs7UnPaddingInvalidInputs(t *testing.T) {
+	_, err := pkcs7UnPadding([]byte{1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
+	assert.Error(t, err)
+	assert.Equal(t, "Invalid pkcs7 padding (pad[i] != unpadding)", err.Error())
+}
+
+func TestAESCBCEncryptInvalidInputs(t *testing.T) {
+	_, err := aesCBCEncrypt(nil, []byte{0, 1, 2, 3})
+	assert.Error(t, err)
+	assert.Equal(t, "Invalid plaintext. It must be a multiple of the block size", err.Error())
+
+	_, err = aesCBCEncrypt([]byte{0}, []byte{1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
+	assert.Error(t, err)
+}
+
+func TestAESCBCDecryptInvalidInputs(t *testing.T) {
+	_, err := aesCBCDecrypt([]byte{0}, []byte{1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
+	assert.Error(t, err)
+
+	_, err = aesCBCDecrypt([]byte{1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, []byte{0})
+	assert.Error(t, err)
+
+	_, err = aesCBCDecrypt([]byte{1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+		[]byte{1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
+	assert.Error(t, err)
+}
+
+// TestAESCBCPKCS7EncryptorDecrypt tests the integration of
+// aescbcpkcs7Encryptor and aescbcpkcs7Decryptor
+func TestAESCBCPKCS7EncryptorDecrypt(t *testing.T) {
+	raw, err := GetRandomBytes(32)
+	assert.NoError(t, err)
+
+	k := &aesPrivateKey{privKey: raw, exportable: false}
+
+	msg := []byte("Hello World")
+	encryptor := &aescbcpkcs7Encryptor{}
+
+	_, err = encryptor.Encrypt(k, msg, nil)
+	assert.Error(t, err)
+
+	_, err = encryptor.Encrypt(k, msg, &mocks.EncrypterOpts{})
+	assert.Error(t, err)
+
+	ct, err := encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
+	assert.NoError(t, err)
+
+	decryptor := &aescbcpkcs7Decryptor{}
+
+	_, err = decryptor.Decrypt(k, ct, nil)
+	assert.Error(t, err)
+
+	_, err = decryptor.Decrypt(k, ct, &mocks.EncrypterOpts{})
+	assert.Error(t, err)
+
+	msg2, err := decryptor.Decrypt(k, ct, &bccsp.AESCBCPKCS7ModeOpts{})
+	assert.NoError(t, err)
+	assert.Equal(t, msg, msg2)
 }

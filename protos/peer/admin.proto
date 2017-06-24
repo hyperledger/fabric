@@ -16,6 +16,8 @@ limitations under the License.
 
 syntax = "proto3";
 
+option java_package = "org.hyperledger.fabric.protos.peer";
+option java_outer_classname = "AdminPackage";
 option go_package = "github.com/hyperledger/fabric/protos/peer";
 
 package protos;
@@ -27,9 +29,9 @@ service Admin {
     // Return the serve status.
     rpc GetStatus(google.protobuf.Empty) returns (ServerStatus) {}
     rpc StartServer(google.protobuf.Empty) returns (ServerStatus) {}
-    rpc StopServer(google.protobuf.Empty) returns (ServerStatus) {}
     rpc GetModuleLogLevel(LogLevelRequest) returns (LogLevelResponse) {}
     rpc SetModuleLogLevel(LogLevelRequest) returns (LogLevelResponse) {}
+    rpc RevertLogLevels(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 message ServerStatus {
@@ -47,11 +49,11 @@ message ServerStatus {
 
 }
 message LogLevelRequest {
-	string logModule = 1;
-	string logLevel = 2;
+	string log_module = 1;
+	string log_level = 2;
 }
 
 message LogLevelResponse {
-	string logModule = 1;
-	string logLevel = 2;
+	string log_module = 1;
+	string log_level = 2;
 }

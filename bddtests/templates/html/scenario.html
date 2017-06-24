@@ -1,0 +1,22 @@
+<!--
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+-->
+<div>
+
+    <h1>{{ scenario.name }}</h1>
+    <hr/>
+    <ul id="navigation">
+{% for step in steps %}
+    {% set liClass = step.status %}
+    {% if step.name|length < 80 %}
+        <li class="{{ liClass }}"><a href="#Step {{ loop.index }}">Step {{ loop.index }}: {{ step.keyword }} {{ step.name }}</a></li>
+    {% else %}
+        <li class="{{ liClass }}"><a href="#Step {{ loop.index }}">Step {{ loop.index }}: {{ step.keyword }} {{ step.name[0:80] }}</a></li>
+    {% endif %}
+{% endfor %}
+    </ul>
+</div>

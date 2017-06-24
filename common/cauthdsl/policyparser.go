@@ -24,10 +24,12 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
 var regex *regexp.Regexp = regexp.MustCompile("^([[:alnum:]]+)([.])(member|admin)$")
+var regexErr *regexp.Regexp = regexp.MustCompile("^No parameter '([^']+)' found[.]$")
 
 func and(args ...interface{}) (interface{}, error) {
 	toret := "outof(" + strconv.Itoa(len(args))
@@ -138,17 +140,17 @@ func secondPass(args ...interface{}) (interface{}, error) {
 			}
 
 			/* get the right role */
-			var r common.MSPRole_MSPRoleType
+			var r msp.MSPRole_MSPRoleType
 			if subm[0][3] == "member" {
-				r = common.MSPRole_Member
+				r = msp.MSPRole_MEMBER
 			} else {
-				r = common.MSPRole_Admin
+				r = msp.MSPRole_ADMIN
 			}
 
 			/* build the principal we've been told */
-			p := &common.MSPPrincipal{
-				PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-				Principal:               utils.MarshalOrPanic(&common.MSPRole{MSPIdentifier: subm[0][1], Role: r})}
+			p := &msp.MSPPrincipal{
+				PrincipalClassification: msp.MSPPrincipal_ROLE,
+				Principal:               utils.MarshalOrPanic(&msp.MSPRole{MspIdentifier: subm[0][1], Role: r})}
 			ctx.principals = append(ctx.principals, p)
 
 			/* create a SignaturePolicy that requires a signature from
@@ -177,11 +179,11 @@ func secondPass(args ...interface{}) (interface{}, error) {
 
 type context struct {
 	IDNum      int
-	principals []*common.MSPPrincipal
+	principals []*msp.MSPPrincipal
 }
 
 func newContext() *context {
-	return &context{IDNum: 0, principals: make([]*common.MSPPrincipal, 0)}
+	return &context{IDNum: 0, principals: make([]*msp.MSPPrincipal, 0)}
 }
 
 // FromString takes a string representation of the policy,
@@ -208,8 +210,16 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 		return nil, err
 	}
 
-	intermediateRes, err := intermediate.Evaluate(nil)
+	intermediateRes, err := intermediate.Evaluate(map[string]interface{}{})
 	if err != nil {
+		// attempt to produce a meaningful error
+		if regexErr.MatchString(err.Error()) {
+			sm := regexErr.FindStringSubmatch(err.Error())
+			if len(sm) == 2 {
+				return nil, fmt.Errorf("unrecognized token '%s' in policy string", sm[1])
+			}
+		}
+
 		return nil, err
 	}
 
@@ -224,8 +234,16 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 		return nil, err
 	}
 
-	res, err := exp.Evaluate(nil)
+	res, err := exp.Evaluate(map[string]interface{}{})
 	if err != nil {
+		// attempt to produce a meaningful error
+		if regexErr.MatchString(err.Error()) {
+			sm := regexErr.FindStringSubmatch(err.Error())
+			if len(sm) == 2 {
+				return nil, fmt.Errorf("unrecognized token '%s' in policy string", sm[1])
+			}
+		}
+
 		return nil, err
 	}
 
@@ -240,13 +258,21 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 
 	res, err = exp.Evaluate(parameters)
 	if err != nil {
+		// attempt to produce a meaningful error
+		if regexErr.MatchString(err.Error()) {
+			sm := regexErr.FindStringSubmatch(err.Error())
+			if len(sm) == 2 {
+				return nil, fmt.Errorf("unrecognized token '%s' in policy string", sm[1])
+			}
+		}
+
 		return nil, err
 	}
 
 	p := &common.SignaturePolicyEnvelope{
 		Identities: ctx.principals,
 		Version:    0,
-		Policy:     res.(*common.SignaturePolicy),
+		Rule:       res.(*common.SignaturePolicy),
 	}
 
 	return p, nil

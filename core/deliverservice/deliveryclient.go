@@ -1,163 +1,160 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package deliverclient
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
-	"github.com/spf13/viper"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 var logger *logging.Logger // package-level logger
 
 func init() {
-	logger = logging.MustGetLogger("deliveryClient")
+	logger = flogging.MustGetLogger("deliveryClient")
 }
 
+var (
+	reConnectTotalTimeThreshold = time.Second * 60 * 5
+	connTimeout                 = time.Second * 3
+	reConnectBackoffThreshold   = float64(time.Hour)
+)
+
 // DeliverService used to communicate with orderers to obtain
-// new block and send the to the committer service
+// new blocks and send them to the committer service
 type DeliverService interface {
-	// JoinChain once peer joins the chain it should need to check whenever
-	// it has been selected as a leader and open connection to the configured
-	// ordering service endpoint
-	JoinChain(chainID string, ledgerInfo blocksprovider.LedgerInfo) error
+	// StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
+	// to channel peers.
+	StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error
+
+	// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
+	// to channel peers.
+	StopDeliverForChannel(chainID string) error
 
 	// Stop terminates delivery service and closes the connection
 	Stop()
-}
-
-// BlocksDelivererFactory the factory interface to create instance
-// of BlocksDeliverer interface which capable to bring blocks from
-// the ordering service
-type BlocksDelivererFactory interface {
-	// Create capable to instantiate new BlocksDeliverer
-	Create() (blocksprovider.BlocksDeliverer, error)
-}
-
-// blocksDelivererFactoryImpl the implementation of the blocks deliverer factory
-// holds the reference to the grpc client connection and capable to create new
-// grpc stream for ordering service, which will be used to pull out blocks for
-// specific chain
-type blocksDelivererFactoryImpl struct {
-	conn *grpc.ClientConn
-}
-
-// Create a factory method which is capable to instantiate new BlocksDeliverer
-func (factory *blocksDelivererFactoryImpl) Create() (blocksprovider.BlocksDeliverer, error) {
-	var abc orderer.AtomicBroadcast_DeliverClient
-	var err error
-	abc, err = orderer.NewAtomicBroadcastClient(factory.conn).Deliver(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	return abc, nil
 }
 
 // deliverServiceImpl the implementation of the delivery service
 // maintains connection to the ordering service and maps of
 // blocks providers
 type deliverServiceImpl struct {
-	clients map[string]blocksprovider.BlocksProvider
+	conf           *Config
+	blockProviders map[string]blocksprovider.BlocksProvider
+	lock           sync.RWMutex
+	stopping       bool
+}
 
-	clientsFactory BlocksDelivererFactory
-
-	lock sync.RWMutex
-
-	gossip blocksprovider.GossipServiceAdapter
-
-	stopping bool
-
-	conn *grpc.ClientConn
+// Config dictates the DeliveryService's properties,
+// namely how it connects to an ordering service endpoint,
+// how it verifies messages received from it,
+// and how it disseminates the messages to other peers
+type Config struct {
+	// ConnFactory returns a function that creates a connection to an endpoint
+	ConnFactory func(channelID string) func(endpoint string) (*grpc.ClientConn, error)
+	// ABCFactory creates an AtomicBroadcastClient out of a connection
+	ABCFactory func(*grpc.ClientConn) orderer.AtomicBroadcastClient
+	// CryptoSvc performs cryptographic actions like message verification and signing
+	// and identity validation
+	CryptoSvc api.MessageCryptoService
+	// Gossip enables to enumerate peers in the channel, send a message to peers,
+	// and add a block to the gossip state transfer layer
+	Gossip blocksprovider.GossipServiceAdapter
+	// Endpoints specifies the endpoints of the ordering service
+	Endpoints []string
 }
 
 // NewDeliverService construction function to create and initialize
 // delivery service instance. It tries to establish connection to
 // the specified in the configuration ordering service, in case it
 // fails to dial to it, return nil
-func NewDeliverService(gossip blocksprovider.GossipServiceAdapter) (DeliverService, error) {
-	// TODO: Has to be fixed as ordering service configuration is part of the part of configuration block
-	endpoint := viper.GetString("peer.committer.ledger.orderer")
-	logger.Infof("Creating delivery service to get blocks from the ordering service, %s", endpoint)
-
-	dialOpts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithTimeout(3 * time.Second), grpc.WithBlock()}
-
-	if comm.TLSEnabled() {
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.InitTLSForPeer()))
-	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+func NewDeliverService(conf *Config) (DeliverService, error) {
+	ds := &deliverServiceImpl{
+		conf:           conf,
+		blockProviders: make(map[string]blocksprovider.BlocksProvider),
 	}
-
-	conn, err := grpc.Dial(endpoint, dialOpts...)
-	if err != nil {
-		logger.Errorf("Cannot dial to %s, because of %s", endpoint, err)
+	if err := ds.validateConfiguration(); err != nil {
 		return nil, err
 	}
-
-	return NewFactoryDeliverService(gossip, &blocksDelivererFactoryImpl{conn}, conn), nil
+	return ds, nil
 }
 
-// NewFactoryDeliverService construction function to create and initialize
-// delivery service instance, with gossip service adapter and customized
-// factory to create blocks deliverers.
-func NewFactoryDeliverService(gossip blocksprovider.GossipServiceAdapter, factory BlocksDelivererFactory, conn *grpc.ClientConn) DeliverService {
-	return &deliverServiceImpl{
-		clientsFactory: factory,
-		gossip:         gossip,
-		clients:        make(map[string]blocksprovider.BlocksProvider),
-		conn:           conn,
+func (d *deliverServiceImpl) validateConfiguration() error {
+	conf := d.conf
+	if len(conf.Endpoints) == 0 {
+		return errors.New("No endpoints specified")
 	}
+	if conf.Gossip == nil {
+		return errors.New("No gossip provider specified")
+	}
+	if conf.ABCFactory == nil {
+		return errors.New("No AtomicBroadcast factory specified")
+	}
+	if conf.ConnFactory == nil {
+		return errors.New("No connection factory specified")
+	}
+	if conf.CryptoSvc == nil {
+		return errors.New("No crypto service specified")
+	}
+	return nil
 }
 
-// JoinChain initialize the grpc stream for given chainID, creates blocks provider instance
-// to spawn in go routine to read new blocks starting from the position provided by ledger
+// StartDeliverForChannel starts blocks delivery for channel
+// initializes the grpc stream for given chainID, creates blocks provider instance
+// that spawns in go routine to read new blocks starting from the position provided by ledger
 // info instance.
-func (d *deliverServiceImpl) JoinChain(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
-	isLeader := viper.GetBool("peer.gossip.orgLeader")
+func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	if d.stopping {
+		errMsg := fmt.Sprintf("Delivery service is stopping cannot join a new channel %s", chainID)
+		logger.Errorf(errMsg)
+		return errors.New(errMsg)
+	}
+	if _, exist := d.blockProviders[chainID]; exist {
+		errMsg := fmt.Sprintf("Delivery service - block provider already exists for %s found, can't start delivery", chainID)
+		logger.Errorf(errMsg)
+		return errors.New(errMsg)
+	} else {
+		client := d.newClient(chainID, ledgerInfo)
+		logger.Debug("This peer will pass blocks from orderer service to other peers for channel", chainID)
+		d.blockProviders[chainID] = blocksprovider.NewBlocksProvider(chainID, client, d.conf.Gossip, d.conf.CryptoSvc)
+		go d.blockProviders[chainID].DeliverBlocks()
+	}
+	return nil
+}
 
-	if isLeader {
-		abc, err := d.clientsFactory.Create()
-		if err != nil {
-			logger.Errorf("Unable to initialize atomic broadcast, due to %s", err)
-			return err
-		}
-
-		d.lock.Lock()
-		defer d.lock.Unlock()
-
-		if d.stopping {
-			logger.Errorf("Delivery service is stopping cannot join a new channel")
-			return errors.New("Delivery service is stopping cannot join a new channel")
-		}
-
-		d.clients[chainID] = blocksprovider.NewBlocksProvider(chainID, abc, d.gossip)
-
-		if err := d.clients[chainID].RequestBlocks(ledgerInfo); err == nil {
-			// Start reading blocks from ordering service in case this peer is a leader for specified chain
-			go d.clients[chainID].DeliverBlocks()
-		}
+// StopDeliverForChannel stops blocks delivery for channel by stopping channel block provider
+func (d *deliverServiceImpl) StopDeliverForChannel(chainID string) error {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	if d.stopping {
+		errMsg := fmt.Sprintf("Delivery service is stopping, cannot stop delivery for channel %s", chainID)
+		logger.Errorf(errMsg)
+		return errors.New(errMsg)
+	}
+	if client, exist := d.blockProviders[chainID]; exist {
+		client.Stop()
+		delete(d.blockProviders, chainID)
+		logger.Debug("This peer will stop pass blocks from orderer service to other peers")
+	} else {
+		errMsg := fmt.Sprintf("Delivery service - no block provider for %s found, can't stop delivery", chainID)
+		logger.Errorf(errMsg)
+		return errors.New(errMsg)
 	}
 	return nil
 }
@@ -168,12 +165,56 @@ func (d *deliverServiceImpl) Stop() {
 	defer d.lock.Unlock()
 	// Marking flag to indicate the shutdown of the delivery service
 	d.stopping = true
-	// Closing grpc connection
-	if d.conn != nil {
-		d.conn.Close()
-	}
 
-	for _, client := range d.clients {
+	for _, client := range d.blockProviders {
 		client.Stop()
 	}
+}
+
+func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocksprovider.LedgerInfo) *broadcastClient {
+	requester := &blocksRequester{
+		chainID: chainID,
+	}
+	broadcastSetup := func(bd blocksprovider.BlocksDeliverer) error {
+		return requester.RequestBlocks(ledgerInfoProvider)
+	}
+	backoffPolicy := func(attemptNum int, elapsedTime time.Duration) (time.Duration, bool) {
+		if elapsedTime.Nanoseconds() > reConnectTotalTimeThreshold.Nanoseconds() {
+			return 0, false
+		}
+		sleepIncrement := float64(time.Millisecond * 500)
+		attempt := float64(attemptNum)
+		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, reConnectBackoffThreshold)), true
+	}
+	connProd := comm.NewConnectionProducer(d.conf.ConnFactory(chainID), d.conf.Endpoints)
+	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)
+	requester.client = bClient
+	return bClient
+}
+
+func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
+	return func(endpoint string) (*grpc.ClientConn, error) {
+		dialOpts := []grpc.DialOption{grpc.WithTimeout(connTimeout), grpc.WithBlock()}
+		// set max send/recv msg sizes
+		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
+			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
+		// set the keepalive options
+		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions()...)
+
+		if comm.TLSEnabled() {
+			creds, err := comm.GetCASupport().GetDeliverServiceCredentials(channelID)
+			if err != nil {
+				return nil, fmt.Errorf("Failed obtaining credentials for channel %s: %v", channelID, err)
+			}
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(creds))
+		} else {
+			dialOpts = append(dialOpts, grpc.WithInsecure())
+		}
+		grpc.EnableTracing = true
+		return grpc.Dial(endpoint, dialOpts...)
+	}
+}
+
+func DefaultABCFactory(conn *grpc.ClientConn) orderer.AtomicBroadcastClient {
+	return orderer.NewAtomicBroadcastClient(conn)
 }

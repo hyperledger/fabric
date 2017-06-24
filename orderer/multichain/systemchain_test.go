@@ -17,88 +17,47 @@ limitations under the License.
 package multichain
 
 import (
-	"reflect"
+	"bytes"
+	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/chainconfig"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
-	mockchainconfig "github.com/hyperledger/fabric/common/mocks/chainconfig"
-	"github.com/hyperledger/fabric/common/policies"
-	coreutil "github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
+	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
-	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	logging "github.com/op/go-logging"
+
+	"github.com/stretchr/testify/assert"
 )
 
-type mockPolicy struct {
-	err error
-}
-
-func (mp *mockPolicy) Evaluate(sd []*cb.SignedData) error {
-	return mp.err
-}
-
-type mockPolicyManager struct {
-	mp *mockPolicy
-}
-
-func (mpm *mockPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
-	return mpm.mp, mpm.mp != nil
-}
-
 type mockSupport struct {
-	mpm         *mockPolicyManager
-	msc         *mocksharedconfig.Manager
-	chainID     string
-	queue       []*cb.Envelope
-	chainConfig *mockchainconfig.Descriptor
+	msc *mockconfig.Orderer
 }
 
-func newMockSupport(chainID string) *mockSupport {
+func newMockSupport() *mockSupport {
 	return &mockSupport{
-		mpm:         &mockPolicyManager{},
-		msc:         &mocksharedconfig.Manager{},
-		chainID:     chainID,
-		chainConfig: &mockchainconfig.Descriptor{},
+		msc: &mockconfig.Orderer{},
 	}
 }
 
-func (ms *mockSupport) Enqueue(msg *cb.Envelope) bool {
-	ms.queue = append(ms.queue, msg)
-	return true
-}
-
-func (ms *mockSupport) ChainID() string {
-	return ms.chainID
-}
-
-func (ms *mockSupport) PolicyManager() policies.Manager {
-	return ms.mpm
-}
-
-func (ms *mockSupport) SharedConfig() sharedconfig.Manager {
+func (ms *mockSupport) SharedConfig() config.Orderer {
 	return ms.msc
 }
 
-func (ms *mockSupport) ChainConfig() chainconfig.Descriptor {
-	return ms.chainConfig
-}
-
 type mockChainCreator struct {
-	newChains []*cb.Envelope
-	ms        *mockSupport
-	sysChain  *systemChain
+	ms                  *mockSupport
+	newChains           []*cb.Envelope
+	NewChannelConfigErr error
 }
 
 func newMockChainCreator() *mockChainCreator {
 	mcc := &mockChainCreator{
-		ms: newMockSupport(provisional.TestChainID),
+		ms: newMockSupport(),
 	}
-	mcc.sysChain = newSystemChain(mcc.ms)
 	return mcc
 }
 
@@ -106,138 +65,338 @@ func (mcc *mockChainCreator) newChain(configTx *cb.Envelope) {
 	mcc.newChains = append(mcc.newChains, configTx)
 }
 
-func (mcc *mockChainCreator) systemChain() *systemChain {
-	return mcc.sysChain
+func (mcc *mockChainCreator) channelsCount() int {
+	return len(mcc.newChains)
+}
+
+func (mcc *mockChainCreator) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error) {
+	if mcc.NewChannelConfigErr != nil {
+		return nil, mcc.NewChannelConfigErr
+	}
+	confUpdate := configtx.UnmarshalConfigUpdateOrPanic(configtx.UnmarshalConfigUpdateEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(envConfigUpdate.Payload).Data).ConfigUpdate)
+	return &mockconfigtx.Manager{
+		ConfigEnvelopeVal: &cb.ConfigEnvelope{
+			Config:     &cb.Config{Sequence: 1, ChannelGroup: confUpdate.WriteSet},
+			LastUpdate: envConfigUpdate,
+		},
+	}, nil
 }
 
 func TestGoodProposal(t *testing.T) {
-	newChainID := "NewChainID"
+	newChainID := "new-chain-id"
 
 	mcc := newMockChainCreator()
-	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
-	mcc.ms.mpm.mp = &mockPolicy{}
 
-	chainCreateTx := &cb.ConfigurationItem{
-		Header: &cb.ChainHeader{
-			ChainID: newChainID,
-			Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
-		},
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigurationItem_Orderer,
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-			Digest: mcc.ms.ChainConfig().HashingAlgorithm()([]byte{}),
-		}),
-	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
-	status := mcc.sysChain.proposeChain(ingressTx)
-	if status != cb.Status_SUCCESS {
-		t.Fatalf("Should have successfully proposed chain")
-	}
+	configEnv, err := configtx.NewCompositeTemplate(
+		configtx.NewSimpleTemplate(
+			config.DefaultHashingAlgorithm(),
+			config.DefaultBlockDataHashingStructure(),
+			config.TemplateOrdererAddresses([]string{"foo"}),
+		),
+		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
+	).Envelope(newChainID)
+	assert.Nil(t, err, "Error constructing configtx")
 
-	expected := 1
-	if len(mcc.ms.queue) != expected {
-		t.Fatalf("Expected %d creation txs in the chain, but found %d", expected, len(mcc.ms.queue))
-	}
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
-	wrapped := mcc.ms.queue[0]
-	payload := utils.UnmarshalPayloadOrPanic(wrapped.Payload)
-	if payload.Header.ChainHeader.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
-		t.Fatalf("Wrapped transaction should be of type ORDERER_TRANSACTION")
-	}
-	envelope := utils.UnmarshalEnvelopeOrPanic(payload.Data)
-	if !reflect.DeepEqual(envelope, ingressTx) {
-		t.Fatalf("Received different configtx than ingressed into the system")
-	}
-
-	sysFilter := newSystemChainFilter(mcc)
+	sysFilter := newSystemChainFilter(mcc.ms, mcc)
 	action, committer := sysFilter.Apply(wrapped)
 
-	if action != filter.Accept {
-		t.Fatalf("Should have accepted the transaction, as it was already validated")
-	}
-
-	if !committer.Isolated() {
-		t.Fatalf("Chain creation transactions should be isolated on commit")
-	}
+	assert.EqualValues(t, action, filter.Accept, "Did not accept valid transaction")
+	assert.True(t, committer.Isolated(), "Channel creation belong in its own block")
 
 	committer.Commit()
-	if len(mcc.newChains) != 1 {
-		t.Fatalf("Proposal should only have created 1 new chain")
-	}
+	assert.Len(t, mcc.newChains, 1, "Proposal should only have created 1 new chain")
 
-	if !reflect.DeepEqual(mcc.newChains[0], ingressTx) {
-		t.Fatalf("New chain should have been created with ingressTx")
-	}
+	assert.Equal(t, ingressTx, mcc.newChains[0], "New chain should have been created with ingressTx")
 }
 
-func TestProposalWithBadPolicy(t *testing.T) {
+func TestProposalRejectedByConfig(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.mpm.mp = &mockPolicy{}
+	mcc.NewChannelConfigErr = fmt.Errorf("Error creating channel")
 
-	chainCreateTx := &cb.ConfigurationItem{
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigurationItem_Orderer,
-
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-			Digest: coreutil.ComputeCryptoHash([]byte{}),
-		}),
+	configEnv, err := configtx.NewCompositeTemplate(
+		configtx.NewSimpleTemplate(
+			config.DefaultHashingAlgorithm(),
+			config.DefaultBlockDataHashingStructure(),
+			config.TemplateOrdererAddresses([]string{"foo"}),
+		),
+		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
+	).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
-	status := mcc.sysChain.proposeChain(ingressTx)
+	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	action, _ := sysFilter.Apply(wrapped)
 
-	if status == cb.Status_SUCCESS {
-		t.Fatalf("Should not have validated the transaction with no authorized chain creation policies")
-	}
+	assert.EqualValues(t, action, filter.Reject, "Did not accept valid transaction")
+	assert.Len(t, mcc.newChains, 0, "Proposal should not have created a new chain")
 }
 
-func TestProposalWithMissingPolicy(t *testing.T) {
+func TestNumChainsExceeded(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
+	mcc.ms.msc.MaxChannelsCountVal = 1
+	mcc.newChains = make([]*cb.Envelope, 2)
 
-	chainCreateTx := &cb.ConfigurationItem{
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigurationItem_Orderer,
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-			Digest: coreutil.ComputeCryptoHash([]byte{}),
-		}),
+	configEnv, err := configtx.NewCompositeTemplate(
+		configtx.NewSimpleTemplate(
+			config.DefaultHashingAlgorithm(),
+			config.DefaultBlockDataHashingStructure(),
+			config.TemplateOrdererAddresses([]string{"foo"}),
+		),
+		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
+	).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
-	status := mcc.sysChain.proposeChain(ingressTx)
+	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	action, _ := sysFilter.Apply(wrapped)
 
-	if status == cb.Status_SUCCESS {
-		t.Fatalf("Should not have validated the transaction with missing policy")
+	assert.EqualValues(t, filter.Reject, action, "Transaction had created too many channels")
+}
+
+func TestBadProposal(t *testing.T) {
+	mcc := newMockChainCreator()
+	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	// logging.SetLevel(logging.DEBUG, "orderer/multichain")
+	t.Run("BadPayload", func(t *testing.T) {
+		action, committer := sysFilter.Apply(&cb.Envelope{Payload: []byte("bad payload")})
+		assert.EqualValues(t, action, filter.Forward, "Should of skipped invalid tx")
+		assert.Nil(t, committer)
+	})
+
+	// set logger to logger with a backend that writes to a byte buffer
+	var buffer bytes.Buffer
+	logger.SetBackend(logging.AddModuleLevel(logging.NewLogBackend(&buffer, "", 0)))
+	// reset the logger after test
+	defer func() {
+		logger = logging.MustGetLogger("orderer/multichain")
+	}()
+
+	for _, tc := range []struct {
+		name    string
+		payload *cb.Payload
+		action  filter.Action
+		regexp  string
+	}{
+		{
+			"MissingPayloadHeader",
+			&cb.Payload{},
+			filter.Forward,
+			"",
+		},
+		{
+			"BadChannelHeader",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: []byte("bad channel header"),
+				},
+			},
+			filter.Forward,
+			"",
+		},
+		{
+			"BadConfigTx",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: []byte("bad configTx"),
+			},
+			filter.Reject,
+			"",
+		},
+		{
+			"BadConfigTxPayload",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: []byte("bad payload"),
+					},
+				),
+			},
+			filter.Reject,
+			"Error unmarshaling envelope payload",
+		},
+		{
+			"MissingConfigTxChannelHeader",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: utils.MarshalOrPanic(
+							&cb.Payload{},
+						),
+					},
+				),
+			},
+			filter.Reject,
+			"Not a config transaction",
+		},
+		{
+			"BadConfigTxChannelHeader",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: utils.MarshalOrPanic(
+							&cb.Payload{
+								Header: &cb.Header{
+									ChannelHeader: []byte("bad channel header"),
+								},
+							},
+						),
+					},
+				),
+			},
+			filter.Reject,
+			"Error unmarshaling channel header",
+		},
+		{
+			"BadConfigTxChannelHeaderType",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: utils.MarshalOrPanic(
+							&cb.Payload{
+								Header: &cb.Header{
+									ChannelHeader: utils.MarshalOrPanic(
+										&cb.ChannelHeader{
+											Type: 0xBad,
+										},
+									),
+								},
+							},
+						),
+					},
+				),
+			},
+			filter.Reject,
+			"Not a config transaction",
+		},
+		{
+			"BadConfigEnvelope",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: utils.MarshalOrPanic(
+							&cb.Payload{
+								Header: &cb.Header{
+									ChannelHeader: utils.MarshalOrPanic(
+										&cb.ChannelHeader{
+											Type: int32(cb.HeaderType_CONFIG),
+										},
+									),
+								},
+								Data: []byte("bad config update"),
+							},
+						),
+					},
+				),
+			},
+			filter.Reject,
+			"Error unmarshalling config envelope from payload",
+		},
+		{
+			"MissingConfigEnvelopeLastUpdate",
+			&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(
+						&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ORDERER_TRANSACTION),
+						},
+					),
+				},
+				Data: utils.MarshalOrPanic(
+					&cb.Envelope{
+						Payload: utils.MarshalOrPanic(
+							&cb.Payload{
+								Header: &cb.Header{
+									ChannelHeader: utils.MarshalOrPanic(
+										&cb.ChannelHeader{
+											Type: int32(cb.HeaderType_CONFIG),
+										},
+									),
+								},
+								Data: utils.MarshalOrPanic(
+									&cb.ConfigEnvelope{},
+								),
+							},
+						),
+					},
+				),
+			},
+			filter.Reject,
+			"Must include a config update",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			buffer.Reset()
+			action, committer := sysFilter.Apply(&cb.Envelope{Payload: utils.MarshalOrPanic(tc.payload)})
+			assert.EqualValues(t, tc.action, action, "Expected tx to be %sed, but instead the tx will be %sed.", filterActionToString(tc.action), filterActionToString(action))
+			assert.Nil(t, committer)
+			assert.Regexp(t, tc.regexp, buffer.String())
+		})
 	}
 }
 
-func TestProposalWithBadDigest(t *testing.T) {
-	newChainID := "NewChainID"
-
-	mcc := newMockChainCreator()
-	mcc.ms.mpm.mp = &mockPolicy{}
-	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
-
-	chainCreateTx := &cb.ConfigurationItem{
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigurationItem_Orderer,
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-			Digest: coreutil.ComputeCryptoHash([]byte("BAD_DIGEST")),
-		}),
-	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
-
-	status := mcc.sysChain.proposeChain(ingressTx)
-
-	if status == cb.Status_SUCCESS {
-		t.Fatalf("Should not have validated the transaction with missing policy")
+func filterActionToString(action filter.Action) string {
+	switch action {
+	case filter.Accept:
+		return "accept"
+	case filter.Forward:
+		return "forward"
+	case filter.Reject:
+		return "reject"
+	default:
+		return ""
 	}
 }

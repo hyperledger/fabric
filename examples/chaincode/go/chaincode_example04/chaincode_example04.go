@@ -31,7 +31,7 @@ import (
 type SimpleChaincode struct {
 }
 
-// Init takes two arguements, a string and int. These are stored in the key/value pair in the state
+// Init takes two arguments, a string and int. These are stored in the key/value pair in the state
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	var event string // Indicates whether event has happened. Initially 0
 	var eventVal int // State of event
@@ -63,8 +63,8 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string
 	var eventVal int // State of event
 	var err error
 
-	if len(args) != 3 {
-		return shim.Error("Incorrect number of arguments. Expecting 3")
+	if len(args) != 3 && len(args) != 4 {
+		return shim.Error("Incorrect number of arguments. Expecting 3 or 4")
 	}
 
 	chainCodeToCall := args[0]
@@ -72,6 +72,10 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string
 	eventVal, err = strconv.Atoi(args[2])
 	if err != nil {
 		return shim.Error("Expected integer value for event state change")
+	}
+	channelID := ""
+	if len(args) == 4 {
+		channelID = args[3]
 	}
 
 	if eventVal != 1 {
@@ -81,7 +85,7 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string
 
 	f := "invoke"
 	invokeArgs := util.ToChaincodeArgs(f, "a", "b", "10")
-	response := stub.InvokeChaincode(chainCodeToCall, invokeArgs, "")
+	response := stub.InvokeChaincode(chainCodeToCall, invokeArgs, channelID)
 	if response.Status != shim.OK {
 		errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", string(response.Payload))
 		fmt.Printf(errStr)

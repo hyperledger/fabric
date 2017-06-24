@@ -16,6 +16,8 @@ limitations under the License.
 
 package bccsp
 
+import "fmt"
+
 // SHA256Opts contains options relating to SHA-256.
 type SHA256Opts struct {
 }
@@ -50,4 +52,19 @@ type SHA3_384Opts struct {
 // Algorithm returns the hash algorithm identifier (to be used).
 func (opts *SHA3_384Opts) Algorithm() string {
 	return SHA3_384
+}
+
+// GetHashOpt returns the HashOpts corresponding to the passed hash function
+func GetHashOpt(hashFunction string) (HashOpts, error) {
+	switch hashFunction {
+	case SHA256:
+		return &SHA256Opts{}, nil
+	case SHA384:
+		return &SHA384Opts{}, nil
+	case SHA3_256:
+		return &SHA3_256Opts{}, nil
+	case SHA3_384:
+		return &SHA3_384Opts{}, nil
+	}
+	return nil, fmt.Errorf("hash function not recognized [%s]", hashFunction)
 }

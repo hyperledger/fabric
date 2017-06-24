@@ -20,13 +20,21 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx"
-	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestSanity(t *testing.T) {
-	impl := NewFactoryImpl(configtx.NewSimpleTemplate(&cb.ConfigurationItem{}))
-	_, err := impl.Block("TestChainID")
-	if err != nil {
-		t.Fatalf("Basic sanity fails")
-	}
+func TestBasicSanity(t *testing.T) {
+	impl := NewFactoryImpl(configtx.NewSimpleTemplate())
+	_, err := impl.Block("testchainid")
+	assert.NoError(t, err, "Basic sanity fails")
+}
+
+func TestForTransactionID(t *testing.T) {
+	impl := NewFactoryImpl(configtx.NewSimpleTemplate())
+	block, _ := impl.Block("testchainid")
+	configEnv, _ := utils.ExtractEnvelope(block, 0)
+	configEnvPayload, _ := utils.ExtractPayload(configEnv)
+	configEnvPayloadChannelHeader, _ := utils.UnmarshalChannelHeader(configEnvPayload.GetHeader().ChannelHeader)
+	assert.NotEmpty(t, configEnvPayloadChannelHeader.TxId, "tx_id of configuration transaction should not be empty")
 }

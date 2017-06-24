@@ -1,0 +1,19 @@
+Usage: make [target]
+
+Supported Targets:
+
+- compose-up [options]:   builds a docker-compose based cluster [options: TLS=[true|false] (default: true)]
+- compose-down:           shuts down a docker-compose based cluster
+- clean:                  cleans local artifacts and, where applicable, destroys cluster
+- help:                   displays this help message
+
+Example:
+
+        make compose-up TLS=false
+
+Prerequisites:
+
+- Ensure you run "make docker" in both fabric.git and fabric-ca.git prior to execution
+
+Licensed under Creative Commons Attribution 4.0 International License
+https://creativecommons.org/licenses/by/4.0/

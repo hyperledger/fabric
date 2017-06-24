@@ -1,0 +1,65 @@
+{
+	"test-network": {
+		"orderer": {
+			"name": "OrdererOrg1",
+			"mspid": "OrdererOrg1",
+			"mspPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config",
+			"adminPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp",
+			"comName": "example.com",
+                        "url": "grpcs://10.120.223.35:5005",
+                        "server-hostname": "example.com",
+                        "tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/ordererOrganizations/example.com/orderers/orderer1.example.com/msp/cacerts/ca.example.com-cert.pem"
+                },
+		"org1": {
+			"name": "PeerOrg1",
+			"mspid": "PeerOrg1",
+			"mspPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config",
+			"adminPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp",
+			"comName": "example.com",
+			"ca": {
+                             "url":"https://10.120.223.35:7054",
+			     "name": "ca-org1"
+                        },
+			"username": "admin",
+			"secret": "adminpw",
+			"peer1": {
+				"requests": "grpcs://10.120.223.35:7061",
+				"events": "grpcs://10.120.223.35:6051",
+                                "server-hostname": "peer0.org1.example.com",
+                                "tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp/cacerts/ca.org1.example.com-cert.pem"
+			},
+			"peer2": {
+				"requests": "grpcs://10.120.223.35:7062",
+				"events": "grpcs://10.120.223.35:6052",
+                                "server-hostname": "peer1.org1.example.com",
+                                "tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/msp/cacerts/ca.org1.example.com-cert.pem"
+			}
+		},
+		"org2": {
+			"name": "PeerOrg2",
+			"mspid": "PeerOrg2",
+			"mspPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config",
+			"adminPath": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp",
+			"comName": "example.com",
+			"ca": {
+                             "url":"https://10.120.223.35:7055",
+			     "name": "ca-org2"
+                        },
+			"username": "admin",
+			"secret": "adminpw",
+			"peer1": {
+				"requests": "grpcs://10.120.223.35:7063",
+				"events": "grpcs://10.120.223.35:6053",
+                                "server-hostname": "peer0.org2.example.com",
+                                "tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp/cacerts/ca.org2.example.com-cert.pem"
+			},
+			"peer2": {
+				"requests": "grpcs://10.120.223.35:7064",
+				"events": "grpcs://10.120.223.35:6054",
+                                "server-hostname": "peer1.org2.example.com",
+                                "tls_cacerts": "/root/gopath/src/github.com/hyperledger/fabric/common/tools/cryptogen/crypto-config/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/msp/cacerts/ca.org2.example.com-cert.pem"
+			}
+		}
+        }
+
+}

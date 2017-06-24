@@ -22,10 +22,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	gossip_common "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/protos/common"
+	gossip_proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 // MockGossipServiceAdapter mocking structure for gossip service, used to initialize
@@ -34,7 +36,18 @@ import (
 type MockGossipServiceAdapter struct {
 	AddPayloadsCnt int32
 
-	GossipCallsCnt int32
+	GossipBlockDisseminations chan uint64
+}
+
+type MockAtomicBroadcastClient struct {
+	BD *MockBlocksDeliverer
+}
+
+func (mabc *MockAtomicBroadcastClient) Broadcast(ctx context.Context, opts ...grpc.CallOption) (orderer.AtomicBroadcast_BroadcastClient, error) {
+	panic("Should not be used")
+}
+func (mabc *MockAtomicBroadcastClient) Deliver(ctx context.Context, opts ...grpc.CallOption) (orderer.AtomicBroadcast_DeliverClient, error) {
+	return mabc.BD, nil
 }
 
 // PeersOfChannel returns the slice with peers participating in given channel
@@ -50,16 +63,17 @@ func (mock *MockGossipServiceAdapter) AddPayload(chainID string, payload *gossip
 
 // Gossip message to the all peers
 func (mock *MockGossipServiceAdapter) Gossip(msg *gossip_proto.GossipMessage) {
-	atomic.AddInt32(&mock.GossipCallsCnt, 1)
+	mock.GossipBlockDisseminations <- msg.GetDataMsg().Payload.SeqNum
 }
 
 // MockBlocksDeliverer mocking structure of BlocksDeliverer interface to initialize
 // the blocks provider implementation
 type MockBlocksDeliverer struct {
-	Pos uint64
-
-	RecvCnt int32
-
+	DisconnectCalled chan struct{}
+	CloseCalled      chan struct{}
+	Pos              uint64
+	grpc.ClientStream
+	RecvCnt  int32
 	MockRecv func(mock *MockBlocksDeliverer) (*orderer.DeliverResponse, error)
 }
 
@@ -102,15 +116,22 @@ func (mock *MockBlocksDeliverer) Send(env *common.Envelope) error {
 	// Read starting position
 	switch t := seekInfo.Start.Type.(type) {
 	case *orderer.SeekPosition_Oldest:
-		{
-			mock.Pos = 0
-		}
+		mock.Pos = 0
 	case *orderer.SeekPosition_Specified:
-		{
-			mock.Pos = t.Specified.Number
-		}
+		mock.Pos = t.Specified.Number
 	}
 	return nil
+}
+
+func (mock *MockBlocksDeliverer) Disconnect() {
+	mock.DisconnectCalled <- struct{}{}
+}
+
+func (mock *MockBlocksDeliverer) Close() {
+	if mock.CloseCalled == nil {
+		return
+	}
+	mock.CloseCalled <- struct{}{}
 }
 
 // MockLedgerInfo mocking implementation of LedgerInfo interface, needed
@@ -121,5 +142,5 @@ type MockLedgerInfo struct {
 
 // LedgerHeight returns mocked value to the ledger height
 func (li *MockLedgerInfo) LedgerHeight() (uint64, error) {
-	return li.Height, nil
+	return atomic.LoadUint64(&li.Height), nil
 }

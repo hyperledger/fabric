@@ -2,6 +2,7 @@ package sarama
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/rcrowley/go-metrics"
 )
@@ -33,4 +34,18 @@ func getOrRegisterBrokerMeter(name string, broker *Broker, r metrics.Registry) m
 
 func getOrRegisterBrokerHistogram(name string, broker *Broker, r metrics.Registry) metrics.Histogram {
 	return getOrRegisterHistogram(getMetricNameForBroker(name, broker), r)
+}
+
+func getMetricNameForTopic(name string, topic string) string {
+	// Convert dot to _ since reporters like Graphite typically use dot to represent hierarchy
+	// cf. KAFKA-1902 and KAFKA-2337
+	return fmt.Sprintf(name+"-for-topic-%s", strings.Replace(topic, ".", "_", -1))
+}
+
+func getOrRegisterTopicMeter(name string, topic string, r metrics.Registry) metrics.Meter {
+	return metrics.GetOrRegisterMeter(getMetricNameForTopic(name, topic), r)
+}
+
+func getOrRegisterTopicHistogram(name string, topic string, r metrics.Registry) metrics.Histogram {
+	return getOrRegisterHistogram(getMetricNameForTopic(name, topic), r)
 }

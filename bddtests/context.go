@@ -108,9 +108,9 @@ func (b *BDDContext) beforeScenario(scenarioOrScenarioOutline interface{}) {
 	b.scenarioOrScenarioOutline = scenarioOrScenarioOutline
 	//switch t := scenarioOrScenarioOutline.(type) {
 	//case *gherkin.Scenario:
-	//	fmt.Printf("Scenario recieved %v", t)
+	//	fmt.Printf("Scenario received %v", t)
 	//case *gherkin.ScenarioOutline:
-	//	fmt.Printf("ScenarioOutline recieved %v", t)
+	//	fmt.Printf("ScenarioOutline received %v", t)
 	//}
 }
 

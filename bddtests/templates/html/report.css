@@ -1,0 +1,83 @@
+/*
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+*/
+table {
+    border-collapse: collapse;
+}
+
+table, th, td {
+    border: 1px solid black;
+}
+
+tr:nth-child(even) {background-color: #f2f2f2}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+}
+
+ul {
+    padding: 20px;
+}
+
+li {
+    padding: 2px;
+}
+
+li.passed a{
+    color: green;
+}
+
+li.skipped a{
+    color: blue;
+}
+
+li.undefined a{
+    color: yellow;
+    text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+}
+
+li.failed a{
+    color: red;
+}
+
+a:link {
+    text-decoration: none;
+    color: #1c7eba;
+}
+
+a:visited {
+    color: #1c7eba;
+}
+
+div {
+    padding: 2px;
+    width: 860px;
+    margin: auto;
+}
+
+code {
+    white-space:pre
+}
+
+ .scrollBox {
+   #height: 100px;
+   border: 1px solid #ccc;
+   background: #f7f7f7;
+   overflow: auto;
+   padding: 10px
+ }
+
+/*
+h1, h2, h3 {
+    color: #D7DADB
+}
+
+body {
+    background-color: #3e4142;
+}
+*/

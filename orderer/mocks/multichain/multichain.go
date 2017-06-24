@@ -17,11 +17,11 @@ limitations under the License.
 package multichain
 
 import (
+	"github.com/hyperledger/fabric/common/config"
+	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
-	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -34,22 +34,22 @@ var logger = logging.MustGetLogger("orderer/mocks/multichain")
 // Whenever a block is written, it writes to the Batches channel to allow for synchronization
 type ConsenterSupport struct {
 	// SharedConfigVal is the value returned by SharedConfig()
-	SharedConfigVal *mocksharedconfig.Manager
+	SharedConfigVal *mockconfig.Orderer
 
 	// BlockCutterVal is the value returned by BlockCutter()
 	BlockCutterVal *mockblockcutter.Receiver
 
-	// Batches is the channel which WriteBlock writes data to
-	Batches chan []*cb.Envelope
+	// Blocks is the channel where WriteBlock writes the most recently created block
+	Blocks chan *cb.Block
 
 	// ChainIDVal is the value returned by ChainID()
 	ChainIDVal string
 
+	// HeightVal is the value returned by Height()
+	HeightVal uint64
+
 	// NextBlockVal stores the block created by the most recent CreateNextBlock() call
 	NextBlockVal *cb.Block
-
-	// WriteBlockVal stores the block created by the most recent WriteBlock() call
-	WriteBlockVal *cb.Block
 }
 
 // BlockCutter returns BlockCutterVal
@@ -58,7 +58,7 @@ func (mcs *ConsenterSupport) BlockCutter() blockcutter.Receiver {
 }
 
 // SharedConfig returns SharedConfigVal
-func (mcs *ConsenterSupport) SharedConfig() sharedconfig.Manager {
+func (mcs *ConsenterSupport) SharedConfig() config.Orderer {
 	return mcs.SharedConfigVal
 }
 
@@ -74,25 +74,25 @@ func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
 	return block
 }
 
-// WriteBlock writes data to the Batches channel
+// WriteBlock writes data to the Blocks channel
 // Note that _committers is ignored by this mock implementation
 func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Committer, encodedMetadataValue []byte) *cb.Block {
-	logger.Debugf("mockWriter: attempting to write batch")
-	umtxs := make([]*cb.Envelope, len(block.Data.Data))
-	for i := range block.Data.Data {
-		umtxs[i] = utils.UnmarshalEnvelopeOrPanic(block.Data.Data[i])
-	}
-	mcs.Batches <- umtxs
 	if encodedMetadataValue != nil {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
-	mcs.WriteBlockVal = block
+	mcs.HeightVal++
+	mcs.Blocks <- block
 	return block
 }
 
 // ChainID returns the chain ID this specific consenter instance is associated with
 func (mcs *ConsenterSupport) ChainID() string {
 	return mcs.ChainIDVal
+}
+
+// Height returns the number of blocks of the chain this specific consenter instance is associated with
+func (mcs *ConsenterSupport) Height() uint64 {
+	return mcs.HeightVal
 }
 
 // Sign returns the bytes passed in

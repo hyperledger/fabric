@@ -19,6 +19,7 @@ syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/hyperledger/fabric/protos/common";
+option java_package = "org.hyperledger.fabric.protos.common";
 
 package common;
 
@@ -36,24 +37,25 @@ enum Status {
 
 enum HeaderType {
     MESSAGE = 0;                   // Used for messages which are signed but opaque
-    CONFIGURATION_TRANSACTION = 1; // Used for messages which reconfigure the chain
-    CONFIGURATION_ITEM = 2;        // Used inside of the the reconfiguration message for signing over ConfigurationItems
+    CONFIG = 1;                    // Used for messages which express the channel config
+    CONFIG_UPDATE = 2;             // Used for transactions which update the channel config
     ENDORSER_TRANSACTION = 3;      // Used by the SDK to submit endorser based transactions
     ORDERER_TRANSACTION = 4;       // Used internally by the orderer for management
     DELIVER_SEEK_INFO = 5;         // Used as the type for Envelope messages submitted to instruct the Deliver API to seek
+    CHAINCODE_PACKAGE = 6;         // Used for packaging chaincode artifacts for install
 }
 
 // This enum enlists indexes of the block metadata array
 enum BlockMetadataIndex {
     SIGNATURES = 0;             // Block metadata array position for block signatures
-    LAST_CONFIGURATION = 1;     // Block metadata array poistion to store last configuration block sequence number
-    TRANSACTIONS_FILTER = 2;    // Block metadata array poistion to store serialized bit array filter of invalid transactions
+    LAST_CONFIG = 1;            // Block metadata array position to store last configuration block sequence number
+    TRANSACTIONS_FILTER = 2;    // Block metadata array position to store serialized bit array filter of invalid transactions
     ORDERER = 3;                // Block metadata array position to store operational metadata for orderers
                                 // e.g. For Kafka, this is where we store the last offset written to the local ledger.
 }
 
-// LastConfiguration is the encoded value for the Metadata message which is encoded in the LAST_CONFIGURATION block metadata index
-message LastConfiguration {
+// LastConfig is the encoded value for the Metadata message which is encoded in the LAST_CONFIGURATION block metadata index
+message LastConfig {
 	uint64 index  = 1;
 }
 
@@ -64,17 +66,17 @@ message Metadata {
 }
 
 message MetadataSignature {
-    bytes signatureHeader = 1; // An encoded SignatureHeader
+    bytes signature_header = 1; // An encoded SignatureHeader
     bytes signature = 2;       // The signature over the concatenation of the Metadata value bytes, signatureHeader, and block header
 }
 
 message Header {
-    ChainHeader chainHeader = 1;
-    SignatureHeader signatureHeader = 2;
+    bytes channel_header = 1;
+    bytes signature_header = 2;
 }
 
 // Header is a generic replay prevention and identity message to include in a signed payload
-message ChainHeader {
+message ChannelHeader {
     int32 type = 1; // Header types 0-10000 are reserved and defined by HeaderType
 
     // Version indicates message protocol version
@@ -84,8 +86,8 @@ message ChainHeader {
     // by the sender
     google.protobuf.Timestamp timestamp = 3;
 
-    // Identifier of the chain this message is bound for
-    string chainID = 4;
+    // Identifier of the channel this message is bound for
+    string channel_id = 4;
 
     // An unique identifier that is used end-to-end.
     //  -  set by higher layers such as end user or SDK
@@ -93,7 +95,7 @@ message ChainHeader {
     //  -  as the header is passed along unchanged, it will be
     //     be retrieved by the committer (uniqueness check here as well)
     //  -  to be stored in the ledger
-    string txID = 5;
+    string tx_id = 5;
 
     // The epoch in which this header was generated, where epoch is defined based on block height
     // Epoch in which the response has been generated. This field identifies a
@@ -140,24 +142,24 @@ message Envelope {
 // in the BlockHeader.  This makes it natural and obvious that the Data is included in the hash, but
 // the Metadata is not.
 message Block {
-    BlockHeader Header = 1;
-    BlockData Data = 2;
-    BlockMetadata Metadata = 3;
+    BlockHeader header = 1;
+    BlockData data = 2;
+    BlockMetadata metadata = 3;
 }
 
 // BlockHeader is the element of the block which forms the block chain
 // The block header is hashed using the configured chain hashing algorithm
 // over the ASN.1 encoding of the BlockHeader
 message BlockHeader {
-    uint64 Number = 1; // The position in the blockchain
-    bytes PreviousHash = 2; // The hash of the previous block header
-    bytes DataHash = 3; // The hash of the BlockData, by MerkleTree
+    uint64 number = 1; // The position in the blockchain
+    bytes previous_hash = 2; // The hash of the previous block header
+    bytes data_hash = 3; // The hash of the BlockData, by MerkleTree
 }
 
 message BlockData {
-    repeated bytes Data = 1;
+    repeated bytes data = 1;
 }
 
 message BlockMetadata {
-    repeated bytes Metadata = 1;
+    repeated bytes metadata = 1;
 }

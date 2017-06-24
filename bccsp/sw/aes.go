@@ -24,10 +24,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/hyperledger/fabric/bccsp"
 )
 
 // GetRandomBytes returns len random looking bytes
 func GetRandomBytes(len int) ([]byte, error) {
+	if len < 0 {
+		return nil, errors.New("Len must be larger than 0")
+	}
+
 	buffer := make([]byte, len)
 
 	n, err := rand.Read(buffer)
@@ -123,15 +129,33 @@ func AESCBCPKCS7Encrypt(key, src []byte) ([]byte, error) {
 func AESCBCPKCS7Decrypt(key, src []byte) ([]byte, error) {
 	// First decrypt
 	pt, err := aesCBCDecrypt(key, src)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		return pkcs7UnPadding(pt)
 	}
+	return nil, err
+}
 
-	// Then remove padding
-	original, err := pkcs7UnPadding(pt)
-	if err != nil {
-		return nil, err
+type aescbcpkcs7Encryptor struct{}
+
+func (*aescbcpkcs7Encryptor) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) (ciphertext []byte, err error) {
+	switch opts.(type) {
+	case *bccsp.AESCBCPKCS7ModeOpts, bccsp.AESCBCPKCS7ModeOpts:
+		// AES in CBC mode with PKCS7 padding
+		return AESCBCPKCS7Encrypt(k.(*aesPrivateKey).privKey, plaintext)
+	default:
+		return nil, fmt.Errorf("Mode not recognized [%s]", opts)
 	}
+}
 
-	return original, nil
+type aescbcpkcs7Decryptor struct{}
+
+func (*aescbcpkcs7Decryptor) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) (plaintext []byte, err error) {
+	// check for mode
+	switch opts.(type) {
+	case *bccsp.AESCBCPKCS7ModeOpts, bccsp.AESCBCPKCS7ModeOpts:
+		// AES in CBC mode with PKCS7 padding
+		return AESCBCPKCS7Decrypt(k.(*aesPrivateKey).privKey, ciphertext)
+	default:
+		return nil, fmt.Errorf("Mode not recognized [%s]", opts)
+	}
 }

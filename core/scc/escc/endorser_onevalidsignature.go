@@ -19,16 +19,16 @@ package escc
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	putils "github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 )
 
-var logger = logging.MustGetLogger("escc")
+var logger = flogging.MustGetLogger("escc")
 
 // EndorserOneValidSignature implements the default endorsement policy, which is to
 // sign the proposal hash and the read-write set
@@ -52,9 +52,11 @@ func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Re
 // args[0] - function name (not used now)
 // args[1] - serialized Header object
 // args[2] - serialized ChaincodeProposalPayload object
-// args[3] - binary blob of simulation results
-// args[4] - serialized events (optional)
-// args[5] - payloadVisibility (optional)
+// args[3] - ChaincodeID of executing chaincode
+// args[4] - result of executing chaincode
+// args[5] - binary blob of simulation results
+// args[6] - serialized events
+// args[7] - payloadVisibility
 //
 // NOTE: this chaincode is meant to sign another chaincode's simulation
 // results. It should not manipulate state as any state change will be
@@ -63,13 +65,13 @@ func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Re
 // definition can't be a state change of our own.
 func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	args := stub.GetArgs()
-	if len(args) < 5 {
+	if len(args) < 6 {
 		return shim.Error(fmt.Sprintf("Incorrect number of arguments (expected a minimum of 5, provided %d)", len(args)))
-	} else if len(args) > 7 {
+	} else if len(args) > 8 {
 		return shim.Error(fmt.Sprintf("Incorrect number of arguments (expected a maximum of 7, provided %d)", len(args)))
 	}
 
-	logger.Infof("ESCC starts: %d args", len(args))
+	logger.Debugf("ESCC starts: %d args", len(args))
 
 	// handle the header
 	var hdr []byte
@@ -87,44 +89,58 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 
 	payl = args[2]
 
-	// handle executing chaincode result
-	// Status code < 500 can be endorsed
+	// handle ChaincodeID
 	if args[3] == nil {
+		return shim.Error("ChaincodeID is null")
+	}
+
+	ccid, err := putils.UnmarshalChaincodeID(args[3])
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	// handle executing chaincode result
+	// Status code < shim.ERRORTHRESHOLD can be endorsed
+	if args[4] == nil {
 		return shim.Error("Response of chaincode executing is null")
 	}
 
-	response, err := putils.GetResponse(args[3])
+	response, err := putils.GetResponse(args[4])
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get Response of executing chaincode: %s", err.Error()))
 	}
 
-	if response.Status >= shim.ERROR {
-		return shim.Error(fmt.Sprintf("Status code less than 500 will be endorsed, get status code: %d", response.Status))
+	if response.Status >= shim.ERRORTHRESHOLD {
+		return shim.Error(fmt.Sprintf("Status code less than %d will be endorsed, received status code: %d", shim.ERRORTHRESHOLD, response.Status))
 	}
 
 	// handle simulation results
 	var results []byte
-	if args[4] == nil {
+	if args[5] == nil {
 		return shim.Error("simulation results are null")
 	}
 
-	results = args[4]
+	results = args[5]
 
 	// Handle serialized events if they have been provided
 	// they might be nil in case there's no events but there
 	// is a visibility field specified as the next arg
 	events := []byte("")
-	if len(args) > 5 && args[5] != nil {
-		events = args[5]
+	if len(args) > 6 && args[6] != nil {
+		events = args[6]
 	}
 
 	// Handle payload visibility (it's an optional argument)
-	visibility := []byte("") // TODO: when visibility is properly defined, replace with the default
-	if len(args) > 6 {
-		if args[6] == nil {
-			return shim.Error("serialized events are null")
-		}
-		visibility = args[6]
+	// currently the fabric only supports full visibility: this means that
+	// there are no restrictions on which parts of the proposal payload will
+	// be visible in the final transaction; this default approach requires
+	// no additional instructions in the PayloadVisibility field; however
+	// the fabric may be extended to encode more elaborate visibility
+	// mechanisms that shall be encoded in this field (and handled
+	// appropriately by the peer)
+	var visibility []byte
+	if len(args) > 7 {
+		visibility = args[7]
 	}
 
 	// obtain the default signing identity for this peer; it will be used to sign this proposal response
@@ -139,7 +155,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 	}
 
 	// obtain a proposal response
-	presp, err := utils.CreateProposalResponse(hdr, payl, response, results, events, visibility, signingEndorser)
+	presp, err := utils.CreateProposalResponse(hdr, payl, response, results, events, ccid, visibility, signingEndorser)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -147,7 +163,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 	// marshall the proposal response so that we return its bytes
 	prBytes, err := utils.GetBytesProposalResponse(presp)
 	if err != nil {
-		return shim.Error(fmt.Sprintf("Could not marshall ProposalResponse: err %s", err))
+		return shim.Error(fmt.Sprintf("Could not marshal ProposalResponse: err %s", err))
 	}
 
 	pResp, err := utils.GetProposalResponse(prBytes)
@@ -158,6 +174,6 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 		fmt.Println("GetProposalResponse get empty Response")
 	}
 
-	logger.Infof("ESCC exits successfully")
+	logger.Debugf("ESCC exits successfully")
 	return shim.Success(prBytes)
 }

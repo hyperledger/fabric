@@ -1,3 +1,10 @@
+
+#
+# Copyright IBM Corp. 2016 All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # Tags that can be used and will affect test internals:
 #  @doNotDecompose will NOT decompose the named compose_yaml after scenario ends.
 #  Useful for setting up environment and reviewing after scenario.
@@ -24,9 +31,9 @@ Feature: Orderer
 
     Examples: Solo Orderer
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |
-        |   docker-compose-orderer-solo.yml    |       20              |         2          |       10       |     .5     |      0     |
-        |   docker-compose-orderer-solo.yml    |       40              |         4          |       10       |     .5     |      0     |
-        |   docker-compose-orderer-solo.yml    |       60              |         6          |       10       |     .5     |      0     |
+        |   docker-compose-orderer-solo.yml    |       20              |         2          |       10       |     .5     |     .5     |
+        |   docker-compose-orderer-solo.yml    |       40              |         4          |       10       |     .5     |     .5     |
+        |   docker-compose-orderer-solo.yml    |       60              |         6          |       10       |     .5     |     .5     |
 
     Examples: 1 Kafka Orderer and 1 Kafka Broker
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |
@@ -60,9 +67,9 @@ Feature: Orderer
 
     Examples: Solo Orderer
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |
-        |   docker-compose-orderer-solo.yml    |       20              |         2          |       10       |     .5     |      0     |
-        |   docker-compose-orderer-solo.yml    |       40              |         4          |       10       |     .5     |      0     |
-        |   docker-compose-orderer-solo.yml    |       60              |         6          |       10       |     .5     |      0     |
+        |   docker-compose-orderer-solo.yml    |       20              |         2          |       10       |     .5     |     .5     |
+        |   docker-compose-orderer-solo.yml    |       40              |         4          |       10       |     .5     |     .5     |
+        |   docker-compose-orderer-solo.yml    |       60              |         6          |       10       |     .5     |     .5     |
 
     Examples: 1 Kafka Orderer and 1 Kafka Broker
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |
@@ -93,7 +100,7 @@ Feature: Orderer
 
     Examples: Solo Orderer
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |
-        |   docker-compose-orderer-solo.yml    |       20              |         3          |       10       |     .5     |      0     |
+        |   docker-compose-orderer-solo.yml    |       20              |         3          |       10       |     .5     |     .5     |
 
     Examples: 1 Kafka Orderer and 1 Kafka Broker
         |          ComposeFile                 |   NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |  WaitTime  |

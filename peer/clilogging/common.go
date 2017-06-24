@@ -17,31 +17,55 @@ limitations under the License.
 package clilogging
 
 import (
-	"github.com/hyperledger/fabric/core/errors"
+	"github.com/hyperledger/fabric/common/errors"
+	"github.com/hyperledger/fabric/peer/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
 )
 
+// LoggingCmdFactory holds the clients used by LoggingCmd
+type LoggingCmdFactory struct {
+	AdminClient pb.AdminClient
+}
+
+// InitCmdFactory init the LoggingCmdFactory with default admin client
+func InitCmdFactory() (*LoggingCmdFactory, error) {
+	var err error
+	var adminClient pb.AdminClient
+
+	adminClient, err = common.GetAdminClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return &LoggingCmdFactory{
+		AdminClient: adminClient,
+	}, nil
+}
+
 func checkLoggingCmdParams(cmd *cobra.Command, args []string) error {
 	var err error
-
-	// check that at least one parameter is passed in
-	if len(args) == 0 {
-		err = errors.ErrorWithCallstack("Logging", "NoParameters", "No parameters provided.")
-		return err
+	if cmd.Name() == "revertlevels" {
+		if len(args) > 0 {
+			err = errors.ErrorWithCallstack("LOG", "400", "More parameters than necessary were provided. Expected 0, received %d.", len(args))
+			return err
+		}
+	} else {
+		// check that at least one parameter is passed in
+		if len(args) == 0 {
+			err = errors.ErrorWithCallstack("LOG", "400", "No parameters provided.")
+			return err
+		}
 	}
 
 	if cmd.Name() == "setlevel" {
 		// check that log level parameter is provided
 		if len(args) == 1 {
-			err = errors.ErrorWithCallstack("Logging", "NoLevelParameter", "No log level provided.")
+			err = errors.ErrorWithCallstack("LOG", "400", "No log level provided.")
 		} else {
 			// check that log level is valid. if not, err is set
-			_, err = logging.LogLevel(args[1])
-			if err != nil {
-				err = errors.ErrorWithCallstack("Logging", "InvalidLevel", "Invalid log level provided - %s", args[1])
-			}
+			err = common.CheckLogLevel(args[1])
 		}
 	}
 

@@ -22,211 +22,154 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/op/go-logging"
-	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestLevelDefault(t *testing.T) {
-	viper.Reset()
+const logLevelCount = 6
 
-	flogging.InitFromViper("")
-
-	assertDefaultLevel(t, flogging.DefaultLevel())
-}
-
-func TestLevelOtherThanDefault(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging_level", "warning")
-
-	flogging.InitFromViper("")
-
-	assertDefaultLevel(t, logging.WARNING)
-}
-
-func TestLevelForSpecificModule(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging_level", "core=info")
-
-	flogging.InitFromViper("")
-
-	assertModuleLevel(t, "core", logging.INFO)
-}
-
-func TestLeveltForMultipleModules(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging_level", "core=warning:test=debug")
-
-	flogging.InitFromViper("")
-
-	assertModuleLevel(t, "core", logging.WARNING)
-	assertModuleLevel(t, "test", logging.DEBUG)
-}
-
-func TestLevelForMultipleModulesAtSameLevel(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging_level", "core,test=warning")
-
-	flogging.InitFromViper("")
-
-	assertModuleLevel(t, "core", logging.WARNING)
-	assertModuleLevel(t, "test", logging.WARNING)
-}
-
-func TestLevelForModuleWithDefault(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging_level", "info:test=warning")
-
-	flogging.InitFromViper("")
-
-	assertDefaultLevel(t, logging.INFO)
-	assertModuleLevel(t, "test", logging.WARNING)
-}
-
-func TestLevelForModuleWithDefaultAtEnd(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging_level", "test=warning:info")
-
-	flogging.InitFromViper("")
-
-	assertDefaultLevel(t, logging.INFO)
-	assertModuleLevel(t, "test", logging.WARNING)
-}
-
-func TestLevelForSpecificCommand(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging.node", "error")
-
-	flogging.InitFromViper("node")
-
-	assertDefaultLevel(t, logging.ERROR)
-}
-
-func TestLevelForUnknownCommandGoesToDefault(t *testing.T) {
-	viper.Reset()
-
-	flogging.InitFromViper("unknown command")
-
-	assertDefaultLevel(t, flogging.DefaultLevel())
-}
-
-func TestLevelInvalid(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging_level", "invalidlevel")
-
-	flogging.InitFromViper("")
-
-	assertDefaultLevel(t, flogging.DefaultLevel())
-}
-
-func TestLevelInvalidModules(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging_level", "core=invalid")
-
-	flogging.InitFromViper("")
-
-	assertDefaultLevel(t, flogging.DefaultLevel())
-}
-
-func TestLevelInvalidEmptyModule(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging_level", "=warning")
-
-	flogging.InitFromViper("")
-
-	assertDefaultLevel(t, flogging.DefaultLevel())
-}
-
-func TestLevelInvalidModuleSyntax(t *testing.T) {
-	viper.Reset()
-	viper.Set("logging_level", "type=warn=again")
-
-	flogging.InitFromViper("")
-
-	assertDefaultLevel(t, flogging.DefaultLevel())
+type testCase struct {
+	name           string
+	args           []string
+	expectedLevels []string
+	modules        []string
+	revert         bool
+	shouldErr      bool
 }
 
 func TestGetModuleLevelDefault(t *testing.T) {
-	level, _ := flogging.GetModuleLevel("peer")
-
-	// peer should be using the default log level at this point
-	if level != "INFO" {
-		t.FailNow()
-	}
-}
-
-func TestGetModuleLevelDebug(t *testing.T) {
-	flogging.SetModuleLevel("peer", "DEBUG")
-	level, _ := flogging.GetModuleLevel("peer")
-
-	// ensure that the log level has changed to debug
-	if level != "DEBUG" {
-		t.FailNow()
-	}
-}
-
-func TestGetModuleLevelInvalid(t *testing.T) {
-	flogging.SetModuleLevel("peer", "invalid")
-	level, _ := flogging.GetModuleLevel("peer")
-
-	// ensure that the log level didn't change after invalid log level specified
-	if level != "DEBUG" {
-		t.FailNow()
-	}
+	assert.Equal(t, flogging.DefaultLevel(), flogging.GetModuleLevel("a"))
 }
 
 func TestSetModuleLevel(t *testing.T) {
-	flogging.SetModuleLevel("peer", "WARNING")
+	defer flogging.Reset()
 
-	// ensure that the log level has changed to warning
-	assertModuleLevel(t, "peer", logging.WARNING)
-}
+	var tc []testCase
 
-func TestSetModuleLevelInvalid(t *testing.T) {
-	flogging.SetModuleLevel("peer", "invalid")
+	tc = append(tc,
+		testCase{"Valid", []string{"a", "warning"}, []string{"WARNING"}, []string{"a"}, false, false},
+		// Same as before
+		testCase{"Invalid", []string{"a", "foo"}, []string{flogging.DefaultLevel()}, []string{"a"}, false, false},
+		// Test setting the "error" module
+		testCase{"Error", []string{"error", "warning"}, []string{"WARNING"}, []string{"error"}, false, false},
+		// Tests with regular expressions
+		testCase{"RegexModuleWithSubmodule", []string{"foo", "warning"}, []string{"WARNING", "WARNING", flogging.DefaultLevel()},
+			[]string{"foo", "foo/bar", "baz"}, false, false},
+		// Set the level for modules that contain "foo" or "baz"
+		testCase{"RegexOr", []string{"foo|baz", "debug"}, []string{"DEBUG", "DEBUG", "DEBUG", flogging.DefaultLevel()},
+			[]string{"foo", "foo/bar", "baz", "random"}, false, false},
+		// Set the level for modules that end with "bar"
+		testCase{"RegexSuffix", []string{"bar$", "error"}, []string{"ERROR", flogging.DefaultLevel()},
+			[]string{"foo/bar", "bar/baz"}, false, false},
+		testCase{"RegexComplex", []string{"^[a-z]+\\/[a-z]+#.+$", "warning"}, []string{flogging.DefaultLevel(), flogging.DefaultLevel(), "WARNING", "WARNING", "WARNING"},
+			[]string{"gossip/util", "orderer/util", "gossip/gossip#0.0.0.0:7051", "gossip/conn#-1", "orderer/conn#0.0.0.0:7051"}, false, false},
+		testCase{"RegexInvalid", []string{"(", "warning"}, []string{flogging.DefaultLevel()},
+			[]string{"foo"}, false, true},
+		testCase{"RevertLevels", []string{"revertmodule1", "warning", "revertmodule2", "debug"}, []string{"WARNING", "DEBUG", "DEBUG"},
+			[]string{"revertmodule1", "revertmodule2", "revertmodule2/submodule"}, true, false},
+	)
 
-	// ensure that the log level didn't change after invalid log level specified
-	assertModuleLevel(t, "peer", logging.WARNING)
-}
+	assert := assert.New(t)
 
-func ExampleSetLoggingFormat() {
-	// initializes logging backend for testing and sets
-	// time to 1970-01-01 00:00:00.000 UTC
-	logging.InitForTesting(flogging.DefaultLevel())
-
-	logFormat := "%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x} %{message}"
-	flogging.SetLoggingFormat(logFormat, os.Stdout)
-
-	logger := logging.MustGetLogger("floggingTest")
-	logger.Infof("test")
-
-	// Output:
-	// 1970-01-01 00:00:00.000 UTC [floggingTest] ExampleSetLoggingFormat -> INFO 001 test
-}
-
-func ExampleSetLoggingFormat_second() {
-	// initializes logging backend for testing and sets
-	// time to 1970-01-01 00:00:00.000 UTC
-	logging.InitForTesting(flogging.DefaultLevel())
-
-	logFormat := "%{time:15:04:05.000} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x} %{message}"
-	flogging.SetLoggingFormat(logFormat, os.Stdout)
-
-	logger := logging.MustGetLogger("floggingTest")
-	logger.Infof("test")
-
-	// Output:
-	// 00:00:00.000 [floggingTest] ExampleSetLoggingFormat_second -> INFO 001 test
-}
-
-func assertDefaultLevel(t *testing.T, expectedLevel logging.Level) {
-	assertModuleLevel(t, "", expectedLevel)
-}
-
-func assertModuleLevel(t *testing.T, module string, expectedLevel logging.Level) {
-	assertEquals(t, expectedLevel, logging.GetLevel(module))
-}
-
-func assertEquals(t *testing.T, expected interface{}, actual interface{}) {
-	if expected != actual {
-		t.Errorf("Expected: %v, Got: %v", expected, actual)
+	for i := 0; i < len(tc); i++ {
+		t.Run(tc[i].name, func(t *testing.T) {
+			for j := 0; j < len(tc[i].modules); j++ {
+				flogging.MustGetLogger(tc[i].modules[j])
+			}
+			if tc[i].revert {
+				flogging.SetPeerStartupModulesMap()
+			}
+			for k := 0; k < len(tc[i].args); k = k + 2 {
+				_, err := flogging.SetModuleLevel(tc[i].args[k], tc[i].args[k+1])
+				if tc[i].shouldErr {
+					assert.NotNil(err, "Should have returned an error")
+				}
+			}
+			for l := 0; l < len(tc[i].expectedLevels); l++ {
+				assert.Equal(tc[i].expectedLevels[l], flogging.GetModuleLevel(tc[i].modules[l]))
+			}
+			if tc[i].revert {
+				flogging.RevertToPeerStartupLevels()
+				for m := 0; m < len(tc[i].modules); m++ {
+					assert.Equal(flogging.GetPeerStartupLevel(tc[i].modules[m]), flogging.GetModuleLevel(tc[i].modules[m]))
+				}
+			}
+			flogging.Reset()
+		})
 	}
+}
+
+func TestInitFromSpec(t *testing.T) {
+	var tc []testCase
+
+	// GLOBAL
+
+	// all allowed log levels
+	for i := 0; i < logLevelCount; i++ {
+		level := logging.Level(i).String()
+		tc = append(tc, testCase{
+			name:           "Global" + level,
+			args:           []string{level},
+			expectedLevels: []string{level},
+			modules:        []string{""},
+		})
+	}
+	// NIL INPUT
+	tc = append(tc, testCase{
+		name:           "Global" + "NIL",
+		args:           []string{""},
+		expectedLevels: []string{flogging.DefaultLevel()},
+		modules:        []string{""},
+	})
+
+	// MODULES
+
+	tc = append(tc,
+		testCase{"SingleModuleLevel", []string{"a=info"}, []string{"INFO"}, []string{"a"}, false, false},
+		testCase{"MultipleModulesMultipleLevels", []string{"a=info:b=debug"}, []string{"INFO", "DEBUG"}, []string{"a", "b"}, false, false},
+		testCase{"MultipleModulesSameLevel", []string{"a,b=warning"}, []string{"WARNING", "WARNING"}, []string{"a", "b"}, false, false},
+	)
+
+	// MODULES + DEFAULT
+
+	tc = append(tc,
+		testCase{"GlobalDefaultAndSingleModuleLevel", []string{"info:a=warning"}, []string{"INFO", "WARNING"}, []string{"", "a"}, false, false},
+		testCase{"SingleModuleLevelAndGlobalDefaultAtEnd", []string{"a=warning:info"}, []string{"WARNING", "INFO"}, []string{"a", ""}, false, false},
+	)
+
+	// INVALID INPUT
+
+	tc = append(tc,
+		testCase{"InvalidLevel", []string{"foo"}, []string{flogging.DefaultLevel()}, []string{""}, false, false},
+		testCase{"InvalidLevelForSingleModule", []string{"a=foo"}, []string{flogging.DefaultLevel()}, []string{""}, false, false},
+		testCase{"EmptyModuleEqualsLevel", []string{"=warning"}, []string{flogging.DefaultLevel()}, []string{""}, false, false},
+		testCase{"InvalidModuleSyntax", []string{"a=b=c"}, []string{flogging.DefaultLevel()}, []string{""}, false, false},
+	)
+
+	assert := assert.New(t)
+
+	for i := 0; i < len(tc); i++ {
+		t.Run(tc[i].name, func(t *testing.T) {
+			defer flogging.Reset()
+			flogging.InitFromSpec(tc[i].args[0])
+			for j := 0; j < len(tc[i].expectedLevels); j++ {
+				assert.Equal(tc[i].expectedLevels[j], flogging.GetModuleLevel(tc[i].modules[j]))
+			}
+		})
+	}
+
+}
+
+func ExampleInitBackend() {
+	level, _ := logging.LogLevel(flogging.DefaultLevel())
+	// initializes logging backend for testing and sets time to 1970-01-01 00:00:00.000 UTC
+	logging.InitForTesting(level)
+
+	formatSpec := "%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x} %{message}"
+	flogging.InitBackend(flogging.SetFormat(formatSpec), os.Stdout)
+
+	logger := flogging.MustGetLogger("testModule")
+	logger.Info("test output")
+
+	// Output:
+	// 1970-01-01 00:00:00.000 UTC [testModule] ExampleInitBackend -> INFO 001 test output
 }

@@ -1,0 +1,83 @@
+# Daily Test Suite
+Click here for the latest daily status report (WIP: link TBD)
+
+## Running tests
+The entire suite of tests may be executed from script [runDailyTestSuite.sh](runDailyTestSuite.sh).
+Refer to that script for more details about how to invoke each test.
+
+## Adding new tests
+Contributors may add a new test to an existing related test tool group, or create a new one.
+Some examples:
+
+1. To add another test to an existing test suite subgroup, such as
+   the Performance Traffic Engine (PTE) tool,
+   add a test inside the existing python wrapper test_pte.py.
+   The header comment section inside that script contains
+   detailed steps explaining how to do so. In brief, it is as simple as
+   copying a block of about nine lines and modify three things:
+
+```
+   (A) edit the testcase comments
+   (B) edit the line which specifies the command and arguments to execute
+   (C) edit the line that specifies the test result to be matched
+```
+
+2. To add a new test with a new tool, it involves a few more steps:
+
+```
+   (A) Create and merge a new tool such as .../fabric/test/tools/NewTool/newTool.sh
+   (B) create a new file .../fabric/test/regression/daily/test_newTool.py
+       and define a python wrapper to invoke the new tool.
+       Model it after others like test_example.py; the file should
+       contain a testcase that looks something like this:
+
+       def test_TLS(self):
+          '''
+          FAB-2032,FAB-3593
+          Network: 2 Ord, 5 KB, 3 ZK, 2 Org, 4 Peers, 10 Chan, 10 CC
+          Launch network, use NewTool to wreak havoc on the network by
+          doing something crazy, and ensure the network handles it gracefully.
+          Then remove network and cleanup.
+          '''
+          result = subprocess.check_output("../../tools/NewTool/newTool.sh arg1 arg2", shell=True)
+          self.assertIn("A STRING from stdout of NewTool that indicates PASS", result)
+
+   (C) add lines at the bottom of runDailyTestSuite.sh to
+       invoke the new testcase(s) using the new tool:
+
+       py.test -v --junitxml results.xml ./test_example.py
+```
+
+### Test Output: formatting requirements
+The Jenkins automation tool that runs the test suite expects
+to receive xml output to display. For this reason, we execute
+tests in one of the following ways:
+
+Option 1. (Useful for any test language including bash, tool binaries, etc):
+   Invoke the test from within a python wrapper script, which allows
+   searching the stdout for a user-defined test result string.
+   Using the python wrapper makes it easy to provide the desired
+   junitxml output format. For example:
+
+```
+      py.test -v --junitxml results.xml ./test_example.py
+```
+
+Option 2. (Useful for GO tests):
+   Execute "go" tests, and pipe output through a tool such as
+   github.com/jstemmer/go-junit-report to convert to xml. e.g.:
+
+```
+      cd ../../tools/OTE
+      go get github.com/jstemmer/go-junit-report
+      go test -run ORD7 -v | go-junit-report >> results.xml
+```
+
+## Test Descriptions
+
+[Test Descriptions](README_testdescriptions.rst)
+
+[ChainCode Tests descriptions and how-to](chaincodeTests/README.rst)
+
+.. Licensed under Creative Commons Attribution 4.0 International License
+   https://creativecommons.org/licenses/by/4.0/

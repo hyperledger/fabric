@@ -17,151 +17,51 @@ limitations under the License.
 package config
 
 import (
-	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
-	"reflect"
-	"strings"
+	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGoodConfig(t *testing.T) {
-	config := Load()
-	if config == nil {
-		t.Fatalf("Could not load config")
-	}
-	t.Logf("%+v", config)
+	assert.NotNil(t, Load(), "Could not load config")
 }
 
-func TestBadConfig(t *testing.T) {
-	config := viper.New()
-	config.SetConfigName("orderer")
-	config.AddConfigPath("../")
+func TestMissingConfigFile(t *testing.T) {
+	envVar1 := "FABRIC_CFG_PATH"
+	envVal1 := "invalid fabric cfg path"
+	os.Setenv(envVar1, envVal1)
+	defer os.Unsetenv(envVar1)
 
-	err := config.ReadInConfig()
-	if err != nil {
-		t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
-	}
-
-	var uconf struct{}
-
-	err = ExactWithDateUnmarshal(config, &uconf)
-	if err == nil {
-		t.Fatalf("Should have failed to unmarshal")
-	}
+	assert.Panics(t, func() { Load() }, "Should panic")
 }
 
-type testSlice struct {
-	Inner struct {
-		Slice []string
-	}
-}
+func TestMalformedConfigFile(t *testing.T) {
+	name, err := ioutil.TempDir("", "hyperledger_fabric")
+	assert.Nil(t, err, "Error creating temp dir: %s", err)
+	defer func() {
+		err = os.RemoveAll(name)
+		assert.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
+	}()
 
-func TestEnvSlice(t *testing.T) {
-	envVar := "ORDERER_INNER_SLICE"
-	envVal := "[a, b, c]"
-	os.Setenv(envVar, envVal)
-	defer os.Unsetenv(envVar)
-	config := viper.New()
-	config.SetEnvPrefix(Prefix)
-	config.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	config.SetEnvKeyReplacer(replacer)
-	config.SetConfigType("yaml")
-
-	data := "---\nInner:\n    Slice: [d,e,f]"
-
-	err := config.ReadConfig(bytes.NewReader([]byte(data)))
-
-	if err != nil {
-		t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
+	{
+		// Create a malformed orderer.yaml file in temp dir
+		f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+		assert.Nil(t, err, "Error creating file: %s", err)
+		f.WriteString("General: 42")
+		assert.NoError(t, f.Close(), "Error closing file")
 	}
 
-	var uconf testSlice
+	envVar1 := "FABRIC_CFG_PATH"
+	envVal1 := name
+	os.Setenv(envVar1, envVal1)
+	defer os.Unsetenv(envVar1)
 
-	err = ExactWithDateUnmarshal(config, &uconf)
-	if err != nil {
-		t.Fatalf("Failed to unmarshal with: %s", err)
-	}
-
-	expected := []string{"a", "b", "c"}
-	if !reflect.DeepEqual(uconf.Inner.Slice, expected) {
-		t.Fatalf("Did not get back the right slice, expeced: %v got %v", expected, uconf.Inner.Slice)
-	}
-}
-
-type testByteSize struct {
-	Inner struct {
-		ByteSize uint32
-	}
-}
-
-func TestByteSize(t *testing.T) {
-	config := viper.New()
-	config.SetConfigType("yaml")
-
-	testCases := []struct {
-		data     string
-		expected uint32
-	}{
-		{"", 0},
-		{"42", 42},
-		{"42k", 42 * 1024},
-		{"42kb", 42 * 1024},
-		{"42K", 42 * 1024},
-		{"42KB", 42 * 1024},
-		{"42 K", 42 * 1024},
-		{"42 KB", 42 * 1024},
-		{"42m", 42 * 1024 * 1024},
-		{"42mb", 42 * 1024 * 1024},
-		{"42M", 42 * 1024 * 1024},
-		{"42MB", 42 * 1024 * 1024},
-		{"42 M", 42 * 1024 * 1024},
-		{"42 MB", 42 * 1024 * 1024},
-		{"3g", 3 * 1024 * 1024 * 1024},
-		{"3gb", 3 * 1024 * 1024 * 1024},
-		{"3G", 3 * 1024 * 1024 * 1024},
-		{"3GB", 3 * 1024 * 1024 * 1024},
-		{"3 G", 3 * 1024 * 1024 * 1024},
-		{"3 GB", 3 * 1024 * 1024 * 1024},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.data, func(t *testing.T) {
-			data := fmt.Sprintf("---\nInner:\n    ByteSize: %s", tc.data)
-			err := config.ReadConfig(bytes.NewReader([]byte(data)))
-			if err != nil {
-				t.Fatalf("Error reading config: %s", err)
-			}
-			var uconf testByteSize
-			err = ExactWithDateUnmarshal(config, &uconf)
-			if err != nil {
-				t.Fatalf("Failed to unmarshal with: %s", err)
-			}
-			if uconf.Inner.ByteSize != tc.expected {
-				t.Fatalf("Did not get back the right byte size, expeced: %v got %v", tc.expected, uconf.Inner.ByteSize)
-			}
-		})
-	}
-}
-
-func TestByteSizeOverflow(t *testing.T) {
-	config := viper.New()
-	config.SetConfigType("yaml")
-
-	data := "---\nInner:\n    ByteSize: 4GB"
-	err := config.ReadConfig(bytes.NewReader([]byte(data)))
-	if err != nil {
-		t.Fatalf("Error reading config: %s", err)
-	}
-	var uconf testByteSize
-	err = ExactWithDateUnmarshal(config, &uconf)
-	if err == nil {
-		t.Fatalf("Should have failed to unmarshal")
-	}
+	assert.Panics(t, func() { Load() }, "Should panic")
 }
 
 // TestEnvInnerVar verifies that with the Unmarshal function that
@@ -171,7 +71,7 @@ func TestByteSizeOverflow(t *testing.T) {
 func TestEnvInnerVar(t *testing.T) {
 	envVar1 := "ORDERER_GENERAL_LISTENPORT"
 	envVal1 := uint16(80)
-	envVar2 := "ORDERER_KAFKA_RETRY_PERIOD"
+	envVar2 := "ORDERER_KAFKA_RETRY_SHORTINTERVAL"
 	envVal2 := "42s"
 	os.Setenv(envVar1, fmt.Sprintf("%d", envVal1))
 	os.Setenv(envVar2, envVal2)
@@ -179,15 +79,40 @@ func TestEnvInnerVar(t *testing.T) {
 	defer os.Unsetenv(envVar2)
 	config := Load()
 
-	if config == nil {
-		t.Fatalf("Could not load config")
-	}
+	assert.NotNil(t, config, "Could not load config")
+	assert.Equal(t, config.General.ListenPort, envVal1, "Environmental override of inner config test 1 did not work")
 
-	if config.General.ListenPort != envVal1 {
-		t.Fatalf("Environmental override of inner config test 1 did not work")
-	}
 	v2, _ := time.ParseDuration(envVal2)
-	if config.Kafka.Retry.Period != v2 {
-		t.Fatalf("Environmental override of inner config test 2 did not work")
+	assert.Equal(t, config.Kafka.Retry.ShortInterval, v2, "Environmental override of inner config test 2 did not work")
+}
+
+const DummyPath = "/dummy/path"
+
+func TestKafkaTLSConfig(t *testing.T) {
+	testCases := []struct {
+		name        string
+		tls         TLS
+		shouldPanic bool
+	}{
+		{"Disabled", TLS{Enabled: false}, false},
+		{"EnabledNoPrivateKey", TLS{Enabled: true, Certificate: "public.key"}, true},
+		{"EnabledNoPublicKey", TLS{Enabled: true, PrivateKey: "private.key"}, true},
+		{"EnabledNoTrustedRoots", TLS{Enabled: true, PrivateKey: "private.key", Certificate: "public.key"}, true},
 	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			uconf := &TopLevel{Kafka: Kafka{TLS: tc.tls}}
+			if tc.shouldPanic {
+				assert.Panics(t, func() { uconf.completeInitialization(DummyPath) }, "should panic")
+			} else {
+				assert.NotPanics(t, func() { uconf.completeInitialization(DummyPath) }, "should not panic")
+			}
+		})
+	}
+}
+
+func TestProfileConfig(t *testing.T) {
+	uconf := &TopLevel{General: General{Profile: Profile{Enabled: true}}}
+	uconf.completeInitialization(DummyPath)
+	assert.Equal(t, defaults.General.Profile.Address, uconf.General.Profile.Address, "Expected profile address to be filled with default value")
 }

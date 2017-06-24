@@ -17,28 +17,23 @@ package sw
 
 import (
 	"bytes"
-	"os"
-	"testing"
-
 	"crypto"
-	"crypto/rsa"
-
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"fmt"
+	"hash"
 	"math/big"
 	"net"
+	"os"
+	"testing"
 	"time"
-
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/sha256"
-
-	"fmt"
-
-	"crypto/sha512"
-	"hash"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
@@ -58,8 +53,8 @@ type testConfig struct {
 }
 
 func TestMain(m *testing.M) {
-	ks := &FileBasedKeyStore{}
-	if err := ks.Init(nil, os.TempDir(), false); err != nil {
+	ks, err := NewFileBasedKeyStore(nil, os.TempDir(), false)
+	if err != nil {
 		fmt.Printf("Failed initiliazing KeyStore [%s]", err)
 		os.Exit(-1)
 	}
@@ -372,66 +367,6 @@ func TestKeyGenAESOpts(t *testing.T) {
 	aesKey = k.(*aesPrivateKey).privKey
 	if len(aesKey) != 32 {
 		t.Fatal("AES Key generated key in invalid. The key must have length 16.")
-	}
-}
-
-func TestHashOpts(t *testing.T) {
-	msg := []byte("abcd")
-
-	// SHA256
-	digest1, err := currentBCCSP.Hash(msg, &bccsp.SHA256Opts{})
-	if err != nil {
-		t.Fatalf("Failed computing SHA256 [%s]", err)
-	}
-
-	h := sha256.New()
-	h.Write(msg)
-	digest2 := h.Sum(nil)
-
-	if !bytes.Equal(digest1, digest2) {
-		t.Fatalf("Different SHA256 computed. [%x][%x]", digest1, digest2)
-	}
-
-	// SHA384
-	digest1, err = currentBCCSP.Hash(msg, &bccsp.SHA384Opts{})
-	if err != nil {
-		t.Fatalf("Failed computing SHA384 [%s]", err)
-	}
-
-	h = sha512.New384()
-	h.Write(msg)
-	digest2 = h.Sum(nil)
-
-	if !bytes.Equal(digest1, digest2) {
-		t.Fatalf("Different SHA384 computed. [%x][%x]", digest1, digest2)
-	}
-
-	// SHA3_256O
-	digest1, err = currentBCCSP.Hash(msg, &bccsp.SHA3_256Opts{})
-	if err != nil {
-		t.Fatalf("Failed computing SHA3_256 [%s]", err)
-	}
-
-	h = sha3.New256()
-	h.Write(msg)
-	digest2 = h.Sum(nil)
-
-	if !bytes.Equal(digest1, digest2) {
-		t.Fatalf("Different SHA3_256 computed. [%x][%x]", digest1, digest2)
-	}
-
-	// SHA3_384
-	digest1, err = currentBCCSP.Hash(msg, &bccsp.SHA3_384Opts{})
-	if err != nil {
-		t.Fatalf("Failed computing SHA3_384 [%s]", err)
-	}
-
-	h = sha3.New384()
-	h.Write(msg)
-	digest2 = h.Sum(nil)
-
-	if !bytes.Equal(digest1, digest2) {
-		t.Fatalf("Different SHA3_384 computed. [%x][%x]", digest1, digest2)
 	}
 }
 
@@ -974,8 +909,7 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 		},
 	}
 
-	cryptoSigner := &signer.CryptoSigner{}
-	err = cryptoSigner.Init(currentBCCSP, k)
+	cryptoSigner, err := signer.New(currentBCCSP, k)
 	if err != nil {
 		t.Fatalf("Failed initializing CyrptoSigner [%s]", err)
 	}
@@ -1040,35 +974,35 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 
 func TestECDSASignatureEncoding(t *testing.T) {
 	v := []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0xff, 0xf1}
-	_, err := asn1.Unmarshal(v, &ecdsaSignature{})
+	_, err := asn1.Unmarshal(v, &ECDSASignature{})
 	if err == nil {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
 	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
 
 	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0x00, 0x01}
-	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	_, err = asn1.Unmarshal(v, &ECDSASignature{})
 	if err == nil {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
 	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
 
 	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x01}
-	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	_, err = asn1.Unmarshal(v, &ECDSASignature{})
 	if err == nil {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
 	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
 
 	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x8F}
-	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	_, err = asn1.Unmarshal(v, &ECDSASignature{})
 	if err == nil {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
 	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
 
 	v = []byte{0x30, 0x0A, 0x02, 0x01, 0x8F, 0x02, 0x05, 0x00, 0x00, 0x00, 0x00, 0x8F}
-	_, err = asn1.Unmarshal(v, &ecdsaSignature{})
+	_, err = asn1.Unmarshal(v, &ECDSASignature{})
 	if err == nil {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
@@ -1095,7 +1029,7 @@ func TestECDSALowS(t *testing.T) {
 		t.Fatalf("Failed generating ECDSA signature [%s]", err)
 	}
 
-	R, S, err := unmarshalECDSASignature(signature)
+	_, S, err := UnmarshalECDSASignature(signature)
 	if err != nil {
 		t.Fatalf("Failed unmarshalling signature [%s]", err)
 	}
@@ -1113,6 +1047,7 @@ func TestECDSALowS(t *testing.T) {
 	}
 
 	// Ensure that signature with high-S are rejected.
+	var R *big.Int
 	for {
 		R, S, err = ecdsa.Sign(rand.Reader, k.(*ecdsaPrivateKey).privKey, digest)
 		if err != nil {
@@ -1124,7 +1059,7 @@ func TestECDSALowS(t *testing.T) {
 		}
 	}
 
-	sig, err := marshalECDSASignature(R, S)
+	sig, err := MarshalECDSASignature(R, S)
 	if err != nil {
 		t.Fatalf("Failing unmarshalling signature [%s]", err)
 	}
@@ -1439,7 +1374,7 @@ func TestRSAKeyGenEphemeral(t *testing.T) {
 		t.Fatalf("Failed generating RSA corresponding public key [%s]", err)
 	}
 	if pk == nil {
-		t.Fatal("PK must be diffrent from nil")
+		t.Fatal("PK must be different from nil")
 	}
 
 	b, err := k.Bytes()
@@ -1785,8 +1720,7 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 		},
 	}
 
-	cryptoSigner := &signer.CryptoSigner{}
-	err = cryptoSigner.Init(currentBCCSP, k)
+	cryptoSigner, err := signer.New(currentBCCSP, k)
 	if err != nil {
 		t.Fatalf("Failed initializing CyrptoSigner [%s]", err)
 	}
@@ -1846,51 +1780,6 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 	}
 	if !valid {
 		t.Fatal("Failed verifying RSA signature. Signature not valid.")
-	}
-}
-
-func TestGetHashAndHashCompatibility(t *testing.T) {
-
-	msg1 := []byte("abcd")
-	msg2 := []byte("efgh")
-	msg := []byte("abcdefgh")
-
-	digest1, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
-	if err != nil {
-		t.Fatalf("Failed computing HASH [%s]", err)
-	}
-
-	digest2, err := currentBCCSP.Hash(msg, nil)
-	if err != nil {
-		t.Fatalf("Failed computing HASH [%s]", err)
-	}
-
-	if !bytes.Equal(digest1, digest2) {
-		t.Fatalf("Different hash computed. [%x][%x]", digest1, digest2)
-	}
-
-	h, err := currentBCCSP.GetHash(nil)
-	if err != nil {
-		t.Fatalf("Failed getting hash.Hash instance [%s]", err)
-	}
-	h.Write(msg1)
-	h.Write(msg2)
-	digest3 := h.Sum(nil)
-
-	h2, err := currentBCCSP.GetHash(&bccsp.SHAOpts{})
-	if err != nil {
-		t.Fatalf("Failed getting SHA hash.Hash instance [%s]", err)
-	}
-	h2.Write(msg1)
-	h2.Write(msg2)
-	digest4 := h2.Sum(nil)
-
-	if !bytes.Equal(digest3, digest4) {
-		t.Fatalf("Different hash computed. [%x][%x]", digest3, digest4)
-	}
-
-	if !bytes.Equal(digest1, digest3) {
-		t.Fatalf("Different hash computed. [%x][%x]", digest1, digest3)
 	}
 }
 

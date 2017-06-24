@@ -19,17 +19,16 @@ package stateleveldb
 import (
 	"bytes"
 	"errors"
-	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/util/leveldbhelper"
-	logging "github.com/op/go-logging"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
-var logger = logging.MustGetLogger("stateleveldb")
+var logger = flogging.MustGetLogger("stateleveldb")
 
 var compositeKeySep = []byte{0x00}
 var lastKeyIndicator = byte(0x01)
@@ -80,6 +79,11 @@ func (vdb *versionedDB) Close() {
 	// do nothing because shared db is used
 }
 
+// ValidateKey implements method in VersionedDB interface
+func (vdb *versionedDB) ValidateKey(key string) error {
+	return nil
+}
+
 // GetState implements method in VersionedDB interface
 func (vdb *versionedDB) GetState(namespace string, key string) (*statedb.VersionedValue, error) {
 	logger.Debugf("GetState(). ns=%s, key=%s", namespace, key)
@@ -122,7 +126,7 @@ func (vdb *versionedDB) GetStateRangeScanIterator(namespace string, startKey str
 }
 
 // ExecuteQuery implements method in VersionedDB interface
-func (vdb *versionedDB) ExecuteQuery(query string) (statedb.ResultsIterator, error) {
+func (vdb *versionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIterator, error) {
 	return nil, errors.New("ExecuteQuery not supported for leveldb")
 }
 
@@ -134,14 +138,8 @@ func (vdb *versionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 		updates := batch.GetUpdates(ns)
 		for k, vv := range updates {
 			compositeKey := constructCompositeKey(ns, k)
-			// trace the first 200 characters of versioned value only, in case it is huge
-			if logger.IsEnabledFor(logging.DEBUG) {
-				versionedValueDump := fmt.Sprintf("%#v", vv)
-				if len(versionedValueDump) > 200 {
-					versionedValueDump = versionedValueDump[0:200] + "..."
-				}
-				logger.Debugf("Applying key=%#v, versionedValue=%s", compositeKey, versionedValueDump)
-			}
+			logger.Debugf("Channel [%s]: Applying key=[%#v]", vdb.dbName, compositeKey)
+
 			if vv.Value == nil {
 				dbBatch.Delete(compositeKey)
 			} else {

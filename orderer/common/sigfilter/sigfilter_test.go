@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"testing"
 
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	mockpolicies "github.com/hyperledger/fabric/orderer/mocks/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -36,19 +36,15 @@ func makeEnvelope() *cb.Envelope {
 	return &cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				SignatureHeader: &cb.SignatureHeader{},
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
 		}),
 	}
 }
 
-func fooSource() []string {
-	return []string{"foo"}
-}
-
 func TestAccept(t *testing.T) {
 	mpm := &mockpolicies.Manager{Policy: &mockpolicies.Policy{}}
-	sf := New(fooSource, mpm)
+	sf := New("foo", mpm)
 	result, _ := sf.Apply(makeEnvelope())
 	if result != filter.Forward {
 		t.Fatalf("Should have accepted envelope")
@@ -57,7 +53,7 @@ func TestAccept(t *testing.T) {
 
 func TestMissingPolicy(t *testing.T) {
 	mpm := &mockpolicies.Manager{}
-	sf := New(fooSource, mpm)
+	sf := New("foo", mpm)
 	result, _ := sf.Apply(makeEnvelope())
 	if result != filter.Reject {
 		t.Fatalf("Should have rejected when missing policy")
@@ -66,7 +62,7 @@ func TestMissingPolicy(t *testing.T) {
 
 func TestEmptyPayload(t *testing.T) {
 	mpm := &mockpolicies.Manager{Policy: &mockpolicies.Policy{}}
-	sf := New(fooSource, mpm)
+	sf := New("foo", mpm)
 	result, _ := sf.Apply(&cb.Envelope{})
 	if result != filter.Reject {
 		t.Fatalf("Should have rejected when payload empty")
@@ -75,7 +71,7 @@ func TestEmptyPayload(t *testing.T) {
 
 func TestErrorOnPolicy(t *testing.T) {
 	mpm := &mockpolicies.Manager{Policy: &mockpolicies.Policy{Err: fmt.Errorf("Error")}}
-	sf := New(fooSource, mpm)
+	sf := New("foo", mpm)
 	result, _ := sf.Apply(makeEnvelope())
 	if result != filter.Reject {
 		t.Fatalf("Should have rejected when policy evaluated to err")

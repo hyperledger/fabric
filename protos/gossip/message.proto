@@ -1,0 +1,286 @@
+// Copyright IBM Corp. All Rights Reserved.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/protos/gossip" ;
+
+package gossip;
+
+
+// Gossip
+service Gossip {
+
+    // GossipStream is the gRPC stream used for sending and receiving messages
+    rpc GossipStream (stream Envelope) returns (stream Envelope) {}
+
+    // Ping is used to probe a remote peer's aliveness
+    rpc Ping (Empty) returns (Empty) {}
+}
+
+
+// Envelope contains a marshalled
+// GossipMessage and a signature over it.
+// It may also contain a SecretEnvelope
+// which is a marshalled Secret
+message Envelope {
+    bytes payload   = 1;
+    bytes signature = 2;
+    SecretEnvelope secret_envelope = 3;
+}
+
+// SecretEnvelope is a marshalled Secret
+// and a signature over it.
+// The signature should be validated by the peer
+// that signed the Envelope the SecretEnvelope
+// came with
+message SecretEnvelope {
+    bytes payload   = 1;
+    bytes signature = 2;
+}
+
+// Secret is an entity that might be omitted
+// from an Envelope when the remote peer that is receiving
+// the Envelope shouldn't know the secret's content.
+message Secret {
+    oneof content {
+        string internalEndpoint = 1;
+    }
+}
+
+// GossipMessage defines the message sent in a gossip network
+message GossipMessage {
+
+    // used mainly for testing, but will might be used in the future
+    // for ensuring message delivery by acking
+    uint64 nonce  = 1;
+
+    // The channel of the message.
+    // Some GossipMessages may set this to nil, because
+    // they are cross-channels but some may not
+    bytes channel = 2;
+
+
+    enum Tag {
+        UNDEFINED    = 0;
+        EMPTY        = 1;
+        ORG_ONLY     = 2;
+        CHAN_ONLY    = 3;
+        CHAN_AND_ORG = 4;
+        CHAN_OR_ORG  = 5;
+    }
+
+    // determines to which peers it is allowed
+    // to forward the message
+    Tag tag = 3;
+
+    oneof content {
+        // Membership
+        AliveMessage alive_msg = 5;
+        MembershipRequest mem_req = 6;
+        MembershipResponse mem_res = 7;
+
+        // Contains a ledger block
+        DataMessage data_msg = 8;
+
+        // Used for push&pull
+        GossipHello hello = 9;
+        DataDigest  data_dig = 10;
+        DataRequest data_req = 11;
+        DataUpdate  data_update = 12;
+
+        // Empty message, used for pinging
+        Empty empty = 13;
+
+        // ConnEstablish, used for establishing a connection
+        ConnEstablish conn = 14;
+
+        // Used for relaying information
+        // about state
+        StateInfo state_info = 15;
+
+        // Used for sending sets of StateInfo messages
+        StateInfoSnapshot state_snapshot = 16;
+
+        // Used for asking for StateInfoSnapshots
+        StateInfoPullRequest state_info_pull_req = 17;
+
+        //  Used to ask from a remote peer a set of blocks
+        RemoteStateRequest state_request = 18;
+
+        // Used to send a set of blocks to a remote peer
+        RemoteStateResponse state_response = 19;
+
+        // Used to indicate intent of peer to become leader
+        LeadershipMessage leadership_msg = 20;
+
+        // Used to learn of a peer's certificate
+        PeerIdentity peer_identity = 21;
+    }
+}
+
+// StateInfo is used for a peer to relay its state information
+// to other peers
+message StateInfo {
+    bytes metadata     = 1;
+    PeerTime timestamp = 2;
+    bytes pki_id       = 3;
+
+    // channel_MAC is an authentication code that proves
+    // that the peer that sent this message knows
+    // the name of the channel.
+    bytes channel_MAC  = 4;
+}
+
+// StateInfoSnapshot is an aggregation of StateInfo messages
+message StateInfoSnapshot {
+    repeated Envelope elements = 1;
+}
+
+// StateInfoPullRequest is used to fetch a StateInfoSnapshot
+// from a remote peer
+message StateInfoPullRequest {
+    // channel_MAC is an authentication code that proves
+    // that the peer that sent this message knows
+    // the name of the channel.
+    bytes channel_MAC  = 1;
+}
+
+// ConnEstablish is the message used for the gossip handshake
+// Whenever a peer connects to another peer, it handshakes
+// with it by sending this message that proves its identity
+message ConnEstablish {
+    bytes pki_id          = 1;
+    bytes identity        = 2;
+    bytes tls_cert_hash   = 3;
+}
+
+// PeerIdentity defines the identity of the peer
+// Used to make other peers learn of the identity
+// of a certain peer
+message PeerIdentity {
+    bytes pki_id    = 1;
+    bytes cert     = 2;
+    bytes metadata = 3;
+}
+
+// Messages related to pull mechanism
+
+enum PullMsgType {
+    UNDEFINED     = 0;
+    BLOCK_MSG     = 1;
+    IDENTITY_MSG  = 2;
+}
+
+// DataRequest is a message used for a peer to request
+// certain data blocks from a remote peer
+message DataRequest {
+    uint64 nonce             = 1;
+    repeated string digests  = 2;
+    PullMsgType msg_type     = 3;
+}
+
+// GossipHello is the message that is used for the peer to initiate
+// a pull round with another peer
+message GossipHello {
+    uint64 nonce        = 1;
+    bytes metadata      = 2;
+    PullMsgType msg_type = 3;
+}
+
+// DataUpdate is the final message in the pull phase
+// sent from the receiver to the initiator
+message DataUpdate {
+    uint64 nonce                = 1;
+    repeated Envelope data      = 2;
+    PullMsgType msg_type        = 3;
+}
+
+// DataDigest is the message sent from the receiver peer
+// to the initator peer and contains the data items it has
+message DataDigest {
+    uint64 nonce             = 1;
+    repeated string digests  = 2; // Maybe change this to bitmap later on
+    PullMsgType msg_type     = 3;
+}
+
+
+// Ledger block messages
+
+// DataMessage is the message that contains a block
+message DataMessage {
+    Payload payload = 1;
+}
+
+// Payload contains a block
+message Payload {
+    uint64  seq_num = 1;
+    bytes   data    = 2;
+}
+
+
+// Membership messages
+
+// AliveMessage is sent to inform remote peers
+// of a peer's existence and activity
+message AliveMessage {
+    Member membership  = 1;
+    PeerTime timestamp = 2;
+    bytes identity     = 4;
+}
+
+// Leadership Message is sent during leader election to inform
+// remote peers about intent of peer to proclaim itself as leader
+message LeadershipMessage {
+    bytes pki_id        = 1;
+    PeerTime timestamp = 2;
+    bool is_declaration = 3;
+}
+
+// PeerTime defines the logical time of a peer's life
+message PeerTime {
+    uint64 inc_num = 1;
+    uint64 seq_num = 2;
+}
+
+// MembershipRequest is used to ask membership information
+// from a remote peer
+message MembershipRequest {
+    Envelope self_information = 1;
+    repeated bytes known         = 2;
+}
+
+// MembershipResponse is used for replying to MembershipRequests
+message MembershipResponse {
+    repeated Envelope alive = 1;
+    repeated Envelope dead  = 2;
+}
+
+// Member holds membership-related information
+// about a peer
+message Member {
+    string endpoint = 1;
+    bytes  metadata = 2;
+    bytes  pki_id    = 3;
+}
+
+
+// Empty is used for pinging and in tests
+message Empty {}
+
+
+// State transfer
+
+// RemoteStateRequest is used to ask a set of blocks
+// from a remote peer
+message RemoteStateRequest {
+    uint64 start_seq_num = 1;
+    uint64 end_seq_num = 2;
+}
+
+// RemoteStateResponse is used to send a set of blocks
+// to a remote peer
+message RemoteStateResponse {
+    repeated Payload payloads = 1;
+}

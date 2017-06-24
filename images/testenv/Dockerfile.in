@@ -1,23 +1,19 @@
-FROM hyperledger/fabric-baseimage:_BASE_TAG_
+# Copyright Greg Haskins All Rights Reserved
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+FROM _NS_/fabric-buildenv:_TAG_
 
 # fabric configuration locations
-ENV PEER_CFG_PATH /etc/hyperledger/fabric
-ENV ORDERER_CFG_PATH /etc/hyperledger/fabric/orderer
+ENV FABRIC_CFG_PATH /etc/hyperledger/fabric
 
 # create needed directories
 RUN mkdir -p \
-  $PEER_CFG_PATH \
-  $ORDERER_CFG_PATH \
+  $FABRIC_CFG_PATH \
   /var/hyperledger/production
 
-# install gotools
-ADD payload/gotools.tar.bz2 /usr/local/bin/
-
 # fabric configuration files
-COPY payload/orderer.yaml $ORDERER_CFG_PATH
-COPY payload/core.yaml $PEER_CFG_PATH
-ADD payload/msp-sampleconfig.tar.bz2 $PEER_CFG_PATH
-
+ADD payload/sampleconfig.tar.bz2 $FABRIC_CFG_PATH
 
 # fabric binaries
 COPY payload/orderer /usr/local/bin

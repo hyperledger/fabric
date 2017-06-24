@@ -50,6 +50,10 @@ type chaincodeHandlerList struct {
 }
 
 func (hl *chaincodeHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
+	if h == nil {
+		return false, fmt.Errorf("cannot add nil chaincode handler")
+	}
+
 	hl.Lock()
 	defer hl.Unlock()
 
@@ -58,14 +62,14 @@ func (hl *chaincodeHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
 		return false, fmt.Errorf("chaincode information not provided for registering")
 	}
 	//chaincode registration info must be for a non-empty chaincode ID (even if the chaincode does not exist)
-	if ie.GetChaincodeRegInfo().ChaincodeID == "" {
+	if ie.GetChaincodeRegInfo().ChaincodeId == "" {
 		return false, fmt.Errorf("chaincode ID not provided for registering")
 	}
 	//is there a event type map for the chaincode
-	emap, ok := hl.handlers[ie.GetChaincodeRegInfo().ChaincodeID]
+	emap, ok := hl.handlers[ie.GetChaincodeRegInfo().ChaincodeId]
 	if !ok {
 		emap = make(map[string]map[*handler]bool)
-		hl.handlers[ie.GetChaincodeRegInfo().ChaincodeID] = emap
+		hl.handlers[ie.GetChaincodeRegInfo().ChaincodeId] = emap
 	}
 
 	//create handler map if this is the first handler for the type
@@ -92,12 +96,12 @@ func (hl *chaincodeHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
 	}
 
 	//chaincode registration info must be for a non-empty chaincode ID (even if the chaincode does not exist)
-	if ie.GetChaincodeRegInfo().ChaincodeID == "" {
+	if ie.GetChaincodeRegInfo().ChaincodeId == "" {
 		return false, fmt.Errorf("chaincode ID not provided for de-registering")
 	}
 
 	//if there's no event type map, nothing to do
-	emap, ok := hl.handlers[ie.GetChaincodeRegInfo().ChaincodeID]
+	emap, ok := hl.handlers[ie.GetChaincodeRegInfo().ChaincodeId]
 	if !ok {
 		return false, fmt.Errorf("chaincode ID not registered")
 	}
@@ -105,10 +109,10 @@ func (hl *chaincodeHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
 	//if there are no handlers for the event type, nothing to do
 	var handlerMap map[*handler]bool
 	if handlerMap, _ = emap[ie.GetChaincodeRegInfo().EventName]; handlerMap == nil {
-		return false, fmt.Errorf("event name %s not registered for chaincode ID %s", ie.GetChaincodeRegInfo().EventName, ie.GetChaincodeRegInfo().ChaincodeID)
+		return false, fmt.Errorf("event name %s not registered for chaincode ID %s", ie.GetChaincodeRegInfo().EventName, ie.GetChaincodeRegInfo().ChaincodeId)
 	} else if _, ok = handlerMap[h]; !ok {
 		//the handler is not registered for the event type
-		return false, fmt.Errorf("handler not registered for event name %s for chaincode ID %s", ie.GetChaincodeRegInfo().EventName, ie.GetChaincodeRegInfo().ChaincodeID)
+		return false, fmt.Errorf("handler not registered for event name %s for chaincode ID %s", ie.GetChaincodeRegInfo().EventName, ie.GetChaincodeRegInfo().ChaincodeId)
 	}
 	//remove the handler from the map
 	delete(handlerMap, h)
@@ -120,7 +124,7 @@ func (hl *chaincodeHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
 	if len(handlerMap) == 0 {
 		delete(emap, ie.GetChaincodeRegInfo().EventName)
 		if len(emap) == 0 {
-			delete(hl.handlers, ie.GetChaincodeRegInfo().ChaincodeID)
+			delete(hl.handlers, ie.GetChaincodeRegInfo().ChaincodeId)
 		}
 	}
 
@@ -132,12 +136,12 @@ func (hl *chaincodeHandlerList) foreach(e *pb.Event, action func(h *handler)) {
 	defer hl.Unlock()
 
 	//if there's no chaincode event in the event... nothing to do (why was this event sent ?)
-	if e.GetChaincodeEvent() == nil || e.GetChaincodeEvent().ChaincodeID == "" {
+	if e.GetChaincodeEvent() == nil || e.GetChaincodeEvent().ChaincodeId == "" {
 		return
 	}
 
 	//get the event map for the chaincode
-	if emap := hl.handlers[e.GetChaincodeEvent().ChaincodeID]; emap != nil {
+	if emap := hl.handlers[e.GetChaincodeEvent().ChaincodeId]; emap != nil {
 		//get the handler map for the event
 		if handlerMap := emap[e.GetChaincodeEvent().EventName]; handlerMap != nil {
 			for h := range handlerMap {
@@ -157,6 +161,9 @@ func (hl *chaincodeHandlerList) foreach(e *pb.Event, action func(h *handler)) {
 }
 
 func (hl *genericHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
+	if h == nil {
+		return false, fmt.Errorf("cannot add nil generic handler")
+	}
 	hl.Lock()
 	if _, ok := hl.handlers[h]; ok {
 		hl.Unlock()
@@ -198,11 +205,11 @@ type eventProcessor struct {
 	//we could generalize this with mutiple channels each with its own size
 	eventChannel chan *pb.Event
 
-	//milliseconds timeout for producer to send an event.
+	//timeout duration for producer to send an event.
 	//if < 0, if buffer full, unblocks immediately and not send
 	//if 0, if buffer full, will block and guarantee the event will be sent out
 	//if > 0, if buffer full, blocks till timeout
-	timeout int
+	timeout time.Duration
 }
 
 //global eventProcessor singleton created by initializeEvents. Openchain producers
@@ -210,7 +217,7 @@ type eventProcessor struct {
 var gEventProcessor *eventProcessor
 
 func (ep *eventProcessor) start() {
-	producerLogger.Info("event processor started")
+	logger.Info("Event processor started")
 	for {
 		//wait for event
 		e := <-ep.eventChannel
@@ -219,7 +226,7 @@ func (ep *eventProcessor) start() {
 		eType := getMessageType(e)
 		ep.Lock()
 		if hl, _ = ep.eventConsumers[eType]; hl == nil {
-			producerLogger.Errorf("Event of type %s does not exist", eType)
+			logger.Errorf("Event of type %s does not exist", eType)
 			ep.Unlock()
 			continue
 		}
@@ -236,7 +243,7 @@ func (ep *eventProcessor) start() {
 }
 
 //initialize and start
-func initializeEvents(bufferSize uint, tout int) {
+func initializeEvents(bufferSize uint, tout time.Duration) {
 	if gEventProcessor != nil {
 		panic("should not be called twice")
 	}
@@ -252,7 +259,7 @@ func initializeEvents(bufferSize uint, tout int) {
 //AddEventType supported event
 func AddEventType(eventType pb.EventType) error {
 	gEventProcessor.Lock()
-	producerLogger.Debugf("registering %s", pb.EventType_name[int32(eventType)])
+	logger.Debugf("Registering %s", pb.EventType_name[int32(eventType)])
 	if _, ok := gEventProcessor.eventConsumers[eventType]; ok {
 		gEventProcessor.Unlock()
 		return fmt.Errorf("event type exists %s", pb.EventType_name[int32(eventType)])
@@ -272,8 +279,7 @@ func AddEventType(eventType pb.EventType) error {
 }
 
 func registerHandler(ie *pb.Interest, h *handler) error {
-	producerLogger.Debugf("registerHandler %s", ie.EventType)
-
+	logger.Debugf("registering event type: %s", ie.EventType)
 	gEventProcessor.Lock()
 	defer gEventProcessor.Unlock()
 	if hl, ok := gEventProcessor.eventConsumers[ie.EventType]; !ok {
@@ -286,7 +292,7 @@ func registerHandler(ie *pb.Interest, h *handler) error {
 }
 
 func deRegisterHandler(ie *pb.Interest, h *handler) error {
-	producerLogger.Debugf("deRegisterHandler %s", ie.EventType)
+	logger.Debugf("deregistering event type: %s", ie.EventType)
 
 	gEventProcessor.Lock()
 	defer gEventProcessor.Unlock()
@@ -303,30 +309,37 @@ func deRegisterHandler(ie *pb.Interest, h *handler) error {
 
 //Send sends the event to interested consumers
 func Send(e *pb.Event) error {
+	logger.Debugf("Entry")
+	defer logger.Debugf("Exit")
 	if e.Event == nil {
-		producerLogger.Error("event not set")
+		logger.Error("event not set")
 		return fmt.Errorf("event not set")
 	}
 
 	if gEventProcessor == nil {
+		logger.Debugf("Event processor is nil")
 		return nil
 	}
 
 	if gEventProcessor.timeout < 0 {
+		logger.Debugf("Event processor timeout < 0")
 		select {
 		case gEventProcessor.eventChannel <- e:
 		default:
 			return fmt.Errorf("could not send the blocking event")
 		}
 	} else if gEventProcessor.timeout == 0 {
+		logger.Debugf("Event processor timeout = 0")
 		gEventProcessor.eventChannel <- e
 	} else {
+		logger.Debugf("Event processor timeout > 0")
 		select {
 		case gEventProcessor.eventChannel <- e:
-		case <-time.After(time.Duration(gEventProcessor.timeout) * time.Millisecond):
+		case <-time.After(gEventProcessor.timeout):
 			return fmt.Errorf("could not send the blocking event")
 		}
 	}
 
+	logger.Debugf("Event sent successfully")
 	return nil
 }

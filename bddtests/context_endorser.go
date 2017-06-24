@@ -26,7 +26,6 @@ import (
 	"github.com/DATA-DOG/godog/gherkin"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/container"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
@@ -55,12 +54,9 @@ func (b *BDDContext) build(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec,
 		return nil, err
 	}
 
-	vm, err := container.NewVM()
-	if err != nil {
-		return nil, fmt.Errorf("Error getting vm")
-	}
-
-	codePackageBytes, err = vm.BuildChaincodeContainer(spec)
+	// FIXME: This only returns a deployment spec...the chaincode is not compiled.
+	// Is compilation needed?
+	codePackageBytes, err := platforms.GetDeploymentPayload(spec)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +163,7 @@ func (b *BDDContext) userCreatesADeploymentSpecUsingChaincodeSpecAndDevopsOnPeer
 func getContextAndCancelForTimeoutInSecs(parentCtx context.Context, timeoutInSecs string) (context.Context, context.CancelFunc, error) {
 	var err error
 	errRetFunc := func() error {
-		return fmt.Errorf("Error building context and cancel func with timout '%s':  %s", timeoutInSecs, err)
+		return fmt.Errorf("Error building context and cancel func with timeout '%s':  %s", timeoutInSecs, err)
 	}
 	var (
 		durationToWait time.Duration
@@ -320,7 +316,7 @@ func (b *BDDContext) userExpectsProposalResponsesWithStatusFromEndorsers(enrollI
 	var userRegistration *UserRegistration
 	var keyedProposalResponseMap KeyedProposalResponseMap
 	errRetFunc := func() error {
-		return fmt.Errorf("Error verifying proposal reponse '%s' for user '%s' with expected response code of '%s':  %s", proposalResponseAlias, enrollID, respStatusCode, err)
+		return fmt.Errorf("Error verifying proposal response '%s' for user '%s' with expected response code of '%s':  %s", proposalResponseAlias, enrollID, respStatusCode, err)
 	}
 	if userRegistration, err = b.GetUserRegistration(enrollID); err != nil {
 		return errRetFunc()

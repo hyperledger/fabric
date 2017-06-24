@@ -1,19 +1,37 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package util
 
 import (
 	"archive/tar"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
-	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("util")
+var logger = flogging.MustGetLogger("util")
 
 //ComputeHash computes contents hash based on previous hash
 func ComputeHash(contents []byte, hash []byte) []byte {
@@ -26,7 +44,7 @@ func ComputeHash(contents []byte, hash []byte) []byte {
 	copy(newSlice[len(contents):], hash[:])
 
 	//compute new hash
-	hash = util.ComputeCryptoHash(newSlice)
+	hash = util.ComputeSHA256(newSlice)
 
 	return hash
 }
@@ -86,6 +104,143 @@ func IsCodeExist(tmppath string) error {
 
 	if !fi.IsDir() {
 		return fmt.Errorf("File %s is not dir\n", file.Name())
+	}
+
+	return nil
+}
+
+type DockerBuildOptions struct {
+	Image        string
+	Env          []string
+	Cmd          string
+	InputStream  io.Reader
+	OutputStream io.Writer
+}
+
+//-------------------------------------------------------------------------------------------
+// DockerBuild
+//-------------------------------------------------------------------------------------------
+// This function allows a "pass-through" build of chaincode within a docker container as
+// an alternative to using standard "docker build" + Dockerfile mechanisms.  The plain docker
+// build is somewhat limiting due to the resulting image that is a superset composition of
+// the build-time and run-time environments.  This superset can be problematic on several
+// fronts, such as a bloated image size, and additional security exposure associated with
+// applications that are not needed, etc.
+//
+// Therefore, this mechanism creates a pipeline consisting of an ephemeral docker
+// container that accepts source code as input, runs some function (e.g. "go build"), and
+// outputs the result.  The intention is that this output will be consumed as the basis of
+// a streamlined container by installing the output into a downstream docker-build based on
+// an appropriate minimal image.
+//
+// The input parameters are fairly simple:
+//      - Image:        (optional) The builder image to use or "chaincode.builder"
+//      - Env:          (optional) environment variables for the build environment.
+//      - Cmd:          The command to execute inside the container.
+//      - InputStream:  A tarball of files that will be expanded into /chaincode/input.
+//      - OutputStream: A tarball of files that will be gathered from /chaincode/output
+//                      after successful execution of Cmd.
+//-------------------------------------------------------------------------------------------
+func DockerBuild(opts DockerBuildOptions) error {
+	client, err := cutil.NewDockerClient()
+	if err != nil {
+		return fmt.Errorf("Error creating docker client: %s", err)
+	}
+	if opts.Image == "" {
+		opts.Image = cutil.GetDockerfileFromConfig("chaincode.builder")
+		if opts.Image == "" {
+			return fmt.Errorf("No image provided and \"chaincode.builder\" default does not exist")
+		}
+	}
+
+	logger.Debugf("Attempting build with image %s", opts.Image)
+
+	//-----------------------------------------------------------------------------------
+	// Ensure the image exists locally, or pull it from a registry if it doesn't
+	//-----------------------------------------------------------------------------------
+	_, err = client.InspectImage(opts.Image)
+	if err != nil {
+		logger.Debugf("Image %s does not exist locally, attempt pull", opts.Image)
+
+		err = client.PullImage(docker.PullImageOptions{Repository: opts.Image}, docker.AuthConfiguration{})
+		if err != nil {
+			return fmt.Errorf("Failed to pull %s: %s", opts.Image, err)
+		}
+	}
+
+	//-----------------------------------------------------------------------------------
+	// Create an ephemeral container, armed with our Env/Cmd
+	//-----------------------------------------------------------------------------------
+	container, err := client.CreateContainer(docker.CreateContainerOptions{
+		Config: &docker.Config{
+			Image:        opts.Image,
+			Env:          opts.Env,
+			Cmd:          []string{"/bin/sh", "-c", opts.Cmd},
+			AttachStdout: true,
+			AttachStderr: true,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Error creating container: %s", err)
+	}
+	defer client.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID})
+
+	//-----------------------------------------------------------------------------------
+	// Upload our input stream
+	//-----------------------------------------------------------------------------------
+	err = client.UploadToContainer(container.ID, docker.UploadToContainerOptions{
+		Path:        "/chaincode/input",
+		InputStream: opts.InputStream,
+	})
+	if err != nil {
+		return fmt.Errorf("Error uploading input to container: %s", err)
+	}
+
+	//-----------------------------------------------------------------------------------
+	// Attach stdout buffer to capture possible compilation errors
+	//-----------------------------------------------------------------------------------
+	stdout := bytes.NewBuffer(nil)
+	_, err = client.AttachToContainerNonBlocking(docker.AttachToContainerOptions{
+		Container:    container.ID,
+		OutputStream: stdout,
+		ErrorStream:  stdout,
+		Logs:         true,
+		Stdout:       true,
+		Stderr:       true,
+		Stream:       true,
+	})
+	if err != nil {
+		return fmt.Errorf("Error attaching to container: %s", err)
+	}
+
+	//-----------------------------------------------------------------------------------
+	// Launch the actual build, realizing the Env/Cmd specified at container creation
+	//-----------------------------------------------------------------------------------
+	err = client.StartContainer(container.ID, nil)
+	if err != nil {
+		return fmt.Errorf("Error executing build: %s \"%s\"", err, stdout.String())
+	}
+
+	//-----------------------------------------------------------------------------------
+	// Wait for the build to complete and gather the return value
+	//-----------------------------------------------------------------------------------
+	retval, err := client.WaitContainer(container.ID)
+	if err != nil {
+		return fmt.Errorf("Error waiting for container to complete: %s", err)
+	}
+	if retval > 0 {
+		return fmt.Errorf("Error returned from build: %d \"%s\"", retval, stdout.String())
+	}
+
+	//-----------------------------------------------------------------------------------
+	// Finally, download the result
+	//-----------------------------------------------------------------------------------
+	err = client.DownloadFromContainer(container.ID, docker.DownloadFromContainerOptions{
+		Path:         "/chaincode/output/.",
+		OutputStream: opts.OutputStream,
+	})
+	if err != nil {
+		return fmt.Errorf("Error downloading output: %s", err)
 	}
 
 	return nil

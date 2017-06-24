@@ -43,7 +43,7 @@ type VersionedDB interface {
 	// The returned ResultsIterator contains results of type *VersionedKV
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type *VersionedKV.
-	ExecuteQuery(query string) (ResultsIterator, error)
+	ExecuteQuery(namespace, query string) (ResultsIterator, error)
 	// ApplyUpdates applies the batch to the underlying db.
 	// height is the height of the highest transaction in the Batch that
 	// a state db implementation is expected to ues as a save point
@@ -51,6 +51,9 @@ type VersionedDB interface {
 	// GetLatestSavePoint returns the height of the highest transaction upto which
 	// the state db is consistent
 	GetLatestSavePoint() (*version.Height, error)
+	// ValidateKey tests whether the key is supported by the db implementation.
+	// For instance, leveldb supports any bytes for the key while the couchdb supports only valid utf-8 string
+	ValidateKey(key string) error
 	// Open opens the db
 	Open() error
 	// Close closes the db
@@ -73,14 +76,6 @@ type VersionedValue struct {
 type VersionedKV struct {
 	CompositeKey
 	VersionedValue
-}
-
-// VersionedQueryRecord encloses a query record
-type VersionedQueryRecord struct {
-	Namespace string
-	Key       string
-	Version   *version.Height
-	Record    []byte
 }
 
 // ResultsIterator hepls in iterates over query results
@@ -108,6 +103,19 @@ type UpdateBatch struct {
 // NewUpdateBatch constructs an instance of a Batch
 func NewUpdateBatch() *UpdateBatch {
 	return &UpdateBatch{make(map[string]*nsUpdates)}
+}
+
+// Get returns the VersionedValue for the given namespace and key
+func (batch *UpdateBatch) Get(ns string, key string) *VersionedValue {
+	nsUpdates, ok := batch.updates[ns]
+	if !ok {
+		return nil
+	}
+	vv, ok := nsUpdates.m[key]
+	if !ok {
+		return nil
+	}
+	return vv
 }
 
 // Put adds a VersionedKV

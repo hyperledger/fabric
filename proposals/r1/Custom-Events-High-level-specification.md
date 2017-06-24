@@ -96,3 +96,6 @@ message Register {
 As mentioned in previous section, clients should register for chaincode events using `ChaincodeReg` message where `chaincodeID` refers to the ID of chaincode as returned by the deploy transaction and `eventName` refers to the name of the event posted by the chaincode.  Setting `eventName` with empty string (or "*") will cause all events from a chaincode to be sent to the listener.
 
 There is a service defined in events.proto with a single method that receives a stream of registration events and returns an stream that the client can use to read events from as they occur.
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+s

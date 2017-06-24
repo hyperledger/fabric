@@ -13,16 +13,14 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-from common import common_pb2 as common_dot_common__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='orderer/configuration.proto',
   package='orderer',
   syntax='proto3',
-  serialized_pb=_b('\n\x1borderer/configuration.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"\x1d\n\rConsensusType\x12\x0c\n\x04type\x18\x01 \x01(\t\"Y\n\tBatchSize\x12\x17\n\x0fmaxMessageCount\x18\x01 \x01(\r\x12\x18\n\x10\x61\x62soluteMaxBytes\x18\x02 \x01(\r\x12\x19\n\x11preferredMaxBytes\x18\x03 \x01(\r\"\x1f\n\x0c\x42\x61tchTimeout\x12\x0f\n\x07timeout\x18\x01 \x01(\t\"0\n\x0e\x43reationPolicy\x12\x0e\n\x06policy\x18\x01 \x01(\t\x12\x0e\n\x06\x64igest\x18\x02 \x01(\x0c\"#\n\x12IngressPolicyNames\x12\r\n\x05names\x18\x01 \x03(\t\"\"\n\x11\x45gressPolicyNames\x12\r\n\x05names\x18\x01 \x03(\t\")\n\x18\x43hainCreationPolicyNames\x12\r\n\x05names\x18\x01 \x03(\t\"\x1f\n\x0cKafkaBrokers\x12\x0f\n\x07\x62rokers\x18\x01 \x03(\tB.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
-  ,
-  dependencies=[common_dot_common__pb2.DESCRIPTOR,])
+  serialized_pb=_b('\n\x1borderer/configuration.proto\x12\x07orderer\"\x1d\n\rConsensusType\x12\x0c\n\x04type\x18\x01 \x01(\t\"Y\n\tBatchSize\x12\x17\n\x0fmaxMessageCount\x18\x01 \x01(\r\x12\x18\n\x10\x61\x62soluteMaxBytes\x18\x02 \x01(\r\x12\x19\n\x11preferredMaxBytes\x18\x03 \x01(\r\"\x1f\n\x0c\x42\x61tchTimeout\x12\x0f\n\x07timeout\x18\x01 \x01(\t\"\x1f\n\x0cKafkaBrokers\x12\x0f\n\x07\x62rokers\x18\x01 \x03(\t\"(\n\x13\x43hannelRestrictions\x12\x11\n\tmax_count\x18\x01 \x01(\x04\x42U\n%org.hyperledger.fabric.protos.ordererZ,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
+)
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
@@ -54,8 +52,8 @@ _CONSENSUSTYPE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=61,
-  serialized_end=90,
+  serialized_start=40,
+  serialized_end=69,
 )
 
 
@@ -99,8 +97,8 @@ _BATCHSIZE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=92,
-  serialized_end=181,
+  serialized_start=71,
+  serialized_end=160,
 )
 
 
@@ -130,139 +128,8 @@ _BATCHTIMEOUT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=183,
-  serialized_end=214,
-)
-
-
-_CREATIONPOLICY = _descriptor.Descriptor(
-  name='CreationPolicy',
-  full_name='orderer.CreationPolicy',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='policy', full_name='orderer.CreationPolicy.policy', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='digest', full_name='orderer.CreationPolicy.digest', index=1,
-      number=2, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=216,
-  serialized_end=264,
-)
-
-
-_INGRESSPOLICYNAMES = _descriptor.Descriptor(
-  name='IngressPolicyNames',
-  full_name='orderer.IngressPolicyNames',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='names', full_name='orderer.IngressPolicyNames.names', index=0,
-      number=1, type=9, cpp_type=9, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=266,
-  serialized_end=301,
-)
-
-
-_EGRESSPOLICYNAMES = _descriptor.Descriptor(
-  name='EgressPolicyNames',
-  full_name='orderer.EgressPolicyNames',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='names', full_name='orderer.EgressPolicyNames.names', index=0,
-      number=1, type=9, cpp_type=9, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=303,
-  serialized_end=337,
-)
-
-
-_CHAINCREATIONPOLICYNAMES = _descriptor.Descriptor(
-  name='ChainCreationPolicyNames',
-  full_name='orderer.ChainCreationPolicyNames',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='names', full_name='orderer.ChainCreationPolicyNames.names', index=0,
-      number=1, type=9, cpp_type=9, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=339,
-  serialized_end=380,
+  serialized_start=162,
+  serialized_end=193,
 )
 
 
@@ -292,18 +159,46 @@ _KAFKABROKERS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=382,
-  serialized_end=413,
+  serialized_start=195,
+  serialized_end=226,
+)
+
+
+_CHANNELRESTRICTIONS = _descriptor.Descriptor(
+  name='ChannelRestrictions',
+  full_name='orderer.ChannelRestrictions',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='max_count', full_name='orderer.ChannelRestrictions.max_count', index=0,
+      number=1, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=228,
+  serialized_end=268,
 )
 
 DESCRIPTOR.message_types_by_name['ConsensusType'] = _CONSENSUSTYPE
 DESCRIPTOR.message_types_by_name['BatchSize'] = _BATCHSIZE
 DESCRIPTOR.message_types_by_name['BatchTimeout'] = _BATCHTIMEOUT
-DESCRIPTOR.message_types_by_name['CreationPolicy'] = _CREATIONPOLICY
-DESCRIPTOR.message_types_by_name['IngressPolicyNames'] = _INGRESSPOLICYNAMES
-DESCRIPTOR.message_types_by_name['EgressPolicyNames'] = _EGRESSPOLICYNAMES
-DESCRIPTOR.message_types_by_name['ChainCreationPolicyNames'] = _CHAINCREATIONPOLICYNAMES
 DESCRIPTOR.message_types_by_name['KafkaBrokers'] = _KAFKABROKERS
+DESCRIPTOR.message_types_by_name['ChannelRestrictions'] = _CHANNELRESTRICTIONS
 
 ConsensusType = _reflection.GeneratedProtocolMessageType('ConsensusType', (_message.Message,), dict(
   DESCRIPTOR = _CONSENSUSTYPE,
@@ -326,34 +221,6 @@ BatchTimeout = _reflection.GeneratedProtocolMessageType('BatchTimeout', (_messag
   ))
 _sym_db.RegisterMessage(BatchTimeout)
 
-CreationPolicy = _reflection.GeneratedProtocolMessageType('CreationPolicy', (_message.Message,), dict(
-  DESCRIPTOR = _CREATIONPOLICY,
-  __module__ = 'orderer.configuration_pb2'
-  # @@protoc_insertion_point(class_scope:orderer.CreationPolicy)
-  ))
-_sym_db.RegisterMessage(CreationPolicy)
-
-IngressPolicyNames = _reflection.GeneratedProtocolMessageType('IngressPolicyNames', (_message.Message,), dict(
-  DESCRIPTOR = _INGRESSPOLICYNAMES,
-  __module__ = 'orderer.configuration_pb2'
-  # @@protoc_insertion_point(class_scope:orderer.IngressPolicyNames)
-  ))
-_sym_db.RegisterMessage(IngressPolicyNames)
-
-EgressPolicyNames = _reflection.GeneratedProtocolMessageType('EgressPolicyNames', (_message.Message,), dict(
-  DESCRIPTOR = _EGRESSPOLICYNAMES,
-  __module__ = 'orderer.configuration_pb2'
-  # @@protoc_insertion_point(class_scope:orderer.EgressPolicyNames)
-  ))
-_sym_db.RegisterMessage(EgressPolicyNames)
-
-ChainCreationPolicyNames = _reflection.GeneratedProtocolMessageType('ChainCreationPolicyNames', (_message.Message,), dict(
-  DESCRIPTOR = _CHAINCREATIONPOLICYNAMES,
-  __module__ = 'orderer.configuration_pb2'
-  # @@protoc_insertion_point(class_scope:orderer.ChainCreationPolicyNames)
-  ))
-_sym_db.RegisterMessage(ChainCreationPolicyNames)
-
 KafkaBrokers = _reflection.GeneratedProtocolMessageType('KafkaBrokers', (_message.Message,), dict(
   DESCRIPTOR = _KAFKABROKERS,
   __module__ = 'orderer.configuration_pb2'
@@ -361,9 +228,16 @@ KafkaBrokers = _reflection.GeneratedProtocolMessageType('KafkaBrokers', (_messag
   ))
 _sym_db.RegisterMessage(KafkaBrokers)
 
+ChannelRestrictions = _reflection.GeneratedProtocolMessageType('ChannelRestrictions', (_message.Message,), dict(
+  DESCRIPTOR = _CHANNELRESTRICTIONS,
+  __module__ = 'orderer.configuration_pb2'
+  # @@protoc_insertion_point(class_scope:orderer.ChannelRestrictions)
+  ))
+_sym_db.RegisterMessage(ChannelRestrictions)
+
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z,github.com/hyperledger/fabric/protos/orderer'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n%org.hyperledger.fabric.protos.ordererZ,github.com/hyperledger/fabric/protos/orderer'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.

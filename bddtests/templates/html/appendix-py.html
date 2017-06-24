@@ -1,0 +1,53 @@
+<!--
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+-->
+<div>
+    {% set msgClassModule = directory.__class__.__module__ %}
+    {% set msgClassName = directory.__class__.__name__ %}
+    {% set msgVarName = [msgClassName[0]|lower,msgClassName[1:]]|join('') %}
+    <div class="scrollBox">
+        <code>
+from common import common_pb2 as common_dot_common_pb2
+from common import configtx_pb2 as common_dot_configtx_pb2
+from common import configuration_pb2 as common_dot_configuration_pb2
+from common import policies_pb2 as common_dot_policies_pb2
+from msp import msp_config_pb2, msp_principal_pb2, identities_pb2
+from peer import configuration_pb2 as peer_dot_configuration_pb2
+from orderer import configuration_pb2 as orderer_dot_configuration_pb2
+
+from {{ msgClassModule }} import {{ msgClassName }}
+{{ msgVarName }} = {{ msgClassName }}()
+directory.initFromPath('{{ path_to_pickle }}')
+
+from steps import bootstrap_util, contexthelper, compose
+context = contexthelper.Context()
+composition = compose.Composition(context=context, projectName='{{ compose_project_name }}', composeFilesYaml='{{  docker_compose_yml_file }}', register_and_up=False)
+composition.rebuildContainerData()
+context.compose_containers=composition.containerDataList
+
+user = directory.getUser("configAdminOrdererOrg0")
+channel_id = user.tags['ordererSystemChannelId']
+deliverer_stream_helper = user.connectToDeliverFunction(context, 'orderer0', user.tags['config-admin-cert'])
+latest_orderer_config_block = bootstrap_util.get_latest_configuration_block(deliverer_stream_helper, channel_id)
+latest_orderer_config_group = bootstrap_util.get_channel_group_from_config_block(latest_orderer_config_block)
+
+deliverer_stream_helper.seekToRange(chainID=channel_id, start="Newest", end="Newest")
+blocks = deliverer_stream_helper.getBlocks()
+assert len(blocks) == 1, "Expected single block, received: {0} blocks".format(len(blocks))
+newest_block = blocks[0]
+last_config = common_dot_common_pb2.LastConfig()
+metadata = common_dot_common_pb2.Metadata()
+metadata.ParseFromString(newest_block.metadata.metadata[common_dot_common_pb2.BlockMetadataIndex.Value('LAST_CONFIG')])
+last_config.ParseFromString(metadata.value)
+print("Latest config index = {0}, with latest block index = {1}".format(last_config.index, newest_block.header.number))
+
+#NOTE When done, close open streams
+directory.cleanup()
+
+        </code>
+    </div>
+</div>
