@@ -32,7 +32,7 @@ TEMP_LOG_FILE="temp_auction_logs.log"
 ORDERER_IP=orderer.example.com:7050
 LOG_LEVEL="error"
 
-ORDERER_CA=$GOPATH/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem
+ORDERER_CA=$GOPATH/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
 function wait() {
 	printf "\nWait for $1 secs\n"
