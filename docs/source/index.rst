@@ -1,5 +1,5 @@
-Welcome to Fabric
-=================
+Welcome to Hyperledger Fabric
+=============================
 
 Hyperledger Fabric is a platform for distributed ledger solutions, underpinned
 by a modular architecture delivering high degrees of confidentiality, resiliency,
@@ -13,11 +13,11 @@ future of enterprise blockchain requires building on top of a fully-vetted,
 open source architecture; Hyperledger Fabric is your starting point.
 
 It's recommended for first-time users to begin by going through the
-:doc:`getting_started` section in order to gain familiarity with the Fabric
+:doc:`getting_started` section in order to gain familiarity with the Hyperledger Fabric
 components and the basic transaction flow.  Once comfortable, continue
 exploring the library for demos, technical specifications, APIs, etc.
 
-Before diving in, watch how Fabric is `Building a Blockchain for Business
+Before diving in, watch how Hyperledger Fabric is `Building a Blockchain for Business
 <https://www.youtube.com/watch?v=EKa5Gh9whgU>`__ .
 
 
@@ -71,7 +71,7 @@ Before diving in, watch how Fabric is `Building a Blockchain for Business
 
    arch-deep-dive
    txflow
-   Fabric CA's User Guide <http://hyperledger-fabric-ca.readthedocs.io/en/latest>
+   Hyperledger Fabric CA's User Guide <http://hyperledger-fabric-ca.readthedocs.io/en/latest>
    fabric-sdks
    kafka
    channels
