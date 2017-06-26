@@ -6,43 +6,46 @@
 #
 
 source ./benchmarks.sh
-source ./parameters_daily_CI.sh
 
 ########################################################################################################
 # This shell script contains a series of benchmark tests
-# The test parameters are imported from "parameters_daily_CI.sh"
 ########################################################################################################
 
 function varyNumParallelTxPerChain {
-    for v in 1 5 10 20 50 100 500 2000; do
+    for v in "${ArrayNumParallelTxPerChain[@]}"
+    do
         NumParallelTxPerChain=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
     done
 }
 
 function varyNumChains {
-    for v in 1 5 10 20 50 100 500 2000; do
+    for v in "${ArrayNumChains[@]}"
+    do
         NumChains=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
     done
 }
 
 function varyNumKeysInEachTx {
-    for v in 1 2 5 10 20; do
+    for v in "${ArrayNumKeysInEachTx[@]}"
+    do
         NumKeysInEachTx=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
     done
 }
 
 function varyKVSize {
-    for v in 100 200 500 1000 2000; do
+    for v in "${ArrayKVSize[@]}"
+    do
         KVSize=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
     done
 }
 
 function varyBatchSize {
-    for v in 10 20 100 500; do
+    for v in "${ArrayBatchSize[@]}"
+    do
         BatchSize=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
     done
@@ -50,7 +53,8 @@ function varyBatchSize {
 
 function varyNumParallelTxWithSingleChain {
     NumChains=1
-    for v in 1 5 10 20 50 100 500 2000; do
+    for v in "${ArrayNumParallelTxWithSingleChain[@]}"
+    do
         NumParallelTxPerChain=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
     done
@@ -58,14 +62,16 @@ function varyNumParallelTxWithSingleChain {
 
 function varyNumChainsWithNoParallelism {
     NumParallelTxPerChain=1
-    for v in 1 5 10 20 50 100 500 2000; do
+    for v in "${ArrayNumChainsWithNoParallelism[@]}"
+    do
         NumChains=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
     done
 }
 
 function varyNumTxs {
-    for v in 1000000 2000000 5000000 10000000; do
+    for v in "${ArrayNumTxs[@]}"
+    do
         NumTotalTx=$v
         rm -rf $DataDir;runInsertTxs;runReadWriteTxs
     done
@@ -76,6 +82,42 @@ function runLargeDataExperiment {
     NumTotalTx=10000000
     rm -rf $DataDir;runInsertTxs;runReadWriteTxs
 }
+
+function usage () {
+    printf "Usage: ./runbenchmarks.sh [-f parameter_file_name] [test_name]\nAvailable tests (use \"all\" to run all tests):
+varyNumParallelTxPerChain
+varyNumChains
+varyNumParallelTxWithSingleChain
+varyNumChainsWithNoParallelism
+varyNumKeysInEachTx
+varyKVSize
+varyBatchSize
+varyNumTxs
+runLargeDataExperiment\n"
+}
+
+PARAM_FILE=""
+
+while getopts ":f:" opt; do
+  case $opt in
+    f)
+      printf "Parameter file: $OPTARG"
+      PARAM_FILE=$OPTARG;;
+    \?)
+      printf "Error: invalid parameter -$OPTARG!"  >> /dev/stderr
+      usage
+      exit 1;;
+  esac
+done
+
+if [ ! $PARAM_FILE ]
+then
+  printf "Error: No Parameter file given!"  >> /dev/stderr
+  usage
+  exit 1
+else
+  source $PARAM_FILE
+fi
 
 shift $(expr $OPTIND - 1 )
 
@@ -99,16 +141,7 @@ case $1 in
   runLargeDataExperiment)
     runLargeDataExperiment ;;
   help)
-    printf "Usage: ./runbenchmarks.sh [test_name]\nAvailable tests (use \"all\" to run all tests):
-varyNumParallelTxPerChain
-varyNumChains
-varyNumParallelTxWithSingleChain
-varyNumChainsWithNoParallelism
-varyNumKeysInEachTx
-varyKVSize
-varyBatchSize
-varyNumTxs
-runLargeDataExperiment\n"
+    usage
     ;;
   all)
     varyNumParallelTxPerChain
@@ -122,5 +155,6 @@ runLargeDataExperiment\n"
     runLargeDataExperiment ;;
   *)
     printf "Error: test name empty/incorrect!\n"  >> /dev/stderr
+    usage
     exit 1 ;;
 esac
