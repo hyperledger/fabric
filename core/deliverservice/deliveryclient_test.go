@@ -19,6 +19,7 @@ package deliverclient
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -250,6 +251,9 @@ func TestDeliverServiceFailover(t *testing.T) {
 }
 
 func TestDeliverServiceServiceUnavailable(t *testing.T) {
+	orgMaxRetryDelay := blocksprovider.MaxRetryDelay
+	blocksprovider.MaxRetryDelay = time.Millisecond * 200
+	defer func() { blocksprovider.MaxRetryDelay = orgMaxRetryDelay }()
 	defer ensureNoGoroutineLeak(t)()
 	// Scenario: bring up 2 ordering service instances,
 	// Make the instance the client connects to fail after a delivery of a block and send SERVICE_UNAVAILABLE
@@ -292,6 +296,10 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 	activeInstance, backupInstance := waitForConnectionToSomeOSN()
 	assert.NotNil(t, activeInstance)
 	assert.NotNil(t, backupInstance)
+	// Check that delivery client get connected to active
+	assert.Equal(t, activeInstance.ConnCount(), 1)
+	// and not connected to backup instances
+	assert.Equal(t, backupInstance.ConnCount(), 0)
 
 	// Send first block
 	go activeInstance.SendBlock(li.Height)
@@ -306,7 +314,7 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 
 	// Fail instance delivery client connected to
 	activeInstance.Fail()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	wg := sync.WaitGroup{}
@@ -314,18 +322,22 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 
 	go func(ctx context.Context) {
 		defer wg.Done()
-		select {
-		case <-time.After(time.Millisecond * 100):
-			if backupInstance.ConnCount() > 0 {
+		for {
+			select {
+			case <-time.After(time.Millisecond * 100):
+				if backupInstance.ConnCount() > 0 {
+					return
+				}
+			case <-ctx.Done():
 				return
 			}
-		case <-ctx.Done():
-			return
 		}
 	}(ctx)
 
 	wg.Wait()
 	assert.NoError(t, ctx.Err(), "Delivery client has not failed over to alive ordering service")
+	// Check that delivery client was indeed connected
+	assert.Equal(t, backupInstance.ConnCount(), 1)
 	// Ensure the client asks blocks from the other ordering service node
 	assertBlockDissemination(li.Height, gossipServiceAdapter.GossipBlockDisseminations, t)
 
@@ -452,7 +464,8 @@ func assertBlockDissemination(expectedSeq uint64, ch chan uint64, t *testing.T) 
 	case seq := <-ch:
 		assert.Equal(t, expectedSeq, seq)
 	case <-time.After(time.Second * 5):
-		assert.Fail(t, "Didn't gossip a new block within a timely manner")
+		assert.FailNow(t, fmt.Sprintf("Didn't gossip a new block with seq num %d within a timely manner", expectedSeq))
+		t.Fatal()
 	}
 }
 
