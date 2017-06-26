@@ -39,7 +39,6 @@ setGlobals () {
 			CORE_PEER_ADDRESS=peer0.org1.example.com:7051
 		else
 			CORE_PEER_ADDRESS=peer1.org1.example.com:7051
-			CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 		fi
 	else
 		CORE_PEER_LOCALMSPID="Org2MSP"
