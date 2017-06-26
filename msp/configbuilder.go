@@ -183,7 +183,7 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 
 	intermediatecerts, err := getPemMaterialFromDir(intermediatecertsDir)
 	if os.IsNotExist(err) {
-		mspLogger.Warningf("Intermediate certs folder not found at [%s]. Skipping. [%s]", intermediatecertsDir, err)
+		mspLogger.Debugf("Intermediate certs folder not found at [%s]. Skipping. [%s]", intermediatecertsDir, err)
 	} else if err != nil {
 		return nil, fmt.Errorf("Failed loading intermediate ca certs at [%s]: [%s]", intermediatecertsDir, err)
 	}
@@ -191,23 +191,23 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	tlsCACerts, err := getPemMaterialFromDir(tlscacertDir)
 	tlsIntermediateCerts := [][]byte{}
 	if os.IsNotExist(err) {
-		mspLogger.Warningf("TLS CA certs folder not found at [%s]. Skipping and ignoring TLS intermediate CA folder. [%s]", tlsintermediatecertsDir, err)
+		mspLogger.Debugf("TLS CA certs folder not found at [%s]. Skipping and ignoring TLS intermediate CA folder. [%s]", tlsintermediatecertsDir, err)
 	} else if err != nil {
 		return nil, fmt.Errorf("Failed loading TLS ca certs at [%s]: [%s]", tlsintermediatecertsDir, err)
 	} else if len(tlsCACerts) != 0 {
 		tlsIntermediateCerts, err = getPemMaterialFromDir(tlsintermediatecertsDir)
 		if os.IsNotExist(err) {
-			mspLogger.Warningf("TLS intermediate certs folder not found at [%s]. Skipping. [%s]", tlsintermediatecertsDir, err)
+			mspLogger.Debugf("TLS intermediate certs folder not found at [%s]. Skipping. [%s]", tlsintermediatecertsDir, err)
 		} else if err != nil {
 			return nil, fmt.Errorf("Failed loading TLS intermediate ca certs at [%s]: [%s]", tlsintermediatecertsDir, err)
 		}
 	} else {
-		mspLogger.Warningf("TLS CA certs folder at [%s] is empty. Skipping.", tlsintermediatecertsDir)
+		mspLogger.Debugf("TLS CA certs folder at [%s] is empty. Skipping.", tlsintermediatecertsDir)
 	}
 
 	crls, err := getPemMaterialFromDir(crlsDir)
 	if os.IsNotExist(err) {
-		mspLogger.Warningf("crls folder not found at [%s]. Skipping. [%s]", crlsDir, err)
+		mspLogger.Debugf("crls folder not found at [%s]. Skipping. [%s]", crlsDir, err)
 	} else if err != nil {
 		return nil, fmt.Errorf("Failed loading crls at [%s]: [%s]", crlsDir, err)
 	}
@@ -247,7 +247,7 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 			}
 		}
 	} else {
-		mspLogger.Infof("MSP configuration file not found at [%s]: [%s]", configFile, err)
+		mspLogger.Debugf("MSP configuration file not found at [%s]: [%s]", configFile, err)
 	}
 
 	// Set FabricCryptoConfig
