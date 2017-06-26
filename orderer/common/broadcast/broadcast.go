@@ -33,8 +33,7 @@ var logger = logging.MustGetLogger("orderer/common/broadcast")
 // ConfigUpdateProcessor is used to transform CONFIG_UPDATE transactions which are used to generate other envelope
 // message types with preprocessing by the orderer
 type ConfigUpdateProcessor interface {
-	// Process takes in an envelope of type CONFIG_UPDATE and proceses it
-	// to transform it either into another envelope type
+	// Process transforms an envelope of type CONFIG_UPDATE to another type
 	Process(envConfigUpdate *cb.Envelope) (*cb.Envelope, error)
 }
 
