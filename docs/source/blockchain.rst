@@ -187,8 +187,9 @@ application needs to interact with the ledger. In most cases chaincode only
 interacts with the database component of the ledger, the world state (querying
 it, for example), and not the transaction log.
 
-You can write chaincode in several programming languages. Currently supported
-languages include GOLANG and Java with others coming soon.
+Chaincode can be implemented in several programming languages. The currently
+supported chaincode language is `Go <https://golang.org/>`__ with support
+for Java and other languages coming in subsequent releases.
 
 **Privacy**
 
