@@ -84,7 +84,8 @@ In addition to verification related parameters, for the MSP to enable
 the node on which it is instantiated to sign or authenticate, one needs to
 specify:
 
-- The signing key used for signing by the node, and
+- The signing key used for signing by the node (currently only ECDSA keys are
+  supported), and
 - The node's X.509 certificate, that is a valid identity under the
   verification parameters of this MSP
 
@@ -96,7 +97,8 @@ How to generate MSP certificates and their signing keys?
 --------------------------------------------------------
 
 To generate X.509 certificates to feed its MSP configuration, the application
-can use `Openssl <https://www.openssl.org/>`_.
+can use `Openssl <https://www.openssl.org/>`_. We emphasise that in Hyperledger
+Fabric there is no support for certificates including RSA keys.
 
 Alternatively one can use ``cryptogen`` tool, whose operation is explained in
 :doc:`getting_started`.
@@ -127,7 +129,8 @@ and a file:
    ``OrganizationalUnitIdentifier`` represents the actual string as
    expected to appear in X.509 certificate OU-field (e.g. "COP")
 5. (optional) a folder ``crls`` to include the considered CRLs
-6. a folder ``keystore`` to include a PEM file with the node's signing key
+6. a folder ``keystore`` to include a PEM file with the node's signing key;
+   we emphasise that currently RSA keys are not supported
 7. a folder ``signcerts`` to include a PEM file with the node's X.509
    certificate
 8. (optional) a folder ``tlscacerts`` to include PEM files each corresponding to a TLS root
