@@ -42,7 +42,7 @@ following command from a terminal prompt:
 
   docker-compose --version
 
-.. _Golang_setup:
+.. _Golang:
 
 Go Programming Language
 -----------------------
