@@ -9,6 +9,12 @@ you have all the :doc:`prereqs` installed on the platform(s)
 on which you'll be developing blockchain applications and/or operating
 Hyperledger Fabric.
 
+Install Binaries and Docker Images
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+While we work on developing real installers for the Hyperledger Fabric
+binaries, we provide a script that will :ref:`binaries` to your system.
+The script also will download the Docker images to your local registry.
+
 Hyperledger Fabric Samples
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 

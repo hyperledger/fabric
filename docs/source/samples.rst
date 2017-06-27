@@ -28,11 +28,19 @@ execute the following commands:
   git clone https://github.com/hyperledger/fabric-samples.git
   cd fabric-samples
 
+.. _binaries:
+
 Download Platform-specific Binaries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Next, we will install the Hyperledger Fabric platform-specific binaries.
-To do this, execute the following command:
+This process was designed to complement the Hyperledger Fabric Samples
+above, but can be used independently. If you are not installing the
+samples above, then simply create and enter a directory into which to
+extract the contents of the platform-specific binaries.
+
+Please execute the following command from within the directory into which
+you will extract the platform-specific binaries:
 
 .. code:: bash
 
@@ -47,14 +55,15 @@ created above. It retrieves four platform-specific binaries:
   * ``configtxlator``, and
   * ``peer``
 
-and places them in the ``fabric-samples/bin`` directory.
+and places them in the ``bin`` sub-directory of the current working
+directory.
 
 You may want to add that to your PATH environment variable so that these
 can be picked up without fully qualifying the path to each binary. e.g.:
 
 .. code:: bash
 
-  export PATH=<path to fabric-samples>/bin:$PATH
+  export PATH=<path to download location>/bin:$PATH
 
 Finally, the script will download the Hyperledger Fabric docker images from
 `DockerHub <https://hub.docker.com/u/hyperledger/>`__ into
