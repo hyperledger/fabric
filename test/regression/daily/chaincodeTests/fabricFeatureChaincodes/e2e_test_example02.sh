@@ -26,7 +26,7 @@ MAX_RETRY=5
 CHAINCODE_NAME="myccex02"
 LOG_FILE="scripts1/logs.txt"
 TEMP_LOG_FILE="scripts1/temp_logs.txt"
-ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem
+ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
 verifyResult () {
 	if [ $1 -ne 0 ] ; then
