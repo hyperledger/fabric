@@ -110,7 +110,6 @@ Before diving in, watch how Hyperledger Fabric is `Building a Blockchain for Bus
    releases
    questions
    status
-   license
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
