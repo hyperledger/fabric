@@ -51,7 +51,7 @@ Choosing a Location for the Code
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you haven't been doing programming in Go, you may want to make sure that
-you have :ref:_Golang installed and your system properly configured.
+you have :ref:`Golang` installed and your system properly configured.
 
 Now, you will want to create a directory for your chaincode application as a
 child directory of ``$GOPATH/src/``.
