@@ -17,12 +17,13 @@ It's recommended for first-time users to begin by going through the
 components and the basic transaction flow.  Once comfortable, continue
 exploring the library for demos, technical specifications, APIs, etc.
 
-Before diving in, watch how Hyperledger Fabric is `Building a Blockchain for Business
-<https://www.youtube.com/watch?v=EKa5Gh9whgU>`__ .
+Before diving in, watch how Hyperledger Fabric is Building a Blockchain for
+Business:
 
+.. raw:: html
 
-
-.. NOTE:: This build of the docs is from the "|version|" branch
+   <iframe width="560" height="315" src="https://www.youtube.com/embed/EKa5Gh9whgU" frameborder="0" allowfullscreen></iframe>
+   <br/><br/>
 
 .. toctree::
    :maxdepth: 2
