@@ -52,9 +52,13 @@ function removeUnwantedImages() {
 }
 
 function networkUp () {
-    #Generate all the artifacts that includes org certs, orderer genesis block,
-    # channel configuration transaction
-    source generateArtifacts.sh $CH_NAME
+    if [ -f "./crypto-config" ]; then
+      echo "crypto-config directory already exists."
+    else
+      #Generate all the artifacts that includes org certs, orderer genesis block,
+      # channel configuration transaction
+      source generateArtifacts.sh $CH_NAME
+    fi
 
     if [ "${IF_COUCHDB}" == "couchdb" ]; then
       CHANNEL_NAME=$CH_NAME TIMEOUT=$CLI_TIMEOUT docker-compose -f $COMPOSE_FILE -f $COMPOSE_FILE_COUCH up -d 2>&1
