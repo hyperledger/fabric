@@ -32,7 +32,7 @@ import (
 )
 
 func init() {
-	maxRetryDelay = time.Second
+	MaxRetryDelay = time.Second
 }
 
 type mockMCS struct {

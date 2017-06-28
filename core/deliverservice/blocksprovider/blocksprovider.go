@@ -104,7 +104,7 @@ type blocksProviderImpl struct {
 
 const wrongStatusThreshold = 10
 
-var maxRetryDelay = time.Second * 10
+var MaxRetryDelay = time.Second * 10
 
 var logger *logging.Logger // package-level logger
 
@@ -152,7 +152,7 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 				errorStatusCounter = 0
 				logger.Warningf("[%s] Got error %v", b.chainID, t)
 			}
-			maxDelay := float64(maxRetryDelay)
+			maxDelay := float64(MaxRetryDelay)
 			currDelay := float64(time.Duration(math.Pow(2, float64(statusCounter))) * 100 * time.Millisecond)
 			time.Sleep(time.Duration(math.Min(maxDelay, currDelay)))
 			if currDelay < maxDelay {
