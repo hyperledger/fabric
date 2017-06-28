@@ -320,7 +320,7 @@ func (chaincodeSupport *ChaincodeSupport) sendReady(context context.Context, ccc
 	var notfy chan *pb.ChaincodeMessage
 	var err error
 	if notfy, err = chrte.handler.ready(context, cccid.ChainID, cccid.TxID, cccid.SignedProposal, cccid.Proposal); err != nil {
-		return fmt.Errorf("Error sending %s: %s", pb.ChaincodeMessage_INIT, err)
+		return fmt.Errorf("Error sending %s: %s", pb.ChaincodeMessage_READY, err)
 	}
 	if notfy != nil {
 		select {
