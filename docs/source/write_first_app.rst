@@ -70,7 +70,7 @@ this command.  Here's a quick synopsis:
 
 * launches a peer node, ordering node, Certificate Authority and CLI container
 * creates a channel and joins the peer to the channel
-* installs smart contract (i.e. chaincode) onto the peer's file system and instantiates said chaincode on the channel; instantiate starts a chaincdoe container
+* installs smart contract (i.e. chaincode) onto the peer's file system and instantiates said chaincode on the channel; instantiate starts a chaincode container
 * calls the ``initLedger`` function to populate the channel ledger with 10 unique cars
 
 .. note:: These operations will typically be done by an organizational or peer admin.  The script uses the
