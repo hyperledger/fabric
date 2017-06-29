@@ -1112,16 +1112,3 @@ func (msp *bccspmsp) getValidityOptsForCert(cert *x509.Certificate) x509.VerifyO
 
 	return tempOpts
 }
-
-func (msp *bccspmsp) getValidityOptsForTLSCert(cert *x509.Certificate) x509.VerifyOptions {
-	// First copy the opts to override the CurrentTime field
-	// in order to make the certificate passing the expiration test
-	// independently from the real local current time.
-	// This is a temporary workaround for FAB-3678
-
-	var tempOpts x509.VerifyOptions
-	tempOpts.Roots = msp.opts.Roots
-	tempOpts.Intermediates = msp.opts.Intermediates
-
-	return tempOpts
-}
