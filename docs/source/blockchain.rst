@@ -231,42 +231,18 @@ Where can I learn more?
 
 :doc:`getting_started`
 
-Where you learn how to set up a sample network on your local machine. You’ll be
-introduced to most of the key components within a blockchain network, learn
-more about how they interact with each other, and then you’ll actually get the
-code and run some simple query and update transactions.
+We provide a number of tutorials where you’ll be introduced to most of the
+key components within a blockchain network, learn more about how they
+interact with each other, and then you’ll actually get the code and run
+some simple transactions against a running blockchain network. We also provide
+tutorials for those of you thinking of operating a blockchain network using
+Hyperledger Fabric.
 
 :doc:`fabric_model`
 
 A deeper look at the components and concepts brought up in this introduction as
 well as a few others and describes how they work together in a sample
 transaction flow.
-
-:doc:`marbles`
-
-Where you can learn how to write a sample smart contract in GOLANG and invoke
-it from an application written in JavaScript. You’ll become comfortable with
-the key APIs used by both smart contract developers and application developers
-and ready to write your own application using the Hyperledger Fabric API
-reference information.
-
-Designing a Business Network (coming soon)
-
-Takes you through how to design a business network using a standard process.
-You’ll start by defining the business network and identify the participants
-and the goods and services that move between them. You’ll think about the key
-lifecycles and how they are impacted by the activities of the key participants.
-By the time you’re through, you’ll be ready to start working with key
-stakeholders in your company to design a business network that uses Hyperledger
-Fabric.
-
-Best Practices (coming soon)
-
-Deals with the practical concerns of setting up and managing a production
-Hyperledger Fabric blockchain. You’ll understand the key factors to consider
-when planning a blockchain solution, such as compute, storage and network
-requirements. You’ll also understand the key non-functional requirements,
-including maintainability, performance, availability and disaster recovery.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
