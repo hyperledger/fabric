@@ -608,7 +608,7 @@ What's happening behind the scenes?
 .. note:: These steps describe the scenario in which
           ``script.sh`` is not commented out in the
           docker-compose-cli.yaml file.  Clean your network
-          with ``./byfn.sh down`` and ensure
+          with ``./byfn.sh -m down`` and ensure
           this command is active.  Then use the same
           docker-compose prompt to launch your network again
 
@@ -906,7 +906,7 @@ Troubleshooting
 
 .. code:: bash
 
-      ./byfn.sh down
+      ./byfn.sh -m down
 
 - **YOU WILL SEE ERRORS IF YOU DO NOT REMOVE CONTAINERS AND IMAGES**
 
@@ -967,7 +967,7 @@ channel artifacts.
 
 .. code:: bash
 
-       ./byfn.sh down
+       ./byfn.sh -m down
 
 - If you see an error stating that you still have "active endpoints", then prune
   your docker networks.  This will wipe your previous networks and start you with a
