@@ -10,6 +10,7 @@
 #   - checks - runs all tests/checks
 #   - desk-check - runs linters and verify to test changed packages
 #   - configtxgen - builds a native configtxgen binary
+#   - configtxlator - builds a native configtxlator binary
 #   - cryptogen  -  builds a native cryptogen binary
 #   - peer - builds a native fabric peer binary
 #   - orderer - builds a native fabric orderer binary
@@ -30,7 +31,8 @@
 #   - tools-docker[-clean] - ensures the tools container is available[/cleaned]
 #   - protos - generate all protobuf artifacts based on .proto files
 #   - clean - cleans the build area
-#   - dist-clean - superset of 'clean' that also removes persistent state
+#   - clean-all - superset of 'clean' that also removes persistent state
+#   - dist-clean - clean release packages for all target platforms
 #   - unit-test-clean - cleans unit test state (particularly from docker)
 
 PROJECT_NAME   = hyperledger/fabric
