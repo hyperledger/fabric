@@ -86,9 +86,9 @@ func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator,
 			return &ledger.NotFoundErrorIterator{}, 0
 		}
 		return &fileLedgerIterator{ledger: fl, blockNumber: start.Specified.Number}, start.Specified.Number
+	default:
+		return &ledger.NotFoundErrorIterator{}, 0
 	}
-	// This line should be unreachable, but the compiler requires it
-	return &ledger.NotFoundErrorIterator{}, 0
 }
 
 // Height returns the number of blocks on the ledger
