@@ -390,7 +390,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 				return
 			}
 			if !d.crypt.ValidateAliveMsg(dm) {
-				d.logger.Warningf("Alive message isn't authentic, someone spoofed %s's identity", dm.GetAliveMsg().Membership)
+				d.logger.Debugf("Alive message isn't authentic, someone spoofed %s's identity", dm.GetAliveMsg().Membership)
 				continue
 			}
 
@@ -488,7 +488,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.SignedGossipMessage) {
 	defer d.logger.Debug("Exiting")
 
 	if !d.crypt.ValidateAliveMsg(m) {
-		d.logger.Warningf("Alive message isn't authentic, someone must be spoofing %s's identity", m.GetAliveMsg())
+		d.logger.Debugf("Alive message isn't authentic, someone must be spoofing %s's identity", m.GetAliveMsg())
 		return
 	}
 
@@ -719,7 +719,7 @@ func (d *gossipDiscoveryImpl) getDeadMembers() []common.PKIidType {
 	for id, last := range d.aliveLastTS {
 		elapsedNonAliveTime := time.Since(last.lastSeen)
 		if elapsedNonAliveTime.Nanoseconds() > getAliveExpirationTimeout().Nanoseconds() {
-			d.logger.Warning("Haven't heard from", id, "for", elapsedNonAliveTime)
+			d.logger.Warning("Haven't heard from", []byte(id), "for", elapsedNonAliveTime)
 			dead = append(dead, common.PKIidType(id))
 		}
 	}

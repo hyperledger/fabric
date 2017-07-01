@@ -935,7 +935,7 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *proto.SignedGossipMessag
 	}
 
 	if identity == nil {
-		sa.logger.Warning("Don't have certificate for", am)
+		sa.logger.Debug("Don't have certificate for", am)
 		return false
 	}
 
