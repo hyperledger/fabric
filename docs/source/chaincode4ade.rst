@@ -364,7 +364,8 @@ Now let's compile your chaincode.
 
 .. code:: bash
 
-  go build
+  go get -u --tags nopkcs11 github.com/hyperledger/fabric/core/chaincode/shim
+  go build --tags nopkcs11
 
 Assuming there are no errors, now we can proceed to the next step, testing
 your chaincode.
