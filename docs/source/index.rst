@@ -61,6 +61,7 @@ Business:
    msp
    configtx
    configtxgen
+   configtxlator
    cc-packaging-and-signing
    endorsement-policies
    error-handling

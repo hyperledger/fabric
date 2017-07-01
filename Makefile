@@ -82,7 +82,7 @@ PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
 RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")
 IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka couchdb tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s390x
-RELEASE_PKGS = configtxgen cryptogen configtxlator peer
+RELEASE_PKGS = configtxgen cryptogen configtxlator peer orderer
 
 pkgmap.cryptogen      := $(PKGNAME)/common/tools/cryptogen
 pkgmap.configtxgen    := $(PKGNAME)/common/configtx/tool/configtxgen
