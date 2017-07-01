@@ -104,7 +104,8 @@ Alternatively one can use ``cryptogen`` tool, whose operation is explained in
 :doc:`getting_started`.
 
 For fabric-ca related certificate generation, we refer the reader to the
-fabric-ca related documentation - :doc:`Setup/ca-setup`.
+fabric-ca related documentation -
+`Setup/ca-setup <http://hyperledger-fabric-ca.readthedocs.io/en/latest/>`_.
 
 MSP setup on the peer & orderer side
 ------------------------------------
