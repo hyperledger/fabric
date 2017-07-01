@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/config"
@@ -347,16 +348,29 @@ func main() {
 
 	flag.Parse()
 
-	logging.SetLevel(logging.INFO, "")
-
-	logger.Info("Loading configuration")
-	factory.InitFactories(nil)
-	config := genesisconfig.Load(profile)
-
+	// show version
 	if *version {
 		printVersion()
 		os.Exit(exitCode)
 	}
+
+	logging.SetLevel(logging.INFO, "")
+
+	// don't need to panic when running via command line
+	defer func() {
+		if err := recover(); err != nil {
+			if strings.Contains(fmt.Sprint(err), "Error reading configuration: Unsupported Config Type") {
+				logger.Error("Could not find configtx.yaml. " +
+					"Please make sure that FABRIC_CFG_PATH is set to a path " +
+					"which contains configtx.yaml")
+			}
+			os.Exit(1)
+		}
+	}()
+
+	logger.Info("Loading configuration")
+	factory.InitFactories(nil)
+	config := genesisconfig.Load(profile)
 
 	if outputBlock != "" {
 		if err := doOutputBlock(config, channelID, outputBlock); err != nil {
