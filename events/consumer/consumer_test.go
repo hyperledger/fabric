@@ -26,33 +26,23 @@ import (
 type MockAdapter struct {
 	sync.RWMutex
 	notify chan struct{}
-	count  int
 }
 
 type ZeroAdapter struct {
 	sync.RWMutex
 	notify chan struct{}
-	count  int
 }
 
 type BadAdapter struct {
 	sync.RWMutex
 	notify chan struct{}
-	count  int
 }
 
 var peerAddress = "0.0.0.0:7303"
-var ehServer *producer.EventsServer
 var ies = []*ehpb.Interest{{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event1"}}}}
 
 var adapter *MockAdapter
 var obcEHClient *EventsClient
-
-var zeroAdapter *ZeroAdapter
-var zeroObcEHClient *EventsClient
-
-var badAdapter *BadAdapter
-var badObcEHClient *EventsClient
 
 func (a *ZeroAdapter) GetInterestedEvents() ([]*ehpb.Interest, error) {
 	return []*ehpb.Interest{}, nil
