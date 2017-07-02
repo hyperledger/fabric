@@ -16,21 +16,36 @@ logging:
 
     #     CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
 
-    # The logging levels specified here can be overridden in various ways,
+    # The overall default logging level can be specified in various ways,
     # listed below from strongest to weakest:
     #
     # 1. The --logging-level=<level> command line option overrides all other
-    #    specifications.
+    #    default specifications.
     #
     # 2. The environment variable CORE_LOGGING_LEVEL otherwise applies to
     #    all peer commands if defined as a non-empty string.
     #
-    # 3. Otherwise, the specifications below apply.
+    # 3. The value of peer that directly follows in this file. It can also
+    #    be set via the environment variable CORE_LOGGING_PEER.
+    #
+    # If no overall default level is provided via any of the above methods,
+    # the peer will default to INFO (the value of defaultLevel in
+    # common/flogging/logging.go)
 
-    # Default for all modules running within the scope of a peer
+    # Default for all modules running within the scope of a peer.
+    # Note: this value is only used when --logging-level or CORE_LOGGING_LEVEL
+    #       are not set
     peer:       info
 
-    # Override levels for various 'peer' modules
+    # The overall default values mentioned above can be overridden for the
+    # specific components listed in the override section below.
+
+    # Override levels for various peer modules. These levels will be
+    # applied once the peer has completely started. They are applied at this
+    # time in order to be sure every logger has been registered with the
+    # logging package.
+    # Note: the modules listed below are the only acceptable modules at this
+    #       time.
     cauthdsl:   warning
     gossip:     warning
     ledger:     info
