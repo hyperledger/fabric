@@ -721,7 +721,7 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 
 		// 2. check local MSP Admins policy
 		if err = lscc.policyChecker.CheckPolicyNoChannel(mgmt.Admins, sp); err != nil {
-			return shim.Error(fmt.Sprintf("Authorization for INSTALL on %s has been denied with error %s", args[1], err))
+			return shim.Error(fmt.Sprintf("Authorization for INSTALL has been denied (error-%s)", err))
 		}
 
 		depSpec := args[1]

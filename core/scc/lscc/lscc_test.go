@@ -86,7 +86,7 @@ func TestInstall(t *testing.T) {
 	testInstall(t, "example02.go", "0", path, InvalidChaincodeNameErr("example02.go").Error(), "Alice")
 	testInstall(t, "", "0", path, EmptyChaincodeNameErr("").Error(), "Alice")
 	testInstall(t, "example02", "1{}0", path, InvalidVersionErr("1{}0").Error(), "Alice")
-	testInstall(t, "example02", "0", path, "Authorization for INSTALL on", "Bob")
+	testInstall(t, "example02", "0", path, "Authorization for INSTALL has been denied", "Bob")
 }
 
 func testInstall(t *testing.T, ccname string, version string, path string, expectedErrorMsg string, caller string) {
