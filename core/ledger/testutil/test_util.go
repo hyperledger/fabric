@@ -89,8 +89,10 @@ func SetupCoreYAMLConfig() {
 // ResetConfigToDefaultValues resets configurations optins back to defaults
 func ResetConfigToDefaultValues() {
 	//reset to defaults
+	viper.Set("ledger.state.couchDBConfig.queryLimit", 10000)
 	viper.Set("ledger.state.stateDatabase", "goleveldb")
 	viper.Set("ledger.history.enableHistoryDatabase", false)
+	viper.Set("peer.fileSystemPath", "/var/hyperledger/production")
 }
 
 // SetLogLevel sets up log level
