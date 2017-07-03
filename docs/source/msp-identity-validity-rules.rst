@@ -1,3 +1,6 @@
+MSP Identity Validity Rules
+==================================
+
 As mentioned in MSP description, MSPs may be configured with a set of root
 certificate authorities (rCAs), and optionally a set of intermediate
 certificate authorities (iCAs). An MSP's iCA certificates must be signed
