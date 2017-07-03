@@ -195,7 +195,7 @@ func TestViperConfig(t *testing.T) {
 	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.connTimeout", 0))
 	assert.Equal(t, time.Duration(300)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.dialTimeout", 0))
 	assert.Equal(t, 20, util.GetIntOrDefault("peer.gossip.recvBuffSize", 0))
-	assert.Equal(t, 20, util.GetIntOrDefault("peer.gossip.sendBuffSize", 0))
+	assert.Equal(t, 200, util.GetIntOrDefault("peer.gossip.sendBuffSize", 0))
 }
 
 func TestHandshake(t *testing.T) {

@@ -162,7 +162,7 @@ peer:
         # Buffer size of received messages
         recvBuffSize: 20
         # Buffer size of sending messages
-        sendBuffSize: 20
+        sendBuffSize: 200
         # Time to wait before pull engine processes incoming digests (unit: second)
         digestWaitTime: 1s
         # Time to wait before pull engine removes incoming nonce (unit: second)

@@ -260,7 +260,6 @@ func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error)) 
 	defer conn.Unlock()
 
 	if len(conn.outBuff) == util.GetIntOrDefault("peer.gossip.sendBuffSize", defSendBuffSize) {
-		go onErr(errSendOverflow)
 		return
 	}
 

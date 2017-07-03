@@ -45,10 +45,7 @@ const (
 	defConnTimeout  = time.Second * time.Duration(2)
 	defRecvBuffSize = 20
 	defSendBuffSize = 20
-	sendOverflowErr = "Send buffer overflow"
 )
-
-var errSendOverflow = errors.New(sendOverflowErr)
 
 // SetDialTimeout sets the dial timeout
 func SetDialTimeout(timeout time.Duration) {
