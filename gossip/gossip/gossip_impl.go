@@ -595,6 +595,9 @@ func (g *gossipServiceImpl) gossipInChan(messages []*proto.SignedGossipMessage, 
 			return bytes.Equal(o.(*proto.SignedGossipMessage).Channel, channel)
 		}
 		messagesOfChannel, messages = partitionMessages(grabMsgs, messages)
+		if len(messagesOfChannel) == 0 {
+			continue
+		}
 		// Grab channel object for that channel
 		gc := g.chanState.getGossipChannelByChainID(channel)
 		if gc == nil {
@@ -604,15 +607,16 @@ func (g *gossipServiceImpl) gossipInChan(messages []*proto.SignedGossipMessage, 
 		// Select the peers to send the messages to
 		// For leadership messages we will select all peers that pass routing factory - e.g. all peers in channel and org
 		membership := g.disc.GetMembership()
-		allPeersInCh := filter.SelectPeers(len(membership), membership, chanRoutingFactory(gc))
-		peers2Send := filter.SelectPeers(g.conf.PropagatePeerNum, membership, chanRoutingFactory(gc))
+		var peers2Send []*comm.RemotePeer
+		if messagesOfChannel[0].IsLeadershipMsg() {
+			peers2Send = filter.SelectPeers(len(membership), membership, chanRoutingFactory(gc))
+		} else {
+			peers2Send = filter.SelectPeers(g.conf.PropagatePeerNum, membership, chanRoutingFactory(gc))
+		}
+
 		// Send the messages to the remote peers
 		for _, msg := range messagesOfChannel {
-			if msg.IsLeadershipMsg() {
-				g.comm.Send(msg, allPeersInCh...)
-			} else {
-				g.comm.Send(msg, peers2Send...)
-			}
+			g.comm.Send(msg, peers2Send...)
 		}
 	}
 }
