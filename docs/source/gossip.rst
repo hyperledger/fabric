@@ -6,7 +6,7 @@ and scalability by dividing workload across transaction execution
 (endorsing and committing) peers and transaction ordering nodes. This
 decoupling of network operations requires a secure, reliable and
 scalable data dissemination protocol to ensure data integrity and
-consistency. To meet these requirements, the fabric implements a
+consistency. To meet these requirements, Hyperledger Fabric implements a
 **gossip data dissemination protocol**.
 
 Gossip protocol
@@ -23,7 +23,7 @@ synced up to the current ledger state by contacting peers in possession of these
 missing blocks.
 
 The gossip-based data dissemination protocol performs three primary functions on
-a Fabric network:
+a Hyperledger Fabric network:
 
 1. Manages peer discovery and channel membership, by continually
    identifying available member peers, and eventually detecting peers that have
@@ -77,7 +77,7 @@ on peers' channel subscriptions.
   are signed by the ordering service, and then delivered to the leader peers on a channel.
   2. Authentication is governed by the membership service provider for the
   peer. When the peer connects to the channel for the first time, the
-  TLS session binds with fabric membership identity. This essentially
+  TLS session binds with the membership identity. This essentially
   authenticates each peer to the connecting peer, with respect to
   membership in the network and channel.
 

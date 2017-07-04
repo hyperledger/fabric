@@ -2,15 +2,15 @@ Building Your First Network
 ===========================
 
 .. note:: These instructions have been verified to work against the
-          version "1.0.0-rc1" tagged docker images and the pre-compiled
+          version "1.0.0-rc1" tagged Docker images and the pre-compiled
           setup utilities within the supplied tar file. If you run
           these commands with images or tools from the current master
           branch, it is possible that you will see configuration and panic
           errors.
 
-The build your first network (BYFN) scenario provisions a sample Fabric network
-consisting of two organizations, each maintaining two peer nodes, and a "solo"
-ordering service.
+The build your first network (BYFN) scenario provisions a sample Hyperledger
+Fabric network consisting of two organizations, each maintaining two peer
+nodes, and a "solo" ordering service.
 
 Install prerequisites
 ---------------------
@@ -38,12 +38,12 @@ sub-directory now.
 Want to run it now?
 -------------------
 
-We provide a fully annotated script ``byfn.sh`` that leverages these docker
-images to quickly bootstrap a Fabric network comprised of 4 peers representing
-two different organizations, and an orderer node. It will also launch a
-container to run a scripted execution that will join peers to a channel, deploy
-and instantiate chaincode and drive execution of transactions against the
-deployed chaincode.
+We provide a fully annotated script ``byfn.sh`` that leverages these Docker
+images to quickly bootstrap a Hyperledger Fabric network comprised of 4 peers
+representing two different organizations, and an orderer node. It will also
+launch a container to run a scripted execution that will join peers to a
+channel, deploy and instantiate chaincode and drive execution of transactions
+against the deployed chaincode.
 
 Here's the help text for the ``byfn.sh`` script:
 
@@ -213,7 +213,7 @@ Once again, you will be prompted to continue, respond with a ``y``:
 
 If you'd like to learn more about the underlying tooling and bootstrap mechanics,
 continue reading.  In these next sections we'll walk through the various steps
-and requirements to build a fully-functional Fabric network.
+and requirements to build a fully-functional Hyperledger Fabric network.
 
 Crypto Generator
 ----------------
@@ -229,15 +229,17 @@ How does it work?
 Cryptogen consumes a file - ``crypto-config.yaml`` - that contains the network
 topology and allows us to generate a set of certificates and keys for both the
 Organizations and the components that belong to those Organizations.  Each
-Organization is provisioned a unique root certificate (``ca-cert``), that binds
+Organization is provisioned a unique root certificate (``ca-cert``) that binds
 specific components (peers and orderers) to that Org.  By assigning each
 Organization a unique CA certificate, we are mimicking a typical network where
 a participating :ref:`Member` would use its own Certificate Authority.
-Transactions and communications within Fabric are signed by an entity's private
-key (``keystore``), and then verified by means of a public key (``signcerts``).
-You will notice a "count" variable within this file.  We use this to specify
-the number of peers per Organization; in our case it's two peers per Org. We
-won't delve into the minutiae of `x.509 certificates and public key
+Transactions and communications within Hyperledger Fabric are signed by an
+entity's private key (``keystore``), and then verified by means of a public
+key (``signcerts``).
+
+You will notice a ``count`` variable within this file.  We use this to specify
+the number of peers per Organization; in our case there are two peers per Org.
+We won't delve into the minutiae of `x.509 certificates and public key
 infrastructure <https://en.wikipedia.org/wiki/Public_key_infrastructure>`__
 right now. If you're interested, you can peruse these topics on your own time.
 
@@ -284,7 +286,7 @@ Configuration Transaction Generator
 The ``configtxgen tool`` is used to create four configuration artifacts:
 
   * orderer ``genesis block``,
-  * fabric ``channel configuration transaction``,
+  * channel ``channel configuration transaction``,
   * and two ``anchor peer transactions`` - one for each Peer Org.
 
 Please see :doc:`configtxgen` for a complete description of the use of this
@@ -677,7 +679,7 @@ traditional transaction - read/write - is performed against that chaincode (e.g.
 the value of "a"). The transaction causes the container to start. Also,
 all peers in a channel maintain an exact copy of the ledger which
 comprises the blockchain to store the immutable, sequenced record in
-blocks, as well as a state database to maintain current fabric state.
+blocks, as well as a state database to maintain a snapshot of the current state.
 This includes those peers that do not have chaincode installed on them
 (like ``peer1.org1.example.com`` in the above example) . Finally, the chaincode is accessible
 after it is installed (like ``peer1.org2.example.com`` in the above example) because it
@@ -686,7 +688,7 @@ has already been instantiated.
 How do I see these transactions?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Check the logs for the CLI docker container.
+Check the logs for the CLI Docker container.
 
 .. code:: bash
 
@@ -741,17 +743,17 @@ output from each container:
         ex02 Invoke
         Query Response:{"Name":"a","Amount":"90"}
 
-Understanding the docker-compose topology
+Understanding the Docker Compose topology
 -----------------------------------------
 
-The BYFN sample offers us two flavors of docker-compose files, both of which
+The BYFN sample offers us two flavors of Docker Compose files, both of which
 are extended from the ``docker-compose-base.yaml`` (located in the ``base``
 folder).  Our first flavor, ``docker-compose-cli.yaml``, provides us with a
-CLI container, along with an orderer, four peers.  We use this docker-compose
+CLI container, along with an orderer, four peers.  We use this file
 for the entirety of the instructions on this page.
 
 .. note:: the remainder of this section covers a docker-compose file designed for the
-          SDK.  Refer to the `Node.js SDK <https://github.com/hyperledger/fabric-sdk-node>`__
+          SDK.  Refer to the `Node SDK <https://github.com/hyperledger/fabric-sdk-node>`__
           repo for details on running these tests.
 
 The second flavor, ``docker-compose-e2e.yaml``, is constructed to run end-to-end tests
@@ -782,7 +784,7 @@ data content contingent upon the chaincode data being modeled as JSON.
 
 To use CouchDB instead of the default database (goleveldb), follow the same
 procedures outlined earlier for generating the artifacts, except when starting
-the network pass the couchdb docker-compose as well:
+the network pass ``docker-compose-couch.yaml`` as well:
 
 .. code:: bash
 
@@ -910,8 +912,8 @@ Troubleshooting
 
 - **YOU WILL SEE ERRORS IF YOU DO NOT REMOVE CONTAINERS AND IMAGES**
 
--  If you see docker errors, first check your version (should be 1.12 or above),
-   and then try restarting your docker process.  Problems with Docker are
+-  If you see Docker errors, first check your version (should be 1.12 or above),
+   and then try restarting your Docker process.  Problems with Docker are
    oftentimes not immediately recognizable.  For example, you may see errors
    resulting from an inability to access crypto material mounted within a
    container.
@@ -970,7 +972,7 @@ channel artifacts.
        ./byfn.sh -m down
 
 - If you see an error stating that you still have "active endpoints", then prune
-  your docker networks.  This will wipe your previous networks and start you with a
+  your Docker networks.  This will wipe your previous networks and start you with a
   fresh environment:
 
 .. code:: bash

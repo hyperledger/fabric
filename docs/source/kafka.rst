@@ -13,7 +13,7 @@ your blockchain network.
 Big picture
 -----------
 
-Each channel in Fabric maps to a separate single-partition topic in Kafka. When
+Each channel maps to a separate single-partition topic in Kafka. When
 an OSN receives transactions via the ``Broadcast`` RPC, it checks to make sure
 that the broadcasting client has permissions to write on the channel, then
 relays (i.e. produces) those transactions to the appropriate partition in Kafka.
@@ -108,7 +108,7 @@ every Kafka broker has these keys configured:
     ``fabric/orderer/kafka/config.go`` and rebuild the binary from source.
     This is not advisable.)
 
-    e. ``log.retention.ms = -1``. Until the ordering service in Fabric adds
+    e. ``log.retention.ms = -1``. Until the ordering service adds
     support for pruning of the Kafka logs, you should disable time-based
     retention and prevent segments from expiring. (Size-based retention -- see
     ``log.retention.bytes`` -- is disabled by default in Kafka at the time of
@@ -180,9 +180,9 @@ default value for ``Orderer.Kafka.Retry.ShortInterval``.
 Supported Kafka versions and upgrading
 --------------------------------------
 
-Supported Kafka versions for v1 are ``0.9`` and ``0.10``. (Fabric uses the
-`sarama client library <https://github.com/Shopify/sarama>`_ and vendors a
-version of it that supports Kafka 0.9 and 0.10.)
+Supported Kafka versions for v1 are ``0.9`` and ``0.10``. (Hyperledger Fabric
+uses the `sarama client library <https://github.com/Shopify/sarama>`_
+and vendors a version of it that supports Kafka 0.9 and 0.10.)
 
 Out of the box the Kafka version defaults to ``0.9.0.1``. If you wish to use a
 different supported version, specify a supported version using the

@@ -22,8 +22,8 @@ only to the set of nodes participating in that channel.
 
 The Hyperledger Fabric architecture is comprised of the following
 components: peer nodes, ordering nodes and the clients applications that
-are likely leveraging one of the language-specific Fabric SDKs. These
-components have identities derived from certificate authorities.
+are likely leveraging one of the language-specific Hyperledger Fabric SDKs.
+These components have identities derived from certificate authorities.
 Hyperledger Fabric also offers a certificate authority service,
 *fabric-ca* but, you may substitute that with your own.
 

@@ -3,7 +3,7 @@ Install and Instantiate
 
 This tutorial requires the latest builds for
 ``hyperledger/fabric-baseimage``, ``hyperledger/fabric-peer`` and
-``hyperledger/fabric-orderer``. Rather than pull from docker hub, you
+``hyperledger/fabric-orderer``. Rather than pull from Docker Hub, you
 can compile these images locally to ensure they are up to date. It is up
 to the user how to build the images, although a typical approach is
 through vagrant. If you do choose to build through vagrant, make sure

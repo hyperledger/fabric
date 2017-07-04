@@ -32,8 +32,7 @@ constructed.
 Policy Types
 ------------
 
-There are presently two different types of policies implemented in the
-hyperledger fabric.
+There are presently two different types of policies implemented:
 
 1. **SignaturePolicy**: This policy type is the most powerful, and
    specifies the policy as a combination of evaluation rules for MSP
@@ -264,7 +263,7 @@ The MSP Principal is a generalized notion of cryptographic identity.
 Although the MSP framework is designed to work with types of
 cryptography other than X.509, for the purposes of this document, the
 discussion will assume that the underlying MSP implementation is the
-fabric MSP type, based on X.509 cryptography.
+default MSP type, based on X.509 cryptography.
 
 An MSP Principal is defined in ``fabric/protos/msp_principal.proto`` as
 follows:

@@ -77,7 +77,7 @@ Node.js Runtime and NPM
 -----------------------
 
 If you will be developing applications for Hyperledger Fabric leveraging the
-Fabric SDK for Node.js, you will need to have version 6.9.x of Node.js
+Hyperledger Fabric SDK for Node.js, you will need to have version 6.9.x of Node.js
 installed.
 
 .. note:: Node.js version 7.x is not supported at this time.
@@ -104,7 +104,7 @@ provides a better alternative to the built-in Windows tools:
           typically get this as part of installing Docker
           Toolbox. However experience has shown this to be a poor
           development environment with limited functionality. It is
-          suitable to run docker based scenarios, such as
+          suitable to run Docker based scenarios, such as
           :doc:`getting_started`, but you may not be able to find a
           suitable ``make`` command.
 

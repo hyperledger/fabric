@@ -3,8 +3,8 @@ Hyperledger Fabric Capabilities
 
 Hyperledger Fabric is a unique implementation of distributed ledger technology
 (DLT) that delivers enterprise-ready network security, scalability,
-confidentiality and performance, in a modular blockchain architecture. The
-fabric delivers the following blockchain network capabilities:
+confidentiality and performance, in a modular blockchain architecture.
+Hyperledger Fabric delivers the following blockchain network capabilities:
 
 Identity management
 -------------------
@@ -65,11 +65,11 @@ Modular design
 Hyperledger Fabric implements a modular architecture to
 provide functional choice to network designers. Specific algorithms for
 identity, ordering (consensus) and encryption, for example, can be plugged in
-to any fabric network. The result is a universal blockchain architecture that
-any industry or public domain can adopt, with the assurance that its networks
-will be interoperable across market, regulatory and geographic boundaries. By
-contrast, current alternatives to Hyperledger Fabric are largely partisan,
-constrained and industry-specific.
+to any Hyperledger Fabric network. The result is a universal blockchain
+architecture that any industry or public domain can adopt, with the assurance
+that its networks will be interoperable across market, regulatory and
+geographic boundaries. By contrast, current alternatives to Hyperledger Fabric
+are largely partisan, constrained and industry-specific.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

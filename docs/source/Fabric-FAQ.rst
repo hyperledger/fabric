@@ -154,40 +154,5 @@ of native currency is that some amount will get transacted (the chaincode
 defining that currency will get called) every time a transaction is processed
 on its chain.
 
-Identity Management (Membership Service)
-----------------------------------------
-
-Q. What is unique about the Hyperledger Fabric's membership service module?
-
-A. One of the things that makes the membership service module stand out from
-the pack is our implementation of the latest advances in cryptography.
-
-In addition to ensuring private, auditable transactions, our membership
-service module introduces the concept of enrollment and transaction
-certificates. This innovation ensures that only verified owners can
-create asset tokens, allowing an infinite number of transaction
-certificates to be issued through parent enrollment certificates while
-guaranteeing the private keys of asset tokens can be regenerated if
-lost.
-
-Issuers also have the ability revoke transaction certificates or
-designate them to expire within a certain timeframe, allowing greater
-control over the asset tokens they have issued.
-
-Like most other modules, you can always replace the
-default module with another membership service option should the need
-arise.
-
-Q. Does its Membership Service make Fabric a centralized solution?
-
-A. No. The only role of the Membership Service module is to issue digital
-certificates to validated entities that want to participate in the
-network. It does not execute transactions nor is it aware of how or when
-these certificates are used in any particular network.
-
-However, because certificates are the way networks regulate and manage
-their users, the module serves a central regulatory and organizational
-role.
-
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

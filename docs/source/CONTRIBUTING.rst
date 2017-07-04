@@ -111,7 +111,7 @@ Discussion of the proposed feature should be conducted in the JIRA issue itself,
 so that we have a consistent pattern within our community as to where to find
 design discussion.
 
-Getting the support of three or more of the Fabric maintainers for the new
+Getting the support of three or more of the Hyperledger Fabric maintainers for the new
 feature will greatly enhance the probability that the feature's related CRs
 will be merged.
 
@@ -133,7 +133,7 @@ Next, try :doc:`building the project <dev-setup/build>` in your local
 development environment to ensure that everything is set up correctly.
 
 The :doc:`logging-control` document describes how to tweak
-the logging levels of various components within the Fabric. Finally,
+the logging levels of various components within Hyperledger Fabric. Finally,
 every source file needs to include a
 `license header <https://github.com/hyperledger/fabric/blob/master/docs/source/dev-setup/headers.txt>`__: modified to include a copyright
 statement for the principle author(s).

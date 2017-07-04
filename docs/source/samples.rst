@@ -66,15 +66,15 @@ can be picked up without fully qualifying the path to each binary. e.g.:
   export PATH=<path to download location>/bin:$PATH
 
 Finally, the script will download the Hyperledger Fabric docker images from
-`DockerHub <https://hub.docker.com/u/hyperledger/>`__ into
+`Docker Hub <https://hub.docker.com/u/hyperledger/>`__ into
 your local Docker registry and tag them as 'latest'.
 
-The script lists out the docker images installed upon conclusion.
+The script lists out the Docker images installed upon conclusion.
 
 Look at the names for each image; these are the components that will ultimately
-comprise our Fabric network.  You will also notice that you have two instances
-of the same image ID - one tagged as "x86_64-1.0.0-rc1" and one tagged as
-"latest".
+comprise our Hyperledger Fabric network.  You will also notice that you have
+two instances of the same image ID - one tagged as "x86_64-1.0.0-rc1" and
+one tagged as "latest".
 
 .. note:: Note that on different architectures, the x86_64 would be replaced
           with the string identifying your architecture.

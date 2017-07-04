@@ -3,9 +3,9 @@ Error handling
 
 General Overview
 ----------------
-The Fabric error handling framework can be found in the Fabric repository under
-**common/errors**. It defines a new type of error, CallStackError, to use in
-place of the standard error type provided by Go.
+The Hyperledger Fabric error handling framework can be found in the source
+repository under **common/errors**. It defines a new type of error,
+CallStackError, to use in place of the standard error type provided by Go.
 
 A CallStackError consists of the following:
 
@@ -130,14 +130,14 @@ would display the error message:
 .. note:: The callstacks have not been displayed for this example for the sake of
           brevity.
 
-General guidelines for error handling in Fabric
------------------------------------------------
+General guidelines for error handling in Hyperledger Fabric
+-----------------------------------------------------------
 
 - If it is some sort of best effort thing you are doing, you should log the
   error and ignore it.
 - If you are servicing a user request, you should log the error and return it.
-- If the error comes from elsewhere in the Fabric, you have the choice to wrap
-  the error or not. Typically, it's best to not wrap the error and simply return
+- If the error comes from elsewhere, you have the choice to wrap the error
+  or not. Typically, it's best to not wrap the error and simply return
   it as is. However, for certain cases where a utility function is called,
   wrapping the error with a new component and reason code can help an end user
   understand where the error is really occurring without inspecting the callstack.
