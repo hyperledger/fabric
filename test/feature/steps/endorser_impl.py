@@ -152,6 +152,11 @@ def expected_impl(context, response, peer):
     assert peer in context.result, "There is no response from {0}".format(peer)
     assert context.result[peer] == "Query Result: {0}\n".format(response), "Expected response was {0}; received {1}".format(response, context.result[peer])
 
+@then(u'a user receives an error response of {response} from "{peer}"')
+def step_impl(context, response, peer):
+    assert peer in context.result, "There is no response from {0}".format(peer)
+    assert context.result[peer] == "Error: {0}\n".format(response), "Expected response was {0}; received {1}".format(response, context.result[peer])
+
 @then(u'a user receives expected response of {response}')
 def step_impl(context, response):
     expected_impl(context, response, "peer0.org1.example.com")
