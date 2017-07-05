@@ -40,7 +40,7 @@ func GetInfo() string {
 	ccinfo := fmt.Sprintf(" Base Image Version: %s\n"+
 		"  Base Docker Namespace: %s\n"+
 		"  Base Docker Label: %s\n"+
-		"  Docker Namepace: %s\n",
+		"  Docker Namespace: %s\n",
 		metadata.BaseVersion, metadata.BaseDockerNamespace,
 		metadata.BaseDockerLabel, metadata.DockerNamespace)
 
