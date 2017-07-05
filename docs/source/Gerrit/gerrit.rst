@@ -1,8 +1,8 @@
 Working with Gerrit
 ===================
 
-Follow these instructions to collaborate on the Hyperledger Fabric
-Project through the Gerrit review system.
+Follow these instructions to collaborate on Hyperledger Fabric
+through the Gerrit review system.
 
 Please be sure that you are subscribed to the `mailing
 list <http://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__
@@ -138,7 +138,7 @@ be pushed to a special branch. The name of this special branch contains
 a reference to the final branch where the code should reside, once
 accepted.
 
-For the Hyperledger Fabric Project, the special branch is called
+For the Hyperledger Fabric repository, the special branch is called
 ``refs/for/master``.
 
 To push the current local development branch to the gerrit server, open
@@ -239,7 +239,7 @@ If you collaborate in multiple projects, you may wish to limit searching
 to the specific branch through the search bar in the upper-right side.
 
 Add the filter *project:fabric* to limit the visible changes to only
-those from the Hyperledger Fabric Project.
+those from Hyperledger Fabric.
 
 List all current changes you submitted, or list just those changes in
 need of your input by clicking on ``My --> Changes`` or `open this

@@ -1,10 +1,10 @@
 Contributions Welcome!
 ======================
 
-We welcome contributions to the Hyperledger Project in many forms, and
+We welcome contributions to Hyperledger in many forms, and
 there's always plenty to do!
 
-First things first, please review the Hyperledger Project's `Code of
+First things first, please review the Hyperledger `Code of
 Conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
 before participating. It is important that we keep things civil.
 
@@ -235,8 +235,7 @@ Maintainers
 The project's :doc:`maintainers <MAINTAINERS>` are responsible for
 reviewing and merging all patches submitted for review and they guide
 the over-all technical direction of the project within the guidelines
-established by the Hyperledger Project's Technical Steering Committee
-(TSC).
+established by the Hyperledger Technical Steering Committee (TSC).
 
 Becoming a maintainer
 ~~~~~~~~~~~~~~~~~~~~~

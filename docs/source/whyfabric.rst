@@ -1,7 +1,7 @@
 Why Hyperledger Fabric?
 =======================
 
-The Hyperledger Fabric project is delivering a blockchain platform
+Hyperledger Fabric is delivering a blockchain platform
 designed to allow the exchange of an asset or the state of an asset to
 be consented upon, maintained, and viewed by all parties in a
 permissioned group. A key characteristic of Hyperledger Fabric is that
