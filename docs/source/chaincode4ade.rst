@@ -382,7 +382,7 @@ We start "dev mode" by leveraging pre-generated orderer and channel artifacts fo
 a sample dev network.  As such, the user can immediately jump into the process
 of compiling chaincode and driving calls.
 
-Install Fabric Samples
+Install Hyperledger Fabric Samples
 ----------------------
 
 If you haven't already done so, please install the :doc:`samples`.
@@ -394,10 +394,10 @@ clone:
 
   cd chaincode-docker-devmode
 
-Download docker images
+Download Docker images
 ----------------------
 
-We need four docker images in order for "dev mode" to run against the supplied
+We need four Docker images in order for "dev mode" to run against the supplied
 docker compose script.  If you installed the ``fabric-samples`` repo clone and
 followed the instructions to :ref:`download-platform-specific-binaries`, then
 you should have the necessary Docker images installed locally.

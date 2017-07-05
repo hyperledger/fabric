@@ -3,7 +3,7 @@ Testing
 
 Unit test
 ~~~~~~~~~
-See :doc:`building the fabric <dev-setup/build>` for unit testing instructions.
+See :doc:`building Hyperledger Fabric <dev-setup/build>` for unit testing instructions.
 
 See `Unit test coverage reports <https://jenkins.hyperledger.org/view/fabric/job/fabric-merge-x86_64/>`__
 

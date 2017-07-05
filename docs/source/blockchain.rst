@@ -147,12 +147,12 @@ and is a system by which participants manage their transactions.
 Where Hyperledger Fabric breaks from some other blockchain systems is that
 it is **private** and **permissioned**. Rather than the “proof of work” some
 blockchain networks use to verify identity (allowing anyone who meets those
-criteria to join the network), the members of a Fabric network enroll through
-a **membership services provider**.
+criteria to join the network), the members of a Hyperledger Fabric network
+enroll through a **membership services provider**.
 
-Fabric also offers several pluggable options. Ledger data can be stored in
-multiple formats, consensus mechanisms can be switched in and out,
-and different membership service providers are supported.
+Hyperledger Fabric also offers several pluggable options. Ledger data can be
+stored in multiple formats, consensus mechanisms can be switched in and out,
+and different MSPs are supported.
 
 Hyperledger Fabric also offers the ability to create **channels**, allowing a group of
 participants to create a separate ledger of transactions. This is an especially

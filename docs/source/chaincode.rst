@@ -24,9 +24,9 @@ We offer two different perspectives on chaincode. One, from the perspective of
 an application developer developing a blockchain application/solution
 entitled :doc:`chaincode4ade`, and the other, :doc:`chaincode4noah` oriented
 to the blockchain network operator who is responsible for managing a blockchain
-network, and who would leverage the Fabric API to install, instantiate, and
-upgrade chaincode, but would likely not be involved in the development of a
-chaincode application.
+network, and who would leverage the Hyperledger Fabric API to install,
+instantiate, and upgrade chaincode, but would likely not be involved in the
+development of a chaincode application.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

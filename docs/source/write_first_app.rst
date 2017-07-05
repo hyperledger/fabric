@@ -2,7 +2,7 @@ Writing Your First Application
 ==============================
 
 The goal of this document is to show the tasks and provide a baseline for writing
-your first application against a Hyperledger Fabric network (a.k.a. Fabric).
+your first application against a Hyperledger Fabric network.
 
 At the most basic level, applications on a blockchain network are what enable
 users to **query** a ledger (asking for specific records it contains), or to
@@ -12,8 +12,8 @@ Our application, composed in Javascript, leverages the Node.js SDK to interact
 with the network (where our ledger exists). This tutorial will guide you through
 the three steps involved in writing your first application.
 
-  **1. Starting a test Fabric blockchain network.** We need some basic components
-  in our Fabric in order to query and update the ledger.  These components --
+  **1. Starting a test Hyperledger Fabric blockchain network.** We need some basic components
+  in our network in order to query and update the ledger.  These components --
   a peer node, ordering node and Certificate Authority -- serve as the backbone of
   our network; we'll also have a CLI container used for a few administrative commands.
   A single script will download and launch this test network.
@@ -23,14 +23,15 @@ the three steps involved in writing your first application.
   in different ways.  For example, we can read data holistically or on a more granular
   level.
 
-  **3. Developing the application to be able to query and update Fabric records.**
+  **3. Developing the application to be able to query and update records.**
   We provide two sample applications -- one for querying the ledger and another for
   updating it. Our apps will use the SDK APIs to interact with the network and
   ultimately call these functions.
 
 After completing this tutorial, you should have a basic understanding of how
-an application, using the Fabric SDK for Node.js, is programmed in conjunction with a smart contract
-to interact with the ledger on a Fabric network.
+an application, using the Hyperledger Fabric SDK for Node.js, is programmed
+in conjunction with a smart contract to interact with the ledger on a
+Hyperledger Fabric network.
 
 First, let's launch our test network...
 
@@ -58,8 +59,8 @@ this directory.  You should see the following:
 
 Now use the ``startFabric.sh`` script to launch the network.
 
-.. note:: The following command downloads and extracts the Fabric docker images, so it
-          will take a few minutes to complete.
+.. note:: The following command downloads and extracts the Hyperledger Fabric
+          Docker images, so it will take a few minutes to complete.
 
 .. code:: bash
 
@@ -81,7 +82,8 @@ this command.  Here's a quick synopsis:
 Issue a ``docker ps`` command to reveal the processes started by the ``startFabric.sh`` script.
 You can learn more about the details and mechanics of these operations in the
 :doc:`build_network` section.  Here we'll just focus on the application.  The following picture
-provides a simplistic representation of how the application interacts with the Fabric network.
+provides a simplistic representation of how the application interacts with the
+Hyperledger Fabric network.
 
 .. image:: images/AppConceptsOverview.png
 
@@ -91,7 +93,7 @@ look at how the different pieces fit together.
 How Applications Interact with the Network
 ------------------------------------------
 
-Applications use **APIs** to invoke smart contracts (referred to in Fabric as "chaincode").
+Applications use **APIs** to invoke smart contracts (referred to as "chaincode").
 These smart contracts are hosted in the network and identified by name and version.
 For example, our chaincode container is titled - ``dev-peer0.org1.example.com-fabcar-1.0`` - where
 the name is ``fabcar``, the version is ``1.0`` and the peer it is running against is ``dev-peer0.org1.example.com``.
@@ -203,7 +205,7 @@ ledger.
 
 	resultsIterator, err := APIstub.GetStateByRange(startKey, endKey)
 
-The function uses the Fabric's shim interface ``GetStateByRange`` to return
+The function uses the shim interface function ``GetStateByRange`` to return
 ledger data between the args of ``startKey`` and ``endKey``.  Those keys are
 defined as ``CAR0`` and ``CAR999`` respectively.  Therefore, we could theoretically
 create 1,000 cars (assuming the keys are tagged properly) and a ``queryAllCars`` would
@@ -359,7 +361,7 @@ Additional Resources
 
 The `Hyperledger Fabric Node SDK repo <https://github.com/hyperledger/fabric-sdk-node>`__
 is an excellent resource for deeper documentation and sample code.  You can also consult
-the Fabric community and component experts on `Hyperledger Rocket Chat <https://chat.hyperledger.org/home>`__.
+the Hyperledger Fabric community and component experts on `Hyperledger Rocket Chat <https://chat.hyperledger.org/home>`__.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

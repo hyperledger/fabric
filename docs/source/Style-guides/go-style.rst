@@ -26,10 +26,10 @@ generate/update the respective ``.pb.go`` files.
 Adding or updating Go packages
 ------------------------------
 
-The Hyperledger Fabric Project uses Go 1.6 vendoring for package
+The Hyperledger Fabric Project uses Govendor for package
 management. This means that all required packages reside in the
-``vendor`` folder within the fabric project. Go will use packages in
-this folder instead of the GOPATH when the ``go install`` or
+``$GOPATH/src/github.com/hyperledger/fabric/vendor`` folder. Go will use
+packages in this folder instead of the GOPATH when the ``go install`` or
 ``go build`` commands are executed. To manage the packages in the
 ``vendor`` folder, we use
 `Govendor <https://github.com/kardianos/govendor>`__, which is installed

@@ -30,9 +30,9 @@ The Hyperledger Fabric API enables interaction with the various nodes
 in a blockchain network - the peers, orderers and MSPs - and it also allows
 one to package, install, instantiate and upgrade chaincode on the endorsing
 peer nodes. The Hyperledger Fabric language-specific SDKs
-abstract the specifics of the Hyperledger Fabric's API to facilitate
+abstract the specifics of the Hyperledger Fabric API to facilitate
 application development, though it can be used to manage a chaincode's
-lifecycle. Additionally, the Hyperledger Fabric's API can be accessed
+lifecycle. Additionally, the Hyperledger Fabric API can be accessed
 directly via the CLI, which we will use in this document.
 
 We provide four commands to manage a chaincode's lifecycle: ``package``,
@@ -307,7 +307,7 @@ CLI
           can simply invoke the commands from within a running docker container.
 
 To view the currently available CLI commands, execute the following command from
-within a running ``fabric-peer`` docker container:
+within a running ``fabric-peer`` Docker container:
 
 .. code:: bash
 
@@ -384,8 +384,9 @@ register with a `fixed set of parameters
 compiled in and doesn't have endorsement policies or endorsement policy
 functionality.
 
-System chaincode is used in Fabric to implement a number of system behaviors
-so that they can be replaced or modified as appropriate by a system integrator.
+System chaincode is used in Hyperledger Fabric to implement a number of
+system behaviors so that they can be replaced or modified as appropriate
+by a system integrator.
 
 The current list of system chaincodes:
 

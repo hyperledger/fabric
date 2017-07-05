@@ -2,7 +2,7 @@ Channel Configuration (configtxgen)
 ===================================
 
 This document describe the usage for the ``configtxgen`` utility for
-manipulating fabric channel configuration.
+manipulating Hyperledger Fabric channel configuration.
 
 For now, the tool is primarily focused on generating the genesis block
 for bootstrapping the orderer, but it is intended to be enhanced in the

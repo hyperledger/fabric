@@ -1,10 +1,10 @@
-Building the fabric
--------------------
+Building Hyperledger Fabric
+---------------------------
 
 The following instructions assume that you have already set up your
 :doc:`development environment <devenv>`.
 
-To build the Fabric:
+To build Hyperledger Fabric:
 
 ::
 
@@ -165,7 +165,7 @@ The available log levels in order of increasing verbosity are: *CRITICAL
 
 See the :doc:`logging-control` document for
 instructions on tweaking the level of log messages to output when running
-the various Fabric components.
+the various Hyperledger Fabric components.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

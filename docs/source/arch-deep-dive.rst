@@ -234,8 +234,8 @@ given channel and can then send messages and obtain the messages that
 arrive. Channels can be thought of as partitions - clients connecting to
 one channel are unaware of the existence of other channels, but clients
 may connect to multiple channels. Even though some ordering service
-implementations included with Hyperledger Fabric v1 will support
-multiple channels, for simplicity of presentation, in the rest of this
+implementations included with Hyperledger Fabric support multiple
+channels, for simplicity of presentation, in the rest of this
 document, we assume ordering service consists of a single channel/topic.
 
 **Ordering service API.** Peers connect to the channel provided by the

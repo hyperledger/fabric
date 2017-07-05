@@ -57,7 +57,7 @@ Java Chaincode support has been disabled until post 1.0.0 as it is not yet fully
 
 `v1.0.0-alpha2 <https://github.com/hyperledger/fabric/releases/tag/v1.0.0-alpha2>`__
 
-The second alpha release of the v1.0.0 Hyperledger Fabric project. The code is
+The second alpha release of the v1.0.0 Hyperledger Fabric. The code is
 now feature complete. From now until the v1.0.0 release, the community is
 focused on documentation improvements, testing, hardening, bug fixing and
 tooling.  We will be releasing successive release candidates periodically as
@@ -68,7 +68,7 @@ the release firms up.
 `v1.0.0-alpha <https://github.com/hyperledger/fabric/releases/tag/v1.0.0-alpha>`__
 March 16, 2017
 
-The first alpha release of the v1.0.0 Hyperledger Fabric project. The code is
+The first alpha release of the v1.0.0 Hyperledger Fabric. The code is
 being made available to developers to begin exploring the v1.0 architecture.
 
 `Change Log <https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v100-alpha-march-16-2017>`__
