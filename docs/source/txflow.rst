@@ -32,7 +32,7 @@ Client A and Client B. The endorsement policy states that both peers must endors
 any transaction, therefore the request goes to ``peerA`` and ``peerB``.
 
 Next, the transaction proposal is constructed.  An application leveraging a supported
-SDK (node, java, python) utilizes one of the available API's which generates a
+SDK (Node, Java, Python) utilizes one of the available API's which generates a
 transaction proposal.  The proposal is a request to invoke a chaincode function
 so that data can be read and/or written to the ledger (i.e. write new key value
 pairs for the assets).  The SDK serves as a shim to package the transaction proposal

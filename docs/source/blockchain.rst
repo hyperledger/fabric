@@ -189,7 +189,7 @@ it, for example), and not the transaction log.
 
 Chaincode can be implemented in several programming languages. The currently
 supported chaincode language is `Go <https://golang.org/>`__ with support
-for Java and other languages coming in subsequent releases.
+for Java and other languages coming in future releases.
 
 **Privacy**
 

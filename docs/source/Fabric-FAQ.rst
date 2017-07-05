@@ -136,15 +136,13 @@ implemented.
 Q. Which languages are supported for writing chaincode?
 
 A. Chaincode can be written in any programming language and executed in
-containers. We are also looking into developing a templating language (such
-as Apache Velocity) that can either be compiled into chaincode or have
-its interpreter embedded into a chaincode container.
+containers.  The first fully supported chaincode language is Golang.
 
-The first fully supported chaincode language is Golang, and
-support for JavaScript and Java is planned for 2016. Support for
-additional languages and the development of a Hyperledger Fabric-specific
-templating language have been discussed, and more details will be released in
-the near future.
+Support for additional languages and the development of a templating language
+have been discussed, and more details will be released in the near future.
+
+It is also possible to build Hyperledger Fabric applications using
+`Hyperledger Composer <https://hyperledger.github.io/composer/>`__.
 
 Q. Does the Hyperledger Fabric have native currency?
 
