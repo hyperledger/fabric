@@ -437,26 +437,6 @@ func (g *gossipServiceImpl) validateMsg(msg proto.ReceivedMessage) bool {
 		}
 	}
 
-	if msg.GetGossipMessage().IsDataMsg() {
-		blockMsg := msg.GetGossipMessage().GetDataMsg()
-		if blockMsg.Payload == nil {
-			g.logger.Warning("Empty block! Discarding it")
-			return false
-		}
-
-		// If we're configured to skip block validation, don't verify it
-		if g.conf.SkipBlockVerification {
-			return true
-		}
-
-		seqNum := blockMsg.Payload.SeqNum
-		rawBlock := blockMsg.Payload.Data
-		if err := g.mcs.VerifyBlock(msg.GetGossipMessage().Channel, seqNum, rawBlock); err != nil {
-			g.logger.Warning("Could not verify block", blockMsg.Payload.SeqNum, ":", err)
-			return false
-		}
-	}
-
 	if msg.GetGossipMessage().IsStateInfoMsg() {
 		if err := g.validateStateInfoMsg(msg.GetGossipMessage()); err != nil {
 			g.logger.Warning("StateInfo message", msg, "is found invalid:", err)
