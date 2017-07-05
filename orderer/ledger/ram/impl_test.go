@@ -113,6 +113,7 @@ func TestRetrieval(t *testing.T) {
 	rl := newTestChain(3)
 	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	it, num := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
+	defer it.Close()
 	if num != 0 {
 		t.Fatalf("Expected genesis block iterator, but got %d", num)
 	}
@@ -147,6 +148,7 @@ func TestRetrieval(t *testing.T) {
 func TestBlockedRetrieval(t *testing.T) {
 	rl := newTestChain(3)
 	it, num := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+	defer it.Close()
 	if num != 1 {
 		t.Fatalf("Expected block iterator at 1, but got %d", num)
 	}
@@ -174,6 +176,7 @@ func TestBlockedRetrieval(t *testing.T) {
 func TestIteratorPastEnd(t *testing.T) {
 	rl := newTestChain(3)
 	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 2}}})
+	defer it.Close()
 	if _, status := it.Next(); status != cb.Status_NOT_FOUND {
 		t.Fatalf("Expected block with status NOT_FOUND, but got %d", status)
 	}
@@ -185,7 +188,8 @@ func TestIteratorOldest(t *testing.T) {
 	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
-	_, num := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+	it, num := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+	defer it.Close()
 	if num != 1 {
 		t.Fatalf("Expected block iterator at 1, but got %d", num)
 	}

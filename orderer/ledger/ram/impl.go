@@ -63,6 +63,9 @@ func (cu *cursor) ReadyChan() <-chan struct{} {
 	return cu.list.signal
 }
 
+// Close does nothing
+func (cu *cursor) Close() {}
+
 // Iterator returns an Iterator, as specified by a cb.SeekInfo message, and its
 // starting block number
 func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator, uint64) {

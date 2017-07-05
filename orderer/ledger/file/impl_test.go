@@ -17,6 +17,7 @@ limitations under the License.
 package fileledger
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -30,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var genesisBlock = cb.NewBlock(0, nil)
@@ -118,6 +120,19 @@ func (mbs *mockBlockStore) RetrieveTxValidationCodeByTxID(txID string) (peer.TxV
 func (*mockBlockStore) Shutdown() {
 }
 
+type mockBlockStoreIterator struct {
+	mock.Mock
+}
+
+func (m *mockBlockStoreIterator) Next() (cl.QueryResult, error) {
+	args := m.Called()
+	return args.Get(0), args.Error(1)
+}
+
+func (m *mockBlockStoreIterator) Close() {
+	m.Called()
+}
+
 func TestInitialization(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
@@ -188,6 +203,7 @@ func TestRetrieval(t *testing.T) {
 	defer tev.tearDown()
 	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
+	defer it.Close()
 	assert.Zero(t, num, "Expected genesis block iterator, but got %d", num)
 
 	signal := it.ReadyChan()
@@ -221,6 +237,7 @@ func TestBlockedRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+	defer it.Close()
 	if num != 1 {
 		t.Fatalf("Expected block iterator at 1, but got %d", num)
 	}
@@ -296,13 +313,29 @@ func TestBlockstoreError(t *testing.T) {
 			signal: make(chan struct{}),
 		}
 		it, _ := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 42}}})
+		defer it.Close()
 		assert.IsType(
 			t,
 			&ledger.NotFoundErrorIterator{},
 			it,
 			"Expected Not Found Error if seek number is greater than ledger height")
+	}
 
-		it, _ = fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
+	{
+		resultsIterator := &mockBlockStoreIterator{}
+		resultsIterator.On("Next").Return(nil, errors.New("a mocked error"))
+		resultsIterator.On("Close").Return()
+		fl := &fileLedger{
+			blockStore: &mockBlockStore{
+				blockchainInfo:             &cb.BlockchainInfo{Height: uint64(1)},
+				getBlockchainInfoError:     nil,
+				retrieveBlockByNumberError: fmt.Errorf("Error retrieving block by number"),
+				resultsIterator:            resultsIterator,
+			},
+			signal: make(chan struct{}),
+		}
+		it, _ := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
+		defer it.Close()
 		_, status := it.Next()
 		assert.Equal(t, cb.Status_SERVICE_UNAVAILABLE, status, "Expected service unavailable error")
 	}

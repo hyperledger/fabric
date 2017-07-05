@@ -108,6 +108,8 @@ func (cu *cursor) ReadyChan() <-chan struct{} {
 	return closedChan
 }
 
+func (cu *cursor) Close() {}
+
 // Iterator returns an Iterator, as specified by a cb.SeekInfo message, and its
 // starting block number
 func (jl *jsonLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator, uint64) {
