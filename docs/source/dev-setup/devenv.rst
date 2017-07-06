@@ -97,10 +97,10 @@ If you continue with ``core.autocrlf`` set to ``true``, the
 
 ``./setup.sh: /bin/bash^M: bad interpreter: No such file or directory``
 
-Cloning the Hyperledger Fabric project
+Cloning the Hyperledger Fabric source
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Since the Hyperledger Fabric project is a ``Go`` project, you'll need to
+Since Hyperledger Fabric is written in ``Go``, you'll need to
 clone the source repository to your $GOPATH/src directory. If your $GOPATH
 has multiple path components, then you will want to use the first one.
 There's a little bit of setup needed:
@@ -143,7 +143,7 @@ be able to ``ssh`` into the Vagrant VM just created.
 
     vagrant ssh
 
-Once inside the VM, you can find the peer project under
+Once inside the VM, you can find the source under
 ``$GOPATH/src/github.com/hyperledger/fabric``. It is also mounted as
 ``/hyperledger``.
 
