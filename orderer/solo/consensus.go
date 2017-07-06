@@ -19,7 +19,6 @@ package solo
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
@@ -98,16 +97,16 @@ func (ch *chain) main() {
 				batch := ch.support.BlockCutter().Cut()
 				if batch != nil {
 					block := ch.support.CreateNextBlock(batch)
-					ch.support.WriteBlock(block, nil, nil)
+					ch.support.WriteBlock(block, nil)
 				}
 
-				committer, _, err := ch.support.ProcessNormalMsg(msg)
+				_, err := ch.support.ProcessNormalMsg(msg)
 				if err != nil {
 					logger.Warningf("Discarding bad config message: %s", err)
 					continue
 				}
 				block := ch.support.CreateNextBlock([]*cb.Envelope{msg})
-				ch.support.WriteBlock(block, []filter.Committer{committer}, nil)
+				ch.support.WriteConfigBlock(block, nil)
 				timer = nil
 			case multichain.NormalMsg:
 				batches, ok := ch.support.BlockCutter().Ordered(msg)
@@ -117,7 +116,7 @@ func (ch *chain) main() {
 				}
 				for _, batch := range batches {
 					block := ch.support.CreateNextBlock(batch)
-					ch.support.WriteBlock(block, nil, nil)
+					ch.support.WriteBlock(block, nil)
 				}
 				if len(batches) > 0 {
 					timer = nil
@@ -136,7 +135,7 @@ func (ch *chain) main() {
 			}
 			logger.Debugf("Batch timer expired, creating block")
 			block := ch.support.CreateNextBlock(batch)
-			ch.support.WriteBlock(block, nil, nil)
+			ch.support.WriteBlock(block, nil)
 		case <-ch.exitChan:
 			logger.Debugf("Exiting")
 			return

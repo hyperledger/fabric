@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/filter"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -94,14 +93,18 @@ func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
 }
 
 // WriteBlock writes data to the Blocks channel
-// Note that _committers is ignored by this mock implementation
-func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Committer, encodedMetadataValue []byte) *cb.Block {
+func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block {
 	if encodedMetadataValue != nil {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
 	mcs.HeightVal++
 	mcs.Blocks <- block
 	return block
+}
+
+// WriteConfigBlock calls WriteBlock
+func (mcs *ConsenterSupport) WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block {
+	return mcs.WriteBlock(block, encodedMetadataValue)
 }
 
 // ChainID returns the chain ID this specific consenter instance is associated with
@@ -130,8 +133,8 @@ func (mcs *ConsenterSupport) ClassifyMsg(env *cb.Envelope) (multichain.MsgClassi
 }
 
 // ProcessNormalMsg returns ConfigSeqVal, ProcessNormalMsgErr
-func (mcs *ConsenterSupport) ProcessNormalMsg(env *cb.Envelope) (committer filter.Committer, configSeq uint64, err error) {
-	return nil, mcs.ConfigSeqVal, mcs.ProcessNormalMsgErr
+func (mcs *ConsenterSupport) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, err error) {
+	return mcs.ConfigSeqVal, mcs.ProcessNormalMsgErr
 }
 
 // ProcessConfigUpdateMsg returns ProcessConfigUpdateMsgVal, ConfigSeqVal, ProcessConfigUpdateMsgErr
