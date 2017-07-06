@@ -17,7 +17,6 @@ limitations under the License.
 package mocks
 
 import (
-	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -56,30 +55,22 @@ func NewReceiver() *Receiver {
 	}
 }
 
-func noopCommitters(size int) []filter.Committer {
-	res := make([]filter.Committer, size)
-	for i := range res {
-		res[i] = filter.NoopCommitter
-	}
-	return res
-}
-
 // Ordered will add or cut the batch according to the state of Receiver, it blocks reading from Block on return
-func (mbc *Receiver) Ordered(env *cb.Envelope) ([][]*cb.Envelope, [][]filter.Committer, bool) {
+func (mbc *Receiver) Ordered(env *cb.Envelope) ([][]*cb.Envelope, bool) {
 	defer func() {
 		<-mbc.Block
 	}()
 
 	if !mbc.QueueNext {
 		logger.Debugf("Not queueing message")
-		return nil, nil, false
+		return nil, false
 	}
 
 	if mbc.IsolatedTx {
 		logger.Debugf("Receiver: Returning dual batch")
 		res := [][]*cb.Envelope{mbc.CurBatch, []*cb.Envelope{env}}
 		mbc.CurBatch = nil
-		return res, [][]filter.Committer{noopCommitters(len(res[0])), noopCommitters(len(res[1]))}, true
+		return res, true
 	}
 
 	mbc.CurBatch = append(mbc.CurBatch, env)
@@ -88,17 +79,17 @@ func (mbc *Receiver) Ordered(env *cb.Envelope) ([][]*cb.Envelope, [][]filter.Com
 		logger.Debugf("Returning regular batch")
 		res := [][]*cb.Envelope{mbc.CurBatch}
 		mbc.CurBatch = nil
-		return res, [][]filter.Committer{noopCommitters(len(res))}, true
+		return res, true
 	}
 
 	logger.Debugf("Appending to batch")
-	return nil, nil, true
+	return nil, true
 }
 
 // Cut terminates the current batch, returning it
-func (mbc *Receiver) Cut() ([]*cb.Envelope, []filter.Committer) {
+func (mbc *Receiver) Cut() []*cb.Envelope {
 	logger.Debugf("Cutting batch")
 	res := mbc.CurBatch
 	mbc.CurBatch = nil
-	return res, noopCommitters(len(res))
+	return res
 }

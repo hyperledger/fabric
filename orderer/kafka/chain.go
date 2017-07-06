@@ -13,6 +13,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	localconfig "github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -371,27 +372,52 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support multichain.C
 		// This shouldn't happen, it should be filtered at ingress
 		return fmt.Errorf("unmarshal/%s", err)
 	}
-	batches, committers, ok := support.BlockCutter().Ordered(env)
-	logger.Debugf("[channel: %s] Ordering results: items in batch = %d, ok = %v", support.ChainID(), len(batches), ok)
-	if ok && len(batches) == 0 && *timer == nil {
-		*timer = time.After(support.SharedConfig().BatchTimeout())
-		logger.Debugf("[channel: %s] Just began %s batch timer", support.ChainID(), support.SharedConfig().BatchTimeout().String())
-		return nil
+
+	class, err := support.ClassifyMsg(env)
+	if err != nil {
+		logger.Panicf("[channel: %s] If a message has arrived to this point, it should already have been classified once", support.ChainID())
 	}
-	// If !ok, batches == nil, so this will be skipped
-	for i, batch := range batches {
-		// If more than one batch is produced, exactly 2 batches are produced.
-		// The receivedOffset for the first batch is one less than the supplied
-		// offset to this function.
-		offset := receivedOffset - int64(len(batches)-i-1)
-		block := support.CreateNextBlock(batch)
-		encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: offset})
-		support.WriteBlock(block, committers[i], encodedLastOffsetPersisted)
-		*lastCutBlockNumber++
-		logger.Debugf("[channel: %s] Batch filled, just cut block %d - last persisted offset is now %d", support.ChainID(), *lastCutBlockNumber, offset)
-	}
-	if len(batches) > 0 {
+	switch class {
+	case multichain.ConfigUpdateMsg:
+		batch := support.BlockCutter().Cut()
+		if batch != nil {
+			block := support.CreateNextBlock(batch)
+			support.WriteBlock(block, nil, nil)
+		}
+
+		committer, _, err := support.ProcessNormalMsg(env)
+		if err != nil {
+			logger.Warningf("[channel: %s] Discarding bad config message: %s", support.ChainID(), err)
+			break
+		}
+		block := support.CreateNextBlock([]*cb.Envelope{env})
+		support.WriteBlock(block, []filter.Committer{committer}, nil)
 		*timer = nil
+	case multichain.NormalMsg:
+		batches, ok := support.BlockCutter().Ordered(env)
+		logger.Debugf("[channel: %s] Ordering results: items in batch = %d, ok = %v", support.ChainID(), len(batches), ok)
+		if ok && len(batches) == 0 && *timer == nil {
+			*timer = time.After(support.SharedConfig().BatchTimeout())
+			logger.Debugf("[channel: %s] Just began %s batch timer", support.ChainID(), support.SharedConfig().BatchTimeout().String())
+			return nil
+		}
+		// If !ok, batches == nil, so this will be skipped
+		for i, batch := range batches {
+			// If more than one batch is produced, exactly 2 batches are produced.
+			// The receivedOffset for the first batch is one less than the supplied
+			// offset to this function.
+			offset := receivedOffset - int64(len(batches)-i-1)
+			block := support.CreateNextBlock(batch)
+			encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: offset})
+			support.WriteBlock(block, nil, encodedLastOffsetPersisted)
+			*lastCutBlockNumber++
+			logger.Debugf("[channel: %s] Batch filled, just cut block %d - last persisted offset is now %d", support.ChainID(), *lastCutBlockNumber, offset)
+		}
+		if len(batches) > 0 {
+			*timer = nil
+		}
+	default:
+		logger.Panicf("[channel: %s] Unsupported message classification: %v", support.ChainID(), class)
 	}
 	return nil
 }
@@ -402,14 +428,14 @@ func processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, support multichain.C
 	if ttcNumber == *lastCutBlockNumber+1 {
 		*timer = nil
 		logger.Debugf("[channel: %s] Nil'd the timer", support.ChainID())
-		batch, committers := support.BlockCutter().Cut()
+		batch := support.BlockCutter().Cut()
 		if len(batch) == 0 {
 			return fmt.Errorf("got right time-to-cut message (for block %d),"+
 				" no pending requests though; this might indicate a bug", *lastCutBlockNumber+1)
 		}
 		block := support.CreateNextBlock(batch)
 		encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: receivedOffset})
-		support.WriteBlock(block, committers, encodedLastOffsetPersisted)
+		support.WriteBlock(block, nil, encodedLastOffsetPersisted)
 		*lastCutBlockNumber++
 		logger.Debugf("[channel: %s] Proper time-to-cut received, just cut block %d", support.ChainID(), *lastCutBlockNumber)
 		return nil

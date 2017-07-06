@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
+	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -50,6 +51,24 @@ type ConsenterSupport struct {
 
 	// NextBlockVal stores the block created by the most recent CreateNextBlock() call
 	NextBlockVal *cb.Block
+
+	// ClassifyMsgVal is returned by ClassifyMsg
+	ClassifyMsgVal multichain.MsgClassification
+
+	// ClassifyMsgErr is the err returned by ClassifyMsg
+	ClassifyMsgErr error
+
+	// ConfigSeqVal is returned as the configSeq for Process*Msg
+	ConfigSeqVal uint64
+
+	// ProcessNormalMsgErr is returned as the error for ProcessNormalMsg
+	ProcessNormalMsgErr error
+
+	// ProcessConfigUpdateMsgVal is returned as the error for ProcessConfigUpdateMsg
+	ProcessConfigUpdateMsgVal *cb.Envelope
+
+	// ProcessConfigUpdateMsgErr is returned as the error for ProcessConfigUpdateMsg
+	ProcessConfigUpdateMsgErr error
 }
 
 // BlockCutter returns BlockCutterVal
@@ -103,4 +122,19 @@ func (mcs *ConsenterSupport) Sign(message []byte) ([]byte, error) {
 // NewSignatureHeader returns an empty signature header
 func (mcs *ConsenterSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
 	return &cb.SignatureHeader{}, nil
+}
+
+// ClassifyMsg returns ClassifyMsgVal, ClassifyMsgErr
+func (mcs *ConsenterSupport) ClassifyMsg(env *cb.Envelope) (multichain.MsgClassification, error) {
+	return mcs.ClassifyMsgVal, mcs.ClassifyMsgErr
+}
+
+// ProcessNormalMsg returns ConfigSeqVal, ProcessNormalMsgErr
+func (mcs *ConsenterSupport) ProcessNormalMsg(env *cb.Envelope) (committer filter.Committer, configSeq uint64, err error) {
+	return nil, mcs.ConfigSeqVal, mcs.ProcessNormalMsgErr
+}
+
+// ProcessConfigUpdateMsg returns ProcessConfigUpdateMsgVal, ConfigSeqVal, ProcessConfigUpdateMsgErr
+func (mcs *ConsenterSupport) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
+	return mcs.ProcessConfigUpdateMsgVal, mcs.ConfigSeqVal, mcs.ProcessConfigUpdateMsgErr
 }
