@@ -252,7 +252,7 @@ func wrapFieldName(jsonFragment map[string]interface{}, key string, value interf
 
 }
 
-//arrayContains is a function to detect if a soure array of strings contains the selected string
+//arrayContains is a function to detect if a source array of strings contains the selected string
 //for this application, it is used to determine if a string is a valid CouchDB operator
 func arrayContains(sourceArray []string, selectItem string) bool {
 	set := make(map[string]struct{}, len(sourceArray))

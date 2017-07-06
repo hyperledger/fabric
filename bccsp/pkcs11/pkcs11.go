@@ -127,7 +127,7 @@ func (csp *impl) returnSession(session pkcs11.SessionHandle) {
 }
 
 // Look for an EC key by SKI, stored in CKA_ID
-// This function can probably be addapted for both EC and RSA keys.
+// This function can probably be adapted for both EC and RSA keys.
 func (csp *impl) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err error) {
 	p11lib := csp.ctx
 	session := csp.getSession()
@@ -510,7 +510,7 @@ func findKeyPairFromSKI(mod *pkcs11.Ctx, session pkcs11.SessionHandle, ski []byt
 //
 // [mis-parsing encountered with v3.5.1, 2016-10-22]
 //
-// SoftHSM reports extra two bytes before the uncrompressed point
+// SoftHSM reports extra two bytes before the uncompressed point
 // 0x04 || <Length*2+1>
 //                 VV< Actual start of point
 // 00000000  04 41 04 6c c8 57 32 13  02 12 6a 19 23 1d 5a 64  |.A.l.W2...j.#.Zd|

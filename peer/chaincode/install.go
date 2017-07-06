@@ -122,17 +122,14 @@ func getPackageFromFile(ccpackfile string) (proto.Message, *pb.ChaincodeDeployme
 		return nil, nil, err
 	}
 
-	//the bytes should be a valid package (CDS or SigedCDS)
+	//the bytes should be a valid package (CDS or SignedCDS)
 	ccpack, err := ccprovider.GetCCPackage(b)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	//either CDS or Envelope
-	o, err := ccpack.GetPackageObject(), nil
-	if err != nil {
-		return nil, nil, err
-	}
+	o := ccpack.GetPackageObject()
 
 	//try CDS first
 	cds, ok := o.(*pb.ChaincodeDeploymentSpec)

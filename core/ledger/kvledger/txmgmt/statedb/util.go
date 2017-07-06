@@ -29,7 +29,7 @@ func EncodeValue(value []byte, version *version.Height) []byte {
 
 //DecodeValue separates the version and value from a binary value
 func DecodeValue(encodedValue []byte) ([]byte, *version.Height) {
-	version, n := version.NewHeightFromBytes(encodedValue)
+	height, n := version.NewHeightFromBytes(encodedValue)
 	value := encodedValue[n:]
-	return value, version
+	return value, height
 }

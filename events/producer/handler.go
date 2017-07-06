@@ -117,7 +117,7 @@ func (d *handler) HandleMessage(msg *pb.SignedEvent) error {
 		}
 	case nil:
 	default:
-		return fmt.Errorf("invalide type from client %T", evt.Event)
+		return fmt.Errorf("invalid type from client %T", evt.Event)
 	}
 	//TODO return supported events.. for now just return the received msg
 	if err := d.ChatStream.Send(evt); err != nil {

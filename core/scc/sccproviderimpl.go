@@ -50,7 +50,7 @@ func (c *sccProviderImpl) IsSysCC(name string) bool {
 }
 
 // IsSysCCAndNotInvokableCC2CC returns true if the supplied chaincode is
-// ia system chaincode and it NOT nvokable through a cc2cc invocation
+// ia system chaincode and it NOT invokable through a cc2cc invocation
 func (c *sccProviderImpl) IsSysCCAndNotInvokableCC2CC(name string) bool {
 	return IsSysCCAndNotInvokableCC2CC(name)
 }
@@ -66,7 +66,7 @@ func (c *sccProviderImpl) GetQueryExecutorForLedger(cid string) (ledger.QueryExe
 }
 
 // IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
-// ia system chaincode and it NOT nvokable
+// ia system chaincode and it NOT invokable
 func (c *sccProviderImpl) IsSysCCAndNotInvokableExternal(name string) bool {
 	// call the static method of the same name
 	return IsSysCCAndNotInvokableExternal(name)

@@ -59,8 +59,8 @@ func TestSerializedBlockInfo(t *testing.T) {
 
 		testutil.AssertEquals(t, txid, indexTxID)
 		b := bb[indexOffset.offset:]
-		len, num := proto.DecodeVarint(b)
-		txEnvBytesFromBB := b[num : num+int(len)]
+		length, num := proto.DecodeVarint(b)
+		txEnvBytesFromBB := b[num : num+int(length)]
 		testutil.AssertEquals(t, txEnvBytesFromBB, txEnvBytes)
 	}
 }

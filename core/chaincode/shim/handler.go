@@ -74,7 +74,7 @@ func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	return err
 }
 
-//serialSendAsync serves the same purpose as serialSend (serializ msgs so gRPC will
+//serialSendAsync serves the same purpose as serialSend (serialize msgs so gRPC will
 //be happy). In addition, it is also asynchronous so send-remoterecv--localrecv loop
 //can be nonblocking. Only errors need to be handled and these are handled by
 //communication on supplied error channel. A typical use will be a non-blocking or
@@ -748,7 +748,7 @@ func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byt
 		}
 		if respMsg.Type == pb.ChaincodeMessage_COMPLETED {
 			// Success response
-			chaincodeLogger.Debugf("[%s]Received %s. Successfully invoed chaincode", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
+			chaincodeLogger.Debugf("[%s]Received %s. Successfully invoked chaincode", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 			res := &pb.Response{}
 			if err = proto.Unmarshal(respMsg.Payload, res); err != nil {
 				return handler.createResponse(ERROR, []byte(err.Error()))

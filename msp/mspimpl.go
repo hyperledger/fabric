@@ -876,7 +876,7 @@ func (msp *bccspmsp) setupOUs(conf *m.FabricMSPConfig) error {
 		}
 
 		// 3. get the certification path for it
-		var certifiersIdentitifer []byte
+		var certifiersIdentifier []byte
 		var chain []*x509.Certificate
 		if root {
 			chain = []*x509.Certificate{cert}
@@ -888,7 +888,7 @@ func (msp *bccspmsp) setupOUs(conf *m.FabricMSPConfig) error {
 		}
 
 		// 4. compute the hash of the certification path
-		certifiersIdentitifer, err = msp.getCertificationChainIdentifierFromChain(chain)
+		certifiersIdentifier, err = msp.getCertificationChainIdentifierFromChain(chain)
 		if err != nil {
 			return fmt.Errorf("Failed computing Certifiers Identifier for [%v]. [%s]", ou.Certificate, err)
 		}
@@ -896,7 +896,7 @@ func (msp *bccspmsp) setupOUs(conf *m.FabricMSPConfig) error {
 		// Check for duplicates
 		found = false
 		for _, id := range msp.ouIdentifiers[ou.OrganizationalUnitIdentifier] {
-			if bytes.Equal(id, certifiersIdentitifer) {
+			if bytes.Equal(id, certifiersIdentifier) {
 				mspLogger.Warningf("Duplicate found in ou identifiers [%s, %v]", ou.OrganizationalUnitIdentifier, id)
 				found = true
 				break
@@ -907,7 +907,7 @@ func (msp *bccspmsp) setupOUs(conf *m.FabricMSPConfig) error {
 			// No duplicates found, add it
 			msp.ouIdentifiers[ou.OrganizationalUnitIdentifier] = append(
 				msp.ouIdentifiers[ou.OrganizationalUnitIdentifier],
-				certifiersIdentitifer,
+				certifiersIdentifier,
 			)
 		}
 	}

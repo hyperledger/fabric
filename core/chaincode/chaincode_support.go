@@ -296,8 +296,8 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Handler) error {
 
 	// clean up queryIteratorMap
-	for _, context := range chaincodehandler.txCtxs {
-		for _, v := range context.queryIteratorMap {
+	for _, txcontext := range chaincodehandler.txCtxs {
+		for _, v := range txcontext.queryIteratorMap {
 			v.Close()
 		}
 	}

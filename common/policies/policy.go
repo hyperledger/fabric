@@ -163,7 +163,7 @@ func (rp rejectPolicy) Evaluate(signedData []*cb.SignedData) error {
 	return fmt.Errorf("No such policy type: %s", rp)
 }
 
-// Basepath returns the basePath the manager was instnatiated with
+// Basepath returns the basePath the manager was instantiated with
 func (pm *ManagerImpl) BasePath() string {
 	return pm.basePath
 }

@@ -132,7 +132,7 @@ func TestMultiDBBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertEquals(t, sp, savePoint2)
 }
 
-// TestDeletes tests deteles
+// TestDeletes tests deletes
 func TestDeletes(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	db, err := dbProvider.GetDBHandle("testdeletes")
 	testutil.AssertNoError(t, err, "")

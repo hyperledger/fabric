@@ -106,7 +106,7 @@ public class Example02 extends ChaincodeBase {
 		}
 
 		// perform the transfer
-		log.info(format("Tranferring %d holdings from %s to %s", transferAmount, fromKey, toKey));
+		log.info(format("Transferring %d holdings from %s to %s", transferAmount, fromKey, toKey));
 		int newFromAccountBalance = fromAccountBalance - transferAmount;
 		int newToAccountBalance = toAccountBalance + transferAmount;
 		log.info(format("New holding values will be: %s = %d, %s = %d", fromKey, newFromAccountBalance, toKey, newToAccountBalance));

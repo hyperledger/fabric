@@ -348,7 +348,7 @@ func GetBytesChaincodeActionPayload(cap *peer.ChaincodeActionPayload) ([]byte, e
 	return capBytes, err
 }
 
-// GetBytesProposalResponse gets propoal bytes response
+// GetBytesProposalResponse gets proposal bytes response
 func GetBytesProposalResponse(pr *peer.ProposalResponse) ([]byte, error) {
 	respBytes, err := proto.Marshal(pr)
 	return respBytes, err

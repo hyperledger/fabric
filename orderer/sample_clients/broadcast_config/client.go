@@ -80,8 +80,8 @@ func init() {
 		panic(fmt.Errorf("Failed to initialize local MSP: %s", err))
 	}
 
-	msp := mspmgmt.GetLocalMSP()
-	signer, err = msp.GetDefaultSigningIdentity()
+	localmsp := mspmgmt.GetLocalMSP()
+	signer, err = localmsp.GetDefaultSigningIdentity()
 	if err != nil {
 		panic(fmt.Errorf("Failed to initialize get default signer: %s", err))
 	}

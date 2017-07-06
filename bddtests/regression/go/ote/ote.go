@@ -292,7 +292,7 @@ func startConsumer(serverAddr string, chainID string, ordererIndex int, channelI
 		logger(fmt.Sprintf("Error on Consumer ord[%d] ch[%d] connecting (grpc) to %s, err: %v", ordererIndex, channelIndex, serverAddr, err))
 		return
 	}
-	(*consumerConnP) = conn
+	*consumerConnP = conn
 	client, err := ab.NewAtomicBroadcastClient(*consumerConnP).Deliver(context.TODO())
 	if err != nil {
 		logger(fmt.Sprintf("Error on Consumer ord[%d] ch[%d] invoking Deliver() on grpc connection to %s, err: %v", ordererIndex, channelIndex, serverAddr, err))
@@ -317,7 +317,7 @@ func startConsumerMaster(serverAddr string, chainIDsP *[]string, ordererIndex in
 		logger(fmt.Sprintf("Error on MasterConsumer ord[%d] connecting (grpc) to %s, err: %v", ordererIndex, serverAddr, err))
 		return
 	}
-	(*consumerConnP) = conn
+	*consumerConnP = conn
 
 	// create an orderer driver client for every channel on this orderer
 	//[][]*ordererdriveClient  //  numChannels
@@ -475,7 +475,7 @@ func startProducer(serverAddr string, chainID string, ordererIndex int, channelI
 			if printProgressLogs && (*txSentCntrP)%printLogCnt == 0 {
 				mult++
 				if debugflag1 {
-					logger(fmt.Sprintf("Producer ord[%d] ch[%d] sent %4d /%4d = %3d%%, %v", ordererIndex, channelIndex, (*txSentCntrP), txReq, progressPercentage*mult, time.Now()))
+					logger(fmt.Sprintf("Producer ord[%d] ch[%d] sent %4d /%4d = %3d%%, %v", ordererIndex, channelIndex, *txSentCntrP, txReq, progressPercentage*mult, time.Now()))
 				} else {
 					logger(fmt.Sprintf("Sent %3d%%, %v", progressPercentage*mult, time.Now()))
 				}

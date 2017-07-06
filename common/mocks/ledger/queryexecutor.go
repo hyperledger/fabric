@@ -23,7 +23,7 @@ import (
 )
 
 type MockQueryExecutor struct {
-	// State keeps all namepspaces
+	// State keeps all namespaces
 	State map[string]map[string][]byte
 }
 

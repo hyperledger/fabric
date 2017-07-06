@@ -102,7 +102,7 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 		return fmt.Errorf("invalid path: %s", err)
 	}
 
-	//we have no real good way of checking existence of remote urls except by downloading and testin
+	//we have no real good way of checking existence of remote urls except by downloading and testing
 	//which we do later anyway. But we *can* - and *should* - test for existence of local paths.
 	//Treat empty scheme as a local filesystem path
 	if path.Scheme == "" {

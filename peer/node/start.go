@@ -80,7 +80,7 @@ var nodeStartCmd = &cobra.Command{
 func initSysCCs() {
 	//deploy system chaincodes
 	scc.DeploySysCCs("")
-	logger.Infof("Deployed system chaincodess")
+	logger.Infof("Deployed system chaincodes")
 }
 
 func serve(args []string) error {
@@ -299,7 +299,7 @@ func createChaincodeServer(peerServer comm.GRPCServer, peerListenAddress string)
 	return srv, ccEpFunc
 }
 
-//NOTE - when we implment JOIN we will no longer pass the chainID as param
+//NOTE - when we implement JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
 func registerChaincodeSupport(grpcServer *grpc.Server, ccEpFunc ccEndpointFunc) {

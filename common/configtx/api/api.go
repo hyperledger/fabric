@@ -95,7 +95,7 @@ type PolicyHandler interface {
 	ProposePolicy(tx interface{}, key string, path []string, policy *cb.ConfigPolicy) (proto.Message, error)
 }
 
-// Proposer contains the references necesssary to appropriately unmarshal
+// Proposer contains the references necessary to appropriately unmarshal
 // a cb.ConfigGroup
 type Proposer interface {
 	// ValueProposer return the root value proposer
