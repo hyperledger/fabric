@@ -55,8 +55,8 @@ Here's the help text for the ``byfn.sh`` script:
     byfn.sh -h|--help (print this message)
       -m <mode> - one of 'up', 'down', 'restart' or 'generate'
         - 'up' - bring up the network with docker-compose up
-        - 'down' - bring up the network with docker-compose up
-        - 'restart' - bring up the network with docker-compose up
+        - 'down' - clear the network with docker-compose down
+        - 'restart' - restart the network
         - 'generate' - generate required certificates and genesis block
       -c <channel name> - config name to use (defaults to "mychannel")
       -t <timeout> - CLI timeout duration in microseconds (defaults to 10000)
