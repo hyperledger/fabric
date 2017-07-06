@@ -128,7 +128,7 @@ The docker images for ``peer``, ``orderer``, ``kafka``, and ``zookeeper`` are ne
 =========================
 Building tool executables
 =========================
-The **configtxgen** and **cryptogen** tools are used when bootstrapping the networks in these tests. As a result, you must perform a ``make configtxgen && make cryptogen`` in the ``/path/to/hyperledger/fabric`` directory.
+The **configtxgen** and **cryptogen** tools are used when bootstrapping the networks in these tests. As a result, you must perform a ``make configtxgen && make cryptogen`` in the ``/path/to/hyperledger/fabric`` directory. Be sure that the executable location is added to your PATH.
 
 
 How to Contribute
@@ -144,7 +144,7 @@ There are different ways that you can contribute in this area.
 ===================================
 How Do I Write My Own Feature File?
 ===================================
-The feature files are written by anyone who understands the requirements. This can be a business analyst, quality analyst, manager, developer, customer. The file describes a feature or part of a feature with representative examples of expected outcomes and behaviors. These files are plain-text and do not require any compilation. Each feature step maps to a python step implementation.
+The feature files are written by anyone who understands the requirements. This can be a business analyst, quality analyst, manager, developer, customer, etc. The file describes a feature or part of a feature with representative examples of expected outcomes and behaviors. These files are plain-text and do not require any compilation. Each feature step maps to a python step implementation. When choosing appropriate key phrases when writing feature files, look in the `Helpful Tools`_ section for more information.
 
 The following is an example of a simple feature file:
 
