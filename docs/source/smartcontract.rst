@@ -7,7 +7,7 @@ The widely-used term, smart contract, is referred to as "chaincode" in
 Hyperledger Fabric.
 
 Self-executing logic that encodes the rules for specific types of
-network transactions. Chaincode (currently written in Go or Java) is
+network transactions. Chaincode (currently written in Go) is
 installed and instantiated onto a channel's peers by an appropriately
 authorized member. End users then invoke chaincode through a client-side
 application that interfaces with a network peer. Chaincode runs network
