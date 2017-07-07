@@ -299,6 +299,7 @@ func TestNewChannelConfig(t *testing.T) {
 		{
 			"BadConfigUpdate",
 			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
 				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 					ConfigUpdate: []byte("bad config update envelope data"),
 				}),
@@ -308,6 +309,7 @@ func TestNewChannelConfig(t *testing.T) {
 		{
 			"EmptyConfigUpdateWriteSet",
 			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
 				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 					ConfigUpdate: utils.MarshalOrPanic(
 						&cb.ConfigUpdate{},
@@ -319,6 +321,7 @@ func TestNewChannelConfig(t *testing.T) {
 		{
 			"WriteSetNoGroups",
 			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
 				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 					ConfigUpdate: utils.MarshalOrPanic(
 						&cb.ConfigUpdate{
@@ -332,6 +335,7 @@ func TestNewChannelConfig(t *testing.T) {
 		{
 			"WriteSetNoApplicationGroup",
 			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
 				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 					ConfigUpdate: utils.MarshalOrPanic(
 						&cb.ConfigUpdate{
@@ -347,6 +351,7 @@ func TestNewChannelConfig(t *testing.T) {
 		{
 			"BadWriteSetApplicationGroupVersion",
 			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
 				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 					ConfigUpdate: utils.MarshalOrPanic(
 						&cb.ConfigUpdate{
@@ -366,6 +371,7 @@ func TestNewChannelConfig(t *testing.T) {
 		{
 			"MissingWriteSetConsortiumValue",
 			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
 				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 					ConfigUpdate: utils.MarshalOrPanic(
 						&cb.ConfigUpdate{
@@ -386,6 +392,7 @@ func TestNewChannelConfig(t *testing.T) {
 		{
 			"BadWriteSetConsortiumValueValue",
 			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
 				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 					ConfigUpdate: utils.MarshalOrPanic(
 						&cb.ConfigUpdate{
@@ -410,6 +417,7 @@ func TestNewChannelConfig(t *testing.T) {
 		{
 			"UnknownConsortiumName",
 			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
 				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 					ConfigUpdate: utils.MarshalOrPanic(
 						&cb.ConfigUpdate{
@@ -438,6 +446,7 @@ func TestNewChannelConfig(t *testing.T) {
 		{
 			"Missing consortium members",
 			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
 				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 					ConfigUpdate: utils.MarshalOrPanic(
 						&cb.ConfigUpdate{
@@ -466,6 +475,7 @@ func TestNewChannelConfig(t *testing.T) {
 		{
 			"Member not in consortium",
 			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
 				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 					ConfigUpdate: utils.MarshalOrPanic(
 						&cb.ConfigUpdate{
@@ -503,6 +513,26 @@ func TestNewChannelConfig(t *testing.T) {
 		})
 	}
 	// SampleConsortium
+}
+
+func TestMismatchedChannelIDs(t *testing.T) {
+	innerChannelID := "foo"
+	outerChannelID := "bar"
+	template := configtx.NewChainCreationTemplate(genesisconfig.SampleConsortiumName, nil)
+	configUpdateEnvelope, err := template.Envelope(innerChannelID)
+	createTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, outerChannelID, nil, configUpdateEnvelope, msgVersion, epoch)
+	assert.NoError(t, err)
+
+	lf, _ := NewRAMLedgerAndFactory(10)
+
+	consenters := make(map[string]Consenter)
+	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
+
+	manager := NewManagerImpl(lf, consenters, mockCrypto())
+
+	_, err = manager.NewChannelConfig(createTx)
+	assert.Error(t, err, "Mismatched channel IDs")
+	assert.Regexp(t, "mismatched channel IDs", err.Error())
 }
 
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain

@@ -213,9 +213,18 @@ func (ml *multiLedger) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxa
 		return nil, fmt.Errorf("Failing initial channel config creation because of config update envelope unmarshaling error: %s", err)
 	}
 
+	if configUpdatePayload.Header == nil {
+		return nil, fmt.Errorf("Failed initial channel config creation because config update header was missing")
+	}
+	channelHeader, err := utils.UnmarshalChannelHeader(configUpdatePayload.Header.ChannelHeader)
+
 	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
 	if err != nil {
 		return nil, fmt.Errorf("Failing initial channel config creation because of config update unmarshaling error: %s", err)
+	}
+
+	if configUpdate.ChannelId != channelHeader.ChannelId {
+		return nil, fmt.Errorf("Failing initial channel config creation: mismatched channel IDs: '%s' != '%s'", configUpdate.ChannelId, channelHeader.ChannelId)
 	}
 
 	if configUpdate.WriteSet == nil {
