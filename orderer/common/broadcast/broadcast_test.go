@@ -127,9 +127,17 @@ func (ms *mockSupport) Filters() *filter.RuleSet {
 	return ms.filters
 }
 
-// Enqueue sends a message for ordering
-func (ms *mockSupport) Enqueue(env *cb.Envelope) bool {
-	return !ms.rejectEnqueue
+// Order sends a message for ordering
+func (ms *mockSupport) Order(env *cb.Envelope, configSeq uint64) error {
+	if ms.rejectEnqueue {
+		return fmt.Errorf("Reject")
+	}
+	return nil
+}
+
+// Configure sends a reconfiguration message for ordering
+func (ms *mockSupport) Configure(configUpdate *cb.Envelope, config *cb.Envelope, configSeq uint64) error {
+	return ms.Order(config, configSeq)
 }
 
 func makeConfigMessage(chainID string) *cb.Envelope {
@@ -264,9 +272,9 @@ func TestGoodConfigUpdate(t *testing.T) {
 	m := newMockB()
 	defer close(m.recvChan)
 	go bh.Handle(m)
-	newChannelId := "New Chain"
+	newChannelID := "New Chain"
 
-	m.recvChan <- makeConfigMessage(newChannelId)
+	m.recvChan <- makeConfigMessage(newChannelID)
 	reply := <-m.sendChan
 	assert.Equal(t, cb.Status_SUCCESS, reply.Status, "Should have allowed a good CONFIG_UPDATE")
 }
@@ -301,9 +309,9 @@ func TestRejected(t *testing.T) {
 	defer close(m.recvChan)
 	go bh.Handle(m)
 
-	newChannelId := "New Chain"
+	newChannelID := "New Chain"
 
-	m.recvChan <- makeConfigMessage(newChannelId)
+	m.recvChan <- makeConfigMessage(newChannelID)
 	reply := <-m.sendChan
 	assert.Equal(t, cb.Status_BAD_REQUEST, reply.Status, "Should have rejected CONFIG_UPDATE")
 }

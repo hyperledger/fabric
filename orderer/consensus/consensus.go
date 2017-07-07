@@ -32,8 +32,27 @@ type Consenter interface {
 // 1. Messages are ordered into a stream, the stream is cut into blocks, the blocks are committed (solo, kafka)
 // 2. Messages are cut into blocks, the blocks are ordered, then the blocks are committed (sbft)
 type Chain interface {
-	// Enqueue accepts a message and returns true on acceptance, or false on failure.
-	Enqueue(env *cb.Envelope) bool
+	// NOTE: The solo/kafka consenters have not been updated to perform the revalidation
+	// checks conditionally.  For now, Order/Configure are essentially Enqueue as before.
+	// This does not cause data inconsistency, but it wastes cycles and will be required
+	// to properly support the ConfigUpdate concept once introduced
+
+	// Order accepts a message which has been processed at a given configSeq.
+	// If the configSeq advances, it is the responsibility of the consenter
+	// to revalidate and potentially discard the message
+	// The consenter may return an error, indicating the message was not accepted
+	Order(env *cb.Envelope, configSeq uint64) error
+
+	// Configure accepts a message which reconfigures the channel and will
+	// trigger an update to the configSeq if committed.  The configuration must have
+	// been triggered by a ConfigUpdate message, which is included.  If the config
+	// sequence advances, it is the responsibility of the consenter to recompute the
+	// resulting config, discarding the message if the reconfiguration is no longer
+	// valid. While a configure message is in flight, the consenter should lock
+	// and block additional calls to Order/Configure, any messages received will
+	// need to be revalidated before ordering.
+	// The consenter may return an error, indicating the message was not accepted
+	Configure(configUpdate *cb.Envelope, config *cb.Envelope, configSeq uint64) error
 
 	// Errored returns a channel which will close when an error has occurred.
 	// This is especially useful for the Deliver client, who must terminate waiting

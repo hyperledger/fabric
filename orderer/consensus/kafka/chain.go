@@ -112,9 +112,21 @@ func (chain *chainImpl) Halt() {
 	}
 }
 
-// Enqueue accepts a message and returns true on acceptance, or false otheriwse.
 // Implements the consensus.Chain interface. Called by Broadcast().
-func (chain *chainImpl) Enqueue(env *cb.Envelope) bool {
+func (chain *chainImpl) Order(env *cb.Envelope, configSeq uint64) error {
+	if !chain.enqueue(env) {
+		return fmt.Errorf("Could not enqueue")
+	}
+	return nil
+}
+
+// Implements the consensus.Chain interface. Called by Broadcast().
+func (chain *chainImpl) Configure(configUpdate *cb.Envelope, config *cb.Envelope, configSeq uint64) error {
+	return chain.Order(config, configSeq)
+}
+
+// enqueue accepts a message and returns true on acceptance, or false otheriwse.
+func (chain *chainImpl) enqueue(env *cb.Envelope) bool {
 	logger.Debugf("[channel: %s] Enqueueing envelope...", chain.support.ChainID())
 	select {
 	case <-chain.startChan: // The Start phase has completed

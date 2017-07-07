@@ -178,7 +178,7 @@ func TestManagerImpl(t *testing.T) {
 	}
 
 	for _, message := range messages {
-		chainSupport.Enqueue(message)
+		chainSupport.Order(message, 0)
 	}
 
 	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
@@ -489,7 +489,7 @@ func TestNewChain(t *testing.T) {
 	chainSupport, ok := manager.GetChain(manager.SystemChannelID())
 	assert.True(t, ok, "Could not find system channel")
 
-	chainSupport.Enqueue(wrapped)
+	chainSupport.Configure(wrapped, wrapped, 0)
 	func() {
 		it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 		defer it.Close()
@@ -521,7 +521,7 @@ func TestNewChain(t *testing.T) {
 	}
 
 	for _, message := range messages {
-		chainSupport.Enqueue(message)
+		chainSupport.Order(message, 0)
 	}
 
 	it, _ := chainSupport.Reader().Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 0}}})

@@ -165,7 +165,7 @@ func setupTestLogging(logLevel string, verbose bool) {
 
 // Taken from orderer/solo/consensus_test.go
 func syncQueueMessage(message *cb.Envelope, chain *chainImpl, mockBlockcutter *mockblockcutter.Receiver) {
-	chain.Enqueue(message)
+	chain.enqueue(message)
 	mockBlockcutter.Block <- struct{}{} // We'll move past this line (and the function will return) only when the mock blockcutter is about to return
 }
 
