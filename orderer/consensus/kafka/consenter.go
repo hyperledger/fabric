@@ -10,7 +10,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/common/flogging"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	logging "github.com/op/go-logging"
 )
@@ -24,7 +24,7 @@ func init() {
 }
 
 // New creates a Kafka-based consenter. Called by orderer's main.go.
-func New(tlsConfig localconfig.TLS, retryOptions localconfig.Retry, kafkaVersion sarama.KafkaVersion) multichannel.Consenter {
+func New(tlsConfig localconfig.TLS, retryOptions localconfig.Retry, kafkaVersion sarama.KafkaVersion) consensus.Consenter {
 	brokerConfig := newBrokerConfig(tlsConfig, retryOptions, kafkaVersion, defaultPartition)
 	return &consenterImpl{
 		brokerConfigVal: brokerConfig,
@@ -34,7 +34,7 @@ func New(tlsConfig localconfig.TLS, retryOptions localconfig.Retry, kafkaVersion
 }
 
 // consenterImpl holds the implementation of type that satisfies the
-// multichannel.Consenter interface --as the HandleChain contract requires-- and
+// consensus.Consenter interface --as the HandleChain contract requires-- and
 // the commonConsenter one.
 type consenterImpl struct {
 	brokerConfigVal *sarama.Config
@@ -43,12 +43,12 @@ type consenterImpl struct {
 	kafkaVersionVal sarama.KafkaVersion
 }
 
-// HandleChain creates/returns a reference to a multichannel.Chain object for the
-// given set of support resources. Implements the multichannel.Consenter
-// interface. Called by multichannel.newChainSupport(), which is itself called by
+// HandleChain creates/returns a reference to a consensus.Chain object for the
+// given set of support resources. Implements the consensus.Consenter
+// interface. Called by consensus.newChainSupport(), which is itself called by
 // multichannel.NewManagerImpl() when ranging over the ledgerFactory's
 // existingChains.
-func (consenter *consenterImpl) HandleChain(support multichannel.ConsenterSupport, metadata *cb.Metadata) (multichannel.Chain, error) {
+func (consenter *consenterImpl) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
 	lastOffsetPersisted := getLastOffsetPersisted(metadata.Value, support.ChainID())
 	return newChain(consenter, support, lastOffsetPersisted)
 }

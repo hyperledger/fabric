@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/common/ledger/ram"
+	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -132,10 +133,10 @@ func TestGetConfigTxFailure(t *testing.T) {
 func TestNoSystemChain(t *testing.T) {
 	lf := ramledger.New(10)
 
-	consenters := make(map[string]Consenter)
+	consenters := make(map[string]consensus.Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
-	assert.Panics(t, func() { NewManagerImpl(lf, consenters, mockCrypto()) }, "Should have panicked when starting without a system chain")
+	assert.Panics(t, func() { NewRegistrar(lf, consenters, mockCrypto()) }, "Should have panicked when starting without a system chain")
 }
 
 // This test checks to make sure that the orderer refuses to come up if there are multiple system channels
@@ -150,20 +151,20 @@ func TestMultiSystemChannel(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	consenters := make(map[string]Consenter)
+	consenters := make(map[string]consensus.Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
-	assert.Panics(t, func() { NewManagerImpl(lf, consenters, mockCrypto()) }, "Two system channels should have caused panic")
+	assert.Panics(t, func() { NewRegistrar(lf, consenters, mockCrypto()) }, "Two system channels should have caused panic")
 }
 
 // This test essentially brings the entire system up and is ultimately what main.go will replicate
 func TestManagerImpl(t *testing.T) {
 	lf, rl := NewRAMLedgerAndFactory(10)
 
-	consenters := make(map[string]Consenter)
+	consenters := make(map[string]consensus.Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters, mockCrypto())
+	manager := NewRegistrar(lf, consenters, mockCrypto())
 
 	_, ok := manager.GetChain("Fake")
 	assert.False(t, ok, "Should not have found a chain that was not created")
@@ -197,9 +198,9 @@ func TestManagerImpl(t *testing.T) {
 func TestNewChannelConfig(t *testing.T) {
 	lf, _ := NewRAMLedgerAndFactoryWithMSP()
 
-	consenters := make(map[string]Consenter)
+	consenters := make(map[string]consensus.Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
-	manager := NewManagerImpl(lf, consenters, mockCrypto())
+	manager := NewRegistrar(lf, consenters, mockCrypto())
 
 	t.Run("BadPayload", func(t *testing.T) {
 		_, err := manager.NewChannelConfig(&cb.Envelope{Payload: []byte("bad payload")})
@@ -447,10 +448,10 @@ func TestMismatchedChannelIDs(t *testing.T) {
 
 	lf, _ := NewRAMLedgerAndFactory(10)
 
-	consenters := make(map[string]Consenter)
+	consenters := make(map[string]consensus.Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters, mockCrypto())
+	manager := NewRegistrar(lf, consenters, mockCrypto())
 
 	_, err = manager.NewChannelConfig(createTx)
 	assert.Error(t, err, "Mismatched channel IDs")
@@ -465,10 +466,10 @@ func TestNewChain(t *testing.T) {
 
 	lf, rl := NewRAMLedgerAndFactory(10)
 
-	consenters := make(map[string]Consenter)
+	consenters := make(map[string]consensus.Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters, mockCrypto())
+	manager := NewRegistrar(lf, consenters, mockCrypto())
 
 	envConfigUpdate, err := configtx.MakeChainCreationTransaction(newChainID, genesisconfig.SampleConsortiumName, mockSigningIdentity)
 	assert.NoError(t, err, "Constructing chain creation tx")
@@ -560,10 +561,8 @@ func TestNewChain(t *testing.T) {
 	testRestartedChainSupport(t, chainSupport, consenters, expectedLastConfigSeq)
 }
 
-func testRestartedChainSupport(t *testing.T, cs ChainSupport, consenters map[string]Consenter, expectedLastConfigSeq uint64) {
-	ccs, ok := cs.(*chainSupport)
-	assert.True(t, ok, "Casting error")
-	rcs := newChainSupport(ccs.filters, ccs.ledgerResources, consenters, mockCrypto())
+func testRestartedChainSupport(t *testing.T, cs *ChainSupport, consenters map[string]consensus.Consenter, expectedLastConfigSeq uint64) {
+	rcs := newChainSupport(cs.filters, cs.ledgerResources, consenters, mockCrypto())
 	assert.Equal(t, expectedLastConfigSeq, rcs.lastConfigSeq, "On restart, incorrect lastConfigSeq")
 }
 

@@ -19,9 +19,9 @@ package multichannel
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/consensus"
 )
 
 func TestConsenterSupportInterface(t *testing.T) {
-	_ = multichannel.ConsenterSupport(&ConsenterSupport{})
+	_ = consensus.ConsenterSupport(&ConsenterSupport{})
 }

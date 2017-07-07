@@ -21,7 +21,7 @@ import (
 	"time"
 
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
-	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -252,7 +252,7 @@ func TestConfigMsg(t *testing.T) {
 	defer bs.Halt()
 
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
-	support.ClassifyMsgVal = multichannel.ConfigUpdateMsg
+	support.ClassifyMsgVal = msgprocessor.ConfigUpdateMsg
 	bs.Enqueue(testMessage)
 
 	select {

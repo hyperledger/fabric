@@ -14,7 +14,8 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -35,7 +36,7 @@ const (
 	indexExitChanPass
 )
 
-func newChain(consenter commonConsenter, support multichannel.ConsenterSupport, lastOffsetPersisted int64) (*chainImpl, error) {
+func newChain(consenter commonConsenter, support consensus.ConsenterSupport, lastOffsetPersisted int64) (*chainImpl, error) {
 	lastCutBlockNumber := getLastCutBlockNumber(support.Height())
 	logger.Infof("[channel: %s] Starting chain with last persisted offset %d and last recorded block %d",
 		support.ChainID(), lastOffsetPersisted, lastCutBlockNumber)
@@ -58,7 +59,7 @@ func newChain(consenter commonConsenter, support multichannel.ConsenterSupport, 
 
 type chainImpl struct {
 	consenter commonConsenter
-	support   multichannel.ConsenterSupport
+	support   consensus.ConsenterSupport
 
 	channel             channel
 	lastOffsetPersisted int64
@@ -86,16 +87,16 @@ func (chain *chainImpl) Errored() <-chan struct{} {
 }
 
 // Start allocates the necessary resources for staying up to date with this
-// Chain. Implements the multichannel.Chain interface. Called by
-// multichannel.NewManagerImpl() which is invoked when the ordering process is
+// Chain. Implements the consensus.Chain interface. Called by
+// consensus.NewManagerImpl() which is invoked when the ordering process is
 // launched, before the call to NewServer(). Launches a goroutine so as not to
-// block the multichannel.Manager.
+// block the consensus.Manager.
 func (chain *chainImpl) Start() {
 	go startThread(chain)
 }
 
 // Halt frees the resources which were allocated for this Chain. Implements the
-// multichannel.Chain interface.
+// consensus.Chain interface.
 func (chain *chainImpl) Halt() {
 	select {
 	case <-chain.haltChan:
@@ -112,7 +113,7 @@ func (chain *chainImpl) Halt() {
 }
 
 // Enqueue accepts a message and returns true on acceptance, or false otheriwse.
-// Implements the multichannel.Chain interface. Called by Broadcast().
+// Implements the consensus.Chain interface. Called by Broadcast().
 func (chain *chainImpl) Enqueue(env *cb.Envelope) bool {
 	logger.Debugf("[channel: %s] Enqueueing envelope...", chain.support.ChainID())
 	select {
@@ -365,7 +366,7 @@ func processConnect(channelName string) error {
 	return nil
 }
 
-func processRegular(regularMessage *ab.KafkaMessageRegular, support multichannel.ConsenterSupport, timer *<-chan time.Time, receivedOffset int64, lastCutBlockNumber *uint64) error {
+func processRegular(regularMessage *ab.KafkaMessageRegular, support consensus.ConsenterSupport, timer *<-chan time.Time, receivedOffset int64, lastCutBlockNumber *uint64) error {
 	env := new(cb.Envelope)
 	if err := proto.Unmarshal(regularMessage.Payload, env); err != nil {
 		// This shouldn't happen, it should be filtered at ingress
@@ -377,7 +378,7 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support multichannel
 		logger.Panicf("[channel: %s] If a message has arrived to this point, it should already have been classified once", support.ChainID())
 	}
 	switch class {
-	case multichannel.ConfigUpdateMsg:
+	case msgprocessor.ConfigUpdateMsg:
 		batch := support.BlockCutter().Cut()
 		if batch != nil {
 			block := support.CreateNextBlock(batch)
@@ -392,7 +393,7 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support multichannel
 		block := support.CreateNextBlock([]*cb.Envelope{env})
 		support.WriteConfigBlock(block, nil)
 		*timer = nil
-	case multichannel.NormalMsg:
+	case msgprocessor.NormalMsg:
 		batches, ok := support.BlockCutter().Ordered(env)
 		logger.Debugf("[channel: %s] Ordering results: items in batch = %d, ok = %v", support.ChainID(), len(batches), ok)
 		if ok && len(batches) == 0 && *timer == nil {
@@ -421,7 +422,7 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support multichannel
 	return nil
 }
 
-func processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, support multichannel.ConsenterSupport, lastCutBlockNumber *uint64, timer *<-chan time.Time, receivedOffset int64) error {
+func processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, support consensus.ConsenterSupport, lastCutBlockNumber *uint64, timer *<-chan time.Time, receivedOffset int64) error {
 	ttcNumber := ttcMessage.GetBlockNumber()
 	logger.Debugf("[channel: %s] It's a time-to-cut message for block %d", support.ChainID(), ttcNumber)
 	if ttcNumber == *lastCutBlockNumber+1 {

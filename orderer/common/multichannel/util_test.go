@@ -23,6 +23,8 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -30,7 +32,7 @@ import (
 type mockConsenter struct {
 }
 
-func (mc *mockConsenter) HandleChain(support ConsenterSupport, metadata *cb.Metadata) (Chain, error) {
+func (mc *mockConsenter) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
 	return &mockChain{
 		queue:    make(chan *cb.Envelope),
 		cutter:   support.BlockCutter(),
@@ -43,7 +45,7 @@ func (mc *mockConsenter) HandleChain(support ConsenterSupport, metadata *cb.Meta
 type mockChain struct {
 	queue    chan *cb.Envelope
 	cutter   blockcutter.Receiver
-	support  ConsenterSupport
+	support  consensus.ConsenterSupport
 	metadata *cb.Metadata
 	done     chan struct{}
 }
@@ -71,7 +73,7 @@ func (mch *mockChain) Start() {
 				logger.Panicf("If a message has arrived to this point, it should already have been classified once")
 			}
 			switch class {
-			case ConfigUpdateMsg:
+			case msgprocessor.ConfigUpdateMsg:
 				batch := mch.support.BlockCutter().Cut()
 				if batch != nil {
 					block := mch.support.CreateNextBlock(batch)
@@ -85,7 +87,7 @@ func (mch *mockChain) Start() {
 				}
 				block := mch.support.CreateNextBlock([]*cb.Envelope{msg})
 				mch.support.WriteConfigBlock(block, nil)
-			case NormalMsg:
+			case msgprocessor.NormalMsg:
 				batches, _ := mch.support.BlockCutter().Ordered(msg)
 				for _, batch := range batches {
 					block := mch.support.CreateNextBlock(batch)

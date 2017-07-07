@@ -19,7 +19,8 @@ package solo
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
 )
@@ -29,7 +30,7 @@ var logger = logging.MustGetLogger("orderer/solo")
 type consenter struct{}
 
 type chain struct {
-	support  multichannel.ConsenterSupport
+	support  consensus.ConsenterSupport
 	sendChan chan *cb.Envelope
 	exitChan chan struct{}
 }
@@ -38,15 +39,15 @@ type chain struct {
 // The solo consensus scheme is very simple, and allows only one consenter for a given chain (this process).
 // It accepts messages being delivered via Enqueue, orders them, and then uses the blockcutter to form the messages
 // into blocks before writing to the given ledger
-func New() multichannel.Consenter {
+func New() consensus.Consenter {
 	return &consenter{}
 }
 
-func (solo *consenter) HandleChain(support multichannel.ConsenterSupport, metadata *cb.Metadata) (multichannel.Chain, error) {
+func (solo *consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
 	return newChain(support), nil
 }
 
-func newChain(support multichannel.ConsenterSupport) *chain {
+func newChain(support consensus.ConsenterSupport) *chain {
 	return &chain{
 		support:  support,
 		sendChan: make(chan *cb.Envelope),
@@ -93,7 +94,7 @@ func (ch *chain) main() {
 				logger.Panicf("If a message has arrived to this point, it should already have been classified once")
 			}
 			switch class {
-			case multichannel.ConfigUpdateMsg:
+			case msgprocessor.ConfigUpdateMsg:
 				batch := ch.support.BlockCutter().Cut()
 				if batch != nil {
 					block := ch.support.CreateNextBlock(batch)
@@ -108,7 +109,7 @@ func (ch *chain) main() {
 				block := ch.support.CreateNextBlock([]*cb.Envelope{msg})
 				ch.support.WriteConfigBlock(block, nil)
 				timer = nil
-			case multichannel.NormalMsg:
+			case msgprocessor.NormalMsg:
 				batches, ok := ch.support.BlockCutter().Ordered(msg)
 				if ok && len(batches) == 0 && timer == nil {
 					timer = time.After(ch.support.SharedConfig().BatchTimeout())

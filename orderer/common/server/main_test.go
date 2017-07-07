@@ -232,7 +232,7 @@ func TestInitializeMultiChainManager(t *testing.T) {
 	}
 	assert.NotPanics(t, func() {
 		initializeLocalMsp(conf)
-		initializeMultiChainManager(conf, localmsp.NewSigner())
+		initializeMultichannelRegistrar(conf, localmsp.NewSigner())
 	})
 }
 

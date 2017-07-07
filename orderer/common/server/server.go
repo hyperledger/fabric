@@ -18,28 +18,28 @@ import (
 )
 
 type configUpdateSupport struct {
-	multichannel.Manager
+	*multichannel.Registrar
 }
 
 func (cus configUpdateSupport) GetChain(chainID string) (configupdate.Support, bool) {
-	return cus.Manager.GetChain(chainID)
+	return cus.Registrar.GetChain(chainID)
 }
 
 type broadcastSupport struct {
-	multichannel.Manager
+	*multichannel.Registrar
 	broadcast.ConfigUpdateProcessor
 }
 
 func (bs broadcastSupport) GetChain(chainID string) (broadcast.Support, bool) {
-	return bs.Manager.GetChain(chainID)
+	return bs.Registrar.GetChain(chainID)
 }
 
 type deliverSupport struct {
-	multichannel.Manager
+	*multichannel.Registrar
 }
 
 func (bs deliverSupport) GetChain(chainID string) (deliver.Support, bool) {
-	return bs.Manager.GetChain(chainID)
+	return bs.Registrar.GetChain(chainID)
 }
 
 type server struct {
@@ -48,12 +48,12 @@ type server struct {
 }
 
 // NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
-func NewServer(ml multichannel.Manager, signer crypto.LocalSigner) ab.AtomicBroadcastServer {
+func NewServer(r *multichannel.Registrar, signer crypto.LocalSigner) ab.AtomicBroadcastServer {
 	s := &server{
-		dh: deliver.NewHandlerImpl(deliverSupport{Manager: ml}),
+		dh: deliver.NewHandlerImpl(deliverSupport{Registrar: r}),
 		bh: broadcast.NewHandlerImpl(broadcastSupport{
-			Manager:               ml,
-			ConfigUpdateProcessor: configupdate.New(ml.SystemChannelID(), configUpdateSupport{Manager: ml}, signer),
+			Registrar:             r,
+			ConfigUpdateProcessor: configupdate.New(r.SystemChannelID(), configUpdateSupport{Registrar: r}, signer),
 		}),
 	}
 	return s
