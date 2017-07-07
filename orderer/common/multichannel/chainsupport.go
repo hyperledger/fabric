@@ -52,7 +52,7 @@ func newChainSupport(
 	signer crypto.LocalSigner,
 ) *ChainSupport {
 
-	cutter := blockcutter.NewReceiverImpl(ledgerResources.SharedConfig(), filters)
+	cutter := blockcutter.NewReceiverImpl(ledgerResources.SharedConfig())
 	consenterType := ledgerResources.SharedConfig().ConsensusType()
 	consenter, ok := consenters[consenterType]
 	if !ok {

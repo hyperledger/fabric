@@ -95,21 +95,28 @@ func (ch *chain) main() {
 			}
 			switch class {
 			case msgprocessor.ConfigUpdateMsg:
+				_, err := ch.support.ProcessNormalMsg(msg)
+				if err != nil {
+					logger.Warningf("Discarding bad config message: %s", err)
+					continue
+				}
+
 				batch := ch.support.BlockCutter().Cut()
 				if batch != nil {
 					block := ch.support.CreateNextBlock(batch)
 					ch.support.WriteBlock(block, nil)
 				}
 
-				_, err := ch.support.ProcessNormalMsg(msg)
-				if err != nil {
-					logger.Warningf("Discarding bad config message: %s", err)
-					continue
-				}
 				block := ch.support.CreateNextBlock([]*cb.Envelope{msg})
 				ch.support.WriteConfigBlock(block, nil)
 				timer = nil
 			case msgprocessor.NormalMsg:
+				_, err := ch.support.ProcessNormalMsg(msg)
+				if err != nil {
+					logger.Warningf("Discarding bad normal message: %s", err)
+					continue
+				}
+
 				batches, ok := ch.support.BlockCutter().Ordered(msg)
 				if ok && len(batches) == 0 && timer == nil {
 					timer = time.After(ch.support.SharedConfig().BatchTimeout())

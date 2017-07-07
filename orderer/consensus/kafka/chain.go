@@ -379,21 +379,27 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support consensus.Co
 	}
 	switch class {
 	case msgprocessor.ConfigUpdateMsg:
-		batch := support.BlockCutter().Cut()
-		if batch != nil {
-			block := support.CreateNextBlock(batch)
-			support.WriteBlock(block, nil)
-		}
-
 		_, err := support.ProcessNormalMsg(env)
 		if err != nil {
 			logger.Warningf("[channel: %s] Discarding bad config message: %s", support.ChainID(), err)
 			break
 		}
+
+		batch := support.BlockCutter().Cut()
+		if batch != nil {
+			block := support.CreateNextBlock(batch)
+			support.WriteBlock(block, nil)
+		}
 		block := support.CreateNextBlock([]*cb.Envelope{env})
 		support.WriteConfigBlock(block, nil)
 		*timer = nil
 	case msgprocessor.NormalMsg:
+		_, err := support.ProcessNormalMsg(env)
+		if err != nil {
+			logger.Warningf("Discarding bad normal message: %s", err)
+			break
+		}
+
 		batches, ok := support.BlockCutter().Ordered(env)
 		logger.Debugf("[channel: %s] Ordering results: items in batch = %d, ok = %v", support.ChainID(), len(batches), ok)
 		if ok && len(batches) == 0 && *timer == nil {
