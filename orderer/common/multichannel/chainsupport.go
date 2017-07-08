@@ -17,8 +17,6 @@ limitations under the License.
 package multichannel
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -37,6 +35,7 @@ import (
 // ChainSupport holds the resources for a particular channel.
 type ChainSupport struct {
 	*ledgerResources
+	msgprocessor.Processor
 	chain         consensus.Chain
 	cutter        blockcutter.Receiver
 	filters       *filter.RuleSet
@@ -65,6 +64,7 @@ func newChainSupport(
 		filters:         filters,
 		signer:          signer,
 	}
+	cs.Processor = msgprocessor.NewStandardChannel(cs)
 
 	cs.lastConfigSeq = cs.Sequence()
 
@@ -121,6 +121,11 @@ func createSystemChainFilters(r *Registrar, ledgerResources *ledgerResources) *f
 	})
 }
 
+// Signer returns the crypto.Localsigner for this channel.
+func (cs *ChainSupport) Signer() crypto.LocalSigner {
+	return cs.signer
+}
+
 func (cs *ChainSupport) start() {
 	cs.chain.Start()
 }
@@ -143,53 +148,6 @@ func (cs *ChainSupport) Filters() *filter.RuleSet {
 // BlockCutter returns the blockcutter.Receiver instance for this channel.
 func (cs *ChainSupport) BlockCutter() blockcutter.Receiver {
 	return cs.cutter
-}
-
-// ClassifyMsg inspects the message to determine which type of processing is necessary
-func (cs *ChainSupport) ClassifyMsg(env *cb.Envelope) (msgprocessor.Classification, error) {
-	payload, err := utils.UnmarshalPayload(env.Payload)
-	if err != nil {
-		return 0, fmt.Errorf("bad payload: %s", err)
-	}
-
-	if payload.Header == nil {
-		return 0, fmt.Errorf("bad payload: missing header")
-	}
-
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-	if err != nil {
-		return 0, fmt.Errorf("bad channelheader: %s", err)
-	}
-
-	switch chdr.Type {
-	case int32(cb.HeaderType_CONFIG_UPDATE):
-		return msgprocessor.ConfigUpdateMsg, nil
-	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		return msgprocessor.ConfigUpdateMsg, nil
-		// XXX Eventually, these types cannot be allowed to be submitted directly
-		// return 0, fmt.Errorf("Transactions of type ORDERER_TRANSACTION cannot be Broadcast")
-	case int32(cb.HeaderType_CONFIG):
-		return msgprocessor.ConfigUpdateMsg, nil
-		// XXX Eventually, these types cannot be allowed to be submitted directly
-		// return 0, fmt.Errorf("Transactions of type CONFIG cannot be Broadcast")
-	default:
-		return msgprocessor.NormalMsg, nil
-	}
-}
-
-// ProcessNormalMsg will check the validity of a message based on the current configuration.  It returns the current
-// configuration sequence number and nil on success, or an error if the message is not valid
-func (cs *ChainSupport) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, err error) {
-	configSeq = cs.Sequence()
-	_, err = cs.filters.Apply(env)
-	return
-}
-
-// ProcessConfigUpdateMsg will attempt to apply the config update msg to the current configuration, and if successful
-// return the resulting config message and the configSeq the config was computed from.  If the config update message
-// is invalid, an error is returned.
-func (cs *ChainSupport) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
-	return nil, cs.Sequence(), fmt.Errorf("Config update message not yet implemented")
 }
 
 // Reader returns a reader for the underlying ledger.

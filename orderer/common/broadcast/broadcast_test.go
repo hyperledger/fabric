@@ -22,10 +22,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
@@ -35,8 +34,6 @@ import (
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
-
-var systemChain = "systemChain"
 
 type mockB struct {
 	grpc.ServerStream
@@ -93,38 +90,21 @@ func (m *erroneousSendMockB) Recv() (*cb.Envelope, error) {
 	return m.recvVal, nil
 }
 
-var RejectRule = filter.Rule(rejectRule{})
-
-type rejectRule struct{}
-
-func (r rejectRule) Apply(message *cb.Envelope) (filter.Action, filter.Committer) {
-	return filter.Reject, nil
-}
-
 type mockSupportManager struct {
-	chains     map[string]*mockSupport
-	ProcessVal *cb.Envelope
+	MsgProcessorIsConfig bool
+	MsgProcessorVal      *mockSupport
+	MsgProcessorErr      error
 }
 
-func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
-	chain, ok := mm.chains[chainID]
-	return chain, ok
-}
-
-func (mm *mockSupportManager) Process(configTx *cb.Envelope) (*cb.Envelope, error) {
-	if mm.ProcessVal == nil {
-		return nil, fmt.Errorf("Nil result implies error")
-	}
-	return mm.ProcessVal, nil
+func (mm *mockSupportManager) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader, bool, ChannelSupport, error) {
+	return &cb.ChannelHeader{}, mm.MsgProcessorIsConfig, mm.MsgProcessorVal, mm.MsgProcessorErr
 }
 
 type mockSupport struct {
-	filters       *filter.RuleSet
-	rejectEnqueue bool
-}
-
-func (ms *mockSupport) Filters() *filter.RuleSet {
-	return ms.filters
+	ProcessConfigEnv *cb.Envelope
+	ProcessConfigSeq uint64
+	ProcessErr       error
+	rejectEnqueue    bool
 }
 
 // Order sends a message for ordering
@@ -140,52 +120,26 @@ func (ms *mockSupport) Configure(configUpdate *cb.Envelope, config *cb.Envelope,
 	return ms.Order(config, configSeq)
 }
 
-func makeConfigMessage(chainID string) *cb.Envelope {
-	payload := &cb.Payload{
-		Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{}),
-		Header: &cb.Header{
-			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
-				ChannelId: chainID,
-				Type:      int32(cb.HeaderType_CONFIG_UPDATE),
-			}),
-		},
-	}
-	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(payload),
-	}
+func (ms *mockSupport) ClassifyMsg(chdr *cb.ChannelHeader) (msgprocessor.Classification, error) {
+	panic("UNIMPLMENTED")
 }
 
-func makeMessage(chainID string, data []byte) *cb.Envelope {
-	payload := &cb.Payload{
-		Data: data,
-		Header: &cb.Header{
-			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
-				ChannelId: chainID,
-			}),
-		},
-	}
-	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(payload),
-	}
+func (ms *mockSupport) ProcessNormalMsg(msg *cb.Envelope) (uint64, error) {
+	return ms.ProcessConfigSeq, ms.ProcessErr
 }
 
-func getMockSupportManager() (*mockSupportManager, *mockSupport) {
-	filters := filter.NewRuleSet([]filter.Rule{
-		filter.EmptyRejectRule,
-		filter.AcceptRule,
-	})
-	mm := &mockSupportManager{
-		chains: make(map[string]*mockSupport),
+func (ms *mockSupport) ProcessConfigUpdateMsg(msg *cb.Envelope) (*cb.Envelope, uint64, error) {
+	return ms.ProcessConfigEnv, ms.ProcessConfigSeq, ms.ProcessErr
+}
+
+func getMockSupportManager() *mockSupportManager {
+	return &mockSupportManager{
+		MsgProcessorVal: &mockSupport{},
 	}
-	mSysChain := &mockSupport{
-		filters: filters,
-	}
-	mm.chains[string(systemChain)] = mSysChain
-	return mm, mSysChain
 }
 
 func TestEnqueueFailure(t *testing.T) {
-	mm, mSysChain := getMockSupportManager()
+	mm := getMockSupportManager()
 	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
@@ -196,15 +150,15 @@ func TestEnqueueFailure(t *testing.T) {
 	}()
 
 	for i := 0; i < 2; i++ {
-		m.recvChan <- makeMessage(systemChain, []byte("Some bytes"))
+		m.recvChan <- nil
 		reply := <-m.sendChan
 		if reply.Status != cb.Status_SUCCESS {
 			t.Fatalf("Should have successfully queued the message")
 		}
 	}
 
-	mSysChain.rejectEnqueue = true
-	m.recvChan <- makeMessage(systemChain, []byte("Some bytes"))
+	mm.MsgProcessorVal.rejectEnqueue = true
+	m.recvChan <- nil
 	reply := <-m.sendChan
 	if reply.Status != cb.Status_SERVICE_UNAVAILABLE {
 		t.Fatalf("Should not have successfully queued the message")
@@ -217,32 +171,9 @@ func TestEnqueueFailure(t *testing.T) {
 	}
 }
 
-func TestEmptyEnvelope(t *testing.T) {
-	mm, _ := getMockSupportManager()
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	done := make(chan struct{})
-	go func() {
-		bh.Handle(m)
-		close(done)
-	}()
-
-	m.recvChan <- &cb.Envelope{}
-	reply := <-m.sendChan
-	if reply.Status != cb.Status_BAD_REQUEST {
-		t.Fatalf("Should have rejected the null message")
-	}
-
-	select {
-	case <-done:
-	case <-time.After(time.Second):
-		t.Fatalf("Should have terminated the stream")
-	}
-}
-
 func TestBadChannelId(t *testing.T) {
-	mm, _ := getMockSupportManager()
+	mm := getMockSupportManager()
+	mm.MsgProcessorVal = &mockSupport{ProcessErr: msgprocessor.ErrChannelDoesNotExist}
 	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
@@ -252,7 +183,7 @@ func TestBadChannelId(t *testing.T) {
 		close(done)
 	}()
 
-	m.recvChan <- makeMessage("Wrong chain", []byte("Some bytes"))
+	m.recvChan <- nil
 	reply := <-m.sendChan
 	if reply.Status != cb.Status_NOT_FOUND {
 		t.Fatalf("Should have rejected message to a chain which does not exist")
@@ -266,27 +197,28 @@ func TestBadChannelId(t *testing.T) {
 }
 
 func TestGoodConfigUpdate(t *testing.T) {
-	mm, _ := getMockSupportManager()
-	mm.ProcessVal = &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: systemChain})}})}
+	mm := getMockSupportManager()
+	mm.MsgProcessorIsConfig = true
 	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
 	go bh.Handle(m)
-	newChannelID := "New Chain"
 
-	m.recvChan <- makeConfigMessage(newChannelID)
+	m.recvChan <- nil
 	reply := <-m.sendChan
 	assert.Equal(t, cb.Status_SUCCESS, reply.Status, "Should have allowed a good CONFIG_UPDATE")
 }
 
 func TestBadConfigUpdate(t *testing.T) {
-	mm, _ := getMockSupportManager()
+	mm := getMockSupportManager()
+	mm.MsgProcessorIsConfig = true
+	mm.MsgProcessorVal.ProcessErr = fmt.Errorf("Error")
 	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
 	go bh.Handle(m)
 
-	m.recvChan <- makeConfigMessage(systemChain)
+	m.recvChan <- nil
 	reply := <-m.sendChan
 	assert.NotEqual(t, cb.Status_SUCCESS, reply.Status, "Should have rejected CONFIG_UPDATE")
 }
@@ -299,19 +231,15 @@ func TestGracefulShutdown(t *testing.T) {
 }
 
 func TestRejected(t *testing.T) {
-	filters := filter.NewRuleSet([]filter.Rule{RejectRule})
 	mm := &mockSupportManager{
-		chains: map[string]*mockSupport{string(systemChain): {filters: filters}},
+		MsgProcessorVal: &mockSupport{ProcessErr: fmt.Errorf("Reject")},
 	}
-	mm.ProcessVal = &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: systemChain})}})}
 	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
 	go bh.Handle(m)
 
-	newChannelID := "New Chain"
-
-	m.recvChan <- makeConfigMessage(newChannelID)
+	m.recvChan <- nil
 	reply := <-m.sendChan
 	assert.Equal(t, cb.Status_BAD_REQUEST, reply.Status, "Should have rejected CONFIG_UPDATE")
 }
@@ -322,97 +250,8 @@ func TestBadStreamRecv(t *testing.T) {
 }
 
 func TestBadStreamSend(t *testing.T) {
-	mm, _ := getMockSupportManager()
-	mm.ProcessVal = &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: systemChain})}})}
+	mm := getMockSupportManager()
 	bh := NewHandlerImpl(mm)
-	m := &erroneousSendMockB{recvVal: makeConfigMessage("New Chain")}
+	m := &erroneousSendMockB{recvVal: nil}
 	assert.Error(t, bh.Handle(m), "Should catch unexpected stream error")
-}
-
-func TestMalformedEnvelope(t *testing.T) {
-	mm, _ := getMockSupportManager()
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- &cb.Envelope{Payload: []byte("foo")}
-	reply := <-m.sendChan
-	assert.Equal(t, cb.Status_BAD_REQUEST, reply.Status, "Should have rejected the malformed message")
-}
-
-func TestMissingHeader(t *testing.T) {
-	mm, _ := getMockSupportManager()
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{})}
-	reply := <-m.sendChan
-	assert.Equal(t, cb.Status_BAD_REQUEST, reply.Status, "Should have rejected the payload without header")
-}
-
-func TestBadChannelHeader(t *testing.T) {
-	mm, _ := getMockSupportManager()
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: []byte("foo")}})}
-	reply := <-m.sendChan
-	assert.Equal(t, cb.Status_BAD_REQUEST, reply.Status, "Should have rejected bad header")
-}
-
-func TestBadPayloadAfterProcessing(t *testing.T) {
-	mm, _ := getMockSupportManager()
-	mm.ProcessVal = &cb.Envelope{Payload: []byte("foo")}
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- makeConfigMessage("New Chain")
-	reply := <-m.sendChan
-	assert.Equal(t, cb.Status_INTERNAL_SERVER_ERROR, reply.Status, "Should respond with internal server error")
-}
-
-func TestNilHeaderAfterProcessing(t *testing.T) {
-	mm, _ := getMockSupportManager()
-	mm.ProcessVal = &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{})}
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- makeConfigMessage("New Chain")
-	reply := <-m.sendChan
-	assert.Equal(t, cb.Status_INTERNAL_SERVER_ERROR, reply.Status, "Should respond with internal server error")
-}
-
-func TestBadChannelHeaderAfterProcessing(t *testing.T) {
-	mm, _ := getMockSupportManager()
-	mm.ProcessVal = &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: []byte("foo")}})}
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- makeConfigMessage("New Chain")
-	reply := <-m.sendChan
-	assert.Equal(t, cb.Status_INTERNAL_SERVER_ERROR, reply.Status, "Should respond with internal server error")
-}
-
-func TestEmptyChannelIDAfterProcessing(t *testing.T) {
-	mm, _ := getMockSupportManager()
-	mm.ProcessVal = &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{})}})}
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- makeConfigMessage("New Chain")
-	reply := <-m.sendChan
-	assert.Equal(t, cb.Status_INTERNAL_SERVER_ERROR, reply.Status, "Should respond with internal server error")
 }

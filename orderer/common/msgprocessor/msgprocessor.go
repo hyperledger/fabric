@@ -9,8 +9,20 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
+	"errors"
+
 	cb "github.com/hyperledger/fabric/protos/common"
 )
+
+const (
+	// These should eventually be derived from the channel support once enabled
+	msgVersion = int32(0)
+	epoch      = 0
+)
+
+// ErrChannelDoesNotExist is returned by the system channel for transactions which
+// are not for the system channel ID and are not attempting to create a new channel
+var ErrChannelDoesNotExist = errors.New("channel does not exist")
 
 // Classification represents the possible message types for the system.
 type Classification int
@@ -28,8 +40,8 @@ const (
 // Processor provides the methods necessary to classify and process any message which
 // arrives through the Broadcast interface.
 type Processor interface {
-	// ClassifyMsg inspects the message to determine which type of processing is necessary
-	ClassifyMsg(env *cb.Envelope) (Classification, error)
+	// ClassifyMsg inspects the message header to determine which type of processing is necessary
+	ClassifyMsg(chdr *cb.ChannelHeader) (Classification, error)
 
 	// ProcessNormalMsg will check the validity of a message based on the current configuration.  It returns the current
 	// configuration sequence number and nil on success, or an error if the message is not valid

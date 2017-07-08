@@ -385,7 +385,12 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support consensus.Co
 		return fmt.Errorf("unmarshal/%s", err)
 	}
 
-	class, err := support.ClassifyMsg(env)
+	chdr, err := utils.ChannelHeader(env)
+	if err != nil {
+		logger.Panicf("If a message has arrived to this point, it should already have had its header inspected once")
+	}
+
+	class, err := support.ClassifyMsg(chdr)
 	if err != nil {
 		logger.Panicf("[channel: %s] If a message has arrived to this point, it should already have been classified once", support.ChainID())
 	}

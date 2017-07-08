@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 )
 
@@ -96,9 +97,14 @@ func (ch *chain) main() {
 	for {
 		select {
 		case msg := <-ch.sendChan:
-			class, err := ch.support.ClassifyMsg(msg)
+			chdr, err := utils.ChannelHeader(msg)
 			if err != nil {
-				logger.Panicf("If a message has arrived to this point, it should already have been classified once")
+				logger.Panicf("If a message has arrived to this point, it should already have had its header inspected once")
+			}
+
+			class, err := ch.support.ClassifyMsg(chdr)
+			if err != nil {
+				logger.Panicf("If a message has arrived to this point, it should already have been classified once: %s", err)
 			}
 			switch class {
 			case msgprocessor.ConfigUpdateMsg:

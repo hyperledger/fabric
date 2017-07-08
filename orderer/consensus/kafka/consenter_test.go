@@ -134,7 +134,10 @@ func newMockConsumerMessage(wrappedMessage *ab.KafkaMessage) *sarama.ConsumerMes
 }
 
 func newMockEnvelope(content string) *cb.Envelope {
-	return &cb.Envelope{Payload: []byte(content)}
+	return &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{
+		Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: "foo"})},
+		Data:   []byte(content),
+	})}
 }
 
 func newMockLocalConfig(enableTLS bool, retryOptions localconfig.Retry, verboseLog bool) *localconfig.TopLevel {
