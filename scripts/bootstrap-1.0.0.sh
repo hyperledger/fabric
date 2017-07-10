@@ -12,7 +12,7 @@ MARCH=`uname -m`
 
 dockerFabricPull() {
   local FABRIC_TAG=$1
-  for IMAGES in peer orderer couchdb ccenv javaenv kafka zookeeper; do
+  for IMAGES in peer orderer couchdb ccenv javaenv kafka zookeeper tools; do
       echo "==> FABRIC IMAGE: $IMAGES"
       echo
       docker pull hyperledger/fabric-$IMAGES:$FABRIC_TAG
@@ -32,7 +32,7 @@ dockerCaPull() {
 : ${FABRIC_TAG:="$MARCH-$VERSION"}
 
 echo "===> Downloading platform binaries"
-curl https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/fabric-binary/${ARCH}-${VERSION}/fabric-binary-${ARCH}-${VERSION}.tar.gz | tar xz
+curl https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/${ARCH}-${VERSION}/hyperledger-fabric-${ARCH}-${VERSION}.tar.gz | tar xz
 
 echo "===> Pulling fabric Images"
 dockerFabricPull ${FABRIC_TAG}
