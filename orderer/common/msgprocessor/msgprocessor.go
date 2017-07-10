@@ -11,8 +11,11 @@ package msgprocessor
 import (
 	"errors"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
+
+var logger = flogging.MustGetLogger("common/msgprocessor")
 
 const (
 	// These should eventually be derived from the channel support once enabled

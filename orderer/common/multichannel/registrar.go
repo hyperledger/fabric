@@ -103,11 +103,10 @@ func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.
 			}
 			chain := newChainSupport(
 				r,
-				createSystemChainFilters(r, ledgerResources),
 				ledgerResources,
 				consenters,
 				signer)
-			chain.Processor = msgprocessor.NewSystemChannel(chain, r)
+			chain.Processor = msgprocessor.NewSystemChannel(chain, r, msgprocessor.CreateSystemChannelFilters(r, chain))
 			logger.Infof("Starting with system channel %s and orderer type %s", chainID, chain.SharedConfig().ConsensusType())
 			r.chains[chainID] = chain
 			r.systemChannelID = chainID
@@ -118,7 +117,6 @@ func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.
 			logger.Debugf("Starting chain: %s", chainID)
 			chain := newChainSupport(
 				r,
-				createStandardFilters(ledgerResources),
 				ledgerResources,
 				consenters,
 				signer)
@@ -205,7 +203,7 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 		newChains[key] = value
 	}
 
-	cs := newChainSupport(r, createStandardFilters(ledgerResources), ledgerResources, r.consenters, r.signer)
+	cs := newChainSupport(r, ledgerResources, r.consenters, r.signer)
 	chainID := ledgerResources.ChainID()
 
 	logger.Infof("Created and starting new chain %s", chainID)
@@ -216,7 +214,8 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 	r.chains = newChains
 }
 
-func (r *Registrar) channelsCount() int {
+// ChannelsCount returns the count of the current total number of channels.
+func (r *Registrar) ChannelsCount() int {
 	return len(r.chains)
 }
 

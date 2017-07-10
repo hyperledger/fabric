@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package multichannel
+package systemchannelfilter
 
 import (
 	"bytes"
@@ -24,15 +24,49 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/crypto"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
-	"github.com/hyperledger/fabric/orderer/common/filter"
+	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	logging "github.com/op/go-logging"
 
 	"github.com/stretchr/testify/assert"
 )
+
+const (
+	msgVersion = 0
+	epoch      = 0
+)
+
+func mockCrypto() crypto.LocalSigner {
+	return mockcrypto.FakeLocalSigner
+}
+
+func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
+	configUpdateTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, msgVersion, epoch)
+	if err != nil {
+		panic(err)
+	}
+	configTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
+		Config:     &cb.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
+		LastUpdate: configUpdateTx},
+		msgVersion, epoch)
+	if err != nil {
+		panic(err)
+	}
+	return configTx
+}
+
+func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
+	result, err := utils.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, "foo", mockCrypto(), env, msgVersion, epoch)
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
 
 type mockSupport struct {
 	msc *mockconfig.Orderer
@@ -44,8 +78,8 @@ func newMockSupport() *mockSupport {
 	}
 }
 
-func (ms *mockSupport) SharedConfig() config.Orderer {
-	return ms.msc
+func (ms *mockSupport) OrdererConfig() (config.Orderer, bool) {
+	return ms.msc, true
 }
 
 type mockChainCreator struct {
@@ -65,7 +99,7 @@ func (mcc *mockChainCreator) newChain(configTx *cb.Envelope) {
 	mcc.newChains = append(mcc.newChains, configTx)
 }
 
-func (mcc *mockChainCreator) channelsCount() int {
+func (mcc *mockChainCreator) ChannelsCount() int {
 	return len(mcc.newChains)
 }
 
@@ -100,7 +134,7 @@ func TestGoodProposal(t *testing.T) {
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
-	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	sysFilter := New(mcc.ms, mcc)
 	action := sysFilter.Apply(wrapped)
 
 	assert.EqualValues(t, action, filter.Accept, "Did not accept valid transaction")
@@ -126,7 +160,7 @@ func TestProposalRejectedByConfig(t *testing.T) {
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
-	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	sysFilter := New(mcc.ms, mcc)
 	action := sysFilter.Apply(wrapped)
 
 	assert.EqualValues(t, action, filter.Reject, "Did not accept valid transaction")
@@ -154,7 +188,7 @@ func TestNumChainsExceeded(t *testing.T) {
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
-	sysFilter := newSystemChainFilter(mcc.ms, mcc)
+	sysFilter := New(mcc.ms, mcc)
 	action := sysFilter.Apply(wrapped)
 
 	assert.EqualValues(t, filter.Reject, action, "Transaction had created too many channels")
@@ -162,8 +196,8 @@ func TestNumChainsExceeded(t *testing.T) {
 
 func TestBadProposal(t *testing.T) {
 	mcc := newMockChainCreator()
-	sysFilter := newSystemChainFilter(mcc.ms, mcc)
-	// logging.SetLevel(logging.DEBUG, "orderer/multichannel")
+	sysFilter := New(mcc.ms, mcc)
+	logging.SetLevel(logging.DEBUG, "common/msgprocessor/systemchannelfilter")
 	t.Run("BadPayload", func(t *testing.T) {
 		action := sysFilter.Apply(&cb.Envelope{Payload: []byte("bad payload")})
 		assert.EqualValues(t, action, filter.Forward, "Should of skipped invalid tx")
@@ -174,7 +208,7 @@ func TestBadProposal(t *testing.T) {
 	logger.SetBackend(logging.AddModuleLevel(logging.NewLogBackend(&buffer, "", 0)))
 	// reset the logger after test
 	defer func() {
-		logger = logging.MustGetLogger("orderer/multichannel")
+		logger = logging.MustGetLogger("common/msgprocessor/systemchannelfilter")
 	}()
 
 	for _, tc := range []struct {

@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/crypto"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
@@ -50,16 +51,8 @@ func init() {
 	noConsortiumGenesisBlock = provisional.New(noConsortiumConf).GenesisBlockForChannel(NoConsortiumChain)
 }
 
-func mockCrypto() *mockCryptoHelper {
-	return &mockCryptoHelper{LocalSigner: mockcrypto.FakeLocalSigner}
-}
-
-type mockCryptoHelper struct {
-	*mockcrypto.LocalSigner
-}
-
-func (mch mockCryptoHelper) VerifySignature(sd *cb.SignedData) error {
-	return nil
+func mockCrypto() crypto.LocalSigner {
+	return mockcrypto.FakeLocalSigner
 }
 
 func NewRAMLedgerAndFactory(maxSize int) (ledger.Factory, ledger.ReadWriter) {
@@ -558,7 +551,7 @@ func TestNewChain(t *testing.T) {
 		t.Fatalf("Block 1 not produced after timeout on new chain")
 	}
 
-	rcs := newChainSupport(manager, chainSupport.filters, chainSupport.ledgerResources, consenters, mockCrypto())
+	rcs := newChainSupport(manager, chainSupport.ledgerResources, consenters, mockCrypto())
 	assert.Equal(t, expectedLastConfigSeq, rcs.lastConfigSeq, "On restart, incorrect lastConfigSeq")
 }
 

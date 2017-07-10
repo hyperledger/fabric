@@ -19,7 +19,7 @@ package configtxfilter
 import (
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/api"
-	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )

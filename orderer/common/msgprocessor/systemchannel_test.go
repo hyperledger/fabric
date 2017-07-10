@@ -12,7 +12,7 @@ import (
 
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
-	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -32,14 +32,14 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 	t.Run("Missing header", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
 		ms := &mockSupport{}
-		_, err := NewSystemChannel(ms, mscs).ProcessNormalMsg(&cb.Envelope{})
+		_, err := NewSystemChannel(ms, mscs, nil).ProcessNormalMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
 		assert.Regexp(t, "no header was set", err.Error())
 	})
 	t.Run("Mismatched channel ID", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
 		ms := &mockSupport{}
-		_, err := NewSystemChannel(ms, mscs).ProcessNormalMsg(&cb.Envelope{
+		_, err := NewSystemChannel(ms, mscs, nil).ProcessNormalMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -54,9 +54,8 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
 		ms := &mockSupport{
 			SequenceVal: 7,
-			filters:     filter.NewRuleSet([]filter.Rule{filter.AcceptRule}),
 		}
-		cs, err := NewSystemChannel(ms, mscs).ProcessNormalMsg(&cb.Envelope{
+		cs, err := NewSystemChannel(ms, mscs, filter.NewRuleSet([]filter.Rule{filter.AcceptRule})).ProcessNormalMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -75,7 +74,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	t.Run("Missing header", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
 		ms := &mockSupport{}
-		_, _, err := NewSystemChannel(ms, mscs).ProcessConfigUpdateMsg(&cb.Envelope{})
+		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
 		assert.Regexp(t, "no header was set", err.Error())
 	})
@@ -84,9 +83,8 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		ms := &mockSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			filters:                filter.NewRuleSet([]filter.Rule{filter.AcceptRule}),
 		}
-		config, cs, err := NewSystemChannel(ms, mscs).ProcessConfigUpdateMsg(&cb.Envelope{
+		config, cs, err := NewSystemChannel(ms, mscs, filter.NewRuleSet([]filter.Rule{filter.AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -106,7 +104,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		ms := &mockSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs).ProcessConfigUpdateMsg(&cb.Envelope{
+		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -126,7 +124,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		ms := &mockSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs).ProcessConfigUpdateMsg(&cb.Envelope{
+		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -144,7 +142,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		ms := &mockSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs).ProcessConfigUpdateMsg(&cb.Envelope{
+		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -165,7 +163,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
-		config, cs, err := NewSystemChannel(ms, mscs).ProcessConfigUpdateMsg(&cb.Envelope{
+		config, cs, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{

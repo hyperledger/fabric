@@ -17,7 +17,7 @@ limitations under the License.
 package sizefilter
 
 import (
-	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	logging "github.com/op/go-logging"
