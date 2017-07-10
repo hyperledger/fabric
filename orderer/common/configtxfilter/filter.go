@@ -17,8 +17,6 @@ limitations under the License.
 package configtxfilter
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/orderer/common/filter"
@@ -30,61 +28,42 @@ type configFilter struct {
 	configManager api.Manager
 }
 
-// New creates a new configfilter Rule based on the given Manager
+// NewFilter creates a new configfilter Rule based on the given Manager
 func NewFilter(manager api.Manager) filter.Rule {
 	return &configFilter{
 		configManager: manager,
 	}
 }
 
-type configCommitter struct {
-	manager        api.Manager
-	configEnvelope *cb.ConfigEnvelope
-}
-
-func (cc *configCommitter) Commit() {
-	err := cc.manager.Apply(cc.configEnvelope)
-	if err != nil {
-		panic(fmt.Errorf("Could not apply config transaction which should have already been validated: %s", err))
-	}
-}
-
-func (cc *configCommitter) Isolated() bool {
-	return true
-}
-
 // Apply applies the rule to the given Envelope, replying with the Action to take for the message
-func (cf *configFilter) Apply(message *cb.Envelope) (filter.Action, filter.Committer) {
+func (cf *configFilter) Apply(message *cb.Envelope) filter.Action {
 	msgData, err := utils.UnmarshalPayload(message.Payload)
 	if err != nil {
-		return filter.Forward, nil
+		return filter.Forward
 	}
 
 	if msgData.Header == nil /* || msgData.Header.ChannelHeader == nil */ {
-		return filter.Forward, nil
+		return filter.Forward
 	}
 
 	chdr, err := utils.UnmarshalChannelHeader(msgData.Header.ChannelHeader)
 	if err != nil {
-		return filter.Forward, nil
+		return filter.Forward
 	}
 
 	if chdr.Type != int32(cb.HeaderType_CONFIG) {
-		return filter.Forward, nil
+		return filter.Forward
 	}
 
 	configEnvelope, err := configtx.UnmarshalConfigEnvelope(msgData.Data)
 	if err != nil {
-		return filter.Reject, nil
+		return filter.Reject
 	}
 
 	err = cf.configManager.Validate(configEnvelope)
 	if err != nil {
-		return filter.Reject, nil
+		return filter.Reject
 	}
 
-	return filter.Accept, &configCommitter{
-		manager:        cf.configManager,
-		configEnvelope: configEnvelope,
-	}
+	return filter.Accept
 }

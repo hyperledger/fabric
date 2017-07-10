@@ -101,7 +101,9 @@ func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.
 			if r.systemChannelID != "" {
 				logger.Panicf("There appear to be two system chains %s and %s", r.systemChannelID, chainID)
 			}
-			chain := newChainSupport(createSystemChainFilters(r, ledgerResources),
+			chain := newChainSupport(
+				r,
+				createSystemChainFilters(r, ledgerResources),
 				ledgerResources,
 				consenters,
 				signer)
@@ -114,7 +116,9 @@ func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.
 			defer chain.start()
 		} else {
 			logger.Debugf("Starting chain: %s", chainID)
-			chain := newChainSupport(createStandardFilters(ledgerResources),
+			chain := newChainSupport(
+				r,
+				createStandardFilters(ledgerResources),
 				ledgerResources,
 				consenters,
 				signer)
@@ -201,7 +205,7 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 		newChains[key] = value
 	}
 
-	cs := newChainSupport(createStandardFilters(ledgerResources), ledgerResources, r.consenters, r.signer)
+	cs := newChainSupport(r, createStandardFilters(ledgerResources), ledgerResources, r.consenters, r.signer)
 	chainID := ledgerResources.ChainID()
 
 	logger.Infof("Created and starting new chain %s", chainID)

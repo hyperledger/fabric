@@ -101,15 +101,9 @@ func TestGoodProposal(t *testing.T) {
 	wrapped := wrapConfigTx(ingressTx)
 
 	sysFilter := newSystemChainFilter(mcc.ms, mcc)
-	action, committer := sysFilter.Apply(wrapped)
+	action := sysFilter.Apply(wrapped)
 
 	assert.EqualValues(t, action, filter.Accept, "Did not accept valid transaction")
-	assert.True(t, committer.Isolated(), "Channel creation belong in its own block")
-
-	committer.Commit()
-	assert.Len(t, mcc.newChains, 1, "Proposal should only have created 1 new chain")
-
-	assert.Equal(t, ingressTx, mcc.newChains[0], "New chain should have been created with ingressTx")
 }
 
 func TestProposalRejectedByConfig(t *testing.T) {
@@ -133,7 +127,7 @@ func TestProposalRejectedByConfig(t *testing.T) {
 	wrapped := wrapConfigTx(ingressTx)
 
 	sysFilter := newSystemChainFilter(mcc.ms, mcc)
-	action, _ := sysFilter.Apply(wrapped)
+	action := sysFilter.Apply(wrapped)
 
 	assert.EqualValues(t, action, filter.Reject, "Did not accept valid transaction")
 	assert.Len(t, mcc.newChains, 0, "Proposal should not have created a new chain")
@@ -161,7 +155,7 @@ func TestNumChainsExceeded(t *testing.T) {
 	wrapped := wrapConfigTx(ingressTx)
 
 	sysFilter := newSystemChainFilter(mcc.ms, mcc)
-	action, _ := sysFilter.Apply(wrapped)
+	action := sysFilter.Apply(wrapped)
 
 	assert.EqualValues(t, filter.Reject, action, "Transaction had created too many channels")
 }
@@ -171,9 +165,8 @@ func TestBadProposal(t *testing.T) {
 	sysFilter := newSystemChainFilter(mcc.ms, mcc)
 	// logging.SetLevel(logging.DEBUG, "orderer/multichannel")
 	t.Run("BadPayload", func(t *testing.T) {
-		action, committer := sysFilter.Apply(&cb.Envelope{Payload: []byte("bad payload")})
+		action := sysFilter.Apply(&cb.Envelope{Payload: []byte("bad payload")})
 		assert.EqualValues(t, action, filter.Forward, "Should of skipped invalid tx")
-		assert.Nil(t, committer)
 	})
 
 	// set logger to logger with a backend that writes to a byte buffer
@@ -380,9 +373,8 @@ func TestBadProposal(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			buffer.Reset()
-			action, committer := sysFilter.Apply(&cb.Envelope{Payload: utils.MarshalOrPanic(tc.payload)})
+			action := sysFilter.Apply(&cb.Envelope{Payload: utils.MarshalOrPanic(tc.payload)})
 			assert.EqualValues(t, tc.action, action, "Expected tx to be %sed, but instead the tx will be %sed.", filterActionToString(tc.action), filterActionToString(action))
-			assert.Nil(t, committer)
 			assert.Regexp(t, tc.regexp, buffer.String())
 		})
 	}

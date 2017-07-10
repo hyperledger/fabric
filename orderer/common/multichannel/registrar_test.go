@@ -558,11 +558,7 @@ func TestNewChain(t *testing.T) {
 		t.Fatalf("Block 1 not produced after timeout on new chain")
 	}
 
-	testRestartedChainSupport(t, chainSupport, consenters, expectedLastConfigSeq)
-}
-
-func testRestartedChainSupport(t *testing.T, cs *ChainSupport, consenters map[string]consensus.Consenter, expectedLastConfigSeq uint64) {
-	rcs := newChainSupport(cs.filters, cs.ledgerResources, consenters, mockCrypto())
+	rcs := newChainSupport(manager, chainSupport.filters, chainSupport.ledgerResources, consenters, mockCrypto())
 	assert.Equal(t, expectedLastConfigSeq, rcs.lastConfigSeq, "On restart, incorrect lastConfigSeq")
 }
 

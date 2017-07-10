@@ -43,15 +43,15 @@ func New(policySource string, policyManager policies.Manager) filter.Rule {
 	}
 }
 
-// Apply applies the policy given, resulting in Reject or Forward, never Accept and always with nil Committer
-func (sf *sigFilter) Apply(message *cb.Envelope) (filter.Action, filter.Committer) {
+// Apply applies the policy given, resulting in Reject or Forward, never Accept
+func (sf *sigFilter) Apply(message *cb.Envelope) filter.Action {
 	signedData, err := message.AsSignedData()
 
 	if err != nil {
 		if logger.IsEnabledFor(logging.DEBUG) {
 			logger.Debugf("Rejecting because of err: %s", err)
 		}
-		return filter.Reject, nil
+		return filter.Reject
 	}
 
 	policy, ok := sf.policyManager.GetPolicy(sf.policySource)
@@ -59,7 +59,7 @@ func (sf *sigFilter) Apply(message *cb.Envelope) (filter.Action, filter.Committe
 		if logger.IsEnabledFor(logging.DEBUG) {
 			logger.Debugf("Could not find policy %s", sf.policySource)
 		}
-		return filter.Reject, nil
+		return filter.Reject
 	}
 
 	err = policy.Evaluate(signedData)
@@ -68,8 +68,8 @@ func (sf *sigFilter) Apply(message *cb.Envelope) (filter.Action, filter.Committe
 		if logger.IsEnabledFor(logging.DEBUG) {
 			logger.Debugf("Forwarding validly signed message for policy %s", policy)
 		}
-		return filter.Forward, nil
+		return filter.Forward
 	}
 
-	return filter.Reject, nil
+	return filter.Reject
 }

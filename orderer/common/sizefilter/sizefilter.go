@@ -39,13 +39,13 @@ type maxBytesRule struct {
 	support Support
 }
 
-func (r *maxBytesRule) Apply(message *cb.Envelope) (filter.Action, filter.Committer) {
+func (r *maxBytesRule) Apply(message *cb.Envelope) filter.Action {
 	maxBytes := r.support.BatchSize().AbsoluteMaxBytes
 	if size := messageByteSize(message); size > maxBytes {
 		logger.Warningf("%d byte message payload exceeds maximum allowed %d bytes", size, maxBytes)
-		return filter.Reject, nil
+		return filter.Reject
 	}
-	return filter.Forward, nil
+	return filter.Forward
 }
 
 func messageByteSize(message *cb.Envelope) uint32 {
