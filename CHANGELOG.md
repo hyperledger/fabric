@@ -1,3 +1,72 @@
+## v1.0.0
+Tue Jul 11 14:45:03 CEST 2017
+
+* [811f308](https://github.com/hyperledger/fabric/commit/811f308) [FAB-5066](https://jira.hyperledger.org/browse/FAB-5066) Hyperledger Fabric 1.0.0 release
+* [6403923](https://github.com/hyperledger/fabric/commit/6403923) [FAB-5075](https://jira.hyperledger.org/browse/FAB-5075) Update with link for 1.0
+* [346c00b](https://github.com/hyperledger/fabric/commit/346c00b) [FAB-5208](https://jira.hyperledger.org/browse/FAB-5208) Create release testsuite
+* [01ae6d1](https://github.com/hyperledger/fabric/commit/01ae6d1) [FAB-5230](https://jira.hyperledger.org/browse/FAB-5230) Update bootstrap script
+* [4709b33](https://github.com/hyperledger/fabric/commit/4709b33) [FAB-5207](https://jira.hyperledger.org/browse/FAB-5207) Check channel create channelID mismatch
+* [9d159a7](https://github.com/hyperledger/fabric/commit/9d159a7) [FAB-4883](https://jira.hyperledger.org/browse/FAB-4883) Fix vendoring with parent vendored deps
+* [5a66dd3](https://github.com/hyperledger/fabric/commit/5a66dd3) [FAB-5196](https://jira.hyperledger.org/browse/FAB-5196) byfn.sh help text is incorrect
+* [093985a](https://github.com/hyperledger/fabric/commit/093985a) [FAB-5189](https://jira.hyperledger.org/browse/FAB-5189) Hyperledger Project should be Hyperledger
+* [d6c2071](https://github.com/hyperledger/fabric/commit/d6c2071) [FAB-5185](https://jira.hyperledger.org/browse/FAB-5185) Remove/correct references to Java chaincode
+* [d9875bb](https://github.com/hyperledger/fabric/commit/d9875bb) [FAB-5184](https://jira.hyperledger.org/browse/FAB-5184) Fix spelling error for peer version
+* [6d56e6e](https://github.com/hyperledger/fabric/commit/6d56e6e) [FAB-5165](https://jira.hyperledger.org/browse/FAB-5165) Optimize block verification
+* [9a86c1a](https://github.com/hyperledger/fabric/commit/9a86c1a) [FAB-5166](https://jira.hyperledger.org/browse/FAB-5166) Docs should use Hyperledger Fabric
+* [6c3cb99](https://github.com/hyperledger/fabric/commit/6c3cb99) [FAB-5157](https://jira.hyperledger.org/browse/FAB-5157) Optimize peer selection of channel batches
+* [4cd2a8c](https://github.com/hyperledger/fabric/commit/4cd2a8c) [FAB-5153](https://jira.hyperledger.org/browse/FAB-5153) Relax gossip send buffer behavior
+* [b5f26a0](https://github.com/hyperledger/fabric/commit/b5f26a0) [FAB-5150](https://jira.hyperledger.org/browse/FAB-5150) Remove bin data from install error
+* [f5c55c3](https://github.com/hyperledger/fabric/commit/f5c55c3) [FAB-5149](https://jira.hyperledger.org/browse/FAB-5149) Remove extraneous docs
+* [ebbf98c](https://github.com/hyperledger/fabric/commit/ebbf98c) [FAB-5145](https://jira.hyperledger.org/browse/FAB-5145) Make building chaincode tutorial easier
+* [65ffb7d](https://github.com/hyperledger/fabric/commit/65ffb7d) [FAB-5114](https://jira.hyperledger.org/browse/FAB-5114) Makefile fix for right version computation
+* [c059ba0](https://github.com/hyperledger/fabric/commit/c059ba0) [FAB-4931](https://jira.hyperledger.org/browse/FAB-4931) Update doc for core.yaml logging section
+* [d4adf7a](https://github.com/hyperledger/fabric/commit/d4adf7a) [FAB-5141](https://jira.hyperledger.org/browse/FAB-5141) configtxgen --version should not panic
+* [eaa7c2c](https://github.com/hyperledger/fabric/commit/eaa7c2c) [FAB-5139](https://jira.hyperledger.org/browse/FAB-5139) Fix branding issues
+* [95b84e8](https://github.com/hyperledger/fabric/commit/95b84e8) [FAB-5140](https://jira.hyperledger.org/browse/FAB-5140) Fix comment messages in Makefile
+* [3c36a43](https://github.com/hyperledger/fabric/commit/3c36a43) [FAB-5111](https://jira.hyperledger.org/browse/FAB-5111) Fix broken link
+* [2993534](https://github.com/hyperledger/fabric/commit/2993534) [FAB-5052](https://jira.hyperledger.org/browse/FAB-5052) [FAB-5051] Fine tune log messages
+* [8c6965c](https://github.com/hyperledger/fabric/commit/8c6965c) [FAB-5103](https://jira.hyperledger.org/browse/FAB-5103) Remove unused code in common packages
+* [783ba55](https://github.com/hyperledger/fabric/commit/783ba55) [FAB-5105](https://jira.hyperledger.org/browse/FAB-5105) Remove unused code in events packages
+* [e327448](https://github.com/hyperledger/fabric/commit/e327448) [FAB-4906](https://jira.hyperledger.org/browse/FAB-4906) Fix sed error in generateArtifacts.sh
+* [feaa56b](https://github.com/hyperledger/fabric/commit/feaa56b) [FAB-5112](https://jira.hyperledger.org/browse/FAB-5112) Fix missing link
+* [e99d18e](https://github.com/hyperledger/fabric/commit/e99d18e) [FAB-5113](https://jira.hyperledger.org/browse/FAB-5113) Clarify chaincode GetState doc
+* [8b20c35](https://github.com/hyperledger/fabric/commit/8b20c35) [FAB-5100](https://jira.hyperledger.org/browse/FAB-5100) Update Introduction to remove marbles
+* [650856c](https://github.com/hyperledger/fabric/commit/650856c) [FAB-5002](https://jira.hyperledger.org/browse/FAB-5002) Fix mspconfigpath assignment.
+* [3c3cd03](https://github.com/hyperledger/fabric/commit/3c3cd03) [FAB-5034](https://jira.hyperledger.org/browse/FAB-5034) Provide clearer directions
+* [fd06fec](https://github.com/hyperledger/fabric/commit/fd06fec) [FAB-5033](https://jira.hyperledger.org/browse/FAB-5033) Fix typo in getting started
+* [c1d7f9e](https://github.com/hyperledger/fabric/commit/c1d7f9e) [FAB-4969](https://jira.hyperledger.org/browse/FAB-4969) Allow for failure response from a peer
+* [75131a2](https://github.com/hyperledger/fabric/commit/75131a2) [FAB-5030](https://jira.hyperledger.org/browse/FAB-5030) Fix syntax error in code samples
+* [9fc0b2f](https://github.com/hyperledger/fabric/commit/9fc0b2f) [FAB-5046](https://jira.hyperledger.org/browse/FAB-5046) Add missing title for doc
+* [e11feee](https://github.com/hyperledger/fabric/commit/e11feee) [FAB-5047](https://jira.hyperledger.org/browse/FAB-5047) Fix error msg
+* [40866a2](https://github.com/hyperledger/fabric/commit/40866a2) [FAB-5045](https://jira.hyperledger.org/browse/FAB-5045) Add chaincode tutorials to gs page
+* [0e430b1](https://github.com/hyperledger/fabric/commit/0e430b1) [FAB-5037](https://jira.hyperledger.org/browse/FAB-5037) Chaincode example02 test failing in CI
+* [033b7fa](https://github.com/hyperledger/fabric/commit/033b7fa) [FAB-5003](https://jira.hyperledger.org/browse/FAB-5003) Fix broken reference
+* [b584681](https://github.com/hyperledger/fabric/commit/b584681) [FAB-5011](https://jira.hyperledger.org/browse/FAB-5011) Correct support statement for javacc
+* [4441f53](https://github.com/hyperledger/fabric/commit/4441f53) [FAB-5029](https://jira.hyperledger.org/browse/FAB-5029) Document that there is no support for RSA keys
+* [e70ab84](https://github.com/hyperledger/fabric/commit/e70ab84) [FAB-4901](https://jira.hyperledger.org/browse/FAB-4901): Harden delivery service unit tests.
+* [d0022c5](https://github.com/hyperledger/fabric/commit/d0022c5) [FAB-5019](https://jira.hyperledger.org/browse/FAB-5019) Remove license.rst
+* [2d36291](https://github.com/hyperledger/fabric/commit/2d36291) [FAB-5022](https://jira.hyperledger.org/browse/FAB-5022) Fix copyright
+* [ff1d0d2](https://github.com/hyperledger/fabric/commit/ff1d0d2) [FAB-5021](https://jira.hyperledger.org/browse/FAB-5021) Align branding
+* [15d903a](https://github.com/hyperledger/fabric/commit/15d903a) [FAB-5018](https://jira.hyperledger.org/browse/FAB-5018) Make license.html meet brand guidelines
+* [953dbfe](https://github.com/hyperledger/fabric/commit/953dbfe) [FAB-5023](https://jira.hyperledger.org/browse/FAB-5023) RTD index does not meet brand guidelines
+* [316665c](https://github.com/hyperledger/fabric/commit/316665c) [FAB-4210](https://jira.hyperledger.org/browse/FAB-4210) Add note about shared volumes
+* [767f55d](https://github.com/hyperledger/fabric/commit/767f55d) [FAB-5000](https://jira.hyperledger.org/browse/FAB-5000) Reduce logging severity at MSP startup
+* [d959ab3](https://github.com/hyperledger/fabric/commit/d959ab3) [FAB-4992](https://jira.hyperledger.org/browse/FAB-4992) Fix Auction Chaincode daily tests
+* [a220344](https://github.com/hyperledger/fabric/commit/a220344) [FAB-4985](https://jira.hyperledger.org/browse/FAB-4985) fix filename in bootstrap.sh script
+* [23adb16](https://github.com/hyperledger/fabric/commit/23adb16) [FAB-4519](https://jira.hyperledger.org/browse/FAB-4519) Prepare for rc2 development
+* [229bd70](https://github.com/hyperledger/fabric/commit/229bd70) [FAB-4968](https://jira.hyperledger.org/browse/FAB-4968) Fix formatting and TODO in byfn doc
+* [bdf77a2](https://github.com/hyperledger/fabric/commit/bdf77a2) [FAB-4829](https://jira.hyperledger.org/browse/FAB-4829) Error when trying to instantiate
+* [a062eb8](https://github.com/hyperledger/fabric/commit/a062eb8) [FAB-4902](https://jira.hyperledger.org/browse/FAB-4902) Fix to set the GOMAXPROCS in UT
+* [cb49a79](https://github.com/hyperledger/fabric/commit/cb49a79) [FAB-4961](https://jira.hyperledger.org/browse/FAB-4961) Incorrect mountpoint
+* [4f6e4e6](https://github.com/hyperledger/fabric/commit/4f6e4e6) [FAB-4619](https://jira.hyperledger.org/browse/FAB-4619) Enable specifying orderer kafka version
+* [8ba92d3](https://github.com/hyperledger/fabric/commit/8ba92d3) [FAB-4946](https://jira.hyperledger.org/browse/FAB-4946) Improve UT coverage of orderer/ledger/file
+* [4ee7ce1](https://github.com/hyperledger/fabric/commit/4ee7ce1) [FAB-4821](https://jira.hyperledger.org/browse/FAB-4821) - Add configtxlator to RTD
+* [90e3772](https://github.com/hyperledger/fabric/commit/90e3772) [FAB-4234](https://jira.hyperledger.org/browse/FAB-4234) Update Intro Graphics
+* [6b6fc08](https://github.com/hyperledger/fabric/commit/6b6fc08) [FAB-4898](https://jira.hyperledger.org/browse/FAB-4898) Fix incorrect package and UT failure
+* [51f6ea9](https://github.com/hyperledger/fabric/commit/51f6ea9) [FAB-4897](https://jira.hyperledger.org/browse/FAB-4897) Fix incorrect package in configtxlator
+* [74d1652](https://github.com/hyperledger/fabric/commit/74d1652) [FAB-4764](https://jira.hyperledger.org/browse/FAB-4764) Rearrange Ledger test parameter setup
+* [59fe5a6](https://github.com/hyperledger/fabric/commit/59fe5a6) [FAB-4046](https://jira.hyperledger.org/browse/FAB-4046) UT improvements in events/consumer
+
 ## v1.0.0-rc1
 Fri Jun 23 14:53:05 EDT 2017
 
