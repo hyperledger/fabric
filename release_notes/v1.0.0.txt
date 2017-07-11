@@ -33,4 +33,4 @@ fabric-ccenv in the future.
 
 Change Log
 ----------
-https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v100-rc1
+https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v100
