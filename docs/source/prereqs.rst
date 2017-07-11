@@ -108,6 +108,22 @@ provides a better alternative to the built-in Windows tools:
           :doc:`getting_started`, but you may not be able to find a
           suitable ``make`` command.
 
+Before running any ``git clone`` commands, run the following commands:
+
+::
+
+    git config --global core.autocrlf false
+    git config --global core.longpaths true
+
+You can check the setting of these parameters with the following commands:
+
+::
+
+    git config --get core.autocrlf
+    git config --get core.longpaths
+
+These need to be ``false`` and ``true`` respectively.
+
 .. note:: The ``curl`` command that comes with Git and Docker Toolbox
           is old and does not handle properly the redirect used in
           :doc:`getting_started`. Make sure you install and use a
