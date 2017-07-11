@@ -2,7 +2,7 @@ Building Your First Network
 ===========================
 
 .. note:: These instructions have been verified to work against the
-          version "1.0.0-rc1" tagged Docker images and the pre-compiled
+          version "1.0.0" tagged Docker images and the pre-compiled
           setup utilities within the supplied tar file. If you run
           these commands with images or tools from the current master
           branch, it is possible that you will see configuration and panic
@@ -31,14 +31,14 @@ sub-directory now.
 
 .. note:: The supplied commands in this documentation
           **MUST** be run from your ``first-network`` sub-directory
-          of the ``fabric-samples``repository clone.  If you elect to run the
+          of the ``fabric-samples`` repository clone.  If you elect to run the
           commands from a different location, the various provided scripts
           will be unable to find the binaries.
 
 Want to run it now?
 -------------------
 
-We provide a fully annotated script ``byfn.sh`` that leverages these Docker
+We provide a fully annotated script - ``byfn.sh`` - that leverages these Docker
 images to quickly bootstrap a Hyperledger Fabric network comprised of 4 peers
 representing two different organizations, and an orderer node. It will also
 launch a container to run a scripted execution that will join peers to a
@@ -75,13 +75,17 @@ it, then your CLI container will exit upon conclusion of the script.
 Generate Network Artifacts
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Ready to give it a go? Okay then! Execute the following command. You will see
-a brief description as to what will occur, along with a yes/no command line
-prompt. Respond with a ``y`` to execute the described action.
+Ready to give it a go? Okay then! Execute the following command:
 
 .. code:: bash
 
   ./byfn.sh -m generate
+
+You will see a brief description as to what will occur, along with a yes/no command line
+prompt. Respond with a ``y`` to execute the described action.
+
+.. code:: bash
+
   Generating certs and genesis block for with channel 'mychannel' and CLI timeout of '10000'
   Continue (y/n)?y
   proceeding ...
@@ -133,13 +137,17 @@ and a collection of configuration transactions required to configure a
 Bring Up the Network
 ^^^^^^^^^^^^^^^^^^^^
 
-Next, you can bring the network up with the following command. Once again, you
-will be prompted as to whether you wish to continue or abort. Respond with a
-``y``:
+Next, you can bring the network up with the following command:
 
 .. code:: bash
 
   ./byfn.sh -m up
+
+Once again, you will be prompted as to whether you wish to continue or abort.
+Respond with a ``y``:
+
+.. code:: bash
+
   Starting with channel 'mychannel' and CLI timeout of '10000'
   Continue (y/n)?y
   proceeding ...
@@ -185,7 +193,7 @@ completion, it should report the following in your terminal window:
     |_____| |_| \_| |____/
 
 You can scroll through these logs to see the various transactions. If you don't
-get this result, then jump down to the Troubleshooting section and let's see
+get this result, then jump down to the :ref:`Troubleshoot` section and let's see
 whether we can help you discover what went wrong.
 
 Bring Down the Network
@@ -193,12 +201,16 @@ Bring Down the Network
 
 Finally, let's bring it all down so we can explore the network setup one step
 at a time. The following will kill your containers, remove the crypto material
-and four artifacts, and delete the chaincode images from your Docker Registry.
-Once again, you will be prompted to continue, respond with a ``y``:
+and four artifacts, and delete the chaincode images from your Docker Registry:
 
 .. code:: bash
 
   ./byfn.sh -m down
+
+Once again, you will be prompted to continue, respond with a ``y``:
+
+.. code:: bash
+
   Stopping with channel 'mychannel' and CLI timeout of '10000'
   Continue (y/n)?y
   proceeding ...
@@ -359,12 +371,16 @@ Next, we need to tell the ``configtxgen`` tool where to look for the
 present working directory:
 
 First, we need to set an environment variable to specify where ``configtxgen``
-should look for the configtx.yaml configuration file. Then, we'll invoke the
-``configtxgen`` tool which will create the orderer genesis block:
+should look for the configtx.yaml configuration file:
 
 .. code:: bash
 
     export FABRIC_CFG_PATH=$PWD
+
+Then, we'll invoke the ``configtxgen`` tool which will create the orderer genesis block:
+
+.. code:: bash
+
     ../bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
 
 You can ignore the log warnings regarding intermediate certificates, certificate
@@ -508,7 +524,7 @@ Now let's join ``peer0.org1.example.com`` to the channel.
 .. code:: bash
 
         # By default, this joins ``peer0.org1.example.com`` only
-        # the <channel-ID>.block was returned by the previous command
+        # the <channel-ID.block> was returned by the previous command
 
          peer channel join -b <channel-ID.block>
 
@@ -525,7 +541,7 @@ Applications interact with the blockchain ledger through ``chaincode``.  As
 such we need to install the chaincode on every peer that will execute and
 endorse our transactions, and then instantiate the chaincode on the channel.
 
-First, install the sample go code onto one of the four peer nodes.  This command
+First, install the sample Go code onto one of the four peer nodes.  This command
 places the source code onto our peer's filesystem.
 
 .. code:: bash
@@ -900,6 +916,8 @@ container specification:
        volumes:
         - /var/hyperledger/couchdb0:/opt/couchdb/data
 
+.. _Troubleshoot:
+
 Troubleshooting
 ---------------
 
@@ -912,7 +930,7 @@ Troubleshooting
 
 - **YOU WILL SEE ERRORS IF YOU DO NOT REMOVE CONTAINERS AND IMAGES**
 
--  If you see Docker errors, first check your version (should be 1.12 or above),
+-  If you see Docker errors, first check your version (should be 17.03.1 or above),
    and then try restarting your Docker process.  Problems with Docker are
    oftentimes not immediately recognizable.  For example, you may see errors
    resulting from an inability to access crypto material mounted within a
@@ -950,7 +968,7 @@ again.
       Error connecting: rpc error: code = 14 desc = grpc: RPC failed fast due to transport failure
       Error: rpc error: code = 14 desc = grpc: RPC failed fast due to transport failure
 
-Make sure you are running your network against the "1.0.0-rc1" images that have
+Make sure you are running your network against the "1.0.0" images that have
 been retagged as "latest".
 
 If you see the below error:

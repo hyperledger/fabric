@@ -413,13 +413,13 @@ should see something similar to following:
   docker images
   REPOSITORY                     TAG                                  IMAGE ID            CREATED             SIZE
   hyperledger/fabric-tools       latest                               e09f38f8928d        4 hours ago         1.32 GB
-  hyperledger/fabric-tools       x86_64-1.0.0-rc1-snapshot-f20846c6   e09f38f8928d        4 hours ago         1.32 GB
+  hyperledger/fabric-tools       x86_64-1.0.0                         e09f38f8928d        4 hours ago         1.32 GB
   hyperledger/fabric-orderer     latest                               0df93ba35a25        4 hours ago         179 MB
-  hyperledger/fabric-orderer     x86_64-1.0.0-rc1-snapshot-f20846c6   0df93ba35a25        4 hours ago         179 MB
+  hyperledger/fabric-orderer     x86_64-1.0.0                         0df93ba35a25        4 hours ago         179 MB
   hyperledger/fabric-peer        latest                               533aec3f5a01        4 hours ago         182 MB
-  hyperledger/fabric-peer        x86_64-1.0.0-rc1-snapshot-f20846c6   533aec3f5a01        4 hours ago         182 MB
+  hyperledger/fabric-peer        x86_64-1.0.0                         533aec3f5a01        4 hours ago         182 MB
   hyperledger/fabric-ccenv       latest                               4b70698a71d3        4 hours ago         1.29 GB
-  hyperledger/fabric-ccenv       x86_64-1.0.0-rc1-snapshot-f20846c6   4b70698a71d3        4 hours ago         1.29 GB
+  hyperledger/fabric-ccenv       x86_64-1.0.0                         4b70698a71d3        4 hours ago         1.29 GB
 
 .. note:: If you retrieved the images through the :ref:`download-platform-specific-binaries`,
           then you will see additional images listed.  However, we are only concerned with

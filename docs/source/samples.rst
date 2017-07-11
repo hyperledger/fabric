@@ -73,10 +73,10 @@ The script lists out the Docker images installed upon conclusion.
 
 Look at the names for each image; these are the components that will ultimately
 comprise our Hyperledger Fabric network.  You will also notice that you have
-two instances of the same image ID - one tagged as "x86_64-1.0.0-rc1" and
+two instances of the same image ID - one tagged as "x86_64-1.0.0" and
 one tagged as "latest".
 
-.. note:: Note that on different architectures, the x86_64 would be replaced
+.. note:: On different architectures, the x86_64 would be replaced
           with the string identifying your architecture.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
