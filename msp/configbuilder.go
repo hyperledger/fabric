@@ -80,11 +80,29 @@ func getPemMaterialFromDir(dir string) ([][]byte, error) {
 	}
 
 	for _, f := range files {
+		var info os.FileInfo
+		var err error
+		var fullName string
+
 		if f.IsDir() {
 			continue
 		}
-
-		fullName := filepath.Join(dir, string(filepath.Separator), f.Name())
+		
+		if info, err = os.Lstat(file.Name()); err != nil {
+			log.Fatal(err)
+		}
+		
+		// if file is a symlink, follow the symlink
+		if info.Mode()&os.ModeSymlink != 0 {
+			linkPath, err := os.Readlink(file.Name())
+			if err != nil {
+				log.Fatal(err)
+			}
+			fullName = filepath.Join(dir, string(filepath.Separator), linkPath)
+		} else {
+			fullName = filepath.Join(dir, string(filepath.Separator), f.Name())
+		}
+		
 		mspLogger.Debugf("Inspecting file %s", fullName)
 
 		item, err := readPemFile(fullName)
