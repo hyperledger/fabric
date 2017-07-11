@@ -85,12 +85,12 @@ installed.
   - `Node.js <https://nodejs.org/en/download/>`__ - version 6.9.x or greater
 
 .. note:: Installing Node.js will also install NPM, however it is recommended
-          that you update the default version of NPM installed. You can upgrade
+          that you confirm the version of NPM installed. You can upgrade
           the ``npm`` tool with the following command:
 
 .. code:: bash
 
-  npm install npm@latest -g
+  npm install npm@3.10.10 -g
 
 Windows extras
 --------------
