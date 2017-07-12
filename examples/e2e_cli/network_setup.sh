@@ -52,7 +52,7 @@ function removeUnwantedImages() {
 }
 
 function networkUp () {
-    if [ -f "./crypto-config" ]; then
+    if [ -d "./crypto-config" ]; then
       echo "crypto-config directory already exists."
     else
       #Generate all the artifacts that includes org certs, orderer genesis block,
