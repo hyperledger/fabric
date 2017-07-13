@@ -18,18 +18,26 @@ package comm
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"crypto/tls"
 	"fmt"
 	"math/rand"
+	"net"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
-	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/gossip/util"
+	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -37,15 +45,19 @@ import (
 )
 
 func init() {
-	rand.Seed(42)
-	SetDialTimeout(time.Duration(300) * time.Millisecond)
+	util.SetupTestLogging()
+	rand.Seed(time.Now().UnixNano())
+	factory.InitFactories(nil)
 }
 
 func acceptAll(msg interface{}) bool {
 	return true
 }
 
-var naiveSec = &naiveSecProvider{}
+var (
+	naiveSec = &naiveSecProvider{}
+	hmacKey  = []byte{0, 0, 0}
+)
 
 type naiveSecProvider struct {
 }
@@ -61,44 +73,70 @@ func (*naiveSecProvider) GetPKIidOfCert(peerIdentity api.PeerIdentityType) commo
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*naiveSecProvider) VerifyBlock(signedBlock api.SignedBlock) error {
+func (*naiveSecProvider) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error {
 	return nil
 }
 
 // Sign signs msg with this peer's signing key and outputs
 // the signature if no error occurred.
 func (*naiveSecProvider) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
+	mac := hmac.New(sha256.New, hmacKey)
+	mac.Write(msg)
+	return mac.Sum(nil), nil
 }
 
 // Verify checks that signature is a valid signature of message under a peer's verification key.
 // If the verification succeeded, Verify returns nil meaning no error occurred.
 // If peerCert is nil, then the signature is verified against this peer's verification key.
 func (*naiveSecProvider) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
-	equal := bytes.Equal(signature, message)
-	if !equal {
+	mac := hmac.New(sha256.New, hmacKey)
+	mac.Write(message)
+	expected := mac.Sum(nil)
+	if !bytes.Equal(signature, expected) {
 		return fmt.Errorf("Wrong certificate:%v, %v", signature, message)
 	}
 	return nil
 }
 
+// VerifyByChannel verifies a peer's signature on a message in the context
+// of a specific channel
+func (*naiveSecProvider) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
+	return nil
+}
+
 func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 	endpoint := fmt.Sprintf("localhost:%d", port)
-	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec), []byte(endpoint))
+	id := []byte(endpoint)
+	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec, id), id, nil)
 	return inst, err
 }
 
-func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte) <-chan ReceivedMessage {
-	err := generateCertificates("key.pem", "cert.pem")
-	defer os.Remove("cert.pem")
-	defer os.Remove("key.pem")
-	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
-	ta := credentials.NewTLS(&tls.Config{
+type msgMutator func(*proto.SignedGossipMessage) *proto.SignedGossipMessage
+
+type tlsType int
+
+const (
+	none tlsType = iota
+	oneWayTLS
+	mutualTLS
+)
+
+func handshaker(endpoint string, comm Comm, t *testing.T, connMutator msgMutator, connType tlsType) <-chan proto.ReceivedMessage {
+	c := &commImpl{}
+	cert := GenerateCertificatesOrPanic()
+	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
-		Certificates:       []tls.Certificate{cert},
-	})
+	}
+	if connType == mutualTLS {
+		tlsCfg.Certificates = []tls.Certificate{cert}
+	}
+	ta := credentials.NewTLS(tlsCfg)
+	secureOpts := grpc.WithTransportCredentials(ta)
+	if connType == none {
+		secureOpts = grpc.WithInsecure()
+	}
 	acceptChan := comm.Accept(acceptAll)
-	conn, err := grpc.Dial("localhost:9611", grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}), grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	conn, err := grpc.Dial("localhost:9611", secureOpts, grpc.WithBlock(), grpc.WithTimeout(time.Second))
 	assert.NoError(t, err, "%v", err)
 	if err != nil {
 		return nil
@@ -109,59 +147,182 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 	if err != nil {
 		return nil
 	}
-	clientCertHash := certHashFromRawCert(cert.Certificate[0])
-	sig, err := naiveSec.Sign(clientCertHash)
-	if sigMutator != nil {
-		sig = sigMutator(sig)
-	}
-	pkiID := common.PKIidType(endpoint)
-	if pkiIDmutator != nil {
-		pkiID = common.PKIidType(pkiIDmutator([]byte(endpoint)))
+
+	var clientCertHash []byte
+	if len(tlsCfg.Certificates) > 0 {
+		clientCertHash = certHashFromRawCert(tlsCfg.Certificates[0].Certificate[0])
 	}
 
+	pkiID := common.PKIidType(endpoint)
 	assert.NoError(t, err, "%v", err)
-	msg := createConnectionMsg(pkiID, sig, []byte(endpoint))
-	stream.Send(msg)
-	msg, err = stream.Recv()
-	assert.NoError(t, err, "%v", err)
-	if sigMutator == nil {
-		assert.Equal(t, extractCertificateHashFromContext(stream.Context()), msg.GetConn().Sig)
+	msg, _ := c.createConnectionMsg(pkiID, clientCertHash, []byte(endpoint), func(msg []byte) ([]byte, error) {
+		mac := hmac.New(sha256.New, hmacKey)
+		mac.Write(msg)
+		return mac.Sum(nil), nil
+	})
+	// Mutate connection message to test negative paths
+	msg = connMutator(msg)
+	// Send your own connection message
+	stream.Send(msg.Envelope)
+	// Wait for connection message from the other side
+	envelope, err := stream.Recv()
+	if err != nil {
+		return acceptChan
 	}
-	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiID)
+	assert.NoError(t, err, "%v", err)
+	msg, err = envelope.ToGossipMessage()
+	assert.NoError(t, err, "%v", err)
+	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiId)
+	assert.Equal(t, extractCertificateHashFromContext(stream.Context()), msg.GetConn().TlsCertHash)
 	msg2Send := createGossipMsg()
 	nonce := uint64(rand.Int())
 	msg2Send.Nonce = nonce
-	go stream.Send(msg2Send)
+	go stream.Send(msg2Send.Envelope)
 	return acceptChan
+}
+
+func TestViperConfig(t *testing.T) {
+	viper.SetConfigName("core")
+	viper.SetEnvPrefix("CORE")
+	config.AddDevConfigPath(nil)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
+	if err != nil { // Handle errors reading the config file
+		panic(fmt.Errorf("fatal error config file: %s", err))
+	}
+
+	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.connTimeout", 0))
+	assert.Equal(t, time.Duration(300)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.dialTimeout", 0))
+	assert.Equal(t, 20, util.GetIntOrDefault("peer.gossip.recvBuffSize", 0))
+	assert.Equal(t, 200, util.GetIntOrDefault("peer.gossip.sendBuffSize", 0))
 }
 
 func TestHandshake(t *testing.T) {
 	t.Parallel()
-	comm, _ := newCommInstance(9611, naiveSec)
-	defer comm.Stop()
-
-	acceptChan := handshaker("localhost:9610", comm, t, nil, nil)
-	time.Sleep(2 * time.Second)
-	assert.Equal(t, 1, len(acceptChan))
-
-	// negative path, nothing should be read from the channel because the signature is wrong
-	mutateSig := func(b []byte) []byte {
-		if b[0] == 0 {
-			b[0] = 1
-		} else {
-			b[0] = 0
-		}
-		return b
+	signer := func(msg []byte) ([]byte, error) {
+		mac := hmac.New(sha256.New, hmacKey)
+		mac.Write(msg)
+		return mac.Sum(nil), nil
 	}
-	acceptChan = handshaker("localhost:9612", comm, t, mutateSig, nil)
+	mutator := func(msg *proto.SignedGossipMessage) *proto.SignedGossipMessage {
+		return msg
+	}
+	assertPositivePath := func(msg proto.ReceivedMessage, endpoint string) {
+		expectedPKIID := common.PKIidType(endpoint)
+		assert.Equal(t, expectedPKIID, msg.GetConnectionInfo().ID)
+		assert.Equal(t, api.PeerIdentityType(endpoint), msg.GetConnectionInfo().Identity)
+		assert.NotNil(t, msg.GetConnectionInfo().Auth)
+		assert.True(t, msg.GetConnectionInfo().IsAuthenticated())
+		sig, _ := (&naiveSecProvider{}).Sign(msg.GetConnectionInfo().Auth.SignedData)
+		assert.Equal(t, sig, msg.GetConnectionInfo().Auth.Signature)
+	}
+
+	// Positive path 1 - check authentication without TLS
+	ll, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 9611))
+	assert.NoError(t, err)
+	s := grpc.NewServer()
+	go s.Serve(ll)
+
+	id := []byte("localhost:9611")
+	idMapper := identity.NewIdentityMapper(naiveSec, id)
+	inst, err := NewCommInstance(s, nil, idMapper, api.PeerIdentityType("localhost:9611"), func() []grpc.DialOption {
+		return []grpc.DialOption{grpc.WithInsecure()}
+	})
+	assert.NoError(t, err)
+	var msg proto.ReceivedMessage
+
+	acceptChan := handshaker("localhost:9608", inst, t, mutator, none)
+	select {
+	case <-time.After(time.Duration(time.Second * 4)):
+		assert.FailNow(t, "Didn't receive a message, seems like handshake failed")
+	case msg = <-acceptChan:
+	}
+	assert.Equal(t, common.PKIidType("localhost:9608"), msg.GetConnectionInfo().ID)
+	assert.Equal(t, api.PeerIdentityType("localhost:9608"), msg.GetConnectionInfo().Identity)
+	assert.Nil(t, msg.GetConnectionInfo().Auth)
+	assert.False(t, msg.GetConnectionInfo().IsAuthenticated())
+
+	inst.Stop()
+	s.Stop()
+	ll.Close()
+	time.Sleep(time.Second)
+
+	comm, err := newCommInstance(9611, naiveSec)
+	assert.NoError(t, err)
+	defer comm.Stop()
+	// Positive path 2: initiating peer sends its own certificate
+	acceptChan = handshaker("localhost:9609", comm, t, mutator, mutualTLS)
+
+	select {
+	case <-time.After(time.Second * 2):
+		assert.FailNow(t, "Didn't receive a message, seems like handshake failed")
+	case msg = <-acceptChan:
+	}
+	assertPositivePath(msg, "localhost:9609")
+
+	// Negative path: initiating peer doesn't send its own certificate
+	acceptChan = handshaker("localhost:9610", comm, t, mutator, oneWayTLS)
+	time.Sleep(time.Second)
+	assert.Equal(t, 0, len(acceptChan))
+	// Negative path, signature is wrong
+	mutator = func(msg *proto.SignedGossipMessage) *proto.SignedGossipMessage {
+		msg.Signature = append(msg.Signature, 0)
+		return msg
+	}
+	acceptChan = handshaker("localhost:9612", comm, t, mutator, mutualTLS)
 	time.Sleep(time.Second)
 	assert.Equal(t, 0, len(acceptChan))
 
-	// negative path, nothing should be read from the channel because the PKIid doesn't match the identity
-	mutatePKIID := func(b []byte) []byte {
-		return []byte("localhost:9650")
+	// Negative path, the PKIid doesn't match the identity
+	mutator = func(msg *proto.SignedGossipMessage) *proto.SignedGossipMessage {
+		msg.GetConn().PkiId = []byte("localhost:9650")
+		// Sign the message again
+		msg.Sign(signer)
+		return msg
 	}
-	acceptChan = handshaker("localhost:9613", comm, t, nil, mutatePKIID)
+	acceptChan = handshaker("localhost:9613", comm, t, mutator, mutualTLS)
+	time.Sleep(time.Second)
+	assert.Equal(t, 0, len(acceptChan))
+
+	// Negative path, the cert hash isn't what is expected
+	mutator = func(msg *proto.SignedGossipMessage) *proto.SignedGossipMessage {
+		msg.GetConn().TlsCertHash = append(msg.GetConn().TlsCertHash, 0)
+		msg.Sign(signer)
+		return msg
+	}
+	acceptChan = handshaker("localhost:9615", comm, t, mutator, mutualTLS)
+	time.Sleep(time.Second)
+	assert.Equal(t, 0, len(acceptChan))
+
+	// Negative path, no PKI-ID was sent
+	mutator = func(msg *proto.SignedGossipMessage) *proto.SignedGossipMessage {
+		msg.GetConn().PkiId = nil
+		msg.Sign(signer)
+		return msg
+	}
+	acceptChan = handshaker("localhost:9616", comm, t, mutator, mutualTLS)
+	time.Sleep(time.Second)
+	assert.Equal(t, 0, len(acceptChan))
+
+	// Negative path, connection message is of a different type
+	mutator = func(msg *proto.SignedGossipMessage) *proto.SignedGossipMessage {
+		msg.Content = &proto.GossipMessage_Empty{
+			Empty: &proto.Empty{},
+		}
+		msg.Sign(signer)
+		return msg
+	}
+	acceptChan = handshaker("localhost:9617", comm, t, mutator, mutualTLS)
+	time.Sleep(time.Second)
+	assert.Equal(t, 0, len(acceptChan))
+
+	// Negative path, the peer didn't respond to the handshake in due time
+	mutator = func(msg *proto.SignedGossipMessage) *proto.SignedGossipMessage {
+		time.Sleep(time.Second * 5)
+		return msg
+	}
+	acceptChan = handshaker("localhost:9618", comm, t, mutator, mutualTLS)
 	time.Sleep(time.Second)
 	assert.Equal(t, 0, len(acceptChan))
 }
@@ -170,12 +331,14 @@ func TestBasic(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(2000, naiveSec)
 	comm2, _ := newCommInstance(3000, naiveSec)
+	comm1.(*commImpl).SetDialOpts()
+	comm2.(*commImpl).SetDialOpts()
 	defer comm1.Stop()
 	defer comm2.Stop()
 	m1 := comm1.Accept(acceptAll)
 	m2 := comm2.Accept(acceptAll)
 	out := make(chan uint64, 2)
-	reader := func(ch <-chan ReceivedMessage) {
+	reader := func(ch <-chan proto.ReceivedMessage) {
 		m := <-ch
 		out <- m.GetGossipMessage().Nonce
 	}
@@ -187,7 +350,43 @@ func TestBasic(t *testing.T) {
 	waitForMessages(t, out, 2, "Didn't receive 2 messages")
 }
 
-func TestGetPKIID(t *testing.T) {
+func TestProdConstructor(t *testing.T) {
+	t.Parallel()
+	peerIdentity := GenerateCertificatesOrPanic()
+	srv, lsnr, dialOpts, certHash := createGRPCLayer(20000)
+	defer srv.Stop()
+	defer lsnr.Close()
+	id := []byte("localhost:20000")
+	comm1, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id), id, dialOpts)
+	comm1.(*commImpl).selfCertHash = certHash
+	go srv.Serve(lsnr)
+
+	peerIdentity = GenerateCertificatesOrPanic()
+	srv, lsnr, dialOpts, certHash = createGRPCLayer(30000)
+	defer srv.Stop()
+	defer lsnr.Close()
+	id = []byte("localhost:30000")
+	comm2, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id), id, dialOpts)
+	comm2.(*commImpl).selfCertHash = certHash
+	go srv.Serve(lsnr)
+	defer comm1.Stop()
+	defer comm2.Stop()
+	m1 := comm1.Accept(acceptAll)
+	m2 := comm2.Accept(acceptAll)
+	out := make(chan uint64, 2)
+	reader := func(ch <-chan proto.ReceivedMessage) {
+		m := <-ch
+		out <- m.GetGossipMessage().Nonce
+	}
+	go reader(m1)
+	go reader(m2)
+	comm1.Send(createGossipMsg(), remotePeer(30000))
+	time.Sleep(time.Second)
+	comm2.Send(createGossipMsg(), remotePeer(20000))
+	waitForMessages(t, out, 2, "Didn't receive 2 messages")
+}
+
+func TestGetConnectionInfo(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(6000, naiveSec)
 	comm2, _ := newCommInstance(7000, naiveSec)
@@ -199,69 +398,59 @@ func TestGetPKIID(t *testing.T) {
 	case <-time.After(time.Second * 10):
 		t.Fatal("Didn't receive a message in time")
 	case msg := <-m1:
-		assert.Equal(t, comm2.GetPKIid(), msg.GetPKIID())
+		assert.Equal(t, comm2.GetPKIid(), msg.GetConnectionInfo().ID)
+		assert.NotNil(t, msg.GetSourceEnvelope())
 	}
 }
 
-func TestBlackListPKIid(t *testing.T) {
+func TestCloseConn(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(1611, naiveSec)
-	comm2, _ := newCommInstance(1612, naiveSec)
-	comm3, _ := newCommInstance(1613, naiveSec)
-	comm4, _ := newCommInstance(1614, naiveSec)
 	defer comm1.Stop()
-	defer comm2.Stop()
-	defer comm3.Stop()
-	defer comm4.Stop()
+	acceptChan := comm1.Accept(acceptAll)
 
-	reader := func(instance string, out chan uint64, in <-chan ReceivedMessage) {
-		for {
-			msg := <-in
-			if msg == nil {
-				return
-			}
-			out <- msg.GetGossipMessage().Nonce
+	cert := GenerateCertificatesOrPanic()
+	tlsCfg := &tls.Config{
+		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{cert},
+	}
+	ta := credentials.NewTLS(tlsCfg)
+
+	conn, err := grpc.Dial("localhost:1611", grpc.WithTransportCredentials(ta), grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	assert.NoError(t, err, "%v", err)
+	cl := proto.NewGossipClient(conn)
+	stream, err := cl.GossipStream(context.Background())
+	assert.NoError(t, err, "%v", err)
+	c := &commImpl{}
+	tlsCertHash := certHashFromRawCert(tlsCfg.Certificates[0].Certificate[0])
+	connMsg, _ := c.createConnectionMsg(common.PKIidType("pkiID"), tlsCertHash, api.PeerIdentityType("pkiID"), func(msg []byte) ([]byte, error) {
+		mac := hmac.New(sha256.New, hmacKey)
+		mac.Write(msg)
+		return mac.Sum(nil), nil
+	})
+	assert.NoError(t, stream.Send(connMsg.Envelope))
+	stream.Send(createGossipMsg().Envelope)
+	select {
+	case <-acceptChan:
+	case <-time.After(time.Second):
+		assert.Fail(t, "Didn't receive a message within a timely period")
+	}
+	comm1.CloseConn(&RemotePeer{PKIID: common.PKIidType("pkiID")})
+	time.Sleep(time.Second * 10)
+	gotErr := false
+	msg2Send := createGossipMsg()
+	msg2Send.GetDataMsg().Payload = &proto.Payload{
+		Data: make([]byte, 1024*1024),
+	}
+	msg2Send.NoopSign()
+	for i := 0; i < defRecvBuffSize; i++ {
+		err := stream.Send(msg2Send.Envelope)
+		if err != nil {
+			gotErr = true
+			break
 		}
 	}
-
-	out1 := make(chan uint64, 4)
-	out2 := make(chan uint64, 4)
-	out3 := make(chan uint64, 4)
-	out4 := make(chan uint64, 4)
-
-	go reader("comm1", out1, comm1.Accept(acceptAll))
-	go reader("comm2", out2, comm2.Accept(acceptAll))
-	go reader("comm3", out3, comm3.Accept(acceptAll))
-	go reader("comm4", out4, comm4.Accept(acceptAll))
-
-	// have comm1 BL comm3
-	comm1.BlackListPKIid([]byte("localhost:1613"))
-
-	// make comm3 send to 1 and 2
-	comm3.Send(createGossipMsg(), remotePeer(1612)) // out2++
-	comm3.Send(createGossipMsg(), remotePeer(1611))
-
-	waitForMessages(t, out2, 1, "comm2 should have received 1 message")
-
-	// make comm1 and comm2 send to comm3
-	comm1.Send(createGossipMsg(), remotePeer(1613))
-	comm2.Send(createGossipMsg(), remotePeer(1613)) // out3++
-	waitForMessages(t, out3, 1, "comm3 should have received 1 message")
-
-	// make comm1 and comm2 send to comm4 which is not blacklisted		// out4 += 4
-	comm1.Send(createGossipMsg(), remotePeer(1614))
-	comm2.Send(createGossipMsg(), remotePeer(1614))
-	comm1.Send(createGossipMsg(), remotePeer(1614))
-	comm2.Send(createGossipMsg(), remotePeer(1614))
-
-	// blacklist comm3 by comm2
-	comm2.BlackListPKIid([]byte("localhost:1613"))
-
-	// send from comm1 and comm2 to comm3 again
-	comm1.Send(createGossipMsg(), remotePeer(1613)) // shouldn't have an effect
-	comm2.Send(createGossipMsg(), remotePeer(1613)) // shouldn't have an effect
-
-	waitForMessages(t, out4, 4, "comm1 should have received 4 messages")
+	assert.True(t, gotErr, "Should have failed because connection is closed")
 }
 
 func TestParallelSend(t *testing.T) {
@@ -271,7 +460,7 @@ func TestParallelSend(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	messages2Send := defRecvBuffSize
+	messages2Send := util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize)
 
 	wg := sync.WaitGroup{}
 	go func() {
@@ -297,10 +486,8 @@ func TestParallelSend(t *testing.T) {
 			if c == messages2Send {
 				waiting = false
 			}
-			break
 		case <-ticker.C:
 			waiting = false
-			break
 		}
 	}
 	assert.Equal(t, messages2Send, c)
@@ -314,25 +501,25 @@ func TestResponses(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	nonceIncrememter := func(msg ReceivedMessage) ReceivedMessage {
-		msg.GetGossipMessage().Nonce++
-		return msg
-	}
+	wg := sync.WaitGroup{}
 
 	msg := createGossipMsg()
+	wg.Add(1)
 	go func() {
 		inChan := comm1.Accept(acceptAll)
+		wg.Done()
 		for m := range inChan {
-			m = nonceIncrememter(m)
-			m.Respond(m.GetGossipMessage())
+			reply := createGossipMsg()
+			reply.Nonce = m.GetGossipMessage().Nonce + 1
+			m.Respond(reply.GossipMessage)
 		}
 	}()
 	expectedNOnce := uint64(msg.Nonce + 1)
 	responsesFromComm1 := comm2.Accept(acceptAll)
 
-	ticker := time.NewTicker(time.Duration(6000) * time.Millisecond)
+	ticker := time.NewTicker(10 * time.Second)
+	wg.Wait()
 	comm2.Send(msg, remotePeer(8611))
-	time.Sleep(time.Duration(100) * time.Millisecond)
 
 	select {
 	case <-ticker.C:
@@ -351,11 +538,11 @@ func TestAccept(t *testing.T) {
 	comm2, _ := newCommInstance(7612, naiveSec)
 
 	evenNONCESelector := func(m interface{}) bool {
-		return m.(ReceivedMessage).GetGossipMessage().Nonce%2 == 0
+		return m.(proto.ReceivedMessage).GetGossipMessage().Nonce%2 == 0
 	}
 
 	oddNONCESelector := func(m interface{}) bool {
-		return m.(ReceivedMessage).GetGossipMessage().Nonce%2 != 0
+		return m.(proto.ReceivedMessage).GetGossipMessage().Nonce%2 != 0
 	}
 
 	evenNONCES := comm1.Accept(evenNONCESelector)
@@ -364,10 +551,10 @@ func TestAccept(t *testing.T) {
 	var evenResults []uint64
 	var oddResults []uint64
 
-	out := make(chan uint64, defRecvBuffSize)
+	out := make(chan uint64, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize))
 	sem := make(chan struct{}, 0)
 
-	readIntoSlice := func(a *[]uint64, ch <-chan ReceivedMessage) {
+	readIntoSlice := func(a *[]uint64, ch <-chan proto.ReceivedMessage) {
 		for m := range ch {
 			*a = append(*a, m.GetGossipMessage().Nonce)
 			out <- m.GetGossipMessage().Nonce
@@ -378,11 +565,11 @@ func TestAccept(t *testing.T) {
 	go readIntoSlice(&evenResults, evenNONCES)
 	go readIntoSlice(&oddResults, oddNONCES)
 
-	for i := 0; i < defRecvBuffSize; i++ {
+	for i := 0; i < util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize); i++ {
 		comm2.Send(createGossipMsg(), remotePeer(7611))
 	}
 
-	waitForMessages(t, out, defRecvBuffSize, "Didn't receive all messages sent")
+	waitForMessages(t, out, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize), "Didn't receive all messages sent")
 
 	comm1.Stop()
 	comm2.Stop()
@@ -408,7 +595,7 @@ func TestReConnections(t *testing.T) {
 	comm1, _ := newCommInstance(3611, naiveSec)
 	comm2, _ := newCommInstance(3612, naiveSec)
 
-	reader := func(out chan uint64, in <-chan ReceivedMessage) {
+	reader := func(out chan uint64, in <-chan proto.ReceivedMessage) {
 		for {
 			msg := <-in
 			if msg == nil {
@@ -426,11 +613,11 @@ func TestReConnections(t *testing.T) {
 
 	// comm1 connects to comm2
 	comm1.Send(createGossipMsg(), remotePeer(3612))
-	waitForMessages(t, out2 , 1, "Comm2 didn't receive a message from comm1 in a timely manner")
+	waitForMessages(t, out2, 1, "Comm2 didn't receive a message from comm1 in a timely manner")
 	time.Sleep(time.Second)
 	// comm2 sends to comm1
 	comm2.Send(createGossipMsg(), remotePeer(3611))
-	waitForMessages(t, out1 , 1, "Comm1 didn't receive a message from comm2 in a timely manner")
+	waitForMessages(t, out1, 1, "Comm1 didn't receive a message from comm2 in a timely manner")
 
 	comm1.Stop()
 	comm1, _ = newCommInstance(3611, naiveSec)
@@ -438,7 +625,7 @@ func TestReConnections(t *testing.T) {
 	out1 = make(chan uint64, 1)
 	go reader(out1, comm1.Accept(acceptAll))
 	comm2.Send(createGossipMsg(), remotePeer(3611))
-	waitForMessages(t, out1 , 1, "Comm1 didn't receive a message from comm2 in a timely manner")
+	waitForMessages(t, out1, 1, "Comm1 didn't receive a message from comm2 in a timely manner")
 }
 
 func TestProbe(t *testing.T) {
@@ -448,23 +635,62 @@ func TestProbe(t *testing.T) {
 	comm2, _ := newCommInstance(6612, naiveSec)
 	time.Sleep(time.Duration(1) * time.Second)
 	assert.NoError(t, comm1.Probe(remotePeer(6612)))
+	_, err := comm1.Handshake(remotePeer(6612))
+	assert.NoError(t, err)
 	assert.Error(t, comm1.Probe(remotePeer(9012)))
+	_, err = comm1.Handshake(remotePeer(9012))
+	assert.Error(t, err)
 	comm2.Stop()
 	time.Sleep(time.Second)
 	assert.Error(t, comm1.Probe(remotePeer(6612)))
+	_, err = comm1.Handshake(remotePeer(6612))
+	assert.Error(t, err)
 	comm2, _ = newCommInstance(6612, naiveSec)
 	defer comm2.Stop()
 	time.Sleep(time.Duration(1) * time.Second)
 	assert.NoError(t, comm2.Probe(remotePeer(6611)))
+	_, err = comm2.Handshake(remotePeer(6611))
+	assert.NoError(t, err)
 	assert.NoError(t, comm1.Probe(remotePeer(6612)))
+	_, err = comm1.Handshake(remotePeer(6612))
+	assert.NoError(t, err)
+	// Now try a deep probe with an expected PKI-ID that doesn't match
+	wrongRemotePeer := remotePeer(6612)
+	if wrongRemotePeer.PKIID[0] == 0 {
+		wrongRemotePeer.PKIID[0] = 1
+	} else {
+		wrongRemotePeer.PKIID[0] = 0
+	}
+	_, err = comm1.Handshake(wrongRemotePeer)
+	assert.Error(t, err)
+	// Try a deep probe with a nil PKI-ID
+	id, err := comm1.Handshake(&RemotePeer{Endpoint: "localhost:6612"})
+	assert.NoError(t, err)
+	assert.Equal(t, api.PeerIdentityType("localhost:6612"), id)
 }
 
 func TestPresumedDead(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(4611, naiveSec)
 	comm2, _ := newCommInstance(4612, naiveSec)
-	go comm1.Send(createGossipMsg(), remotePeer(4612))
-	<-comm2.Accept(acceptAll)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		wg.Wait()
+		comm1.Send(createGossipMsg(), remotePeer(4612))
+	}()
+
+	ticker := time.NewTicker(time.Duration(10) * time.Second)
+	acceptCh := comm2.Accept(acceptAll)
+	wg.Done()
+	select {
+	case <-acceptCh:
+		ticker.Stop()
+	case <-ticker.C:
+		assert.Fail(t, "Didn't get first message")
+	}
+
 	comm2.Stop()
 	go func() {
 		for i := 0; i < 5; i++ {
@@ -473,7 +699,7 @@ func TestPresumedDead(t *testing.T) {
 		}
 	}()
 
-	ticker := time.NewTicker(time.Second * time.Duration(3))
+	ticker = time.NewTicker(time.Second * time.Duration(3))
 	select {
 	case <-ticker.C:
 		assert.Fail(t, "Didn't get a presumed dead message within a timely manner")
@@ -484,14 +710,15 @@ func TestPresumedDead(t *testing.T) {
 	}
 }
 
-func createGossipMsg() *proto.GossipMessage {
-	return &proto.GossipMessage{
+func createGossipMsg() *proto.SignedGossipMessage {
+	msg, _ := (&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: uint64(rand.Int()),
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{},
 		},
-	}
+	}).NoopSign()
+	return msg
 }
 
 func remotePeer(port int) *RemotePeer {
@@ -510,11 +737,16 @@ func waitForMessages(t *testing.T, msgChan chan uint64, count int, errMsg string
 			if c == count {
 				waiting = false
 			}
-			break
 		case <-ticker.C:
 			waiting = false
-			break
 		}
 	}
 	assert.Equal(t, count, c, errMsg)
+}
+
+func TestMain(m *testing.M) {
+	SetDialTimeout(time.Duration(300) * time.Millisecond)
+
+	ret := m.Run()
+	os.Exit(ret)
 }

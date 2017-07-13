@@ -34,7 +34,7 @@ const (
 	Forward
 )
 
-// Rule defines a filter function which accepts, rejects, or forwards (to the next rule) a Envelope
+// Rule defines a filter function which accepts, rejects, or forwards (to the next rule) an Envelope
 type Rule interface {
 	// Apply applies the rule to the given Envelope, replying with the Action to take for the message
 	// If the filter Accepts a message, it should provide a committer to use when writing the message to the chain
@@ -43,7 +43,7 @@ type Rule interface {
 
 // Committer is returned by postfiltering and should be invoked once the message has been written to the blockchain
 type Committer interface {
-	// Commit performs whatever action should be performed upon commiting of a message
+	// Commit performs whatever action should be performed upon committing of a message
 	Commit()
 
 	// Isolated returns whether this transaction should have a block to itself or may be mixed with other transactions
@@ -55,7 +55,7 @@ type noopCommitter struct{}
 func (nc noopCommitter) Commit()        {}
 func (nc noopCommitter) Isolated() bool { return false }
 
-// NoopCommitter does nothing on commit and is not isolate
+// NoopCommitter does nothing on commit and is not isolated
 var NoopCommitter = Committer(noopCommitter{})
 
 // EmptyRejectRule rejects empty messages
@@ -91,7 +91,7 @@ func NewRuleSet(rules []Rule) *RuleSet {
 	}
 }
 
-// Filter applies the rules given for this set in order, returning the committer, nil on valid, or nil, err on invalid
+// Apply applies the rules given for this set in order, returning the committer, nil on valid, or nil, err on invalid
 func (rs *RuleSet) Apply(message *ab.Envelope) (Committer, error) {
 	for _, rule := range rs.rules {
 		action, committer := rule.Apply(message)

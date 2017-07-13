@@ -19,6 +19,8 @@ package ledgermgmt
 import (
 	"os"
 
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 )
 
@@ -36,6 +38,7 @@ func CleanupTestEnv() {
 
 func remove() {
 	path := ledgerconfig.GetRootPath()
+	fmt.Printf("removing dir = %s\n", path)
 	err := os.RemoveAll(path)
 	if err != nil {
 		logger.Errorf("Error: %s", err)

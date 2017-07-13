@@ -74,7 +74,7 @@ func (t *NewKeyPerInvoke) GetInvokeArgs(ccnum int, iter int) [][]byte {
 	return args
 }
 
-//PostInvoke store the the key/val for later verification
+//PostInvoke store the key/val for later verification
 func (t *NewKeyPerInvoke) PostInvoke(args [][]byte, resp []byte) error {
 	if len(args) < 3 {
 		return fmt.Errorf("invalid number of args posted %d", len(args))

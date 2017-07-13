@@ -1,0 +1,62 @@
+{
+    "channelID": "_ch1",
+    "chaincodeID": "sample_cc",
+    "chaincodeVer": "v0",
+    "chainID": "testchainid",
+    "logLevel": "ERROR",
+    "invokeCheck": "TRUE",
+    "transMode": "Simple",
+    "transType": "Channel",
+    "invokeType": "Move",
+    "nOrderer": "1",
+    "nPeer": "4",
+    "nProc": "4",
+    "nRequest": "1000",
+    "runDur": "600",
+    "TLS": "disabled",
+    "channelOpt": {
+        "name": "testOrgsChannel1",
+        "action":  "join",
+        "orgName": [
+            "org2"
+        ]
+    },
+    "burstOpt": {
+        "burstFreq0":  "500",
+        "burstDur0":  "3000",
+        "burstFreq1": "2000",
+        "burstDur1": "10000"
+    },
+    "mixOpt": {
+        "mixFreq": "3000"
+    },
+    "constantOpt": {
+        "recHist": "HIST",
+        "constFreq": "1",
+        "devFreq": "0"
+    },
+    "ccType": "ccchecker",
+    "ccOpt": {
+        "keyStart": "50000",
+        "payLoadMin": "1024",
+        "payLoadMax": "1024"
+    },
+    "deploy": {
+        "chaincodePath": "github.com/sample_cc",
+        "fcn": "init",
+        "args": []
+    },
+    "invoke": {
+        "query": {
+            "fcn": "invoke",
+            "args": ["get", "a1"]
+        },
+        "move": {
+            "fcn": "invoke",
+            "args": ["put", "a1","1"]
+        }
+    },
+    "SCFile": [
+		{"ServiceCredentials":"SCFiles/config-chan1.json"}
+	]
+}

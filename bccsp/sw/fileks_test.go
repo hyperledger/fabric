@@ -23,13 +23,13 @@ import (
 )
 
 func TestInvalidStoreKey(t *testing.T) {
-	ks := &FileBasedKeyStore{}
-	if err := ks.Init(nil, filepath.Join(os.TempDir(), "bccspks"), false); err != nil {
+	ks, err := NewFileBasedKeyStore(nil, filepath.Join(os.TempDir(), "bccspks"), false)
+	if err != nil {
 		fmt.Printf("Failed initiliazing KeyStore [%s]", err)
 		os.Exit(-1)
 	}
 
-	err := ks.StoreKey(nil)
+	err = ks.StoreKey(nil)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}

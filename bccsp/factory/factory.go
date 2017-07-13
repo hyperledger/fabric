@@ -16,28 +16,32 @@ limitations under the License.
 package factory
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 
-	"os"
-
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/flogging"
 )
 
 var (
 	// Default BCCSP
 	defaultBCCSP bccsp.BCCSP
 
+	// when InitFactories has not been called yet (should only happen
+	// in test cases), use this BCCSP temporarily
+	bootBCCSP bccsp.BCCSP
+
 	// BCCSP Factories
-	factories map[string]BCCSPFactory
+	bccspMap map[string]bccsp.BCCSP
 
 	// factories' Sync on Initialization
 	factoriesInitOnce sync.Once
+	bootBCCSPInitOnce sync.Once
 
 	// Factories' Initialization Error
 	factoriesInitError error
+
+	logger = flogging.MustGetLogger("bccsp")
 )
 
 // BCCSPFactory is used to get instances of the BCCSP interface.
@@ -48,86 +52,42 @@ type BCCSPFactory interface {
 	Name() string
 
 	// Get returns an instance of BCCSP using opts.
-	Get(opts Opts) (bccsp.BCCSP, error)
-}
-
-// Opts  contains options for instantiating BCCSPs.
-type Opts interface {
-
-	// FactoryName returns the name of the factory to be used
-	FactoryName() string
-
-	// Ephemeral returns true if the BCCSP has to be ephemeral, false otherwise
-	Ephemeral() bool
+	Get(opts *FactoryOpts) (bccsp.BCCSP, error)
 }
 
 // GetDefault returns a non-ephemeral (long-term) BCCSP
-func GetDefault() (bccsp.BCCSP, error) {
-	if err := initFactories(); err != nil {
-		return nil, err
+func GetDefault() bccsp.BCCSP {
+	if defaultBCCSP == nil {
+		logger.Warning("Before using BCCSP, please call InitFactories(). Falling back to bootBCCSP.")
+		bootBCCSPInitOnce.Do(func() {
+			var err error
+			f := &SWFactory{}
+			bootBCCSP, err = f.Get(GetDefaultOpts())
+			if err != nil {
+				panic("BCCSP Internal error, failed initialization with GetDefaultOpts!")
+			}
+		})
+		return bootBCCSP
 	}
-
-	return defaultBCCSP, nil
-}
-
-// GetDefaultOrPanic returns a non-ephemeral (long-term) BCCSP or panic if an error occurs.
-func GetDefaultOrPanic() bccsp.BCCSP {
-	if err := initFactories(); err != nil {
-		panic(err)
-	}
-
 	return defaultBCCSP
 }
 
 // GetBCCSP returns a BCCSP created according to the options passed in input.
-func GetBCCSP(opts Opts) (bccsp.BCCSP, error) {
-	if err := initFactories(); err != nil {
-		return nil, err
+func GetBCCSP(name string) (bccsp.BCCSP, error) {
+	csp, ok := bccspMap[name]
+	if !ok {
+		return nil, fmt.Errorf("Could not find BCCSP, no '%s' provider", name)
+	}
+	return csp, nil
+}
+
+func initBCCSP(f BCCSPFactory, config *FactoryOpts) error {
+	csp, err := f.Get(config)
+	if err != nil {
+		return fmt.Errorf("Could not initialize BCCSP %s [%s]", f.Name(), err)
 	}
 
-	return getBCCSPInternal(opts)
-}
-
-func initFactories() error {
-	factoriesInitOnce.Do(func() {
-		// Initialize factories map
-		if factoriesInitError = initFactoriesMap(); factoriesInitError != nil {
-			return
-		}
-
-		// Create default non-ephemeral (long-term) BCCSP
-		defaultBCCSP, factoriesInitError = createDefaultBCCSP()
-		if factoriesInitError != nil {
-			return
-		}
-	})
-	return factoriesInitError
-}
-
-func initFactoriesMap() error {
-	factories = make(map[string]BCCSPFactory)
-
-	// Software-Based BCCSP
-	f := &SWFactory{}
-	factories[f.Name()] = f
-
+	logger.Debugf("Initialize BCCSP [%s]", f.Name())
+	bccspMap[f.Name()] = csp
 	return nil
-}
-
-func createDefaultBCCSP() (bccsp.BCCSP, error) {
-	return sw.NewDefaultSecurityLevel(os.TempDir())
-}
-
-func getBCCSPInternal(opts Opts) (bccsp.BCCSP, error) {
-	// Validate arguments
-	if opts == nil {
-		return nil, errors.New("Cannot instantiate a factory with 'nil' Opts. A fully instantiated BCCSP Opts struct must be provided.")
-	}
-
-	f, ok := factories[opts.FactoryName()]
-	if ok {
-		return f.Get(opts)
-	}
-
-	return nil, fmt.Errorf("Factory [%s] does not exist.", opts.FactoryName())
 }

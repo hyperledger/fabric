@@ -33,16 +33,13 @@ var logger = logging.MustGetLogger("example")
 // App - a sample fund transfer app
 type MarbleApp struct {
 	name   string
-	ledger ledger.ValidatedLedger
+	ledger ledger.PeerLedger
 }
 
 // ConstructAppInstance constructs an instance of an app
-func ConstructMarbleAppInstance(ledger ledger.ValidatedLedger) *MarbleApp {
+func ConstructMarbleAppInstance(ledger ledger.PeerLedger) *MarbleApp {
 	return &MarbleApp{"marbles_app", ledger}
 }
-
-var marbleIndexStr = "_marbleindex" //name for the key/value that will store a list of all known marbles
-var openTradesStr = "_opentrades"   //name for the key/value that will store all open trades
 
 type Marble struct {
 	Name  string `json:"asset_name"` //the fieldtags are needed to keep case from bouncing around
@@ -57,7 +54,7 @@ type Marble struct {
 func (marbleApp *MarbleApp) CreateMarble(args []string) (*common.Envelope, error) {
 	//   0       1       2     3
 	// "asdf", "blue", "35", "bob"
-	logger.Debugf("===COUCHDB=== Entering ----------CreateMarble()----------")
+	logger.Debugf("Entering ----------CreateMarble()----------")
 	marbleName := args[0]
 	marbleJsonBytes, err := init_marble(args)
 	if err != nil {
@@ -76,9 +73,9 @@ func (marbleApp *MarbleApp) CreateMarble(args []string) (*common.Envelope, error
 	if txSimulationResults, err = txSimulator.GetTxSimulationResults(); err != nil {
 		return nil, err
 	}
-	logger.Debugf("===COUCHDB=== CreateMarble() simulation done, packaging into a transaction...")
+	logger.Debugf("CreateMarble() simulation done, packaging into a transaction...")
 	tx := constructTransaction(txSimulationResults)
-	logger.Debugf("===COUCHDB=== Exiting CreateMarble()")
+	logger.Debugf("Exiting CreateMarble()")
 	return tx, nil
 }
 
@@ -94,7 +91,7 @@ func init_marble(args []string) ([]byte, error) {
 		return nil, errors.New("Incorrect number of arguments. Expecting 4")
 	}
 
-	logger.Debugf("===COUCHDB=== Entering init marble")
+	logger.Debugf("Entering init marble")
 	if len(args[0]) <= 0 {
 		return nil, errors.New("1st argument must be a non-empty string")
 	}
@@ -120,7 +117,7 @@ func init_marble(args []string) ([]byte, error) {
 	marbleJson := `{"txid": "` + tx + `",  "asset_name": "` + args[0] + `", "color": "` + color + `", "size": ` + strconv.Itoa(size) + `, "owner": "` + user + `"}`
 	marbleBytes := []byte(marbleJson)
 
-	logger.Debugf("===COUCHDB=== Exiting init marble")
+	logger.Debugf("Exiting init marble")
 	return marbleBytes, nil
 }
 
@@ -134,7 +131,7 @@ func (marbleApp *MarbleApp) TransferMarble(args []string) (*common.Envelope, err
 	marbleName := args[0]
 	marbleNewOwner := args[1]
 
-	logger.Debugf("===COUCHDB=== Entering ----------TransferMarble----------")
+	logger.Debugf("Entering ----------TransferMarble----------")
 	var txSimulator ledger.TxSimulator
 	var err error
 	if txSimulator, err = marbleApp.ledger.NewTxSimulator(); err != nil {
@@ -143,25 +140,25 @@ func (marbleApp *MarbleApp) TransferMarble(args []string) (*common.Envelope, err
 	defer txSimulator.Done()
 
 	marbleBytes, err := txSimulator.GetState(marbleApp.name, marbleName)
-	logger.Debugf("===COUCHDB=== marbleBytes is: %v", marbleBytes)
+	logger.Debugf("marbleBytes is: %v", marbleBytes)
 	if marbleBytes != nil {
 		jsonString := string(marbleBytes[:])
-		logger.Debugf("===COUCHDB=== TransferMarble() Retrieved jsonString: \n   %s", jsonString)
+		logger.Debugf("TransferMarble() Retrieved jsonString: \n   %s", jsonString)
 	}
 
 	theMarble := Marble{}
 	json.Unmarshal(marbleBytes, &theMarble) //Unmarshal JSON bytes into a Marble struct
 
-	logger.Debugf("===COUCHDB===  theMarble after unmarshal: %v", theMarble)
+	logger.Debugf(" theMarble after unmarshal: %v", theMarble)
 
-	logger.Debugf("===COUCHDB===  Setting the owner to: %s", marbleNewOwner)
+	logger.Debugf(" Setting the owner to: %s", marbleNewOwner)
 	theMarble.User = marbleNewOwner      //change the user
 	theMarble.Txid = "tx000000000000002" // COUCHDB hardcode a txid for now for demo purpose
 
 	updatedMarbleBytes, _ := json.Marshal(theMarble)
 	if updatedMarbleBytes != nil {
 		updatedJsonString := string(updatedMarbleBytes[:])
-		logger.Debugf("===COUCHDB=== updatedJsonString:\n   %s", updatedJsonString)
+		logger.Debugf("updatedJsonString:\n   %s", updatedJsonString)
 	}
 	err = txSimulator.SetState(marbleApp.name, marbleName, updatedMarbleBytes)
 	if err != nil {
@@ -172,7 +169,7 @@ func (marbleApp *MarbleApp) TransferMarble(args []string) (*common.Envelope, err
 	if txSimulationResults, err = txSimulator.GetTxSimulationResults(); err != nil {
 		return nil, err
 	}
-	logger.Debugf("===COUCHDB=== TransferMarble() simulation done, packaging into a transaction...")
+	logger.Debugf("TransferMarble() simulation done, packaging into a transaction...")
 	tx := constructTransaction(txSimulationResults)
 	return tx, nil
 }

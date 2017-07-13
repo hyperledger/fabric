@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -27,13 +28,16 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	logging "github.com/op/go-logging"
 )
+
+var logger = logging.MustGetLogger("main")
 
 const (
 	ledgerID = "Default"
 )
 
-var finalLedger ledger.ValidatedLedger
+var peerLedger ledger.PeerLedger
 var app *example.App
 var committer *example.Committer
 var consenter *example.Consenter
@@ -43,7 +47,7 @@ var accounts = []string{"account1", "account2", "account3", "account4"}
 func init() {
 
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../../../peer")
+	testutil.SetupCoreYAMLConfig()
 
 	// Initialization will get a handle to the ledger at the specified path
 	// Note, if subledgers are supported in the future,
@@ -51,12 +55,14 @@ func init() {
 	cleanup()
 	ledgermgmt.Initialize()
 	var err error
-	finalLedger, err = ledgermgmt.CreateLedger(ledgerID)
+
+	gb, _ := configtxtest.MakeGenesisBlock(ledgerID)
+	peerLedger, err = ledgermgmt.CreateLedger(gb)
 	if err != nil {
 		panic(fmt.Errorf("Error in NewKVLedger(): %s", err))
 	}
-	app = example.ConstructAppInstance(finalLedger)
-	committer = example.ConstructCommitter(finalLedger)
+	app = example.ConstructAppInstance(peerLedger)
+	committer = example.ConstructCommitter(peerLedger)
 	consenter = example.ConstructConsenter()
 }
 
@@ -91,6 +97,7 @@ func main() {
 }
 
 func initApp() {
+	logger.Debug("Entering initApp()")
 	tx, err := app.Init(map[string]int{
 		accounts[0]: 100,
 		accounts[1]: 100,
@@ -98,12 +105,14 @@ func initApp() {
 		accounts[3]: 100})
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx)
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
+	logger.Debug("Exiting initApp()")
 }
 
 func transferFunds() {
+	logger.Debug("Entering transferFunds()")
 	tx1, err := app.TransferFunds("account1", "account2", 50)
 	handleError(err, true)
 	tx2, err := app.TransferFunds("account3", "account4", 50)
@@ -113,47 +122,56 @@ func transferFunds() {
 	rawBlock := consenter.ConstructBlock(tx1, tx2)
 
 	// act as committing peer to commit the Raw Block
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
+	logger.Debug("Exiting transferFunds")
 }
 
 func tryInvalidTransfer() {
+	logger.Debug("Entering tryInvalidTransfer()")
 	_, err := app.TransferFunds("account1", "account2", 60)
 	handleError(err, false)
+	logger.Debug("Exiting tryInvalidTransfer()")
 }
 
 func tryDoubleSpend() {
+	logger.Debug("Entering tryDoubleSpend()")
 	tx1, err := app.TransferFunds("account1", "account2", 50)
 	handleError(err, true)
 	tx2, err := app.TransferFunds("account1", "account4", 50)
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx1, tx2)
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
+	logger.Debug("Exiting tryDoubleSpend()")
 }
 
 func printBlocksInfo(block *common.Block) {
+	logger.Debug("Entering printBlocksInfo()")
 	// Read invalid transactions filter
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	numOfInvalid := 0
 	// Count how many transaction indeed invalid
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			numOfInvalid++
 		}
 	}
 	fmt.Printf("Num txs in rawBlock = [%d], num invalidTxs = [%d]\n",
 		len(block.Data.Data), numOfInvalid)
+	logger.Debug("Exiting printBlocksInfo()")
 }
 
 func printBalances() {
+	logger.Debug("Entering printBalances()")
 	balances, err := app.QueryBalances(accounts)
 	handleError(err, true)
 	for i := 0; i < len(accounts); i++ {
 		fmt.Printf("[%s] = [%d]\n", accounts[i], balances[i])
 	}
+	logger.Debug("Exiting printBalances()")
 }
 
 func handleError(err error, quit bool) {

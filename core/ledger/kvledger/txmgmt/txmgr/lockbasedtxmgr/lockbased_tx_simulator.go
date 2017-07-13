@@ -19,39 +19,36 @@ package lockbasedtxmgr
 import (
 	"errors"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 )
 
 // LockBasedTxSimulator is a transaction simulator used in `LockBasedTxMgr`
 type lockBasedTxSimulator struct {
 	lockBasedQueryExecutor
-	rwset *rwset.RWSet
+	rwsetBuilder *rwsetutil.RWSetBuilder
 }
 
 func newLockBasedTxSimulator(txmgr *LockBasedTxMgr) *lockBasedTxSimulator {
-	rwset := rwset.NewRWSet()
-	helper := &queryHelper{txmgr: txmgr, rwset: rwset}
+	rwsetBuilder := rwsetutil.NewRWSetBuilder()
+	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: rwsetBuilder}
 	id := util.GenerateUUID()
 	logger.Debugf("constructing new tx simulator [%s]", id)
-	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, id}, rwset}
+	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, id}, rwsetBuilder}
 }
 
 // GetState implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) GetState(ns string, key string) ([]byte, error) {
-	// Remove RYWs when table APIs are removed
-	logger.Debugf("s.rwset=%s", s.rwset)
-	value, ok := s.rwset.GetFromWriteSet(ns, key)
-	if ok {
-		return value, nil
-	}
 	return s.helper.getState(ns, key)
 }
 
 // SetState implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) SetState(ns string, key string, value []byte) error {
 	s.helper.checkDone()
-	s.rwset.AddToWriteSet(ns, key, value)
+	if err := s.helper.txmgr.db.ValidateKey(key); err != nil {
+		return err
+	}
+	s.rwsetBuilder.AddToWriteSet(ns, key, value)
 	return nil
 }
 
@@ -73,7 +70,11 @@ func (s *lockBasedTxSimulator) SetStateMultipleKeys(namespace string, kvs map[st
 // GetTxSimulationResults implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) GetTxSimulationResults() ([]byte, error) {
 	logger.Debugf("Simulation completed, getting simulation results")
-	return s.rwset.GetTxReadWriteSet().Marshal()
+	s.Done()
+	if s.helper.err != nil {
+		return nil, s.helper.err
+	}
+	return s.rwsetBuilder.GetTxReadWriteSet().ToProtoBytes()
 }
 
 // ExecuteUpdate implements method in interface `ledger.TxSimulator`

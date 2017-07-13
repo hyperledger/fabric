@@ -19,25 +19,13 @@ package ledgerconfig
 import (
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
 )
 
-var stateDatabase = "goleveldb"
-var couchDBAddress = "127.0.0.1:5984"
-var username = ""
-var password = ""
-var historyDatabase = true
-
-// CouchDBDef contains parameters
-type CouchDBDef struct {
-	URL      string
-	Username string
-	Password string
-}
-
 //IsCouchDBEnabled exposes the useCouchDB variable
 func IsCouchDBEnabled() bool {
-	stateDatabase = viper.GetString("ledger.state.stateDatabase")
+	stateDatabase := viper.GetString("ledger.state.stateDatabase")
 	if stateDatabase == "CouchDB" {
 		return true
 	}
@@ -47,24 +35,8 @@ func IsCouchDBEnabled() bool {
 // GetRootPath returns the filesystem path.
 // All ledger related contents are expected to be stored under this path
 func GetRootPath() string {
-	sysPath := viper.GetString("peer.fileSystemPath")
+	sysPath := config.GetPath("peer.fileSystemPath")
 	return filepath.Join(sysPath, "ledgersData")
-}
-
-// GetLedgersPath returns the filesystem path that further contains sub-directories.
-// Each sub-directory for each specific ledger and the name of the sub-directory is the ledgerid
-func GetLedgersPath() string {
-	return filepath.Join(GetRootPath(), "ledgers")
-}
-
-// GetLedgerPath returns the filesystem path for stroing ledger specific contents
-func GetLedgerPath(ledgerID string) string {
-	return filepath.Join(GetLedgersPath(), ledgerID)
-}
-
-// GetBlockStoragePath returns the path for storing blocks for a specific ledger
-func GetBlockStoragePath(ledgerID string) string {
-	return filepath.Join(GetLedgerPath(ledgerID), "blocks")
 }
 
 // GetLedgerProviderPath returns the filesystem path for stroing ledger ledgerProvider contents
@@ -72,29 +44,50 @@ func GetLedgerProviderPath() string {
 	return filepath.Join(GetRootPath(), "ledgerProvider")
 }
 
-// GetMaxBlockfileSize returns the maximum size of the block file
-func GetMaxBlockfileSize() int {
-	return 0
+// GetStateLevelDBPath returns the filesystem path that is used to maintain the state level db
+func GetStateLevelDBPath() string {
+	return filepath.Join(GetRootPath(), "stateLeveldb")
 }
 
-//GetCouchDBDefinition exposes the useCouchDB variable
-func GetCouchDBDefinition() *CouchDBDef {
+// GetHistoryLevelDBPath returns the filesystem path that is used to maintain the history level db
+func GetHistoryLevelDBPath() string {
+	return filepath.Join(GetRootPath(), "historyLeveldb")
+}
 
-	couchDBAddress = viper.GetString("ledger.state.couchDBConfig.couchDBAddress")
-	username = viper.GetString("ledger.state.couchDBConfig.username")
-	password = viper.GetString("ledger.state.couchDBConfig.password")
+// GetBlockStorePath returns the filesystem path that is used for the chain block stores
+func GetBlockStorePath() string {
+	return filepath.Join(GetRootPath(), "chains")
+}
 
-	return &CouchDBDef{couchDBAddress, username, password}
+// GetMaxBlockfileSize returns maximum size of the block file
+func GetMaxBlockfileSize() int {
+	return 64 * 1024 * 1024
+}
+
+//GetQueryLimit exposes the queryLimit variable
+func GetQueryLimit() int {
+	queryLimit := viper.GetInt("ledger.state.couchDBConfig.queryLimit")
+	// if queryLimit was unset, default to 10000
+	if !viper.IsSet("ledger.state.couchDBConfig.queryLimit") {
+		queryLimit = 10000
+	}
+	return queryLimit
 }
 
 //IsHistoryDBEnabled exposes the historyDatabase variable
-//History database can only be enabled if couchDb is enabled
-//as it the history stored in the same couchDB instance.
-//TODO put History DB in it's own instance
 func IsHistoryDBEnabled() bool {
-	historyDatabase = viper.GetBool("ledger.state.historyDatabase")
-	if IsCouchDBEnabled() && historyDatabase {
-		return historyDatabase
-	}
-	return false
+	return viper.GetBool("ledger.history.enableHistoryDatabase")
+}
+
+// IsQueryReadsHashingEnabled enables or disables computing of hash
+// of range query results for phantom item validation
+func IsQueryReadsHashingEnabled() bool {
+	return true
+}
+
+// GetMaxDegreeQueryReadsHashing return the maximum degree of the merkle tree for hashes of
+// of range query results for phantom item validation
+// For more details - see description in kvledger/txmgmt/rwset/query_results_helper.go
+func GetMaxDegreeQueryReadsHashing() uint32 {
+	return 50
 }

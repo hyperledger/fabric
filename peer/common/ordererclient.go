@@ -18,13 +18,14 @@ package common
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type BroadcastClient interface {
@@ -39,29 +40,37 @@ type broadcastClient struct {
 }
 
 // GetBroadcastClient creates a simple instance of the BroadcastClient interface
-func GetBroadcastClient() (BroadcastClient, error) {
-	var orderer string
-	if viper.GetBool("peer.committer.enabled") {
-		orderer = viper.GetString("peer.committer.ledger.orderer")
-	}
+func GetBroadcastClient(orderingEndpoint string, tlsEnabled bool, caFile string) (BroadcastClient, error) {
 
-	if orderer == "" {
-		return nil, fmt.Errorf("Can't get orderer address")
+	if len(strings.Split(orderingEndpoint, ":")) != 2 {
+		return nil, fmt.Errorf("Ordering service endpoint %s is not valid or missing", orderingEndpoint)
 	}
 
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
+	// check for TLS
+	if tlsEnabled {
+		if caFile != "" {
+			creds, err := credentials.NewClientTLSFromFile(caFile, "")
+			if err != nil {
+				return nil, fmt.Errorf("Error connecting to %s due to %s", orderingEndpoint, err)
+			}
+			opts = append(opts, grpc.WithTransportCredentials(creds))
+		}
+	} else {
+		opts = append(opts, grpc.WithInsecure())
+	}
+
 	opts = append(opts, grpc.WithTimeout(3*time.Second))
 	opts = append(opts, grpc.WithBlock())
 
-	conn, err := grpc.Dial(orderer, opts...)
+	conn, err := grpc.Dial(orderingEndpoint, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("Error connecting to %s due to %s", orderer, err)
+		return nil, fmt.Errorf("Error connecting to %s due to %s", orderingEndpoint, err)
 	}
 	client, err := ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("Error connecting to %s due to %s", orderer, err)
+		return nil, fmt.Errorf("Error connecting to %s due to %s", orderingEndpoint, err)
 	}
 
 	return &broadcastClient{conn: conn, client: client}, nil

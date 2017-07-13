@@ -19,36 +19,30 @@ package clilogging
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/peer/common"
-	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
+
 	"github.com/spf13/cobra"
 )
 
-const loggingFuncName = "logging"
+const (
+	loggingFuncName = "logging"
+	shortDes        = "Log levels: getlevel|setlevel|revertlevels."
+	longDes         = "Log levels: getlevel|setlevel|revertlevels."
+)
 
-var logger = logging.MustGetLogger("loggingCmd")
+var logger = flogging.MustGetLogger("cli/logging")
 
 // Cmd returns the cobra command for Logging
-func Cmd() *cobra.Command {
-	loggingCmd.AddCommand(getLevelCmd())
-	loggingCmd.AddCommand(setLevelCmd())
+func Cmd(cf *LoggingCmdFactory) *cobra.Command {
+	loggingCmd.AddCommand(getLevelCmd(cf))
+	loggingCmd.AddCommand(setLevelCmd(cf))
+	loggingCmd.AddCommand(revertLevelsCmd(cf))
 
 	return loggingCmd
 }
 
 var loggingCmd = &cobra.Command{
-	Use: loggingFuncName,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// initialize the log level for the "error" module to the value of
-		// logging.error in core.yaml. this is necessary to ensure that these
-		// logging CLI commands, which execute outside of the peer, can
-		// automatically append the stack trace to the error message (if set to
-		// debug).
-		// note: for code running on the peer, this level is set during peer startup
-		// in peer/node/start.go and can be updated dynamically using
-		// "peer logging setlevel error <log-level>"
-		return common.SetErrorLoggingLevel()
-	},
-	Short: fmt.Sprintf("%s specific commands.", loggingFuncName),
-	Long:  fmt.Sprintf("%s specific commands.", loggingFuncName),
+	Use:   loggingFuncName,
+	Short: fmt.Sprint(shortDes),
+	Long:  fmt.Sprint(longDes),
 }

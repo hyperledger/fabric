@@ -16,8 +16,8 @@ limitations under the License.
 
 package example;
 
-import org.hyperledger.java.shim.ChaincodeBase;
-import org.hyperledger.java.shim.ChaincodeStub;
+import org.hyperledger.fabric.shim.ChaincodeBase;
+import org.hyperledger.fabric.shim.ChaincodeStub;
 
 public class MapExample extends ChaincodeBase {
 
@@ -38,25 +38,20 @@ public class MapExample extends ChaincodeBase {
 
 	@Override
 	public String query(ChaincodeStub stub, String function, String[] args) {
-//		if ("range".equals(function)) {
-//			String build = "";
-//			HashMap<String, String> range = stub.rangeQueryState(args[0], args[1], 10);
-//			for (String s : range.keySet()) {
-//				build += s + ":" + range.get(s) + " ";
-//			}
-//			return build;
-//		}
+		// if ("range".equals(function)) {
+		// String build = "";
+		// HashMap<String, String> range = stub.getStateByRange(args[0],
+		// args[1], 10);
+		// for (String s : range.keySet()) {
+		// build += s + ":" + range.get(s) + " ";
+		// }
+		// return build;
+		// }
 		return stub.getState(args[0]);
-	}
-
-	@Override
-	public String getChaincodeID() {
-		return "map";
 	}
 
 	public static void main(String[] args) throws Exception {
 		new MapExample().start(args);
 	}
 
-	
 }

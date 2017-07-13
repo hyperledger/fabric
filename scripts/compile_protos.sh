@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 
 set -eux
 
@@ -17,6 +23,7 @@ ROOTLESS_PROTO_FILES="$(find $PWD \
                              -path $PWD/vendor -prune -o \
                              -path $PWD/gotools -prune -o \
                              -path $PWD/build -prune -o \
+                             -path $PWD/core/chaincode/shim/java -prune -o \
                              -name "*.proto" -exec readlink -f {} \;)"
 ROOTLESS_PROTO_DIRS="$(dirname $ROOTLESS_PROTO_FILES | sort | uniq)"
 

@@ -19,90 +19,91 @@ package producer
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 )
-
-var logger *logging.Logger // package-level logger
-
-func init() {
-	logger = logging.MustGetLogger("eventhub_producer")
-}
 
 // SendProducerBlockEvent sends block event to clients
 func SendProducerBlockEvent(block *common.Block) error {
+	logger.Debugf("Entry")
+	defer logger.Debugf("Exit")
 	bevent := &common.Block{}
 	bevent.Header = block.Header
 	bevent.Metadata = block.Metadata
 	bevent.Data = &common.BlockData{}
+	var channelId string
 	for _, d := range block.Data.Data {
-		if d != nil {
-			if env, err := utils.GetEnvelopeFromBlock(d); err != nil {
-				logger.Errorf("Error getting tx from block(%s)\n", err)
+		ebytes := d
+		if ebytes != nil {
+			if env, err := utils.GetEnvelopeFromBlock(ebytes); err != nil {
+				logger.Errorf("error getting tx from block(%s)\n", err)
 			} else if env != nil {
 				// get the payload from the envelope
 				payload, err := utils.GetPayload(env)
 				if err != nil {
-					return fmt.Errorf("Could not extract payload from envelope, err %s", err)
+					return fmt.Errorf("could not extract payload from envelope, err %s", err)
 				}
 
-				if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+				chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+				if err != nil {
+					return err
+				}
+				channelId = chdr.ChannelId
+
+				if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+					logger.Debugf("Channel [%s]: Block event for block number [%d] contains transaction id: %s", channelId, block.Header.Number, chdr.TxId)
 					tx, err := utils.GetTransaction(payload.Data)
 					if err != nil {
-						logger.Errorf("Error unmarshalling transaction payload for block event: %s", err)
-						continue
+						return fmt.Errorf("error unmarshalling transaction payload for block event: %s", err)
 					}
-					chaincodeActionPayload := &pb.ChaincodeActionPayload{}
-					err = proto.Unmarshal(tx.Actions[0].Payload, chaincodeActionPayload)
+					chaincodeActionPayload, err := utils.GetChaincodeActionPayload(tx.Actions[0].Payload)
 					if err != nil {
-						logger.Errorf("Error unmarshalling transaction action payload for block event: %s", err)
-						continue
+						return fmt.Errorf("error unmarshalling transaction action payload for block event: %s", err)
 					}
-
-					propRespPayload := &pb.ProposalResponsePayload{}
-					err = proto.Unmarshal(chaincodeActionPayload.Action.ProposalResponsePayload, propRespPayload)
+					propRespPayload, err := utils.GetProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
 					if err != nil {
-						logger.Errorf("Error unmarshalling proposal response payload for block event: %s", err)
-						continue
+						return fmt.Errorf("error unmarshalling proposal response payload for block event: %s", err)
 					}
 					//ENDORSER_ACTION, ProposalResponsePayload.Extension field contains ChaincodeAction
-					caPayload := &pb.ChaincodeAction{}
-					err = proto.Unmarshal(propRespPayload.Extension, caPayload)
+					caPayload, err := utils.GetChaincodeAction(propRespPayload.Extension)
 					if err != nil {
-						logger.Errorf("Error unmarshalling chaincode action for block event: %s", err)
-						continue
+						return fmt.Errorf("error unmarshalling chaincode action for block event: %s", err)
 					}
 					// Drop read write set from transaction before sending block event
+					// Performance issue with chaincode deploy txs and causes nodejs grpc
+					// to hit max message size bug
+					// Dropping the read write set may cause issues for security and
+					// we will need to revist when event security is addressed
 					caPayload.Results = nil
-					propRespPayload.Extension, err = proto.Marshal(caPayload)
+					chaincodeActionPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(propRespPayload.ProposalHash, caPayload.Response, caPayload.Results, caPayload.Events, caPayload.ChaincodeId)
 					if err != nil {
-						logger.Errorf("Error marshalling tx proposal extension payload for block event: %s", err)
-						continue
+						return fmt.Errorf("error marshalling tx proposal payload for block event: %s", err)
 					}
-					// Marshal Transaction again and append to block to be sent
-					chaincodeActionPayload.Action.ProposalResponsePayload, err = proto.Marshal(propRespPayload)
+					tx.Actions[0].Payload, err = utils.GetBytesChaincodeActionPayload(chaincodeActionPayload)
 					if err != nil {
-						logger.Errorf("Error marshalling tx proposal payload for block event: %s", err)
-						continue
+						return fmt.Errorf("error marshalling tx action payload for block event: %s", err)
 					}
-					tx.Actions[0].Payload, err = proto.Marshal(chaincodeActionPayload)
+					payload.Data, err = utils.GetBytesTransaction(tx)
 					if err != nil {
-						logger.Errorf("Error marshalling tx action payload for block event: %s", err)
-						continue
+						return fmt.Errorf("error marshalling payload for block event: %s", err)
 					}
-					if t, err := proto.Marshal(tx); err == nil {
-						bevent.Data.Data = append(bevent.Data.Data, t)
-						logger.Infof("calling sendProducerBlockEvent\n")
-					} else {
-						logger.Infof("Cannot marshal transaction %s\n", err)
+					env.Payload, err = utils.GetBytesPayload(payload)
+					if err != nil {
+						return fmt.Errorf("error marshalling tx envelope for block event: %s", err)
+					}
+					ebytes, err = utils.GetBytesEnvelope(env)
+					if err != nil {
+						return fmt.Errorf("cannot marshal transaction %s", err)
 					}
 				}
 			}
 		}
+		bevent.Data.Data = append(bevent.Data.Data, ebytes)
 	}
+
+	logger.Infof("Channel [%s]: Sending event for block number [%d]", channelId, block.Header.Number)
+
 	return Send(CreateBlockEvent(bevent))
 }
 

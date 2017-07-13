@@ -18,34 +18,87 @@ package utils
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 
 	"github.com/golang/protobuf/proto"
-
-	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 )
+
+// GetChainIDFromBlockBytes returns chain ID given byte array which represents the block
+func GetChainIDFromBlockBytes(bytes []byte) (string, error) {
+	block, err := GetBlockFromBlockBytes(bytes)
+	if err != nil {
+		return "", err
+	}
+
+	return GetChainIDFromBlock(block)
+}
 
 // GetChainIDFromBlock returns chain ID in the block
 func GetChainIDFromBlock(block *cb.Block) (string, error) {
-	if block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
-		return "", fmt.Errorf("Failed to find chain ID because the block is empty.")
+	if block == nil || block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
+		return "", fmt.Errorf("failed to retrieve channel id - block is empty")
 	}
 	var err error
 	envelope := &cb.Envelope{}
 	if err = proto.Unmarshal(block.Data.Data[0], envelope); err != nil {
-		return "", fmt.Errorf("Error reconstructing envelope(%s)", err)
+		return "", fmt.Errorf("error reconstructing envelope(%s)", err)
 	}
 	payload := &cb.Payload{}
 	if err = proto.Unmarshal(envelope.Payload, payload); err != nil {
-		return "", fmt.Errorf("Error reconstructing payload(%s)", err)
+		return "", fmt.Errorf("error reconstructing payload(%s)", err)
 	}
 
-	return payload.Header.ChainHeader.ChainID, nil
+	if payload.Header == nil {
+		return "", fmt.Errorf("failed to retrieve channel id - payload header is empty")
+	}
+	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return "", err
+	}
+
+	return chdr.ChannelId, nil
+}
+
+// GetMetadataFromBlock retrieves metadata at the specified index.
+func GetMetadataFromBlock(block *cb.Block, index cb.BlockMetadataIndex) (*cb.Metadata, error) {
+	md := &cb.Metadata{}
+	err := proto.Unmarshal(block.Metadata.Metadata[index], md)
+	if err != nil {
+		return nil, err
+	}
+	return md, nil
+}
+
+// GetMetadataFromBlockOrPanic retrieves metadata at the specified index, or panics on error.
+func GetMetadataFromBlockOrPanic(block *cb.Block, index cb.BlockMetadataIndex) *cb.Metadata {
+	md, err := GetMetadataFromBlock(block, index)
+	if err != nil {
+		panic(err)
+	}
+	return md
+}
+
+// GetLastConfigIndexFromBlock retrieves the index of the last config block as encoded in the block metadata
+func GetLastConfigIndexFromBlock(block *cb.Block) (uint64, error) {
+	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIG)
+	if err != nil {
+		return 0, err
+	}
+	lc := &cb.LastConfig{}
+	err = proto.Unmarshal(md.Value, lc)
+	if err != nil {
+		return 0, err
+	}
+	return lc.Index, nil
+}
+
+// GetLastConfigIndexFromBlockOrPanic retrieves the index of the last config block as encoded in the block metadata, or panics on error.
+func GetLastConfigIndexFromBlockOrPanic(block *cb.Block) uint64 {
+	index, err := GetLastConfigIndexFromBlock(block)
+	if err != nil {
+		panic(err)
+	}
+	return index
 }
 
 // GetBlockFromBlockBytes marshals the bytes into Block
@@ -63,7 +116,7 @@ func CopyBlockMetadata(src *cb.Block, dst *cb.Block) {
 	InitBlockMetadata(dst)
 }
 
-// CopyBlockMetadata copies metadata from one block into another
+// InitBlockMetadata copies metadata from one block into another
 func InitBlockMetadata(block *cb.Block) {
 	if block.Metadata == nil {
 		block.Metadata = &cb.BlockMetadata{Metadata: [][]byte{[]byte{}, []byte{}, []byte{}}}
@@ -72,109 +125,4 @@ func InitBlockMetadata(block *cb.Block) {
 			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}
-}
-
-// MakeConfigurationBlock creates a mock configuration block for testing in
-// various modules. This is a convenient function rather than every test
-// implements its own
-func MakeConfigurationBlock(testChainID string) (*cb.Block, error) {
-	configItemChainHeader := MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM,
-		messageVersion, testChainID, epoch)
-
-	configEnvelope := MakeConfigurationEnvelope(
-		encodeConsensusType(testChainID),
-		encodeBatchSize(testChainID),
-		lockDefaultModificationPolicy(testChainID),
-		encodeMSP(testChainID),
-	)
-	payloadChainHeader := MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION,
-		configItemChainHeader.Version, testChainID, epoch)
-	payloadSignatureHeader := MakeSignatureHeader(nil, CreateNonceOrPanic())
-	payloadHeader := MakePayloadHeader(payloadChainHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: MarshalOrPanic(configEnvelope)}
-	envelope := &cb.Envelope{Payload: MarshalOrPanic(payload), Signature: nil}
-
-	blockData := &cb.BlockData{Data: [][]byte{MarshalOrPanic(envelope)}}
-
-	return &cb.Block{
-		Header: &cb.BlockHeader{
-			Number:       0,
-			PreviousHash: nil,
-			DataHash:     blockData.Hash(),
-		},
-		Data:     blockData,
-		Metadata: nil,
-	}, nil
-}
-
-const (
-	batchSize        = 10
-	consensusType    = "solo"
-	epoch            = uint64(0)
-	messageVersion   = int32(1)
-	lastModified     = uint64(0)
-	consensusTypeKey = "ConsensusType"
-	batchSizeKey     = "BatchSize"
-	mspKey           = "MSP"
-)
-
-func createSignedConfigItem(chainID string,
-	configItemKey string,
-	configItemValue []byte,
-	modPolicy string) *cb.SignedConfigurationItem {
-
-	ciChainHeader := MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM,
-		messageVersion, chainID, epoch)
-	configItem := MakeConfigurationItem(ciChainHeader,
-		cb.ConfigurationItem_Orderer, lastModified, modPolicy,
-		configItemKey, configItemValue)
-
-	return &cb.SignedConfigurationItem{
-		ConfigurationItem: MarshalOrPanic(configItem),
-		Signatures:        nil}
-}
-
-func encodeConsensusType(testChainID string) *cb.SignedConfigurationItem {
-	return createSignedConfigItem(testChainID,
-		consensusTypeKey,
-		MarshalOrPanic(&ab.ConsensusType{Type: consensusType}),
-		configtx.DefaultModificationPolicyID)
-}
-
-func encodeBatchSize(testChainID string) *cb.SignedConfigurationItem {
-	return createSignedConfigItem(testChainID,
-		batchSizeKey,
-		MarshalOrPanic(&ab.BatchSize{MaxMessageCount: batchSize}),
-		configtx.DefaultModificationPolicyID)
-}
-
-func lockDefaultModificationPolicy(testChainID string) *cb.SignedConfigurationItem {
-	return createSignedConfigItem(testChainID,
-		configtx.DefaultModificationPolicyID,
-		MarshalOrPanic(MakePolicyOrPanic(cauthdsl.RejectAllPolicy)),
-		configtx.DefaultModificationPolicyID)
-}
-
-// This function is needed to locate the MSP test configuration when running
-// in CI build env or local with "make unit-test". A better way to manage this
-// is to define a config path in yaml that may point to test or production
-// location of the config
-func getTESTMSPConfigPath() string {
-	cfgPath := os.Getenv("PEER_CFG_PATH") + "/msp/sampleconfig/"
-	if _, err := ioutil.ReadDir(cfgPath); err != nil {
-		cfgPath = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
-	return cfgPath
-}
-
-func encodeMSP(testChainID string) *cb.SignedConfigurationItem {
-	cfgPath := getTESTMSPConfigPath()
-	conf, err := msp.GetLocalMspConfig(cfgPath)
-	if err != nil {
-		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
-	}
-	return createSignedConfigItem(testChainID,
-		mspKey,
-		MarshalOrPanic(conf),
-		configtx.DefaultModificationPolicyID)
 }

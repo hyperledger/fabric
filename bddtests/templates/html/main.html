@@ -1,0 +1,29 @@
+<!--
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% block head %}
+    <link rel="stylesheet" href="./../../templates/html/report.css" />
+    <title>Scenario documentation</title>
+    {% endblock %}
+</head>
+<body>
+{% autoescape false %}
+{{ header }}
+{{ toc }}
+{{ body }}
+{{ appendix }}
+{% endautoescape %}
+<div id="footer">
+    {% block footer %}
+    &copy; Copyright IBM Corp. 2017 All Rights Reserved.
+    {% endblock %}
+</div>
+</body>
+</html>

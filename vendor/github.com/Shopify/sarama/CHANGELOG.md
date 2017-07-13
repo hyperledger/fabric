@@ -1,5 +1,57 @@
 # Changelog
 
+#### Unreleased
+
+New Features:
+ - Added a `Brokers` method to the Client which returns the complete set of
+   active brokers ([#813](https://github.com/Shopify/sarama/pull/813)).
+ - Added a `NewCustomHashPartitioner` method which allows constructing a hash
+   partitioner with a custom hash method in case the default (FNV-1a) is not
+   suitable
+   ([#837](https://github.com/Shopify/sarama/pull/837),
+    [#841](https://github.com/Shopify/sarama/pull/841)).
+
+Bug Fixes:
+ - Fix an issue where decoding a malformed FetchRequest would not return the
+   correct error ([#818](https://github.com/Shopify/sarama/pull/818)).
+ - Respect ordering of group protocols in JoinGroupRequests. This fix is
+   transparent if you're using the `AddGroupProtocol` or
+   `AddGroupProtocolMetadata` helpers; otherwise you will need to switch from
+   the `GroupProtocols` field (now deprecated) to use `OrderedGroupProtocols`
+   ([#812](https://github.com/Shopify/sarama/issues/812)).
+
+#### Version 1.11.0 (2016-12-20)
+
+_Important:_ As of Sarama 1.11 it is necessary to set the config value of
+`Producer.Return.Successes` to true in order to use the SyncProducer. Previous
+versions would silently override this value when instantiating a SyncProducer
+which led to unexpected values and data races.
+
+New Features:
+ - Metrics! Thanks to Sébastien Launay for all his work on this feature
+   ([#701](https://github.com/Shopify/sarama/pull/701),
+    [#746](https://github.com/Shopify/sarama/pull/746),
+    [#766](https://github.com/Shopify/sarama/pull/766)).
+ - Add support for LZ4 compression
+   ([#786](https://github.com/Shopify/sarama/pull/786)).
+ - Add support for ListOffsetRequest v1 and Kafka 0.10.1
+   ([#775](https://github.com/Shopify/sarama/pull/775)).
+ - Added a `HighWaterMarks` method to the Consumer which aggregates the
+   `HighWaterMarkOffset` values of its child topic/partitions
+   ([#769](https://github.com/Shopify/sarama/pull/769)).
+
+Bug Fixes:
+ - Fixed producing when using timestamps, compression and Kafka 0.10
+   ([#759](https://github.com/Shopify/sarama/pull/759)).
+ - Added missing decoder methods to DescribeGroups response
+   ([#756](https://github.com/Shopify/sarama/pull/756)).
+ - Fix producer shutdown when `Return.Errors` is disabled
+   ([#787](https://github.com/Shopify/sarama/pull/787)).
+ - Don't mutate configuration in SyncProducer
+   ([#790](https://github.com/Shopify/sarama/pull/790)).
+ - Fix crash on SASL initialization failure
+   ([#795](https://github.com/Shopify/sarama/pull/795)).
+
 #### Version 1.10.1 (2016-08-30)
 
 Bug Fixes:

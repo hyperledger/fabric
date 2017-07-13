@@ -21,6 +21,7 @@ import (
 
 	"os"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -37,7 +38,7 @@ const (
 
 var logger = logging.MustGetLogger("main")
 
-var finalLedger ledger.ValidatedLedger
+var peerLedger ledger.PeerLedger
 var marbleApp *example.MarbleApp
 var committer *example.Committer
 var consenter *example.Consenter
@@ -47,20 +48,22 @@ func init() {
 	// Initialization will get a handle to the ledger at the specified path
 	// Note, if subledgers are supported in the future,
 	// the various ledgers could be created/managed at this level
-	logger.Debugf("===COUCHDB=== Marble Example main init()")
+	logger.Debugf("Marble Example main init()")
 
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../../../peer")
+	testutil.SetupCoreYAMLConfig()
 
 	cleanup()
 	ledgermgmt.Initialize()
 	var err error
-	finalLedger, err = ledgermgmt.CreateLedger(ledgerID)
+	gb, _ := configtxtest.MakeGenesisBlock(ledgerID)
+	peerLedger, err = ledgermgmt.CreateLedger(gb)
+
 	if err != nil {
 		panic(fmt.Errorf("Error in NewKVLedger(): %s", err))
 	}
-	marbleApp = example.ConstructMarbleAppInstance(finalLedger)
-	committer = example.ConstructCommitter(finalLedger)
+	marbleApp = example.ConstructMarbleAppInstance(peerLedger)
+	committer = example.ConstructCommitter(peerLedger)
 	consenter = example.ConstructConsenter()
 }
 
@@ -77,33 +80,33 @@ func main() {
 }
 
 func initApp() {
-	logger.Debugf("===COUCHDB=== Marble Example initApp() to create a marble")
+	logger.Debugf("Marble Example initApp() to create a marble")
 	marble := []string{"marble1", "blue", "35", "tom"}
 	tx, err := marbleApp.CreateMarble(marble)
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx)
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
 }
 
 func transferMarble() {
-	logger.Debugf("===COUCHDB=== Marble Example transferMarble()")
+	logger.Debugf("Marble Example transferMarble()")
 	tx1, err := marbleApp.TransferMarble([]string{"marble1", "jerry"})
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx1)
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
 }
 
 func printBlocksInfo(block *common.Block) {
 	// Read invalid transactions filter
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	numOfInvalid := 0
 	// Count how many transaction indeed invalid
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			numOfInvalid++
 		}
 	}

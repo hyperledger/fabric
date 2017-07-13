@@ -1,0 +1,410 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+###############################################################################
+#
+#    LOGGING section
+#
+###############################################################################
+logging:
+
+    # Default logging levels are specified here for each of the three peer
+    # commands 'node', 'network' and 'chaincode'. For commands that have
+    # subcommands, the defaults also apply to all subcommands of the command.
+    # Valid logging levels are case-insensitive strings chosen from
+
+    #     CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
+
+    # The logging levels specified here can be overridden in various ways,
+    # listed below from strongest to weakest:
+    #
+    # 1. The --logging-level=<level> command line option overrides all other
+    #    specifications.
+    #
+    # 2. The environment variable CORE_LOGGING_LEVEL otherwise applies to
+    #    all peer commands if defined as a non-empty string.
+    #
+    # 3. The environment variables CORE_LOGGING_[NODE|NETWORK|CHAINCODE]
+    #    otherwise apply to the respective peer commands if defined as non-empty
+    #    strings.
+    #
+    # 4. Otherwise, the specifications below apply.
+    #
+    # Developers: Please see fabric/docs/Setup/logging-control.md for more
+    # options.
+    peer:       warning
+    node:       warning
+    network:    warning
+    version:    warning
+    protoutils: warning
+    error:      warning
+    msp:        warning
+    gossip:     warning
+    grpc:       warning
+    ledger:     warning
+    policies:   warning
+    cauthdsl:   warning
+
+    format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+
+###############################################################################
+#
+#    Peer section
+#
+###############################################################################
+peer:
+
+    # The Peer id is used for identifying this Peer instance.
+    id: jdoe
+
+    # The networkId allows for logical seperation of networks
+    # networkId: dev
+    # networkId: test
+    networkId: dev
+
+    # The Address this Peer will listen on
+    listenAddress: 0.0.0.0:7051
+    # Represents the peer's endpoint to peers in its organization
+    # for other peers, see externalEndpoint
+    address: 0.0.0.0:7051
+    # Whether the Peer should programmatically determine its address
+    # This case is useful for docker containers.
+    addressAutoDetect: false
+
+    # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the current setting
+    gomaxprocs: -1
+
+    # Gossip related configuration
+    gossip:
+        # Bootstrap set to initialize gossip with
+        bootstrap: 127.0.0.1:7051
+
+        # NOTE: orgLeader and useLeaderElection parameters are mutual exclusive
+        # setting both to true would result in the termination of the peer, since this is undefined
+        # state.
+
+        # Defines whenever peer will initialize dynamic algorithm for
+        # "leader" selection, where leader is the peer to establish
+        # connection with ordering service and use delivery protocol
+        # to pull ledger blocks from ordering service
+        useLeaderElection: true
+        # Statically defines peer to be an organization "leader",
+        # where this means that current peer will maintain connection
+        # with ordering service and disseminate block across peers in
+        # its own organization
+        orgLeader: false
+
+        # ID of this instance
+        endpoint:
+        # Maximum count of blocks we store in memory
+        maxBlockCountToStore: 100
+        # Max time between consecutive message pushes(unit: millisecond)
+        maxPropagationBurstLatency: 10ms
+        # Max number of messages stored until it triggers a push to remote peers
+        maxPropagationBurstSize: 10
+        # Number of times a message is pushed to remote peers
+        propagateIterations: 1
+        # Number of peers selected to push messages to
+        propagatePeerNum: 3
+        # Determines frequency of pull phases(unit: second)
+        pullInterval: 4s
+        # Number of peers to pull from
+        pullPeerNum: 3
+        # Determines frequency of pulling state info messages from peers(unit: second)
+        requestStateInfoInterval: 4s
+        # Determines frequency of pushing state info messages to peers(unit: second)
+        publishStateInfoInterval: 4s
+        # Maximum time a stateInfo message is kept until expired
+        stateInfoRetentionInterval:
+        # Time from startup certificates are included in Alive messages(unit: second)
+        publishCertPeriod: 10s
+        # Should we skip verifying block messages or not
+        skipBlockVerification: false
+        # Dial timeout(unit: second)
+        dialTimeout: 3s
+        # Connection timeout(unit: second)
+        connTimeout: 2s
+        # Buffer size of received messages
+        recvBuffSize: 20
+        # Buffer size of sending messages
+        sendBuffSize: 20
+        # Time to wait before pull engine processes incoming digests (unit: second)
+        digestWaitTime: 1s
+        # Time to wait before pull engine removes incoming nonce (unit: second)
+        requestWaitTime: 1s
+        # Time to wait before pull engine ends pull (unit: second)
+        responseWaitTime: 2s
+        # Alive check interval(unit: second)
+        aliveTimeInterval: 5s
+        # Alive expiration timeout(unit: second)
+        aliveExpirationTimeout: 25s
+        # Reconnect interval(unit: second)
+        reconnectInterval: 25s
+        # This is an endpoint that is published to peers outside of the organization.
+        # If this isn't set, the peer will not be known to other organizations.
+        externalEndpoint:
+
+        # Leader election service configuration
+        election:
+            # Longest time peer wait for stable membership during leader election startup (unit: second)
+            startupGracePeriod: 15s
+            # Interval gossip membership sampled to check its stability (unit: second)
+            membershipSampleInterval: 1s
+            # Time pass since last declaration message before peer decide to go to election (unit: second)
+            leaderAliveThreshold: 10s
+            # Time between peer sends propose message and declare itself as a leader (sends declaration message) (unit: second)
+            leaderElectionDuration: 5s
+
+    # Sync related configuration
+    sync:
+        blocks:
+            # Channel size for readonly SyncBlocks messages channel for receiving
+            # blocks from oppositie Peer Endpoints.
+            # NOTE: currently messages are not stored and forwarded, but rather
+            # lost if the channel write blocks.
+            channelSize: 10
+        state:
+            snapshot:
+                # Channel size for readonly syncStateSnapshot messages channel
+                # for receiving state deltas for snapshot from oppositie Peer Endpoints.
+                # NOTE: when the channel is exhausted, the writes block for up to the
+                # writeTimeout specified below
+                channelSize: 50
+                # Write timeout for the syncStateSnapshot messages
+                # When the channel above is exhausted, messages block before being
+                # discarded for this amount of time
+                writeTimeout: 60s
+            deltas:
+                # Channel size for readonly syncStateDeltas messages channel for
+                # receiving state deltas for a syncBlockRange from oppositie
+                # Peer Endpoints.
+                # NOTE: currently messages are not stored and forwarded,
+                # but rather lost if the channel write blocks.
+                channelSize: 20
+
+    # Validator defines whether this peer is a validating peer or not, and if
+    # it is enabled, what consensus plugin to load
+    events:
+        # The address that the Event service will be enabled on the validator
+        address: 0.0.0.0:7053
+
+        # total number of events that could be buffered without blocking the
+        # validator sends
+        buffersize: 100
+
+        # milliseconds timeout for producer to send an event.
+        # if < 0, if buffer full, unblocks immediately and not send
+        # if 0, if buffer full, will block and guarantee the event will be sent out
+        # if > 0, if buffer full, blocks till timeout
+        timeout: 10
+
+    # TLS Settings for p2p communications
+    tls:
+        enabled: true
+        cert:
+            file: tls/server.crt
+        key:
+            file: tls/server.key
+        rootcert:
+            file: tls/ca.crt
+
+        # The server name use to verify the hostname returned by TLS handshake
+        serverhostoverride:
+
+    # Path on the file system where peer will store data (eg ledger)
+    fileSystemPath: /var/hyperledger/fabric/peer
+
+    # BCCSP (Blockchain crypto provider): Select which crypto implementation or
+    # library to use
+    BCCSP:
+        Default: SW
+        SW:
+            # TODO: The default Hash and Security level needs refactoring to be
+            # fully configurable. Changing these defaults requires coordination
+            # SHA2 is hardcoded in several places, not only BCCSP
+            Hash: SHA2
+            Security: 256
+            # Location of Key Store
+            FileKeyStore:
+                # If "", defaults to 'mspConfigPath'/keystore
+                # TODO: Ensure this is read with fabric/core/config.GetPath() once ready
+                KeyStore:
+
+    # Path on the file system where peer will find MSP local configurations
+    mspConfigPath: msp
+
+    # Identifier of the local MSP
+    # ----!!!!IMPORTANT!!!-!!!IMPORTANT!!!-!!!IMPORTANT!!!!----
+    # Deployers need to change the value of the localMspId string.
+    # In particular, the name of the local MSP ID of a peer needs
+    # to match the name of one of the MSPs in each of the channel
+    # that this peer is a member of. Otherwise this peer's messages
+    # will not be identified as valid by other nodes.
+    localMspId: Org1MSP
+
+    # Used with Go profiling tools only in none production environment. In
+    # production, it should be disabled (eg enabled: false)
+    profile:
+        enabled:     false
+        listenAddress: 0.0.0.0:6060
+
+###############################################################################
+#
+#    VM section
+#
+###############################################################################
+vm:
+
+    # Endpoint of the vm management system.  For docker can be one of the following in general
+    # unix:///var/run/docker.sock
+    # http://localhost:2375
+    # https://localhost:2376
+    endpoint: unix:///var/run/docker.sock
+
+    # settings for docker vms
+    docker:
+        tls:
+            enabled: false
+            ca:
+                file: docker/ca.crt
+            cert:
+                file: docker/tls.crt
+            key:
+                file: docker/tls.key
+
+        # Enables/disables the standard out/err from chaincode containers for debugging purposes
+        attachStdout: false
+
+        # Parameters of docker container creating. For docker can created by custom parameters
+        # If you have your own ipam & dns-server for cluster you can use them to create container efficient.
+        # NetworkMode Sets the networking mode for the container. Supported standard values are: `host`(default),`bridge`,`ipvlan`,`none`
+        # dns A list of DNS servers for the container to use.
+        # note: not support customize for `Privileged` `Binds` `Links` `PortBindings`
+        # not support set LogConfig using Environment Variables
+        # LogConfig sets the logging driver (Type) and related options (Config) for Docker
+        # you can refer https://docs.docker.com/engine/admin/logging/overview/ for more detail configruation.
+        hostConfig:
+            NetworkMode: host
+            Dns:
+               # - 192.168.0.1
+            LogConfig:
+                Type: json-file
+                Config:
+                    max-size: "50m"
+                    max-file: "5"
+            Memory: 2147483648
+
+###############################################################################
+#
+#    Chaincode section
+#
+###############################################################################
+chaincode:
+
+    # The id is used by the Chaincode stub to register the executing Chaincode
+    # ID with the Peerand is generally supplied through ENV variables
+    # the Path form of ID is provided when deploying the chaincode. The name is
+    # used for all other requests. The name is really a hashcode
+    # returned by the system in response to the deploy transaction. In
+    # development mode where user runs the chaincode, the name can be any string
+    id:
+        path:
+        name:
+
+    # Generic builder environment, suitable for most chaincode types
+    builder: $(DOCKER_NS)/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+
+    golang:
+        # golang will never need more than baseos
+        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+
+    car:
+        # car may need more facilities (JVM, etc) in the future as the catalog
+        # of platforms are expanded.  For now, we can just use baseos
+        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+
+    java:
+        # This is an image based on java:openjdk-8 with addition compiler
+        # tools added for java shim layer packaging.
+        # This image is packed with shim layer libraries that are necessary
+        # for Java chaincode runtime.
+        Dockerfile:  |
+            from $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
+
+    # timeout in millisecs for starting up a container and waiting for Register
+    # to come through. 1sec should be plenty for chaincode unit tests
+    startuptimeout: 300000
+
+    # timeout in millisecs for invokes and initialize commands
+    # this timeout is used by all chaincodes in all the channels including
+    # system chaincodes. Default is 30000ms (30 seconds)
+    executetimeout: 30000
+
+    #timeout in millisecs for deploying chaincode from a remote repository.
+    deploytimeout: 30000
+
+    #mode - options are "dev", "net"
+    #dev - in dev mode, user runs the chaincode after starting validator from
+    # command line on local machine
+    #net - in net mode validator will run chaincode in a docker container
+
+    mode: net
+
+    # keepalive in seconds. In situations where the communiction goes through a
+    # proxy that does not support keep-alive, this parameter will maintain connection
+    # between peer and chaincode.
+    # A value <= 0 turns keepalive off
+    keepalive: 0
+
+    # system chaincodes whitelist. To add system chaincode "myscc" to the
+    # whitelist, add "myscc: enable" to the list below, and register in
+    # chaincode/importsysccs.go
+    system:
+        cscc: enable
+        lscc: enable
+        escc: enable
+        vscc: enable
+        qscc: enable
+
+    # logging section for the chaincode container
+    logLevel: warning
+    logFormat: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+
+###############################################################################
+#
+#    Ledger section - ledger configuration encompases both the blockchain
+#    and the state
+#
+###############################################################################
+ledger:
+
+  blockchain:
+
+  state:
+    # stateDatabase - options are "goleveldb", "CouchDB"
+    # goleveldb - default state database stored in goleveldb.
+    # CouchDB - store state database in CouchDB
+    stateDatabase: goleveldb
+    couchDBConfig:
+       couchDBAddress: 127.0.0.1:5984
+       username:
+       password:
+
+    # historyDatabase - options are true or false
+    # Indicates if the history of key updates should be stored in goleveldb
+    historyDatabase: true
+
+    # Limit on the number of records to return per query
+    queryLimit: 10000

@@ -17,21 +17,25 @@ limitations under the License.
 package algo
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"fmt"
-	"sync/atomic"
-
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
-	requestWaitTime = time.Duration(200) * time.Millisecond
-	digestWaitTime = time.Duration(100) * time.Millisecond
-	responseWaitTime = time.Duration(200) * time.Millisecond
+	util.SetupTestLogging()
+	SetDigestWaitTime(time.Duration(100) * time.Millisecond)
+	SetRequestWaitTime(time.Duration(200) * time.Millisecond)
+	SetResponseWaitTime(time.Duration(200) * time.Millisecond)
 }
 
 type messageHook func(interface{})
@@ -89,7 +93,6 @@ func newPushPullTestInstance(name string, peers map[string]*pullTestInstance) *p
 				return
 			case m := <-inst.msgQueue:
 				inst.handleMessage(m)
-				break
 			}
 		}
 	}()
@@ -499,7 +502,84 @@ func TestSpread(t *testing.T) {
 		}
 	}
 	lock.Unlock()
+}
 
+func TestFilter(t *testing.T) {
+	t.Parallel()
+	// Scenario: 3 instances, items [0-5] are found only in the first instance, the other 2 have none.
+	//           and also the first instance only gives the 2nd instance even items, and odd items to the 3rd.
+	//           also, instances 2 and 3 don't know each other.
+	// Expected outcome: inst2 has only even items, and inst3 has only odd items
+	peers := make(map[string]*pullTestInstance)
+	inst1 := newPushPullTestInstance("p1", peers)
+	inst2 := newPushPullTestInstance("p2", peers)
+	inst3 := newPushPullTestInstance("p3", peers)
+	defer inst1.stop()
+	defer inst2.stop()
+	defer inst3.stop()
+
+	inst1.PullEngine.digFilter = func(context interface{}) func(digestItem string) bool {
+		return func(digestItem string) bool {
+			n, _ := strconv.ParseInt(digestItem, 10, 64)
+			if context == "p2" {
+				return n%2 == 0
+			}
+			return n%2 == 1
+		}
+	}
+
+	inst1.Add("0", "1", "2", "3", "4", "5")
+	inst2.setNextPeerSelection([]string{"p1"})
+	inst3.setNextPeerSelection([]string{"p1"})
+
+	time.Sleep(time.Second * 2)
+
+	assert.True(t, util.IndexInSlice(inst2.state.ToArray(), "0", Strcmp) != -1)
+	assert.True(t, util.IndexInSlice(inst2.state.ToArray(), "1", Strcmp) == -1)
+	assert.True(t, util.IndexInSlice(inst2.state.ToArray(), "2", Strcmp) != -1)
+	assert.True(t, util.IndexInSlice(inst2.state.ToArray(), "3", Strcmp) == -1)
+	assert.True(t, util.IndexInSlice(inst2.state.ToArray(), "4", Strcmp) != -1)
+	assert.True(t, util.IndexInSlice(inst2.state.ToArray(), "5", Strcmp) == -1)
+
+	assert.True(t, util.IndexInSlice(inst3.state.ToArray(), "0", Strcmp) == -1)
+	assert.True(t, util.IndexInSlice(inst3.state.ToArray(), "1", Strcmp) != -1)
+	assert.True(t, util.IndexInSlice(inst3.state.ToArray(), "2", Strcmp) == -1)
+	assert.True(t, util.IndexInSlice(inst3.state.ToArray(), "3", Strcmp) != -1)
+	assert.True(t, util.IndexInSlice(inst3.state.ToArray(), "4", Strcmp) == -1)
+	assert.True(t, util.IndexInSlice(inst3.state.ToArray(), "5", Strcmp) != -1)
+
+}
+
+func TestDefaultConfig(t *testing.T) {
+	preDigestWaitTime := util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime)
+	preRequestWaitTime := util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime)
+	preResponseWaitTime := util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime)
+	defer func() {
+		SetDigestWaitTime(preDigestWaitTime)
+		SetRequestWaitTime(preRequestWaitTime)
+		SetResponseWaitTime(preResponseWaitTime)
+	}()
+
+	// Check if we can read default duration when no properties are
+	// defined in config file.
+	viper.Reset()
+	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime))
+	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
+	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
+
+	// Check if the properties in the config file (core.yaml)
+	// are set to the desired duration.
+	viper.Reset()
+	viper.SetConfigName("core")
+	viper.SetEnvPrefix("CORE")
+	config.AddDevConfigPath(nil)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
+	assert.NoError(t, err)
+	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime))
+	assert.Equal(t, time.Duration(1)*time.Second, util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime))
+	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime))
 }
 
 func Strcmp(a interface{}, b interface{}) bool {

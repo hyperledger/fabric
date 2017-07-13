@@ -1,0 +1,223 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+---
+################################################################################
+#
+#   Profiles
+#
+#   - Different configuration profiles may be encoded here to be specified
+#   as parameters to the configtxgen tool. The profiles which specify consortiums
+#   are to be used for generating the orderer genesis block.  With the correct
+#   consortium members defined in the orderer genesis block, channel creation
+#   requests may be generated with only the org member names and a consortium name
+#
+################################################################################
+Profiles:
+
+    # SampleInsecureSolo defines a configuration which uses the Solo orderer,
+    # contains no MSP definitions, and allows all transactions and channel
+    # creation requests for the consortium SampleConsortium.
+    SampleInsecureSolo:
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *ExampleCom
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *Org1ExampleCom
+                    - *Org2ExampleCom
+
+    # SampleInsecureKafka defines a configuration that differs from the
+    # SampleInsecureSolo one only in that is uses the Kafka-based orderer.
+    SampleInsecureKafka:
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: kafka
+            Addresses:
+                - orderer0.example.com:7050
+                - orderer1.example.com:7050
+                - orderer2.example.com:7050
+            Organizations:
+                - *ExampleCom
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *ExampleCom
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *ExampleCom
+                    - *Org1ExampleCom
+                    - *Org2ExampleCom
+
+    # SampleSingleMSPSolo defines a configuration which uses the Solo orderer,
+    # and contains a single MSP definition (the MSP sampleconfig).
+    # The Consortium SampleConsortium has only a single member, SampleOrg
+    SampleSingleMSPSolo:
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *ExampleCom
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *ExampleCom
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *ExampleCom
+                    - *Org1ExampleCom
+                    - *Org2ExampleCom
+
+    # SampleEmptyInsecureChannel defines a channel with no members
+    # and therefore no access control
+    SampleEmptyInsecureChannel:
+        Consortium: SampleConsortium
+        Application:
+            Organizations:
+                - *ExampleCom
+
+    # SysTestChannel defines a channel for use with the System Test Orgs
+    SysTestChannel:
+        Consortium: SampleConsortium
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *Org1ExampleCom
+                - *Org2ExampleCom
+
+    # SampleSingleMSPChannel defines a channel with only the sample org as a
+    # member.  It is designed to be used in conjunction with SampleSingleMSPSolo
+    # and SampleSingleMSPKafka orderer profiles
+    SampleSingleMSPChannel:
+        Consortium: SampleConsortium
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *Org1ExampleCom
+                - *Org2ExampleCom
+
+################################################################################
+#
+#   Section: Organizations
+#
+#   - This section defines the different organizational identities which will
+#   be referenced later in the configuration.
+#
+################################################################################
+Organizations:
+
+    - &Org1
+        Name: Organization1
+        ID: Org1
+        MSPDir: ./peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp
+        AdminPrincipal: Role.ADMIN
+        AnchorPeers:
+            - Host: peer0.org1.example.com
+              Port: 7051
+
+    - &Org2
+        Name: Organization2
+        ID: Org2
+        MSPDir: ./peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp
+        AdminPrincipal: Role.MEMBER
+        AnchorPeers:
+            - Host: peer0.org2.example.com
+              Port: 7051
+
+    - &ExampleCom
+        Name: ExampleCom
+        ID: example.com
+        AdminPrincipal: Role.ADMIN
+        MSPDir: ./ordererOrganizations/example.com/msp
+
+    - &Org1ExampleCom
+        Name: Org1ExampleCom
+        ID: org1.example.com
+        MSPDir: ./peerOrganizations/org1.example.com/msp
+        AdminPrincipal: Role.ADMIN
+        AnchorPeers:
+            - Host: peer0.org1.example.com
+              Port: 7051
+
+    - &Org2ExampleCom
+        Name: Org2ExampleCom
+        ID: org2.example.com
+        MSPDir: ./peerOrganizations/org2.example.com/msp
+        AdminPrincipal: Role.ADMIN
+        AnchorPeers:
+            - Host: peer0.org2.example.com
+              Port: 7051
+
+################################################################################
+#
+#   SECTION: Orderer
+#
+#   - This section defines the values to encode into a config transaction or
+#   genesis block for orderer related parameters.
+#
+################################################################################
+Orderer: &OrdererDefaults
+
+    # Orderer Type: The orderer implementation to start.
+    # Available types are "solo" and "kafka".
+    OrdererType: solo
+
+    Addresses:
+        - orderer0.example.com:7050
+
+    # Batch Timeout: The amount of time to wait before creating a batch.
+    BatchTimeout: 2s
+
+    # Batch Size: Controls the number of messages batched into a block.
+    BatchSize:
+
+        # Max Message Count: The maximum number of messages to permit in a
+        # batch.
+        MaxMessageCount: 10
+
+        # Absolute Max Bytes: The absolute maximum number of bytes allowed for
+        # the serialized messages in a batch. If the "kafka" OrdererType is
+        # selected, set 'message.max.bytes' and 'replica.fetch.max.bytes' on the
+        # Kafka brokers to a value that is larger than this one.
+        AbsoluteMaxBytes: 98 MB
+
+        # Preferred Max Bytes: The preferred maximum number of bytes allowed for
+        # the serialized messages in a batch. A message larger than the
+        # preferred max bytes will result in a batch larger than preferred max
+        # bytes.
+        PreferredMaxBytes: 512 KB
+
+    # Max Channels is the maximum number of channels to allow on the ordering
+    # network. When set to 0, this implies no maximum number of channels.
+    MaxChannels: 0
+
+    Kafka:
+        # Brokers: A list of Kafka brokers to which the orderer connects.
+        # NOTE: Use IP:port notation
+        Brokers:
+            - kafka0:9092
+            - kafka1:9092
+            - kafka2:9092
+            - kafka3:9092
+
+    # Organizations is the list of orgs which are defined as participants on
+    # the orderer side of the network.
+    Organizations:
+
+################################################################################
+#
+#   SECTION: Application
+#
+#   - This section defines the values to encode into a config transaction or
+#   genesis block for application related parameters.
+#
+################################################################################
+Application: &ApplicationDefaults
+
+    # Organizations is the list of orgs which are defined as participants on
+    # the application side of the network.
+    Organizations:

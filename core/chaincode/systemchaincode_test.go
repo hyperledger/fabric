@@ -22,9 +22,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/system_chaincode/samplesyscc"
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/core/scc/samplesyscc"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -32,12 +34,12 @@ import (
 )
 
 type oldSysCCInfo struct {
-	origSystemCC       []*SystemChaincode
+	origSystemCC       []*scc.SystemChaincode
 	origSysCCWhitelist map[string]string
 }
 
 func (osyscc *oldSysCCInfo) reset() {
-	systemChaincodes = osyscc.origSystemCC
+	scc.MockResetSysCCs(osyscc.origSystemCC)
 	viper.Set("chaincode.system", osyscc.origSysCCWhitelist)
 }
 
@@ -49,6 +51,12 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 
 	peer.MockInitialize()
 
+	mspGetter := func(cid string) []string {
+		return []string{"DEFAULT"}
+	}
+
+	peer.MockSetMSPIDGetter(mspGetter)
+
 	//use a different address than what we usually use for "peer"
 	//we override the peerAddress set in chaincode_support.go
 	// FIXME: Use peer.GetLocalAddress()
@@ -59,7 +67,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 	}
 
 	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
-		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
+		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
 	}
 
 	ccStartupTimeout := time.Duration(5000) * time.Millisecond
@@ -67,45 +75,48 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 
 	go grpcServer.Serve(lis)
 
-	sysccinfo := &oldSysCCInfo{systemChaincodes, viper.GetStringMapString("chaincode.system")}
-
 	//set systemChaincodes to sample
-	systemChaincodes = []*SystemChaincode{
+	sysccs := []*scc.SystemChaincode{
 		{
 			Enabled:   true,
 			Name:      "sample_syscc",
-			Path:      "github.com/hyperledger/fabric/core/system_chaincode/samplesyscc",
+			Path:      "github.com/hyperledger/fabric/core/scc/samplesyscc",
 			InitArgs:  [][]byte{},
 			Chaincode: &samplesyscc.SampleSysCC{},
 		},
 	}
 
+	sysccinfo := &oldSysCCInfo{origSysCCWhitelist: viper.GetStringMapString("chaincode.system")}
+
 	// System chaincode has to be enabled
 	viper.Set("chaincode.system", map[string]string{"sample_syscc": "true"})
 
-	RegisterSysCCs()
+	sysccinfo.origSystemCC = scc.MockRegisterSysCCs(sysccs)
 
 	/////^^^ system initialization completed ^^^
 	return sysccinfo, lis, nil
 }
 
 func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error {
-	DeploySysCCs(chainID)
+	scc.DeploySysCCs(chainID)
 
-	url := "github.com/hyperledger/fabric/core/system_chaincode/sample_syscc"
+	defer scc.DeDeploySysCCs(chainID)
 
-	cdsforStop := &pb.ChaincodeDeploymentSpec{ExecEnv: 1, ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}}
+	url := "github.com/hyperledger/fabric/core/scc/sample_syscc"
+
+	sysCCVers := util.GetSysCCVersion()
 
 	f := "putval"
 	args := util.ToChaincodeArgs(f, "greeting", "hey there")
 
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
+	// the ledger is created with genesis block. Start block number 1 onwards
+	var nextBlockNumber uint64 = 1
+	_, _, _, err := invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber, nil)
+	nextBlockNumber++
 
-	sysCCVers := util.GetSysCCVersion()
-
-	_, _, _, err := invokeWithVersion(ctxt, chainID, sysCCVers, spec)
-
-	cccid := NewCCContext(chainID, "sample_syscc", sysCCVers, "", true, nil)
+	cccid := ccprovider.NewCCContext(chainID, "sample_syscc", sysCCVers, "", true, nil, nil)
+	cdsforStop := &pb.ChaincodeDeploymentSpec{ExecEnv: 1, ChaincodeSpec: spec}
 	if err != nil {
 		theChaincodeSupport.Stop(ctxt, cccid, cdsforStop)
 		t.Logf("Error invoking sample_syscc: %s", err)
@@ -114,8 +125,8 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 
 	f = "getval"
 	args = util.ToChaincodeArgs(f, "greeting")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invokeWithVersion(ctxt, chainID, sysCCVers, spec)
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, _, err = invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber, nil)
 	if err != nil {
 		theChaincodeSupport.Stop(ctxt, cccid, cdsforStop)
 		t.Logf("Error invoking sample_syscc: %s", err)
@@ -129,6 +140,7 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 
 // Test deploy of a transaction.
 func TestExecuteDeploySysChaincode(t *testing.T) {
+	testForSkip(t)
 	sysccinfo, lis, err := initSysCCTests()
 	if err != nil {
 		t.Fail()
@@ -160,6 +172,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 
 // Test multichains
 func TestMultichains(t *testing.T) {
+	testForSkip(t)
 	sysccinfo, lis, err := initSysCCTests()
 	if err != nil {
 		t.Fail()

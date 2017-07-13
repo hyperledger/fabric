@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // NewKeyPerInvoke is allows the following transactions
@@ -29,31 +30,35 @@ type NewKeyPerInvoke struct {
 }
 
 //Init implements chaincode's Init interface
-func (t *NewKeyPerInvoke) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	return nil, nil
+func (t *NewKeyPerInvoke) Init(stub shim.ChaincodeStubInterface) pb.Response {
+	return shim.Success(nil)
 }
 
 //Invoke implements chaincode's Invoke interface
-func (t *NewKeyPerInvoke) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (t *NewKeyPerInvoke) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	args := stub.GetArgs()
 	if len(args) < 2 {
-		return nil, fmt.Errorf("invalid number of args %d", len(args))
+		return shim.Error(fmt.Sprintf("invalid number of args %d", len(args)))
 	}
 	f := string(args[0])
 	if f == "put" {
 		if len(args) < 3 {
-			return nil, fmt.Errorf("invalid number of args for put %d", len(args))
+			return shim.Error(fmt.Sprintf("invalid number of args for put %d", len(args)))
 		}
 		err := stub.PutState(string(args[1]), args[2])
 		if err != nil {
-			return nil, err
+			return shim.Error(err.Error())
 		}
-		return []byte("OK"), nil
+		return shim.Success([]byte("OK"))
 	} else if f == "get" {
 		// Get the state from the ledger
-		return stub.GetState(string(args[1]))
+		val, err := stub.GetState(string(args[1]))
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		return shim.Success(val)
 	}
-	return nil, fmt.Errorf("unknown function %s", f)
+	return shim.Error(fmt.Sprintf("unknown function %s", f))
 }
 
 func main() {

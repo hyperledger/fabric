@@ -17,68 +17,133 @@ limitations under the License.
 package golang
 
 import (
-	"archive/tar"
+	"errors"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/spf13/viper"
+	"os"
+	"path/filepath"
 
-	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/hyperledger/fabric/common/flogging"
+	ccutil "github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-//tw is expected to have the chaincode in it from GenerateHashcode. This method
-//will just package rest of the bytes
-func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
+var includeFileTypes = map[string]bool{
+	".c":    true,
+	".h":    true,
+	".go":   true,
+	".yaml": true,
+	".json": true,
+}
 
-	var urlLocation string
-	if strings.HasPrefix(spec.ChaincodeID.Path, "http://") {
-		urlLocation = spec.ChaincodeID.Path[7:]
-	} else if strings.HasPrefix(spec.ChaincodeID.Path, "https://") {
-		urlLocation = spec.ChaincodeID.Path[8:]
-	} else {
-		urlLocation = spec.ChaincodeID.Path
-	}
+var logger = flogging.MustGetLogger("golang-platform")
 
-	if urlLocation == "" {
-		return fmt.Errorf("empty url location")
-	}
-
-	if strings.LastIndex(urlLocation, "/") == len(urlLocation)-1 {
-		urlLocation = urlLocation[:len(urlLocation)-1]
-	}
-	toks := strings.Split(urlLocation, "/")
-	if toks == nil || len(toks) == 0 {
-		return fmt.Errorf("cannot get path components from %s", urlLocation)
-	}
-
-	chaincodeGoName := toks[len(toks)-1]
-	if chaincodeGoName == "" {
-		return fmt.Errorf("could not get chaincode name from path %s", urlLocation)
-	}
-
-	//let the executable's name be chaincode ID's name
-	newRunLine := fmt.Sprintf("RUN go install %s && cp src/github.com/hyperledger/fabric/peer/core.yaml $GOPATH/bin && mv $GOPATH/bin/%s $GOPATH/bin/%s", urlLocation, chaincodeGoName, spec.ChaincodeID.Name)
-
-	//NOTE-this could have been abstracted away so we could use it for all platforms in a common manner
-	//However, it would still be docker specific. Hence any such abstraction has to be done in a manner that
-	//is not just language dependent but also container depenedent. So lets make this change per platform for now
-	//in the interest of avoiding over-engineering without proper abstraction
-	if viper.GetBool("peer.tls.enabled") {
-		newRunLine = fmt.Sprintf("%s\nCOPY src/certs/cert.pem %s", newRunLine, viper.GetString("peer.tls.cert.file"))
-	}
-
-	dockerFileContents := fmt.Sprintf("%s\n%s", cutil.GetDockerfileFromConfig("chaincode.golang.Dockerfile"), newRunLine)
-	dockerFileSize := int64(len([]byte(dockerFileContents)))
-
-	//Make headers identical by using zero time
-	var zeroTime time.Time
-	tw.WriteHeader(&tar.Header{Name: "Dockerfile", Size: dockerFileSize, ModTime: zeroTime, AccessTime: zeroTime, ChangeTime: zeroTime})
-	tw.Write([]byte(dockerFileContents))
-	err := cutil.WriteGopathSrc(tw, urlLocation)
+func getCodeFromFS(path string) (codegopath string, err error) {
+	logger.Debugf("getCodeFromFS %s", path)
+	gopath, err := getGopath()
 	if err != nil {
-		return fmt.Errorf("Error writing Chaincode package contents: %s", err)
+		return "", err
 	}
-	return nil
+
+	tmppath := filepath.Join(gopath, "src", path)
+	if err := ccutil.IsCodeExist(tmppath); err != nil {
+		return "", fmt.Errorf("code does not exist %s", err)
+	}
+
+	return gopath, nil
+}
+
+type CodeDescriptor struct {
+	Gopath, Pkg string
+	Cleanup     func()
+}
+
+// collectChaincodeFiles collects chaincode files. If path is a HTTP(s) url it
+// downloads the code first.
+//
+//NOTE: for dev mode, user builds and runs chaincode manually. The name provided
+//by the user is equivalent to the path.
+func getCode(spec *pb.ChaincodeSpec) (*CodeDescriptor, error) {
+	if spec == nil {
+		return nil, errors.New("Cannot collect files from nil spec")
+	}
+
+	chaincodeID := spec.ChaincodeId
+	if chaincodeID == nil || chaincodeID.Path == "" {
+		return nil, errors.New("Cannot collect files from empty chaincode path")
+	}
+
+	// code root will point to the directory where the code exists
+	var gopath string
+	gopath, err := getCodeFromFS(chaincodeID.Path)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting code %s", err)
+	}
+
+	return &CodeDescriptor{Gopath: gopath, Pkg: chaincodeID.Path, Cleanup: nil}, nil
+}
+
+type SourceDescriptor struct {
+	Name, Path string
+	Info       os.FileInfo
+}
+type SourceMap map[string]SourceDescriptor
+
+type Sources []SourceDescriptor
+
+func (s Sources) Len() int {
+	return len(s)
+}
+
+func (s Sources) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s Sources) Less(i, j int) bool {
+	return strings.Compare(s[i].Name, s[j].Name) < 0
+}
+
+func findSource(gopath, pkg string) (SourceMap, error) {
+	sources := make(SourceMap)
+	tld := filepath.Join(gopath, "src", pkg)
+	walkFn := func(path string, info os.FileInfo, err error) error {
+
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			if path == tld {
+				// We dont want to import any directories, but we don't want to stop processing
+				// at the TLD either.
+				return nil
+			}
+
+			// Do not recurse
+			logger.Debugf("skipping dir: %s", path)
+			return filepath.SkipDir
+		}
+
+		ext := filepath.Ext(path)
+		// we only want 'fileTypes' source files at this point
+		if _, ok := includeFileTypes[ext]; ok != true {
+			return nil
+		}
+
+		name, err := filepath.Rel(gopath, path)
+		if err != nil {
+			return fmt.Errorf("error obtaining relative path for %s: %s", path, err)
+		}
+
+		sources[name] = SourceDescriptor{Name: name, Path: path, Info: info}
+
+		return nil
+	}
+
+	if err := filepath.Walk(tld, walkFn); err != nil {
+		return nil, fmt.Errorf("Error walking directory: %s", err)
+	}
+
+	return sources, nil
 }

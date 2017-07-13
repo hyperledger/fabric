@@ -1,0 +1,2 @@
+sdk=node userInputs/samplecc-chan1-burst-i.json
+#sdk=node userInputs/samplecc-chan2-burst-i.json

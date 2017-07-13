@@ -1,7 +1,7 @@
 {"Chaincodes":
   [
        {"Name": "mycc",
-	"InitArgs":[""], 
+	"InitArgs":[""],
         "Path": "github.com/hyperledger/fabric/examples/ccchecker/chaincodes/newkeyperinvoke",
 	"NumFinalQueryAttempts": 10,
 	"NumberOfInvokes": 10,
@@ -14,5 +14,5 @@
        }
    ],
  "TimeoutToAbortSecs": 60,
- "ChainName": "**TEST_CHAINID**"
+ "ChainName": "testchainid"
 }

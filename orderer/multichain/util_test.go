@@ -19,6 +19,9 @@ package multichain
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
+	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -27,18 +30,26 @@ import (
 type mockConsenter struct {
 }
 
-func (mc *mockConsenter) HandleChain(support ConsenterSupport) (Chain, error) {
+func (mc *mockConsenter) HandleChain(support ConsenterSupport, metadata *cb.Metadata) (Chain, error) {
 	return &mockChain{
-		queue:   make(chan *cb.Envelope),
-		cutter:  support.BlockCutter(),
-		support: support,
+		queue:    make(chan *cb.Envelope),
+		cutter:   support.BlockCutter(),
+		support:  support,
+		metadata: metadata,
+		done:     make(chan struct{}),
 	}, nil
 }
 
 type mockChain struct {
-	queue   chan *cb.Envelope
-	support ConsenterSupport
-	cutter  blockcutter.Receiver
+	queue    chan *cb.Envelope
+	cutter   blockcutter.Receiver
+	support  ConsenterSupport
+	metadata *cb.Metadata
+	done     chan struct{}
+}
+
+func (mch *mockChain) Errored() <-chan struct{} {
+	return nil
 }
 
 func (mch *mockChain) Enqueue(env *cb.Envelope) bool {
@@ -48,6 +59,7 @@ func (mch *mockChain) Enqueue(env *cb.Envelope) bool {
 
 func (mch *mockChain) Start() {
 	go func() {
+		defer close(mch.done)
 		for {
 			msg, ok := <-mch.queue
 			if !ok {
@@ -55,7 +67,8 @@ func (mch *mockChain) Start() {
 			}
 			batches, committers, _ := mch.cutter.Ordered(msg)
 			for i, batch := range batches {
-				mch.support.WriteBlock(batch, nil, committers[i])
+				block := mch.support.CreateNextBlock(batch)
+				mch.support.WriteBlock(block, committers[i], nil)
 			}
 		}
 	}()
@@ -65,38 +78,53 @@ func (mch *mockChain) Halt() {
 	close(mch.queue)
 }
 
-type mockLedgerWriter struct {
-}
-
-func (mlw *mockLedgerWriter) Append(blockContents []*cb.Envelope, metadata [][]byte) *cb.Block {
-	logger.Debugf("Committed block")
-	return nil
-}
-
 func makeConfigTx(chainID string, i int) *cb.Envelope {
-	return makeConfigTxWithItems(chainID, &cb.ConfigurationItem{
+	group := cb.NewConfigGroup()
+	group.Groups[config.OrdererGroupKey] = cb.NewConfigGroup()
+	group.Groups[config.OrdererGroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
 		Value: []byte(fmt.Sprintf("%d", i)),
-	})
+	}
+	configTemplate := configtx.NewSimpleTemplate(group)
+	configEnv, err := configTemplate.Envelope(chainID)
+	if err != nil {
+		panic(err)
+	}
+	return makeConfigTxFromConfigUpdateEnvelope(chainID, configEnv)
 }
 
-func makeConfigTxWithItems(chainID string, items ...*cb.ConfigurationItem) *cb.Envelope {
-	signedItems := make([]*cb.SignedConfigurationItem, len(items))
-	for i, item := range items {
-		signedItems[i] = &cb.SignedConfigurationItem{
-			ConfigurationItem: utils.MarshalOrPanic(item),
-		}
+func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
+	result, err := utils.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, provisional.TestChainID, mockCrypto(), env, msgVersion, epoch)
+	if err != nil {
+		panic(err)
 	}
+	return result
+}
 
+func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
+	configUpdateTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, msgVersion, epoch)
+	if err != nil {
+		panic(err)
+	}
+	configTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
+		Config:     &cb.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
+		LastUpdate: configUpdateTx},
+		msgVersion, epoch)
+	if err != nil {
+		panic(err)
+	}
+	return configTx
+}
+
+func makeNormalTx(chainID string, i int) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				Type:    int32(cb.HeaderType_CONFIGURATION_TRANSACTION),
-				ChainID: chainID,
-			},
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				Type:      int32(cb.HeaderType_ENDORSER_TRANSACTION),
+				ChannelId: chainID,
+			}),
+			SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 		},
-		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{
-			Items: signedItems,
-		}),
+		Data: []byte(fmt.Sprintf("%d", i)),
 	}
 	return &cb.Envelope{
 		Payload: utils.MarshalOrPanic(payload),

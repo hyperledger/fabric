@@ -1,0 +1,21 @@
+<!--
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+-->
+<div>
+    {% set msgClassModule = directory.__class__.__module__ %}
+    {% set msgClassName = directory.__class__.__name__ %}
+    {% set msgVarName = [msgClassName[0]|lower,msgClassName[1:]]|join('') %}
+    <div class="scrollBox">
+<code>
+from steps import contexthelper
+from steps import compose
+context = contexthelper.Context()
+composition = compose.Composition(context=context, projectName='{{ compose_project_name }}', composeFilesYaml='{{  docker_compose_yml_file }}', register_and_up=False)
+
+</code>
+    </div>
+</div>

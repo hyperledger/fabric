@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"github.com/golang/protobuf/ptypes/empty"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	context "golang.org/x/net/context"
@@ -55,4 +56,41 @@ func (m *mockBroadcastClient) Send(env *cb.Envelope) error {
 
 func (m *mockBroadcastClient) Close() error {
 	return nil
+}
+
+func GetMockAdminClient(err error) pb.AdminClient {
+	return &mockAdminClient{err: err}
+}
+
+type mockAdminClient struct {
+	status *pb.ServerStatus
+	err    error
+}
+
+func (m *mockAdminClient) GetStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*pb.ServerStatus, error) {
+	return m.status, m.err
+}
+
+func (m *mockAdminClient) StartServer(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*pb.ServerStatus, error) {
+	m.status = &pb.ServerStatus{Status: pb.ServerStatus_STARTED}
+	return m.status, m.err
+}
+
+func (m *mockAdminClient) StopServer(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*pb.ServerStatus, error) {
+	m.status = &pb.ServerStatus{Status: pb.ServerStatus_STOPPED}
+	return m.status, m.err
+}
+
+func (m *mockAdminClient) GetModuleLogLevel(ctx context.Context, in *pb.LogLevelRequest, opts ...grpc.CallOption) (*pb.LogLevelResponse, error) {
+	response := &pb.LogLevelResponse{LogModule: in.LogModule, LogLevel: "INFO"}
+	return response, m.err
+}
+
+func (m *mockAdminClient) SetModuleLogLevel(ctx context.Context, in *pb.LogLevelRequest, opts ...grpc.CallOption) (*pb.LogLevelResponse, error) {
+	response := &pb.LogLevelResponse{LogModule: in.LogModule, LogLevel: in.LogLevel}
+	return response, m.err
+}
+
+func (m *mockAdminClient) RevertLogLevels(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
+	return &empty.Empty{}, m.err
 }

@@ -66,6 +66,11 @@ const (
 	// an error will be returned.
 	SHA = "SHA"
 
+	// SHA2 is an identifier for SHA2 hash family
+	SHA2 = "SHA2"
+	// SHA3 is an identifier for SHA3 hash family
+	SHA3 = "SHA3"
+
 	// SHA256
 	SHA256 = "SHA256"
 	// SHA384

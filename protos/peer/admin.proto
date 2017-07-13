@@ -1,0 +1,59 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+option java_package = "org.hyperledger.fabric.protos.peer";
+option java_outer_classname = "AdminPackage";
+option go_package = "github.com/hyperledger/fabric/protos/peer";
+
+package protos;
+
+import "google/protobuf/empty.proto";
+
+// Interface exported by the server.
+service Admin {
+    // Return the serve status.
+    rpc GetStatus(google.protobuf.Empty) returns (ServerStatus) {}
+    rpc StartServer(google.protobuf.Empty) returns (ServerStatus) {}
+    rpc GetModuleLogLevel(LogLevelRequest) returns (LogLevelResponse) {}
+    rpc SetModuleLogLevel(LogLevelRequest) returns (LogLevelResponse) {}
+    rpc RevertLogLevels(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}
+
+message ServerStatus {
+
+    enum StatusCode {
+        UNDEFINED = 0;
+        STARTED = 1;
+        STOPPED = 2;
+        PAUSED = 3;
+        ERROR = 4;
+        UNKNOWN = 5;
+    }
+
+    StatusCode status = 1;
+
+}
+message LogLevelRequest {
+	string log_module = 1;
+	string log_level = 2;
+}
+
+message LogLevelResponse {
+	string log_module = 1;
+	string log_level = 2;
+}

@@ -1,0 +1,28 @@
+<!--
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+-->
+<div id="{{ step_id }}">
+    <h2>{{ step_id }}</h2>
+    <hr/>
+    <h3>{{ step.keyword }} {{ step.name }}</h3>
+    {% if step.table %}
+    <table>
+        <tr>
+            {% for heading in step.table.headings %}
+            <th>{{ heading }}</th>
+            {% endfor %}
+        </tr>
+        {% for row in step.table.rows %}
+        <tr>
+            {% for cell in row %}
+            <td>{{ cell }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+</div>

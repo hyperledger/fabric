@@ -17,209 +17,208 @@ limitations under the License.
 package config
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/viperutil"
 
 	"github.com/Shopify/sarama"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+
+	cf "github.com/hyperledger/fabric/core/config"
+
+	"path/filepath"
+
+	bccsp "github.com/hyperledger/fabric/bccsp/factory"
 )
 
-var logger = logging.MustGetLogger("orderer/config")
+const (
+	pkgLogID = "orderer/localconfig"
+
+	// Prefix identifies the prefix for the orderer-related ENV vars.
+	Prefix = "ORDERER"
+)
+
+var (
+	logger *logging.Logger
+
+	configName string
+)
 
 func init() {
-	logging.SetLevel(logging.ERROR, "")
+	logger = flogging.MustGetLogger(pkgLogID)
+	flogging.SetModuleLevel(pkgLogID, "error")
+
+	configName = strings.ToLower(Prefix)
 }
 
-// Prefix is the default config prefix for the orderer
-const Prefix string = "ORDERER"
-
-// General contains config which should be common among all orderer types
-type General struct {
-	OrdererType   string
-	LedgerType    string
-	BatchTimeout  time.Duration
-	QueueSize     uint32
-	MaxWindowSize uint32
-	ListenAddress string
-	ListenPort    uint16
-	GenesisMethod string
-	BatchSize     BatchSize
-	GenesisFile   string
-	Profile       Profile
-	LogLevel      string
-}
-
-// BatchSize contains configuration affecting the size of batches
-type BatchSize struct {
-	MaxMessageCount uint32
-}
-
-// Profile contains configuration for Go pprof profiling
-type Profile struct {
-	Enabled bool
-	Address string
-}
-
-// RAMLedger contains config for the RAM ledger
-type RAMLedger struct {
-	HistorySize uint
-}
-
-// FileLedger contains config for the File ledger
-type FileLedger struct {
-	Location string
-	Prefix   string
-}
-
-// Kafka contains config for the Kafka orderer
-type Kafka struct {
-	Brokers []string // TODO This should be deprecated and this information should be stored in the config block
-	Retry   Retry
-	Verbose bool
-	Version sarama.KafkaVersion
-}
-
-// Retry contains config for the reconnection attempts to the Kafka brokers
-type Retry struct {
-	Period time.Duration
-	Stop   time.Duration
-}
-
-// TopLevel directly corresponds to the orderer config yaml
+// TopLevel directly corresponds to the orderer config YAML.
 // Note, for non 1-1 mappings, you may append
 // something like `mapstructure:"weirdFoRMat"` to
 // modify the default mapping, see the "Unmarshal"
 // section of https://github.com/spf13/viper for more info
 type TopLevel struct {
 	General    General
-	RAMLedger  RAMLedger
 	FileLedger FileLedger
+	RAMLedger  RAMLedger
 	Kafka      Kafka
+}
+
+// General contains config which should be common among all orderer types.
+type General struct {
+	LedgerType     string
+	ListenAddress  string
+	ListenPort     uint16
+	TLS            TLS
+	GenesisMethod  string
+	GenesisProfile string
+	GenesisFile    string
+	Profile        Profile
+	LogLevel       string
+	LocalMSPDir    string
+	LocalMSPID     string
+	BCCSP          *bccsp.FactoryOpts
+}
+
+// TLS contains config for TLS connections.
+type TLS struct {
+	Enabled           bool
+	PrivateKey        string
+	Certificate       string
+	RootCAs           []string
+	ClientAuthEnabled bool
+	ClientRootCAs     []string
+}
+
+// Profile contains configuration for Go pprof profiling.
+type Profile struct {
+	Enabled bool
+	Address string
+}
+
+// FileLedger contains configuration for the file-based ledger.
+type FileLedger struct {
+	Location string
+	Prefix   string
+}
+
+// RAMLedger contains configuration for the RAM ledger.
+type RAMLedger struct {
+	HistorySize uint
+}
+
+// Kafka contains configuration for the Kafka-based orderer.
+type Kafka struct {
+	Retry   Retry
+	Verbose bool
+	Version sarama.KafkaVersion // TODO Move this to global config
+	TLS     TLS
+}
+
+// Retry contains configuration related to retries and timeouts when the
+// connection to the Kafka cluster cannot be established, or when Metadata
+// requests needs to be repeated (because the cluster is in the middle of a
+// leader election).
+type Retry struct {
+	ShortInterval   time.Duration
+	ShortTotal      time.Duration
+	LongInterval    time.Duration
+	LongTotal       time.Duration
+	NetworkTimeouts NetworkTimeouts
+	Metadata        Metadata
+	Producer        Producer
+	Consumer        Consumer
+}
+
+// NetworkTimeouts contains the socket timeouts for network requests to the
+// Kafka cluster.
+type NetworkTimeouts struct {
+	DialTimeout  time.Duration
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+}
+
+// Metadata contains configuration for the metadata requests to the Kafka
+// cluster.
+type Metadata struct {
+	RetryMax     int
+	RetryBackoff time.Duration
+}
+
+// Producer contains configuration for the producer's retries when failing to
+// post a message to a Kafka partition.
+type Producer struct {
+	RetryMax     int
+	RetryBackoff time.Duration
+}
+
+// Consumer contains configuration for the consumer's retries when failing to
+// read from a Kafa partition.
+type Consumer struct {
+	RetryBackoff time.Duration
 }
 
 var defaults = TopLevel{
 	General: General{
-		OrdererType:   "solo",
-		LedgerType:    "ram",
-		BatchTimeout:  10 * time.Second,
-		QueueSize:     1000,
-		MaxWindowSize: 1000,
-		ListenAddress: "127.0.0.1",
-		ListenPort:    7050,
-		GenesisMethod: "provisional",
-		BatchSize: BatchSize{
-			MaxMessageCount: 10,
-		},
-		GenesisFile: "./genesisblock",
+		LedgerType:     "file",
+		ListenAddress:  "127.0.0.1",
+		ListenPort:     7050,
+		GenesisMethod:  "provisional",
+		GenesisProfile: "SampleSingleMSPSolo",
+		GenesisFile:    "genesisblock",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
 		},
-		LogLevel: "INFO",
+		LogLevel:    "INFO",
+		LocalMSPDir: "msp",
+		LocalMSPID:  "DEFAULT",
+		BCCSP:       bccsp.GetDefaultOpts(),
 	},
 	RAMLedger: RAMLedger{
 		HistorySize: 10000,
 	},
 	FileLedger: FileLedger{
-		Location: "",
-		Prefix:   "hyperledger-fabric-rawledger",
+		Location: "/var/hyperledger/production/orderer",
+		Prefix:   "hyperledger-fabric-ordererledger",
 	},
 	Kafka: Kafka{
-		Brokers: []string{"127.0.0.1:9092"},
 		Retry: Retry{
-			Period: 3 * time.Second,
-			Stop:   60 * time.Second,
+			ShortInterval: 1 * time.Minute,
+			ShortTotal:    10 * time.Minute,
+			LongInterval:  10 * time.Minute,
+			LongTotal:     12 * time.Hour,
+			NetworkTimeouts: NetworkTimeouts{
+				DialTimeout:  30 * time.Second,
+				ReadTimeout:  30 * time.Second,
+				WriteTimeout: 30 * time.Second,
+			},
+			Metadata: Metadata{
+				RetryBackoff: 250 * time.Millisecond,
+				RetryMax:     3,
+			},
+			Producer: Producer{
+				RetryBackoff: 100 * time.Millisecond,
+				RetryMax:     3,
+			},
+			Consumer: Consumer{
+				RetryBackoff: 2 * time.Second,
+			},
 		},
 		Verbose: false,
 		Version: sarama.V0_9_0_1,
+		TLS: TLS{
+			Enabled: false,
+		},
 	},
-}
-
-func (c *TopLevel) completeInitialization() {
-	defer logger.Infof("Validated configuration to: %+v", c)
-
-	for {
-		switch {
-		case c.General.OrdererType == "":
-			logger.Infof("General.OrdererType unset, setting to %s", defaults.General.OrdererType)
-			c.General.OrdererType = defaults.General.OrdererType
-		case c.General.LedgerType == "":
-			logger.Infof("General.LedgerType unset, setting to %s", defaults.General.LedgerType)
-			c.General.LedgerType = defaults.General.LedgerType
-		case c.General.BatchTimeout == 0:
-			logger.Infof("General.BatchTimeout unset, setting to %s", defaults.General.BatchTimeout)
-			c.General.BatchTimeout = defaults.General.BatchTimeout
-		case c.General.BatchSize.MaxMessageCount == 0:
-			logger.Infof("General.BatchSize.MaxMessageCount unset, setting to %s", defaults.General.BatchSize.MaxMessageCount)
-			c.General.BatchSize.MaxMessageCount = defaults.General.BatchSize.MaxMessageCount
-		case c.General.QueueSize == 0:
-			logger.Infof("General.QueueSize unset, setting to %s", defaults.General.QueueSize)
-			c.General.QueueSize = defaults.General.QueueSize
-		case c.General.MaxWindowSize == 0:
-			logger.Infof("General.MaxWindowSize unset, setting to %s", defaults.General.MaxWindowSize)
-			c.General.MaxWindowSize = defaults.General.MaxWindowSize
-		case c.General.ListenAddress == "":
-			logger.Infof("General.ListenAddress unset, setting to %s", defaults.General.ListenAddress)
-			c.General.ListenAddress = defaults.General.ListenAddress
-		case c.General.ListenPort == 0:
-			logger.Infof("General.ListenPort unset, setting to %s", defaults.General.ListenPort)
-			c.General.ListenPort = defaults.General.ListenPort
-		case c.General.LogLevel == "":
-			logger.Infof("General.LogLevel unset, setting to %s", defaults.General.LogLevel)
-			c.General.LogLevel = defaults.General.LogLevel
-		case c.General.GenesisMethod == "":
-			c.General.GenesisMethod = defaults.General.GenesisMethod
-		case c.General.GenesisFile == "":
-			c.General.GenesisFile = defaults.General.GenesisFile
-		case c.General.Profile.Enabled && (c.General.Profile.Address == ""):
-			logger.Infof("Profiling enabled and General.Profile.Address unset, setting to %s", defaults.General.Profile.Address)
-			c.General.Profile.Address = defaults.General.Profile.Address
-		case c.FileLedger.Prefix == "":
-			logger.Infof("FileLedger.Prefix unset, setting to %s", defaults.FileLedger.Prefix)
-			c.FileLedger.Prefix = defaults.FileLedger.Prefix
-		case c.Kafka.Brokers == nil:
-			logger.Infof("Kafka.Brokers unset, setting to %v", defaults.Kafka.Brokers)
-			c.Kafka.Brokers = defaults.Kafka.Brokers
-		case c.Kafka.Retry.Period == 0*time.Second:
-			logger.Infof("Kafka.Retry.Period unset, setting to %v", defaults.Kafka.Retry.Period)
-			c.Kafka.Retry.Period = defaults.Kafka.Retry.Period
-		case c.Kafka.Retry.Stop == 0*time.Second:
-			logger.Infof("Kafka.Retry.Stop unset, setting to %v", defaults.Kafka.Retry.Stop)
-			c.Kafka.Retry.Stop = defaults.Kafka.Retry.Stop
-		default:
-			// A bit hacky, but its type makes it impossible to test for a nil value.
-			// This may be overwritten by the Kafka orderer upon instantiation.
-			c.Kafka.Version = defaults.Kafka.Version
-			return
-		}
-	}
 }
 
 // Load parses the orderer.yaml file and environment, producing a struct suitable for config use
 func Load() *TopLevel {
 	config := viper.New()
-
-	config.SetConfigName("orderer")
-	alternativeCfgPath := os.Getenv("ORDERER_CFG_PATH")
-	if alternativeCfgPath != "" {
-		logger.Infof("User defined config file path: %s", alternativeCfgPath)
-		config.AddConfigPath(alternativeCfgPath) // Path to look for the config file in
-	} else {
-		config.AddConfigPath("./")
-		config.AddConfigPath("../../.")
-		config.AddConfigPath("../orderer/")
-		config.AddConfigPath("../../orderer/")
-		// Path to look for the config file in based on GOPATH
-		gopath := os.Getenv("GOPATH")
-		for _, p := range filepath.SplitList(gopath) {
-			ordererPath := filepath.Join(p, "src/github.com/hyperledger/fabric/orderer/")
-			config.AddConfigPath(ordererPath)
-		}
-	}
+	cf.InitViper(config, configName)
 
 	// for environment variables
 	config.SetEnvPrefix(Prefix)
@@ -229,17 +228,133 @@ func Load() *TopLevel {
 
 	err := config.ReadInConfig()
 	if err != nil {
-		panic(fmt.Errorf("Error reading %s plugin config: %s", Prefix, err))
+		logger.Panic("Error reading configuration:", err)
 	}
 
 	var uconf TopLevel
-
-	err = ExactWithDateUnmarshal(config, &uconf)
+	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
 	if err != nil {
-		panic(fmt.Errorf("Error unmarshaling into structure: %s", err))
+		logger.Panic("Error unmarshaling config into struct:", err)
 	}
 
-	uconf.completeInitialization()
+	uconf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
 
 	return &uconf
+}
+
+func (c *TopLevel) completeInitialization(configDir string) {
+	defer func() {
+		// Translate any paths
+		c.General.TLS.RootCAs = translateCAs(configDir, c.General.TLS.RootCAs)
+		c.General.TLS.ClientRootCAs = translateCAs(configDir, c.General.TLS.ClientRootCAs)
+		cf.TranslatePathInPlace(configDir, &c.General.TLS.PrivateKey)
+		cf.TranslatePathInPlace(configDir, &c.General.TLS.Certificate)
+		cf.TranslatePathInPlace(configDir, &c.General.GenesisFile)
+		cf.TranslatePathInPlace(configDir, &c.General.LocalMSPDir)
+	}()
+
+	for {
+		switch {
+		case c.General.LedgerType == "":
+			logger.Infof("General.LedgerType unset, setting to %s", defaults.General.LedgerType)
+			c.General.LedgerType = defaults.General.LedgerType
+
+		case c.General.ListenAddress == "":
+			logger.Infof("General.ListenAddress unset, setting to %s", defaults.General.ListenAddress)
+			c.General.ListenAddress = defaults.General.ListenAddress
+		case c.General.ListenPort == 0:
+			logger.Infof("General.ListenPort unset, setting to %s", defaults.General.ListenPort)
+			c.General.ListenPort = defaults.General.ListenPort
+
+		case c.General.LogLevel == "":
+			logger.Infof("General.LogLevel unset, setting to %s", defaults.General.LogLevel)
+			c.General.LogLevel = defaults.General.LogLevel
+
+		case c.General.GenesisMethod == "":
+			c.General.GenesisMethod = defaults.General.GenesisMethod
+		case c.General.GenesisFile == "":
+			c.General.GenesisFile = defaults.General.GenesisFile
+		case c.General.GenesisProfile == "":
+			c.General.GenesisProfile = defaults.General.GenesisProfile
+
+		case c.Kafka.TLS.Enabled && c.Kafka.TLS.Certificate == "":
+			logger.Panicf("General.Kafka.TLS.Certificate must be set if General.Kafka.TLS.Enabled is set to true.")
+		case c.Kafka.TLS.Enabled && c.Kafka.TLS.PrivateKey == "":
+			logger.Panicf("General.Kafka.TLS.PrivateKey must be set if General.Kafka.TLS.Enabled is set to true.")
+		case c.Kafka.TLS.Enabled && c.Kafka.TLS.RootCAs == nil:
+			logger.Panicf("General.Kafka.TLS.CertificatePool must be set if General.Kafka.TLS.Enabled is set to true.")
+
+		case c.General.Profile.Enabled && c.General.Profile.Address == "":
+			logger.Infof("Profiling enabled and General.Profile.Address unset, setting to %s", defaults.General.Profile.Address)
+			c.General.Profile.Address = defaults.General.Profile.Address
+
+		case c.General.LocalMSPDir == "":
+			logger.Infof("General.LocalMSPDir unset, setting to %s", defaults.General.LocalMSPDir)
+			c.General.LocalMSPDir = defaults.General.LocalMSPDir
+		case c.General.LocalMSPID == "":
+			logger.Infof("General.LocalMSPID unset, setting to %s", defaults.General.LocalMSPID)
+			c.General.LocalMSPID = defaults.General.LocalMSPID
+
+		case c.FileLedger.Prefix == "":
+			logger.Infof("FileLedger.Prefix unset, setting to %s", defaults.FileLedger.Prefix)
+			c.FileLedger.Prefix = defaults.FileLedger.Prefix
+
+		case c.Kafka.Retry.ShortInterval == 0*time.Minute:
+			logger.Infof("Kafka.Retry.ShortInterval unset, setting to %v", defaults.Kafka.Retry.ShortInterval)
+			c.Kafka.Retry.ShortInterval = defaults.Kafka.Retry.ShortInterval
+		case c.Kafka.Retry.ShortTotal == 0*time.Minute:
+			logger.Infof("Kafka.Retry.ShortTotal unset, setting to %v", defaults.Kafka.Retry.ShortTotal)
+			c.Kafka.Retry.ShortTotal = defaults.Kafka.Retry.ShortTotal
+		case c.Kafka.Retry.LongInterval == 0*time.Minute:
+			logger.Infof("Kafka.Retry.LongInterval unset, setting to %v", defaults.Kafka.Retry.LongInterval)
+			c.Kafka.Retry.LongInterval = defaults.Kafka.Retry.LongInterval
+		case c.Kafka.Retry.LongTotal == 0*time.Minute:
+			logger.Infof("Kafka.Retry.LongTotal unset, setting to %v", defaults.Kafka.Retry.LongTotal)
+			c.Kafka.Retry.LongTotal = defaults.Kafka.Retry.LongTotal
+
+		case c.Kafka.Retry.NetworkTimeouts.DialTimeout == 0*time.Second:
+			logger.Infof("Kafka.Retry.NetworkTimeouts.DialTimeout unset, setting to %v", defaults.Kafka.Retry.NetworkTimeouts.DialTimeout)
+			c.Kafka.Retry.NetworkTimeouts.DialTimeout = defaults.Kafka.Retry.NetworkTimeouts.DialTimeout
+		case c.Kafka.Retry.NetworkTimeouts.ReadTimeout == 0*time.Second:
+			logger.Infof("Kafka.Retry.NetworkTimeouts.ReadTimeout unset, setting to %v", defaults.Kafka.Retry.NetworkTimeouts.ReadTimeout)
+			c.Kafka.Retry.NetworkTimeouts.ReadTimeout = defaults.Kafka.Retry.NetworkTimeouts.ReadTimeout
+		case c.Kafka.Retry.NetworkTimeouts.WriteTimeout == 0*time.Second:
+			logger.Infof("Kafka.Retry.NetworkTimeouts.WriteTimeout unset, setting to %v", defaults.Kafka.Retry.NetworkTimeouts.WriteTimeout)
+			c.Kafka.Retry.NetworkTimeouts.WriteTimeout = defaults.Kafka.Retry.NetworkTimeouts.WriteTimeout
+
+		case c.Kafka.Retry.Metadata.RetryBackoff == 0*time.Second:
+			logger.Infof("Kafka.Retry.Metadata.RetryBackoff unset, setting to %v", defaults.Kafka.Retry.Metadata.RetryBackoff)
+			c.Kafka.Retry.Metadata.RetryBackoff = defaults.Kafka.Retry.Metadata.RetryBackoff
+		case c.Kafka.Retry.Metadata.RetryMax == 0:
+			logger.Infof("Kafka.Retry.Metadata.RetryMax unset, setting to %v", defaults.Kafka.Retry.Metadata.RetryMax)
+			c.Kafka.Retry.Metadata.RetryMax = defaults.Kafka.Retry.Metadata.RetryMax
+
+		case c.Kafka.Retry.Producer.RetryBackoff == 0*time.Second:
+			logger.Infof("Kafka.Retry.Producer.RetryBackoff unset, setting to %v", defaults.Kafka.Retry.Producer.RetryBackoff)
+			c.Kafka.Retry.Producer.RetryBackoff = defaults.Kafka.Retry.Producer.RetryBackoff
+		case c.Kafka.Retry.Producer.RetryMax == 0:
+			logger.Infof("Kafka.Retry.Producer.RetryMax unset, setting to %v", defaults.Kafka.Retry.Producer.RetryMax)
+			c.Kafka.Retry.Producer.RetryMax = defaults.Kafka.Retry.Producer.RetryMax
+
+		case c.Kafka.Retry.Consumer.RetryBackoff == 0*time.Second:
+			logger.Infof("Kafka.Retry.Consumer.RetryBackoff unset, setting to %v", defaults.Kafka.Retry.Consumer.RetryBackoff)
+			c.Kafka.Retry.Consumer.RetryBackoff = defaults.Kafka.Retry.Consumer.RetryBackoff
+
+		case c.Kafka.Version == sarama.KafkaVersion{}:
+			logger.Infof("Kafka.Version unset, setting to %v", defaults.Kafka.Version)
+			c.Kafka.Version = defaults.Kafka.Version
+
+		default:
+			return
+		}
+	}
+}
+
+func translateCAs(configDir string, certificateAuthorities []string) []string {
+	var results []string
+	for _, ca := range certificateAuthorities {
+		result := cf.TranslatePath(configDir, ca)
+		results = append(results, result)
+	}
+	return results
 }

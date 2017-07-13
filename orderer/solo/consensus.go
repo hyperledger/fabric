@@ -43,7 +43,7 @@ func New() multichain.Consenter {
 	return &consenter{}
 }
 
-func (solo *consenter) HandleChain(support multichain.ConsenterSupport) (multichain.Chain, error) {
+func (solo *consenter) HandleChain(support multichain.ConsenterSupport, metadata *cb.Metadata) (multichain.Chain, error) {
 	return newChain(support), nil
 }
 
@@ -79,6 +79,11 @@ func (ch *chain) Enqueue(env *cb.Envelope) bool {
 	}
 }
 
+// Errored only closes on exit
+func (ch *chain) Errored() <-chan struct{} {
+	return ch.exitChan
+}
+
 func (ch *chain) main() {
 	var timer <-chan time.Time
 
@@ -91,7 +96,8 @@ func (ch *chain) main() {
 				continue
 			}
 			for i, batch := range batches {
-				ch.support.WriteBlock(batch, nil, committers[i])
+				block := ch.support.CreateNextBlock(batch)
+				ch.support.WriteBlock(block, committers[i], nil)
 			}
 			if len(batches) > 0 {
 				timer = nil
@@ -106,7 +112,8 @@ func (ch *chain) main() {
 				continue
 			}
 			logger.Debugf("Batch timer expired, creating block")
-			ch.support.WriteBlock(batch, nil, committers)
+			block := ch.support.CreateNextBlock(batch)
+			ch.support.WriteBlock(block, committers, nil)
 		case <-ch.exitChan:
 			logger.Debugf("Exiting")
 			return

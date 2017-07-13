@@ -90,7 +90,7 @@ func (r *SyncGroupRequest) AddGroupAssignment(memberId string, memberAssignment 
 }
 
 func (r *SyncGroupRequest) AddGroupAssignmentMember(memberId string, memberAssignment *ConsumerGroupMemberAssignment) error {
-	bin, err := encode(memberAssignment)
+	bin, err := encode(memberAssignment, nil)
 	if err != nil {
 		return err
 	}

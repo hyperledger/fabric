@@ -20,9 +20,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
@@ -30,7 +31,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var logger = logging.MustGetLogger("sbft_test")
+var logger = logging.MustGetLogger("single_tx_client")
 
 var UPDATE byte = 0
 var SEND byte = 1
@@ -98,12 +99,22 @@ func updateReceiver(resultch chan byte, errorch chan error, client ab.AtomicBroa
 		errorch <- fmt.Errorf("Failed to get Deliver stream: %s", err)
 		return
 	}
-	dstream.Send(&ab.SeekInfo{
-		ChainID:  provisional.TestChainID,
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
-		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+	dstream.Send(&cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId: provisional.TestChainID,
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
+			},
+			Data: utils.MarshalOrPanic(&ab.SeekInfo{
+				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
+				Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
+				Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+			}),
+		}),
 	})
+
 	logger.Info("{Update Receiver} Listening to ledger updates.")
 	for i := 0; i < 2; i++ {
 		m, inerr := dstream.Recv()
@@ -138,9 +149,9 @@ func broadcastSender(resultch chan byte, errorch chan error, client ab.AtomicBro
 	bs := []byte{0, 1, 2, 3}
 	pl := &cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				ChainID: provisional.TestChainID,
-			},
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelId: provisional.TestChainID,
+			}),
 		},
 		Data: bs,
 	}

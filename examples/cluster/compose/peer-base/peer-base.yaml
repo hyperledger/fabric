@@ -1,0 +1,19 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '2'
+services:
+  peer-base:
+    image: hyperledger/fabric-peer
+    dns_search: .
+    environment:
+      - CORE_PEER_TLS_ENABLED=${TLS_ENABLED}
+      - CORE_LOGGING_LEVEL=WARNING
+      - CORE_NEXT=true
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer1:7051
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=compose_default
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: peer node start

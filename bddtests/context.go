@@ -23,7 +23,7 @@ import (
 
 	"github.com/DATA-DOG/godog"
 	"github.com/DATA-DOG/godog/gherkin"
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 )
 
 // BDDContext represents the current context for the executing scenario.  Commensurate concept of 'context' from behave testing.
@@ -108,9 +108,9 @@ func (b *BDDContext) beforeScenario(scenarioOrScenarioOutline interface{}) {
 	b.scenarioOrScenarioOutline = scenarioOrScenarioOutline
 	//switch t := scenarioOrScenarioOutline.(type) {
 	//case *gherkin.Scenario:
-	//	fmt.Printf("Scenario recieved %v", t)
+	//	fmt.Printf("Scenario received %v", t)
 	//case *gherkin.ScenarioOutline:
-	//	fmt.Printf("ScenarioOutline recieved %v", t)
+	//	fmt.Printf("ScenarioOutline received %v", t)
 	//}
 }
 

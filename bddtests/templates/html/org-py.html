@@ -1,0 +1,24 @@
+<!--
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+-->
+<div>
+    {% set certVarName = ['cert_for',org.name]|join('_') %}
+<div class="scrollBox">
+<code>
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+
+pem_data = None
+with open('{{ path_to_cert }}') as f:
+    pem_data = f.read()
+
+{{ certVarName }} = x509.load_pem_x509_certificate(pem_data, default_backend())
+ski_for_{{ org.name }}= {{ certVarName }}.extensions.get_extension_for_oid(x509.oid.ExtensionOID.SUBJECT_KEY_IDENTIFIER)
+
+</code>
+</div>
+</div>

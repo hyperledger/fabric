@@ -1,0 +1,525 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '2'
+
+networks:
+    default:
+
+services:
+
+    zookeeper0:
+        container_name: zookeeper0
+        image: hyperledger/fabric-zookeeper
+        environment:
+            - ZOO_MY_ID=1
+            - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888
+        ports:
+            - 2181
+            - 2888
+            - 3888
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    zookeeper1:
+        container_name: zookeeper1
+        image: hyperledger/fabric-zookeeper
+        environment:
+            - ZOO_MY_ID=2
+            - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888
+        ports:
+            - 2181
+            - 2888
+            - 3888
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    zookeeper2:
+        container_name: zookeeper2
+        image: hyperledger/fabric-zookeeper
+        environment:
+            - ZOO_MY_ID=3
+            - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888
+        ports:
+            - 2181
+            - 2888
+            - 3888
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    kafka0:
+        image: hyperledger/fabric-kafka
+        container_name: kafka0
+        environment:
+            - KAFKA_LOG_RETENTION_MS=-1
+            - KAFKA_MESSAGE_MAX_BYTES=103809024
+            - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
+            - KAFKA_BROKER_ID=0
+            - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+            - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+            - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+            - KAFKA_MIN_INSYNC_REPLICAS=2
+        ports:
+            - 9092
+        depends_on:
+            - zookeeper0
+            - zookeeper1
+            - zookeeper2
+        links:
+            - zookeeper0:zookeeper0
+            - zookeeper1:zookeeper1
+            - zookeeper2:zookeeper2
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    kafka1:
+        image: hyperledger/fabric-kafka
+        container_name: kafka1
+        environment:
+            - KAFKA_LOG_RETENTION_MS=-1
+            - KAFKA_MESSAGE_MAX_BYTES=103809024
+            - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
+            - KAFKA_BROKER_ID=1
+            - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+            - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+            - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+            - KAFKA_MIN_INSYNC_REPLICAS=2
+        ports:
+            - 9092
+        depends_on:
+            - zookeeper0
+            - zookeeper1
+            - zookeeper2
+        links:
+            - zookeeper0:zookeeper0
+            - zookeeper1:zookeeper1
+            - zookeeper2:zookeeper2
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    kafka2:
+        image: hyperledger/fabric-kafka
+        container_name: kafka2
+        environment:
+            - KAFKA_LOG_RETENTION_MS=-1
+            - KAFKA_MESSAGE_MAX_BYTES=103809024
+            - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
+            - KAFKA_BROKER_ID=2
+            - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+            - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+            - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+            - KAFKA_MIN_INSYNC_REPLICAS=2
+        ports:
+            - 9092
+        depends_on:
+            - zookeeper0
+            - zookeeper1
+            - zookeeper2
+        links:
+            - zookeeper0:zookeeper0
+            - zookeeper1:zookeeper1
+            - zookeeper2:zookeeper2
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    kafka3:
+        image: hyperledger/fabric-kafka
+        container_name: kafka3
+        environment:
+            - KAFKA_LOG_RETENTION_MS=-1
+            - KAFKA_MESSAGE_MAX_BYTES=103809024
+            - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
+            - KAFKA_BROKER_ID=3
+            - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+            - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+            - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+            - KAFKA_MIN_INSYNC_REPLICAS=2
+        ports:
+            - 9092
+        depends_on:
+            - zookeeper0
+            - zookeeper1
+            - zookeeper2
+        links:
+            - zookeeper0:zookeeper0
+            - zookeeper1:zookeeper1
+            - zookeeper2:zookeeper2
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    orderer0.example.com:
+        container_name: orderer0.example.com
+        image: hyperledger/fabric-orderer
+        environment:
+            - ORDERER_GENERAL_LOGLEVEL=debug
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${CORE_PEER_NETWORKID}_default
+            - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/msp
+            - ORDERER_GENERAL_LOCALMSPID=example.com
+            - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+            - ORDERER_GENERAL_LISTENPORT=7050
+            - CONFIGTX_ORDERER_ORDERERTYPE=kafka
+            - CONFIGTX_ORDERER_KAFKA_BROKERS=[kafka0:9092,kafka1:9092,kafka2:9092,kafka3:9092]
+            - ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s
+            - ORDERER_KAFKA_RETRY_SHORTTOTAL=30s
+            - ORDERER_KAFKA_VERBOSE=true
+            - CONFIGTX_ORDERER_ADDRESSES=[127.0.0.1:7050]
+            - ORDERER_GENERAL_LEDGERTYPE=ram
+            - ORDERER_GENERAL_GENESISPROFILE=SampleInsecureKafka
+            - ORDERER_GENERAL_GENESISMETHOD=file
+            - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/configs/orderer.block
+            # TLS settings
+            - ORDERER_GENERAL_TLS_ENABLED=false
+            - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/tls/server.key
+            - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/tls/server.crt
+            - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/tls/ca.crt]
+        volumes:
+            - ../configs/${CORE_PEER_NETWORKID}:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer0.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer0.example.com/tls:/var/hyperledger/tls
+        working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+        command: orderer
+        ports:
+          - '7050'
+        depends_on:
+            - kafka0
+            - kafka1
+            - kafka2
+            - kafka3
+        links:
+            - kafka0:kafka0
+            - kafka1:kafka1
+            - kafka2:kafka2
+            - kafka3:kafka3
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    orderer1.example.com:
+        container_name: orderer1.example.com
+        image: hyperledger/fabric-orderer
+        environment:
+            - ORDERER_GENERAL_LOGLEVEL=debug
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${CORE_PEER_NETWORKID}_default
+            - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/msp
+            - ORDERER_GENERAL_LOCALMSPID=example.com
+            - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+            - ORDERER_GENERAL_LISTENPORT=7050
+            - CONFIGTX_ORDERER_ORDERERTYPE=kafka
+            - CONFIGTX_ORDERER_KAFKA_BROKERS=[kafka0:9092,kafka1:9092,kafka2:9092,kafka3:9092]
+            - ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s
+            - ORDERER_KAFKA_RETRY_SHORTTOTAL=30s
+            - ORDERER_KAFKA_VERBOSE=true
+            - CONFIGTX_ORDERER_ADDRESSES=[127.0.0.1:7050]
+            - ORDERER_GENERAL_LEDGERTYPE=ram
+            - ORDERER_GENERAL_GENESISPROFILE=SampleInsecureKafka
+            - ORDERER_GENERAL_GENESISMETHOD=file
+            - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/configs/orderer.block
+            # TLS settings
+            - ORDERER_GENERAL_TLS_ENABLED=false
+            - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/tls/server.key
+            - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/tls/server.crt
+            - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/tls/ca.crt]
+        volumes:
+            - ../configs/${CORE_PEER_NETWORKID}:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer1.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer1.example.com/tls:/var/hyperledger/tls
+        working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+        command: orderer
+        ports:
+          - '7050'
+        depends_on:
+            - kafka0
+            - kafka1
+            - kafka2
+            - kafka3
+        links:
+            - kafka0:kafka0
+            - kafka1:kafka1
+            - kafka2:kafka2
+            - kafka3:kafka3
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    orderer2.example.com:
+        container_name: orderer2.example.com
+        image: hyperledger/fabric-orderer
+        environment:
+            - ORDERER_GENERAL_LOGLEVEL=debug
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${CORE_PEER_NETWORKID}_default
+            - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/msp
+            - ORDERER_GENERAL_LOCALMSPID=example.com
+            - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+            - ORDERER_GENERAL_LISTENPORT=7050
+            - CONFIGTX_ORDERER_ORDERERTYPE=kafka
+            - CONFIGTX_ORDERER_KAFKA_BROKERS=[kafka0:9092,kafka1:9092,kafka2:9092,kafka3:9092]
+            - ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s
+            - ORDERER_KAFKA_RETRY_SHORTTOTAL=30s
+            - ORDERER_KAFKA_VERBOSE=true
+            - CONFIGTX_ORDERER_ADDRESSES=[127.0.0.1:7050]
+            - ORDERER_GENERAL_LEDGERTYPE=ram
+            - ORDERER_GENERAL_GENESISPROFILE=SampleInsecureKafka
+            - ORDERER_GENERAL_GENESISMETHOD=file
+            - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/configs/orderer.block
+            # TLS settings
+            - ORDERER_GENERAL_TLS_ENABLED=false
+            - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/tls/server.key
+            - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/tls/server.crt
+            - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/tls/ca.crt]
+        volumes:
+            - ../configs/${CORE_PEER_NETWORKID}:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer2.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/ordererOrganizations/example.com/orderers/orderer2.example.com/tls:/var/hyperledger/tls
+        working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+        command: orderer
+        ports:
+          - '7050'
+        depends_on:
+            - kafka0
+            - kafka1
+            - kafka2
+            - kafka3
+        links:
+            - kafka0:kafka0
+            - kafka1:kafka1
+            - kafka2:kafka2
+            - kafka3:kafka3
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    peer0.org1.example.com:
+        container_name: peer0.org1.example.com
+        image: hyperledger/fabric-peer
+        environment:
+            - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+            - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${CORE_PEER_NETWORKID}_default
+            - CORE_PEER_ID=peer0.org1.example.com
+            - CORE_PEER_ADDRESSAUTODETECT=true
+            - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+            - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
+            - CORE_PEER_GOSSIP_ORGLEADER=false
+            - CORE_PEER_GOSSIP_USELEADERELECTION=true
+            - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+            - CORE_PEER_PROFILE_ENABLED=true
+            - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/msp
+            - CORE_PEER_LOCALMSPID=org1.example.com
+            - CORE_LOGGING_LEVEL=DEBUG
+            # TLS settings
+            - CORE_PEER_TLS_ENABLED=false
+            - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/tls/server.crt
+            - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/tls/server.key
+            - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/tls/ca.crt
+        volumes:
+            - /var/run/:/host/var/run/
+            - ../configs:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/var/hyperledger/tls
+        ports:
+            - '7051'
+            - '7053'
+        depends_on:
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
+        links:
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
+        command: peer node start
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    peer0.org2.example.com:
+        image: hyperledger/fabric-peer
+        container_name: peer0.org2.example.com
+        environment:
+            - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+            - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${CORE_PEER_NETWORKID}_default
+            - CORE_PEER_ID=peer0.org2.example.com
+            - CORE_PEER_ADDRESSAUTODETECT=true
+            - CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+            - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org2.example.com:7051
+            - CORE_PEER_GOSSIP_ORGLEADER=false
+            - CORE_PEER_GOSSIP_USELEADERELECTION=true
+            - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+            - CORE_PEER_PROFILE_ENABLED=true
+            - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/msp
+            - CORE_PEER_LOCALMSPID=org2.example.com
+            - CORE_LOGGING_LEVEL=DEBUG
+            # TLS settings
+            - CORE_PEER_TLS_ENABLED=false
+            - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/tls/server.crt
+            - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/tls/server.key
+            - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/tls/ca.crt
+        volumes:
+            - /var/run/:/host/var/run/
+            - ../configs:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls:/var/hyperledger/tls
+        ports:
+            - '7051'
+            - '7053'
+        depends_on:
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
+        links:
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
+        command: peer node start
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    peer1.org1.example.com:
+        image: hyperledger/fabric-peer
+        container_name: peer1.org1.example.com
+        environment:
+            - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+            - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${CORE_PEER_NETWORKID}_default
+            - CORE_PEER_ID=peer1.org1.example.com
+            - CORE_PEER_ADDRESSAUTODETECT=true
+            - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+            - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
+            - CORE_PEER_GOSSIP_ORGLEADER=false
+            - CORE_PEER_GOSSIP_USELEADERELECTION=true
+            - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+            - CORE_PEER_PROFILE_ENABLED=true
+            - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/msp
+            - CORE_PEER_LOCALMSPID=org1.example.com
+            - CORE_LOGGING_LEVEL=DEBUG
+            # TLS settings
+            - CORE_PEER_TLS_ENABLED=false
+            - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/tls/server.crt
+            - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/tls/server.key
+            - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/tls/ca.crt
+        volumes:
+            - /var/run/:/host/var/run/
+            - ../configs:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls:/var/hyperledger/tls
+        ports:
+            - '7051'
+            - '7053'
+        depends_on:
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
+            - peer0.org1.example.com
+        links:
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
+        command: peer node start
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    peer1.org2.example.com:
+        image: hyperledger/fabric-peer
+        container_name: peer1.org2.example.com
+        environment:
+            - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+            - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
+            - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${CORE_PEER_NETWORKID}_default
+            - CORE_PEER_ID=peer1.org2.example.com
+            - CORE_PEER_ADDRESSAUTODETECT=true
+            - CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+            - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org2.example.com:7051
+            - CORE_PEER_GOSSIP_ORGLEADER=false
+            - CORE_PEER_GOSSIP_USELEADERELECTION=true
+            - CORE_PEER_GOSSIP_SKIPHANDSHAKE=true
+            - CORE_PEER_PROFILE_ENABLED=true
+            - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/msp
+            - CORE_PEER_LOCALMSPID=org2.example.com
+            - CORE_LOGGING_LEVEL=DEBUG
+            # TLS settings
+            - CORE_PEER_TLS_ENABLED=false
+            - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/tls/server.crt
+            - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/tls/server.key
+            - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/tls/ca.crt
+        volumes:
+            - /var/run/:/host/var/run/
+            - ../configs:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/msp:/var/hyperledger/msp
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/tls:/var/hyperledger/tls
+        ports:
+            - '7051'
+            - '7053'
+        depends_on:
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
+            - peer0.org2.example.com
+        links:
+            - orderer0.example.com
+            - orderer1.example.com
+            - orderer2.example.com
+        command: peer node start
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}
+
+    cli:
+        container_name: cli
+        image: hyperledger/fabric-tools
+        tty: true
+        environment:
+            - GOPATH=/opt/gopath
+            - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+            - CORE_LOGGING_LEVEL=DEBUG
+            # TLS settings
+            - CORE_PEER_TLS_ENABLED=false
+            - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/tls/server.crt
+            - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/tls/server.key
+            - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/tls/ca.crt
+        working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+        command: /bin/bash -c 'sleep 6000000000000000000'
+        volumes:
+            - /var/run/:/host/var/run/
+            - ../../../examples/chaincode:/opt/gopath/src/github.com/hyperledger/fabric/examples/chaincode
+            - ../configs:/var/hyperledger/configs
+            - ../configs/${CORE_PEER_NETWORKID}/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/var/hyperledger/tls
+        ports:
+            - '9092'
+        depends_on:
+          - orderer0.example.com
+          - orderer1.example.com
+          - orderer2.example.com
+          - peer0.org1.example.com
+          - peer1.org1.example.com
+          - peer0.org2.example.com
+          - peer1.org2.example.com
+        networks:
+          default:
+             aliases:
+               - ${CORE_PEER_NETWORKID}

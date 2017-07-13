@@ -17,42 +17,36 @@ limitations under the License.
 package clilogging
 
 import (
-	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
 
-func getLevelCmd() *cobra.Command {
+func getLevelCmd(cf *LoggingCmdFactory) *cobra.Command {
+	var loggingGetLevelCmd = &cobra.Command{
+		Use:   "getlevel <module>",
+		Short: "Returns the logging level of the requested module logger.",
+		Long:  `Returns the logging level of the requested module logger. Note: the module name should exactly match the name that is displayed in the logs.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return getLevel(cf, cmd, args)
+		},
+	}
+
 	return loggingGetLevelCmd
 }
 
-var loggingGetLevelCmd = &cobra.Command{
-	Use:   "getlevel <module>",
-	Short: "Returns the logging level of the requested module logger.",
-	Long:  `Returns the logging level of the requested module logger`,
-	Run: func(cmd *cobra.Command, args []string) {
-		getLevel(cmd, args)
-	},
-}
-
-func getLevel(cmd *cobra.Command, args []string) (err error) {
+func getLevel(cf *LoggingCmdFactory, cmd *cobra.Command, args []string) (err error) {
 	err = checkLoggingCmdParams(cmd, args)
-
-	if err != nil {
-		logger.Warningf("Error: %s", err)
-	} else {
-		adminClient, err := common.GetAdminClient()
-		if err != nil {
-			logger.Warningf("%s", err)
-			return err
+	if err == nil {
+		if cf == nil {
+			cf, err = InitCmdFactory()
+			if err != nil {
+				return err
+			}
 		}
-
-		logResponse, err := adminClient.GetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: args[0]})
-
+		logResponse, err := cf.AdminClient.GetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: args[0]})
 		if err != nil {
-			logger.Warningf("Error retrieving log level")
 			return err
 		}
 		logger.Infof("Current log level for peer module '%s': %s", logResponse.LogModule, logResponse.LogLevel)

@@ -1,0 +1,132 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '2'
+
+services:
+
+  ca:
+    container_name: ca
+    image: hyperledger/fabric-ca
+    dns_search: .
+    environment:
+      - FABRIC_CA_SERVER_TLS_ENABLED=${TLS_ENABLED}
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "25m"
+        max-file: "2"
+    volumes:
+      - ../build/nodes/ca:/etc/hyperledger/fabric-ca-server
+
+  tlsca:
+    container_name: tlsca
+    image: hyperledger/fabric-ca
+    dns_search: .
+    environment:
+      - FABRIC_CA_SERVER_TLS_ENABLED=${TLS_ENABLED}
+    logging:
+      <<: *logging
+    volumes:
+      - ../build/nodes/tlsca:/etc/hyperledger/fabric-ca-server
+
+  orderer:
+    container_name: orderer
+    image: hyperledger/fabric-orderer
+    dns_search: .
+    environment:
+      - ORDERER_GENERAL_TLS_ENABLED=${TLS_ENABLED}
+    logging:
+      <<: *logging
+    volumes:
+      - ../build/nodes/orderer:/etc/hyperledger/fabric
+    depends_on:
+      - ca
+
+  peer1:
+    container_name: peer1
+    extends:
+      file: peer-base/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1
+      - CORE_PEER_ADDRESS=peer1:7051
+      - CORE_PEER_GOSSIP_ENDPOINT=peer1:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org1.net:7051
+    logging:
+      <<: *logging
+    volumes:
+        - ../build/nodes/peer1:/etc/hyperledger/fabric
+    depends_on:
+      - orderer
+
+  peer2:
+    container_name: peer2
+    extends:
+      file: peer-base/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer2
+      - CORE_PEER_ADDRESS=peer2:7051
+      - CORE_PEER_GOSSIP_ENDPOINT=peer2:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer2.org1.net:7051
+    logging:
+      <<: *logging
+    volumes:
+        - ../build/nodes/peer2:/etc/hyperledger/fabric
+    depends_on:
+      - orderer
+      - peer1
+
+  peer3:
+    container_name: peer3
+    extends:
+      file: peer-base/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer3
+      - CORE_PEER_ADDRESS=peer3:7051
+      - CORE_PEER_GOSSIP_ENDPOINT=peer3:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer3.org1.net:7051
+    logging:
+      <<: *logging
+    volumes:
+        - ../build/nodes/peer3:/etc/hyperledger/fabric
+    depends_on:
+      - orderer
+      - peer1
+
+  peer4:
+    container_name: peer4
+    extends:
+      file: peer-base/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer4
+      - CORE_PEER_ADDRESS=peer4:7051
+      - CORE_PEER_GOSSIP_ENDPOINT=peer4:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer4.org1.net:7051
+    logging:
+      <<: *logging
+    volumes:
+        - ../build/nodes/peer4:/etc/hyperledger/fabric
+    depends_on:
+      - orderer
+      - peer1
+
+  cli:
+    image: hyperledger/fabric-peer
+    dns_search: .
+    environment:
+      - CORE_PEER_TLS_ENABLED=${TLS_ENABLED}
+      - CORE_NEXT=true
+      - CORE_LOGGING_LEVEL=DEBUG
+    volumes:
+      - ../build/nodes/cli:/etc/hyperledger/fabric
+      - ..:/cli
+    working_dir: /cli
+    depends_on:
+      - orderer
+      - peer1

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/stretchr/testify/assert"
 )
 
 var RejectRule = Rule(rejectRule{})
@@ -36,6 +37,11 @@ type forwardRule struct{}
 
 func (r forwardRule) Apply(message *cb.Envelope) (Action, Committer) {
 	return Forward, nil
+}
+
+func TestNoopCommitter(t *testing.T) {
+	var nc noopCommitter
+	assert.False(t, nc.Isolated(), "Should return false")
 }
 
 func TestEmptyRejectRule(t *testing.T) {

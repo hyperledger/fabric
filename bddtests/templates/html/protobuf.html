@@ -1,0 +1,29 @@
+<!--
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+-->
+<div>
+    {% set maxLength = 10*1024 %}
+    {% if linkUrl %}
+    <a href="{{ linkUrl }}" title="{{ linkTitle }}">{{ linkText }}</a>
+    {% endif %}
+    {% if msgLength < maxLength %}
+    {% set msgAsText = "%s"|format(msg) %}
+    {% set lines = msgAsText.split("\n") %}
+    <div class="scrollBox">
+        <code>
+            {% for line in lines %}
+{{ line }}
+            {% endfor %}
+        </code>
+    </div>
+    {% else %}
+    Not showing message, exceeded max lenth of {{ maxLength }} byes.
+    {% endif %}
+    {% if path_to_protobuf %}
+{% include 'html/protobuf-py.html' %}
+    {% endif %}
+</div>

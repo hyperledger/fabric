@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/golang/protobuf/proto"
+
+	"github.com/hyperledger/fabric/msp/mgmt"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -51,10 +54,11 @@ func getInterestKey(interest pb.Interest) string {
 	case pb.EventType_REJECTION:
 		key = "/" + strconv.Itoa(int(pb.EventType_REJECTION))
 	case pb.EventType_CHAINCODE:
-		key = "/" + strconv.Itoa(int(pb.EventType_CHAINCODE)) + "/" + interest.GetChaincodeRegInfo().ChaincodeID + "/" + interest.GetChaincodeRegInfo().EventName
+		key = "/" + strconv.Itoa(int(pb.EventType_CHAINCODE)) + "/" + interest.GetChaincodeRegInfo().ChaincodeId + "/" + interest.GetChaincodeRegInfo().EventName
 	default:
-		producerLogger.Errorf("unknown interest type %s", interest.EventType)
+		logger.Errorf("unknown interest type %s", interest.EventType)
 	}
+
 	return key
 }
 
@@ -63,7 +67,7 @@ func (d *handler) register(iMsg []*pb.Interest) error {
 	// and only lock once for entire array here
 	for _, v := range iMsg {
 		if err := registerHandler(v, d); err != nil {
-			producerLogger.Errorf("could not register %s: %s", v, err)
+			logger.Errorf("could not register %s: %s", v, err)
 			continue
 		}
 		d.interestedEvents[getInterestKey(*v)] = v
@@ -75,7 +79,7 @@ func (d *handler) register(iMsg []*pb.Interest) error {
 func (d *handler) deregister(iMsg []*pb.Interest) error {
 	for _, v := range iMsg {
 		if err := deRegisterHandler(v, d); err != nil {
-			producerLogger.Errorf("could not deregister %s", v)
+			logger.Errorf("could not deregister %s", v)
 			continue
 		}
 		delete(d.interestedEvents, getInterestKey(*v))
@@ -86,7 +90,7 @@ func (d *handler) deregister(iMsg []*pb.Interest) error {
 func (d *handler) deregisterAll() {
 	for k, v := range d.interestedEvents {
 		if err := deRegisterHandler(v, d); err != nil {
-			producerLogger.Errorf("could not deregister %s", v)
+			logger.Errorf("could not deregister %s", v)
 			continue
 		}
 		delete(d.interestedEvents, k)
@@ -94,26 +98,30 @@ func (d *handler) deregisterAll() {
 }
 
 // HandleMessage handles the Openchain messages for the Peer.
-func (d *handler) HandleMessage(msg *pb.Event) error {
-	//producerLogger.Debug("Handling Event")
-	switch msg.Event.(type) {
+func (d *handler) HandleMessage(msg *pb.SignedEvent) error {
+	evt, err := validateEventMessage(msg)
+	if err != nil {
+		return fmt.Errorf("event message must be properly signed by an identity from the same organization as the peer: [%s]", err)
+	}
+
+	switch evt.Event.(type) {
 	case *pb.Event_Register:
-		eventsObj := msg.GetRegister()
+		eventsObj := evt.GetRegister()
 		if err := d.register(eventsObj.Events); err != nil {
-			return fmt.Errorf("Could not register events %s", err)
+			return fmt.Errorf("could not register events %s", err)
 		}
 	case *pb.Event_Unregister:
-		eventsObj := msg.GetUnregister()
+		eventsObj := evt.GetUnregister()
 		if err := d.deregister(eventsObj.Events); err != nil {
-			return fmt.Errorf("Could not unregister events %s", err)
+			return fmt.Errorf("could not unregister events %s", err)
 		}
 	case nil:
 	default:
-		return fmt.Errorf("Invalide type from client %T", msg.Event)
+		return fmt.Errorf("invalide type from client %T", evt.Event)
 	}
 	//TODO return supported events.. for now just return the received msg
-	if err := d.ChatStream.Send(msg); err != nil {
-		return fmt.Errorf("Error sending response to %v:  %s", msg, err)
+	if err := d.ChatStream.Send(evt); err != nil {
+		return fmt.Errorf("error sending response to %v:  %s", msg, err)
 	}
 
 	return nil
@@ -123,7 +131,58 @@ func (d *handler) HandleMessage(msg *pb.Event) error {
 func (d *handler) SendMessage(msg *pb.Event) error {
 	err := d.ChatStream.Send(msg)
 	if err != nil {
-		return fmt.Errorf("Error Sending message through ChatStream: %s", err)
+		return fmt.Errorf("error Sending message through ChatStream: %s", err)
 	}
 	return nil
+}
+
+// Validates event messages by validating the Creator and verifying
+// the signature. Returns the unmarshaled Event object
+// Validation of the creator identity's validity is done by checking with local MSP to ensure the
+// submitter is a member in the same organization as the peer
+//
+// TODO: ideally this should also check each channel's "Readers" policy to ensure the identity satisfies
+// each channel's access control policy. This step is necessary because the registered listener is going
+// to get read access to all channels by receiving Block events from all channels.
+// However, this is not being done for v1.0 due to complexity concerns and the need to complex a stable,
+// minimally viable release. Eventually events will be made channel-specific, at which point this method
+// should be revisited
+func validateEventMessage(signedEvt *pb.SignedEvent) (*pb.Event, error) {
+	logger.Debugf("ValidateEventMessage starts for signed event %p", signedEvt)
+
+	// messages from the client for registering and unregistering must be signed
+	// and accompanied by the signing certificate in the "Creator" field
+	evt := &pb.Event{}
+	err := proto.Unmarshal(signedEvt.EventBytes, evt)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling the event bytes in the SignedEvent: %s", err)
+	}
+
+	localMSP := mgmt.GetLocalMSP()
+	principalGetter := mgmt.NewLocalMSPPrincipalGetter()
+
+	// Load MSPPrincipal for policy
+	principal, err := principalGetter.Get(mgmt.Members)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting local MSP principal [member]: [%s]", err)
+	}
+
+	id, err := localMSP.DeserializeIdentity(evt.Creator)
+	if err != nil {
+		return nil, fmt.Errorf("failed deserializing event creator: [%s]", err)
+	}
+
+	// Verify that event's creator satisfies the principal
+	err = id.SatisfiesPrincipal(principal)
+	if err != nil {
+		return nil, fmt.Errorf("failed verifying the creator satisfies local MSP's [member] principal: [%s]", err)
+	}
+
+	// Verify the signature
+	err = id.Verify(signedEvt.EventBytes, signedEvt.Signature)
+	if err != nil {
+		return nil, fmt.Errorf("failed verifying the event signature: %s", err)
+	}
+
+	return evt, nil
 }

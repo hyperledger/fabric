@@ -17,56 +17,38 @@ limitations under the License.
 package util
 
 import (
-	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/op/go-logging"
-	"google.golang.org/grpc/grpclog"
 )
 
+// Module names for logger initialization.
 const (
-	LOGGING_MESSAGE_BUFF_MODULE = "mbuff"
-	LOGGING_EMITTER_MODULE      = "emitter"
-	LOGGING_GOSSIP_MODULE       = "gossip"
-	LOGGING_DISCOVERY_MODULE    = "discovery"
-	LOGGING_COMM_MODULE         = "comm"
+	LoggingChannelModule   = "gossip/channel"
+	LoggingCommModule      = "gossip/comm"
+	LoggingDiscoveryModule = "gossip/discovery"
+	LoggingElectionModule  = "gossip/election"
+	LoggingGossipModule    = "gossip/gossip"
+	LoggingMockModule      = "gossip/comm/mock"
+	LoggingPullModule      = "gossip/pull"
+	LoggingServiceModule   = "gossip/service"
+	LoggingStateModule     = "gossip/state"
 )
 
-var loggersByModules = make(map[string]*Logger)
-var defaultLevel = logging.WARNING
+var loggersByModules = make(map[string]*logging.Logger)
 var lock = sync.Mutex{}
+var testMode bool
 
-var format = logging.MustStringFormatter(
-	`%{color} %{level} %{longfunc}():%{color:reset}(%{module})%{message}`,
-)
+// defaultTestSpec is the default logging level for gossip tests
+var defaultTestSpec = "WARNING"
 
-func init() {
-	logging.SetFormatter(format)
-	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
-}
+// GetLogger returns a logger for given gossip module and peerID
+func GetLogger(module string, peerID string) *logging.Logger {
+	if peerID != "" && testMode {
+		module = module + "#" + peerID
+	}
 
-type Logger struct {
-	logging.Logger
-	module string
-}
-
-func SetDefaultFormat(formatStr string) {
-	format = logging.MustStringFormatter(formatStr)
-}
-
-func SetDefaultLoggingLevel(level logging.Level) {
-	defaultLevel = level
-}
-
-func (l *Logger) SetLevel(lvl logging.Level) {
-	logging.SetLevel(lvl, l.module)
-}
-
-func GetLogger(module string, peerId string) *Logger {
-	module = module + "-" + peerId
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -75,18 +57,13 @@ func GetLogger(module string, peerId string) *Logger {
 	}
 
 	// Logger doesn't exist, create a new one
-
-	lvl, err := logging.LogLevel(defaultLevel.String())
-	// Shouldn't happen, since setting default logging level validity
-	// is checked in compile-time
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid default logging level: %v\n", err)
-		return nil
-	}
-	logging.SetLevel(lvl, module)
-	lgr := &Logger{}
-	lgr.Logger = *logging.MustGetLogger(module)
-	lgr.module = module
+	lgr := flogging.MustGetLogger(module)
 	loggersByModules[module] = lgr
 	return lgr
+}
+
+// SetupTestLogging sets the default log levels for gossip unit tests
+func SetupTestLogging() {
+	testMode = true
+	flogging.InitFromSpec(defaultTestSpec)
 }

@@ -22,36 +22,48 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //create a chaincode invocation spec
 func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error) {
 	var err error
-	spec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: ccname}, CtorMsg: &pb.ChaincodeInput{Args: args}}}
+	spec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: ccname}, Input: &pb.ChaincodeInput{Args: args}}}
 	if nil != err {
 		return nil, err
 	}
 	return spec, nil
 }
 
-// GetCDSFromLCCC gets chaincode deployment spec from LCCC
-func GetCDSFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
+// GetCDSFromLSCC gets chaincode deployment spec from LSCC
+func GetCDSFromLSCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
 	version := util.GetSysCCVersion()
-	cccid := NewCCContext(chainID, "lccc", version, txid, true, prop)
-	payload, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
-	return payload, err
+	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
+	res, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
+	if err != nil {
+		return nil, fmt.Errorf("Execute getdepspec(%s, %s) of LSCC error: %s", chainID, chaincodeID, err)
+	}
+	if res.Status != shim.OK {
+		return nil, fmt.Errorf("Get ChaincodeDeploymentSpec for %s/%s from LSCC error: %s", chaincodeID, chainID, res.Message)
+	}
+
+	return res.Payload, nil
 }
 
-// GetChaincodeDataFromLCCC gets chaincode data from LCCC given name
-func GetChaincodeDataFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) (*ChaincodeData, error) {
+// GetChaincodeDataFromLSCC gets chaincode data from LSCC given name
+func GetChaincodeDataFromLSCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (*ccprovider.ChaincodeData, error) {
 	version := util.GetSysCCVersion()
-	cccid := NewCCContext(chainID, "lccc", version, txid, true, prop)
-	payload, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})
+	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
+	res, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})
 	if err == nil {
-		cd := &ChaincodeData{}
-		err = proto.Unmarshal(payload, cd)
+		if res.Status != shim.OK {
+			return nil, fmt.Errorf("%s", res.Message)
+		}
+		cd := &ccprovider.ChaincodeData{}
+		err = proto.Unmarshal(res.Payload, cd)
 		if err != nil {
 			return nil, err
 		}
@@ -62,16 +74,18 @@ func GetChaincodeDataFromLCCC(ctxt context.Context, txid string, prop *pb.Propos
 }
 
 // ExecuteChaincode executes a given chaincode given chaincode name and arguments
-func ExecuteChaincode(ctxt context.Context, cccid *CCContext, args [][]byte) ([]byte, *pb.ChaincodeEvent, error) {
+func ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var spec *pb.ChaincodeInvocationSpec
 	var err error
-	var b []byte
+	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent
 
 	spec, err = createCIS(cccid.Name, args)
-	b, ccevent, err = Execute(ctxt, cccid, spec)
+	res, ccevent, err = Execute(ctxt, cccid, spec)
 	if err != nil {
+		chaincodeLogger.Errorf("Error executing chaincode: %s", err)
 		return nil, nil, fmt.Errorf("Error executing chaincode: %s", err)
 	}
-	return b, ccevent, err
+
+	return res, ccevent, err
 }

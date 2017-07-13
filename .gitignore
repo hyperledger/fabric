@@ -10,14 +10,25 @@ tags
 .tags
 .vagrant/
 /build
+/release/darwin-amd64
+/release/linux-amd64
+/release/linux-s390x
+/release/linux-ppc64le
+/release/windows-amd64
 # Emacs backup files
 *~
 *#
 .#*
+# Vim file artifacts
+.*.sw*
 # bddtest log files
 *.log
 # bddtest coverage files
 bddtests/coverage
+# bddtest Dockerfile
+bddtests/environments/kafka/Dockerfile
+bddtests/tmp
+bddtests/volumes
 *.cov
 # Makefile dummy artifacts
 .*-dummy
@@ -25,9 +36,17 @@ bddtests/coverage
 go-carpet-coverage*
 # make node-sdk copied files
 sdk/node/lib/protos/*
+# Test result xml files
 report.xml
+results.xml
+TESTS*.xml
 .settings
 .project
 .gradle
 build/
 bin/
+examples/e2e_cli/channel-artifacts/*.tx
+examples/e2e_cli/channel-artifacts/*.block
+examples/e2e_cli/crypto-config/*
+# vscode settings
+.vscode

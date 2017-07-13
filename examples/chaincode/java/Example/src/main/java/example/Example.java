@@ -17,10 +17,10 @@ limitations under the License.
 
 package example;
 
-import org.hyperledger.java.shim.ChaincodeBase;
-import org.hyperledger.java.shim.ChaincodeStub;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.hyperledger.fabric.shim.ChaincodeBase;
+import org.hyperledger.fabric.shim.ChaincodeStub;
 
 
 /**
@@ -99,11 +99,6 @@ public class Example extends ChaincodeBase {
 			log.debug("No value found for key '"+args[0]+"'");
 			return "Hello "+args[0]+"!";
 		}
-	}
-
-	@Override
-	public String getChaincodeID() {
-		return "hello";
 	}
 
 	public static void main(String[] args) throws Exception {

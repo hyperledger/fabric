@@ -1,0 +1,273 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/protos/peer";
+option java_package = "org.hyperledger.fabric.protos.peer";
+option java_outer_classname = "ProposalPackage";
+
+package protos;
+
+import "peer/chaincode.proto";
+import "peer/proposal_response.proto";
+
+/*
+The flow to get a generic transaction approved goes as follows:
+
+1. client sends proposal to endorser
+====================================
+
+The proposal is basically a request to do something that will result on some
+action with impact on the ledger; a proposal contains a header (with some
+metadata describing it, such as the type, the identity of the invoker, the
+time, the ID of the chain, a cryptographic nonce..) and an opaque payload that
+depends on the type specified in the header. A proposal contains the following
+messages:
+
+SignedProposal
+|\_ Signature                                    (signature on the Proposal message by the creator specified in the header)
+ \_ Proposal
+    |\_ Header                                   (the header for this proposal)
+     \_ Payload                                  (the payload for this proposal)
+
+2. endorser sends proposal response back to client
+==================================================
+
+The proposal response contains an endorser's response to a client's proposal. A
+proposal response contains a success/error code, a response payload and a
+signature (also referred to as endorsement) over the response payload. The
+response payload contains a hash of the proposal (to securely link this
+response to the corresponding proposal) and an opaque extension field that
+depends on the type specified in the header of the corresponding proposal. A
+proposal response contains the following messages:
+
+ProposalResponse
+|\_ Endorsement                                  (the endorser's signature over the whole response payload)
+ \_ ProposalResponsePayload                      (the payload of the proposal response)
+
+3. client assembles endorsements into a transaction
+===================================================
+
+A transaction message assembles one or more proposals and corresponding
+responses into a message to be sent to orderers. After ordering, (batches of)
+transactions are delivered to committing peers for validation and final
+delivery into the ledger. A transaction contains one or more actions. Each of
+them contains a header (same as that of the proposal that requested it) and an
+opaque payload that depends on the type specified in the header.
+
+SignedTransaction
+|\_ Signature                                    (signature on the Transaction message by the creator specified in the header)
+ \_ Transaction
+     \_ TransactionAction (1...n)
+        |\_ Header (1)                           (the header of the proposal that requested this action)
+         \_ Payload (1)                          (the payload for this action)
+*/
+
+// This structure is necessary to sign the proposal which contains the header
+// and the payload. Without this structure, we would have to concatenate the
+// header and the payload to verify the signature, which could be expensive
+// with large payload
+//
+// When an endorser receives a SignedProposal message, it should verify the
+// signature over the proposal bytes. This verification requires the following
+// steps:
+// 1. Verification of the validity of the certificate that was used to produce
+//    the signature.  The certificate will be available once proposalBytes has
+//    been unmarshalled to a Proposal message, and Proposal.header has been
+//    unmarshalled to a Header message. While this unmarshalling-before-verifying
+//    might not be ideal, it is unavoidable because i) the signature needs to also
+//    protect the signing certificate; ii) it is desirable that Header is created
+//    once by the client and never changed (for the sake of accountability and
+//    non-repudiation). Note also that it is actually impossible to conclusively
+//    verify the validity of the certificate included in a Proposal, because the
+//    proposal needs to first be endorsed and ordered with respect to certificate
+//    expiration transactions. Still, it is useful to pre-filter expired
+//    certificates at this stage.
+// 2. Verification that the certificate is trusted (signed by a trusted CA) and
+//    that it is allowed to transact with us (with respect to some ACLs);
+// 3. Verification that the signature on proposalBytes is valid;
+// 4. Detect replay attacks;
+message SignedProposal {
+
+	// The bytes of Proposal
+	bytes proposal_bytes = 1;
+
+  // Signaure over proposalBytes; this signature is to be verified against
+  // the creator identity contained in the header of the Proposal message
+  // marshaled as proposalBytes
+	bytes signature = 2;
+}
+
+// A Proposal is sent to an endorser for endorsement.  The proposal contains:
+// 1. A header which should be unmarshaled to a Header message.  Note that
+//    Header is both the header of a Proposal and of a Transaction, in that i)
+//    both headers should be unmarshaled to this message; and ii) it is used to
+//    compute cryptographic hashes and signatures.  The header has fields common
+//    to all proposals/transactions.  In addition it has a type field for
+//    additional customization. An example of this is the ChaincodeHeaderExtension
+//    message used to extend the Header for type CHAINCODE.
+// 2. A payload whose type depends on the header's type field.
+// 3. An extension whose type depends on the header's type field.
+//
+// Let us see an example. For type CHAINCODE (see the Header message),
+// we have the following:
+// 1. The header is a Header message whose extensions field is a
+//    ChaincodeHeaderExtension message.
+// 2. The payload is a ChaincodeProposalPayload message.
+// 3. The extension is a ChaincodeAction that might be used to ask the
+//    endorsers to endorse a specific ChaincodeAction, thus emulating the
+//    submitting peer model.
+message Proposal {
+
+	// The header of the proposal. It is the bytes of the Header
+	bytes header = 1;
+
+	// The payload of the proposal as defined by the type in the proposal
+	// header.
+	bytes payload = 2;
+
+	// Optional extensions to the proposal. Its content depends on the Header's
+	// type field.  For the type CHAINCODE, it might be the bytes of a
+	// ChaincodeAction message.
+	bytes extension = 3;
+}
+
+//-------- the Chaincode Proposal -----------
+
+/*
+The flow to get a CHAINCODE transaction approved goes as follows:
+
+1. client sends proposal to endorser
+====================================
+
+The proposal is basically a request to do something on a chaincode, that will
+result on some action - some change in the state of a chaincode and/or some
+data to be committed to the ledger; a proposal in general contains a header
+(with some metadata describing it, such as the type, the identity of the
+invoker, the time, the ID of the chain, a cryptographic nonce..) and a payload
+(the chaincode ID, invocation arguments..). Optionally, it may contain actions
+that the endorser may be asked to endorse, to emulate a submitting peer. A
+chaincode proposal contains the following messages:
+
+SignedProposal
+|\_ Signature                                    (signature on the Proposal message by the creator specified in the header)
+ \_ Proposal
+    |\_ Header                                   (the header for this proposal)
+    |\_ ChaincodeProposalPayload                 (the payload for this proposal)
+     \_ ChaincodeAction                          (the actions for this proposal - optional for a proposal)
+
+2. endorser sends proposal response back to client
+==================================================
+
+The proposal response contains an endorser's response to a client's proposal. A
+proposal response contains a success/error code, a response payload and a
+signature (also referred to as endorsement) over the response payload. The
+response payload contains a hash of the proposal (to securely link this
+response to the corresponding proposal), a description of the action resulting
+from the proposal and the endorser's signature over its payload. Formally, a
+chaincode proposal response contains the following messages:
+
+ProposalResponse
+|\_ Endorsement                                  (the endorser's signature over the whole response payload)
+ \_ ProposalResponsePayload
+     \_ ChaincodeAction                          (the actions for this proposal)
+
+3. client assembles endorsements into a transaction
+===================================================
+
+A transaction message assembles one or more proposals and corresponding
+responses into a message to be sent to orderers. After ordering, (batches of)
+transactions are delivered to committing peers for validation and final
+delivery into the ledger. A transaction contains one or more actions. Each of
+them contains a header (same as that of the proposal that requested it), a
+proposal payload (same as that of the proposal that requested it), a
+description of the resulting action and signatures from each of the endorsers
+that endorsed the action.
+
+SignedTransaction
+|\_ Signature                                    (signature on the Transaction message by the creator specified in the header)
+ \_ Transaction
+     \_ TransactionAction (1...n)
+        |\_ Header (1)                           (the header of the proposal that requested this action)
+         \_ ChaincodeActionPayload (1)
+            |\_ ChaincodeProposalPayload (1)     (payload of the proposal that requested this action)
+             \_ ChaincodeEndorsedAction (1)
+                |\_ Endorsement (1...n)          (endorsers' signatures over the whole response payload)
+                 \_ ProposalResponsePayload
+                     \_ ChaincodeAction          (the actions for this proposal)
+*/
+
+// ChaincodeHeaderExtension is the Header's extentions message to be used when
+// the Header's type is CHAINCODE.  This extensions is used to specify which
+// chaincode to invoke and what should appear on the ledger.
+message ChaincodeHeaderExtension {
+
+	// The PayloadVisibility field controls to what extent the Proposal's payload
+	// (recall that for the type CHAINCODE, it is ChaincodeProposalPayload
+	// message) field will be visible in the final transaction and in the ledger.
+	// Ideally, it would be configurable, supporting at least 3 main visibility
+	// modes:
+	// 1. all bytes of the payload are visible;
+	// 2. only a hash of the payload is visible;
+	// 3. nothing is visible.
+	// Notice that the visibility function may be potentially part of the ESCC.
+	// In that case it overrides PayloadVisibility field.  Finally notice that
+	// this field impacts the content of ProposalResponsePayload.proposalHash.
+	bytes payload_visibility = 1;
+
+	// The ID of the chaincode to target.
+	ChaincodeID chaincode_id = 2;
+}
+
+// ChaincodeProposalPayload is the Proposal's payload message to be used when
+// the Header's type is CHAINCODE.  It contains the arguments for this
+// invocation.
+message ChaincodeProposalPayload {
+
+	// Input contains the arguments for this invocation. If this invocation
+	// deploys a new chaincode, ESCC/VSCC are part of this field.
+	bytes input  = 1;
+
+	// TransientMap contains data (e.g. cryptographic material) that might be used
+	// to implement some form of application-level confidentiality. The contents
+	// of this field are supposed to always be omitted from the transaction and
+	// excluded from the ledger.
+	map<string, bytes> TransientMap = 2;
+}
+
+// ChaincodeAction contains the actions the events generated by the execution
+// of the chaincode.
+message ChaincodeAction {
+
+	// This field contains the read set and the write set produced by the
+	// chaincode executing this invocation.
+	bytes results = 1;
+
+	// This field contains the events generated by the chaincode executing this
+	// invocation.
+	bytes events = 2;
+
+	// This field contains the result of executing this invocation.
+	Response response = 3;
+
+	// This field contains the ChaincodeID of executing this invocation. Endorser
+	// will set it with the ChaincodeID called by endorser while simulating proposal.
+	// Committer will validate the version matching with latest chaincode version.
+	// Adding ChaincodeID to keep version opens up the possibility of multiple
+	// ChaincodeAction per transaction.
+	ChaincodeID chaincode_id = 4;
+}

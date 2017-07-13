@@ -1,0 +1,20 @@
+<!--
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+-->
+<div>
+    {% set msgClassModule = directory.__class__.__module__ %}
+    {% set msgClassName = directory.__class__.__name__ %}
+    {% set msgVarName = [msgClassName[0]|lower,msgClassName[1:]]|join('') %}
+    <div class="scrollBox">
+<code>
+from {{ msgClassModule }} import {{ msgClassName }}
+{{ msgVarName }} = {{ msgClassName }}()
+directory.initFromPath('{{ path_to_pickle }}')
+
+</code>
+    </div>
+</div>
