@@ -18,6 +18,7 @@ package configtx
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -54,12 +55,36 @@ func ComputeDeltaSet(readSet, writeSet map[string]comparable) map[string]compara
 	return result
 }
 
+func validateModPolicy(modPolicy string) error {
+	if modPolicy == "" {
+		return fmt.Errorf("mod_policy not set")
+	}
+
+	trimmed := modPolicy
+	if modPolicy[0] == '/' {
+		trimmed = modPolicy[1:]
+	}
+
+	for i, pathElement := range strings.Split(trimmed, PathSeparator) {
+		err := validateConfigID(pathElement)
+		if err != nil {
+			return fmt.Errorf("path element at %d is invalid: %s", i, err)
+		}
+	}
+	return nil
+
+}
+
 func (cm *configManager) verifyDeltaSet(deltaSet map[string]comparable, signedData []*cb.SignedData) error {
 	if len(deltaSet) == 0 {
 		return fmt.Errorf("Delta set was empty.  Update would have no effect.")
 	}
 
 	for key, value := range deltaSet {
+		if err := validateModPolicy(value.modPolicy()); err != nil {
+			return fmt.Errorf("invalid mod_policy for element %s: %s", key, err)
+		}
+
 		existing, ok := cm.current.configMap[key]
 		if !ok {
 			if value.version() != 0 {

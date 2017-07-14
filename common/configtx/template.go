@@ -229,8 +229,11 @@ func (cct *channelCreationTemplate) Envelope(channelID string) (*cb.ConfigUpdate
 
 	wSet.Groups[config.ApplicationGroupKey].ModPolicy = configmsp.AdminsPolicyKey
 	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.AdminsPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(configmsp.AdminsPolicyKey, cb.ImplicitMetaPolicy_MAJORITY)
+	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.AdminsPolicyKey].ModPolicy = configmsp.AdminsPolicyKey
 	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.WritersPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(configmsp.WritersPolicyKey, cb.ImplicitMetaPolicy_ANY)
+	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.WritersPolicyKey].ModPolicy = configmsp.AdminsPolicyKey
 	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.ReadersPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(configmsp.ReadersPolicyKey, cb.ImplicitMetaPolicy_ANY)
+	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.ReadersPolicyKey].ModPolicy = configmsp.AdminsPolicyKey
 	wSet.Groups[config.ApplicationGroupKey].Version = 1
 
 	return &cb.ConfigUpdateEnvelope{
