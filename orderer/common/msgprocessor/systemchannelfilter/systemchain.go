@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -47,38 +46,40 @@ type LimitedSupport interface {
 	OrdererConfig() (config.Orderer, bool)
 }
 
-type systemChainFilter struct {
+// SystemChainFilter implements the filter.Rule interface.
+type SystemChainFilter struct {
 	cc      ChainCreator
 	support LimitedSupport
 }
 
-// New creates a new instance of the system channel filter.
-func New(ls LimitedSupport, cc ChainCreator) filter.Rule {
-	return &systemChainFilter{
+// New returns a new instance of a *SystemChainFilter.
+func New(ls LimitedSupport, cc ChainCreator) *SystemChainFilter {
+	return &SystemChainFilter{
 		support: ls,
 		cc:      cc,
 	}
 }
 
-func (scf *systemChainFilter) Apply(env *cb.Envelope) filter.Action {
+// Apply rejects bad messages with an error.
+func (scf *SystemChainFilter) Apply(env *cb.Envelope) error {
 	msgData := &cb.Payload{}
 
 	err := proto.Unmarshal(env.Payload, msgData)
 	if err != nil {
-		return filter.Forward
+		return fmt.Errorf("bad payload: %s", err)
 	}
 
 	if msgData.Header == nil {
-		return filter.Forward
+		return fmt.Errorf("missing payload header")
 	}
 
 	chdr, err := utils.UnmarshalChannelHeader(msgData.Header.ChannelHeader)
 	if err != nil {
-		return filter.Forward
+		return fmt.Errorf("bad channel header: %s", err)
 	}
 
 	if chdr.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
-		return filter.Forward
+		return nil
 	}
 
 	ordererConfig, ok := scf.support.OrdererConfig()
@@ -90,82 +91,75 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) filter.Action {
 	if maxChannels > 0 {
 		// We check for strictly greater than to accommodate the system channel
 		if uint64(scf.cc.ChannelsCount()) > maxChannels {
-			logger.Warningf("Rejecting channel creation because the orderer has reached the maximum number of channels, %d", maxChannels)
-			return filter.Reject
+			return fmt.Errorf("channel creation would exceed maximimum number of channels: %d", maxChannels)
 		}
 	}
 
 	configTx := &cb.Envelope{}
 	err = proto.Unmarshal(msgData.Data, configTx)
 	if err != nil {
-		return filter.Reject
+		return fmt.Errorf("payload data error unmarshaling to envelope: %s", err)
 	}
 
-	err = scf.authorizeAndInspect(configTx)
-	if err != nil {
-		logger.Debugf("Rejecting channel creation because: %s", err)
-		return filter.Reject
-	}
-
-	return filter.Accept
+	return scf.authorizeAndInspect(configTx)
 }
 
-func (scf *systemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) (configtxapi.Manager, error) {
+func (scf *SystemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) (configtxapi.Manager, error) {
 	if configEnvelope.LastUpdate == nil {
-		return nil, fmt.Errorf("Must include a config update")
+		return nil, fmt.Errorf("updated config does not include a config update")
 	}
 
 	configManager, err := scf.cc.NewChannelConfig(configEnvelope.LastUpdate)
 	if err != nil {
-		return nil, fmt.Errorf("Error constructing new channel config from update: %s", err)
+		return nil, fmt.Errorf("error constructing new channel config from update: %s", err)
 	}
 
 	newChannelConfigEnv, err := configManager.ProposeConfigUpdate(configEnvelope.LastUpdate)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error proposing channel update to new channel config: %s", err)
 	}
 
 	err = configManager.Apply(newChannelConfigEnv)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error applying channel update to new channel config: %s", err)
 	}
 
 	return configManager, nil
 }
 
-func (scf *systemChainFilter) inspect(proposedManager, configManager configtxapi.Manager) error {
+func (scf *SystemChainFilter) inspect(proposedManager, configManager configtxapi.Manager) error {
 	proposedEnv := proposedManager.ConfigEnvelope()
 	actualEnv := configManager.ConfigEnvelope()
 	if !reflect.DeepEqual(proposedEnv.Config, actualEnv.Config) {
-		return fmt.Errorf("The config proposed by the channel creation request did not match the config received with the channel creation request")
+		return fmt.Errorf("config proposed by the channel creation request did not match the config received with the channel creation request")
 	}
 	return nil
 }
 
-func (scf *systemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
+func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	payload := &cb.Payload{}
 	err := proto.Unmarshal(configTx.Payload, payload)
 	if err != nil {
-		return fmt.Errorf("Rejecting chain proposal: Error unmarshaling envelope payload: %s", err)
+		return fmt.Errorf("error unmarshaling wrapped configtx envelope payload: %s", err)
 	}
 
 	if payload.Header == nil {
-		return fmt.Errorf("Rejecting chain proposal: Not a config transaction")
+		return fmt.Errorf("wrapped configtx envelope missing header")
 	}
 
 	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
-		return fmt.Errorf("Rejecting chain proposal: Error unmarshaling channel header: %s", err)
+		return fmt.Errorf("error unmarshaling wrapped configtx envelope channel header: %s", err)
 	}
 
 	if chdr.Type != int32(cb.HeaderType_CONFIG) {
-		return fmt.Errorf("Rejecting chain proposal: Not a config transaction")
+		return fmt.Errorf("wrapped configtx envelope not a config transaction")
 	}
 
 	configEnvelope := &cb.ConfigEnvelope{}
 	err = proto.Unmarshal(payload.Data, configEnvelope)
 	if err != nil {
-		return fmt.Errorf("Rejecting chain proposal: Error unmarshalling config envelope from payload: %s", err)
+		return fmt.Errorf("error unmarshalling wrapped configtx config envelope from payload: %s", err)
 	}
 
 	// Make sure that the config was signed by the appropriate authorized entities
@@ -177,7 +171,7 @@ func (scf *systemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	initializer := configtx.NewInitializer()
 	configManager, err := configtx.NewManagerImpl(configTx, initializer, nil)
 	if err != nil {
-		return fmt.Errorf("Failed to create config manager and handlers: %s", err)
+		return fmt.Errorf("failed to create config manager and handlers: %s", err)
 	}
 
 	// Make sure that the config does not modify any of the orderer

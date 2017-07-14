@@ -17,74 +17,46 @@ limitations under the License.
 package filter
 
 import (
+	"fmt"
 	"testing"
 
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var RejectRule = Rule(rejectRule{})
 
 type rejectRule struct{}
 
-func (r rejectRule) Apply(message *cb.Envelope) Action {
-	return Reject
-}
-
-var ForwardRule = Rule(forwardRule{})
-
-type forwardRule struct{}
-
-func (r forwardRule) Apply(message *cb.Envelope) Action {
-	return Forward
+func (r rejectRule) Apply(message *cb.Envelope) error {
+	return fmt.Errorf("Rejected")
 }
 
 func TestEmptyRejectRule(t *testing.T) {
-	result := EmptyRejectRule.Apply(&cb.Envelope{})
-	if result != Reject {
-		t.Fatalf("Should have rejected")
-	}
-	result = EmptyRejectRule.Apply(&cb.Envelope{Payload: []byte("fakedata")})
-	if result != Forward {
-		t.Fatalf("Should have forwarded")
-	}
+	t.Run("Reject", func(t *testing.T) {
+		assert.NotNil(t, EmptyRejectRule.Apply(&cb.Envelope{}))
+	})
+	t.Run("Accept", func(t *testing.T) {
+		assert.Nil(t, EmptyRejectRule.Apply(&cb.Envelope{Payload: []byte("fakedata")}))
+	})
 }
 
-func TestAcceptReject(t *testing.T) {
-	rs := NewRuleSet([]Rule{AcceptRule, RejectRule})
-	err := rs.Apply(&cb.Envelope{})
-	if err != nil {
-		t.Fatalf("Should have accepted: %s", err)
-	}
+func TestAcceptRule(t *testing.T) {
+	assert.Nil(t, AcceptRule.Apply(&cb.Envelope{}))
 }
 
-func TestRejectAccept(t *testing.T) {
-	rs := NewRuleSet([]Rule{RejectRule, AcceptRule})
-	err := rs.Apply(&cb.Envelope{})
-	if err == nil {
-		t.Fatalf("Should have rejected")
-	}
-}
-
-func TestForwardAccept(t *testing.T) {
-	rs := NewRuleSet([]Rule{ForwardRule, AcceptRule})
-	err := rs.Apply(&cb.Envelope{})
-	if err != nil {
-		t.Fatalf("Should have accepted: %s ", err)
-	}
-}
-
-func TestForward(t *testing.T) {
-	rs := NewRuleSet([]Rule{ForwardRule})
-	err := rs.Apply(&cb.Envelope{})
-	if err == nil {
-		t.Fatalf("Should have rejected")
-	}
-}
-
-func TestNoRule(t *testing.T) {
-	rs := NewRuleSet([]Rule{})
-	err := rs.Apply(&cb.Envelope{})
-	if err == nil {
-		t.Fatalf("Should have rejected")
-	}
+func TestRuleSet(t *testing.T) {
+	t.Run("RejectAccept", func(t *testing.T) {
+		assert.NotNil(t, NewRuleSet([]Rule{RejectRule, AcceptRule}).Apply(&cb.Envelope{}))
+	})
+	t.Run("AcceptReject", func(t *testing.T) {
+		assert.NotNil(t, NewRuleSet([]Rule{AcceptRule, RejectRule}).Apply(&cb.Envelope{}))
+	})
+	t.Run("AcceptAccept", func(t *testing.T) {
+		assert.Nil(t, NewRuleSet([]Rule{AcceptRule, AcceptRule}).Apply(&cb.Envelope{}))
+	})
+	t.Run("Empty", func(t *testing.T) {
+		assert.Nil(t, NewRuleSet(nil).Apply(&cb.Envelope{}))
+	})
 }

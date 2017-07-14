@@ -9,7 +9,6 @@ package msgprocessor
 import (
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/configtxfilter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sigfilter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sizefilter"
@@ -53,11 +52,9 @@ func CreateSystemChannelFilters(chainCreator systemchannelfilter.ChainCreator, l
 	}
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
-		sizefilter.MaxBytesRule(ordererConfig),
+		sizefilter.New(ordererConfig),
 		sigfilter.New(policies.ChannelWriters, ledgerResources.PolicyManager()),
 		systemchannelfilter.New(ledgerResources, chainCreator),
-		configtxfilter.NewFilter(ledgerResources),
-		filter.AcceptRule,
 	})
 }
 

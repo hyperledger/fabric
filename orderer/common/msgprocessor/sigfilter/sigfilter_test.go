@@ -21,11 +21,11 @@ import (
 	"testing"
 
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -44,36 +44,26 @@ func makeEnvelope() *cb.Envelope {
 
 func TestAccept(t *testing.T) {
 	mpm := &mockpolicies.Manager{Policy: &mockpolicies.Policy{}}
-	sf := New("foo", mpm)
-	result := sf.Apply(makeEnvelope())
-	if result != filter.Forward {
-		t.Fatalf("Should have accepted envelope")
-	}
+	assert.Nil(t, New("foo", mpm).Apply(makeEnvelope()), "Valid envelope and good policy")
 }
 
 func TestMissingPolicy(t *testing.T) {
 	mpm := &mockpolicies.Manager{}
-	sf := New("foo", mpm)
-	result := sf.Apply(makeEnvelope())
-	if result != filter.Reject {
-		t.Fatalf("Should have rejected when missing policy")
-	}
+	err := New("foo", mpm).Apply(makeEnvelope())
+	assert.NotNil(t, err)
+	assert.Regexp(t, "could not find policy", err.Error())
 }
 
 func TestEmptyPayload(t *testing.T) {
 	mpm := &mockpolicies.Manager{Policy: &mockpolicies.Policy{}}
-	sf := New("foo", mpm)
-	result := sf.Apply(&cb.Envelope{})
-	if result != filter.Reject {
-		t.Fatalf("Should have rejected when payload empty")
-	}
+	err := New("foo", mpm).Apply(&cb.Envelope{})
+	assert.NotNil(t, err)
+	assert.Regexp(t, "could not convert message to signedData", err.Error())
 }
 
 func TestErrorOnPolicy(t *testing.T) {
 	mpm := &mockpolicies.Manager{Policy: &mockpolicies.Policy{Err: fmt.Errorf("Error")}}
-	sf := New("foo", mpm)
-	result := sf.Apply(makeEnvelope())
-	if result != filter.Reject {
-		t.Fatalf("Should have rejected when policy evaluated to err")
-	}
+	err := New("foo", mpm).Apply(makeEnvelope())
+	assert.NotNil(t, err)
+	assert.Equal(t, mpm.Policy.Err, err)
 }

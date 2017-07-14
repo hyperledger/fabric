@@ -21,7 +21,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sigfilter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -131,8 +130,8 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 	lastConfigSequence := chain.Sequence()
 
 	sf := sigfilter.New(policies.ChannelReaders, chain.PolicyManager())
-	if sf.Apply(envelope) != filter.Forward {
-		logger.Warningf("[channel: %s] Received unauthorized deliver request", chdr.ChannelId)
+	if err := sf.Apply(envelope); err != nil {
+		logger.Warningf("[channel: %s] Received unauthorized deliver request: %s", chdr.ChannelId, err)
 		return sendStatusReply(srv, cb.Status_FORBIDDEN)
 	}
 
@@ -185,8 +184,8 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 		if currentConfigSequence > lastConfigSequence {
 			lastConfigSequence = currentConfigSequence
 			sf := sigfilter.New(policies.ChannelReaders, chain.PolicyManager())
-			if sf.Apply(envelope) != filter.Forward {
-				logger.Warningf("[channel: %s] Client authorization revoked for deliver request", chdr.ChannelId)
+			if err := sf.Apply(envelope); err != nil {
+				logger.Warningf("[channel: %s] Client authorization revoked for deliver request: %s", chdr.ChannelId, err)
 				return sendStatusReply(srv, cb.Status_FORBIDDEN)
 			}
 		}

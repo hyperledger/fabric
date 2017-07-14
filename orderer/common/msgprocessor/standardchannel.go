@@ -10,7 +10,6 @@ import (
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/configtxfilter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sigfilter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sizefilter"
@@ -56,10 +55,8 @@ func CreateStandardFilters(filterSupport configtxapi.Manager) *filter.RuleSet {
 	}
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
-		sizefilter.MaxBytesRule(ordererConfig),
+		sizefilter.New(ordererConfig),
 		sigfilter.New(policies.ChannelWriters, filterSupport.PolicyManager()),
-		configtxfilter.NewFilter(filterSupport),
-		filter.AcceptRule,
 	})
 }
 
