@@ -17,6 +17,7 @@ limitations under the License.
 package fileledger
 
 import (
+	cl "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	ledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -38,8 +39,9 @@ type fileLedger struct {
 }
 
 type fileLedgerIterator struct {
-	ledger      *fileLedger
-	blockNumber uint64
+	ledger         *fileLedger
+	blockNumber    uint64
+	commonIterator cl.ResultsIterator
 }
 
 // Next blocks until there is a new block available, or returns an error if the
@@ -47,12 +49,12 @@ type fileLedgerIterator struct {
 func (i *fileLedgerIterator) Next() (*cb.Block, cb.Status) {
 	for {
 		if i.blockNumber < i.ledger.Height() {
-			block, err := i.ledger.blockStore.RetrieveBlockByNumber(i.blockNumber)
+			result, err := i.commonIterator.Next()
 			if err != nil {
 				return nil, cb.Status_SERVICE_UNAVAILABLE
 			}
 			i.blockNumber++
-			return block, cb.Status_SUCCESS
+			return result.(*cb.Block), cb.Status_SUCCESS
 		}
 		<-i.ledger.signal
 	}
@@ -67,28 +69,41 @@ func (i *fileLedgerIterator) ReadyChan() <-chan struct{} {
 	return closedChan
 }
 
+// Close releases resources acquired by the Iterator
+func (i *fileLedgerIterator) Close() {
+	i.commonIterator.Close()
+}
+
 // Iterator returns an Iterator, as specified by a cb.SeekInfo message, and its
 // starting block number
 func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator, uint64) {
+	var startingBlockNumber uint64
 	switch start := startPosition.Type.(type) {
 	case *ab.SeekPosition_Oldest:
-		return &fileLedgerIterator{ledger: fl, blockNumber: 0}, 0
+		startingBlockNumber = 0
 	case *ab.SeekPosition_Newest:
 		info, err := fl.blockStore.GetBlockchainInfo()
 		if err != nil {
 			logger.Panic(err)
 		}
 		newestBlockNumber := info.Height - 1
-		return &fileLedgerIterator{ledger: fl, blockNumber: newestBlockNumber}, newestBlockNumber
+		startingBlockNumber = newestBlockNumber
 	case *ab.SeekPosition_Specified:
+		startingBlockNumber = start.Specified.Number
 		height := fl.Height()
-		if start.Specified.Number > height {
+		if startingBlockNumber > height {
 			return &ledger.NotFoundErrorIterator{}, 0
 		}
-		return &fileLedgerIterator{ledger: fl, blockNumber: start.Specified.Number}, start.Specified.Number
 	default:
 		return &ledger.NotFoundErrorIterator{}, 0
 	}
+
+	iterator, err := fl.blockStore.RetrieveBlocks(startingBlockNumber)
+	if err != nil {
+		return &ledger.NotFoundErrorIterator{}, 0
+	}
+
+	return &fileLedgerIterator{ledger: fl, blockNumber: startingBlockNumber, commonIterator: iterator}, startingBlockNumber
 }
 
 // Height returns the number of blocks on the ledger

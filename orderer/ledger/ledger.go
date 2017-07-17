@@ -41,6 +41,8 @@ type Iterator interface {
 	Next() (*cb.Block, cb.Status)
 	// ReadyChan supplies a channel which will block until Next will not block
 	ReadyChan() <-chan struct{}
+	// Close releases resources acquired by the Iterator
+	Close()
 }
 
 // Reader allows the caller to inspect the ledger

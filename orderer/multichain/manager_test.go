@@ -213,6 +213,7 @@ func TestFilterCreation(t *testing.T) {
 	}
 
 	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+	defer it.Close()
 	select {
 	case <-it.ReadyChan():
 		block, status := it.Next()
@@ -250,6 +251,7 @@ func TestManagerImpl(t *testing.T) {
 	}
 
 	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+	defer it.Close()
 	select {
 	case <-it.ReadyChan():
 		block, status := it.Next()
@@ -557,22 +559,24 @@ func TestNewChain(t *testing.T) {
 	assert.True(t, ok, "Could not find system channel")
 
 	chainSupport.Enqueue(wrapped)
+	func() {
+		it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+		defer it.Close()
+		select {
+		case <-it.ReadyChan():
+			block, status := it.Next()
+			if status != cb.Status_SUCCESS {
+				t.Fatalf("Could not retrieve block")
+			}
+			if len(block.Data.Data) != 1 {
+				t.Fatalf("Should have had only one message in the orderer transaction block")
+			}
 
-	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
-	select {
-	case <-it.ReadyChan():
-		block, status := it.Next()
-		if status != cb.Status_SUCCESS {
-			t.Fatalf("Could not retrieve block")
+			assert.Equal(t, wrapped, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0]), "Orderer config block contains wrong transaction")
+		case <-time.After(time.Second):
+			t.Fatalf("Block 1 not produced after timeout in system chain")
 		}
-		if len(block.Data.Data) != 1 {
-			t.Fatalf("Should have had only one message in the orderer transaction block")
-		}
-
-		assert.Equal(t, wrapped, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0]), "Orderer config block contains wrong transaction")
-	case <-time.After(time.Second):
-		t.Fatalf("Block 1 not produced after timeout in system chain")
-	}
+	}()
 
 	chainSupport, ok = manager.GetChain(newChainID)
 
@@ -589,7 +593,8 @@ func TestNewChain(t *testing.T) {
 		chainSupport.Enqueue(message)
 	}
 
-	it, _ = chainSupport.Reader().Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 0}}})
+	it, _ := chainSupport.Reader().Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 0}}})
+	defer it.Close()
 	select {
 	case <-it.ReadyChan():
 		block, status := it.Next()

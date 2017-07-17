@@ -129,6 +129,7 @@ func TestRetrieval(t *testing.T) {
 	defer tev.tearDown()
 	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
+	defer it.Close()
 	assert.Equal(t, uint64(0), num, "Expected genesis block iterator, but got %d", num)
 
 	signal := it.ReadyChan()
@@ -162,6 +163,7 @@ func TestRaceCondition(t *testing.T) {
 	defer tev.tearDown()
 
 	it, _ := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+	defer it.Close()
 
 	var block *cb.Block
 	var status cb.Status
@@ -182,6 +184,7 @@ func TestBlockedRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+	defer it.Close()
 	assert.Equal(t, uint64(1), num, "Expected block iterator at 1, but got %d", num)
 
 	signal := it.ReadyChan()
@@ -222,6 +225,7 @@ func TestInvalidRetrieval(t *testing.T) {
 	defer tev.tearDown()
 
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 2}}})
+	defer it.Close()
 	assert.Equal(t, uint64(0), num, "Expected block number to be zero for invalid iterator")
 
 	_, status := it.Next()
@@ -242,6 +246,7 @@ func TestBrokenBlockFile(t *testing.T) {
 	assert.NoError(t, file.Close(), "Expected to successfully close block file")
 
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
+	defer it.Close()
 	assert.Equal(t, uint64(0), num, "Expected genesis block iterator, but got %d", num)
 
 	_, status := it.Next()

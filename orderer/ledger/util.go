@@ -43,6 +43,9 @@ func (nfei *NotFoundErrorIterator) ReadyChan() <-chan struct{} {
 	return closedChan
 }
 
+// Close does nothing
+func (nfei *NotFoundErrorIterator) Close() {}
+
 // CreateNextBlock provides a utility way to construct the next block from
 // contents and metadata for a given ledger
 // XXX This will need to be modified to accept marshaled envelopes

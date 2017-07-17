@@ -139,6 +139,7 @@ func testRetrieval(lf ledgerTestFactory, t *testing.T) {
 	_, li := lf.New()
 	li.Append(CreateNextBlock(li, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	it, num := li.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
+	defer it.Close()
 	if num != 0 {
 		t.Fatalf("Expected genesis block iterator, but got %d", num)
 	}
@@ -177,6 +178,7 @@ func TestBlockedRetrieval(t *testing.T) {
 func testBlockedRetrieval(lf ledgerTestFactory, t *testing.T) {
 	_, li := lf.New()
 	it, num := li.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+	defer it.Close()
 	if num != 1 {
 		t.Fatalf("Expected block iterator at 1, but got %d", num)
 	}
