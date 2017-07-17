@@ -14,7 +14,7 @@ fulfill its promise of a comprehensive, yet customizable, enterprise blockchain 
   transaction history for each channel, and includes SQL-like query capability
   for efficient auditing and dispute resolution.
 * :ref:`Privacy-through-Channels` - Channels enable multi-lateral transactions
-  with the high degrees of privacy and confidentiality required by competing
+  with high degrees of privacy and confidentiality required by competing
   businesses and regulated industries that exchange assets on a common network.
 * :ref:`Security-Membership-Services` - Permissioned membership provides a
   trusted blockchain network, where participants know that all transactions can
