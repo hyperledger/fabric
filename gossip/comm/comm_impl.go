@@ -178,7 +178,9 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 
 	cl := proto.NewGossipClient(cc)
 
-	if _, err = cl.Ping(context.Background(), &proto.Empty{}); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), defConnTimeout)
+	defer cancel()
+	if _, err = cl.Ping(ctx, &proto.Empty{}); err != nil {
 		cc.Close()
 		return nil, err
 	}
@@ -276,7 +278,9 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	}
 	defer cc.Close()
 	cl := proto.NewGossipClient(cc)
-	_, err = cl.Ping(context.Background(), &proto.Empty{})
+	ctx, cancel := context.WithTimeout(context.Background(), defConnTimeout)
+	defer cancel()
+	_, err = cl.Ping(ctx, &proto.Empty{})
 	c.logger.Debug("Returning", err)
 	return err
 }
@@ -294,7 +298,9 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 	defer cc.Close()
 
 	cl := proto.NewGossipClient(cc)
-	if _, err = cl.Ping(context.Background(), &proto.Empty{}); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), defConnTimeout)
+	defer cancel()
+	if _, err = cl.Ping(ctx, &proto.Empty{}); err != nil {
 		return nil, err
 	}
 

@@ -493,6 +493,60 @@ func TestParallelSend(t *testing.T) {
 	assert.Equal(t, messages2Send, c)
 }
 
+type nonResponsivePeer struct {
+	net.Listener
+	*grpc.Server
+	port int
+}
+
+func newNonResponsivePeer() *nonResponsivePeer {
+	rand.Seed(time.Now().UnixNano())
+	port := 50000 + rand.Intn(1000)
+	s, l, _, _ := createGRPCLayer(port)
+	nrp := &nonResponsivePeer{
+		Listener: l,
+		Server:   s,
+		port:     port,
+	}
+	proto.RegisterGossipServer(s, nrp)
+	go s.Serve(l)
+	return nrp
+}
+
+func (bp *nonResponsivePeer) Ping(context.Context, *proto.Empty) (*proto.Empty, error) {
+	time.Sleep(time.Second * 15)
+	return &proto.Empty{}, nil
+}
+
+func (bp *nonResponsivePeer) GossipStream(stream proto.Gossip_GossipStreamServer) error {
+	return nil
+}
+
+func (bp *nonResponsivePeer) stop() {
+	bp.Server.Stop()
+	bp.Listener.Close()
+}
+
+func TestNonResponsivePing(t *testing.T) {
+	t.Parallel()
+	port := 50000 - rand.Intn(1000)
+	c, _ := newCommInstance(port, naiveSec)
+	defer c.Stop()
+	nonRespPeer := newNonResponsivePeer()
+	defer nonRespPeer.stop()
+	s := make(chan struct{})
+	go func() {
+		c.Probe(remotePeer(nonRespPeer.port))
+		s <- struct{}{}
+	}()
+	select {
+	case <-time.After(time.Second * 10):
+		assert.Fail(t, "Request wasn't cancelled on time")
+	case <-s:
+	}
+
+}
+
 func TestResponses(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(8611, naiveSec)
