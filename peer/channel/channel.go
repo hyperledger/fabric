@@ -55,12 +55,13 @@ var (
 	genesisBlockPath string
 
 	// create related variables
-	chainID          string
-	channelTxFile    string
-	orderingEndpoint string
-	tls              bool
-	caFile           string
-	timeout          int
+	chainID                    string
+	channelTxFile              string
+	orderingEndpoint           string
+	tls                        bool
+	caFile                     string
+	ordererTLSHostnameOverride string
+	timeout                    int
 )
 
 // Cmd returns the cobra command for Node
@@ -83,6 +84,7 @@ func AddFlags(cmd *cobra.Command) {
 	flags.StringVarP(&orderingEndpoint, "orderer", "o", "", "Ordering service endpoint")
 	flags.BoolVarP(&tls, "tls", "", false, "Use TLS when communicating with the orderer endpoint")
 	flags.StringVarP(&caFile, "cafile", "", "", "Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint")
+	flags.StringVarP(&ordererTLSHostnameOverride, "ordererTLSHostnameOverride", "", "", "The hostname override to use when validating the TLS connection to the orderer.")
 }
 
 var flags *pflag.FlagSet
@@ -162,7 +164,7 @@ func InitCmdFactory(isEndorserRequired EndorserRequirement, isOrdererRequired Or
 		// check for TLS
 		if tls {
 			if caFile != "" {
-				creds, err := credentials.NewClientTLSFromFile(caFile, "")
+				creds, err := credentials.NewClientTLSFromFile(caFile, ordererTLSHostnameOverride)
 				if err != nil {
 					return nil, fmt.Errorf("Error connecting to %s due to %s", orderingEndpoint, err)
 				}
