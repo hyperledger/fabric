@@ -83,7 +83,7 @@ func channelID(env *cb.Envelope) (string, error) {
 	}
 
 	if envPayload.Header == nil /* || envPayload.Header.ChannelHeader == nil */ {
-		return "", fmt.Errorf("Failing to process config update because no channel ID was set")
+		return "", fmt.Errorf("Failing to process config update because no payload header was set")
 	}
 
 	chdr, err := utils.UnmarshalChannelHeader(envPayload.Header.ChannelHeader)

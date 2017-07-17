@@ -48,7 +48,9 @@ func (ms *mockSupport) ProposeConfigUpdate(env *cb.Envelope) (*cb.ConfigEnvelope
 }
 
 type mockSupportManager struct {
-	GetChainVal *mockSupport
+	GetChainVal           *mockSupport
+	Manager               *mockconfigtx.Manager
+	NewChannelConfigError error
 }
 
 func (msm *mockSupportManager) GetChain(chainID string) (Support, bool) {
@@ -56,21 +58,35 @@ func (msm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 }
 
 func (msm *mockSupportManager) NewChannelConfig(env *cb.Envelope) (configtxapi.Manager, error) {
-	return &mockconfigtx.Manager{
-		ProposeConfigUpdateVal: &cb.ConfigEnvelope{
-			LastUpdate: env,
-		},
-	}, nil
+	msm.Manager.ProposeConfigUpdateVal = &cb.ConfigEnvelope{LastUpdate: env}
+	return msm.Manager, msm.NewChannelConfigError
 }
 
 func TestChannelID(t *testing.T) {
+	const testChannelID = "foo"
 	makeEnvelope := func(payload *cb.Payload) *cb.Envelope {
 		return &cb.Envelope{
 			Payload: utils.MarshalOrPanic(payload),
 		}
 	}
 
-	testChannelID := "foo"
+	_, err := channelID(&cb.Envelope{Payload: []byte("foo")})
+	assert.Error(t, err, "Payload was missing")
+
+	_, err = channelID(makeEnvelope(&cb.Payload{}))
+	assert.Error(t, err, "Header was missing")
+
+	_, err = channelID(makeEnvelope(&cb.Payload{
+		Header: &cb.Header{ChannelHeader: []byte("bar")},
+	}))
+	assert.Error(t, err, "ChannelHeader was malformed")
+
+	_, err = channelID(makeEnvelope(&cb.Payload{
+		Header: &cb.Header{
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{}),
+		},
+	}))
+	assert.Error(t, err, "Channel ID was empty")
 
 	result, err := channelID(makeEnvelope(&cb.Payload{
 		Header: &cb.Header{
@@ -81,24 +97,6 @@ func TestChannelID(t *testing.T) {
 	}))
 	assert.NoError(t, err, "Channel ID was present")
 	assert.Equal(t, testChannelID, result, "Channel ID was present")
-
-	_, err = channelID(makeEnvelope(&cb.Payload{
-		Header: &cb.Header{
-			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{}),
-		},
-	}))
-	assert.Error(t, err, "Channel ID was empty")
-
-	_, err = channelID(makeEnvelope(&cb.Payload{
-		Header: &cb.Header{},
-	}))
-	assert.Error(t, err, "ChannelHeader was missing")
-
-	_, err = channelID(makeEnvelope(&cb.Payload{}))
-	assert.Error(t, err, "Header was missing")
-
-	_, err = channelID(&cb.Envelope{})
-	assert.Error(t, err, "Payload was missing")
 }
 
 const systemChannelID = "system_channel"
@@ -107,6 +105,7 @@ const testUpdateChannelID = "update_channel"
 func newTestInstance() (*mockSupportManager, *Processor) {
 	msm := &mockSupportManager{}
 	msm.GetChainVal = &mockSupport{}
+	msm.Manager = &mockconfigtx.Manager{}
 	return msm, New(systemChannelID, msm, mockcrypto.FakeLocalSigner)
 }
 
@@ -128,6 +127,18 @@ func testConfigUpdate() *cb.Envelope {
 			}),
 		}),
 	}
+}
+
+type mockErroneousLocalSigner struct {
+	SignError error
+}
+
+func (m *mockErroneousLocalSigner) NewSignatureHeader() (*cb.SignatureHeader, error) {
+	return nil, m.SignError
+}
+
+func (m *mockErroneousLocalSigner) Sign(message []byte) ([]byte, error) {
+	return []byte{}, m.SignError
 }
 
 func TestExistingChannel(t *testing.T) {
@@ -166,4 +177,57 @@ func TestNewChannel(t *testing.T) {
 	assert.NoError(t, err, "UnmarshalChannelHeader error")
 
 	assert.Equal(t, int32(cb.HeaderType_ORDERER_TRANSACTION), chdr.Type, "Wrong wrapper tx type")
+}
+
+func TestNewChannelErrorCases(t *testing.T) {
+	{
+		_, p := newTestInstance()
+
+		_, err := p.Process(&cb.Envelope{Payload: []byte("foo")})
+		assert.Error(t, err, "Invalid env config update")
+	}
+
+	{
+		msm, p := newTestInstance()
+		testUpdate := testConfigUpdate()
+		msm.GetChainVal = nil
+		msm.NewChannelConfigError = fmt.Errorf("new channel config error")
+
+		_, err := p.Process(testUpdate)
+		assert.Error(t, err, "Expected channel config error to be returned")
+	}
+
+	{
+		msm, p := newTestInstance()
+		testUpdate := testConfigUpdate()
+		msm.GetChainVal = nil
+		msm.Manager.ProposeConfigUpdateError = fmt.Errorf("propose config update error")
+
+		_, err := p.Process(testUpdate)
+		assert.Error(t, err, "Expected propose config update error to be returned")
+	}
+
+	{
+		msm := &mockSupportManager{}
+		msm.GetChainVal = &mockSupport{}
+		msm.Manager = &mockconfigtx.Manager{}
+		p := New(
+			systemChannelID,
+			msm,
+			&mockErroneousLocalSigner{SignError: fmt.Errorf("Sign error")})
+		msm.GetChainVal = nil
+		testUpdate := testConfigUpdate()
+
+		_, err := p.Process(testUpdate)
+		assert.Error(t, err, "Expected sign error to be returned")
+	}
+
+	{
+		msm := &mockSupportManager{}
+		assert.Panics(
+			t,
+			func() { New(systemChannelID, msm, mockcrypto.FakeLocalSigner) },
+			"Should panic if SupportManager does not contain system channel",
+		)
+	}
 }
