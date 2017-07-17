@@ -168,7 +168,7 @@ func newChainSupport(
 func createStandardFilters(ledgerResources *ledgerResources) *filter.RuleSet {
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
-		sizefilter.MaxBytesRule(ledgerResources.SharedConfig().BatchSize().AbsoluteMaxBytes),
+		sizefilter.MaxBytesRule(ledgerResources.SharedConfig()),
 		sigfilter.New(policies.ChannelWriters, ledgerResources.PolicyManager()),
 		configtxfilter.NewFilter(ledgerResources),
 		filter.AcceptRule,
@@ -180,7 +180,7 @@ func createStandardFilters(ledgerResources *ledgerResources) *filter.RuleSet {
 func createSystemChainFilters(ml *multiLedger, ledgerResources *ledgerResources) *filter.RuleSet {
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
-		sizefilter.MaxBytesRule(ledgerResources.SharedConfig().BatchSize().AbsoluteMaxBytes),
+		sizefilter.MaxBytesRule(ledgerResources.SharedConfig()),
 		sigfilter.New(policies.ChannelWriters, ledgerResources.PolicyManager()),
 		newSystemChainFilter(ledgerResources, ml),
 		configtxfilter.NewFilter(ledgerResources),
