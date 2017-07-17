@@ -111,10 +111,13 @@ Orderer: &OrdererDefaults
         PreferredMaxBytes: 512 KB
 
     Kafka:
-        # Brokers: A list of Kafka brokers to which the orderer connects
-        # NOTE: Use IP:port notation
+        # Brokers: A list of Kafka brokers to which the orderer connects. Edit
+        # this list to identify the brokers of the ordering service.
+        # NOTE: Use IP:port notation.
         Brokers:
-            - 127.0.0.1:9092
+            - kafka0:9092
+            - kafka1:9092
+            - kafka2:9092
 
     # Organizations is the list of orgs which are defined as participants on
     # the orderer side of the network
