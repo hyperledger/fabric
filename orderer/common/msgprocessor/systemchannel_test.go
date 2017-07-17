@@ -10,7 +10,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/config"
+	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/crypto"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -174,6 +179,280 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		})
 		assert.Equal(t, cs, ms.SequenceVal)
 		assert.NotNil(t, config)
+		assert.Nil(t, err)
+	})
+}
+
+type mockDefaultTemplatorSupport struct {
+	configtxapi.Manager
+}
+
+func (mdts *mockDefaultTemplatorSupport) Signer() crypto.LocalSigner {
+	return nil
+}
+
+func TestNewChannelConfig(t *testing.T) {
+	singleMSPGenesisBlock := provisional.New(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)).GenesisBlock()
+	ctxm, err := configtx.NewManagerImpl(utils.ExtractEnvelopeOrPanic(singleMSPGenesisBlock, 0), configtx.NewInitializer(), nil)
+	assert.Nil(t, err)
+
+	templator := NewDefaultTemplator(&mockDefaultTemplatorSupport{
+		Manager: ctxm,
+	})
+
+	t.Run("BadPayload", func(t *testing.T) {
+		_, err := templator.NewChannelConfig(&cb.Envelope{Payload: []byte("bad payload")})
+		assert.Error(t, err, "Should not be able to create new channel config from bad payload.")
+	})
+
+	for _, tc := range []struct {
+		name    string
+		payload *cb.Payload
+		regex   string
+	}{
+		{
+			"BadPayloadData",
+			&cb.Payload{
+				Data: []byte("bad payload data"),
+			},
+			"^Failing initial channel config creation because of config update envelope unmarshaling error:",
+		},
+		{
+			"BadConfigUpdate",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: []byte("bad config update envelope data"),
+				}),
+			},
+			"^Failing initial channel config creation because of config update unmarshaling error:",
+		},
+		{
+			"MismatchedChannelID",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							ChannelId: "foo",
+						},
+					),
+				}),
+			},
+			"mismatched channel IDs",
+		},
+		{
+			"EmptyConfigUpdateWriteSet",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{},
+					),
+				}),
+			},
+			"^Config update has an empty writeset$",
+		},
+		{
+			"WriteSetNoGroups",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{},
+						},
+					),
+				}),
+			},
+			"^Config update has missing application group$",
+		},
+		{
+			"WriteSetNoApplicationGroup",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{},
+							},
+						},
+					),
+				}),
+			},
+			"^Config update has missing application group$",
+		},
+		{
+			"BadWriteSetApplicationGroupVersion",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 100,
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"^Config update for channel creation does not set application group version to 1,",
+		},
+		{
+			"MissingWriteSetConsortiumValue",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{},
+							},
+						},
+					),
+				}),
+			},
+			"^Consortium config value missing$",
+		},
+		{
+			"BadWriteSetConsortiumValueValue",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{
+									config.ConsortiumKey: &cb.ConfigValue{
+										Value: []byte("bad consortium value"),
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"^Error reading unmarshaling consortium name:",
+		},
+		{
+			"UnknownConsortiumName",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{
+									config.ConsortiumKey: &cb.ConfigValue{
+										Value: utils.MarshalOrPanic(
+											&cb.Consortium{
+												Name: "NotTheNameYouAreLookingFor",
+											},
+										),
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"^Unknown consortium name:",
+		},
+		{
+			"Missing consortium members",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+									},
+								},
+								Values: map[string]*cb.ConfigValue{
+									config.ConsortiumKey: &cb.ConfigValue{
+										Value: utils.MarshalOrPanic(
+											&cb.Consortium{
+												Name: genesisconfig.SampleConsortiumName,
+											},
+										),
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"Proposed configuration has no application group members, but consortium contains members",
+		},
+		{
+			"Member not in consortium",
+			&cb.Payload{
+				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
+				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+					ConfigUpdate: utils.MarshalOrPanic(
+						&cb.ConfigUpdate{
+							WriteSet: &cb.ConfigGroup{
+								Groups: map[string]*cb.ConfigGroup{
+									config.ApplicationGroupKey: &cb.ConfigGroup{
+										Version: 1,
+										Groups: map[string]*cb.ConfigGroup{
+											"BadOrgName": &cb.ConfigGroup{},
+										},
+									},
+								},
+								Values: map[string]*cb.ConfigValue{
+									config.ConsortiumKey: &cb.ConfigValue{
+										Value: utils.MarshalOrPanic(
+											&cb.Consortium{
+												Name: genesisconfig.SampleConsortiumName,
+											},
+										),
+									},
+								},
+							},
+						},
+					),
+				}),
+			},
+			"Attempted to include a member which is not in the consortium",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := templator.NewChannelConfig(&cb.Envelope{Payload: utils.MarshalOrPanic(tc.payload)})
+			if assert.Error(t, err) {
+				assert.Regexp(t, tc.regex, err.Error())
+			}
+		})
+	}
+
+	// Successful
+	t.Run("Success", func(t *testing.T) {
+		createTx, err := configtx.MakeChainCreationTransaction("foo", genesisconfig.SampleConsortiumName, nil, genesisconfig.SampleOrgName)
+		assert.Nil(t, err)
+		_, err = templator.NewChannelConfig(createTx)
 		assert.Nil(t, err)
 	})
 }
