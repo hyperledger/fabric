@@ -20,14 +20,16 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 func TestMaxBytesRule(t *testing.T) {
 	dataSize := uint32(100)
 	maxBytes := calcMessageBytesForPayloadDataSize(dataSize)
-	rs := filter.NewRuleSet([]filter.Rule{MaxBytesRule(maxBytes), filter.AcceptRule})
+	rs := filter.NewRuleSet([]filter.Rule{MaxBytesRule(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{AbsoluteMaxBytes: maxBytes}}), filter.AcceptRule})
 
 	t.Run("LessThan", func(t *testing.T) {
 		_, err := rs.Apply(makeMessage(make([]byte, dataSize-1)))
