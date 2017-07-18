@@ -167,6 +167,7 @@ func (node *peerNode) shutdown() {
 
 type mockCommitter struct {
 	mock.Mock
+	sync.Mutex
 }
 
 func (mc *mockCommitter) Commit(block *pcomm.Block) error {
@@ -175,6 +176,8 @@ func (mc *mockCommitter) Commit(block *pcomm.Block) error {
 }
 
 func (mc *mockCommitter) LedgerHeight() (uint64, error) {
+	mc.Lock()
+	defer mc.Unlock()
 	if mc.Called().Get(1) == nil {
 		return mc.Called().Get(0).(uint64), nil
 	}
@@ -275,6 +278,110 @@ func TestNilDirectMsg(t *testing.T) {
 		SignedGossipMessage: sMsg,
 	}
 	p.s.(*GossipStateProviderImpl).directMessage(req)
+}
+
+func TestNilAddPayload(t *testing.T) {
+	mc := &mockCommitter{}
+	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+	g := &mocks.GossipMock{}
+	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
+	g.On("Accept", mock.Anything, true).Return(nil, make(<-chan proto.ReceivedMessage))
+	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	defer p.shutdown()
+	err := p.s.AddPayload(nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "nil")
+}
+
+func TestAddPayloadLedgerUnavailable(t *testing.T) {
+	mc := &mockCommitter{}
+	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+	g := &mocks.GossipMock{}
+	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
+	g.On("Accept", mock.Anything, true).Return(nil, make(<-chan proto.ReceivedMessage))
+	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+	defer p.shutdown()
+	// Simulate a problem in the ledger
+	failedLedger := mock.Mock{}
+	failedLedger.On("LedgerHeight", mock.Anything).Return(uint64(0), errors.New("cannot query ledger"))
+	mc.Lock()
+	mc.Mock = failedLedger
+	mc.Unlock()
+
+	rawblock := pcomm.NewBlock(uint64(1), []byte{})
+	b, _ := pb.Marshal(rawblock)
+	err := p.s.AddPayload(&proto.Payload{
+		SeqNum: uint64(1),
+		Data:   b,
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Failed obtaining ledger height")
+	assert.Contains(t, err.Error(), "cannot query ledger")
+}
+
+func TestOverPopulation(t *testing.T) {
+	// Scenario: Add to the state provider blocks
+	// with a gap in between, and ensure that the payload buffer
+	// rejects blocks starting if the distance between the ledger height to the latest
+	// block it contains is bigger than defMaxBlockDistance.
+
+	mc := &mockCommitter{}
+	blocksPassedToLedger := make(chan uint64, 10)
+	mc.On("Commit", mock.Anything).Run(func(arg mock.Arguments) {
+		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
+	})
+	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+	g := &mocks.GossipMock{}
+	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
+	g.On("Accept", mock.Anything, true).Return(nil, make(<-chan proto.ReceivedMessage))
+	p := newPeerNode(newGossipConfig(0), mc, noopPeerIdentityAcceptor)
+	defer p.shutdown()
+
+	// Add some blocks in a sequential manner and make sure it works
+	for i := 1; i <= 4; i++ {
+		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		b, _ := pb.Marshal(rawblock)
+		assert.NoError(t, p.s.AddPayload(&proto.Payload{
+			SeqNum: uint64(i),
+			Data:   b,
+		}))
+	}
+
+	// Add payloads from 10 to defMaxBlockDistance, while we're missing blocks [5,9]
+	// Should succeed
+	for i := 10; i <= defMaxBlockDistance; i++ {
+		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		b, _ := pb.Marshal(rawblock)
+		assert.NoError(t, p.s.AddPayload(&proto.Payload{
+			SeqNum: uint64(i),
+			Data:   b,
+		}))
+	}
+
+	// Add payloads from defMaxBlockDistance + 2 to defMaxBlockDistance * 10
+	// Should fail.
+	for i := defMaxBlockDistance + 1; i <= defMaxBlockDistance*10; i++ {
+		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		b, _ := pb.Marshal(rawblock)
+		assert.Error(t, p.s.AddPayload(&proto.Payload{
+			SeqNum: uint64(i),
+			Data:   b,
+		}))
+	}
+
+	// Ensure only blocks 1-4 were passed to the ledger
+	close(blocksPassedToLedger)
+	i := 1
+	for seq := range blocksPassedToLedger {
+		assert.Equal(t, uint64(i), seq)
+		i++
+	}
+	assert.Equal(t, 5, i)
+
+	// Ensure we don't store too many blocks in memory
+	sp := p.s.(*GossipStateProviderImpl)
+	assert.True(t, sp.payloads.Size() < defMaxBlockDistance)
+
 }
 
 func TestFailures(t *testing.T) {
