@@ -521,7 +521,7 @@ func (m *SignedGossipMessage) String() string {
 		var isSimpleMsg bool
 		if m.GetStateResponse() != nil {
 			gMsg = fmt.Sprintf("StateResponse with %d items", len(m.GetStateResponse().Payloads))
-		} else if m.IsDataMsg() {
+		} else if m.IsDataMsg() && m.GetDataMsg().Payload != nil {
 			gMsg = m.GetDataMsg().Payload.toString()
 		} else if m.IsDataUpdate() {
 			update := m.GetDataUpdate()
