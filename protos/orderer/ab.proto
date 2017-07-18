@@ -24,7 +24,10 @@ option java_package = "org.hyperledger.fabric.protos.orderer";
 package orderer;
 
 message BroadcastResponse {
+    // Status code, which may be used to programatically respond to success/failure
     common.Status status = 1;
+    // Info string which may contain additional information about the status returned
+    string info = 2;
 }
 
 message SeekNewest { }
