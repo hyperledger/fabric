@@ -80,7 +80,7 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 
 		if !isConfig {
-			logger.Debugf("[channel: %s] Broadcast is processing normal message of type %s", chdr.ChannelId, cb.HeaderType_name[chdr.Type])
+			logger.Debugf("[channel: %s] Broadcast is processing normal message with txid '%s' of type %s", chdr.ChannelId, chdr.TxId, cb.HeaderType_name[chdr.Type])
 
 			configSeq, err := processor.ProcessNormalMsg(msg)
 			if err != nil {
