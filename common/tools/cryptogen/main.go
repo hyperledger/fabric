@@ -136,8 +136,10 @@ PeerOrgs:
     #                 which obtains its values from the Spec.Hostname and
     #                 Org.Domain, respectively.
     #   - SANS:       (Optional) Specifies one or more Subject Alternative Names
-    #                 the be set in the resulting x509.  Accepts template
-    #                 variables {{.Hostname}}, {{.Domain}}, {{.CommonName}}
+    #                 to be set in the resulting x509. Accepts template
+    #                 variables {{.Hostname}}, {{.Domain}}, {{.CommonName}}. IP
+    #                 addresses provided here will be properly recognized. Other
+    #                 values will be taken as DNS names.
     #                 NOTE: Two implicit entries are created for you:
     #                     - {{ .CommonName }}
     #                     - {{ .Hostname }}
@@ -149,6 +151,7 @@ PeerOrgs:
     #       - "bar.{{.Domain}}"
     #       - "altfoo.{{.Domain}}"
     #       - "{{.Hostname}}.org6.net"
+    #       - 172.16.10.31
     #   - Hostname: bar
     #   - Hostname: baz
 
