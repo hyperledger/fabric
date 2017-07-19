@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -76,21 +75,21 @@ func (mch *mockChain) Start() {
 				batch := mch.support.BlockCutter().Cut()
 				if batch != nil {
 					block := mch.support.CreateNextBlock(batch)
-					mch.support.WriteBlock(block, nil, nil)
+					mch.support.WriteBlock(block, nil)
 				}
 
-				committer, _, err := mch.support.ProcessNormalMsg(msg)
+				_, err := mch.support.ProcessNormalMsg(msg)
 				if err != nil {
 					logger.Warningf("Discarding bad config message: %s", err)
 					continue
 				}
 				block := mch.support.CreateNextBlock([]*cb.Envelope{msg})
-				mch.support.WriteBlock(block, []filter.Committer{committer}, nil)
+				mch.support.WriteConfigBlock(block, nil)
 			case NormalMsg:
 				batches, _ := mch.support.BlockCutter().Ordered(msg)
 				for _, batch := range batches {
 					block := mch.support.CreateNextBlock(batch)
-					mch.support.WriteBlock(block, nil, nil)
+					mch.support.WriteBlock(block, nil)
 				}
 			default:
 				logger.Panicf("Unsupported msg classification: %v", class)

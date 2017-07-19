@@ -13,7 +13,6 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/orderer/common/filter"
 	localconfig "github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -382,16 +381,16 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support multichain.C
 		batch := support.BlockCutter().Cut()
 		if batch != nil {
 			block := support.CreateNextBlock(batch)
-			support.WriteBlock(block, nil, nil)
+			support.WriteBlock(block, nil)
 		}
 
-		committer, _, err := support.ProcessNormalMsg(env)
+		_, err := support.ProcessNormalMsg(env)
 		if err != nil {
 			logger.Warningf("[channel: %s] Discarding bad config message: %s", support.ChainID(), err)
 			break
 		}
 		block := support.CreateNextBlock([]*cb.Envelope{env})
-		support.WriteBlock(block, []filter.Committer{committer}, nil)
+		support.WriteConfigBlock(block, nil)
 		*timer = nil
 	case multichain.NormalMsg:
 		batches, ok := support.BlockCutter().Ordered(env)
@@ -409,7 +408,7 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support multichain.C
 			offset := receivedOffset - int64(len(batches)-i-1)
 			block := support.CreateNextBlock(batch)
 			encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: offset})
-			support.WriteBlock(block, nil, encodedLastOffsetPersisted)
+			support.WriteBlock(block, encodedLastOffsetPersisted)
 			*lastCutBlockNumber++
 			logger.Debugf("[channel: %s] Batch filled, just cut block %d - last persisted offset is now %d", support.ChainID(), *lastCutBlockNumber, offset)
 		}
@@ -435,7 +434,7 @@ func processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, support multichain.C
 		}
 		block := support.CreateNextBlock(batch)
 		encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: receivedOffset})
-		support.WriteBlock(block, nil, encodedLastOffsetPersisted)
+		support.WriteBlock(block, encodedLastOffsetPersisted)
 		*lastCutBlockNumber++
 		logger.Debugf("[channel: %s] Proper time-to-cut received, just cut block %d", support.ChainID(), *lastCutBlockNumber)
 		return nil

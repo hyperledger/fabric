@@ -90,7 +90,8 @@ type ConsenterSupport interface {
 	BlockCutter() blockcutter.Receiver
 	SharedConfig() config.Orderer
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
-	WriteBlock(block *cb.Block, committers []filter.Committer, encodedMetadataValue []byte) *cb.Block
+	WriteBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block
+	WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block
 	ChainID() string // ChainID returns the chain ID this specific consenter instance is associated with
 	Height() uint64  // Returns the number of blocks on the chain this specific consenter instance is associated with
 }
@@ -102,7 +103,7 @@ type MsgProcessor interface {
 
 	// ProcessNormalMsg will check the validity of a message based on the current configuration.  It returns the current
 	// configuration sequence number and nil on success, or an error if the message is not valid
-	ProcessNormalMsg(env *cb.Envelope) (committer filter.Committer, configSeq uint64, err error)
+	ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, err error)
 
 	// ProcessConfigUpdateMsg will attempt to apply the config impetus msg to the current configuration, and if successful
 	// return the resulting config message and the configSeq the config was computed from.  If the config impetus message
@@ -260,9 +261,9 @@ func (cs *chainSupport) ClassifyMsg(env *cb.Envelope) (MsgClassification, error)
 
 // ProcessNormalMsg will check the validity of a message based on the current configuration.  It returns the current
 // configuration sequence number and nil on success, or an error if the message is not valid
-func (cs *chainSupport) ProcessNormalMsg(env *cb.Envelope) (committer filter.Committer, configSeq uint64, err error) {
+func (cs *chainSupport) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, err error) {
 	configSeq = cs.Sequence()
-	committer, err = cs.filters.Apply(env)
+	_, err = cs.filters.Apply(env)
 	return
 }
 
@@ -336,10 +337,19 @@ func (cs *chainSupport) addLastConfigSignature(block *cb.Block) {
 	})
 }
 
-func (cs *chainSupport) WriteBlock(block *cb.Block, committers []filter.Committer, encodedMetadataValue []byte) *cb.Block {
-	for _, committer := range committers {
-		committer.Commit()
+func (cs *chainSupport) WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block {
+	// XXX This hacky path is temporary and will be removed by the end of this change series
+	// The panics here are just fine
+	committer, err := cs.filters.Apply(utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0]))
+	if err != nil {
+		logger.Panicf("Config should have already been validated")
 	}
+	committer.Commit()
+
+	return cs.WriteBlock(block, encodedMetadataValue)
+}
+
+func (cs *chainSupport) WriteBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block {
 	// Set the orderer-related metadata field
 	if encodedMetadataValue != nil {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})

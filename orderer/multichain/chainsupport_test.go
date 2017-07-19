@@ -66,13 +66,16 @@ func (mc *mockCommitter) Commit() {
 func TestCommitConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
+	cs := &chainSupport{
+		ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml},
+		filters:         filter.NewRuleSet([]filter.Rule{filter.AcceptRule}),
+		signer:          mockCrypto(),
+	}
 	assert.Equal(t, uint64(0), cs.Height(), "Should has height of 0")
 
 	txs := []*cb.Envelope{makeNormalTx("foo", 0), makeNormalTx("bar", 1)}
-	committers := []filter.Committer{&mockCommitter{}, &mockCommitter{}}
 	block := cs.CreateNextBlock(txs)
-	cs.WriteBlock(block, committers, nil)
+	cs.WriteConfigBlock(block, nil)
 	assert.Equal(t, uint64(1), cs.Height(), "Should has height of 1")
 
 	blockTXs := make([]*cb.Envelope, len(ml.data))
@@ -81,10 +84,6 @@ func TestCommitConfig(t *testing.T) {
 	}
 
 	assert.Equal(t, txs, blockTXs, "Should have written input data to ledger but did not")
-
-	for _, c := range committers {
-		assert.EqualValues(t, 1, c.(*mockCommitter).committed, "Expected exactly 1 commits but got %d", c.(*mockCommitter).committed)
-	}
 }
 
 func TestWriteBlockSignatures(t *testing.T) {
@@ -92,7 +91,7 @@ func TestWriteBlockSignatures(t *testing.T) {
 	cm := &mockconfigtx.Manager{}
 	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
 
-	actual := utils.GetMetadataFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, nil), cb.BlockMetadataIndex_SIGNATURES)
+	actual := utils.GetMetadataFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil), cb.BlockMetadataIndex_SIGNATURES)
 	assert.NotNil(t, actual, "Block should have block signature")
 }
 
@@ -103,7 +102,7 @@ func TestWriteBlockOrdererMetadata(t *testing.T) {
 
 	value := []byte("foo")
 	expected := &cb.Metadata{Value: value}
-	actual := utils.GetMetadataFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, value), cb.BlockMetadataIndex_ORDERER)
+	actual := utils.GetMetadataFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), value), cb.BlockMetadataIndex_ORDERER)
 	assert.NotNil(t, actual, "Block should have orderer metadata written")
 	assert.True(t, proto.Equal(expected, actual), "Orderer metadata not written to block correctly")
 }
@@ -128,17 +127,17 @@ func TestWriteLastConfig(t *testing.T) {
 	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
 
 	expected := uint64(0)
-	lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, nil))
+	lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil))
 	assert.Equal(t, expected, lc, "First block should have config block index of %d, but got %d", expected, lc)
-	lc = utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(1, nil), nil, nil))
+	lc = utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(1, nil), nil))
 	assert.Equal(t, expected, lc, "Second block should have config block index of %d, but got %d", expected, lc)
 
 	cm.SequenceVal = 1
 	expected = uint64(2)
-	lc = utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(2, nil), nil, nil))
+	lc = utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(2, nil), nil))
 	assert.Equal(t, expected, lc, "Second block should have config block index of %d, but got %d", expected, lc)
 
-	lc = utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(3, nil), nil, nil))
+	lc = utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(3, nil), nil))
 	assert.Equal(t, expected, lc, "Second block should have config block index of %d, but got %d", expected, lc)
 
 	t.Run("ResetChainSupport", func(t *testing.T) {
@@ -146,10 +145,10 @@ func TestWriteLastConfig(t *testing.T) {
 		expected = uint64(4)
 
 		cs = &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
-		lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(4, nil), nil, nil))
+		lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(4, nil), nil))
 		assert.Equal(t, expected, lc, "Second block should have config block index of %d, but got %d", expected, lc)
 
-		lc = utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(5, nil), nil, nil))
+		lc = utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(5, nil), nil))
 		assert.Equal(t, expected, lc, "Second block should have config block index of %d, but got %d")
 	})
 }
