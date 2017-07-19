@@ -168,7 +168,9 @@ also set the preferred size of blocks by setting the
 ``Orderer.Batchsize.PreferredMaxBytes`` key. Kafka offers higher throughput when
 dealing with relatively small messages; aim for a value no bigger than 1 MiB.
 
-2. **Using environment variables to override settings.** You can override a
+2. **Using environment variables to override settings.** When using the sample
+Kafka and Zookeeper Docker images provided with Hyperledger Fabric (see
+``images/kafka`` and ``images/zookeeper`` respectively), you can override a
 Kafka broker or a ZooKeeper server's settings by using environment variables.
 Replace the dots of the configuration key with underscores --
 e.g. ``KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false`` will allow you to override
@@ -184,9 +186,11 @@ Supported Kafka versions for v1 are ``0.9`` and ``0.10``. (Hyperledger Fabric
 uses the `sarama client library <https://github.com/Shopify/sarama>`_
 and vendors a version of it that supports Kafka 0.9 and 0.10.)
 
-Out of the box the Kafka version defaults to ``0.9.0.1``. If you wish to use a
-different supported version, specify a supported version using the
-``Kafka.Version`` key in ``orderer.yaml``.
+Out of the box the Kafka version defaults to ``0.9.0.1``. The sample Kafka
+image provided by Hyperledger Fabric matches this default version. If you are
+not using the sample Kafka image provided by Hyperledger Fabric, ensure that
+you specify your Kafka cluster's Kafka version using the ``Kafka.Version`` key
+in ``orderer.yaml``.
 
 The current supported Kafka versions are:
 
