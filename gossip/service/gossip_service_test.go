@@ -276,7 +276,7 @@ type mockDeliverService struct {
 	running map[string]bool
 }
 
-func (ds *mockDeliverService) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+func (ds *mockDeliverService) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, finalizer func()) error {
 	ds.running[chainID] = true
 	return nil
 }

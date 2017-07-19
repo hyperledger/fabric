@@ -196,7 +196,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 			g.leaderElection[chainID] = g.newLeaderElectionComponent(chainID, g.onStatusChangeFactory(chainID, committer))
 		} else if isStaticOrgLeader {
 			logger.Debug("This peer is configured to connect to ordering service for blocks delivery, channel", chainID)
-			g.deliveryService.StartDeliverForChannel(chainID, committer)
+			g.deliveryService.StartDeliverForChannel(chainID, committer, func() {})
 		} else {
 			logger.Debug("This peer is not configured to connect to ordering service for blocks delivery, channel", chainID)
 		}
@@ -282,8 +282,12 @@ func (g *gossipServiceImpl) amIinChannel(myOrg string, config Config) bool {
 func (g *gossipServiceImpl) onStatusChangeFactory(chainID string, committer blocksprovider.LedgerInfo) func(bool) {
 	return func(isLeader bool) {
 		if isLeader {
+			yield := func() {
+				le := g.leaderElection[chainID]
+				le.Yield()
+			}
 			logger.Info("Elected as a leader, starting delivery service for channel", chainID)
-			if err := g.deliveryService.StartDeliverForChannel(chainID, committer); err != nil {
+			if err := g.deliveryService.StartDeliverForChannel(chainID, committer, yield); err != nil {
 				logger.Error("Delivery service is not able to start blocks delivery for chain, due to", err)
 			}
 		} else {
