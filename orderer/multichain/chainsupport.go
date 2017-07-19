@@ -17,6 +17,8 @@ limitations under the License.
 package multichain
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
@@ -31,6 +33,19 @@ import (
 	"github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+)
+
+// MsgClassification represents the types of possible messages.
+type MsgClassification int
+
+const (
+	// NormalMsg is the class of standard (endorser or otherwise non-config) messages.
+	// Messages of this type should be processed by ProcessNormalMsg.
+	NormalMsg MsgClassification = iota
+
+	// ConfigUpdateMsg is the class of configuration related messages.
+	// Messages of this type should be processed by ProcessConfigUpdateMsg.
+	ConfigUpdateMsg
 )
 
 // Consenter defines the backing ordering mechanism
@@ -71,12 +86,28 @@ type Chain interface {
 // ConsenterSupport provides the resources available to a Consenter implementation
 type ConsenterSupport interface {
 	crypto.LocalSigner
+	MsgProcessor
 	BlockCutter() blockcutter.Receiver
 	SharedConfig() config.Orderer
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
 	WriteBlock(block *cb.Block, committers []filter.Committer, encodedMetadataValue []byte) *cb.Block
 	ChainID() string // ChainID returns the chain ID this specific consenter instance is associated with
 	Height() uint64  // Returns the number of blocks on the chain this specific consenter instance is associated with
+}
+
+// MsgProcessor defines the methods necessary to interact with Broadcast messages.
+type MsgProcessor interface {
+	// ClassifyMsg inspects the message to determine which type of processing is necessary.
+	ClassifyMsg(env *cb.Envelope) (MsgClassification, error)
+
+	// ProcessNormalMsg will check the validity of a message based on the current configuration.  It returns the current
+	// configuration sequence number and nil on success, or an error if the message is not valid
+	ProcessNormalMsg(env *cb.Envelope) (committer filter.Committer, configSeq uint64, err error)
+
+	// ProcessConfigUpdateMsg will attempt to apply the config impetus msg to the current configuration, and if successful
+	// return the resulting config message and the configSeq the config was computed from.  If the config impetus message
+	// is invalid, an error is returned.
+	ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error)
 }
 
 // ChainSupport provides a wrapper for the resources backing a chain
@@ -193,6 +224,53 @@ func (cs *chainSupport) Filters() *filter.RuleSet {
 
 func (cs *chainSupport) BlockCutter() blockcutter.Receiver {
 	return cs.cutter
+}
+
+// ClassifyMsg inspects the message to determine which type of processing is necessary
+func (cs *chainSupport) ClassifyMsg(env *cb.Envelope) (MsgClassification, error) {
+	payload, err := utils.UnmarshalPayload(env.Payload)
+	if err != nil {
+		return 0, fmt.Errorf("bad payload: %s", err)
+	}
+
+	if payload.Header == nil {
+		return 0, fmt.Errorf("bad payload: missing header")
+	}
+
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return 0, fmt.Errorf("bad channelheader: %s", err)
+	}
+
+	switch chdr.Type {
+	case int32(cb.HeaderType_CONFIG_UPDATE):
+		return ConfigUpdateMsg, nil
+	case int32(cb.HeaderType_ORDERER_TRANSACTION):
+		return ConfigUpdateMsg, nil
+		// XXX Eventually, these types cannot be allowed to be submitted directly
+		// return 0, fmt.Errorf("Transactions of type ORDERER_TRANSACTION cannot be Broadcast")
+	case int32(cb.HeaderType_CONFIG):
+		return ConfigUpdateMsg, nil
+		// XXX Eventually, these types cannot be allowed to be submitted directly
+		// return 0, fmt.Errorf("Transactions of type CONFIG cannot be Broadcast")
+	default:
+		return NormalMsg, nil
+	}
+}
+
+// ProcessNormalMsg will check the validity of a message based on the current configuration.  It returns the current
+// configuration sequence number and nil on success, or an error if the message is not valid
+func (cs *chainSupport) ProcessNormalMsg(env *cb.Envelope) (committer filter.Committer, configSeq uint64, err error) {
+	configSeq = cs.Sequence()
+	committer, err = cs.filters.Apply(env)
+	return
+}
+
+// ProcessConfigUpdateMsg will attempt to apply the config update msg to the current configuration, and if successful
+// return the resulting config message and the configSeq the config was computed from.  If the config update message
+// is invalid, an error is returned.
+func (cs *chainSupport) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
+	return nil, cs.Sequence(), fmt.Errorf("Config update message not yet implemented")
 }
 
 func (cs *chainSupport) Reader() ledger.Reader {

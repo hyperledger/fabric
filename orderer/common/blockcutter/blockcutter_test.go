@@ -24,7 +24,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
 	logging "github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -85,26 +87,13 @@ func TestNormalBatch(t *testing.T) {
 	preferredMaxBytes := uint32(100)
 	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
-	batches, committers, ok := r.Ordered(goodTx)
+	batches, ok := r.Ordered(goodTx)
+	assert.Nil(t, batches, "Should not have created batch")
+	assert.True(t, ok, "Should have enqueued message into batch")
 
-	if batches != nil || committers != nil {
-		t.Fatalf("Should not have created batch")
-	}
-
-	if !ok {
-		t.Fatalf("Should have enqueued message into batch")
-	}
-
-	batches, committers, ok = r.Ordered(goodTx)
-
-	if batches == nil || committers == nil {
-		t.Fatalf("Should have created batch")
-	}
-
-	if !ok {
-		t.Fatalf("Should have enqueued second message into batch")
-	}
-
+	batches, ok = r.Ordered(goodTx)
+	assert.NotNil(t, batches, "Should have created batch")
+	assert.True(t, ok, "Should have enqueued second message into batch")
 }
 
 func TestBadMessageInBatch(t *testing.T) {
@@ -114,35 +103,17 @@ func TestBadMessageInBatch(t *testing.T) {
 	preferredMaxBytes := uint32(100)
 	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
-	batches, committers, ok := r.Ordered(badTx)
+	batches, ok := r.Ordered(badTx)
+	assert.Nil(t, batches, "Should not have created batch")
+	assert.False(t, ok, "Should not have enqueued bad message into batch")
 
-	if batches != nil || committers != nil {
-		t.Fatalf("Should not have created batch")
-	}
+	batches, ok = r.Ordered(goodTx)
+	assert.Nil(t, batches, "Should not have created batch")
+	assert.True(t, ok, "Should have enqueued good message into batch")
 
-	if ok {
-		t.Fatalf("Should not have enqueued bad message into batch")
-	}
-
-	batches, committers, ok = r.Ordered(goodTx)
-
-	if batches != nil || committers != nil {
-		t.Fatalf("Should not have created batch")
-	}
-
-	if !ok {
-		t.Fatalf("Should have enqueued good message into batch")
-	}
-
-	batches, committers, ok = r.Ordered(badTx)
-
-	if batches != nil || committers != nil {
-		t.Fatalf("Should not have created batch")
-	}
-
-	if ok {
-		t.Fatalf("Should not have enqueued second bad message into batch")
-	}
+	batches, ok = r.Ordered(badTx)
+	assert.Nil(t, batches, "Should not have created batch")
+	assert.False(t, ok, "Should not have enqueued second bad message into batch")
 }
 
 func TestUnmatchedMessageInBatch(t *testing.T) {
@@ -152,35 +123,17 @@ func TestUnmatchedMessageInBatch(t *testing.T) {
 	preferredMaxBytes := uint32(100)
 	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
-	batches, committers, ok := r.Ordered(unmatchedTx)
+	batches, ok := r.Ordered(unmatchedTx)
+	assert.Nil(t, batches, "Should not have created batch")
+	assert.False(t, ok, "Should not have enqueued unmatched message into batch")
 
-	if batches != nil || committers != nil {
-		t.Fatalf("Should not have created batch")
-	}
+	batches, ok = r.Ordered(goodTx)
+	assert.Nil(t, batches, "Should not have created batch")
+	assert.True(t, ok, "Should have enqueued good message into batch")
 
-	if ok {
-		t.Fatalf("Should not have enqueued unmatched message into batch")
-	}
-
-	batches, committers, ok = r.Ordered(goodTx)
-
-	if batches != nil || committers != nil {
-		t.Fatalf("Should not have created batch")
-	}
-
-	if !ok {
-		t.Fatalf("Should have enqueued good message into batch")
-	}
-
-	batches, committers, ok = r.Ordered(unmatchedTx)
-
-	if batches != nil || committers != nil {
-		t.Fatalf("Should not have created batch from unmatched message")
-	}
-
-	if ok {
-		t.Fatalf("Should not have enqueued second bad message into batch")
-	}
+	batches, ok = r.Ordered(unmatchedTx)
+	assert.Nil(t, batches, "Should not have created batch from unmatched message")
+	assert.False(t, ok, "Should not have enqueued second bad message into batch")
 }
 
 func TestIsolatedEmptyBatch(t *testing.T) {
@@ -190,23 +143,7 @@ func TestIsolatedEmptyBatch(t *testing.T) {
 	preferredMaxBytes := uint32(100)
 	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
-	batches, committers, ok := r.Ordered(isolatedTx)
-
-	if !ok {
-		t.Fatalf("Should have enqueued isolated message")
-	}
-
-	if len(batches) != 1 || len(committers) != 1 {
-		t.Fatalf("Should created new batch, got %d and %d", len(batches), len(committers))
-	}
-
-	if len(batches[0]) != 1 || len(committers[0]) != 1 {
-		t.Fatalf("Should have had one isolatedTx in the second batch got %d and %d", len(batches[1]), len(committers[0]))
-	}
-
-	if !bytes.Equal(batches[0][0].Payload, isolatedTx.Payload) {
-		t.Fatalf("Should have had the isolated tx in the first batch")
-	}
+	assert.Panics(t, func() { r.Ordered(isolatedTx) }, "Should not have handled an isolated by committer message")
 }
 
 func TestIsolatedPartialBatch(t *testing.T) {
@@ -216,41 +153,11 @@ func TestIsolatedPartialBatch(t *testing.T) {
 	preferredMaxBytes := uint32(100)
 	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
-	batches, committers, ok := r.Ordered(goodTx)
+	batches, ok := r.Ordered(goodTx)
+	assert.Nil(t, batches, "Should not have created batch")
+	assert.True(t, ok, "Should have enqueued good message into batch")
 
-	if batches != nil || committers != nil {
-		t.Fatalf("Should not have created batch")
-	}
-
-	if !ok {
-		t.Fatalf("Should have enqueued good message into batch")
-	}
-
-	batches, committers, ok = r.Ordered(isolatedTx)
-
-	if !ok {
-		t.Fatalf("Should have enqueued isolated message")
-	}
-
-	if len(batches) != 2 || len(committers) != 2 {
-		t.Fatalf("Should have created two batches, got %d and %d", len(batches), len(committers))
-	}
-
-	if len(batches[0]) != 1 || len(committers[0]) != 1 {
-		t.Fatalf("Should have had one normal tx in the first batch got %d and %d committers", len(batches[0]), len(committers[0]))
-	}
-
-	if !bytes.Equal(batches[0][0].Payload, goodTx.Payload) {
-		t.Fatalf("Should have had the normal tx in the first batch")
-	}
-
-	if len(batches[1]) != 1 || len(committers[1]) != 1 {
-		t.Fatalf("Should have had one isolated tx in the second batch got %d and %d committers", len(batches[1]), len(committers[1]))
-	}
-
-	if !bytes.Equal(batches[1][0].Payload, isolatedTx.Payload) {
-		t.Fatalf("Should have had the isolated tx in the second batch")
-	}
+	assert.Panics(t, func() { r.Ordered(isolatedTx) }, "Should not have handled an isolated by committer message")
 }
 
 func TestBatchSizePreferredMaxBytesOverflow(t *testing.T) {
@@ -268,44 +175,22 @@ func TestBatchSizePreferredMaxBytesOverflow(t *testing.T) {
 
 	// enqueue 9 messages
 	for i := 0; i < 9; i++ {
-		batches, committers, ok := r.Ordered(goodTx)
-		if batches != nil || committers != nil {
-			t.Fatalf("Should not have created batch")
-		}
-		if !ok {
-			t.Fatalf("Should have enqueued message into batch")
-		}
+		batches, ok := r.Ordered(goodTx)
+		assert.Nil(t, batches, "Should not have created batch")
+		assert.True(t, ok, "Should have enqueued message into batch")
 	}
 
 	// next message should create batch
-	batches, committers, ok := r.Ordered(goodTx)
-
-	if batches == nil || committers == nil {
-		t.Fatalf("Should have created batch")
-	}
-
-	if len(batches) != 1 || len(committers) != 1 {
-		t.Fatalf("Should have created one batch, got %d and %d", len(batches), len(committers))
-	}
-
-	if len(batches[0]) != 9 || len(committers[0]) != 9 {
-		t.Fatalf("Should have had nine normal tx in the batch got %d and %d committers", len(batches[0]), len(committers[0]))
-	}
-	if !ok {
-		t.Fatalf("Should have enqueued the tenth message into batch")
-	}
+	batches, ok := r.Ordered(goodTx)
+	assert.NotNil(t, batches, "Should have created batch")
+	assert.True(t, ok, "Should have enqueued message into batch")
+	assert.Len(t, batches, 1, "Should have created one batch")
+	assert.Len(t, batches[0], 9, "Should have had nine normal tx in the batch")
 
 	// force a batch cut
-	messageBatch, committerBatch := r.Cut()
-
-	if messageBatch == nil || committerBatch == nil {
-		t.Fatalf("Should have created batch")
-	}
-
-	if len(messageBatch) != 1 || len(committerBatch) != 1 {
-		t.Fatalf("Should have had one tx in the batch, got %d and %d", len(batches), len(committers))
-	}
-
+	messageBatch := r.Cut()
+	assert.NotNil(t, batches, "Should have created batch")
+	assert.Len(t, messageBatch, 1, "Should have had one tx in the batch")
 }
 
 func TestBatchSizePreferredMaxBytesOverflowNoPending(t *testing.T) {
@@ -322,21 +207,9 @@ func TestBatchSizePreferredMaxBytesOverflowNoPending(t *testing.T) {
 	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: preferredMaxBytes * 3, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	// submit large message
-	batches, committers, ok := r.Ordered(goodTxLarge)
-
-	if batches == nil || committers == nil {
-		t.Fatalf("Should have created batch")
-	}
-
-	if len(batches) != 1 || len(committers) != 1 {
-		t.Fatalf("Should have created one batch, got %d and %d", len(batches), len(committers))
-	}
-
-	if len(batches[0]) != 1 || len(committers[0]) != 1 {
-		t.Fatalf("Should have had one normal tx in the batch got %d and %d committers", len(batches[0]), len(committers[0]))
-	}
-	if !ok {
-		t.Fatalf("Should have enqueued the message into batch")
-	}
-
+	batches, ok := r.Ordered(goodTxLarge)
+	assert.NotNil(t, batches, "Should have created batch")
+	assert.True(t, ok, "Should have enqueued message into batch")
+	assert.Len(t, batches, 1, "Should have created one batch")
+	assert.Len(t, batches[0], 1, "Should have had one normal tx in the batch")
 }

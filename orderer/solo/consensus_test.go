@@ -23,6 +23,7 @@ import (
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
 	mockmultichain "github.com/hyperledger/fabric/orderer/mocks/multichain"
+	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	logging "github.com/op/go-logging"
@@ -202,7 +203,7 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 	}
 }
 
-func TestConfigStyleMultiBatch(t *testing.T) {
+func TestLargeMsgStyleMultiBatch(t *testing.T) {
 	batchTimeout, _ := time.ParseDuration("1h")
 	support := &mockmultichain.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
@@ -217,6 +218,42 @@ func TestConfigStyleMultiBatch(t *testing.T) {
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 	support.BlockCutterVal.IsolatedTx = true
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
+
+	select {
+	case <-support.Blocks:
+	case <-time.After(time.Second):
+		t.Fatalf("Expected two blocks to be cut but never got the first")
+	}
+
+	select {
+	case <-support.Blocks:
+	case <-time.After(time.Second):
+		t.Fatalf("Expected the config type tx to create two blocks, but only go the first")
+	}
+
+	bs.Halt()
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("Should have exited")
+	case <-wg.done:
+	}
+}
+
+func TestConfigMsg(t *testing.T) {
+	batchTimeout, _ := time.ParseDuration("1h")
+	support := &mockmultichain.ConsenterSupport{
+		Blocks:          make(chan *cb.Block),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+	}
+	defer close(support.BlockCutterVal.Block)
+	bs := newChain(support)
+	wg := goWithWait(bs.main)
+	defer bs.Halt()
+
+	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
+	support.ClassifyMsgVal = multichain.ConfigUpdateMsg
+	bs.Enqueue(testMessage)
 
 	select {
 	case <-support.Blocks:

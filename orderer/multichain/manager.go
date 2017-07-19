@@ -3,6 +3,10 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
+// Package multichain tracks the channel resources for the orderer.  It initially
+// loads the set of existing channels, and provides an interface for users of these
+// channels to retrieve them, or create new ones.
 package multichain
 
 import (

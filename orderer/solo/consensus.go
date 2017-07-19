@@ -19,6 +19,7 @@ package solo
 import (
 	"time"
 
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
@@ -88,30 +89,54 @@ func (ch *chain) main() {
 	for {
 		select {
 		case msg := <-ch.sendChan:
-			batches, committers, ok := ch.support.BlockCutter().Ordered(msg)
-			if ok && len(batches) == 0 && timer == nil {
-				timer = time.After(ch.support.SharedConfig().BatchTimeout())
-				continue
+			class, err := ch.support.ClassifyMsg(msg)
+			if err != nil {
+				logger.Panicf("If a message has arrived to this point, it should already have been classified once")
 			}
-			for i, batch := range batches {
-				block := ch.support.CreateNextBlock(batch)
-				ch.support.WriteBlock(block, committers[i], nil)
-			}
-			if len(batches) > 0 {
+			switch class {
+			case multichain.ConfigUpdateMsg:
+				batch := ch.support.BlockCutter().Cut()
+				if batch != nil {
+					block := ch.support.CreateNextBlock(batch)
+					ch.support.WriteBlock(block, nil, nil)
+				}
+
+				committer, _, err := ch.support.ProcessNormalMsg(msg)
+				if err != nil {
+					logger.Warningf("Discarding bad config message: %s", err)
+					continue
+				}
+				block := ch.support.CreateNextBlock([]*cb.Envelope{msg})
+				ch.support.WriteBlock(block, []filter.Committer{committer}, nil)
 				timer = nil
+			case multichain.NormalMsg:
+				batches, ok := ch.support.BlockCutter().Ordered(msg)
+				if ok && len(batches) == 0 && timer == nil {
+					timer = time.After(ch.support.SharedConfig().BatchTimeout())
+					continue
+				}
+				for _, batch := range batches {
+					block := ch.support.CreateNextBlock(batch)
+					ch.support.WriteBlock(block, nil, nil)
+				}
+				if len(batches) > 0 {
+					timer = nil
+				}
+			default:
+				logger.Panicf("Unsupported msg classification: %v", class)
 			}
 		case <-timer:
 			//clear the timer
 			timer = nil
 
-			batch, committers := ch.support.BlockCutter().Cut()
+			batch := ch.support.BlockCutter().Cut()
 			if len(batch) == 0 {
 				logger.Warningf("Batch timer expired with no pending requests, this might indicate a bug")
 				continue
 			}
 			logger.Debugf("Batch timer expired, creating block")
 			block := ch.support.CreateNextBlock(batch)
-			ch.support.WriteBlock(block, committers, nil)
+			ch.support.WriteBlock(block, nil, nil)
 		case <-ch.exitChan:
 			logger.Debugf("Exiting")
 			return

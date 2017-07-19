@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichain
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -155,75 +154,6 @@ func TestMultiSystemChannel(t *testing.T) {
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
 	assert.Panics(t, func() { NewManagerImpl(lf, consenters, mockCrypto()) }, "Two system channels should have caused panic")
-}
-
-// This test checks to make sure that the orderer creates different type of filters given different type of channel
-func TestFilterCreation(t *testing.T) {
-	lf := ramledger.New(10)
-	rl, err := lf.GetOrCreate(provisional.TestChainID)
-	if err != nil {
-		panic(err)
-	}
-	err = rl.Append(genesisBlock)
-	if err != nil {
-		panic(err)
-	}
-
-	// Creating a non-system chain to test that NewManagerImpl could handle the diversity
-	rl, err = lf.GetOrCreate(NoConsortiumChain)
-	if err != nil {
-		panic(err)
-	}
-	err = rl.Append(noConsortiumGenesisBlock)
-	if err != nil {
-		panic(err)
-	}
-
-	consenters := make(map[string]Consenter)
-	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
-
-	manager := NewManagerImpl(lf, consenters, mockCrypto())
-
-	_, ok := manager.GetChain(provisional.TestChainID)
-	assert.True(t, ok, "Should have found chain: %d", provisional.TestChainID)
-
-	chainSupport, ok := manager.GetChain(NoConsortiumChain)
-	assert.True(t, ok, "Should have retrieved chain: %d", NoConsortiumChain)
-
-	messages := make([]*cb.Envelope, conf.Orderer.BatchSize.MaxMessageCount)
-	for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
-		messages[i] = &cb.Envelope{
-			Payload: utils.MarshalOrPanic(&cb.Payload{
-				Header: &cb.Header{
-					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
-						// For testing purpose, we are injecting configTx into non-system channel.
-						// Set Type to HeaderType_ORDERER_TRANSACTION to verify this message is NOT
-						// filtered by SystemChainFilter, so we know we are creating correct type
-						// of filter for the chain.
-						Type:      int32(cb.HeaderType_ORDERER_TRANSACTION),
-						ChannelId: NoConsortiumChain,
-					}),
-					SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
-				},
-				Data: []byte(fmt.Sprintf("%d", i)),
-			}),
-		}
-
-		assert.True(t, chainSupport.Enqueue(messages[i]), "Should have successfully enqueued message")
-	}
-
-	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
-	defer it.Close()
-	select {
-	case <-it.ReadyChan():
-		block, status := it.Next()
-		assert.Equal(t, cb.Status_SUCCESS, status, "Could not retrieve block")
-		for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
-			assert.Equal(t, messages[i], utils.ExtractEnvelopeOrPanic(block, i), "Block contents wrong at index %d", i)
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("Block 1 not produced after timeout")
-	}
 }
 
 // This test essentially brings the entire system up and is ultimately what main.go will replicate
