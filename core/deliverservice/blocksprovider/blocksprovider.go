@@ -183,7 +183,9 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 
 			logger.Debugf("[%s] Adding payload locally, buffer seqNum = [%d], peers number [%d]", b.chainID, seqNum, numberOfPeers)
 			// Add payload to local state payloads buffer
-			b.gossip.AddPayload(b.chainID, payload)
+			if err := b.gossip.AddPayload(b.chainID, payload); err != nil {
+				logger.Warning("Failed adding payload of", seqNum, "because:", err)
+			}
 
 			// Gossip messages with other nodes
 			logger.Debugf("[%s] Gossiping block [%d], peers number [%d]", b.chainID, seqNum, numberOfPeers)
