@@ -1,0 +1,37 @@
+# pip install behave
+# pip install \
+# b3j0f.aop \
+# ecdsa \
+# enum34 \
+# grpcio \
+# Jinja2 \
+# protobuf \
+# pyOpenSSL \
+# pysha3 \
+# python-slugify \
+# PyYAML
+asn1crypto==0.22.0
+b3j0f.aop==0.8.4
+b3j0f.utils==1.4.4
+behave==1.2.5
+cffi==1.10.0
+cryptography==2.0
+ecdsa==0.13
+enum34==1.1.6
+futures==3.1.1
+grpcio==1.4.0
+idna==2.5
+ipaddress==1.0.18
+Jinja2==2.9.6
+MarkupSafe==1.0
+ordereddict==1.1
+parse==1.8.2
+parse-type==0.3.4
+protobuf==3.3.0
+pycparser==2.18
+pyOpenSSL==17.1.0
+pysha3==1.0.2
+python-slugify==1.2.4
+PyYAML==3.12
+six==1.10.0
+Unidecode==0.4.21
