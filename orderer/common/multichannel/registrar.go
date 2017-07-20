@@ -46,7 +46,7 @@ func (cr *configResources) SharedConfig() config.Orderer {
 
 type ledgerResources struct {
 	*configResources
-	ledger ledger.ReadWriter
+	ledger.ReadWriter
 }
 
 // Registrar serves as a point of access and control for the individual channel resources.
@@ -189,13 +189,13 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 
 	return &ledgerResources{
 		configResources: &configResources{Manager: configManager},
-		ledger:          ledger,
+		ReadWriter:      ledger,
 	}
 }
 
 func (r *Registrar) newChain(configtx *cb.Envelope) {
 	ledgerResources := r.newLedgerResources(configtx)
-	ledgerResources.ledger.Append(ledger.CreateNextBlock(ledgerResources.ledger, []*cb.Envelope{configtx}))
+	ledgerResources.Append(ledger.CreateNextBlock(ledgerResources, []*cb.Envelope{configtx}))
 
 	// Copy the map to allow concurrent reads from broadcast/deliver while the new chainSupport is
 	newChains := make(map[string]*ChainSupport)

@@ -96,18 +96,17 @@ func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
 }
 
 // WriteBlock writes data to the Blocks channel
-func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block {
+func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []byte) {
 	if encodedMetadataValue != nil {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
 	mcs.HeightVal++
 	mcs.Blocks <- block
-	return block
 }
 
 // WriteConfigBlock calls WriteBlock
-func (mcs *ConsenterSupport) WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block {
-	return mcs.WriteBlock(block, encodedMetadataValue)
+func (mcs *ConsenterSupport) WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) {
+	mcs.WriteBlock(block, encodedMetadataValue)
 }
 
 // ChainID returns the chain ID this specific consenter instance is associated with
