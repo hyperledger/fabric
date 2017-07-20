@@ -4,6 +4,12 @@ Building Hyperledger Fabric
 The following instructions assume that you have already set up your
 :doc:`development environment <devenv>`.
 
+Before you can build fabric the first time you need to build gotools.
+
+::
+    cd $GOPATH/src/github.com/hyperledger/fabric
+    make gotools
+
 To build Hyperledger Fabric:
 
 ::
