@@ -26,14 +26,6 @@ func TestRetry(t *testing.T) {
 
 	errorFn := func() error { return fmt.Errorf("foo") }
 
-	t.Run("Exit", func(t *testing.T) {
-		exitChan := make(chan struct{})
-		close(exitChan)
-		rp = newRetryProcess(mockRetryOptions, exitChan, mockChannel, "foo", noErrorFn)
-		assert.Error(t, rp.retry(), "Expected retry to return an error")
-		assert.Equal(t, false, flag, "Expected flag to remain set to false")
-	})
-
 	t.Run("Proper", func(t *testing.T) {
 		exitChan := make(chan struct{})
 		rp = newRetryProcess(mockRetryOptions, exitChan, mockChannel, "foo", noErrorFn)
