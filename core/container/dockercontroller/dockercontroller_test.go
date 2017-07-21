@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -226,6 +227,39 @@ func Test_Destroy(t *testing.T) {
 	testerr(t, err, true)
 }
 
+type testCase struct {
+	name           string
+	ccid           ccintf.CCID
+	formatFunc     func(string) (string, error)
+	expectedOutput string
+}
+
+func TestGetVMName(t *testing.T) {
+	dvm := DockerVM{}
+	var tc []testCase
+
+	tc = append(tc,
+		testCase{"mycc", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, NetworkID: "dev", PeerID: "peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-mycc-1.0"))))},
+		testCase{"mycc-nonetworkid", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, PeerID: "peer1", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "peer1-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("peer1-mycc-1.0"))))},
+		testCase{"myCC", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev", PeerID: "Peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("Dev-Peer0-myCC-1.0"))))},
+		testCase{"mycc-nopeerid", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, NetworkID: "dev", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-mycc-1.0"))))},
+		testCase{"myCC", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "dev", PeerID: "peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-myCC-1.0"))))},
+		testCase{"myCC-preserveCase", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev", PeerID: "Peer0", Version: "1.0"}, nil, fmt.Sprintf("%s", "Dev-Peer0-myCC-1.0")},
+		testCase{"invalidCharsFormatFunction", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev", PeerID: "Peer0", Version: "1.0"}, formatInvalidChars, fmt.Sprintf("%s", "inv-lid-character--")})
+
+	for _, test := range tc {
+		name, err := dvm.GetVMName(test.ccid, test.formatFunc)
+		assert.Nil(t, err, "Expected nil error")
+		assert.Equal(t, test.expectedOutput, name, "Unexpected output for test case name: %s", test.name)
+	}
+
+}
+
+func TestFormatImageName_invalidChars(t *testing.T) {
+	_, err := formatImageName("invalid*chars")
+	assert.NotNil(t, err, "Expected error")
+}
+
 func getCodeChainBytesInMem() io.Reader {
 	startTime := time.Now()
 	inputbuf := bytes.NewBuffer(nil)
@@ -321,4 +355,8 @@ func (c *mockClient) RemoveContainer(opts docker.RemoveContainerOptions) error {
 		return errors.New("Error removing container")
 	}
 	return nil
+}
+
+func formatInvalidChars(name string) (string, error) {
+	return "inv@lid*character$/", nil
 }
