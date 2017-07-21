@@ -255,6 +255,7 @@ build/image/couchdb/payload:	images/couchdb/docker-entrypoint.sh \
 				images/couchdb/vm.args
 build/image/tools/payload:      build/docker/bin/cryptogen \
 	                        build/docker/bin/configtxgen \
+	                        build/docker/bin/configtxlator \
 				build/docker/bin/peer \
 				build/sampleconfig.tar.bz2
 

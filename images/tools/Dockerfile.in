@@ -8,4 +8,5 @@ VOLUME /etc/hyperledger/fabric
 ADD  payload/sampleconfig.tar.bz2 $FABRIC_CFG_PATH
 COPY payload/cryptogen /usr/local/bin
 COPY payload/configtxgen /usr/local/bin
+COPY payload/configtxlator /usr/local/bin
 COPY payload/peer /usr/local/bin
