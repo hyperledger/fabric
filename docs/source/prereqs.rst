@@ -124,11 +124,22 @@ You can check the setting of these parameters with the following commands:
 
 These need to be ``false`` and ``true`` respectively.
 
-.. note:: The ``curl`` command that comes with Git and Docker Toolbox
-          is old and does not handle properly the redirect used in
-          :doc:`getting_started`. Make sure you install and use a
-          newer version from the `cURL downloads page
-          <https://curl.haxx.se/download.html>`__
+The ``curl`` command that comes with Git and Docker Toolbox is old and
+does not handle properly the redirect used in
+:doc:`getting_started`. Make sure you install and use a newer version
+from the `cURL downloads page <https://curl.haxx.se/download.html>`__
+
+For Node.js you also need the necessary Visual Studio C++ Build Tools
+which are freely available and can be installed with the following
+command:
+
+.. code:: bash
+
+	  npm install --global windows-build-tools
+
+See the `NPM windows-build-tools page
+<https://www.npmjs.com/package/windows-build-tools>`__ for more
+details.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
