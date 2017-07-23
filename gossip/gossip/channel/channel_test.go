@@ -112,6 +112,9 @@ func (cs *cryptoService) VerifyByChannel(channel common.ChainID, identity api.Pe
 		return nil
 	}
 	args := cs.Called(identity)
+	if args.Get(0) == nil {
+		return nil
+	}
 	return args.Get(0).(error)
 }
 
@@ -222,6 +225,9 @@ func (ga *gossipAdapterMock) GetOrgOfPeer(PKIIID common.PKIidType) api.OrgIdenti
 }
 
 func (ga *gossipAdapterMock) GetIdentityByPKIID(pkiID common.PKIidType) api.PeerIdentityType {
+	if ga.wasMocked("GetIdentityByPKIID") {
+		return ga.Called(pkiID).Get(0).(api.PeerIdentityType)
+	}
 	return api.PeerIdentityType(pkiID)
 }
 
@@ -676,10 +682,12 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 
 	// Now for a more advanced scenario- the peer claims to be in the right org, and also claims to be in the channel
 	// but the MSP declares it is not eligible for the channel
-	// pkiIDInOrg1ButNotEligible
 	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1ButNotEligible, channelA), PKIID: pkiIDInOrg1ButNotEligible})
+	// configure MSP
 	cs.On("VerifyByChannel", mock.Anything).Return(errors.New("Not eligible"))
 	cs.mocked = true
+	// Simulate a config update
+	gc.ConfigureChannel(&joinChanMsg{})
 	helloMsg = createHelloMsg(pkiIDInOrg1ButNotEligible)
 	helloMsg.On("Respond", mock.Anything).Run(messageRelayer)
 	gc.HandleMessage(helloMsg)
@@ -1400,6 +1408,110 @@ func TestChannelNoAnchorPeers(t *testing.T) {
 	assert.True(t, gc.IsOrgInChannel(orgInChannelA))
 }
 
+func TestGossipChannelEligibility(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: We have a peer in an org that joins a channel with org1 and org2.
+	// and it receives StateInfo messages of other peers and the eligibility
+	// of these peers of being in the channel is checked.
+	// During the test, the channel is reconfigured, and the expiration
+	// of the peer identities is simulated.
+
+	cs := &cryptoService{}
+	selfPKIID := common.PKIidType("p")
+	adapter := new(gossipAdapterMock)
+	pkiIDinOrg3 := common.PKIidType("pkiIDinOrg3")
+	members := []discovery.NetworkMember{
+		{PKIid: pkiIDInOrg1},
+		{PKIid: pkiIDInOrg1ButNotEligible},
+		{PKIid: pkiIDinOrg2},
+	}
+	adapter.On("GetMembership").Return(members)
+	adapter.On("Gossip", mock.Anything)
+	adapter.On("Send", mock.Anything, mock.Anything)
+	adapter.On("DeMultiplex", mock.Anything)
+	adapter.On("GetConf").Return(conf)
+
+	// At first, all peers are in the channel except pkiIDinOrg3
+	org1 := api.OrgIdentityType("ORG1")
+	org2 := api.OrgIdentityType("ORG2")
+	org3 := api.OrgIdentityType("ORG3")
+
+	adapter.On("GetOrgOfPeer", selfPKIID).Return(org1)
+	adapter.On("GetOrgOfPeer", pkiIDInOrg1).Return(org1)
+	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(org2)
+	adapter.On("GetOrgOfPeer", pkiIDInOrg1ButNotEligible).Return(org1)
+	adapter.On("GetOrgOfPeer", pkiIDinOrg3).Return(org3)
+
+	gc := NewGossipChannel(selfPKIID, orgInChannelA, cs, channelA, adapter, &joinChanMsg{
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(org1): {},
+			string(org2): {},
+		},
+	})
+	// Every peer sends a StateInfo message
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDinOrg2, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1ButNotEligible, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDinOrg3, channelA)})
+
+	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
+	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg2}))
+	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1ButNotEligible}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg3}))
+
+	// Remove org2 from the channel
+	gc.ConfigureChannel(&joinChanMsg{
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(org1): {},
+		},
+	})
+
+	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg2}))
+	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1ButNotEligible}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg3}))
+
+	// Now simulate a config update that removed pkiIDInOrg1ButNotEligible from the channel readers
+	cs.mocked = true
+	cs.On("VerifyByChannel", api.PeerIdentityType(pkiIDInOrg1ButNotEligible)).Return(errors.New("Not a channel reader"))
+	cs.On("VerifyByChannel", mock.Anything).Return(nil)
+	gc.ConfigureChannel(&joinChanMsg{
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(org1): {},
+		},
+	})
+	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg2}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1ButNotEligible}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg3}))
+
+	// Now Simulate a certificate expiration of pkiIDInOrg1.
+	// This is done by asking the adapter to lookup the identity by PKI-ID, but if the certificate
+	// is expired, the mapping is deleted and hence the lookup yields nothing.
+	adapter.On("GetIdentityByPKIID", pkiIDInOrg1).Return(api.PeerIdentityType(nil))
+	adapter.On("GetIdentityByPKIID", pkiIDinOrg2).Return(api.PeerIdentityType(pkiIDinOrg2))
+	adapter.On("GetIdentityByPKIID", pkiIDInOrg1ButNotEligible).Return(api.PeerIdentityType(pkiIDInOrg1ButNotEligible))
+	adapter.On("GetIdentityByPKIID", pkiIDinOrg3).Return(api.PeerIdentityType(pkiIDinOrg3))
+
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg2}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1ButNotEligible}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg3}))
+
+	// Now make another update of StateInfo messages, this time with updated ledger height (to overwrite earlier messages)
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(2, pkiIDInOrg1, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(2, pkiIDinOrg2, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(2, pkiIDInOrg1ButNotEligible, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(2, pkiIDinOrg3, channelA)})
+
+	// Ensure the access control resolution hasn't changed
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg2}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1ButNotEligible}))
+	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg3}))
+}
+
 func TestChannelGetPeers(t *testing.T) {
 	t.Parallel()
 
@@ -1420,7 +1532,7 @@ func TestChannelGetPeers(t *testing.T) {
 		{PKIid: pkiIDinOrg2},
 	}
 	configureAdapter(adapter, members...)
-	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{})
+	gc := NewGossipChannel(common.PKIidType("p0"), orgInChannelA, cs, channelA, adapter, &joinChanMsg{})
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDinOrg2, channelA)})
 	assert.Len(t, gc.GetPeers(), 1)
@@ -1429,6 +1541,8 @@ func TestChannelGetPeers(t *testing.T) {
 	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1ButNotEligible, channelA), PKIID: pkiIDInOrg1ButNotEligible})
 	cs.On("VerifyByChannel", mock.Anything).Return(errors.New("Not eligible"))
 	cs.mocked = true
+	// Simulate a config update
+	gc.ConfigureChannel(&joinChanMsg{})
 	assert.Len(t, gc.GetPeers(), 0)
 
 	// Now recreate gc and corrupt the MAC
