@@ -52,7 +52,14 @@ func (rp *retryProcess) try(interval, total time.Duration) error {
 		return fmt.Errorf("illegal value")
 	}
 
-	var err = fmt.Errorf("process has not been executed yet")
+	var err error
+
+	// If initial operation is successful, we don't bother start retry process
+	logger.Debugf("[channel: %s] "+rp.msg, rp.channel.topic())
+	if err := rp.fn(); err == nil {
+		logger.Debugf("[channel: %s] Error is nil, breaking the retry loop", rp.channel.topic())
+		return err
+	}
 
 	tickInterval := time.NewTicker(interval)
 	tickTotal := time.NewTicker(total)
