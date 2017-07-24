@@ -216,8 +216,8 @@ func protoToJSON(msg proto.Message) ([]byte, error) {
 	var b bytes.Buffer
 	m := jsonpb.Marshaler{
 		EnumsAsInts:  false,
-		EmitDefaults: false,
-		Indent:       "    ",
+		EmitDefaults: true,
+		Indent:       "  ",
 		OrigName:     true,
 	}
 	err := m.Marshal(&b, msg)

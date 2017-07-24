@@ -45,7 +45,7 @@ var (
 		},
 	}
 
-	testOutput = `{"data":{"data":[{"signature":"YmFy"}]},"header":{"previous_hash":"Zm9v"}}`
+	testOutput = `{"data":{"data":[{"signature":"YmFy"}]},"header":{"number":"0","previous_hash":"Zm9v"}}`
 )
 
 func TestProtolatorDecode(t *testing.T) {
