@@ -21,7 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sigfilter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
@@ -129,7 +129,7 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 
 	lastConfigSequence := chain.Sequence()
 
-	sf := sigfilter.New(policies.ChannelReaders, chain.PolicyManager())
+	sf := msgprocessor.NewSigFilter(policies.ChannelReaders, chain.PolicyManager())
 	if err := sf.Apply(envelope); err != nil {
 		logger.Warningf("[channel: %s] Received unauthorized deliver request: %s", chdr.ChannelId, err)
 		return sendStatusReply(srv, cb.Status_FORBIDDEN)
@@ -183,7 +183,6 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 		currentConfigSequence := chain.Sequence()
 		if currentConfigSequence > lastConfigSequence {
 			lastConfigSequence = currentConfigSequence
-			sf := sigfilter.New(policies.ChannelReaders, chain.PolicyManager())
 			if err := sf.Apply(envelope); err != nil {
 				logger.Warningf("[channel: %s] Client authorization revoked for deliver request: %s", chdr.ChannelId, err)
 				return sendStatusReply(srv, cb.Status_FORBIDDEN)

@@ -4,28 +4,23 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package sigfilter
+package msgprocessor
 
 import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
-
-	"github.com/op/go-logging"
 )
-
-var logger = logging.MustGetLogger("orderer/common/msgprocessor/sigfilter")
 
 type sigFilter struct {
 	policyName    string
 	policyManager policies.Manager
 }
 
-// New creates a new signature filter, at every evaluation, the policy manager is called
+// NewSigFilter creates a new signature filter, at every evaluation, the policy manager is called
 // to retrieve the latest version of the policy
-func New(policyName string, policyManager policies.Manager) filter.Rule {
+func NewSigFilter(policyName string, policyManager policies.Manager) Rule {
 	return &sigFilter{
 		policyName:    policyName,
 		policyManager: policyManager,

@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -36,14 +35,14 @@ func (mscs *mockSystemChannelSupport) NewChannelConfig(env *cb.Envelope) (config
 func TestProcessSystemChannelNormalMsg(t *testing.T) {
 	t.Run("Missing header", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
-		ms := &mockSupport{}
+		ms := &mockSystemChannelFilterSupport{}
 		_, err := NewSystemChannel(ms, mscs, nil).ProcessNormalMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
 		assert.Regexp(t, "no header was set", err.Error())
 	})
 	t.Run("Mismatched channel ID", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
-		ms := &mockSupport{}
+		ms := &mockSystemChannelFilterSupport{}
 		_, err := NewSystemChannel(ms, mscs, nil).ProcessNormalMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
@@ -57,10 +56,10 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 	})
 	t.Run("Good", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
-		ms := &mockSupport{
+		ms := &mockSystemChannelFilterSupport{
 			SequenceVal: 7,
 		}
-		cs, err := NewSystemChannel(ms, mscs, filter.NewRuleSet([]filter.Rule{filter.AcceptRule})).ProcessNormalMsg(&cb.Envelope{
+		cs, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessNormalMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -78,18 +77,18 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	t.Run("Missing header", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
-		ms := &mockSupport{}
+		ms := &mockSystemChannelFilterSupport{}
 		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
 		assert.Regexp(t, "no header was set", err.Error())
 	})
 	t.Run("NormalUpdate", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
-		ms := &mockSupport{
+		ms := &mockSystemChannelFilterSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
-		config, cs, err := NewSystemChannel(ms, mscs, filter.NewRuleSet([]filter.Rule{filter.AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
+		config, cs, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -106,7 +105,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
 			NewChannelConfigErr: fmt.Errorf("An error"),
 		}
-		ms := &mockSupport{
+		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
 		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
@@ -126,7 +125,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 				ProposeConfigUpdateError: fmt.Errorf("An error"),
 			},
 		}
-		ms := &mockSupport{
+		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
 		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
@@ -144,7 +143,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
 			NewChannelConfigVal: &mockconfigtx.Manager{},
 		}
-		ms := &mockSupport{
+		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
 		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
@@ -164,7 +163,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			},
 		}
-		ms := &mockSupport{
+		ms := &mockSystemChannelFilterSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
