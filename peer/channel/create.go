@@ -116,6 +116,12 @@ func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope) (*cb.Envelope, err
 		return nil, InvalidCreateTx("empty channel id")
 	}
 
+	// Specifying the chainID on the CLI is usually redundant, as a hack, set it
+	// here if it has not been set explicitly
+	if chainID == "" {
+		chainID = ch.ChannelId
+	}
+
 	if ch.ChannelId != chainID {
 		return nil, InvalidCreateTx(fmt.Sprintf("mismatched channel ID %s != %s", ch.ChannelId, chainID))
 	}
