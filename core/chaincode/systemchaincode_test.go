@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
@@ -71,7 +72,8 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 	}
 
 	ccStartupTimeout := time.Duration(5000) * time.Millisecond
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
+	ca, _ := accesscontrol.NewCA()
+	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout, ca))
 
 	go grpcServer.Serve(lis)
 

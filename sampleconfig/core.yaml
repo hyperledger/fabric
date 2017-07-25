@@ -74,17 +74,9 @@ peer:
     listenAddress: 0.0.0.0:7051
 
     # The endpoint this peer uses to listen for inbound chaincode connections.
-    #
-    # The chaincode connection does not support TLS-mutual auth. Having a
-    # separate listener for the chaincode helps isolate the chaincode
-    # environment for enhanced security, so it is strongly recommended to
-    # uncomment chaincodeListenAddress and specify a protected endpoint.
-    #
-    # If chaincodeListenAddress is not configured or equals to the listenAddress,
-    # listenAddress will be used for chaincode connections. This is not
-    # recommended for production.
-    #
-    # chaincodeListenAddress: 127.0.0.1:7052
+    # If this is commented-out, the listen address is selected to be
+    # the peer's address (see below) with port 7052
+    # chaincodeListenAddress: 0.0.0.0:7052
 
     # When used as peer config, this represents the endpoint to other peers
     # in the same organization for peers in other organization, see

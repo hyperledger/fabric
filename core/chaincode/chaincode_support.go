@@ -21,17 +21,13 @@ import (
 	"io"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	logging "github.com/op/go-logging"
-	"github.com/spf13/viper"
-	"golang.org/x/net/context"
-
-	"strings"
-
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -41,6 +37,9 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	logging "github.com/op/go-logging"
+	"github.com/spf13/viper"
+	"golang.org/x/net/context"
 )
 
 type key string
@@ -49,7 +48,7 @@ const (
 	// DevModeUserRunsChaincode property allows user to run chaincode in development environment
 	DevModeUserRunsChaincode       string = "dev"
 	chaincodeStartupTimeoutDefault int    = 5000
-	peerAddressDefault             string = "0.0.0.0:7051"
+	peerAddressDefault             string = "0.0.0.0:7052"
 
 	//TXSimulatorKey is used to attach ledger simulation context
 	TXSimulatorKey key = "txsimulatorkey"
@@ -132,31 +131,30 @@ func (chaincodeSupport *ChaincodeSupport) launchStarted(chaincode string) bool {
 }
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance
-func NewChaincodeSupport(getCCEndpoint func() (*pb.PeerEndpoint, error), userrunsCC bool, ccstartuptimeout time.Duration) *ChaincodeSupport {
+func NewChaincodeSupport(getCCEndpoint func() (*pb.PeerEndpoint, error), userrunsCC bool, ccstartuptimeout time.Duration, ca accesscontrol.CA) pb.ChaincodeSupportServer {
 	ccprovider.SetChaincodesPath(config.GetPath("peer.fileSystemPath") + string(filepath.Separator) + "chaincodes")
-
 	pnid := viper.GetString("peer.networkId")
 	pid := viper.GetString("peer.id")
 
-	theChaincodeSupport = &ChaincodeSupport{runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: pnid, peerID: pid}
+	theChaincodeSupport = &ChaincodeSupport{
+		runningChaincodes: &runningChaincodes{
+			chaincodeMap:  make(map[string]*chaincodeRTEnv),
+			launchStarted: make(map[string]bool),
+		}, peerNetworkID: pnid, peerID: pid,
+	}
 
-	//initialize global chain
+	theChaincodeSupport.auth = accesscontrol.NewAuthenticator(theChaincodeSupport, ca)
 
 	ccEndpoint, err := getCCEndpoint()
 	if err != nil {
-		chaincodeLogger.Errorf("Error getting chaincode endpoint, using chaincode.peerAddress: %s", err)
-		theChaincodeSupport.peerAddress = viper.GetString("chaincode.peerAddress")
+		chaincodeLogger.Errorf("Error getting chaincode endpoint because %v, using %s", err, peerAddressDefault)
+		theChaincodeSupport.peerAddress = peerAddressDefault
 	} else {
 		theChaincodeSupport.peerAddress = ccEndpoint.Address
 	}
 	chaincodeLogger.Infof("Chaincode support using peerAddress: %s\n", theChaincodeSupport.peerAddress)
-	//peerAddress = viper.GetString("peer.address")
-	if theChaincodeSupport.peerAddress == "" {
-		theChaincodeSupport.peerAddress = peerAddressDefault
-	}
 
 	theChaincodeSupport.userRunsCC = userrunsCC
-
 	theChaincodeSupport.ccStartupTimeout = ccstartuptimeout
 
 	theChaincodeSupport.peerTLS = viper.GetBool("peer.tls.enabled")
@@ -164,6 +162,8 @@ func NewChaincodeSupport(getCCEndpoint func() (*pb.PeerEndpoint, error), userrun
 		theChaincodeSupport.peerTLSCertFile = config.GetPath("peer.tls.cert.file")
 		theChaincodeSupport.peerTLSKeyFile = config.GetPath("peer.tls.key.file")
 		theChaincodeSupport.peerTLSSvrHostOrd = viper.GetString("peer.tls.serverhostoverride")
+	} else {
+		theChaincodeSupport.auth.DisableAccessCheck()
 	}
 
 	kadef := 0
@@ -201,7 +201,7 @@ func NewChaincodeSupport(getCCEndpoint func() (*pb.PeerEndpoint, error), userrun
 	theChaincodeSupport.shimLogLevel = getLogLevelFromViper("shim")
 	theChaincodeSupport.logFormat = viper.GetString("chaincode.logging.format")
 
-	return theChaincodeSupport
+	return theChaincodeSupport.auth
 }
 
 // getLogLevelFromViper gets the chaincode container log levels from viper
@@ -226,6 +226,7 @@ func getLogLevelFromViper(module string) string {
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
+	auth              accesscontrol.Authenticator
 	runningChaincodes *runningChaincodes
 	peerAddress       string
 	ccStartupTimeout  time.Duration
@@ -360,6 +361,13 @@ func (chaincodeSupport *ChaincodeSupport) sendReady(context context.Context, ccc
 	return err
 }
 
+func (chaincodeSupport *ChaincodeSupport) appendTLScerts(args []string, keyPair *accesscontrol.CertAndPrivKeyPair) []string {
+	if keyPair == nil {
+		return args
+	}
+	return append(args, []string{"--key", keyPair.Key, "--cert", keyPair.Cert}...)
+}
+
 //get args and env given chaincodeID
 func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCContext, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, err error) {
 	canName := cccid.GetCanonicalName()
@@ -375,7 +383,12 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCCont
 	// the image may be stale and the admin will need to remove the current containers
 	// before restarting the peer.
 	// ----------------------------------------------------------------------------
+	var certKeyPair *accesscontrol.CertAndPrivKeyPair
 	if chaincodeSupport.peerTLS {
+		certKeyPair, err = chaincodeSupport.auth.Generate(cccid.GetCanonicalName())
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed generating TLS cert for %s: %v", cccid.GetCanonicalName(), err)
+		}
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
 		if chaincodeSupport.peerTLSSvrHostOrd != "" {
 			envs = append(envs, "CORE_PEER_TLS_SERVERHOSTOVERRIDE="+chaincodeSupport.peerTLSSvrHostOrd)
@@ -398,6 +411,7 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCCont
 	switch cLang {
 	case pb.ChaincodeSpec_GOLANG, pb.ChaincodeSpec_CAR:
 		args = []string{"chaincode", fmt.Sprintf("-peer.address=%s", chaincodeSupport.peerAddress)}
+		args = theChaincodeSupport.appendTLScerts(args, certKeyPair)
 	case pb.ChaincodeSpec_JAVA:
 		args = []string{"java", "-jar", "chaincode.jar", "--peerAddress", chaincodeSupport.peerAddress}
 	default:

@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/deliverservice"
@@ -180,7 +181,8 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "cscctestpeer"}, Address: peerEndpoint}, nil
 	}
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
-	chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout)
+	ca, _ := accesscontrol.NewCA()
+	chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout, ca)
 
 	// Init the policy checker
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
