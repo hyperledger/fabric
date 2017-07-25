@@ -60,6 +60,8 @@ const (
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
 	// SampleSingleMSPChannelProfile references the sample profile which includes only the sample MSP and is used to create a channel
 	SampleSingleMSPChannelProfile = "SampleSingleMSPChannel"
+	// SampleDevModeSolo references the sample profile which requires only basic membership for admin privileges and uses solo for ordering
+	SampleDevModeSolo = "SampleDevModeSolo"
 
 	// SampleConsortiumName is the sample consortium from the sample configtx.yaml
 	SampleConsortiumName = "SampleConsortium"
