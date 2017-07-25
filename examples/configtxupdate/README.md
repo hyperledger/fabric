@@ -45,7 +45,7 @@ For instance, re-encode the block saved as `configuration_block.json`, run the c
 curl -X POST --data-binary @configuration_block.json http://127.0.0.1:7059/protolator/encode/common.Block
 ```
 
-Any of the configuration related protos, including `common.Block`, `common.Envelope`, `common.ConfigEnvelope`, `common.ConfigUpdateEnvelope`, `common.Configuration`, and `common.ConfigUpdate` are valid targets for these URLs.  In the future, other proto decoding types may be added, such as for endorser transactions.
+Any of the configuration related protos, including `common.Block`, `common.Envelope`, `common.ConfigEnvelope`, `common.ConfigUpdateEnvelope`, `common.Config`, and `common.ConfigUpdate` are valid targets for these URLs.  In the future, other proto decoding types may be added, such as for endorser transactions.
 
 ## Config update computation
 
