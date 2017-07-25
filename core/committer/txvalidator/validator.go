@@ -557,7 +557,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 			// do VSCC validation
 			if err = v.VSCCValidateTxForCC(envBytes, chdr.TxId, chdr.ChannelId, vscc.ChaincodeName, vscc.ChaincodeVersion, policy); err != nil {
 				switch err.(type) {
-				case VSCCEndorsementPolicyError:
+				case *VSCCEndorsementPolicyError:
 					return err, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE
 				default:
 					return err, peer.TxValidationCode_INVALID_OTHER_REASON
@@ -588,7 +588,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		// they have to modify VSCC to provide appropriate validation
 		if err = v.VSCCValidateTxForCC(envBytes, chdr.TxId, vscc.ChainID, vscc.ChaincodeName, vscc.ChaincodeVersion, policy); err != nil {
 			switch err.(type) {
-			case VSCCEndorsementPolicyError:
+			case *VSCCEndorsementPolicyError:
 				return err, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE
 			default:
 				return err, peer.TxValidationCode_INVALID_OTHER_REASON

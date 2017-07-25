@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -531,12 +532,73 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	assertion.NotNil(err.(*VSCCInfoLookupFailureError))
 }
 
+func TestValidationInvalidEndorsing(t *testing.T) {
+	theLedger := new(mockLedger)
+	validator := NewTxValidator(&mockSupport{l: theLedger})
+
+	ccID := "mycc"
+	tx := getEnv(ccID, createRWset(t, ccID), t)
+
+	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
+
+	cd := &ccp.ChaincodeData{
+		Name:    ccID,
+		Version: ccVersion,
+		Vscc:    "vscc",
+		Policy:  signedByAnyMember([]string{"DEFAULT"}),
+	}
+
+	cdbytes := utils.MarshalOrPanic(cd)
+
+	queryExecutor := new(mockQueryExecutor)
+	queryExecutor.On("GetState", "lscc", ccID).Return(cdbytes, nil)
+	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
+
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+	// Keep default callback
+	c := executeChaincodeProvider.getCallback()
+	executeChaincodeProvider.setCallback(func() (*peer.Response, *peer.ChaincodeEvent, error) {
+		return &peer.Response{Status: shim.ERROR}, nil, nil
+	})
+	err := validator.Validate(b)
+	// Restore default callback
+	executeChaincodeProvider.setCallback(c)
+	assert.NoError(t, err)
+	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+}
+
+type ccResultCallback func() (*peer.Response, *peer.ChaincodeEvent, error)
+
+type ccExecuteChaincode struct {
+	executeChaincodeCalback ccResultCallback
+}
+
+func (cc *ccExecuteChaincode) ExecuteChaincodeResult() (*peer.Response, *peer.ChaincodeEvent, error) {
+	return cc.executeChaincodeCalback()
+}
+
+func (cc *ccExecuteChaincode) getCallback() ccResultCallback {
+	return cc.executeChaincodeCalback
+}
+
+func (cc *ccExecuteChaincode) setCallback(calback ccResultCallback) {
+	cc.executeChaincodeCalback = calback
+}
+
 var signer msp.SigningIdentity
+
 var signerSerialized []byte
+
+var executeChaincodeProvider = &ccExecuteChaincode{
+	executeChaincodeCalback: func() (*peer.Response, *peer.ChaincodeEvent, error) {
+		return &peer.Response{Status: shim.OK}, nil, nil
+	},
+}
 
 func TestMain(m *testing.M) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{})
-	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{})
+	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{executeChaincodeProvider})
 
 	msptesttools.LoadMSPSetupForTesting()
 
