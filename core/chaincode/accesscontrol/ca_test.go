@@ -8,14 +8,13 @@ package accesscontrol
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"net"
 	"testing"
 	"time"
-
-	"crypto/x509"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
