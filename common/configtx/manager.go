@@ -204,49 +204,49 @@ func (cm *configManager) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 	}, nil
 }
 
-func (cm *configManager) prepareApply(configEnv *cb.ConfigEnvelope) (map[string]comparable, *configResult, error) {
+func (cm *configManager) prepareApply(configEnv *cb.ConfigEnvelope) (*configResult, error) {
 	if configEnv == nil {
-		return nil, nil, fmt.Errorf("Attempted to apply config with nil envelope")
+		return nil, fmt.Errorf("Attempted to apply config with nil envelope")
 	}
 
 	if configEnv.Config == nil {
-		return nil, nil, fmt.Errorf("Config cannot be nil")
+		return nil, fmt.Errorf("Config cannot be nil")
 	}
 
 	if configEnv.Config.Sequence != cm.current.sequence+1 {
-		return nil, nil, fmt.Errorf("Config at sequence %d, cannot prepare to update to %d", cm.current.sequence, configEnv.Config.Sequence)
+		return nil, fmt.Errorf("Config at sequence %d, cannot prepare to update to %d", cm.current.sequence, configEnv.Config.Sequence)
 	}
 
 	configUpdateEnv, err := envelopeToConfigUpdate(configEnv.LastUpdate)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	configMap, err := cm.authorizeUpdate(configUpdateEnv)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	channelGroup, err := configMapToConfig(configMap)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
+		return nil, fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
 	}
 
 	if !reflect.DeepEqual(channelGroup, configEnv.Config.ChannelGroup) {
-		return nil, nil, fmt.Errorf("ConfigEnvelope LastUpdate did not produce the supplied config result")
+		return nil, fmt.Errorf("ConfigEnvelope LastUpdate did not produce the supplied config result")
 	}
 
 	result, err := cm.processConfig(channelGroup)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return configMap, result, nil
+	return result, nil
 }
 
 // Validate simulates applying a ConfigEnvelope to become the new config
 func (cm *configManager) Validate(configEnv *cb.ConfigEnvelope) error {
-	_, result, err := cm.prepareApply(configEnv)
+	result, err := cm.prepareApply(configEnv)
 	if err != nil {
 		return err
 	}
@@ -258,7 +258,17 @@ func (cm *configManager) Validate(configEnv *cb.ConfigEnvelope) error {
 
 // Apply attempts to apply a ConfigEnvelope to become the new config
 func (cm *configManager) Apply(configEnv *cb.ConfigEnvelope) error {
-	configMap, result, err := cm.prepareApply(configEnv)
+	// Note, although prepareApply will necessarilly compute a config map
+	// for the updated config, this config map will possibly contain unreachable
+	// elements from a config graph perspective.  Therefore, it is not safe to use
+	// as the config map after application.  Instead, we compute the config map
+	// just like we would at startup.
+	configMap, err := MapConfig(configEnv.Config.ChannelGroup)
+	if err != nil {
+		return err
+	}
+
+	result, err := cm.prepareApply(configEnv)
 	if err != nil {
 		return err
 	}
