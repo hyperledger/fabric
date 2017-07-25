@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -109,6 +110,11 @@ func TestKafkaTLSConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSystemChannel(t *testing.T) {
+	conf := Load()
+	assert.Equal(t, provisional.TestChainID, conf.General.SystemChannel, "System channel ID should be '%s' by default", provisional.TestChainID)
 }
 
 func TestProfileConfig(t *testing.T) {

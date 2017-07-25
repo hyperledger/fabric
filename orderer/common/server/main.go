@@ -146,7 +146,7 @@ func initializeBootstrapChannel(conf *config.TopLevel, lf ledger.Factory) {
 	// Select the bootstrapping mechanism
 	switch conf.General.GenesisMethod {
 	case "provisional":
-		genesisBlock = provisional.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlock()
+		genesisBlock = provisional.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlockForChannel(conf.General.SystemChannel)
 	case "file":
 		genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
 	default:
