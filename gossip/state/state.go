@@ -428,7 +428,9 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 					continue
 				}
 				logger.Debug("New block with claimed sequence number ", payload.SeqNum, " transactions num ", len(rawBlock.Data.Data))
-				s.commitBlock(rawBlock)
+				if err := s.commitBlock(rawBlock); err != nil {
+					logger.Panicf("Cannot commit block to the ledger due to %s", err)
+				}
 			}
 		case <-s.stopCh:
 			s.stopCh <- struct{}{}
