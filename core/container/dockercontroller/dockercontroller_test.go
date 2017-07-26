@@ -241,9 +241,10 @@ func TestGetVMName(t *testing.T) {
 	tc = append(tc,
 		testCase{"mycc", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, NetworkID: "dev", PeerID: "peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-mycc-1.0"))))},
 		testCase{"mycc-nonetworkid", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, PeerID: "peer1", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "peer1-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("peer1-mycc-1.0"))))},
-		testCase{"myCC", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev", PeerID: "Peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("Dev-Peer0-myCC-1.0"))))},
+		testCase{"myCC-UCids", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev", PeerID: "Peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("Dev-Peer0-myCC-1.0"))))},
+		testCase{"myCC-idsWithSpecialChars", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev$dev", PeerID: "Peer*0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-dev-peer-0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("Dev$dev-Peer*0-myCC-1.0"))))},
 		testCase{"mycc-nopeerid", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "mycc"}}, NetworkID: "dev", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-mycc-1.0"))))},
-		testCase{"myCC", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "dev", PeerID: "peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-myCC-1.0"))))},
+		testCase{"myCC-LCids", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "dev", PeerID: "peer0", Version: "1.0"}, formatImageName, fmt.Sprintf("%s-%s", "dev-peer0-mycc-1.0", hex.EncodeToString(util.ComputeSHA256([]byte("dev-peer0-myCC-1.0"))))},
 		testCase{"myCC-preserveCase", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev", PeerID: "Peer0", Version: "1.0"}, nil, fmt.Sprintf("%s", "Dev-Peer0-myCC-1.0")},
 		testCase{"invalidCharsFormatFunction", ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "myCC"}}, NetworkID: "Dev", PeerID: "Peer0", Version: "1.0"}, formatInvalidChars, fmt.Sprintf("%s", "inv-lid-character--")})
 
@@ -255,10 +256,10 @@ func TestGetVMName(t *testing.T) {
 
 }
 
-func TestFormatImageName_invalidChars(t *testing.T) {
+/*func TestFormatImageName_invalidChars(t *testing.T) {
 	_, err := formatImageName("invalid*chars")
 	assert.NotNil(t, err, "Expected error")
-}
+}*/
 
 func getCodeChainBytesInMem() io.Reader {
 	startTime := time.Now()

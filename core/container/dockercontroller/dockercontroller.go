@@ -432,16 +432,12 @@ func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, 
 func (vm *DockerVM) GetVMName(ccid ccintf.CCID, format func(string) (string, error)) (string, error) {
 	name := ccid.GetName()
 
-	// replace any invalid characters with "-"
 	if ccid.NetworkID != "" && ccid.PeerID != "" {
-		name = vmRegExp.ReplaceAllString(
-			fmt.Sprintf("%s-%s-%s", ccid.NetworkID, ccid.PeerID, name), "-")
+		name = fmt.Sprintf("%s-%s-%s", ccid.NetworkID, ccid.PeerID, name)
 	} else if ccid.NetworkID != "" {
-		name = vmRegExp.ReplaceAllString(
-			fmt.Sprintf("%s-%s", ccid.NetworkID, name), "-")
+		name = fmt.Sprintf("%s-%s", ccid.NetworkID, name)
 	} else if ccid.PeerID != "" {
-		name = vmRegExp.ReplaceAllString(
-			fmt.Sprintf("%s-%s", ccid.PeerID, name), "-")
+		name = fmt.Sprintf("%s-%s", ccid.PeerID, name)
 	}
 
 	if format != nil {
@@ -449,9 +445,13 @@ func (vm *DockerVM) GetVMName(ccid ccintf.CCID, format func(string) (string, err
 		if err != nil {
 			return formattedName, err
 		}
-		// check to ensure format function didn't add any invalid characters
-		name = vmRegExp.ReplaceAllString(formattedName, "-")
+		name = formattedName
 	}
+
+	// replace any invalid characters with "-" (either in network id, peer id, or in the
+	// entire name returned by any format function)
+	name = vmRegExp.ReplaceAllString(name, "-")
+
 	return name, nil
 }
 
@@ -461,7 +461,9 @@ func (vm *DockerVM) GetVMName(ccid ccintf.CCID, format func(string) (string, err
 // supplied image name and then appends it to the lowercase image name to ensure
 // uniqueness.
 func formatImageName(name string) (string, error) {
-	imageName := strings.ToLower(fmt.Sprintf("%s-%s", name, hex.EncodeToString(util.ComputeSHA256([]byte(name)))))
+	hash := hex.EncodeToString(util.ComputeSHA256([]byte(name)))
+	name = vmRegExp.ReplaceAllString(name, "-")
+	imageName := strings.ToLower(fmt.Sprintf("%s-%s", name, hash))
 
 	// Check that name complies with Docker's repository naming rules
 	if !imageRegExp.MatchString(imageName) {
