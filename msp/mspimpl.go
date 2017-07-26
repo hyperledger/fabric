@@ -117,22 +117,7 @@ func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, bccsp.Key, e
 	// get the public key in the right format
 	certPubK, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
 
-	// Use the hash of the identity's certificate as id in the IdentityIdentifier
-	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
-	if err != nil {
-		return nil, nil, fmt.Errorf("getIdentityFromConf failed getting hash function options [%s]", err)
-	}
-
-	digest, err := msp.bccsp.Hash(cert.Raw, hashOpt)
-	if err != nil {
-		return nil, nil, fmt.Errorf("getIdentityFromConf failed hashing raw certificate to compute the id of the IdentityIdentifier [%s]", err)
-	}
-
-	id := &IdentityIdentifier{
-		Mspid: msp.name,
-		Id:    hex.EncodeToString(digest)}
-
-	mspId, err := newIdentity(id, cert, certPubK, msp)
+	mspId, err := newIdentity(cert, certPubK, msp)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -173,22 +158,7 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) 
 		return nil, fmt.Errorf("getIdentityFromBytes error: Failed initializing bccspCryptoSigner, err %s", err)
 	}
 
-	// Use the hash of the identity's certificate as id in the IdentityIdentifier
-	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
-	if err != nil {
-		return nil, fmt.Errorf("getIdentityFromBytes failed getting hash function options [%s]", err)
-	}
-
-	digest, err := msp.bccsp.Hash(idPub.(*identity).cert.Raw, hashOpt)
-	if err != nil {
-		return nil, fmt.Errorf("Failed hashing raw certificate to compute the id of the IdentityIdentifier [%s]", err)
-	}
-
-	id := &IdentityIdentifier{
-		Mspid: msp.name,
-		Id:    hex.EncodeToString(digest)}
-
-	return newSigningIdentity(id, idPub.(*identity).cert, idPub.(*identity).pk, peerSigner, msp)
+	return newSigningIdentity(idPub.(*identity).cert, idPub.(*identity).pk, peerSigner, msp)
 }
 
 /*
@@ -439,27 +409,12 @@ func (msp *bccspmsp) deserializeIdentityInternal(serializedIdentity []byte) (Ide
 	// We can't do it yet because there is no standardized way
 	// (yet) to encode the MSP ID into the x.509 body of a cert
 
-	// Use the hash of the identity's certificate as id in the IdentityIdentifier
-	hashOpt, err := bccsp.GetHashOpt(msp.cryptoConfig.IdentityIdentifierHashFunction)
-	if err != nil {
-		return nil, fmt.Errorf("Failed getting hash function options [%s]", err)
-	}
-
-	digest, err := msp.bccsp.Hash(cert.Raw, hashOpt)
-	if err != nil {
-		return nil, fmt.Errorf("Failed hashing raw certificate to compute the id of the IdentityIdentifier [%s]", err)
-	}
-
-	id := &IdentityIdentifier{
-		Mspid: msp.name,
-		Id:    hex.EncodeToString(digest)}
-
 	pub, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to import certitifacate's public key [%s]", err)
 	}
 
-	return newIdentity(id, cert, pub, msp)
+	return newIdentity(cert, pub, msp)
 }
 
 // SatisfiesPrincipal returns null if the identity matches the principal or an error otherwise

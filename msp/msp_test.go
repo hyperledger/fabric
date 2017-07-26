@@ -17,6 +17,10 @@ limitations under the License.
 package msp
 
 import (
+	"crypto/ecdsa"
+	"crypto/x509"
+	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
@@ -932,4 +936,61 @@ func getLocalMSP(t *testing.T, dir string) MSP {
 	assert.NoError(t, err)
 
 	return thisMSP
+}
+
+func TestMSPIdentityIdentifier(t *testing.T) {
+	// testdata/mspid
+	// 1) a key and a signcert (used to populate the default signing identity) with the cert having a HighS signature
+	thisMSP := getLocalMSP(t, "testdata/mspid")
+
+	id, err := thisMSP.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+	err = id.Validate()
+	assert.NoError(t, err)
+
+	// Check that the identity identifier is computed with the respect to the lowS signature
+
+	idid := id.GetIdentifier()
+	assert.NotNil(t, idid)
+
+	// Load and parse cacaert and signcert from folder
+	pems, err := getPemMaterialFromDir("testdata/mspid/cacerts")
+	assert.NoError(t, err)
+	bl, _ := pem.Decode(pems[0])
+	assert.NotNil(t, bl)
+	caCertFromFile, err := x509.ParseCertificate(bl.Bytes)
+	assert.NoError(t, err)
+
+	pems, err = getPemMaterialFromDir("testdata/mspid/signcerts")
+	assert.NoError(t, err)
+	bl, _ = pem.Decode(pems[0])
+	assert.NotNil(t, bl)
+	certFromFile, err := x509.ParseCertificate(bl.Bytes)
+	assert.NoError(t, err)
+	// Check that the certificates' raws are different, meaning that the identity has been sanitised
+	assert.NotEqual(t, certFromFile.Raw, id.(*signingidentity).cert)
+
+	// Check that certFromFile is in HighS
+	_, S, err := sw.UnmarshalECDSASignature(certFromFile.Signature)
+	assert.NoError(t, err)
+	lowS, err := sw.IsLowS(caCertFromFile.PublicKey.(*ecdsa.PublicKey), S)
+	assert.NoError(t, err)
+	assert.False(t, lowS)
+
+	// Check that id.(*signingidentity).cert is in LoswS
+	_, S, err = sw.UnmarshalECDSASignature(id.(*signingidentity).cert.Signature)
+	assert.NoError(t, err)
+	lowS, err = sw.IsLowS(caCertFromFile.PublicKey.(*ecdsa.PublicKey), S)
+	assert.NoError(t, err)
+	assert.True(t, lowS)
+
+	// Compute the digest for certFromFile
+	thisBCCSPMsp := thisMSP.(*bccspmsp)
+	hashOpt, err := bccsp.GetHashOpt(thisBCCSPMsp.cryptoConfig.IdentityIdentifierHashFunction)
+	assert.NoError(t, err)
+	digest, err := thisBCCSPMsp.bccsp.Hash(certFromFile.Raw, hashOpt)
+	assert.NoError(t, err)
+
+	// Compare with the digest computed from the sanitised cert
+	assert.NotEqual(t, idid.Id, hex.EncodeToString(digest))
 }
