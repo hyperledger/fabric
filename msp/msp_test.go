@@ -788,7 +788,6 @@ func TestMSPOus(t *testing.T) {
 	// Set the OUIdentifiers
 	backup := localMsp.(*bccspmsp).ouIdentifiers
 	defer func() { localMsp.(*bccspmsp).ouIdentifiers = backup }()
-
 	id, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 
