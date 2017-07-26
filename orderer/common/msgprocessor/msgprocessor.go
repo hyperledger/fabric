@@ -27,6 +27,10 @@ const (
 // are not for the system channel ID and are not attempting to create a new channel
 var ErrChannelDoesNotExist = errors.New("channel does not exist")
 
+// ErrPermissionDenied is returned by errors which are caused by transactions
+// which are not permitted due to an authorization failure.
+var ErrPermissionDenied = errors.New("permission denied")
+
 // Classification represents the possible message types for the system.
 type Classification int
 

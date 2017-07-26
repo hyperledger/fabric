@@ -11,6 +11,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/pkg/errors"
 )
 
 type sigFilter struct {
@@ -40,5 +42,9 @@ func (sf *sigFilter) Apply(message *cb.Envelope) error {
 		return fmt.Errorf("could not find policy %s", sf.policyName)
 	}
 
-	return policy.Evaluate(signedData)
+	err = policy.Evaluate(signedData)
+	if err != nil {
+		return errors.Wrap(errors.WithStack(ErrPermissionDenied), err.Error())
+	}
+	return nil
 }

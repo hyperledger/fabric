@@ -12,7 +12,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 var logger = logging.MustGetLogger("orderer/common/broadcast")
@@ -123,9 +125,11 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 
 // ClassifyError converts an error type into a status code.
 func ClassifyError(err error) cb.Status {
-	switch err {
+	switch errors.Cause(err) {
 	case msgprocessor.ErrChannelDoesNotExist:
 		return cb.Status_NOT_FOUND
+	case msgprocessor.ErrPermissionDenied:
+		return cb.Status_FORBIDDEN
 	default:
 		return cb.Status_BAD_REQUEST
 	}
