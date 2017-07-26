@@ -141,9 +141,9 @@ See the `NPM windows-build-tools page
 <https://www.npmjs.com/package/windows-build-tools>`__ for more
 details.
 
-..note:: If you have questions not addressed by this documentation, or run into
-         issues with any of the tutorials, please visit the :doc:`questions`
-         page for some tips on where to find additional help.
+.. note:: If you have questions not addressed by this documentation, or run into
+          issues with any of the tutorials, please visit the :doc:`questions`
+          page for some tips on where to find additional help.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
