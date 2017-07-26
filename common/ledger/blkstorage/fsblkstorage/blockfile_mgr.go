@@ -68,7 +68,7 @@ The blockfile manager stores blocks of data into a file system.  That file
 storage is done by creating sequentially numbered files of a configured size
 i.e blockfile_000000, blockfile_000001, etc..
 
-Each transcation in a block is stored with information about the number of
+Each transaction in a block is stored with information about the number of
 bytes in that transaction
  Adding txLoc [fileSuffixNum=0, offset=3, bytesLength=104] for tx [1:0] to index
  Adding txLoc [fileSuffixNum=0, offset=107, bytesLength=104] for tx [1:1] to index
