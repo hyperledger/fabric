@@ -48,7 +48,7 @@ type mockDeliveryClient struct {
 
 // StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
 // to channel peers.
-func (ds *mockDeliveryClient) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+func (ds *mockDeliveryClient) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, f func()) error {
 	return nil
 }
 

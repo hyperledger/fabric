@@ -93,6 +93,10 @@ type LeaderElectionService interface {
 
 	// Stop stops the LeaderElectionService
 	Stop()
+
+	// Yield relinquishes the leadership until a new leader is elected,
+	// or a timeout expires
+	Yield()
 }
 
 type peerID []byte
@@ -150,10 +154,12 @@ type leaderElectionSvcImpl struct {
 	isLeader      int32
 	toDie         int32
 	leaderExists  int32
+	yield         int32
 	sleeping      bool
 	adapter       LeaderElectionAdapter
 	logger        *logging.Logger
 	callback      leadershipCallback
+	yieldTimer    *time.Timer
 }
 
 func (le *leaderElectionSvcImpl) start() {
@@ -239,6 +245,11 @@ func (le *leaderElectionSvcImpl) run() {
 		if !le.isLeaderExists() {
 			le.leaderElection()
 		}
+		// If we are yielding and some leader has been elected,
+		// stop yielding
+		if le.isLeaderExists() && le.isYielding() {
+			le.stopYielding()
+		}
 		if le.shouldStop() {
 			return
 		}
@@ -253,12 +264,24 @@ func (le *leaderElectionSvcImpl) run() {
 func (le *leaderElectionSvcImpl) leaderElection() {
 	le.logger.Debug(le.id, ": Entering")
 	defer le.logger.Debug(le.id, ": Exiting")
+	// If we're yielding to other peers, do not participate
+	// in leader election
+	if le.isYielding() {
+		return
+	}
+	// Propose ourselves as a leader
 	le.propose()
+	// Collect other proposals
 	le.waitForInterrupt(getLeaderElectionDuration())
 	// If someone declared itself as a leader, give up
 	// on trying to become a leader too
 	if le.isLeaderExists() {
 		le.logger.Debug(le.id, ": Some peer is already a leader")
+		return
+	}
+
+	if le.isYielding() {
+		le.logger.Debug(le.id, ": Aborting leader election because yielding")
 		return
 	}
 	// Leader doesn't exist, let's see if there is a better candidate than us
@@ -362,6 +385,38 @@ func (le *leaderElectionSvcImpl) stopBeingLeader() {
 
 func (le *leaderElectionSvcImpl) shouldStop() bool {
 	return atomic.LoadInt32(&le.toDie) == int32(1)
+}
+
+func (le *leaderElectionSvcImpl) isYielding() bool {
+	return atomic.LoadInt32(&le.yield) == int32(1)
+}
+
+func (le *leaderElectionSvcImpl) stopYielding() {
+	le.logger.Debug("Stopped yielding")
+	le.Lock()
+	defer le.Unlock()
+	atomic.StoreInt32(&le.yield, int32(0))
+	le.yieldTimer.Stop()
+}
+
+// Yield relinquishes the leadership until a new leader is elected,
+// or a timeout expires
+func (le *leaderElectionSvcImpl) Yield() {
+	le.Lock()
+	defer le.Unlock()
+	if !le.IsLeader() || le.isYielding() {
+		return
+	}
+	// Turn on the yield flag
+	atomic.StoreInt32(&le.yield, int32(1))
+	// Stop being a leader
+	le.stopBeingLeader()
+	// Clear the leader exists flag since it could be that we are the leader
+	atomic.StoreInt32(&le.leaderExists, int32(0))
+	// Clear the yield flag in any case afterwards
+	le.yieldTimer = time.AfterFunc(getLeaderAliveThreshold()*6, func() {
+		atomic.StoreInt32(&le.yield, int32(0))
+	})
 }
 
 // Stop stops the LeaderElectionService
