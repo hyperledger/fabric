@@ -95,7 +95,7 @@ the command:
 
 Any of the configuration related protos, including ``common.Block``,
 ``common.Envelope``, ``common.ConfigEnvelope``, ``common.ConfigUpdateEnvelope``,
-``common.Configuration``, and ``common.ConfigUpdate`` are valid targets for
+``common.Config``, and ``common.ConfigUpdate`` are valid targets for
 these URLs.  In the future, other proto decoding types may be added, such as
 for endorser transactions.
 
