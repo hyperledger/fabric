@@ -1,0 +1,44 @@
+package: github.com/uber-go/tally
+version: 1.0.0
+import:
+- package: github.com/cactus/go-statsd-client
+  version: ~3.1.0
+  subpackages:
+  - statsd
+- package: github.com/facebookgo/clock
+  version: 600d898af40aa09a7a93ecb9265d87b0504b6f03
+- package: github.com/prometheus/client_golang
+  version: ^0.8.0
+  subpackages:
+  - prometheus
+- package: github.com/apache/thrift
+  version: 9549b25c77587b29be4e0b5c258221a4ed85d37a
+  subpackages:
+  - lib/go/thrift
+- package: github.com/uber-go/atomic
+  version: e682c1008ac17bf26d2e4b5ad6cdd08520ed0b22
+testImport:
+- package: github.com/axw/gocov
+  version: 54b98cfcac0c63fb3f9bd8e7ad241b724d4e985b
+  subpackages:
+  - gocov
+- package: github.com/mattn/goveralls
+  version: f4d273b02ce1b4e48acf3662b717aa987bfc4118
+- package: golang.org/x/tools
+  version: 3fe2afc9e626f32e91aff6eddb78b14743446865
+  subpackages:
+  - cover
+- package: github.com/golang/lint
+  version: c7bacac2b21ca01afa1dee0acf64df3ce047c28f
+  subpackages:
+  - golint
+- package: github.com/pborman/uuid
+  version: c55201b036063326c5b1b89ccfe45a184973d073
+- package: github.com/stretchr/testify
+  version: d77da356e56a7428ad25149ca77381849a6a5232
+  subpackages:
+  - assert
+  - require
+- package: gopkg.in/validator.v2
+- package: gopkg.in/yaml.v2
+

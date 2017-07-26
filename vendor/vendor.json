@@ -188,6 +188,12 @@
 			"revisionTime": "2016-08-05T00:47:13Z"
 		},
 		{
+			"checksumSHA1": "imR2wF388/0fBU6RRWx8RvTi8Q8=",
+			"path": "github.com/facebookgo/clock",
+			"revision": "600d898af40aa09a7a93ecb9265d87b0504b6f03",
+			"revisionTime": "2015-04-10T01:09:13Z"
+		},
+		{
 			"checksumSHA1": "uhWARwDA6NE60a3/snaz9QBM7Ow=",
 			"path": "github.com/fsouza/go-dockerclient",
 			"revision": "d433254bb83b41d7072ce470e312ea3cee257882",
@@ -534,6 +540,24 @@
 			"path": "github.com/syndtr/goleveldb/leveldb/util",
 			"revision": "6b4daa5362b502898ddf367c5c11deb9e7a5c727",
 			"revisionTime": "2016-10-11T05:00:08Z"
+		},
+		{
+			"checksumSHA1": "U35lQ4bMD3tB9Z8dqaqfeg9BxhQ=",
+			"path": "github.com/uber-go/tally",
+			"revision": "88e9c75b0cfc84139ad1bae3b7f123786cfd0770",
+			"revisionTime": "2017-06-23T13:27:35Z"
+		},
+		{
+			"checksumSHA1": "MODwNJLvl0ZIi77yVjqY2BkjDJI=",
+			"path": "github.com/uber-go/tally/prometheus",
+			"revision": "88e9c75b0cfc84139ad1bae3b7f123786cfd0770",
+			"revisionTime": "2017-06-23T13:27:35Z"
+		},
+		{
+			"checksumSHA1": "uogeey5t5IENcDuWeLalQ3GlIgA=",
+			"path": "github.com/uber-go/tally/statsd",
+			"revision": "88e9c75b0cfc84139ad1bae3b7f123786cfd0770",
+			"revisionTime": "2017-06-23T13:27:35Z"
 		},
 		{
 			"path": "golang.org/x/crypto/hkdf",
