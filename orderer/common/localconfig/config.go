@@ -32,6 +32,7 @@ import (
 	"path/filepath"
 
 	bccsp "github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 )
 
 const (
@@ -74,6 +75,7 @@ type General struct {
 	TLS            TLS
 	GenesisMethod  string
 	GenesisProfile string
+	SystemChannel  string
 	GenesisFile    string
 	Profile        Profile
 	LogLevel       string
@@ -167,6 +169,7 @@ var defaults = TopLevel{
 		ListenPort:     7050,
 		GenesisMethod:  "provisional",
 		GenesisProfile: "SampleSingleMSPSolo",
+		SystemChannel:  provisional.TestChainID,
 		GenesisFile:    "genesisblock",
 		Profile: Profile{
 			Enabled: false,
@@ -276,6 +279,8 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			c.General.GenesisFile = defaults.General.GenesisFile
 		case c.General.GenesisProfile == "":
 			c.General.GenesisProfile = defaults.General.GenesisProfile
+		case c.General.SystemChannel == "":
+			c.General.SystemChannel = defaults.General.SystemChannel
 
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.Certificate == "":
 			logger.Panicf("General.Kafka.TLS.Certificate must be set if General.Kafka.TLS.Enabled is set to true.")

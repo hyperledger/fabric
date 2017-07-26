@@ -19,12 +19,12 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	coreconfig "github.com/hyperledger/fabric/core/config"
-	config "github.com/hyperledger/fabric/orderer/common/localconfig"
-	logging "github.com/op/go-logging"
-	// logging "github.com/op/go-logging"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -164,9 +164,10 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 					initializeBootstrapChannel(bootstrapConfig, ledgerFactory)
 				})
 			} else {
-				initializeBootstrapChannel(bootstrapConfig, ledgerFactory)
+				assert.NotPanics(t, func() {
+					initializeBootstrapChannel(bootstrapConfig, ledgerFactory)
+				})
 			}
-
 		})
 	}
 }
@@ -216,6 +217,7 @@ func TestInitializeMultiChainManager(t *testing.T) {
 			LedgerType:     "ram",
 			GenesisMethod:  "provisional",
 			GenesisProfile: "SampleSingleMSPSolo",
+			SystemChannel:  provisional.TestChainID,
 			LocalMSPDir:    localMSPDir,
 			LocalMSPID:     "DEFAULT",
 			BCCSP: &factory.FactoryOpts{
