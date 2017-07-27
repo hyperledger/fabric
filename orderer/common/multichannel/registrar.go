@@ -17,6 +17,7 @@ import (
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
+	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -31,19 +32,6 @@ const (
 	msgVersion = int32(0)
 	epoch      = 0
 )
-
-// Manager coordinates the creation and access of chains
-type Manager interface {
-	// GetChain retrieves the chain support for a chain (and whether it exists)
-	GetChain(chainID string) (ChainSupport, bool)
-
-	// SystemChannelID returns the channel ID for the system channel
-	SystemChannelID() string
-
-	// NewChannelConfig returns a bare bones configuration ready for channel
-	// creation request to be applied on top of it
-	NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error)
-}
 
 type configResources struct {
 	configtxapi.Manager
@@ -62,13 +50,14 @@ type ledgerResources struct {
 	ledger ledger.ReadWriter
 }
 
-type multiLedger struct {
-	chains          map[string]*chainSupport
-	consenters      map[string]Consenter
+// Registrar serves as a point of access and control for the individual channel resources.
+type Registrar struct {
+	chains          map[string]*ChainSupport
+	consenters      map[string]consensus.Consenter
 	ledgerFactory   ledger.Factory
 	signer          crypto.LocalSigner
 	systemChannelID string
-	systemChannel   *chainSupport
+	systemChannel   *ChainSupport
 }
 
 func getConfigTx(reader ledger.Reader) *cb.Envelope {
@@ -85,10 +74,10 @@ func getConfigTx(reader ledger.Reader) *cb.Envelope {
 	return utils.ExtractEnvelopeOrPanic(configBlock, 0)
 }
 
-// NewManagerImpl produces an instance of a Manager
-func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consenter, signer crypto.LocalSigner) Manager {
-	ml := &multiLedger{
-		chains:        make(map[string]*chainSupport),
+// NewRegistrar produces an instance of a *Registrar.
+func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.Consenter, signer crypto.LocalSigner) *Registrar {
+	r := &Registrar{
+		chains:        make(map[string]*ChainSupport),
 		ledgerFactory: ledgerFactory,
 		consenters:    consenters,
 		signer:        signer,
@@ -104,21 +93,21 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 		if configTx == nil {
 			logger.Panic("Programming error, configTx should never be nil here")
 		}
-		ledgerResources := ml.newLedgerResources(configTx)
+		ledgerResources := r.newLedgerResources(configTx)
 		chainID := ledgerResources.ChainID()
 
 		if _, ok := ledgerResources.ConsortiumsConfig(); ok {
-			if ml.systemChannelID != "" {
-				logger.Panicf("There appear to be two system chains %s and %s", ml.systemChannelID, chainID)
+			if r.systemChannelID != "" {
+				logger.Panicf("There appear to be two system chains %s and %s", r.systemChannelID, chainID)
 			}
-			chain := newChainSupport(createSystemChainFilters(ml, ledgerResources),
+			chain := newChainSupport(createSystemChainFilters(r, ledgerResources),
 				ledgerResources,
 				consenters,
 				signer)
 			logger.Infof("Starting with system channel %s and orderer type %s", chainID, chain.SharedConfig().ConsensusType())
-			ml.chains[chainID] = chain
-			ml.systemChannelID = chainID
-			ml.systemChannel = chain
+			r.chains[chainID] = chain
+			r.systemChannelID = chainID
+			r.systemChannel = chain
 			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built
 			defer chain.start()
 		} else {
@@ -127,30 +116,31 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 				ledgerResources,
 				consenters,
 				signer)
-			ml.chains[chainID] = chain
+			r.chains[chainID] = chain
 			chain.start()
 		}
 
 	}
 
-	if ml.systemChannelID == "" {
+	if r.systemChannelID == "" {
 		logger.Panicf("No system chain found.  If bootstrapping, does your system channel contain a consortiums group definition?")
 	}
 
-	return ml
+	return r
 }
 
-func (ml *multiLedger) SystemChannelID() string {
-	return ml.systemChannelID
+// SystemChannelID returns the ChannelID for the system channel.
+func (r *Registrar) SystemChannelID() string {
+	return r.systemChannelID
 }
 
 // GetChain retrieves the chain support for a chain (and whether it exists)
-func (ml *multiLedger) GetChain(chainID string) (ChainSupport, bool) {
-	cs, ok := ml.chains[chainID]
+func (r *Registrar) GetChain(chainID string) (*ChainSupport, bool) {
+	cs, ok := r.chains[chainID]
 	return cs, ok
 }
 
-func (ml *multiLedger) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
+func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 	initializer := configtx.NewInitializer()
 	configManager, err := configtx.NewManagerImpl(configTx, initializer, nil)
 	if err != nil {
@@ -159,7 +149,7 @@ func (ml *multiLedger) newLedgerResources(configTx *cb.Envelope) *ledgerResource
 
 	chainID := configManager.ChainID()
 
-	ledger, err := ml.ledgerFactory.GetOrCreate(chainID)
+	ledger, err := r.ledgerFactory.GetOrCreate(chainID)
 	if err != nil {
 		logger.Panicf("Error getting ledger for %s", chainID)
 	}
@@ -170,17 +160,17 @@ func (ml *multiLedger) newLedgerResources(configTx *cb.Envelope) *ledgerResource
 	}
 }
 
-func (ml *multiLedger) newChain(configtx *cb.Envelope) {
-	ledgerResources := ml.newLedgerResources(configtx)
+func (r *Registrar) newChain(configtx *cb.Envelope) {
+	ledgerResources := r.newLedgerResources(configtx)
 	ledgerResources.ledger.Append(ledger.CreateNextBlock(ledgerResources.ledger, []*cb.Envelope{configtx}))
 
 	// Copy the map to allow concurrent reads from broadcast/deliver while the new chainSupport is
-	newChains := make(map[string]*chainSupport)
-	for key, value := range ml.chains {
+	newChains := make(map[string]*ChainSupport)
+	for key, value := range r.chains {
 		newChains[key] = value
 	}
 
-	cs := newChainSupport(createStandardFilters(ledgerResources), ledgerResources, ml.consenters, ml.signer)
+	cs := newChainSupport(createStandardFilters(ledgerResources), ledgerResources, r.consenters, r.signer)
 	chainID := ledgerResources.ChainID()
 
 	logger.Infof("Created and starting new chain %s", chainID)
@@ -188,14 +178,15 @@ func (ml *multiLedger) newChain(configtx *cb.Envelope) {
 	newChains[string(chainID)] = cs
 	cs.start()
 
-	ml.chains = newChains
+	r.chains = newChains
 }
 
-func (ml *multiLedger) channelsCount() int {
-	return len(ml.chains)
+func (r *Registrar) channelsCount() int {
+	return len(r.chains)
 }
 
-func (ml *multiLedger) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error) {
+// NewChannelConfig produces a new template channel configuration based on the system channel's current config.
+func (r *Registrar) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error) {
 	configUpdatePayload, err := utils.UnmarshalPayload(envConfigUpdate.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("Failing initial channel config creation because of payload unmarshaling error: %s", err)
@@ -244,7 +235,7 @@ func (ml *multiLedger) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxa
 	}
 
 	applicationGroup := cb.NewConfigGroup()
-	consortiumsConfig, ok := ml.systemChannel.ConsortiumsConfig()
+	consortiumsConfig, ok := r.systemChannel.ConsortiumsConfig()
 	if !ok {
 		return nil, fmt.Errorf("The ordering system channel does not appear to support creating channels")
 	}
@@ -260,7 +251,7 @@ func (ml *multiLedger) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxa
 	applicationGroup.ModPolicy = config.ChannelCreationPolicyKey
 
 	// Get the current system channel config
-	systemChannelGroup := ml.systemChannel.ConfigEnvelope().Config.ChannelGroup
+	systemChannelGroup := r.systemChannel.ConfigEnvelope().Config.ChannelGroup
 
 	// If the consortium group has no members, allow the source request to have no members.  However,
 	// if the consortium group has any members, there must be at least one member in the source request
@@ -301,7 +292,7 @@ func (ml *multiLedger) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxa
 	channelGroup.Groups[config.ApplicationGroupKey] = applicationGroup
 	channelGroup.Values[config.ConsortiumKey] = config.TemplateConsortium(consortium.Name).Values[config.ConsortiumKey]
 
-	templateConfig, _ := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, configUpdate.ChannelId, ml.signer, &cb.ConfigEnvelope{
+	templateConfig, _ := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, configUpdate.ChannelId, r.signer, &cb.ConfigEnvelope{
 		Config: &cb.Config{
 			ChannelGroup: channelGroup,
 		},

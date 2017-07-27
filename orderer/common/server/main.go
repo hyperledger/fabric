@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/metadata"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/kafka"
 	"github.com/hyperledger/fabric/orderer/consensus/solo"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -70,7 +71,7 @@ func Main() {
 // Start provides a layer of abstraction for benchmark test
 func Start(cmd string, conf *config.TopLevel) {
 	signer := localmsp.NewSigner()
-	manager := initializeMultiChainManager(conf, signer)
+	manager := initializeMultichannelRegistrar(conf, signer)
 	server := NewServer(manager, signer)
 
 	switch cmd {
@@ -208,7 +209,7 @@ func initializeLocalMsp(conf *config.TopLevel) {
 	}
 }
 
-func initializeMultiChainManager(conf *config.TopLevel, signer crypto.LocalSigner) multichannel.Manager {
+func initializeMultichannelRegistrar(conf *config.TopLevel, signer crypto.LocalSigner) *multichannel.Registrar {
 	lf, _ := createLedgerFactory(conf)
 	// Are we bootstrapping?
 	if len(lf.ChainIDs()) == 0 {
@@ -217,9 +218,9 @@ func initializeMultiChainManager(conf *config.TopLevel, signer crypto.LocalSigne
 		logger.Info("Not bootstrapping because of existing chains")
 	}
 
-	consenters := make(map[string]multichannel.Consenter)
+	consenters := make(map[string]consensus.Consenter)
 	consenters["solo"] = solo.New()
 	consenters["kafka"] = kafka.New(conf.Kafka.TLS, conf.Kafka.Retry, conf.Kafka.Version)
 
-	return multichannel.NewManagerImpl(lf, consenters, signer)
+	return multichannel.NewRegistrar(lf, consenters, signer)
 }

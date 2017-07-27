@@ -66,7 +66,7 @@ func (mc *mockCommitter) Commit() {
 func TestCommitConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{
+	cs := &ChainSupport{
 		ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml},
 		filters:         filter.NewRuleSet([]filter.Rule{filter.AcceptRule}),
 		signer:          mockCrypto(),
@@ -89,7 +89,7 @@ func TestCommitConfig(t *testing.T) {
 func TestWriteBlockSignatures(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
+	cs := &ChainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
 
 	actual := utils.GetMetadataFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil), cb.BlockMetadataIndex_SIGNATURES)
 	assert.NotNil(t, actual, "Block should have block signature")
@@ -98,7 +98,7 @@ func TestWriteBlockSignatures(t *testing.T) {
 func TestWriteBlockOrdererMetadata(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
+	cs := &ChainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
 
 	value := []byte("foo")
 	expected := &cb.Metadata{Value: value}
@@ -110,7 +110,7 @@ func TestWriteBlockOrdererMetadata(t *testing.T) {
 func TestSignature(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
+	cs := &ChainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
 
 	message := []byte("Darth Vader")
 	signed, _ := cs.Sign(message)
@@ -124,7 +124,7 @@ func TestSignature(t *testing.T) {
 func TestWriteLastConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
+	cs := &ChainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
 
 	expected := uint64(0)
 	lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil))
@@ -144,7 +144,7 @@ func TestWriteLastConfig(t *testing.T) {
 		cm.SequenceVal = 2
 		expected = uint64(4)
 
-		cs = &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
+		cs = &ChainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
 		lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(4, nil), nil))
 		assert.Equal(t, expected, lc, "Second block should have config block index of %d, but got %d", expected, lc)
 
