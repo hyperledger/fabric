@@ -129,7 +129,7 @@ func TestOrdererBenchmark(t *testing.T) {
 	}
 
 	t.Run("Benchmark Sample Test", func(t *testing.T) {
-		benchmarkBroadcast(t, 1, 5, PreferredMaxBytes, 1, 0, 1, true)
+		benchmarkOrderer(t, 1, 5, PreferredMaxBytes, 1, 0, 1, true)
 	})
 }
 
@@ -167,7 +167,7 @@ func TestOrdererBenchmarkSoloBroadcast(t *testing.T) {
 
 	for factors := range combinations(args) {
 		t.Run(factors.String(), func(t *testing.T) {
-			benchmarkBroadcast(
+			benchmarkOrderer(
 				t,
 				factors.numOfChannels,
 				factors.totalTx,
@@ -215,7 +215,7 @@ func TestOrdererBenchmarkSoloDeliver(t *testing.T) {
 
 	for factors := range combinations(args) {
 		t.Run(factors.String(), func(t *testing.T) {
-			benchmarkBroadcast(
+			benchmarkOrderer(
 				t,
 				factors.numOfChannels,
 				factors.totalTx,
@@ -263,7 +263,7 @@ func TestOrdererBenchmarkKafkaBroadcast(t *testing.T) {
 
 	for factors := range combinations(args) {
 		t.Run(factors.String(), func(t *testing.T) {
-			benchmarkBroadcast(
+			benchmarkOrderer(
 				t,
 				factors.numOfChannels,
 				factors.totalTx,
@@ -311,7 +311,7 @@ func TestOrdererBenchmarkKafkaDeliver(t *testing.T) {
 
 	for factors := range combinations(args) {
 		t.Run(factors.String(), func(t *testing.T) {
-			benchmarkBroadcast(
+			benchmarkOrderer(
 				t,
 				factors.numOfChannels,
 				factors.totalTx,
@@ -325,7 +325,7 @@ func TestOrdererBenchmarkKafkaDeliver(t *testing.T) {
 	}
 }
 
-func benchmarkBroadcast(
+func benchmarkOrderer(
 	t *testing.T,
 	numOfChannels int,
 	totalTx int,
