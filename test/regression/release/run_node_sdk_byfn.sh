@@ -14,7 +14,7 @@ WD="${WORKSPACE}/gopath/src/github.com/hyperledger/fabric-sdk-node"
 SDK_REPO_NAME=fabric-sdk-node
 git clone ssh://hyperledger-jobbuilder@gerrit.hyperledger.org:29418/$SDK_REPO_NAME $WD
 cd $WD
-git checkout tags/v1.0.0
+git checkout tags/v1.0.1
 NODE_SDK_COMMIT=$(git log -1 --pretty=format:"%h")
 
 echo "FABRIC NODE SDK COMMIT ========> " $NODE_SDK_COMMIT >> ${WORKSPACE}/gopath/src/github.com/hyperledger/commit_history.log

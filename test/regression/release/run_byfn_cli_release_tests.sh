@@ -17,9 +17,9 @@ REPO_NAME=fabric-samples
 git clone ssh://hyperledger-jobbuilder@gerrit.hyperledger.org:29418/$REPO_NAME $WD
 cd $WD
 
-curl -L https://raw.githubusercontent.com/hyperledger/fabric/master/scripts/bootstrap-1.0.0.sh -o bootstrap-1.0.0.sh
-chmod +x bootstrap-1.0.0.sh
-./bootstrap-1.0.0.sh
+curl -L https://raw.githubusercontent.com/hyperledger/fabric/master/scripts/bootstrap-1.0.1.sh -o bootstrap-1.0.1.sh
+chmod +x bootstrap-1.0.1.sh
+./bootstrap-1.0.1.sh
 
 cd $WD/first-network
 export PATH=$WD/bin:$PATH

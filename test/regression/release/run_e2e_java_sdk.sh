@@ -13,7 +13,7 @@ WD="${GOPATH}/src/github.com/hyperledger/fabric-sdk-java"
 SDK_REPO_NAME=fabric-sdk-java
 git clone https://github.com/hyperledger/fabric-sdk-java $WD
 cd $WD
-git checkout tags/v1.0.0
+git checkout tags/v1.0.1
 export GOPATH=$WD/src/test/fixture
 
 cd $WD/src/test
