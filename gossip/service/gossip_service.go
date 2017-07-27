@@ -283,7 +283,9 @@ func (g *gossipServiceImpl) onStatusChangeFactory(chainID string, committer bloc
 	return func(isLeader bool) {
 		if isLeader {
 			yield := func() {
+				g.lock.RLock()
 				le := g.leaderElection[chainID]
+				g.lock.RUnlock()
 				le.Yield()
 			}
 			logger.Info("Elected as a leader, starting delivery service for channel", chainID)
