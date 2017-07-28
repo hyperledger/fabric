@@ -83,7 +83,9 @@ func recurseConfig(result map[string]comparable, path []string, group *cb.Config
 	}
 
 	for key, group := range group.Groups {
-		nextPath := append(path, key)
+		nextPath := make([]string, len(path)+1)
+		copy(nextPath, path)
+		nextPath[len(nextPath)-1] = key
 		if err := recurseConfig(result, nextPath, group); err != nil {
 			return err
 		}
