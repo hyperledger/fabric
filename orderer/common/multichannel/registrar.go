@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
@@ -107,7 +108,19 @@ func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.
 				signer)
 			r.templator = msgprocessor.NewDefaultTemplator(chain)
 			chain.Processor = msgprocessor.NewSystemChannel(chain, r.templator, msgprocessor.CreateSystemChannelFilters(r, chain))
-			logger.Infof("Starting with system channel %s and orderer type %s", chainID, chain.SharedConfig().ConsensusType())
+
+			// Retrieve genesis block to log its hash. See FAB-5450 for the purpose
+			iter, pos := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}})
+			defer iter.Close()
+			if pos != uint64(0) {
+				logger.Panicf("Error iterating over system channel: '%s', expected position 0, got %d", chainID, pos)
+			}
+			genesisBlock, status := iter.Next()
+			if status != cb.Status_SUCCESS {
+				logger.Panicf("Error reading genesis block of system channel '%s'", chainID)
+			}
+			logger.Infof("Starting system channel '%s' with genesis block hash %x and orderer type %s", chainID, genesisBlock.Header.Hash(), chain.SharedConfig().ConsensusType())
+
 			r.chains[chainID] = chain
 			r.systemChannelID = chainID
 			r.systemChannel = chain
