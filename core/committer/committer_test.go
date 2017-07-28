@@ -21,9 +21,9 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/configtx/tool/localconfig"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/mocks/validator"
 	"github.com/hyperledger/fabric/protos/common"

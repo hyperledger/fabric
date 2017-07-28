@@ -65,8 +65,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig" // config for genesis.yaml
-	genesisconfigProvisional "github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig" // config for genesis.yaml
+	genesisconfigProvisional "github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig" // config, for the orderer.yaml
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"

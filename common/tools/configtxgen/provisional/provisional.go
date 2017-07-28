@@ -23,10 +23,10 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 	configvaluesmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	pkgLogID = "common/configtx/tool/provisional"
+	pkgLogID = "common/tools/configtxgen/provisional"
 )
 
 var (

@@ -18,7 +18,7 @@ package main
 
 import (
 	"github.com/hyperledger/fabric/common/configtx"
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 

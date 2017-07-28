@@ -13,10 +13,10 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 

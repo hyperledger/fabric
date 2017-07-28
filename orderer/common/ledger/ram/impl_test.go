@@ -19,7 +19,7 @@ package ramledger
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"

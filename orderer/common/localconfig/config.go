@@ -32,7 +32,7 @@ import (
 	"path/filepath"
 
 	bccsp "github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 )
 
 const (

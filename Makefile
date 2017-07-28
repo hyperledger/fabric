@@ -87,7 +87,7 @@ RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s
 RELEASE_PKGS = configtxgen cryptogen configtxlator peer orderer
 
 pkgmap.cryptogen      := $(PKGNAME)/common/tools/cryptogen
-pkgmap.configtxgen    := $(PKGNAME)/common/configtx/tool/configtxgen
+pkgmap.configtxgen    := $(PKGNAME)/common/tools/configtxgen
 pkgmap.configtxlator  := $(PKGNAME)/common/tools/configtxlator
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer

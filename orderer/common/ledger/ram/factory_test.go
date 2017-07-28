@@ -19,7 +19,7 @@ package ramledger
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 
 	logging "github.com/op/go-logging"
 )

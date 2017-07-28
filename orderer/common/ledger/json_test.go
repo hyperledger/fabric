@@ -20,7 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	. "github.com/hyperledger/fabric/orderer/common/ledger"
 	jsonledger "github.com/hyperledger/fabric/orderer/common/ledger/json"
 	cb "github.com/hyperledger/fabric/protos/common"

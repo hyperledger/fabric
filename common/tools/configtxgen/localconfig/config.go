@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	pkgLogID = "common/configtx/tool/localconfig"
+	pkgLogID = "common/tools/configtxgen/localconfig"
 
 	// Prefix identifies the prefix for the configtxgen-related ENV vars.
 	Prefix string = "CONFIGTX"

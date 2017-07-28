@@ -19,9 +19,9 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/op/go-logging"

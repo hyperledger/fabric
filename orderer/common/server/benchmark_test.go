@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/configtx/tool/localconfig"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	perf "github.com/hyperledger/fabric/orderer/common/performance"
 	cb "github.com/hyperledger/fabric/protos/common"

@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"testing"
 
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )

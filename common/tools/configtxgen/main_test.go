@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 
 	"github.com/stretchr/testify/assert"
 )

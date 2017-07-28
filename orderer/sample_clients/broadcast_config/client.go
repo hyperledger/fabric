@@ -23,7 +23,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"

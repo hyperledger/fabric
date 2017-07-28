@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/common/ledger/ram"
 	cb "github.com/hyperledger/fabric/protos/common"

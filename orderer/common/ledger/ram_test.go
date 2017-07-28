@@ -17,7 +17,7 @@ limitations under the License.
 package ledger_test
 
 import (
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	. "github.com/hyperledger/fabric/orderer/common/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/common/ledger/ram"
 )

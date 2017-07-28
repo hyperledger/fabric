@@ -29,10 +29,10 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 	mspconfig "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/configtx/tool/configtxgen/metadata"
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/flogging"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/metadata"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -43,7 +43,7 @@ import (
 
 var exitCode = 0
 
-var logger = flogging.MustGetLogger("common/configtx/tool")
+var logger = flogging.MustGetLogger("common/tools/configtxgen")
 
 func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock string) error {
 	pgen := provisional.New(config)
