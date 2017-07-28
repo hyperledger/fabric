@@ -81,6 +81,7 @@ func (cm *configManager) verifyDeltaSet(deltaSet map[string]comparable, signedDa
 	}
 
 	for key, value := range deltaSet {
+		logger.Debugf("Processing change to key: %s", key)
 		if err := validateModPolicy(value.modPolicy()); err != nil {
 			return fmt.Errorf("invalid mod_policy for element %s: %s", key, err)
 		}
