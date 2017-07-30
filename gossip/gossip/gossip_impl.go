@@ -646,12 +646,7 @@ func (g *gossipServiceImpl) Send(msg *proto.GossipMessage, peers ...*comm.Remote
 
 // GetPeers returns a mapping of endpoint --> []discovery.NetworkMember
 func (g *gossipServiceImpl) Peers() []discovery.NetworkMember {
-	s := []discovery.NetworkMember{}
-	for _, member := range g.disc.GetMembership() {
-		s = append(s, member)
-	}
-	return s
-
+	return g.disc.GetMembership()
 }
 
 // PeersOfChannel returns the NetworkMembers considered alive
