@@ -17,6 +17,7 @@ limitations under the License.
 package solo
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
@@ -37,7 +38,7 @@ type chain struct {
 
 // New creates a new consenter for the solo consensus scheme.
 // The solo consensus scheme is very simple, and allows only one consenter for a given chain (this process).
-// It accepts messages being delivered via Enqueue, orders them, and then uses the blockcutter to form the messages
+// It accepts messages being delivered via Order/Configure, orders them, and then uses the blockcutter to form the messages
 // into blocks before writing to the given ledger
 func New() consensus.Consenter {
 	return &consenter{}
@@ -68,14 +69,20 @@ func (ch *chain) Halt() {
 	}
 }
 
-// Enqueue accepts a message and returns true on acceptance, or false on shutdown
-func (ch *chain) Enqueue(env *cb.Envelope) bool {
+// Order accepts normal messages for ordering
+func (ch *chain) Order(env *cb.Envelope, configSeq uint64) error {
 	select {
 	case ch.sendChan <- env:
-		return true
+		return nil
 	case <-ch.exitChan:
-		return false
+		return fmt.Errorf("Exiting")
 	}
+}
+
+// Order accepts normal messages for ordering
+func (ch *chain) Configure(configUpdate *cb.Envelope, config *cb.Envelope, configSeq uint64) error {
+	// TODO, handle this specially
+	return ch.Order(config, configSeq)
 }
 
 // Errored only closes on exit

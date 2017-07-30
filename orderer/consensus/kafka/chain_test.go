@@ -195,7 +195,7 @@ func TestChain(t *testing.T) {
 		assert.Panics(t, func() { startThread(chain) }, "Expected the Start() call to panic")
 	})
 
-	t.Run("EnqueueIfNotStarted", func(t *testing.T) {
+	t.Run("enqueueIfNotStarted", func(t *testing.T) {
 		mockChannel, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
@@ -216,7 +216,7 @@ func TestChain(t *testing.T) {
 				SetMessage(mockChannel.topic(), mockChannel.partition(), newestOffset, message),
 		})
 
-		assert.False(t, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return false")
+		assert.False(t, chain.enqueue(newMockEnvelope("fooMessage")), "Expected enqueue call to return false")
 	})
 
 	t.Run("StartWithConsumerForChannelError", func(t *testing.T) {
@@ -247,7 +247,7 @@ func TestChain(t *testing.T) {
 		assert.Panics(t, func() { startThread(chain) }, "Expected the Start() call to panic")
 	})
 
-	t.Run("EnqueueProper", func(t *testing.T) {
+	t.Run("enqueueProper", func(t *testing.T) {
 		mockChannel, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
@@ -273,14 +273,14 @@ func TestChain(t *testing.T) {
 			t.Fatal("startChan should have been closed by now")
 		}
 
-		// Enqueue should have access to the post path, and its ProduceRequest
+		// enqueue should have access to the post path, and its ProduceRequest
 		// should go by without error
-		assert.True(t, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return true")
+		assert.True(t, chain.enqueue(newMockEnvelope("fooMessage")), "Expected enqueue call to return true")
 
 		chain.Halt()
 	})
 
-	t.Run("EnqueueIfHalted", func(t *testing.T) {
+	t.Run("enqueueIfHalted", func(t *testing.T) {
 		mockChannel, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
@@ -308,10 +308,10 @@ func TestChain(t *testing.T) {
 		chain.Halt()
 
 		// haltChan should close access to the post path
-		assert.False(t, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return false")
+		assert.False(t, chain.enqueue(newMockEnvelope("fooMessage")), "Expected enqueue call to return false")
 	})
 
-	t.Run("EnqueueError", func(t *testing.T) {
+	t.Run("enqueueError", func(t *testing.T) {
 		mockChannel, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
 		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1)
@@ -345,7 +345,7 @@ func TestChain(t *testing.T) {
 				SetError(mockChannel.topic(), mockChannel.partition(), sarama.ErrNotLeaderForPartition),
 		})
 
-		assert.False(t, chain.Enqueue(newMockEnvelope("fooMessage")), "Expected Enqueue call to return false")
+		assert.False(t, chain.enqueue(newMockEnvelope("fooMessage")), "Expected enqueue call to return false")
 	})
 }
 

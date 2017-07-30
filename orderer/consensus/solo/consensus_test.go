@@ -37,7 +37,7 @@ func init() {
 var testMessage = &cb.Envelope{Payload: []byte("TEST_MESSAGE")}
 
 func syncQueueMessage(msg *cb.Envelope, chain *chain, bc *mockblockcutter.Receiver) {
-	chain.Enqueue(msg)
+	chain.Order(msg, 0)
 	bc.Block <- struct{}{}
 }
 
@@ -91,7 +91,7 @@ func TestStart(t *testing.T) {
 	defer bs.Halt()
 
 	support.BlockCutterVal.CutNext = true
-	bs.Enqueue(testMessage)
+	assert.Nil(t, bs.Order(testMessage, 0))
 	select {
 	case <-support.Blocks:
 	case <-bs.Errored():
@@ -99,7 +99,7 @@ func TestStart(t *testing.T) {
 	}
 }
 
-func TestEnqueueAfterHalt(t *testing.T) {
+func TestOrderAfterHalt(t *testing.T) {
 	batchTimeout, _ := time.ParseDuration("1ms")
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
@@ -109,7 +109,7 @@ func TestEnqueueAfterHalt(t *testing.T) {
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
 	bs.Halt()
-	assert.False(t, bs.Enqueue(testMessage), "Enqueue should not be accepted after halt")
+	assert.NotNil(t, bs.Order(testMessage, 0), "Order should not be accepted after halt")
 	select {
 	case <-bs.Errored():
 	default:
@@ -253,7 +253,7 @@ func TestConfigMsg(t *testing.T) {
 
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 	support.ClassifyMsgVal = msgprocessor.ConfigUpdateMsg
-	bs.Enqueue(testMessage)
+	assert.Nil(t, bs.Order(testMessage, 0))
 
 	select {
 	case <-support.Blocks:

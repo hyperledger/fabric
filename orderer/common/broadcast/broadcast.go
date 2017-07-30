@@ -53,8 +53,13 @@ type SupportManager interface {
 
 // Support provides the backing resources needed to support broadcast on a chain
 type Support interface {
-	// Enqueue accepts a message and returns true on acceptance, or false on shutdown
-	Enqueue(env *cb.Envelope) bool
+	// Order accepts a message or returns an error indicating the cause of failure
+	// It ultimately passes through to the consensus.Chain interface
+	Order(env *cb.Envelope, configSeq uint64) error
+
+	// Configure accepts a reconfiguration or returns an error indicating the cause of failure
+	// It ultimately passes through to the consensus.Chain interface
+	Configure(configUpdateMsg *cb.Envelope, config *cb.Envelope, configSeq uint64) error
 
 	// Filters returns the set of broadcast filters for this chain
 	Filters() *filter.RuleSet
@@ -102,6 +107,8 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
+		isConfig := false
+		configUpdateMsg := msg
 		if chdr.Type == int32(cb.HeaderType_CONFIG_UPDATE) {
 			logger.Debugf("Preprocessing CONFIG_UPDATE")
 			msg, err = bh.sm.Process(msg)
@@ -126,6 +133,8 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing (empty channel ID)")
 				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
 			}
+
+			isConfig = true
 		}
 
 		support, ok := bh.sm.GetChain(chdr.ChannelId)
@@ -144,7 +153,14 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
-		if !support.Enqueue(msg) {
+		// XXX temporary hack to mesh interface definitions, will remove.
+		if isConfig {
+			err = support.Configure(configUpdateMsg, msg, 0)
+		} else {
+			err = support.Order(msg, 0)
+		}
+
+		if err != nil {
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
 		}
 

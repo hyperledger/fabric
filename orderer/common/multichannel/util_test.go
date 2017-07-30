@@ -54,9 +54,14 @@ func (mch *mockChain) Errored() <-chan struct{} {
 	return nil
 }
 
-func (mch *mockChain) Enqueue(env *cb.Envelope) bool {
+func (mch *mockChain) Order(env *cb.Envelope, configSeq uint64) error {
 	mch.queue <- env
-	return true
+	return nil
+}
+
+func (mch *mockChain) Configure(configUpdate, config *cb.Envelope, configSeq uint64) error {
+	mch.queue <- config
+	return nil
 }
 
 func (mch *mockChain) Start() {

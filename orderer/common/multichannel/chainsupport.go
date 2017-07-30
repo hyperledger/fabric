@@ -197,9 +197,14 @@ func (cs *ChainSupport) Reader() ledger.Reader {
 	return cs.ledger
 }
 
-// Enqueue takes a message and sends it to the consenter for ordering.
-func (cs *ChainSupport) Enqueue(env *cb.Envelope) bool {
-	return cs.chain.Enqueue(env)
+// Order passes through to the Consenter implementation.
+func (cs *ChainSupport) Order(env *cb.Envelope, configSeq uint64) error {
+	return cs.chain.Order(env, configSeq)
+}
+
+// Configure passes through to the Consenter implementation.
+func (cs *ChainSupport) Configure(configUpdate *cb.Envelope, config *cb.Envelope, configSeq uint64) error {
+	return cs.chain.Configure(configUpdate, config, configSeq)
 }
 
 // Errored returns whether the backing consenter has errored
