@@ -51,17 +51,15 @@ type Receiver interface {
 
 type receiver struct {
 	sharedConfigManager   config.Orderer
-	filters               *filter.RuleSet
 	pendingBatch          []*cb.Envelope
 	pendingBatchSizeBytes uint32
 	pendingCommitters     []filter.Committer
 }
 
 // NewReceiverImpl creates a Receiver implementation based on the given configtxorderer manager and filters
-func NewReceiverImpl(sharedConfigManager config.Orderer, filters *filter.RuleSet) Receiver {
+func NewReceiverImpl(sharedConfigManager config.Orderer) Receiver {
 	return &receiver{
 		sharedConfigManager: sharedConfigManager,
-		filters:             filters,
 	}
 }
 
@@ -83,17 +81,7 @@ func NewReceiverImpl(sharedConfigManager config.Orderer, filters *filter.RuleSet
 //   - The current message will cause the pending batch size in bytes to exceed BatchSize.PreferredMaxBytes.
 //   - After adding the current message to the pending batch, the message count has reached BatchSize.MaxMessageCount.
 func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, bool) {
-	// The messages must be filtered a second time in case configuration has changed since the message was received
-	committer, err := r.filters.Apply(msg)
-	if err != nil {
-		logger.Debugf("Rejecting message: %s", err)
-		return nil, false
-	}
-
-	if committer.Isolated() {
-		logger.Panicf("The use of isolated committers has been deprecated and should no longer appear in this path")
-	}
-
+	// The messages are not filtered a second time, this is pushed onto the Consenter
 	messageSizeBytes := messageSizeBytes(msg)
 
 	if messageSizeBytes > r.sharedConfigManager.BatchSize().PreferredMaxBytes {
