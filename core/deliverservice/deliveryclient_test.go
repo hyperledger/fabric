@@ -113,10 +113,10 @@ func TestNewDeliverService(t *testing.T) {
 		ConnFactory: connFactory,
 	})
 	assert.NoError(t, err)
-	assert.NoError(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}))
+	assert.NoError(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}, func() {}))
 
 	// Lets start deliver twice
-	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}), "can't start delivery")
+	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}, func() {}), "can't start delivery")
 	// Lets stop deliver that not started
 	assert.Error(t, service.StopDeliverForChannel("TEST_CHAINID2"), "can't stop delivery")
 
@@ -130,7 +130,7 @@ func TestNewDeliverService(t *testing.T) {
 	assert.Equal(t, 0, connNumber)
 	assertBlockDissemination(0, gossipServiceAdapter.GossipBlockDisseminations, t)
 	assert.Equal(t, atomic.LoadInt32(&blocksDeliverer.RecvCnt), atomic.LoadInt32(&gossipServiceAdapter.AddPayloadsCnt))
-	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}), "Delivery service is stopping")
+	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}, func() {}), "Delivery service is stopping")
 	assert.Error(t, service.StopDeliverForChannel("TEST_CHAINID"), "Delivery service is stopping")
 }
 
@@ -157,7 +157,7 @@ func TestDeliverServiceRestart(t *testing.T) {
 	li := &mocks.MockLedgerInfo{Height: uint64(100)}
 	os.SetNextExpectedSeek(uint64(100))
 
-	err = service.StartDeliverForChannel("TEST_CHAINID", li)
+	err = service.StartDeliverForChannel("TEST_CHAINID", li, func() {})
 	assert.NoError(t, err, "can't start delivery")
 	// Check that delivery client requests blocks in order
 	go os.SendBlock(uint64(100))
@@ -203,7 +203,7 @@ func TestDeliverServiceFailover(t *testing.T) {
 	os1.SetNextExpectedSeek(uint64(100))
 	os2.SetNextExpectedSeek(uint64(100))
 
-	err = service.StartDeliverForChannel("TEST_CHAINID", li)
+	err = service.StartDeliverForChannel("TEST_CHAINID", li, func() {})
 	assert.NoError(t, err, "can't start delivery")
 	// We need to discover to which instance the client connected to
 	go os1.SendBlock(uint64(100))
@@ -278,7 +278,7 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 	os1.SetNextExpectedSeek(li.Height)
 	os2.SetNextExpectedSeek(li.Height)
 
-	err = service.StartDeliverForChannel("TEST_CHAINID", li)
+	err = service.StartDeliverForChannel("TEST_CHAINID", li, func() {})
 	assert.NoError(t, err, "can't start delivery")
 
 	waitForConnectionToSomeOSN := func() (*mocks.Orderer, *mocks.Orderer) {
@@ -367,7 +367,7 @@ func TestDeliverServiceShutdown(t *testing.T) {
 
 	li := &mocks.MockLedgerInfo{Height: uint64(100)}
 	os.SetNextExpectedSeek(uint64(100))
-	err = service.StartDeliverForChannel("TEST_CHAINID", li)
+	err = service.StartDeliverForChannel("TEST_CHAINID", li, func() {})
 	assert.NoError(t, err, "can't start delivery")
 
 	// Check that delivery service requests blocks in order

@@ -1102,7 +1102,7 @@ def create_channel_config_update(system_channel_version, channel_id, consortium_
         Policy(type=typeImplicitMeta, value=IMP(
             rule=ruleMajority, sub_policy=BootstrapHelper.KEY_POLICY_ADMINS).SerializeToString()))
     write_set.groups[ApplicationGroup].mod_policy = "Admins"
-    for k, v in write_set.groups[ApplicationGroup].groups.iteritems():
+    for k, v in write_set.groups[ApplicationGroup].policies.iteritems():
         v.mod_policy=BootstrapHelper.KEY_POLICY_ADMINS
     config_update = common_dot_configtx_pb2.ConfigUpdate(channel_id=channel_id,
                                                          read_set=read_set,

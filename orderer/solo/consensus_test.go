@@ -143,6 +143,14 @@ func TestBatchTimer(t *testing.T) {
 		t.Fatalf("Did not create the second batch, indicating that the timer was not appopriately reset")
 	}
 
+	support.SharedConfigVal.BatchTimeoutVal, _ = time.ParseDuration("10s")
+	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
+	select {
+	case <-support.Blocks:
+		t.Fatalf("Created another batch, indicating that the timer was not appopriately re-read")
+	case <-time.After(100 * time.Millisecond):
+	}
+
 	bs.Halt()
 	select {
 	case <-support.Blocks:
@@ -175,7 +183,7 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 	}
 
 	// Change the batch timeout to be near instant, if the timer was not reset, it will still be waiting an hour
-	bs.batchTimeout = time.Millisecond
+	support.SharedConfigVal.BatchTimeoutVal = time.Millisecond
 
 	support.BlockCutterVal.CutNext = false
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)

@@ -29,6 +29,21 @@ func TestBadKey(t *testing.T) {
 		"Should have errored on key with illegal characters")
 }
 
+func TestConfigMapMultiGroup(t *testing.T) {
+	config := cb.NewConfigGroup()
+	config.Groups["0"] = cb.NewConfigGroup()
+	config.Groups["0"].Groups["1"] = cb.NewConfigGroup()
+	config.Groups["0"].Groups["1"].Groups["2.1"] = cb.NewConfigGroup()
+	config.Groups["0"].Groups["1"].Groups["2.1"].Values["Value"] = &cb.ConfigValue{}
+	config.Groups["0"].Groups["1"].Groups["2.2"] = cb.NewConfigGroup()
+	config.Groups["0"].Groups["1"].Groups["2.2"].Values["Value"] = &cb.ConfigValue{}
+
+	confMap, err := MapConfig(config)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"Channel", "0", "1", "2.1"}, confMap["[Values] /Channel/0/1/2.1/Value"].path)
+	assert.Equal(t, []string{"Channel", "0", "1", "2.2"}, confMap["[Values] /Channel/0/1/2.2/Value"].path)
+}
+
 func TestConfigMap(t *testing.T) {
 	config := cb.NewConfigGroup()
 	config.Groups["0DeepGroup"] = cb.NewConfigGroup()

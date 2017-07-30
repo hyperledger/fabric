@@ -17,6 +17,10 @@ It's recommended for first-time users to begin by going through the
 components and the basic transaction flow.  Once comfortable, continue
 exploring the library for demos, technical specifications, APIs, etc.
 
+.. note:: If you have questions not addressed by this documentation, or run into
+          issues with any of the tutorials, please visit the :doc:`questions`
+          page for some tips on where to find additional help.
+
 Before diving in, watch how Hyperledger Fabric is Building a Blockchain for
 Business:
 

@@ -521,7 +521,7 @@ func (m *SignedGossipMessage) String() string {
 		var isSimpleMsg bool
 		if m.GetStateResponse() != nil {
 			gMsg = fmt.Sprintf("StateResponse with %d items", len(m.GetStateResponse().Payloads))
-		} else if m.IsDataMsg() {
+		} else if m.IsDataMsg() && m.GetDataMsg().Payload != nil {
 			gMsg = m.GetDataMsg().Payload.toString()
 		} else if m.IsDataUpdate() {
 			update := m.GetDataUpdate()
@@ -535,7 +535,7 @@ func (m *SignedGossipMessage) String() string {
 			isSimpleMsg = true
 		}
 		if !isSimpleMsg {
-			desc := fmt.Sprintf("Channel: %v, nonce: %d, tag: %s", m.Channel, m.Nonce, GossipMessage_Tag_name[int32(m.Tag)])
+			desc := fmt.Sprintf("Channel: %s, nonce: %d, tag: %s", string(m.Channel), m.Nonce, GossipMessage_Tag_name[int32(m.Tag)])
 			gMsg = fmt.Sprintf("%s %s", desc, gMsg)
 		}
 	}
