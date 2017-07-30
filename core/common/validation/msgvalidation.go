@@ -44,6 +44,10 @@ func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*p
 		return nil, errors.New("Invalid header extension for type CHAINCODE")
 	}
 
+	if chaincodeHdrExt.ChaincodeId == nil {
+		return nil, errors.New("ChaincodeHeaderExtension.ChaincodeId is nil")
+	}
+
 	putilsLogger.Debugf("validateChaincodeProposalMessage info: header extension references chaincode %s", chaincodeHdrExt.ChaincodeId)
 
 	//    - ensure that the chaincodeID is correct (?)
