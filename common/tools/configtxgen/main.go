@@ -1,24 +1,12 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -33,11 +21,11 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/metadata"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	"github.com/hyperledger/fabric/common/tools/protolator"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 
-	"github.com/golang/protobuf/proto"
 	logging "github.com/op/go-logging"
 )
 
@@ -182,67 +170,15 @@ func doInspectBlock(inspectBlock string) error {
 	}
 
 	logger.Info("Parsing genesis block")
-	block := &cb.Block{}
-	err = proto.Unmarshal(data, block)
+	block, err := utils.UnmarshalBlock(data)
 	if err != nil {
-		return fmt.Errorf("Error unmarshaling block: %s", err)
+		return fmt.Errorf("error unmarshaling to block: %s", err)
 	}
-
-	ctx, err := utils.ExtractEnvelope(block, 0)
+	err = protolator.DeepMarshalJSON(os.Stdout, block)
 	if err != nil {
-		return fmt.Errorf("Error retrieving configtx from block: %s", err)
+		return fmt.Errorf("malformed block contents: %s", err)
 	}
-
-	payload, err := utils.UnmarshalPayload(ctx.Payload)
-	if err != nil {
-		return fmt.Errorf("Error extracting configtx payload: %s", err)
-	}
-
-	if payload.Header == nil {
-		return fmt.Errorf("Config block did not contain header")
-	}
-
-	header, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-	if err != nil {
-		return fmt.Errorf("Error unmarshaling channel header: %s", err)
-	}
-
-	if header.Type != int32(cb.HeaderType_CONFIG) {
-		return fmt.Errorf("Bad header type: %d", header.Type)
-	}
-
-	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	if err != nil {
-		return fmt.Errorf("Bad configuration envelope")
-	}
-
-	if configEnvelope.Config == nil {
-		return fmt.Errorf("ConfigEnvelope contained no config")
-	}
-
-	configAsJSON, err := configGroupAsJSON(configEnvelope.Config.ChannelGroup)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Config for channel: %s at sequence %d\n", header.ChannelId, configEnvelope.Config.Sequence)
-	fmt.Println(configAsJSON)
-
 	return nil
-}
-
-func configGroupAsJSON(group *cb.ConfigGroup) (string, error) {
-	configResult, err := configtx.NewConfigResult(group, configtx.NewInitializer())
-	if err != nil {
-		return "", fmt.Errorf("Error parsing config: %s", err)
-	}
-
-	buffer := &bytes.Buffer{}
-	err = json.Indent(buffer, []byte(configResult.JSON()), "", "    ")
-	if err != nil {
-		return "", fmt.Errorf("Error in output JSON (usually a programming bug): %s", err)
-	}
-	return buffer.String(), nil
 }
 
 func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
@@ -258,80 +194,10 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 		return fmt.Errorf("Error unmarshaling envelope: %s", err)
 	}
 
-	payload, err := utils.UnmarshalPayload(env.Payload)
+	err = protolator.DeepMarshalJSON(os.Stdout, env)
 	if err != nil {
-		return fmt.Errorf("Error extracting configtx payload: %s", err)
+		return fmt.Errorf("malformed transaction contents: %s", err)
 	}
-
-	if payload.Header == nil {
-		return fmt.Errorf("Config block did not contain header")
-	}
-
-	header, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-	if err != nil {
-		return fmt.Errorf("Error unmarshaling channel header: %s", err)
-	}
-
-	if header.Type != int32(cb.HeaderType_CONFIG_UPDATE) {
-		return fmt.Errorf("Bad header type: %d", header.Type)
-	}
-
-	configUpdateEnvelope, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
-	if err != nil {
-		return fmt.Errorf("Bad ConfigUpdateEnvelope")
-	}
-
-	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnvelope.ConfigUpdate)
-	if err != nil {
-		return fmt.Errorf("ConfigUpdateEnvelope contained no config")
-	}
-
-	if configUpdate.ChannelId != header.ChannelId {
-		return fmt.Errorf("ConfigUpdateEnvelope was for different channel than envelope: %s vs %s", configUpdate.ChannelId, header.ChannelId)
-	}
-
-	fmt.Printf("\nChannel creation for channel: %s\n", header.ChannelId)
-	fmt.Println()
-
-	if configUpdate.ReadSet == nil {
-		fmt.Println("Read Set: empty")
-	} else {
-		fmt.Println("Read Set:")
-		readSetAsJSON, err := configGroupAsJSON(configUpdate.ReadSet)
-		if err != nil {
-			return err
-		}
-		fmt.Println(readSetAsJSON)
-	}
-	fmt.Println()
-
-	if configUpdate.WriteSet == nil {
-		return fmt.Errorf("Empty WriteSet")
-	}
-
-	fmt.Println("Write Set:")
-	writeSetAsJSON, err := configGroupAsJSON(configUpdate.WriteSet)
-	if err != nil {
-		return err
-	}
-	fmt.Println(writeSetAsJSON)
-	fmt.Println()
-
-	readSetMap, err := configtx.MapConfig(configUpdate.ReadSet)
-	if err != nil {
-		return fmt.Errorf("Error mapping read set: %s", err)
-	}
-	writeSetMap, err := configtx.MapConfig(configUpdate.WriteSet)
-	if err != nil {
-		return fmt.Errorf("Error mapping write set: %s", err)
-	}
-
-	fmt.Println("Delta Set:")
-	deltaSet := configtx.ComputeDeltaSet(readSetMap, writeSetMap)
-	for key := range deltaSet {
-		fmt.Println(key)
-	}
-	fmt.Println()
 
 	return nil
 }

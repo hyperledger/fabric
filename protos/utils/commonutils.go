@@ -99,6 +99,25 @@ func UnmarshalEnvelope(encoded []byte) (*cb.Envelope, error) {
 	return envelope, err
 }
 
+// UnmarshalBlockOrPanic unmarshals bytes to an Block structure or panics on error
+func UnmarshalBlockOrPanic(encoded []byte) *cb.Block {
+	block, err := UnmarshalBlock(encoded)
+	if err != nil {
+		panic(fmt.Errorf("Error unmarshaling data to block: %s", err))
+	}
+	return block
+}
+
+// UnmarshalBlock unmarshals bytes to an Block structure
+func UnmarshalBlock(encoded []byte) (*cb.Block, error) {
+	block := &cb.Block{}
+	err := proto.Unmarshal(encoded, block)
+	if err != nil {
+		return nil, err
+	}
+	return block, err
+}
+
 // UnmarshalEnvelopeOfType unmarshals an envelope of the specified type, including
 // the unmarshaling the payload data
 func UnmarshalEnvelopeOfType(envelope *cb.Envelope, headerType cb.HeaderType, message proto.Message) (*cb.ChannelHeader, error) {
