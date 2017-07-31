@@ -115,7 +115,15 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 		return nil, 0, err
 	}
 
-	// XXX we should verify that this still passes the size filter
+	// We re-apply the filters here, especially for the size filter, to ensure that the transaction we
+	// just constructed is not too large for our consenter.  It additionally reapplies the signature
+	// check, which although not strictly necessary, is a good sanity check, in case the orderer
+	// has not been configured with the right cert material.  The additional overhead of the signature
+	// check is negligable, as this is the channel creation path and not the normal path.
+	err = s.StandardChannel.filters.Apply(wrappedOrdererTransaction)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	return wrappedOrdererTransaction, s.support.Sequence(), nil
 }

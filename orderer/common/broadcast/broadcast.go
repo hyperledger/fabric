@@ -23,7 +23,7 @@ type Handler interface {
 	Handle(srv ab.AtomicBroadcast_BroadcastServer) error
 }
 
-// ChannelSupportRegistrar provides a way for the Handler to look up the Support for a chain
+// ChannelSupportRegistrar provides a way for the Handler to look up the Support for a channel
 type ChannelSupportRegistrar interface {
 	// BroadcastChannelSupport returns the message channel header, whether the message is a config update
 	// and the channel resources for a message or an error if the message is not a message which can

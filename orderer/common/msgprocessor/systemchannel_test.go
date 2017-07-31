@@ -78,7 +78,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	t.Run("Missing header", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
 		ms := &mockSystemChannelFilterSupport{}
-		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{})
+		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
 		assert.Regexp(t, "no header was set", err.Error())
 	})
@@ -108,7 +108,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
+		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -128,7 +128,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
+		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -146,7 +146,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
+		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -156,6 +156,27 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 			}),
 		})
 		assert.Regexp(t, "Marshal called with nil", err)
+	})
+	t.Run("BadByFilter", func(t *testing.T) {
+		mscs := &mockSystemChannelSupport{
+			NewChannelConfigVal: &mockconfigtx.Manager{
+				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+			},
+		}
+		ms := &mockSystemChannelFilterSupport{
+			SequenceVal:            7,
+			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+		}
+		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{RejectRule})).ProcessConfigUpdateMsg(&cb.Envelope{
+			Payload: utils.MarshalOrPanic(&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+						ChannelId: testChannelID + "different",
+					}),
+				},
+			}),
+		})
+		assert.Equal(t, RejectRule.Apply(nil), err)
 	})
 	t.Run("Good", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
@@ -167,7 +188,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 		}
-		config, cs, err := NewSystemChannel(ms, mscs, nil).ProcessConfigUpdateMsg(&cb.Envelope{
+		config, cs, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: utils.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{

@@ -107,7 +107,15 @@ func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.E
 		return nil, 0, err
 	}
 
-	// XXX We should probably run at least the size filter against this new tx one more time
+	// We re-apply the filters here, especially for the size filter, to ensure that the transaction we
+	// just constructed is not too large for our consenter.  It additionally reapplies the signature
+	// check, which although not strictly necessary, is a good sanity check, in case the orderer
+	// has not been configured with the right cert material.  The additional overhead of the signature
+	// check is negligable, as this is the reconfig path and not the normal path.
+	err = s.filters.Apply(config)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	return config, seq, nil
 }
