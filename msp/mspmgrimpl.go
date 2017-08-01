@@ -49,14 +49,6 @@ func (mgr *mspManagerImpl) Setup(msps []MSP) error {
 		return nil
 	}
 
-	if msps == nil {
-		return fmt.Errorf("Setup error: nil config object")
-	}
-
-	if len(msps) == 0 {
-		return fmt.Errorf("Setup error: at least one MSP configuration item is required")
-	}
-
 	mspLogger.Debugf("Setting up the MSP manager (%d msps)", len(msps))
 
 	// create the map that assigns MSP IDs to their manager instance - once

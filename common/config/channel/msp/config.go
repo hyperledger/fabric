@@ -138,11 +138,6 @@ func (bh *MSPConfigHandler) PreCommit(tx interface{}) error {
 		panic("Programming error, called PreCommit for tx which was not started")
 	}
 
-	if len(pendingConfig.idMap) == 0 {
-		// Cannot instantiate an MSP manager with no MSPs
-		return nil
-	}
-
 	mspList := make([]msp.MSP, len(pendingConfig.idMap))
 	i := 0
 	for _, pendingMSP := range pendingConfig.idMap {
