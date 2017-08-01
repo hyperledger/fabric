@@ -128,7 +128,7 @@ func (mcs *ConsenterSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
 }
 
 // ClassifyMsg returns ClassifyMsgVal, ClassifyMsgErr
-func (mcs *ConsenterSupport) ClassifyMsg(env *cb.Envelope) (msgprocessor.Classification, error) {
+func (mcs *ConsenterSupport) ClassifyMsg(chdr *cb.ChannelHeader) (msgprocessor.Classification, error) {
 	return mcs.ClassifyMsgVal, mcs.ClassifyMsgErr
 }
 

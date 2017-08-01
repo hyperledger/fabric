@@ -73,9 +73,14 @@ func (mch *mockChain) Start() {
 				return
 			}
 
-			class, err := mch.support.ClassifyMsg(msg)
+			chdr, err := utils.ChannelHeader(msg)
 			if err != nil {
-				logger.Panicf("If a message has arrived to this point, it should already have been classified once")
+				logger.Panicf("If a message has arrived to this point, it should already have had header inspected once: %s", err)
+			}
+
+			class, err := mch.support.ClassifyMsg(chdr)
+			if err != nil {
+				logger.Panicf("If a message has arrived to this point, it should already have been classified once: %s", err)
 			}
 			switch class {
 			case msgprocessor.ConfigUpdateMsg:

@@ -25,6 +25,7 @@ import (
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,12 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-var testMessage = &cb.Envelope{Payload: []byte("TEST_MESSAGE")}
+var testMessage = &cb.Envelope{
+	Payload: utils.MarshalOrPanic(&cb.Payload{
+		Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: "foo"})},
+		Data:   []byte("TEST_MESSAGE"),
+	}),
+}
 
 func syncQueueMessage(msg *cb.Envelope, chain *chain, bc *mockblockcutter.Receiver) {
 	chain.Order(msg, 0)

@@ -17,6 +17,7 @@ import (
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -104,6 +105,7 @@ func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.
 				ledgerResources,
 				consenters,
 				signer)
+			chain.Processor = msgprocessor.NewSystemChannel(chain, r)
 			logger.Infof("Starting with system channel %s and orderer type %s", chainID, chain.SharedConfig().ConsensusType())
 			r.chains[chainID] = chain
 			r.systemChannelID = chainID
@@ -132,6 +134,35 @@ func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.
 // SystemChannelID returns the ChannelID for the system channel.
 func (r *Registrar) SystemChannelID() string {
 	return r.systemChannelID
+}
+
+// BroadcastChannelSupport returns the message channel header, whether the message is a config update
+// and the channel resources for a message or an error if the message is not a message which can
+// be processed directly (like CONFIG and ORDERER_TRANSACTION messages)
+func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader, bool, *ChainSupport, error) {
+	chdr, err := utils.ChannelHeader(msg)
+	if err != nil {
+		return nil, false, nil, fmt.Errorf("could not determine channel ID: %s", err)
+	}
+
+	cs, ok := r.chains[chdr.ChannelId]
+	if !ok {
+		cs = r.systemChannel
+	}
+
+	class, err := cs.ClassifyMsg(chdr)
+	if err != nil {
+		return nil, false, nil, fmt.Errorf("could not classify message: %s", err)
+	}
+
+	isConfig := false
+	switch class {
+	case msgprocessor.ConfigUpdateMsg:
+		isConfig = true
+	default:
+	}
+
+	return chdr, isConfig, cs, nil
 }
 
 // GetChain retrieves the chain support for a chain (and whether it exists)

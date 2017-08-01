@@ -36,6 +36,8 @@ type Chain interface {
 	// checks conditionally.  For now, Order/Configure are essentially Enqueue as before.
 	// This does not cause data inconsistency, but it wastes cycles and will be required
 	// to properly support the ConfigUpdate concept once introduced
+	// Once this is done, the MsgClassification logic in msgprocessor should return error
+	// for non ConfigUpdate/Normal msg types
 
 	// Order accepts a message which has been processed at a given configSeq.
 	// If the configSeq advances, it is the responsibility of the consenter

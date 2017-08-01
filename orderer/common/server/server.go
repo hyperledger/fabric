@@ -10,28 +10,19 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/configupdate"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"runtime/debug"
 )
 
-type configUpdateSupport struct {
-	*multichannel.Registrar
-}
-
-func (cus configUpdateSupport) GetChain(chainID string) (configupdate.Support, bool) {
-	return cus.Registrar.GetChain(chainID)
-}
-
 type broadcastSupport struct {
 	*multichannel.Registrar
-	broadcast.ConfigUpdateProcessor
 }
 
-func (bs broadcastSupport) GetChain(chainID string) (broadcast.Support, bool) {
-	return bs.Registrar.GetChain(chainID)
+func (bs broadcastSupport) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader, bool, broadcast.ChannelSupport, error) {
+	return bs.Registrar.BroadcastChannelSupport(msg)
 }
 
 type deliverSupport struct {
@@ -51,10 +42,7 @@ type server struct {
 func NewServer(r *multichannel.Registrar, signer crypto.LocalSigner) ab.AtomicBroadcastServer {
 	s := &server{
 		dh: deliver.NewHandlerImpl(deliverSupport{Registrar: r}),
-		bh: broadcast.NewHandlerImpl(broadcastSupport{
-			Registrar:             r,
-			ConfigUpdateProcessor: configupdate.New(r.SystemChannelID(), configUpdateSupport{Registrar: r}, signer),
-		}),
+		bh: broadcast.NewHandlerImpl(broadcastSupport{Registrar: r}),
 	}
 	return s
 }
