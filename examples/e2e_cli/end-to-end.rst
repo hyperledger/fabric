@@ -2,7 +2,7 @@ End-to-End Flow
 ===============
 
 The end-to-end verification provisions a sample Fabric network consisting of
-two organizations, each maintaining two peers, and a “solo” ordering service.
+two organizations, each maintaining two peers, and a Kafka-based ordering service.
 
 This verification makes use of two fundamental tools, which are necessary to
 create a functioning transactional network with digital signature validation
@@ -910,4 +910,3 @@ back and recreate your channel artifacts.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-   
