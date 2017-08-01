@@ -18,6 +18,7 @@ package ca_test
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,6 +32,8 @@ const (
 	testCAName  = "root0"
 	testCA2Name = "root1"
 	testName    = "cert0"
+	testName2   = "cert1"
+	testIP      = "172.16.10.31"
 )
 
 var testDir = filepath.Join(os.TempDir(), "ca-test")
@@ -84,6 +87,13 @@ func TestGenerateSignCertificate(t *testing.T) {
 		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 	assert.NoError(t, err, "Failed to generate signed certificate")
 	assert.Equal(t, 0, len(cert.ExtKeyUsage))
+
+	// make sure sans are correctly set
+	sans := []string{testName2, testIP}
+	cert, err = rootCA.SignCertificate(certDir, testName, sans, ecPubKey,
+		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
+	assert.Contains(t, cert.DNSNames, testName2)
+	assert.Contains(t, cert.IPAddresses, net.ParseIP(testIP).To4())
 
 	// check to make sure the signed public key was stored
 	pemFile := filepath.Join(certDir, testName+"-cert.pem")

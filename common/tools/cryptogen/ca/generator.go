@@ -23,6 +23,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
 	"os"
 	"time"
 
@@ -100,7 +101,15 @@ func (ca *CA) SignCertificate(baseDir, name string, sans []string, pub *ecdsa.Pu
 	subject.CommonName = name
 
 	template.Subject = subject
-	template.DNSNames = sans
+	for _, san := range sans {
+		// try to parse as an IP address first
+		ip := net.ParseIP(san)
+		if ip != nil {
+			template.IPAddresses = append(template.IPAddresses, ip)
+		} else {
+			template.DNSNames = append(template.DNSNames, san)
+		}
+	}
 
 	cert, err := genCertificateECDSA(baseDir, name, &template, ca.SignCert,
 		pub, ca.Signer)
