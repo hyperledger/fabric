@@ -17,14 +17,12 @@ limitations under the License.
 package jsonledger
 
 import (
-	"testing"
-
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
+	"testing"
 
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,10 +30,6 @@ import (
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
-
-// Some tests are skipped because `os.Chmod` does not take effect in the CI. The call
-// itself does not fail, but file mod is not changed, which cause tests to fail.
-// TODO(jay_guo): re-enable skipped tests once we sort out this problem.
 
 // This test checks that `New` factory should fail if parent directory is read-only
 func TestErrorMkdir(t *testing.T) {
@@ -46,19 +40,6 @@ func TestErrorMkdir(t *testing.T) {
 	assert.NoError(t, ioutil.WriteFile(ledgerPath, nil, 0700))
 
 	assert.Panics(t, func() { New(ledgerPath) }, "Should have failed to create factory")
-}
-
-// This test checks that `New` factory should fail if factory directory is not readable
-func TestErrorReadDir(t *testing.T) {
-	t.Skip("Temporarily skip this test due to the reason stated at the top of this file")
-
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
-	assert.Nil(t, err, "Error creating temp dir: %s", err)
-	defer os.RemoveAll(name)
-	assert.Nil(t, os.Chmod(name, 0200), "Error chmod temp dir")
-	defer os.Chmod(name, 0700)
-
-	assert.Panics(t, func() { New(name) }, "Should have failed to create factory")
 }
 
 // This test checks that factory initialization should ignore dir with invalid name and files.
@@ -88,14 +69,6 @@ func TestInvalidChain(t *testing.T) {
 	chainDir, err := ioutil.TempDir(name, "chain_")
 	assert.Nil(t, err, "Error creating temp dir: %s", err)
 
-	t.Run("ChainDirNotReadable", func(t *testing.T) {
-		t.Skip("Temporarily skip this test due to the reason stated at the top of this file")
-		assert.Nil(t, os.Chmod(chainDir, 0200), "Error chmod chain dir")
-		defer os.Chmod(chainDir, 0700)
-		assert.Panics(t, func() { New(name) }, "Expected initialization panics if chain dir is not readable")
-		assert.Nil(t, os.Chmod(chainDir, 0700), "Error chmod chain dir")
-	})
-
 	// Skip Block 0 to trigger MissingBlock error
 	secondBlock := path.Join(chainDir, fmt.Sprintf(blockFileFormatString, 1))
 	assert.NoError(t, ioutil.WriteFile(secondBlock, nil, 0700))
@@ -113,14 +86,6 @@ func TestInvalidChain(t *testing.T) {
 
 	firstBlock := path.Join(chainDir, fmt.Sprintf(blockFileFormatString, 0))
 	assert.NoError(t, ioutil.WriteFile(firstBlock, nil, 0700))
-
-	t.Run("BlockNotReadable", func(t *testing.T) {
-		t.Skip("Temporarily skip this test due to the reason stated at the top of this file")
-		assert.NoError(t, os.Chmod(secondBlock, 0200))
-		defer os.Chmod(secondBlock, 0700)
-		assert.Panics(t, func() { New(name) }, "Expected initialization panics if block is not readable")
-		assert.NoError(t, os.Chmod(secondBlock, 0700))
-	})
 
 	t.Run("MalformedBlock", func(t *testing.T) {
 		assert.Panics(t, func() { New(name) }, "Expected initialization panics if block is malformed")
@@ -144,21 +109,6 @@ func TestIgnoreInvalidBlockFileName(t *testing.T) {
 	chain, err := jfl.GetOrCreate(jfl.ChainIDs()[0])
 	assert.Nil(t, err, "Should have retrieved chain")
 	assert.Zero(t, chain.Height(), "Expected chain to be empty")
-}
-
-// This test checks that fs error causes creating chain to fail
-func TestErrorCreatingChain(t *testing.T) {
-	t.Skip("Temporarily skip this test due to the reason stated at the top of this file")
-
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
-	assert.Nil(t, err, "Error creating temp dir: %s", err)
-	defer os.RemoveAll(name)
-
-	jlf := New(name)
-	assert.NoError(t, os.Chmod(name, 0400))
-	defer os.Chmod(name, 0700)
-	_, err = jlf.GetOrCreate(provisional.TestChainID)
-	assert.Error(t, err, "Should have failed to create chain due to fs error")
 }
 
 func TestClose(t *testing.T) {
