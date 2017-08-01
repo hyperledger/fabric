@@ -930,7 +930,7 @@ Troubleshooting
 
 - **YOU WILL SEE ERRORS IF YOU DO NOT REMOVE CONTAINERS AND IMAGES**
 
--  If you see Docker errors, first check your version (should be 17.03.1 or above),
+-  If you see Docker errors, first check your docker version (:doc:`prereqs`),
    and then try restarting your Docker process.  Problems with Docker are
    oftentimes not immediately recognizable.  For example, you may see errors
    resulting from an inability to access crypto material mounted within a
