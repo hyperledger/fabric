@@ -2,18 +2,29 @@ Usage: make [target]
 
 Supported Targets:
 
-- compose-up [options]:   builds a docker-compose based cluster [options: TLS=[true|false] (default: true)]
-- compose-down:           shuts down a docker-compose based cluster
-- clean:                  cleans local artifacts and, where applicable, destroys cluster
+- compose [options]:      builds a docker-compose based cluster
+
+                            options:
+                               RELEASE=[string] (default: latest)
+                               TLS=[true|false] (default: true)
+
+                            notes:
+                               Once complete, run the script
+                               ./build/compose-up.sh to start your
+                               cluster
+
+- clean:                  cleans local artifacts
 - help:                   displays this help message
 
 Example:
 
-        make compose-up TLS=false
+        make compose TLS=false RELEASE=x86_64-1.0.0
 
-Prerequisites:
+Notes:
 
-- Ensure you run "make docker" in both fabric.git and fabric-ca.git prior to execution
+Default RELEASE=latest requires you to manually ensure that the :latest tagged images are local. A
+convenient way to do this is to run "make docker" in both fabric.git and fabric-ca.git prior to
+execution.
 
 Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/
