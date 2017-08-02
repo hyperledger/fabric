@@ -45,6 +45,8 @@ It has these top-level messages:
 	Register
 	Rejection
 	Unregister
+	FilteredBlock
+	FilteredTransaction
 	SignedEvent
 	Event
 	PeerID

@@ -268,6 +268,8 @@ func AddEventType(eventType pb.EventType) error {
 	switch eventType {
 	case pb.EventType_BLOCK:
 		gEventProcessor.eventConsumers[eventType] = &genericHandlerList{handlers: make(map[*handler]bool)}
+	case pb.EventType_FILTEREDBLOCK:
+		gEventProcessor.eventConsumers[eventType] = &genericHandlerList{handlers: make(map[*handler]bool)}
 	case pb.EventType_CHAINCODE:
 		gEventProcessor.eventConsumers[eventType] = &chaincodeHandlerList{handlers: make(map[string]map[string]map[*handler]bool)}
 	case pb.EventType_REJECTION:

@@ -19,57 +19,75 @@ package producer
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-// SendProducerBlockEvent sends block event to clients
-func SendProducerBlockEvent(block *common.Block) error {
+// CreateBlockEvents creates block events for a block. It removes the RW set
+// and creates a block event and a filtered block event. Sending the events
+// is the responsibility of the code that calls this function.
+func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event, channelID string, err error) {
 	logger.Debugf("Entry")
 	defer logger.Debugf("Exit")
-	bevent := &common.Block{}
-	bevent.Header = block.Header
-	bevent.Metadata = block.Metadata
-	bevent.Data = &common.BlockData{}
-	var channelId string
-	for _, d := range block.Data.Data {
+
+	blockForEvent := &common.Block{}
+	filteredBlockForEvent := &pb.FilteredBlock{}
+	filteredTxArray := []*pb.FilteredTransaction{}
+	blockForEvent.Header = block.Header
+	blockForEvent.Metadata = block.Metadata
+	blockForEvent.Data = &common.BlockData{}
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+
+	for txIndex, d := range block.Data.Data {
 		ebytes := d
 		if ebytes != nil {
 			if env, err := utils.GetEnvelopeFromBlock(ebytes); err != nil {
-				logger.Errorf("error getting tx from block(%s)\n", err)
+				logger.Errorf("error getting tx from block: %s", err)
 			} else if env != nil {
 				// get the payload from the envelope
 				payload, err := utils.GetPayload(env)
 				if err != nil {
-					return fmt.Errorf("could not extract payload from envelope, err %s", err)
+					return nil, nil, "", fmt.Errorf("could not extract payload from envelope: %s", err)
 				}
 
 				chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 				if err != nil {
-					return err
+					return nil, nil, "", err
 				}
-				channelId = chdr.ChannelId
+				channelID = chdr.ChannelId
 
 				if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
-					logger.Debugf("Channel [%s]: Block event for block number [%d] contains transaction id: %s", channelId, block.Header.Number, chdr.TxId)
+					logger.Debugf("Channel [%s]: Block event for block number [%d] contains transaction id: %s", channelID, block.Header.Number, chdr.TxId)
 					tx, err := utils.GetTransaction(payload.Data)
 					if err != nil {
-						return fmt.Errorf("error unmarshalling transaction payload for block event: %s", err)
+						return nil, nil, "", fmt.Errorf("error unmarshalling transaction payload for block event: %s", err)
 					}
 					chaincodeActionPayload, err := utils.GetChaincodeActionPayload(tx.Actions[0].Payload)
 					if err != nil {
-						return fmt.Errorf("error unmarshalling transaction action payload for block event: %s", err)
+						return nil, nil, "", fmt.Errorf("error unmarshalling transaction action payload for block event: %s", err)
 					}
 					propRespPayload, err := utils.GetProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
 					if err != nil {
-						return fmt.Errorf("error unmarshalling proposal response payload for block event: %s", err)
+						return nil, nil, "", fmt.Errorf("error unmarshalling proposal response payload for block event: %s", err)
 					}
 					//ENDORSER_ACTION, ProposalResponsePayload.Extension field contains ChaincodeAction
 					caPayload, err := utils.GetChaincodeAction(propRespPayload.Extension)
 					if err != nil {
-						return fmt.Errorf("error unmarshalling chaincode action for block event: %s", err)
+						return nil, nil, "", fmt.Errorf("error unmarshalling chaincode action for block event: %s", err)
 					}
+
+					ccEvent, err := utils.GetChaincodeEvents(caPayload.Events)
+					filteredTx := &pb.FilteredTransaction{Txid: chdr.TxId, TxValidationCode: txsFltr.Flag(txIndex)}
+
+					if ccEvent != nil {
+						filteredCcEvent := ccEvent
+						// nil out ccevent payload
+						filteredCcEvent.Payload = nil
+						filteredTx.CcEvent = filteredCcEvent
+					}
+					filteredTxArray = append(filteredTxArray, filteredTx)
 					// Drop read write set from transaction before sending block event
 					// Performance issue with chaincode deploy txs and causes nodejs grpc
 					// to hit max message size bug
@@ -78,38 +96,44 @@ func SendProducerBlockEvent(block *common.Block) error {
 					caPayload.Results = nil
 					chaincodeActionPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(propRespPayload.ProposalHash, caPayload.Response, caPayload.Results, caPayload.Events, caPayload.ChaincodeId)
 					if err != nil {
-						return fmt.Errorf("error marshalling tx proposal payload for block event: %s", err)
+						return nil, nil, "", fmt.Errorf("error marshalling tx proposal payload for block event: %s", err)
 					}
 					tx.Actions[0].Payload, err = utils.GetBytesChaincodeActionPayload(chaincodeActionPayload)
 					if err != nil {
-						return fmt.Errorf("error marshalling tx action payload for block event: %s", err)
+						return nil, nil, "", fmt.Errorf("error marshalling tx action payload for block event: %s", err)
 					}
 					payload.Data, err = utils.GetBytesTransaction(tx)
 					if err != nil {
-						return fmt.Errorf("error marshalling payload for block event: %s", err)
+						return nil, nil, "", fmt.Errorf("error marshalling payload for block event: %s", err)
 					}
 					env.Payload, err = utils.GetBytesPayload(payload)
 					if err != nil {
-						return fmt.Errorf("error marshalling tx envelope for block event: %s", err)
+						return nil, nil, "", fmt.Errorf("error marshalling tx envelope for block event: %s", err)
 					}
 					ebytes, err = utils.GetBytesEnvelope(env)
 					if err != nil {
-						return fmt.Errorf("cannot marshal transaction %s", err)
+						return nil, nil, "", fmt.Errorf("cannot marshal transaction %s", err)
 					}
 				}
 			}
 		}
-		bevent.Data.Data = append(bevent.Data.Data, ebytes)
+		blockForEvent.Data.Data = append(blockForEvent.Data.Data, ebytes)
 	}
+	filteredBlockForEvent.ChannelId = channelID
+	filteredBlockForEvent.Number = block.Header.Number
+	filteredBlockForEvent.FilteredTx = filteredTxArray
 
-	logger.Infof("Channel [%s]: Sending event for block number [%d]", channelId, block.Header.Number)
-
-	return Send(CreateBlockEvent(bevent))
+	return CreateBlockEvent(blockForEvent), CreateFilteredBlockEvent(filteredBlockForEvent), channelID, nil
 }
 
 //CreateBlockEvent creates a Event from a Block
 func CreateBlockEvent(te *common.Block) *pb.Event {
 	return &pb.Event{Event: &pb.Event_Block{Block: te}}
+}
+
+//CreateFilteredBlockEvent creates a Event from a FilteredBlock
+func CreateFilteredBlockEvent(te *pb.FilteredBlock) *pb.Event {
+	return &pb.Event{Event: &pb.Event_FilteredBlock{FilteredBlock: te}}
 }
 
 //CreateChaincodeEvent creates a Event from a ChaincodeEvent

@@ -63,6 +63,7 @@ var ehServer *EventsServer
 func (a *Adapter) GetInterestedEvents() ([]*ehpb.Interest, error) {
 	return []*ehpb.Interest{
 		&ehpb.Interest{EventType: ehpb.EventType_BLOCK},
+		&ehpb.Interest{EventType: ehpb.EventType_FILTEREDBLOCK},
 		&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event1"}}},
 		&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event2"}}},
 		&ehpb.Interest{EventType: ehpb.EventType_REGISTER, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event3"}}},
@@ -81,7 +82,7 @@ func (a *Adapter) updateCountNotify() {
 
 func (a *Adapter) Recv(msg *ehpb.Event) (bool, error) {
 	switch x := msg.Event.(type) {
-	case *ehpb.Event_Block, *ehpb.Event_ChaincodeEvent, *ehpb.Event_Register, *ehpb.Event_Unregister:
+	case *ehpb.Event_Block, *ehpb.Event_ChaincodeEvent, *ehpb.Event_Register, *ehpb.Event_Unregister, *ehpb.Event_FilteredBlock:
 		a.updateCountNotify()
 	case nil:
 		// The field is not set.
@@ -213,9 +214,19 @@ func TestReceiveAnyMessage(t *testing.T) {
 
 	adapter.count = 1
 	block := testutil.ConstructTestBlock(t, 1, 10, 100)
-	if err = SendProducerBlockEvent(block); err != nil {
+
+	bevent, fbevent, _, err := CreateBlockEvents(block)
+	if err != nil {
 		t.Fail()
-		t.Logf("Error sending message %s", err)
+		t.Logf("Error processing block for events %s", err)
+	}
+	if err = Send(bevent); err != nil {
+		t.Fail()
+		t.Logf("Error sending block event: %s", err)
+	}
+	if err = Send(fbevent); err != nil {
+		t.Fail()
+		t.Logf("Error sending filtered block event: %s", err)
 	}
 
 	emsg := createTestChaincodeEvent("0xffffffff", "event2")
@@ -224,8 +235,8 @@ func TestReceiveAnyMessage(t *testing.T) {
 		t.Logf("Error sending message %s", err)
 	}
 
-	//receive 2 messages - a block and a chaincode event
-	for i := 0; i < 2; i++ {
+	//receive 3 messages - a block, a filtered block, and a chaincode event
+	for i := 0; i < 3; i++ {
 		select {
 		case <-adapter.notfy:
 		case <-time.After(5 * time.Second):

@@ -42,6 +42,8 @@ func getMessageType(e *pb.Event) pb.EventType {
 		return pb.EventType_CHAINCODE
 	case *pb.Event_Rejection:
 		return pb.EventType_REJECTION
+	case *pb.Event_FilteredBlock:
+		return pb.EventType_FILTEREDBLOCK
 	default:
 		return -1
 	}
@@ -53,4 +55,5 @@ func addInternalEventTypes() {
 	AddEventType(pb.EventType_CHAINCODE)
 	AddEventType(pb.EventType_REJECTION)
 	AddEventType(pb.EventType_REGISTER)
+	AddEventType(pb.EventType_FILTEREDBLOCK)
 }
