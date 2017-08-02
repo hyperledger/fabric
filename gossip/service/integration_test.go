@@ -110,6 +110,11 @@ func TestLeaderYield(t *testing.T) {
 
 	// Returns index of the leader or -1 if no leader elected
 	getLeader := func() int {
+		p0.lock.RLock()
+		p1.lock.RLock()
+		defer p0.lock.RUnlock()
+		defer p1.lock.RUnlock()
+
 		if p0.leaderElection[channelName].IsLeader() {
 			// Ensure p1 isn't a leader at the same time
 			assert.False(t, p1.leaderElection[channelName].IsLeader())
