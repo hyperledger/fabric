@@ -18,13 +18,14 @@ package configtx
 
 import (
 	"fmt"
-	"reflect"
 	"regexp"
 
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var logger = flogging.MustGetLogger("common/configtx")
@@ -232,7 +233,8 @@ func (cm *configManager) prepareApply(configEnv *cb.ConfigEnvelope) (*configResu
 		return nil, fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
 	}
 
-	if !reflect.DeepEqual(channelGroup, configEnv.Config.ChannelGroup) {
+	// reflect.Equal will not work here, because it considers nil and empty maps as different
+	if !proto.Equal(channelGroup, configEnv.Config.ChannelGroup) {
 		return nil, fmt.Errorf("ConfigEnvelope LastUpdate did not produce the supplied config result")
 	}
 
