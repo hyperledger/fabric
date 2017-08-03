@@ -99,16 +99,24 @@ func (chain *chainImpl) Start() {
 // consensus.Chain interface.
 func (chain *chainImpl) Halt() {
 	select {
-	case <-chain.haltChan:
-		// This construct is useful because it allows Halt() to be called
-		// multiple times (by a single thread) w/o panicking. Recal that a
-		// receive from a closed channel returns (the zero value) immediately.
-		logger.Warningf("[channel: %s] Halting of chain requested again", chain.support.ChainID())
+	case <-chain.startChan:
+		// chain finished starting, so we can halt it
+		select {
+		case <-chain.haltChan:
+			// This construct is useful because it allows Halt() to be called
+			// multiple times (by a single thread) w/o panicking. Recal that a
+			// receive from a closed channel returns (the zero value) immediately.
+			logger.Warningf("[channel: %s] Halting of chain requested again", chain.support.ChainID())
+		default:
+			logger.Criticalf("[channel: %s] Halting of chain requested", chain.support.ChainID())
+			close(chain.haltChan)
+			chain.closeKafkaObjects() // Also close the producer and the consumer
+			logger.Debugf("[channel: %s] Closed the haltChan", chain.support.ChainID())
+		}
 	default:
-		logger.Criticalf("[channel: %s] Halting of chain requested", chain.support.ChainID())
-		close(chain.haltChan)
-		chain.closeKafkaObjects() // Also close the producer and the consumer
-		logger.Debugf("[channel: %s] Closed the haltChan", chain.support.ChainID())
+		logger.Warningf("[channel: %s] Waiting for chain to finish starting before halting", chain.support.ChainID())
+		<-chain.startChan
+		chain.Halt()
 	}
 }
 
@@ -481,8 +489,14 @@ func sendConnectMessage(retryOptions localconfig.Retry, exitChan chan struct{}, 
 
 	retryMsg := "Attempting to post the CONNECT message..."
 	postConnect := newRetryProcess(retryOptions, exitChan, channel, retryMsg, func() error {
-		_, _, err := producer.SendMessage(message)
-		return err
+		select {
+		case <-exitChan:
+			logger.Debugf("[channel: %s] Consenter for channel exiting, aborting retry", channel)
+			return nil
+		default:
+			_, _, err := producer.SendMessage(message)
+			return err
+		}
 	})
 
 	return postConnect.retry()

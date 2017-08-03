@@ -338,6 +338,7 @@ func TestChain(t *testing.T) {
 		case <-time.After(shortTimeout):
 			t.Fatal("startChan should have been closed by now")
 		}
+		defer chain.Halt()
 
 		// Now make it so that the next ProduceRequest is met with an error
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
