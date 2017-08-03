@@ -180,8 +180,8 @@ type CouchDoc struct {
 	Attachments []*Attachment
 }
 
-//BatchRetrieveDocMedatadataResponse is used for processing REST batch responses from CouchDB
-type BatchRetrieveDocMedatadataResponse struct {
+//BatchRetrieveDocMetadataResponse is used for processing REST batch responses from CouchDB
+type BatchRetrieveDocMetadataResponse struct {
 	Rows []struct {
 		ID  string `json:"id"`
 		Doc struct {
@@ -1056,7 +1056,7 @@ func (dbclient *CouchDatabase) BatchRetrieveIDRevision(keys []string) ([]*DocMet
 		return nil, err
 	}
 
-	var jsonResponse = &BatchRetrieveDocMedatadataResponse{}
+	var jsonResponse = &BatchRetrieveDocMetadataResponse{}
 
 	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
 	if err2 != nil {
@@ -1171,7 +1171,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 func (dbclient *CouchDatabase) handleRequestWithRevisionRetry(id, method string, connectURL url.URL, data []byte, rev string,
 	multipartBoundary string, maxRetries int, keepConnectionOpen bool) (*http.Response, *DBReturn, error) {
 
-	//Initialize a flag for the revsion conflict
+	//Initialize a flag for the revision conflict
 	revisionConflictDetected := false
 	var resp *http.Response
 	var couchDBReturn *DBReturn

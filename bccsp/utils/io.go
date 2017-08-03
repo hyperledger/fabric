@@ -21,7 +21,7 @@ import (
 	"os"
 )
 
-// DirMissingOrEmpty checks is a directory is missin or empty
+// DirMissingOrEmpty checks is a directory is missing or empty
 func DirMissingOrEmpty(path string) (bool, error) {
 	dirExists, err := DirExists(path)
 	if err != nil {

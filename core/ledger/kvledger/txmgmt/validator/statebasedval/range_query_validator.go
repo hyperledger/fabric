@@ -43,7 +43,7 @@ func (v *rangeQueryResultsValidator) init(rqInfo *kvrwset.RangeQueryInfo, itr st
 
 // validate iterates through the results that are present in the range-query-info (captured during simulation)
 // and the iterator (latest view of the `committed state` i.e., db + updates). At first mismatch between the results
-// from the two sources (the range-query-info and the iterator), the validate retruns false.
+// from the two sources (the range-query-info and the iterator), the validate returns false.
 func (v *rangeQueryResultsValidator) validate() (bool, error) {
 	rqResults := v.rqInfo.GetRawReads().GetKvReads()
 	itr := v.itr

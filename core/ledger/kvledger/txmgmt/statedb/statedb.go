@@ -78,7 +78,7 @@ type VersionedKV struct {
 	VersionedValue
 }
 
-// ResultsIterator hepls in iterates over query results
+// ResultsIterator helps in iterates over query results
 type ResultsIterator interface {
 	Next() (QueryResult, error)
 	Close()

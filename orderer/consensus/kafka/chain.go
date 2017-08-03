@@ -332,7 +332,7 @@ func getLastOffsetPersisted(metadataValue []byte, chainID string) int64 {
 		}
 		return kafkaMetadata.LastOffsetPersisted
 	}
-	return (sarama.OffsetOldest - 1) // default
+	return sarama.OffsetOldest - 1 // default
 }
 
 func newConnectMessage() *ab.KafkaMessage {

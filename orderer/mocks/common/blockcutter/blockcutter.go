@@ -45,7 +45,7 @@ type Receiver struct {
 	Block chan struct{}
 }
 
-// NewReceiver returns the mock blockcutter.Receiver implemenation
+// NewReceiver returns the mock blockcutter.Receiver implementation
 func NewReceiver() *Receiver {
 	return &Receiver{
 		QueueNext:  true,

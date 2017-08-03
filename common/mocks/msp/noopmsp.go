@@ -24,7 +24,7 @@ import (
 type noopmsp struct {
 }
 
-// NewNoopMsp returns a no-op implementation of the MSP inteface
+// NewNoopMsp returns a no-op implementation of the MSP interface
 func NewNoopMsp() m.MSP {
 	return &noopmsp{}
 }

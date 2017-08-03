@@ -50,7 +50,7 @@ type Manager struct {
 
 // PolicyNames panics
 func (m *Manager) PolicyNames() []string {
-	panic("Unimplimented")
+	panic("Unimplemented")
 }
 
 // BasePath returns BasePathVal

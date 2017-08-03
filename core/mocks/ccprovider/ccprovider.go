@@ -76,7 +76,7 @@ func (c *mockCcProviderImpl) Execute(ctxt context.Context, cccid interface{}, sp
 	return nil, nil, nil
 }
 
-// ExecuteWithErrorFilder executes the chaincode given context and spec and returns payload
+// ExecuteWithErrorFilter executes the chaincode given context and spec and returns payload
 func (c *mockCcProviderImpl) ExecuteWithErrorFilter(ctxt context.Context, cccid interface{}, spec interface{}) ([]byte, *peer.ChaincodeEvent, error) {
 	return nil, nil, nil
 }

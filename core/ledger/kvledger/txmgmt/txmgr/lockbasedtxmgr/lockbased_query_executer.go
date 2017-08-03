@@ -47,7 +47,7 @@ func (q *lockBasedQueryExecutor) GetStateMultipleKeys(namespace string, keys []s
 // GetStateRangeScanIterator implements method in interface `ledger.QueryExecutor`
 // startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 // and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
-// can be supplied as empty strings. However, a full scan shuold be used judiciously for performance reasons.
+// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
 func (q *lockBasedQueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
 	return q.helper.getStateRangeScanIterator(namespace, startKey, endKey)
 }

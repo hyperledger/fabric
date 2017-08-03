@@ -288,7 +288,7 @@ func testCertificateUpdate(t *testing.T, shouldSucceed bool, certStore *certStor
 }
 
 func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
-	identity := &proto.PeerIdentity{
+	peeridentity := &proto.PeerIdentity{
 		// This PKI-ID is different than the cert, and the mapping between
 		// certificate to PKI-ID in this test is simply the identity function.
 		PkiId: []byte("A"),
@@ -303,7 +303,7 @@ func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
 		Nonce:   0,
 		Tag:     proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_PeerIdentity{
-			PeerIdentity: identity,
+			PeerIdentity: peeridentity,
 		},
 	}
 	sMsg := &proto.SignedGossipMessage{
@@ -314,7 +314,7 @@ func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
 }
 
 func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
-	identity := &proto.PeerIdentity{
+	peeridentity := &proto.PeerIdentity{
 		PkiId: []byte("C"),
 		Cert:  []byte("C"),
 	}
@@ -328,7 +328,7 @@ func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
 		Nonce:   0,
 		Tag:     proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_PeerIdentity{
-			PeerIdentity: identity,
+			PeerIdentity: peeridentity,
 		},
 	}
 	sMsg := &proto.SignedGossipMessage{
@@ -345,7 +345,7 @@ func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
 }
 
 func createValidUpdateMessage() *proto.SignedGossipMessage {
-	identity := &proto.PeerIdentity{
+	peeridentity := &proto.PeerIdentity{
 		PkiId: []byte("B"),
 		Cert:  []byte("B"),
 	}
@@ -358,7 +358,7 @@ func createValidUpdateMessage() *proto.SignedGossipMessage {
 		Nonce:   0,
 		Tag:     proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_PeerIdentity{
-			PeerIdentity: identity,
+			PeerIdentity: peeridentity,
 		},
 	}
 	sMsg := &proto.SignedGossipMessage{

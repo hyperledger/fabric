@@ -77,7 +77,7 @@ func (og *OrganizationGroup) NewGroup(name string) (ValueProposer, error) {
 	return nil, fmt.Errorf("Organization does not support subgroups")
 }
 
-// Allocate creates the proto resources neeeded for a proposal
+// Allocate creates the proto resources needed for a proposal
 func (og *OrganizationGroup) Allocate() Values {
 	return NewOrganizationConfig(og)
 }

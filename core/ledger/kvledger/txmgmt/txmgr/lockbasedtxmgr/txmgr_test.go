@@ -470,17 +470,17 @@ func testTxValidationWithItr(t *testing.T, env testEnv) {
 
 }
 
-func TestGetSetMultipeKeys(t *testing.T) {
+func TestGetSetMultipleKeys(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testLedgerID := "testgetsetmultipekeys"
+		testLedgerID := "testgetsetmultiplekeys"
 		testEnv.init(t, testLedgerID)
-		testGetSetMultipeKeys(t, testEnv)
+		testGetSetMultipleKeys(t, testEnv)
 		testEnv.cleanup()
 	}
 }
 
-func testGetSetMultipeKeys(t *testing.T, env testEnv) {
+func testGetSetMultipleKeys(t *testing.T, env testEnv) {
 	cID := "cID"
 	txMgr := env.getTxMgr()
 	txMgrHelper := newTxMgrTestHelper(t, txMgr)

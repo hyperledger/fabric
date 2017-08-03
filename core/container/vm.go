@@ -29,7 +29,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-// VM implemenation of VM management functionality.
+// VM implementation of VM management functionality.
 type VM struct {
 	Client *docker.Client
 }

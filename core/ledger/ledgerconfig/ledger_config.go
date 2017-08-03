@@ -39,7 +39,7 @@ func GetRootPath() string {
 	return filepath.Join(sysPath, "ledgersData")
 }
 
-// GetLedgerProviderPath returns the filesystem path for stroing ledger ledgerProvider contents
+// GetLedgerProviderPath returns the filesystem path for storing ledger ledgerProvider contents
 func GetLedgerProviderPath() string {
 	return filepath.Join(GetRootPath(), "ledgerProvider")
 }

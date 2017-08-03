@@ -257,7 +257,7 @@ func CreateChainFromBlock(cb *common.Block) error {
 }
 
 // MockCreateChain used for creating a ledger for a chain for tests
-// without havin to join
+// without having to join
 func MockCreateChain(cid string) error {
 	var ledger ledger.PeerLedger
 	var err error

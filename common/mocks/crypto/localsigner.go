@@ -26,7 +26,7 @@ var FakeLocalSigner = &LocalSigner{
 	Nonce:    []byte("NonceValue"),
 }
 
-// LocalSigner is a mock implmeentation of crypto.LocalSigner
+// LocalSigner is a mock implementation of crypto.LocalSigner
 type LocalSigner struct {
 	Identity []byte
 	Nonce    []byte

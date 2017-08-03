@@ -110,7 +110,7 @@ func (cs *certStore) validateIdentityMsg(msg *proto.SignedGossipMessage) error {
 }
 
 func (cs *certStore) createIdentityMessage() (*proto.SignedGossipMessage, error) {
-	identity := &proto.PeerIdentity{
+	pi := &proto.PeerIdentity{
 		Cert:     cs.selfIdentity,
 		Metadata: nil,
 		PkiId:    cs.idMapper.GetPKIidOfCert(cs.selfIdentity),
@@ -120,7 +120,7 @@ func (cs *certStore) createIdentityMessage() (*proto.SignedGossipMessage, error)
 		Nonce:   0,
 		Tag:     proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_PeerIdentity{
-			PeerIdentity: identity,
+			PeerIdentity: pi,
 		},
 	}
 	signer := func(msg []byte) ([]byte, error) {

@@ -96,7 +96,7 @@ public class SimpleSample extends ChaincodeBase {
 		}
 
 		// perform the transfer
-		log.info(String.format("Tranferring %d holdings from %s to %s", transferAmount, fromKey, toKey));
+		log.info(String.format("Transferring %d holdings from %s to %s", transferAmount, fromKey, toKey));
 		int newFromAccountBalance = fromAccountBalance - transferAmount;
 		int newToAccountBalance = toAccountBalance + transferAmount;
 		log.info(String.format("New holding values will be: %s = %d, %s = %d", fromKey, newFromAccountBalance, toKey, newToAccountBalance));

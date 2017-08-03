@@ -37,7 +37,7 @@ type ValueDeserializer interface {
 	Deserialize(key string, value []byte) (proto.Message, error)
 }
 
-// Values defines a mechanism to supply messages to unamrshal from config
+// Values defines a mechanism to supply messages to unmarshal from config
 // and a mechanism to validate the results
 type Values interface {
 	ValueDeserializer

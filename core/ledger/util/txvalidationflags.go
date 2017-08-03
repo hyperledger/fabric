@@ -20,7 +20,7 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
-// TxValidationFlags is array of transaction validation codes. It is used when commiter validates block.
+// TxValidationFlags is array of transaction validation codes. It is used when committer validates block.
 type TxValidationFlags []uint8
 
 // NewTxValidationFlags Create new object-array of validation codes with target size. Default values: valid.

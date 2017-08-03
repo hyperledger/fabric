@@ -149,7 +149,7 @@ func (v *txValidator) Validate(block *common.Block) error {
 	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))
 	// txsChaincodeNames records all the invoked chaincodes by tx in a block
 	txsChaincodeNames := make(map[int]*sysccprovider.ChaincodeInstance)
-	// upgradedChaincodes records all the chaincodes that are upgrded in a block
+	// upgradedChaincodes records all the chaincodes that are upgraded in a block
 	txsUpgradedChaincodes := make(map[int]*sysccprovider.ChaincodeInstance)
 	for tIdx, d := range block.Data.Data {
 		if d != nil {

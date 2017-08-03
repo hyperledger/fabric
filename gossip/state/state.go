@@ -352,7 +352,7 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg proto.ReceivedMessage)
 	response := msg.GetGossipMessage().GetStateResponse()
 	// Extract payloads, verify and push into buffer
 	if len(response.GetPayloads()) == 0 {
-		return uint64(0), errors.New("Received state tranfer response without payload")
+		return uint64(0), errors.New("Received state transfer response without payload")
 	}
 	for _, payload := range response.GetPayloads() {
 		logger.Debugf("Received payload with sequence number %d.", payload.SeqNum)
@@ -434,7 +434,7 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 			}
 		case <-s.stopCh:
 			s.stopCh <- struct{}{}
-			logger.Debug("State provider has been stoped, finishing to push new blocks.")
+			logger.Debug("State provider has been stopped, finishing to push new blocks.")
 			return
 		}
 	}

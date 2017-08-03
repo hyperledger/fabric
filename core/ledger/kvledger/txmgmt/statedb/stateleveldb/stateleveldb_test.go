@@ -57,11 +57,11 @@ func TestIterator(t *testing.T) {
 }
 
 func TestEncodeDecodeValueAndVersion(t *testing.T) {
-	testValueAndVersionEncodeing(t, []byte("value1"), version.NewHeight(1, 2))
-	testValueAndVersionEncodeing(t, []byte{}, version.NewHeight(50, 50))
+	testValueAndVersionEncoding(t, []byte("value1"), version.NewHeight(1, 2))
+	testValueAndVersionEncoding(t, []byte{}, version.NewHeight(50, 50))
 }
 
-func testValueAndVersionEncodeing(t *testing.T, value []byte, version *version.Height) {
+func testValueAndVersionEncoding(t *testing.T, value []byte, version *version.Height) {
 	encodedValue := statedb.EncodeValue(value, version)
 	val, ver := statedb.DecodeValue(encodedValue)
 	testutil.AssertEquals(t, val, value)

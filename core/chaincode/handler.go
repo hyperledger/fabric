@@ -167,7 +167,7 @@ func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	return err
 }
 
-//serialSendAsync serves the same purpose as serialSend (serializ msgs so gRPC will
+//serialSendAsync serves the same purpose as serialSend (serialize msgs so gRPC will
 //be happy). In addition, it is also asynchronous so send-remoterecv--localrecv loop
 //can be nonblocking. Only errors need to be handled and these are handled by
 //communication on supplied error channel. A typical use will be a non-blocking or
@@ -283,7 +283,7 @@ func (handler *Handler) waitForKeepaliveTimer() <-chan time.Time {
 		c := time.After(handler.chaincodeSupport.keepalive)
 		return c
 	}
-	//no one will signal this channel, listner blocks forever
+	//no one will signal this channel, listener blocks forever
 	c := make(chan time.Time, 1)
 	return c
 }
@@ -1265,7 +1265,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 
 				err = ccprovider.CheckInsantiationPolicy(calledCcIns.ChaincodeName, cd.Version, cd)
 				if err != nil {
-					errHandler([]byte(err.Error()), "[%s]CheckInsantiationPolicy, error %s. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
+					errHandler([]byte(err.Error()), "[%s]CheckInstantiationPolicy, error %s. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
 					return
 				}
 			} else {

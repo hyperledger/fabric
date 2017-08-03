@@ -23,7 +23,7 @@
 #   - behave-deps - ensures pre-requisites are available for running behave manually
 #   - gotools - installs go tools like golint
 #   - linter - runs all code checks
-#   - license - checks go sourrce files for Apache license header
+#   - license - checks go source files for Apache license header
 #   - native - ensures all native binaries are available
 #   - docker[-clean] - ensures all docker images are available[/cleaned]
 #   - peer-docker[-clean] - ensures the peer container is available[/cleaned]

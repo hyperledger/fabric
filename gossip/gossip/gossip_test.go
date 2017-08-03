@@ -184,7 +184,7 @@ func (cs *naiveCryptoService) revoke(pkiID common.PKIidType) {
 func bootPeers(portPrefix int, ids ...int) []string {
 	peers := []string{}
 	for _, id := range ids {
-		peers = append(peers, fmt.Sprintf("localhost:%d", (id+portPrefix)))
+		peers = append(peers, fmt.Sprintf("localhost:%d", id+portPrefix))
 	}
 	return peers
 }
@@ -430,7 +430,7 @@ func TestMembership(t *testing.T) {
 	go waitForTestCompletion(&stopped, t)
 
 	n := 10
-	var lastPeer = fmt.Sprintf("localhost:%d", (n + portPrefix))
+	var lastPeer = fmt.Sprintf("localhost:%d", n+portPrefix)
 	boot := newGossipInstance(portPrefix, 0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
 	boot.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
@@ -538,7 +538,7 @@ func TestDissemination(t *testing.T) {
 			pI.UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
 		}
 	}
-	var lastPeer = fmt.Sprintf("localhost:%d", (n + portPrefix))
+	var lastPeer = fmt.Sprintf("localhost:%d", n+portPrefix)
 	metaDataUpdated := func() bool {
 		if "bla bla" != string(metadataOfPeer(boot.PeersOfChannel(common.ChainID("A")), lastPeer)) {
 			return false
@@ -1193,7 +1193,7 @@ func getGoRoutines() []goroutine {
 	for _, s := range a {
 		gr := strings.Split(s, "\n")
 		idStr := bytes.TrimPrefix([]byte(gr[0]), []byte("goroutine "))
-		i := (strings.Index(string(idStr), " "))
+		i := strings.Index(string(idStr), " ")
 		if i == -1 {
 			continue
 		}

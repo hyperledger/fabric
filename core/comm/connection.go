@@ -38,7 +38,7 @@ type CASupport struct {
 	ServerRootCAs         [][]byte
 }
 
-// GetCASupport returns the signleton CASupport instance
+// GetCASupport returns the singleton CASupport instance
 func GetCASupport() *CASupport {
 
 	once.Do(func() {
