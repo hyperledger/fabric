@@ -20,10 +20,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 )
 
@@ -33,8 +31,14 @@ type consenter struct{}
 
 type chain struct {
 	support  consensus.ConsenterSupport
-	sendChan chan *cb.Envelope
+	sendChan chan *message
 	exitChan chan struct{}
+}
+
+type message struct {
+	configSeq  uint64
+	configMsg  *cb.Envelope
+	initialMsg *cb.Envelope
 }
 
 // New creates a new consenter for the solo consensus scheme.
@@ -52,7 +56,7 @@ func (solo *consenter) HandleChain(support consensus.ConsenterSupport, metadata 
 func newChain(support consensus.ConsenterSupport) *chain {
 	return &chain{
 		support:  support,
-		sendChan: make(chan *cb.Envelope),
+		sendChan: make(chan *message),
 		exitChan: make(chan struct{}),
 	}
 }
@@ -73,17 +77,28 @@ func (ch *chain) Halt() {
 // Order accepts normal messages for ordering
 func (ch *chain) Order(env *cb.Envelope, configSeq uint64) error {
 	select {
-	case ch.sendChan <- env:
+	case ch.sendChan <- &message{
+		configSeq:  configSeq,
+		initialMsg: env,
+	}:
 		return nil
 	case <-ch.exitChan:
 		return fmt.Errorf("Exiting")
 	}
 }
 
-// Order accepts normal messages for ordering
-func (ch *chain) Configure(configUpdate *cb.Envelope, config *cb.Envelope, configSeq uint64) error {
-	// TODO, handle this specially
-	return ch.Order(config, configSeq)
+// Configure accepts configuration update messages for ordering
+func (ch *chain) Configure(impetus *cb.Envelope, config *cb.Envelope, configSeq uint64) error {
+	select {
+	case ch.sendChan <- &message{
+		configSeq:  configSeq,
+		initialMsg: impetus,
+		configMsg:  config,
+	}:
+		return nil
+	case <-ch.exitChan:
+		return fmt.Errorf("Exiting")
+	}
 }
 
 // Errored only closes on exit
@@ -93,44 +108,23 @@ func (ch *chain) Errored() <-chan struct{} {
 
 func (ch *chain) main() {
 	var timer <-chan time.Time
+	var err error
 
 	for {
+		seq := ch.support.Sequence()
+		err = nil
 		select {
 		case msg := <-ch.sendChan:
-			chdr, err := utils.ChannelHeader(msg)
-			if err != nil {
-				logger.Panicf("If a message has arrived to this point, it should already have had its header inspected once")
-			}
-
-			class, err := ch.support.ClassifyMsg(chdr)
-			if err != nil {
-				logger.Panicf("If a message has arrived to this point, it should already have been classified once: %s", err)
-			}
-			switch class {
-			case msgprocessor.ConfigUpdateMsg:
-				_, err := ch.support.ProcessNormalMsg(msg)
-				if err != nil {
-					logger.Warningf("Discarding bad config message: %s", err)
-					continue
+			if msg.configMsg == nil {
+				// NormalMsg
+				if msg.configSeq < seq {
+					_, err = ch.support.ProcessNormalMsg(msg.initialMsg)
+					if err != nil {
+						logger.Warningf("Discarding bad normal message: %s", err)
+						continue
+					}
 				}
-
-				batch := ch.support.BlockCutter().Cut()
-				if batch != nil {
-					block := ch.support.CreateNextBlock(batch)
-					ch.support.WriteBlock(block, nil)
-				}
-
-				block := ch.support.CreateNextBlock([]*cb.Envelope{msg})
-				ch.support.WriteConfigBlock(block, nil)
-				timer = nil
-			case msgprocessor.NormalMsg:
-				_, err := ch.support.ProcessNormalMsg(msg)
-				if err != nil {
-					logger.Warningf("Discarding bad normal message: %s", err)
-					continue
-				}
-
-				batches, ok := ch.support.BlockCutter().Ordered(msg)
+				batches, ok := ch.support.BlockCutter().Ordered(msg.initialMsg)
 				if ok && len(batches) == 0 && timer == nil {
 					timer = time.After(ch.support.SharedConfig().BatchTimeout())
 					continue
@@ -142,8 +136,24 @@ func (ch *chain) main() {
 				if len(batches) > 0 {
 					timer = nil
 				}
-			default:
-				logger.Panicf("Unsupported msg classification: %v", class)
+			} else {
+				// ConfigMsg
+				if msg.configSeq < seq {
+					msg.configMsg, _, err = ch.support.ProcessConfigUpdateMsg(msg.initialMsg)
+					if err != nil {
+						logger.Warningf("Discarding bad config message: %s", err)
+						continue
+					}
+				}
+				batch := ch.support.BlockCutter().Cut()
+				if batch != nil {
+					block := ch.support.CreateNextBlock(batch)
+					ch.support.WriteBlock(block, nil)
+				}
+
+				block := ch.support.CreateNextBlock([]*cb.Envelope{msg.configMsg})
+				ch.support.WriteConfigBlock(block, nil)
+				timer = nil
 			}
 		case <-timer:
 			//clear the timer

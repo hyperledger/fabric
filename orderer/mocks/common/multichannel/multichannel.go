@@ -68,6 +68,9 @@ type ConsenterSupport struct {
 
 	// ProcessConfigUpdateMsgErr is returned as the error for ProcessConfigUpdateMsg
 	ProcessConfigUpdateMsgErr error
+
+	// SequenceVal is returned by Sequence
+	SequenceVal uint64
 }
 
 // BlockCutter returns BlockCutterVal
@@ -140,4 +143,9 @@ func (mcs *ConsenterSupport) ProcessNormalMsg(env *cb.Envelope) (configSeq uint6
 // ProcessConfigUpdateMsg returns ProcessConfigUpdateMsgVal, ConfigSeqVal, ProcessConfigUpdateMsgErr
 func (mcs *ConsenterSupport) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
 	return mcs.ProcessConfigUpdateMsgVal, mcs.ConfigSeqVal, mcs.ProcessConfigUpdateMsgErr
+}
+
+// Sequence returns SequenceVal
+func (mcs *ConsenterSupport) Sequence() uint64 {
+	return mcs.SequenceVal
 }
