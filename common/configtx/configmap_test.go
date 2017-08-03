@@ -19,10 +19,15 @@ package configtx
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	logging "github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
 
 func TestBadKey(t *testing.T) {
 	assert.Error(t, addToMap(comparable{key: "[Label]", path: []string{}}, make(map[string]comparable)),
@@ -90,4 +95,7 @@ func TestMapConfigBack(t *testing.T) {
 	assert.NoError(t, err, "Should not have errored building config")
 
 	assert.Equal(t, config, newConfig, "Should have transformed config map back from confMap")
+
+	newConfig.Values["Value"] = &cb.ConfigValue{}
+	assert.NotEqual(t, config, newConfig, "Mutating the new config should not mutate the existing config")
 }

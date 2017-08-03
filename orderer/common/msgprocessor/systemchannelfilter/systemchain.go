@@ -18,7 +18,6 @@ package systemchannelfilter
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -130,7 +129,9 @@ func (scf *SystemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) (conf
 func (scf *SystemChainFilter) inspect(proposedManager, configManager configtxapi.Manager) error {
 	proposedEnv := proposedManager.ConfigEnvelope()
 	actualEnv := configManager.ConfigEnvelope()
-	if !reflect.DeepEqual(proposedEnv.Config, actualEnv.Config) {
+
+	// reflect.DeepEqual will not work here, because it considers nil and empty maps as unequal
+	if !proto.Equal(proposedEnv.Config, actualEnv.Config) {
 		return fmt.Errorf("config proposed by the channel creation request did not match the config received with the channel creation request")
 	}
 	return nil

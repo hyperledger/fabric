@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 )
 
 const (
@@ -114,7 +116,7 @@ func configMapToConfig(configMap map[string]comparable) (*cb.ConfigGroup, error)
 }
 
 // recurseConfigMap is used only internally by configMapToConfig
-// Note, this function mutates the cb.Config* entrieswithin configMap, so errors are generally fatal
+// Note, this function no longer mutates the cb.Config* entries within configMap
 func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigGroup, error) {
 	groupPath := GroupPrefix + path
 	group, ok := configMap[groupPath]
@@ -126,12 +128,15 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 		return nil, fmt.Errorf("ConfigGroup not found at group path: %s", groupPath)
 	}
 
+	newConfigGroup := cb.NewConfigGroup()
+	proto.Merge(newConfigGroup, group.ConfigGroup)
+
 	for key, _ := range group.Groups {
 		updatedGroup, err := recurseConfigMap(path+PathSeparator+key, configMap)
 		if err != nil {
 			return nil, err
 		}
-		group.Groups[key] = updatedGroup
+		newConfigGroup.Groups[key] = updatedGroup
 	}
 
 	for key, _ := range group.Values {
@@ -143,7 +148,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 		if value.ConfigValue == nil {
 			return nil, fmt.Errorf("ConfigValue not found at value path: %s", valuePath)
 		}
-		group.Values[key] = value.ConfigValue
+		newConfigGroup.Values[key] = proto.Clone(value.ConfigValue).(*cb.ConfigValue)
 	}
 
 	for key, _ := range group.Policies {
@@ -155,8 +160,9 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 		if policy.ConfigPolicy == nil {
 			return nil, fmt.Errorf("ConfigPolicy not found at policy path: %s", policyPath)
 		}
-		group.Policies[key] = policy.ConfigPolicy
+		newConfigGroup.Policies[key] = proto.Clone(policy.ConfigPolicy).(*cb.ConfigPolicy)
+		logger.Debugf("Setting policy for key %s to %+v", key, group.Policies[key])
 	}
 
-	return group.ConfigGroup, nil
+	return newConfigGroup, nil
 }
