@@ -21,33 +21,25 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMaxBytesRule(t *testing.T) {
 	dataSize := uint32(100)
 	maxBytes := calcMessageBytesForPayloadDataSize(dataSize)
-	rs := filter.NewRuleSet([]filter.Rule{MaxBytesRule(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{AbsoluteMaxBytes: maxBytes}}), filter.AcceptRule})
+	msf := New(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{AbsoluteMaxBytes: maxBytes}})
 
 	t.Run("LessThan", func(t *testing.T) {
-		err := rs.Apply(makeMessage(make([]byte, dataSize-1)))
-		if err != nil {
-			t.Fatalf("Should have accepted")
-		}
+		assert.Nil(t, msf.Apply(makeMessage(make([]byte, dataSize-1))))
 	})
 	t.Run("Exact", func(t *testing.T) {
-		err := rs.Apply(makeMessage(make([]byte, dataSize)))
-		if err != nil {
-			t.Fatalf("Should have accepted")
-		}
+		assert.Nil(t, msf.Apply(makeMessage(make([]byte, dataSize))))
 	})
 	t.Run("TooBig", func(t *testing.T) {
-		err := rs.Apply(makeMessage(make([]byte, dataSize+1)))
-		if err == nil {
-			t.Fatalf("Should have rejected")
-		}
+		assert.NotNil(t, msf.Apply(makeMessage(make([]byte, dataSize+1))))
 	})
 }
 

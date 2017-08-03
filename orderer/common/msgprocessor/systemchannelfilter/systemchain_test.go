@@ -17,7 +17,6 @@ limitations under the License.
 package systemchannelfilter
 
 import (
-	"bytes"
 	"fmt"
 	"testing"
 
@@ -28,10 +27,8 @@ import (
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-	logging "github.com/op/go-logging"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -134,17 +131,14 @@ func TestGoodProposal(t *testing.T) {
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
-	sysFilter := New(mcc.ms, mcc)
-	action := sysFilter.Apply(wrapped)
-
-	assert.EqualValues(t, action, filter.Accept, "Did not accept valid transaction")
+	assert.Nil(t, New(mcc.ms, mcc).Apply(wrapped), "Did not accept valid transaction")
 }
 
 func TestProposalRejectedByConfig(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.NewChannelConfigErr = fmt.Errorf("Error creating channel")
+	mcc.NewChannelConfigErr = fmt.Errorf("desired err text")
 
 	configEnv, err := configtx.NewCompositeTemplate(
 		configtx.NewSimpleTemplate(
@@ -160,10 +154,10 @@ func TestProposalRejectedByConfig(t *testing.T) {
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
-	sysFilter := New(mcc.ms, mcc)
-	action := sysFilter.Apply(wrapped)
+	err = New(mcc.ms, mcc).Apply(wrapped)
 
-	assert.EqualValues(t, action, filter.Reject, "Did not accept valid transaction")
+	assert.NotNil(t, err, "Did not accept valid transaction")
+	assert.Regexp(t, mcc.NewChannelConfigErr.Error(), err)
 	assert.Len(t, mcc.newChains, 0, "Proposal should not have created a new chain")
 }
 
@@ -188,40 +182,29 @@ func TestNumChainsExceeded(t *testing.T) {
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
-	sysFilter := New(mcc.ms, mcc)
-	action := sysFilter.Apply(wrapped)
+	err = New(mcc.ms, mcc).Apply(wrapped)
 
-	assert.EqualValues(t, filter.Reject, action, "Transaction had created too many channels")
+	assert.NotNil(t, err, "Transaction had created too many channels")
+	assert.Regexp(t, "exceed maximimum number", err)
 }
 
 func TestBadProposal(t *testing.T) {
 	mcc := newMockChainCreator()
 	sysFilter := New(mcc.ms, mcc)
-	logging.SetLevel(logging.DEBUG, "common/msgprocessor/systemchannelfilter")
 	t.Run("BadPayload", func(t *testing.T) {
-		action := sysFilter.Apply(&cb.Envelope{Payload: []byte("bad payload")})
-		assert.EqualValues(t, action, filter.Forward, "Should of skipped invalid tx")
+		err := sysFilter.Apply(&cb.Envelope{Payload: []byte("garbage payload")})
+		assert.Regexp(t, "bad payload", err)
 	})
-
-	// set logger to logger with a backend that writes to a byte buffer
-	var buffer bytes.Buffer
-	logger.SetBackend(logging.AddModuleLevel(logging.NewLogBackend(&buffer, "", 0)))
-	// reset the logger after test
-	defer func() {
-		logger = logging.MustGetLogger("common/msgprocessor/systemchannelfilter")
-	}()
 
 	for _, tc := range []struct {
 		name    string
 		payload *cb.Payload
-		action  filter.Action
 		regexp  string
 	}{
 		{
 			"MissingPayloadHeader",
 			&cb.Payload{},
-			filter.Forward,
-			"",
+			"missing payload header",
 		},
 		{
 			"BadChannelHeader",
@@ -230,8 +213,7 @@ func TestBadProposal(t *testing.T) {
 					ChannelHeader: []byte("bad channel header"),
 				},
 			},
-			filter.Forward,
-			"",
+			"bad channel header",
 		},
 		{
 			"BadConfigTx",
@@ -245,8 +227,7 @@ func TestBadProposal(t *testing.T) {
 				},
 				Data: []byte("bad configTx"),
 			},
-			filter.Reject,
-			"",
+			"payload data error unmarshaling to envelope",
 		},
 		{
 			"BadConfigTxPayload",
@@ -264,8 +245,7 @@ func TestBadProposal(t *testing.T) {
 					},
 				),
 			},
-			filter.Reject,
-			"Error unmarshaling envelope payload",
+			"error unmarshaling wrapped configtx envelope payload",
 		},
 		{
 			"MissingConfigTxChannelHeader",
@@ -285,8 +265,7 @@ func TestBadProposal(t *testing.T) {
 					},
 				),
 			},
-			filter.Reject,
-			"Not a config transaction",
+			"wrapped configtx envelope missing header",
 		},
 		{
 			"BadConfigTxChannelHeader",
@@ -310,8 +289,7 @@ func TestBadProposal(t *testing.T) {
 					},
 				),
 			},
-			filter.Reject,
-			"Error unmarshaling channel header",
+			"error unmarshaling wrapped configtx envelope channel header",
 		},
 		{
 			"BadConfigTxChannelHeaderType",
@@ -339,8 +317,7 @@ func TestBadProposal(t *testing.T) {
 					},
 				),
 			},
-			filter.Reject,
-			"Not a config transaction",
+			"wrapped configtx envelope not a config transaction",
 		},
 		{
 			"BadConfigEnvelope",
@@ -369,8 +346,7 @@ func TestBadProposal(t *testing.T) {
 					},
 				),
 			},
-			filter.Reject,
-			"Error unmarshalling config envelope from payload",
+			"error unmarshalling wrapped configtx config envelope from payload",
 		},
 		{
 			"MissingConfigEnvelopeLastUpdate",
@@ -401,28 +377,13 @@ func TestBadProposal(t *testing.T) {
 					},
 				),
 			},
-			filter.Reject,
-			"Must include a config update",
+			"updated config does not include a config update",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			buffer.Reset()
-			action := sysFilter.Apply(&cb.Envelope{Payload: utils.MarshalOrPanic(tc.payload)})
-			assert.EqualValues(t, tc.action, action, "Expected tx to be %sed, but instead the tx will be %sed.", filterActionToString(tc.action), filterActionToString(action))
-			assert.Regexp(t, tc.regexp, buffer.String())
+			err := sysFilter.Apply(&cb.Envelope{Payload: utils.MarshalOrPanic(tc.payload)})
+			assert.NotNil(t, err)
+			assert.Regexp(t, tc.regexp, err.Error())
 		})
-	}
-}
-
-func filterActionToString(action filter.Action) string {
-	switch action {
-	case filter.Accept:
-		return "accept"
-	case filter.Forward:
-		return "forward"
-	case filter.Reject:
-		return "reject"
-	default:
-		return ""
 	}
 }
