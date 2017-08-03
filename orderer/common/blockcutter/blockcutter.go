@@ -18,7 +18,6 @@ package blockcutter
 
 import (
 	"github.com/hyperledger/fabric/common/config"
-	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/op/go-logging"
@@ -53,10 +52,9 @@ type receiver struct {
 	sharedConfigManager   config.Orderer
 	pendingBatch          []*cb.Envelope
 	pendingBatchSizeBytes uint32
-	pendingCommitters     []filter.Committer
 }
 
-// NewReceiverImpl creates a Receiver implementation based on the given configtxorderer manager and filters
+// NewReceiverImpl creates a Receiver implementation based on the given configtxorderer manager
 func NewReceiverImpl(sharedConfigManager config.Orderer) Receiver {
 	return &receiver{
 		sharedConfigManager: sharedConfigManager,
@@ -67,17 +65,11 @@ func NewReceiverImpl(sharedConfigManager config.Orderer) Receiver {
 // If the current message valid, and no batches need to be cut:
 //   - Ordered will return nil, nil, and true (indicating ok).
 // If the current message valid, and batches need to be cut:
-//   - Ordered will return 1 or 2 batches of messages, 1 or 2 batches of committers, and true (indicating ok).
+//   - Ordered will return 1 or 2 batches of messages and true (indicating ok).
 // If the current message is invalid:
 //   - Ordered will return nil, nil, and false (to indicate not ok).
 //
-// Given a valid message, if the current message needs to be isolated (as determined during filtering).
-//   - Ordered will return:
-//     * The pending batch of (if not empty), and a second batch containing only the isolated message.
-//     * The corresponding batches of committers.
-//     * true (indicating ok).
-// Otherwise, given a valid message, the pending batch, if not empty, will be cut and returned if:
-//   - The current message needs to be isolated (as determined during filtering).
+// Given a valid message, the pending batch, if not empty, will be cut and returned if:
 //   - The current message will cause the pending batch size in bytes to exceed BatchSize.PreferredMaxBytes.
 //   - After adding the current message to the pending batch, the message count has reached BatchSize.MaxMessageCount.
 func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, bool) {

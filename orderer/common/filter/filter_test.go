@@ -20,36 +20,30 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/stretchr/testify/assert"
 )
 
 var RejectRule = Rule(rejectRule{})
 
 type rejectRule struct{}
 
-func (r rejectRule) Apply(message *cb.Envelope) (Action, Committer) {
-	return Reject, nil
+func (r rejectRule) Apply(message *cb.Envelope) Action {
+	return Reject
 }
 
 var ForwardRule = Rule(forwardRule{})
 
 type forwardRule struct{}
 
-func (r forwardRule) Apply(message *cb.Envelope) (Action, Committer) {
-	return Forward, nil
-}
-
-func TestNoopCommitter(t *testing.T) {
-	var nc noopCommitter
-	assert.False(t, nc.Isolated(), "Should return false")
+func (r forwardRule) Apply(message *cb.Envelope) Action {
+	return Forward
 }
 
 func TestEmptyRejectRule(t *testing.T) {
-	result, _ := EmptyRejectRule.Apply(&cb.Envelope{})
+	result := EmptyRejectRule.Apply(&cb.Envelope{})
 	if result != Reject {
 		t.Fatalf("Should have rejected")
 	}
-	result, _ = EmptyRejectRule.Apply(&cb.Envelope{Payload: []byte("fakedata")})
+	result = EmptyRejectRule.Apply(&cb.Envelope{Payload: []byte("fakedata")})
 	if result != Forward {
 		t.Fatalf("Should have forwarded")
 	}
@@ -57,7 +51,7 @@ func TestEmptyRejectRule(t *testing.T) {
 
 func TestAcceptReject(t *testing.T) {
 	rs := NewRuleSet([]Rule{AcceptRule, RejectRule})
-	_, err := rs.Apply(&cb.Envelope{})
+	err := rs.Apply(&cb.Envelope{})
 	if err != nil {
 		t.Fatalf("Should have accepted: %s", err)
 	}
@@ -65,7 +59,7 @@ func TestAcceptReject(t *testing.T) {
 
 func TestRejectAccept(t *testing.T) {
 	rs := NewRuleSet([]Rule{RejectRule, AcceptRule})
-	_, err := rs.Apply(&cb.Envelope{})
+	err := rs.Apply(&cb.Envelope{})
 	if err == nil {
 		t.Fatalf("Should have rejected")
 	}
@@ -73,7 +67,7 @@ func TestRejectAccept(t *testing.T) {
 
 func TestForwardAccept(t *testing.T) {
 	rs := NewRuleSet([]Rule{ForwardRule, AcceptRule})
-	_, err := rs.Apply(&cb.Envelope{})
+	err := rs.Apply(&cb.Envelope{})
 	if err != nil {
 		t.Fatalf("Should have accepted: %s ", err)
 	}
@@ -81,7 +75,7 @@ func TestForwardAccept(t *testing.T) {
 
 func TestForward(t *testing.T) {
 	rs := NewRuleSet([]Rule{ForwardRule})
-	_, err := rs.Apply(&cb.Envelope{})
+	err := rs.Apply(&cb.Envelope{})
 	if err == nil {
 		t.Fatalf("Should have rejected")
 	}
@@ -89,7 +83,7 @@ func TestForward(t *testing.T) {
 
 func TestNoRule(t *testing.T) {
 	rs := NewRuleSet([]Rule{})
-	_, err := rs.Apply(&cb.Envelope{})
+	err := rs.Apply(&cb.Envelope{})
 	if err == nil {
 		t.Fatalf("Should have rejected")
 	}

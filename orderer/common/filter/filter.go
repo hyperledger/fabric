@@ -37,37 +37,19 @@ const (
 // Rule defines a filter function which accepts, rejects, or forwards (to the next rule) an Envelope
 type Rule interface {
 	// Apply applies the rule to the given Envelope, replying with the Action to take for the message
-	// If the filter Accepts a message, it should provide a committer to use when writing the message to the chain
-	Apply(message *ab.Envelope) (Action, Committer)
+	Apply(message *ab.Envelope) Action
 }
-
-// Committer is returned by postfiltering and should be invoked once the message has been written to the blockchain
-type Committer interface {
-	// Commit performs whatever action should be performed upon committing of a message
-	Commit()
-
-	// Isolated returns whether this transaction should have a block to itself or may be mixed with other transactions
-	Isolated() bool
-}
-
-type noopCommitter struct{}
-
-func (nc noopCommitter) Commit()        {}
-func (nc noopCommitter) Isolated() bool { return false }
-
-// NoopCommitter does nothing on commit and is not isolated
-var NoopCommitter = Committer(noopCommitter{})
 
 // EmptyRejectRule rejects empty messages
 var EmptyRejectRule = Rule(emptyRejectRule{})
 
 type emptyRejectRule struct{}
 
-func (a emptyRejectRule) Apply(message *ab.Envelope) (Action, Committer) {
+func (a emptyRejectRule) Apply(message *ab.Envelope) Action {
 	if message.Payload == nil {
-		return Reject, nil
+		return Reject
 	}
-	return Forward, nil
+	return Forward
 }
 
 // AcceptRule always returns Accept as a result for Apply
@@ -75,8 +57,8 @@ var AcceptRule = Rule(acceptRule{})
 
 type acceptRule struct{}
 
-func (a acceptRule) Apply(message *ab.Envelope) (Action, Committer) {
-	return Accept, NoopCommitter
+func (a acceptRule) Apply(message *ab.Envelope) Action {
+	return Accept
 }
 
 // RuleSet is used to apply a collection of rules
@@ -91,17 +73,17 @@ func NewRuleSet(rules []Rule) *RuleSet {
 	}
 }
 
-// Apply applies the rules given for this set in order, returning the committer, nil on valid, or nil, err on invalid
-func (rs *RuleSet) Apply(message *ab.Envelope) (Committer, error) {
+// Apply applies the rules given for this set in order, returning nil on valid or err on invalid
+func (rs *RuleSet) Apply(message *ab.Envelope) error {
 	for _, rule := range rs.rules {
-		action, committer := rule.Apply(message)
+		action := rule.Apply(message)
 		switch action {
 		case Accept:
-			return committer, nil
+			return nil
 		case Reject:
-			return nil, fmt.Errorf("Rejected by rule: %T", rule)
+			return fmt.Errorf("Rejected by rule: %T", rule)
 		default:
 		}
 	}
-	return nil, fmt.Errorf("No matching filter found")
+	return fmt.Errorf("No matching filter found")
 }

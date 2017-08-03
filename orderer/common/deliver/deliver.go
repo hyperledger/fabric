@@ -131,8 +131,7 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 	lastConfigSequence := chain.Sequence()
 
 	sf := sigfilter.New(policies.ChannelReaders, chain.PolicyManager())
-	result, _ := sf.Apply(envelope)
-	if result != filter.Forward {
+	if sf.Apply(envelope) != filter.Forward {
 		logger.Warningf("[channel: %s] Received unauthorized deliver request", chdr.ChannelId)
 		return sendStatusReply(srv, cb.Status_FORBIDDEN)
 	}
@@ -186,8 +185,7 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 		if currentConfigSequence > lastConfigSequence {
 			lastConfigSequence = currentConfigSequence
 			sf := sigfilter.New(policies.ChannelReaders, chain.PolicyManager())
-			result, _ := sf.Apply(envelope)
-			if result != filter.Forward {
+			if sf.Apply(envelope) != filter.Forward {
 				logger.Warningf("[channel: %s] Client authorization revoked for deliver request", chdr.ChannelId)
 				return sendStatusReply(srv, cb.Status_FORBIDDEN)
 			}

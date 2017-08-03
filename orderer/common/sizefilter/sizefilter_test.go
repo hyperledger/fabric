@@ -32,19 +32,19 @@ func TestMaxBytesRule(t *testing.T) {
 	rs := filter.NewRuleSet([]filter.Rule{MaxBytesRule(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{AbsoluteMaxBytes: maxBytes}}), filter.AcceptRule})
 
 	t.Run("LessThan", func(t *testing.T) {
-		_, err := rs.Apply(makeMessage(make([]byte, dataSize-1)))
+		err := rs.Apply(makeMessage(make([]byte, dataSize-1)))
 		if err != nil {
 			t.Fatalf("Should have accepted")
 		}
 	})
 	t.Run("Exact", func(t *testing.T) {
-		_, err := rs.Apply(makeMessage(make([]byte, dataSize)))
+		err := rs.Apply(makeMessage(make([]byte, dataSize)))
 		if err != nil {
 			t.Fatalf("Should have accepted")
 		}
 	})
 	t.Run("TooBig", func(t *testing.T) {
-		_, err := rs.Apply(makeMessage(make([]byte, dataSize+1)))
+		err := rs.Apply(makeMessage(make([]byte, dataSize+1)))
 		if err == nil {
 			t.Fatalf("Should have rejected")
 		}

@@ -41,19 +41,6 @@ type limitedSupport interface {
 	SharedConfig() config.Orderer
 }
 
-type systemChainCommitter struct {
-	filter   *systemChainFilter
-	configTx *cb.Envelope
-}
-
-func (scc *systemChainCommitter) Isolated() bool {
-	return true
-}
-
-func (scc *systemChainCommitter) Commit() {
-	scc.filter.cc.newChain(scc.configTx)
-}
-
 type systemChainFilter struct {
 	cc      chainCreator
 	support limitedSupport
@@ -66,25 +53,25 @@ func newSystemChainFilter(ls limitedSupport, cc chainCreator) filter.Rule {
 	}
 }
 
-func (scf *systemChainFilter) Apply(env *cb.Envelope) (filter.Action, filter.Committer) {
+func (scf *systemChainFilter) Apply(env *cb.Envelope) filter.Action {
 	msgData := &cb.Payload{}
 
 	err := proto.Unmarshal(env.Payload, msgData)
 	if err != nil {
-		return filter.Forward, nil
+		return filter.Forward
 	}
 
 	if msgData.Header == nil {
-		return filter.Forward, nil
+		return filter.Forward
 	}
 
 	chdr, err := utils.UnmarshalChannelHeader(msgData.Header.ChannelHeader)
 	if err != nil {
-		return filter.Forward, nil
+		return filter.Forward
 	}
 
 	if chdr.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
-		return filter.Forward, nil
+		return filter.Forward
 	}
 
 	maxChannels := scf.support.SharedConfig().MaxChannelsCount()
@@ -92,26 +79,23 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) (filter.Action, filter.Com
 		// We check for strictly greater than to accommodate the system channel
 		if uint64(scf.cc.channelsCount()) > maxChannels {
 			logger.Warningf("Rejecting channel creation because the orderer has reached the maximum number of channels, %d", maxChannels)
-			return filter.Reject, nil
+			return filter.Reject
 		}
 	}
 
 	configTx := &cb.Envelope{}
 	err = proto.Unmarshal(msgData.Data, configTx)
 	if err != nil {
-		return filter.Reject, nil
+		return filter.Reject
 	}
 
 	err = scf.authorizeAndInspect(configTx)
 	if err != nil {
 		logger.Debugf("Rejecting channel creation because: %s", err)
-		return filter.Reject, nil
+		return filter.Reject
 	}
 
-	return filter.Accept, &systemChainCommitter{
-		filter:   scf,
-		configTx: configTx,
-	}
+	return filter.Accept
 }
 
 func (scf *systemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) (configtxapi.Manager, error) {

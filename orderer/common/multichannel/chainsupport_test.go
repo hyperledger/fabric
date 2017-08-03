@@ -51,18 +51,6 @@ func (mlw *mockLedgerReadWriter) Height() uint64 {
 	return mlw.height
 }
 
-type mockCommitter struct {
-	committed int
-}
-
-func (mc *mockCommitter) Isolated() bool {
-	panic("Unimplemented")
-}
-
-func (mc *mockCommitter) Commit() {
-	mc.committed++
-}
-
 func TestCommitConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
@@ -75,7 +63,7 @@ func TestCommitConfig(t *testing.T) {
 
 	txs := []*cb.Envelope{makeNormalTx("foo", 0), makeNormalTx("bar", 1)}
 	block := cs.CreateNextBlock(txs)
-	cs.WriteConfigBlock(block, nil)
+	cs.WriteBlock(block, nil)
 	assert.Equal(t, uint64(1), cs.Height(), "Should has height of 1")
 
 	blockTXs := make([]*cb.Envelope, len(ml.data))

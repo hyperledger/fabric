@@ -17,6 +17,7 @@ limitations under the License.
 package multichannel
 
 import (
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -38,6 +39,7 @@ type ChainSupport struct {
 	msgprocessor.Processor
 	chain         consensus.Chain
 	cutter        blockcutter.Receiver
+	registrar     *Registrar
 	filters       *filter.RuleSet
 	signer        crypto.LocalSigner
 	lastConfig    uint64
@@ -45,6 +47,7 @@ type ChainSupport struct {
 }
 
 func newChainSupport(
+	registrar *Registrar,
 	filters *filter.RuleSet,
 	ledgerResources *ledgerResources,
 	consenters map[string]consensus.Consenter,
@@ -62,6 +65,7 @@ func newChainSupport(
 		ledgerResources: ledgerResources,
 		cutter:          cutter,
 		filters:         filters,
+		registrar:       registrar,
 		signer:          signer,
 	}
 	cs.Processor = msgprocessor.NewStandardChannel(cs)
@@ -224,13 +228,45 @@ func (cs *ChainSupport) addLastConfigSignature(block *cb.Block) {
 
 // WriteConfigBlock should be invoked for blocks which contain a config transaction.
 func (cs *ChainSupport) WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block {
-	// XXX This hacky path is temporary and will be removed by the end of this change series
-	// The panics here are just fine
-	committer, err := cs.filters.Apply(utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0]))
+	ctx, err := utils.ExtractEnvelope(block, 0)
 	if err != nil {
-		logger.Panicf("Config should have already been validated")
+		logger.Panicf("Told to write a config block, but could not get configtx: %s", err)
 	}
-	committer.Commit()
+
+	payload, err := utils.UnmarshalPayload(ctx.Payload)
+	if err != nil {
+		logger.Panicf("Told to write a config block, but configtx payload is invalid: %s", err)
+	}
+
+	if payload.Header == nil {
+		logger.Panicf("Told to write a config block, but configtx payload header is missing")
+	}
+
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		logger.Panicf("Told to write a config block with an invalid channel header: %s", err)
+	}
+
+	switch chdr.Type {
+	case int32(cb.HeaderType_ORDERER_TRANSACTION):
+		newChannelConfig, err := utils.UnmarshalEnvelope(payload.Data)
+		if err != nil {
+			logger.Panicf("Told to write a config block with new channel, but did not have config update embedded: %s", err)
+		}
+		cs.registrar.newChain(newChannelConfig)
+	case int32(cb.HeaderType_CONFIG):
+		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+		if err != nil {
+			logger.Panicf("Told to write a config block with new channel, but did not have config envelope encoded: %s", err)
+		}
+
+		err = cs.Apply(configEnvelope)
+		if err != nil {
+			logger.Panicf("Told to write a config block with new config, but could not apply it: %s", err)
+		}
+	default:
+		logger.Panicf("Told to write a config block with unknown header type: %v", chdr.Type)
+	}
 
 	return cs.WriteBlock(block, encodedMetadataValue)
 }

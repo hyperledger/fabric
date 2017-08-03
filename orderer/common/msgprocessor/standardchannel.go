@@ -66,7 +66,7 @@ func (s *StandardChannel) ClassifyMsg(chdr *cb.ChannelHeader) (Classification, e
 // configuration sequence number and nil on success, or an error if the message is not valid.
 func (s *StandardChannel) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, err error) {
 	configSeq = s.support.Sequence()
-	_, err = s.support.Filters().Apply(env)
+	err = s.support.Filters().Apply(env)
 	return
 }
 
@@ -77,7 +77,7 @@ func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.E
 	// Call Sequence first.  If seq advances between proposal and acceptance, this is okay, and will cause reprocessing
 	// however, if Sequence is called last, then a success could be falsely attributed to a newer configSeq.
 	seq := s.support.Sequence()
-	_, err = s.support.Filters().Apply(env)
+	err = s.support.Filters().Apply(env)
 	if err != nil {
 		return nil, 0, err
 	}
