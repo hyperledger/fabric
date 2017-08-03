@@ -27,9 +27,15 @@ import (
 )
 
 const (
-	testCAOrg  = "example.com"
-	testCAName = "ca" + "." + testCAOrg
-	testName   = "peer0"
+	testCAOrg              = "example.com"
+	testCAName             = "ca" + "." + testCAOrg
+	testName               = "peer0"
+	testCountry            = "US"
+	testProvince           = "California"
+	testLocality           = "San Francisco"
+	testOrganizationalUnit = "Hyperledger Fabric"
+	testStreetAddress      = "testStreetAddress"
+	testPostalCode         = "123456"
 )
 
 var testDir = filepath.Join(os.TempDir(), "msp-test")
@@ -46,11 +52,25 @@ func TestGenerateLocalMSP(t *testing.T) {
 	mspDir := filepath.Join(testDir, "msp")
 
 	// generate signing CA
-	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName)
+	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
 	assert.NoError(t, err, "Error generating CA")
 	// generate TLS CA
-	tlsCA, err := ca.NewCA(tlsCADir, testCAOrg, testCAName)
+	tlsCA, err := ca.NewCA(tlsCADir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
 	assert.NoError(t, err, "Error generating CA")
+
+	assert.NotEmpty(t, signCA.SignCert.Subject.Country, "country cannot be empty.")
+	assert.Equal(t, testCountry, signCA.SignCert.Subject.Country[0], "Failed to match country")
+	assert.NotEmpty(t, signCA.SignCert.Subject.Province, "province cannot be empty.")
+	assert.Equal(t, testProvince, signCA.SignCert.Subject.Province[0], "Failed to match province")
+	assert.NotEmpty(t, signCA.SignCert.Subject.Locality, "locality cannot be empty.")
+	assert.Equal(t, testLocality, signCA.SignCert.Subject.Locality[0], "Failed to match locality")
+	assert.NotEmpty(t, signCA.SignCert.Subject.OrganizationalUnit, "organizationalUnit cannot be empty.")
+	assert.Equal(t, testOrganizationalUnit, signCA.SignCert.Subject.OrganizationalUnit[0], "Failed to match organizationalUnit")
+	assert.NotEmpty(t, signCA.SignCert.Subject.StreetAddress, "streetAddress cannot be empty.")
+	assert.Equal(t, testStreetAddress, signCA.SignCert.Subject.StreetAddress[0], "Failed to match streetAddress")
+	assert.NotEmpty(t, signCA.SignCert.Subject.PostalCode, "postalCode cannot be empty.")
+	assert.Equal(t, testPostalCode, signCA.SignCert.Subject.PostalCode[0], "Failed to match postalCode")
+
 	// generate local MSP
 	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA)
 	assert.NoError(t, err, "Failed to generate local MSP")
@@ -94,10 +114,10 @@ func TestGenerateVerifyingMSP(t *testing.T) {
 	tlsCADir := filepath.Join(testDir, "tlsca")
 	mspDir := filepath.Join(testDir, "msp")
 	// generate signing CA
-	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName)
+	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
 	assert.NoError(t, err, "Error generating CA")
 	// generate TLS CA
-	tlsCA, err := ca.NewCA(tlsCADir, testCAOrg, testCAName)
+	tlsCA, err := ca.NewCA(tlsCADir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
 	assert.NoError(t, err, "Error generating CA")
 
 	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA)

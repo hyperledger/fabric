@@ -267,6 +267,13 @@ and "Specs" parameters under the ``OrdererOrgs`` header:
   # --------------------------------------------------------
   - Name: Orderer
     Domain: example.com
+    CA:
+        Country: US
+        Province: California
+        Locality: San Francisco
+    #   OrganizationalUnit: Hyperledger Fabric
+    #   StreetAddress: address for org # default nil
+    #   PostalCode: postalCode for org # default nil
     # ------------------------------------------------------
     # "Specs" - See PeerOrgs below for complete description
   # -----------------------------------------------------
