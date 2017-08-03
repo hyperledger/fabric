@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/stretchr/testify/assert"
@@ -20,14 +20,9 @@ import (
 const testChannelID = "foo"
 
 type mockSupport struct {
-	filters                *filter.RuleSet
 	ProposeConfigUpdateVal *cb.ConfigEnvelope
 	ProposeConfigUpdateErr error
 	SequenceVal            uint64
-}
-
-func (ms *mockSupport) Filters() *filter.RuleSet {
-	return ms.filters
 }
 
 func (ms *mockSupport) ProposeConfigUpdate(env *cb.Envelope) (*cb.ConfigEnvelope, error) {
@@ -72,9 +67,8 @@ func TestClassifyMsg(t *testing.T) {
 func TestProcessNormalMsg(t *testing.T) {
 	ms := &mockSupport{
 		SequenceVal: 7,
-		filters:     filter.NewRuleSet([]filter.Rule{filter.AcceptRule}),
 	}
-	cs, err := NewStandardChannel(ms).ProcessNormalMsg(nil)
+	cs, err := NewStandardChannel(ms, filter.NewRuleSet([]filter.Rule{filter.AcceptRule})).ProcessNormalMsg(nil)
 	assert.Equal(t, cs, ms.SequenceVal)
 	assert.Nil(t, err)
 }
@@ -84,18 +78,15 @@ func TestConfigUpdateMsg(t *testing.T) {
 		ms := &mockSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			ProposeConfigUpdateErr: fmt.Errorf("An error"),
-			filters:                filter.NewRuleSet([]filter.Rule{filter.EmptyRejectRule}),
 		}
-		config, cs, err := NewStandardChannel(ms).ProcessConfigUpdateMsg(&cb.Envelope{})
+		config, cs, err := NewStandardChannel(ms, filter.NewRuleSet([]filter.Rule{filter.EmptyRejectRule})).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.Nil(t, config)
 		assert.Equal(t, uint64(0), cs)
 		assert.NotNil(t, err)
 	})
 	t.Run("SignedEnvelopeFailure", func(t *testing.T) {
-		ms := &mockSupport{
-			filters: filter.NewRuleSet([]filter.Rule{filter.AcceptRule}),
-		}
-		config, cs, err := NewStandardChannel(ms).ProcessConfigUpdateMsg(nil)
+		ms := &mockSupport{}
+		config, cs, err := NewStandardChannel(ms, filter.NewRuleSet([]filter.Rule{filter.AcceptRule})).ProcessConfigUpdateMsg(nil)
 		assert.Nil(t, config)
 		assert.Equal(t, uint64(0), cs)
 		assert.NotNil(t, err)
@@ -105,9 +96,8 @@ func TestConfigUpdateMsg(t *testing.T) {
 		ms := &mockSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			filters:                filter.NewRuleSet([]filter.Rule{filter.AcceptRule}),
 		}
-		config, cs, err := NewStandardChannel(ms).ProcessConfigUpdateMsg(nil)
+		config, cs, err := NewStandardChannel(ms, filter.NewRuleSet([]filter.Rule{filter.AcceptRule})).ProcessConfigUpdateMsg(nil)
 		assert.NotNil(t, config)
 		assert.Equal(t, cs, ms.SequenceVal)
 		assert.Nil(t, err)

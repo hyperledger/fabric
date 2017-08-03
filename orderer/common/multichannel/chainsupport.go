@@ -19,15 +19,10 @@ package multichannel
 import (
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/configtxfilter"
-	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	"github.com/hyperledger/fabric/orderer/common/sigfilter"
-	"github.com/hyperledger/fabric/orderer/common/sizefilter"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -40,7 +35,6 @@ type ChainSupport struct {
 	chain         consensus.Chain
 	cutter        blockcutter.Receiver
 	registrar     *Registrar
-	filters       *filter.RuleSet
 	signer        crypto.LocalSigner
 	lastConfig    uint64
 	lastConfigSeq uint64
@@ -48,7 +42,6 @@ type ChainSupport struct {
 
 func newChainSupport(
 	registrar *Registrar,
-	filters *filter.RuleSet,
 	ledgerResources *ledgerResources,
 	consenters map[string]consensus.Consenter,
 	signer crypto.LocalSigner,
@@ -64,11 +57,10 @@ func newChainSupport(
 	cs := &ChainSupport{
 		ledgerResources: ledgerResources,
 		cutter:          cutter,
-		filters:         filters,
 		registrar:       registrar,
 		signer:          signer,
 	}
-	cs.Processor = msgprocessor.NewStandardChannel(cs)
+	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardFilters(cs))
 
 	cs.lastConfigSeq = cs.Sequence()
 
@@ -101,30 +93,6 @@ func newChainSupport(
 	return cs
 }
 
-// createStandardFilters creates the set of filters for a normal (non-system) chain
-func createStandardFilters(ledgerResources *ledgerResources) *filter.RuleSet {
-	return filter.NewRuleSet([]filter.Rule{
-		filter.EmptyRejectRule,
-		sizefilter.MaxBytesRule(ledgerResources.SharedConfig()),
-		sigfilter.New(policies.ChannelWriters, ledgerResources.PolicyManager()),
-		configtxfilter.NewFilter(ledgerResources),
-		filter.AcceptRule,
-	})
-
-}
-
-// createSystemChainFilters creates the set of filters for the ordering system chain
-func createSystemChainFilters(r *Registrar, ledgerResources *ledgerResources) *filter.RuleSet {
-	return filter.NewRuleSet([]filter.Rule{
-		filter.EmptyRejectRule,
-		sizefilter.MaxBytesRule(ledgerResources.SharedConfig()),
-		sigfilter.New(policies.ChannelWriters, ledgerResources.PolicyManager()),
-		newSystemChainFilter(ledgerResources, r),
-		configtxfilter.NewFilter(ledgerResources),
-		filter.AcceptRule,
-	})
-}
-
 // Signer returns the crypto.Localsigner for this channel.
 func (cs *ChainSupport) Signer() crypto.LocalSigner {
 	return cs.signer
@@ -142,11 +110,6 @@ func (cs *ChainSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
 // Sign passes through to the signer Sign method.
 func (cs *ChainSupport) Sign(message []byte) ([]byte, error) {
 	return cs.signer.Sign(message)
-}
-
-// Filters returns the set of filters created for this channel.
-func (cs *ChainSupport) Filters() *filter.RuleSet {
-	return cs.filters
 }
 
 // BlockCutter returns the blockcutter.Receiver instance for this channel.

@@ -22,7 +22,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/common/mocks/crypto"
-	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -56,7 +55,6 @@ func TestCommitConfig(t *testing.T) {
 	cm := &mockconfigtx.Manager{}
 	cs := &ChainSupport{
 		ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml},
-		filters:         filter.NewRuleSet([]filter.Rule{filter.AcceptRule}),
 		signer:          mockCrypto(),
 	}
 	assert.Equal(t, uint64(0), cs.Height(), "Should has height of 0")

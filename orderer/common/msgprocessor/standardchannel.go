@@ -7,8 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/configtxfilter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sigfilter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sizefilter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -21,9 +26,6 @@ type StandardChannelSupport interface {
 	// ChainID returns the ChannelID.
 	ChainID() string
 
-	// Filters returns the set of filters for the channel.
-	Filters() *filter.RuleSet
-
 	// Signer returns the signer for this orderer.
 	Signer() crypto.LocalSigner
 
@@ -35,16 +37,33 @@ type StandardChannelSupport interface {
 // StandardChannel implements the Processor interface for standard extant channels.
 type StandardChannel struct {
 	support StandardChannelSupport
+	filters *filter.RuleSet
 }
 
 // NewStandardChannel creates a new message processor for a standard channel.
-func NewStandardChannel(support StandardChannelSupport) *StandardChannel {
+func NewStandardChannel(support StandardChannelSupport, filters *filter.RuleSet) *StandardChannel {
 	return &StandardChannel{
+		filters: filters,
 		support: support,
 	}
 }
 
-// ClassifyMsg inspects the message to determine which type of processing is necessary.
+// CreateStandardFilters creates the set of filters for a normal (non-system) chain
+func CreateStandardFilters(filterSupport configtxapi.Manager) *filter.RuleSet {
+	ordererConfig, ok := filterSupport.OrdererConfig()
+	if !ok {
+		logger.Panicf("Missing orderer config")
+	}
+	return filter.NewRuleSet([]filter.Rule{
+		filter.EmptyRejectRule,
+		sizefilter.MaxBytesRule(ordererConfig),
+		sigfilter.New(policies.ChannelWriters, filterSupport.PolicyManager()),
+		configtxfilter.NewFilter(filterSupport),
+		filter.AcceptRule,
+	})
+}
+
+// ClassifyMsg inspects the message to determine which type of processing is necessary
 func (s *StandardChannel) ClassifyMsg(chdr *cb.ChannelHeader) (Classification, error) {
 	switch chdr.Type {
 	case int32(cb.HeaderType_CONFIG_UPDATE):
@@ -66,7 +85,7 @@ func (s *StandardChannel) ClassifyMsg(chdr *cb.ChannelHeader) (Classification, e
 // configuration sequence number and nil on success, or an error if the message is not valid.
 func (s *StandardChannel) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, err error) {
 	configSeq = s.support.Sequence()
-	err = s.support.Filters().Apply(env)
+	err = s.filters.Apply(env)
 	return
 }
 
@@ -74,10 +93,12 @@ func (s *StandardChannel) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, 
 // return the resulting config message and the configSeq the config was computed from.  If the config impetus message
 // is invalid, an error is returned.
 func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
+	logger.Debugf("Processing config update message for channel %s", s.support.ChainID())
+
 	// Call Sequence first.  If seq advances between proposal and acceptance, this is okay, and will cause reprocessing
 	// however, if Sequence is called last, then a success could be falsely attributed to a newer configSeq.
 	seq := s.support.Sequence()
-	err = s.support.Filters().Apply(env)
+	err = s.filters.Apply(env)
 	if err != nil {
 		return nil, 0, err
 	}

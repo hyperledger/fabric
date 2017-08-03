@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
-	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 

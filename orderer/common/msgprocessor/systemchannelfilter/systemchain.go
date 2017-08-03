@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package multichannel
+package systemchannelfilter
 
 import (
 	"fmt"
@@ -23,30 +23,37 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 )
 
-// Define some internal interfaces for easier mocking
-type chainCreator interface {
+var logger = flogging.MustGetLogger("common/msgprocessor/systemchannelfilter")
+
+// ChainCreator defines the methods necessary to simulate channel creation.
+type ChainCreator interface {
+	// NewChannelConfig returns a template config for a new channel.
 	NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error)
-	newChain(configTx *cb.Envelope)
-	channelsCount() int
+
+	// ChannelsCount returns the count of channels which currently exist.
+	ChannelsCount() int
 }
 
-type limitedSupport interface {
-	SharedConfig() config.Orderer
+// LimitedSupport defines the subset of the channel resources required by the systemchannel filter.
+type LimitedSupport interface {
+	OrdererConfig() (config.Orderer, bool)
 }
 
 type systemChainFilter struct {
-	cc      chainCreator
-	support limitedSupport
+	cc      ChainCreator
+	support LimitedSupport
 }
 
-func newSystemChainFilter(ls limitedSupport, cc chainCreator) filter.Rule {
+// New creates a new instance of the system channel filter.
+func New(ls LimitedSupport, cc ChainCreator) filter.Rule {
 	return &systemChainFilter{
 		support: ls,
 		cc:      cc,
@@ -74,10 +81,15 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) filter.Action {
 		return filter.Forward
 	}
 
-	maxChannels := scf.support.SharedConfig().MaxChannelsCount()
+	ordererConfig, ok := scf.support.OrdererConfig()
+	if !ok {
+		logger.Panicf("System channel does not have orderer config")
+	}
+
+	maxChannels := ordererConfig.MaxChannelsCount()
 	if maxChannels > 0 {
 		// We check for strictly greater than to accommodate the system channel
-		if uint64(scf.cc.channelsCount()) > maxChannels {
+		if uint64(scf.cc.ChannelsCount()) > maxChannels {
 			logger.Warningf("Rejecting channel creation because the orderer has reached the maximum number of channels, %d", maxChannels)
 			return filter.Reject
 		}

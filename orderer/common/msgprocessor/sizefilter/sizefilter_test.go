@@ -21,7 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
-	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )

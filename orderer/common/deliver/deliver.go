@@ -20,9 +20,9 @@ import (
 	"io"
 
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
-	"github.com/hyperledger/fabric/orderer/common/sigfilter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sigfilter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"

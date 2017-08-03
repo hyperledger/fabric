@@ -8,6 +8,12 @@ package msgprocessor
 
 import (
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/configtxfilter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sigfilter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sizefilter"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/systemchannelfilter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -25,11 +31,34 @@ type SystemChannel struct {
 }
 
 // NewSystemChannel creates a new system channel message processor
-func NewSystemChannel(support StandardChannelSupport, systemChannelSupport SystemChannelSupport) *SystemChannel {
+func NewSystemChannel(support StandardChannelSupport, systemChannelSupport SystemChannelSupport, filters *filter.RuleSet) *SystemChannel {
+	logger.Debugf("Creating system channel msg processor for channel %s", support.ChainID())
 	return &SystemChannel{
-		StandardChannel:      NewStandardChannel(support),
+		StandardChannel:      NewStandardChannel(support, filters),
 		systemChannelSupport: systemChannelSupport,
 	}
+}
+
+// SystemChannelFilterSupport specifies the subset of the full channel support required to create the filter.
+type SystemChannelFilterSupport interface {
+	SystemChannelSupport
+	configtxapi.Manager
+}
+
+// CreateSystemChannelFilters creates the set of filters for the ordering system chain
+func CreateSystemChannelFilters(chainCreator systemchannelfilter.ChainCreator, ledgerResources configtxapi.Manager) *filter.RuleSet {
+	ordererConfig, ok := ledgerResources.OrdererConfig()
+	if !ok {
+		logger.Panicf("Cannot create system channel filters without orderer config")
+	}
+	return filter.NewRuleSet([]filter.Rule{
+		filter.EmptyRejectRule,
+		sizefilter.MaxBytesRule(ordererConfig),
+		sigfilter.New(policies.ChannelWriters, ledgerResources.PolicyManager()),
+		systemchannelfilter.New(ledgerResources, chainCreator),
+		configtxfilter.NewFilter(ledgerResources),
+		filter.AcceptRule,
+	})
 }
 
 // ProcessNormalMsg handles normal messages, rejecting them if they are not bound for the system channel ID
@@ -60,11 +89,15 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 		return nil, 0, err
 	}
 
+	logger.Debugf("Processing config update tx with system channel message processor for channel ID %s", channelID)
+
 	if channelID == s.support.ChainID() {
 		return s.StandardChannel.ProcessConfigUpdateMsg(envConfigUpdate)
 	}
 
 	// XXX we should check that the signature on the outer envelope is at least valid for some MSP in the system channel
+
+	logger.Debugf("Processing channel create tx for channel %s on system channel %s", channelID, s.support.ChainID())
 
 	// If the channel ID does not match the system channel, then this must be a channel creation transaction
 
