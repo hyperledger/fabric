@@ -7,7 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
+	"fmt"
+
+	"github.com/hyperledger/fabric/common/config"
+	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sigfilter"
@@ -15,36 +20,32 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/systemchannelfilter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/golang/protobuf/proto"
 )
 
-// SystemChannelSupport includes the resources needed for the SystemChannel processor.
-type SystemChannelSupport interface {
-	// NewChannelConfig creates a new template configuration manager
+// ChannelConfigTemplator can be used to generate config templates.
+type ChannelConfigTemplator interface {
+	// NewChannelConfig creates a new template configuration manager.
 	NewChannelConfig(env *cb.Envelope) (configtxapi.Manager, error)
 }
 
-// SystemChannel implements the Processor interface for the system channel
+// SystemChannel implements the Processor interface for the system channel.
 type SystemChannel struct {
 	*StandardChannel
-	systemChannelSupport SystemChannelSupport
+	templator ChannelConfigTemplator
 }
 
 // NewSystemChannel creates a new system channel message processor
-func NewSystemChannel(support StandardChannelSupport, systemChannelSupport SystemChannelSupport, filters *filter.RuleSet) *SystemChannel {
+func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTemplator, filters *filter.RuleSet) *SystemChannel {
 	logger.Debugf("Creating system channel msg processor for channel %s", support.ChainID())
 	return &SystemChannel{
-		StandardChannel:      NewStandardChannel(support, filters),
-		systemChannelSupport: systemChannelSupport,
+		StandardChannel: NewStandardChannel(support, filters),
+		templator:       templator,
 	}
 }
 
-// SystemChannelFilterSupport specifies the subset of the full channel support required to create the filter.
-type SystemChannelFilterSupport interface {
-	SystemChannelSupport
-	configtxapi.Manager
-}
-
-// CreateSystemChannelFilters creates the set of filters for the ordering system chain
+// CreateSystemChannelFilters creates the set of filters for the ordering system chain.
 func CreateSystemChannelFilters(chainCreator systemchannelfilter.ChainCreator, ledgerResources configtxapi.Manager) *filter.RuleSet {
 	ordererConfig, ok := ledgerResources.OrdererConfig()
 	if !ok {
@@ -98,7 +99,7 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 
 	// If the channel ID does not match the system channel, then this must be a channel creation transaction
 
-	ctxm, err := s.systemChannelSupport.NewChannelConfig(envConfigUpdate)
+	ctxm, err := s.templator.NewChannelConfig(envConfigUpdate)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -121,4 +122,160 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 	// XXX we should verify that this still passes the size filter
 
 	return wrappedOrdererTransaction, s.support.Sequence(), nil
+}
+
+// DefaultTemplatorSupport is the subset of the channel config required by the DefaultTemplator.
+type DefaultTemplatorSupport interface {
+	// ConsortiumsConfig returns the ordering system channel's Consortiums config.
+	ConsortiumsConfig() (config.Consortiums, bool)
+
+	// ConfigEnvelope returns the config envelope corresponding to the system channel's current config.
+	ConfigEnvelope() *cb.ConfigEnvelope
+
+	// Signer returns the local signer suitable for signing forwarded messages.
+	Signer() crypto.LocalSigner
+}
+
+// DefaultTemplator implements the ChannelConfigTemplator interface and is the one used in production deployments.
+type DefaultTemplator struct {
+	support DefaultTemplatorSupport
+}
+
+// NewDefaultTemplator returns an instance of the DefaultTemplator.
+func NewDefaultTemplator(support DefaultTemplatorSupport) *DefaultTemplator {
+	return &DefaultTemplator{
+		support: support,
+	}
+}
+
+// NewChannelConfig creates a new template channel configuration based on the current config in the ordering system channel.
+func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error) {
+	configUpdatePayload, err := utils.UnmarshalPayload(envConfigUpdate.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("Failing initial channel config creation because of payload unmarshaling error: %s", err)
+	}
+
+	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configUpdatePayload.Data)
+	if err != nil {
+		return nil, fmt.Errorf("Failing initial channel config creation because of config update envelope unmarshaling error: %s", err)
+	}
+
+	if configUpdatePayload.Header == nil {
+		return nil, fmt.Errorf("Failed initial channel config creation because config update header was missing")
+	}
+
+	channelHeader, err := utils.UnmarshalChannelHeader(configUpdatePayload.Header.ChannelHeader)
+	if err != nil {
+		return nil, fmt.Errorf("Failed initial channel config creation because channel header was malformed: %s", err)
+	}
+
+	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	if err != nil {
+		return nil, fmt.Errorf("Failing initial channel config creation because of config update unmarshaling error: %s", err)
+	}
+
+	if configUpdate.ChannelId != channelHeader.ChannelId {
+		return nil, fmt.Errorf("Failing initial channel config creation: mismatched channel IDs: '%s' != '%s'", configUpdate.ChannelId, channelHeader.ChannelId)
+	}
+
+	if configUpdate.WriteSet == nil {
+		return nil, fmt.Errorf("Config update has an empty writeset")
+	}
+
+	if configUpdate.WriteSet.Groups == nil || configUpdate.WriteSet.Groups[config.ApplicationGroupKey] == nil {
+		return nil, fmt.Errorf("Config update has missing application group")
+	}
+
+	if uv := configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Version; uv != 1 {
+		return nil, fmt.Errorf("Config update for channel creation does not set application group version to 1, was %d", uv)
+	}
+
+	consortiumConfigValue, ok := configUpdate.WriteSet.Values[config.ConsortiumKey]
+	if !ok {
+		return nil, fmt.Errorf("Consortium config value missing")
+	}
+
+	consortium := &cb.Consortium{}
+	err = proto.Unmarshal(consortiumConfigValue.Value, consortium)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading unmarshaling consortium name: %s", err)
+	}
+
+	applicationGroup := cb.NewConfigGroup()
+	consortiumsConfig, ok := dt.support.ConsortiumsConfig()
+	if !ok {
+		return nil, fmt.Errorf("The ordering system channel does not appear to support creating channels")
+	}
+
+	consortiumConf, ok := consortiumsConfig.Consortiums()[consortium.Name]
+	if !ok {
+		return nil, fmt.Errorf("Unknown consortium name: %s", consortium.Name)
+	}
+
+	applicationGroup.Policies[config.ChannelCreationPolicyKey] = &cb.ConfigPolicy{
+		Policy: consortiumConf.ChannelCreationPolicy(),
+	}
+	applicationGroup.ModPolicy = config.ChannelCreationPolicyKey
+
+	// Get the current system channel config
+	systemChannelGroup := dt.support.ConfigEnvelope().Config.ChannelGroup
+
+	// If the consortium group has no members, allow the source request to have no members.  However,
+	// if the consortium group has any members, there must be at least one member in the source request
+	if len(systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 &&
+		len(configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups) == 0 {
+		return nil, fmt.Errorf("Proposed configuration has no application group members, but consortium contains members")
+	}
+
+	// If the consortium has no members, allow the source request to contain arbitrary members
+	// Otherwise, require that the supplied members are a subset of the consortium members
+	if len(systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 {
+		for orgName := range configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups {
+			consortiumGroup, ok := systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups[orgName]
+			if !ok {
+				return nil, fmt.Errorf("Attempted to include a member which is not in the consortium")
+			}
+			applicationGroup.Groups[orgName] = consortiumGroup
+		}
+	}
+
+	channelGroup := cb.NewConfigGroup()
+
+	// Copy the system channel Channel level config to the new config
+	for key, value := range systemChannelGroup.Values {
+		channelGroup.Values[key] = value
+		if key == config.ConsortiumKey {
+			// Do not set the consortium name, we do this later
+			continue
+		}
+	}
+
+	for key, policy := range systemChannelGroup.Policies {
+		channelGroup.Policies[key] = policy
+	}
+
+	// Set the new config orderer group to the system channel orderer group and the application group to the new application group
+	channelGroup.Groups[config.OrdererGroupKey] = systemChannelGroup.Groups[config.OrdererGroupKey]
+	channelGroup.Groups[config.ApplicationGroupKey] = applicationGroup
+	channelGroup.Values[config.ConsortiumKey] = config.TemplateConsortium(consortium.Name).Values[config.ConsortiumKey]
+
+	templateConfig, _ := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, configUpdate.ChannelId, dt.support.Signer(), &cb.ConfigEnvelope{
+		Config: &cb.Config{
+			ChannelGroup: channelGroup,
+		},
+	}, msgVersion, epoch)
+
+	initializer := configtx.NewInitializer()
+
+	// This is a very hacky way to disable the sanity check logging in the policy manager
+	// for the template configuration, but it is the least invasive near a release
+	pm, ok := initializer.PolicyManager().(*policies.ManagerImpl)
+	if ok {
+		pm.SuppressSanityLogMessages = true
+		defer func() {
+			pm.SuppressSanityLogMessages = false
+		}()
+	}
+
+	return configtx.NewManagerImpl(templateConfig, initializer, nil)
 }

@@ -242,6 +242,7 @@ func TestRejected(t *testing.T) {
 	m.recvChan <- nil
 	reply := <-m.sendChan
 	assert.Equal(t, cb.Status_BAD_REQUEST, reply.Status, "Should have rejected CONFIG_UPDATE")
+	assert.Equal(t, mm.MsgProcessorVal.ProcessErr.Error(), reply.Info, "Should have rejected CONFIG_UPDATE")
 }
 
 func TestBadStreamRecv(t *testing.T) {

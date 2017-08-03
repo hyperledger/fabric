@@ -76,22 +76,22 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 		chdr, isConfig, processor, err := bh.sm.BroadcastChannelSupport(msg)
 		if err != nil {
 			logger.Warningf("[channel: %s] Could not get message processor: %s", chdr.ChannelId, err)
-			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR, Info: err.Error()})
 		}
 
 		if !isConfig {
-			logger.Debugf("[channel: %s] Broadcast is processing normal message of type %s", chdr.ChannelId, cb.HeaderType_name[chdr.Type])
+			logger.Debugf("[channel: %s] Broadcast is processing normal message with txid '%s' of type %s", chdr.ChannelId, chdr.TxId, cb.HeaderType_name[chdr.Type])
 
 			configSeq, err := processor.ProcessNormalMsg(msg)
 			if err != nil {
 				logger.Warningf("[channel: %s] Rejecting broadcast of normal message because of error: %s", chdr.ChannelId, err)
-				return srv.Send(&ab.BroadcastResponse{Status: ClassifyError(err)})
+				return srv.Send(&ab.BroadcastResponse{Status: ClassifyError(err), Info: err.Error()})
 			}
 
 			err = processor.Order(msg, configSeq)
 			if err != nil {
-				logger.Warningf("[channel: %s] Rejecting broadcast of normal message with SERVICE_UNAVAILABLE: reject by Order: %s", chdr.ChannelId, err)
-				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
+				logger.Warningf("[channel: %s] Rejecting broadcast of normal message with SERVICE_UNAVAILABLE: rejected by Order: %s", chdr.ChannelId, err)
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: err.Error()})
 			}
 		} else { // isConfig
 			logger.Debugf("[channel: %s] Broadcast is processing config update message", chdr.ChannelId)
@@ -99,13 +99,13 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			config, configSeq, err := processor.ProcessConfigUpdateMsg(msg)
 			if err != nil {
 				logger.Warningf("[channel: %s] Rejecting broadcast of config message because of error: %s", chdr.ChannelId, err)
-				return srv.Send(&ab.BroadcastResponse{Status: ClassifyError(err)})
+				return srv.Send(&ab.BroadcastResponse{Status: ClassifyError(err), Info: err.Error()})
 			}
 
 			err = processor.Configure(msg, config, configSeq)
 			if err != nil {
 				logger.Warningf("[channel: %s] Rejecting broadcast of config message with SERVICE_UNAVAILABLE: rejected by Configure: %s", chdr.ChannelId, err)
-				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: err.Error()})
 			}
 		}
 

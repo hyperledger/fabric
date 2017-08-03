@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
@@ -31,8 +30,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var conf, singleMSPConf, noConsortiumConf *genesisconfig.Profile
-var genesisBlock, singleMSPGenesisBlock, noConsortiumGenesisBlock *cb.Block
+var conf *genesisconfig.Profile
+var genesisBlock *cb.Block
 var mockSigningIdentity msp.SigningIdentity
 
 const NoConsortiumChain = "no-consortium-chain"
@@ -43,12 +42,6 @@ func init() {
 
 	conf = genesisconfig.Load(genesisconfig.SampleInsecureProfile)
 	genesisBlock = provisional.New(conf).GenesisBlock()
-
-	singleMSPConf = genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
-	singleMSPGenesisBlock = provisional.New(singleMSPConf).GenesisBlock()
-
-	noConsortiumConf = genesisconfig.Load("SampleNoConsortium")
-	noConsortiumGenesisBlock = provisional.New(noConsortiumConf).GenesisBlockForChannel(NoConsortiumChain)
 }
 
 func mockCrypto() crypto.LocalSigner {
@@ -62,20 +55,6 @@ func NewRAMLedgerAndFactory(maxSize int) (ledger.Factory, ledger.ReadWriter) {
 		panic(err)
 	}
 	err = rl.Append(genesisBlock)
-	if err != nil {
-		panic(err)
-	}
-	return rlf, rl
-}
-
-func NewRAMLedgerAndFactoryWithMSP() (ledger.Factory, ledger.ReadWriter) {
-	rlf := ramledger.New(10)
-
-	rl, err := rlf.GetOrCreate(provisional.TestChainID)
-	if err != nil {
-		panic(err)
-	}
-	err = rl.Append(singleMSPGenesisBlock)
 	if err != nil {
 		panic(err)
 	}
@@ -186,269 +165,6 @@ func TestManagerImpl(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatalf("Block 1 not produced after timeout")
 	}
-}
-
-func TestNewChannelConfig(t *testing.T) {
-	lf, _ := NewRAMLedgerAndFactoryWithMSP()
-
-	consenters := make(map[string]consensus.Consenter)
-	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
-	manager := NewRegistrar(lf, consenters, mockCrypto())
-
-	t.Run("BadPayload", func(t *testing.T) {
-		_, err := manager.NewChannelConfig(&cb.Envelope{Payload: []byte("bad payload")})
-		assert.Error(t, err, "Should not be able to create new channel config from bad payload.")
-	})
-
-	for _, tc := range []struct {
-		name    string
-		payload *cb.Payload
-		regex   string
-	}{
-		{
-			"BadPayloadData",
-			&cb.Payload{
-				Data: []byte("bad payload data"),
-			},
-			"^Failing initial channel config creation because of config update envelope unmarshaling error:",
-		},
-		{
-			"BadConfigUpdate",
-			&cb.Payload{
-				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
-				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-					ConfigUpdate: []byte("bad config update envelope data"),
-				}),
-			},
-			"^Failing initial channel config creation because of config update unmarshaling error:",
-		},
-		{
-			"EmptyConfigUpdateWriteSet",
-			&cb.Payload{
-				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
-				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-					ConfigUpdate: utils.MarshalOrPanic(
-						&cb.ConfigUpdate{},
-					),
-				}),
-			},
-			"^Config update has an empty writeset$",
-		},
-		{
-			"WriteSetNoGroups",
-			&cb.Payload{
-				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
-				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-					ConfigUpdate: utils.MarshalOrPanic(
-						&cb.ConfigUpdate{
-							WriteSet: &cb.ConfigGroup{},
-						},
-					),
-				}),
-			},
-			"^Config update has missing application group$",
-		},
-		{
-			"WriteSetNoApplicationGroup",
-			&cb.Payload{
-				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
-				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-					ConfigUpdate: utils.MarshalOrPanic(
-						&cb.ConfigUpdate{
-							WriteSet: &cb.ConfigGroup{
-								Groups: map[string]*cb.ConfigGroup{},
-							},
-						},
-					),
-				}),
-			},
-			"^Config update has missing application group$",
-		},
-		{
-			"BadWriteSetApplicationGroupVersion",
-			&cb.Payload{
-				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
-				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-					ConfigUpdate: utils.MarshalOrPanic(
-						&cb.ConfigUpdate{
-							WriteSet: &cb.ConfigGroup{
-								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
-										Version: 100,
-									},
-								},
-							},
-						},
-					),
-				}),
-			},
-			"^Config update for channel creation does not set application group version to 1,",
-		},
-		{
-			"MissingWriteSetConsortiumValue",
-			&cb.Payload{
-				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
-				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-					ConfigUpdate: utils.MarshalOrPanic(
-						&cb.ConfigUpdate{
-							WriteSet: &cb.ConfigGroup{
-								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
-										Version: 1,
-									},
-								},
-								Values: map[string]*cb.ConfigValue{},
-							},
-						},
-					),
-				}),
-			},
-			"^Consortium config value missing$",
-		},
-		{
-			"BadWriteSetConsortiumValueValue",
-			&cb.Payload{
-				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
-				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-					ConfigUpdate: utils.MarshalOrPanic(
-						&cb.ConfigUpdate{
-							WriteSet: &cb.ConfigGroup{
-								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
-										Version: 1,
-									},
-								},
-								Values: map[string]*cb.ConfigValue{
-									config.ConsortiumKey: &cb.ConfigValue{
-										Value: []byte("bad consortium value"),
-									},
-								},
-							},
-						},
-					),
-				}),
-			},
-			"^Error reading unmarshaling consortium name:",
-		},
-		{
-			"UnknownConsortiumName",
-			&cb.Payload{
-				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
-				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-					ConfigUpdate: utils.MarshalOrPanic(
-						&cb.ConfigUpdate{
-							WriteSet: &cb.ConfigGroup{
-								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
-										Version: 1,
-									},
-								},
-								Values: map[string]*cb.ConfigValue{
-									config.ConsortiumKey: &cb.ConfigValue{
-										Value: utils.MarshalOrPanic(
-											&cb.Consortium{
-												Name: "NotTheNameYouAreLookingFor",
-											},
-										),
-									},
-								},
-							},
-						},
-					),
-				}),
-			},
-			"^Unknown consortium name:",
-		},
-		{
-			"Missing consortium members",
-			&cb.Payload{
-				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
-				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-					ConfigUpdate: utils.MarshalOrPanic(
-						&cb.ConfigUpdate{
-							WriteSet: &cb.ConfigGroup{
-								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
-										Version: 1,
-									},
-								},
-								Values: map[string]*cb.ConfigValue{
-									config.ConsortiumKey: &cb.ConfigValue{
-										Value: utils.MarshalOrPanic(
-											&cb.Consortium{
-												Name: genesisconfig.SampleConsortiumName,
-											},
-										),
-									},
-								},
-							},
-						},
-					),
-				}),
-			},
-			"Proposed configuration has no application group members, but consortium contains members",
-		},
-		{
-			"Member not in consortium",
-			&cb.Payload{
-				Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, 0, "", epoch))},
-				Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-					ConfigUpdate: utils.MarshalOrPanic(
-						&cb.ConfigUpdate{
-							WriteSet: &cb.ConfigGroup{
-								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
-										Version: 1,
-										Groups: map[string]*cb.ConfigGroup{
-											"BadOrgName": &cb.ConfigGroup{},
-										},
-									},
-								},
-								Values: map[string]*cb.ConfigValue{
-									config.ConsortiumKey: &cb.ConfigValue{
-										Value: utils.MarshalOrPanic(
-											&cb.Consortium{
-												Name: genesisconfig.SampleConsortiumName,
-											},
-										),
-									},
-								},
-							},
-						},
-					),
-				}),
-			},
-			"Attempted to include a member which is not in the consortium",
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := manager.NewChannelConfig(&cb.Envelope{Payload: utils.MarshalOrPanic(tc.payload)})
-			if assert.Error(t, err) {
-				assert.Regexp(t, tc.regex, err.Error())
-			}
-		})
-	}
-	// SampleConsortium
-}
-
-func TestMismatchedChannelIDs(t *testing.T) {
-	innerChannelID := "foo"
-	outerChannelID := "bar"
-	template := configtx.NewChainCreationTemplate(genesisconfig.SampleConsortiumName, nil)
-	configUpdateEnvelope, err := template.Envelope(innerChannelID)
-	createTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, outerChannelID, nil, configUpdateEnvelope, msgVersion, epoch)
-	assert.NoError(t, err)
-
-	lf, _ := NewRAMLedgerAndFactory(10)
-
-	consenters := make(map[string]consensus.Consenter)
-	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
-
-	manager := NewRegistrar(lf, consenters, mockCrypto())
-
-	_, err = manager.NewChannelConfig(createTx)
-	assert.Error(t, err, "Mismatched channel IDs")
-	assert.Regexp(t, "mismatched channel IDs", err.Error())
 }
 
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain
