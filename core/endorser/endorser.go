@@ -185,6 +185,10 @@ func (e *Endorser) disableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvoc
 		return nil
 	}
 
+	if argNo >= len(cis.ChaincodeSpec.Input.Args) {
+		return errors.New("Too few arguments passed")
+	}
+
 	//the inner dep spec will contain the type
 	cds, err := putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[argNo])
 	if err != nil {
