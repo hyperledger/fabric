@@ -32,6 +32,7 @@ import (
 var includeFileTypes = map[string]bool{
 	".c":    true,
 	".h":    true,
+	".s":    true,
 	".go":   true,
 	".yaml": true,
 	".json": true,
