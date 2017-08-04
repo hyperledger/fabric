@@ -7,14 +7,21 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"runtime/debug"
+	"time"
+
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
+	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
-	"runtime/debug"
+	"github.com/golang/protobuf/proto"
 )
 
 type broadcastSupport struct {
@@ -34,17 +41,71 @@ func (bs deliverSupport) GetChain(chainID string) (deliver.Support, bool) {
 }
 
 type server struct {
-	bh broadcast.Handler
-	dh deliver.Handler
+	bh    broadcast.Handler
+	dh    deliver.Handler
+	debug *localconfig.Debug
 }
 
 // NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
-func NewServer(r *multichannel.Registrar, signer crypto.LocalSigner) ab.AtomicBroadcastServer {
+func NewServer(r *multichannel.Registrar, signer crypto.LocalSigner, debug *localconfig.Debug) ab.AtomicBroadcastServer {
 	s := &server{
-		dh: deliver.NewHandlerImpl(deliverSupport{Registrar: r}),
-		bh: broadcast.NewHandlerImpl(broadcastSupport{Registrar: r}),
+		dh:    deliver.NewHandlerImpl(deliverSupport{Registrar: r}),
+		bh:    broadcast.NewHandlerImpl(broadcastSupport{Registrar: r}),
+		debug: debug,
 	}
 	return s
+}
+
+type msgTracer struct {
+	function string
+	debug    *localconfig.Debug
+}
+
+func (mt *msgTracer) trace(traceDir string, msg *cb.Envelope, err error) {
+	if err != nil {
+		return
+	}
+
+	now := time.Now().UnixNano()
+	path := fmt.Sprintf("%s%c%d_%p.%s", traceDir, os.PathSeparator, now, msg, mt.function)
+	logger.Debugf("Writing %s request trace to %s", mt.function, path)
+	go func() {
+		pb, err := proto.Marshal(msg)
+		if err != nil {
+			logger.Debugf("Error marshaling trace msg for %s: %s", path, err)
+			return
+		}
+		err = ioutil.WriteFile(path, pb, 0660)
+		if err != nil {
+			logger.Debugf("Error writing trace msg for %s: %s", path, err)
+		}
+	}()
+}
+
+type broadcastMsgTracer struct {
+	ab.AtomicBroadcast_BroadcastServer
+	msgTracer
+}
+
+func (bmt *broadcastMsgTracer) Recv() (*cb.Envelope, error) {
+	msg, err := bmt.AtomicBroadcast_BroadcastServer.Recv()
+	if traceDir := bmt.debug.BroadcastTraceDir; traceDir != "" {
+		bmt.trace(bmt.debug.BroadcastTraceDir, msg, err)
+	}
+	return msg, err
+}
+
+type deliverMsgTracer struct {
+	ab.AtomicBroadcast_DeliverServer
+	msgTracer
+}
+
+func (dmt *deliverMsgTracer) Recv() (*cb.Envelope, error) {
+	msg, err := dmt.AtomicBroadcast_DeliverServer.Recv()
+	if traceDir := dmt.debug.DeliverTraceDir; traceDir != "" {
+		dmt.trace(traceDir, msg, err)
+	}
+	return msg, err
 }
 
 // Broadcast receives a stream of messages from a client for ordering
@@ -56,7 +117,13 @@ func (s *server) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 		logger.Debugf("Closing Broadcast stream")
 	}()
-	return s.bh.Handle(srv)
+	return s.bh.Handle(&broadcastMsgTracer{
+		AtomicBroadcast_BroadcastServer: srv,
+		msgTracer: msgTracer{
+			debug:    s.debug,
+			function: "Broadcast",
+		},
+	})
 }
 
 // Deliver sends a stream of blocks to a client after ordering
@@ -68,5 +135,11 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		}
 		logger.Debugf("Closing Deliver stream")
 	}()
-	return s.dh.Handle(srv)
+	return s.dh.Handle(&deliverMsgTracer{
+		AtomicBroadcast_DeliverServer: srv,
+		msgTracer: msgTracer{
+			debug:    s.debug,
+			function: "Deliver",
+		},
+	})
 }
