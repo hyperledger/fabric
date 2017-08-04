@@ -1,0 +1,104 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/idemix";
+
+// The Identity Mixer protocols make use of pairings (bilinear maps) -
+// functions that can be described as e: G1 x G2 -> GT  that
+// map group elements from the source groups (G1 and G2) to the target group
+// Such groups can be represented by the points on an elliptic curve
+
+// ECP is an elliptic curve point specified by its coordinates
+// ECP corresponds to an element of the first group (G1)
+message ECP {
+	bytes X = 1;
+	bytes Y = 2;
+}
+
+// ECP2 is an elliptic curve point specified by its coordinates
+// ECP2 corresponds to an element of the second group (G2)
+message ECP2 {
+	bytes XA = 1;
+	bytes XB = 2;
+	bytes YA = 3;
+	bytes YB = 4;
+}
+
+// IssuerPublicKey specifies an issuer public key that consists of
+// AttributeNames - a list of the attribute names of a credential issued by the issuer
+// HSk, HRand, HAttrs, W, BarG1, BarG2 - group elements corresponding to the signing key, randomness, and attributes
+// ProofC, ProofS compose a zero-knowledge proof of knowledge of the secret key
+// Hash is a hash of the public key appended to it
+message IssuerPublicKey {
+	repeated string AttributeNames = 1;
+	ECP HSk = 2;
+	ECP HRand = 3;
+	repeated ECP HAttrs = 4;
+	ECP2 W = 5;
+	ECP BarG1 = 6;
+	ECP BarG2 = 7;
+	bytes ProofC = 8;
+	bytes ProofS = 9;
+	bytes Hash = 10;
+}
+
+// IssuerKey specifies an issuer key pair that consists of
+// ISk - the issuer secret key and
+// IssuerPublicKey - the issuer public key
+message IssuerKey {
+	bytes ISk = 1;
+	IssuerPublicKey IPk = 2;
+}
+
+// Credential specifies a credential object that consists of
+// A, B, E, S - signature value
+// Attrs - attribute values
+message Credential {
+	ECP A = 1;
+	ECP B = 2;
+	bytes E = 3;
+	bytes S = 4;
+	repeated bytes Attrs = 5;
+}
+
+// CredRequest specifies a credential request object that consists of
+// Nym - a pseudonym, which is a commitment to the user secret
+// IssuerNonce - a random nonce provided by the issuer
+// ProofC, ProofS1, ProofS2 - a zero-knowledge proof of knowledge of the
+// user secret inside Nym
+message CredRequest {
+	ECP Nym = 1;
+	bytes IssuerNonce = 2;
+	bytes ProofC = 3;
+	bytes ProofS1 = 4;
+	bytes ProofS2 = 5;
+}
+
+// Signature specifies a signature object that consists of
+// APrime, ABar, BPrime, Proof* - randomized credential signature values
+// and a zero-knowledge proof of knowledge of a credential
+// and the corresponding user secret together with the attribute values
+// Nonce - a fresh nonce used for the signature
+// Nym - a fresh pseudonym (a commitment to to the user secert)
+// ProofSRNym - a zero-knowledge proof of knowledge of the
+// user secret inside Nym
+message Signature {
+	ECP APrime = 1;
+	ECP ABar = 2;
+	ECP BPrime = 3;
+	bytes ProofC = 4;
+	bytes ProofSSk = 5;
+	bytes ProofSE = 6;
+	bytes ProofSR2 = 7;
+	bytes ProofSR3 = 8;
+	bytes ProofSSPrime = 9;
+	repeated bytes ProofSAttrs = 10;
+	bytes Nonce = 11;
+	ECP Nym = 12;
+	bytes ProofSRNym = 13;
+}
