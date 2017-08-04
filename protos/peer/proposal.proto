@@ -240,6 +240,7 @@ message ChaincodeProposalPayload {
 
 	// Input contains the arguments for this invocation. If this invocation
 	// deploys a new chaincode, ESCC/VSCC are part of this field.
+	// This is usually a marshaled ChaincodeInvocationSpec
 	bytes input  = 1;
 
 	// TransientMap contains data (e.g. cryptographic material) that might be used
