@@ -22,10 +22,17 @@ option java_package = "org.hyperledger.fabric.protos.ledger.rwset.kvrwset";
 package kvrwset;
 
 // KVRWSet encapsulates the read-write set for a chaincode that operates upon a KV or Document data model
+// This structure is used for both the public data and the private data
 message KVRWSet {
     repeated KVRead reads = 1;
     repeated RangeQueryInfo range_queries_info = 2;
     repeated KVWrite writes = 3;
+}
+
+// HashedRWSet encapsulates hashed representation of a private read-write set for KV or Document data model
+message HashedRWSet {
+    repeated KVReadHash hashed_reads = 1;
+    repeated KVWriteHash hashed_writes = 2;
 }
 
 // KVRead captures a read operation performed during transaction simulation
@@ -40,6 +47,21 @@ message KVWrite {
     string key = 1;
     bool is_delete = 2;
     bytes value = 3;
+}
+
+// KVReadHash is similar to the KVRead in spirit. However, it captures the hash of the key instead of the key itself
+// version is kept as is for now. However, if the version also needs to be privacy-protected, it would need to be the
+// hash of the version and hence of 'bytes' type
+message KVReadHash {
+    bytes key_hash = 1;
+    Version version = 2;
+}
+
+// KVWriteHash is similar to the KVWrite in spiritcaptures a write (update/delete) operation performed during transaction simulation
+message KVWriteHash {
+    bytes key_hash = 1;
+    bool is_delete = 2;
+    bytes value_hash = 3;
 }
 
 // Version encapsulates the version of a Key

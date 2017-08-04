@@ -36,4 +36,30 @@ message TxReadWriteSet {
 message NsReadWriteSet {
    string namespace = 1;
    bytes rwset = 2; // Data model specific serialized proto message (e.g., kvrwset.KVRWSet for KV and Document data models)
+   repeated CollectionHashedReadWriteSet collection_hashed_rwset = 3;
+}
+
+// CollectionHashedReadWriteSet encapsulate the hashed representation for the private read-write set for a collection
+message CollectionHashedReadWriteSet {
+    string collection_name = 1;
+    bytes hashed_rwset = 2; // Data model specific serialized proto message (e.g., kvrwset.HashedRWSet for KV and Document data models)
+    bytes pvt_rwset_hash = 3; // Hash of entire private read-write set for a specific collection. This helps in authenticating the private read-write set efficiently
+}
+
+// TxPvtReadWriteSet encapsulate the private read-write set for a transaction
+message TxPvtReadWriteSet {
+    TxReadWriteSet.DataModel data_model = 1;
+    repeated NsPvtReadWriteSet ns_pvt_rwset = 2;
+}
+
+// NsPvtReadWriteSet encapsulates the private read-write set for a chaincode
+message NsPvtReadWriteSet {
+   string namespace = 1;
+   repeated CollectionPvtReadWriteSet collection_pvt_rwset = 2;
+}
+
+// CollectionPvtReadWriteSet encapsulates the private read-write set for a collection
+message CollectionPvtReadWriteSet {
+    string collection_name = 1;
+    bytes rwset = 2; // Data model specific serialized proto message (e.g., kvrwset.KVRWSet for KV and Document data models)
 }
