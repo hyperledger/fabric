@@ -14,10 +14,6 @@ import (
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sigfilter"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sizefilter"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/systemchannelfilter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -36,8 +32,8 @@ type SystemChannel struct {
 	templator ChannelConfigTemplator
 }
 
-// NewSystemChannel creates a new system channel message processor
-func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTemplator, filters *filter.RuleSet) *SystemChannel {
+// NewSystemChannel creates a new system channel message processor.
+func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTemplator, filters *RuleSet) *SystemChannel {
 	logger.Debugf("Creating system channel msg processor for channel %s", support.ChainID())
 	return &SystemChannel{
 		StandardChannel: NewStandardChannel(support, filters),
@@ -46,16 +42,16 @@ func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTem
 }
 
 // CreateSystemChannelFilters creates the set of filters for the ordering system chain.
-func CreateSystemChannelFilters(chainCreator systemchannelfilter.ChainCreator, ledgerResources configtxapi.Manager) *filter.RuleSet {
+func CreateSystemChannelFilters(chainCreator ChainCreator, ledgerResources configtxapi.Manager) *RuleSet {
 	ordererConfig, ok := ledgerResources.OrdererConfig()
 	if !ok {
 		logger.Panicf("Cannot create system channel filters without orderer config")
 	}
-	return filter.NewRuleSet([]filter.Rule{
-		filter.EmptyRejectRule,
-		sizefilter.New(ordererConfig),
-		sigfilter.New(policies.ChannelWriters, ledgerResources.PolicyManager()),
-		systemchannelfilter.New(ledgerResources, chainCreator),
+	return NewRuleSet([]Rule{
+		EmptyRejectRule,
+		NewSizeFilter(ordererConfig),
+		NewSigFilter(policies.ChannelWriters, ledgerResources.PolicyManager()),
+		NewSystemChannelFilter(ledgerResources, chainCreator),
 	})
 }
 
@@ -119,7 +115,15 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 		return nil, 0, err
 	}
 
-	// XXX we should verify that this still passes the size filter
+	// We re-apply the filters here, especially for the size filter, to ensure that the transaction we
+	// just constructed is not too large for our consenter.  It additionally reapplies the signature
+	// check, which although not strictly necessary, is a good sanity check, in case the orderer
+	// has not been configured with the right cert material.  The additional overhead of the signature
+	// check is negligable, as this is the channel creation path and not the normal path.
+	err = s.StandardChannel.filters.Apply(wrappedOrdererTransaction)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	return wrappedOrdererTransaction, s.support.Sequence(), nil
 }

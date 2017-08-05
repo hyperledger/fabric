@@ -1,20 +1,10 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
-package systemchannelfilter
+package msgprocessor
 
 import (
 	"fmt"
@@ -31,11 +21,6 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/stretchr/testify/assert"
-)
-
-const (
-	msgVersion = 0
-	epoch      = 0
 )
 
 func mockCrypto() crypto.LocalSigner {
@@ -131,7 +116,7 @@ func TestGoodProposal(t *testing.T) {
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
-	assert.Nil(t, New(mcc.ms, mcc).Apply(wrapped), "Did not accept valid transaction")
+	assert.Nil(t, NewSystemChannelFilter(mcc.ms, mcc).Apply(wrapped), "Did not accept valid transaction")
 }
 
 func TestProposalRejectedByConfig(t *testing.T) {
@@ -154,7 +139,7 @@ func TestProposalRejectedByConfig(t *testing.T) {
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
-	err = New(mcc.ms, mcc).Apply(wrapped)
+	err = NewSystemChannelFilter(mcc.ms, mcc).Apply(wrapped)
 
 	assert.NotNil(t, err, "Did not accept valid transaction")
 	assert.Regexp(t, mcc.NewChannelConfigErr.Error(), err)
@@ -182,7 +167,7 @@ func TestNumChainsExceeded(t *testing.T) {
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
-	err = New(mcc.ms, mcc).Apply(wrapped)
+	err = NewSystemChannelFilter(mcc.ms, mcc).Apply(wrapped)
 
 	assert.NotNil(t, err, "Transaction had created too many channels")
 	assert.Regexp(t, "exceed maximimum number", err)
@@ -190,7 +175,7 @@ func TestNumChainsExceeded(t *testing.T) {
 
 func TestBadProposal(t *testing.T) {
 	mcc := newMockChainCreator()
-	sysFilter := New(mcc.ms, mcc)
+	sysFilter := NewSystemChannelFilter(mcc.ms, mcc)
 	t.Run("BadPayload", func(t *testing.T) {
 		err := sysFilter.Apply(&cb.Envelope{Payload: []byte("garbage payload")})
 		assert.Regexp(t, "bad payload", err)

@@ -10,53 +10,50 @@ import (
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/filter"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sigfilter"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/sizefilter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
 // StandardChannelSupport includes the resources needed for the StandardChannel processor.
 type StandardChannelSupport interface {
-	// Sequence should return the current configSeq.
+	// Sequence should return the current configSeq
 	Sequence() uint64
 
-	// ChainID returns the ChannelID.
+	// ChainID returns the ChannelID
 	ChainID() string
 
-	// Signer returns the signer for this orderer.
+	// Signer returns the signer for this orderer
 	Signer() crypto.LocalSigner
 
 	// ProposeConfigUpdate takes in an Envelope of type CONFIG_UPDATE and produces a
-	// ConfigEnvelope to be used as the Envelope Payload Data of a CONFIG message.
+	// ConfigEnvelope to be used as the Envelope Payload Data of a CONFIG message
 	ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error)
 }
 
-// StandardChannel implements the Processor interface for standard extant channels.
+// StandardChannel implements the Processor interface for standard extant channels
 type StandardChannel struct {
 	support StandardChannelSupport
-	filters *filter.RuleSet
+	filters *RuleSet
 }
 
-// NewStandardChannel creates a new message processor for a standard channel.
-func NewStandardChannel(support StandardChannelSupport, filters *filter.RuleSet) *StandardChannel {
+// NewStandardChannel creates a new standard message processor
+func NewStandardChannel(support StandardChannelSupport, filters *RuleSet) *StandardChannel {
 	return &StandardChannel{
 		filters: filters,
 		support: support,
 	}
 }
 
-// CreateStandardFilters creates the set of filters for a normal (non-system) chain
-func CreateStandardFilters(filterSupport configtxapi.Manager) *filter.RuleSet {
+// CreateStandardChannelFilters creates the set of filters for a normal (non-system) chain
+func CreateStandardChannelFilters(filterSupport configtxapi.Manager) *RuleSet {
 	ordererConfig, ok := filterSupport.OrdererConfig()
 	if !ok {
 		logger.Panicf("Missing orderer config")
 	}
-	return filter.NewRuleSet([]filter.Rule{
-		filter.EmptyRejectRule,
-		sizefilter.New(ordererConfig),
-		sigfilter.New(policies.ChannelWriters, filterSupport.PolicyManager()),
+	return NewRuleSet([]Rule{
+		EmptyRejectRule,
+		NewSizeFilter(ordererConfig),
+		NewSigFilter(policies.ChannelWriters, filterSupport.PolicyManager()),
 	})
 }
 
@@ -79,7 +76,7 @@ func (s *StandardChannel) ClassifyMsg(chdr *cb.ChannelHeader) (Classification, e
 }
 
 // ProcessNormalMsg will check the validity of a message based on the current configuration.  It returns the current
-// configuration sequence number and nil on success, or an error if the message is not valid.
+// configuration sequence number and nil on success, or an error if the message is not valid
 func (s *StandardChannel) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, err error) {
 	configSeq = s.support.Sequence()
 	err = s.filters.Apply(env)
@@ -93,7 +90,7 @@ func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.E
 	logger.Debugf("Processing config update message for channel %s", s.support.ChainID())
 
 	// Call Sequence first.  If seq advances between proposal and acceptance, this is okay, and will cause reprocessing
-	// however, if Sequence is called last, then a success could be falsely attributed to a newer configSeq.
+	// however, if Sequence is called last, then a success could be falsely attributed to a newer configSeq
 	seq := s.support.Sequence()
 	err = s.filters.Apply(env)
 	if err != nil {
@@ -110,7 +107,15 @@ func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.E
 		return nil, 0, err
 	}
 
-	// XXX We should probably run at least the size filter against this new tx one more time.
+	// We re-apply the filters here, especially for the size filter, to ensure that the transaction we
+	// just constructed is not too large for our consenter.  It additionally reapplies the signature
+	// check, which although not strictly necessary, is a good sanity check, in case the orderer
+	// has not been configured with the right cert material.  The additional overhead of the signature
+	// check is negligable, as this is the reconfig path and not the normal path.
+	err = s.filters.Apply(config)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	return config, seq, nil
 }

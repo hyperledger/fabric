@@ -4,17 +4,14 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package sizefilter
+package msgprocessor
 
 import (
 	"fmt"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	logging "github.com/op/go-logging"
 )
-
-var logger = logging.MustGetLogger("orderer/common/msgprocessor/sizefilter")
 
 // Support defines the subset of the channel support required to create this filter
 type Support interface {
@@ -22,11 +19,11 @@ type Support interface {
 }
 
 // New creates a size filter which rejects messages larger than maxBytes
-func New(support Support) *MaxBytesRule {
+func NewSizeFilter(support Support) *MaxBytesRule {
 	return &MaxBytesRule{support: support}
 }
 
-// MaxBytesRule implements the filter.Rule interface.
+// MaxBytesRule implements the Rule interface.
 type MaxBytesRule struct {
 	support Support
 }

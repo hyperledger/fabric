@@ -60,7 +60,9 @@ func newChainSupport(
 		registrar:       registrar,
 		signer:          signer,
 	}
-	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardFilters(cs))
+
+	// Set up the msgprocessor
+	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs))
 
 	cs.lastConfigSeq = cs.Sequence()
 
