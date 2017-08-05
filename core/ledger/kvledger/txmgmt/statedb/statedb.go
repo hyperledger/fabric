@@ -54,6 +54,9 @@ type VersionedDB interface {
 	// ValidateKey tests whether the key is supported by the db implementation.
 	// For instance, leveldb supports any bytes for the key while the couchdb supports only valid utf-8 string
 	ValidateKey(key string) error
+	// BytesKeySuppoted returns true if the implementation (underlying db) supports the any bytes to be used as key.
+	// For instance, leveldb supports any bytes for the key while the couchdb supports only valid utf-8 string
+	BytesKeySuppoted() bool
 	// Open opens the db
 	Open() error
 	// Close closes the db
@@ -123,14 +126,12 @@ func (batch *UpdateBatch) Put(ns string, key string, value []byte, version *vers
 	if value == nil {
 		panic("Nil value not allowed")
 	}
-	nsUpdates := batch.getOrCreateNsUpdates(ns)
-	nsUpdates.m[key] = &VersionedValue{value, version}
+	batch.Update(ns, key, &VersionedValue{value, version})
 }
 
 // Delete deletes a Key and associated value
 func (batch *UpdateBatch) Delete(ns string, key string, version *version.Height) {
-	nsUpdates := batch.getOrCreateNsUpdates(ns)
-	nsUpdates.m[key] = &VersionedValue{nil, version}
+	batch.Update(ns, key, &VersionedValue{nil, version})
 }
 
 // Exists checks whether the given key exists in the batch
@@ -152,6 +153,11 @@ func (batch *UpdateBatch) GetUpdatedNamespaces() []string {
 		i++
 	}
 	return namespaces
+}
+
+// Update updates the batch with a latest entry for a namespace and a key
+func (batch *UpdateBatch) Update(ns string, key string, vv *VersionedValue) {
+	batch.getOrCreateNsUpdates(ns).m[key] = vv
 }
 
 // GetUpdates returns all the updates for a namespace

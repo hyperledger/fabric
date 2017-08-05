@@ -84,6 +84,11 @@ func (vdb *versionedDB) ValidateKey(key string) error {
 	return nil
 }
 
+// BytesKeySuppoted implements method in VersionedDB interface
+func (vdb *versionedDB) BytesKeySuppoted() bool {
+	return true
+}
+
 // GetState implements method in VersionedDB interface
 func (vdb *versionedDB) GetState(namespace string, key string) (*statedb.VersionedValue, error) {
 	logger.Debugf("GetState(). ns=%s, key=%s", namespace, key)

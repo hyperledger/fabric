@@ -19,6 +19,8 @@ package util
 import (
 	"reflect"
 	"sort"
+
+	"github.com/hyperledger/fabric/common/util"
 )
 
 // GetSortedKeys returns the keys of the map in a sorted order. This function assumes that the keys are string
@@ -31,4 +33,14 @@ func GetSortedKeys(m interface{}) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// ComputeStringHash computes the hash of the given string
+func ComputeStringHash(input string) []byte {
+	return ComputeHash([]byte(input))
+}
+
+// ComputeHash computes the hash of the given bytes
+func ComputeHash(input []byte) []byte {
+	return util.ComputeSHA256(input)
 }

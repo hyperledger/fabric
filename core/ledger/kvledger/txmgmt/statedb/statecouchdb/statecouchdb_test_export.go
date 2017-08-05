@@ -43,16 +43,17 @@ func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 // Cleanup drops the test couch databases and closes the db provider
 func (env *TestVDBEnv) Cleanup(dbName string) {
 	env.t.Logf("Cleaningup TestVDBEnv")
-	cleanupDB(strings.ToLower(dbName))
 	env.DBProvider.Close()
-
+	CleanupDB(dbName)
 }
-func cleanupDB(dbName string) {
+
+// CleanupDB drops the test couch databases
+func CleanupDB(dbName string) {
 	//create a new connection
 	couchDBDef := couchdb.GetCouchDBDefinition()
 	couchInstance, _ := couchdb.CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
 		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout)
-	db := couchdb.CouchDatabase{CouchInstance: *couchInstance, DBName: dbName}
+	db := couchdb.CouchDatabase{CouchInstance: *couchInstance, DBName: strings.ToLower(dbName)}
 	//drop the test database
 	db.DropDatabase()
 }
