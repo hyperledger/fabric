@@ -167,17 +167,18 @@ function getAdmin(client, userOrg, svcFile) {
 function getOrdererAdmin(client, userOrg, svcFile) {
         hfc.addConfigFile(svcFile);
         ORGS = hfc.getConfigSetting('test-network');
-        var mspPath = ORGS.orderer.mspPath;
-        var keyPath =  ORGS.orderer.adminPath + '/keystore';
+        var ordererID = ORGS[userOrg].ordererID;
+        var mspPath = ORGS['orderer'][ordererID].mspPath;
+        var keyPath =  ORGS['orderer'][ordererID].adminPath + '/keystore';
         var keyPEM = Buffer.from(readAllFiles(keyPath)[0]).toString();
-        var certPath = ORGS.orderer.adminPath + '/signcerts';
+        var certPath = ORGS['orderer'][ordererID].adminPath + '/signcerts';
         var certPEM = readAllFiles(certPath)[0];
         console.log('[getOrdererAdmin] keyPath: %s', keyPath);
         console.log('[getOrdererAdmin] certPath: %s', certPath);
 
 	return Promise.resolve(client.createUser({
 		username: 'ordererAdmin',
-		mspid: ORGS.orderer.mspid,
+		mspid: ORGS['orderer'][ordererID].mspid,
 		cryptoContent: {
 			privateKeyPEM: keyPEM.toString(),
 			signedCertPEM: certPEM.toString()

@@ -140,7 +140,7 @@ var transMode = uiContent.transMode;
 var transType = uiContent.transType;
 var invokeType = uiContent.invokeType;
 var nRequest = parseInt(uiContent.nRequest);
-var nProc = parseInt(uiContent.nProc);
+//var nProc = parseInt(uiContent.nProc);
 var nOrg = parseInt(uiContent.nOrg);
 var nPeerPerOrg = parseInt(uiContent.nPeerPerOrg);
 var nPeer = nOrg * nPeerPerOrg;
@@ -422,26 +422,27 @@ function channelAddPeerEvent(chain, client, org) {
 }
 
 function channelAddOrderer(chain, client, org) {
-    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddOrderer] chain name: ', Nid, pid, channelName, org, chain.getName());
+    var ordererID = ORGS[org].ordererID;
+    console.log('[Nid:id:chan:org:ordererID=%d:%d:%s:%s:%s channelAddOrderer] chain name: ', Nid, pid, channelName, org, ordererID, chain.getName());
     if (TLS.toUpperCase() == 'ENABLED') {
-        var caRootsPath = ORGS.orderer.tls_cacerts;
+        var caRootsPath = ORGS['orderer'][ordererID].tls_cacerts;
         let data = fs.readFileSync(caRootsPath);
         let caroots = Buffer.from(data).toString();
 
         chain.addOrderer(
             new Orderer(
-                ORGS.orderer.url,
+                ORGS['orderer'][ordererID].url,
                 {
                     'pem': caroots,
-                    'ssl-target-name-override': ORGS.orderer['server-hostname']
+                    'ssl-target-name-override': ORGS['orderer'][ordererID]['server-hostname']
                 }
             )
         );
     } else {
-        chain.addOrderer( new Orderer(ORGS.orderer.url));
-        console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddOrderer] orderer url: ', Nid, pid, channelName, org, ORGS.orderer.url);
+        chain.addOrderer( new Orderer(ORGS['orderer'][ordererID].url));
+        console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddOrderer] orderer url: ', Nid, pid, channelName, org, ORGS['orderer'][ordererID].url);
     }
-    //console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddOrderer] orderer in the chain: ', Nid, pid, channelName, org, chain.getOrderers());
+    console.log('[Nid:id:chan:org=%d:%d:%s:%s channelAddOrderer] orderer in the chain: ', Nid, pid, channelName, org, chain.getOrderers());
 }
 
 function channelAddAnchorPeer(chain, client, org) {
@@ -637,7 +638,7 @@ function eventRegister(tx, cb) {
     var eventPromises = [];
     eventHubs.forEach((eh) => {
         let txPromise = new Promise((resolve, reject) => {
-            let handle = setTimeout(reject, 600000);
+            let handle = setTimeout(reject, 120000);
 
             eh.registerTxEvent(deployId.toString(), (tx, code) => {
                 clearTimeout(handle);
@@ -963,9 +964,14 @@ function invoke_move_const(freq) {
                         }
                         tCurr = new Date().getTime();
                         t1 = tCurr - t1;
+                        if ( t1 < freq_n ) {
+                           freq_n = freq_n - t1;
+                        } else {
+                           freq_n = 0;
+                        }
                         setTimeout(function(){
                             invoke_move_const(freq);
-                        },freq_n-t1);
+                        },freq_n);
                     } else {
                         tCurr = new Date().getTime();
                         console.log('[Nid:id:chan:org=%d:%d:%s:%s invoke_move_const] completed %d %s(%s) in %d ms, timestamp: start %d end %d', Nid, pid, channelName, org, inv_m, transType, invokeType, tCurr-tLocal, tLocal, tCurr);
