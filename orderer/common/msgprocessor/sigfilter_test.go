@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -55,5 +56,5 @@ func TestErrorOnPolicy(t *testing.T) {
 	mpm := &mockpolicies.Manager{Policy: &mockpolicies.Policy{Err: fmt.Errorf("Error")}}
 	err := NewSigFilter("foo", mpm).Apply(makeEnvelope())
 	assert.NotNil(t, err)
-	assert.Equal(t, mpm.Policy.Err, err)
+	assert.Equal(t, ErrPermissionDenied, errors.Cause(err))
 }
