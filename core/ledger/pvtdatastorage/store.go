@@ -1,0 +1,80 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package pvtdatastorage
+
+import (
+	"github.com/hyperledger/fabric/core/ledger"
+)
+
+// Provider provides handle to specific 'Store' that in turn manages
+// private write sets for a ledger
+type Provider interface {
+	OpenStore(id string) (Store, error)
+	Close()
+}
+
+// Store manages the permanent storage of private write sets for a ledger
+// Beacsue the pvt data is supposed to be in sync with the blocks in the
+// ledger, both should logically happen in an atomic operation. In order
+// to accomplish this, an implementation of this store should provide
+// support for a two-phase like commit/rollback capability.
+// The expected use is such that - first the private data will be given to
+// this store (via `Prepare` funtion) and then the block is appended to the block storage.
+// Finally, one of the functions `Commit` or `Rollback` is invoked on this store based
+// on whether the block was written successfully or not. The store implementation
+// is expected to survive a server crash between the call to `Prepare` and `Commit`/`Rollback`
+type Store interface {
+	// GetPvtDataByBlockNum returns only the pvt data  corresponding to the given block number
+	// The pvt data is filtered by the list of 'ns/collections' supplied in the filter
+	// A nil filter does not filter any results
+	GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error)
+	// Prepare prepares the Store for commiting the pvt data. This call does not commit the pvt data.
+	// Subsequently, the caller is expected to call either `Commit` or `Rollback` function.
+	// Return from this should ensure that enough preparation is done such that `Commit` function invoked afterwards
+	// can commit the data and the store is capable of surviving a crash between this function call and the next
+	// invoke to the `Commit`
+	Prepare(blockNum uint64, pvtData []*ledger.TxPvtData) error
+	// Commit commits the pvt data passed in the previous invoke to the `Prepare` function
+	Commit() error
+	// Rollback rolls back the pvt data passed in the previous invoke to the `Prepare` function
+	Rollback() error
+	// IsEmpty returns true if the store does not have any block committed yet
+	IsEmpty() (bool, error)
+	// LastCommittedBlock returns the last committed blocknum
+	LastCommittedBlock() (uint64, error)
+	// HasPendingBatch returns if the store has a pending batch
+	HasPendingBatch() (bool, error)
+	// Shutdown stops the store
+	Shutdown()
+}
+
+// ErrIllegalCall is to be thrown by a store impl if the store does not expect a call to Prepare/Commit/Rollback
+type ErrIllegalCall struct {
+	msg string
+}
+
+func (err *ErrIllegalCall) Error() string {
+	return err.msg
+}
+
+// ErrIllegalArgs is to be thrown by a store impl if the args passed are not allowed
+type ErrIllegalArgs struct {
+	msg string
+}
+
+func (err *ErrIllegalArgs) Error() string {
+	return err.msg
+}
+
+// ErrOutOfRange is to be thrown for the request for the data that is not yet committed
+type ErrOutOfRange struct {
+	msg string
+}
+
+func (err *ErrOutOfRange) Error() string {
+	return err.msg
+}

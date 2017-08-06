@@ -59,6 +59,11 @@ func GetBlockStorePath() string {
 	return filepath.Join(GetRootPath(), "chains")
 }
 
+// GetPvtdataStorePath returns the filesystem path that is used for permanent storage of private write-sets
+func GetPvtdataStorePath() string {
+	return filepath.Join(GetRootPath(), "pvtdataStore")
+}
+
 // GetMaxBlockfileSize returns maximum size of the block file
 func GetMaxBlockfileSize() int {
 	return 64 * 1024 * 1024

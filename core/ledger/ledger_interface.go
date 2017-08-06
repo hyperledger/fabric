@@ -19,6 +19,7 @@ package ledger
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -124,4 +125,64 @@ type TxSimulator interface {
 	// Different ledger implementation (or configurations of a single implementation) may want to represent the above two pieces
 	// of information in different way in order to support different data-models or optimize the information representations.
 	GetTxSimulationResults() ([]byte, error)
+}
+
+// TxPvtData encapsulates the transaction number and pvt write-set for a transaction
+type TxPvtData struct {
+	SeqInBlock uint64
+	WriteSet   *rwset.TxPvtReadWriteSet
+}
+
+// BlockAndPvtData encapsultes the block and a map that contains the tuples <seqInBlock, *TxPvtData>
+// The map is expected to contain the entries only for the transactions that has associated pvt data
+type BlockAndPvtData struct {
+	Block        *common.Block
+	BlockPvtData map[uint64]*TxPvtData
+}
+
+// PvtCollFilter represents the set of the collection names (as keys of the map with value 'true')
+type PvtCollFilter map[string]bool
+
+// PvtNsCollFilter specifies the tuple <namespace, PvtCollFilter>
+type PvtNsCollFilter map[string]PvtCollFilter
+
+// NewPvtNsCollFilter constructs an empty PvtNsCollFilter
+func NewPvtNsCollFilter() PvtNsCollFilter {
+	return make(map[string]PvtCollFilter)
+}
+
+// Has returns true if the pvtdata includes the data for collection <ns,coll>
+func (pvtdata *TxPvtData) Has(ns string, coll string) bool {
+	if pvtdata.WriteSet == nil {
+		return false
+	}
+	for _, nsdata := range pvtdata.WriteSet.NsPvtRwset {
+		if nsdata.Namespace == ns {
+			for _, colldata := range nsdata.CollectionPvtRwset {
+				if colldata.CollectionName == coll {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// Add adds a namespace-collection tuple to the filter
+func (filter PvtNsCollFilter) Add(ns string, coll string) {
+	collFilter, ok := filter[ns]
+	if !ok {
+		collFilter = make(map[string]bool)
+		filter[ns] = collFilter
+	}
+	collFilter[coll] = true
+}
+
+// Has returns true if the filter has the entry for tuple namespace-collection
+func (filter PvtNsCollFilter) Has(ns string, coll string) bool {
+	collFilter, ok := filter[ns]
+	if !ok {
+		return false
+	}
+	return collFilter[coll]
 }
