@@ -43,7 +43,7 @@ CONFIGTXGEN=build/bin/configtxgen
 
 FABRICPKG=github.com/hyperledger/fabric
 pkgmap.cryptogen      := $(FABRICPKG)/common/tools/cryptogen
-pkgmap.configtxgen    := $(FABRICPKG)/common/configtx/tool/configtxgen
+pkgmap.configtxgen    := $(FABRICPKG)/common/tools/configtxgen
 
 help:
 	@cat usage.txt
