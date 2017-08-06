@@ -98,8 +98,10 @@ func (bc *broadcastClient) try(action func() (interface{}, error)) (interface{},
 		if err != nil {
 			backoffDuration, retry = bc.shouldRetry(attempt, time.Since(start))
 			if !retry {
+				logger.Warning("Got error:", err, "at", attempt, "attempt. Ceasing to retry")
 				break
 			}
+			logger.Warning("Got error:", err, ",at", attempt, "attempt. Retrying in", backoffDuration)
 			bc.sleep(backoffDuration)
 			continue
 		}
@@ -135,11 +137,13 @@ func (bc *broadcastClient) sleep(duration time.Duration) {
 
 func (bc *broadcastClient) connect() error {
 	conn, endpoint, err := bc.prod.NewConnection()
+	logger.Debug("Connected to", endpoint)
 	if err != nil {
 		logger.Error("Failed obtaining connection:", err)
 		return err
 	}
 	ctx, cf := context.WithCancel(context.Background())
+	logger.Debug("Establishing gRPC stream with", endpoint, "...")
 	abc, err := bc.createClient(conn).Deliver(ctx)
 	if err != nil {
 		logger.Error("Connection to ", endpoint, "established but was unable to create gRPC stream:", err)
@@ -150,6 +154,7 @@ func (bc *broadcastClient) connect() error {
 	if err == nil {
 		return nil
 	}
+	logger.Warning("Failed running post-connection procedures:", err)
 	// If we reached here, lets make sure connection is closed
 	// and nullified before we return
 	bc.Disconnect()
@@ -157,6 +162,8 @@ func (bc *broadcastClient) connect() error {
 }
 
 func (bc *broadcastClient) afterConnect(conn *grpc.ClientConn, abc orderer.AtomicBroadcast_DeliverClient, cf context.CancelFunc) error {
+	logger.Debug("Entering")
+	defer logger.Debug("Exiting")
 	bc.Lock()
 	bc.conn = &connection{ClientConn: conn, cancel: cf}
 	bc.BlocksDeliverer = abc
@@ -194,6 +201,8 @@ func (bc *broadcastClient) shouldStop() bool {
 
 // Close makes the client close its connection and shut down
 func (bc *broadcastClient) Close() {
+	logger.Debug("Entering")
+	defer logger.Debug("Exiting")
 	bc.Lock()
 	defer bc.Unlock()
 	if bc.shouldStop() {
@@ -209,6 +218,8 @@ func (bc *broadcastClient) Close() {
 
 // Disconnect makes the client close the existing connection
 func (bc *broadcastClient) Disconnect() {
+	logger.Debug("Entering")
+	defer logger.Debug("Exiting")
 	bc.Lock()
 	defer bc.Unlock()
 	if bc.conn == nil {
