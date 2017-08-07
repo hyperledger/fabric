@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"github.com/hyperledger/fabric/common/config"
 	mspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
@@ -42,7 +43,7 @@ type ApplicationOrgConfig struct {
 
 // ApplicationOrgGroup defines the configuration for an application org
 type ApplicationOrgGroup struct {
-	*Proposer
+	*config.Proposer
 	*OrganizationGroup
 	*ApplicationOrgConfig
 }
@@ -52,7 +53,7 @@ func NewApplicationOrgGroup(id string, mspConfig *mspconfig.MSPConfigHandler) *A
 	aog := &ApplicationOrgGroup{
 		OrganizationGroup: NewOrganizationGroup(id, mspConfig),
 	}
-	aog.Proposer = NewProposer(aog)
+	aog.Proposer = config.NewProposer(aog)
 	return aog
 }
 
@@ -61,7 +62,7 @@ func (aog *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
 	return aog.protos.AnchorPeers.AnchorPeers
 }
 
-func (aog *ApplicationOrgGroup) Allocate() Values {
+func (aog *ApplicationOrgGroup) Allocate() config.Values {
 	return NewApplicationOrgConfig(aog)
 }
 
@@ -78,7 +79,7 @@ func NewApplicationOrgConfig(aog *ApplicationOrgGroup) *ApplicationOrgConfig {
 		applicationOrgGroup: aog,
 	}
 	var err error
-	aoc.standardValues, err = NewStandardValues(aoc.protos, aoc.OrganizationConfig.protos)
+	aoc.StandardValues, err = config.NewStandardValues(aoc.protos, aoc.OrganizationConfig.protos)
 	if err != nil {
 		logger.Panicf("Programming error: %s", err)
 	}
@@ -86,7 +87,7 @@ func NewApplicationOrgConfig(aog *ApplicationOrgGroup) *ApplicationOrgConfig {
 	return aoc
 }
 
-func (aoc *ApplicationOrgConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
+func (aoc *ApplicationOrgConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Anchor peers for org %s are %v", aoc.applicationOrgGroup.name, aoc.protos.AnchorPeers)
 	}

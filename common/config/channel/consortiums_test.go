@@ -18,6 +18,8 @@ package config
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/config"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,11 +38,11 @@ func TestConsortiums(t *testing.T) {
 	csc.Commit()
 	assert.Equal(t, csc, csg.ConsortiumsConfig, "Failed to commit ConsortiumsConfig")
 
-	err = csc.Validate(t, map[string]ValueProposer{
+	err = csc.Validate(t, map[string]config.ValueProposer{
 		"badGroup": &OrganizationGroup{},
 	})
 	assert.Error(t, err, "Validate should have returned error for wrong type of ValueProposer")
-	err = csc.Validate(t, map[string]ValueProposer{
+	err = csc.Validate(t, map[string]config.ValueProposer{
 		"testGroup": cg,
 	})
 	assert.NoError(t, err, "Validate should not have returned error")

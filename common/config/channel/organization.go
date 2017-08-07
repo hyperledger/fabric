@@ -19,6 +19,7 @@ package config
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
 	mspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/msp"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -35,7 +36,7 @@ type OrganizationProtos struct {
 }
 
 type OrganizationConfig struct {
-	*standardValues
+	*config.StandardValues
 	protos *OrganizationProtos
 
 	organizationGroup *OrganizationGroup
@@ -46,7 +47,7 @@ type OrganizationConfig struct {
 
 // Config stores common configuration information for organizations
 type OrganizationGroup struct {
-	*Proposer
+	*config.Proposer
 	*OrganizationConfig
 	name             string
 	mspConfigHandler *mspconfig.MSPConfigHandler
@@ -58,7 +59,7 @@ func NewOrganizationGroup(name string, mspConfigHandler *mspconfig.MSPConfigHand
 		name:             name,
 		mspConfigHandler: mspConfigHandler,
 	}
-	og.Proposer = NewProposer(og)
+	og.Proposer = config.NewProposer(og)
 	return og
 }
 
@@ -73,12 +74,12 @@ func (og *OrganizationGroup) MSPID() string {
 }
 
 // NewGroup always errors
-func (og *OrganizationGroup) NewGroup(name string) (ValueProposer, error) {
+func (og *OrganizationGroup) NewGroup(name string) (config.ValueProposer, error) {
 	return nil, fmt.Errorf("Organization does not support subgroups")
 }
 
 // Allocate creates the proto resources needed for a proposal
-func (og *OrganizationGroup) Allocate() Values {
+func (og *OrganizationGroup) Allocate() config.Values {
 	return NewOrganizationConfig(og)
 }
 
@@ -90,7 +91,7 @@ func NewOrganizationConfig(og *OrganizationGroup) *OrganizationConfig {
 	}
 
 	var err error
-	oc.standardValues, err = NewStandardValues(oc.protos)
+	oc.StandardValues, err = config.NewStandardValues(oc.protos)
 	if err != nil {
 		logger.Panicf("Programming error: %s", err)
 	}
@@ -98,7 +99,7 @@ func NewOrganizationConfig(og *OrganizationGroup) *OrganizationConfig {
 }
 
 // Validate returns whether the configuration is valid
-func (oc *OrganizationConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
+func (oc *OrganizationConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
 	return oc.validateMSP(tx)
 }
 

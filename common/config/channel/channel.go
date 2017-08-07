@@ -21,6 +21,7 @@ import (
 	"math"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -78,7 +79,7 @@ func (ccs *channelConfigSetter) Commit() {
 // ChannelGroup
 type ChannelGroup struct {
 	*ChannelConfig
-	*Proposer
+	*config.Proposer
 	mspConfigHandler *msp.MSPConfigHandler
 }
 
@@ -87,12 +88,12 @@ func NewChannelGroup(mspConfigHandler *msp.MSPConfigHandler) *ChannelGroup {
 		ChannelConfig:    NewChannelConfig(),
 		mspConfigHandler: mspConfigHandler,
 	}
-	cg.Proposer = NewProposer(cg)
+	cg.Proposer = config.NewProposer(cg)
 	return cg
 }
 
 // Allocate creates new config resources for a pending config update
-func (cg *ChannelGroup) Allocate() Values {
+func (cg *ChannelGroup) Allocate() config.Values {
 	return &channelConfigSetter{
 		ChannelConfig: NewChannelConfig(),
 		target:        &cg.ChannelConfig,
@@ -115,7 +116,7 @@ func (cg *ChannelGroup) ConsortiumsConfig() *ConsortiumsGroup {
 }
 
 // NewGroup instantiates either a new application or orderer config
-func (cg *ChannelGroup) NewGroup(group string) (ValueProposer, error) {
+func (cg *ChannelGroup) NewGroup(group string) (config.ValueProposer, error) {
 	switch group {
 	case ApplicationGroupKey:
 		return NewApplicationGroup(cg.mspConfigHandler), nil
@@ -130,7 +131,7 @@ func (cg *ChannelGroup) NewGroup(group string) (ValueProposer, error) {
 
 // ChannelConfig stores the channel configuration
 type ChannelConfig struct {
-	*standardValues
+	*config.StandardValues
 	protos *ChannelProtos
 
 	hashingAlgorithm func(input []byte) []byte
@@ -147,7 +148,7 @@ func NewChannelConfig() *ChannelConfig {
 	}
 
 	var err error
-	cc.standardValues, err = NewStandardValues(cc.protos)
+	cc.StandardValues, err = config.NewStandardValues(cc.protos)
 	if err != nil {
 		logger.Panicf("Programming error: %s", err)
 	}
@@ -176,7 +177,7 @@ func (cc *ChannelConfig) ConsortiumName() string {
 
 // Validate inspects the generated configuration protos, ensures that the values are correct, and
 // sets the ChannelConfig fields that may be referenced after Commit
-func (cc *ChannelConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
+func (cc *ChannelConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
 	for _, validator := range []func() error{
 		cc.validateHashingAlgorithm,
 		cc.validateBlockDataHashingStructure,

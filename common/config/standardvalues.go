@@ -23,7 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-type standardValues struct {
+type StandardValues struct {
 	lookup map[string]proto.Message
 }
 
@@ -32,8 +32,8 @@ type standardValues struct {
 // the same condition.  NewStandard values will instantiate memory for all the proto
 // messages and build a lookup map from structure field name to proto message instance
 // This is a useful way to easily implement the Values interface
-func NewStandardValues(protosStructs ...interface{}) (*standardValues, error) {
-	sv := &standardValues{
+func NewStandardValues(protosStructs ...interface{}) (*StandardValues, error) {
+	sv := &StandardValues{
 		lookup: make(map[string]proto.Message),
 	}
 
@@ -50,7 +50,7 @@ func NewStandardValues(protosStructs ...interface{}) (*standardValues, error) {
 // Deserialize looks up the backing Values proto of the given name, unmarshals the given bytes
 // to populate the backing message structure, and returns a referenced to the retained deserialized
 // message (or an error, either because the key did not exist, or there was an an error unmarshaling
-func (sv *standardValues) Deserialize(key string, value []byte) (proto.Message, error) {
+func (sv *StandardValues) Deserialize(key string, value []byte) (proto.Message, error) {
 	msg, ok := sv.lookup[key]
 	if !ok {
 		return nil, fmt.Errorf("Unexpected key %s", key)
@@ -64,7 +64,7 @@ func (sv *standardValues) Deserialize(key string, value []byte) (proto.Message, 
 	return msg, nil
 }
 
-func (sv *standardValues) initializeProtosStruct(objValue reflect.Value) error {
+func (sv *StandardValues) initializeProtosStruct(objValue reflect.Value) error {
 	objType := objValue.Type()
 	if objType.Kind() != reflect.Ptr {
 		return fmt.Errorf("Non pointer type")

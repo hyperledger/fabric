@@ -19,6 +19,7 @@ package config
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -30,7 +31,7 @@ type ConsortiumProtos struct {
 
 // ConsortiumGroup stores the set of Consortium
 type ConsortiumGroup struct {
-	*Proposer
+	*config.Proposer
 	*ConsortiumConfig
 
 	mspConfig *msp.MSPConfigHandler
@@ -41,43 +42,23 @@ func NewConsortiumGroup(mspConfig *msp.MSPConfigHandler) *ConsortiumGroup {
 	cg := &ConsortiumGroup{
 		mspConfig: mspConfig,
 	}
-	cg.Proposer = NewProposer(cg)
+	cg.Proposer = config.NewProposer(cg)
 	return cg
 }
 
 // NewGroup returns a Consortium instance
-func (cg *ConsortiumGroup) NewGroup(name string) (ValueProposer, error) {
+func (cg *ConsortiumGroup) NewGroup(name string) (config.ValueProposer, error) {
 	return NewOrganizationGroup(name, cg.mspConfig), nil
 }
 
 // Allocate returns the resources for a new config proposal
-func (cg *ConsortiumGroup) Allocate() Values {
+func (cg *ConsortiumGroup) Allocate() config.Values {
 	return NewConsortiumConfig(cg)
-}
-
-// BeginValueProposals calls through to Proposer after calling into the MSP config Handler
-func (cg *ConsortiumGroup) BeginValueProposals(tx interface{}, groups []string) (ValueDeserializer, []ValueProposer, error) {
-	return cg.Proposer.BeginValueProposals(tx, groups)
-}
-
-// PreCommit intercepts the precommit request and commits the MSP config handler before calling the underlying proposer
-func (cg *ConsortiumGroup) PreCommit(tx interface{}) error {
-	return cg.Proposer.PreCommit(tx)
-}
-
-// RollbackProposals intercepts the rollback request and commits the MSP config handler before calling the underlying proposer
-func (cg *ConsortiumGroup) RollbackProposals(tx interface{}) {
-	cg.Proposer.RollbackProposals(tx)
-}
-
-// CommitProposals intercepts the commit request and commits the MSP config handler before calling the underlying proposer
-func (cg *ConsortiumGroup) CommitProposals(tx interface{}) {
-	cg.Proposer.CommitProposals(tx)
 }
 
 // ConsortiumConfig holds the consoritums configuration information
 type ConsortiumConfig struct {
-	*standardValues
+	*config.StandardValues
 	protos *ConsortiumProtos
 	orgs   map[string]*OrganizationGroup
 
@@ -92,7 +73,7 @@ func NewConsortiumConfig(cg *ConsortiumGroup) *ConsortiumConfig {
 		consortiumGroup: cg,
 	}
 	var err error
-	cc.standardValues, err = NewStandardValues(cc.protos)
+	cc.StandardValues, err = config.NewStandardValues(cc.protos)
 	if err != nil {
 		logger.Panicf("Programming error: %s", err)
 	}
@@ -116,7 +97,7 @@ func (cc *ConsortiumConfig) Commit() {
 }
 
 // Validate builds the Consortium map
-func (cc *ConsortiumConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
+func (cc *ConsortiumConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
 	var ok bool
 	for key, group := range groups {
 		cc.orgs[key], ok = group.(*OrganizationGroup)

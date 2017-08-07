@@ -20,7 +20,8 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/config"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	configtxmsp "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
@@ -32,7 +33,7 @@ import (
 
 type resources struct {
 	policyManager    *policies.ManagerImpl
-	configRoot       *config.Root
+	configRoot       *channelconfig.Root
 	mspConfigHandler *configtxmsp.MSPConfigHandler
 }
 
@@ -42,12 +43,12 @@ func (r *resources) PolicyManager() policies.Manager {
 }
 
 // ChannelConfig returns the api.ChannelConfig for the chain
-func (r *resources) ChannelConfig() config.Channel {
+func (r *resources) ChannelConfig() channelconfig.Channel {
 	return r.configRoot.Channel()
 }
 
 // OrdererConfig returns the api.OrdererConfig for the chain
-func (r *resources) OrdererConfig() (config.Orderer, bool) {
+func (r *resources) OrdererConfig() (channelconfig.Orderer, bool) {
 	result := r.configRoot.Orderer()
 	if result == nil {
 		return nil, false
@@ -56,7 +57,7 @@ func (r *resources) OrdererConfig() (config.Orderer, bool) {
 }
 
 // ApplicationConfig returns the api.ApplicationConfig for the chain
-func (r *resources) ApplicationConfig() (config.Application, bool) {
+func (r *resources) ApplicationConfig() (channelconfig.Application, bool) {
 	result := r.configRoot.Application()
 	if result == nil {
 		return nil, false
@@ -66,7 +67,7 @@ func (r *resources) ApplicationConfig() (config.Application, bool) {
 
 // ConsortiumsConfig returns the api.ConsortiumsConfig for the chain and whether or not
 // this channel contains consortiums config
-func (r *resources) ConsortiumsConfig() (config.Consortiums, bool) {
+func (r *resources) ConsortiumsConfig() (channelconfig.Consortiums, bool) {
 	result := r.configRoot.Consortiums()
 	if result == nil {
 		return nil, false
@@ -98,7 +99,7 @@ func newResources() *resources {
 
 	return &resources{
 		policyManager:    policies.NewManagerImpl(RootGroupKey, policyProviderMap),
-		configRoot:       config.NewRoot(mspConfigHandler),
+		configRoot:       channelconfig.NewRoot(mspConfigHandler),
 		mspConfigHandler: mspConfigHandler,
 	}
 }

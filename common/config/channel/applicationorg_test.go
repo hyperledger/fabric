@@ -18,8 +18,10 @@ package config
 
 import (
 	"testing"
+
+	"github.com/hyperledger/fabric/common/config"
 )
 
 func TestApplicationOrgInterface(t *testing.T) {
-	_ = ValueProposer(NewApplicationOrgGroup("id", nil))
+	_ = config.ValueProposer(NewApplicationOrgGroup("id", nil))
 }
