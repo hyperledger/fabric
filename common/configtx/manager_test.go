@@ -45,6 +45,7 @@ func defaultInitializer() *mockconfigtx.Initializer {
 		ValueProposerVal: &mockconfigtx.ValueProposer{
 			Transactional: mockconfigtx.Transactional{},
 		},
+		RootGroupKeyVal: "foo",
 	}
 }
 

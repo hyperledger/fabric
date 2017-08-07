@@ -213,7 +213,7 @@ func (mdts *mockDefaultTemplatorSupport) Signer() crypto.LocalSigner {
 
 func TestNewChannelConfig(t *testing.T) {
 	singleMSPGenesisBlock := provisional.New(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)).GenesisBlock()
-	ctxm, err := configtx.NewManagerImpl(utils.ExtractEnvelopeOrPanic(singleMSPGenesisBlock, 0), configtx.NewInitializer(), nil)
+	ctxm, err := configtx.NewManagerImpl(utils.ExtractEnvelopeOrPanic(singleMSPGenesisBlock, 0), config.NewInitializer(), nil)
 	assert.Nil(t, err)
 
 	templator := NewDefaultTemplator(&mockDefaultTemplatorSupport{

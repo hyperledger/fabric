@@ -168,7 +168,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return err
 	}
 
-	configtxInitializer := configtx.NewInitializer()
+	configtxInitializer := config.NewInitializer()
 
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 

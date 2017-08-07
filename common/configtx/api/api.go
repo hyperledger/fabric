@@ -104,6 +104,9 @@ type Proposer interface {
 
 	// PolicyProposer return the root policy proposer
 	PolicyProposer() policies.Proposer
+
+	// RootGroupKey is the string to use to namespace the root group
+	RootGroupKey() string
 }
 
 // Initializer is used as indirection between Manager and Handler to allow
