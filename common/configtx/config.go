@@ -1,157 +1,28 @@
 /*
-Copyright IBM Corp. 2016-2017 All Rights Reserved.
+Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package configtx
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
-
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 )
 
-type ConfigResult interface {
-	JSON() string
-}
-
-func NewConfigResult(config *cb.ConfigGroup, proposer api.Proposer) (ConfigResult, error) {
-	return processConfig(config, proposer)
-}
-
 type configResult struct {
-	tx                   interface{}
-	groupName            string
-	groupKey             string
-	group                *cb.ConfigGroup
-	valueHandler         config.ValueProposer
-	policyHandler        policies.Proposer
-	subResults           []*configResult
-	deserializedValues   map[string]proto.Message
-	deserializedPolicies map[string]proto.Message
-}
-
-func (cr *configResult) JSON() string {
-	var buffer bytes.Buffer
-	buffer.WriteString("{")
-	cr.subResults[0].bufferJSON(&buffer)
-	buffer.WriteString("}")
-	return buffer.String()
-
-}
-
-// bufferJSON takes a buffer and writes a JSON representation of the configResult into the buffer
-// Note that we use some mildly ad-hoc JSON encoding because the proto documentation explicitly
-// mentions that the encoding/json package does not correctly marshal proto objects, and we
-// do not have a proto object (nor can one be defined) which presents the mixed-map style of
-// keys mapping to different types of the config
-func (cr *configResult) bufferJSON(buffer *bytes.Buffer) {
-	jpb := &jsonpb.Marshaler{
-		EmitDefaults: true,
-		Indent:       "    ",
-	}
-
-	// "GroupName": {
-	buffer.WriteString("\"")
-	buffer.WriteString(cr.groupKey)
-	buffer.WriteString("\": {")
-
-	//    "Values": {
-	buffer.WriteString("\"Values\": {")
-	count := 0
-	for key, value := range cr.group.Values {
-		// "Key": {
-		buffer.WriteString("\"")
-		buffer.WriteString(key)
-		buffer.WriteString("\": {")
-		// 	"Version": "X",
-		buffer.WriteString("\"Version\":\"")
-		buffer.WriteString(fmt.Sprintf("%d", value.Version))
-		buffer.WriteString("\",")
-		//      "ModPolicy": "foo",
-		buffer.WriteString("\"ModPolicy\":\"")
-		buffer.WriteString(value.ModPolicy)
-		buffer.WriteString("\",")
-		//      "Value": protoAsJSON
-		buffer.WriteString("\"Value\":")
-		jpb.Marshal(buffer, cr.deserializedValues[key])
-		// },
-		buffer.WriteString("}")
-		count++
-		if count < len(cr.group.Values) {
-			buffer.WriteString(",")
-		}
-	}
-	//     },
-	buffer.WriteString("},")
-
-	count = 0
-	//    "Policies": {
-	buffer.WriteString("\"Policies\": {")
-	for key, policy := range cr.group.Policies {
-		// "Key": {
-		buffer.WriteString("\"")
-		buffer.WriteString(key)
-		buffer.WriteString("\": {")
-		// 	"Version": "X",
-		buffer.WriteString("\"Version\":\"")
-		buffer.WriteString(fmt.Sprintf("%d", policy.Version))
-		buffer.WriteString("\",")
-		//      "ModPolicy": "foo",
-		buffer.WriteString("\"ModPolicy\":\"")
-		buffer.WriteString(policy.ModPolicy)
-		buffer.WriteString("\",")
-		//      "Policy": {
-		buffer.WriteString("\"Policy\":{")
-		//          "PolicyType" :
-		buffer.WriteString(fmt.Sprintf("\"PolicyType\":\"%d\",", policy.Policy.Type))
-		//          "Policy" : policyAsJSON
-		buffer.WriteString("\"Policy\":")
-		jpb.Marshal(buffer, cr.deserializedPolicies[key])
-		//      }
-		// },
-		buffer.WriteString("}}")
-		count++
-		if count < len(cr.group.Policies) {
-			buffer.WriteString(",")
-		}
-	}
-	//     },
-	buffer.WriteString("},")
-
-	//     "Groups": {
-	count = 0
-	buffer.WriteString("\"Groups\": {")
-	for _, subResult := range cr.subResults {
-		subResult.bufferJSON(buffer)
-		count++
-		if count < len(cr.subResults) {
-			buffer.WriteString(",")
-		}
-	}
-	//     }
-	buffer.WriteString("}")
-
-	//     }
-	buffer.WriteString("}")
+	tx            interface{}
+	groupName     string
+	groupKey      string
+	group         *cb.ConfigGroup
+	valueHandler  config.ValueProposer
+	policyHandler policies.Proposer
+	subResults    []*configResult
 }
 
 func (cr *configResult) preCommit() error {
@@ -208,35 +79,31 @@ func proposeGroup(result *configResult) error {
 	}
 
 	for key, value := range result.group.Values {
-		msg, err := valueDeserializer.Deserialize(key, value.Value)
+		_, err := valueDeserializer.Deserialize(key, value.Value)
 		if err != nil {
 			result.rollback()
 			return fmt.Errorf("Error deserializing key %s for group %s: %s", key, result.groupName, err)
 		}
-		result.deserializedValues[key] = msg
 	}
 
 	for key, policy := range result.group.Policies {
-		policy, err := result.policyHandler.ProposePolicy(result.tx, key, policy)
+		_, err := result.policyHandler.ProposePolicy(result.tx, key, policy)
 		if err != nil {
 			result.rollback()
 			return err
 		}
-		result.deserializedPolicies[key] = policy
 	}
 
 	result.subResults = make([]*configResult, 0, len(subGroups))
 
 	for i, subGroup := range subGroups {
 		result.subResults = append(result.subResults, &configResult{
-			tx:                   result.tx,
-			groupKey:             subGroup,
-			groupName:            result.groupName + "/" + subGroup,
-			group:                result.group.Groups[subGroup],
-			valueHandler:         subValueHandlers[i],
-			policyHandler:        subPolicyHandlers[i],
-			deserializedValues:   make(map[string]proto.Message),
-			deserializedPolicies: make(map[string]proto.Message),
+			tx:            result.tx,
+			groupKey:      subGroup,
+			groupName:     result.groupName + "/" + subGroup,
+			group:         result.group.Groups[subGroup],
+			valueHandler:  subValueHandlers[i],
+			policyHandler: subPolicyHandlers[i],
 		})
 
 		if err := proposeGroup(result.subResults[i]); err != nil {

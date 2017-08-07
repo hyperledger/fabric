@@ -89,6 +89,22 @@ func TestUnmarshalEnvelope(t *testing.T) {
 
 }
 
+func TestUnmarshalBlock(t *testing.T) {
+	var env *cb.Block
+	good, _ := proto.Marshal(&cb.Block{})
+	env, err := UnmarshalBlock(good)
+	assert.NoError(t, err, "Unexpected error unmarshaling block")
+	assert.NotNil(t, env, "Block should not be nil")
+	env = UnmarshalBlockOrPanic(good)
+	assert.NotNil(t, env, "Block should not be nil")
+
+	bad := []byte("bad block")
+	assert.Panics(t, func() {
+		_ = UnmarshalBlockOrPanic(bad)
+	}, "Expected panic unmarshaling malformed block")
+
+}
+
 func TestUnmarshalEnvelopeOfType(t *testing.T) {
 	env := &cb.Envelope{}
 
