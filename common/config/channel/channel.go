@@ -21,7 +21,7 @@ import (
 	"math"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/config/msp"
+	"github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 )

@@ -20,8 +20,8 @@ import (
 	"os"
 	"testing"
 
-	. "github.com/hyperledger/fabric/common/config"
-	"github.com/hyperledger/fabric/common/config/msp"
+	. "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"

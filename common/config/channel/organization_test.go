@@ -19,7 +19,7 @@ package config
 import (
 	"testing"
 
-	mspconfig "github.com/hyperledger/fabric/common/config/msp"
+	mspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
 	fabricconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"

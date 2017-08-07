@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/config"
-	configmsp "github.com/hyperledger/fabric/common/config/msp"
+	"github.com/hyperledger/fabric/common/config/channel"
+	configmsp "github.com/hyperledger/fabric/common/config/channel/msp"
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"

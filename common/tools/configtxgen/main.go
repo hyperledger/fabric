@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/config"
-	mspconfig "github.com/hyperledger/fabric/common/config/msp"
+	"github.com/hyperledger/fabric/common/config/channel"
+	mspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"

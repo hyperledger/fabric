@@ -19,7 +19,7 @@ package config
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/common/config"
+	"github.com/hyperledger/fabric/common/config/channel"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
