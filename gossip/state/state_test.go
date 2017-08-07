@@ -24,12 +24,14 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/state/mocks"
 	gutil "github.com/hyperledger/fabric/gossip/util"
 	pcomm "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -862,6 +864,239 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 		{
 			close(stopWaiting)
 			t.Fatal("Expected to receive two batches with missing payloads")
+		}
+	}
+}
+
+// coordinatorMock mocking structure to capture mock interface for
+// coordinator to simulate coordinator flow during the test
+type coordinatorMock struct {
+	mock.Mock
+}
+
+func (mock *coordinatorMock) StoreBlock(block *pcomm.Block, data ...[]*PvtData) ([]string, error) {
+	args := mock.Called(block, data)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (mock *coordinatorMock) StorePvtData(seqNum uint64, data ...[]*PvtData) ([]string, error) {
+	args := mock.Called(seqNum, data)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (mock *coordinatorMock) GetBlockByNum(seqNum uint64) (*pcomm.Block, []*PvtData, error) {
+	args := mock.Called(seqNum)
+	return args.Get(0).(*pcomm.Block), args.Get(1).([]*PvtData), args.Error(2)
+}
+
+func (mock *coordinatorMock) LedgerHeight() (uint64, error) {
+	args := mock.Called()
+	return args.Get(0).(uint64), args.Error(1)
+}
+
+func (mock *coordinatorMock) Close() {
+	mock.Called()
+}
+
+type receivedMessageMock struct {
+	mock.Mock
+}
+
+func (mock *receivedMessageMock) Respond(msg *proto.GossipMessage) {
+	mock.Called(msg)
+}
+
+func (mock *receivedMessageMock) GetGossipMessage() *proto.SignedGossipMessage {
+	args := mock.Called()
+	return args.Get(0).(*proto.SignedGossipMessage)
+}
+
+func (mock *receivedMessageMock) GetSourceEnvelope() *proto.Envelope {
+	args := mock.Called()
+	return args.Get(0).(*proto.Envelope)
+}
+
+func (mock *receivedMessageMock) GetConnectionInfo() *proto.ConnectionInfo {
+	args := mock.Called()
+	return args.Get(0).(*proto.ConnectionInfo)
+}
+
+type testData struct {
+	block   *pcomm.Block
+	pvtData []*PvtData
+}
+
+func TestTransferOfPrivateRWSet(t *testing.T) {
+	chainID := "testChainID"
+
+	// First gossip instance
+	g := &mocks.GossipMock{}
+	coord1 := new(coordinatorMock)
+
+	gossipChannel := make(chan *proto.GossipMessage)
+	commChannel := make(chan proto.ReceivedMessage)
+
+	gossipChannelFactory := func(ch chan *proto.GossipMessage) <-chan *proto.GossipMessage {
+		return ch
+	}
+
+	commChannelFactory := func(ch chan proto.ReceivedMessage) <-chan proto.ReceivedMessage {
+		return ch
+	}
+
+	g.On("Accept", mock.Anything, false).Return(gossipChannelFactory(gossipChannel), nil)
+	g.On("Accept", mock.Anything, true).Return(nil, commChannelFactory(commChannel))
+
+	g.On("UpdateChannelMetadata", mock.Anything, mock.Anything)
+	g.On("PeersOfChannel", mock.Anything).Return([]discovery.NetworkMember{})
+	g.On("Close")
+
+	coord1.On("LedgerHeight", mock.Anything).Return(uint64(5), nil)
+
+	var data map[uint64]*testData = map[uint64]*testData{
+		uint64(2): {
+			block: &pcomm.Block{
+				Header: &pcomm.BlockHeader{
+					Number:       2,
+					DataHash:     []byte{0, 1, 1, 1},
+					PreviousHash: []byte{0, 0, 0, 1},
+				},
+				Data: &pcomm.BlockData{
+					Data: [][]byte{[]byte{1}, []byte{2}, []byte{3}},
+				},
+			},
+			pvtData: []*PvtData{
+				{
+					Payload: &rwset.TxPvtReadWriteSet{
+						DataModel: rwset.TxReadWriteSet_KV,
+						NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+							{
+								Namespace: "myCC:v1",
+								CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+									{
+										CollectionName: "mysecrectCollection",
+										Rwset:          []byte{1, 2, 3, 4, 5},
+									},
+								},
+							},
+						},
+					},
+				}},
+		},
+
+		uint64(3): {
+			block: &pcomm.Block{
+				Header: &pcomm.BlockHeader{
+					Number:       3,
+					DataHash:     []byte{1, 1, 1, 1},
+					PreviousHash: []byte{0, 1, 1, 1},
+				},
+				Data: &pcomm.BlockData{
+					Data: [][]byte{[]byte{4}, []byte{5}, []byte{6}},
+				},
+			},
+			pvtData: []*PvtData{
+				{
+					Payload: &rwset.TxPvtReadWriteSet{
+						DataModel: rwset.TxReadWriteSet_KV,
+						NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+							{
+								Namespace: "otherCC:v1",
+								CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+									{
+										CollectionName: "topClassified",
+										Rwset:          []byte{0, 0, 0, 4, 2},
+									},
+								},
+							},
+						},
+					},
+				}},
+		},
+	}
+
+	for seqNum, each := range data {
+		coord1.On("GetBlockByNum", seqNum).Return(each.block, each.pvtData, nil /* no error*/)
+	}
+
+	coord1.On("Close")
+
+	st := NewGossipCoordinatedStateProvider(chainID, g, coord1, &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor})
+	defer st.Stop()
+
+	// Mocked state request message
+	requestMsg := new(receivedMessageMock)
+
+	// Get state request message, blocks [2...3]
+	requestGossipMsg := &proto.GossipMessage{
+		// Copy nonce field from the request, so it will be possible to match response
+		Nonce:   1,
+		Tag:     proto.GossipMessage_CHAN_OR_ORG,
+		Channel: []byte(chainID),
+		Content: &proto.GossipMessage_StateRequest{&proto.RemoteStateRequest{
+			StartSeqNum: 2,
+			EndSeqNum:   3,
+		}},
+	}
+
+	msg, _ := requestGossipMsg.NoopSign()
+
+	requestMsg.On("GetGossipMessage").Return(msg)
+
+	// Channel to send responses back
+	responseChannel := make(chan proto.ReceivedMessage)
+	defer close(responseChannel)
+
+	requestMsg.On("Respond", mock.Anything).Run(func(args mock.Arguments) {
+		// Get gossip response to respond back on state request
+		response := args.Get(0).(*proto.GossipMessage)
+		// Wrap it up into received response
+		receivedMsg := new(receivedMessageMock)
+		// Create sign response
+		msg, _ := response.NoopSign()
+		// Mock to respond
+		receivedMsg.On("GetGossipMessage").Return(msg)
+		// Send response
+		responseChannel <- receivedMsg
+	})
+
+	// Send request message via communication channel into state transfer
+	commChannel <- requestMsg
+
+	// State transfer request should result in state response back
+	response := <-responseChannel
+
+	// Start the assertion section
+	stateResponse := response.GetGossipMessage().GetStateResponse()
+
+	assertion := assert.New(t)
+	// Nonce should be equal to Nonce of the request
+	assertion.Equal(response.GetGossipMessage().Nonce, uint64(1))
+	// Payload should not need be nil
+	assertion.NotNil(stateResponse)
+	assertion.NotNil(stateResponse.Payloads)
+	// Exactly two messages expected
+	assertion.Equal(len(stateResponse.Payloads), 2)
+
+	// Assert we have all data and it's same as we expected it
+	for _, each := range stateResponse.Payloads {
+		block := &pcomm.Block{}
+		err := pb.Unmarshal(each.Data, block)
+		assertion.NoError(err)
+
+		assertion.NotNil(block.Header)
+
+		testBlock, ok := data[block.Header.Number]
+		assertion.True(ok)
+
+		for i, d := range testBlock.block.Data.Data {
+			assertion.True(bytes.Equal(d, block.Data.Data[i]))
+		}
+
+		for i, p := range testBlock.pvtData {
+			pvtRWSet := &rwset.TxPvtReadWriteSet{}
+			pb.Unmarshal(each.PrivateData[i], pvtRWSet)
+			assertion.Equal(p.Payload, pvtRWSet)
 		}
 	}
 }
