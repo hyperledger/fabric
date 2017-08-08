@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/op/go-logging"
 )
 
@@ -344,35 +343,30 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 
 		blockBytes, err := pb.Marshal(block)
 
-		// Marshal private data
 		if err != nil {
 			logger.Errorf("Could not marshal block: %s", err)
 			continue
 		}
 
-		// TODO: Need to extract orgID of the requester and filter out
-		// private data entries which doesn't belongs to collections
-		// allowed for sender organization based on policies
-		pvtDataBytes := make([][]byte, 0)
-		err = nil
-		for index, each := range pvtData {
-			pvtBytes, err := pb.Marshal(each.Payload)
+		var pvtBytes [][]byte
+		if pvtData != nil {
+			// TODO: Need to extract orgID of the requester and filter out
+			// private data entries which doesn't belongs to collections
+			// allowed for sender organization based on policies
+
+			// Marshal private data
+			pvtBytes, err = pvtData.Marshal()
 			if err != nil {
-				logger.Errorf("Could not marshal private rwset index %d, due to %s", index, err)
-				break
+				logger.Errorf("Failed to marshal private rwset for block %d due to %s", seqNum, err)
+				continue
 			}
-			pvtDataBytes = append(pvtDataBytes, pvtBytes)
-		}
-		if err != nil {
-			logger.Errorf("Failed to marshal private rwset for block %d due to %s", seqNum, err)
-			continue
 		}
 
 		// Appending result to the response
 		response.Payloads = append(response.Payloads, &proto.Payload{
 			SeqNum:      seqNum,
 			Data:        blockBytes,
-			PrivateData: pvtDataBytes,
+			PrivateData: pvtBytes,
 		})
 	}
 	// Sending back response with missing blocks
@@ -470,15 +464,8 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 
 				// Read all private data into slice
 				pvt := make([]*PvtData, 0)
-				var err error
-				for _, each := range payload.PrivateData {
-					payload := &rwset.TxPvtReadWriteSet{}
-					if err = pb.Unmarshal(each, payload); err != nil {
-						break
-					}
-					pvt = append(pvt, &PvtData{Payload: payload})
-				}
-
+				var p PvtDataCollections
+				err := p.Unmarshal(payload.PrivateData)
 				if err != nil {
 					logger.Errorf("Wasn't able to unmarshal private data for block seqNum = %d due to (%s)...dropping block", payload.SeqNum, err)
 					continue

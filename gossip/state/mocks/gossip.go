@@ -19,32 +19,33 @@ type GossipMock struct {
 	mock.Mock
 }
 
-func (*GossipMock) SuspectPeers(s api.PeerSuspector) {
-	panic("implement me")
-}
-
-func (*GossipMock) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
-	panic("implement me")
-}
-
-func (*GossipMock) Peers() []discovery.NetworkMember {
-	panic("implement me")
-}
-
-func (*GossipMock) PeersOfChannel(common.ChainID) []discovery.NetworkMember {
-	return nil
-}
-
-func (*GossipMock) UpdateMetadata(metadata []byte) {
-	panic("implement me")
-}
-
-func (*GossipMock) UpdateChannelMetadata(metadata []byte, chainID common.ChainID) {
+func (g *GossipMock) SuspectPeers(s api.PeerSuspector) {
+	g.Called(s)
 
 }
 
-func (*GossipMock) Gossip(msg *proto.GossipMessage) {
-	panic("implement me")
+func (g *GossipMock) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
+	g.Called(msg, peers)
+}
+
+func (g *GossipMock) Peers() []discovery.NetworkMember {
+	return g.Called().Get(0).([]discovery.NetworkMember)
+}
+
+func (g *GossipMock) PeersOfChannel(chainID common.ChainID) []discovery.NetworkMember {
+	args := g.Called(chainID)
+	return args.Get(0).([]discovery.NetworkMember)
+}
+
+func (g *GossipMock) UpdateMetadata(metadata []byte) {
+	g.Called(metadata)
+}
+
+func (g *GossipMock) UpdateChannelMetadata(metadata []byte, chainID common.ChainID) {
+}
+
+func (g *GossipMock) Gossip(msg *proto.GossipMessage) {
+	g.Called(msg)
 }
 
 func (g *GossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
@@ -58,5 +59,6 @@ func (g *GossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (
 func (g *GossipMock) JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID) {
 }
 
-func (*GossipMock) Stop() {
+func (g *GossipMock) Stop() {
+
 }
