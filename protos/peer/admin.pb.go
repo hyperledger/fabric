@@ -30,7 +30,9 @@ It has these top-level messages:
 	ChaincodeInvocationSpec
 	ChaincodeEvent
 	ChaincodeMessage
-	PutStateInfo
+	GetState
+	PutState
+	DelState
 	GetStateByRange
 	GetQueryResult
 	GetHistoryForKey
