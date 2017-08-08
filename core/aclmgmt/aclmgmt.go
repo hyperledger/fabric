@@ -75,3 +75,9 @@ func GetACLProvider() ACLProvider {
 	}
 	return aclProvider
 }
+
+//NewDefaultACLProvider constructs a new default provider for other systems
+//such as RSCC to use
+func NewDefaultACLProvider() ACLProvider {
+	return newDefaultACLProvider()
+}

@@ -67,11 +67,11 @@ type SystemChaincode struct {
 	Enabled bool
 }
 
-// RegisterSysCC registers the given system chaincode with the peer
-func RegisterSysCC(syscc *SystemChaincode) error {
+// registerSysCC registers the given system chaincode with the peer
+func registerSysCC(syscc *SystemChaincode) (bool, error) {
 	if !syscc.Enabled || !isWhitelisted(syscc) {
 		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s,%t) disabled", syscc.Name, syscc.Path, syscc.Enabled))
-		return nil
+		return false, nil
 	}
 
 	err := inproccontroller.Register(syscc.Path, syscc.Chaincode)
@@ -80,12 +80,12 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 		if _, ok := err.(inproccontroller.SysCCRegisteredErr); !ok {
 			errStr := fmt.Sprintf("could not register (%s,%v): %s", syscc.Path, syscc, err)
 			sysccLogger.Error(errStr)
-			return fmt.Errorf(errStr)
+			return false, fmt.Errorf(errStr)
 		}
 	}
 
 	sysccLogger.Infof("system chaincode %s(%s) registered", syscc.Name, syscc.Path)
-	return err
+	return true, err
 }
 
 // deploySysCC deploys the given system chaincode on a chain
