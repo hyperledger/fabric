@@ -546,3 +546,73 @@ func TestGetVersion(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 
 	}
 }
+
+// TestSmallBatchSize tests multiple update batches
+func TestSmallBatchSize(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db, err := dbProvider.GetDBHandle("testsmallbatchsize")
+	testutil.AssertNoError(t, err, "")
+	db.Open()
+	defer db.Close()
+	batch := statedb.NewUpdateBatch()
+	jsonValue1 := []byte(`{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`)
+	batch.Put("ns1", "key1", jsonValue1, version.NewHeight(1, 1))
+	jsonValue2 := []byte(`"{"asset_name": "marble2","color": "blue","size": 2,"owner": \"jerry\"}`)
+	batch.Put("ns1", "key2", jsonValue2, version.NewHeight(1, 2))
+	jsonValue3 := []byte(`{"asset_name": "marble3","color": "blue","size": 3,"owner": "fred"}`)
+	batch.Put("ns1", "key3", jsonValue3, version.NewHeight(1, 3))
+	jsonValue4 := []byte(`{"asset_name": "marble4","color": "blue","size": 4,"owner": "martha"}`)
+	batch.Put("ns1", "key4", jsonValue4, version.NewHeight(1, 4))
+	jsonValue5 := []byte(`{"asset_name": "marble5","color": "blue","size": 5,"owner": "fred"}`)
+	batch.Put("ns1", "key5", jsonValue5, version.NewHeight(1, 5))
+	jsonValue6 := []byte(`{"asset_name": "marble6","color": "blue","size": 6,"owner": "elaine"}`)
+	batch.Put("ns1", "key6", jsonValue6, version.NewHeight(1, 6))
+	jsonValue7 := []byte(`{"asset_name": "marble7","color": "blue","size": 7,"owner": "fred"}`)
+	batch.Put("ns1", "key7", jsonValue7, version.NewHeight(1, 7))
+	jsonValue8 := []byte(`{"asset_name": "marble8","color": "blue","size": 8,"owner": "elaine"}`)
+	batch.Put("ns1", "key8", jsonValue8, version.NewHeight(1, 8))
+	jsonValue9 := []byte(`{"asset_name": "marble9","color": "green","size": 9,"owner": "fred"}`)
+	batch.Put("ns1", "key9", jsonValue9, version.NewHeight(1, 9))
+	jsonValue10 := []byte(`{"asset_name": "marble10","color": "green","size": 10,"owner": "mary"}`)
+	batch.Put("ns1", "key10", jsonValue10, version.NewHeight(1, 10))
+	jsonValue11 := []byte(`{"asset_name": "marble11","color": "cyan","size": 1000007,"owner": "joe"}`)
+	batch.Put("ns1", "key11", jsonValue11, version.NewHeight(1, 11))
+
+	savePoint := version.NewHeight(1, 12)
+	db.ApplyUpdates(batch, savePoint)
+
+	//Verify all marbles were added
+
+	vv, _ := db.GetState("ns1", "key1")
+	testutil.AssertEquals(t, vv.Value, jsonValue1)
+
+	vv, _ = db.GetState("ns1", "key2")
+	testutil.AssertEquals(t, vv.Value, jsonValue2)
+
+	vv, _ = db.GetState("ns1", "key3")
+	testutil.AssertEquals(t, vv.Value, jsonValue3)
+
+	vv, _ = db.GetState("ns1", "key4")
+	testutil.AssertEquals(t, vv.Value, jsonValue4)
+
+	vv, _ = db.GetState("ns1", "key5")
+	testutil.AssertEquals(t, vv.Value, jsonValue5)
+
+	vv, _ = db.GetState("ns1", "key6")
+	testutil.AssertEquals(t, vv.Value, jsonValue6)
+
+	vv, _ = db.GetState("ns1", "key7")
+	testutil.AssertEquals(t, vv.Value, jsonValue7)
+
+	vv, _ = db.GetState("ns1", "key8")
+	testutil.AssertEquals(t, vv.Value, jsonValue8)
+
+	vv, _ = db.GetState("ns1", "key9")
+	testutil.AssertEquals(t, vv.Value, jsonValue9)
+
+	vv, _ = db.GetState("ns1", "key10")
+	testutil.AssertEquals(t, vv.Value, jsonValue10)
+
+	vv, _ = db.GetState("ns1", "key11")
+	testutil.AssertEquals(t, vv.Value, jsonValue11)
+
+}
