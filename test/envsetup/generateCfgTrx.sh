@@ -16,6 +16,7 @@ CHANNEL_COUNT=$2
 export FABRIC_ROOT=$GOPATH/src/github.com/hyperledger/fabric
 export E2E_CLI_PATH=$FABRIC_ROOT/examples/e2e_cli/
 cp $E2E_CLI_PATH/configtx.yaml $PWD
+sed -i 's/kafka/solo/g' configtx.yaml
 cp $E2E_CLI_PATH/crypto-config.yaml ./crypto-config.yaml
 cp -r $E2E_CLI_PATH/base $PWD/
 sed -i 's/e2ecli/envsetup/g' base/peer-base.yaml
