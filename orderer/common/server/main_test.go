@@ -156,6 +156,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 					GenesisMethod:  tc.genesisMethod,
 					GenesisProfile: "SampleSingleMSPSolo",
 					GenesisFile:    "genesisblock",
+					SystemChannel:  provisional.TestChainID,
 				},
 			}
 
