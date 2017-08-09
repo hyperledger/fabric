@@ -173,9 +173,12 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 	return pvtData, nil
 }
 
-// LastCommittedBlock implements the function in the interface `Store`
-func (s *store) LastCommittedBlock() (uint64, error) {
-	return s.lastCommittedBlock, nil
+// LastCommittedBlockHeight implements the function in the interface `Store`
+func (s *store) LastCommittedBlockHeight() (uint64, error) {
+	if s.isEmpty {
+		return 0, nil
+	}
+	return s.lastCommittedBlock + 1, nil
 }
 
 // HasPendingBatch implements the function in the interface `Store`

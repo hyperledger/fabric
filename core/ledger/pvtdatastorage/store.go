@@ -44,8 +44,8 @@ type Store interface {
 	Rollback() error
 	// IsEmpty returns true if the store does not have any block committed yet
 	IsEmpty() (bool, error)
-	// LastCommittedBlock returns the last committed blocknum
-	LastCommittedBlock() (uint64, error)
+	// LastCommittedBlockHeight returns the height of the last committed block
+	LastCommittedBlockHeight() (uint64, error)
 	// HasPendingBatch returns if the store has a pending batch
 	HasPendingBatch() (bool, error)
 	// Shutdown stops the store
