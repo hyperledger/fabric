@@ -70,18 +70,37 @@ type GossipAdapter interface {
 	PeersOfChannel(common2.ChainID) []discovery.NetworkMember
 }
 
+// MCSAdapter adapter of message crypto service interface to bound
+// specific APIs required by state transfer service
+type MCSAdapter interface {
+	// VerifyBlock returns nil if the block is properly signed, and the claimed seqNum is the
+	// sequence number that the block's header contains.
+	// else returns error
+	VerifyBlock(chainID common2.ChainID, seqNum uint64, signedBlock []byte) error
+
+	// VerifyByChannel checks that signature is a valid signature of message
+	// under a peer's verification key, but also in the context of a specific channel.
+	// If the verification succeeded, Verify returns nil meaning no error occurred.
+	// If peerIdentity is nil, then the verification fails.
+	VerifyByChannel(chainID common2.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error
+}
+
+// ServicesMediator aggregated adapter to compound all mediator
+// required by state transfer into single struct
+type ServicesMediator struct {
+	GossipAdapter
+	MCSAdapter
+}
+
 // GossipStateProviderImpl the implementation of the GossipStateProvider interface
 // the struct to handle in memory sliding window of
 // new ledger block to be acquired by hyper ledger
 type GossipStateProviderImpl struct {
-	// MessageCryptoService
-	mcs api.MessageCryptoService
 
 	// Chain id
 	chainID string
 
-	// The gossiping service
-	gossip GossipAdapter
+	mediator *ServicesMediator
 
 	// Channel to read gossip messages from
 	gossipChan <-chan *proto.GossipMessage
@@ -114,12 +133,11 @@ func init() {
 
 // NewGossipCoordinatedStateProvider creates state provider with coordinator instance
 // to orchestrate arrival of private rwsets and blocks before committing them into the ledger.
-func NewGossipCoordinatedStateProvider(chainID string, g GossipAdapter,
-	coordinator Coordinator, mcs api.MessageCryptoService) GossipStateProvider {
+func NewGossipCoordinatedStateProvider(chainID string, services *ServicesMediator, coordinator Coordinator) GossipStateProvider {
 
 	logger := util.GetLogger(util.LoggingStateModule, "")
 
-	gossipChan, _ := g.Accept(func(message interface{}) bool {
+	gossipChan, _ := services.Accept(func(message interface{}) bool {
 		// Get only data messages
 		return message.(*proto.GossipMessage).IsDataMsg() &&
 			bytes.Equal(message.(*proto.GossipMessage).Channel, []byte(chainID))
@@ -137,7 +155,7 @@ func NewGossipCoordinatedStateProvider(chainID string, g GossipAdapter,
 			return true
 		}
 		connInfo := receivedMsg.GetConnectionInfo()
-		authErr := mcs.VerifyByChannel(msg.Channel, connInfo.Identity, connInfo.Auth.Signature, connInfo.Auth.SignedData)
+		authErr := services.VerifyByChannel(msg.Channel, connInfo.Identity, connInfo.Auth.Signature, connInfo.Auth.SignedData)
 		if authErr != nil {
 			logger.Warning("Got unauthorized nodeMetastate transfer request from", string(connInfo.Identity))
 			return false
@@ -146,7 +164,7 @@ func NewGossipCoordinatedStateProvider(chainID string, g GossipAdapter,
 	}
 
 	// Filter message which are only relevant for nodeMetastate transfer
-	_, commChan := g.Accept(remoteStateMsgFilter, true)
+	_, commChan := services.Accept(remoteStateMsgFilter, true)
 
 	height, err := coordinator.LedgerHeight()
 	if height == 0 {
@@ -164,13 +182,10 @@ func NewGossipCoordinatedStateProvider(chainID string, g GossipAdapter,
 
 	s := &GossipStateProviderImpl{
 		// MessageCryptoService
-		mcs: mcs,
+		mediator: services,
 
 		// Chain ID
 		chainID: chainID,
-
-		// Instance of the gossip
-		gossip: g,
 
 		// Channel to read new messages from
 		gossipChan: gossipChan,
@@ -202,7 +217,7 @@ func NewGossipCoordinatedStateProvider(chainID string, g GossipAdapter,
 	b, err := nodeMetastate.Bytes()
 	if err == nil {
 		logger.Debug("Updating gossip metadate nodeMetastate", nodeMetastate)
-		g.UpdateChannelMetadata(b, common2.ChainID(s.chainID))
+		services.UpdateChannelMetadata(b, common2.ChainID(s.chainID))
 	} else {
 		logger.Errorf("Unable to serialize node meta nodeMetastate, error = %s", err)
 	}
@@ -223,8 +238,8 @@ func NewGossipCoordinatedStateProvider(chainID string, g GossipAdapter,
 
 // NewGossipStateProvider creates initialized instance of gossip state provider with committer
 // which is wrapped up into coordinator, kept for API compatibility
-func NewGossipStateProvider(chainID string, g GossipAdapter, committer committer.Committer, mcs api.MessageCryptoService) GossipStateProvider {
-	return NewGossipCoordinatedStateProvider(chainID, g, NewCoordinator(committer), mcs)
+func NewGossipStateProvider(chainID string, services *ServicesMediator, committer committer.Committer) GossipStateProvider {
+	return NewGossipCoordinatedStateProvider(chainID, services, NewCoordinator(committer))
 }
 
 func (s *GossipStateProviderImpl) listen() {
@@ -389,7 +404,7 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg proto.ReceivedMessage)
 	}
 	for _, payload := range response.GetPayloads() {
 		logger.Debugf("Received payload with sequence number %d.", payload.SeqNum)
-		if err := s.mcs.VerifyBlock(common2.ChainID(s.chainID), payload.SeqNum, payload.Data); err != nil {
+		if err := s.mediator.VerifyBlock(common2.ChainID(s.chainID), payload.SeqNum, payload.Data); err != nil {
 			logger.Warningf("Error verifying block with sequence number %d, due to %s", payload.SeqNum, err)
 			return uint64(0), err
 		}
@@ -518,7 +533,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 // find maximum available ledger height across peers
 func (s *GossipStateProviderImpl) maxAvailableLedgerHeight() uint64 {
 	max := uint64(0)
-	for _, p := range s.gossip.PeersOfChannel(common2.ChainID(s.chainID)) {
+	for _, p := range s.mediator.PeersOfChannel(common2.ChainID(s.chainID)) {
 		if nodeMetastate, err := FromBytes(p.Metadata); err == nil {
 			if max < nodeMetastate.LedgerHeight {
 				max = nodeMetastate.LedgerHeight
@@ -559,7 +574,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 			logger.Debugf("State transfer, with peer %s, requesting blocks in range [%d...%d], "+
 				"for chainID %s", peer.Endpoint, prev, next, s.chainID)
 
-			s.gossip.Send(gossipMsg, peer)
+			s.mediator.Send(gossipMsg, peer)
 			tryCounts++
 
 			// Wait until timeout or response arrival
@@ -619,7 +634,7 @@ func (s *GossipStateProviderImpl) selectPeerToRequestFrom(height uint64) (*comm.
 func (s *GossipStateProviderImpl) filterPeers(predicate func(peer discovery.NetworkMember) bool) []*comm.RemotePeer {
 	var peers []*comm.RemotePeer
 
-	for _, member := range s.gossip.PeersOfChannel(common2.ChainID(s.chainID)) {
+	for _, member := range s.mediator.PeersOfChannel(common2.ChainID(s.chainID)) {
 		if predicate(member) {
 			peers = append(peers, &comm.RemotePeer{Endpoint: member.PreferredEndpoint(), PKIID: member.PKIid})
 		}
@@ -684,7 +699,7 @@ func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData []*Pv
 	// Decode nodeMetastate to byte array
 	b, err := nodeMetastate.Bytes()
 	if err == nil {
-		s.gossip.UpdateChannelMetadata(b, common2.ChainID(s.chainID))
+		s.mediator.UpdateChannelMetadata(b, common2.ChainID(s.chainID))
 	} else {
 
 		logger.Errorf("Unable to serialize node meta nodeMetastate, error = %s", err)

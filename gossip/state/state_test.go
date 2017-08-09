@@ -236,7 +236,8 @@ func newPeerNodeWithGossip(config *gossip.Config, committer committer.Committer,
 	// Initialize pseudo peer simulator, which has only three
 	// basic parts
 
-	sp := NewGossipStateProvider(util.GetTestChainID(), g, committer, cs)
+	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: cs}
+	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, committer)
 	if sp == nil {
 		return nil
 	}
@@ -1018,7 +1019,8 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 
 	coord1.On("Close")
 
-	st := NewGossipCoordinatedStateProvider(chainID, g, coord1, &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor})
+	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor}}
+	st := NewGossipCoordinatedStateProvider(chainID, servicesAdapater, coord1)
 	defer st.Stop()
 
 	// Mocked state request message
@@ -1242,9 +1244,13 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	}).Return([]string{}, nil) // No pvt data to complete and no error
 
 	cryptoService := &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor}
-	peer1State := NewGossipCoordinatedStateProvider(chainID, peers["peer1"], peers["peer1"].coord, cryptoService)
+
+	mediator := &ServicesMediator{GossipAdapter: peers["peer1"], MCSAdapter: cryptoService}
+	peer1State := NewGossipCoordinatedStateProvider(chainID, mediator, peers["peer1"].coord)
 	defer peer1State.Stop()
-	peer2State := NewGossipCoordinatedStateProvider(chainID, peers["peer2"], peers["peer2"].coord, cryptoService)
+
+	mediator = &ServicesMediator{GossipAdapter: peers["peer2"], MCSAdapter: cryptoService}
+	peer2State := NewGossipCoordinatedStateProvider(chainID, mediator, peers["peer2"].coord)
 	defer peer2State.Stop()
 
 	// Make sure state was replicated

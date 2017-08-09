@@ -166,7 +166,8 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 	defer g.lock.Unlock()
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for chainID", chainID)
-	g.chains[chainID] = state.NewGossipStateProvider(chainID, g, committer, g.mcs)
+	servicesAdapater := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
+	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapater, committer)
 	if g.deliveryService == nil {
 		var err error
 		g.deliveryService, err = g.deliveryFactory.Service(gossipServiceInstance, endpoints, g.mcs)
