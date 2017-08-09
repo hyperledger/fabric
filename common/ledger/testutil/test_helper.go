@@ -53,6 +53,18 @@ func (bg *BlockGenerator) NextBlock(simulationResults [][]byte) *common.Block {
 	return block
 }
 
+// NextBlock constructs next block in sequence that includes a number of transactions - one per simulationResults
+func (bg *BlockGenerator) NextBlockWithTxid(simulationResults [][]byte, txids []string) *common.Block {
+	// Length of simulationResults should be same as the length of txids.
+	if len(simulationResults) != len(txids) {
+		return nil
+	}
+	block := ConstructBlockWithTxid(bg.t, bg.blockNum, bg.previousHash, simulationResults, txids, bg.signTxs)
+	bg.blockNum++
+	bg.previousHash = block.Header.Hash()
+	return block
+}
+
 // NextTestBlock constructs next block in sequence block with 'numTx' number of transactions for testing
 func (bg *BlockGenerator) NextTestBlock(numTx int, txSize int) *common.Block {
 	simulationResults := [][]byte{}
@@ -72,7 +84,7 @@ func (bg *BlockGenerator) NextTestBlocks(numBlocks int) []*common.Block {
 }
 
 // ConstructTransaction constructs a transaction for testing
-func ConstructTransaction(_ *testing.T, simulationResults []byte, sign bool) (*common.Envelope, string, error) {
+func ConstructTransaction(_ *testing.T, simulationResults []byte, txid string, sign bool) (*common.Envelope, string, error) {
 	ccid := &pb.ChaincodeID{
 		Name:    "foo",
 		Version: "v1",
@@ -82,18 +94,30 @@ func ConstructTransaction(_ *testing.T, simulationResults []byte, sign bool) (*c
 	var txEnv *common.Envelope
 	var err error
 	if sign {
-		txEnv, txID, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GetTestChainID(), ccid, nil, simulationResults, nil, nil)
+		txEnv, txID, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GetTestChainID(), ccid, nil, simulationResults, txid, nil, nil)
 	} else {
-		txEnv, txID, err = ptestutils.ConstructUnsingedTxEnv(util.GetTestChainID(), ccid, nil, simulationResults, nil, nil)
+		txEnv, txID, err = ptestutils.ConstructUnsingedTxEnv(util.GetTestChainID(), ccid, nil, simulationResults, txid, nil, nil)
 	}
 	return txEnv, txID, err
+}
+
+func ConstructBlockWithTxid(t *testing.T, blockNum uint64, previousHash []byte, simulationResults [][]byte, txids []string, sign bool) *common.Block {
+	envs := []*common.Envelope{}
+	for i := 0; i < len(simulationResults); i++ {
+		env, _, err := ConstructTransaction(t, simulationResults[i], txids[i], sign)
+		if err != nil {
+			t.Fatalf("ConstructTestTransaction failed, err %s", err)
+		}
+		envs = append(envs, env)
+	}
+	return newBlock(envs, blockNum, previousHash)
 }
 
 // ConstructBlock constructs a single block
 func ConstructBlock(t *testing.T, blockNum uint64, previousHash []byte, simulationResults [][]byte, sign bool) *common.Block {
 	envs := []*common.Envelope{}
 	for i := 0; i < len(simulationResults); i++ {
-		env, _, err := ConstructTransaction(t, simulationResults[i], sign)
+		env, _, err := ConstructTransaction(t, simulationResults[i], "", sign)
 		if err != nil {
 			t.Fatalf("ConstructTestTransaction failed, err %s", err)
 		}

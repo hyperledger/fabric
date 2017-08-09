@@ -37,5 +37,5 @@ type HistoryDB interface {
 	Commit(block *common.Block) error
 	GetLastSavepoint() (*version.Height, error)
 	ShouldRecover(lastAvailableBlock uint64) (bool, uint64, error)
-	CommitLostBlock(block *common.Block) error
+	CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error
 }

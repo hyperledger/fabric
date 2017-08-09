@@ -49,15 +49,16 @@ func TestBlockValidation(t *testing.T) {
 	ledger, _ := ledgermgmt.CreateLedger(gb)
 	defer ledger.Close()
 
-	simulator, _ := ledger.NewTxSimulator()
+	txid := util2.GenerateUUID()
+	simulator, _ := ledger.NewTxSimulator(txid)
 	simulator.SetState("ns1", "key1", []byte("value1"))
 	simulator.SetState("ns1", "key2", []byte("value2"))
 	simulator.SetState("ns1", "key3", []byte("value3"))
 	simulator.Done()
 
 	simRes, _ := simulator.GetTxSimulationResults()
-
-	_, err := testutil.ConstructBytesProposalResponsePayload("v1", simRes)
+	pubSimulationResBytes, _ := simRes.GetPubSimulationBytes()
+	_, err := testutil.ConstructBytesProposalResponsePayload("v1", pubSimulationResBytes)
 	if err != nil {
 		t.Fatalf("Could not construct ProposalResponsePayload bytes, err: %s", err)
 	}
@@ -69,7 +70,7 @@ func TestBlockValidation(t *testing.T) {
 	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil})
 
-	block := testutil.ConstructBlock(t, 1, gbHash, [][]byte{simRes}, true)
+	block := testutil.ConstructBlock(t, 1, gbHash, [][]byte{pubSimulationResBytes}, true)
 
 	tValidator.Validate(block)
 

@@ -47,7 +47,7 @@ func (env *StoreEnv) Cleanup() {
 }
 
 func removeStorePath(t testing.TB) {
-	dbPath := getTransientStorePath()
+	dbPath := GetTransientStorePath()
 	if err := os.RemoveAll(dbPath); err != nil {
 		t.Fatalf("Err: %s", err)
 		t.FailNow()

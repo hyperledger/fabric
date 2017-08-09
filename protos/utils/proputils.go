@@ -416,6 +416,15 @@ func GetActionFromEnvelope(envBytes []byte) (*peer.ChaincodeAction, error) {
 }
 
 // CreateProposalFromCIS returns a proposal given a serialized identity and a ChaincodeInvocationSpec
+func CreateProposalFromCISAndTxid(txid string, typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, string, error) {
+	nonce, err := crypto.GetRandomNonce()
+	if err != nil {
+		return nil, "", err
+	}
+	return CreateChaincodeProposalWithTxIDNonceAndTransient(txid, typ, chainID, cis, nonce, creator, nil)
+}
+
+// CreateProposalFromCIS returns a proposal given a serialized identity and a ChaincodeInvocationSpec
 func CreateProposalFromCIS(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, string, error) {
 	return CreateChaincodeProposal(typ, chainID, cis, creator)
 }

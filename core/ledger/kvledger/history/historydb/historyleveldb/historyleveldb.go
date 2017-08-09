@@ -208,7 +208,8 @@ func (historyDB *historyDB) ShouldRecover(lastAvailableBlock uint64) (bool, uint
 }
 
 // CommitLostBlock implements method in interface kvledger.Recoverer
-func (historyDB *historyDB) CommitLostBlock(block *common.Block) error {
+func (historyDB *historyDB) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error {
+	block := blockAndPvtdata.Block
 	if err := historyDB.Commit(block); err != nil {
 		return err
 	}

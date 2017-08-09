@@ -137,8 +137,11 @@ func createCCDataRWset(nameK, nameV, version string, policy []byte) ([]byte, err
 
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder.AddToWriteSet("lscc", nameK, cdbytes)
-	rwset := rwsetBuilder.GetTxReadWriteSet()
-	return rwset.ToProtoBytes()
+	sr, err := rwsetBuilder.GetTxSimulationResults()
+	if err != nil {
+		return nil, err
+	}
+	return sr.GetPubSimulationBytes()
 }
 
 func createLSCCTx(ccname, ccver, f string, res []byte) (*common.Envelope, error) {
@@ -461,11 +464,12 @@ func TestRWSetTooBig(t *testing.T) {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder.AddToWriteSet("lscc", ccname, cdbytes)
 	rwsetBuilder.AddToWriteSet("lscc", "spurious", []byte("spurious"))
-	rwset := rwsetBuilder.GetTxReadWriteSet()
-	res, err := rwset.ToProtoBytes()
-	assert.NoError(t, err)
 
-	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
+	sr, err := rwsetBuilder.GetTxSimulationResults()
+	assert.NoError(t, err)
+	srBytes, err := sr.GetPubSimulationBytes()
+	assert.NoError(t, err)
+	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, srBytes)
 	if err != nil {
 		t.Fatalf("createTx returned err %s", err)
 	}
@@ -545,11 +549,11 @@ func TestValidateDeployFail(t *testing.T) {
 
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder.AddToWriteSet("lscc", ccname, []byte("barf"))
-	rwset := rwsetBuilder.GetTxReadWriteSet()
-	resBogus, err := rwset.ToProtoBytes()
+	sr, err := rwsetBuilder.GetTxSimulationResults()
 	assert.NoError(t, err)
-
-	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, resBogus)
+	resBogusBytes, err := sr.GetPubSimulationBytes()
+	assert.NoError(t, err)
+	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, resBogusBytes)
 	if err != nil {
 		t.Fatalf("createTx returned err %s", err)
 	}
@@ -747,11 +751,11 @@ func TestValidateDeployFail(t *testing.T) {
 	rwsetBuilder = rwsetutil.NewRWSetBuilder()
 	rwsetBuilder.AddToWriteSet("lscc", ccname, cdbytes)
 	rwsetBuilder.AddToWriteSet("bogusbogus", "key", []byte("val"))
-	rwset = rwsetBuilder.GetTxReadWriteSet()
-	res, err = rwset.ToProtoBytes()
+	sr, err = rwsetBuilder.GetTxSimulationResults()
 	assert.NoError(t, err)
-
-	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
+	srBytes, err := sr.GetPubSimulationBytes()
+	assert.NoError(t, err)
+	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, srBytes)
 	if err != nil {
 		t.Fatalf("createTx returned err %s", err)
 	}

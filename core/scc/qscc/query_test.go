@@ -23,6 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
@@ -255,19 +256,25 @@ func addBlockForTesting(t *testing.T, chainid string) *common.Block {
 	ledger := peer.GetLedger(chainid)
 	defer ledger.Close()
 
-	simulator, _ := ledger.NewTxSimulator()
+	txid1 := util.GenerateUUID()
+	simulator, _ := ledger.NewTxSimulator(txid1)
 	simulator.SetState("ns1", "key1", []byte("value1"))
 	simulator.SetState("ns1", "key2", []byte("value2"))
 	simulator.SetState("ns1", "key3", []byte("value3"))
 	simulator.Done()
 	simRes1, _ := simulator.GetTxSimulationResults()
-	simulator, _ = ledger.NewTxSimulator()
+	pubSimResBytes1, _ := simRes1.GetPubSimulationBytes()
+
+	txid2 := util.GenerateUUID()
+	simulator, _ = ledger.NewTxSimulator(txid2)
 	simulator.SetState("ns2", "key4", []byte("value4"))
 	simulator.SetState("ns2", "key5", []byte("value5"))
 	simulator.SetState("ns2", "key6", []byte("value6"))
 	simulator.Done()
 	simRes2, _ := simulator.GetTxSimulationResults()
-	block1 := bg.NextBlock([][]byte{simRes1, simRes2})
+	pubSimResBytes2, _ := simRes2.GetPubSimulationBytes()
+
+	block1 := bg.NextBlock([][]byte{pubSimResBytes1, pubSimResBytes2})
 	ledger.Commit(block1)
 
 	return block1

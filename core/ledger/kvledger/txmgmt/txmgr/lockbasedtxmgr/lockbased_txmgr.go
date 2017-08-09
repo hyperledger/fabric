@@ -21,10 +21,11 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/statebasedval"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/protos/common"
 )
 
@@ -33,17 +34,17 @@ var logger = flogging.MustGetLogger("lockbasedtxmgr")
 // LockBasedTxMgr a simple implementation of interface `txmgmt.TxMgr`.
 // This implementation uses a read-write lock to prevent conflicts between transaction simulation and committing
 type LockBasedTxMgr struct {
-	db           statedb.VersionedDB
+	db           privacyenabledstate.DB
 	validator    validator.Validator
-	batch        *statedb.UpdateBatch
+	batch        *privacyenabledstate.UpdateBatch
 	currentBlock *common.Block
 	commitRWLock sync.RWMutex
 }
 
 // NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
-func NewLockBasedTxMgr(db statedb.VersionedDB) *LockBasedTxMgr {
+func NewLockBasedTxMgr(db privacyenabledstate.DB, tStore transientstore.Store) *LockBasedTxMgr {
 	db.Open()
-	return &LockBasedTxMgr{db: db, validator: statebasedval.NewValidator(db)}
+	return &LockBasedTxMgr{db: db, validator: valimpl.NewStatebasedValidator(db)}
 }
 
 // GetLastSavepoint returns the block num recorded in savepoint,
@@ -53,24 +54,28 @@ func (txmgr *LockBasedTxMgr) GetLastSavepoint() (*version.Height, error) {
 }
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
-func (txmgr *LockBasedTxMgr) NewQueryExecutor() (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr)
+func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor, error) {
+	qe := newQueryExecutor(txmgr, txid)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
 
 // NewTxSimulator implements method in interface `txmgmt.TxMgr`
-func (txmgr *LockBasedTxMgr) NewTxSimulator() (ledger.TxSimulator, error) {
+func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, error) {
 	logger.Debugf("constructing new tx simulator")
-	s := newLockBasedTxSimulator(txmgr)
+	s, err := newLockBasedTxSimulator(txmgr, txid)
+	if err != nil {
+		return nil, err
+	}
 	txmgr.commitRWLock.RLock()
 	return s, nil
 }
 
 // ValidateAndPrepare implements method in interface `txmgmt.TxMgr`
-func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *common.Block, doMVCCValidation bool) error {
+func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) error {
+	block := blockAndPvtdata.Block
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
-	batch, err := txmgr.validator.ValidateAndPrepareBatch(block, doMVCCValidation)
+	batch, err := txmgr.validator.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
 	if err != nil {
 		return err
 	}
@@ -94,7 +99,7 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}
 	defer func() { txmgr.batch = nil }()
-	if err := txmgr.db.ApplyUpdates(txmgr.batch,
+	if err := txmgr.db.ApplyPrivacyAwareUpdates(txmgr.batch,
 		version.NewHeight(txmgr.currentBlock.Header.Number, uint64(len(txmgr.currentBlock.Data.Data)-1))); err != nil {
 		return err
 	}
@@ -120,9 +125,10 @@ func (txmgr *LockBasedTxMgr) ShouldRecover(lastAvailableBlock uint64) (bool, uin
 }
 
 // CommitLostBlock implements method in interface kvledger.Recoverer
-func (txmgr *LockBasedTxMgr) CommitLostBlock(block *common.Block) error {
+func (txmgr *LockBasedTxMgr) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error {
+	block := blockAndPvtdata.Block
 	logger.Debugf("Constructing updateSet for the block %d", block.Header.Number)
-	if err := txmgr.ValidateAndPrepare(block, false); err != nil {
+	if err := txmgr.ValidateAndPrepare(blockAndPvtdata, false); err != nil {
 		return err
 	}
 	logger.Debugf("Committing block %d to state database", block.Header.Number)

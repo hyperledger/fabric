@@ -424,7 +424,7 @@ func (*ChaincodeData) ProtoMessage() {}
 // should be added below if necessary
 type ChaincodeProvider interface {
 	// GetContext returns a ledger context
-	GetContext(ledger ledger.PeerLedger) (context.Context, error)
+	GetContext(ledger ledger.PeerLedger, txid string) (context.Context, error)
 	// GetCCContext returns an opaque chaincode context
 	GetCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) interface{}
 	// GetCCValidationInfoFromLSCC returns the VSCC and the policy listed by LSCC for the supplied chaincode

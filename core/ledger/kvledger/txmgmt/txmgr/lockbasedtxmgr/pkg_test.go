@@ -18,123 +18,81 @@ package lockbasedtxmgr
 
 import (
 	"testing"
-	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/spf13/viper"
-)
-
-const (
-	testFilesystemPath = "/tmp/fabric/ledgertests/kvledger/txmgmt/txmgr/lockbasedtxmgr"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 )
 
 type testEnv interface {
 	init(t *testing.T, testLedgerID string)
 	getName() string
 	getTxMgr() txmgr.TxMgr
-	getVDB() statedb.VersionedDB
+	getVDB() privacyenabledstate.DB
 	cleanup()
 }
 
+const (
+	levelDBtestEnvName = "levelDB_LockBasedTxMgr"
+	couchDBtestEnvName = "couchDB_LockBasedTxMgr"
+)
+
 // Tests will be run against each environment in this array
-// For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
-var testEnvs = []testEnv{&levelDBLockBasedEnv{}, &couchDBLockBasedEnv{}}
+// For example, to skip CouchDB tests, remove the entry for couch environment
+var testEnvs = []testEnv{
+	&lockBasedEnv{name: levelDBtestEnvName, testDBEnv: &privacyenabledstate.LevelDBCommonStorageTestEnv{}},
+	&lockBasedEnv{name: couchDBtestEnvName, testDBEnv: &privacyenabledstate.CouchDBCommonStorageTestEnv{}},
+}
 
 ///////////// LevelDB Environment //////////////
 
-const levelDBtestEnvName = "levelDB_LockBasedTxMgr"
-
-type levelDBLockBasedEnv struct {
+type lockBasedEnv struct {
+	t            testing.TB
+	name         string
 	testLedgerID string
-	testDBEnv    *stateleveldb.TestVDBEnv
-	testDB       statedb.VersionedDB
-	txmgr        txmgr.TxMgr
+
+	testDBEnv privacyenabledstate.TestEnv
+	testDB    privacyenabledstate.DB
+
+	testTStoreEnv *transientstore.StoreEnv
+
+	txmgr txmgr.TxMgr
 }
 
-func (env *levelDBLockBasedEnv) getName() string {
-	return levelDBtestEnvName
+func (env *lockBasedEnv) getName() string {
+	return env.name
 }
 
-func (env *levelDBLockBasedEnv) init(t *testing.T, testLedgerID string) {
-	viper.Set("peer.fileSystemPath", testFilesystemPath)
-	testDBEnv := stateleveldb.NewTestVDBEnv(t)
-	testDB, err := testDBEnv.DBProvider.GetDBHandle(testLedgerID)
+func (env *lockBasedEnv) init(t *testing.T, testLedgerID string) {
+	var err error
+	env.t = t
+	env.testDBEnv.Init(t)
+	env.testDB = env.testDBEnv.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
-
-	txMgr := NewLockBasedTxMgr(testDB)
-	env.testLedgerID = testLedgerID
-	env.testDBEnv = testDBEnv
-	env.testDB = testDB
-	env.txmgr = txMgr
+	env.testTStoreEnv = transientstore.NewTestStoreEnv(t)
+	testTransientStore, err := env.testTStoreEnv.TestStoreProvider.OpenStore(testLedgerID)
+	testutil.AssertNoError(t, err, "")
+	env.txmgr = NewLockBasedTxMgr(env.testDB, testTransientStore)
 }
 
-func (env *levelDBLockBasedEnv) getTxMgr() txmgr.TxMgr {
+func (env *lockBasedEnv) getTxMgr() txmgr.TxMgr {
 	return env.txmgr
 }
 
-func (env *levelDBLockBasedEnv) getVDB() statedb.VersionedDB {
+func (env *lockBasedEnv) getVDB() privacyenabledstate.DB {
 	return env.testDB
 }
 
-func (env *levelDBLockBasedEnv) cleanup() {
-	defer env.txmgr.Shutdown()
-	defer env.testDBEnv.Cleanup()
-}
-
-///////////// CouchDB Environment //////////////
-
-const couchDBtestEnvName = "couchDB_LockBasedTxMgr"
-
-type couchDBLockBasedEnv struct {
-	testLedgerID string
-	testDBEnv    *statecouchdb.TestVDBEnv
-	testDB       statedb.VersionedDB
-	txmgr        txmgr.TxMgr
-}
-
-func (env *couchDBLockBasedEnv) getName() string {
-	return couchDBtestEnvName
-}
-
-func (env *couchDBLockBasedEnv) init(t *testing.T, testLedgerID string) {
-	viper.Set("peer.fileSystemPath", testFilesystemPath)
-	// both vagrant and CI have couchdb configured at host "couchdb"
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
-	// Replace with correct username/password such as
-	// admin/admin if user security is enabled on couchdb.
-	viper.Set("ledger.state.couchDBConfig.username", "")
-	viper.Set("ledger.state.couchDBConfig.password", "")
-	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
-	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 10)
-	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
-	testDBEnv := statecouchdb.NewTestVDBEnv(t)
-	testDB, err := testDBEnv.DBProvider.GetDBHandle(testLedgerID)
-	testutil.AssertNoError(t, err, "")
-
-	txMgr := NewLockBasedTxMgr(testDB)
-	env.testLedgerID = testLedgerID
-	env.testDBEnv = testDBEnv
-	env.testDB = testDB
-	env.txmgr = txMgr
-}
-
-func (env *couchDBLockBasedEnv) getTxMgr() txmgr.TxMgr {
-	return env.txmgr
-}
-
-func (env *couchDBLockBasedEnv) getVDB() statedb.VersionedDB {
-	return env.testDB
-}
-
-func (env *couchDBLockBasedEnv) cleanup() {
-	defer env.txmgr.Shutdown()
-	defer env.testDBEnv.Cleanup(env.testLedgerID)
+func (env *lockBasedEnv) cleanup() {
+	env.txmgr.Shutdown()
+	env.testDBEnv.Cleanup()
+	env.testTStoreEnv.Cleanup()
 }
 
 //////////// txMgrTestHelper /////////////
@@ -150,9 +108,10 @@ func newTxMgrTestHelper(t *testing.T, txMgr txmgr.TxMgr) *txMgrTestHelper {
 	return &txMgrTestHelper{t, txMgr, bg}
 }
 
-func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet []byte) {
-	block := h.bg.NextBlock([][]byte{txRWSet})
-	err := h.txMgr.ValidateAndPrepare(block, true)
+func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet *rwset.TxReadWriteSet) {
+	rwSetBytes, _ := proto.Marshal(txRWSet)
+	block := h.bg.NextBlock([][]byte{rwSetBytes})
+	err := h.txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block, BlockPvtData: nil}, true)
 	testutil.AssertNoError(h.t, err, "")
 	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
@@ -166,9 +125,10 @@ func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet []byte) {
 	testutil.AssertNoError(h.t, err, "")
 }
 
-func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet []byte) {
-	block := h.bg.NextBlock([][]byte{txRWSet})
-	err := h.txMgr.ValidateAndPrepare(block, true)
+func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet *rwset.TxReadWriteSet) {
+	rwSetBytes, _ := proto.Marshal(txRWSet)
+	block := h.bg.NextBlock([][]byte{rwSetBytes})
+	err := h.txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block, BlockPvtData: nil}, true)
 	testutil.AssertNoError(h.t, err, "")
 	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0

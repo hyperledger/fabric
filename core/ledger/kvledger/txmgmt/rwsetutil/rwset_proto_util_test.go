@@ -163,7 +163,7 @@ func TestTxPvtRwSetConversion(t *testing.T) {
 	txPvtRwSet := sampleTxPvtRwSet()
 	protoMsg, err := txPvtRwSet.toProtoMsg()
 	testutil.AssertNoError(t, err, "")
-	txPvtRwSet1, err := txPvtRwSetFromProtoMsg(protoMsg)
+	txPvtRwSet1, err := TxPvtRwSetFromProtoMsg(protoMsg)
 	testutil.AssertNoError(t, err, "")
 	t.Logf("txPvtRwSet=%s, txPvtRwSet1=%s, Diff:%s", spew.Sdump(txPvtRwSet), spew.Sdump(txPvtRwSet1), pretty.Diff(txPvtRwSet, txPvtRwSet1))
 	testutil.AssertEquals(t, txPvtRwSet1, txPvtRwSet)

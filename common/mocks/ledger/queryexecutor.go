@@ -56,6 +56,21 @@ func (m *MockQueryExecutor) ExecuteQuery(namespace, query string) (ledger.Result
 	return nil, nil
 }
 
-func (m *MockQueryExecutor) Done() {
+func (m *MockQueryExecutor) GetPrivateData(namespace, collection, key string) ([]byte, error) {
+	return nil, nil
+}
 
+func (m *MockQueryExecutor) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error) {
+	return nil, nil
+}
+
+func (m *MockQueryExecutor) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (ledger.ResultsIterator, error) {
+	return nil, nil
+}
+
+func (m *MockQueryExecutor) ExecuteQueryOnPrivateData(namespace, collection, query string) (ledger.ResultsIterator, error) {
+	return nil, nil
+}
+
+func (m *MockQueryExecutor) Done() {
 }
