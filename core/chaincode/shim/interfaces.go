@@ -179,6 +179,10 @@ type ChaincodeStubInterface interface {
 	// GetBinding returns the transaction binding
 	GetBinding() ([]byte, error)
 
+	// GetDecorations returns additional data (if applicable)
+	// about the proposal that originated from the peer
+	GetDecorations() map[string][]byte
+
 	// GetSignedProposal returns the SignedProposal object, which contains all
 	// data elements part of a transaction proposal.
 	GetSignedProposal() (*pb.SignedProposal, error)
