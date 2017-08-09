@@ -9,7 +9,6 @@ package channel
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -400,10 +399,9 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 		msg = m
 	}
 
-	md := msg.GetStateInfo().Metadata
-	height, err := strconv.ParseInt(string(md), 10, 64)
+	nodeMeta, err := common.FromBytes(msg.GetStateInfo().Metadata)
 	assert.NoError(t, err, "ReceivedMetadata is invalid")
-	assert.Equal(t, ledgerHeight, int(height), "Received different ledger height than expected")
+	assert.Equal(t, ledgerHeight, int(nodeMeta.LedgerHeight), "Received different ledger height than expected")
 }
 
 func TestChannelMsgStoreEviction(t *testing.T) {
@@ -1097,7 +1095,9 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	stateInfoMsg := &receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, channelA))}
 	gc.HandleMessage(stateInfoMsg)
 	assert.NotEmpty(t, gc.GetPeers())
-	assert.Equal(t, "4", string(gc.GetPeers()[0].Metadata))
+	nodeMeta, err := common.FromBytes(gc.GetPeers()[0].Metadata)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, int(nodeMeta.LedgerHeight))
 
 	// Check we don't respond to stateInfoSnapshot requests with wrong MAC
 	sMsg, _ := (&proto.GossipMessage{
@@ -1149,7 +1149,9 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 		assert.Len(t, elements, 1)
 		sMsg, err := elements[0].ToGossipMessage()
 		assert.NoError(t, err)
-		assert.Equal(t, []byte("4"), sMsg.GetStateInfo().Metadata)
+		nodeMeta, err := common.FromBytes(sMsg.GetStateInfo().Metadata)
+		assert.NoError(t, err)
+		assert.Equal(t, 4, int(nodeMeta.LedgerHeight))
 	}
 
 	// Ensure we don't crash if we got an invalid state info message
@@ -1615,6 +1617,44 @@ func TestOnDemandGossip(t *testing.T) {
 	}
 }
 
+func TestChannelPullWithDigestsFilter(t *testing.T) {
+	t.Parallel()
+	cs := &cryptoService{}
+	cs.On("VerifyBlock", mock.Anything).Return(nil)
+	receivedBlocksChan := make(chan *proto.SignedGossipMessage, 2)
+	adapter := new(gossipAdapterMock)
+	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
+	adapter.On("Gossip", mock.Anything)
+	adapter.On("DeMultiplex", mock.Anything).Run(func(arg mock.Arguments) {
+		msg := arg.Get(0).(*proto.SignedGossipMessage)
+		if !msg.IsDataMsg() {
+			return
+		}
+		// The peer is supposed to de-multiplex 1 ledger block
+		assert.True(t, msg.IsDataMsg())
+		receivedBlocksChan <- msg
+	})
+	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{})
+	go gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(100, pkiIDInOrg1, channelA)})
+
+	gc.UpdateStateInfo(createStateInfoMsg(11, pkiIDInOrg1, channelA))
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	pullPhase := simulatePullPhaseWithVariableDigest(gc, t, &wg, func(envelope *proto.Envelope) {}, []string{"10", "11"}, []string{"11"}, 11)
+	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase)
+	wg.Wait()
+
+	select {
+	case <-time.After(time.Second * 5):
+		t.Fatal("Haven't received blocks on time")
+	case msg := <-receivedBlocksChan:
+		assert.Equal(t, uint64(11), msg.GetDataMsg().Payload.SeqNum)
+	}
+
+}
+
 func createDataUpdateMsg(nonce uint64, seqs ...uint64) *proto.SignedGossipMessage {
 	msg := &proto.GossipMessage{
 		Nonce:   0,
@@ -1669,13 +1709,15 @@ func dataMsgOfChannel(seqnum uint64, channel common.ChainID) *proto.SignedGossip
 }
 
 func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common.ChainID) *proto.SignedGossipMessage {
+	nodeMeta := common.NewNodeMetastate(uint64(ledgerHeight))
+	metaBytes, _ := nodeMeta.Bytes()
 	sMsg, _ := (&proto.GossipMessage{
 		Tag: proto.GossipMessage_CHAN_OR_ORG,
 		Content: &proto.GossipMessage_StateInfo{
 			StateInfo: &proto.StateInfo{
 				Channel_MAC: GenerateMAC(pkiID, channel),
 				Timestamp:   &proto.PeerTime{IncNum: uint64(time.Now().UnixNano()), SeqNum: 1},
-				Metadata:    []byte(fmt.Sprintf("%d", ledgerHeight)),
+				Metadata:    metaBytes,
 				PkiId:       []byte(pkiID),
 			},
 		},
@@ -1719,6 +1761,10 @@ func createDataMsg(seqnum uint64, channel common.ChainID) *proto.SignedGossipMes
 }
 
 func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutator msgMutator, seqs ...uint64) func(args mock.Arguments) {
+	return simulatePullPhaseWithVariableDigest(gc, t, wg, mutator, []string{"10", "11"}, []string{"10", "11"}, seqs...)
+}
+
+func simulatePullPhaseWithVariableDigest(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutator msgMutator, proposedDigestSeqs []string, resultDigestSeqs []string, seqs ...uint64) func(args mock.Arguments) {
 	var l sync.Mutex
 	var sentHello bool
 	var sentReq bool
@@ -1735,7 +1781,7 @@ func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutat
 				Content: &proto.GossipMessage_DataDig{
 					DataDig: &proto.DataDigest{
 						MsgType: proto.PullMsgType_BLOCK_MSG,
-						Digests: []string{"10", "11"},
+						Digests: proposedDigestSeqs,
 						Nonce:   msg.GetHello().Nonce,
 					},
 				},
@@ -1749,10 +1795,10 @@ func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutat
 		if msg.IsDataReq() && !sentReq {
 			sentReq = true
 			dataReq := msg.GetDataReq()
-			for _, expectedDigest := range []string{"10", "11"} {
+			for _, expectedDigest := range resultDigestSeqs {
 				assert.Contains(t, dataReq.Digests, expectedDigest)
 			}
-			assert.Equal(t, 2, len(dataReq.Digests))
+			assert.Equal(t, len(resultDigestSeqs), len(dataReq.Digests))
 			// When we send a data request, simulate a response of a data update
 			// from the imaginary peer that got the request
 			dataUpdateMsg := new(receivedMsg)

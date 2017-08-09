@@ -9,6 +9,7 @@ package channel
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -127,6 +128,7 @@ type gossipChannel struct {
 	stateInfoPublishScheduler *time.Ticker
 	stateInfoRequestScheduler *time.Ticker
 	memFilter                 *membershipFilter
+	ledgerHeight              uint64
 }
 
 type membershipFilter struct {
@@ -335,6 +337,27 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 			gc.DeMultiplex(msg)
 		},
 	}
+
+	adapter.IngressDigFilter = func(digestMsg *proto.DataDigest) *proto.DataDigest {
+		gc.RLock()
+		height := gc.ledgerHeight
+		gc.RUnlock()
+		digests := digestMsg.Digests
+		digestMsg.Digests = nil
+		for i := range digests {
+			seqNum, err := strconv.ParseUint(digests[i], 10, 64)
+			if err != nil {
+				gc.logger.Warning("Can't parse digest", digests[i], "err", err)
+				continue
+			}
+			if seqNum >= height {
+				digestMsg.Digests = append(digestMsg.Digests, digests[i])
+			}
+
+		}
+		return digestMsg
+	}
+
 	return pull.NewPullMediator(conf, adapter)
 }
 
@@ -478,6 +501,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		}
 		return
 	}
+
 	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BLOCK_MSG {
 		// If we don't have a StateInfo message from the peer,
 		// no way of validating its eligibility in the channel.
@@ -701,6 +725,13 @@ func (gc *gossipChannel) UpdateStateInfo(msg *proto.SignedGossipMessage) {
 	gc.stateInfoMsgStore.Add(msg)
 	gc.Lock()
 	defer gc.Unlock()
+
+	nodeMeta, err := common.FromBytes(msg.GetStateInfo().Metadata)
+	if err != nil {
+		gc.logger.Warning("Can't extract ledger height from metadata", err)
+		return
+	}
+	gc.ledgerHeight = nodeMeta.LedgerHeight
 	gc.stateInfoMsg = msg
 	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(1))
 }

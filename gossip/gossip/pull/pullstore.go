@@ -55,12 +55,15 @@ type Config struct {
 	MsgType           proto.PullMsgType
 }
 
-// DigestFilter filters digests to be sent to a remote peer, that
-// sent a hello with the following message
-type DigestFilter func(helloMsg proto.ReceivedMessage) func(digestItem string) bool
+// IngressDigestFilter filters out entities in digests that are received from remote peers
+type IngressDigestFilter func(digestMsg *proto.DataDigest) *proto.DataDigest
 
-// byContext converts this DigestFilter to an algo.DigestFilter
-func (df DigestFilter) byContext() algo.DigestFilter {
+// EgressDigestFilter filters digests to be sent to a remote peer, that
+// sent a hello with the following message
+type EgressDigestFilter func(helloMsg proto.ReceivedMessage) func(digestItem string) bool
+
+// byContext converts this EgressDigFilter to an algo.DigestFilter
+func (df EgressDigestFilter) byContext() algo.DigestFilter {
 	return func(context interface{}) func(digestItem string) bool {
 		return func(digestItem string) bool {
 			return df(context.(proto.ReceivedMessage))(digestItem)
@@ -71,11 +74,12 @@ func (df DigestFilter) byContext() algo.DigestFilter {
 // PullAdapter defines methods of the pullStore to interact
 // with various modules of gossip
 type PullAdapter struct {
-	Sndr        Sender
-	MemSvc      MembershipService
-	IdExtractor proto.IdentifierExtractor
-	MsgCons     proto.MsgConsumer
-	DigFilter   DigestFilter
+	Sndr             Sender
+	MemSvc           MembershipService
+	IdExtractor      proto.IdentifierExtractor
+	MsgCons          proto.MsgConsumer
+	EgressDigFilter  EgressDigestFilter
+	IngressDigFilter IngressDigestFilter
 }
 
 // Mediator is a component wrap a PullEngine and provides the methods
@@ -115,7 +119,7 @@ type pullMediatorImpl struct {
 
 // NewPullMediator returns a new Mediator
 func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
-	digFilter := adapter.DigFilter
+	egressDigFilter := adapter.EgressDigFilter
 
 	acceptAllFilter := func(_ proto.ReceivedMessage) func(string) bool {
 		return func(_ string) bool {
@@ -123,8 +127,8 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 		}
 	}
 
-	if digFilter == nil {
-		digFilter = acceptAllFilter
+	if egressDigFilter == nil {
+		egressDigFilter = acceptAllFilter
 	}
 
 	p := &pullMediatorImpl{
@@ -135,8 +139,16 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 		itemID2Msg:   make(map[string]*proto.SignedGossipMessage),
 	}
 
-	p.engine = algo.NewPullEngineWithFilter(p, config.PullInterval, digFilter.byContext())
+	p.engine = algo.NewPullEngineWithFilter(p, config.PullInterval, egressDigFilter.byContext())
+
+	if adapter.IngressDigFilter == nil {
+		// Create accept all filter
+		adapter.IngressDigFilter = func(digestMsg *proto.DataDigest) *proto.DataDigest {
+			return digestMsg
+		}
+	}
 	return p
+
 }
 
 func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
@@ -160,9 +172,10 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 		p.engine.OnHello(helloMsg.Nonce, m)
 	}
 	if digest := msg.GetDataDig(); digest != nil {
-		itemIDs = digest.Digests
+		d := p.PullAdapter.IngressDigFilter(digest)
+		itemIDs = d.Digests
 		pullMsgType = DigestMsgType
-		p.engine.OnDigest(digest.Digests, digest.Nonce, m)
+		p.engine.OnDigest(d.Digests, d.Nonce, m)
 	}
 	if req := msg.GetDataReq(); req != nil {
 		itemIDs = req.Digests
