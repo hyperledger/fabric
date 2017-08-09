@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package comm
@@ -19,6 +9,7 @@ package comm
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -108,4 +99,43 @@ func TestUpdateEndpoints(t *testing.T) {
 	producer.UpdateEndpoints([]string{})
 	conn, _, err = producer.NewConnection()
 	assert.Equal(t, "b", conn2Endpoint[fmt.Sprintf("%p", conn)])
+}
+
+func TestDisableEndpoint(t *testing.T) {
+	orgEndpointDisableInterval := EndpointDisableInterval
+	EndpointDisableInterval = time.Millisecond * 100
+	defer func() { EndpointDisableInterval = orgEndpointDisableInterval }()
+
+	conn2Endpoint := make(map[string]string)
+	connFactory := func(endpoint string) (*grpc.ClientConn, error) {
+		conn := &grpc.ClientConn{}
+		conn2Endpoint[fmt.Sprintf("%p", conn)] = endpoint
+		return conn, nil
+	}
+	// Create producer with single endpoint
+	producer := NewConnectionProducer(connFactory, []string{"a"})
+	conn, a, err := producer.NewConnection()
+	assert.NoError(t, err)
+	assert.Equal(t, "a", conn2Endpoint[fmt.Sprintf("%p", conn)])
+	assert.Equal(t, "a", a)
+	// Now disable endpoint for 100 milliseconds
+	producer.DisableEndpoint("a")
+	_, _, err = producer.NewConnection()
+	assert.Error(t, err, "Could not connect")
+	// Wait until disable expire and try to connect again
+	time.Sleep(time.Millisecond * 200)
+	conn, a, err = producer.NewConnection()
+	assert.NoError(t, err)
+	assert.Equal(t, "a", conn2Endpoint[fmt.Sprintf("%p", conn)])
+	assert.Equal(t, "a", a)
+	// Disable again
+	producer.DisableEndpoint("a")
+	// Update endpoints
+	producer.UpdateEndpoints([]string{"a", "b"})
+
+	conn, a, err = producer.NewConnection()
+	assert.NoError(t, err)
+	assert.Equal(t, "b", conn2Endpoint[fmt.Sprintf("%p", conn)])
+	assert.Equal(t, "b", a)
+
 }

@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 package blocksprovider
 
@@ -22,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/mocks"
 	"github.com/hyperledger/fabric/gossip/api"
 	common2 "github.com/hyperledger/fabric/gossip/common"
@@ -32,7 +23,7 @@ import (
 )
 
 func init() {
-	MaxRetryDelay = time.Second
+	maxRetryDelay = time.Second
 }
 
 type mockMCS struct {
@@ -197,6 +188,10 @@ func TestBlocksProvider_CheckTerminationDeliveryResponseStatus(t *testing.T) {
 }
 
 func TestBlocksProvider_DeliveryWrongStatus(t *testing.T) {
+	orgEndpointDisableInterval := comm.EndpointDisableInterval
+	comm.EndpointDisableInterval = 0
+	defer func() { comm.EndpointDisableInterval = orgEndpointDisableInterval }()
+
 	sendBlock := func(seqNum uint64) *orderer.DeliverResponse {
 		return &orderer.DeliverResponse{
 			Type: &orderer.DeliverResponse_Block{
@@ -220,7 +215,7 @@ func TestBlocksProvider_DeliveryWrongStatus(t *testing.T) {
 		}
 	}
 
-	bd := mocks.MockBlocksDeliverer{DisconnectCalled: make(chan struct{}, 10)}
+	bd := mocks.MockBlocksDeliverer{DisconnectCalled: make(chan struct{}, 10), DisconnectAndDisableCalled: make(chan struct{}, 10)}
 	mcs := &mockMCS{}
 	mcs.On("VerifyBlock", mock.Anything).Return(nil)
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64, 2)}
@@ -239,16 +234,14 @@ func TestBlocksProvider_DeliveryWrongStatus(t *testing.T) {
 		case int32(1):
 			return sendBlock(0), nil
 		case int32(2):
-			return sendStatus(common.Status_SERVICE_UNAVAILABLE), nil
-		case int32(3):
 			return sendStatus(common.Status_BAD_REQUEST), nil
-		case int32(4):
+		case int32(3):
 			return sendStatus(common.Status_FORBIDDEN), nil
-		case int32(5):
+		case int32(4):
 			return sendStatus(common.Status_NOT_FOUND), nil
-		case int32(6):
+		case int32(5):
 			return sendStatus(common.Status_INTERNAL_SERVER_ERROR), nil
-		case int32(7):
+		case int32(6):
 			return sendBlock(1), nil
 		default:
 			provider.Stop()
@@ -267,7 +260,9 @@ func TestBlocksProvider_DeliveryWrongStatus(t *testing.T) {
 		}
 	}
 	// Make sure disconnect was called in between the deliveries
-	assert.Len(t, bd.DisconnectCalled, 5)
+	assert.Len(t, bd.DisconnectCalled, 1)
+	assert.Len(t, bd.DisconnectAndDisableCalled, 3)
+
 }
 
 func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
@@ -276,10 +271,14 @@ func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
 	// it stop blocks deliver go routine
 	// At start is sends all 5 statuses and check is each one of them caused disconnect and reconnect
 	// but blocks deliver still running
-	// At next step it sends 2 FORBIDDEN or BAD_REQUEST statuses, followed by SERVICE_UNAVAILABLE
+	// At next step it sends 2 FORBIDDEN or BAD_REQUEST statuses, followed by INTERNAL_SERVER_ERROR
 	// and 4 more FORBIDDEN or BAD_REQUEST statuses. It checks if enough disconnects called, but
 	// blocks deliver still running
 	// At the end, it send 2 FORBIDDEN or BAD_REQUEST statuses and check is blocks deliver stopped
+
+	orgEndpointDisableInterval := comm.EndpointDisableInterval
+	comm.EndpointDisableInterval = 0
+	defer func() { comm.EndpointDisableInterval = orgEndpointDisableInterval }()
 
 	sendStatus := func(status common.Status) *orderer.DeliverResponse {
 		return &orderer.DeliverResponse{
@@ -289,7 +288,91 @@ func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
 		}
 	}
 
-	bd := mocks.MockBlocksDeliverer{DisconnectCalled: make(chan struct{}, 100), CloseCalled: make(chan struct{}, 1)}
+	bd := mocks.MockBlocksDeliverer{
+		DisconnectCalled:           make(chan struct{}, 100),
+		DisconnectAndDisableCalled: make(chan struct{}, 100),
+		CloseCalled:                make(chan struct{}, 1),
+	}
+	mcs := &mockMCS{}
+	mcs.On("VerifyBlock", mock.Anything).Return(nil)
+	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64, 2)}
+	provider := &blocksProviderImpl{
+		chainID:              "***TEST_CHAINID***",
+		gossip:               gossipServiceAdapter,
+		client:               &bd,
+		mcs:                  mcs,
+		wrongStatusThreshold: 5,
+	}
+
+	incomingMsgs := make(chan *orderer.DeliverResponse)
+
+	bd.MockRecv = func(mock *mocks.MockBlocksDeliverer) (*orderer.DeliverResponse, error) {
+		inMsg := <-incomingMsgs
+		return inMsg, nil
+	}
+
+	go provider.DeliverBlocks()
+
+	incomingMsgs <- sendStatus(common.Status_INTERNAL_SERVER_ERROR)
+	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
+	incomingMsgs <- sendStatus(common.Status_FORBIDDEN)
+	incomingMsgs <- sendStatus(common.Status_NOT_FOUND)
+	incomingMsgs <- sendStatus(common.Status_INTERNAL_SERVER_ERROR)
+
+	waitUntilOrFail(t, func() bool {
+		return len(bd.DisconnectCalled) == 1
+	})
+
+	waitUntilOrFail(t, func() bool {
+		return len(bd.DisconnectAndDisableCalled) == 4
+	})
+
+	waitUntilOrFail(t, func() bool {
+		return len(bd.CloseCalled) == 0
+	})
+
+	incomingMsgs <- sendStatus(common.Status_FORBIDDEN)
+	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
+	incomingMsgs <- sendStatus(common.Status_INTERNAL_SERVER_ERROR)
+	incomingMsgs <- sendStatus(common.Status_FORBIDDEN)
+	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
+	incomingMsgs <- sendStatus(common.Status_FORBIDDEN)
+	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
+
+	waitUntilOrFail(t, func() bool {
+		return len(bd.DisconnectCalled) == 4
+	})
+
+	waitUntilOrFail(t, func() bool {
+		return len(bd.DisconnectAndDisableCalled) == 8
+	})
+
+	waitUntilOrFail(t, func() bool {
+		return len(bd.CloseCalled) == 0
+	})
+
+	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
+	incomingMsgs <- sendStatus(common.Status_FORBIDDEN)
+
+	waitUntilOrFail(t, func() bool {
+		return len(bd.CloseCalled) == 1
+	})
+}
+
+func TestBlocksProvider_DeliveryServiceDisableEndpoints(t *testing.T) {
+	sendStatus := func(status common.Status) *orderer.DeliverResponse {
+		return &orderer.DeliverResponse{
+			Type: &orderer.DeliverResponse_Status{
+				Status: status,
+			},
+		}
+	}
+
+	bd := mocks.MockBlocksDeliverer{
+		DisconnectCalled:           make(chan struct{}, 100),
+		DisconnectAndDisableCalled: make(chan struct{}, 100),
+		CloseCalled:                make(chan struct{}, 1),
+	}
 	mcs := &mockMCS{}
 	mcs.On("VerifyBlock", mock.Anything).Return(nil)
 	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64, 2)}
@@ -311,41 +394,11 @@ func TestBlocksProvider_DeliveryWrongStatusClose(t *testing.T) {
 	go provider.DeliverBlocks()
 
 	incomingMsgs <- sendStatus(common.Status_SERVICE_UNAVAILABLE)
-	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
-	incomingMsgs <- sendStatus(common.Status_FORBIDDEN)
-	incomingMsgs <- sendStatus(common.Status_NOT_FOUND)
-	incomingMsgs <- sendStatus(common.Status_INTERNAL_SERVER_ERROR)
 
 	waitUntilOrFail(t, func() bool {
-		return len(bd.DisconnectCalled) == 5
+		return len(bd.DisconnectAndDisableCalled) == 1
 	})
 
-	waitUntilOrFail(t, func() bool {
-		return len(bd.CloseCalled) == 0
-	})
-
-	incomingMsgs <- sendStatus(common.Status_FORBIDDEN)
-	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
-	incomingMsgs <- sendStatus(common.Status_SERVICE_UNAVAILABLE)
-	incomingMsgs <- sendStatus(common.Status_FORBIDDEN)
-	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
-	incomingMsgs <- sendStatus(common.Status_FORBIDDEN)
-	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
-
-	waitUntilOrFail(t, func() bool {
-		return len(bd.DisconnectCalled) == 12
-	})
-
-	waitUntilOrFail(t, func() bool {
-		return len(bd.CloseCalled) == 0
-	})
-
-	incomingMsgs <- sendStatus(common.Status_BAD_REQUEST)
-	incomingMsgs <- sendStatus(common.Status_FORBIDDEN)
-
-	waitUntilOrFail(t, func() bool {
-		return len(bd.CloseCalled) == 1
-	})
 }
 
 func TestBlockFetchFailure(t *testing.T) {

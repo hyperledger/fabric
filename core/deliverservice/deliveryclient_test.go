@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package deliverclient
@@ -26,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/deliverservice/mocks"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -251,15 +242,18 @@ func TestDeliverServiceFailover(t *testing.T) {
 }
 
 func TestDeliverServiceServiceUnavailable(t *testing.T) {
-	orgMaxRetryDelay := blocksprovider.MaxRetryDelay
-	blocksprovider.MaxRetryDelay = time.Millisecond * 200
-	defer func() { blocksprovider.MaxRetryDelay = orgMaxRetryDelay }()
+	orgEndpointDisableInterval := comm.EndpointDisableInterval
+	comm.EndpointDisableInterval = time.Millisecond * 1500
+	defer func() { comm.EndpointDisableInterval = orgEndpointDisableInterval }()
 	defer ensureNoGoroutineLeak(t)()
 	// Scenario: bring up 2 ordering service instances,
 	// Make the instance the client connects to fail after a delivery of a block and send SERVICE_UNAVAILABLE
 	// whenever subsequent seeks are sent to it.
 	// The client is expected to connect to the other instance, and to ask for a block sequence that is the next block
 	// after the last block it got from the first ordering service node.
+	// Wait endpoint disable interval
+	// After that resurrect failed node (first node) and fail instance client currently connect - send SERVICE_UNAVAILABLE
+	// The client should reconnect to original instance and ask for next block.
 
 	os1 := mocks.NewOrderer(5615, t)
 	os2 := mocks.NewOrderer(5616, t)
@@ -314,7 +308,7 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 
 	// Fail instance delivery client connected to
 	activeInstance.Fail()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	wg := sync.WaitGroup{}
@@ -338,6 +332,49 @@ func TestDeliverServiceServiceUnavailable(t *testing.T) {
 	assert.NoError(t, ctx.Err(), "Delivery client has not failed over to alive ordering service")
 	// Check that delivery client was indeed connected
 	assert.Equal(t, backupInstance.ConnCount(), 1)
+	// Ensure the client asks blocks from the other ordering service node
+	assertBlockDissemination(li.Height, gossipServiceAdapter.GossipBlockDisseminations, t)
+
+	// Wait until first endpoint enabled again
+	time.Sleep(time.Millisecond * 1600)
+
+	li.Height++
+	activeInstance.Resurrect()
+	backupInstance.Fail()
+
+	resurrectCtx, resCancel := context.WithTimeout(context.Background(), time.Second)
+	defer resCancel()
+
+	go func() {
+		// Resurrected instance should expect a seek of 102 since we got 101
+		activeInstance.SetNextExpectedSeek(li.Height)
+		// Have resurrected instance prepare to send a block
+		activeInstance.SendBlock(li.Height)
+
+	}()
+
+	reswg := sync.WaitGroup{}
+	reswg.Add(1)
+
+	go func() {
+		defer reswg.Done()
+		for {
+			select {
+			case <-time.After(time.Millisecond * 100):
+				if activeInstance.ConnCount() > 0 {
+					return
+				}
+			case <-resurrectCtx.Done():
+				return
+			}
+		}
+	}()
+
+	reswg.Wait()
+
+	assert.NoError(t, resurrectCtx.Err(), "Delivery client has not failed over to alive ordering service")
+	// Check that delivery client was indeed connected
+	assert.Equal(t, activeInstance.ConnCount(), 1)
 	// Ensure the client asks blocks from the other ordering service node
 	assertBlockDissemination(li.Height, gossipServiceAdapter.GossipBlockDisseminations, t)
 
