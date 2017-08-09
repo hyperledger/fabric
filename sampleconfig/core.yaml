@@ -380,6 +380,7 @@ chaincode:
         escc: enable
         vscc: enable
         qscc: enable
+        rscc: disable
 
     # Logging section for the chaincode container
     logging:

@@ -101,13 +101,13 @@ func TestMockRegisterAndResetSysCCs(t *testing.T) {
 }
 
 func TestRegisterSysCC(t *testing.T) {
-	err := RegisterSysCC(&SystemChaincode{
+	_, err := registerSysCC(&SystemChaincode{
 		Name:    "lscc",
 		Path:    "path",
 		Enabled: true,
 	})
 	assert.NoError(t, err)
-	err = RegisterSysCC(&SystemChaincode{
+	_, err = registerSysCC(&SystemChaincode{
 		Name:    "lscc",
 		Path:    "path",
 		Enabled: true,
