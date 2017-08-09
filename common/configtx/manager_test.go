@@ -34,10 +34,8 @@ var defaultChain = "default.chain.id"
 
 func defaultInitializer() *mockconfigtx.Initializer {
 	return &mockconfigtx.Initializer{
-		Resources: mockconfigtx.Resources{
-			PolicyManagerVal: &mockpolicies.Manager{
-				Policy: &mockpolicies.Policy{},
-			},
+		PolicyManagerVal: &mockpolicies.Manager{
+			Policy: &mockpolicies.Policy{},
 		},
 		PolicyProposerVal: &mockconfigtx.PolicyProposer{
 			Transactional: mockconfigtx.Transactional{},
@@ -350,7 +348,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 	// Set the mock policy to error
-	initializer.Resources.PolicyManagerVal.Policy.Err = fmt.Errorf("err")
+	initializer.PolicyManagerVal.Policy.Err = fmt.Errorf("err")
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
@@ -373,8 +371,8 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 	}
 
 	// Set the mock policy to error
-	initializer.Resources.PolicyManagerVal.PolicyMap = make(map[string]policies.Policy)
-	initializer.Resources.PolicyManagerVal.PolicyMap["foo"] = &mockpolicies.Policy{Err: fmt.Errorf("err")}
+	initializer.PolicyManagerVal.PolicyMap = make(map[string]policies.Policy)
+	initializer.PolicyManagerVal.PolicyMap["foo"] = &mockpolicies.Policy{Err: fmt.Errorf("err")}
 
 	newConfig := makeConfigUpdateEnvelope(
 		defaultChain,

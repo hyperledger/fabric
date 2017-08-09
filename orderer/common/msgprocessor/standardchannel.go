@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -45,7 +45,7 @@ func NewStandardChannel(support StandardChannelSupport, filters *RuleSet) *Stand
 }
 
 // CreateStandardChannelFilters creates the set of filters for a normal (non-system) chain
-func CreateStandardChannelFilters(filterSupport configtxapi.Manager) *RuleSet {
+func CreateStandardChannelFilters(filterSupport channelconfig.Resources) *RuleSet {
 	ordererConfig, ok := filterSupport.OrdererConfig()
 	if !ok {
 		logger.Panicf("Missing orderer config")

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/configtx"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
@@ -180,7 +180,7 @@ func TestNewChain(t *testing.T) {
 
 	manager := NewRegistrar(lf, consenters, mockCrypto())
 
-	envConfigUpdate, err := configtx.MakeChainCreationTransaction(newChainID, genesisconfig.SampleConsortiumName, mockSigningIdentity)
+	envConfigUpdate, err := channelconfig.MakeChainCreationTransaction(newChainID, genesisconfig.SampleConsortiumName, mockSigningIdentity)
 	assert.NoError(t, err, "Constructing chain creation tx")
 
 	cm, err := manager.NewChannelConfig(envConfigUpdate)

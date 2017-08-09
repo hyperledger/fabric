@@ -10,8 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/config/channel"
-	"github.com/hyperledger/fabric/common/configtx"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
@@ -204,7 +203,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 }
 
 type mockDefaultTemplatorSupport struct {
-	configtxapi.Manager
+	channelconfig.Resources
 }
 
 func (mdts *mockDefaultTemplatorSupport) Signer() crypto.LocalSigner {
@@ -213,11 +212,11 @@ func (mdts *mockDefaultTemplatorSupport) Signer() crypto.LocalSigner {
 
 func TestNewChannelConfig(t *testing.T) {
 	singleMSPGenesisBlock := provisional.New(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)).GenesisBlock()
-	ctxm, err := configtx.NewManagerImpl(utils.ExtractEnvelopeOrPanic(singleMSPGenesisBlock, 0), config.NewInitializer(), nil)
+	ctxm, err := channelconfig.New(utils.ExtractEnvelopeOrPanic(singleMSPGenesisBlock, 0), nil)
 	assert.Nil(t, err)
 
 	templator := NewDefaultTemplator(&mockDefaultTemplatorSupport{
-		Manager: ctxm,
+		Resources: ctxm,
 	})
 
 	t.Run("BadPayload", func(t *testing.T) {
@@ -312,7 +311,7 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
 										Version: 100,
 									},
 								},
@@ -332,7 +331,7 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
 										Version: 1,
 									},
 								},
@@ -353,12 +352,12 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
 										Version: 1,
 									},
 								},
 								Values: map[string]*cb.ConfigValue{
-									config.ConsortiumKey: &cb.ConfigValue{
+									channelconfig.ConsortiumKey: &cb.ConfigValue{
 										Value: []byte("bad consortium value"),
 									},
 								},
@@ -378,12 +377,12 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
 										Version: 1,
 									},
 								},
 								Values: map[string]*cb.ConfigValue{
-									config.ConsortiumKey: &cb.ConfigValue{
+									channelconfig.ConsortiumKey: &cb.ConfigValue{
 										Value: utils.MarshalOrPanic(
 											&cb.Consortium{
 												Name: "NotTheNameYouAreLookingFor",
@@ -407,12 +406,12 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
 										Version: 1,
 									},
 								},
 								Values: map[string]*cb.ConfigValue{
-									config.ConsortiumKey: &cb.ConfigValue{
+									channelconfig.ConsortiumKey: &cb.ConfigValue{
 										Value: utils.MarshalOrPanic(
 											&cb.Consortium{
 												Name: genesisconfig.SampleConsortiumName,
@@ -436,7 +435,7 @@ func TestNewChannelConfig(t *testing.T) {
 						&cb.ConfigUpdate{
 							WriteSet: &cb.ConfigGroup{
 								Groups: map[string]*cb.ConfigGroup{
-									config.ApplicationGroupKey: &cb.ConfigGroup{
+									channelconfig.ApplicationGroupKey: &cb.ConfigGroup{
 										Version: 1,
 										Groups: map[string]*cb.ConfigGroup{
 											"BadOrgName": &cb.ConfigGroup{},
@@ -444,7 +443,7 @@ func TestNewChannelConfig(t *testing.T) {
 									},
 								},
 								Values: map[string]*cb.ConfigValue{
-									config.ConsortiumKey: &cb.ConfigValue{
+									channelconfig.ConsortiumKey: &cb.ConfigValue{
 										Value: utils.MarshalOrPanic(
 											&cb.Consortium{
 												Name: genesisconfig.SampleConsortiumName,
@@ -470,7 +469,7 @@ func TestNewChannelConfig(t *testing.T) {
 
 	// Successful
 	t.Run("Success", func(t *testing.T) {
-		createTx, err := configtx.MakeChainCreationTransaction("foo", genesisconfig.SampleConsortiumName, nil, genesisconfig.SampleOrgName)
+		createTx, err := channelconfig.MakeChainCreationTransaction("foo", genesisconfig.SampleConsortiumName, nil, genesisconfig.SampleOrgName)
 		assert.Nil(t, err)
 		_, err = templator.NewChannelConfig(createTx)
 		assert.Nil(t, err)

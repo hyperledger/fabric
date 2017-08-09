@@ -135,6 +135,7 @@ type ManagerImpl struct {
 
 	// SuppressSanityLogMessages when set to true will prevent the sanity checking log
 	// messages.  Useful for novel cases like channel templates
+	// TODO, pull the sanity checking into chanel config
 	SuppressSanityLogMessages bool
 }
 

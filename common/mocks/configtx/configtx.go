@@ -18,63 +18,12 @@ package configtx
 
 import (
 	"github.com/hyperledger/fabric/common/config"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
 )
-
-type Resources struct {
-	// PolicyManagerVal is returned as the result of PolicyManager()
-	PolicyManagerVal *mockpolicies.Manager
-
-	// ChannelConfigVal is returned as the result of ChannelConfig()
-	ChannelConfigVal channelconfig.Channel
-
-	// OrdererConfigVal is returned as the result of OrdererConfig()
-	OrdererConfigVal channelconfig.Orderer
-
-	// ApplicationConfigVal is returned as the result of ApplicationConfig()
-	ApplicationConfigVal channelconfig.Application
-
-	// ConsortiumsConfigVal is returned as the result of ConsortiumsConfig()
-	ConsortiumsConfigVal channelconfig.Consortiums
-
-	// MSPManagerVal is returned as the result of MSPManager()
-	MSPManagerVal msp.MSPManager
-}
-
-// Returns the PolicyManagerVal
-func (r *Resources) PolicyManager() policies.Manager {
-	return r.PolicyManagerVal
-}
-
-// Returns the ChannelConfigVal
-func (r *Resources) ChannelConfig() channelconfig.Channel {
-	return r.ChannelConfigVal
-}
-
-// Returns the OrdererConfigVal
-func (r *Resources) OrdererConfig() (channelconfig.Orderer, bool) {
-	return r.OrdererConfigVal, r.OrdererConfigVal == nil
-}
-
-// Returns the ApplicationConfigVal
-func (r *Resources) ApplicationConfig() (channelconfig.Application, bool) {
-	return r.ApplicationConfigVal, r.ApplicationConfigVal == nil
-}
-
-func (r *Resources) ConsortiumsConfig() (channelconfig.Consortiums, bool) {
-	return r.ConsortiumsConfigVal, r.ConsortiumsConfigVal != nil
-}
-
-// Returns the MSPManagerVal
-func (r *Resources) MSPManager() msp.MSPManager {
-	return r.MSPManagerVal
-}
 
 // Transactional implements the configtxapi.Transactional
 type Transactional struct{}
@@ -90,13 +39,14 @@ func (t *Transactional) RollbackProposals(tx interface{}) {}
 
 // Initializer mocks the configtxapi.Initializer interface
 type Initializer struct {
-	Resources
-
 	// PolicyProposerVal is returned by PolicyProposers
 	PolicyProposerVal *PolicyProposer
 
 	// ValueProposerVal is returned by ValueProposers
 	ValueProposerVal *ValueProposer
+
+	// PolicyManagerVal is returned by PolicyManager
+	PolicyManagerVal *mockpolicies.Manager
 
 	// RootGroupKeyVal is returned by RootGroupKey
 	RootGroupKeyVal string
@@ -105,6 +55,11 @@ type Initializer struct {
 // RootGroupKeyreturns RootGroupKeyVal
 func (i *Initializer) RootGroupKey() string {
 	return i.RootGroupKeyVal
+}
+
+// PolicyManager returns PolicyManagerVal
+func (i *Initializer) PolicyManager() policies.Manager {
+	return i.PolicyManagerVal
 }
 
 // PolicyProposers returns PolicyProposerVal

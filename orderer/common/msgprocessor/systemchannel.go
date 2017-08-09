@@ -9,7 +9,7 @@ package msgprocessor
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/config/channel"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -42,7 +42,7 @@ func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTem
 }
 
 // CreateSystemChannelFilters creates the set of filters for the ordering system chain.
-func CreateSystemChannelFilters(chainCreator ChainCreator, ledgerResources configtxapi.Manager) *RuleSet {
+func CreateSystemChannelFilters(chainCreator ChainCreator, ledgerResources channelconfig.Resources) *RuleSet {
 	ordererConfig, ok := ledgerResources.OrdererConfig()
 	if !ok {
 		logger.Panicf("Cannot create system channel filters without orderer config")
@@ -131,10 +131,10 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 // DefaultTemplatorSupport is the subset of the channel config required by the DefaultTemplator.
 type DefaultTemplatorSupport interface {
 	// ConsortiumsConfig returns the ordering system channel's Consortiums config.
-	ConsortiumsConfig() (config.Consortiums, bool)
+	ConsortiumsConfig() (channelconfig.Consortiums, bool)
 
-	// ConfigEnvelope returns the config envelope corresponding to the system channel's current config.
-	ConfigEnvelope() *cb.ConfigEnvelope
+	// ConfigtxManager returns the configtx manager corresponding to the system channel's current config.
+	ConfigtxManager() configtxapi.Manager
 
 	// Signer returns the local signer suitable for signing forwarded messages.
 	Signer() crypto.LocalSigner
@@ -186,15 +186,15 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (conf
 		return nil, fmt.Errorf("Config update has an empty writeset")
 	}
 
-	if configUpdate.WriteSet.Groups == nil || configUpdate.WriteSet.Groups[config.ApplicationGroupKey] == nil {
+	if configUpdate.WriteSet.Groups == nil || configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey] == nil {
 		return nil, fmt.Errorf("Config update has missing application group")
 	}
 
-	if uv := configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Version; uv != 1 {
+	if uv := configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Version; uv != 1 {
 		return nil, fmt.Errorf("Config update for channel creation does not set application group version to 1, was %d", uv)
 	}
 
-	consortiumConfigValue, ok := configUpdate.WriteSet.Values[config.ConsortiumKey]
+	consortiumConfigValue, ok := configUpdate.WriteSet.Values[channelconfig.ConsortiumKey]
 	if !ok {
 		return nil, fmt.Errorf("Consortium config value missing")
 	}
@@ -216,26 +216,26 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (conf
 		return nil, fmt.Errorf("Unknown consortium name: %s", consortium.Name)
 	}
 
-	applicationGroup.Policies[config.ChannelCreationPolicyKey] = &cb.ConfigPolicy{
+	applicationGroup.Policies[channelconfig.ChannelCreationPolicyKey] = &cb.ConfigPolicy{
 		Policy: consortiumConf.ChannelCreationPolicy(),
 	}
-	applicationGroup.ModPolicy = config.ChannelCreationPolicyKey
+	applicationGroup.ModPolicy = channelconfig.ChannelCreationPolicyKey
 
 	// Get the current system channel config
-	systemChannelGroup := dt.support.ConfigEnvelope().Config.ChannelGroup
+	systemChannelGroup := dt.support.ConfigtxManager().ConfigEnvelope().Config.ChannelGroup
 
 	// If the consortium group has no members, allow the source request to have no members.  However,
 	// if the consortium group has any members, there must be at least one member in the source request
-	if len(systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 &&
-		len(configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups) == 0 {
+	if len(systemChannelGroup.Groups[channelconfig.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 &&
+		len(configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups) == 0 {
 		return nil, fmt.Errorf("Proposed configuration has no application group members, but consortium contains members")
 	}
 
 	// If the consortium has no members, allow the source request to contain arbitrary members
 	// Otherwise, require that the supplied members are a subset of the consortium members
-	if len(systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 {
-		for orgName := range configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups {
-			consortiumGroup, ok := systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups[orgName]
+	if len(systemChannelGroup.Groups[channelconfig.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 {
+		for orgName := range configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups {
+			consortiumGroup, ok := systemChannelGroup.Groups[channelconfig.ConsortiumsGroupKey].Groups[consortium.Name].Groups[orgName]
 			if !ok {
 				return nil, fmt.Errorf("Attempted to include a member which is not in the consortium")
 			}
@@ -248,7 +248,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (conf
 	// Copy the system channel Channel level config to the new config
 	for key, value := range systemChannelGroup.Values {
 		channelGroup.Values[key] = value
-		if key == config.ConsortiumKey {
+		if key == channelconfig.ConsortiumKey {
 			// Do not set the consortium name, we do this later
 			continue
 		}
@@ -259,9 +259,9 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (conf
 	}
 
 	// Set the new config orderer group to the system channel orderer group and the application group to the new application group
-	channelGroup.Groups[config.OrdererGroupKey] = systemChannelGroup.Groups[config.OrdererGroupKey]
-	channelGroup.Groups[config.ApplicationGroupKey] = applicationGroup
-	channelGroup.Values[config.ConsortiumKey] = config.TemplateConsortium(consortium.Name).Values[config.ConsortiumKey]
+	channelGroup.Groups[channelconfig.OrdererGroupKey] = systemChannelGroup.Groups[channelconfig.OrdererGroupKey]
+	channelGroup.Groups[channelconfig.ApplicationGroupKey] = applicationGroup
+	channelGroup.Values[channelconfig.ConsortiumKey] = channelconfig.TemplateConsortium(consortium.Name).Values[channelconfig.ConsortiumKey]
 
 	templateConfig, _ := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, configUpdate.ChannelId, dt.support.Signer(), &cb.ConfigEnvelope{
 		Config: &cb.Config{
@@ -269,17 +269,5 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (conf
 		},
 	}, msgVersion, epoch)
 
-	initializer := config.NewInitializer()
-
-	// This is a very hacky way to disable the sanity check logging in the policy manager
-	// for the template configuration, but it is the least invasive near a release
-	pm, ok := initializer.PolicyManager().(*policies.ManagerImpl)
-	if ok {
-		pm.SuppressSanityLogMessages = true
-		defer func() {
-			pm.SuppressSanityLogMessages = false
-		}()
-	}
-
-	return configtx.NewManagerImpl(templateConfig, initializer, nil)
+	return channelconfig.New(templateConfig, nil)
 }

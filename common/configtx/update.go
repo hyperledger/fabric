@@ -170,7 +170,7 @@ func (cm *configManager) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 
 func (cm *configManager) policyForItem(item comparable) (policies.Policy, bool) {
 	// path is always at least of length 1
-	manager, ok := cm.PolicyManager().Manager(item.path[1:])
+	manager, ok := cm.initializer.PolicyManager().Manager(item.path[1:])
 	if !ok {
 		return nil, ok
 	}

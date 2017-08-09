@@ -74,7 +74,7 @@ func TestComputeDeltaSet(t *testing.T) {
 
 func TestVerifyDeltaSet(t *testing.T) {
 	cm := &configManager{
-		Resources: &mockconfigtx.Resources{
+		initializer: &mockconfigtx.Initializer{
 			PolicyManagerVal: &mockpolicies.Manager{
 				Policy: &mockpolicies.Policy{},
 			},
@@ -122,7 +122,7 @@ func TestVerifyDeltaSet(t *testing.T) {
 		deltaSet := make(map[string]comparable)
 
 		deltaSet["foo"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1, ModPolicy: "foo"}}
-		cm.Resources.(*mockconfigtx.Resources).PolicyManagerVal.Policy = &mockpolicies.Policy{Err: fmt.Errorf("Err")}
+		cm.initializer.(*mockconfigtx.Initializer).PolicyManagerVal.Policy = &mockpolicies.Policy{Err: fmt.Errorf("Err")}
 
 		assert.Error(t, cm.verifyDeltaSet(deltaSet, nil), "Policy evaluation should have failed")
 	})
@@ -140,7 +140,7 @@ func TestPolicyForItem(t *testing.T) {
 	fooPolicy := &mockpolicies.Policy{Err: fmt.Errorf("fooPolicy")}
 
 	cm := &configManager{
-		Resources: &mockconfigtx.Resources{
+		initializer: &mockconfigtx.Initializer{
 			PolicyManagerVal: &mockpolicies.Manager{
 				BasePathVal: "root",
 				Policy:      rootPolicy,

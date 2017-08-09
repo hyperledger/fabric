@@ -510,7 +510,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	ctxt, txsim, sprop, prop = startTx(t, chainID, cis, txid)
 
 	if _, _, err := ccprovider.GetChaincodeProvider().GetCCValidationInfoFromLSCC(ctxt, "getccdata", sprop, prop, chainID, calledCC); err != nil {
-		t.Fatalf("Could not get chaincode data from lscc for %s", calledCC)
+		t.Fatalf("Could not get chaincode data from lscc for %s: %s", calledCC, err)
 	}
 
 	sysCCVers := util.GetSysCCVersion()

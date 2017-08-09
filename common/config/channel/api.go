@@ -1,26 +1,17 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
-// Note, the directory is still configvalues, but this is stuttery and config
-// is a more accurate and better name, TODO, update directory
 package config
 
 import (
 	"time"
 
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -96,4 +87,33 @@ type Orderer interface {
 
 	// Organizations returns the organizations for the ordering service
 	Organizations() map[string]Org
+}
+
+// Resources is the common set of config resources for all channels
+// Depending on whether chain is used at the orderer or at the peer, other
+// config resources may be available
+type Resources interface {
+	// ConfigtxManager returns the configtx.Manager for the channel
+	ConfigtxManager() configtxapi.Manager
+
+	// PolicyManager returns the policies.Manager for the channel
+	PolicyManager() policies.Manager
+
+	// ChannelConfig returns the config.Channel for the chain
+	ChannelConfig() Channel
+
+	// OrdererConfig returns the config.Orderer for the channel
+	// and whether the Orderer config exists
+	OrdererConfig() (Orderer, bool)
+
+	// ConsortiumsConfig() returns the config.Consortiums for the channel
+	// and whether the consortiums config exists
+	ConsortiumsConfig() (Consortiums, bool)
+
+	// ApplicationConfig returns the configtxapplication.SharedConfig for the channel
+	// and whether the Application config exists
+	ApplicationConfig() (Application, bool)
+
+	// MSPManager returns the msp.MSPManager for the chain
+	MSPManager() msp.MSPManager
 }

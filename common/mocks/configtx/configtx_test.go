@@ -31,14 +31,10 @@ func TestConfigtxPolicyProposerInterface(t *testing.T) {
 	_ = policies.Proposer(&PolicyProposer{})
 }
 
-func TestConfigtxInitializerInterface(t *testing.T) {
-	_ = configtxapi.Initializer(&Initializer{})
+func TestConfigtxProposerInterface(t *testing.T) {
+	_ = configtxapi.Proposer(&Initializer{})
 }
 
 func TestConfigtxManagerInterface(t *testing.T) {
 	_ = configtxapi.Manager(&Manager{})
-}
-
-func TestConfigtxResourcesInterface(t *testing.T) {
-	_ = configtxapi.Resources(&Resources{})
 }
