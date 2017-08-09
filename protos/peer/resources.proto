@@ -1,0 +1,17 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option java_package = "org.hyperledger.fabric.protos.peer";
+option go_package = "github.com/hyperledger/fabric/protos/peer";
+
+package protos;
+
+// Resource represents a resource in the peer whose ACL is determined by the policy_ref field
+message Resource {
+    string policy_ref = 1; // The policy name to use for this resource
+}
