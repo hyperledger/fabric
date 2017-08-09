@@ -26,6 +26,8 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/endorser"
+	authHandler "github.com/hyperledger/fabric/core/handlers/auth"
+	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
@@ -142,9 +144,16 @@ func serve(args []string) error {
 	// Register the Admin server
 	pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer())
 
-	// Register the Endorser server
 	serverEndorser := endorser.NewEndorserServer()
-	pb.RegisterEndorserServer(peerServer.Server(), serverEndorser)
+	libConf := library.Config{
+		AuthFilterFactory: viper.GetString("peer.handlers.authFilter"),
+		DecoratorFactory:  viper.GetString("peer.handlers.decorator"),
+	}
+	auth := library.InitRegistry(libConf).Lookup(library.AuthKey).(authHandler.Filter)
+	auth.Init(serverEndorser)
+
+	// Register the Endorser server
+	pb.RegisterEndorserServer(peerServer.Server(), auth)
 
 	// Initialize gossip component
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
