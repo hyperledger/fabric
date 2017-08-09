@@ -9,12 +9,14 @@ package config
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	configmsp "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -63,6 +65,38 @@ func (cct *channelCreationTemplate) Envelope(channelID string) (*cb.ConfigUpdate
 			ChannelId: channelID,
 			ReadSet:   rSet,
 			WriteSet:  wSet,
+			IsolatedData: map[string][]byte{
+				pb.RSCCSeedDataKey: utils.MarshalOrPanic(&cb.Config{
+					Type: int32(cb.ConfigType_RESOURCE),
+					ChannelGroup: &cb.ConfigGroup{
+						// All of the default seed data values would inside this ConfigGroup
+						Values: map[string]*cb.ConfigValue{
+							"QSCC.Example1": &cb.ConfigValue{
+								Value: utils.MarshalOrPanic(&pb.Resource{
+									PolicyRef: policies.ChannelApplicationAdmins,
+								}),
+								ModPolicy: policies.ChannelApplicationAdmins,
+							},
+							"QSCC.Example2": &cb.ConfigValue{
+								Value: utils.MarshalOrPanic(&pb.Resource{
+									PolicyRef: "Example",
+								}),
+								ModPolicy: policies.ChannelApplicationAdmins,
+							},
+						},
+						Policies: map[string]*cb.ConfigPolicy{
+							"Example": &cb.ConfigPolicy{
+								Policy: &cb.Policy{
+									Type:  int32(cb.Policy_SIGNATURE),
+									Value: utils.MarshalOrPanic(cauthdsl.AcceptAllPolicy),
+								},
+								ModPolicy: "Example",
+							},
+						},
+						ModPolicy: policies.ChannelApplicationAdmins,
+					},
+				}),
+			},
 		}),
 	}, nil
 }
