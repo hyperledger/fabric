@@ -56,14 +56,6 @@ func (m *ChannelPolicyManager) Manager(path []string) (policies.Manager, bool) {
 	panic("Not implemented")
 }
 
-func (m *ChannelPolicyManager) BasePath() string {
-	panic("Not implemented")
-}
-
-func (m *ChannelPolicyManager) PolicyNames() []string {
-	panic("Not implemented")
-}
-
 type Policy struct {
 	Deserializer msp.IdentityDeserializer
 }

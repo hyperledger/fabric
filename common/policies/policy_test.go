@@ -148,11 +148,11 @@ func TestNestedManager(t *testing.T) {
 		_, ok := n1.GetPolicy(policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
 
-		_, ok = m.GetPolicy(n1.BasePath() + "/" + policyName)
+		_, ok = m.GetPolicy(n1.(*ManagerImpl).BasePath() + "/" + policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
 
 		for i, abs := range []Manager{n1, m} {
-			absName := absPrefix + n1.BasePath() + "/" + policyName
+			absName := absPrefix + n1.(*ManagerImpl).BasePath() + "/" + policyName
 			_, ok = abs.GetPolicy(absName)
 			assert.True(t, ok, "Should have found absolutely policy for manager %d", i)
 		}
@@ -162,14 +162,14 @@ func TestNestedManager(t *testing.T) {
 		_, ok := n2a.GetPolicy(policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
 
-		_, ok = n1.GetPolicy(n2a.BasePath() + "/" + policyName)
+		_, ok = n1.GetPolicy(n2a.(*ManagerImpl).BasePath() + "/" + policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
 
-		_, ok = m.GetPolicy(n1.BasePath() + "/" + n2a.BasePath() + "/" + policyName)
+		_, ok = m.GetPolicy(n1.(*ManagerImpl).BasePath() + "/" + n2a.(*ManagerImpl).BasePath() + "/" + policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
 
 		for i, abs := range []Manager{n2a, n1, m} {
-			absName := absPrefix + n1.BasePath() + "/" + n2a.BasePath() + "/" + policyName
+			absName := absPrefix + n1.(*ManagerImpl).BasePath() + "/" + n2a.(*ManagerImpl).BasePath() + "/" + policyName
 			_, ok = abs.GetPolicy(absName)
 			assert.True(t, ok, "Should have found absolutely policy for manager %d", i)
 		}
@@ -179,14 +179,14 @@ func TestNestedManager(t *testing.T) {
 		_, ok := n2b.GetPolicy(policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
 
-		_, ok = n1.GetPolicy(n2b.BasePath() + "/" + policyName)
+		_, ok = n1.GetPolicy(n2b.(*ManagerImpl).BasePath() + "/" + policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
 
-		_, ok = m.GetPolicy(n1.BasePath() + "/" + n2b.BasePath() + "/" + policyName)
+		_, ok = m.GetPolicy(n1.(*ManagerImpl).BasePath() + "/" + n2b.(*ManagerImpl).BasePath() + "/" + policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
 
 		for i, abs := range []Manager{n2b, n1, m} {
-			absName := absPrefix + n1.BasePath() + "/" + n2b.BasePath() + "/" + policyName
+			absName := absPrefix + n1.(*ManagerImpl).BasePath() + "/" + n2b.(*ManagerImpl).BasePath() + "/" + policyName
 			_, ok = abs.GetPolicy(absName)
 			assert.True(t, ok, "Should have found absolutely policy for manager %d", i)
 		}

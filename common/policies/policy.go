@@ -75,12 +75,6 @@ type Manager interface {
 
 	// Manager returns the sub-policy manager for a given path and whether it exists
 	Manager(path []string) (Manager, bool)
-
-	// Basepath returns the basePath the manager was instantiated with
-	BasePath() string
-
-	// Policies returns all policy names defined in the manager
-	PolicyNames() []string
 }
 
 // Proposer is the interface used by the configtx manager for policy management

@@ -142,12 +142,10 @@ func TestPolicyForItem(t *testing.T) {
 	cm := &configManager{
 		initializer: &mockconfigtx.Initializer{
 			PolicyManagerVal: &mockpolicies.Manager{
-				BasePathVal: "root",
-				Policy:      rootPolicy,
+				Policy: rootPolicy,
 				SubManagersMap: map[string]*mockpolicies.Manager{
 					"foo": &mockpolicies.Manager{
-						Policy:      fooPolicy,
-						BasePathVal: "foo",
+						Policy: fooPolicy,
 					},
 				},
 			},
