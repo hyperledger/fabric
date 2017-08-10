@@ -12,7 +12,7 @@ WD="$GOPATH/src/github.com/hyperledger/fabric-sdk-node"
 SDK_REPO_NAME=fabric-sdk-node
 git clone https://github.com/hyperledger/$SDK_REPO_NAME $WD
 cd $WD
-git checkout tags/v1.0.0
+git checkout tags/v1.0.1
 cd test/fixtures
 docker rm -f "$(docker ps -aq)" || true
 docker-compose up >> node_dockerlogfile.log 2>&1 &
