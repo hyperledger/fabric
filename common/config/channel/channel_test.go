@@ -136,12 +136,3 @@ func TestConsortiumName(t *testing.T) {
 	cc := &ChannelConfig{protos: &ChannelProtos{Consortium: &cb.Consortium{Name: "TestConsortium"}}}
 	assert.Equal(t, "TestConsortium", cc.ConsortiumName(), "Unexpected consortium name returned")
 }
-
-func TestChannelUtils(t *testing.T) {
-	// these functions all panic if marshaling fails so just executing them is sufficient
-	_ = TemplateConsortium("test")
-	_ = DefaultHashingAlgorithm()
-	_ = DefaultBlockDataHashingStructure()
-	_ = DefaultOrdererAddresses()
-
-}
