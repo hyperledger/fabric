@@ -132,11 +132,6 @@ type ManagerImpl struct {
 	config        *policyConfig
 	pendingConfig map[interface{}]*policyConfig
 	pendingLock   sync.RWMutex
-
-	// SuppressSanityLogMessages when set to true will prevent the sanity checking log
-	// messages.  Useful for novel cases like channel templates
-	// TODO, pull the sanity checking into chanel config
-	SuppressSanityLogMessages bool
 }
 
 // NewManagerImpl creates a new ManagerImpl with the given CryptoHelper
@@ -294,41 +289,6 @@ func (pm *ManagerImpl) CommitProposals(tx interface{}) {
 
 	pm.config = pendingConfig
 	delete(pm.pendingConfig, tx)
-
-	if pm.parent == nil && pm.basePath == ChannelPrefix && !pm.SuppressSanityLogMessages {
-		for _, policyName := range []string{ChannelReaders, ChannelWriters} {
-			_, ok := pm.GetPolicy(policyName)
-			if !ok {
-				logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)
-			} else {
-				logger.Debugf("As expected, current configuration has policy '%s'", policyName)
-			}
-		}
-		if _, ok := pm.config.managers[ApplicationPrefix]; ok {
-			// Check for default application policies if the application component is defined
-			for _, policyName := range []string{
-				ChannelApplicationReaders,
-				ChannelApplicationWriters,
-				ChannelApplicationAdmins} {
-				_, ok := pm.GetPolicy(policyName)
-				if !ok {
-					logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)
-				} else {
-					logger.Debugf("As expected, current configuration has policy '%s'", policyName)
-				}
-			}
-		}
-		if _, ok := pm.config.managers[OrdererPrefix]; ok {
-			for _, policyName := range []string{BlockValidation} {
-				_, ok := pm.GetPolicy(policyName)
-				if !ok {
-					logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)
-				} else {
-					logger.Debugf("As expected, current configuration has policy '%s'", policyName)
-				}
-			}
-		}
-	}
 }
 
 // ProposePolicy takes key, path, and ConfigPolicy and registers it in the proposed PolicyManager, or errors

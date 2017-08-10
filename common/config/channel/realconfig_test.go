@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -83,4 +84,12 @@ func TestSimpleConfig(t *testing.T) {
 
 func TestOneMSPConfig(t *testing.T) {
 	commonTest(t, localconfig.SampleSingleMSPSoloProfile)
+}
+
+func TestWithRealConfigtx(t *testing.T) {
+	conf := localconfig.Load(localconfig.SampleSingleMSPSoloProfile)
+	gb := provisional.New(conf).GenesisBlockForChannel("foo")
+	env := utils.ExtractEnvelopeOrPanic(gb, 0)
+	_, err := New(env, nil)
+	assert.NoError(t, err)
 }
