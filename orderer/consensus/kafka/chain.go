@@ -413,10 +413,14 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support consensus.Co
 		batch := support.BlockCutter().Cut()
 		if batch != nil {
 			block := support.CreateNextBlock(batch)
-			support.WriteBlock(block, nil)
+			encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: receivedOffset - 1})
+			support.WriteBlock(block, encodedLastOffsetPersisted)
+			*lastCutBlockNumber++
 		}
 		block := support.CreateNextBlock([]*cb.Envelope{env})
-		support.WriteConfigBlock(block, nil)
+		encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: receivedOffset})
+		support.WriteConfigBlock(block, encodedLastOffsetPersisted)
+		*lastCutBlockNumber++
 		*timer = nil
 	case msgprocessor.NormalMsg:
 		_, err := support.ProcessNormalMsg(env)
