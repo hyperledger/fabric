@@ -61,7 +61,7 @@ func TestBundleGreenPath(t *testing.T) {
 	}, 0, 0)
 	assert.NoError(t, err)
 
-	b, err := New(env, nil)
+	b, err := New(env, nil, nil)
 	assert.NotNil(t, b)
 	assert.NoError(t, err)
 	assert.Equal(t, "/Resources/foo", b.ResourcePolicyMapper().PolicyRefForResource("Foo"))
@@ -99,7 +99,7 @@ func TestBundleBadSubGroup(t *testing.T) {
 	}, 0, 0)
 	assert.NoError(t, err)
 
-	_, err = New(env, nil)
+	_, err = New(env, nil, nil)
 	assert.Error(t, err)
 	assert.Regexp(t, "sub-groups not allowed to have values", err.Error())
 }
