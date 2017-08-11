@@ -21,26 +21,26 @@ const (
 	PROPOSE = "PROPOSE"
 
 	//LSCC resources
-	LSCC_INSTALL                = "LSCC_INSTALL"
-	LSCC_DEPLOY                 = "LSCC_DEPLOY"
-	LSCC_UPGRADE                = "LSCC_UPGRADE"
-	LSCC_GETCCINFO              = "LSCC_GETCCINFO"
-	LSCC_GETDEPSPEC             = "LSCC_GETDEPSPEC"
-	LSCC_GETCCDATA              = "LSCC_GETCCDATA"
-	LSCC_GETCHAINCODES          = "LSCC_GETCHAINCODES"
-	LSCC_GETINSTALLEDCHAINCODES = "LSCC_GETINSTALLEDCHAINCODES"
+	LSCC_INSTALL                = "LSCC.INSTALL"
+	LSCC_DEPLOY                 = "LSCC.DEPLOY"
+	LSCC_UPGRADE                = "LSCC.UPGRADE"
+	LSCC_GETCCINFO              = "LSCC.GETCCINFO"
+	LSCC_GETDEPSPEC             = "LSCC.GETDEPSPEC"
+	LSCC_GETCCDATA              = "LSCC.GETCCDATA"
+	LSCC_GETCHAINCODES          = "LSCC.GETCHAINCODES"
+	LSCC_GETINSTALLEDCHAINCODES = "LSCC.GETINSTALLEDCHAINCODES"
 
 	//QSCC resources
-	QSCC_GetChainInfo       = "QSCC_GetChainInfo"
-	QSCC_GetBlockByNumber   = "QSCC_GetBlockByNumber"
-	QSCC_GetBlockByHash     = "QSCC_GetBlockByHash"
-	QSCC_GetTransactionByID = "QSCC_GetTransactionByID"
-	QSCC_GetBlockByTxID     = "QSCC_GetBlockByTxID"
+	QSCC_GetChainInfo       = "QSCC.GetChainInfo"
+	QSCC_GetBlockByNumber   = "QSCC.GetBlockByNumber"
+	QSCC_GetBlockByHash     = "QSCC.GetBlockByHash"
+	QSCC_GetTransactionByID = "QSCC.GetTransactionByID"
+	QSCC_GetBlockByTxID     = "QSCC.GetBlockByTxID"
 
 	//CSCC resources
-	CSCC_JoinChain      = "CSCC_JoinChain"
-	CSCC_GetConfigBlock = "CSCC_GetConfigBlock"
-	CSCC_GetChannels    = "CSCC_GetChannels"
+	CSCC_JoinChain      = "CSCC.JoinChain"
+	CSCC_GetConfigBlock = "CSCC.GetConfigBlock"
+	CSCC_GetChannels    = "CSCC.GetChannels"
 
 	//Chaincode-to-Chaincode call
 	CC2CC = "CC2CC"
