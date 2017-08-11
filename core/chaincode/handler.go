@@ -1231,7 +1231,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 						Payload: []byte(payload), Txid: msg.Txid}
 					return
 				}
-				txsim2, err2 := lgr.NewTxSimulator()
+				txsim2, err2 := lgr.NewTxSimulator(msg.Txid)
 				if err2 != nil {
 					triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR,
 						Payload: []byte(err2.Error()), Txid: msg.Txid}

@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
 )
 
@@ -40,6 +40,6 @@ func createTestEnv(t testing.TB, path string) *testEnv {
 }
 
 func (env *testEnv) cleanup() {
-	path := ledgerconfig.GetRootPath()
+	path := config.GetPath("peer.fileSystemPath")
 	os.RemoveAll(path)
 }

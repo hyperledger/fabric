@@ -124,7 +124,7 @@ func createEndorsementBlkHtRangeEndKey(endorsementBlkHt uint64) []byte {
 }
 
 // GetTransientStorePath returns the filesystem path for temporarily storing the private rwset
-func getTransientStorePath() string {
+func GetTransientStorePath() string {
 	sysPath := config.GetPath("peer.fileSystemPath")
 	return filepath.Join(sysPath, "transientStore")
 }

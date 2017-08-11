@@ -78,12 +78,12 @@ func (*Endorser) checkEsccAndVscc(prop *pb.Proposal) error {
 	return nil
 }
 
-func (*Endorser) getTxSimulator(ledgername string) (ledger.TxSimulator, error) {
+func (*Endorser) getTxSimulator(ledgername string, txid string) (ledger.TxSimulator, error) {
 	lgr := peer.GetLedger(ledgername)
 	if lgr == nil {
 		return nil, fmt.Errorf("channel does not exist: %s", ledgername)
 	}
-	return lgr.NewTxSimulator()
+	return lgr.NewTxSimulator(txid)
 }
 
 func (*Endorser) getHistoryQueryExecutor(ledgername string) (ledger.HistoryQueryExecutor, error) {
@@ -188,7 +188,6 @@ func (e *Endorser) disableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvoc
 	if argNo >= len(cis.ChaincodeSpec.Input.Args) {
 		return errors.New("Too few arguments passed")
 	}
-
 	//the inner dep spec will contain the type
 	cds, err := putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[argNo])
 	if err != nil {
@@ -245,7 +244,8 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	}
 
 	//---3. execute the proposal and get simulation results
-	var simResult []byte
+	var simResult *ledger.TxSimulationResults
+	var pubSimResBytes []byte
 	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent
 	res, ccevent, err = e.callChaincode(ctx, chainID, version, txid, signedProp, prop, cis, cid, txsim)
@@ -258,9 +258,12 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		if simResult, err = txsim.GetTxSimulationResults(); err != nil {
 			return nil, nil, nil, nil, err
 		}
-	}
 
-	return cdLedger, res, simResult, ccevent, nil
+		if pubSimResBytes, err = simResult.GetPubSimulationBytes(); err != nil {
+			return nil, nil, nil, nil, err
+		}
+	}
+	return cdLedger, res, pubSimResBytes, ccevent, nil
 }
 
 func (e *Endorser) getCDSFromLSCC(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (*ccprovider.ChaincodeData, error) {
@@ -434,7 +437,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	var txsim ledger.TxSimulator
 	var historyQueryExecutor ledger.HistoryQueryExecutor
 	if chainID != "" {
-		if txsim, err = e.getTxSimulator(chainID); err != nil {
+		if txsim, err = e.getTxSimulator(chainID, txid); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 		}
 		if historyQueryExecutor, err = e.getHistoryQueryExecutor(chainID); err != nil {

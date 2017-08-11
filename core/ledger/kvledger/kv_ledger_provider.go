@@ -22,16 +22,14 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb/historyleveldb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -51,10 +49,11 @@ var (
 
 // Provider implements interface ledger.PeerLedgerProvider
 type Provider struct {
-	idStore            *idStore
-	blockStoreProvider blkstorage.BlockStoreProvider
-	vdbProvider        statedb.VersionedDBProvider
-	historydbProvider  historydb.HistoryDBProvider
+	idStore                *idStore
+	ledgerStoreProvider    *ledgerstorage.Provider
+	vdbProvider            privacyenabledstate.DBProvider
+	historydbProvider      historydb.HistoryDBProvider
+	transientStoreProvider transientstore.StoreProvider
 }
 
 // NewProvider instantiates a new Provider.
@@ -66,40 +65,22 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	// Initialize the ID store (inventory of chainIds/ledgerIds)
 	idStore := openIDStore(ledgerconfig.GetLedgerProviderPath())
 
-	// Initialize the block storage
-	attrsToIndex := []blkstorage.IndexableAttr{
-		blkstorage.IndexableAttrBlockHash,
-		blkstorage.IndexableAttrBlockNum,
-		blkstorage.IndexableAttrTxID,
-		blkstorage.IndexableAttrBlockNumTranNum,
-		blkstorage.IndexableAttrBlockTxID,
-		blkstorage.IndexableAttrTxValidationCode,
-	}
-	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	blockStoreProvider := fsblkstorage.NewProvider(
-		fsblkstorage.NewConf(ledgerconfig.GetBlockStorePath(), ledgerconfig.GetMaxBlockfileSize()),
-		indexConfig)
+	ledgerStoreProvider := ledgerstorage.NewProvider()
 
 	// Initialize the versioned database (state database)
-	var vdbProvider statedb.VersionedDBProvider
-	if !ledgerconfig.IsCouchDBEnabled() {
-		logger.Debug("Constructing leveldb VersionedDBProvider")
-		vdbProvider = stateleveldb.NewVersionedDBProvider()
-	} else {
-		logger.Debug("Constructing CouchDB VersionedDBProvider")
-		var err error
-		vdbProvider, err = statecouchdb.NewVersionedDBProvider()
-		if err != nil {
-			return nil, err
-		}
+	vdbProvider, err := privacyenabledstate.NewCommonStorageDBProvider()
+	if err != nil {
+		return nil, err
 	}
+	// Initialize the transient store (temporary storage of private rwset)
+	transientStoreProvider := transientstore.NewStoreProvider()
 
 	// Initialize the history database (index for history of values by key)
 	var historydbProvider historydb.HistoryDBProvider
 	historydbProvider = historyleveldb.NewHistoryDBProvider()
 
 	logger.Info("ledger provider Initialized")
-	provider := &Provider{idStore, blockStoreProvider, vdbProvider, historydbProvider}
+	provider := &Provider{idStore, ledgerStoreProvider, vdbProvider, historydbProvider, transientStoreProvider}
 	provider.recoverUnderConstructionLedger()
 	return provider, nil
 }
@@ -155,7 +136,7 @@ func (provider *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 
 func (provider *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 	// Get the block store for a chain/ledger
-	blockStore, err := provider.blockStoreProvider.OpenBlockStore(ledgerID)
+	blockStore, err := provider.ledgerStoreProvider.Open(ledgerID)
 	if err != nil {
 		return nil, err
 	}
@@ -172,9 +153,15 @@ func (provider *Provider) openInternal(ledgerID string) (ledger.PeerLedger, erro
 		return nil, err
 	}
 
+	// Get the transient store for a chain/ledger
+	transientStore, err := provider.transientStoreProvider.OpenStore(ledgerID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying data stores
 	// (id store, blockstore, state database, history database)
-	l, err := newKVLedger(ledgerID, blockStore, vDB, historyDB)
+	l, err := newKVLedger(ledgerID, blockStore, vDB, historyDB, transientStore)
 	if err != nil {
 		return nil, err
 	}
@@ -194,9 +181,10 @@ func (provider *Provider) List() ([]string, error) {
 // Close implements the corresponding method from interface ledger.PeerLedgerProvider
 func (provider *Provider) Close() {
 	provider.idStore.close()
-	provider.blockStoreProvider.Close()
+	provider.ledgerStoreProvider.Close()
 	provider.vdbProvider.Close()
 	provider.historydbProvider.Close()
+	provider.transientStoreProvider.Close()
 }
 
 // recoverUnderConstructionLedger checks whether the under construction flag is set - this would be the case

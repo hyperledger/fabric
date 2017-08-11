@@ -69,10 +69,10 @@ func createRWset(t *testing.T, ccnames ...string) []byte {
 	for _, ccname := range ccnames {
 		rwsetBuilder.AddToWriteSet(ccname, "key", []byte("value"))
 	}
-	rwset := rwsetBuilder.GetTxReadWriteSet()
-	rws, err := rwset.ToProtoBytes()
+	rwset, err := rwsetBuilder.GetTxSimulationResults()
 	assert.NoError(t, err)
-	return rws
+	rwsetBytes, err := rwset.GetPubSimulationBytes()
+	return rwsetBytes
 }
 
 func getProposal(ccID string) (*peer.Proposal, error) {
@@ -116,14 +116,17 @@ func putCCInfoWithVSCCAndVer(theLedger ledger.PeerLedger, ccname, vscc, ver stri
 
 	cdbytes := utils.MarshalOrPanic(cd)
 
-	simulator, err := theLedger.NewTxSimulator()
+	txid := util.GenerateUUID()
+	simulator, err := theLedger.NewTxSimulator(txid)
 	assert.NoError(t, err)
 	simulator.SetState("lscc", ccname, cdbytes)
 	simulator.Done()
 
 	simRes, err := simulator.GetTxSimulationResults()
 	assert.NoError(t, err)
-	block0 := testutil.ConstructBlock(t, 1, []byte("hash"), [][]byte{simRes}, true)
+	pubSimulationBytes, err := simRes.GetPubSimulationBytes()
+	assert.NoError(t, err)
+	block0 := testutil.ConstructBlock(t, 1, []byte("hash"), [][]byte{pubSimulationBytes}, true)
 	err = theLedger.Commit(block0)
 	assert.NoError(t, err)
 }
@@ -422,7 +425,7 @@ func (m *mockLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCo
 }
 
 // NewTxSimulator creates new transaction simulator
-func (m *mockLedger) NewTxSimulator() (ledger.TxSimulator, error) {
+func (m *mockLedger) NewTxSimulator(txid string) (ledger.TxSimulator, error) {
 	args := m.Called()
 	return args.Get(0).(ledger.TxSimulator), nil
 }
@@ -437,6 +440,33 @@ func (m *mockLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
 func (m *mockLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
 	args := m.Called()
 	return args.Get(0).(ledger.HistoryQueryExecutor), nil
+}
+
+// GetPvtDataAndBlockByNum retrieves pvt data and block
+func (m *mockLedger) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsCollFilter) (*ledger.BlockAndPvtData, error) {
+	args := m.Called()
+	return args.Get(0).(*ledger.BlockAndPvtData), nil
+}
+
+// GetPvtDataByNum retrieves the pvt data
+func (m *mockLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
+	args := m.Called()
+	return args.Get(0).([]*ledger.TxPvtData), nil
+}
+
+// CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
+func (m *mockLedger) CommitWithPvtData(pvtDataAndBlock *ledger.BlockAndPvtData) error {
+	return nil
+}
+
+// PurgePrivateData purges the private data
+func (m *mockLedger) PurgePrivateData(maxBlockNumToRetain uint64) error {
+	return nil
+}
+
+// PrivateDataMinBlockNum returns the lowest retained endorsement block height
+func (m *mockLedger) PrivateDataMinBlockNum() (uint64, error) {
+	return 0, nil
 }
 
 // Prune prune using policy
@@ -495,6 +525,26 @@ func (exec *mockQueryExecutor) GetStateRangeScanIterator(namespace string, start
 
 func (exec *mockQueryExecutor) ExecuteQuery(namespace, query string) (ledger2.ResultsIterator, error) {
 	args := exec.Called(namespace)
+	return args.Get(0).(ledger2.ResultsIterator), args.Error(1)
+}
+
+func (exec *mockQueryExecutor) GetPrivateData(namespace, collection, key string) ([]byte, error) {
+	args := exec.Called(namespace, collection, key)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (exec *mockQueryExecutor) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error) {
+	args := exec.Called(namespace, collection, keys)
+	return args.Get(0).([][]byte), args.Error(1)
+}
+
+func (exec *mockQueryExecutor) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (ledger2.ResultsIterator, error) {
+	args := exec.Called(namespace, collection, startKey, endKey)
+	return args.Get(0).(ledger2.ResultsIterator), args.Error(1)
+}
+
+func (exec *mockQueryExecutor) ExecuteQueryOnPrivateData(namespace, collection, query string) (ledger2.ResultsIterator, error) {
+	args := exec.Called(namespace, collection, query)
 	return args.Get(0).(ledger2.ResultsIterator), args.Error(1)
 }
 

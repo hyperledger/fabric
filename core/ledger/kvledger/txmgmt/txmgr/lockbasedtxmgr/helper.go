@@ -17,6 +17,8 @@ limitations under the License.
 package lockbasedtxmgr
 
 import (
+	"errors"
+
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -76,11 +78,52 @@ func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey strin
 }
 
 func (h *queryHelper) executeQuery(namespace, query string) (commonledger.ResultsIterator, error) {
+	h.checkDone()
 	dbItr, err := h.txmgr.db.ExecuteQuery(namespace, query)
 	if err != nil {
 		return nil, err
 	}
 	return &queryResultsItr{DBItr: dbItr, RWSetBuilder: h.rwsetBuilder}, nil
+}
+
+func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
+	h.checkDone()
+	versionedValue, err := h.txmgr.db.GetPrivateData(ns, coll, key)
+	if err != nil {
+		return nil, err
+	}
+	val, ver := decomposeVersionedValue(versionedValue)
+	if h.rwsetBuilder != nil {
+		h.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
+	}
+	return val, nil
+}
+
+func (h *queryHelper) getPrivateDataMultipleKeys(ns, coll string, keys []string) ([][]byte, error) {
+	h.checkDone()
+	versionedValues, err := h.txmgr.db.GetPrivateDataMultipleKeys(ns, coll, keys)
+	if err != nil {
+		return nil, nil
+	}
+	values := make([][]byte, len(versionedValues))
+	for i, versionedValue := range versionedValues {
+		val, ver := decomposeVersionedValue(versionedValue)
+		if h.rwsetBuilder != nil {
+			h.rwsetBuilder.AddToHashedReadSet(ns, coll, keys[i], ver)
+		}
+		values[i] = val
+	}
+	return values, nil
+}
+
+func (h *queryHelper) getPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error) {
+	// TODO
+	return nil, errors.New("Not Yet Supported")
+}
+
+func (h *queryHelper) executeQueryOnPrivateData(namespace, collection, query string) (commonledger.ResultsIterator, error) {
+	// TODO
+	return nil, errors.New("Not Yet Supported")
 }
 
 func (h *queryHelper) done() {

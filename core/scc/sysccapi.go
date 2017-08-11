@@ -99,6 +99,8 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 
 	ccprov := ccprovider.GetChaincodeProvider()
 
+	txid := util.GenerateUUID()
+
 	ctxt := context.Background()
 	if chainID != "" {
 		lgr := peer.GetLedger(chainID)
@@ -106,7 +108,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name, chainID))
 		}
 
-		_, err := ccprov.GetContext(lgr)
+		_, err := ccprov.GetContext(lgr, txid)
 		if err != nil {
 			return err
 		}
@@ -124,8 +126,6 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 		sysccLogger.Error(fmt.Sprintf("Error deploying chaincode spec: %v\n\n error: %s", spec, err))
 		return err
 	}
-
-	txid := util.GenerateUUID()
 
 	version := util.GetSysCCVersion()
 

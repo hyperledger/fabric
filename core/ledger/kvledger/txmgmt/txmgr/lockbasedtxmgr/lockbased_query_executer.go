@@ -18,20 +18,18 @@ package lockbasedtxmgr
 
 import (
 	"github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/common/util"
 )
 
 // LockBasedQueryExecutor is a query executor used in `LockBasedTxMgr`
 type lockBasedQueryExecutor struct {
 	helper *queryHelper
-	id     string
+	txid   string
 }
 
-func newQueryExecutor(txmgr *LockBasedTxMgr) *lockBasedQueryExecutor {
+func newQueryExecutor(txmgr *LockBasedTxMgr, txid string) *lockBasedQueryExecutor {
 	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: nil}
-	id := util.GenerateUUID()
-	logger.Debugf("constructing new query executor [%s]", id)
-	return &lockBasedQueryExecutor{helper, id}
+	logger.Debugf("constructing new query executor txid = [%s]", txid)
+	return &lockBasedQueryExecutor{helper, txid}
 }
 
 // GetState implements method in interface `ledger.QueryExecutor`
@@ -47,7 +45,7 @@ func (q *lockBasedQueryExecutor) GetStateMultipleKeys(namespace string, keys []s
 // GetStateRangeScanIterator implements method in interface `ledger.QueryExecutor`
 // startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 // and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
-// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
+// can be supplied as empty strings. However, a full scan shuold be used judiciously for performance reasons.
 func (q *lockBasedQueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
 	return q.helper.getStateRangeScanIterator(namespace, startKey, endKey)
 }
@@ -57,8 +55,24 @@ func (q *lockBasedQueryExecutor) ExecuteQuery(namespace, query string) (ledger.R
 	return q.helper.executeQuery(namespace, query)
 }
 
+func (q *lockBasedQueryExecutor) GetPrivateData(namespace, collection, key string) ([]byte, error) {
+	return q.helper.getPrivateData(namespace, collection, key)
+}
+
+func (q *lockBasedQueryExecutor) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error) {
+	return q.helper.getPrivateDataMultipleKeys(namespace, collection, keys)
+}
+
+func (q *lockBasedQueryExecutor) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (ledger.ResultsIterator, error) {
+	return q.helper.getPrivateDataRangeScanIterator(namespace, collection, startKey, endKey)
+}
+
+func (q *lockBasedQueryExecutor) ExecuteQueryOnPrivateData(namespace, collection, query string) (ledger.ResultsIterator, error) {
+	return q.helper.executeQueryOnPrivateData(namespace, collection, query)
+}
+
 // Done implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) Done() {
-	logger.Debugf("Done with transaction simulation / query execution [%s]", q.id)
+	logger.Debugf("Done with transaction simulation / query execution [%s]", q.txid)
 	q.helper.done()
 }

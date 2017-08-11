@@ -19,6 +19,7 @@ package chaincode
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -168,9 +169,9 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 	}
 }
 
-func startTxSimulation(ctxt context.Context, chainID string) (context.Context, ledger.TxSimulator, error) {
+func startTxSimulation(ctxt context.Context, chainID string, txid string) (context.Context, ledger.TxSimulator, error) {
 	lgr := peer.GetLedger(chainID)
-	txsim, err := lgr.NewTxSimulator()
+	txsim, err := lgr.NewTxSimulator(txid)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -184,7 +185,7 @@ func startTxSimulation(ctxt context.Context, chainID string) (context.Context, l
 	return ctxt, txsim, nil
 }
 
-func endTxSimulationCDS(chainID string, _ string, txsim ledger.TxSimulator, payload []byte, commit bool, cds *pb.ChaincodeDeploymentSpec, blockNumber uint64) error {
+func endTxSimulationCDS(chainID string, txid string, txsim ledger.TxSimulator, payload []byte, commit bool, cds *pb.ChaincodeDeploymentSpec, blockNumber uint64) error {
 	// get serialized version of the signer
 	ss, err := signer.Serialize()
 	if err != nil {
@@ -206,7 +207,7 @@ func endTxSimulationCDS(chainID string, _ string, txsim ledger.TxSimulator, payl
 	return endTxSimulation(chainID, lsccid, txsim, payload, commit, prop, blockNumber)
 }
 
-func endTxSimulationCIS(chainID string, ccid *pb.ChaincodeID, _ string, txsim ledger.TxSimulator, payload []byte, commit bool, cis *pb.ChaincodeInvocationSpec, blockNumber uint64) error {
+func endTxSimulationCIS(chainID string, ccid *pb.ChaincodeID, txid string, txsim ledger.TxSimulator, payload []byte, commit bool, cis *pb.ChaincodeInvocationSpec, blockNumber uint64) error {
 	// get serialized version of the signer
 	ss, err := signer.Serialize()
 	if err != nil {
@@ -214,9 +215,12 @@ func endTxSimulationCIS(chainID string, ccid *pb.ChaincodeID, _ string, txsim le
 	}
 
 	// get a proposal - we need it to get a transaction
-	prop, _, err := putils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, ss)
+	prop, returnedTxid, err := putils.CreateProposalFromCISAndTxid(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, ss)
 	if err != nil {
 		return err
+	}
+	if returnedTxid != txid {
+		return errors.New("txids are not same")
 	}
 
 	return endTxSimulation(chainID, ccid, txsim, payload, commit, prop, blockNumber)
@@ -236,16 +240,22 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 	txsim.Done()
 	if lgr := peer.GetLedger(chainID); lgr != nil {
 		if commit {
-			var txSimulationResults []byte
+			var txSimulationResults *ledger.TxSimulationResults
+			var txSimulationBytes []byte
 			var err error
+
+			txsim.Done()
 
 			//get simulation results
 			if txSimulationResults, err = txsim.GetTxSimulationResults(); err != nil {
 				return err
 			}
-
+			if txSimulationBytes, err = txSimulationResults.GetPubSimulationBytes(); err != nil {
+				return nil
+			}
 			// assemble a (signed) proposal response message
-			resp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200}, txSimulationResults, nil, ccid, nil, signer)
+			resp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200},
+				txSimulationBytes, nil, ccid, nil, signer)
 			if err != nil {
 				return err
 			}
@@ -321,14 +331,12 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 		return nil, fmt.Errorf("Error creating lscc spec : %s\n", err)
 	}
 
-	ctx, txsim, err := startTxSimulation(ctx, cccid.ChainID)
+	uuid := util.GenerateUUID()
+	cccid.TxID = uuid
+	ctx, txsim, err := startTxSimulation(ctx, cccid.ChainID, cccid.TxID)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get handle to simulator: %s ", err)
 	}
-
-	uuid := util.GenerateUUID()
-
-	cccid.TxID = uuid
 
 	defer func() {
 		//no error, lets try commit
@@ -372,7 +380,7 @@ func invokeWithVersion(ctx context.Context, chainID string, version string, spec
 	uuid = util.GenerateUUID()
 
 	var txsim ledger.TxSimulator
-	ctx, txsim, err = startTxSimulation(ctx, chainID)
+	ctx, txsim, err = startTxSimulation(ctx, chainID, uuid)
 	if err != nil {
 		return nil, uuid, nil, fmt.Errorf("Failed to get handle to simulator: %s ", err)
 	}
@@ -542,7 +550,8 @@ func _(chainID string, _ string) error {
 
 // Check the correctness of the final state after transaction execution.
 func checkFinalState(cccid *ccprovider.CCContext, a int, b int) error {
-	_, txsim, err := startTxSimulation(context.Background(), cccid.ChainID)
+	txid := util.GenerateUUID()
+	_, txsim, err := startTxSimulation(context.Background(), cccid.ChainID, txid)
 	if err != nil {
 		return fmt.Errorf("Failed to get handle to simulator: %s ", err)
 	}
