@@ -1,4 +1,5 @@
 /*
+
 Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
@@ -7,32 +8,29 @@ SPDX-License-Identifier: Apache-2.0
 package aclmgmt
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pkg/errors"
 )
-
-type mockACLProvider struct {
-	retErr error
-}
-
-func (m *mockACLProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
-	return m.retErr
-}
-
-func (e *mockACLProvider) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator) error {
-	return nil
-}
 
 //treat each test as an independent isolated one
 func reinit() {
 	aclProvider = nil
 	once = sync.Once{}
+}
+
+func registerACLProvider() *mocks.MockACLProvider {
+	aclProv := &mocks.MockACLProvider{}
+	aclProv.Reset()
+
+	RegisterACLProvider(aclProv)
+
+	return aclProv
 }
 
 func TestACLProcessor(t *testing.T) {
@@ -82,14 +80,18 @@ func TestOverride(t *testing.T) {
 
 func TestWithProvider(t *testing.T) {
 	reinit()
-	RegisterACLProvider(&mockACLProvider{})
-	err := GetACLProvider().CheckACL(PROPOSE, "somechain", &pb.SignedProposal{})
+	aclprov := registerACLProvider()
+	prop := &pb.SignedProposal{}
+	aclprov.On("CheckACL", PROPOSE, "somechain", prop).Return(nil)
+	err := GetACLProvider().CheckACL(PROPOSE, "somechain", prop)
 	assert.NoError(t, err)
 }
 
 func TestBadACL(t *testing.T) {
 	reinit()
-	RegisterACLProvider(&mockACLProvider{retErr: fmt.Errorf("badacl")})
-	err := GetACLProvider().CheckACL(PROPOSE, "somechain", &pb.SignedProposal{})
+	aclprov := registerACLProvider()
+	prop := &pb.SignedProposal{}
+	aclprov.On("CheckACL", PROPOSE, "somechain", prop).Return(errors.New("badacl"))
+	err := GetACLProvider().CheckACL(PROPOSE, "somechain", prop)
 	assert.Error(t, err, "Expected error")
 }
