@@ -32,3 +32,23 @@ func TestGetSortedKeys(t *testing.T) {
 	mapKeyValue[""] = 30
 	assert.Equal(t, []string{"", "123", "a", "apple", "blue", "red"}, GetSortedKeys(mapKeyValue))
 }
+
+func TestGetValuesBySortedKeys(t *testing.T) {
+	type name struct {
+		fName string
+		lName string
+	}
+	mapKeyValue := make(map[string]*name)
+	mapKeyValue["2"] = &name{"Two", "two"}
+	mapKeyValue["3"] = &name{"Three", "three"}
+	mapKeyValue["5"] = &name{"Five", "five"}
+	mapKeyValue[""] = &name{"None", "none"}
+
+	sortedRes := []*name{}
+	GetValuesBySortedKeys(&mapKeyValue, &sortedRes)
+	assert.Equal(
+		t,
+		[]*name{&name{"None", "none"}, &name{"Two", "two"}, &name{"Three", "three"}, &name{"Five", "five"}},
+		sortedRes,
+	)
+}

@@ -35,6 +35,50 @@ func GetSortedKeys(m interface{}) []string {
 	return keys
 }
 
+// GetValuesBySortedKeys returns the values of the map (mapPtr) in the list (listPtr) in the sorted order of key of the map
+// This function assumes that the mapPtr is a pointer to a map and listPtr is is a pointer to a list. Further type of keys of the
+// map are assumed to be string and the types of the values of the maps and the list are same
+func GetValuesBySortedKeys(mapPtr interface{}, listPtr interface{}) {
+	mapVal := reflect.ValueOf(mapPtr).Elem()
+	keyVals := mapVal.MapKeys()
+	if len(keyVals) == 0 {
+		return
+	}
+	keys := make(keys, len(keyVals))
+	for i, k := range keyVals {
+		keys[i] = newKey(k)
+	}
+	sort.Sort(keys)
+	out := reflect.ValueOf(listPtr).Elem()
+	for _, k := range keys {
+		val := mapVal.MapIndex(k.Value)
+		out.Set(reflect.Append(out, val))
+	}
+}
+
+type key struct {
+	reflect.Value
+	str string
+}
+
+type keys []*key
+
+func newKey(v reflect.Value) *key {
+	return &key{v, v.String()}
+}
+
+func (keys keys) Len() int {
+	return len(keys)
+}
+
+func (keys keys) Swap(i, j int) {
+	keys[i], keys[j] = keys[j], keys[i]
+}
+
+func (keys keys) Less(i, j int) bool {
+	return keys[i].str < keys[j].str
+}
+
 // ComputeStringHash computes the hash of the given string
 func ComputeStringHash(input string) []byte {
 	return ComputeHash([]byte(input))

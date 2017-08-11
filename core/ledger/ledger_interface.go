@@ -17,6 +17,7 @@ limitations under the License.
 package ledger
 
 import (
+	"github.com/golang/protobuf/proto"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
@@ -185,4 +186,31 @@ func (filter PvtNsCollFilter) Has(ns string, coll string) bool {
 		return false
 	}
 	return collFilter[coll]
+}
+
+// TxSimulationResults captures the details of the simulation results
+// the field 'SimulationBlkHt' captures the approximate height of the blockchain on which
+// the transaction is simulated - this is used to decide when to expire the 'PvtDataSimulationResults' from transient storage
+type TxSimulationResults struct {
+	PubSimulationResults *rwset.TxReadWriteSet
+	PvtSimulationResults *rwset.TxPvtReadWriteSet
+	SimulationBlkHt      uint64
+}
+
+// GetPubSimulationBytes returns the serialized bytes of public readwrite set
+func (txSim *TxSimulationResults) GetPubSimulationBytes() ([]byte, error) {
+	return proto.Marshal(txSim.PubSimulationResults)
+}
+
+// GetPvtSimulationBytes returns the serialized bytes of private readwrite set
+func (txSim *TxSimulationResults) GetPvtSimulationBytes() ([]byte, error) {
+	if !txSim.ContainsPvtWrites() {
+		return nil, nil
+	}
+	return proto.Marshal(txSim.PvtSimulationResults)
+}
+
+// ContainsPvtWrites returns true if the simulation results include the private writes
+func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
+	return txSim.PvtSimulationResults != nil
 }
