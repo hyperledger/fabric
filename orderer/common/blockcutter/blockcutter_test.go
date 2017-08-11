@@ -31,8 +31,8 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-var goodTx = &cb.Envelope{Payload: []byte("GOOD")}
-var goodTxLarge = &cb.Envelope{Payload: []byte("GOOD"), Signature: make([]byte, 1000)}
+var tx = &cb.Envelope{Payload: []byte("GOOD")}
+var txLarge = &cb.Envelope{Payload: []byte("GOOD"), Signature: make([]byte, 1000)}
 
 func TestNormalBatch(t *testing.T) {
 	maxMessageCount := uint32(2)
@@ -40,20 +40,20 @@ func TestNormalBatch(t *testing.T) {
 	preferredMaxBytes := uint32(100)
 	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}})
 
-	batches, ok := r.Ordered(goodTx)
+	batches, pending := r.Ordered(tx)
 	assert.Nil(t, batches, "Should not have created batch")
-	assert.True(t, ok, "Should have enqueued message into batch")
+	assert.True(t, pending, "Should have message pending in the receiver")
 
-	batches, ok = r.Ordered(goodTx)
+	batches, pending = r.Ordered(tx)
 	assert.NotNil(t, batches, "Should have created batch")
-	assert.True(t, ok, "Should have enqueued second message into batch")
+	assert.False(t, pending, "Should not have message pending in the receiver")
 }
 
 func TestBatchSizePreferredMaxBytesOverflow(t *testing.T) {
-	goodTxBytes := messageSizeBytes(goodTx)
+	txBytes := messageSizeBytes(tx)
 
-	// set preferred max bytes such that 10 goodTx will not fit
-	preferredMaxBytes := goodTxBytes*10 - 1
+	// set preferred max bytes such that 10 tx will not fit
+	preferredMaxBytes := txBytes*10 - 1
 
 	// set message count > 9
 	maxMessageCount := uint32(20)
@@ -62,15 +62,15 @@ func TestBatchSizePreferredMaxBytesOverflow(t *testing.T) {
 
 	// enqueue 9 messages
 	for i := 0; i < 9; i++ {
-		batches, ok := r.Ordered(goodTx)
+		batches, pending := r.Ordered(tx)
 		assert.Nil(t, batches, "Should not have created batch")
-		assert.True(t, ok, "Should have enqueued message into batch")
+		assert.True(t, pending, "Should have enqueued message into batch")
 	}
 
 	// next message should create batch
-	batches, ok := r.Ordered(goodTx)
+	batches, pending := r.Ordered(tx)
 	assert.NotNil(t, batches, "Should have created batch")
-	assert.True(t, ok, "Should have enqueued message into batch")
+	assert.True(t, pending, "Should still have message pending")
 	assert.Len(t, batches, 1, "Should have created one batch")
 	assert.Len(t, batches[0], 9, "Should have had nine normal tx in the batch")
 
@@ -81,9 +81,9 @@ func TestBatchSizePreferredMaxBytesOverflow(t *testing.T) {
 }
 
 func TestBatchSizePreferredMaxBytesOverflowNoPending(t *testing.T) {
-	goodTxLargeBytes := messageSizeBytes(goodTxLarge)
+	goodTxLargeBytes := messageSizeBytes(txLarge)
 
-	// set preferred max bytes such that 1 goodTxLarge will not fit
+	// set preferred max bytes such that 1 txLarge will not fit
 	preferredMaxBytes := goodTxLargeBytes - 1
 
 	// set message count > 1
@@ -91,10 +91,17 @@ func TestBatchSizePreferredMaxBytesOverflowNoPending(t *testing.T) {
 
 	r := NewReceiverImpl(&mockconfig.Orderer{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: preferredMaxBytes * 3, PreferredMaxBytes: preferredMaxBytes}})
 
+	// submit normal message
+	batches, pending := r.Ordered(tx)
+	assert.Nil(t, batches, "Should not have created batch")
+	assert.True(t, pending, "Should have enqueued message into batch")
+
 	// submit large message
-	batches, ok := r.Ordered(goodTxLarge)
+	batches, pending = r.Ordered(txLarge)
 	assert.NotNil(t, batches, "Should have created batch")
-	assert.True(t, ok, "Should have enqueued message into batch")
-	assert.Len(t, batches, 1, "Should have created one batch")
-	assert.Len(t, batches[0], 1, "Should have had one normal tx in the batch")
+	assert.False(t, pending, "Should not have pending messages in receiver")
+	assert.Len(t, batches, 2, "Should have created two batches")
+	for i, batch := range batches {
+		assert.Len(t, batch, 1, "Should have had one normal tx in batch %d", i)
+	}
 }

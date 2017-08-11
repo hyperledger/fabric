@@ -429,25 +429,30 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support consensus.Co
 			break
 		}
 
-		batches, ok := support.BlockCutter().Ordered(env)
-		logger.Debugf("[channel: %s] Ordering results: items in batch = %d, ok = %v", support.ChainID(), len(batches), ok)
-		if ok && len(batches) == 0 && *timer == nil {
+		batches, pending := support.BlockCutter().Ordered(env)
+		logger.Debugf("[channel: %s] Ordering results: items in batch = %d, pending = %v", support.ChainID(), len(batches), pending)
+		if len(batches) == 0 && *timer == nil {
 			*timer = time.After(support.SharedConfig().BatchTimeout())
 			logger.Debugf("[channel: %s] Just began %s batch timer", support.ChainID(), support.SharedConfig().BatchTimeout().String())
 			return nil
 		}
-		// If !ok, batches == nil, so this will be skipped
-		for i, batch := range batches {
-			// If more than one batch is produced, exactly 2 batches are produced.
-			// The receivedOffset for the first batch is one less than the supplied
-			// offset to this function.
-			offset := receivedOffset - int64(len(batches)-i-1)
+
+		offset := receivedOffset
+		if pending || len(batches) == 2 {
+			// If the newest envelope is not encapsulated into the first batch,
+			// the `LastOffsetPersisted` should be `receivedOffset` - 1.
+			offset--
+		}
+
+		for _, batch := range batches {
 			block := support.CreateNextBlock(batch)
 			encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: offset})
 			support.WriteBlock(block, encodedLastOffsetPersisted)
 			*lastCutBlockNumber++
 			logger.Debugf("[channel: %s] Batch filled, just cut block %d - last persisted offset is now %d", support.ChainID(), *lastCutBlockNumber, offset)
+			offset++
 		}
+
 		if len(batches) > 0 {
 			*timer = nil
 		}
