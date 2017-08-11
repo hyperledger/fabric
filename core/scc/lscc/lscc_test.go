@@ -19,6 +19,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -30,6 +31,8 @@ import (
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -139,6 +142,8 @@ func testInstall(t *testing.T, ccname string, version string, path string, expec
 		}
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETINSTALLEDCHAINCODES, "test", sProp).Return(nil)
 	args = [][]byte{[]byte(GETINSTALLEDCHAINCODES)}
 	sProp, _ = utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	identityDeserializer.Msg = sProp.ProposalBytes
@@ -323,6 +328,8 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 			t.FailNow()
 		}
 
+		mockAclProvider.Reset()
+		mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, "test", sProp).Return(nil)
 		args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 		if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK {
 			t.FailNow()
@@ -414,6 +421,8 @@ func TestMultipleDeploy(t *testing.T) {
 		t.FailNow()
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, "test", sProp).Return(nil)
 	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK {
 		t.FailNow()
@@ -429,11 +438,15 @@ func TestMultipleDeploy(t *testing.T) {
 		t.FailNow()
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, "test", sProp2).Return(nil)
 	args = [][]byte{[]byte(DEPLOY), []byte("test"), b}
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
 		t.FailNow()
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, "test", sProp).Return(nil)
 	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK {
 		t.FailNow()
@@ -508,12 +521,16 @@ func TestRetryFailedDeploy(t *testing.T) {
 		t.FailNow()
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, "test", sProp2).Return(nil)
 	//deploy correctly now
 	args = [][]byte{[]byte(DEPLOY), []byte("test"), b}
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
 		t.FailNow()
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, "test", sProp).Return(nil)
 	//get the deploymentspec
 	args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK || res.Payload == nil {
@@ -605,6 +622,8 @@ func TestTamperChaincode(t *testing.T) {
 	}
 
 	//get the deploymentspec
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, "test", sProp).Return(nil)
 	args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res = stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status == shim.OK {
 		t.Logf("Expected error on tampering files but succeeded")
@@ -724,6 +743,8 @@ func testIPolDeploy(t *testing.T, iPol string, successExpected bool) {
 		}
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, chainid, sProp).Return(nil)
 	args = [][]byte{[]byte(GETCCINFO), []byte(chainid), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK {
 		if successExpected {
@@ -867,6 +888,8 @@ func testIPolUpgrade(t *testing.T, iPol string, successExpected bool) {
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
 		t.Fatalf("Deploy failed %s", res)
 	}
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, chainid, sProp).Return(nil)
 	args = [][]byte{[]byte(GETCCINFO), []byte(chainid), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK {
 		t.Fatalf("GetCCInfo after deploy failed %s", res)
@@ -950,18 +973,24 @@ func TestGetAPIsWithoutInstall(t *testing.T) {
 	//Force remove CC
 	os.Remove(lscctestpath + "/example02.0")
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, "test", sProp).Return(nil)
 	//GETCCINFO should still work
 	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK {
 		t.FailNow()
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, "test", sProp).Return(nil)
 	//GETCCDATA should still work
 	args = [][]byte{[]byte(GETCCDATA), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status != shim.OK {
 		t.FailNow()
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, "test", sProp).Return(nil)
 	//GETDEPSPEC should not work
 	args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvokeWithSignedProposal("1", args, sProp); res.Status == shim.OK {
@@ -1140,6 +1169,8 @@ func TestGetCCAccessRights(t *testing.T) {
 	// Should pass
 	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	sProp, _ := utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, "test", sProp).Return(nil)
 	identityDeserializer.Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
 	res := stub.MockInvokeWithSignedProposal("1", args, sProp)
@@ -1150,13 +1181,15 @@ func TestGetCCAccessRights(t *testing.T) {
 
 	// Should fail
 	sProp, _ = utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
-	identityDeserializer.Msg = sProp.ProposalBytes
-	sProp.Signature = sProp.ProposalBytes
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, "test", sProp).Return(errors.New("Failed access control"))
 	res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 	if res.Status == shim.OK {
 		t.Logf("This should fail [%s]", res.Message)
 		t.FailNow()
 	}
+	assert.Contains(t, res.Message, "Failed access control")
+	mockAclProvider.AssertExpectations(t)
 
 	// GETDEPSPEC
 	// Should pass
@@ -1164,6 +1197,8 @@ func TestGetCCAccessRights(t *testing.T) {
 	sProp, _ = utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	identityDeserializer.Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, "test", sProp).Return(nil)
 	res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 	if res.Status != shim.OK {
 		t.Logf("This should pass [%s]", res.Message)
@@ -1172,13 +1207,15 @@ func TestGetCCAccessRights(t *testing.T) {
 
 	// Should fail
 	sProp, _ = utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
-	identityDeserializer.Msg = sProp.ProposalBytes
-	sProp.Signature = sProp.ProposalBytes
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, "test", sProp).Return(errors.New("Failed access control"))
 	res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 	if res.Status == shim.OK {
 		t.Logf("This should fail [%s]", res.Message)
 		t.FailNow()
 	}
+	assert.Contains(t, res.Message, "Failed access control")
+	mockAclProvider.AssertExpectations(t)
 
 	// GETCCDATA
 	// Should pass
@@ -1186,6 +1223,8 @@ func TestGetCCAccessRights(t *testing.T) {
 	sProp, _ = utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	identityDeserializer.Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, "test", sProp).Return(nil)
 	res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 	if res.Status != shim.OK {
 		t.Logf("This should pass [%s]", res.Message)
@@ -1194,19 +1233,22 @@ func TestGetCCAccessRights(t *testing.T) {
 
 	// Should fail
 	sProp, _ = utils.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
-	identityDeserializer.Msg = sProp.ProposalBytes
-	sProp.Signature = sProp.ProposalBytes
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, "test", sProp).Return(errors.New("Failed access control"))
 	res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 	if res.Status == shim.OK {
 		t.Logf("This should fail [%s]", res.Message)
 		t.FailNow()
 	}
+	assert.Contains(t, res.Message, "Failed access control")
+	mockAclProvider.AssertExpectations(t)
 }
 
 var id msp.SigningIdentity
 var sid []byte
 var mspid string
 var chainid string = util.GetTestChainID()
+var mockAclProvider *mocks.MockACLProvider
 
 func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(lscctestpath)
@@ -1260,5 +1302,9 @@ func TestMain(m *testing.M) {
 	// also set the MSP for the "test" chain
 	mspmgmt.XXXSetMSPManager("test", mspmgmt.GetManagerForChain(util.GetTestChainID()))
 
+	mockAclProvider = &mocks.MockACLProvider{}
+	mockAclProvider.Reset()
+
+	aclmgmt.RegisterACLProvider(mockAclProvider)
 	os.Exit(m.Run())
 }
