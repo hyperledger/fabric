@@ -88,7 +88,7 @@ func (ch *chain) main() {
 	for {
 		select {
 		case msg := <-ch.sendChan:
-			batches, committers, ok := ch.support.BlockCutter().Ordered(msg)
+			batches, committers, ok, _ := ch.support.BlockCutter().Ordered(msg)
 			if ok && len(batches) == 0 && timer == nil {
 				timer = time.After(ch.support.SharedConfig().BatchTimeout())
 				continue
