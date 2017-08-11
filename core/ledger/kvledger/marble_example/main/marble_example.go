@@ -54,7 +54,7 @@ func init() {
 	testutil.SetupCoreYAMLConfig()
 
 	cleanup()
-	ledgermgmt.Initialize()
+	ledgermgmt.Initialize(nil)
 	var err error
 	gb, _ := configtxtest.MakeGenesisBlock(ledgerID)
 	peerLedger, err = ledgermgmt.CreateLedger(gb)

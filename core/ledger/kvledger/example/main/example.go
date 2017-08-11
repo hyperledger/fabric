@@ -53,7 +53,7 @@ func init() {
 	// Note, if subledgers are supported in the future,
 	// the various ledgers could be created/managed at this level
 	cleanup()
-	ledgermgmt.Initialize()
+	ledgermgmt.Initialize(nil)
 	var err error
 
 	gb, _ := configtxtest.MakeGenesisBlock(ledgerID)

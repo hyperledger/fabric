@@ -85,7 +85,7 @@ func TestLedgerMgmt(t *testing.T) {
 	Close()
 
 	// Restart ledger mgmt with existing ledgers
-	Initialize()
+	Initialize(nil)
 	l, err = OpenLedger(ledgerID)
 	testutil.AssertNoError(t, err, "")
 	Close()

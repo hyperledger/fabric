@@ -44,7 +44,9 @@ type LockBasedTxMgr struct {
 // NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
 func NewLockBasedTxMgr(db privacyenabledstate.DB, tStore transientstore.Store) *LockBasedTxMgr {
 	db.Open()
-	return &LockBasedTxMgr{db: db, validator: valimpl.NewStatebasedValidator(db)}
+	txmgr := &LockBasedTxMgr{db: db}
+	txmgr.validator = valimpl.NewStatebasedValidator(txmgr, db)
+	return txmgr
 }
 
 // GetLastSavepoint returns the block num recorded in savepoint,

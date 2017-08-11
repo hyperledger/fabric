@@ -18,9 +18,11 @@ package kvledger
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	lgr "github.com/hyperledger/fabric/core/ledger"
@@ -30,8 +32,18 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	ledgertestutil.SetupCoreYAMLConfig()
+	flogging.SetModuleLevel("lockbasedtxmgr", "debug")
+	flogging.SetModuleLevel("statevalidator", "debug")
+	flogging.SetModuleLevel("valimpl", "debug")
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger")
+	os.Exit(m.Run())
+}
 
 func TestKVLedgerBlockStorage(t *testing.T) {
 	env := newTestEnv(t)

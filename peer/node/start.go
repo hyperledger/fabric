@@ -85,7 +85,7 @@ func initSysCCs() {
 
 func serve(args []string) error {
 	logger.Infof("Starting %s", version.GetInfo())
-	ledgermgmt.Initialize()
+	ledgermgmt.Initialize(nil)
 	// Parameter overrides must be processed before any parameters are
 	// cached. Failures to cache cause the server to terminate immediately.
 	if chaincodeDevMode {

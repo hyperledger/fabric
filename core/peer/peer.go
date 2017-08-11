@@ -94,7 +94,7 @@ func Initialize(init func(string)) {
 
 	var cb *common.Block
 	var ledger ledger.PeerLedger
-	ledgermgmt.Initialize()
+	ledgermgmt.Initialize(nil)
 	ledgerIds, err := ledgermgmt.GetLedgerIDs()
 	if err != nil {
 		panic(fmt.Errorf("Error in initializing ledgermgmt: %s", err))
