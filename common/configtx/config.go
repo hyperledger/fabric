@@ -117,7 +117,7 @@ func proposeGroup(result *configResult) error {
 
 func processConfig(channelGroup *cb.ConfigGroup, proposer api.Proposer) (*configResult, error) {
 	helperGroup := cb.NewConfigGroup()
-	helperGroup.Groups[RootGroupKey] = channelGroup
+	helperGroup.Groups[proposer.RootGroupKey()] = channelGroup
 
 	configResult := &configResult{
 		group:         helperGroup,

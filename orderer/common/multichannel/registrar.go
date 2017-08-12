@@ -187,7 +187,7 @@ func (r *Registrar) GetChain(chainID string) (*ChainSupport, bool) {
 }
 
 func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
-	initializer := configtx.NewInitializer()
+	initializer := config.NewInitializer()
 	configManager, err := configtx.NewManagerImpl(configTx, initializer, nil)
 	if err != nil {
 		logger.Panicf("Error creating configtx manager and handlers: %s", err)

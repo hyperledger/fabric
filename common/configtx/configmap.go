@@ -26,8 +26,6 @@ import (
 )
 
 const (
-	RootGroupKey = "Channel"
-
 	GroupPrefix  = "[Groups] "
 	ValuePrefix  = "[Values] "
 	PolicyPrefix = "[Policy] " // The plurarility doesn't match, but, it makes the logs much easier being the same length as "Groups" and "Values"
@@ -37,10 +35,10 @@ const (
 
 // MapConfig is intended to be called outside this file
 // it takes a ConfigGroup and generates a map of fqPath to comparables (or error on invalid keys)
-func MapConfig(channelGroup *cb.ConfigGroup) (map[string]comparable, error) {
+func MapConfig(channelGroup *cb.ConfigGroup, rootGroupKey string) (map[string]comparable, error) {
 	result := make(map[string]comparable)
 	if channelGroup != nil {
-		err := recurseConfig(result, []string{RootGroupKey}, channelGroup)
+		err := recurseConfig(result, []string{rootGroupKey}, channelGroup)
 		if err != nil {
 			return nil, err
 		}
@@ -110,8 +108,8 @@ func recurseConfig(result map[string]comparable, path []string, group *cb.Config
 
 // configMapToConfig is intended to be called from outside this file
 // It takes a configMap and converts it back into a *cb.ConfigGroup structure
-func configMapToConfig(configMap map[string]comparable) (*cb.ConfigGroup, error) {
-	rootPath := PathSeparator + RootGroupKey
+func configMapToConfig(configMap map[string]comparable, rootGroupKey string) (*cb.ConfigGroup, error) {
+	rootPath := PathSeparator + rootGroupKey
 	return recurseConfigMap(rootPath, configMap)
 }
 

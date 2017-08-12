@@ -14,16 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package configtx
+package config
 
 import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/config"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	configtxmsp "github.com/hyperledger/fabric/common/config/channel/msp"
-	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -31,9 +29,11 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+const RootGroupKey = "Channel"
+
 type resources struct {
 	policyManager    *policies.ManagerImpl
-	configRoot       *channelconfig.Root
+	configRoot       *Root
 	mspConfigHandler *configtxmsp.MSPConfigHandler
 }
 
@@ -43,12 +43,12 @@ func (r *resources) PolicyManager() policies.Manager {
 }
 
 // ChannelConfig returns the api.ChannelConfig for the chain
-func (r *resources) ChannelConfig() channelconfig.Channel {
+func (r *resources) ChannelConfig() Channel {
 	return r.configRoot.Channel()
 }
 
 // OrdererConfig returns the api.OrdererConfig for the chain
-func (r *resources) OrdererConfig() (channelconfig.Orderer, bool) {
+func (r *resources) OrdererConfig() (Orderer, bool) {
 	result := r.configRoot.Orderer()
 	if result == nil {
 		return nil, false
@@ -57,7 +57,7 @@ func (r *resources) OrdererConfig() (channelconfig.Orderer, bool) {
 }
 
 // ApplicationConfig returns the api.ApplicationConfig for the chain
-func (r *resources) ApplicationConfig() (channelconfig.Application, bool) {
+func (r *resources) ApplicationConfig() (Application, bool) {
 	result := r.configRoot.Application()
 	if result == nil {
 		return nil, false
@@ -67,7 +67,7 @@ func (r *resources) ApplicationConfig() (channelconfig.Application, bool) {
 
 // ConsortiumsConfig returns the api.ConsortiumsConfig for the chain and whether or not
 // this channel contains consortiums config
-func (r *resources) ConsortiumsConfig() (channelconfig.Consortiums, bool) {
+func (r *resources) ConsortiumsConfig() (Consortiums, bool) {
 	result := r.configRoot.Consortiums()
 	if result == nil {
 		return nil, false
@@ -99,7 +99,7 @@ func newResources() *resources {
 
 	return &resources{
 		policyManager:    policies.NewManagerImpl(RootGroupKey, policyProviderMap),
-		configRoot:       channelconfig.NewRoot(mspConfigHandler),
+		configRoot:       NewRoot(mspConfigHandler),
 		mspConfigHandler: mspConfigHandler,
 	}
 }
@@ -131,15 +131,15 @@ func (i *policyProposerRoot) RollbackProposals(tx interface{}) {}
 // CommitConfig is used to commit a new config proposal
 func (i *policyProposerRoot) CommitProposals(tx interface{}) {}
 
-type initializer struct {
+type Initializer struct {
 	*resources
 	ppr *policyProposerRoot
 }
 
-// NewInitializer creates a chain initializer for the basic set of common chain resources
-func NewInitializer() api.Initializer {
+// NewInitializer creates a chain Initializer for the basic set of common chain resources
+func NewInitializer() *Initializer {
 	resources := newResources()
-	return &initializer{
+	return &Initializer{
 		resources: resources,
 		ppr: &policyProposerRoot{
 			policyManager: resources.policyManager,
@@ -147,10 +147,14 @@ func NewInitializer() api.Initializer {
 	}
 }
 
-func (i *initializer) PolicyProposer() policies.Proposer {
+func (i *Initializer) RootGroupKey() string {
+	return RootGroupKey
+}
+
+func (i *Initializer) PolicyProposer() policies.Proposer {
 	return i.ppr
 }
 
-func (i *initializer) ValueProposer() config.ValueProposer {
+func (i *Initializer) ValueProposer() config.ValueProposer {
 	return i.resources.configRoot
 }

@@ -136,7 +136,7 @@ func (cm *configManager) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 		return nil, fmt.Errorf("Update not for correct channel: %s for %s", configUpdate.ChannelId, cm.current.channelID)
 	}
 
-	readSet, err := MapConfig(configUpdate.ReadSet)
+	readSet, err := MapConfig(configUpdate.ReadSet, cm.initializer.RootGroupKey())
 	if err != nil {
 		return nil, fmt.Errorf("Error mapping ReadSet: %s", err)
 	}
@@ -145,7 +145,7 @@ func (cm *configManager) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 		return nil, fmt.Errorf("Error validating ReadSet: %s", err)
 	}
 
-	writeSet, err := MapConfig(configUpdate.WriteSet)
+	writeSet, err := MapConfig(configUpdate.WriteSet, cm.initializer.RootGroupKey())
 	if err != nil {
 		return nil, fmt.Errorf("Error mapping WriteSet: %s", err)
 	}

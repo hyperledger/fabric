@@ -156,7 +156,7 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return err
 	}
 
-	initializer := configtx.NewInitializer()
+	initializer := config.NewInitializer()
 	configManager, err := configtx.NewManagerImpl(configTx, initializer, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create config manager and handlers: %s", err)

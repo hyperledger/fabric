@@ -97,6 +97,14 @@ type Initializer struct {
 
 	// ValueProposerVal is returned by ValueProposers
 	ValueProposerVal *ValueProposer
+
+	// RootGroupKeyVal is returned by RootGroupKey
+	RootGroupKeyVal string
+}
+
+// RootGroupKeyreturns RootGroupKeyVal
+func (i *Initializer) RootGroupKey() string {
+	return i.RootGroupKeyVal
 }
 
 // PolicyProposers returns PolicyProposerVal

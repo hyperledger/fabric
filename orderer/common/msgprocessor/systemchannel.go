@@ -269,7 +269,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (conf
 		},
 	}, msgVersion, epoch)
 
-	initializer := configtx.NewInitializer()
+	initializer := config.NewInitializer()
 
 	// This is a very hacky way to disable the sanity check logging in the policy manager
 	// for the template configuration, but it is the least invasive near a release
