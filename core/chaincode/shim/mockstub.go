@@ -134,6 +134,10 @@ func (stub *MockStub) MockInvoke(uuid string, args [][]byte) pb.Response {
 	return res
 }
 
+func (stub *MockStub) GetDecorations() map[string][]byte {
+	return nil
+}
+
 // Invoke this chaincode, also starts and ends a transaction.
 func (stub *MockStub) MockInvokeWithSignedProposal(uuid string, args [][]byte, sp *pb.SignedProposal) pb.Response {
 	stub.args = args

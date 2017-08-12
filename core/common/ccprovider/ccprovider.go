@@ -17,6 +17,7 @@ limitations under the License.
 package ccprovider
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -25,9 +26,6 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-
-	"bytes"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -345,6 +343,9 @@ type CCContext struct {
 
 	//this is not set but computed (note that this is not exported. use GetCanonicalName)
 	canonicalName string
+
+	// this is additional data passed to the chaincode
+	ProposalDecorations map[string][]byte
 }
 
 //NewCCContext just construct a new struct with whatever args
@@ -358,7 +359,7 @@ func NewCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.Si
 
 	canName := name + ":" + version
 
-	cccid := &CCContext{cid, name, version, txid, syscc, signedProp, prop, canName}
+	cccid := &CCContext{cid, name, version, txid, syscc, signedProp, prop, canName, nil}
 
 	ccproviderLogger.Debugf("NewCCCC (chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t,proposal=%p,canname=%s", cid, name, version, txid, syscc, prop, cccid.canonicalName)
 

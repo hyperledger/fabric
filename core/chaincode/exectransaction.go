@@ -46,6 +46,8 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 		return nil, nil, fmt.Errorf("%s", err)
 	}
 
+	cMsg.Decorations = cccid.ProposalDecorations
+
 	var ccMsg *pb.ChaincodeMessage
 	ccMsg, err = createCCMessage(cctyp, cccid.TxID, cMsg)
 	if err != nil {

@@ -53,6 +53,7 @@ message ChaincodeID {
 // the []byte-based current ChaincodeInput structure.
 message ChaincodeInput {
     repeated bytes args  = 1;
+    map<string, bytes> decorations = 2;
 }
 
 // Carries the chaincode specification. This is the actual metadata required for

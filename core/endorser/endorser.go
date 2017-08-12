@@ -21,6 +21,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
+	"github.com/hyperledger/fabric/core/handlers/decoration"
+	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
@@ -110,6 +112,12 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	scc := syscc.IsSysCC(cid.Name)
 
 	cccid := ccprovider.NewCCContext(chainID, cid.Name, version, txid, scc, signedProp, prop)
+
+	// decorate the chaincode input
+	decorator := library.InitRegistry(library.Config{}).Lookup(library.DecoratorKey).(decoration.Decorator)
+	cis.ChaincodeSpec.Input.Decorations = make(map[string][]byte)
+	cis.ChaincodeSpec.Input = decorator.Decorate(cis.ChaincodeSpec.Input)
+	cccid.ProposalDecorations = cis.ChaincodeSpec.Input.Decorations
 
 	res, ccevent, err = chaincode.ExecuteChaincode(ctxt, cccid, cis.ChaincodeSpec.Input.Args)
 

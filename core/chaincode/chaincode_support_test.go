@@ -41,12 +41,11 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	plgr "github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
-
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 )
 
 var globalBlockNum map[string]uint64
@@ -346,7 +345,7 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 	}
 
 	chaincodeID := &pb.ChaincodeID{Name: ccname, Version: "0"}
-	ci := &pb.ChaincodeInput{[][]byte{[]byte("init"), []byte("A"), []byte("100"), []byte("B"), []byte("200")}}
+	ci := &pb.ChaincodeInput{[][]byte{[]byte("init"), []byte("A"), []byte("100"), []byte("B"), []byte("200")}, nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 
 	txid := util.GenerateUUID()
@@ -397,7 +396,7 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm)
 	}
 
 	chaincodeID := &pb.ChaincodeID{Name: ccname, Version: "0"}
-	ci := &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}}
+	ci := &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
@@ -444,7 +443,7 @@ func getQueryStateByRange(t *testing.T, chainID, ccname string, ccSide *mockpeer
 	}
 
 	chaincodeID := &pb.ChaincodeID{Name: ccname, Version: "0"}
-	ci := &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}}
+	ci := &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
@@ -491,7 +490,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	}
 
 	chaincodeID := &pb.ChaincodeID{Name: calledCC, Version: "0"}
-	ci := &pb.ChaincodeInput{[][]byte{[]byte("deploycc")}}
+	ci := &pb.ChaincodeInput{[][]byte{[]byte("deploycc")}, nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
 	//first deploy the new cc to LSCC
@@ -505,7 +504,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 
 	//now do the cc2cc
 	chaincodeID = &pb.ChaincodeID{Name: ccname, Version: "0"}
-	ci = &pb.ChaincodeInput{[][]byte{[]byte("invokecc")}}
+	ci = &pb.ChaincodeInput{[][]byte{[]byte("invokecc")}, nil}
 	cis = &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid = util.GenerateUUID()
 	ctxt, txsim, sprop, prop = startTx(t, chainID, cis, txid)
@@ -543,7 +542,7 @@ func getQueryResult(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockC
 	}
 
 	chaincodeID := &pb.ChaincodeID{Name: ccname, Version: "0"}
-	ci := &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}}
+	ci := &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
@@ -594,7 +593,7 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	}
 
 	chaincodeID := &pb.ChaincodeID{Name: ccname, Version: "0"}
-	ci := &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}}
+	ci := &pb.ChaincodeInput{[][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)

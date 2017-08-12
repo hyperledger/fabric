@@ -67,6 +67,8 @@ type ChaincodeStub struct {
 	creator   []byte
 	transient map[string][]byte
 	binding   []byte
+
+	decorations map[string][]byte
 }
 
 // Peer address derived from command line or env var
@@ -334,6 +336,7 @@ func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.Chainco
 	stub.args = input.Args
 	stub.handler = handler
 	stub.signedProposal = signedProposal
+	stub.decorations = input.Decorations
 
 	// TODO: sanity check: verify that every call to init with a nil
 	// signedProposal is a legitimate one, meaning it is an internal call
@@ -364,6 +367,10 @@ func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.Chainco
 // GetTxID returns the transaction ID
 func (stub *ChaincodeStub) GetTxID() string {
 	return stub.TxID
+}
+
+func (stub *ChaincodeStub) GetDecorations() map[string][]byte {
+	return stub.decorations
 }
 
 // --------- Security functions ----------

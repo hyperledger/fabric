@@ -21,10 +21,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
-
-	"os"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/container/util"
@@ -221,7 +220,7 @@ func TestNewCCContext(t *testing.T) {
 		NewCCContext("foo", "foo", "", "", false, nil, nil)
 	}, "NewCCContext should have paniced if version is empty")
 
-	ccctx = &CCContext{"foo", "foo", "1.0", "", false, nil, nil, ""}
+	ccctx = &CCContext{"foo", "foo", "1.0", "", false, nil, nil, "", nil}
 	assert.Panics(t, func() {
 		ccctx.GetCanonicalName()
 	}, "GetConnonicalName should have paniced if cannonical name is empty")
