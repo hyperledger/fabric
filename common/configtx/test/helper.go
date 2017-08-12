@@ -17,8 +17,8 @@ limitations under the License.
 package test
 
 import (
-	"github.com/hyperledger/fabric/common/config"
-	configtxmsp "github.com/hyperledger/fabric/common/config/msp"
+	"github.com/hyperledger/fabric/common/config/channel"
+	configtxmsp "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"

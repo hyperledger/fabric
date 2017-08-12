@@ -12,7 +12,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/hyperledger/fabric/common/config"
+	"github.com/hyperledger/fabric/common/config/channel"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"

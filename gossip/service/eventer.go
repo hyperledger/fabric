@@ -9,7 +9,7 @@ package service
 import (
 	"reflect"
 
-	"github.com/hyperledger/fabric/common/config"
+	"github.com/hyperledger/fabric/common/config/channel"
 
 	"github.com/hyperledger/fabric/protos/peer"
 )

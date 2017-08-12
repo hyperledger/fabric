@@ -23,7 +23,7 @@ import (
 	"errors"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
-	configvaluesmsp "github.com/hyperledger/fabric/common/config/msp"
+	configvaluesmsp "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"

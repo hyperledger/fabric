@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/config"
-	configtxmsp "github.com/hyperledger/fabric/common/config/msp"
+	"github.com/hyperledger/fabric/common/config/channel"
+	configtxmsp "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"

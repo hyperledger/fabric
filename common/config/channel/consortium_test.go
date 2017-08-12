@@ -18,7 +18,7 @@ package config
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/config/msp"
+	"github.com/hyperledger/fabric/common/config/channel/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )

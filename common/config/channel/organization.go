@@ -19,7 +19,7 @@ package config
 import (
 	"fmt"
 
-	mspconfig "github.com/hyperledger/fabric/common/config/msp"
+	mspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/msp"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 )
