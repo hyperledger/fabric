@@ -86,10 +86,10 @@ type ConsenterSupport interface {
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
 
 	// WriteBlock commits a block to the ledger.
-	WriteBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block
+	WriteBlock(block *cb.Block, encodedMetadataValue []byte)
 
-	// WriteBlock commits a block to the ledger, and applies the config update inside.
-	WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) *cb.Block
+	// WriteConfigBlock commits a block to the ledger, and applies the config update inside.
+	WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte)
 
 	// Sequence returns the current config squence.
 	Sequence() uint64
