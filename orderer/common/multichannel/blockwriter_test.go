@@ -19,10 +19,9 @@ package multichannel
 import (
 	"testing"
 
-	// "github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
