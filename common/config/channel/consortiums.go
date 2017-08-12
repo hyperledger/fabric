@@ -19,6 +19,7 @@ package config
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 )
 
@@ -29,7 +30,7 @@ const (
 
 // ConsortiumsGroup stores the set of Consortiums
 type ConsortiumsGroup struct {
-	*Proposer
+	*config.Proposer
 	*ConsortiumsConfig
 
 	mspConfig *msp.MSPConfigHandler
@@ -40,23 +41,23 @@ func NewConsortiumsGroup(mspConfig *msp.MSPConfigHandler) *ConsortiumsGroup {
 	cg := &ConsortiumsGroup{
 		mspConfig: mspConfig,
 	}
-	cg.Proposer = NewProposer(cg)
+	cg.Proposer = config.NewProposer(cg)
 	return cg
 }
 
 // NewGroup returns a Consortium instance
-func (cg *ConsortiumsGroup) NewGroup(name string) (ValueProposer, error) {
+func (cg *ConsortiumsGroup) NewGroup(name string) (config.ValueProposer, error) {
 	return NewConsortiumGroup(cg.mspConfig), nil
 }
 
 // Allocate returns the resources for a new config proposal
-func (cg *ConsortiumsGroup) Allocate() Values {
+func (cg *ConsortiumsGroup) Allocate() config.Values {
 	return NewConsortiumsConfig(cg)
 }
 
 // ConsortiumsConfig holds the consoritums configuration information
 type ConsortiumsConfig struct {
-	*standardValues
+	*config.StandardValues
 	consortiums map[string]Consortium
 
 	consortiumsGroup *ConsortiumsGroup
@@ -69,7 +70,7 @@ func NewConsortiumsConfig(cg *ConsortiumsGroup) *ConsortiumsConfig {
 		consortiumsGroup: cg,
 	}
 	var err error
-	cc.standardValues, err = NewStandardValues()
+	cc.StandardValues, err = config.NewStandardValues()
 	if err != nil {
 		logger.Panicf("Programming error: %s", err)
 	}
@@ -87,7 +88,7 @@ func (cc *ConsortiumsConfig) Commit() {
 }
 
 // Validate builds the Consortiums map
-func (cc *ConsortiumsConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
+func (cc *ConsortiumsConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
 	var ok bool
 	for key, group := range groups {
 		cc.consortiums[key], ok = group.(*ConsortiumGroup)

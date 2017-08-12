@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
@@ -60,7 +61,7 @@ type OrdererProtos struct {
 
 // Config is stores the orderer component configuration
 type OrdererGroup struct {
-	*Proposer
+	*config.Proposer
 	*OrdererConfig
 
 	mspConfig *msp.MSPConfigHandler
@@ -71,22 +72,22 @@ func NewOrdererGroup(mspConfig *msp.MSPConfigHandler) *OrdererGroup {
 	og := &OrdererGroup{
 		mspConfig: mspConfig,
 	}
-	og.Proposer = NewProposer(og)
+	og.Proposer = config.NewProposer(og)
 	return og
 }
 
 // NewGroup returns an Org instance
-func (og *OrdererGroup) NewGroup(name string) (ValueProposer, error) {
+func (og *OrdererGroup) NewGroup(name string) (config.ValueProposer, error) {
 	return NewOrganizationGroup(name, og.mspConfig), nil
 }
 
-func (og *OrdererGroup) Allocate() Values {
+func (og *OrdererGroup) Allocate() config.Values {
 	return NewOrdererConfig(og)
 }
 
 // OrdererConfig holds the orderer configuration information
 type OrdererConfig struct {
-	*standardValues
+	*config.StandardValues
 	protos       *OrdererProtos
 	ordererGroup *OrdererGroup
 	orgs         map[string]Org
@@ -102,7 +103,7 @@ func NewOrdererConfig(og *OrdererGroup) *OrdererConfig {
 	}
 
 	var err error
-	oc.standardValues, err = NewStandardValues(oc.protos)
+	oc.StandardValues, err = config.NewStandardValues(oc.protos)
 	if err != nil {
 		logger.Panicf("Programming error: %s", err)
 	}
@@ -146,7 +147,7 @@ func (oc *OrdererConfig) Organizations() map[string]Org {
 	return oc.orgs
 }
 
-func (oc *OrdererConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
+func (oc *OrdererConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
 	for _, validator := range []func() error{
 		oc.validateConsensusType,
 		oc.validateBatchSize,

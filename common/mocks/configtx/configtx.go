@@ -17,7 +17,8 @@ limitations under the License.
 package configtx
 
 import (
-	"github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/config"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -31,16 +32,16 @@ type Resources struct {
 	PolicyManagerVal *mockpolicies.Manager
 
 	// ChannelConfigVal is returned as the result of ChannelConfig()
-	ChannelConfigVal config.Channel
+	ChannelConfigVal channelconfig.Channel
 
 	// OrdererConfigVal is returned as the result of OrdererConfig()
-	OrdererConfigVal config.Orderer
+	OrdererConfigVal channelconfig.Orderer
 
 	// ApplicationConfigVal is returned as the result of ApplicationConfig()
-	ApplicationConfigVal config.Application
+	ApplicationConfigVal channelconfig.Application
 
 	// ConsortiumsConfigVal is returned as the result of ConsortiumsConfig()
-	ConsortiumsConfigVal config.Consortiums
+	ConsortiumsConfigVal channelconfig.Consortiums
 
 	// MSPManagerVal is returned as the result of MSPManager()
 	MSPManagerVal msp.MSPManager
@@ -52,21 +53,21 @@ func (r *Resources) PolicyManager() policies.Manager {
 }
 
 // Returns the ChannelConfigVal
-func (r *Resources) ChannelConfig() config.Channel {
+func (r *Resources) ChannelConfig() channelconfig.Channel {
 	return r.ChannelConfigVal
 }
 
 // Returns the OrdererConfigVal
-func (r *Resources) OrdererConfig() (config.Orderer, bool) {
+func (r *Resources) OrdererConfig() (channelconfig.Orderer, bool) {
 	return r.OrdererConfigVal, r.OrdererConfigVal == nil
 }
 
 // Returns the ApplicationConfigVal
-func (r *Resources) ApplicationConfig() (config.Application, bool) {
+func (r *Resources) ApplicationConfig() (channelconfig.Application, bool) {
 	return r.ApplicationConfigVal, r.ApplicationConfigVal == nil
 }
 
-func (r *Resources) ConsortiumsConfig() (config.Consortiums, bool) {
+func (r *Resources) ConsortiumsConfig() (channelconfig.Consortiums, bool) {
 	return r.ConsortiumsConfigVal, r.ConsortiumsConfigVal != nil
 }
 

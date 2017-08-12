@@ -19,6 +19,7 @@ package config
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 )
 
@@ -29,13 +30,13 @@ const (
 
 // ApplicationGroup represents the application config group
 type ApplicationGroup struct {
-	*Proposer
+	*config.Proposer
 	*ApplicationConfig
 	mspConfig *msp.MSPConfigHandler
 }
 
 type ApplicationConfig struct {
-	*standardValues
+	*config.StandardValues
 
 	applicationGroup *ApplicationGroup
 	applicationOrgs  map[string]ApplicationOrg
@@ -46,22 +47,22 @@ func NewApplicationGroup(mspConfig *msp.MSPConfigHandler) *ApplicationGroup {
 	ag := &ApplicationGroup{
 		mspConfig: mspConfig,
 	}
-	ag.Proposer = NewProposer(ag)
+	ag.Proposer = config.NewProposer(ag)
 
 	return ag
 }
 
-func (ag *ApplicationGroup) NewGroup(name string) (ValueProposer, error) {
+func (ag *ApplicationGroup) NewGroup(name string) (config.ValueProposer, error) {
 	return NewApplicationOrgGroup(name, ag.mspConfig), nil
 }
 
 // Allocate returns a new instance of the ApplicationConfig
-func (ag *ApplicationGroup) Allocate() Values {
+func (ag *ApplicationGroup) Allocate() config.Values {
 	return NewApplicationConfig(ag)
 }
 
 func NewApplicationConfig(ag *ApplicationGroup) *ApplicationConfig {
-	sv, err := NewStandardValues(&(struct{}{}))
+	sv, err := config.NewStandardValues(&(struct{}{}))
 	if err != nil {
 		logger.Panicf("Programming error: %s", err)
 	}
@@ -70,11 +71,11 @@ func NewApplicationConfig(ag *ApplicationGroup) *ApplicationConfig {
 		applicationGroup: ag,
 
 		// Currently there are no config values
-		standardValues: sv,
+		StandardValues: sv,
 	}
 }
 
-func (ac *ApplicationConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
+func (ac *ApplicationConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
 	ac.applicationOrgs = make(map[string]ApplicationOrg)
 	var ok bool
 	for key, value := range groups {

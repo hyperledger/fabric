@@ -17,7 +17,8 @@ limitations under the License.
 package api
 
 import (
-	"github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/config"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -56,19 +57,19 @@ type Resources interface {
 	PolicyManager() policies.Manager
 
 	// ChannelConfig returns the config.Channel for the chain
-	ChannelConfig() config.Channel
+	ChannelConfig() channelconfig.Channel
 
 	// OrdererConfig returns the config.Orderer for the channel
 	// and whether the Orderer config exists
-	OrdererConfig() (config.Orderer, bool)
+	OrdererConfig() (channelconfig.Orderer, bool)
 
 	// ConsortiumsConfig() returns the config.Consortiums for the channel
 	// and whether the consortiums config exists
-	ConsortiumsConfig() (config.Consortiums, bool)
+	ConsortiumsConfig() (channelconfig.Consortiums, bool)
 
 	// ApplicationConfig returns the configtxapplication.SharedConfig for the channel
 	// and whether the Application config exists
-	ApplicationConfig() (config.Application, bool)
+	ApplicationConfig() (channelconfig.Application, bool)
 
 	// MSPManager returns the msp.MSPManager for the chain
 	MSPManager() msp.MSPManager

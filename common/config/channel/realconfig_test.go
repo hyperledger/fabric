@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/config"
 	. "github.com/hyperledger/fabric/common/config/channel"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -40,7 +41,7 @@ func init() {
 
 const tx = "foo"
 
-func driveConfig(t *testing.T, configGroup *cb.ConfigGroup, proposer ValueProposer) {
+func driveConfig(t *testing.T, configGroup *cb.ConfigGroup, proposer config.ValueProposer) {
 	var groups []string
 	for key := range configGroup.Groups {
 		groups = append(groups, key)

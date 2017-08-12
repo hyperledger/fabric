@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -68,20 +69,20 @@ func TestChannelConfig(t *testing.T) {
 	ag := NewApplicationGroup(nil)
 	og := NewOrdererGroup(nil)
 	csg := NewConsortiumsGroup(nil)
-	good := make(map[string]ValueProposer)
+	good := make(map[string]config.ValueProposer)
 	good[ApplicationGroupKey] = ag
 	good[OrdererGroupKey] = og
 	good[ConsortiumsGroupKey] = csg
 
 	err := cc.Validate(nil, good)
 	assert.NoError(t, err, "Unexpected error validating good config groups")
-	err = cc.Validate(nil, map[string]ValueProposer{ApplicationGroupKey: NewConsortiumsGroup(nil)})
+	err = cc.Validate(nil, map[string]config.ValueProposer{ApplicationGroupKey: NewConsortiumsGroup(nil)})
 	assert.Error(t, err, "Expected error validating bad config group")
-	err = cc.Validate(nil, map[string]ValueProposer{OrdererGroupKey: NewConsortiumsGroup(nil)})
+	err = cc.Validate(nil, map[string]config.ValueProposer{OrdererGroupKey: NewConsortiumsGroup(nil)})
 	assert.Error(t, err, "Expected error validating bad config group")
-	err = cc.Validate(nil, map[string]ValueProposer{ConsortiumsGroupKey: NewOrdererGroup(nil)})
+	err = cc.Validate(nil, map[string]config.ValueProposer{ConsortiumsGroupKey: NewOrdererGroup(nil)})
 	assert.Error(t, err, "Expected error validating bad config group")
-	err = cc.Validate(nil, map[string]ValueProposer{ConsortiumKey: NewConsortiumGroup(nil)})
+	err = cc.Validate(nil, map[string]config.ValueProposer{ConsortiumKey: NewConsortiumGroup(nil)})
 	assert.Error(t, err, "Expected error validating bad config group")
 
 }

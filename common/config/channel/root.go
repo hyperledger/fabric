@@ -19,10 +19,14 @@ package config
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 )
+
+var logger = flogging.MustGetLogger("common/config/channel")
 
 // Root acts as the object which anchors the rest of the config
 // Note, yes, this is a stuttering name, but, the intent is to move
@@ -47,7 +51,7 @@ func (fd failDeserializer) Deserialize(key string, value []byte) (proto.Message,
 }
 
 // BeginValueProposals is used to start a new config proposal
-func (r *Root) BeginValueProposals(tx interface{}, groups []string) (ValueDeserializer, []ValueProposer, error) {
+func (r *Root) BeginValueProposals(tx interface{}, groups []string) (config.ValueDeserializer, []config.ValueProposer, error) {
 	if len(groups) != 1 {
 		return nil, nil, fmt.Errorf("Root config only supports having one base group")
 	}
@@ -55,7 +59,7 @@ func (r *Root) BeginValueProposals(tx interface{}, groups []string) (ValueDeseri
 		return nil, nil, fmt.Errorf("Root group must have channel")
 	}
 	r.mspConfigHandler.BeginConfig(tx)
-	return failDeserializer{}, []ValueProposer{r.channel}, nil
+	return failDeserializer{}, []config.ValueProposer{r.channel}, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal

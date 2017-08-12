@@ -18,6 +18,7 @@ package config
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
@@ -58,12 +59,12 @@ func TestConsortiumConfig(t *testing.T) {
 	assert.Equal(t, cg.ConsortiumConfig, cc, "Error committing ConsortiumConfig")
 
 	og, _ := cg.NewGroup("testGroup")
-	err := cc.Validate(t, map[string]ValueProposer{
+	err := cc.Validate(t, map[string]config.ValueProposer{
 		"testGroup": og,
 	})
 	assert.NoError(t, err, "Validate returned unexpected error")
 	csg := NewConsortiumsGroup(nil)
-	err = cc.Validate(t, map[string]ValueProposer{
+	err = cc.Validate(t, map[string]config.ValueProposer{
 		"testGroup": csg,
 	})
 	assert.Error(t, err, "Validate should have failed")
