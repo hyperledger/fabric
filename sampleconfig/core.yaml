@@ -256,6 +256,13 @@ peer:
     profile:
         enabled:     false
         listenAddress: 0.0.0.0:6060
+    # Handlers defines custom handlers that can filter and mutate
+    # objects passing within the peer, such as:
+    #   Auth filter - reject or forward proposals from clients
+    #   Decorators  - append or mutate the chaincode input passed to the chaincode
+    handlers:
+        authFilter: "DefaultAuth"
+        decorator: "DefaultDecorator"
 
 ###############################################################################
 #
