@@ -52,6 +52,16 @@ func (cs *ConfigSignature) StaticallyOpaqueFieldProto(name string) (proto.Messag
 	return &SignatureHeader{}, nil
 }
 
+// DynamicConfigTypes allows for other packages outside of the common package
+// to register dynamic config types
+var DynamicConfigTypes = map[ConfigType]func(cg *ConfigGroup) proto.Message{
+	ConfigType_CHANNEL: func(cg *ConfigGroup) proto.Message {
+		return &DynamicChannelGroup{
+			ConfigGroup: cg,
+		}
+	},
+}
+
 func (c *Config) DynamicFields() []string {
 	return []string{"channel_group"}
 }
@@ -66,9 +76,32 @@ func (c *Config) DynamicFieldProto(name string, base proto.Message) (proto.Messa
 		return nil, fmt.Errorf("Config must embed a config group as its dynamic field")
 	}
 
-	return &DynamicChannelGroup{
-		ConfigGroup: cg,
-	}, nil
+	dm, ok := DynamicConfigTypes[ConfigType(c.Type)]
+	if !ok {
+		return nil, fmt.Errorf("Unknown config type: %d", c.Type)
+	}
+	return dm(cg), nil
+}
+
+// ConfigUpdateIsolatedDataTypes allows other proto packages to register types for the
+// the isolated_data field.  This is necessary to break import cycles.
+var ConfigUpdateIsolatedDataTypes = map[string]func(string) proto.Message{}
+
+func (c *ConfigUpdate) StaticallyOpaqueMapFields() []string {
+	return []string{"isolated_data"}
+}
+
+func (c *ConfigUpdate) StaticallyOpaqueMapFieldProto(name string, key string) (proto.Message, error) {
+	if name != c.StaticallyOpaqueMapFields()[0] {
+		return nil, fmt.Errorf("Not a statically opaque map field: %s", name)
+	}
+
+	mf, ok := ConfigUpdateIsolatedDataTypes[key]
+	if !ok {
+		return nil, fmt.Errorf("Unknown map key: %s", key)
+	}
+
+	return mf(key), nil
 }
 
 func (c *ConfigUpdate) DynamicFields() []string {
@@ -85,9 +118,11 @@ func (c *ConfigUpdate) DynamicFieldProto(name string, base proto.Message) (proto
 		return nil, fmt.Errorf("Expected base to be *ConfigGroup, got %T", base)
 	}
 
-	return &DynamicChannelGroup{
-		ConfigGroup: cg,
-	}, nil
+	dm, ok := DynamicConfigTypes[ConfigType(c.Type)]
+	if !ok {
+		return nil, fmt.Errorf("Unknown config type: %d", c.Type)
+	}
+	return dm(cg), nil
 }
 
 func (cv *ConfigValue) VariablyOpaqueFields() []string {

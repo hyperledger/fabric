@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/config/channel"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -60,7 +60,7 @@ func newMockSupport() *mockSupport {
 	}
 }
 
-func (ms *mockSupport) OrdererConfig() (config.Orderer, bool) {
+func (ms *mockSupport) OrdererConfig() (channelconfig.Orderer, bool) {
 	return ms.msc, true
 }
 
@@ -105,11 +105,11 @@ func TestGoodProposal(t *testing.T) {
 
 	configEnv, err := configtx.NewCompositeTemplate(
 		configtx.NewSimpleTemplate(
-			config.DefaultHashingAlgorithm(),
-			config.DefaultBlockDataHashingStructure(),
-			config.TemplateOrdererAddresses([]string{"foo"}),
+			channelconfig.DefaultHashingAlgorithm(),
+			channelconfig.DefaultBlockDataHashingStructure(),
+			channelconfig.TemplateOrdererAddresses([]string{"foo"}),
 		),
-		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
+		channelconfig.NewChainCreationTemplate("SampleConsortium", []string{}),
 	).Envelope(newChainID)
 	assert.Nil(t, err, "Error constructing configtx")
 
@@ -127,11 +127,11 @@ func TestProposalRejectedByConfig(t *testing.T) {
 
 	configEnv, err := configtx.NewCompositeTemplate(
 		configtx.NewSimpleTemplate(
-			config.DefaultHashingAlgorithm(),
-			config.DefaultBlockDataHashingStructure(),
-			config.TemplateOrdererAddresses([]string{"foo"}),
+			channelconfig.DefaultHashingAlgorithm(),
+			channelconfig.DefaultBlockDataHashingStructure(),
+			channelconfig.TemplateOrdererAddresses([]string{"foo"}),
 		),
-		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
+		channelconfig.NewChainCreationTemplate("SampleConsortium", []string{}),
 	).Envelope(newChainID)
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
@@ -155,11 +155,11 @@ func TestNumChainsExceeded(t *testing.T) {
 
 	configEnv, err := configtx.NewCompositeTemplate(
 		configtx.NewSimpleTemplate(
-			config.DefaultHashingAlgorithm(),
-			config.DefaultBlockDataHashingStructure(),
-			config.TemplateOrdererAddresses([]string{"foo"}),
+			channelconfig.DefaultHashingAlgorithm(),
+			channelconfig.DefaultBlockDataHashingStructure(),
+			channelconfig.TemplateOrdererAddresses([]string{"foo"}),
 		),
-		configtx.NewChainCreationTemplate("SampleConsortium", []string{}),
+		channelconfig.NewChainCreationTemplate("SampleConsortium", []string{}),
 	).Envelope(newChainID)
 	if err != nil {
 		t.Fatalf("Error constructing configtx")

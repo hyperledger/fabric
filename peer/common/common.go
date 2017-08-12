@@ -22,8 +22,6 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	channelconfig "github.com/hyperledger/fabric/common/config/channel"
-	"github.com/hyperledger/fabric/common/configtx"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
@@ -192,11 +190,9 @@ func GetOrdererEndpointOfChain(chainID string, signer msp.SigningIdentity, endor
 	if err != nil {
 		return nil, fmt.Errorf("Error extracting config block envelope: %s", err)
 	}
-	configtxInitializer := channelconfig.NewInitializer()
-	configtxManager, err := configtx.NewManagerImpl(
+	configtxManager, err := channelconfig.New(
 		envelopeConfig,
-		configtxInitializer,
-		[]func(cm configtxapi.Manager){},
+		nil,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Error loadding config block: %s", err)

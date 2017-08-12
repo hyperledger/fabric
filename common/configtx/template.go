@@ -19,11 +19,6 @@ package configtx
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/config/channel"
-	configmsp "github.com/hyperledger/fabric/common/config/channel/msp"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -31,11 +26,8 @@ import (
 )
 
 const (
-	// CreationPolicyKey defines the config key used in the channel
-	// config, under which the creation policy is defined.
-	CreationPolicyKey = "CreationPolicy"
-	msgVersion        = int32(0)
-	epoch             = 0
+	msgVersion = int32(0)
+	epoch      = 0
 )
 
 // Template can be used to facilitate creation of config transactions
@@ -204,88 +196,4 @@ func (mpst *modPolicySettingTemplate) Envelope(channelID string) (*cb.ConfigUpda
 type channelCreationTemplate struct {
 	consortiumName string
 	orgs           []string
-}
-
-// NewChainCreationTemplate takes a consortium name and a Template to produce a
-// Template which outputs an appropriately constructed list of ConfigUpdateEnvelopes.
-func NewChainCreationTemplate(consortiumName string, orgs []string) Template {
-	return &channelCreationTemplate{
-		consortiumName: consortiumName,
-		orgs:           orgs,
-	}
-}
-
-func (cct *channelCreationTemplate) Envelope(channelID string) (*cb.ConfigUpdateEnvelope, error) {
-	rSet := config.TemplateConsortium(cct.consortiumName)
-	wSet := config.TemplateConsortium(cct.consortiumName)
-
-	rSet.Groups[config.ApplicationGroupKey] = cb.NewConfigGroup()
-	wSet.Groups[config.ApplicationGroupKey] = cb.NewConfigGroup()
-
-	for _, org := range cct.orgs {
-		rSet.Groups[config.ApplicationGroupKey].Groups[org] = cb.NewConfigGroup()
-		wSet.Groups[config.ApplicationGroupKey].Groups[org] = cb.NewConfigGroup()
-	}
-
-	wSet.Groups[config.ApplicationGroupKey].ModPolicy = configmsp.AdminsPolicyKey
-	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.AdminsPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(configmsp.AdminsPolicyKey, cb.ImplicitMetaPolicy_MAJORITY)
-	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.AdminsPolicyKey].ModPolicy = configmsp.AdminsPolicyKey
-	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.WritersPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(configmsp.WritersPolicyKey, cb.ImplicitMetaPolicy_ANY)
-	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.WritersPolicyKey].ModPolicy = configmsp.AdminsPolicyKey
-	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.ReadersPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(configmsp.ReadersPolicyKey, cb.ImplicitMetaPolicy_ANY)
-	wSet.Groups[config.ApplicationGroupKey].Policies[configmsp.ReadersPolicyKey].ModPolicy = configmsp.AdminsPolicyKey
-	wSet.Groups[config.ApplicationGroupKey].Version = 1
-
-	return &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
-			ChannelId: channelID,
-			ReadSet:   rSet,
-			WriteSet:  wSet,
-		}),
-	}, nil
-}
-
-// MakeChainCreationTransaction is a handy utility function for creating new chain transactions using the underlying Template framework
-func MakeChainCreationTransaction(channelID string, consortium string, signer msp.SigningIdentity, orgs ...string) (*cb.Envelope, error) {
-	newChainTemplate := NewChainCreationTemplate(consortium, orgs)
-	newConfigUpdateEnv, err := newChainTemplate.Envelope(channelID)
-	if err != nil {
-		return nil, err
-	}
-
-	payloadSignatureHeader := &cb.SignatureHeader{}
-	if signer != nil {
-		sSigner, err := signer.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("Serialization of identity failed, err %s", err)
-		}
-
-		newConfigUpdateEnv.Signatures = []*cb.ConfigSignature{&cb.ConfigSignature{
-			SignatureHeader: utils.MarshalOrPanic(utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())),
-		}}
-
-		newConfigUpdateEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigUpdateEnv.Signatures[0].SignatureHeader, newConfigUpdateEnv.ConfigUpdate))
-		if err != nil {
-			return nil, err
-		}
-
-		payloadSignatureHeader = utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())
-	}
-
-	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, msgVersion, channelID, epoch)
-	utils.SetTxID(payloadChannelHeader, payloadSignatureHeader)
-	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(newConfigUpdateEnv)}
-	paylBytes := utils.MarshalOrPanic(payload)
-
-	var sig []byte
-	if signer != nil {
-		// sign the payload
-		sig, err = signer.Sign(paylBytes)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &cb.Envelope{Payload: paylBytes, Signature: sig}, nil
 }

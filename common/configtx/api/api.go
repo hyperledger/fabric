@@ -18,9 +18,7 @@ package api
 
 import (
 	"github.com/hyperledger/fabric/common/config"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
@@ -28,8 +26,6 @@ import (
 
 // Manager provides a mechanism to query and update config
 type Manager interface {
-	Resources
-
 	// Apply attempts to apply a configtx to become the new config
 	Apply(configEnv *cb.ConfigEnvelope) error
 
@@ -47,32 +43,6 @@ type Manager interface {
 
 	// Sequence returns the current sequence number of the config
 	Sequence() uint64
-}
-
-// Resources is the common set of config resources for all channels
-// Depending on whether chain is used at the orderer or at the peer, other
-// config resources may be available
-type Resources interface {
-	// PolicyManager returns the policies.Manager for the channel
-	PolicyManager() policies.Manager
-
-	// ChannelConfig returns the config.Channel for the chain
-	ChannelConfig() channelconfig.Channel
-
-	// OrdererConfig returns the config.Orderer for the channel
-	// and whether the Orderer config exists
-	OrdererConfig() (channelconfig.Orderer, bool)
-
-	// ConsortiumsConfig() returns the config.Consortiums for the channel
-	// and whether the consortiums config exists
-	ConsortiumsConfig() (channelconfig.Consortiums, bool)
-
-	// ApplicationConfig returns the configtxapplication.SharedConfig for the channel
-	// and whether the Application config exists
-	ApplicationConfig() (channelconfig.Application, bool)
-
-	// MSPManager returns the msp.MSPManager for the chain
-	MSPManager() msp.MSPManager
 }
 
 // Transactional is an interface which allows for an update to be proposed and rolled back
@@ -107,12 +77,7 @@ type Proposer interface {
 
 	// RootGroupKey is the string to use to namespace the root group
 	RootGroupKey() string
-}
 
-// Initializer is used as indirection between Manager and Handler to allow
-// for single Handlers to handle multiple paths
-type Initializer interface {
-	Proposer
-
-	Resources
+	// PolicyManager() returns the policy manager for considering config changes
+	PolicyManager() policies.Manager
 }

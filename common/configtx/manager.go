@@ -49,9 +49,8 @@ type configSet struct {
 }
 
 type configManager struct {
-	api.Resources
 	callOnUpdate []func(api.Manager)
-	initializer  api.Initializer
+	initializer  api.Proposer
 	current      *configSet
 }
 
@@ -111,7 +110,7 @@ func validateChannelID(channelID string) error {
 	return nil
 }
 
-func NewManagerImpl(envConfig *cb.Envelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
+func NewManagerImpl(envConfig *cb.Envelope, initializer api.Proposer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
 	if envConfig == nil {
 		return nil, fmt.Errorf("Nil envelope")
 	}
@@ -140,7 +139,6 @@ func NewManagerImpl(envConfig *cb.Envelope, initializer api.Initializer, callOnU
 	}
 
 	cm := &configManager{
-		Resources:   initializer,
 		initializer: initializer,
 		current: &configSet{
 			sequence:  configEnv.Config.Sequence,

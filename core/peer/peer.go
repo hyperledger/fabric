@@ -12,11 +12,11 @@ import (
 	"net"
 	"sync"
 
-	"github.com/hyperledger/fabric/common/config/channel"
-	"github.com/hyperledger/fabric/common/configtx"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/flogging"
+	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
@@ -45,7 +45,8 @@ var rootCASupport = comm.GetCASupport()
 
 type chainSupport struct {
 	configtxapi.Manager
-	config.Application
+	channelconfig.Resources
+	channelconfig.Application
 	ledger ledger.PeerLedger
 }
 
@@ -168,18 +169,17 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return err
 	}
 
-	configtxInitializer := config.NewInitializer()
-
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 
-	gossipCallbackWrapper := func(cm configtxapi.Manager) {
-		ac, ok := configtxInitializer.ApplicationConfig()
+	gossipCallbackWrapper := func(channelConf *channelconfig.Initializer) {
+		ac, ok := channelConf.ApplicationConfig()
 		if !ok {
 			// TODO, handle a missing ApplicationConfig more gracefully
 			ac = nil
 		}
 		gossipEventer.ProcessConfigUpdate(&chainSupport{
-			Manager:     cm,
+			Resources:   channelConf,
+			Manager:     channelConf.ConfigtxManager(),
 			Application: ac,
 		})
 		service.GetGossipService().SuspectPeers(func(identity api.PeerIdentityType) bool {
@@ -191,14 +191,13 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		})
 	}
 
-	trustedRootsCallbackWrapper := func(cm configtxapi.Manager) {
-		updateTrustedRoots(cm)
+	trustedRootsCallbackWrapper := func(channelConf *channelconfig.Initializer) {
+		updateTrustedRoots(channelConf)
 	}
 
-	configtxManager, err := configtx.NewManagerImpl(
+	configtxManager, err := channelconfig.New(
 		envelopeConfig,
-		configtxInitializer,
-		[]func(cm configtxapi.Manager){gossipCallbackWrapper, trustedRootsCallbackWrapper},
+		[]func(channelConf *channelconfig.Initializer){gossipCallbackWrapper, trustedRootsCallbackWrapper},
 	)
 	if err != nil {
 		return err
@@ -207,12 +206,13 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	// TODO remove once all references to mspmgmt are gone from peer code
 	mspmgmt.XXXSetMSPManager(cid, configtxManager.MSPManager())
 
-	ac, ok := configtxInitializer.ApplicationConfig()
+	ac, ok := configtxManager.ApplicationConfig()
 	if !ok {
 		ac = nil
 	}
 	cs := &chainSupport{
 		Manager:     configtxManager,
+		Resources:   configtxManager,
 		Application: ac, // TODO, refactor as this is accessible through Manager
 		ledger:      ledger,
 	}
@@ -272,11 +272,6 @@ func MockCreateChain(cid string) error {
 	// Here we need to mock also the policy manager
 	// in order for the ACL to be checked
 	initializer := mockconfigtx.Initializer{
-		Resources: mockconfigtx.Resources{
-			PolicyManagerVal: &mockpolicies.Manager{
-				Policy: &mockpolicies.Policy{},
-			},
-		},
 		PolicyProposerVal: &mockconfigtx.PolicyProposer{
 			Transactional: mockconfigtx.Transactional{},
 		},
@@ -294,7 +289,12 @@ func MockCreateChain(cid string) error {
 	chains.list[cid] = &chain{
 		cs: &chainSupport{
 			Manager: manager,
-			ledger:  ledger},
+			Resources: &mockchannelconfig.Resources{
+				PolicyManagerVal: &mockpolicies.Manager{
+					Policy: &mockpolicies.Policy{},
+				},
+			},
+			ledger: ledger},
 	}
 
 	return nil
@@ -334,9 +334,9 @@ func GetCurrConfigBlock(cid string) *common.Block {
 }
 
 // updates the trusted roots for the peer based on updates to channels
-func updateTrustedRoots(cm configtxapi.Manager) {
+func updateTrustedRoots(cm channelconfig.Resources) {
 	// this is triggered on per channel basis so first update the roots for the channel
-	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ChainID())
+	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ConfigtxManager().ChainID())
 	var secureConfig comm.SecureServerConfig
 	var err error
 	// only run is TLS is enabled
@@ -367,7 +367,7 @@ func updateTrustedRoots(cm configtxapi.Manager) {
 				msg := "Failed to update trusted roots for peer from latest config " +
 					"block.  This peer may not be able to communicate " +
 					"with members of channel %s (%s)"
-				peerLogger.Warningf(msg, cm.ChainID(), err)
+				peerLogger.Warningf(msg, cm.ConfigtxManager().ChainID(), err)
 			}
 		}
 	}
@@ -375,7 +375,7 @@ func updateTrustedRoots(cm configtxapi.Manager) {
 
 // populates the appRootCAs and orderRootCAs maps by getting the
 // root and intermediate certs for all msps associated with the MSPManager
-func buildTrustedRootsForChain(cm configtxapi.Manager) {
+func buildTrustedRootsForChain(cm channelconfig.Resources) {
 	rootCASupport.Lock()
 	defer rootCASupport.Unlock()
 
@@ -390,7 +390,7 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 		}
 	}
 
-	cid := cm.ChainID()
+	cid := cm.ConfigtxManager().ChainID()
 	peerLogger.Debugf("updating root CAs for channel [%s]", cid)
 	msps, err := cm.MSPManager().GetMSPs()
 	if err != nil {

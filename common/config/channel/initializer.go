@@ -22,6 +22,8 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/config"
 	configtxmsp "github.com/hyperledger/fabric/common/config/channel/msp"
+	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -35,11 +37,17 @@ type resources struct {
 	policyManager    *policies.ManagerImpl
 	configRoot       *Root
 	mspConfigHandler *configtxmsp.MSPConfigHandler
+	configtxManager  configtxapi.Manager
 }
 
 // PolicyManager returns the policies.Manager for the chain
 func (r *resources) PolicyManager() policies.Manager {
 	return r.policyManager
+}
+
+// ConfigtxManager returns the configtxapi.Manager for the chain
+func (r *resources) ConfigtxManager() configtxapi.Manager {
+	return r.configtxManager
 }
 
 // ChannelConfig returns the api.ChannelConfig for the chain
@@ -133,18 +141,45 @@ func (i *policyProposerRoot) CommitProposals(tx interface{}) {}
 
 type Initializer struct {
 	*resources
+	configtxapi.Manager
 	ppr *policyProposerRoot
 }
 
-// NewInitializer creates a chain Initializer for the basic set of common chain resources
-func NewInitializer() *Initializer {
+// New creates a new channel config, complete with backing configtx manager
+// TODO move configtx.Manager to resources, make func on Resources type
+func New(envConfig *cb.Envelope, callOnUpdate []func(*Initializer)) (*Initializer, error) {
 	resources := newResources()
-	return &Initializer{
+	i := &Initializer{
 		resources: resources,
 		ppr: &policyProposerRoot{
 			policyManager: resources.policyManager,
 		},
 	}
+	var err error
+	initialized := false
+	i.Manager, err = configtx.NewManagerImpl(envConfig, i, []func(cm configtxapi.Manager){
+		func(cm configtxapi.Manager) {
+			// This gets invoked once at instantiation before we are ready for it
+			// we manually do this right after
+			if !initialized {
+				return
+			}
+			logger.Criticalf("Making callback normally")
+			for _, callback := range callOnUpdate {
+				callback(i)
+			}
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	initialized = true
+	i.resources.configtxManager = i.Manager
+	logger.Criticalf("Making callback manually")
+	for _, callback := range callOnUpdate {
+		callback(i)
+	}
+	return i, err
 }
 
 func (i *Initializer) RootGroupKey() string {

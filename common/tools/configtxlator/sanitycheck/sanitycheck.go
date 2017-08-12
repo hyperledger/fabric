@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	channelconfig "github.com/hyperledger/fabric/common/config/channel"
-	"github.com/hyperledger/fabric/common/configtx"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -47,7 +46,7 @@ func Check(config *cb.Config) (*Messages, error) {
 
 	result := &Messages{}
 
-	cm, err := configtx.NewManagerImpl(envConfig, channelconfig.NewInitializer(), nil)
+	cm, err := channelconfig.New(envConfig, nil)
 	if err != nil {
 		result.GeneralErrors = []string{err.Error()}
 		return result, nil

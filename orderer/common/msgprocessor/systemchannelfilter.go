@@ -9,8 +9,7 @@ package msgprocessor
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/config/channel"
-	"github.com/hyperledger/fabric/common/configtx"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -29,7 +28,7 @@ type ChainCreator interface {
 
 // LimitedSupport defines the subset of the channel resources required by the systemchannel filter.
 type LimitedSupport interface {
-	OrdererConfig() (config.Orderer, bool)
+	OrdererConfig() (channelconfig.Orderer, bool)
 }
 
 // SystemChainFilter implements the filter.Rule interface.
@@ -156,8 +155,7 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return err
 	}
 
-	initializer := config.NewInitializer()
-	configManager, err := configtx.NewManagerImpl(configTx, initializer, nil)
+	configManager, err := channelconfig.New(configTx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create config manager and handlers: %s", err)
 	}

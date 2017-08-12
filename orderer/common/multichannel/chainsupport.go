@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
@@ -19,6 +20,7 @@ import (
 // ChainSupport holds the resources for a particular channel.
 type ChainSupport struct {
 	*ledgerResources
+	configtxapi.Manager
 	msgprocessor.Processor
 	*BlockWriter
 	consensus.Chain
@@ -39,7 +41,7 @@ func newChainSupport(
 	// Assuming a block created with cb.NewBlock(), this should not
 	// error even if the orderer metadata is an empty byte slice
 	if err != nil {
-		logger.Fatalf("[channel: %s] Error extracting orderer metadata: %s", ledgerResources.ChainID(), err)
+		logger.Fatalf("[channel: %s] Error extracting orderer metadata: %s", ledgerResources.ConfigtxManager().ChainID(), err)
 	}
 
 	// Construct limited support needed as a parameter for additional support
@@ -47,6 +49,7 @@ func newChainSupport(
 		ledgerResources: ledgerResources,
 		LocalSigner:     signer,
 		cutter:          blockcutter.NewReceiverImpl(ledgerResources.SharedConfig()),
+		Manager:         ledgerResources.ConfigtxManager(),
 	}
 
 	// Set up the msgprocessor

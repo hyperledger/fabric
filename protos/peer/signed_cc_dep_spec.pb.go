@@ -30,7 +30,7 @@ type SignedChaincodeDeploymentSpec struct {
 func (m *SignedChaincodeDeploymentSpec) Reset()                    { *m = SignedChaincodeDeploymentSpec{} }
 func (m *SignedChaincodeDeploymentSpec) String() string            { return proto.CompactTextString(m) }
 func (*SignedChaincodeDeploymentSpec) ProtoMessage()               {}
-func (*SignedChaincodeDeploymentSpec) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{0} }
+func (*SignedChaincodeDeploymentSpec) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{0} }
 
 func (m *SignedChaincodeDeploymentSpec) GetChaincodeDeploymentSpec() []byte {
 	if m != nil {
@@ -57,9 +57,9 @@ func init() {
 	proto.RegisterType((*SignedChaincodeDeploymentSpec)(nil), "protos.SignedChaincodeDeploymentSpec")
 }
 
-func init() { proto.RegisterFile("peer/signed_cc_dep_spec.proto", fileDescriptor10) }
+func init() { proto.RegisterFile("peer/signed_cc_dep_spec.proto", fileDescriptor11) }
 
-var fileDescriptor10 = []byte{
+var fileDescriptor11 = []byte{
 	// 255 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x74, 0x90, 0xc1, 0x4a, 0xc3, 0x40,
 	0x10, 0x86, 0xa9, 0x05, 0x0f, 0xab, 0x17, 0x53, 0xc1, 0x28, 0x16, 0x4a, 0x4f, 0xf5, 0x92, 0xa0,

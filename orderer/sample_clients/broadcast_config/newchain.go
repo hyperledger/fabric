@@ -17,13 +17,13 @@ limitations under the License.
 package main
 
 import (
-	"github.com/hyperledger/fabric/common/configtx"
+	channelconfig "github.com/hyperledger/fabric/common/config/channel"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 func newChainRequest(consensusType, creationPolicy, newChannelId string) *cb.Envelope {
-	env, err := configtx.MakeChainCreationTransaction(newChannelId, genesisconfig.SampleConsortiumName, signer)
+	env, err := channelconfig.MakeChainCreationTransaction(newChannelId, genesisconfig.SampleConsortiumName, signer)
 	if err != nil {
 		panic(err)
 	}
