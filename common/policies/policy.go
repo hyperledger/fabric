@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package policies
@@ -126,8 +116,9 @@ type policyConfig struct {
 // In general, it should only be referenced as an Impl for the configtx.ConfigManager
 type ManagerImpl struct {
 	parent        *ManagerImpl
-	basePath      string
-	fqPrefix      string
+	basePath      string // The group level path
+	fqPrefix      string // If this manager is treated as the root, the fully qualified prefix for policy names
+	fqPath        string // The true absolute path, taking parents into consideration
 	providers     map[int32]Provider
 	config        *policyConfig
 	pendingConfig map[interface{}]*policyConfig
@@ -148,6 +139,7 @@ func NewManagerImpl(basePath string, providers map[int32]Provider) *ManagerImpl 
 	return &ManagerImpl{
 		basePath:  basePath,
 		fqPrefix:  PathSeparator + basePath + PathSeparator,
+		fqPath:    PathSeparator + basePath, // Overridden after construction in the sub-manager case
 		providers: providers,
 		config: &policyConfig{
 			policies: make(map[string]Policy),
@@ -223,7 +215,7 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 		return rejectPolicy(relpath), false
 	}
 	if logger.IsEnabledFor(logging.DEBUG) {
-		logger.Debugf("Returning policy %s for evaluation", relpath)
+		logger.Debugf("Returning policy %s from manager %s for evaluation", relpath, pm.fqPath)
 	}
 	return policy, true
 }
@@ -247,6 +239,13 @@ func (pm *ManagerImpl) BeginPolicyProposals(tx interface{}, groups []string) ([]
 	for i, group := range groups {
 		newManager := NewManagerImpl(group, pm.providers)
 		newManager.parent = pm
+		mi := newManager
+		var fqPath []string
+		for mi != nil {
+			fqPath = append([]string{PathSeparator, mi.basePath}, fqPath...)
+			mi = mi.parent
+		}
+		newManager.fqPath = strings.Join(fqPath, "")
 		pendingConfig.managers[group] = newManager
 		managers[i] = newManager
 	}
