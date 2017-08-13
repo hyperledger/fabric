@@ -23,7 +23,7 @@ import (
 const RootGroupKey = "Resources"
 
 type policyProposerRoot struct {
-	policyManager policies.Proposer
+	policyManager *policies.ManagerImpl
 }
 
 // BeginPolicyProposals is used to start a new config proposal
@@ -57,7 +57,7 @@ type Bundle struct {
 }
 
 // New creates a new resources config bundle
-func New(envConfig *cb.Envelope, mspManager msp.MSPManager) (*Bundle, error) {
+func New(envConfig *cb.Envelope, mspManager msp.MSPManager, channelPolicyManager policies.Manager) (*Bundle, error) {
 	policyProviderMap := make(map[int32]policies.Provider)
 	for pType := range cb.Policy_PolicyType_name {
 		rtype := cb.Policy_PolicyType(pType)
@@ -71,15 +71,17 @@ func New(envConfig *cb.Envelope, mspManager msp.MSPManager) (*Bundle, error) {
 		}
 	}
 
-	pm := policies.NewManagerImpl(RootGroupKey, policyProviderMap)
-
 	b := &Bundle{
 		vpr: newValueProposerRoot(),
 		ppr: &policyProposerRoot{
-			policyManager: pm,
+			policyManager: policies.NewManagerImpl(RootGroupKey, policyProviderMap),
 		},
-		pm: pm,
 	}
+	b.pm = &policyRouter{
+		channelPolicyManager:   channelPolicyManager,
+		resourcesPolicyManager: b.ppr.policyManager,
+	}
+
 	var err error
 	b.cm, err = configtx.NewManagerImpl(envConfig, b, nil)
 	if err != nil {
