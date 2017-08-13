@@ -11,7 +11,7 @@ import "github.com/hyperledger/fabric/protos/peer"
 // Decorator decorates a chaincode input
 type Decorator interface {
 	// Decorate decorates a chaincode input by changing it
-	Decorate(input *peer.ChaincodeInput) *peer.ChaincodeInput
+	Decorate(proposal *peer.Proposal, input *peer.ChaincodeInput) *peer.ChaincodeInput
 }
 
 // NewDecorator creates a new decorator
@@ -23,6 +23,6 @@ type decorator struct {
 }
 
 // Decorate decorates a chaincode input by changing it
-func (d *decorator) Decorate(input *peer.ChaincodeInput) *peer.ChaincodeInput {
+func (d *decorator) Decorate(proposal *peer.Proposal, input *peer.ChaincodeInput) *peer.ChaincodeInput {
 	return input
 }

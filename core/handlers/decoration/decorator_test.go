@@ -18,6 +18,6 @@ func TestDecorator(t *testing.T) {
 	in := &peer.ChaincodeInput{
 		Args: [][]byte{{1, 2, 3}},
 	}
-	out := dec.Decorate(in)
+	out := dec.Decorate(nil, in)
 	assert.Equal(t, in, out)
 }
