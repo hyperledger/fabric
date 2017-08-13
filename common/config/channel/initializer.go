@@ -113,31 +113,70 @@ func newResources() *resources {
 }
 
 type policyProposerRoot struct {
-	policyManager policies.Proposer
+	policyManager                *policies.ManagerImpl
+	initializationLogSuppression bool
 }
 
 // BeginPolicyProposals is used to start a new config proposal
-func (p *policyProposerRoot) BeginPolicyProposals(tx interface{}, groups []string) ([]policies.Proposer, error) {
+func (ppr *policyProposerRoot) BeginPolicyProposals(tx interface{}, groups []string) ([]policies.Proposer, error) {
 	if len(groups) != 1 {
-		logger.Panicf("Initializer only supports having one root group")
+		logger.Panicf("policyProposerRoot only supports having one root group")
 	}
-	return []policies.Proposer{p.policyManager}, nil
+	return []policies.Proposer{ppr.policyManager}, nil
 }
 
-func (i *policyProposerRoot) ProposePolicy(tx interface{}, key string, policy *cb.ConfigPolicy) (proto.Message, error) {
+func (ppr *policyProposerRoot) ProposePolicy(tx interface{}, key string, policy *cb.ConfigPolicy) (proto.Message, error) {
 	return nil, fmt.Errorf("Programming error, this should never be invoked")
 }
 
 // PreCommit is a no-op and returns nil
-func (i *policyProposerRoot) PreCommit(tx interface{}) error {
+func (ppr *policyProposerRoot) PreCommit(tx interface{}) error {
 	return nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
-func (i *policyProposerRoot) RollbackProposals(tx interface{}) {}
+func (ppr *policyProposerRoot) RollbackProposals(tx interface{}) {}
 
 // CommitConfig is used to commit a new config proposal
-func (i *policyProposerRoot) CommitProposals(tx interface{}) {}
+func (ppr *policyProposerRoot) CommitProposals(tx interface{}) {
+	if ppr.initializationLogSuppression {
+		ppr.initializationLogSuppression = false
+	}
+
+	pm := ppr.policyManager
+	for _, policyName := range []string{policies.ChannelReaders, policies.ChannelWriters} {
+		_, ok := pm.GetPolicy(policyName)
+		if !ok {
+			logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)
+		} else {
+			logger.Debugf("As expected, current configuration has policy '%s'", policyName)
+		}
+	}
+	if _, ok := pm.Manager([]string{policies.ApplicationPrefix}); ok {
+		// Check for default application policies if the application component is defined
+		for _, policyName := range []string{
+			policies.ChannelApplicationReaders,
+			policies.ChannelApplicationWriters,
+			policies.ChannelApplicationAdmins} {
+			_, ok := pm.GetPolicy(policyName)
+			if !ok {
+				logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)
+			} else {
+				logger.Debugf("As expected, current configuration has policy '%s'", policyName)
+			}
+		}
+	}
+	if _, ok := pm.Manager([]string{policies.OrdererPrefix}); ok {
+		for _, policyName := range []string{policies.BlockValidation} {
+			_, ok := pm.GetPolicy(policyName)
+			if !ok {
+				logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)
+			} else {
+				logger.Debugf("As expected, current configuration has policy '%s'", policyName)
+			}
+		}
+	}
+}
 
 type Initializer struct {
 	*resources
@@ -145,14 +184,22 @@ type Initializer struct {
 	ppr *policyProposerRoot
 }
 
+func NewWithOneTimeSuppressedPolicyWarnings(envConfig *cb.Envelope, callOnUpdate []func(*Initializer)) (*Initializer, error) {
+	return commonNew(envConfig, callOnUpdate, true)
+}
+
 // New creates a new channel config, complete with backing configtx manager
-// TODO move configtx.Manager to resources, make func on Resources type
 func New(envConfig *cb.Envelope, callOnUpdate []func(*Initializer)) (*Initializer, error) {
+	return commonNew(envConfig, callOnUpdate, false)
+}
+
+func commonNew(envConfig *cb.Envelope, callOnUpdate []func(*Initializer), suppressFirstPolicyWarnings bool) (*Initializer, error) {
 	resources := newResources()
 	i := &Initializer{
 		resources: resources,
 		ppr: &policyProposerRoot{
-			policyManager: resources.policyManager,
+			policyManager:                resources.policyManager,
+			initializationLogSuppression: suppressFirstPolicyWarnings,
 		},
 	}
 	var err error
@@ -164,7 +211,6 @@ func New(envConfig *cb.Envelope, callOnUpdate []func(*Initializer)) (*Initialize
 			if !initialized {
 				return
 			}
-			logger.Criticalf("Making callback normally")
 			for _, callback := range callOnUpdate {
 				callback(i)
 			}
@@ -175,7 +221,6 @@ func New(envConfig *cb.Envelope, callOnUpdate []func(*Initializer)) (*Initialize
 	}
 	initialized = true
 	i.resources.configtxManager = i.Manager
-	logger.Criticalf("Making callback manually")
 	for _, callback := range callOnUpdate {
 		callback(i)
 	}

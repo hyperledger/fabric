@@ -269,5 +269,5 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (conf
 		},
 	}, msgVersion, epoch)
 
-	return channelconfig.New(templateConfig, nil)
+	return channelconfig.NewWithOneTimeSuppressedPolicyWarnings(templateConfig, nil)
 }
