@@ -49,14 +49,6 @@ func (m *MockChannelPolicyManager) Manager(path []string) (policies.Manager, boo
 	panic("Not implemented")
 }
 
-func (m *MockChannelPolicyManager) BasePath() string {
-	panic("Not implemented")
-}
-
-func (m *MockChannelPolicyManager) PolicyNames() []string {
-	panic("Not implemented")
-}
-
 type MockPolicy struct {
 	Deserializer msp.IdentityDeserializer
 }
