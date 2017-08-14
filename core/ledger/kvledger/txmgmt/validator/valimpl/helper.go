@@ -11,13 +11,16 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valinternal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -86,7 +89,7 @@ func validatePvtdata(tx *valinternal.Transaction, pvtdata *ledger.TxPvtData) err
 
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
 // The retuned 'Block' structure contains only transactions that are endorser transactions and are not alredy marked as invalid
-func preprocessProtoBlock(block *common.Block) (*valinternal.Block, error) {
+func preprocessProtoBlock(txmgr txmgr.TxMgr, block *common.Block) (*valinternal.Block, error) {
 	b := &valinternal.Block{Num: block.Header.Number}
 	// Committer validator has already set validation flags based on well formed tran checks
 	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
@@ -114,29 +117,61 @@ func preprocessProtoBlock(block *common.Block) (*valinternal.Block, error) {
 		if err != nil {
 			return nil, err
 		}
+		var txRWSet *rwsetutil.TxRwSet
 		txType := common.HeaderType(chdr.Type)
-		if txType != common.HeaderType_ENDORSER_TRANSACTION {
-			logger.Debugf("Skipping mvcc validation for Block [%d] Transaction index [%d] because, the transaction type is [%s]",
-				block.Header.Number, txIndex, txType)
-			continue
+		logger.Debugf("txType=%s", txType)
+		if txType == common.HeaderType_ENDORSER_TRANSACTION {
+			// extract actions from the envelope message
+			respPayload, err := utils.GetActionFromEnvelope(envBytes)
+			if err != nil {
+				txsFilter.SetFlag(txIndex, peer.TxValidationCode_NIL_TXACTION)
+				continue
+			}
+			txRWSet = &rwsetutil.TxRwSet{}
+			if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
+				continue
+			}
+		} else {
+			rwsetProto, err := processNonEndorserTx(env, chdr.TxId, txType, txmgr)
+			if err != nil {
+				return nil, err
+			}
+			if rwsetProto != nil {
+				if txRWSet, err = rwsetutil.TxRwSetFromProtoMsg(rwsetProto); err != nil {
+					return nil, err
+				}
+			}
 		}
-		// extract actions from the envelope message
-		respPayload, err := utils.GetActionFromEnvelope(envBytes)
-		if err != nil {
-			txsFilter.SetFlag(txIndex, peer.TxValidationCode_NIL_TXACTION)
-			continue
+		if txRWSet != nil {
+			b.Txs = append(b.Txs, &valinternal.Transaction{IndexInBlock: txIndex, ID: chdr.TxId, RWSet: txRWSet})
 		}
-		//preparation for extracting RWSet from transaction
-		txRWSet := &rwsetutil.TxRwSet{}
-		// Get the Result from the Action
-		// and then Unmarshal it into a TxReadWriteSet using custom unmarshalling
-		if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
-			txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
-			continue
-		}
-		b.Txs = append(b.Txs, &valinternal.Transaction{IndexInBlock: txIndex, ID: chdr.TxId, RWSet: txRWSet})
 	}
 	return b, nil
+}
+
+func processNonEndorserTx(txEnv *common.Envelope, txid string, txType common.HeaderType, txmgr txmgr.TxMgr) (*rwset.TxReadWriteSet, error) {
+	logger.Debugf("Performing custom processing for transaction [txid=%s], [txType=%s]", txid, txType)
+	processor := customtx.GetProcessor(txType)
+	logger.Debug("Processor for custom tx processing:%#v", processor)
+	if processor == nil {
+		return nil, nil
+	}
+
+	var err error
+	var sim ledger.TxSimulator
+	var simRes *ledger.TxSimulationResults
+
+	if sim, err = txmgr.NewTxSimulator(txid); err != nil {
+		return nil, err
+	}
+	if err = processor.GenerateSimulationResults(txEnv, sim); err != nil {
+		return nil, err
+	}
+	if simRes, err = sim.GetTxSimulationResults(); err != nil {
+		return nil, err
+	}
+	return simRes.PubSimulationResults, nil
 }
 
 // postprocessProtoBlock updates the proto block's validation flags (in metadata) by the results of validation process

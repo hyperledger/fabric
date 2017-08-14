@@ -28,7 +28,7 @@ import (
 // InitializeTestEnv initializes ledgermgmt for tests
 func InitializeTestEnv() {
 	remove()
-	initialize()
+	initialize(nil)
 }
 
 // CleanupTestEnv closes the ledgermagmt and removes the store directory

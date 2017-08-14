@@ -70,7 +70,7 @@ func TestTxRwSetConversion(t *testing.T) {
 	txRwSet := sampleTxRwSet()
 	protoMsg, err := txRwSet.toProtoMsg()
 	testutil.AssertNoError(t, err, "")
-	txRwSet1, err := txRwSetFromProtoMsg(protoMsg)
+	txRwSet1, err := TxRwSetFromProtoMsg(protoMsg)
 	testutil.AssertNoError(t, err, "")
 	t.Logf("txRwSet=%s, txRwSet1=%s", spew.Sdump(txRwSet), spew.Sdump(txRwSet1))
 	testutil.AssertEquals(t, txRwSet1, txRwSet)
