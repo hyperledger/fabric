@@ -35,6 +35,22 @@ var timeout = time.Second * time.Duration(180)
 
 var testWG = sync.WaitGroup{}
 
+var tests = []func(t *testing.T){
+	TestPull,
+	TestConnectToAnchorPeers,
+	TestMembership,
+	TestDissemination,
+	TestMembershipConvergence,
+	TestMembershipRequestSpoofing,
+	TestDataLeakage,
+	//TestDisseminateAll2All: {},
+	TestIdentityExpiration,
+	TestMultipleOrgEndpointLeakage,
+	TestConfidentiality,
+	TestAnchorPeer,
+	TestBootstrapPeerMisConfiguration,
+}
+
 func init() {
 	util.SetupTestLogging()
 	rand.Seed(int64(time.Now().Second()))
@@ -44,7 +60,9 @@ func init() {
 	discovery.SetAliveExpirationTimeout(aliveTimeInterval * 10)
 	discovery.SetReconnectInterval(aliveTimeInterval)
 	discovery.SetMaxConnAttempts(5)
-	testWG.Add(6)
+	for range tests {
+		testWG.Add(1)
+	}
 	factory.InitFactories(nil)
 	identityExpirationCheckInterval = time.Second
 }
@@ -251,7 +269,7 @@ func newGossipInstanceWithOnlyPull(portPrefix int, id int, maxMsgCount int, boot
 
 func TestPull(t *testing.T) {
 	t.Parallel()
-
+	defer testWG.Done()
 	portPrefix := 5610
 	t1 := time.Now()
 	// Scenario: Turn off forwarding and use only pull-based gossip.
@@ -347,11 +365,11 @@ func TestPull(t *testing.T) {
 	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestPull>>>")
-	testWG.Done()
 }
 
 func TestConnectToAnchorPeers(t *testing.T) {
 	t.Parallel()
+	defer testWG.Done()
 	// Scenario: spawn 10 peers, and have them join a channel
 	// of 3 anchor peers that don't exist yet.
 	// Wait 5 seconds, and then spawn a random anchor peer out of the 3.
@@ -415,11 +433,12 @@ func TestConnectToAnchorPeers(t *testing.T) {
 
 	fmt.Println("<<<TestConnectToAnchorPeers>>>")
 	atomic.StoreInt32(&stopped, int32(1))
-	testWG.Done()
+
 }
 
 func TestMembership(t *testing.T) {
 	t.Parallel()
+	defer testWG.Done()
 	portPrefix := 4610
 	t1 := time.Now()
 	// Scenario: spawn 20 nodes and a single bootstrap node and then:
@@ -496,11 +515,12 @@ func TestMembership(t *testing.T) {
 	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestMembership>>>")
-	testWG.Done()
+
 }
 
 func TestDissemination(t *testing.T) {
 	t.Parallel()
+	defer testWG.Done()
 	portPrefix := 3610
 	t1 := time.Now()
 	// Scenario: 20 nodes and a bootstrap node.
@@ -611,11 +631,11 @@ func TestDissemination(t *testing.T) {
 	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestDissemination>>>")
-	testWG.Done()
 }
 
 func TestMembershipConvergence(t *testing.T) {
 	t.Parallel()
+	defer testWG.Done()
 	portPrefix := 2610
 	// Scenario: Spawn 12 nodes and 3 bootstrap peers
 	// but assign each node to its bootstrap peer group modulo 3.
@@ -709,11 +729,11 @@ func TestMembershipConvergence(t *testing.T) {
 	atomic.StoreInt32(&stopped, int32(1))
 	t.Log("Took", time.Since(t1))
 	fmt.Println("<<<TestMembershipConvergence>>>")
-	testWG.Done()
 }
 
 func TestMembershipRequestSpoofing(t *testing.T) {
 	t.Parallel()
+	defer testWG.Done()
 	// Scenario: g1, g2, g3 are peers, and g2 is malicious, and wants
 	// to impersonate g3 when sending a membership request to g1.
 	// Expected output: g1 should *NOT* respond to g2,
@@ -784,6 +804,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 
 func TestDataLeakage(t *testing.T) {
 	t.Parallel()
+	defer testWG.Done()
 	portPrefix := 1610
 	// Scenario: spawn some nodes and let them all
 	// establish full membership.
@@ -907,7 +928,6 @@ func TestDataLeakage(t *testing.T) {
 	t.Log("Stop took", time.Since(stopTime))
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestDataLeakage>>>")
-	testWG.Done()
 }
 
 func TestDisseminateAll2All(t *testing.T) {
@@ -983,6 +1003,7 @@ func TestDisseminateAll2All(t *testing.T) {
 
 func TestIdentityExpiration(t *testing.T) {
 	t.Parallel()
+	defer testWG.Done()
 	// Scenario: spawn 4 peers and make the MessageCryptoService revoke one of them.
 	// Eventually, the rest of the peers should not be able to communicate with
 	// the revoked peer at all because its identity would seem to them as expired
