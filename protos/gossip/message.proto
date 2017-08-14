@@ -304,3 +304,12 @@ message RemotePvtDataRequest {
 message RemotePvtDataResponse {
     repeated PrivatePayload payloads = 1;
 }
+
+// PvtPayload augments private rwset data and tx index
+// inside the block
+message PvtDataPayload {
+    uint64 tx_seq_in_block = 1;
+    // Encodes marhslaed bytes of rwset.TxPvtReadWriteSet
+    // defined in rwset.proto
+    bytes payload = 2;
+}

@@ -343,7 +343,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 	response := &proto.RemoteStateResponse{Payloads: make([]*proto.Payload, 0)}
 	for seqNum := request.StartSeqNum; seqNum <= endSeqNum; seqNum++ {
 		logger.Debug("Reading block ", seqNum, " with private data from the coordinator service")
-		block, pvtData, err := s.coordinator.GetBlockByNum(seqNum)
+		block, pvtData, err := s.coordinator.GetPvtDataAndBlockByNum(seqNum, nil)
 
 		if err != nil {
 			logger.Errorf("Wasn't able to read block with sequence number %d from ledger, "+
@@ -661,7 +661,7 @@ func (s *GossipStateProviderImpl) hasRequiredHeight(height uint64) func(peer dis
 func (s *GossipStateProviderImpl) GetBlock(index uint64) *common.Block {
 	// Try to read missing block from the ledger, should return no nil with
 	// content including at least one block
-	if block, _, err := s.coordinator.GetBlockByNum(index); block != nil && err != nil {
+	if block, err := s.coordinator.GetBlockByNum(index); block != nil && err != nil {
 		return block
 	}
 
