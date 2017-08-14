@@ -8,6 +8,8 @@ package aclmgmt
 
 import (
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 var aclMgmtLogger = flogging.MustGetLogger("aclmgmt")
@@ -47,4 +49,12 @@ func newACLMgmt(r ACLProvider) ACLProvider {
 
 	//by default overrides are not set and all acl checks are referred to rscc
 	return &aclMgmtImpl{aclOverrides: make(map[string]aclMethod)}
+}
+
+func (am *aclMgmtImpl) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator) error {
+	if rscc == nil {
+		panic("-----RegisterACLProvider not called ----")
+	}
+
+	return rscc.GenerateSimulationResults(txEnvelop, simulator)
 }

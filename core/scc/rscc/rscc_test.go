@@ -17,11 +17,18 @@ package rscc
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -53,7 +60,7 @@ func (mp *mockRsccProvider) CheckACL(polName string, idinfo interface{}) error {
 }
 
 //mock default provider
-type mockDefaulACLProvider struct {
+type mockDefaultACLProvider struct {
 	//resource to policy
 	resMap     map[string]string
 	throwPanic string
@@ -61,7 +68,7 @@ type mockDefaulACLProvider struct {
 
 //CheckACL rscc implements AClProvider's CheckACL interface so it can be registered
 //as a provider with aclmgmt
-func (mp *mockDefaulACLProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
+func (mp *mockDefaultACLProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
 	if mp.resMap[resName] == "" {
 		return fmt.Errorf("[defaultprovider]no resource %s", resName)
 	}
@@ -75,12 +82,58 @@ func (mp *mockDefaulACLProvider) CheckACL(resName string, channelID string, idin
 	return nil
 }
 
+func (mp *mockDefaultACLProvider) GenerateSimulationResults(txEnv *common.Envelope, sim ledger.TxSimulator) error {
+	return nil
+}
+
+//barebones configuration for sticking into "rscc_seed_data"
+func createConfig() []byte {
+	b := utils.MarshalOrPanic(&common.Config{
+		Type: int32(common.ConfigType_RESOURCE),
+		ChannelGroup: &common.ConfigGroup{
+			// All of the default seed data values would inside this ConfigGroup
+			Values: map[string]*common.ConfigValue{
+				"res": &common.ConfigValue{
+					Value: utils.MarshalOrPanic(&pb.Resource{
+						PolicyRef: "respol",
+					}),
+					ModPolicy: "resmodpol",
+				},
+			},
+			Policies: map[string]*common.ConfigPolicy{
+				"respol": &common.ConfigPolicy{
+					Policy: &common.Policy{
+						Type:  int32(common.Policy_SIGNATURE),
+						Value: utils.MarshalOrPanic(cauthdsl.AcceptAllPolicy),
+					},
+					ModPolicy: "Example",
+				},
+			},
+			ModPolicy: "adminpol",
+		},
+	})
+	return b
+}
+
 //-------- misc funcs -----------
-func setupGood(t *testing.T) (*Rscc, *shim.MockStub) {
+func setupGood(t *testing.T, path string) (*Rscc, *shim.MockStub) {
+	viper.Set("peer.fileSystemPath", path)
+	peer.MockInitialize()
+
+	mspGetter := func(cid string) []string {
+		return []string{"DEFAULT"}
+	}
+
+	peer.MockSetMSPIDGetter(mspGetter)
+
+	if err := peer.MockCreateChain("myc"); err != nil {
+		t.FailNow()
+	}
+
 	rscc := NewRscc()
 	stub := shim.NewMockStub("rscc", rscc)
 	stub.State[CHANNEL] = []byte("myc")
-	b, _ := proto.Marshal(&common.ConfigGroup{Version: 1})
+	b := createConfig()
 	stub.State[POLICY] = b
 
 	res := stub.MockInit("1", [][]byte{})
@@ -90,7 +143,7 @@ func setupGood(t *testing.T) (*Rscc, *shim.MockStub) {
 	}
 
 	if len(res.Payload) != 0 {
-		fmt.Println("Init failed (expected nil payload)", string(res.Payload))
+		fmt.Printf("Init failed expected nil payload, found %s", string(res.Payload))
 		t.FailNow()
 	}
 
@@ -103,7 +156,9 @@ func setupGood(t *testing.T) (*Rscc, *shim.MockStub) {
 
 //-------- Tests -----------
 func TestInit(t *testing.T) {
-	setupGood(t)
+	path := "/var/hyperledger/rscctest/"
+	setupGood(t, path)
+	defer os.RemoveAll(path)
 }
 
 func TestBadState(t *testing.T) {
@@ -145,11 +200,13 @@ func testProviderSource(t *testing.T, rscc *Rscc, res, channel, id, panicMessage
 
 //tests if the right ACL providers get called
 func TestACLPaths(t *testing.T) {
+	path := "/var/hyperledger/rscctest/"
 	//start with a nice setup
-	rscc, _ := setupGood(t)
+	rscc, _ := setupGood(t, path)
+	defer os.RemoveAll(path)
 
 	//setup two resources, "res" in rsccProvider and "defres" in defaultProvider for channel "myc"
-	rscc.policyCache["myc"] = &policyProvider{&mockDefaulACLProvider{resMap: map[string]string{"defres": "defresPol"}, throwPanic: "defprovider"}, &mockRsccProvider{resMap: map[string]string{"res": "resPol"}, throwPanic: "rsccprovider"}}
+	rscc.policyCache["myc"] = &policyProvider{&mockDefaultACLProvider{resMap: map[string]string{"defres": "defresPol"}, throwPanic: "defprovider"}, &mockRsccProvider{resMap: map[string]string{"res": "resPol"}, throwPanic: "rsccprovider"}}
 
 	//bad channel
 	err := rscc.CheckACL("res", "badchannel", "id")
@@ -174,7 +231,7 @@ func TestACLPaths(t *testing.T) {
 	assert.Equal(t, err.Error(), "[defaultprovider]no resource res")
 
 	//remove "defres" from default provider - should give defres (was there before)
-	delete(rscc.policyCache["myc"].defaultProvider.(*mockDefaulACLProvider).resMap, "defres")
+	delete(rscc.policyCache["myc"].defaultProvider.(*mockDefaultACLProvider).resMap, "defres")
 	err = rscc.CheckACL("defres", "myc", "id")
 	assert.Error(t, err, "should have received error")
 	assert.Equal(t, err.Error(), "[defaultprovider]no resource defres")
@@ -184,4 +241,59 @@ func TestACLPaths(t *testing.T) {
 	err = rscc.CheckACL("anyres", "myc", "id")
 	assert.Error(t, err, "should have received error")
 	assert.Equal(t, err.Error(), PolicyProviderNotFound("myc").Error())
+}
+
+func TestLedgerProcessor(t *testing.T) {
+	path := "/var/hyperledger/rscctest/"
+	viper.Set("peer.fileSystemPath", path)
+	peer.MockInitialize()
+	defer os.RemoveAll(path)
+
+	if err := peer.MockCreateChain("myc"); err != nil {
+		t.FailNow()
+	}
+
+	txid1 := util.GenerateUUID()
+	ledger := peer.GetLedger("myc")
+	simulator, _ := ledger.NewTxSimulator(txid1)
+
+	rscc := NewRscc()
+
+	//don't accept nil params-1
+	err := rscc.GenerateSimulationResults(nil, simulator)
+	assert.NotNil(t, err)
+
+	//don't accept nil params-2
+	err = rscc.GenerateSimulationResults(&common.Envelope{}, nil)
+	assert.NotNil(t, err)
+
+	//bad payload
+	txEnv := &common.Envelope{Payload: []byte("bad payload")}
+	err = rscc.GenerateSimulationResults(txEnv, simulator)
+	assert.NotNil(t, err)
+
+	//bad ConfigEnvelope
+	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: []byte("bad ConfigEnvelope")})
+	err = rscc.GenerateSimulationResults(txEnv, simulator)
+	assert.NotNil(t, err)
+
+	//nil LastUpdate
+	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{LastUpdate: nil})})
+	err = rscc.GenerateSimulationResults(txEnv, simulator)
+	assert.NotNil(t, err)
+
+	//bad ConfigUpdateEnvelope
+	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{LastUpdate: &common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Data: []byte("bad ConfigUpdateEnvelope")})}})})
+	err = rscc.GenerateSimulationResults(txEnv, simulator)
+	assert.NotNil(t, err)
+
+	//bad ConfigUpdate
+	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{LastUpdate: &common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigUpdateEnvelope{ConfigUpdate: []byte("bad ConfigUpdate")})})}})})
+	err = rscc.GenerateSimulationResults(txEnv, simulator)
+	assert.NotNil(t, err)
+
+	//good processing
+	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{LastUpdate: &common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigUpdateEnvelope{ConfigUpdate: utils.MarshalOrPanic(&common.ConfigUpdate{ChannelId: "myc", IsolatedData: map[string][]byte{"rscc_seed_data": createConfig()}})})})}})})
+	err = rscc.GenerateSimulationResults(txEnv, simulator)
+	assert.Nil(t, err)
 }
