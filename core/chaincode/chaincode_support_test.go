@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -34,6 +35,8 @@ import (
 	mocklgr "github.com/hyperledger/fabric/common/mocks/ledger"
 	mockpeer "github.com/hyperledger/fabric/common/mocks/peer"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -139,8 +142,15 @@ func (meqe *mockExecQuerySimulator) GetTxSimulationResults() ([]byte, error) {
 	return simRes.GetPubSimulationBytes()
 }
 
+var mockAclProvider *mocks.MockACLProvider
+
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) error {
+	mockAclProvider = &mocks.MockACLProvider{}
+	mockAclProvider.Reset()
+
+	aclmgmt.RegisterACLProvider(mockAclProvider)
+
 	peer.MockInitialize()
 
 	mspGetter := func(cid string) []string {
@@ -354,6 +364,12 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 	txid := util.GenerateUUID()
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
 
+	//setup CheckACL calls
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+
 	//bad txid in response (should be "1"), should fail
 	resp := &mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("init succeeded")}), Txid: "unknowntxid"}}
 	respSet := &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{resp}}
@@ -404,6 +420,12 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm)
 	txid := util.GenerateUUID()
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
 
+	//setup CheckACL calls
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+
 	respSet := &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
 		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: []byte("A"), Txid: txid}},
 		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: []byte("B"), Txid: txid}},
@@ -450,6 +472,12 @@ func getQueryStateByRange(t *testing.T, chainID, ccname string, ccSide *mockpeer
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+
+	//setup CheckACL calls
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
 
 	//create the response
 	queryStateNextFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
@@ -498,6 +526,14 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	txid := util.GenerateUUID()
 	//first deploy the new cc to LSCC
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+
+	//setup CheckACL calls
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+
 	cccid := ccprovider.NewCCContext(chainID, calledCC, "0", txid, false, sprop, prop)
 
 	deployCC(t, ctxt, cccid, cis.ChaincodeSpec)
@@ -511,6 +547,16 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	cis = &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid = util.GenerateUUID()
 	ctxt, txsim, sprop, prop = startTx(t, chainID, cis, txid)
+
+	//we want hooks for both chaincodes
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
 
 	if _, _, err := ccprovider.GetChaincodeProvider().GetCCValidationInfoFromLSCC(ctxt, "getccdata", sprop, prop, chainID, calledCC); err != nil {
 		t.Fatalf("Could not get chaincode data from lscc for %s: %s", calledCC, err)
@@ -534,6 +580,36 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 
 	endTx(t, cccid, txsim, cis)
 
+	//finally lets try a Bad ACL with CC-calling-CC
+	chaincodeID = &pb.ChaincodeID{Name: ccname, Version: "0"}
+	ci = &pb.ChaincodeInput{[][]byte{[]byte("invokecc")}, nil}
+	cis = &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
+	txid = util.GenerateUUID()
+	ctxt, txsim, sprop, prop = startTx(t, chainID, cis, txid)
+
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID, sprop).Return(errors.New("Bad ACL calling CC"))
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+	//call regular cc but without ACL on called CC
+	respSet = &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
+		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte{}}}}), Txid: txid}}}}
+
+	respSet2 = &mockpeer.MockResponseSet{nil, nil, []*mockpeer.MockResponse{
+		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid}}}}
+
+	calledCCSide.SetResponses(respSet2)
+
+	cccid = ccprovider.NewCCContext(chainID, ccname, "0", txid, false, sprop, prop)
+
+	execCC(t, ctxt, ccSide, cccid, false, true, done, cis, respSet)
+
+	endTx(t, cccid, txsim, cis)
+
 	return nil
 }
 
@@ -549,6 +625,11 @@ func getQueryResult(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockC
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
 
 	kvs := make([]*plgr.KV, 1000)
 	for i := 0; i < 1000; i++ {
@@ -600,6 +681,11 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
+
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
 
 	kvs := make([]*plgr.KV, 1000)
 	for i := 0; i < 1000; i++ {
