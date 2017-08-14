@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/mocks/validator"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -877,14 +878,19 @@ type coordinatorMock struct {
 	mock.Mock
 }
 
+func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64, filter PvtDataFilter) (*pcomm.Block, PvtDataCollections, error) {
+	args := mock.Called(seqNum)
+	return args.Get(0).(*pcomm.Block), args.Get(1).(PvtDataCollections), args.Error(2)
+}
+
+func (mock *coordinatorMock) GetBlockByNum(seqNum uint64) (*pcomm.Block, error) {
+	args := mock.Called(seqNum)
+	return args.Get(0).(*pcomm.Block), args.Error(1)
+}
+
 func (mock *coordinatorMock) StoreBlock(block *pcomm.Block, data ...PvtDataCollections) ([]string, error) {
 	args := mock.Called(block, data)
 	return args.Get(0).([]string), args.Error(1)
-}
-
-func (mock *coordinatorMock) GetBlockByNum(seqNum uint64) (*pcomm.Block, PvtDataCollections, error) {
-	args := mock.Called(seqNum)
-	return args.Get(0).(*pcomm.Block), args.Get(1).(PvtDataCollections), args.Error(2)
 }
 
 func (mock *coordinatorMock) LedgerHeight() (uint64, error) {
@@ -960,26 +966,30 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 					PreviousHash: []byte{0, 0, 0, 1},
 				},
 				Data: &pcomm.BlockData{
-					Data: [][]byte{[]byte{1}, []byte{2}, []byte{3}},
+					Data: [][]byte{{1}, {2}, {3}},
 				},
 			},
 			pvtData: PvtDataCollections{
 				{
-					Payload: &rwset.TxPvtReadWriteSet{
-						DataModel: rwset.TxReadWriteSet_KV,
-						NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-							{
-								Namespace: "myCC:v1",
-								CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-									{
-										CollectionName: "mysecrectCollection",
-										Rwset:          []byte{1, 2, 3, 4, 5},
+					Payload: &ledger.TxPvtData{
+						SeqInBlock: uint64(0),
+						WriteSet: &rwset.TxPvtReadWriteSet{
+							DataModel: rwset.TxReadWriteSet_KV,
+							NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+								{
+									Namespace: "myCC:v1",
+									CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+										{
+											CollectionName: "mysecrectCollection",
+											Rwset:          []byte{1, 2, 3, 4, 5},
+										},
 									},
 								},
 							},
 						},
 					},
-				}},
+				},
+			},
 		},
 
 		uint64(3): {
@@ -990,31 +1000,35 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 					PreviousHash: []byte{0, 1, 1, 1},
 				},
 				Data: &pcomm.BlockData{
-					Data: [][]byte{[]byte{4}, []byte{5}, []byte{6}},
+					Data: [][]byte{{4}, {5}, {6}},
 				},
 			},
 			pvtData: PvtDataCollections{
 				{
-					Payload: &rwset.TxPvtReadWriteSet{
-						DataModel: rwset.TxReadWriteSet_KV,
-						NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-							{
-								Namespace: "otherCC:v1",
-								CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-									{
-										CollectionName: "topClassified",
-										Rwset:          []byte{0, 0, 0, 4, 2},
+					Payload: &ledger.TxPvtData{
+						SeqInBlock: uint64(2),
+						WriteSet: &rwset.TxPvtReadWriteSet{
+							DataModel: rwset.TxReadWriteSet_KV,
+							NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+								{
+									Namespace: "otherCC:v1",
+									CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+										{
+											CollectionName: "topClassified",
+											Rwset:          []byte{0, 0, 0, 4, 2},
+										},
 									},
 								},
 							},
 						},
 					},
-				}},
+				},
+			},
 		},
 	}
 
 	for seqNum, each := range data {
-		coord1.On("GetBlockByNum", seqNum).Return(each.block, each.pvtData, nil /* no error*/)
+		coord1.On("GetPvtDataAndBlockByNum", seqNum).Return(each.block, each.pvtData, nil /* no error*/)
 	}
 
 	coord1.On("Close")
@@ -1093,9 +1107,13 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 		}
 
 		for i, p := range testBlock.pvtData {
+			pvtDataPayload := &proto.PvtDataPayload{}
+			err := pb.Unmarshal(each.PrivateData[i], pvtDataPayload)
+			assertion.NoError(err)
 			pvtRWSet := &rwset.TxPvtReadWriteSet{}
-			pb.Unmarshal(each.PrivateData[i], pvtRWSet)
-			assertion.Equal(p.Payload, pvtRWSet)
+			err = pb.Unmarshal(pvtDataPayload.Payload, pvtRWSet)
+			assertion.NoError(err)
+			assertion.Equal(p.Payload.WriteSet, pvtRWSet)
 		}
 	}
 }
@@ -1160,18 +1178,18 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	// Second peer has a gap of one block, hence it will have to replicate it from previous
 	peers["peer2"].coord.On("LedgerHeight", mock.Anything).Return(uint64(2), nil)
 
-	peers["peer1"].coord.On("GetBlockByNum", uint64(2)).Return(&pcomm.Block{
+	peers["peer1"].coord.On("GetPvtDataAndBlockByNum", uint64(2)).Return(&pcomm.Block{
 		Header: &pcomm.BlockHeader{
 			Number:       2,
 			DataHash:     []byte{0, 1, 1, 1},
 			PreviousHash: []byte{0, 0, 0, 1},
 		},
 		Data: &pcomm.BlockData{
-			Data: [][]byte{[]byte{1}, []byte{2}, []byte{3}},
+			Data: [][]byte{{1}, {2}, {3}},
 		},
 	}, PvtDataCollections{}, nil)
 
-	peers["peer1"].coord.On("GetBlockByNum", uint64(3)).Return(&pcomm.Block{
+	peers["peer1"].coord.On("GetPvtDataAndBlockByNum", uint64(3)).Return(&pcomm.Block{
 		Header: &pcomm.BlockHeader{
 			Number:       3,
 			DataHash:     []byte{0, 0, 0, 1},
@@ -1180,20 +1198,25 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		Data: &pcomm.BlockData{
 			Data: [][]byte{{4}, {5}, {6}},
 		},
-	}, PvtDataCollections{&PvtData{&rwset.TxPvtReadWriteSet{
-		DataModel: rwset.TxReadWriteSet_KV,
-		NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-			{
-				Namespace: "myCC:v1",
-				CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+	}, PvtDataCollections{&PvtData{
+		Payload: &ledger.TxPvtData{
+			SeqInBlock: uint64(1),
+			WriteSet: &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
 					{
-						CollectionName: "mysecrectCollection",
-						Rwset:          []byte{1, 2, 3, 4, 5},
+						Namespace: "myCC:v1",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "mysecrectCollection",
+								Rwset:          []byte{1, 2, 3, 4, 5},
+							},
+						},
 					},
 				},
 			},
 		},
-	}}}, nil)
+	}}, nil)
 
 	// Return membership of the peers
 	metastate := &NodeMetastate{LedgerHeight: uint64(2)}
