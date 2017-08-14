@@ -124,8 +124,8 @@ func (ch *chain) main() {
 						continue
 					}
 				}
-				batches, ok := ch.support.BlockCutter().Ordered(msg.initialMsg)
-				if ok && len(batches) == 0 && timer == nil {
+				batches, _ := ch.support.BlockCutter().Ordered(msg.initialMsg)
+				if len(batches) == 0 && timer == nil {
 					timer = time.After(ch.support.SharedConfig().BatchTimeout())
 					continue
 				}
