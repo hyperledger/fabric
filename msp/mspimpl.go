@@ -22,9 +22,25 @@ import (
 	"github.com/pkg/errors"
 )
 
+// mspSetupFuncType is the prototype of the setup function
+type mspSetupFuncType func(config *m.FabricMSPConfig) error
+
+// validateIdentityOUsFuncType is the prototype of the function to validate identity's OUs
+type validateIdentityOUsFuncType func(id *identity) error
+
 // This is an instantiation of an MSP that
 // uses BCCSP for its cryptographic primitives.
 type bccspmsp struct {
+	// version specifies the behaviour of this msp
+	version MSPVersion
+	// The following function pointers are used to change the behaviour
+	// of this MSP depending on its version.
+	// internalSetupFunc is the pointer to the setup function
+	internalSetupFunc mspSetupFuncType
+
+	// internalValidateIdentityOusFunc is the pointer to the function to validate identity's OUs
+	internalValidateIdentityOusFunc validateIdentityOUsFuncType
+
 	// list of CA certs we trust
 	rootCerts []Identity
 
@@ -66,38 +82,55 @@ type bccspmsp struct {
 
 	// cryptoConfig contains
 	cryptoConfig *m.FabricCryptoConfig
+
+	// NodeOUs configuration
+	ouEnforcement bool
+	// These are the OUIdentifiers of the clients, peers and orderers.
+	// They are used to tell apart these entities
+	clientOU, peerOU, ordererOU *OUIdentifier
 }
 
 // newBccspMsp returns an MSP instance backed up by a BCCSP
 // crypto provider. It handles x.509 certificates and can
 // generate identities and signing identities backed by
 // certificates and keypairs
-func newBccspMsp() (MSP, error) {
+func newBccspMsp(version MSPVersion) (MSP, error) {
 	mspLogger.Debugf("Creating BCCSP-based MSP instance")
 
 	bccsp := factory.GetDefault()
 	theMsp := &bccspmsp{}
+	theMsp.version = version
 	theMsp.bccsp = bccsp
+	switch version {
+	case MSPv1_0:
+		theMsp.internalSetupFunc = theMsp.setupV1
+		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV1
+	case MSPv1_1:
+		theMsp.internalSetupFunc = theMsp.setupV11
+		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV11
+	default:
+		return nil, errors.Errorf("Invalid MSP version [%v]", version)
+	}
 
 	return theMsp, nil
 }
 
 func (msp *bccspmsp) getCertFromPem(idBytes []byte) (*x509.Certificate, error) {
 	if idBytes == nil {
-		return nil, errors.New("getIdentityFromConf error: nil idBytes")
+		return nil, errors.New("getCertFromPem error: nil idBytes")
 	}
 
 	// Decode the pem bytes
 	pemCert, _ := pem.Decode(idBytes)
 	if pemCert == nil {
-		return nil, errors.Errorf("getIdentityFromBytes error: could not decode pem bytes [%v]", idBytes)
+		return nil, errors.Errorf("getCertFromPem error: could not decode pem bytes [%v]", idBytes)
 	}
 
 	// get a cert
 	var cert *x509.Certificate
 	cert, err := x509.ParseCertificate(pemCert.Bytes)
 	if err != nil {
-		return nil, errors.Wrap(err, "getIdentityFromBytes error: failed to parse x509 cert")
+		return nil, errors.Wrap(err, "getCertFromPem error: failed to parse x509 cert")
 	}
 
 	return cert, nil
@@ -176,57 +209,8 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	msp.name = conf.Name
 	mspLogger.Debugf("Setting up MSP instance %s", msp.name)
 
-	// setup crypto config
-	if err := msp.setupCrypto(conf); err != nil {
-		return err
-	}
-
-	// Setup CAs
-	if err := msp.setupCAs(conf); err != nil {
-		return err
-	}
-
-	// Setup Admins
-	if err := msp.setupAdmins(conf); err != nil {
-		return err
-	}
-
-	// Setup CRLs
-	if err := msp.setupCRLs(conf); err != nil {
-		return err
-	}
-
-	// Finalize setup of the CAs
-	if err := msp.finalizeSetupCAs(conf); err != nil {
-		return err
-	}
-
-	// setup the signer (if present)
-	if err := msp.setupSigningIdentity(conf); err != nil {
-		return err
-	}
-
-	// setup the OUs
-	if err := msp.setupOUs(conf); err != nil {
-		return err
-	}
-
-	// setup TLS CAs
-	if err := msp.setupTLSCAs(conf); err != nil {
-		return err
-	}
-
-	// make sure that admins are valid members as well
-	// this way, when we validate an admin MSP principal
-	// we can simply check for exact match of certs
-	for i, admin := range msp.admins {
-		err = admin.Validate()
-		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("admin %d is invalid", i))
-		}
-	}
-
-	return nil
+	// setup
+	return msp.internalSetupFunc(conf)
 }
 
 // GetType returns the type for this MSP

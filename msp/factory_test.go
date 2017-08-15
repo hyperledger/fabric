@@ -9,6 +9,9 @@ package msp
 import (
 	"testing"
 
+	"reflect"
+	"runtime"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,6 +36,16 @@ func TestNew(t *testing.T) {
 	i, err := New(&BCCSPNewOpts{NewBaseOpts{Version: MSPv1_0}})
 	assert.NoError(t, err)
 	assert.NotNil(t, i)
+	assert.Equal(t, MSPVersion(MSPv1_0), i.(*bccspmsp).version)
+	assert.Equal(t, runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalSetupFunc).Pointer()).Name(), "github.com/hyperledger/fabric/msp.(*bccspmsp).(github.com/hyperledger/fabric/msp.setupV1)-fm")
+	assert.Equal(t, runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalValidateIdentityOusFunc).Pointer()).Name(), "github.com/hyperledger/fabric/msp.(*bccspmsp).(github.com/hyperledger/fabric/msp.validateIdentityOUsV1)-fm")
+
+	i, err = New(&BCCSPNewOpts{NewBaseOpts{Version: MSPv1_1}})
+	assert.NoError(t, err)
+	assert.NotNil(t, i)
+	assert.Equal(t, MSPVersion(MSPv1_1), i.(*bccspmsp).version)
+	assert.Equal(t, runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalSetupFunc).Pointer()).Name(), "github.com/hyperledger/fabric/msp.(*bccspmsp).(github.com/hyperledger/fabric/msp.setupV11)-fm")
+	assert.Equal(t, runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalValidateIdentityOusFunc).Pointer()).Name(), "github.com/hyperledger/fabric/msp.(*bccspmsp).(github.com/hyperledger/fabric/msp.validateIdentityOUsV11)-fm")
 
 	i, err = New(&IdemixNewOpts{NewBaseOpts{Version: MSPv1_0}})
 	assert.NoError(t, err)

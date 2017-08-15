@@ -82,6 +82,10 @@ message FabricMSPConfig {
     // List of TLS intermediate certificates trusted by this MSP;
     // They are returned by GetTLSIntermediateCerts.
     repeated bytes tls_intermediate_certs = 10;
+
+    // FabricNodeOUs contains the configuration to distinguish clients from peers from orderers
+    // based on the OUs.
+    FabricNodeOUs FabricNodeOUs = 11;
 }
 
 // FabricCryptoConfig contains configuration parameters
@@ -168,10 +172,27 @@ message FabricOUIdentifier {
     // It must correspond to the certificate of root or intermediate CA
     // recognized by the MSP this message belongs to.
     // Starting from this certificate, a certification chain is computed
-    // and boud to the OrganizationUnitIdentifier specified
+    // and bound to the OrganizationUnitIdentifier specified
     bytes certificate = 1;
 
     // OrganizationUnitIdentifier defines the organizational unit under the
     // MSP identified with MSPIdentifier
     string organizational_unit_identifier = 2;
+}
+
+// FabricNodeOUs contains configuration to tell apart clients from peers from orderers
+// based on OUs. If NodeOUs recognition is enabled then an msp identity
+// that does not contain any of the specified OU will be considered invalid.
+message FabricNodeOUs {
+    // If true then an msp identity that does not contain any of the specified OU will be considered invalid.
+    bool   Enable = 1;
+
+    // OU Identifier of the clients
+    FabricOUIdentifier clientOUIdentifier = 2;
+
+    // OU Identifier of the peers
+    FabricOUIdentifier peerOUIdentifier = 3;
+
+    // OU Identifier of the orderers
+    FabricOUIdentifier ordererOUIdentifier = 4;
 }

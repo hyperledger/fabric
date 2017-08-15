@@ -17,6 +17,65 @@ import (
 	"github.com/pkg/errors"
 )
 
+func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {
+	// 1. check that certificate is registered in msp.rootCerts or msp.intermediateCerts
+	cert, err := msp.getCertFromPem(certRaw)
+	if err != nil {
+		return nil, fmt.Errorf("Failed getting certificate for [%v]: [%s]", certRaw, err)
+	}
+
+	// 2. Sanitize it to ensure like for like comparison
+	cert, err = msp.sanitizeCert(cert)
+	if err != nil {
+		return nil, fmt.Errorf("sanitizeCert failed %s", err)
+	}
+
+	found := false
+	root := false
+	// Search among root certificates
+	for _, v := range msp.rootCerts {
+		if v.(*identity).cert.Equal(cert) {
+			found = true
+			root = true
+			break
+		}
+	}
+	if !found {
+		// Search among root intermediate certificates
+		for _, v := range msp.intermediateCerts {
+			if v.(*identity).cert.Equal(cert) {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		// Certificate not valid, reject configuration
+		return nil, fmt.Errorf("Failed adding OU. Certificate [%v] not in root or intermediate certs.", cert)
+	}
+
+	// 3. get the certification path for it
+	var certifiersIdentifier []byte
+	var chain []*x509.Certificate
+	if root {
+		chain = []*x509.Certificate{cert}
+	} else {
+		chain, err = msp.getValidationChain(cert, true)
+		if err != nil {
+			return nil, fmt.Errorf("Failed computing validation chain for [%v]. [%s]", cert, err)
+		}
+	}
+
+	// 4. compute the hash of the certification path
+	certifiersIdentifier, err = msp.getCertificationChainIdentifierFromChain(chain)
+	if err != nil {
+		return nil, fmt.Errorf("Failed computing Certifiers Identifier for [%v]. [%s]", certRaw, err)
+	}
+
+	return certifiersIdentifier, nil
+
+}
+
 func (msp *bccspmsp) setupCrypto(conf *m.FabricMSPConfig) error {
 	msp.cryptoConfig = conf.CryptoConfig
 	if msp.cryptoConfig == nil {
@@ -177,6 +236,47 @@ func (msp *bccspmsp) finalizeSetupCAs(config *m.FabricMSPConfig) error {
 	return nil
 }
 
+func (msp *bccspmsp) setupNodeOUs(config *m.FabricMSPConfig) error {
+	if config.FabricNodeOUs != nil {
+
+		msp.ouEnforcement = config.FabricNodeOUs.Enable
+
+		// ClientOU
+		msp.clientOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOUs.ClientOUIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOUs.ClientOUIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOUs.ClientOUIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.clientOU.CertifiersIdentifier = certifiersIdentifier
+		}
+
+		// PeerOU
+		msp.peerOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOUs.PeerOUIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOUs.PeerOUIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOUs.PeerOUIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.peerOU.CertifiersIdentifier = certifiersIdentifier
+		}
+
+		// OrdererOU
+		msp.ordererOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOUs.OrdererOUIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOUs.OrdererOUIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOUs.OrdererOUIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.ordererOU.CertifiersIdentifier = certifiersIdentifier
+		}
+	} else {
+		msp.ouEnforcement = false
+	}
+
+	return nil
+}
+
 func (msp *bccspmsp) setupSigningIdentity(conf *m.FabricMSPConfig) error {
 	if conf.SigningIdentity != nil {
 		sid, err := msp.getSigningIdentityFromConf(conf.SigningIdentity)
@@ -194,62 +294,13 @@ func (msp *bccspmsp) setupOUs(conf *m.FabricMSPConfig) error {
 	msp.ouIdentifiers = make(map[string][][]byte)
 	for _, ou := range conf.OrganizationalUnitIdentifiers {
 
-		// 1. check that certificate is registered in msp.rootCerts or msp.intermediateCerts
-		cert, err := msp.getCertFromPem(ou.Certificate)
+		certifiersIdentifier, err := msp.getCertifiersIdentifier(ou.Certificate)
 		if err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("failed getting certificate for [%v]", ou))
 		}
 
-		// 2. Sanitize it to ensure like for like comparison
-		cert, err = msp.sanitizeCert(cert)
-		if err != nil {
-			return errors.WithMessage(err, "sanitizeCert failed")
-		}
-
-		found := false
-		root := false
-		// Search among root certificates
-		for _, v := range msp.rootCerts {
-			if v.(*identity).cert.Equal(cert) {
-				found = true
-				root = true
-				break
-			}
-		}
-		if !found {
-			// Search among root intermediate certificates
-			for _, v := range msp.intermediateCerts {
-				if v.(*identity).cert.Equal(cert) {
-					found = true
-					break
-				}
-			}
-		}
-		if !found {
-			// Certificate not valid, reject configuration
-			return errors.Errorf("failed adding OU. Certificate [%v] not in root or intermediate certs", ou.Certificate)
-		}
-
-		// 3. get the certification path for it
-		var certifiersIdentifier []byte
-		var chain []*x509.Certificate
-		if root {
-			chain = []*x509.Certificate{cert}
-		} else {
-			chain, err = msp.getValidationChain(cert, true)
-			if err != nil {
-				return errors.WithMessage(err, fmt.Sprintf("failed computing validation chain for [%v]", cert))
-			}
-		}
-
-		// 4. compute the hash of the certification path
-		certifiersIdentifier, err = msp.getCertificationChainIdentifierFromChain(chain)
-		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("failed computing Certifiers Identifier for [%v]", ou.Certificate))
-		}
-
 		// Check for duplicates
-		found = false
+		found := false
 		for _, id := range msp.ouIdentifiers[ou.OrganizationalUnitIdentifier] {
 			if bytes.Equal(id, certifiersIdentifier) {
 				mspLogger.Warningf("Duplicate found in ou identifiers [%s, %v]", ou.OrganizationalUnitIdentifier, id)
@@ -315,6 +366,97 @@ func (msp *bccspmsp) setupTLSCAs(conf *m.FabricMSPConfig) error {
 		if err := msp.validateTLSCAIdentity(cert, opts); err != nil {
 			return errors.WithMessage(err, fmt.Sprintf("CA Certificate is not valid, (SN: %s)", cert.SerialNumber))
 		}
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) setupV1(conf1 *m.FabricMSPConfig) error {
+	err := msp.preSetupV1(conf1)
+	if err != nil {
+		return err
+	}
+
+	err = msp.postSetupV1(conf1)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) preSetupV1(conf *m.FabricMSPConfig) error {
+	// setup crypto config
+	if err := msp.setupCrypto(conf); err != nil {
+		return err
+	}
+
+	// Setup CAs
+	if err := msp.setupCAs(conf); err != nil {
+		return err
+	}
+
+	// Setup Admins
+	if err := msp.setupAdmins(conf); err != nil {
+		return err
+	}
+
+	// Setup CRLs
+	if err := msp.setupCRLs(conf); err != nil {
+		return err
+	}
+
+	// Finalize setup of the CAs
+	if err := msp.finalizeSetupCAs(conf); err != nil {
+		return err
+	}
+
+	// setup the signer (if present)
+	if err := msp.setupSigningIdentity(conf); err != nil {
+		return err
+	}
+
+	// setup TLS CAs
+	if err := msp.setupTLSCAs(conf); err != nil {
+		return err
+	}
+
+	// setup the OUs
+	if err := msp.setupOUs(conf); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) postSetupV1(conf *m.FabricMSPConfig) error {
+	// make sure that admins are valid members as well
+	// this way, when we validate an admin MSP principal
+	// we can simply check for exact match of certs
+	for i, admin := range msp.admins {
+		err := admin.Validate()
+		if err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("admin %d is invalid", i))
+		}
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) setupV11(conf *m.FabricMSPConfig) error {
+	err := msp.preSetupV1(conf)
+	if err != nil {
+		return err
+	}
+
+	// setup NodeOUs
+	if err := msp.setupNodeOUs(conf); err != nil {
+		return err
+	}
+
+	err = msp.postSetupV1(conf)
+	if err != nil {
+		return err
 	}
 
 	return nil
