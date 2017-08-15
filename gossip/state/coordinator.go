@@ -18,32 +18,27 @@ import (
 	"github.com/pkg/errors"
 )
 
-// PvtData a placeholder to represent private data
-type PvtData struct {
-	Payload *ledger.TxPvtData
-}
-
 // PvtDataCollections data type to encapsulate collections
 // of private data
-type PvtDataCollections []*PvtData
+type PvtDataCollections []*ledger.TxPvtData
 
 // Marshal encodes private collection into bytes array
 func (pvt *PvtDataCollections) Marshal() ([][]byte, error) {
 	pvtDataBytes := make([][]byte, 0)
 	for index, each := range *pvt {
-		if each.Payload == nil {
-			errMsg := fmt.Sprintf("Mallformed private data payload, rwset index %d, payload is nil", index)
+		if each == nil {
+			errMsg := fmt.Sprintf("Mallformed private data payload, rwset index %d is nil", index)
 			logger.Errorf(errMsg)
 			return nil, errors.New(errMsg)
 		}
-		pvtBytes, err := proto.Marshal(each.Payload.WriteSet)
+		pvtBytes, err := proto.Marshal(each.WriteSet)
 		if err != nil {
 			errMsg := fmt.Sprintf("Could not marshal private rwset index %d, due to %s", index, err)
 			logger.Errorf(errMsg)
 			return nil, errors.New(errMsg)
 		}
 		// Compose gossip protobuf message with private rwset + index of transaction in the block
-		txSeqInBlock := each.Payload.SeqInBlock
+		txSeqInBlock := each.SeqInBlock
 		pvtDataPayload := &gossip.PvtDataPayload{TxSeqInBlock: txSeqInBlock, Payload: pvtBytes}
 		payloadBytes, err := proto.Marshal(pvtDataPayload)
 		if err != nil {
@@ -69,18 +64,14 @@ func (pvt *PvtDataCollections) Unmarshal(data [][]byte) error {
 		if err := proto.Unmarshal(payload.Payload, pvtRWSet); err != nil {
 			return err
 		}
-		*pvt = append(*pvt, &PvtData{Payload: &ledger.TxPvtData{
+		*pvt = append(*pvt, &ledger.TxPvtData{
 			SeqInBlock: payload.TxSeqInBlock,
 			WriteSet:   pvtRWSet,
-		}})
+		})
 	}
 
 	return nil
 }
-
-// PvtDataFilter predicate which used to filter block
-// private data
-type PvtDataFilter func(data *PvtData) bool
 
 // Coordinator orchestrates the flow of the new
 // blocks arrival and in flight transient data, responsible
@@ -88,10 +79,13 @@ type PvtDataFilter func(data *PvtData) bool
 type Coordinator interface {
 	// StoreBlock deliver new block with underlined private data
 	// returns missing transaction ids
-	StoreBlock(block *common.Block, data ...PvtDataCollections) ([]string, error)
+	StoreBlock(block *common.Block, data PvtDataCollections) ([]string, error)
 
-	// GetPvtDataAndBlockByNum returns block and related to the block private data
-	GetPvtDataAndBlockByNum(seqNum uint64, filter PvtDataFilter) (*common.Block, PvtDataCollections, error)
+	// GetPvtDataAndBlockByNum get block by number and returns also all related private data
+	// the order of private data in slice of PvtDataCollections doesn't implies the order of
+	// transactions in the block related to these private data, to get the correct placement
+	// need to read TxPvtData.SeqInBlock field
+	GetPvtDataAndBlockByNum(seqNum uint64) (*common.Block, PvtDataCollections, error)
 
 	// GetBlockByNum returns block and related to the block private data
 	GetBlockByNum(seqNum uint64) (*common.Block, error)
@@ -112,22 +106,51 @@ func NewCoordinator(committer committer.Committer) Coordinator {
 	return &coordinator{Committer: committer}
 }
 
-func (c *coordinator) StoreBlock(block *common.Block, data ...PvtDataCollections) ([]string, error) {
+// StoreBlock stores block with private data into the ledger
+func (c *coordinator) StoreBlock(block *common.Block, data PvtDataCollections) ([]string, error) {
 	// Need to check whenever there are missing private rwset
-	if len(data) == 0 {
-		return nil, c.Commit(block)
+	if len(data) > 0 {
+		blockAndPvtData := &ledger.BlockAndPvtData{
+			Block:        block,
+			BlockPvtData: make(map[uint64]*ledger.TxPvtData),
+		}
+
+		// Fill private data map with payloads
+		for _, item := range data {
+			blockAndPvtData.BlockPvtData[item.SeqInBlock] = item
+		}
+
+		// commit block and private data
+		return nil, c.CommitWithPvtData(blockAndPvtData)
 	}
+	// TODO: Since this could be a very first time
+	// block arrives from ordering service we need
+	// to check whenever there is private data available
+	// for this block in transient store and
+	// if no private data, we can use simple API
 	return nil, c.Commit(block)
 }
 
-func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, filter PvtDataFilter) (*common.Block, PvtDataCollections, error) {
-	blocks := c.GetBlocks([]uint64{seqNum})
-	if len(blocks) == 0 {
-		return nil, nil, fmt.Errorf("Cannot retreive block number %d", seqNum)
+// GetPvtDataAndBlockByNum get block by number and returns also all related private data
+// the order of private data in slice of PvtDataCollections doesn't implies the order of
+// transactions in the block related to these private data, to get the correct placement
+// need to read TxPvtData.SeqInBlock field
+func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64) (*common.Block, PvtDataCollections, error) {
+	blockAndPvtData, err := c.Committer.GetPvtDataAndBlockByNum(seqNum)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Cannot retreive block number %d, due to %s", seqNum, err)
 	}
-	return blocks[0], nil, nil
+
+	var blockPvtData PvtDataCollections
+
+	for _, item := range blockAndPvtData.BlockPvtData {
+		blockPvtData = append(blockPvtData, item)
+	}
+
+	return blockAndPvtData.Block, blockPvtData, nil
 }
 
+// GetBlockByNum returns block by sequence number
 func (c *coordinator) GetBlockByNum(seqNum uint64) (*common.Block, error) {
 	blocks := c.GetBlocks([]uint64{seqNum})
 	if len(blocks) == 0 {

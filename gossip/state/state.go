@@ -343,7 +343,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 	response := &proto.RemoteStateResponse{Payloads: make([]*proto.Payload, 0)}
 	for seqNum := request.StartSeqNum; seqNum <= endSeqNum; seqNum++ {
 		logger.Debug("Reading block ", seqNum, " with private data from the coordinator service")
-		block, pvtData, err := s.coordinator.GetPvtDataAndBlockByNum(seqNum, nil)
+		block, pvtData, err := s.coordinator.GetPvtDataAndBlockByNum(seqNum)
 
 		if err != nil {
 			logger.Errorf("Wasn't able to read block with sequence number %d from ledger, "+
@@ -365,10 +365,6 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 
 		var pvtBytes [][]byte
 		if pvtData != nil {
-			// TODO: Need to extract orgID of the requester and filter out
-			// private data entries which doesn't belongs to collections
-			// allowed for sender organization based on policies
-
 			// Marshal private data
 			pvtBytes, err = pvtData.Marshal()
 			if err != nil {
@@ -478,15 +474,16 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 				logger.Debug("New block with claimed sequence number ", payload.SeqNum, " transactions num ", len(rawBlock.Data.Data))
 
 				// Read all private data into slice
-				pvt := make([]*PvtData, 0)
 				var p PvtDataCollections
-				err := p.Unmarshal(payload.PrivateData)
-				if err != nil {
-					logger.Errorf("Wasn't able to unmarshal private data for block seqNum = %d due to (%s)...dropping block", payload.SeqNum, err)
-					continue
+				if payload.PrivateData != nil {
+					err := p.Unmarshal(payload.PrivateData)
+					if err != nil {
+						logger.Errorf("Wasn't able to unmarshal private data for block seqNum = %d due to (%s)...dropping block", payload.SeqNum, err)
+						continue
+					}
 				}
 
-				if err := s.commitBlock(rawBlock, pvt); err != nil {
+				if err := s.commitBlock(rawBlock, p); err != nil {
 					logger.Panicf("Cannot commit block to the ledger due to %s", err)
 				}
 			}
@@ -686,7 +683,7 @@ func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
 	return s.payloads.Push(payload)
 }
 
-func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData []*PvtData) error {
+func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData PvtDataCollections) error {
 
 	// Commit block with available private transactions
 	if _, err := s.coordinator.StoreBlock(block, pvtData); err != nil {

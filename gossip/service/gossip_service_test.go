@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/election"
@@ -291,6 +292,14 @@ func (ds *mockDeliverService) Stop() {
 
 type mockLedgerInfo struct {
 	Height uint64
+}
+
+func (li *mockLedgerInfo) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
+	panic("implement me")
+}
+
+func (li *mockLedgerInfo) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error) {
+	panic("implement me")
 }
 
 // LedgerHeight returns mocked value to the ledger height

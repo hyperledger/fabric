@@ -163,6 +163,16 @@ type mockCommitter struct {
 	sync.Mutex
 }
 
+func (mc *mockCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
+	args := mc.Called(blockAndPvtData)
+	return args.Error(0)
+}
+
+func (mc *mockCommitter) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error) {
+	args := mc.Called(seqNum)
+	return args.Get(0).(*ledger.BlockAndPvtData), args.Error(1)
+}
+
 func (mc *mockCommitter) Commit(block *pcomm.Block) error {
 	mc.Called(block)
 	return nil
@@ -878,7 +888,7 @@ type coordinatorMock struct {
 	mock.Mock
 }
 
-func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64, filter PvtDataFilter) (*pcomm.Block, PvtDataCollections, error) {
+func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64) (*pcomm.Block, PvtDataCollections, error) {
 	args := mock.Called(seqNum)
 	return args.Get(0).(*pcomm.Block), args.Get(1).(PvtDataCollections), args.Error(2)
 }
@@ -888,7 +898,7 @@ func (mock *coordinatorMock) GetBlockByNum(seqNum uint64) (*pcomm.Block, error) 
 	return args.Get(0).(*pcomm.Block), args.Error(1)
 }
 
-func (mock *coordinatorMock) StoreBlock(block *pcomm.Block, data ...PvtDataCollections) ([]string, error) {
+func (mock *coordinatorMock) StoreBlock(block *pcomm.Block, data PvtDataCollections) ([]string, error) {
 	args := mock.Called(block, data)
 	return args.Get(0).([]string), args.Error(1)
 }
@@ -971,18 +981,16 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 			},
 			pvtData: PvtDataCollections{
 				{
-					Payload: &ledger.TxPvtData{
-						SeqInBlock: uint64(0),
-						WriteSet: &rwset.TxPvtReadWriteSet{
-							DataModel: rwset.TxReadWriteSet_KV,
-							NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-								{
-									Namespace: "myCC:v1",
-									CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-										{
-											CollectionName: "mysecrectCollection",
-											Rwset:          []byte{1, 2, 3, 4, 5},
-										},
+					SeqInBlock: uint64(0),
+					WriteSet: &rwset.TxPvtReadWriteSet{
+						DataModel: rwset.TxReadWriteSet_KV,
+						NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+							{
+								Namespace: "myCC:v1",
+								CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+									{
+										CollectionName: "mysecrectCollection",
+										Rwset:          []byte{1, 2, 3, 4, 5},
 									},
 								},
 							},
@@ -1005,18 +1013,16 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 			},
 			pvtData: PvtDataCollections{
 				{
-					Payload: &ledger.TxPvtData{
-						SeqInBlock: uint64(2),
-						WriteSet: &rwset.TxPvtReadWriteSet{
-							DataModel: rwset.TxReadWriteSet_KV,
-							NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-								{
-									Namespace: "otherCC:v1",
-									CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-										{
-											CollectionName: "topClassified",
-											Rwset:          []byte{0, 0, 0, 4, 2},
-										},
+					SeqInBlock: uint64(2),
+					WriteSet: &rwset.TxPvtReadWriteSet{
+						DataModel: rwset.TxReadWriteSet_KV,
+						NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+							{
+								Namespace: "otherCC:v1",
+								CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+									{
+										CollectionName: "topClassified",
+										Rwset:          []byte{0, 0, 0, 4, 2},
 									},
 								},
 							},
@@ -1113,7 +1119,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 			pvtRWSet := &rwset.TxPvtReadWriteSet{}
 			err = pb.Unmarshal(pvtDataPayload.Payload, pvtRWSet)
 			assertion.NoError(err)
-			assertion.Equal(p.Payload.WriteSet, pvtRWSet)
+			assertion.Equal(p.WriteSet, pvtRWSet)
 		}
 	}
 }
@@ -1198,19 +1204,17 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		Data: &pcomm.BlockData{
 			Data: [][]byte{{4}, {5}, {6}},
 		},
-	}, PvtDataCollections{&PvtData{
-		Payload: &ledger.TxPvtData{
-			SeqInBlock: uint64(1),
-			WriteSet: &rwset.TxPvtReadWriteSet{
-				DataModel: rwset.TxReadWriteSet_KV,
-				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-					{
-						Namespace: "myCC:v1",
-						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-							{
-								CollectionName: "mysecrectCollection",
-								Rwset:          []byte{1, 2, 3, 4, 5},
-							},
+	}, PvtDataCollections{&ledger.TxPvtData{
+		SeqInBlock: uint64(1),
+		WriteSet: &rwset.TxPvtReadWriteSet{
+			DataModel: rwset.TxReadWriteSet_KV,
+			NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+				{
+					Namespace: "myCC:v1",
+					CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+						{
+							CollectionName: "mysecrectCollection",
+							Rwset:          []byte{1, 2, 3, 4, 5},
 						},
 					},
 				},

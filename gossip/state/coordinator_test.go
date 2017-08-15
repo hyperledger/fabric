@@ -21,6 +21,16 @@ type committerMock struct {
 	mock.Mock
 }
 
+func (mock *committerMock) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
+	args := mock.Called(blockAndPvtData)
+	return args.Error(0)
+}
+
+func (mock *committerMock) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error) {
+	args := mock.Called(seqNum)
+	return args.Get(0).(*ledger.BlockAndPvtData), args.Error(1)
+}
+
 func (mock *committerMock) Commit(block *common.Block) error {
 	args := mock.Called(block)
 	return args.Error(0)
@@ -46,19 +56,17 @@ func (mock *committerMock) Close() {
 
 func TestPvtDataCollections_FailOnEmptyPayload(t *testing.T) {
 	collection := &PvtDataCollections{
-		&PvtData{
-			Payload: &ledger.TxPvtData{
-				SeqInBlock: uint64(1),
-				WriteSet: &rwset.TxPvtReadWriteSet{
-					DataModel: rwset.TxReadWriteSet_KV,
-					NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-						{
-							Namespace: "ns1",
-							CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-								{
-									CollectionName: "secretCollection",
-									Rwset:          []byte{1, 2, 3, 4, 5, 6, 7},
-								},
+		&ledger.TxPvtData{
+			SeqInBlock: uint64(1),
+			WriteSet: &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					{
+						Namespace: "ns1",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "secretCollection",
+								Rwset:          []byte{1, 2, 3, 4, 5, 6, 7},
 							},
 						},
 					},
@@ -66,24 +74,20 @@ func TestPvtDataCollections_FailOnEmptyPayload(t *testing.T) {
 			},
 		},
 
-		&PvtData{
-			Payload: nil,
-		},
+		nil,
 	}
 
 	_, err := collection.Marshal()
 	assertion := assert.New(t)
 	assertion.Error(err, "Expected to fail since second item has nil payload")
-	assertion.Equal("Mallformed private data payload, rwset index 1, payload is nil", fmt.Sprintf("%s", err))
+	assertion.Equal("Mallformed private data payload, rwset index 1 is nil", fmt.Sprintf("%s", err))
 }
 
 func TestPvtDataCollections_FailMarshalingWriteSet(t *testing.T) {
 	collection := &PvtDataCollections{
-		&PvtData{
-			Payload: &ledger.TxPvtData{
-				SeqInBlock: uint64(1),
-				WriteSet:   nil,
-			},
+		&ledger.TxPvtData{
+			SeqInBlock: uint64(1),
+			WriteSet:   nil,
 		},
 	}
 
@@ -95,19 +99,17 @@ func TestPvtDataCollections_FailMarshalingWriteSet(t *testing.T) {
 
 func TestPvtDataCollections_Marshal(t *testing.T) {
 	collection := &PvtDataCollections{
-		&PvtData{
-			Payload: &ledger.TxPvtData{
-				SeqInBlock: uint64(1),
-				WriteSet: &rwset.TxPvtReadWriteSet{
-					DataModel: rwset.TxReadWriteSet_KV,
-					NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-						{
-							Namespace: "ns1",
-							CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-								{
-									CollectionName: "secretCollection",
-									Rwset:          []byte{1, 2, 3, 4, 5, 6, 7},
-								},
+		&ledger.TxPvtData{
+			SeqInBlock: uint64(1),
+			WriteSet: &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					{
+						Namespace: "ns1",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "secretCollection",
+								Rwset:          []byte{1, 2, 3, 4, 5, 6, 7},
 							},
 						},
 					},
@@ -115,28 +117,26 @@ func TestPvtDataCollections_Marshal(t *testing.T) {
 			},
 		},
 
-		&PvtData{
-			Payload: &ledger.TxPvtData{
-				SeqInBlock: uint64(2),
-				WriteSet: &rwset.TxPvtReadWriteSet{
-					DataModel: rwset.TxReadWriteSet_KV,
-					NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-						{
-							Namespace: "ns1",
-							CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-								{
-									CollectionName: "secretCollection",
-									Rwset:          []byte{42, 42, 42, 42, 42, 42, 42},
-								},
+		&ledger.TxPvtData{
+			SeqInBlock: uint64(2),
+			WriteSet: &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					{
+						Namespace: "ns1",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "secretCollection",
+								Rwset:          []byte{42, 42, 42, 42, 42, 42, 42},
 							},
 						},
-						{
-							Namespace: "ns2",
-							CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-								{
-									CollectionName: "otherCollection",
-									Rwset:          []byte{10, 9, 8, 7, 6, 5, 4, 3, 2, 1},
-								},
+					},
+					{
+						Namespace: "ns2",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "otherCollection",
+								Rwset:          []byte{10, 9, 8, 7, 6, 5, 4, 3, 2, 1},
 							},
 						},
 					},
@@ -155,19 +155,17 @@ func TestPvtDataCollections_Marshal(t *testing.T) {
 
 func TestPvtDataCollections_Unmarshal(t *testing.T) {
 	collection := PvtDataCollections{
-		&PvtData{
-			Payload: &ledger.TxPvtData{
-				SeqInBlock: uint64(1),
-				WriteSet: &rwset.TxPvtReadWriteSet{
-					DataModel: rwset.TxReadWriteSet_KV,
-					NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-						{
-							Namespace: "ns1",
-							CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-								{
-									CollectionName: "secretCollection",
-									Rwset:          []byte{1, 2, 3, 4, 5, 6, 7},
-								},
+		&ledger.TxPvtData{
+			SeqInBlock: uint64(1),
+			WriteSet: &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					{
+						Namespace: "ns1",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "secretCollection",
+								Rwset:          []byte{1, 2, 3, 4, 5, 6, 7},
 							},
 						},
 					},
@@ -217,11 +215,40 @@ func TestNewCoordinator(t *testing.T) {
 		},
 	}
 
+	pvtData := PvtDataCollections{
+		&ledger.TxPvtData{
+			SeqInBlock: uint64(1),
+			WriteSet: &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					{
+						Namespace: "ns1",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "mySecretCollection",
+								Rwset:          []byte{1, 1, 1, 1, 1},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
 	committer.On("GetBlocks", []uint64{1}).Return([]*common.Block{block})
 	committer.On("GetBlocks", []uint64{2}).Return(nil)
 
 	committer.On("LedgerHeight").Return(uint64(1), nil)
 	committer.On("Commit", blockToCommit).Return(nil)
+
+	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
+		// Check that block and private data correctly wrapped up
+		blockAndPvtData := args.Get(0).(*ledger.BlockAndPvtData)
+		assertion.Equal(blockToCommit, blockAndPvtData.Block)
+		assertion.Equal(1, len(blockAndPvtData.BlockPvtData))
+		assertion.Equal(pvtData[0], blockAndPvtData.BlockPvtData[1])
+
+	}).Return(nil)
 
 	coord := NewCoordinator(committer)
 
@@ -239,7 +266,12 @@ func TestNewCoordinator(t *testing.T) {
 	assertion.NoError(err)
 	assertion.Equal(uint64(1), height)
 
-	missingPvtTx, err := coord.StoreBlock(blockToCommit)
+	missingPvtTx, err := coord.StoreBlock(blockToCommit, nil)
+
+	assertion.NoError(err)
+	assertion.Empty(missingPvtTx)
+
+	missingPvtTx, err = coord.StoreBlock(blockToCommit, pvtData)
 
 	assertion.NoError(err)
 	assertion.Empty(missingPvtTx)
