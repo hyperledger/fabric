@@ -95,6 +95,16 @@ func NewStoreProvider() StoreProvider {
 	return &storeProvider{dbProvider: dbProvider}
 }
 
+// NewCustomPathStoreProvider constructs a StoreProvider at the given path
+// This function is used by ledger to construct a dedicated store till the time the store is managed
+// by the transient coordinator. A separate store location by the ledger is desired so that
+// the coordinator can be developed independently to handle the management of the transient store at default location.
+// Once the coordinator is developed, the ledger can stop using the transient store and this function can be removed.
+func NewCustomPathStoreProvider(path string) StoreProvider {
+	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: path})
+	return &storeProvider{dbProvider: dbProvider}
+}
+
 // OpenStore returns a handle to a ledgerId in Store
 func (provider *storeProvider) OpenStore(ledgerID string) (Store, error) {
 	dbHandle := provider.dbProvider.GetDBHandle(ledgerID)
