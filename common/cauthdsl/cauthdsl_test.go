@@ -225,3 +225,69 @@ func TestDeduplicate(t *testing.T) {
 		assert.Equal(t, []*cb.SignedData{}, result, "No valid identities")
 	})
 }
+
+func TestSignedByMspClient(t *testing.T) {
+	e := SignedByMspClient("A")
+	assert.Equal(t, 1, len(e.Identities))
+
+	role := &mb.MSPRole{}
+	err := proto.Unmarshal(e.Identities[0].Principal, role)
+	assert.NoError(t, err)
+
+	assert.Equal(t, role.MspIdentifier, "A")
+	assert.Equal(t, role.Role, mb.MSPRole_CLIENT)
+
+	e = SignedByAnyClient([]string{"A"})
+	assert.Equal(t, 1, len(e.Identities))
+
+	role = &mb.MSPRole{}
+	err = proto.Unmarshal(e.Identities[0].Principal, role)
+	assert.NoError(t, err)
+
+	assert.Equal(t, role.MspIdentifier, "A")
+	assert.Equal(t, role.Role, mb.MSPRole_CLIENT)
+}
+
+func TestSignedByMspPeer(t *testing.T) {
+	e := SignedByMspPeer("A")
+	assert.Equal(t, 1, len(e.Identities))
+
+	role := &mb.MSPRole{}
+	err := proto.Unmarshal(e.Identities[0].Principal, role)
+	assert.NoError(t, err)
+
+	assert.Equal(t, role.MspIdentifier, "A")
+	assert.Equal(t, role.Role, mb.MSPRole_PEER)
+
+	e = SignedByAnyPeer([]string{"A"})
+	assert.Equal(t, 1, len(e.Identities))
+
+	role = &mb.MSPRole{}
+	err = proto.Unmarshal(e.Identities[0].Principal, role)
+	assert.NoError(t, err)
+
+	assert.Equal(t, role.MspIdentifier, "A")
+	assert.Equal(t, role.Role, mb.MSPRole_PEER)
+}
+
+func TestSignedByMspOrderer(t *testing.T) {
+	e := SignedByMspOrderer("A")
+	assert.Equal(t, 1, len(e.Identities))
+
+	role := &mb.MSPRole{}
+	err := proto.Unmarshal(e.Identities[0].Principal, role)
+	assert.NoError(t, err)
+
+	assert.Equal(t, role.MspIdentifier, "A")
+	assert.Equal(t, role.Role, mb.MSPRole_ORDERER)
+
+	e = SignedByAnyOrderer([]string{"A"})
+	assert.Equal(t, 1, len(e.Identities))
+
+	role = &mb.MSPRole{}
+	err = proto.Unmarshal(e.Identities[0].Principal, role)
+	assert.NoError(t, err)
+
+	assert.Equal(t, role.MspIdentifier, "A")
+	assert.Equal(t, role.Role, mb.MSPRole_ORDERER)
+}

@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-var regex *regexp.Regexp = regexp.MustCompile("^([[:alnum:]]+)([.])(member|admin)$")
+var regex *regexp.Regexp = regexp.MustCompile("^([[:alnum:]]+)([.])(member|admin|client|peer|orderer)$")
 var regexErr *regexp.Regexp = regexp.MustCompile("^No parameter '([^']+)' found[.]$")
 
 // a stub function - it returns the same string as it's passed.
@@ -139,7 +139,7 @@ func secondPass(args ...interface{}) (interface{}, error) {
 		switch t := principal.(type) {
 		/* if it's a string, we expect it to be formed as
 		   <MSP_ID> . <ROLE>, where MSP_ID is the MSP identifier
-		   and ROLE is either a member of an admin*/
+		   and ROLE is either a member, an admin, a client, a peer or an orderer*/
 		case string:
 			/* split the string */
 			subm := regex.FindAllStringSubmatch(t, -1)
@@ -149,10 +149,19 @@ func secondPass(args ...interface{}) (interface{}, error) {
 
 			/* get the right role */
 			var r msp.MSPRole_MSPRoleType
-			if subm[0][3] == "member" {
+			switch subm[0][3] {
+			case "member":
 				r = msp.MSPRole_MEMBER
-			} else {
+			case "admin":
 				r = msp.MSPRole_ADMIN
+			case "client":
+				r = msp.MSPRole_CLIENT
+			case "peer":
+				r = msp.MSPRole_PEER
+			case "orderer":
+				r = msp.MSPRole_ORDERER
+			default:
+				return nil, fmt.Errorf("Error parsing role %s", t)
 			}
 
 			/* build the principal we've been told */
@@ -210,7 +219,7 @@ func newContext() *context {
 //
 // where
 //	- ORG is a string (representing the MSP identifier)
-//	- ROLE is either the string "member" or the string "admin" representing the required role
+//	- ROLE is either the string "member", "admin", "client", "peer", or the string "orderer" representing the required role
 func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 	// first we translate the and/or business into outof gates
 	intermediate, err := govaluate.NewEvaluableExpressionWithFunctions(policy, map[string]govaluate.ExpressionFunction{"AND": and, "and": and, "OR": or, "or": or, "OUTOF": outof, "outof": outof, "OutOf": outof})
