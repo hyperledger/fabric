@@ -108,10 +108,14 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name, chainID))
 		}
 
-		_, err := ccprov.GetContext(lgr, txid)
+		//init can do GetState (and other Get's) even if Puts cannot be
+		//be handled. Need ledger for this
+		ctxt2, err := ccprov.GetContext(lgr, txid)
 		if err != nil {
 			return err
 		}
+
+		ctxt = ctxt2
 
 		defer ccprov.ReleaseContext()
 	}

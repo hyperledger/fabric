@@ -11,6 +11,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,10 +25,21 @@ func (m *mockACLProvider) CheckACL(resName string, channelID string, idinfo inte
 	return m.retErr
 }
 
+func (e *mockACLProvider) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator) error {
+	return nil
+}
+
 //treat each test as an independent isolated one
 func reinit() {
 	aclProvider = nil
 	once = sync.Once{}
+}
+
+func TestACLProcessor(t *testing.T) {
+	reinit()
+	assert.NotNil(t, GetConfigTxProcessor().GenerateSimulationResults(nil, nil), "Expected non-nil error")
+	RegisterACLProvider(nil)
+	assert.Nil(t, GetConfigTxProcessor().GenerateSimulationResults(nil, nil), "Expected nil error")
 }
 
 func TestPanicOnUnregistered(t *testing.T) {

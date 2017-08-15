@@ -11,9 +11,15 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/config/resources"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -87,7 +93,7 @@ func (e PolicyProviderNotFound) Error() string {
 //   . If a resource in RSCC Provider it'll use the policy defined there. Otherwise it'll defer
 //     to default provider
 func (rscc *Rscc) CheckACL(resName string, channelID string, idinfo interface{}) error {
-	rsccLogger.Debugf("acl check(%s, %s)", resName, channelID)
+	rsccLogger.Debugf("rscc acl check(%s, %s)", resName, channelID)
 	rscc.RLock()
 	defer rscc.RUnlock()
 	pp := rscc.policyCache[channelID]
@@ -111,6 +117,65 @@ func (rscc *Rscc) CheckACL(resName string, channelID string, idinfo interface{})
 	return PolicyProviderNotFound(channelID)
 }
 
+//GenerateSimulationResults called to add config state. Currently only handles "join" requests.
+//Note that this is just a ledger hook and does not modify RSCC data structures
+func (rscc *Rscc) GenerateSimulationResults(txEnv *common.Envelope, sim ledger.TxSimulator) error {
+	//should never happen, but check anyway
+	if txEnv == nil || sim == nil {
+		return fmt.Errorf("nil parameters")
+	}
+
+	payl := &common.Payload{}
+	if err := proto.Unmarshal(txEnv.Payload, payl); err != nil {
+		rsccLogger.Errorf("error on Payload unmarshal  %s", err)
+		return err
+	}
+
+	cenv := &common.ConfigEnvelope{}
+	if err := proto.Unmarshal(payl.Data, cenv); err != nil {
+		rsccLogger.Errorf("error on ConfigEnvelope unmarshal  %s", err)
+		return err
+	}
+
+	if cenv.LastUpdate == nil {
+		rsccLogger.Errorf("nil LastUpdate")
+		return fmt.Errorf("nil LastUpdate")
+	}
+
+	if err := proto.Unmarshal(cenv.LastUpdate.Payload, payl); err != nil {
+		rsccLogger.Errorf("error on LastUpdate  unmarshal  %s", err)
+		return err
+	}
+
+	coe := &common.ConfigUpdateEnvelope{}
+	if err := proto.Unmarshal(payl.Data, coe); err != nil {
+		rsccLogger.Errorf("error on ConfigUpdateEnvelope unmarshal  %s", err)
+		return err
+	}
+
+	cup := &common.ConfigUpdate{}
+	if err := proto.Unmarshal(coe.ConfigUpdate, cup); err != nil {
+		rsccLogger.Errorf("error on ConfigUpdate unmarshal  %s", err)
+		return err
+	}
+
+	rsccLogger.Debugf("RSCC processing config tx for channel %s", cup.ChannelId)
+
+	//preparation for extracting RWSet from transaction
+	if err := sim.SetState("rscc", CHANNEL, []byte(cup.ChannelId)); err != nil {
+		rsccLogger.Errorf("error on setting channel state %s", err)
+		return err
+	}
+
+	iso := cup.IsolatedData
+	if err := sim.SetState("rscc", POLICY, iso[pb.RSCCSeedDataKey]); err != nil {
+		rsccLogger.Errorf("error on setting policy state %s", err)
+		return err
+	}
+
+	return nil
+}
+
 //---------- misc functions ---------
 func (rscc *Rscc) putPolicyProvider(channel string, pp *policyProvider) {
 	rscc.Lock()
@@ -121,6 +186,80 @@ func (rscc *Rscc) putPolicyProvider(channel string, pp *policyProvider) {
 func (rscc *Rscc) setPolicyProvider(channel string, defProv aclmgmt.ACLProvider, rsccProv rsccPolicyProvider) {
 	pp := &policyProvider{defProv, rsccProv}
 	rscc.putPolicyProvider(channel, pp)
+}
+
+func (rscc *Rscc) getEnvelopeFromConfig(channel string, cfgb []byte) (*common.Envelope, error) {
+	cfg := &common.Config{}
+	err := proto.Unmarshal(cfgb, cfg)
+	if err != nil {
+		return nil, err
+	}
+	cenv := &common.ConfigEnvelope{Config: cfg}
+
+	data, err := proto.Marshal(cenv)
+	if err != nil {
+		return nil, err
+	}
+
+	chdr, _ := proto.Marshal(&common.ChannelHeader{
+		ChannelId: channel,
+		Type:      int32(common.HeaderType_CONFIG),
+	})
+	payl, _ := proto.Marshal(&common.Payload{
+		Header: &common.Header{
+			ChannelHeader: chdr,
+		},
+		Data: data,
+	})
+
+	return &common.Envelope{Payload: payl}, nil
+}
+
+//create the evaluator to provide evaluation services for resources
+func (rscc *Rscc) createPolicyEvaluator(env *common.Envelope, mspMgr msp.MSPManager, polMgr policies.Manager) (policyEvaluator, error) {
+	bundle, err := resources.New(env, mspMgr, polMgr)
+	if err != nil {
+		return nil, err
+	}
+	return &policyEvaluatorImpl{bundle}, nil
+}
+
+//NOTE - this is the core method that should be called to set the entire
+//configuration of the RSCC. For now this is at Join time only but will
+//have to export with proper interfacing for update processing via Invoke flow
+func (rscc *Rscc) updateConfig(channel string, cfgb []byte, defProv aclmgmt.ACLProvider) error {
+	var rsccProv rsccPolicyProvider
+
+	//guranteed to set policy provider at least with the default provider
+	defer func() {
+		rscc.setPolicyProvider(channel, defProv, rsccProv)
+	}()
+
+	env, err := rscc.getEnvelopeFromConfig(channel, cfgb)
+	if err != nil {
+		return err
+	}
+
+	mspMgr := mgmt.GetManagerForChain(channel)
+	if mspMgr == nil {
+		return fmt.Errorf("msp manager not found for %s", channel)
+	}
+
+	polMgr := peer.GetPolicyManager(channel)
+	if polMgr == nil {
+		return fmt.Errorf("policies manager not found for %s", channel)
+	}
+
+	//associate the evaluator with the managers
+	pEvaluator, err := rscc.createPolicyEvaluator(env, mspMgr, polMgr)
+	if err != nil {
+		return fmt.Errorf("cannot create provider for channel %s(%s)", channel, err)
+	}
+
+	//this will get set by the deferred func
+	rsccProv = &rsccPolicyProviderImpl{channel, pEvaluator}
+
+	return nil
 }
 
 //-------- CC interface ------------
@@ -149,22 +288,11 @@ func (rscc *Rscc) Init(stub shim.ChaincodeStubInterface) pb.Response {
 		return shim.Success([]byte(NOPOLICY))
 	}
 
-	//TODO this is a place holder.. will change based on what is stored in
-	//ledger
-	cg := &common.ConfigGroup{}
-	err = proto.Unmarshal(b, cg)
-	if err != nil {
-		rscc.setPolicyProvider(channel, defProv, nil)
-		rsccLogger.Errorf("cannot unmarshal policy for channel %s", channel)
+	//update the config
+	if err = rscc.updateConfig(channel, b, defProv); err != nil {
+		rsccLogger.Errorf("error on update config %s\n", err)
 		return shim.Success([]byte(BADPOLICY))
 	}
-
-	rsccpp, err := newRsccPolicyProvider(cg)
-	if err != nil {
-		rsccLogger.Errorf("cannot create policy provider for channel %s", channel)
-	}
-
-	rscc.setPolicyProvider(channel, defProv, rsccpp)
 
 	return shim.Success(nil)
 }
