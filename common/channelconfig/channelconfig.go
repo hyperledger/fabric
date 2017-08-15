@@ -8,6 +8,8 @@ package channelconfig
 
 import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	oldchannelconfig "github.com/hyperledger/fabric/common/config/channel"
+	oldmspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -30,6 +32,7 @@ const RootGroupKey = "Channel"
 type Bundle struct {
 	policyManager policies.Manager
 	mspManager    msp.MSPManager
+	rootConfig    *oldchannelconfig.Root
 }
 
 // PolicyManager returns the policy manager constructed for this config
@@ -42,14 +45,36 @@ func (b *Bundle) MSPManager() msp.MSPManager {
 	return b.mspManager
 }
 
+// ChannelConfig returns the config.Channel for the chain
+func (b *Bundle) ChannelConfig() oldchannelconfig.Channel {
+	return b.rootConfig.Channel()
+}
+
+// OrdererConfig returns the config.Orderer for the channel
+// and whether the Orderer config exists
+func (b *Bundle) OrdererConfig() (oldchannelconfig.Orderer, bool) {
+	result := b.rootConfig.Orderer()
+	return result, result != nil
+}
+
+// ConsortiumsConfig() returns the config.Consortiums for the channel
+// and whether the consortiums config exists
+func (b *Bundle) ConsortiumsConfig() (oldchannelconfig.Consortiums, bool) {
+	result := b.rootConfig.Consortiums()
+	return result, result != nil
+}
+
+// ApplicationConfig returns the configtxapplication.SharedConfig for the channel
+// and whether the Application config exists
+func (b *Bundle) ApplicationConfig() (oldchannelconfig.Application, bool) {
+	result := b.rootConfig.Application()
+	return result, result != nil
+}
+
 // NewBundle creates a new immutable bundle of configuration
 func NewBundle(config *cb.Config) (*Bundle, error) {
-	mspManager := msp.NewMSPManager()
-	// XXX Truly initialize the MSP manager
-	err := mspManager.Setup([]msp.MSP{})
-	if err != nil {
-		logger.Panicf("Error creating MSP manager")
-	}
+	mspConfigHandler := oldmspconfig.NewMSPConfigHandler()
+	rootConfig := oldchannelconfig.NewRoot(mspConfigHandler)
 
 	policyProviderMap := make(map[int32]policies.Provider)
 	for pType := range cb.Policy_PolicyType_name {
@@ -58,10 +83,15 @@ func NewBundle(config *cb.Config) (*Bundle, error) {
 		case cb.Policy_UNKNOWN:
 			// Do not register a handler
 		case cb.Policy_SIGNATURE:
-			policyProviderMap[pType] = cauthdsl.NewPolicyProvider(mspManager)
+			policyProviderMap[pType] = cauthdsl.NewPolicyProvider(mspConfigHandler)
 		case cb.Policy_MSP:
 			// Add hook for MSP Handler here
 		}
+	}
+
+	err := InitializeConfigValues(rootConfig, config.ChannelGroup)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing config values failed")
 	}
 
 	policyManager := policies.NewManagerImpl(RootGroupKey, policyProviderMap)
@@ -71,7 +101,8 @@ func NewBundle(config *cb.Config) (*Bundle, error) {
 	}
 
 	return &Bundle{
-		mspManager:    mspManager,
+		mspManager:    mspConfigHandler,
 		policyManager: policyManager,
+		rootConfig:    rootConfig,
 	}, nil
 }
