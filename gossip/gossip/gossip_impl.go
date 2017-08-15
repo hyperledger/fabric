@@ -66,37 +66,24 @@ type gossipServiceImpl struct {
 	disSecAdap        *discoverySecurityAdapter
 	mcs               api.MessageCryptoService
 	stateInfoMsgStore msgstore.MessageStore
+	certPuller        pull.Mediator
 }
 
 // NewGossipService creates a gossip instance attached to a gRPC server
 func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvisor,
-	mcs api.MessageCryptoService, idMapper identity.Mapper, selfIdentity api.PeerIdentityType,
+	mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType,
 	secureDialOpts api.PeerSecureDialOpts) Gossip {
-
-	var c comm.Comm
 	var err error
 
 	lgr := util.GetLogger(util.LoggingGossipModule, conf.ID)
-	if s == nil {
-		c, err = createCommWithServer(conf.BindPort, idMapper, selfIdentity, secureDialOpts)
-	} else {
-		c, err = createCommWithoutServer(s, conf.TLSServerCert, idMapper, selfIdentity, secureDialOpts)
-	}
-
-	if err != nil {
-		lgr.Errorf("Failed instntiating communication layer: %+v", errors.WithStack(err))
-		return nil
-	}
 
 	g := &gossipServiceImpl{
 		selfOrg:               secAdvisor.OrgByPeerIdentity(selfIdentity),
 		secAdvisor:            secAdvisor,
 		selfIdentity:          selfIdentity,
 		presumedDead:          make(chan common.PKIidType, presumedDeadChanSize),
-		idMapper:              idMapper,
 		disc:                  nil,
 		mcs:                   mcs,
-		comm:                  c,
 		conf:                  conf,
 		ChannelDeMultiplexer:  comm.NewChannelDemultiplexer(),
 		logger:                lgr,
@@ -106,6 +93,21 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 		includeIdentityPeriod: time.Now().Add(conf.PublishCertPeriod),
 	}
 	g.stateInfoMsgStore = g.newStateInfoMsgStore()
+
+	g.idMapper = identity.NewIdentityMapper(mcs, selfIdentity, func(pkiID common.PKIidType, identity api.PeerIdentityType) {
+		g.certPuller.Remove(string(pkiID))
+	})
+
+	if s == nil {
+		g.comm, err = createCommWithServer(conf.BindPort, g.idMapper, selfIdentity, secureDialOpts)
+	} else {
+		g.comm, err = createCommWithoutServer(s, conf.TLSServerCert, g.idMapper, selfIdentity, secureDialOpts)
+	}
+
+	if err != nil {
+		lgr.Error("Failed instntiating communication layer:", err)
+		return nil
+	}
 
 	g.chanState = newChannelState(g)
 	g.emitter = newBatchingEmitter(conf.PropagateIterations,
@@ -117,7 +119,8 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 	g.disc = discovery.NewDiscoveryService(g.selfNetworkMember(), g.discAdapter, g.disSecAdap, g.disclosurePolicy)
 	g.logger.Info("Creating gossip service with self membership of", g.selfNetworkMember())
 
-	g.certStore = newCertStore(g.createCertStorePuller(), idMapper, selfIdentity, mcs)
+	g.certPuller = g.createCertStorePuller()
+	g.certStore = newCertStore(g.certPuller, g.idMapper, selfIdentity, mcs)
 
 	if g.conf.ExternalEndpoint == "" {
 		g.logger.Warning("External endpoint is empty, peer will not be accessible outside of its organization")
@@ -168,8 +171,8 @@ func createCommWithoutServer(s *grpc.Server, cert *tls.Certificate, idStore iden
 
 // NewGossipServiceWithServer creates a new gossip instance with a gRPC server
 func NewGossipServiceWithServer(conf *Config, secAdvisor api.SecurityAdvisor, mcs api.MessageCryptoService,
-	mapper identity.Mapper, identity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts) Gossip {
-	return NewGossipService(conf, nil, secAdvisor, mcs, mapper, identity, secureDialOpts)
+	identity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts) Gossip {
+	return NewGossipService(conf, nil, secAdvisor, mcs, identity, secureDialOpts)
 }
 
 func createCommWithServer(port int, idStore identity.Mapper, identity api.PeerIdentityType,

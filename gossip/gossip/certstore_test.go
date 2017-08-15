@@ -430,7 +430,7 @@ func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons pro
 	selfIdentity := api.PeerIdentityType("SELF")
 	certStore = newCertStore(&pullerMock{
 		Mediator: pullMediator,
-	}, identity.NewIdentityMapper(cs, selfIdentity), selfIdentity, cs)
+	}, identity.NewIdentityMapper(cs, selfIdentity, func(_ common.PKIidType, _ api.PeerIdentityType) {}), selfIdentity, cs)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)

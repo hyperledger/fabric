@@ -44,6 +44,10 @@ func acceptAll(msg interface{}) bool {
 	return true
 }
 
+var noopPurgeIdentity = func(_ common.PKIidType, _ api.PeerIdentityType) {
+
+}
+
 var (
 	naiveSec = &naiveSecProvider{}
 	hmacKey  = []byte{0, 0, 0}
@@ -97,7 +101,7 @@ func (*naiveSecProvider) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityTyp
 func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 	endpoint := fmt.Sprintf("localhost:%d", port)
 	id := []byte(endpoint)
-	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec, id), id, nil)
+	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec, id, noopPurgeIdentity), id, nil)
 	return inst, err
 }
 
@@ -215,7 +219,7 @@ func TestHandshake(t *testing.T) {
 	go s.Serve(ll)
 
 	id := []byte("localhost:9611")
-	idMapper := identity.NewIdentityMapper(naiveSec, id)
+	idMapper := identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity)
 	inst, err := NewCommInstance(s, nil, idMapper, api.PeerIdentityType("localhost:9611"), func() []grpc.DialOption {
 		return []grpc.DialOption{grpc.WithInsecure()}
 	})
@@ -347,7 +351,7 @@ func TestProdConstructor(t *testing.T) {
 	defer srv.Stop()
 	defer lsnr.Close()
 	id := []byte("localhost:20000")
-	comm1, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id), id, dialOpts)
+	comm1, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity), id, dialOpts)
 	comm1.(*commImpl).selfCertHash = certHash
 	go srv.Serve(lsnr)
 
@@ -356,7 +360,7 @@ func TestProdConstructor(t *testing.T) {
 	defer srv.Stop()
 	defer lsnr.Close()
 	id = []byte("localhost:30000")
-	comm2, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id), id, dialOpts)
+	comm2, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity), id, dialOpts)
 	comm2.(*commImpl).selfCertHash = certHash
 	go srv.Serve(lsnr)
 	defer comm1.Stop()

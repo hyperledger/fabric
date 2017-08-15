@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -110,8 +109,7 @@ func newGossipInstanceWithExternalEndpoint(portPrefix int, id int, mcs *configur
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 	}
 	selfId := api.PeerIdentityType(conf.InternalEndpoint)
-	idMapper := identity.NewIdentityMapper(mcs, selfId)
-	g := NewGossipServiceWithServer(conf, mcs, mcs, idMapper, selfId,
+	g := NewGossipServiceWithServer(conf, mcs, mcs, selfId,
 		nil)
 
 	return g

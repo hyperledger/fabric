@@ -29,6 +29,8 @@ type naiveCryptoService struct {
 	revokedIdentities map[string]struct{}
 }
 
+var noopPurgeTrigger = func(_ common.PKIidType, _ api.PeerIdentityType) {}
+
 func init() {
 	util.SetupTestLogging()
 }
@@ -75,7 +77,7 @@ func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, 
 }
 
 func TestPut(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -88,7 +90,7 @@ func TestPut(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -103,7 +105,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -116,7 +118,7 @@ func TestVerify(t *testing.T) {
 }
 
 func TestListInvalidIdentities(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger)
 	identity := []byte("yacovm")
 	// Test for a revoked identity
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))

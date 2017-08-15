@@ -24,7 +24,6 @@ import (
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
-	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -622,18 +621,17 @@ func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gos
 	}
 	selfId := api.PeerIdentityType(conf.InternalEndpoint)
 	cryptoService := &naiveCryptoService{}
-	idMapper := identity.NewIdentityMapper(cryptoService, selfId)
 
 	gossip := gossip.NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService,
-		idMapper, selfId, nil)
+		selfId, nil)
 
 	gossipService := &gossipServiceImpl{
+		mcs:             cryptoService,
 		gossipSvc:       gossip,
 		chains:          make(map[string]state.GossipStateProvider),
 		leaderElection:  make(map[string]election.LeaderElectionService),
 		coordinators:    make(map[string]privdata.Coordinator),
 		deliveryFactory: &deliveryFactoryImpl{},
-		idMapper:        idMapper,
 		peerIdentity:    api.PeerIdentityType(conf.InternalEndpoint),
 	}
 

@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/gossip"
-	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -68,7 +67,7 @@ func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string
 
 // NewGossipComponent creates a gossip component that attaches itself to the given gRPC server
 func NewGossipComponent(peerIdentity []byte, endpoint string, s *grpc.Server,
-	secAdv api.SecurityAdvisor, cryptSvc api.MessageCryptoService, idMapper identity.Mapper,
+	secAdv api.SecurityAdvisor, cryptSvc api.MessageCryptoService,
 	secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) (gossip.Gossip, error) {
 
 	externalEndpoint := viper.GetString("peer.gossip.externalEndpoint")
@@ -77,7 +76,7 @@ func NewGossipComponent(peerIdentity []byte, endpoint string, s *grpc.Server,
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	gossipInstance := gossip.NewGossipService(conf, s, secAdv, cryptSvc, idMapper,
+	gossipInstance := gossip.NewGossipService(conf, s, secAdv, cryptSvc,
 		peerIdentity, secureDialOpts)
 
 	return gossipInstance, nil

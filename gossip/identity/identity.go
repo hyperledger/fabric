@@ -50,8 +50,11 @@ type Mapper interface {
 	ListInvalidIdentities(isSuspected api.PeerSuspector) []common.PKIidType
 }
 
+type purgeTrigger func(pkiID common.PKIidType, identity api.PeerIdentityType)
+
 // identityMapperImpl is a struct that implements Mapper
 type identityMapperImpl struct {
+	onPurge    purgeTrigger
 	mcs        api.MessageCryptoService
 	pkiID2Cert map[string]*storedIdentity
 	sync.RWMutex
@@ -59,9 +62,10 @@ type identityMapperImpl struct {
 }
 
 // NewIdentityMapper method, all we need is a reference to a MessageCryptoService
-func NewIdentityMapper(mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType) Mapper {
+func NewIdentityMapper(mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType, onPurge purgeTrigger) Mapper {
 	selfPKIID := mcs.GetPKIidOfCert(selfIdentity)
 	idMapper := &identityMapperImpl{
+		onPurge:    onPurge,
 		mcs:        mcs,
 		pkiID2Cert: make(map[string]*storedIdentity),
 		selfPKIID:  string(selfPKIID),
@@ -140,6 +144,7 @@ func (is *identityMapperImpl) ListInvalidIdentities(isSuspected api.PeerSuspecto
 	is.Lock()
 	defer is.Unlock()
 	for _, pkiID := range revokedIds {
+		is.onPurge(pkiID, is.pkiID2Cert[string(pkiID)].peerIdentity)
 		delete(is.pkiID2Cert, string(pkiID))
 	}
 	return revokedIds
