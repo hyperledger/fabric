@@ -123,8 +123,8 @@ func (b *PayloadsBufferImpl) Pop() *proto.Payload {
 
 // Size returns current number of payloads stored within buffer
 func (b *PayloadsBufferImpl) Size() int {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
 	return len(b.buf)
 }
 
