@@ -8,13 +8,18 @@ package channelconfig
 
 import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/config"
 	oldchannelconfig "github.com/hyperledger/fabric/common/config/channel"
 	oldmspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
+	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -30,9 +35,10 @@ const RootGroupKey = "Channel"
 // same value.  The Bundle structure is immutable and will always be replaced in its
 // entirety, with new backing memory.
 type Bundle struct {
-	policyManager policies.Manager
-	mspManager    msp.MSPManager
-	rootConfig    *oldchannelconfig.Root
+	policyManager   policies.Manager
+	mspManager      msp.MSPManager
+	rootConfig      *oldchannelconfig.Root
+	configtxManager configtxapi.Manager
 }
 
 // PolicyManager returns the policy manager constructed for this config
@@ -71,6 +77,74 @@ func (b *Bundle) ApplicationConfig() (oldchannelconfig.Application, bool) {
 	return result, result != nil
 }
 
+// ConfigtxManager returns the configtx.Manager for the channel
+func (b *Bundle) ConfigtxManager() configtxapi.Manager {
+	return b.configtxManager
+}
+
+type noopDeserializer struct{}
+
+// Deserializer returns nil, nil
+func (nd noopDeserializer) Deserialize(key string, value []byte) (proto.Message, error) {
+	return nil, nil
+}
+
+type noopProposer struct {
+	policyManager policies.Manager
+}
+
+// BeginValueProposals returns a noop deserializer, and noop proposers for subgroups
+func (np noopProposer) BeginValueProposals(tx interface{}, groups []string) (config.ValueDeserializer, []config.ValueProposer, error) {
+	proposers := make([]config.ValueProposer, len(groups))
+	for i := range proposers {
+		proposers[i] = noopProposer{}
+	}
+	return noopDeserializer{}, proposers, nil
+}
+
+// BeginValueProposals returns a noop deserializer, and noop proposers for subgroups
+func (np noopProposer) BeginPolicyProposals(tx interface{}, groups []string) ([]policies.Proposer, error) {
+	proposers := make([]policies.Proposer, len(groups))
+	for i := range proposers {
+		proposers[i] = noopProposer{}
+	}
+	return proposers, nil
+}
+
+// ProposePolicy returns nil, nil
+func (np noopProposer) ProposePolicy(tx interface{}, name string, policy *cb.ConfigPolicy) (proto.Message, error) {
+	return nil, nil
+}
+
+// RollbackProposals is a no-op
+func (np noopProposer) RollbackProposals(tx interface{}) {}
+
+// PreCommit returns nil
+func (np noopProposer) PreCommit(tx interface{}) error { return nil }
+
+// CommitProposals is a no-op
+func (np noopProposer) CommitProposals(tx interface{}) {}
+
+// ValueProposer returns noopProposer
+func (np noopProposer) ValueProposer() config.ValueProposer {
+	return np
+}
+
+// PolicyProposer returns noopProposer
+func (np noopProposer) PolicyProposer() policies.Proposer {
+	return np
+}
+
+// RootGroupKey returns RootGroupKey constant
+func (np noopProposer) RootGroupKey() string {
+	return RootGroupKey
+}
+
+// PolicyManager() returns the policy manager for considering config changes
+func (np noopProposer) PolicyManager() policies.Manager {
+	return np.policyManager
+}
+
 // NewBundle creates a new immutable bundle of configuration
 func NewBundle(config *cb.Config) (*Bundle, error) {
 	mspConfigHandler := oldmspconfig.NewMSPConfigHandler()
@@ -100,9 +174,20 @@ func NewBundle(config *cb.Config) (*Bundle, error) {
 		return nil, errors.Wrap(err, "initializing policymanager failed")
 	}
 
+	env, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, "sanitycheck", nil, &cb.ConfigEnvelope{Config: config}, 0, 0)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating envelope for configtx manager failed")
+	}
+
+	configtxManager, err := configtx.NewManagerImpl(env, noopProposer{}, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing configtx manager failed")
+	}
+
 	return &Bundle{
-		mspManager:    mspConfigHandler,
-		policyManager: policyManager,
-		rootConfig:    rootConfig,
+		mspManager:      mspConfigHandler,
+		policyManager:   policyManager,
+		rootConfig:      rootConfig,
+		configtxManager: configtxManager,
 	}, nil
 }
