@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/config"
 	oldchannelconfig "github.com/hyperledger/fabric/common/config/channel"
 	oldmspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -21,7 +20,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -84,67 +82,18 @@ func (b *Bundle) ConfigtxManager() configtxapi.Manager {
 	return b.configtxManager
 }
 
-type noopDeserializer struct{}
-
-// Deserializer returns nil, nil
-func (nd noopDeserializer) Deserialize(key string, value []byte) (proto.Message, error) {
-	return nil, nil
-}
-
-type noopProposer struct {
+type simpleProposer struct {
 	policyManager policies.Manager
 }
 
-// BeginValueProposals returns a noop deserializer, and noop proposers for subgroups
-func (np noopProposer) BeginValueProposals(tx interface{}, groups []string) (config.ValueDeserializer, []config.ValueProposer, error) {
-	proposers := make([]config.ValueProposer, len(groups))
-	for i := range proposers {
-		proposers[i] = noopProposer{}
-	}
-	return noopDeserializer{}, proposers, nil
-}
-
-// BeginValueProposals returns a noop deserializer, and noop proposers for subgroups
-func (np noopProposer) BeginPolicyProposals(tx interface{}, groups []string) ([]policies.Proposer, error) {
-	proposers := make([]policies.Proposer, len(groups))
-	for i := range proposers {
-		proposers[i] = noopProposer{}
-	}
-	return proposers, nil
-}
-
-// ProposePolicy returns nil, nil
-func (np noopProposer) ProposePolicy(tx interface{}, name string, policy *cb.ConfigPolicy) (proto.Message, error) {
-	return nil, nil
-}
-
-// RollbackProposals is a no-op
-func (np noopProposer) RollbackProposals(tx interface{}) {}
-
-// PreCommit returns nil
-func (np noopProposer) PreCommit(tx interface{}) error { return nil }
-
-// CommitProposals is a no-op
-func (np noopProposer) CommitProposals(tx interface{}) {}
-
-// ValueProposer returns noopProposer
-func (np noopProposer) ValueProposer() config.ValueProposer {
-	return np
-}
-
-// PolicyProposer returns noopProposer
-func (np noopProposer) PolicyProposer() policies.Proposer {
-	return np
-}
-
 // RootGroupKey returns RootGroupKey constant
-func (np noopProposer) RootGroupKey() string {
+func (sp simpleProposer) RootGroupKey() string {
 	return RootGroupKey
 }
 
 // PolicyManager() returns the policy manager for considering config changes
-func (np noopProposer) PolicyManager() policies.Manager {
-	return np.policyManager
+func (sp simpleProposer) PolicyManager() policies.Manager {
+	return sp.policyManager
 }
 
 // NewBundleFromEnvelope wraps the NewBundle function, extracting the needed
@@ -216,9 +165,9 @@ func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
 		return nil, errors.Wrap(err, "creating envelope for configtx manager failed")
 	}
 
-	configtxManager, err := configtx.NewManagerImpl(env, noopProposer{
+	configtxManager, err := configtx.NewManagerImpl(env, simpleProposer{
 		policyManager: policyManager,
-	}, nil)
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing configtx manager failed")
 	}

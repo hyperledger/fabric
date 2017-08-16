@@ -105,12 +105,12 @@ func (scf *SystemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) (*cb.
 		return nil, fmt.Errorf("error proposing channel update to new channel config: %s", err)
 	}
 
-	err = configManager.Apply(newChannelConfigEnv)
+	err = configManager.Validate(newChannelConfigEnv)
 	if err != nil {
 		return nil, fmt.Errorf("error applying channel update to new channel config: %s", err)
 	}
 
-	return configManager.ConfigEnvelope(), nil
+	return newChannelConfigEnv, nil
 }
 
 func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {

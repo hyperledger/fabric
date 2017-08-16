@@ -62,8 +62,8 @@ func TestBundleGreenPath(t *testing.T) {
 	assert.NoError(t, err)
 
 	b, err := New(env, nil, nil)
-	assert.NotNil(t, b)
 	assert.NoError(t, err)
+	assert.NotNil(t, b)
 	assert.Equal(t, "/Resources/foo", b.ResourcePolicyMapper().PolicyRefForResource("Foo"))
 	assert.Equal(t, "/Channel/foo", b.ResourcePolicyMapper().PolicyRefForResource("Bar"))
 

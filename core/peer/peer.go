@@ -330,20 +330,6 @@ func MockCreateChain(cid string) error {
 		}
 	}
 
-	// Here we need to mock also the policy manager
-	// in order for the ACL to be checked
-	initializer := mockconfigtx.Initializer{
-		PolicyProposerVal: &mockconfigtx.PolicyProposer{
-			Transactional: mockconfigtx.Transactional{},
-		},
-		ValueProposerVal: &mockconfigtx.ValueProposer{
-			Transactional: mockconfigtx.Transactional{},
-		},
-	}
-	manager := &mockconfigtx.Manager{
-		Initializer: initializer,
-	}
-
 	chains.Lock()
 	defer chains.Unlock()
 
@@ -353,7 +339,9 @@ func MockCreateChain(cid string) error {
 				PolicyManagerVal: &mockpolicies.Manager{
 					Policy: &mockpolicies.Policy{},
 				},
-				ConfigtxManagerVal: manager,
+				ConfigtxManagerVal: &mockconfigtx.Manager{
+					Initializer: mockconfigtx.Initializer{},
+				},
 			},
 			ledger: ledger},
 	}

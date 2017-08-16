@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
@@ -83,11 +84,33 @@ func New(envConfig *cb.Envelope, mspManager msp.MSPManager, channelPolicyManager
 	}
 
 	var err error
-	b.cm, err = configtx.NewManagerImpl(envConfig, b, nil)
+	b.cm, err = configtx.NewManagerImpl(envConfig, b)
 	if err != nil {
 		return nil, err
 	}
-	return b, err
+	configEnvelope := b.cm.ConfigEnvelope()
+	if configEnvelope.Config == nil || configEnvelope.Config.ChannelGroup == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
+	err = newchannelconfig.InitializePolicyManager(b.ppr, &cb.ConfigGroup{
+		Groups: map[string]*cb.ConfigGroup{
+			RootGroupKey: configEnvelope.Config.ChannelGroup,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = newchannelconfig.InitializeConfigValues(b.vpr, &cb.ConfigGroup{
+		Groups: map[string]*cb.ConfigGroup{
+			RootGroupKey: configEnvelope.Config.ChannelGroup,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
 
 func (b *Bundle) RootGroupKey() string {
@@ -95,8 +118,6 @@ func (b *Bundle) RootGroupKey() string {
 }
 
 func (b *Bundle) PolicyProposer() policies.Proposer {
-	logger.Debug("Boo", b)
-	logger.Debug("boo", b.ppr)
 	return b.ppr
 }
 

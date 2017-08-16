@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/config"
 	. "github.com/hyperledger/fabric/common/config/channel"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
@@ -90,6 +91,6 @@ func TestWithRealConfigtx(t *testing.T) {
 	conf := localconfig.Load(localconfig.SampleSingleMSPSoloProfile)
 	gb := provisional.New(conf).GenesisBlockForChannel("foo")
 	env := utils.ExtractEnvelopeOrPanic(gb, 0)
-	_, err := New(env, nil)
+	_, err := newchannelconfig.NewBundleFromEnvelope(env)
 	assert.NoError(t, err)
 }

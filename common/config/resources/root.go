@@ -39,7 +39,7 @@ func newValueProposerRoot() *valueProposerRoot {
 type failDeserializer string
 
 func (fd failDeserializer) Deserialize(key string, value []byte) (proto.Message, error) {
-	return nil, fmt.Errorf(string(fd))
+	return nil, fmt.Errorf("%s: for key %s", string(fd), key)
 }
 
 // BeginValueProposals is used to start a new config proposal

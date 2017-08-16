@@ -123,7 +123,7 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 			logger.Panicf("Told to write a config block with new channel, but did not have config envelope encoded: %s", err)
 		}
 
-		err = bw.support.Apply(configEnvelope)
+		err = bw.support.Validate(configEnvelope)
 		if err != nil {
 			logger.Panicf("Told to write a config block with new config, but could not apply it: %s", err)
 		}
