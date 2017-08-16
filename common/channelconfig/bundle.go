@@ -154,8 +154,7 @@ func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
 		return nil, errors.Wrap(err, "initializing config values failed")
 	}
 
-	policyManager := policies.NewManagerImpl(RootGroupKey, policyProviderMap)
-	err = InitializePolicyManager(policyManager, config.ChannelGroup)
+	policyManager, err := policies.NewManagerImpl(RootGroupKey, policyProviderMap, config.ChannelGroup)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing policymanager failed")
 	}

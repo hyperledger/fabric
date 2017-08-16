@@ -69,7 +69,6 @@ func TestBundleGreenPath(t *testing.T) {
 
 	t.Run("Code coverage nits", func(t *testing.T) {
 		assert.Equal(t, b.RootGroupKey(), RootGroupKey)
-		assert.NotNil(t, b.PolicyProposer())
 		assert.NotNil(t, b.ValueProposer())
 		assert.NotNil(t, b.ConfigtxManager())
 		assert.NotNil(t, b.PolicyManager())
