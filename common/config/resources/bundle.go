@@ -10,10 +10,9 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -22,8 +21,17 @@ import (
 
 const RootGroupKey = "Resources"
 
+var logger = flogging.MustGetLogger("common/config/resource")
+
+// PolicyMapper is an interface for
+type PolicyMapper interface {
+	// PolicyRefForResource takes the name of a resource, and returns the policy name for a resource
+	// or the empty string is the resource is not found
+	PolicyRefForResource(resourceName string) string
+}
+
 type Bundle struct {
-	vpr *valueProposerRoot
+	rg  *resourceGroup
 	cm  configtxapi.Manager
 	pm  policies.Manager
 	rpm policies.Manager
@@ -31,6 +39,7 @@ type Bundle struct {
 
 // New creates a new resources config bundle
 // TODO, change interface to take config and not an envelope
+// TODO, add an atomic BundleSource
 func New(envConfig *cb.Envelope, mspManager msp.MSPManager, channelPolicyManager policies.Manager) (*Bundle, error) {
 	policyProviderMap := make(map[int32]policies.Provider)
 	for pType := range cb.Policy_PolicyType_name {
@@ -64,9 +73,14 @@ func New(envConfig *cb.Envelope, mspManager msp.MSPManager, channelPolicyManager
 		return nil, err
 	}
 
+	resourceGroup, err := newResourceGroup(configEnvelope.Config.ChannelGroup)
+	if err != nil {
+		return nil, err
+	}
+
 	b := &Bundle{
-		vpr: newValueProposerRoot(),
 		rpm: resourcesPolicyManager,
+		rg:  resourceGroup,
 		pm: &policyRouter{
 			channelPolicyManager:   channelPolicyManager,
 			resourcesPolicyManager: resourcesPolicyManager,
@@ -78,24 +92,11 @@ func New(envConfig *cb.Envelope, mspManager msp.MSPManager, channelPolicyManager
 		return nil, err
 	}
 
-	err = newchannelconfig.InitializeConfigValues(b.vpr, &cb.ConfigGroup{
-		Groups: map[string]*cb.ConfigGroup{
-			RootGroupKey: configEnvelope.Config.ChannelGroup,
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	return b, nil
 }
 
 func (b *Bundle) RootGroupKey() string {
 	return RootGroupKey
-}
-
-func (b *Bundle) ValueProposer() config.ValueProposer {
-	return b.vpr
 }
 
 func (b *Bundle) ConfigtxManager() configtxapi.Manager {
@@ -107,5 +108,5 @@ func (b *Bundle) PolicyManager() policies.Manager {
 }
 
 func (b *Bundle) ResourcePolicyMapper() PolicyMapper {
-	return b.vpr
+	return b.rg
 }
