@@ -19,10 +19,9 @@ package sanitycheck
 import (
 	"fmt"
 
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -39,14 +38,9 @@ type ElementMessage struct {
 }
 
 func Check(config *cb.Config) (*Messages, error) {
-	envConfig, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, "sanitycheck", nil, &cb.ConfigEnvelope{Config: config}, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
 	result := &Messages{}
 
-	cm, err := channelconfig.New(envConfig, nil)
+	bundle, err := newchannelconfig.NewBundle("sanitycheck", config)
 	if err != nil {
 		result.GeneralErrors = []string{err.Error()}
 		return result, nil
@@ -57,13 +51,13 @@ func Check(config *cb.Config) (*Messages, error) {
 	// we collect this manually.
 	mspMap := make(map[string]struct{})
 
-	if ac, ok := cm.ApplicationConfig(); ok {
+	if ac, ok := bundle.ApplicationConfig(); ok {
 		for _, org := range ac.Organizations() {
 			mspMap[org.MSPID()] = struct{}{}
 		}
 	}
 
-	if oc, ok := cm.OrdererConfig(); ok {
+	if oc, ok := bundle.OrdererConfig(); ok {
 		for _, org := range oc.Organizations() {
 			mspMap[org.MSPID()] = struct{}{}
 		}

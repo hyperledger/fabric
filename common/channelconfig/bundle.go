@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/config"
 	oldchannelconfig "github.com/hyperledger/fabric/common/config/channel"
@@ -147,6 +149,14 @@ func (np noopProposer) PolicyManager() policies.Manager {
 
 // NewBundle creates a new immutable bundle of configuration
 func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
+	if config == nil {
+		return nil, fmt.Errorf("config cannot be nil")
+	}
+
+	if config.ChannelGroup == nil {
+		return nil, fmt.Errorf("config must contain a channel group")
+	}
+
 	mspConfigHandler := oldmspconfig.NewMSPConfigHandler()
 	rootConfig := oldchannelconfig.NewRoot(mspConfigHandler)
 
