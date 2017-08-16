@@ -90,6 +90,9 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 		if err != nil {
 			return fmt.Errorf("Error writing file to package: %s", err)
 		}
+
+		vmLogger.Debugf("Writing file %s to tar", newPath)
+
 		return nil
 	}
 
