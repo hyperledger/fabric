@@ -32,7 +32,9 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 )
 
 var genesisBlock = cb.NewBlock(0, nil)
@@ -45,8 +47,16 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-type mockD struct {
+type mockStream struct {
 	grpc.ServerStream
+}
+
+func (mockStream) Context() context.Context {
+	return peer.NewContext(context.Background(), &peer.Peer{})
+}
+
+type mockD struct {
+	mockStream
 	recvChan chan *cb.Envelope
 	sendChan chan *ab.DeliverResponse
 }
@@ -72,7 +82,7 @@ func (m *mockD) Recv() (*cb.Envelope, error) {
 }
 
 type erroneousRecvMockD struct {
-	grpc.ServerStream
+	mockStream
 }
 
 func (m *erroneousRecvMockD) Send(br *ab.DeliverResponse) error {
@@ -86,7 +96,7 @@ func (m *erroneousRecvMockD) Recv() (*cb.Envelope, error) {
 }
 
 type erroneousSendMockD struct {
-	grpc.ServerStream
+	mockStream
 	recvVal *cb.Envelope
 }
 

@@ -20,7 +20,9 @@ import (
 
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 )
 
 func init() {
@@ -45,6 +47,10 @@ type mockSrv struct {
 	grpc.ServerStream
 	msg *cb.Envelope
 	err error
+}
+
+func (mockSrv) Context() context.Context {
+	return peer.NewContext(context.Background(), &peer.Peer{})
 }
 
 type mockBroadcastSrv mockSrv

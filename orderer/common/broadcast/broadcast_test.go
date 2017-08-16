@@ -15,19 +15,28 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 )
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-type mockB struct {
+type mockStream struct {
 	grpc.ServerStream
+}
+
+func (mockStream) Context() context.Context {
+	return peer.NewContext(context.Background(), &peer.Peer{})
+}
+
+type mockB struct {
+	mockStream
 	recvChan chan *cb.Envelope
 	sendChan chan *ab.BroadcastResponse
 }
@@ -56,6 +65,10 @@ type erroneousRecvMockB struct {
 	grpc.ServerStream
 }
 
+func (m *erroneousRecvMockB) Context() context.Context {
+	return peer.NewContext(context.Background(), &peer.Peer{})
+}
+
 func (m *erroneousRecvMockB) Send(br *ab.BroadcastResponse) error {
 	return nil
 }
@@ -67,7 +80,7 @@ func (m *erroneousRecvMockB) Recv() (*cb.Envelope, error) {
 }
 
 type erroneousSendMockB struct {
-	grpc.ServerStream
+	mockStream
 	recvVal *cb.Envelope
 }
 

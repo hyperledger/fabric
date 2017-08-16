@@ -13,7 +13,9 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 )
 
 var logger = logging.MustGetLogger("orderer/performance")
@@ -119,6 +121,10 @@ type BroadcastClient struct {
 	errChan      chan error
 }
 
+func (BroadcastClient) Context() context.Context {
+	return peer.NewContext(context.Background(), &peer.Peer{})
+}
+
 // SendRequest sends an envelope to `broadcast` API synchronously
 func (bc *BroadcastClient) SendRequest(request *cb.Envelope) {
 	// TODO make this async
@@ -175,6 +181,10 @@ type DeliverClient struct {
 	requestChan  chan *cb.Envelope
 	ResponseChan chan *ab.DeliverResponse
 	ResultChan   chan error
+}
+
+func (DeliverClient) Context() context.Context {
+	return peer.NewContext(context.Background(), &peer.Peer{})
 }
 
 // SendRequest sends an envelope to `deliver` API synchronously
