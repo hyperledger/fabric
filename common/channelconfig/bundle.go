@@ -147,6 +147,31 @@ func (np noopProposer) PolicyManager() policies.Manager {
 	return np.policyManager
 }
 
+// NewBundleFromEnvelope wraps the NewBundle function, extracting the needed
+// information from a full configtx
+func NewBundleFromEnvelope(env *cb.Envelope) (*Bundle, error) {
+	payload, err := utils.UnmarshalPayload(env.Payload)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal payload from envelope")
+	}
+
+	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal config envelope from payload")
+	}
+
+	if payload.Header == nil {
+		return nil, fmt.Errorf("envelope header cannot be nil")
+	}
+
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal channel header")
+	}
+
+	return NewBundle(chdr.ChannelId, configEnvelope.Config)
+}
+
 // NewBundle creates a new immutable bundle of configuration
 func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
 	if config == nil {

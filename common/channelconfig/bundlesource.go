@@ -21,19 +21,28 @@ import (
 // so that gross go-routine reads are not vulnerable to out-of-order execution memory
 // type bugs.
 type BundleSource struct {
-	bundle atomic.Value
+	bundle    atomic.Value
+	callbacks []func(*Bundle)
 }
 
 // NewBundleSource creates a new BundleSource with an initial Bundle value
-func NewBundleSource(bundle *Bundle) *BundleSource {
-	bs := &BundleSource{}
-	bs.bundle.Store(bundle)
+// The callbacks will be invoked whenever the Update method is called for the
+// BundleSource.  Note, these callbacks are called immediately before this function
+// returns.
+func NewBundleSource(bundle *Bundle, callbacks ...func(*Bundle)) *BundleSource {
+	bs := &BundleSource{
+		callbacks: callbacks,
+	}
+	bs.Update(bundle)
 	return bs
 }
 
-// Update sets a new bundle as the bundle source
+// Update sets a new bundle as the bundle source and calls any registered callbacks
 func (bs *BundleSource) Update(newBundle *Bundle) {
 	bs.bundle.Store(newBundle)
+	for _, callback := range bs.callbacks {
+		callback(newBundle)
+	}
 }
 
 // StableBundle returns a pointer to a stable Bundle.
