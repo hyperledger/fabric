@@ -173,6 +173,7 @@ func (cm *configManager) policyForItem(item comparable) (policies.Policy, bool) 
 	manager := cm.initializer.PolicyManager()
 
 	modPolicy := item.modPolicy()
+	logger.Debugf("Getting policy for item %s with mod_policy %s", item.key, modPolicy)
 
 	// If the mod_policy path is relative, get the right manager for the context
 	// if the mod_policy path is absolute (starts with /) evaluate at the root
@@ -181,6 +182,7 @@ func (cm *configManager) policyForItem(item comparable) (policies.Policy, bool) 
 		var ok bool
 		manager, ok = manager.Manager(item.path[1:])
 		if !ok {
+			logger.Debugf("Could not find manager at path: %v", item.path[1:])
 			return nil, ok
 		}
 
@@ -189,6 +191,7 @@ func (cm *configManager) policyForItem(item comparable) (policies.Policy, bool) 
 			manager, ok = manager.Manager([]string{item.key})
 		}
 		if !ok {
+			logger.Debugf("Could not find group at subpath: %v", item.key)
 			return nil, ok
 		}
 	}

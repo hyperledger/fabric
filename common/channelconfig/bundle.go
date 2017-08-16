@@ -146,7 +146,7 @@ func (np noopProposer) PolicyManager() policies.Manager {
 }
 
 // NewBundle creates a new immutable bundle of configuration
-func NewBundle(config *cb.Config) (*Bundle, error) {
+func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
 	mspConfigHandler := oldmspconfig.NewMSPConfigHandler()
 	rootConfig := oldchannelconfig.NewRoot(mspConfigHandler)
 
@@ -163,7 +163,9 @@ func NewBundle(config *cb.Config) (*Bundle, error) {
 		}
 	}
 
-	err := InitializeConfigValues(rootConfig, config.ChannelGroup)
+	err := InitializeConfigValues(rootConfig, &cb.ConfigGroup{
+		Groups: map[string]*cb.ConfigGroup{RootGroupKey: config.ChannelGroup},
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing config values failed")
 	}
@@ -174,12 +176,14 @@ func NewBundle(config *cb.Config) (*Bundle, error) {
 		return nil, errors.Wrap(err, "initializing policymanager failed")
 	}
 
-	env, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, "sanitycheck", nil, &cb.ConfigEnvelope{Config: config}, 0, 0)
+	env, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID, nil, &cb.ConfigEnvelope{Config: config}, 0, 0)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating envelope for configtx manager failed")
 	}
 
-	configtxManager, err := configtx.NewManagerImpl(env, noopProposer{}, nil)
+	configtxManager, err := configtx.NewManagerImpl(env, noopProposer{
+		policyManager: policyManager,
+	}, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing configtx manager failed")
 	}

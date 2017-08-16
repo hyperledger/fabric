@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"testing"
 
+	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
@@ -211,8 +213,14 @@ func (mdts *mockDefaultTemplatorSupport) Signer() crypto.LocalSigner {
 }
 
 func TestNewChannelConfig(t *testing.T) {
-	singleMSPGenesisBlock := provisional.New(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)).GenesisBlock()
-	ctxm, err := channelconfig.New(utils.ExtractEnvelopeOrPanic(singleMSPGenesisBlock, 0), nil)
+	channelID := "foo"
+	singleMSPGenesisBlock := provisional.New(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)).GenesisBlockForChannel(channelID)
+	configEnv := configtx.UnmarshalConfigEnvelopeOrPanic(
+		utils.UnmarshalPayloadOrPanic(
+			utils.ExtractEnvelopeOrPanic(singleMSPGenesisBlock, 0).Payload,
+		).Data,
+	)
+	ctxm, err := newchannelconfig.NewBundle(channelID, configEnv.Config)
 	assert.Nil(t, err)
 
 	templator := NewDefaultTemplator(&mockDefaultTemplatorSupport{

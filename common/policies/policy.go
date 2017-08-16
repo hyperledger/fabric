@@ -162,6 +162,11 @@ func (pm *ManagerImpl) PolicyNames() []string {
 
 // Manager returns the sub-policy manager for a given path and whether it exists
 func (pm *ManagerImpl) Manager(path []string) (Manager, bool) {
+	logger.Debugf("Looking for manager at path %v", path)
+	for name := range pm.config.managers {
+		logger.Debugf("I have sub-manager: %s", name)
+	}
+
 	if len(path) == 0 {
 		return pm, true
 	}
