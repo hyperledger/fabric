@@ -278,22 +278,37 @@ func TestLedgerProcessor(t *testing.T) {
 	assert.NotNil(t, err)
 
 	//nil LastUpdate
-	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{LastUpdate: nil})})
+	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{Config: &common.Config{Sequence: 1}, LastUpdate: nil})})
 	err = rscc.GenerateSimulationResults(txEnv, simulator)
 	assert.NotNil(t, err)
 
 	//bad ConfigUpdateEnvelope
-	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{LastUpdate: &common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Data: []byte("bad ConfigUpdateEnvelope")})}})})
+	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{Config: &common.Config{Sequence: 1}, LastUpdate: &common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Data: []byte("bad ConfigUpdateEnvelope")})}})})
 	err = rscc.GenerateSimulationResults(txEnv, simulator)
 	assert.NotNil(t, err)
 
 	//bad ConfigUpdate
-	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{LastUpdate: &common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigUpdateEnvelope{ConfigUpdate: []byte("bad ConfigUpdate")})})}})})
+	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{Config: &common.Config{Sequence: 1}, LastUpdate: &common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigUpdateEnvelope{ConfigUpdate: []byte("bad ConfigUpdate")})})}})})
 	err = rscc.GenerateSimulationResults(txEnv, simulator)
 	assert.NotNil(t, err)
 
-	//good processing
-	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{LastUpdate: &common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigUpdateEnvelope{ConfigUpdate: utils.MarshalOrPanic(&common.ConfigUpdate{ChannelId: "myc", IsolatedData: map[string][]byte{"rscc_seed_data": createConfig()}})})})}})})
+	//ignore config updates
+	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{Config: &common.Config{Sequence: 2}, LastUpdate: &common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigUpdateEnvelope{ConfigUpdate: utils.MarshalOrPanic(&common.ConfigUpdate{ChannelId: "myc", IsolatedData: map[string][]byte{"rscc_seed_data": createConfig()}})})})}})})
 	err = rscc.GenerateSimulationResults(txEnv, simulator)
+	res, err := simulator.GetTxSimulationResults()
+	//should not error ...
 	assert.Nil(t, err)
+	//... but sim results should be nil
+	assert.Nil(t, res.PubSimulationResults.NsRwset)
+
+	//good processing
+	txid1 = util.GenerateUUID()
+	simulator, _ = ledger.NewTxSimulator(txid1)
+	txEnv.Payload = utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigEnvelope{Config: &common.Config{Sequence: 1}, LastUpdate: &common.Envelope{Payload: utils.MarshalOrPanic(&common.Payload{Data: utils.MarshalOrPanic(&common.ConfigUpdateEnvelope{ConfigUpdate: utils.MarshalOrPanic(&common.ConfigUpdate{ChannelId: "myc", IsolatedData: map[string][]byte{"rscc_seed_data": createConfig()}})})})}})})
+	err = rscc.GenerateSimulationResults(txEnv, simulator)
+	res, err = simulator.GetTxSimulationResults()
+	//should not error ...
+	assert.Nil(t, err)
+	//... and sim results should be non-nil
+	assert.NotNil(t, res.PubSimulationResults.NsRwset)
 }

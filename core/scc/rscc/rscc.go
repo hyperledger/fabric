@@ -137,6 +137,11 @@ func (rscc *Rscc) GenerateSimulationResults(txEnv *common.Envelope, sim ledger.T
 		return err
 	}
 
+	if cenv.Config.Sequence != 1 {
+		rsccLogger.Errorf("ignore non genesis block config updates (%d) for modifying resource policies", cenv.Config.Sequence)
+		return nil
+	}
+
 	if cenv.LastUpdate == nil {
 		rsccLogger.Errorf("nil LastUpdate")
 		return fmt.Errorf("nil LastUpdate")
