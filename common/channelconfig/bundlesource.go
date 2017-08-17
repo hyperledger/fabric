@@ -9,7 +9,6 @@ package channelconfig
 import (
 	"sync/atomic"
 
-	oldchannelconfig "github.com/hyperledger/fabric/common/config/channel"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -68,25 +67,25 @@ func (bs *BundleSource) MSPManager() msp.MSPManager {
 }
 
 // ChannelConfig returns the config.Channel for the chain
-func (bs *BundleSource) ChannelConfig() oldchannelconfig.Channel {
+func (bs *BundleSource) ChannelConfig() Channel {
 	return bs.StableBundle().ChannelConfig()
 }
 
 // OrdererConfig returns the config.Orderer for the channel
 // and whether the Orderer config exists
-func (bs *BundleSource) OrdererConfig() (oldchannelconfig.Orderer, bool) {
+func (bs *BundleSource) OrdererConfig() (Orderer, bool) {
 	return bs.StableBundle().OrdererConfig()
 }
 
 // ConsortiumsConfig() returns the config.Consortiums for the channel
 // and whether the consortiums config exists
-func (bs *BundleSource) ConsortiumsConfig() (oldchannelconfig.Consortiums, bool) {
+func (bs *BundleSource) ConsortiumsConfig() (Consortiums, bool) {
 	return bs.StableBundle().ConsortiumsConfig()
 }
 
 // ApplicationConfig returns the configtxapplication.SharedConfig for the channel
 // and whether the Application config exists
-func (bs *BundleSource) ApplicationConfig() (oldchannelconfig.Application, bool) {
+func (bs *BundleSource) ApplicationConfig() (Application, bool) {
 	return bs.StableBundle().ApplicationConfig()
 }
 

@@ -9,8 +9,7 @@ package msgprocessor
 import (
 	"fmt"
 
-	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -264,7 +263,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (conf
 	channelGroup.Groups[channelconfig.ApplicationGroupKey] = applicationGroup
 	channelGroup.Values[channelconfig.ConsortiumKey] = channelconfig.TemplateConsortium(consortium.Name).Values[channelconfig.ConsortiumKey]
 
-	bundle, err := newchannelconfig.NewBundle(channelHeader.ChannelId, &cb.Config{
+	bundle, err := channelconfig.NewBundle(channelHeader.ChannelId, &cb.Config{
 		ChannelGroup: channelGroup,
 	})
 

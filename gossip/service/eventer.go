@@ -9,7 +9,7 @@ package service
 import (
 	"reflect"
 
-	"github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 
 	"github.com/hyperledger/fabric/protos/peer"
 )
@@ -20,7 +20,7 @@ type Config interface {
 	ChainID() string
 
 	// Organizations returns a map of org ID to ApplicationOrgConfig
-	Organizations() map[string]config.ApplicationOrg
+	Organizations() map[string]channelconfig.ApplicationOrg
 
 	// Sequence should return the sequence number of the current configuration
 	Sequence() uint64
@@ -34,7 +34,7 @@ type ConfigProcessor interface {
 
 type configStore struct {
 	anchorPeers []*peer.AnchorPeer
-	orgMap      map[string]config.ApplicationOrg
+	orgMap      map[string]channelconfig.ApplicationOrg
 }
 
 type configEventReceiver interface {
@@ -79,8 +79,8 @@ func (ce *configEventer) ProcessConfigUpdate(config Config) {
 	ce.receiver.configUpdated(config)
 }
 
-func cloneOrgConfig(src map[string]config.ApplicationOrg) map[string]config.ApplicationOrg {
-	clone := make(map[string]config.ApplicationOrg)
+func cloneOrgConfig(src map[string]channelconfig.ApplicationOrg) map[string]channelconfig.ApplicationOrg {
+	clone := make(map[string]channelconfig.ApplicationOrg)
 	for k, v := range src {
 		clone[k] = &appGrp{
 			name:        v.Name(),

@@ -4,23 +4,16 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package config
+package channelconfig
 
 import (
 	"fmt"
 
-	mspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 
 	"github.com/pkg/errors"
-)
-
-// Org config keys
-const (
-	// MSPKey is value key for marshaled *mspconfig.MSPConfig
-	MSPKey = "MSP"
 )
 
 // OrganizationProtos are used to deserialize the organization config
@@ -32,14 +25,14 @@ type OrganizationProtos struct {
 type OrganizationConfig struct {
 	protos *OrganizationProtos
 
-	mspConfigHandler *mspconfig.MSPConfigHandler
+	mspConfigHandler *MSPConfigHandler
 	msp              msp.MSP
 	mspID            string
 	name             string
 }
 
 // NewOrganizationConfig creates a new config for an organization
-func NewOrganizationConfig(name string, orgGroup *cb.ConfigGroup, mspConfigHandler *mspconfig.MSPConfigHandler) (*OrganizationConfig, error) {
+func NewOrganizationConfig(name string, orgGroup *cb.ConfigGroup, mspConfigHandler *MSPConfigHandler) (*OrganizationConfig, error) {
 	if len(orgGroup.Groups) > 0 {
 		return nil, fmt.Errorf("organizations do not support sub-groups")
 	}

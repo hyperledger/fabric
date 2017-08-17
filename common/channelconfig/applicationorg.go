@@ -4,12 +4,11 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package config
+package channelconfig
 
 import (
 	"fmt"
 
-	mspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
@@ -35,7 +34,7 @@ type ApplicationOrgConfig struct {
 }
 
 // NewApplicationOrgConfig creates a new config for an application org
-func NewApplicationOrgConfig(id string, orgGroup *cb.ConfigGroup, mspConfig *mspconfig.MSPConfigHandler) (*ApplicationOrgConfig, error) {
+func NewApplicationOrgConfig(id string, orgGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*ApplicationOrgConfig, error) {
 	if len(orgGroup.Groups) > 0 {
 		return nil, fmt.Errorf("ApplicationOrg config does not allow sub-groups")
 	}

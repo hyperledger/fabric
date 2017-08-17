@@ -4,16 +4,15 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package config
+package channelconfig
 
 import (
 	"fmt"
 	"math"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/util"
-	outermsp "github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/pkg/errors"
@@ -65,7 +64,7 @@ type ChannelConfig struct {
 
 	hashingAlgorithm func(input []byte) []byte
 
-	mspManager outermsp.MSPManager
+	mspManager msp.MSPManager
 
 	appConfig         *ApplicationConfig
 	ordererConfig     *OrdererConfig
@@ -78,7 +77,7 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup) (*ChannelConfig, error) {
 		protos: &ChannelProtos{},
 	}
 
-	mspConfigHandler := msp.NewMSPConfigHandler()
+	mspConfigHandler := NewMSPConfigHandler()
 
 	if err := DeserializeProtoValuesFromGroup(channelGroup, cc.protos); err != nil {
 		return nil, errors.Wrap(err, "failed to deserialize values")
@@ -113,7 +112,7 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup) (*ChannelConfig, error) {
 }
 
 // MSPManager returns the MSP manager for this config
-func (cc *ChannelConfig) MSPManager() outermsp.MSPManager {
+func (cc *ChannelConfig) MSPManager() msp.MSPManager {
 	return cc.mspManager
 }
 

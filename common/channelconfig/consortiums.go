@@ -4,10 +4,9 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package config
+package channelconfig
 
 import (
-	"github.com/hyperledger/fabric/common/config/channel/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -22,7 +21,7 @@ type ConsortiumsConfig struct {
 }
 
 // NewConsortiumsConfig creates a new instance of the consoritums config
-func NewConsortiumsConfig(consortiumsGroup *cb.ConfigGroup, mspConfig *msp.MSPConfigHandler) (*ConsortiumsConfig, error) {
+func NewConsortiumsConfig(consortiumsGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*ConsortiumsConfig, error) {
 	cc := &ConsortiumsConfig{
 		consortiums: make(map[string]Consortium),
 	}

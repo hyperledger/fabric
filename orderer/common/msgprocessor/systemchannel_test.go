@@ -10,8 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -220,7 +219,7 @@ func TestNewChannelConfig(t *testing.T) {
 			utils.ExtractEnvelopeOrPanic(singleMSPGenesisBlock, 0).Payload,
 		).Data,
 	)
-	ctxm, err := newchannelconfig.NewBundle(channelID, configEnv.Config)
+	ctxm, err := channelconfig.NewBundle(channelID, configEnv.Config)
 	assert.Nil(t, err)
 
 	templator := NewDefaultTemplator(&mockDefaultTemplatorSupport{

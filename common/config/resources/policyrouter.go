@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"regexp"
 
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
 )
 

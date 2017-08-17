@@ -11,8 +11,7 @@ import (
 	"net"
 	"sync"
 
-	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -51,7 +50,7 @@ type gossipSupport struct {
 }
 
 type chainSupport struct {
-	bundleSource *newchannelconfig.BundleSource
+	bundleSource *channelconfig.BundleSource
 	channelconfig.Resources
 	channelconfig.Application
 	ledger ledger.PeerLedger
@@ -81,7 +80,7 @@ func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
 
 	// If the chainSupport is being mocked, this field will be nil
 	if cs.bundleSource != nil {
-		bundle, err := newchannelconfig.NewBundle(cs.ConfigtxManager().ChainID(), configtx.Config)
+		bundle, err := channelconfig.NewBundle(cs.ConfigtxManager().ChainID(), configtx.Config)
 		if err != nil {
 			return err
 		}
@@ -209,14 +208,14 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return err
 	}
 
-	bundle, err := newchannelconfig.NewBundleFromEnvelope(envelopeConfig)
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig)
 	if err != nil {
 		return err
 	}
 
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 
-	gossipCallbackWrapper := func(bundle *newchannelconfig.Bundle) {
+	gossipCallbackWrapper := func(bundle *channelconfig.Bundle) {
 		ac, ok := bundle.ApplicationConfig()
 		if !ok {
 			// TODO, handle a missing ApplicationConfig more gracefully
@@ -235,11 +234,11 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		})
 	}
 
-	trustedRootsCallbackWrapper := func(bundle *newchannelconfig.Bundle) {
+	trustedRootsCallbackWrapper := func(bundle *channelconfig.Bundle) {
 		updateTrustedRoots(bundle)
 	}
 
-	mspCallback := func(bundle *newchannelconfig.Bundle) {
+	mspCallback := func(bundle *channelconfig.Bundle) {
 		// TODO remove once all references to mspmgmt are gone from peer code
 		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
@@ -253,7 +252,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		ledger:      ledger,
 	}
 
-	peerSingletonCallback := func(bundle *newchannelconfig.Bundle) {
+	peerSingletonCallback := func(bundle *channelconfig.Bundle) {
 		ac, ok := bundle.ApplicationConfig()
 		if !ok {
 			ac = nil
@@ -261,7 +260,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		cs.Application = ac
 	}
 
-	bundleSource := newchannelconfig.NewBundleSource(
+	bundleSource := channelconfig.NewBundleSource(
 		bundle,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,

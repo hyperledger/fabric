@@ -12,8 +12,7 @@ package multichannel
 import (
 	"fmt"
 
-	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
@@ -36,15 +35,15 @@ const (
 
 type mutableResources interface {
 	channelconfig.Resources
-	Update(*newchannelconfig.Bundle)
+	Update(*channelconfig.Bundle)
 }
 
 type configResources struct {
 	mutableResources
 }
 
-func (cr *configResources) CreateBundle(channelID string, config *cb.Config) (*newchannelconfig.Bundle, error) {
-	return newchannelconfig.NewBundle(channelID, config)
+func (cr *configResources) CreateBundle(channelID string, config *cb.Config) (*channelconfig.Bundle, error) {
+	return channelconfig.NewBundle(channelID, config)
 }
 
 func (cr *configResources) SharedConfig() channelconfig.Orderer {
@@ -216,7 +215,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 		logger.Panicf("Error umarshaling config envelope from payload data: %s", err)
 	}
 
-	bundle, err := newchannelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config)
+	bundle, err := channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config)
 	if err != nil {
 		logger.Panicf("Error creating channelconfig bundle: %s", err)
 	}
@@ -227,7 +226,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 	}
 
 	return &ledgerResources{
-		configResources: &configResources{mutableResources: newchannelconfig.NewBundleSource(bundle)},
+		configResources: &configResources{mutableResources: channelconfig.NewBundleSource(bundle)},
 		ReadWriter:      ledger,
 	}
 }

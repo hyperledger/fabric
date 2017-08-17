@@ -1,24 +1,13 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package test
 
 import (
-	"github.com/hyperledger/fabric/common/config/channel"
-	configtxmsp "github.com/hyperledger/fabric/common/config/channel/msp"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
@@ -54,8 +43,8 @@ func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 // MakeGenesisBlockWithMSPs creates a genesis block using the MSPs provided for the given chainID
 func MakeGenesisBlockFromMSPs(chainID string, appMSPConf, ordererMSPConf *mspproto.MSPConfig,
 	appOrgID, ordererOrgID string) (*cb.Block, error) {
-	appOrgTemplate := configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.ApplicationGroupKey, appOrgID}, appMSPConf))
-	ordererOrgTemplate := configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.OrdererGroupKey, ordererOrgID}, ordererMSPConf))
+	appOrgTemplate := configtx.NewSimpleTemplate(channelconfig.TemplateGroupMSP([]string{channelconfig.ApplicationGroupKey, appOrgID}, appMSPConf))
+	ordererOrgTemplate := configtx.NewSimpleTemplate(channelconfig.TemplateGroupMSP([]string{channelconfig.OrdererGroupKey, ordererOrgID}, ordererMSPConf))
 	composite := configtx.NewCompositeTemplate(OrdererTemplate(), appOrgTemplate, ApplicationOrgTemplate(), ordererOrgTemplate)
 	return genesis.NewFactoryImpl(composite).Block(chainID)
 }
@@ -76,7 +65,7 @@ func ApplicationOrgTemplate() configtx.Template {
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
-	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.ApplicationGroupKey, sampleOrgID}, mspConf))
+	return configtx.NewSimpleTemplate(channelconfig.TemplateGroupMSP([]string{channelconfig.ApplicationGroupKey, sampleOrgID}, mspConf))
 }
 
 // OrdererOrgTemplate returns the SAMPLE org with MSP template
@@ -85,7 +74,7 @@ func OrdererOrgTemplate() configtx.Template {
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
-	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.OrdererGroupKey, sampleOrgID}, mspConf))
+	return configtx.NewSimpleTemplate(channelconfig.TemplateGroupMSP([]string{channelconfig.OrdererGroupKey, sampleOrgID}, mspConf))
 }
 
 // CompositeTemplate returns the composite template of peer, orderer, and MSP

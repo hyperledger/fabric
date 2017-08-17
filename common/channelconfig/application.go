@@ -4,10 +4,9 @@ Copyright IBM Corp. 2017 All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package config
+package channelconfig
 
 import (
-	"github.com/hyperledger/fabric/common/config/channel/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -21,7 +20,7 @@ type ApplicationConfig struct {
 }
 
 // NewApplicationConfig creates config from an Application config group
-func NewApplicationConfig(appGroup *cb.ConfigGroup, mspConfig *msp.MSPConfigHandler) (*ApplicationConfig, error) {
+func NewApplicationConfig(appGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*ApplicationConfig, error) {
 	ac := &ApplicationConfig{
 		applicationOrgs: make(map[string]ApplicationOrg),
 	}

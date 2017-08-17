@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	oldchannelconfig "github.com/hyperledger/fabric/common/config/channel"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -36,7 +35,7 @@ const RootGroupKey = "Channel"
 type Bundle struct {
 	policyManager   policies.Manager
 	mspManager      msp.MSPManager
-	channelConfig   *oldchannelconfig.ChannelConfig
+	channelConfig   *ChannelConfig
 	configtxManager configtxapi.Manager
 }
 
@@ -51,27 +50,27 @@ func (b *Bundle) MSPManager() msp.MSPManager {
 }
 
 // ChannelConfig returns the config.Channel for the chain
-func (b *Bundle) ChannelConfig() oldchannelconfig.Channel {
+func (b *Bundle) ChannelConfig() Channel {
 	return b.channelConfig
 }
 
 // OrdererConfig returns the config.Orderer for the channel
 // and whether the Orderer config exists
-func (b *Bundle) OrdererConfig() (oldchannelconfig.Orderer, bool) {
+func (b *Bundle) OrdererConfig() (Orderer, bool) {
 	result := b.channelConfig.OrdererConfig()
 	return result, result != nil
 }
 
 // ConsortiumsConfig() returns the config.Consortiums for the channel
 // and whether the consortiums config exists
-func (b *Bundle) ConsortiumsConfig() (oldchannelconfig.Consortiums, bool) {
+func (b *Bundle) ConsortiumsConfig() (Consortiums, bool) {
 	result := b.channelConfig.ConsortiumsConfig()
 	return result, result != nil
 }
 
 // ApplicationConfig returns the configtxapplication.SharedConfig for the channel
 // and whether the Application config exists
-func (b *Bundle) ApplicationConfig() (oldchannelconfig.Application, bool) {
+func (b *Bundle) ApplicationConfig() (Application, bool) {
 	result := b.channelConfig.ApplicationConfig()
 	return result, result != nil
 }
@@ -130,7 +129,7 @@ func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
 		return nil, fmt.Errorf("config must contain a channel group")
 	}
 
-	channelConfig, err := oldchannelconfig.NewChannelConfig(config.ChannelGroup)
+	channelConfig, err := NewChannelConfig(config.ChannelGroup)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing channelconfig failed")
 	}

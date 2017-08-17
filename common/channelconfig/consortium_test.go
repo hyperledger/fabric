@@ -1,20 +1,19 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package config
+package channelconfig
 
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/config/channel/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConsortiumConfig(t *testing.T) {
-	cc, err := NewConsortiumConfig(&cb.ConfigGroup{}, msp.NewMSPConfigHandler())
+	cc, err := NewConsortiumConfig(&cb.ConfigGroup{}, NewMSPConfigHandler())
 	assert.NoError(t, err)
 	orgs := cc.Organizations()
 	assert.Equal(t, 0, len(orgs))

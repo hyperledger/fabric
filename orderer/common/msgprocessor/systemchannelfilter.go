@@ -9,8 +9,7 @@ package msgprocessor
 import (
 	"fmt"
 
-	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -151,7 +150,7 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	}
 
 	// Make sure the config can be parsed into a bundle
-	_, err = newchannelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config)
+	_, err = channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config)
 	if err != nil {
 		return fmt.Errorf("failed to create config bundle: %s", err)
 	}

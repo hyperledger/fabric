@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package config
+package channelconfig
 
 import (
 	"fmt"
@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hyperledger/fabric/common/config/channel/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -60,7 +59,7 @@ type OrdererConfig struct {
 }
 
 // NewOrdererConfig creates a new instance of the orderer config
-func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *msp.MSPConfigHandler) (*OrdererConfig, error) {
+func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*OrdererConfig, error) {
 	oc := &OrdererConfig{
 		protos: &OrdererProtos{},
 		orgs:   make(map[string]Org),

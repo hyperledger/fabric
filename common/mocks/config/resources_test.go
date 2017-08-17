@@ -9,7 +9,7 @@ package config
 import (
 	"testing"
 
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 )
 
 func TestConfigtxResourcesInterface(t *testing.T) {

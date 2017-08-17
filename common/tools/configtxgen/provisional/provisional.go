@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package provisional
@@ -20,8 +10,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/config/channel"
-	configvaluesmsp "github.com/hyperledger/fabric/common/config/channel/msp"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
@@ -91,39 +80,39 @@ func New(conf *genesisconfig.Profile) Generator {
 	bs := &bootstrapper{
 		channelGroups: []*cb.ConfigGroup{
 			// Chain Config Types
-			config.DefaultHashingAlgorithm(),
-			config.DefaultBlockDataHashingStructure(),
+			channelconfig.DefaultHashingAlgorithm(),
+			channelconfig.DefaultBlockDataHashingStructure(),
 
 			// Default policies
-			policies.TemplateImplicitMetaAnyPolicy([]string{}, configvaluesmsp.ReadersPolicyKey),
-			policies.TemplateImplicitMetaAnyPolicy([]string{}, configvaluesmsp.WritersPolicyKey),
-			policies.TemplateImplicitMetaMajorityPolicy([]string{}, configvaluesmsp.AdminsPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{}, channelconfig.ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{}, channelconfig.WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{}, channelconfig.AdminsPolicyKey),
 		},
 	}
 
 	if conf.Orderer != nil {
 		// Orderer addresses
-		oa := config.TemplateOrdererAddresses(conf.Orderer.Addresses)
-		oa.Values[config.OrdererAddressesKey].ModPolicy = OrdererAdminsPolicy
+		oa := channelconfig.TemplateOrdererAddresses(conf.Orderer.Addresses)
+		oa.Values[channelconfig.OrdererAddressesKey].ModPolicy = OrdererAdminsPolicy
 
 		bs.ordererGroups = []*cb.ConfigGroup{
 			oa,
 
 			// Orderer Config Types
-			config.TemplateConsensusType(conf.Orderer.OrdererType),
-			config.TemplateBatchSize(&ab.BatchSize{
+			channelconfig.TemplateConsensusType(conf.Orderer.OrdererType),
+			channelconfig.TemplateBatchSize(&ab.BatchSize{
 				MaxMessageCount:   conf.Orderer.BatchSize.MaxMessageCount,
 				AbsoluteMaxBytes:  conf.Orderer.BatchSize.AbsoluteMaxBytes,
 				PreferredMaxBytes: conf.Orderer.BatchSize.PreferredMaxBytes,
 			}),
-			config.TemplateBatchTimeout(conf.Orderer.BatchTimeout.String()),
-			config.TemplateChannelRestrictions(conf.Orderer.MaxChannels),
+			channelconfig.TemplateBatchTimeout(conf.Orderer.BatchTimeout.String()),
+			channelconfig.TemplateChannelRestrictions(conf.Orderer.MaxChannels),
 
 			// Initialize the default Reader/Writer/Admins orderer policies, as well as block validation policy
-			policies.TemplateImplicitMetaPolicyWithSubPolicy([]string{config.OrdererGroupKey}, BlockValidationPolicyKey, configvaluesmsp.WritersPolicyKey, cb.ImplicitMetaPolicy_ANY),
-			policies.TemplateImplicitMetaAnyPolicy([]string{config.OrdererGroupKey}, configvaluesmsp.ReadersPolicyKey),
-			policies.TemplateImplicitMetaAnyPolicy([]string{config.OrdererGroupKey}, configvaluesmsp.WritersPolicyKey),
-			policies.TemplateImplicitMetaMajorityPolicy([]string{config.OrdererGroupKey}, configvaluesmsp.AdminsPolicyKey),
+			policies.TemplateImplicitMetaPolicyWithSubPolicy([]string{channelconfig.OrdererGroupKey}, BlockValidationPolicyKey, channelconfig.WritersPolicyKey, cb.ImplicitMetaPolicy_ANY),
+			policies.TemplateImplicitMetaAnyPolicy([]string{channelconfig.OrdererGroupKey}, channelconfig.ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{channelconfig.OrdererGroupKey}, channelconfig.WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{channelconfig.OrdererGroupKey}, channelconfig.AdminsPolicyKey),
 		}
 
 		for _, org := range conf.Orderer.Organizations {
@@ -132,7 +121,7 @@ func New(conf *genesisconfig.Profile) Generator {
 				logger.Panicf("1 - Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
 			bs.ordererGroups = append(bs.ordererGroups,
-				configvaluesmsp.TemplateGroupMSPWithAdminRolePrincipal([]string{config.OrdererGroupKey, org.Name},
+				channelconfig.TemplateGroupMSPWithAdminRolePrincipal([]string{channelconfig.OrdererGroupKey, org.Name},
 					mspConfig, org.AdminPrincipal == genesisconfig.AdminRoleAdminPrincipal,
 				),
 			)
@@ -141,7 +130,7 @@ func New(conf *genesisconfig.Profile) Generator {
 		switch conf.Orderer.OrdererType {
 		case ConsensusTypeSolo:
 		case ConsensusTypeKafka:
-			bs.ordererGroups = append(bs.ordererGroups, config.TemplateKafkaBrokers(conf.Orderer.Kafka.Brokers))
+			bs.ordererGroups = append(bs.ordererGroups, channelconfig.TemplateKafkaBrokers(conf.Orderer.Kafka.Brokers))
 		default:
 			panic(fmt.Errorf("Wrong consenter type value given: %s", conf.Orderer.OrdererType))
 		}
@@ -151,9 +140,9 @@ func New(conf *genesisconfig.Profile) Generator {
 
 		bs.applicationGroups = []*cb.ConfigGroup{
 			// Initialize the default Reader/Writer/Admins application policies
-			policies.TemplateImplicitMetaAnyPolicy([]string{config.ApplicationGroupKey}, configvaluesmsp.ReadersPolicyKey),
-			policies.TemplateImplicitMetaAnyPolicy([]string{config.ApplicationGroupKey}, configvaluesmsp.WritersPolicyKey),
-			policies.TemplateImplicitMetaMajorityPolicy([]string{config.ApplicationGroupKey}, configvaluesmsp.AdminsPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{channelconfig.ApplicationGroupKey}, channelconfig.ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{channelconfig.ApplicationGroupKey}, channelconfig.WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{channelconfig.ApplicationGroupKey}, channelconfig.AdminsPolicyKey),
 		}
 		for _, org := range conf.Application.Organizations {
 			mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.ID)
@@ -162,7 +151,7 @@ func New(conf *genesisconfig.Profile) Generator {
 			}
 
 			bs.applicationGroups = append(bs.applicationGroups,
-				configvaluesmsp.TemplateGroupMSPWithAdminRolePrincipal([]string{config.ApplicationGroupKey, org.Name},
+				channelconfig.TemplateGroupMSPWithAdminRolePrincipal([]string{channelconfig.ApplicationGroupKey, org.Name},
 					mspConfig, org.AdminPrincipal == genesisconfig.AdminRoleAdminPrincipal,
 				),
 			)
@@ -174,14 +163,14 @@ func New(conf *genesisconfig.Profile) Generator {
 				})
 			}
 
-			bs.applicationGroups = append(bs.applicationGroups, config.TemplateAnchorPeers(org.Name, anchorProtos))
+			bs.applicationGroups = append(bs.applicationGroups, channelconfig.TemplateAnchorPeers(org.Name, anchorProtos))
 		}
 
 	}
 
 	if conf.Consortiums != nil {
-		tcg := config.TemplateConsortiumsGroup()
-		tcg.Groups[config.ConsortiumsGroupKey].ModPolicy = OrdererAdminsPolicy
+		tcg := channelconfig.TemplateConsortiumsGroup()
+		tcg.Groups[channelconfig.ConsortiumsGroupKey].ModPolicy = OrdererAdminsPolicy
 
 		// Fix for https://jira.hyperledger.org/browse/FAB-4373
 		// Note, AcceptAllPolicy in this context, does not grant any unrestricted
@@ -189,7 +178,7 @@ func New(conf *genesisconfig.Profile) Generator {
 		// for the ordering system channel while set to MAJORITY with the addition
 		// to the successful evaluation of the /Channel/Orderer/Admins policy (which
 		// is not AcceptAll
-		tcg.Groups[config.ConsortiumsGroupKey].Policies[configvaluesmsp.AdminsPolicyKey] = &cb.ConfigPolicy{
+		tcg.Groups[channelconfig.ConsortiumsGroupKey].Policies[channelconfig.AdminsPolicyKey] = &cb.ConfigPolicy{
 			Policy: &cb.Policy{
 				Type:  int32(cb.Policy_SIGNATURE),
 				Value: utils.MarshalOrPanic(cauthdsl.AcceptAllPolicy),
@@ -199,13 +188,13 @@ func New(conf *genesisconfig.Profile) Generator {
 		bs.consortiumsGroups = append(bs.consortiumsGroups, tcg)
 
 		for consortiumName, consortium := range conf.Consortiums {
-			cg := config.TemplateConsortiumChannelCreationPolicy(consortiumName, policies.ImplicitMetaPolicyWithSubPolicy(
-				configvaluesmsp.AdminsPolicyKey,
+			cg := channelconfig.TemplateConsortiumChannelCreationPolicy(consortiumName, policies.ImplicitMetaPolicyWithSubPolicy(
+				channelconfig.AdminsPolicyKey,
 				cb.ImplicitMetaPolicy_ANY,
 			).Policy)
 
-			cg.Groups[config.ConsortiumsGroupKey].Groups[consortiumName].ModPolicy = OrdererAdminsPolicy
-			cg.Groups[config.ConsortiumsGroupKey].Groups[consortiumName].Values[config.ChannelCreationPolicyKey].ModPolicy = OrdererAdminsPolicy
+			cg.Groups[channelconfig.ConsortiumsGroupKey].Groups[consortiumName].ModPolicy = OrdererAdminsPolicy
+			cg.Groups[channelconfig.ConsortiumsGroupKey].Groups[consortiumName].Values[channelconfig.ChannelCreationPolicyKey].ModPolicy = OrdererAdminsPolicy
 			bs.consortiumsGroups = append(bs.consortiumsGroups, cg)
 
 			for _, org := range consortium.Organizations {
@@ -214,8 +203,8 @@ func New(conf *genesisconfig.Profile) Generator {
 					logger.Panicf("3 - Error loading MSP configuration for org %s: %s", org.Name, err)
 				}
 				bs.consortiumsGroups = append(bs.consortiumsGroups,
-					configvaluesmsp.TemplateGroupMSPWithAdminRolePrincipal(
-						[]string{config.ConsortiumsGroupKey, consortiumName, org.Name},
+					channelconfig.TemplateGroupMSPWithAdminRolePrincipal(
+						[]string{channelconfig.ConsortiumsGroupKey, consortiumName, org.Name},
 						mspConfig, org.AdminPrincipal == genesisconfig.AdminRoleAdminPrincipal,
 					),
 				)
@@ -229,7 +218,7 @@ func New(conf *genesisconfig.Profile) Generator {
 // ChannelTemplate TODO
 func (bs *bootstrapper) ChannelTemplate() configtx.Template {
 	return configtx.NewModPolicySettingTemplate(
-		configvaluesmsp.AdminsPolicyKey,
+		channelconfig.AdminsPolicyKey,
 		configtx.NewCompositeTemplate(
 			configtx.NewSimpleTemplate(bs.channelGroups...),
 			configtx.NewSimpleTemplate(bs.ordererGroups...),
@@ -242,7 +231,7 @@ func (bs *bootstrapper) ChannelTemplate() configtx.Template {
 func (bs *bootstrapper) GenesisBlock() *cb.Block {
 	block, err := genesis.NewFactoryImpl(
 		configtx.NewModPolicySettingTemplate(
-			configvaluesmsp.AdminsPolicyKey,
+			channelconfig.AdminsPolicyKey,
 			configtx.NewCompositeTemplate(
 				configtx.NewSimpleTemplate(bs.consortiumsGroups...),
 				bs.ChannelTemplate(),
@@ -260,7 +249,7 @@ func (bs *bootstrapper) GenesisBlock() *cb.Block {
 func (bs *bootstrapper) GenesisBlockForChannel(channelID string) *cb.Block {
 	block, err := genesis.NewFactoryImpl(
 		configtx.NewModPolicySettingTemplate(
-			configvaluesmsp.AdminsPolicyKey,
+			channelconfig.AdminsPolicyKey,
 			configtx.NewCompositeTemplate(
 				configtx.NewSimpleTemplate(bs.consortiumsGroups...),
 				bs.ChannelTemplate(),

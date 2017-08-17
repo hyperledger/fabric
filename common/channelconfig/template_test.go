@@ -4,12 +4,11 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package config
+package channelconfig
 
 import (
 	"testing"
 
-	configmsp "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -48,7 +47,7 @@ func TestNewChainTemplate(t *testing.T) {
 		group, ok := configUpdate.WriteSet.Groups[ApplicationGroupKey].Groups[org]
 		assert.True(t, ok, "Expected to find %s but did not", org)
 		for _, policy := range group.Policies {
-			assert.Equal(t, configmsp.AdminsPolicyKey, policy.ModPolicy)
+			assert.Equal(t, AdminsPolicyKey, policy.ModPolicy)
 		}
 	}
 }

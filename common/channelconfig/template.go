@@ -4,13 +4,12 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package config
+package channelconfig
 
 import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	configmsp "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -51,13 +50,13 @@ func (cct *channelCreationTemplate) Envelope(channelID string) (*cb.ConfigUpdate
 		wSet.Groups[ApplicationGroupKey].Groups[org] = cb.NewConfigGroup()
 	}
 
-	wSet.Groups[ApplicationGroupKey].ModPolicy = configmsp.AdminsPolicyKey
-	wSet.Groups[ApplicationGroupKey].Policies[configmsp.AdminsPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(configmsp.AdminsPolicyKey, cb.ImplicitMetaPolicy_MAJORITY)
-	wSet.Groups[ApplicationGroupKey].Policies[configmsp.AdminsPolicyKey].ModPolicy = configmsp.AdminsPolicyKey
-	wSet.Groups[ApplicationGroupKey].Policies[configmsp.WritersPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(configmsp.WritersPolicyKey, cb.ImplicitMetaPolicy_ANY)
-	wSet.Groups[ApplicationGroupKey].Policies[configmsp.WritersPolicyKey].ModPolicy = configmsp.AdminsPolicyKey
-	wSet.Groups[ApplicationGroupKey].Policies[configmsp.ReadersPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(configmsp.ReadersPolicyKey, cb.ImplicitMetaPolicy_ANY)
-	wSet.Groups[ApplicationGroupKey].Policies[configmsp.ReadersPolicyKey].ModPolicy = configmsp.AdminsPolicyKey
+	wSet.Groups[ApplicationGroupKey].ModPolicy = AdminsPolicyKey
+	wSet.Groups[ApplicationGroupKey].Policies[AdminsPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(AdminsPolicyKey, cb.ImplicitMetaPolicy_MAJORITY)
+	wSet.Groups[ApplicationGroupKey].Policies[AdminsPolicyKey].ModPolicy = AdminsPolicyKey
+	wSet.Groups[ApplicationGroupKey].Policies[WritersPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(WritersPolicyKey, cb.ImplicitMetaPolicy_ANY)
+	wSet.Groups[ApplicationGroupKey].Policies[WritersPolicyKey].ModPolicy = AdminsPolicyKey
+	wSet.Groups[ApplicationGroupKey].Policies[ReadersPolicyKey] = policies.ImplicitMetaPolicyWithSubPolicy(ReadersPolicyKey, cb.ImplicitMetaPolicy_ANY)
+	wSet.Groups[ApplicationGroupKey].Policies[ReadersPolicyKey].ModPolicy = AdminsPolicyKey
 	wSet.Groups[ApplicationGroupKey].Version = 1
 
 	return &cb.ConfigUpdateEnvelope{
