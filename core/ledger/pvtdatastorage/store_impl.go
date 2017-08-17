@@ -173,6 +173,22 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 	return pvtData, nil
 }
 
+// InitLastCommittedBlock implements the function in the interface `Store`
+func (s *store) InitLastCommittedBlock(blockNum uint64) error {
+	if !(s.isEmpty && !s.batchPending) {
+		return &ErrIllegalCall{"The pvtdata store is not empty. InitLastCommittedBlock() function call is not allowed"}
+	}
+	batch := leveldbhelper.NewUpdateBatch()
+	batch.Put(lastCommittedBlkkey, encodeBlockNum(blockNum))
+	if err := s.db.WriteBatch(batch, true); err != nil {
+		return err
+	}
+	s.isEmpty = false
+	s.lastCommittedBlock = blockNum
+	logger.Debugf("InitLastCommittedBlock set to = %d", blockNum)
+	return nil
+}
+
 // LastCommittedBlockHeight implements the function in the interface `Store`
 func (s *store) LastCommittedBlockHeight() (uint64, error) {
 	if s.isEmpty {

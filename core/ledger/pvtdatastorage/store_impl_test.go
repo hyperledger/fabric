@@ -97,6 +97,28 @@ func TestStoreState(t *testing.T) {
 	assert.True(ok)
 }
 
+func TestInitLastCommittedBlock(t *testing.T) {
+	env := NewTestStoreEnv(t)
+	defer env.Cleanup()
+	assert := assert.New(t)
+	store := env.TestStore
+	existingLastBlockNum := uint64(25)
+	assert.NoError(store.InitLastCommittedBlock(existingLastBlockNum))
+
+	testEmpty(false, assert, store)
+	testPendingBatch(false, assert, store)
+	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, store)
+
+	env.CloseAndReopen()
+	testEmpty(false, assert, store)
+	testPendingBatch(false, assert, store)
+	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, store)
+
+	err := store.InitLastCommittedBlock(30)
+	_, ok := err.(*ErrIllegalCall)
+	assert.True(ok)
+}
+
 // TODO Add tests for simulating a crash between calls `Prepare` and `Commit`/`Rollback`
 
 func testEmpty(expectedEmpty bool, assert *assert.Assertions, store Store) {
@@ -109,6 +131,12 @@ func testPendingBatch(expectedPending bool, assert *assert.Assertions, store Sto
 	hasPendingBatch, err := store.HasPendingBatch()
 	assert.NoError(err)
 	assert.Equal(expectedPending, hasPendingBatch)
+}
+
+func testLastCommittedBlockHeight(expectedBlockHt uint64, assert *assert.Assertions, store Store) {
+	blkHt, err := store.LastCommittedBlockHeight()
+	assert.NoError(err)
+	assert.Equal(expectedBlockHt, blkHt)
 }
 
 func samplePvtData(t *testing.T, txNums []uint64) []*ledger.TxPvtData {

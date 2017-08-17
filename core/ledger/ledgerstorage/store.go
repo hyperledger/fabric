@@ -66,6 +66,7 @@ func (p *Provider) Open(ledgerid string) (*Store, error) {
 	var blockStore blkstorage.BlockStore
 	var pvtdataStore pvtdatastorage.Store
 	var err error
+
 	if blockStore, err = p.blkStoreProvider.OpenBlockStore(ledgerid); err != nil {
 		return nil, err
 	}
@@ -136,14 +137,55 @@ func (s *Store) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) 
 	return pvtdata, nil
 }
 
-// init checks whether the block storage and pvt data store are in sync
+// init first invokes function `initFromExistingBlockchain`
+// in order to check whether the pvtdata store is present because of an upgrade
+// of peer from 1.0 and need to be updated with the existing blockchain. If, this is
+// not the case then this init will invoke function `syncPvtdataStoreWithBlockStore`
+// to follow the normal course
+func (s *Store) init() error {
+	var initialized bool
+	var err error
+	if initialized, err = s.initPvtdataStoreFromExistingBlockchain(); err != nil || initialized {
+		return err
+	}
+	return s.syncPvtdataStoreWithBlockStore()
+}
+
+// initPvtdataStoreFromExistingBlockchain updates the initial state of the pvtdata store
+// if an existing block store has a blockchain and the pvtdata store is empty.
+// This situation is expected to happen when a peer is upgrated from version 1.0
+// and an existing blockchain is present that was generated with version 1.0.
+// Under this scenario, the pvtdata store is brought upto the point as if it has
+// processed exisitng blocks with no pvt data. This function returns true if the
+// above mentioned condition is found to be true and pvtdata store is successfully updated
+func (s *Store) initPvtdataStoreFromExistingBlockchain() (bool, error) {
+	var bcInfo *common.BlockchainInfo
+	var pvtdataStoreEmpty bool
+	var err error
+
+	if bcInfo, err = s.BlockStore.GetBlockchainInfo(); err != nil {
+		return false, err
+	}
+	if pvtdataStoreEmpty, err = s.pvtdataStore.IsEmpty(); err != nil {
+		return false, err
+	}
+	if pvtdataStoreEmpty && bcInfo.Height > 0 {
+		if err = s.pvtdataStore.InitLastCommittedBlock(bcInfo.Height - 1); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+// syncPvtdataStoreWithBlockStore checks whether the block storage and pvt data store are in sync
 // this is called when the store instance is constructed and handed over for the use.
 // this check whether there is a pending batch (possibly from a previous system crash)
 // of pvt data that was not committed. If a pending batch exists, the check is made
 // whether the associated block was successfully committed in the block storage (before the crash)
 // or not. If the block was committed, the private data batch is committed
 // otherwise, the pvt data batch is rolledback
-func (s *Store) init() error {
+func (s *Store) syncPvtdataStoreWithBlockStore() error {
 	var pendingPvtbatch bool
 	var err error
 	if pendingPvtbatch, err = s.pvtdataStore.HasPendingBatch(); err != nil {

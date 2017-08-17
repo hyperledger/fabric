@@ -28,6 +28,14 @@ type Provider interface {
 // on whether the block was written successfully or not. The store implementation
 // is expected to survive a server crash between the call to `Prepare` and `Commit`/`Rollback`
 type Store interface {
+	// InitLastCommittedBlockHeight sets the last commited block height into the pvt data store
+	// This function is used in a special case where the peer is started up with the blockchain
+	// from an earlier version of a peer when the pvt data feature (and hence this store) was not
+	// available. This function is expected to be called only this situation and hence is
+	// expected to throw an error if the store is not empty. On a successful return from this
+	// fucntion the state of the store is expected to be same as of calling the prepare/commit
+	// function for block `0` through `blockNum` with no pvt data
+	InitLastCommittedBlock(blockNum uint64) error
 	// GetPvtDataByBlockNum returns only the pvt data  corresponding to the given block number
 	// The pvt data is filtered by the list of 'ns/collections' supplied in the filter
 	// A nil filter does not filter any results
@@ -52,7 +60,7 @@ type Store interface {
 	Shutdown()
 }
 
-// ErrIllegalCall is to be thrown by a store impl if the store does not expect a call to Prepare/Commit/Rollback
+// ErrIllegalCall is to be thrown by a store impl if the store does not expect a call to Prepare/Commit/Rollback/InitLastCommittedBlock
 type ErrIllegalCall struct {
 	msg string
 }

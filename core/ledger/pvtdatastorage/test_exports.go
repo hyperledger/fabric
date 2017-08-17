@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testStoreid = "TestStore"
+
 // StoreEnv provides the  store env for testing
 type StoreEnv struct {
 	t                 testing.TB
@@ -26,9 +28,18 @@ func NewTestStoreEnv(t *testing.T) *StoreEnv {
 	removeStorePath(t)
 	assert := assert.New(t)
 	testStoreProvider := NewProvider()
-	testStore, err := testStoreProvider.OpenStore("TestStore")
+	testStore, err := testStoreProvider.OpenStore(testStoreid)
 	assert.NoError(err)
 	return &StoreEnv{t, testStoreProvider, testStore}
+}
+
+// CloseAndReopen closes and opens the store provider
+func (env *StoreEnv) CloseAndReopen() {
+	var err error
+	env.TestStoreProvider.Close()
+	env.TestStoreProvider = NewProvider()
+	env.TestStore, err = env.TestStoreProvider.OpenStore(testStoreid)
+	assert.NoError(env.t, err)
 }
 
 // Cleanup cleansup the  store env after testing
