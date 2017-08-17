@@ -8,8 +8,6 @@ package state
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -24,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
@@ -180,7 +179,7 @@ func NewGossipCoordinatedStateProvider(chainID string, services *ServicesMediato
 	}
 
 	if err != nil {
-		logger.Error("Could not read ledger info to obtain current ledger height due to: ", err)
+		logger.Error("Could not read ledger info to obtain current ledger height due to: ", errors.WithStack(err))
 		// Exiting as without ledger it will be impossible
 		// to deliver new blocks
 		return nil
@@ -225,7 +224,7 @@ func NewGossipCoordinatedStateProvider(chainID string, services *ServicesMediato
 		logger.Debug("Updating gossip metadate nodeMetastate", nodeMetastate)
 		services.UpdateChannelMetadata(b, common2.ChainID(s.chainID))
 	} else {
-		logger.Errorf("Unable to serialize node meta nodeMetastate, error = %s", err)
+		logger.Errorf("Unable to serialize node meta nodeMetastate, error = %+v", errors.WithStack(err))
 	}
 
 	s.done.Add(4)
@@ -336,7 +335,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 
 	currentHeight, err := s.coordinator.LedgerHeight()
 	if err != nil {
-		logger.Errorf("Cannot access to current ledger height, due to %s", err)
+		logger.Errorf("Cannot access to current ledger height, due to %+v", errors.WithStack(err))
 		return
 	}
 	if currentHeight < request.EndSeqNum {
@@ -353,7 +352,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 
 		if err != nil {
 			logger.Errorf("Wasn't able to read block with sequence number %d from ledger, "+
-				"due to %s skipping....", seqNum, err)
+				"due to %+v skipping....", seqNum, errors.WithStack(err))
 			continue
 		}
 
@@ -365,7 +364,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 		blockBytes, err := pb.Marshal(block)
 
 		if err != nil {
-			logger.Errorf("Could not marshal block: %s", err)
+			logger.Errorf("Could not marshal block: %+v", errors.WithStack(err))
 			continue
 		}
 
@@ -374,7 +373,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 			// Marshal private data
 			pvtBytes, err = pvtData.Marshal()
 			if err != nil {
-				logger.Errorf("Failed to marshal private rwset for block %d due to %s", seqNum, err)
+				logger.Errorf("Failed to marshal private rwset for block %d due to %+v", seqNum, errors.WithStack(err))
 				continue
 			}
 		}
@@ -407,7 +406,8 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg proto.ReceivedMessage)
 	for _, payload := range response.GetPayloads() {
 		logger.Debugf("Received payload with sequence number %d.", payload.SeqNum)
 		if err := s.mediator.VerifyBlock(common2.ChainID(s.chainID), payload.SeqNum, payload.Data); err != nil {
-			logger.Warningf("Error verifying block with sequence number %d, due to %s", payload.SeqNum, err)
+			err = errors.WithStack(err)
+			logger.Warningf("Error verifying block with sequence number %d, due to %+v", payload.SeqNum, err)
 			return uint64(0), err
 		}
 		if max < payload.SeqNum {
@@ -469,7 +469,7 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 			for payload := s.payloads.Pop(); payload != nil; payload = s.payloads.Pop() {
 				rawBlock := &common.Block{}
 				if err := pb.Unmarshal(payload.Data, rawBlock); err != nil {
-					logger.Errorf("Error getting block with seqNum = %d due to (%s)...dropping block", payload.SeqNum, err)
+					logger.Errorf("Error getting block with seqNum = %d due to (%+v)...dropping block", payload.SeqNum, errors.WithStack(err))
 					continue
 				}
 				if rawBlock.Data == nil || rawBlock.Header == nil {
@@ -484,13 +484,13 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 				if payload.PrivateData != nil {
 					err := p.Unmarshal(payload.PrivateData)
 					if err != nil {
-						logger.Errorf("Wasn't able to unmarshal private data for block seqNum = %d due to (%s)...dropping block", payload.SeqNum, err)
+						logger.Errorf("Wasn't able to unmarshal private data for block seqNum = %d due to (%+v)...dropping block", payload.SeqNum, errors.WithStack(err))
 						continue
 					}
 				}
 
 				if err := s.commitBlock(rawBlock, p); err != nil {
-					logger.Panicf("Cannot commit block to the ledger due to %s", err)
+					logger.Panicf("Cannot commit block to the ledger due to %+v", errors.WithStack(err))
 				}
 			}
 		case <-s.stopCh:
@@ -514,7 +514,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 			current, err := s.coordinator.LedgerHeight()
 			if err != nil {
 				// Unable to read from ledger continue to the next round
-				logger.Error("Cannot obtain ledger height, due to", err)
+				logger.Errorf("Cannot obtain ledger height, due to %+v", errors.WithStack(err))
 				continue
 			}
 			if current == 0 {
@@ -569,8 +569,8 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 			// Select peers to ask for blocks
 			peer, err := s.selectPeerToRequestFrom(next)
 			if err != nil {
-				logger.Warningf("Cannot send state request for blocks in range [%d...%d], due to",
-					prev, next, err)
+				logger.Warningf("Cannot send state request for blocks in range [%d...%d], due to %+v",
+					prev, next, errors.WithStack(err))
 				return
 			}
 
@@ -590,7 +590,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 				index, err := s.handleStateResponse(msg)
 				if err != nil {
 					logger.Warningf("Wasn't able to process state response for "+
-						"blocks [%d...%d], due to %s", prev, next, err)
+						"blocks [%d...%d], due to %+v", prev, next, errors.WithStack(err))
 					continue
 				}
 				prev = index + 1
@@ -651,7 +651,7 @@ func (s *GossipStateProviderImpl) filterPeers(predicate func(peer discovery.Netw
 func (s *GossipStateProviderImpl) hasRequiredHeight(height uint64) func(peer discovery.NetworkMember) bool {
 	return func(peer discovery.NetworkMember) bool {
 		if nodeMetadata, err := common2.FromBytes(peer.Metadata); err != nil {
-			logger.Errorf("Unable to de-serialize node meta state, error = %s", err)
+			logger.Errorf("Unable to de-serialize node meta state, error = %+v", errors.WithStack(err))
 		} else if nodeMetadata.LedgerHeight >= height {
 			return true
 		}
@@ -691,11 +691,11 @@ func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMod
 	logger.Debug("Adding new payload into the buffer, seqNum = ", payload.SeqNum)
 	height, err := s.coordinator.LedgerHeight()
 	if err != nil {
-		return fmt.Errorf("Failed obtaining ledger height: %v", err)
+		return errors.Wrap(err, "Failed obtaining ledger height")
 	}
 
 	if !blockingMode && payload.SeqNum-height >= defMaxBlockDistance {
-		return fmt.Errorf("Ledger height is at %d, cannot enqueue block with sequence of %d", height, payload.SeqNum)
+		return errors.Errorf("Ledger height is at %d, cannot enqueue block with sequence of %d", height, payload.SeqNum)
 	}
 
 	for blockingMode && s.payloads.Size() > defMaxBlockDistance*2 {
@@ -709,7 +709,7 @@ func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData PvtDa
 
 	// Commit block with available private transactions
 	if _, err := s.coordinator.StoreBlock(block, pvtData); err != nil {
-		logger.Errorf("Got error while committing(%s)", err)
+		logger.Errorf("Got error while committing(%+v)", errors.WithStack(err))
 		return err
 	}
 
@@ -721,7 +721,7 @@ func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData PvtDa
 		s.mediator.UpdateChannelMetadata(b, common2.ChainID(s.chainID))
 	} else {
 
-		logger.Errorf("Unable to serialize node meta nodeMetastate, error = %s", err)
+		logger.Errorf("Unable to serialize node meta nodeMetastate, error = %+v", errors.WithStack(err))
 	}
 
 	logger.Debugf("Channel [%s]: Created block [%d] with %d transaction(s)",

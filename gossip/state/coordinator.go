@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package state
 
 import (
-	"fmt"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -27,24 +25,24 @@ func (pvt *PvtDataCollections) Marshal() ([][]byte, error) {
 	pvtDataBytes := make([][]byte, 0)
 	for index, each := range *pvt {
 		if each == nil {
-			errMsg := fmt.Sprintf("Mallformed private data payload, rwset index %d is nil", index)
-			logger.Errorf(errMsg)
-			return nil, errors.New(errMsg)
+			err := errors.Errorf("Mallformed private data payload, rwset index %d is nil", index)
+			logger.Errorf("%+v", err)
+			return nil, err
 		}
 		pvtBytes, err := proto.Marshal(each.WriteSet)
 		if err != nil {
-			errMsg := fmt.Sprintf("Could not marshal private rwset index %d, due to %s", index, err)
-			logger.Errorf(errMsg)
-			return nil, errors.New(errMsg)
+			err = errors.Wrapf(err, "Could not marshal private rwset index %d", index)
+			logger.Errorf("%+v", err)
+			return nil, err
 		}
 		// Compose gossip protobuf message with private rwset + index of transaction in the block
 		txSeqInBlock := each.SeqInBlock
 		pvtDataPayload := &gossip.PvtDataPayload{TxSeqInBlock: txSeqInBlock, Payload: pvtBytes}
 		payloadBytes, err := proto.Marshal(pvtDataPayload)
 		if err != nil {
-			errMsg := fmt.Sprintf("Could not marshal private payload with transaction index %d, due to %s", txSeqInBlock, err)
-			logger.Errorf(errMsg)
-			return nil, errors.New(errMsg)
+			err = errors.Wrapf(err, "Could not marshal private payload with transaction index %d", txSeqInBlock)
+			logger.Errorf("%+v", err)
+			return nil, err
 		}
 
 		pvtDataBytes = append(pvtDataBytes, payloadBytes)
@@ -58,11 +56,11 @@ func (pvt *PvtDataCollections) Unmarshal(data [][]byte) error {
 	for _, each := range data {
 		payload := &gossip.PvtDataPayload{}
 		if err := proto.Unmarshal(each, payload); err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 		pvtRWSet := &rwset.TxPvtReadWriteSet{}
 		if err := proto.Unmarshal(payload.Payload, pvtRWSet); err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 		*pvt = append(*pvt, &ledger.TxPvtData{
 			SeqInBlock: payload.TxSeqInBlock,
@@ -138,7 +136,7 @@ func (c *coordinator) StoreBlock(block *common.Block, data PvtDataCollections) (
 func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64) (*common.Block, PvtDataCollections, error) {
 	blockAndPvtData, err := c.Committer.GetPvtDataAndBlockByNum(seqNum)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Cannot retreive block number %d, due to %s", seqNum, err)
+		return nil, nil, errors.Wrapf(err, "Cannot retreive block number %d", seqNum)
 	}
 
 	var blockPvtData PvtDataCollections
@@ -154,7 +152,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64) (*common.Block, Pvt
 func (c *coordinator) GetBlockByNum(seqNum uint64) (*common.Block, error) {
 	blocks := c.GetBlocks([]uint64{seqNum})
 	if len(blocks) == 0 {
-		return nil, fmt.Errorf("Cannot retreive block number %d", seqNum)
+		return nil, errors.Errorf("Cannot retreive block number %d", seqNum)
 	}
 	return blocks[0], nil
 }

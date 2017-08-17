@@ -8,14 +8,13 @@ package identity
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -68,7 +67,7 @@ func NewIdentityMapper(mcs api.MessageCryptoService, selfIdentity api.PeerIdenti
 		selfPKIID:  string(selfPKIID),
 	}
 	if err := idMapper.Put(selfPKIID, selfIdentity); err != nil {
-		panic(fmt.Errorf("Failed putting our own identity into the identity mapper: %v", err))
+		panic(errors.Wrap(err, "Failed putting our own identity into the identity mapper"))
 	}
 	return idMapper
 }

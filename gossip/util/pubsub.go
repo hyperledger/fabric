@@ -7,9 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
-	"errors"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 const (

@@ -8,7 +8,6 @@ package integration
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
@@ -28,19 +28,19 @@ func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string
 	_, p, err := net.SplitHostPort(selfEndpoint)
 
 	if err != nil {
-		return nil, fmt.Errorf("misconfigured endpoint %s, the error is %s", selfEndpoint, err)
+		return nil, errors.Wrapf(err, "misconfigured endpoint %s", selfEndpoint)
 	}
 
 	port, err := strconv.ParseInt(p, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("misconfigured endpoint %s, failed to parse port number due to %s", selfEndpoint, err)
+		return nil, errors.Wrapf(err, "misconfigured endpoint %s, failed to parse port number", selfEndpoint)
 	}
 
 	var cert *tls.Certificate
 	if viper.GetBool("peer.tls.enabled") {
 		certTmp, err := tls.LoadX509KeyPair(config.GetPath("peer.tls.cert.file"), config.GetPath("peer.tls.key.file"))
 		if err != nil {
-			return nil, fmt.Errorf("failed to load certificates because of %s", err)
+			return nil, errors.Wrap(err, "failed to load certificates")
 		}
 		cert = &certTmp
 	}
@@ -75,7 +75,7 @@ func NewGossipComponent(peerIdentity []byte, endpoint string, s *grpc.Server,
 
 	conf, err := newConfig(endpoint, externalEndpoint, bootPeers...)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	gossipInstance := gossip.NewGossipService(conf, s, secAdv, cryptSvc, idMapper,
 		peerIdentity, secureDialOpts)

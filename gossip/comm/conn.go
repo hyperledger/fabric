@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
-	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -103,7 +103,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 
 	// no one connected to us AND we failed connecting!
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	// at this point in the code, we created a connection to a remote peer
@@ -285,7 +285,7 @@ func (conn *connection) serviceConnection() error {
 			conn.stopChan <- stop
 			return nil
 		case err := <-errChan:
-			return err
+			return errors.WithStack(err)
 		case msg := <-msgChan:
 			conn.handler(msg)
 		}
@@ -304,7 +304,7 @@ func (conn *connection) writeToStream() {
 		case m := <-conn.outBuff:
 			err := stream.Send(m.envelope)
 			if err != nil {
-				go m.onErr(err)
+				go m.onErr(errors.WithStack(err))
 				return
 			}
 		case stop := <-conn.stopChan:
@@ -333,13 +333,13 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.S
 		}
 		if err != nil {
 			errChan <- err
-			conn.logger.Debug(conn.pkiID, "Got error, aborting:", err)
+			conn.logger.Debugf("%v Got error, aborting: %+v", conn.pkiID, errors.WithStack(err))
 			return
 		}
 		msg, err := envelope.ToGossipMessage()
 		if err != nil {
 			errChan <- err
-			conn.logger.Warning(conn.pkiID, "Got error, aborting:", err)
+			conn.logger.Warning("%v Got error, aborting: %+v", conn.pkiID, errors.WithStack(err))
 		}
 		msgChan <- msg
 	}
@@ -350,8 +350,8 @@ func (conn *connection) getStream() stream {
 	defer conn.Unlock()
 
 	if conn.clientStream != nil && conn.serverStream != nil {
-		e := "Both client and server stream are not nil, something went wrong"
-		conn.logger.Error(e)
+		e := errors.New("Both client and server stream are not nil, something went wrong")
+		conn.logger.Errorf("%+v", e)
 	}
 
 	if conn.clientStream != nil {

@@ -9,6 +9,8 @@ package common
 import (
 	"bytes"
 	"encoding/binary"
+
+	"github.com/pkg/errors"
 )
 
 // NodeMetastate information to store the information about current
@@ -32,7 +34,7 @@ func (n *NodeMetastate) Bytes() ([]byte, error) {
 	// with FromBytes function
 	err := binary.Write(buffer, binary.BigEndian, *n)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return buffer.Bytes(), nil
 }
@@ -56,7 +58,7 @@ func FromBytes(buf []byte) (*NodeMetastate, error) {
 	// done using same order
 	err := binary.Read(reader, binary.BigEndian, &state)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return &state, nil
 }
