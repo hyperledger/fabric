@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package viperutil
@@ -439,7 +429,8 @@ func TestStringFromFileEnv(t *testing.T) {
 
 func TestEnhancedExactUnmarshalKey(t *testing.T) {
 	type Nested struct {
-		Key string
+		Key     string
+		BoolVar bool
 	}
 
 	type nestedKey struct {
@@ -450,7 +441,8 @@ func TestEnhancedExactUnmarshalKey(t *testing.T) {
 		"Top:\n" +
 		"  Nested:\n" +
 		"    Nested:\n" +
-		"      Key: BAD\n"
+		"      Key: BAD\n" +
+		"      BoolVar: true\n"
 
 	envVar := "VIPERUTIL_TOP_NESTED_NESTED_KEY"
 	envVal := "GOOD"
@@ -475,6 +467,10 @@ func TestEnhancedExactUnmarshalKey(t *testing.T) {
 
 	if uconf.Nested.Key != envVal {
 		t.Fatalf(`Expected: "%s", Actual: "%s"`, envVal, uconf.Nested.Key)
+	}
+
+	if uconf.Nested.BoolVar != true {
+		t.Fatalf(`Expected: "%t", Actual: "%t"`, true, uconf.Nested.BoolVar)
 	}
 
 }
