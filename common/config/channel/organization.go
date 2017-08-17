@@ -80,7 +80,7 @@ func (oc *OrganizationConfig) validateMSP() error {
 	var err error
 
 	logger.Debugf("Setting up MSP for org %s", oc.name)
-	oc.msp, err = oc.mspConfigHandler.ProposeMSP("", oc.protos.MSP)
+	oc.msp, err = oc.mspConfigHandler.ProposeMSP(oc.protos.MSP)
 	if err != nil {
 		return err
 	}

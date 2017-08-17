@@ -21,7 +21,6 @@ import (
 	"os"
 	"testing"
 
-	msp2 "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/stretchr/testify/assert"
@@ -87,7 +86,7 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	XXXSetMSPManager("foo", &msp2.MSPConfigHandler{MSPManager: msp.NewMSPManager()})
+	XXXSetMSPManager("foo", msp.NewMSPManager())
 	retVal := m.Run()
 	os.Exit(retVal)
 }

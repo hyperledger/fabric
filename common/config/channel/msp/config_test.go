@@ -36,47 +36,36 @@ func TestMSPConfigManager(t *testing.T) {
 
 	// test success:
 
-	// begin/propose/commit
 	mspCH := NewMSPConfigHandler()
 
-	assert.Panics(t, func() {
-		mspCH.PreCommit(t)
-	}, "Expected panic calling PreCommit before beginning transaction")
-	assert.Panics(t, func() {
-		mspCH.CommitProposals(t)
-	}, "Expected panic calling CommitProposals before beginning transaction")
-	assert.Panics(t, func() {
-		_, err = mspCH.ProposeMSP(t, conf)
-	}, "Expected panic calling ProposeMSP before beginning transaction")
-
-	mspCH.BeginConfig(t)
-	_, err = mspCH.ProposeMSP(t, conf)
+	_, err = mspCH.ProposeMSP(conf)
 	assert.NoError(t, err)
-	mspCH.PreCommit(t)
-	mspCH.CommitProposals(t)
 
-	msps, err := mspCH.GetMSPs()
+	mgr, err := mspCH.CreateMSPManager()
+	assert.NoError(t, err)
+	assert.NotNil(t, mgr)
+
+	msps, err := mgr.GetMSPs()
 	assert.NoError(t, err)
 
 	if msps == nil || len(msps) == 0 {
 		t.Fatalf("There are no MSPS in the manager")
 	}
+}
 
-	mspCH.BeginConfig(t)
-	_, err = mspCH.ProposeMSP(t, conf)
-	mspCH.RollbackProposals(t)
+func TestMSPConfigFailure(t *testing.T) {
+	mspCH := NewMSPConfigHandler()
 
-	// test failure
 	// begin/propose/commit
-	mspCH.BeginConfig(t)
-	_, err = mspCH.ProposeMSP(t, conf)
-	assert.NoError(t, err)
-	_, err = mspCH.ProposeMSP(t, &mspprotos.MSPConfig{Config: []byte("BARF!")})
-	assert.Error(t, err)
-	_, err = mspCH.ProposeMSP(t, &mspprotos.MSPConfig{Type: int32(10)})
-	assert.Panics(t, func() {
-		mspCH.BeginConfig(t)
-	}, "Expected panic calling BeginConfig multiple times for same transaction")
+	t.Run("Bad proto", func(t *testing.T) {
+		_, err := mspCH.ProposeMSP(&mspprotos.MSPConfig{Config: []byte("BARF!")})
+		assert.Error(t, err)
+	})
+
+	t.Run("Bad MSP Type", func(t *testing.T) {
+		_, err := mspCH.ProposeMSP(&mspprotos.MSPConfig{Type: int32(10)})
+		assert.Error(t, err)
+	})
 }
 
 func TestTemplates(t *testing.T) {

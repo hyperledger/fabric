@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/util"
+	outermsp "github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/pkg/errors"
@@ -64,7 +65,7 @@ type ChannelConfig struct {
 
 	hashingAlgorithm func(input []byte) []byte
 
-	mspConfigHandler *msp.MSPConfigHandler
+	mspManager outermsp.MSPManager
 
 	appConfig         *ApplicationConfig
 	ordererConfig     *OrdererConfig
@@ -74,9 +75,10 @@ type ChannelConfig struct {
 // NewChannelConfig creates a new ChannelConfig
 func NewChannelConfig(channelGroup *cb.ConfigGroup) (*ChannelConfig, error) {
 	cc := &ChannelConfig{
-		protos:           &ChannelProtos{},
-		mspConfigHandler: msp.NewMSPConfigHandler(),
+		protos: &ChannelProtos{},
 	}
+
+	mspConfigHandler := msp.NewMSPConfigHandler()
 
 	if err := DeserializeProtoValuesFromGroup(channelGroup, cc.protos); err != nil {
 		return nil, errors.Wrap(err, "failed to deserialize values")
@@ -86,17 +88,15 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup) (*ChannelConfig, error) {
 		return nil, err
 	}
 
-	cc.mspConfigHandler.BeginConfig("")
-
+	var err error
 	for groupName, group := range channelGroup.Groups {
-		var err error
 		switch groupName {
 		case ApplicationGroupKey:
-			cc.appConfig, err = NewApplicationConfig(group, cc.mspConfigHandler)
+			cc.appConfig, err = NewApplicationConfig(group, mspConfigHandler)
 		case OrdererGroupKey:
-			cc.ordererConfig, err = NewOrdererConfig(group, cc.mspConfigHandler)
+			cc.ordererConfig, err = NewOrdererConfig(group, mspConfigHandler)
 		case ConsortiumsGroupKey:
-			cc.consortiumsConfig, err = NewConsortiumsConfig(group, cc.mspConfigHandler)
+			cc.consortiumsConfig, err = NewConsortiumsConfig(group, mspConfigHandler)
 		default:
 			return nil, fmt.Errorf("Disallowed channel group: %s", group)
 		}
@@ -105,17 +105,16 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup) (*ChannelConfig, error) {
 		}
 	}
 
-	if err := cc.mspConfigHandler.PreCommit(""); err != nil {
+	if cc.mspManager, err = mspConfigHandler.CreateMSPManager(); err != nil {
 		return nil, err
 	}
-	cc.mspConfigHandler.CommitProposals("")
 
 	return cc, nil
 }
 
 // MSPManager returns the MSP manager for this config
-func (cc *ChannelConfig) MSPManager() *msp.MSPConfigHandler {
-	return cc.mspConfigHandler
+func (cc *ChannelConfig) MSPManager() outermsp.MSPManager {
+	return cc.mspManager
 }
 
 // OrdererConfig returns the orderer config associated with this channel
