@@ -1,26 +1,14 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package config
 
 import (
-	"fmt"
-
-	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 const (
@@ -28,67 +16,25 @@ const (
 	ApplicationGroupKey = "Application"
 )
 
-// ApplicationGroup represents the application config group
-type ApplicationGroup struct {
-	*config.Proposer
-	*ApplicationConfig
-	mspConfig *msp.MSPConfigHandler
-}
-
 type ApplicationConfig struct {
-	*config.StandardValues
-
-	applicationGroup *ApplicationGroup
-	applicationOrgs  map[string]ApplicationOrg
+	applicationOrgs map[string]ApplicationOrg
 }
 
-// NewSharedConfigImpl creates a new SharedConfigImpl with the given CryptoHelper
-func NewApplicationGroup(mspConfig *msp.MSPConfigHandler) *ApplicationGroup {
-	ag := &ApplicationGroup{
-		mspConfig: mspConfig,
-	}
-	ag.Proposer = config.NewProposer(ag)
-
-	return ag
-}
-
-func (ag *ApplicationGroup) NewGroup(name string) (config.ValueProposer, error) {
-	return NewApplicationOrgGroup(name, ag.mspConfig), nil
-}
-
-// Allocate returns a new instance of the ApplicationConfig
-func (ag *ApplicationGroup) Allocate() config.Values {
-	return NewApplicationConfig(ag)
-}
-
-func NewApplicationConfig(ag *ApplicationGroup) *ApplicationConfig {
-	sv, err := config.NewStandardValues(&(struct{}{}))
-	if err != nil {
-		logger.Panicf("Programming error: %s", err)
+// NewApplicationConfig creates config from an Application config group
+func NewApplicationConfig(appGroup *cb.ConfigGroup, mspConfig *msp.MSPConfigHandler) (*ApplicationConfig, error) {
+	ac := &ApplicationConfig{
+		applicationOrgs: make(map[string]ApplicationOrg),
 	}
 
-	return &ApplicationConfig{
-		applicationGroup: ag,
-
-		// Currently there are no config values
-		StandardValues: sv,
-	}
-}
-
-func (ac *ApplicationConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
-	ac.applicationOrgs = make(map[string]ApplicationOrg)
-	var ok bool
-	for key, value := range groups {
-		ac.applicationOrgs[key], ok = value.(*ApplicationOrgGroup)
-		if !ok {
-			return fmt.Errorf("Application sub-group %s was not an ApplicationOrgGroup, actually %T", key, value)
+	var err error
+	for orgName, orgGroup := range appGroup.Groups {
+		ac.applicationOrgs[orgName], err = NewApplicationOrgConfig(orgName, orgGroup, mspConfig)
+		if err != nil {
+			return nil, err
 		}
 	}
-	return nil
-}
 
-func (ac *ApplicationConfig) Commit() {
-	ac.applicationGroup.ApplicationConfig = ac
+	return ac, nil
 }
 
 // Organizations returns a map of org ID to ApplicationOrg

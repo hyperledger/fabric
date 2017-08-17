@@ -30,24 +30,11 @@ func init() {
 }
 
 func TestConsensusType(t *testing.T) {
-	oc := &OrdererConfig{ordererGroup: &OrdererGroup{}, protos: &OrdererProtos{ConsensusType: &ab.ConsensusType{Type: "foo"}}}
+	oc := &OrdererConfig{protos: &OrdererProtos{ConsensusType: &ab.ConsensusType{Type: "foo"}}}
 	assert.NoError(t, oc.validateConsensusType(), "Should have validly set new consensus type")
-
-	oc = &OrdererConfig{
-		ordererGroup: &OrdererGroup{OrdererConfig: &OrdererConfig{protos: &OrdererProtos{ConsensusType: &ab.ConsensusType{Type: "foo"}}}},
-		protos:       &OrdererProtos{ConsensusType: &ab.ConsensusType{Type: "foo"}},
-	}
-	assert.NoError(t, oc.validateConsensusType(), "Should have kept consensus type")
-
-	oc = &OrdererConfig{
-		ordererGroup: &OrdererGroup{OrdererConfig: &OrdererConfig{protos: &OrdererProtos{ConsensusType: &ab.ConsensusType{Type: "bar"}}}},
-		protos:       &OrdererProtos{ConsensusType: &ab.ConsensusType{Type: "foo"}},
-	}
-	assert.Error(t, oc.validateConsensusType(), "Should have failed to change consensus type")
 }
 
 func TestBatchSize(t *testing.T) {
-
 	validMaxMessageCount := uint32(10)
 	validAbsoluteMaxBytes := uint32(1000)
 	validPreferredMaxBytes := uint32(500)

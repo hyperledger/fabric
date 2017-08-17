@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package config
@@ -19,10 +9,12 @@ package config
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/config"
 	mspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/msp"
+	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
+
+	"github.com/pkg/errors"
 )
 
 // Org config keys
@@ -31,87 +23,64 @@ const (
 	MSPKey = "MSP"
 )
 
+// OrganizationProtos are used to deserialize the organization config
 type OrganizationProtos struct {
 	MSP *mspprotos.MSPConfig
 }
 
+// OrganizationConfig stores the configuration for an organization
 type OrganizationConfig struct {
-	*config.StandardValues
 	protos *OrganizationProtos
 
-	organizationGroup *OrganizationGroup
-
-	msp   msp.MSP
-	mspID string
-}
-
-// Config stores common configuration information for organizations
-type OrganizationGroup struct {
-	*config.Proposer
-	*OrganizationConfig
-	name             string
 	mspConfigHandler *mspconfig.MSPConfigHandler
+	msp              msp.MSP
+	mspID            string
+	name             string
 }
 
-// NewConfig creates an instnace of the organization Config
-func NewOrganizationGroup(name string, mspConfigHandler *mspconfig.MSPConfigHandler) *OrganizationGroup {
-	og := &OrganizationGroup{
+// NewOrganizationConfig creates a new config for an organization
+func NewOrganizationConfig(name string, orgGroup *cb.ConfigGroup, mspConfigHandler *mspconfig.MSPConfigHandler) (*OrganizationConfig, error) {
+	if len(orgGroup.Groups) > 0 {
+		return nil, fmt.Errorf("organizations do not support sub-groups")
+	}
+
+	oc := &OrganizationConfig{
+		protos:           &OrganizationProtos{},
 		name:             name,
 		mspConfigHandler: mspConfigHandler,
 	}
-	og.Proposer = config.NewProposer(og)
-	return og
+
+	if err := DeserializeProtoValuesFromGroup(orgGroup, oc.protos); err != nil {
+		return nil, errors.Wrap(err, "failed to deserialize values")
+	}
+
+	if err := oc.Validate(); err != nil {
+		return nil, err
+	}
+
+	return oc, nil
 }
 
 // Name returns the name this org is referred to in config
-func (og *OrganizationGroup) Name() string {
-	return og.name
+func (oc *OrganizationConfig) Name() string {
+	return oc.name
 }
 
 // MSPID returns the MSP ID associated with this org
-func (og *OrganizationGroup) MSPID() string {
-	return og.mspID
-}
-
-// NewGroup always errors
-func (og *OrganizationGroup) NewGroup(name string) (config.ValueProposer, error) {
-	return nil, fmt.Errorf("Organization does not support subgroups")
-}
-
-// Allocate creates the proto resources needed for a proposal
-func (og *OrganizationGroup) Allocate() config.Values {
-	return NewOrganizationConfig(og)
-}
-
-func NewOrganizationConfig(og *OrganizationGroup) *OrganizationConfig {
-	oc := &OrganizationConfig{
-		protos: &OrganizationProtos{},
-
-		organizationGroup: og,
-	}
-
-	var err error
-	oc.StandardValues, err = config.NewStandardValues(oc.protos)
-	if err != nil {
-		logger.Panicf("Programming error: %s", err)
-	}
-	return oc
+func (oc *OrganizationConfig) MSPID() string {
+	return oc.mspID
 }
 
 // Validate returns whether the configuration is valid
-func (oc *OrganizationConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
-	return oc.validateMSP(tx)
+func (oc *OrganizationConfig) Validate() error {
+	return oc.validateMSP()
 }
 
-func (oc *OrganizationConfig) Commit() {
-	oc.organizationGroup.OrganizationConfig = oc
-}
-
-func (oc *OrganizationConfig) validateMSP(tx interface{}) error {
+func (oc *OrganizationConfig) validateMSP() error {
 	var err error
 
-	logger.Debugf("Setting up MSP for org %s", oc.organizationGroup.name)
-	oc.msp, err = oc.organizationGroup.mspConfigHandler.ProposeMSP(tx, oc.protos.MSP)
+	logger.Debugf("Setting up MSP for org %s", oc.name)
+	oc.msp, err = oc.mspConfigHandler.ProposeMSP("", oc.protos.MSP)
 	if err != nil {
 		return err
 	}
@@ -119,12 +88,10 @@ func (oc *OrganizationConfig) validateMSP(tx interface{}) error {
 	oc.mspID, _ = oc.msp.GetIdentifier()
 
 	if oc.mspID == "" {
-		return fmt.Errorf("MSP for org %s has empty MSP ID", oc.organizationGroup.name)
+		return fmt.Errorf("MSP for org %s has empty MSP ID", oc.name)
 	}
 
-	if oc.organizationGroup.OrganizationConfig != nil && oc.organizationGroup.mspID != oc.mspID {
-		return fmt.Errorf("Organization %s attempted to change its MSP ID from %s to %s", oc.organizationGroup.name, oc.organizationGroup.mspID, oc.mspID)
-	}
+	// XXX TODO Add back a check for MSP ID modification
 
 	return nil
 }

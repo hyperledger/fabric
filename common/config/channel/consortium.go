@@ -1,27 +1,16 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package config
 
 import (
-	"fmt"
-
-	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/pkg/errors"
 )
 
 // ConsortiumProtos holds the config protos for the consortium config
@@ -29,59 +18,35 @@ type ConsortiumProtos struct {
 	ChannelCreationPolicy *cb.Policy
 }
 
-// ConsortiumGroup stores the set of Consortium
-type ConsortiumGroup struct {
-	*config.Proposer
-	*ConsortiumConfig
-
-	mspConfig *msp.MSPConfigHandler
-}
-
-// NewConsortiumGroup creates a new *ConsortiumGroup
-func NewConsortiumGroup(mspConfig *msp.MSPConfigHandler) *ConsortiumGroup {
-	cg := &ConsortiumGroup{
-		mspConfig: mspConfig,
-	}
-	cg.Proposer = config.NewProposer(cg)
-	return cg
-}
-
-// NewGroup returns a Consortium instance
-func (cg *ConsortiumGroup) NewGroup(name string) (config.ValueProposer, error) {
-	return NewOrganizationGroup(name, cg.mspConfig), nil
-}
-
-// Allocate returns the resources for a new config proposal
-func (cg *ConsortiumGroup) Allocate() config.Values {
-	return NewConsortiumConfig(cg)
-}
-
 // ConsortiumConfig holds the consoritums configuration information
 type ConsortiumConfig struct {
-	*config.StandardValues
 	protos *ConsortiumProtos
-	orgs   map[string]*OrganizationGroup
-
-	consortiumGroup *ConsortiumGroup
+	orgs   map[string]*OrganizationConfig
 }
 
 // NewConsortiumConfig creates a new instance of the consoritums config
-func NewConsortiumConfig(cg *ConsortiumGroup) *ConsortiumConfig {
+func NewConsortiumConfig(consortiumGroup *cb.ConfigGroup, mspConfig *msp.MSPConfigHandler) (*ConsortiumConfig, error) {
 	cc := &ConsortiumConfig{
-		protos:          &ConsortiumProtos{},
-		orgs:            make(map[string]*OrganizationGroup),
-		consortiumGroup: cg,
+		protos: &ConsortiumProtos{},
+		orgs:   make(map[string]*OrganizationConfig),
 	}
-	var err error
-	cc.StandardValues, err = config.NewStandardValues(cc.protos)
-	if err != nil {
-		logger.Panicf("Programming error: %s", err)
+
+	if err := DeserializeProtoValuesFromGroup(consortiumGroup, cc.protos); err != nil {
+		return nil, errors.Wrap(err, "failed to deserialize values")
 	}
-	return cc
+
+	for orgName, orgGroup := range consortiumGroup.Groups {
+		var err error
+		if cc.orgs[orgName], err = NewOrganizationConfig(orgName, orgGroup, mspConfig); err != nil {
+			return nil, err
+		}
+	}
+
+	return cc, nil
 }
 
 // Organizations returns the set of organizations in the consortium
-func (cc *ConsortiumConfig) Organizations() map[string]*OrganizationGroup {
+func (cc *ConsortiumConfig) Organizations() map[string]*OrganizationConfig {
 	return cc.orgs
 }
 
@@ -89,21 +54,4 @@ func (cc *ConsortiumConfig) Organizations() map[string]*OrganizationGroup {
 // the channel creation
 func (cc *ConsortiumConfig) ChannelCreationPolicy() *cb.Policy {
 	return cc.protos.ChannelCreationPolicy
-}
-
-// Commit commits the ConsortiumConfig
-func (cc *ConsortiumConfig) Commit() {
-	cc.consortiumGroup.ConsortiumConfig = cc
-}
-
-// Validate builds the Consortium map
-func (cc *ConsortiumConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
-	var ok bool
-	for key, group := range groups {
-		cc.orgs[key], ok = group.(*OrganizationGroup)
-		if !ok {
-			return fmt.Errorf("Unexpected group type: %T", group)
-		}
-	}
-	return nil
 }

@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package config
@@ -21,10 +11,11 @@ import (
 	"math"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/pkg/errors"
 )
 
 // Channel config keys
@@ -67,92 +58,79 @@ type ChannelProtos struct {
 	Consortium                *cb.Consortium
 }
 
-type channelConfigSetter struct {
-	target **ChannelConfig
-	*ChannelConfig
-}
-
-func (ccs *channelConfigSetter) Commit() {
-	*(ccs.target) = ccs.ChannelConfig
-}
-
-// ChannelGroup
-type ChannelGroup struct {
-	*ChannelConfig
-	*config.Proposer
-	mspConfigHandler *msp.MSPConfigHandler
-}
-
-func NewChannelGroup(mspConfigHandler *msp.MSPConfigHandler) *ChannelGroup {
-	cg := &ChannelGroup{
-		ChannelConfig:    NewChannelConfig(),
-		mspConfigHandler: mspConfigHandler,
-	}
-	cg.Proposer = config.NewProposer(cg)
-	return cg
-}
-
-// Allocate creates new config resources for a pending config update
-func (cg *ChannelGroup) Allocate() config.Values {
-	return &channelConfigSetter{
-		ChannelConfig: NewChannelConfig(),
-		target:        &cg.ChannelConfig,
-	}
-}
-
-// OrdererConfig returns the orderer config associated with this channel
-func (cg *ChannelGroup) OrdererConfig() *OrdererGroup {
-	return cg.ChannelConfig.ordererConfig
-}
-
-// ApplicationConfig returns the application config associated with this channel
-func (cg *ChannelGroup) ApplicationConfig() *ApplicationGroup {
-	return cg.ChannelConfig.appConfig
-}
-
-// ConsortiumsConfig returns the consortium config associated with this channel if it exists
-func (cg *ChannelGroup) ConsortiumsConfig() *ConsortiumsGroup {
-	return cg.ChannelConfig.consortiumsConfig
-}
-
-// NewGroup instantiates either a new application or orderer config
-func (cg *ChannelGroup) NewGroup(group string) (config.ValueProposer, error) {
-	switch group {
-	case ApplicationGroupKey:
-		return NewApplicationGroup(cg.mspConfigHandler), nil
-	case OrdererGroupKey:
-		return NewOrdererGroup(cg.mspConfigHandler), nil
-	case ConsortiumsGroupKey:
-		return NewConsortiumsGroup(cg.mspConfigHandler), nil
-	default:
-		return nil, fmt.Errorf("Disallowed channel group: %s", group)
-	}
-}
-
 // ChannelConfig stores the channel configuration
 type ChannelConfig struct {
-	*config.StandardValues
 	protos *ChannelProtos
 
 	hashingAlgorithm func(input []byte) []byte
 
-	appConfig         *ApplicationGroup
-	ordererConfig     *OrdererGroup
-	consortiumsConfig *ConsortiumsGroup
+	mspConfigHandler *msp.MSPConfigHandler
+
+	appConfig         *ApplicationConfig
+	ordererConfig     *OrdererConfig
+	consortiumsConfig *ConsortiumsConfig
 }
 
 // NewChannelConfig creates a new ChannelConfig
-func NewChannelConfig() *ChannelConfig {
+func NewChannelConfig(channelGroup *cb.ConfigGroup) (*ChannelConfig, error) {
 	cc := &ChannelConfig{
-		protos: &ChannelProtos{},
+		protos:           &ChannelProtos{},
+		mspConfigHandler: msp.NewMSPConfigHandler(),
 	}
 
-	var err error
-	cc.StandardValues, err = config.NewStandardValues(cc.protos)
-	if err != nil {
-		logger.Panicf("Programming error: %s", err)
+	if err := DeserializeProtoValuesFromGroup(channelGroup, cc.protos); err != nil {
+		return nil, errors.Wrap(err, "failed to deserialize values")
 	}
-	return cc
+
+	if err := cc.Validate(); err != nil {
+		return nil, err
+	}
+
+	cc.mspConfigHandler.BeginConfig("")
+
+	for groupName, group := range channelGroup.Groups {
+		var err error
+		switch groupName {
+		case ApplicationGroupKey:
+			cc.appConfig, err = NewApplicationConfig(group, cc.mspConfigHandler)
+		case OrdererGroupKey:
+			cc.ordererConfig, err = NewOrdererConfig(group, cc.mspConfigHandler)
+		case ConsortiumsGroupKey:
+			cc.consortiumsConfig, err = NewConsortiumsConfig(group, cc.mspConfigHandler)
+		default:
+			return nil, fmt.Errorf("Disallowed channel group: %s", group)
+		}
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not create channel %s sub-group config", groupName)
+		}
+	}
+
+	if err := cc.mspConfigHandler.PreCommit(""); err != nil {
+		return nil, err
+	}
+	cc.mspConfigHandler.CommitProposals("")
+
+	return cc, nil
+}
+
+// MSPManager returns the MSP manager for this config
+func (cc *ChannelConfig) MSPManager() *msp.MSPConfigHandler {
+	return cc.mspConfigHandler
+}
+
+// OrdererConfig returns the orderer config associated with this channel
+func (cc *ChannelConfig) OrdererConfig() *OrdererConfig {
+	return cc.ordererConfig
+}
+
+// ApplicationConfig returns the application config associated with this channel
+func (cc *ChannelConfig) ApplicationConfig() *ApplicationConfig {
+	return cc.appConfig
+}
+
+// ConsortiumsConfig returns the consortium config associated with this channel if it exists
+func (cc *ChannelConfig) ConsortiumsConfig() *ConsortiumsConfig {
+	return cc.consortiumsConfig
 }
 
 // HashingAlgorithm returns a function pointer to the chain hashing algorihtm
@@ -175,9 +153,8 @@ func (cc *ChannelConfig) ConsortiumName() string {
 	return cc.protos.Consortium.Name
 }
 
-// Validate inspects the generated configuration protos, ensures that the values are correct, and
-// sets the ChannelConfig fields that may be referenced after Commit
-func (cc *ChannelConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
+// Validate inspects the generated configuration protos and ensures that the values are correct
+func (cc *ChannelConfig) Validate() error {
 	for _, validator := range []func() error{
 		cc.validateHashingAlgorithm,
 		cc.validateBlockDataHashingStructure,
@@ -185,29 +162,6 @@ func (cc *ChannelConfig) Validate(tx interface{}, groups map[string]config.Value
 	} {
 		if err := validator(); err != nil {
 			return err
-		}
-	}
-
-	var ok bool
-	for key, value := range groups {
-		switch key {
-		case ApplicationGroupKey:
-			cc.appConfig, ok = value.(*ApplicationGroup)
-			if !ok {
-				return fmt.Errorf("Application group was not Application config")
-			}
-		case OrdererGroupKey:
-			cc.ordererConfig, ok = value.(*OrdererGroup)
-			if !ok {
-				return fmt.Errorf("Orderer group was not Orderer config")
-			}
-		case ConsortiumsGroupKey:
-			cc.consortiumsConfig, ok = value.(*ConsortiumsGroup)
-			if !ok {
-				return fmt.Errorf("Consortiums group was no Consortium config")
-			}
-		default:
-			return fmt.Errorf("Disallowed channel group: %s", key)
 		}
 	}
 

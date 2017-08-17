@@ -10,12 +10,15 @@ import (
 	"time"
 
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
+
+var logger = flogging.MustGetLogger("common/config/channel")
 
 // Org stores the common organizational config
 type Org interface {

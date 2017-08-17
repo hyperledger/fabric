@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package config
@@ -23,9 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/config/channel/msp"
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -59,60 +51,36 @@ type OrdererProtos struct {
 	ChannelRestrictions *ab.ChannelRestrictions
 }
 
-// Config is stores the orderer component configuration
-type OrdererGroup struct {
-	*config.Proposer
-	*OrdererConfig
-
-	mspConfig *msp.MSPConfigHandler
-}
-
-// NewConfig creates a new *OrdererConfig
-func NewOrdererGroup(mspConfig *msp.MSPConfigHandler) *OrdererGroup {
-	og := &OrdererGroup{
-		mspConfig: mspConfig,
-	}
-	og.Proposer = config.NewProposer(og)
-	return og
-}
-
-// NewGroup returns an Org instance
-func (og *OrdererGroup) NewGroup(name string) (config.ValueProposer, error) {
-	return NewOrganizationGroup(name, og.mspConfig), nil
-}
-
-func (og *OrdererGroup) Allocate() config.Values {
-	return NewOrdererConfig(og)
-}
-
 // OrdererConfig holds the orderer configuration information
 type OrdererConfig struct {
-	*config.StandardValues
-	protos       *OrdererProtos
-	ordererGroup *OrdererGroup
-	orgs         map[string]Org
+	protos *OrdererProtos
+	orgs   map[string]Org
 
 	batchTimeout time.Duration
 }
 
 // NewOrdererConfig creates a new instance of the orderer config
-func NewOrdererConfig(og *OrdererGroup) *OrdererConfig {
+func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *msp.MSPConfigHandler) (*OrdererConfig, error) {
 	oc := &OrdererConfig{
-		protos:       &OrdererProtos{},
-		ordererGroup: og,
+		protos: &OrdererProtos{},
+		orgs:   make(map[string]Org),
 	}
 
-	var err error
-	oc.StandardValues, err = config.NewStandardValues(oc.protos)
-	if err != nil {
-		logger.Panicf("Programming error: %s", err)
+	if err := DeserializeProtoValuesFromGroup(ordererGroup, oc.protos); err != nil {
+		return nil, errors.Wrap(err, "failed to deserialize values")
 	}
-	return oc
-}
 
-// Commit writes the orderer config back to the orderer config group
-func (oc *OrdererConfig) Commit() {
-	oc.ordererGroup.OrdererConfig = oc
+	if err := oc.Validate(); err != nil {
+		return nil, err
+	}
+
+	for orgName, orgGroup := range ordererGroup.Groups {
+		var err error
+		if oc.orgs[orgName], err = NewOrganizationConfig(orgName, orgGroup, mspConfig); err != nil {
+			return nil, err
+		}
+	}
+	return oc, nil
 }
 
 // ConsensusType returns the configured consensus type
@@ -147,7 +115,7 @@ func (oc *OrdererConfig) Organizations() map[string]Org {
 	return oc.orgs
 }
 
-func (oc *OrdererConfig) Validate(tx interface{}, groups map[string]config.ValueProposer) error {
+func (oc *OrdererConfig) Validate() error {
 	for _, validator := range []func() error{
 		oc.validateConsensusType,
 		oc.validateBatchSize,
@@ -159,23 +127,11 @@ func (oc *OrdererConfig) Validate(tx interface{}, groups map[string]config.Value
 		}
 	}
 
-	var ok bool
-	oc.orgs = make(map[string]Org)
-	for key, value := range groups {
-		oc.orgs[key], ok = value.(*OrganizationGroup)
-		if !ok {
-			return fmt.Errorf("Organization sub-group %s was not an OrgGroup, actually %T", key, value)
-		}
-	}
-
 	return nil
 }
 
 func (oc *OrdererConfig) validateConsensusType() error {
-	if oc.ordererGroup.OrdererConfig != nil && oc.ordererGroup.ConsensusType() != oc.protos.ConsensusType.Type {
-		// The first config we accept the consensus type regardless
-		return fmt.Errorf("Attempted to change the consensus type from %s to %s after init", oc.ordererGroup.ConsensusType(), oc.protos.ConsensusType.Type)
-	}
+	// XXX TODO add check to prevent changing consensus type back
 	return nil
 }
 

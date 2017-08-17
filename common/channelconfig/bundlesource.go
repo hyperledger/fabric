@@ -69,31 +69,28 @@ func (bs *BundleSource) MSPManager() msp.MSPManager {
 
 // ChannelConfig returns the config.Channel for the chain
 func (bs *BundleSource) ChannelConfig() oldchannelconfig.Channel {
-	return bs.StableBundle().rootConfig.Channel()
+	return bs.StableBundle().ChannelConfig()
 }
 
 // OrdererConfig returns the config.Orderer for the channel
 // and whether the Orderer config exists
 func (bs *BundleSource) OrdererConfig() (oldchannelconfig.Orderer, bool) {
-	result := bs.StableBundle().rootConfig.Orderer()
-	return result, result != nil
+	return bs.StableBundle().OrdererConfig()
 }
 
 // ConsortiumsConfig() returns the config.Consortiums for the channel
 // and whether the consortiums config exists
 func (bs *BundleSource) ConsortiumsConfig() (oldchannelconfig.Consortiums, bool) {
-	result := bs.StableBundle().rootConfig.Consortiums()
-	return result, result != nil
+	return bs.StableBundle().ConsortiumsConfig()
 }
 
 // ApplicationConfig returns the configtxapplication.SharedConfig for the channel
 // and whether the Application config exists
 func (bs *BundleSource) ApplicationConfig() (oldchannelconfig.Application, bool) {
-	result := bs.StableBundle().rootConfig.Application()
-	return result, result != nil
+	return bs.StableBundle().ApplicationConfig()
 }
 
 // ConfigtxManager returns the configtx.Manager for the channel
 func (bs *BundleSource) ConfigtxManager() configtxapi.Manager {
-	return bs.StableBundle().configtxManager
+	return bs.StableBundle().ConfigtxManager()
 }

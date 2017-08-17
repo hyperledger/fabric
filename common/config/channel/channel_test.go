@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package config
@@ -22,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -35,56 +24,17 @@ func init() {
 }
 
 func TestInterface(t *testing.T) {
-	_ = Channel(NewChannelGroup(nil))
-}
-
-func TestChannelGroup(t *testing.T) {
-	cg := NewChannelGroup(nil)
-	assert.NotNil(t, cg, "ChannelGroup should not be nil")
-	assert.Nil(t, cg.OrdererConfig(), "OrdererConfig should be nil")
-	assert.Nil(t, cg.ApplicationConfig(), "ApplicationConfig should be nil")
-	assert.Nil(t, cg.ConsortiumsConfig(), "ConsortiumsConfig should be nil")
-
-	_, err := cg.NewGroup(ApplicationGroupKey)
-	assert.NoError(t, err, "Unexpected error for ApplicationGroupKey")
-	_, err = cg.NewGroup(OrdererGroupKey)
-	assert.NoError(t, err, "Unexpected error for OrdererGroupKey")
-	_, err = cg.NewGroup(ConsortiumsGroupKey)
-	assert.NoError(t, err, "Unexpected error for ConsortiumsGroupKey")
-	_, err = cg.NewGroup("BadGroupKey")
-	assert.Error(t, err, "Should have returned error for BadGroupKey")
-
+	_ = Channel(&ChannelConfig{})
 }
 
 func TestChannelConfig(t *testing.T) {
-	cc := NewChannelConfig()
-	assert.NotNil(t, cc, "ChannelConfig should not be nil")
-
-	cc.protos = &ChannelProtos{
-		HashingAlgorithm:          &cb.HashingAlgorithm{Name: bccsp.SHA256},
-		BlockDataHashingStructure: &cb.BlockDataHashingStructure{Width: math.MaxUint32},
-		OrdererAddresses:          &cb.OrdererAddresses{Addresses: []string{"127.0.0.1:7050"}},
-	}
-
-	ag := NewApplicationGroup(nil)
-	og := NewOrdererGroup(nil)
-	csg := NewConsortiumsGroup(nil)
-	good := make(map[string]config.ValueProposer)
-	good[ApplicationGroupKey] = ag
-	good[OrdererGroupKey] = og
-	good[ConsortiumsGroupKey] = csg
-
-	err := cc.Validate(nil, good)
-	assert.NoError(t, err, "Unexpected error validating good config groups")
-	err = cc.Validate(nil, map[string]config.ValueProposer{ApplicationGroupKey: NewConsortiumsGroup(nil)})
-	assert.Error(t, err, "Expected error validating bad config group")
-	err = cc.Validate(nil, map[string]config.ValueProposer{OrdererGroupKey: NewConsortiumsGroup(nil)})
-	assert.Error(t, err, "Expected error validating bad config group")
-	err = cc.Validate(nil, map[string]config.ValueProposer{ConsortiumsGroupKey: NewOrdererGroup(nil)})
-	assert.Error(t, err, "Expected error validating bad config group")
-	err = cc.Validate(nil, map[string]config.ValueProposer{ConsortiumKey: NewConsortiumGroup(nil)})
-	assert.Error(t, err, "Expected error validating bad config group")
-
+	cc, err := NewChannelConfig(&cb.ConfigGroup{
+		Groups: map[string]*cb.ConfigGroup{
+			"UnknownGroupKey": &cb.ConfigGroup{},
+		},
+	})
+	assert.Error(t, err)
+	assert.Nil(t, cc)
 }
 
 func TestHashingAlgorithm(t *testing.T) {
