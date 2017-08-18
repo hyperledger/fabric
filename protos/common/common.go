@@ -30,6 +30,7 @@ func (p *Payload) VariablyOpaqueFields() []string {
 var PayloadDataMap = map[int32]proto.Message{
 	int32(HeaderType_CONFIG):        &ConfigEnvelope{},
 	int32(HeaderType_CONFIG_UPDATE): &ConfigUpdateEnvelope{},
+	int32(HeaderType_MESSAGE):       &ConfigValue{}, // Only used by broadcast_msg sample client
 }
 
 func (p *Payload) VariablyOpaqueFieldProto(name string) (proto.Message, error) {

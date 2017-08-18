@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/localmsp"
@@ -27,22 +26,21 @@ import (
 )
 
 type broadcastClient struct {
-	client  ab.AtomicBroadcast_BroadcastClient
-	signer  crypto.LocalSigner
-	chainID string
+	client    ab.AtomicBroadcast_BroadcastClient
+	signer    crypto.LocalSigner
+	channelID string
 }
 
 // newBroadcastClient creates a simple instance of the broadcastClient interface
-func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient, chainID string, signer crypto.LocalSigner) *broadcastClient {
-	return &broadcastClient{client: client, chainID: chainID, signer: signer}
+func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient, channelID string, signer crypto.LocalSigner) *broadcastClient {
+	return &broadcastClient{client: client, channelID: channelID, signer: signer}
 }
 
 func (s *broadcastClient) broadcast(transaction []byte) error {
-	env, err := utils.CreateSignedEnvelope(cb.HeaderType_MESSAGE, s.chainID, s.signer, &cb.Envelope{Signature: transaction}, 0, 0)
+	env, err := utils.CreateSignedEnvelope(cb.HeaderType_MESSAGE, s.channelID, s.signer, &cb.ConfigValue{Value: transaction}, 0, 0)
 	if err != nil {
 		panic(err)
 	}
-	time.Sleep(time.Second)
 	return s.client.Send(env)
 }
 
@@ -69,14 +67,14 @@ func main() {
 
 	signer := localmsp.NewSigner()
 
-	var chainID string
+	var channelID string
 	var serverAddr string
 	var messages uint64
 	var goroutines uint64
 	var msgSize uint64
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
-	flag.StringVar(&chainID, "chainID", provisional.TestChainID, "The chain ID to broadcast to.")
+	flag.StringVar(&channelID, "channelID", provisional.TestChainID, "The channel ID to broadcast to.")
 	flag.Uint64Var(&messages, "messages", 1, "The number of messages to broadcast.")
 	flag.Uint64Var(&goroutines, "goroutines", 1, "The number of concurrent go routines to broadcast the messages on")
 	flag.Uint64Var(&msgSize, "size", 1024, "The size in bytes of the data section for the payload")
@@ -104,13 +102,12 @@ func main() {
 	for i := uint64(0); i < goroutines; i++ {
 		go func(i uint64) {
 			client, err := ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
-			time.Sleep(10 * time.Second)
 			if err != nil {
 				fmt.Println("Error connecting:", err)
 				return
 			}
 
-			s := newBroadcastClient(client, chainID, signer)
+			s := newBroadcastClient(client, channelID, signer)
 			done := make(chan (struct{}))
 			go func() {
 				for i := uint64(0); i < msgsPerGo; i++ {
