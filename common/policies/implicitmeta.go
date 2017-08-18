@@ -1,32 +1,28 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package policies
 
 import (
+	"bytes"
 	"fmt"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/op/go-logging"
 )
 
 type implicitMetaPolicy struct {
 	threshold   int
 	subPolicies []Policy
+
+	// Only used for logging
+	managers      map[string]*ManagerImpl
+	subPolicyName string
 }
 
 // NewPolicy creates a new policy based on the policy bytes
@@ -61,14 +57,36 @@ func newImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*impl
 	}
 
 	return &implicitMetaPolicy{
-		subPolicies: subPolicies,
-		threshold:   threshold,
+		subPolicies:   subPolicies,
+		threshold:     threshold,
+		managers:      managers,
+		subPolicyName: definition.SubPolicy,
 	}, nil
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
 func (imp *implicitMetaPolicy) Evaluate(signatureSet []*cb.SignedData) error {
+	logger.Debugf("This is an implicit meta policy, it will trigger other policy evaluations, whose failures may be benign")
 	remaining := imp.threshold
+
+	defer func() {
+		if remaining != 0 {
+			// This log message may be large and expensive to construct, so worth checking the log level
+			if logger.IsEnabledFor(logging.DEBUG) {
+				var b bytes.Buffer
+				b.WriteString(fmt.Sprintf("Evaluation Failed: Only %d policies were satisfied, but needed %d of [ ", remaining, imp.threshold))
+				for m := range imp.managers {
+					b.WriteString(m)
+					b.WriteString(".")
+					b.WriteString(imp.subPolicyName)
+					b.WriteString(" ")
+				}
+				b.WriteString("]")
+				logger.Debugf(b.String())
+			}
+		}
+	}()
+
 	for _, policy := range imp.subPolicies {
 		if policy.Evaluate(signatureSet) == nil {
 			remaining--

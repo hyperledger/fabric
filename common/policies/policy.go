@@ -155,7 +155,7 @@ func NewManagerImpl(path string, providers map[int32]Provider, root *cb.ConfigGr
 type rejectPolicy string
 
 func (rp rejectPolicy) Evaluate(signedData []*cb.SignedData) error {
-	return fmt.Errorf("No such policy type: %s", rp)
+	return fmt.Errorf("No such policy: '%s'", rp)
 }
 
 // Manager returns the sub-policy manager for a given path and whether it exists
@@ -174,6 +174,26 @@ func (pm *ManagerImpl) Manager(path []string) (Manager, bool) {
 	}
 
 	return m.Manager(path[1:])
+}
+
+type policyLogger struct {
+	policy     Policy
+	policyName string
+}
+
+func (pl *policyLogger) Evaluate(signatureSet []*cb.SignedData) error {
+	if logger.IsEnabledFor(logging.DEBUG) {
+		logger.Debugf("== Evaluating %T Policy %s ==", pl.policy, pl.policyName)
+		defer logger.Debugf("== Done Evaluating %T Policy %s", pl.policy, pl.policyName)
+	}
+
+	err := pl.policy.Evaluate(signatureSet)
+	if err != nil {
+		logger.Debugf("Signature set did not satisfy policy %s", pl.policyName)
+	} else {
+		logger.Debugf("Signature set satisfies policy %s", pl.policyName)
+	}
+	return err
 }
 
 // GetPolicy returns a policy and true if it was the policy requested, or false if it is the default reject policy
@@ -204,8 +224,9 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 		}
 		return rejectPolicy(relpath), false
 	}
-	if logger.IsEnabledFor(logging.DEBUG) {
-		logger.Debugf("Returning policy %s from manager %s for evaluation", relpath, pm.path)
-	}
-	return policy, true
+
+	return &policyLogger{
+		policy:     policy,
+		policyName: PathSeparator + pm.path + PathSeparator + relpath,
+	}, true
 }
