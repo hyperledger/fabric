@@ -92,6 +92,7 @@ func Start(cmd string, conf *config.TopLevel) {
 
 // Set the logging level
 func initializeLoggingLevel(conf *config.TopLevel) {
+	flogging.InitBackend(flogging.SetFormat(conf.General.LogFormat), os.Stderr)
 	flogging.InitFromSpec(conf.General.LogLevel)
 	if conf.Kafka.Verbose {
 		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Ldate|log.Lmicroseconds|log.Lshortfile)
