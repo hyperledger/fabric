@@ -41,6 +41,9 @@ General:
     # per: fabric/docs/Setup/logging-control.md
     LogLevel: info
 
+    # Log Format:  The format string to use when logging.  Especially useful to disable color logging
+    LogFormat: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+
     # Genesis method: The method by which the genesis block for the orderer
     # system channel is specified. Available options are "provisional", "file":
     #  - provisional: Utilizes a genesis profile, specified by GenesisProfile,
