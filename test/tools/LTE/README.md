@@ -1,6 +1,6 @@
 # Ledger Traffic Engine
 
-This readme explains the working and the usage of Ledger Traffic Engine (LTE
+This readme explains the working and the usage of Ledger Traffic Engine (LTE)
 test tool.
 
 
@@ -24,7 +24,7 @@ considered to constitute a single test-run.
 To run all the available tests, run:
 ```
 cd fabric/test/tools/LTE/scripts
-./runbenchmark.sh -f parameters_daily_CI.sh all
+./runbenchmarks.sh -f parameters_daily_CI.sh all
 ```
 where the file `parameters_daily_CI.sh` has all the necessary test parameters.
 
@@ -33,7 +33,7 @@ You can run individual tests without running all the available tests by giving
 the name of the test as parameter, instead of `all`. You can get the available
 test names by:
 ```
-./runbenchmark.sh help
+./runbenchmarks.sh help
 ```
 
 ### What the Tests Do
