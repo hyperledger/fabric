@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
+	"github.com/spf13/viper"
 )
 
 // GossipStateProvider is the interface to acquire sequences of the ledger blocks
@@ -48,6 +49,11 @@ const (
 	defAntiEntropyMaxRetries = 3
 
 	defMaxBlockDistance = 100
+
+	blocking    = true
+	nonBlocking = false
+
+	enqueueRetryInterval = time.Millisecond * 100
 )
 
 // GossipAdapter defines gossip/communication required interface for state provider
@@ -445,7 +451,7 @@ func (s *GossipStateProviderImpl) queueNewMessage(msg *proto.GossipMessage) {
 
 	dataMsg := msg.GetDataMsg()
 	if dataMsg != nil {
-		if err := s.AddPayload(dataMsg.GetPayload()); err != nil {
+		if err := s.addPayload(dataMsg.GetPayload(), nonBlocking); err != nil {
 			logger.Warning("Failed adding payload:", err)
 			return
 		}
@@ -668,8 +674,20 @@ func (s *GossipStateProviderImpl) GetBlock(index uint64) *common.Block {
 	return nil
 }
 
-// AddPayload add new payload into state
+// AddPayload add new payload into state.
 func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
+	blockingMode := blocking
+	if viper.GetBool("peer.gossip.nonBlockingCommitMode") {
+		blockingMode = false
+	}
+	return s.addPayload(payload, blockingMode)
+}
+
+// addPayload add new payload into state. It may (or may not) block according to the
+// given parameter. If it gets a block while in blocking mode - it would wait until
+// the block is sent into the payloads buffer.
+// Else - it may drop the block, if the payload buffer is too full.
+func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMode bool) error {
 	if payload == nil {
 		return errors.New("Given payload is nil")
 	}
@@ -679,8 +697,12 @@ func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
 		return fmt.Errorf("Failed obtaining ledger height: %v", err)
 	}
 
-	if payload.SeqNum-height >= defMaxBlockDistance {
+	if !blockingMode && payload.SeqNum-height >= defMaxBlockDistance {
 		return fmt.Errorf("Ledger height is at %d, cannot enqueue block with sequence of %d", height, payload.SeqNum)
+	}
+
+	for blockingMode && s.payloads.Size() > defMaxBlockDistance*2 {
+		time.Sleep(enqueueRetryInterval)
 	}
 
 	return s.payloads.Push(payload)
