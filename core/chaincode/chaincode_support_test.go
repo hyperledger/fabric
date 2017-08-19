@@ -33,6 +33,7 @@ import (
 	mocklgr "github.com/hyperledger/fabric/common/mocks/ledger"
 	mockpeer "github.com/hyperledger/fabric/common/mocks/peer"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
@@ -152,7 +153,8 @@ func initMockPeer(chainIDs ...string) error {
 	}
 
 	ccStartupTimeout := time.Duration(2) * time.Second
-	NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout)
+	ca, _ := accesscontrol.NewCA()
+	NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout, ca)
 	theChaincodeSupport.executetimeout = time.Duration(1) * time.Second
 
 	// Mock policy checker
