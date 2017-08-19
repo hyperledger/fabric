@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -224,23 +223,23 @@ func InitTLSForShim(key, certStr string) credentials.TransportCredentials {
 	}
 	priv, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
-		panic(fmt.Errorf("failed decoding private key from base64, string: %s, error: %v", key, err))
+		commLogger.Panicf("failed decoding private key from base64, string: %s, error: %v", key, err)
 	}
 	pub, err := base64.StdEncoding.DecodeString(certStr)
 	if err != nil {
-		panic(fmt.Errorf("failed decoding public key from base64, string: %s, error: %v", certStr, err))
+		commLogger.Panicf("failed decoding public key from base64, string: %s, error: %v", certStr, err)
 	}
 	cert, err := tls.X509KeyPair(pub, priv)
 	if err != nil {
-		panic(fmt.Errorf("failed loading certificate: %v", err))
+		commLogger.Panicf("failed loading certificate: %v", err)
 	}
 	b, err := ioutil.ReadFile(config.GetPath("peer.tls.rootcert.file"))
 	if err != nil {
-		panic(fmt.Errorf("failed loading root ca cert: %v", err))
+		commLogger.Panicf("failed loading root ca cert: %v", err)
 	}
 	cp := x509.NewCertPool()
 	if !cp.AppendCertsFromPEM(b) {
-		panic(errors.New("failed to append certificates"))
+		commLogger.Panicf("failed to append certificates")
 	}
 	return credentials.NewTLS(&tls.Config{
 		Certificates: []tls.Certificate{cert},
