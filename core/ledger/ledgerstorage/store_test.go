@@ -21,8 +21,11 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -94,6 +97,58 @@ func TestStore(t *testing.T) {
 	assert.Equal(t, 1, len(blockAndPvtdata.BlockPvtData[6].WriteSet.NsPvtRwset))
 	// any other transaction entry should be nil
 	assert.Nil(t, blockAndPvtdata.BlockPvtData[2])
+}
+
+func TestStoreWithExistingBlockchain(t *testing.T) {
+	testLedgerid := "test-ledger"
+	testEnv := newTestEnv(t)
+	defer testEnv.cleanup()
+
+	// Construct a block storage
+	attrsToIndex := []blkstorage.IndexableAttr{
+		blkstorage.IndexableAttrBlockHash,
+		blkstorage.IndexableAttrBlockNum,
+		blkstorage.IndexableAttrTxID,
+		blkstorage.IndexableAttrBlockNumTranNum,
+		blkstorage.IndexableAttrBlockTxID,
+		blkstorage.IndexableAttrTxValidationCode,
+	}
+	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
+	blockStoreProvider := fsblkstorage.NewProvider(
+		fsblkstorage.NewConf(ledgerconfig.GetBlockStorePath(), ledgerconfig.GetMaxBlockfileSize()),
+		indexConfig)
+
+	blkStore, err := blockStoreProvider.OpenBlockStore(testLedgerid)
+	assert.NoError(t, err)
+	testBlocks := testutil.ConstructTestBlocks(t, 10)
+
+	existingBlocks := testBlocks[0:9]
+	blockToAdd := testBlocks[9:][0]
+
+	// Add existingBlocks to the block storage directly without involving pvtdata store and close the block storage
+	for _, blk := range existingBlocks {
+		assert.NoError(t, blkStore.AddBlock(blk))
+	}
+	blockStoreProvider.Close()
+
+	// Simulating the upgrade from 1.0 situation:
+	// Open the ledger storage - pvtdata store is opened for the first time with an existing block storage
+	provider := NewProvider()
+	defer provider.Close()
+	store, err := provider.Open(testLedgerid)
+	defer store.Shutdown()
+
+	// test that pvtdata store is updated with info from existing block storage
+	pvtdataBlockHt, err := store.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(9), pvtdataBlockHt)
+
+	// Add one more block with ovtdata associated with one of the trans and commit in the normal course
+	pvtdata := samplePvtData(t, []uint64{0})
+	assert.NoError(t, store.CommitWithPvtData(&ledger.BlockAndPvtData{Block: blockToAdd, BlockPvtData: pvtdata}))
+	pvtdataBlockHt, err = store.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(10), pvtdataBlockHt)
 }
 
 func sampleData(t *testing.T) []*ledger.BlockAndPvtData {
