@@ -955,3 +955,22 @@ func TestRealPeerStream(t *testing.T) {
 	_, err := userChaincodeStreamGetter("fake")
 	assert.Error(t, err)
 }
+
+func TestSend(t *testing.T) {
+	ch := make(chan *pb.ChaincodeMessage)
+
+	stream := newInProcStream(ch, ch)
+
+	//good send (non-blocking send and receive)
+	msg := &pb.ChaincodeMessage{}
+	go stream.Send(msg)
+	msg2, _ := stream.Recv()
+	assert.Equal(t, msg, msg2, "send != recv")
+
+	//close the channel
+	close(ch)
+
+	//bad send, should panic, unblock and return error
+	err := stream.Send(msg)
+	assert.NotNil(t, err, "should have errored on panic")
+}
