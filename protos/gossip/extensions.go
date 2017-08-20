@@ -18,6 +18,7 @@ package gossip
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -540,6 +541,28 @@ func (m *SignedGossipMessage) String() string {
 		}
 	}
 	return fmt.Sprintf("GossipMessage: %v, Envelope: %s", gMsg, env)
+}
+
+func (dd *DataRequest) FormattedDigests() []string {
+	if dd.MsgType == PullMsgType_IDENTITY_MSG {
+		return digestsToHex(dd.Digests)
+	}
+	return dd.Digests
+}
+
+func (dd *DataDigest) FormattedDigests() []string {
+	if dd.MsgType == PullMsgType_IDENTITY_MSG {
+		return digestsToHex(dd.Digests)
+	}
+	return dd.Digests
+}
+
+func digestsToHex(digests []string) []string {
+	a := make([]string, len(digests))
+	for i, dig := range digests {
+		a[i] = hex.EncodeToString([]byte(dig))
+	}
+	return a
 }
 
 // Abs returns abs(a-b)

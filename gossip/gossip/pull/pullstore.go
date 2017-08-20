@@ -289,7 +289,10 @@ func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context int
 		},
 	}
 	remotePeer := context.(proto.ReceivedMessage).GetConnectionInfo()
-	p.logger.Debug("Sending", p.config.MsgType, "digest:", digMsg.GetDataDig().Digests, "to", remotePeer)
+	if p.logger.IsEnabledFor(logging.DEBUG) {
+		p.logger.Debug("Sending", p.config.MsgType, "digest:", digMsg.GetDataDig().FormattedDigests(), "to", remotePeer)
+	}
+
 	context.(proto.ReceivedMessage).Respond(digMsg)
 }
 
@@ -308,7 +311,9 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 			},
 		},
 	}
-	p.logger.Debug("Sending", req, "to", dest)
+	if p.logger.IsEnabledFor(logging.DEBUG) {
+		p.logger.Debug("Sending", req.GetDataReq().FormattedDigests(), "to", dest)
+	}
 	sMsg, err := req.NoopSign()
 	if err != nil {
 		p.logger.Warning("Failed creating SignedGossipMessage:", err)
