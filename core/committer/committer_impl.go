@@ -68,7 +68,26 @@ func NewLedgerCommitterReactive(ledger ledger.PeerLedger, validator txvalidator.
 // Commit commits block to into the ledger
 // Note, it is important that this always be called serially
 func (lc *LedgerCommitter) Commit(block *common.Block) error {
+	// Do validation and whatever needed before
+	// committing new block
+	if err := lc.preCommit(block); err != nil {
+		return err
+	}
 
+	// Committing new block
+	if err := lc.ledger.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block}); err != nil {
+		return err
+	}
+
+	// post commit actions, such as event publishing
+	lc.postCommit(block)
+
+	return nil
+}
+
+// preCommit takes care to validate the block and update based on its
+// content
+func (lc *LedgerCommitter) preCommit(block *common.Block) error {
 	// Validate and mark invalid transactions
 	logger.Debug("Validating block")
 	if err := lc.validator.Validate(block); err != nil {
@@ -82,17 +101,42 @@ func (lc *LedgerCommitter) Commit(block *common.Block) error {
 			return fmt.Errorf("Could not update CSCC with new configuration update due to %s", err)
 		}
 	}
+	return nil
+}
 
-	if err := lc.ledger.Commit(block); err != nil {
+// CommitWithPvtData commits blocks atomically with private data
+func (lc *LedgerCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
+	// Do validation and whatever needed before
+	// committing new block
+	if err := lc.preCommit(blockAndPvtData.Block); err != nil {
 		return err
 	}
 
+	// TODO: Need to validate the hashes of private data with those in the block
+
+	// Committing new block
+	if err := lc.ledger.CommitWithPvtData(blockAndPvtData); err != nil {
+		return err
+	}
+
+	// post commit actions, such as event publishing
+	lc.postCommit(blockAndPvtData.Block)
+
+	return nil
+}
+
+// GetPvtDataAndBlockByNum retrieves private data and block for given sequence number
+func (lc *LedgerCommitter) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error) {
+	// TODO: Need to create filter based on chaincode collections policies
+	return lc.ledger.GetPvtDataAndBlockByNum(seqNum, nil)
+}
+
+// postCommit publish event or handle other tasks once block committed to the ledger
+func (lc *LedgerCommitter) postCommit(block *common.Block) {
 	// send block event *after* the block has been committed
 	if err := producer.SendProducerBlockEvent(block); err != nil {
 		logger.Errorf("Error publishing block %d, because: %v", block.Header.Number, err)
 	}
-
-	return nil
 }
 
 // LedgerHeight returns recently committed block sequence number
