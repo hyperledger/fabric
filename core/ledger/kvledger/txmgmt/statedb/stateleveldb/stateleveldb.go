@@ -104,6 +104,18 @@ func (vdb *versionedDB) GetState(namespace string, key string) (*statedb.Version
 	return &statedb.VersionedValue{Value: val, Version: ver}, nil
 }
 
+// GetVersion implements method in VersionedDB interface
+func (vdb *versionedDB) GetVersion(namespace string, key string) (*version.Height, error) {
+	versionedValue, err := vdb.GetState(namespace, key)
+	if err != nil {
+		return nil, err
+	}
+	if versionedValue == nil {
+		return nil, nil
+	}
+	return versionedValue.Version, nil
+}
+
 // GetStateMultipleKeys implements method in VersionedDB interface
 func (vdb *versionedDB) GetStateMultipleKeys(namespace string, keys []string) ([]*statedb.VersionedValue, error) {
 	vals := make([]*statedb.VersionedValue, len(keys))

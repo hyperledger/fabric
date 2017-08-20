@@ -35,6 +35,8 @@ type VersionedDBProvider interface {
 type VersionedDB interface {
 	// GetState gets the value for given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
 	GetState(namespace string, key string) (*VersionedValue, error)
+	// GetVersion gets the version for given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
+	GetVersion(namespace string, key string) (*version.Height, error)
 	// GetStateMultipleKeys gets the values for multiple keys in a single call
 	GetStateMultipleKeys(namespace string, keys []string) ([]*VersionedValue, error)
 	// GetStateRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
@@ -61,6 +63,13 @@ type VersionedDB interface {
 	Open() error
 	// Close closes the db
 	Close()
+}
+
+//BulkOptimizable interface provides additional functions for
+//databases capable of batch operations
+type BulkOptimizable interface {
+	LoadCommittedVersions(keys []*CompositeKey)
+	ClearCachedVersions()
 }
 
 // CompositeKey encloses Namespace and Key components
