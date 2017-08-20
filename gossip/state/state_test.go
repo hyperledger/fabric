@@ -1295,7 +1295,7 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	}}, nil)
 
 	// Return membership of the peers
-	metastate := &NodeMetastate{LedgerHeight: uint64(2)}
+	metastate := &common.NodeMetastate{LedgerHeight: uint64(2)}
 	metaBytes, err := metastate.Bytes()
 	assert.NoError(t, err)
 	member2 := discovery.NetworkMember{
@@ -1305,7 +1305,7 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		Metadata:         metaBytes,
 	}
 
-	metastate = &NodeMetastate{LedgerHeight: uint64(3)}
+	metastate = &common.NodeMetastate{LedgerHeight: uint64(3)}
 	metaBytes, err = metastate.Bytes()
 	assert.NoError(t, err)
 	member1 := discovery.NetworkMember{

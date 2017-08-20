@@ -985,11 +985,11 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 		g.logger.Info("Learned of a new certificate:", idMsg.Cert)
 	}
 	adapter := &pull.PullAdapter{
-		Sndr:        g.comm,
-		MemSvc:      g.disc,
-		IdExtractor: pkiIDFromMsg,
-		MsgCons:     certConsumer,
-		DigFilter:   g.sameOrgOrOurOrgPullFilter,
+		Sndr:            g.comm,
+		MemSvc:          g.disc,
+		IdExtractor:     pkiIDFromMsg,
+		MsgCons:         certConsumer,
+		EgressDigFilter: g.sameOrgOrOurOrgPullFilter,
 	}
 	return pull.NewPullMediator(conf, adapter)
 }

@@ -4,18 +4,13 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package state
+package common
 
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	util.SetupTestLogging()
-}
 
 func TestNewNodeMetastate(t *testing.T) {
 	metastate := NewNodeMetastate(0)

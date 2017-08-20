@@ -215,7 +215,7 @@ func NewGossipCoordinatedStateProvider(chainID string, services *ServicesMediato
 		once: sync.Once{},
 	}
 
-	nodeMetastate := NewNodeMetastate(height - 1)
+	nodeMetastate := common2.NewNodeMetastate(height - 1)
 
 	logger.Infof("Updating node metadata information, "+
 		"current ledger sequence is at = %d, next expected block is = %d", nodeMetastate.LedgerHeight, s.payloads.Next())
@@ -537,7 +537,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 func (s *GossipStateProviderImpl) maxAvailableLedgerHeight() uint64 {
 	max := uint64(0)
 	for _, p := range s.mediator.PeersOfChannel(common2.ChainID(s.chainID)) {
-		if nodeMetastate, err := FromBytes(p.Metadata); err == nil {
+		if nodeMetastate, err := common2.FromBytes(p.Metadata); err == nil {
 			if max < nodeMetastate.LedgerHeight {
 				max = nodeMetastate.LedgerHeight
 			}
@@ -650,7 +650,7 @@ func (s *GossipStateProviderImpl) filterPeers(predicate func(peer discovery.Netw
 // by provided input parameter
 func (s *GossipStateProviderImpl) hasRequiredHeight(height uint64) func(peer discovery.NetworkMember) bool {
 	return func(peer discovery.NetworkMember) bool {
-		if nodeMetadata, err := FromBytes(peer.Metadata); err != nil {
+		if nodeMetadata, err := common2.FromBytes(peer.Metadata); err != nil {
 			logger.Errorf("Unable to de-serialize node meta state, error = %s", err)
 		} else if nodeMetadata.LedgerHeight >= height {
 			return true
@@ -714,7 +714,7 @@ func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData PvtDa
 	}
 
 	// Update ledger level within node metadata
-	nodeMetastate := NewNodeMetastate(block.Header.Number)
+	nodeMetastate := common2.NewNodeMetastate(block.Header.Number)
 	// Decode nodeMetastate to byte array
 	b, err := nodeMetastate.Bytes()
 	if err == nil {

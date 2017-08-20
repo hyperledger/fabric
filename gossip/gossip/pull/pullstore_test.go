@@ -99,10 +99,10 @@ func (p *pullInstance) wrapPullMsg(msg *proto.SignedGossipMessage) proto.Receive
 }
 
 func createPullInstance(endpoint string, peer2PullInst map[string]*pullInstance) *pullInstance {
-	return createPullInstanceWithFilters(endpoint, peer2PullInst, nil)
+	return createPullInstanceWithFilters(endpoint, peer2PullInst, nil, nil)
 }
 
-func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pullInstance, df DigestFilter) *pullInstance {
+func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pullInstance, df EgressDigestFilter, digestsFilter IngressDigestFilter) *pullInstance {
 	inst := &pullInstance{
 		items:         util.NewSet(),
 		stopChan:      make(chan struct{}),
@@ -135,11 +135,12 @@ func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pu
 		inst.items.Add(msg.GetDataMsg().Payload.SeqNum)
 	}
 	adapter := &PullAdapter{
-		Sndr:        inst,
-		MemSvc:      inst,
-		IdExtractor: seqNumFromMsg,
-		MsgCons:     blockConsumer,
-		DigFilter:   df,
+		Sndr:             inst,
+		MemSvc:           inst,
+		IdExtractor:      seqNumFromMsg,
+		MsgCons:          blockConsumer,
+		EgressDigFilter:  df,
+		IngressDigFilter: digestsFilter,
 	}
 	inst.mediator = NewPullMediator(conf, adapter)
 	go func() {
@@ -205,7 +206,7 @@ func TestFilter(t *testing.T) {
 			return n%2 == 0
 		}
 	}
-	inst1 := createPullInstanceWithFilters("localhost:5611", peer2pullInst, df)
+	inst1 := createPullInstanceWithFilters("localhost:5611", peer2pullInst, df, nil)
 	inst2 := createPullInstance("localhost:5612", peer2pullInst)
 	defer inst1.stop()
 	defer inst2.stop()
@@ -254,6 +255,44 @@ func TestAddAndRemove(t *testing.T) {
 
 	// Ensure instance 2 doesn't have message 0
 	assert.False(t, inst2.items.Exists(uint64(0)), "Instance 2 has message 0 but shouldn't have")
+}
+
+func TestDigestsFilters(t *testing.T) {
+	t.Parallel()
+	peer2pullInst := make(map[string]*pullInstance)
+	df1 := createDigestsFilter(2)
+	inst1 := createPullInstanceWithFilters("localhost:5611", peer2pullInst, nil, df1)
+	inst2 := createPullInstance("localhost:5612", peer2pullInst)
+	inst1ReceivedDigest := int32(0)
+
+	defer inst1.stop()
+	defer inst2.stop()
+
+	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+		if atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) {
+			return
+		}
+		for i := range itemIds {
+			seqNum, err := strconv.ParseUint(itemIds[i], 10, 64)
+			assert.NoError(t, err, "Can't parse seq number")
+			assert.True(t, seqNum >= 2, "Digest with wrong ( ", seqNum, " ) seqNum passed")
+		}
+		assert.Len(t, itemIds, 2, "Not correct number of seqNum passed")
+		atomic.StoreInt32(&inst1ReceivedDigest, int32(1))
+	})
+
+	inst2.mediator.Add(dataMsg(0))
+	inst2.mediator.Add(dataMsg(1))
+	inst2.mediator.Add(dataMsg(2))
+	inst2.mediator.Add(dataMsg(3))
+
+	// inst1 sends hello to inst2
+	sMsg, _ := helloMsg().NoopSign()
+	inst2.mediator.HandleMessage(inst1.wrapPullMsg(sMsg))
+
+	// inst2 is expected to send digest to inst1
+	waitUntilOrFail(t, func() bool { return atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) })
+
 }
 
 func TestHandleMessage(t *testing.T) {
@@ -359,5 +398,23 @@ func reqMsg(digest ...string) *proto.GossipMessage {
 				Digests: digest,
 			},
 		},
+	}
+}
+
+func createDigestsFilter(level uint64) IngressDigestFilter {
+	return func(digestMsg *proto.DataDigest) *proto.DataDigest {
+		res := &proto.DataDigest{
+			MsgType: digestMsg.MsgType,
+			Nonce:   digestMsg.Nonce,
+		}
+		for i := range digestMsg.Digests {
+			seqNum, err := strconv.ParseUint(digestMsg.Digests[i], 10, 64)
+			if err != nil || seqNum < level {
+				continue
+			}
+			res.Digests = append(res.Digests, digestMsg.Digests[i])
+
+		}
+		return res
 	}
 }
