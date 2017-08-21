@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 // Config is a configuration item
@@ -220,7 +221,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 			return false
 		}
 		if err := gc.mcs.VerifyByChannel(chainID, peerIdentity, msg.Signature, msg.Payload); err != nil {
-			gc.logger.Warning("Peer", peerIdentity, "isn't eligible for channel", string(chainID), ":", err)
+			gc.logger.Warningf("Peer %v isn't eligible for channel %s : %+v", peerIdentity, string(chainID), errors.WithStack(err))
 			return false
 		}
 		return true
@@ -285,7 +286,7 @@ func (gc *gossipChannel) GetPeers() []discovery.NetworkMember {
 func (gc *gossipChannel) requestStateInfo() {
 	req, err := gc.createStateInfoRequest()
 	if err != nil {
-		gc.logger.Warning("Failed creating SignedGossipMessage:", err)
+		gc.logger.Warningf("Failed creating SignedGossipMessage: %+v", errors.WithStack(err))
 		return
 	}
 	endpoints := filter.SelectPeers(gc.GetConf().PullPeerNum, gc.GetMembership(), gc.IsMemberInChan)
@@ -347,7 +348,7 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 		for i := range digests {
 			seqNum, err := strconv.ParseUint(digests[i], 10, 64)
 			if err != nil {
-				gc.logger.Warning("Can't parse digest", digests[i], "err", err)
+				gc.logger.Warningf("Can't parse digest %s : %+v", digests[i], errors.WithStack(err))
 				continue
 			}
 			if seqNum >= height {
@@ -521,7 +522,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 			for _, item := range m.GetDataUpdate().Data {
 				gMsg, err := item.ToGossipMessage()
 				if err != nil {
-					gc.logger.Warning("Data update contains an invalid message:", err)
+					gc.logger.Warningf("Data update contains an invalid message: %+v", errors.WithStack(err))
 					return
 				}
 				if !bytes.Equal(gMsg.Channel, []byte(gc.chainID)) {
@@ -563,7 +564,7 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 	for _, envelope := range m.GetStateSnapshot().Elements {
 		stateInf, err := envelope.ToGossipMessage()
 		if err != nil {
-			gc.logger.Warning("Channel", chanName, ": StateInfo snapshot contains an invalid message:", err)
+			gc.logger.Warningf("Channel %s : StateInfo snapshot contains an invalid message: %+v", chanName, errors.WithStack(err))
 			return
 		}
 		if !stateInf.IsStateInfoMsg() {
@@ -593,8 +594,7 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 		}
 		err = gc.ValidateStateInfoMessage(stateInf)
 		if err != nil {
-			gc.logger.Warning("Channel", chanName, ": Failed validating state info message:",
-				stateInf, ":", err, "sent from", sender)
+			gc.logger.Warningf("Channel %s: Failed validating state info message: %v sent from %v : %+v", chanName, stateInf, sender, errors.WithStack(err))
 			return
 		}
 
@@ -622,7 +622,7 @@ func (gc *gossipChannel) verifyBlock(msg *proto.GossipMessage, sender common.PKI
 	rawBlock := payload.Data
 	err := gc.mcs.VerifyBlock(msg.Channel, seqNum, rawBlock)
 	if err != nil {
-		gc.logger.Warning("Received fabricated block from", sender, "in DataUpdate:", err)
+		gc.logger.Warningf("Received fabricated block from %v in DataUpdate: %+v", sender, errors.WithStack(err))
 		return false
 	}
 	return true
@@ -728,7 +728,7 @@ func (gc *gossipChannel) UpdateStateInfo(msg *proto.SignedGossipMessage) {
 
 	nodeMeta, err := common.FromBytes(msg.GetStateInfo().Metadata)
 	if err != nil {
-		gc.logger.Warning("Can't extract ledger height from metadata", err)
+		gc.logger.Warningf("Can't extract ledger height from metadata %+v", errors.WithStack(err))
 		return
 	}
 	gc.ledgerHeight = nodeMeta.LedgerHeight
