@@ -220,7 +220,7 @@ var defaults = TopLevel{
 			},
 		},
 		Verbose: false,
-		Version: sarama.V0_9_0_1,
+		Version: sarama.V0_10_1_0,
 		TLS: TLS{
 			Enabled: false,
 		},

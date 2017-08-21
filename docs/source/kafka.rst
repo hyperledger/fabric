@@ -182,22 +182,23 @@ default value for ``Orderer.Kafka.Retry.ShortInterval``.
 Supported Kafka versions and upgrading
 --------------------------------------
 
-Supported Kafka versions for v1 are ``0.9`` and ``0.10``. (Hyperledger Fabric
-uses the `sarama client library <https://github.com/Shopify/sarama>`_
-and vendors a version of it that supports Kafka 0.9 and 0.10.)
-
-Out of the box the Kafka version defaults to ``0.9.0.1``. The sample Kafka
-image provided by Hyperledger Fabric matches this default version. If you are
-not using the sample Kafka image provided by Hyperledger Fabric, ensure that
-you specify your Kafka cluster's Kafka version using the ``Kafka.Version`` key
-in ``orderer.yaml``.
-
-The current supported Kafka versions are:
+Hyperledger Fabric uses the
+`sarama client library <https://github.com/Shopify/sarama>`_ and vendors a
+version of it that supportes the following Kafka client versions:
 
 * ``Version: 0.9.0.1``
 * ``Version: 0.10.0.0``
 * ``Version: 0.10.0.1``
 * ``Version: 0.10.1.0``
+* ``Version: 0.10.2.0``
+
+The sample Kafka server image provided by Hyperledger Fabric contains Kafka
+server version ``0.10.2.0``. Out of the box, Hyperledger Fabric's ordering
+service nodes default to configuring thier embedded Kafka client to match this
+version. If you are not using the sample Kafka server image provided by
+Hyprledger Fabric, ensure that you configure a Kafka client version that is
+compatible with your Kafka server using the ``Kafka.Version`` key in
+``orderer.yaml``.
 
 Debugging
 ---------

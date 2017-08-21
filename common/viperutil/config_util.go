@@ -277,6 +277,8 @@ func kafkaVersionDecodeHook() mapstructure.DecodeHookFunc {
 			return sarama.V0_10_0_1, nil
 		case "0.10.1.0":
 			return sarama.V0_10_1_0, nil
+		case "0.10.2.0":
+			return sarama.V0_10_2_0, nil
 		default:
 			return nil, fmt.Errorf("Unsupported Kafka version: '%s'", data)
 		}

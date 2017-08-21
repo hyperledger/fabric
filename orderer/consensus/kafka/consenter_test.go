@@ -150,7 +150,7 @@ func newMockLocalConfig(enableTLS bool, retryOptions localconfig.Retry, verboseL
 		Kafka: localconfig.Kafka{
 			Retry:   retryOptions,
 			Verbose: verboseLog,
-			Version: sarama.V0_9_0_1,
+			Version: sarama.V0_9_0_1, // sarama.MockBroker only produces messages compatible with version < 0.10
 		},
 	}
 }
