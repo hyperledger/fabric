@@ -148,8 +148,8 @@ func (bp CreateImageReq) getCCID() ccintf.CCID {
 	return bp.CCID
 }
 
-//StartImageReq - properties for starting a container.
-type StartImageReq struct {
+//StartContainerReq - properties for starting a container.
+type StartContainerReq struct {
 	ccintf.CCID
 	Builder       api.BuildSpecFactory
 	Args          []string
@@ -158,7 +158,7 @@ type StartImageReq struct {
 	PrelaunchFunc api.PrelaunchFunc
 }
 
-func (si StartImageReq) do(ctxt context.Context, v api.VM) VMCResp {
+func (si StartContainerReq) do(ctxt context.Context, v api.VM) VMCResp {
 	var resp VMCResp
 
 	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder, si.PrelaunchFunc); err != nil {
@@ -170,12 +170,12 @@ func (si StartImageReq) do(ctxt context.Context, v api.VM) VMCResp {
 	return resp
 }
 
-func (si StartImageReq) getCCID() ccintf.CCID {
+func (si StartContainerReq) getCCID() ccintf.CCID {
 	return si.CCID
 }
 
-//StopImageReq - properties for stopping a container.
-type StopImageReq struct {
+//StopContainerReq - properties for stopping a container.
+type StopContainerReq struct {
 	ccintf.CCID
 	Timeout uint
 	//by default we will kill the container after stopping
@@ -184,7 +184,7 @@ type StopImageReq struct {
 	Dontremove bool
 }
 
-func (si StopImageReq) do(ctxt context.Context, v api.VM) VMCResp {
+func (si StopContainerReq) do(ctxt context.Context, v api.VM) VMCResp {
 	var resp VMCResp
 
 	if err := v.Stop(ctxt, si.CCID, si.Timeout, si.Dontkill, si.Dontremove); err != nil {
@@ -196,7 +196,7 @@ func (si StopImageReq) do(ctxt context.Context, v api.VM) VMCResp {
 	return resp
 }
 
-func (si StopImageReq) getCCID() ccintf.CCID {
+func (si StopContainerReq) getCCID() ccintf.CCID {
 	return si.CCID
 }
 
