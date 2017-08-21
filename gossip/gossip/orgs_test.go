@@ -37,6 +37,10 @@ type configurableCryptoService struct {
 	m map[string]api.OrgIdentityType
 }
 
+func (c *configurableCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
+}
+
 func (c *configurableCryptoService) putInOrg(port int, org string) {
 	identity := fmt.Sprintf("localhost:%d", port)
 	c.m[identity] = api.OrgIdentityType(org)

@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"time"
+
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -100,6 +102,10 @@ func (sa *secAdviser) OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityTyp
 }
 
 type cryptoService struct {
+}
+
+func (s *cryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
 }
 
 func (s *cryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {

@@ -56,6 +56,10 @@ var (
 type naiveSecProvider struct {
 }
 
+func (*naiveSecProvider) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
+}
+
 func (*naiveSecProvider) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
 	return nil
 }

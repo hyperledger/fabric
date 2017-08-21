@@ -664,6 +664,10 @@ func (*orgCryptoService) Verify(joinChanMsg api.JoinChannelMessage) error {
 	return nil
 }
 
+func (naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
+}
+
 // VerifyByChannel verifies a peer's signature on a message in the context
 // of a specific channel
 func (*naiveCryptoService) VerifyByChannel(_ gossipCommon.ChainID, _ api.PeerIdentityType, _, _ []byte) error {

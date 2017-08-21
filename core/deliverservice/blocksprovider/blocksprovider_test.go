@@ -30,6 +30,10 @@ type mockMCS struct {
 	mock.Mock
 }
 
+func (*mockMCS) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
+}
+
 func (*mockMCS) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common2.PKIidType {
 	return common2.PKIidType("pkiID")
 }

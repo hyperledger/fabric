@@ -94,6 +94,10 @@ type cryptoServiceMock struct {
 	acceptor peerIdentityAcceptor
 }
 
+func (cryptoServiceMock) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
+}
+
 // GetPKIidOfCert returns the PKI-ID of a peer's identity
 func (*cryptoServiceMock) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
 	return common.PKIidType(peerIdentity)

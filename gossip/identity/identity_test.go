@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/api"
@@ -33,6 +32,10 @@ var noopPurgeTrigger = func(_ common.PKIidType, _ api.PeerIdentityType) {}
 
 func init() {
 	util.SetupTestLogging()
+}
+
+func (cs *naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Time{}, nil
 }
 
 func (cs *naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {

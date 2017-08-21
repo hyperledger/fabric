@@ -147,6 +147,10 @@ func (cs *naiveCryptoService) VerifyByChannel(_ common.ChainID, identity api.Pee
 	return errors.New("Forbidden")
 }
 
+func (*naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Time{}, nil
+}
+
 func (cs *naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
 	cs.RLock()
 	defer cs.RUnlock()

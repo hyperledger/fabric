@@ -50,6 +50,10 @@ func (mock *mockBlocksDelivererFactory) Create() (blocksprovider.BlocksDeliverer
 type mockMCS struct {
 }
 
+func (*mockMCS) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
+}
+
 func (*mockMCS) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
 	return common.PKIidType("pkiID")
 }
