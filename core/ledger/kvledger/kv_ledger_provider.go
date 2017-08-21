@@ -73,7 +73,7 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 		return nil, err
 	}
 	// Initialize the transient store (temporary storage of private rwset)
-	transientStoreProvider := transientstore.NewStoreProvider()
+	transientStoreProvider := transientstore.NewCustomPathStoreProvider(ledgerconfig.GetTransientStorePath())
 
 	// Initialize the history database (index for history of values by key)
 	var historydbProvider historydb.HistoryDBProvider
