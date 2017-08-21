@@ -89,6 +89,7 @@ func TestCertStoreBadSignature(t *testing.T) {
 	}
 	pm, cs, _ := createObjects(badSignature, nil)
 	defer pm.Stop()
+	defer cs.stop()
 	testCertificateUpdate(t, false, cs)
 }
 
@@ -99,6 +100,7 @@ func TestCertStoreMismatchedIdentity(t *testing.T) {
 
 	pm, cs, _ := createObjects(mismatchedIdentity, nil)
 	defer pm.Stop()
+	defer cs.stop()
 	testCertificateUpdate(t, false, cs)
 }
 
@@ -109,17 +111,14 @@ func TestCertStoreShouldSucceed(t *testing.T) {
 
 	pm, cs, _ := createObjects(totallyFineIdentity, nil)
 	defer pm.Stop()
+	defer cs.stop()
 	testCertificateUpdate(t, true, cs)
 }
 
 func TestCertRevocation(t *testing.T) {
-	identityExpCheckInterval := identityExpirationCheckInterval
 	defer func() {
-		identityExpirationCheckInterval = identityExpCheckInterval
 		cs.revokedPkiIDS = map[string]struct{}{}
 	}()
-
-	identityExpirationCheckInterval = time.Second
 
 	totallyFineIdentity := func(nonce uint64) proto.ReceivedMessage {
 		return createUpdateMessage(nonce, createValidUpdateMessage())
@@ -130,6 +129,7 @@ func TestCertRevocation(t *testing.T) {
 	pm, cStore, sender := createObjects(totallyFineIdentity, func(message *proto.SignedGossipMessage) {
 		askedForIdentity <- struct{}{}
 	})
+	defer cStore.stop()
 	defer pm.Stop()
 	testCertificateUpdate(t, true, cStore)
 	// Should have asked for an identity for the first time
@@ -172,12 +172,12 @@ func TestCertRevocation(t *testing.T) {
 	select {
 	case <-time.After(time.Second * 5):
 	case <-askedForIdentity:
-		assert.Fail(t, "Shouldn't have asked for an identity, becase we already have it")
+		assert.Fail(t, "Shouldn't have asked for an identity, because we already have it")
 	}
 	assert.Len(t, askedForIdentity, 0)
 	// Revoke the identity
 	cs.revoke(common.PKIidType("B"))
-	cStore.listRevokedPeers(func(id api.PeerIdentityType) bool {
+	cStore.suspectPeers(func(id api.PeerIdentityType) bool {
 		return string(id) == "B"
 	})
 
@@ -215,11 +215,11 @@ func TestCertExpiration(t *testing.T) {
 	defer identity.SetIdentityUsageThreshold(idUsageThreshold)
 
 	// Backup original identityInactivityCheckInterval value
-	inactivityCheckInterval := identityInactivityCheckInterval
-	identityInactivityCheckInterval = time.Second * 1
+	usageThreshold := identity.GetIdentityUsageThreshold()
+	identity.SetIdentityUsageThreshold(time.Second)
 	// Restore original identityInactivityCheckInterval value
 	defer func() {
-		identityInactivityCheckInterval = inactivityCheckInterval
+		identity.SetIdentityUsageThreshold(usageThreshold)
 	}()
 
 	g1 := newGossipInstance(4321, 0, 0, 1)
@@ -430,7 +430,9 @@ func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons pro
 	selfIdentity := api.PeerIdentityType("SELF")
 	certStore = newCertStore(&pullerMock{
 		Mediator: pullMediator,
-	}, identity.NewIdentityMapper(cs, selfIdentity, func(_ common.PKIidType, _ api.PeerIdentityType) {}), selfIdentity, cs)
+	}, identity.NewIdentityMapper(cs, selfIdentity, func(pkiID common.PKIidType, _ api.PeerIdentityType) {
+		pullMediator.Remove(string(pkiID))
+	}), selfIdentity, cs)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)

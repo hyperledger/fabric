@@ -63,8 +63,9 @@ func init() {
 		testWG.Add(1)
 	}
 	factory.InitFactories(nil)
-	identityExpirationCheckInterval = time.Second
 }
+
+var expirationTimes map[string]time.Time = map[string]time.Time{}
 
 var orgInChannelA = api.OrgIdentityType("ORG1")
 
@@ -120,6 +121,13 @@ type naiveCryptoService struct {
 	revokedPkiIDS map[string]struct{}
 }
 
+func (*naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	if exp, exists := expirationTimes[string(peerIdentity)]; exists {
+		return exp, nil
+	}
+	return time.Now().Add(time.Hour), nil
+}
+
 type orgCryptoService struct {
 }
 
@@ -145,10 +153,6 @@ func (cs *naiveCryptoService) VerifyByChannel(_ common.ChainID, identity api.Pee
 		return nil
 	}
 	return errors.New("Forbidden")
-}
-
-func (*naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
-	return time.Time{}, nil
 }
 
 func (cs *naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
@@ -1004,17 +1008,29 @@ func TestDisseminateAll2All(t *testing.T) {
 func TestIdentityExpiration(t *testing.T) {
 	t.Parallel()
 	defer testWG.Done()
-	// Scenario: spawn 4 peers and make the MessageCryptoService revoke one of them.
+	// Scenario: spawn 5 peers and make the MessageCryptoService revoke one of the first 4.
+	// The last peer's certificate expires after a few seconds.
 	// Eventually, the rest of the peers should not be able to communicate with
 	// the revoked peer at all because its identity would seem to them as expired
+
+	// Set expiration of the last peer to 5 seconds from now
+	expirationTimes["localhost:7004"] = time.Now().Add(time.Second * 5)
 
 	portPrefix := 7000
 	g1 := newGossipInstance(portPrefix, 0, 100)
 	g2 := newGossipInstance(portPrefix, 1, 100, 0)
 	g3 := newGossipInstance(portPrefix, 2, 100, 0)
 	g4 := newGossipInstance(portPrefix, 3, 100, 0)
+	g5 := newGossipInstance(portPrefix, 4, 100, 0)
 
 	peers := []Gossip{g1, g2, g3, g4}
+
+	// Make the last peer be revoked in 5 seconds from now
+	time.AfterFunc(time.Second*5, func() {
+		for _, p := range peers {
+			p.(*gossipServiceImpl).mcs.(*naiveCryptoService).revoke(common.PKIidType("localhost:7004"))
+		}
+	})
 
 	seeAllNeighbors := func() bool {
 		for i := 0; i < 4; i++ {
@@ -1035,15 +1051,27 @@ func TestIdentityExpiration(t *testing.T) {
 		}
 		p.(*gossipServiceImpl).mcs.(*naiveCryptoService).revoke(revokedPkiID)
 	}
+	// Trigger a config update to the rest of the peers
+	for i := 0; i < 4; i++ {
+		if i == revokedPeerIndex {
+			continue
+		}
+		peers[i].SuspectPeers(func(_ api.PeerIdentityType) bool {
+			return true
+		})
+	}
 	// Ensure that no one talks to the peer that is revoked
 	ensureRevokedPeerIsIgnored := func() bool {
 		for i := 0; i < 4; i++ {
 			neighborCount := len(peers[i].Peers())
 			expectedNeighborCount := 2
-			if i == revokedPeerIndex {
+			// If it's the revoked peer, or the last peer who's certificate
+			// has expired
+			if i == revokedPeerIndex || i == 4 {
 				expectedNeighborCount = 0
 			}
 			if neighborCount != expectedNeighborCount {
+				fmt.Println("neighbor count of", i, "is", neighborCount)
 				return false
 			}
 		}
@@ -1051,6 +1079,7 @@ func TestIdentityExpiration(t *testing.T) {
 	}
 	waitUntilOrFail(t, ensureRevokedPeerIsIgnored)
 	stopPeers(peers)
+	g5.Stop()
 }
 
 func TestEndedGoroutines(t *testing.T) {

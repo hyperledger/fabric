@@ -133,14 +133,11 @@ func (cs *certStore) createIdentityMessage() (*proto.SignedGossipMessage, error)
 	return sMsg, errors.WithStack(err)
 }
 
-func (cs *certStore) listRevokedPeers(isSuspected api.PeerSuspector) []common.PKIidType {
-	revokedPeers := cs.idMapper.ListInvalidIdentities(isSuspected)
-	for _, pkiID := range revokedPeers {
-		cs.pull.Remove(string(pkiID))
-	}
-	return revokedPeers
+func (cs *certStore) suspectPeers(isSuspected api.PeerSuspector) {
+	cs.idMapper.SuspectPeers(isSuspected)
 }
 
 func (cs *certStore) stop() {
 	cs.pull.Stop()
+	cs.idMapper.Stop()
 }

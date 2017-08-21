@@ -36,11 +36,6 @@ const (
 	acceptChanSize       = 100
 )
 
-var (
-	identityExpirationCheckInterval = time.Hour * 24
-	identityInactivityCheckInterval = time.Minute * 10
-)
-
 type channelRoutingFilterFactory func(channel.GossipChannel) filter.RoutingFilter
 
 type gossipServiceImpl struct {
@@ -95,6 +90,7 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 	g.stateInfoMsgStore = g.newStateInfoMsgStore()
 
 	g.idMapper = identity.NewIdentityMapper(mcs, selfIdentity, func(pkiID common.PKIidType, identity api.PeerIdentityType) {
+		g.comm.CloseConn(&comm.RemotePeer{PKIID: pkiID})
 		g.certPuller.Remove(string(pkiID))
 	})
 
@@ -127,7 +123,6 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 	}
 
 	go g.start()
-	go g.periodicalIdentityValidationAndExpiration()
 	go g.connect2BootstrapPeers()
 
 	return g
@@ -196,24 +191,7 @@ func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID com
 // SuspectPeers makes the gossip instance validate identities of suspected peers, and close
 // any connections to peers with identities that are found invalid
 func (g *gossipServiceImpl) SuspectPeers(isSuspected api.PeerSuspector) {
-	for _, pkiID := range g.certStore.listRevokedPeers(isSuspected) {
-		g.comm.CloseConn(&comm.RemotePeer{PKIID: pkiID})
-	}
-}
-
-func (g *gossipServiceImpl) periodicalIdentityValidationAndExpiration() {
-	// We check once every identityExpirationCheckInterval for identities that have been expired
-	go g.periodicalIdentityValidation(func(identity api.PeerIdentityType) bool {
-		// We need to validate every identity to check if it has been expired
-		return true
-	}, identityExpirationCheckInterval)
-
-	// We check once every identityInactivityCheckInterval for identities that have not been used for a long time
-	go g.periodicalIdentityValidation(func(identity api.PeerIdentityType) bool {
-		// We don't validate any identity, because we just want to know whether
-		// it has not been used for a long time
-		return false
-	}, identityInactivityCheckInterval)
+	g.certStore.suspectPeers(isSuspected)
 }
 
 func (g *gossipServiceImpl) periodicalIdentityValidation(suspectFunc api.PeerSuspector, interval time.Duration) {
