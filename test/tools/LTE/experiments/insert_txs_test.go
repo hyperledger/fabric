@@ -22,6 +22,7 @@ import (
 
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/test/tools/LTE/chainmgmt"
 	"github.com/hyperledger/fabric/test/tools/LTE/common"
 )
@@ -69,7 +70,7 @@ func runInsertClient(chain *chainmgmt.Chain, startKey, endKey int, wg *sync.Wait
 
 	currentKey := startKey
 	for currentKey <= endKey {
-		simulator, err := chain.NewTxSimulator()
+		simulator, err := chain.NewTxSimulator(util.GenerateUUID())
 		common.PanicOnError(err)
 		for i := 0; i < numKeysPerTx; i++ {
 			common.PanicOnError(simulator.SetState(
@@ -82,7 +83,9 @@ func runInsertClient(chain *chainmgmt.Chain, startKey, endKey int, wg *sync.Wait
 		simulator.Done()
 		sr, err := simulator.GetTxSimulationResults()
 		common.PanicOnError(err)
-		chain.SubmitTx(sr)
+		srBytes, err := sr.GetPubSimulationBytes()
+		common.PanicOnError(err)
+		chain.SubmitTx(srBytes)
 	}
 	wg.Done()
 }

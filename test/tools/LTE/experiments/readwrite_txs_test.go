@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/test/tools/LTE/chainmgmt"
 	"github.com/hyperledger/fabric/test/tools/LTE/common"
 )
@@ -69,7 +70,7 @@ func runReadWriteClient(chain *chainmgmt.Chain, rand *rand.Rand, numTx int, wg *
 	maxKeyNumber := calculateShare(conf.dataConf.numKVs, conf.chainMgrConf.NumChains, int(chain.ID))
 
 	for i := 0; i < numTx; i++ {
-		simulator, err := chain.NewTxSimulator()
+		simulator, err := chain.NewTxSimulator(util.GenerateUUID())
 		common.PanicOnError(err)
 		for i := 0; i < numKeysPerTx; i++ {
 			keyNumber := rand.Intn(maxKeyNumber)
@@ -84,7 +85,9 @@ func runReadWriteClient(chain *chainmgmt.Chain, rand *rand.Rand, numTx int, wg *
 		simulator.Done()
 		sr, err := simulator.GetTxSimulationResults()
 		common.PanicOnError(err)
-		chain.SubmitTx(sr)
+		srBytes, err := sr.GetPubSimulationBytes()
+		common.PanicOnError(err)
+		chain.SubmitTx(srBytes)
 	}
 	wg.Done()
 }
