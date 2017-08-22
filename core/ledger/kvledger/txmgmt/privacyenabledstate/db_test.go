@@ -88,6 +88,11 @@ func testDB(t *testing.T, env TestEnv) {
 	putPvtUpdates(t, updates, "ns1", "coll1", "key2", []byte("pvt_value2"), version.NewHeight(1, 5))
 	putPvtUpdates(t, updates, "ns2", "coll1", "key3", []byte("pvt_value3"), version.NewHeight(1, 6))
 	db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 6))
+	commonStorageDB := db.(*CommonStorageDB)
+	bulkOptimizable, ok := commonStorageDB.VersionedDB.(statedb.BulkOptimizable)
+	if ok {
+		bulkOptimizable.ClearCachedVersions()
+	}
 
 	vv, err := db.GetState("ns1", "key1")
 	assert.NoError(t, err)
@@ -100,6 +105,14 @@ func testDB(t *testing.T, env TestEnv) {
 	vv, err = db.GetValueHash("ns1", "coll1", util.ComputeStringHash("key1"))
 	assert.NoError(t, err)
 	assert.Equal(t, &statedb.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
+
+	ns, key := db.GetHashedDataNsAndKeyHashStr("ns1", "coll1", util.ComputeStringHash("key1"))
+	vv, err = db.GetState(ns, key)
+	assert.NoError(t, err)
+	assert.Equal(t, &statedb.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
+	committedVersion, err := db.GetVersion(ns, key)
+	assert.NoError(t, err)
+	assert.Equal(t, version.NewHeight(1, 4), committedVersion)
 
 	updates = NewUpdateBatch()
 	updates.PubUpdates.Delete("ns1", "key1", version.NewHeight(2, 7))

@@ -1,17 +1,6 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package statebasedval
@@ -20,6 +9,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valinternal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -39,8 +29,54 @@ func NewValidator(db privacyenabledstate.DB) *Validator {
 	return &Validator{db}
 }
 
+// preLoadCommittedVersionOfRSet loads committed version of all keys in each
+// transaction's read set into a cache.
+func (v *Validator) preLoadCommittedVersionOfRSet(block *valinternal.Block) {
+
+	// Collect read set of all transactions in a given block
+	var readSetKeys []*statedb.CompositeKey
+	for _, tx := range block.Txs {
+		for _, nsRWSet := range tx.RWSet.NsRwSets {
+			for _, kvRead := range nsRWSet.KvRwSet.Reads {
+				readSetKeys = append(readSetKeys, &statedb.CompositeKey{
+					Namespace: nsRWSet.NameSpace,
+					Key:       kvRead.Key,
+				})
+			}
+			for _, colHashedRwSet := range nsRWSet.CollHashedRwSets {
+				for _, kvHashedRead := range colHashedRwSet.HashedRwSet.HashedReads {
+					ns, key := v.db.GetHashedDataNsAndKeyHashStr(nsRWSet.NameSpace, colHashedRwSet.CollectionName,
+						kvHashedRead.KeyHash)
+					readSetKeys = append(readSetKeys, &statedb.CompositeKey{
+						Namespace: ns,
+						Key:       key,
+					})
+				}
+			}
+		}
+	}
+
+	// Load committed version of all keys into a cache
+	if len(readSetKeys) > 0 {
+		commonStorageDB := v.db.(*privacyenabledstate.CommonStorageDB)
+		bulkOptimizable, ok := commonStorageDB.VersionedDB.(statedb.BulkOptimizable)
+		if ok {
+			bulkOptimizable.LoadCommittedVersions(readSetKeys)
+		}
+	}
+}
+
 // ValidateAndPrepareBatch implements method in Validator interface
 func (v *Validator) ValidateAndPrepareBatch(block *valinternal.Block, doMVCCValidation bool) (*valinternal.PubAndHashUpdates, error) {
+	// Check whether statedb implements BulkOptimizable interface. For now,
+	// only CouchDB implements BulkOptimizable to reduce the number of REST
+	// API calls from peer to CouchDB instance.
+	commonStorageDB := v.db.(*privacyenabledstate.CommonStorageDB)
+	_, ok := commonStorageDB.VersionedDB.(statedb.BulkOptimizable)
+	if ok {
+		v.preLoadCommittedVersionOfRSet(block)
+	}
+
 	updates := valinternal.NewPubAndHashUpdates()
 	for _, tx := range block.Txs {
 		var validationCode peer.TxValidationCode
@@ -126,14 +162,11 @@ func (v *Validator) validateKVRead(ns string, kvRead *kvrwset.KVRead, updates *p
 	if updates.Exists(ns, kvRead.Key) {
 		return false, nil
 	}
-	versionedValue, err := v.db.GetState(ns, kvRead.Key)
+	committedVersion, err := v.db.GetVersion(ns, kvRead.Key)
 	if err != nil {
 		return false, err
 	}
-	var committedVersion *version.Height
-	if versionedValue != nil {
-		committedVersion = versionedValue.Version
-	}
+
 	logger.Debugf("Comapring versions for key [%s]: committed version=%#v and read version=%#v",
 		kvRead.Key, committedVersion, rwsetutil.NewVersion(kvRead.Version))
 	if !version.AreSame(committedVersion, rwsetutil.NewVersion(kvRead.Version)) {
@@ -217,14 +250,12 @@ func (v *Validator) validateKVReadHash(ns, coll string, kvReadHash *kvrwset.KVRe
 	if updates.Contains(ns, coll, kvReadHash.KeyHash) {
 		return false, nil
 	}
-	versionedHash, err := v.db.GetValueHash(ns, coll, kvReadHash.KeyHash)
+	ns, key := v.db.GetHashedDataNsAndKeyHashStr(ns, coll, kvReadHash.KeyHash)
+	committedVersion, err := v.db.GetVersion(ns, key)
 	if err != nil {
 		return false, err
 	}
-	var committedVersion *version.Height
-	if versionedHash != nil {
-		committedVersion = versionedHash.Version
-	}
+
 	if !version.AreSame(committedVersion, rwsetutil.NewVersion(kvReadHash.Version)) {
 		logger.Debugf("Version mismatch for key hash [%s:%s:%#v]. Committed version = [%s], Version in hashedReadSet [%s]",
 			ns, coll, kvReadHash.KeyHash, committedVersion, kvReadHash.Version)
