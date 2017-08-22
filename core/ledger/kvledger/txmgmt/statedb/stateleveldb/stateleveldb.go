@@ -155,7 +155,7 @@ func (vdb *versionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 		updates := batch.GetUpdates(ns)
 		for k, vv := range updates {
 			compositeKey := constructCompositeKey(ns, k)
-			logger.Debugf("Channel [%s]: Applying key=[%#v]", vdb.dbName, compositeKey)
+			logger.Debugf("Channel [%s]: Applying key(string)=[%s] key(bytes)=[%#v]", vdb.dbName, string(compositeKey), compositeKey)
 
 			if vv.Value == nil {
 				dbBatch.Delete(compositeKey)

@@ -104,12 +104,13 @@ type QueryResponse struct {
 	Docs    []json.RawMessage `json:"docs"`
 }
 
-//Doc is used for capturing if attachments are return in the query from CouchDB
-type Doc struct {
-	ID          string          `json:"_id"`
-	Rev         string          `json:"_rev"`
-	Version     string          `json:"version"`
-	Attachments json.RawMessage `json:"_attachments"`
+// DocMetadata is used for capturing CouchDB document header info,
+// used to capture id, version, rev and determine if attachments are returned in the query from CouchDB
+type DocMetadata struct {
+	ID              string          `json:"_id"`
+	Rev             string          `json:"_rev"`
+	Version         string          `json:"version"`
+	AttachmentsInfo json.RawMessage `json:"_attachments"`
 }
 
 //DocID is a minimal structure for capturing the ID from a query result
@@ -121,7 +122,7 @@ type DocID struct {
 type QueryResult struct {
 	ID          string
 	Value       []byte
-	Attachments []*Attachment
+	Attachments []*AttachmentInfo
 }
 
 //CouchConnectionDef contains parameters
@@ -153,19 +154,12 @@ type DBReturn struct {
 	Reason     string `json:"reason"`
 }
 
-//Attachment contains the definition for an attached file for couchdb
-type Attachment struct {
+//AttachmentInfo contains the definition for an attached file for couchdb
+type AttachmentInfo struct {
 	Name            string
 	ContentType     string
 	Length          uint64
 	AttachmentBytes []byte
-}
-
-//DocMetadata returns the ID, version and revision for a couchdb document
-type DocMetadata struct {
-	ID      string
-	Rev     string
-	Version string
 }
 
 //FileDetails defines the structure needed to send an attachment to couchdb
@@ -178,14 +172,14 @@ type FileDetails struct {
 //CouchDoc defines the structure for a JSON document value
 type CouchDoc struct {
 	JSONValue   []byte
-	Attachments []*Attachment
+	Attachments []*AttachmentInfo
 }
 
 //BatchRetrieveDocMetadataResponse is used for processing REST batch responses from CouchDB
 type BatchRetrieveDocMetadataResponse struct {
 	Rows []struct {
-		ID  string `json:"id"`
-		Doc struct {
+		ID          string `json:"id"`
+		DocMetadata struct {
 			ID      string `json:"_id"`
 			Rev     string `json:"_rev"`
 			Version string `json:"version"`
@@ -654,7 +648,7 @@ func getRevisionHeader(resp *http.Response) (string, error) {
 //from the database by id
 func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 	var couchDoc CouchDoc
-	attachments := []*Attachment{}
+	attachments := []*AttachmentInfo{}
 
 	logger.Debugf("Entering ReadDoc()  id=[%s]", id)
 	if !utf8.ValidString(id) {
@@ -729,7 +723,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 			default:
 
 				//Create an attachment structure and load it
-				attachment := &Attachment{}
+				attachment := &AttachmentInfo{}
 				attachment.ContentType = p.Header.Get("Content-Type")
 				contentDispositionParts := strings.Split(p.Header.Get("Content-Disposition"), ";")
 				if strings.TrimSpace(contentDispositionParts[0]) == "attachment" {
@@ -810,7 +804,6 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 	//Append the startKey if provided
 
 	if startKey != "" {
-		var err error
 		if startKey, err = encodeForJSON(startKey); err != nil {
 			return nil, err
 		}
@@ -861,29 +854,29 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 	for _, row := range jsonResponse.Rows {
 
-		var jsonDoc = &Doc{}
-		err3 := json.Unmarshal(row.Doc, &jsonDoc)
+		var docMetadata = &DocMetadata{}
+		err3 := json.Unmarshal(row.Doc, &docMetadata)
 		if err3 != nil {
 			return nil, err3
 		}
 
-		if jsonDoc.Attachments != nil {
+		if docMetadata.AttachmentsInfo != nil {
 
-			logger.Debugf("Adding JSON document and attachments for id: %s", jsonDoc.ID)
+			logger.Debugf("Adding JSON document and attachments for id: %s", docMetadata.ID)
 
-			couchDoc, _, err := dbclient.ReadDoc(jsonDoc.ID)
+			couchDoc, _, err := dbclient.ReadDoc(docMetadata.ID)
 			if err != nil {
 				return nil, err
 			}
 
-			var addDocument = &QueryResult{jsonDoc.ID, couchDoc.JSONValue, couchDoc.Attachments}
+			var addDocument = &QueryResult{docMetadata.ID, couchDoc.JSONValue, couchDoc.Attachments}
 			results = append(results, *addDocument)
 
 		} else {
 
-			logger.Debugf("Adding json docment for id: %s", jsonDoc.ID)
+			logger.Debugf("Adding json docment for id: %s", docMetadata.ID)
 
-			var addDocument = &QueryResult{jsonDoc.ID, row.Doc, nil}
+			var addDocument = &QueryResult{docMetadata.ID, row.Doc, nil}
 			results = append(results, *addDocument)
 
 		}
@@ -982,26 +975,26 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 
 	for _, row := range jsonResponse.Docs {
 
-		var jsonDoc = &Doc{}
-		err3 := json.Unmarshal(row, &jsonDoc)
+		var docMetadata = &DocMetadata{}
+		err3 := json.Unmarshal(row, &docMetadata)
 		if err3 != nil {
 			return nil, err3
 		}
 
-		if jsonDoc.Attachments != nil {
+		if docMetadata.AttachmentsInfo != nil {
 
-			logger.Debugf("Adding JSON docment and attachments for id: %s", jsonDoc.ID)
+			logger.Debugf("Adding JSON docment and attachments for id: %s", docMetadata.ID)
 
-			couchDoc, _, err := dbclient.ReadDoc(jsonDoc.ID)
+			couchDoc, _, err := dbclient.ReadDoc(docMetadata.ID)
 			if err != nil {
 				return nil, err
 			}
-			var addDocument = &QueryResult{ID: jsonDoc.ID, Value: couchDoc.JSONValue, Attachments: couchDoc.Attachments}
+			var addDocument = &QueryResult{ID: docMetadata.ID, Value: couchDoc.JSONValue, Attachments: couchDoc.Attachments}
 			results = append(results, *addDocument)
 
 		} else {
-			logger.Debugf("Adding json docment for id: %s", jsonDoc.ID)
-			var addDocument = &QueryResult{ID: jsonDoc.ID, Value: row, Attachments: nil}
+			logger.Debugf("Adding json docment for id: %s", docMetadata.ID)
+			var addDocument = &QueryResult{ID: docMetadata.ID, Value: row, Attachments: nil}
 
 			results = append(results, *addDocument)
 
@@ -1013,19 +1006,29 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 
 }
 
-//BatchRetrieveIDRevision - batch method to retrieve IDs and revisions
-func (dbclient *CouchDatabase) BatchRetrieveIDRevision(keys []string) ([]*DocMetadata, error) {
+//BatchRetrieveDocumentMetadata - batch method to retrieve document metadata for  a set of keys,
+// including ID, couchdb revision number, and ledger version
+func (dbclient *CouchDatabase) BatchRetrieveDocumentMetadata(keys []string) ([]*DocMetadata, error) {
 
-	batchURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	logger.Debugf("Entering BatchRetrieveDocumentMetadata()  keys=%s", keys)
+
+	batchRetrieveURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return nil, err
 	}
-	batchURL.Path = dbclient.DBName + "/_all_docs"
+	batchRetrieveURL.Path = dbclient.DBName + "/_all_docs"
 
-	queryParms := batchURL.Query()
+	queryParms := batchRetrieveURL.Query()
+
+	// While BatchRetrieveDocumentMetadata() does not return the entire document,
+	// for reads/writes, we do need to get document so that we can get the ledger version of the key.
+	// TODO For blind writes we do not need to get the version, therefore when we bulk get
+	// the revision numbers for the write keys that were not represented in read set
+	// (the second time BatchRetrieveDocumentMetadata is called during block processing),
+	// we could set include_docs to false to optimize the response.
 	queryParms.Add("include_docs", "true")
-	batchURL.RawQuery = queryParms.Encode()
+	batchRetrieveURL.RawQuery = queryParms.Encode()
 
 	keymap := make(map[string]interface{})
 
@@ -1039,7 +1042,7 @@ func (dbclient *CouchDatabase) BatchRetrieveIDRevision(keys []string) ([]*DocMet
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), jsonKeys, "", "", maxRetries, true)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchRetrieveURL.String(), jsonKeys, "", "", maxRetries, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1064,27 +1067,37 @@ func (dbclient *CouchDatabase) BatchRetrieveIDRevision(keys []string) ([]*DocMet
 		return nil, err2
 	}
 
-	revisionDocs := []*DocMetadata{}
+	docMetadataArray := []*DocMetadata{}
 
 	for _, row := range jsonResponse.Rows {
-		revisionDoc := &DocMetadata{ID: row.ID, Rev: row.Doc.Rev, Version: row.Doc.Version}
-		revisionDocs = append(revisionDocs, revisionDoc)
+		docMetadata := &DocMetadata{ID: row.ID, Rev: row.DocMetadata.Rev, Version: row.DocMetadata.Version}
+		docMetadataArray = append(docMetadataArray, docMetadata)
 	}
 
-	return revisionDocs, nil
+	logger.Debugf("Exiting BatchRetrieveDocumentMetadata()")
+
+	return docMetadataArray, nil
 
 }
 
 //BatchUpdateDocuments - batch method to batch update documents
 func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*BatchUpdateResponse, error) {
-	logger.Debugf("Entering BatchUpdateDocuments()  documents=%v", documents)
 
-	batchURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	if logger.IsEnabledFor(logging.DEBUG) {
+		documentIdsString, err := printDocumentIds(documents)
+		if err == nil {
+			logger.Debugf("Entering BatchUpdateDocuments()  document ids=[%s]", documentIdsString)
+		} else {
+			logger.Debugf("Entering BatchUpdateDocuments()  Could not print document ids due to error:" + err.Error())
+		}
+	}
+
+	batchUpdateURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return nil, err
 	}
-	batchURL.Path = dbclient.DBName + "/_bulk_docs"
+	batchUpdateURL.Path = dbclient.DBName + "/_bulk_docs"
 
 	documentMap := make(map[string]interface{})
 
@@ -1124,7 +1137,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 	//Add the documents to the "docs" item
 	documentMap["docs"] = jsonDocumentMap
 
-	jsonKeys, err := json.Marshal(documentMap)
+	bulkDocsJSON, err := json.Marshal(documentMap)
 
 	if err != nil {
 		return nil, err
@@ -1133,7 +1146,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 	//get the number of retries
 	maxRetries := dbclient.CouchInstance.conf.MaxRetries
 
-	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchURL.String(), jsonKeys, "", "", maxRetries, true)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, batchUpdateURL.String(), bulkDocsJSON, "", "", maxRetries, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1157,7 +1170,7 @@ func (dbclient *CouchDatabase) BatchUpdateDocuments(documents []*CouchDoc) ([]*B
 		return nil, err2
 	}
 
-	logger.Debugf("Exiting BatchUpdateDocuments()")
+	logger.Debugf("Exiting BatchUpdateDocuments() _bulk_docs response=[%s]", string(jsonResponseRaw))
 
 	return jsonResponse, nil
 
@@ -1413,4 +1426,21 @@ func encodeForJSON(str string) (string, error) {
 	// Encode adds double quotes to string and terminates with \n - stripping them as bytes as they are all ascii(0-127)
 	buffer := buf.Bytes()
 	return string(buffer[1 : len(buffer)-2]), nil
+}
+
+// printDocumentIds is a convenience method to print readable log entries for arrays of pointers
+// to couch document IDs
+func printDocumentIds(documentPointers []*CouchDoc) (string, error) {
+
+	documentIds := []string{}
+
+	for _, documentPointer := range documentPointers {
+		docMetadata := &DocMetadata{}
+		err := json.Unmarshal(documentPointer.JSONValue, &docMetadata)
+		if err != nil {
+			return "", err
+		}
+		documentIds = append(documentIds, docMetadata.ID)
+	}
+	return strings.Join(documentIds, ","), nil
 }

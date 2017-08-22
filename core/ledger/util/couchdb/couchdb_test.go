@@ -178,9 +178,9 @@ func TestBadCouchDBInstance(t *testing.T) {
 	_, err = badDB.QueryDocuments("1")
 	testutil.AssertError(t, err, "Error should have been thrown with QueryDocuments and invalid connection")
 
-	//Test BatchRetrieveIDRevision with bad connection
-	_, err = badDB.BatchRetrieveIDRevision(nil)
-	testutil.AssertError(t, err, "Error should have been thrown with BatchRetrieveIDRevision and invalid connection")
+	//Test BatchRetrieveDocumentMetadata with bad connection
+	_, err = badDB.BatchRetrieveDocumentMetadata(nil)
+	testutil.AssertError(t, err, "Error should have been thrown with BatchRetrieveDocumentMetadata and invalid connection")
 
 	//Test BatchUpdateDocuments with bad connection
 	_, err = badDB.BatchUpdateDocuments(nil)
@@ -377,11 +377,11 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
 			testBytes2 := []byte(`test attachment 2`)
 
-			attachment2 := &Attachment{}
+			attachment2 := &AttachmentInfo{}
 			attachment2.AttachmentBytes = testBytes2
 			attachment2.ContentType = "application/octet-stream"
 			attachment2.Name = "data"
-			attachments2 := []*Attachment{}
+			attachments2 := []*AttachmentInfo{}
 			attachments2 = append(attachments2, attachment2)
 
 			//Save the test document with an attachment
@@ -398,11 +398,11 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
 			testBytes3 := []byte{}
 
-			attachment3 := &Attachment{}
+			attachment3 := &AttachmentInfo{}
 			attachment3.AttachmentBytes = testBytes3
 			attachment3.ContentType = "application/octet-stream"
 			attachment3.Name = "data"
-			attachments3 := []*Attachment{}
+			attachments3 := []*AttachmentInfo{}
 			attachments3 = append(attachments3, attachment3)
 
 			//Save the test document with a zero length attachment
@@ -418,18 +418,18 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 			testutil.AssertEquals(t, testattach, testBytes3)
 
 			testBytes4a := []byte(`test attachment 4a`)
-			attachment4a := &Attachment{}
+			attachment4a := &AttachmentInfo{}
 			attachment4a.AttachmentBytes = testBytes4a
 			attachment4a.ContentType = "application/octet-stream"
 			attachment4a.Name = "data1"
 
 			testBytes4b := []byte(`test attachment 4b`)
-			attachment4b := &Attachment{}
+			attachment4b := &AttachmentInfo{}
 			attachment4b.AttachmentBytes = testBytes4b
 			attachment4b.ContentType = "application/octet-stream"
 			attachment4b.Name = "data2"
 
-			attachments4 := []*Attachment{}
+			attachments4 := []*AttachmentInfo{}
 			attachments4 = append(attachments4, attachment4a)
 			attachments4 = append(attachments4, attachment4b)
 
@@ -454,18 +454,18 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 			}
 
 			testBytes5a := []byte(`test attachment 5a`)
-			attachment5a := &Attachment{}
+			attachment5a := &AttachmentInfo{}
 			attachment5a.AttachmentBytes = testBytes5a
 			attachment5a.ContentType = "application/octet-stream"
 			attachment5a.Name = "data1"
 
 			testBytes5b := []byte{}
-			attachment5b := &Attachment{}
+			attachment5b := &AttachmentInfo{}
 			attachment5b.AttachmentBytes = testBytes5b
 			attachment5b.ContentType = "application/octet-stream"
 			attachment5b.Name = "data2"
 
-			attachments5 := []*Attachment{}
+			attachments5 := []*AttachmentInfo{}
 			attachments5 = append(attachments5, attachment5a)
 			attachments5 = append(attachments5, attachment5b)
 
@@ -729,12 +729,12 @@ func TestDBSaveAttachment(t *testing.T) {
 
 			byteText := []byte(`This is a test document.  This is only a test`)
 
-			attachment := &Attachment{}
+			attachment := &AttachmentInfo{}
 			attachment.AttachmentBytes = byteText
 			attachment.ContentType = "text/plain"
 			attachment.Name = "valueBytes"
 
-			attachments := []*Attachment{}
+			attachments := []*AttachmentInfo{}
 			attachments = append(attachments, attachment)
 
 			//create a new instance and database object
@@ -860,88 +860,88 @@ func TestRichQuery(t *testing.T) {
 		byteJSON11 := []byte(`{"asset_name":"marble11","color":"green","size":11,"owner":"tom"}`)
 		byteJSON12 := []byte(`{"asset_name":"marble12","color":"green","size":12,"owner":"frank"}`)
 
-		attachment1 := &Attachment{}
+		attachment1 := &AttachmentInfo{}
 		attachment1.AttachmentBytes = []byte(`marble01 - test attachment`)
 		attachment1.ContentType = "application/octet-stream"
 		attachment1.Name = "data"
-		attachments1 := []*Attachment{}
+		attachments1 := []*AttachmentInfo{}
 		attachments1 = append(attachments1, attachment1)
 
-		attachment2 := &Attachment{}
+		attachment2 := &AttachmentInfo{}
 		attachment2.AttachmentBytes = []byte(`marble02 - test attachment`)
 		attachment2.ContentType = "application/octet-stream"
 		attachment2.Name = "data"
-		attachments2 := []*Attachment{}
+		attachments2 := []*AttachmentInfo{}
 		attachments2 = append(attachments2, attachment2)
 
-		attachment3 := &Attachment{}
+		attachment3 := &AttachmentInfo{}
 		attachment3.AttachmentBytes = []byte(`marble03 - test attachment`)
 		attachment3.ContentType = "application/octet-stream"
 		attachment3.Name = "data"
-		attachments3 := []*Attachment{}
+		attachments3 := []*AttachmentInfo{}
 		attachments3 = append(attachments3, attachment3)
 
-		attachment4 := &Attachment{}
+		attachment4 := &AttachmentInfo{}
 		attachment4.AttachmentBytes = []byte(`marble04 - test attachment`)
 		attachment4.ContentType = "application/octet-stream"
 		attachment4.Name = "data"
-		attachments4 := []*Attachment{}
+		attachments4 := []*AttachmentInfo{}
 		attachments4 = append(attachments4, attachment4)
 
-		attachment5 := &Attachment{}
+		attachment5 := &AttachmentInfo{}
 		attachment5.AttachmentBytes = []byte(`marble05 - test attachment`)
 		attachment5.ContentType = "application/octet-stream"
 		attachment5.Name = "data"
-		attachments5 := []*Attachment{}
+		attachments5 := []*AttachmentInfo{}
 		attachments5 = append(attachments5, attachment5)
 
-		attachment6 := &Attachment{}
+		attachment6 := &AttachmentInfo{}
 		attachment6.AttachmentBytes = []byte(`marble06 - test attachment`)
 		attachment6.ContentType = "application/octet-stream"
 		attachment6.Name = "data"
-		attachments6 := []*Attachment{}
+		attachments6 := []*AttachmentInfo{}
 		attachments6 = append(attachments6, attachment6)
 
-		attachment7 := &Attachment{}
+		attachment7 := &AttachmentInfo{}
 		attachment7.AttachmentBytes = []byte(`marble07 - test attachment`)
 		attachment7.ContentType = "application/octet-stream"
 		attachment7.Name = "data"
-		attachments7 := []*Attachment{}
+		attachments7 := []*AttachmentInfo{}
 		attachments7 = append(attachments7, attachment7)
 
-		attachment8 := &Attachment{}
+		attachment8 := &AttachmentInfo{}
 		attachment8.AttachmentBytes = []byte(`marble08 - test attachment`)
 		attachment8.ContentType = "application/octet-stream"
 		attachment7.Name = "data"
-		attachments8 := []*Attachment{}
+		attachments8 := []*AttachmentInfo{}
 		attachments8 = append(attachments8, attachment8)
 
-		attachment9 := &Attachment{}
+		attachment9 := &AttachmentInfo{}
 		attachment9.AttachmentBytes = []byte(`marble09 - test attachment`)
 		attachment9.ContentType = "application/octet-stream"
 		attachment9.Name = "data"
-		attachments9 := []*Attachment{}
+		attachments9 := []*AttachmentInfo{}
 		attachments9 = append(attachments9, attachment9)
 
-		attachment10 := &Attachment{}
+		attachment10 := &AttachmentInfo{}
 		attachment10.AttachmentBytes = []byte(`marble10 - test attachment`)
 		attachment10.ContentType = "application/octet-stream"
 		attachment10.Name = "data"
-		attachments10 := []*Attachment{}
+		attachments10 := []*AttachmentInfo{}
 		attachments10 = append(attachments10, attachment10)
 
-		attachment11 := &Attachment{}
+		attachment11 := &AttachmentInfo{}
 		attachment11.AttachmentBytes = []byte(`marble11 - test attachment`)
 		attachment11.ContentType = "application/octet-stream"
 		attachment11.Name = "data"
-		attachments11 := []*Attachment{}
+		attachments11 := []*AttachmentInfo{}
 		attachments11 = append(attachments11, attachment11)
 
-		attachment12 := &Attachment{}
+		attachment12 := &AttachmentInfo{}
 		attachment12.AttachmentBytes = []byte(`marble12 - test attachment`)
 		attachment12.ContentType = "application/octet-stream"
 		attachment12.Name = "data"
-		attachments12 := []*Attachment{}
+		attachments12 := []*AttachmentInfo{}
 		attachments12 = append(attachments12, attachment12)
 
 		database := "testrichquery"
@@ -1131,39 +1131,39 @@ func TestBatchBatchOperations(t *testing.T) {
 		byteJSON04 := []byte(`{"_id":"marble04","asset_name":"marble04","color":"purple","size":"4","owner":"tom"}`)
 		byteJSON05 := []byte(`{"_id":"marble05","asset_name":"marble05","color":"blue","size":"5","owner":"jerry"}`)
 
-		attachment1 := &Attachment{}
+		attachment1 := &AttachmentInfo{}
 		attachment1.AttachmentBytes = []byte(`marble01 - test attachment`)
 		attachment1.ContentType = "application/octet-stream"
 		attachment1.Name = "data"
-		attachments1 := []*Attachment{}
+		attachments1 := []*AttachmentInfo{}
 		attachments1 = append(attachments1, attachment1)
 
-		attachment2 := &Attachment{}
+		attachment2 := &AttachmentInfo{}
 		attachment2.AttachmentBytes = []byte(`marble02 - test attachment`)
 		attachment2.ContentType = "application/octet-stream"
 		attachment2.Name = "data"
-		attachments2 := []*Attachment{}
+		attachments2 := []*AttachmentInfo{}
 		attachments2 = append(attachments2, attachment2)
 
-		attachment3 := &Attachment{}
+		attachment3 := &AttachmentInfo{}
 		attachment3.AttachmentBytes = []byte(`marble03 - test attachment`)
 		attachment3.ContentType = "application/octet-stream"
 		attachment3.Name = "data"
-		attachments3 := []*Attachment{}
+		attachments3 := []*AttachmentInfo{}
 		attachments3 = append(attachments3, attachment3)
 
-		attachment4 := &Attachment{}
+		attachment4 := &AttachmentInfo{}
 		attachment4.AttachmentBytes = []byte(`marble04 - test attachment`)
 		attachment4.ContentType = "application/octet-stream"
 		attachment4.Name = "data"
-		attachments4 := []*Attachment{}
+		attachments4 := []*AttachmentInfo{}
 		attachments4 = append(attachments4, attachment4)
 
-		attachment5 := &Attachment{}
+		attachment5 := &AttachmentInfo{}
 		attachment5.AttachmentBytes = []byte(`marble05 - test attachment`)
 		attachment5.ContentType = "application/octet-stream"
 		attachment5.Name = "data"
-		attachments5 := []*Attachment{}
+		attachments5 := []*AttachmentInfo{}
 		attachments5 = append(attachments5, attachment5)
 
 		database := "testbatch"
@@ -1247,7 +1247,7 @@ func TestBatchBatchOperations(t *testing.T) {
 		keys = append(keys, "marble01")
 		keys = append(keys, "marble03")
 
-		batchRevs, err := db.BatchRetrieveIDRevision(keys)
+		batchRevs, err := db.BatchRetrieveDocumentMetadata(keys)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when attempting retrieve revisions"))
 
 		batchUpdateDocs = []*CouchDoc{}
@@ -1283,7 +1283,7 @@ func TestBatchBatchOperations(t *testing.T) {
 		keys = append(keys, "marble02")
 		keys = append(keys, "marble04")
 
-		batchRevs, err = db.BatchRetrieveIDRevision(keys)
+		batchRevs, err = db.BatchRetrieveDocumentMetadata(keys)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when attempting retrieve revisions"))
 
 		batchUpdateDocs = []*CouchDoc{}
