@@ -23,6 +23,7 @@ import (
 
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -43,7 +44,7 @@ type broadcastClient struct {
 func GetBroadcastClient(orderingEndpoint string, tlsEnabled bool, caFile string) (BroadcastClient, error) {
 
 	if len(strings.Split(orderingEndpoint, ":")) != 2 {
-		return nil, fmt.Errorf("Ordering service endpoint %s is not valid or missing", orderingEndpoint)
+		return nil, errors.Errorf("ordering service endpoint %s is not valid or missing", orderingEndpoint)
 	}
 
 	var opts []grpc.DialOption
@@ -52,7 +53,7 @@ func GetBroadcastClient(orderingEndpoint string, tlsEnabled bool, caFile string)
 		if caFile != "" {
 			creds, err := credentials.NewClientTLSFromFile(caFile, "")
 			if err != nil {
-				return nil, fmt.Errorf("Error connecting to %s due to %s", orderingEndpoint, err)
+				return nil, errors.WithMessage(err, fmt.Sprintf("error connecting to %s due to", orderingEndpoint))
 			}
 			opts = append(opts, grpc.WithTransportCredentials(creds))
 		}
@@ -65,12 +66,12 @@ func GetBroadcastClient(orderingEndpoint string, tlsEnabled bool, caFile string)
 
 	conn, err := grpc.Dial(orderingEndpoint, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("Error connecting to %s due to %s", orderingEndpoint, err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("error connecting to %s due to", orderingEndpoint))
 	}
 	client, err := ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("Error connecting to %s due to %s", orderingEndpoint, err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("error connecting to %s due to", orderingEndpoint))
 	}
 
 	return &broadcastClient{conn: conn, client: client}, nil
@@ -82,7 +83,7 @@ func (s *broadcastClient) getAck() error {
 		return err
 	}
 	if msg.Status != cb.Status_SUCCESS {
-		return fmt.Errorf("Got unexpected status: %v -- %s", msg.Status, msg.Info)
+		return errors.Errorf("got unexpected status: %v -- %s", msg.Status, msg.Info)
 	}
 	return nil
 }
@@ -90,7 +91,7 @@ func (s *broadcastClient) getAck() error {
 //Send data to orderer
 func (s *broadcastClient) Send(env *cb.Envelope) error {
 	if err := s.client.Send(env); err != nil {
-		return fmt.Errorf("Could not send :%s)", err)
+		return errors.WithMessage(err, "could not send")
 	}
 
 	err := s.getAck()

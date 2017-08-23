@@ -17,10 +17,10 @@ limitations under the License.
 package clilogging
 
 import (
-	"github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -48,13 +48,13 @@ func checkLoggingCmdParams(cmd *cobra.Command, args []string) error {
 	var err error
 	if cmd.Name() == "revertlevels" {
 		if len(args) > 0 {
-			err = errors.ErrorWithCallstack("LOG", "400", "More parameters than necessary were provided. Expected 0, received %d.", len(args))
+			err = errors.Errorf("more parameters than necessary were provided. Expected 0, received %d", len(args))
 			return err
 		}
 	} else {
 		// check that at least one parameter is passed in
 		if len(args) == 0 {
-			err = errors.ErrorWithCallstack("LOG", "400", "No parameters provided.")
+			err = errors.New("no parameters provided")
 			return err
 		}
 	}
@@ -62,7 +62,7 @@ func checkLoggingCmdParams(cmd *cobra.Command, args []string) error {
 	if cmd.Name() == "setlevel" {
 		// check that log level parameter is provided
 		if len(args) == 1 {
-			err = errors.ErrorWithCallstack("LOG", "400", "No log level provided.")
+			err = errors.New("no log level provided")
 		} else {
 			// check that log level is valid. if not, err is set
 			err = common.CheckLogLevel(args[1])
