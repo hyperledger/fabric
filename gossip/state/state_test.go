@@ -997,6 +997,11 @@ type receivedMessageMock struct {
 	mock.Mock
 }
 
+// Ack returns to the sender an acknowledgement for the message
+func (mock *receivedMessageMock) Ack(err error) {
+
+}
+
 func (mock *receivedMessageMock) Respond(msg *proto.GossipMessage) {
 	mock.Called(msg)
 }

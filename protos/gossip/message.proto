@@ -117,6 +117,8 @@ message GossipMessage {
 
         // Used to learn of a peer's certificate
         PeerIdentity peer_identity = 21;
+
+        Acknowledgement ack = 22;
     }
 }
 
@@ -312,4 +314,8 @@ message PvtDataPayload {
     // Encodes marhslaed bytes of rwset.TxPvtReadWriteSet
     // defined in rwset.proto
     bytes payload = 2;
+}
+
+message Acknowledgement {
+    string error = 1;
 }

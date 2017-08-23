@@ -54,6 +54,11 @@ func (s *sentMsg) GetSourceEnvelope() *proto.Envelope {
 	return nil
 }
 
+// Ack returns to the sender an acknowledgement for the message
+func (s *sentMsg) Ack(err error) {
+
+}
+
 func (s *sentMsg) Respond(msg *proto.GossipMessage) {
 	s.Called(msg)
 }

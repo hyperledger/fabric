@@ -22,6 +22,13 @@ import (
 
 type handler func(message *proto.SignedGossipMessage)
 
+type blockingBehavior bool
+
+const (
+	blockingSend    = blockingBehavior(true)
+	nonBlockingSend = blockingBehavior(false)
+)
+
 type connFactory interface {
 	createConnection(endpoint string, pkiID common.PKIidType) (*connection, error)
 }
@@ -193,7 +200,6 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_Go
 		stopFlag:     int32(0),
 		stopChan:     make(chan struct{}, 1),
 	}
-
 	return connection
 }
 
@@ -225,7 +231,9 @@ func (conn *connection) close() {
 
 	conn.stopChan <- struct{}{}
 
+	conn.drainOutputBuffer()
 	conn.Lock()
+	defer conn.Unlock()
 
 	if conn.clientStream != nil {
 		conn.clientStream.CloseSend()
@@ -237,31 +245,33 @@ func (conn *connection) close() {
 	if conn.cancel != nil {
 		conn.cancel()
 	}
-
-	conn.Unlock()
-
 }
 
 func (conn *connection) toDie() bool {
 	return atomic.LoadInt32(&(conn.stopFlag)) == int32(1)
 }
 
-func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error)) {
-	conn.Lock()
-	defer conn.Unlock()
-
-	if len(conn.outBuff) == util.GetIntOrDefault("peer.gossip.sendBuffSize", defSendBuffSize) {
-		if conn.logger.IsEnabledFor(logging.DEBUG) {
-			conn.logger.Debug("Buffer to", conn.info.Endpoint, "overflowed, dropping message", msg.String())
-		}
+func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error), shouldBlock blockingBehavior) {
+	if conn.toDie() {
+		conn.logger.Debug("Aborting send() to ", conn.info.Endpoint, "because connection is closing")
 		return
 	}
+	conn.Lock()
+	defer conn.Unlock()
 
 	m := &msgSending{
 		envelope: msg.Envelope,
 		onErr:    onErr,
 	}
 
+	if len(conn.outBuff) == util.GetIntOrDefault("peer.gossip.sendBuffSize", defSendBuffSize) {
+		if conn.logger.IsEnabledFor(logging.DEBUG) {
+			conn.logger.Debug("Buffer to", conn.info.Endpoint, "overflowed, dropping message", msg.String())
+		}
+		if !shouldBlock {
+			return
+		}
+	}
 	conn.outBuff <- m
 }
 
@@ -313,6 +323,13 @@ func (conn *connection) writeToStream() {
 			conn.stopChan <- stop
 			return
 		}
+	}
+}
+
+func (conn *connection) drainOutputBuffer() {
+	// Drain the output buffer
+	for len(conn.outBuff) > 0 {
+		<-conn.outBuff
 	}
 }
 
