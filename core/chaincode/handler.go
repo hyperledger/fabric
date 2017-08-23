@@ -51,12 +51,6 @@ const (
 
 var chaincodeLogger = flogging.MustGetLogger("chaincode")
 
-// MessageHandler interface for handling chaincode messages (common between Peer chaincode support and chaincode)
-type MessageHandler interface {
-	HandleMessage(msg *pb.ChaincodeMessage) error
-	SendMessage(msg *pb.ChaincodeMessage) error
-}
-
 type transactionContext struct {
 	chainID          string
 	signedProp       *pb.SignedProposal
@@ -367,7 +361,7 @@ func (handler *Handler) processStream() error {
 			continue
 		}
 
-		err = handler.HandleMessage(in)
+		err = handler.handleMessage(in)
 		if err != nil {
 			chaincodeLogger.Errorf("[%s]Error handling message, ending stream: %s", shorttxid(in.Txid), err)
 			return fmt.Errorf("Error handling message, ending stream: %s", err)
@@ -1384,8 +1378,8 @@ func (handler *Handler) ready(ctxt context.Context, chainID string, txid string,
 	return txctx.responseNotifier, nil
 }
 
-// HandleMessage implementation of MessageHandler interface.  Peer's handling of Chaincode messages.
-func (handler *Handler) HandleMessage(msg *pb.ChaincodeMessage) error {
+// handleMessage is the entrance method for Peer's handling of Chaincode messages.
+func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 	chaincodeLogger.Debugf("[%s]Fabric side Handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
 
 	if (msg.Type == pb.ChaincodeMessage_COMPLETED || msg.Type == pb.ChaincodeMessage_ERROR) && handler.FSM.Current() == "ready" {
