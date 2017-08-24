@@ -58,6 +58,12 @@
 			"revisionTime": "2015-10-22T06:55:26Z"
 		},
 		{
+			"checksumSHA1": "H8zNInPqap5+VK4VOBjBtQX78c0=",
+			"path": "github.com/cactus/go-statsd-client/statsd",
+			"revision": "ad551ee7f9f3465fb1ce1695899c612f7808a06a",
+			"revisionTime": "2017-07-12T05:57:35Z"
+		},
+		{
 			"path": "github.com/cpuguy83/go-md2man/md2man",
 			"revision": "71acacd42f85e5e82f70a55327789582a5200a90",
 			"revisionTime": "2015-08-03T11:35:22-04:00"

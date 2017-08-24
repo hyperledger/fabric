@@ -12,7 +12,11 @@ import (
 	"sync"
 	"time"
 
+	"sort"
+
+	"github.com/cactus/go-statsd-client/statsd"
 	"github.com/uber-go/tally"
+	statsdreporter "github.com/uber-go/tally/statsd"
 )
 
 var scopeRegistryKey = tally.KeyForPrefixedStringMap
@@ -181,6 +185,65 @@ func (s *scope) SubScope(prefix string) Scope {
 	return subScope
 }
 
+type statsdReporter struct {
+	reporter tally.StatsReporter
+}
+
+func newStatsdReporter(statsd statsd.Statter, opts statsdreporter.Options) tally.StatsReporter {
+	reporter := statsdreporter.NewReporter(statsd, opts)
+	return &statsdReporter{reporter: reporter}
+}
+
+func (r *statsdReporter) ReportCounter(name string, tags map[string]string, value int64) {
+	r.reporter.ReportCounter(tagsToName(name, tags), tags, value)
+}
+
+func (r *statsdReporter) ReportGauge(name string, tags map[string]string, value float64) {
+	r.reporter.ReportGauge(tagsToName(name, tags), tags, value)
+}
+
+func (r *statsdReporter) ReportTimer(name string, tags map[string]string, interval time.Duration) {
+	r.reporter.ReportTimer(tagsToName(name, tags), tags, interval)
+}
+
+func (r *statsdReporter) ReportHistogramValueSamples(
+	name string,
+	tags map[string]string,
+	buckets tally.Buckets,
+	bucketLowerBound,
+	bucketUpperBound float64,
+	samples int64,
+) {
+	r.reporter.ReportHistogramValueSamples(tagsToName(name, tags), tags, buckets, bucketLowerBound, bucketUpperBound, samples)
+}
+
+func (r *statsdReporter) ReportHistogramDurationSamples(
+	name string,
+	tags map[string]string,
+	buckets tally.Buckets,
+	bucketLowerBound,
+	bucketUpperBound time.Duration,
+	samples int64,
+) {
+	r.reporter.ReportHistogramDurationSamples(tagsToName(name, tags), tags, buckets, bucketLowerBound, bucketUpperBound, samples)
+}
+
+func (r *statsdReporter) Capabilities() tally.Capabilities {
+	return r
+}
+
+func (r *statsdReporter) Reporting() bool {
+	return true
+}
+
+func (r *statsdReporter) Tagging() bool {
+	return true
+}
+
+func (r *statsdReporter) Flush() {
+	// no-op
+}
+
 func (s *scope) fullyQualifiedName(name string) string {
 	if len(s.prefix) == 0 {
 		return name
@@ -216,4 +279,18 @@ func copyStringMap(stringMap map[string]string) map[string]string {
 		result[k] = v
 	}
 	return result
+}
+
+func tagsToName(name string, tags map[string]string) string {
+	var keys []string
+	for k := range tags {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		name = name + tally.DefaultSeparator + k + "-" + tags[k]
+	}
+
+	return name
 }
