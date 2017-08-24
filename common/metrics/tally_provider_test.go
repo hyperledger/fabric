@@ -12,9 +12,17 @@ import (
 	"testing"
 	"time"
 
+	"io"
+	"net"
+	"strings"
+
+	"github.com/cactus/go-statsd-client/statsd"
 	"github.com/stretchr/testify/assert"
 	"github.com/uber-go/tally"
+	statsdreporter "github.com/uber-go/tally/statsd"
 )
+
+const statsdAddr string = "127.0.0.1:8125"
 
 type testIntValue struct {
 	val      int64
@@ -339,4 +347,53 @@ func TestSubScopeTagged(t *testing.T) {
 	assert.EqualValues(t, map[string]string{
 		"env": "test",
 	}, r.counters[namespace+".sub.haha"].tags)
+}
+
+func TestMetricsByStatsdReporter(t *testing.T) {
+	t.Parallel()
+	udpAddr, err := net.ResolveUDPAddr("udp", statsdAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	server, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+
+	r := newTestStatsdReporter()
+	opts := tally.ScopeOptions{
+		Prefix:    namespace,
+		Separator: tally.DefaultSeparator,
+		Reporter:  r}
+
+	s, c := newRootScope(opts, 1*time.Second)
+	defer c.Close()
+	subs := s.SubScope("peer").Tagged(map[string]string{"component": "committer", "env": "test"})
+	subs.Counter("success_total").Inc(1)
+	subs.Gauge("channel_total").Update(4)
+
+	buffer := make([]byte, 4096)
+	n, _ := io.ReadAtLeast(server, buffer, 1)
+	result := string(buffer[:n])
+
+	expected := []string{
+		`hyperledger.fabric.peer.success_total.component-committer.env-test:1|c`,
+		`hyperledger.fabric.peer.channel_total.component-committer.env-test:4|g`,
+	}
+
+	for i, res := range strings.Split(result, "\n") {
+		if res != expected[i] {
+			t.Errorf("Got `%s`, expected `%s`", res, expected[i])
+		}
+	}
+}
+
+func newTestStatsdReporter() tally.StatsReporter {
+	statter, _ := statsd.NewBufferedClient(statsdAddr,
+		"", 100*time.Millisecond, 512)
+
+	opts := statsdreporter.Options{}
+	return newStatsdReporter(statter, opts)
 }
