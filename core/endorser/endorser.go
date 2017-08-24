@@ -190,10 +190,12 @@ func (e *Endorser) disableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvoc
 	}
 
 	//the inner dep spec will contain the type
-	cds, err := putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[argNo])
+	ccpack, err := ccprovider.GetCCPackage(cis.ChaincodeSpec.Input.Args[argNo])
 	if err != nil {
 		return err
 	}
+
+	cds := ccpack.GetDepSpec()
 
 	//finally, if JAVA error out
 	if cds.ChaincodeSpec.Type == pb.ChaincodeSpec_JAVA {
