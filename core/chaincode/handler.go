@@ -721,7 +721,7 @@ func (handler *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 				handler.deleteQueryIterator(txContext, iterID)
 			}
 			payload := []byte(err.Error())
-			chaincodeLogger.Errorf(errFmt, errArgs)
+			chaincodeLogger.Errorf(errFmt, errArgs...)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 		}
 
@@ -835,7 +835,7 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 				iter.Close()
 				handler.deleteQueryIterator(txContext, queryStateNext.Id)
 			}
-			chaincodeLogger.Errorf(errFmt, errArgs)
+			chaincodeLogger.Errorf(errFmt, errArgs...)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 		}
 
@@ -913,7 +913,7 @@ func (handler *Handler) handleQueryStateClose(msg *pb.ChaincodeMessage) {
 		}()
 
 		errHandler := func(payload []byte, errFmt string, errArgs ...interface{}) {
-			chaincodeLogger.Errorf(errFmt, errArgs)
+			chaincodeLogger.Errorf(errFmt, errArgs...)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 		}
 
@@ -993,7 +993,7 @@ func (handler *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 				iter.Close()
 				handler.deleteQueryIterator(txContext, iterID)
 			}
-			chaincodeLogger.Errorf(errFmt, errArgs)
+			chaincodeLogger.Errorf(errFmt, errArgs...)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 		}
 
@@ -1084,7 +1084,7 @@ func (handler *Handler) handleGetHistoryForKey(msg *pb.ChaincodeMessage) {
 				iter.Close()
 				handler.deleteQueryIterator(txContext, iterID)
 			}
-			chaincodeLogger.Errorf(errFmt, errArgs)
+			chaincodeLogger.Errorf(errFmt, errArgs...)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 		}
 
@@ -1166,7 +1166,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 		}
 
 		errHandler := func(payload []byte, errFmt string, errArgs ...interface{}) {
-			chaincodeLogger.Errorf(errFmt, errArgs)
+			chaincodeLogger.Errorf(errFmt, errArgs...)
 			triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 		}
 
@@ -1259,7 +1259,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 				//Call LSCC to get the called chaincode artifacts
 				cd, err = GetChaincodeDataFromLSCC(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcIns.ChainID, calledCcIns.ChaincodeName)
 				if err != nil {
-					errHandler([]byte(err.Error()), "[%s]Failed to get chaincoed data (%s) for invoked chaincode. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
+					errHandler([]byte(err.Error()), "[%s]Failed to get chaincode data (%s) for invoked chaincode. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
 					return
 				}
 
