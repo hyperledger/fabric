@@ -151,3 +151,12 @@ func TestGetStateMultipleKeys(t *testing.T) {
 		commontests.TestGetStateMultipleKeys(t, env.DBProvider)
 	}
 }
+
+func TestGetVersion(t *testing.T) {
+	if ledgerconfig.IsCouchDBEnabled() == true {
+		env := NewTestVDBEnv(t)
+		env.Cleanup("testgetversion")
+		defer env.Cleanup("testgetversion")
+		commontests.TestGetVersion(t, env.DBProvider)
+	}
+}

@@ -488,3 +488,61 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertNil(t, queryResult2)
 
 }
+
+// TestGetVersion tests retrieving the version by namespace and key
+func TestGetVersion(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+
+	db, err := dbProvider.GetDBHandle("testgetversion")
+	testutil.AssertNoError(t, err, "")
+
+	batch := statedb.NewUpdateBatch()
+	vv1 := statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
+	vv2 := statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
+	vv3 := statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 3)}
+	vv4 := statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 4)}
+
+	batch.Put("ns", "key1", vv1.Value, vv1.Version)
+	batch.Put("ns", "key2", vv2.Value, vv2.Version)
+	batch.Put("ns", "key3", vv2.Value, vv3.Version)
+	batch.Put("ns", "key4", vv2.Value, vv4.Version)
+	savePoint := version.NewHeight(1, 5)
+	err = db.ApplyUpdates(batch, savePoint)
+	testutil.AssertNoError(t, err, "")
+
+	//check to see if the bulk optimizable interface is supported (couchdb)
+	if bulkdb, ok := db.(statedb.BulkOptimizable); ok {
+		//clear the cached versions, this will force a read when getVerion is called
+		bulkdb.ClearCachedVersions()
+	}
+
+	//retrieve a version by namespace and key
+	resp, err := db.GetVersion("ns", "key2")
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertEquals(t, resp, version.NewHeight(1, 2))
+
+	//attempt to retrieve an non-existent namespace and key
+	resp, err = db.GetVersion("ns2", "key2")
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertEquals(t, resp, nil)
+
+	//check to see if the bulk optimizable interface is supported (couchdb)
+	if bulkdb, ok := db.(statedb.BulkOptimizable); ok {
+
+		//clear the cached versions, this will force a read when getVerion is called
+		bulkdb.ClearCachedVersions()
+
+		// initialize a key list
+		loadKeys := []*statedb.CompositeKey{}
+		//create a composite key and add to the key list
+		compositeKey := statedb.CompositeKey{Namespace: "ns", Key: "key3"}
+		loadKeys = append(loadKeys, &compositeKey)
+		//load the committed versions
+		bulkdb.LoadCommittedVersions(loadKeys)
+
+		//retrieve a version by namespace and key
+		resp, err := db.GetVersion("ns", "key3")
+		testutil.AssertNoError(t, err, "")
+		testutil.AssertEquals(t, resp, version.NewHeight(1, 3))
+
+	}
+}
