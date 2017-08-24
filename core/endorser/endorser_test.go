@@ -723,7 +723,9 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	endorserServer = NewEndorserServer()
+	endorserServer = NewEndorserServer(func(channel string, txID string, privateData []byte) error {
+		return nil
+	})
 
 	// setup the MSP manager so that we can sign/verify
 	err = msptesttools.LoadMSPSetupForTesting()

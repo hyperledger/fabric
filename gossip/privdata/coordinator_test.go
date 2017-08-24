@@ -4,18 +4,31 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package state
+package privdata
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/transientstore"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+type mockTransientStore struct {
+}
+
+func (*mockTransientStore) Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults []byte) error {
+	panic("implement me")
+}
+
+func (*mockTransientStore) GetSelfSimulatedTxPvtRWSetByTxid(txid string) (*transientstore.EndorserPvtSimulationResults, error) {
+	panic("implement me")
+}
 
 type committerMock struct {
 	mock.Mock
@@ -55,7 +68,7 @@ func (mock *committerMock) Close() {
 }
 
 func TestPvtDataCollections_FailOnEmptyPayload(t *testing.T) {
-	collection := &PvtDataCollections{
+	collection := &util.PvtDataCollections{
 		&ledger.TxPvtData{
 			SeqInBlock: uint64(1),
 			WriteSet: &rwset.TxPvtReadWriteSet{
@@ -84,7 +97,7 @@ func TestPvtDataCollections_FailOnEmptyPayload(t *testing.T) {
 }
 
 func TestPvtDataCollections_FailMarshalingWriteSet(t *testing.T) {
-	collection := &PvtDataCollections{
+	collection := &util.PvtDataCollections{
 		&ledger.TxPvtData{
 			SeqInBlock: uint64(1),
 			WriteSet:   nil,
@@ -98,7 +111,7 @@ func TestPvtDataCollections_FailMarshalingWriteSet(t *testing.T) {
 }
 
 func TestPvtDataCollections_Marshal(t *testing.T) {
-	collection := &PvtDataCollections{
+	collection := &util.PvtDataCollections{
 		&ledger.TxPvtData{
 			SeqInBlock: uint64(1),
 			WriteSet: &rwset.TxPvtReadWriteSet{
@@ -154,7 +167,7 @@ func TestPvtDataCollections_Marshal(t *testing.T) {
 }
 
 func TestPvtDataCollections_Unmarshal(t *testing.T) {
-	collection := PvtDataCollections{
+	collection := util.PvtDataCollections{
 		&ledger.TxPvtData{
 			SeqInBlock: uint64(1),
 			WriteSet: &rwset.TxPvtReadWriteSet{
@@ -181,7 +194,7 @@ func TestPvtDataCollections_Unmarshal(t *testing.T) {
 	assertion.NotNil(bytes)
 	assertion.Equal(1, len(bytes))
 
-	var newCol PvtDataCollections
+	var newCol util.PvtDataCollections
 
 	err = newCol.Unmarshal(bytes)
 	assertion.NoError(err)
@@ -200,7 +213,7 @@ func TestNewCoordinator(t *testing.T) {
 			DataHash:     []byte{1, 1, 1},
 		},
 		Data: &common.BlockData{
-			Data: [][]byte{{1, 2, 3, 4, 5, 6}},
+			Data: [][]byte{},
 		},
 	}
 
@@ -211,11 +224,11 @@ func TestNewCoordinator(t *testing.T) {
 			DataHash:     []byte{2, 2, 2},
 		},
 		Data: &common.BlockData{
-			Data: [][]byte{{11, 12, 13, 14, 15, 16}},
+			Data: [][]byte{},
 		},
 	}
 
-	pvtData := PvtDataCollections{
+	pvtData := util.PvtDataCollections{
 		&ledger.TxPvtData{
 			SeqInBlock: uint64(1),
 			WriteSet: &rwset.TxPvtReadWriteSet{
@@ -250,7 +263,7 @@ func TestNewCoordinator(t *testing.T) {
 
 	}).Return(nil)
 
-	coord := NewCoordinator(committer)
+	coord := NewCoordinator(committer, &mockTransientStore{})
 
 	b, err := coord.GetBlockByNum(1)
 
@@ -266,12 +279,7 @@ func TestNewCoordinator(t *testing.T) {
 	assertion.NoError(err)
 	assertion.Equal(uint64(1), height)
 
-	missingPvtTx, err := coord.StoreBlock(blockToCommit, nil)
-
-	assertion.NoError(err)
-	assertion.Empty(missingPvtTx)
-
-	missingPvtTx, err = coord.StoreBlock(blockToCommit, pvtData)
+	missingPvtTx, err := coord.StoreBlock(blockToCommit, pvtData)
 
 	assertion.NoError(err)
 	assertion.Empty(missingPvtTx)

@@ -76,9 +76,7 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string) {
 	env.testDB = env.testDBEnv.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
 	env.testTStoreEnv = transientstore.NewTestStoreEnv(t)
-	testTransientStore, err := env.testTStoreEnv.TestStoreProvider.OpenStore(testLedgerID)
-	testutil.AssertNoError(t, err, "")
-	env.txmgr = NewLockBasedTxMgr(env.testDB, testTransientStore)
+	env.txmgr = NewLockBasedTxMgr(env.testDB)
 }
 
 func (env *lockBasedEnv) getTxMgr() txmgr.TxMgr {

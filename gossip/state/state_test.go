@@ -23,12 +23,14 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/mocks/validator"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state/mocks"
 	gutil "github.com/hyperledger/fabric/gossip/util"
 	pcomm "github.com/hyperledger/fabric/protos/common"
@@ -159,27 +161,33 @@ func (node *peerNode) shutdown() {
 	node.g.Stop()
 }
 
+type mockTransientStore struct {
+}
+
+func (*mockTransientStore) Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults []byte) error {
+	panic("implement me")
+}
+
+func (mockTransientStore) GetSelfSimulatedTxPvtRWSetByTxid(txid string) (*transientstore.EndorserPvtSimulationResults, error) {
+	panic("implement me")
+}
+
 type mockCommitter struct {
 	mock.Mock
 	sync.Mutex
 }
 
 func (mc *mockCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
-	args := mc.Called(blockAndPvtData)
-	return args.Error(0)
+	mc.Lock()
+	m := mc.Mock
+	mc.Unlock()
+	m.Called(blockAndPvtData.Block)
+	return nil
 }
 
 func (mc *mockCommitter) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error) {
 	args := mc.Called(seqNum)
 	return args.Get(0).(*ledger.BlockAndPvtData), args.Error(1)
-}
-
-func (mc *mockCommitter) Commit(block *pcomm.Block) error {
-	mc.Lock()
-	m := mc.Mock
-	mc.Unlock()
-	m.Called(block)
-	return nil
 }
 
 func (mc *mockCommitter) LedgerHeight() (uint64, error) {
@@ -253,7 +261,7 @@ func newPeerNodeWithGossip(config *gossip.Config, committer committer.Committer,
 	// basic parts
 
 	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: cs}
-	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, committer)
+	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, privdata.NewCoordinator(committer, &mockTransientStore{}))
 	if sp == nil {
 		return nil
 	}
@@ -336,7 +344,7 @@ func TestOverPopulation(t *testing.T) {
 
 	mc := &mockCommitter{}
 	blocksPassedToLedger := make(chan uint64, 10)
-	mc.On("Commit", mock.Anything).Run(func(arg mock.Arguments) {
+	mc.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
 		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
@@ -398,7 +406,7 @@ func TestBlockingEnqueue(t *testing.T) {
 	// The blocks we get from gossip are random indices, to maximize disruption.
 	mc := &mockCommitter{}
 	blocksPassedToLedger := make(chan uint64, 10)
-	mc.On("Commit", mock.Anything).Run(func(arg mock.Arguments) {
+	mc.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
 		blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
 	})
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
@@ -445,7 +453,7 @@ func TestBlockingEnqueue(t *testing.T) {
 		receivedBlockCount++
 		m := mock.Mock{}
 		m.On("LedgerHeight", mock.Anything).Return(receivedBlock, nil)
-		m.On("Commit", mock.Anything).Run(func(arg mock.Arguments) {
+		m.On("CommitWithPvtData", mock.Anything).Run(func(arg mock.Arguments) {
 			blocksPassedToLedger <- arg.Get(0).(*pcomm.Block).Header.Number
 		})
 		mc.Lock()
@@ -528,7 +536,7 @@ func TestGossipReception(t *testing.T) {
 	g.On("PeersOfChannel", mock.Anything).Return([]discovery.NetworkMember{})
 	mc := &mockCommitter{}
 	receivedChan := make(chan struct{})
-	mc.On("Commit", mock.Anything).Run(func(arguments mock.Arguments) {
+	mc.On("CommitWithPvtData", mock.Anything).Run(func(arguments mock.Arguments) {
 		block := arguments.Get(0).(*pcomm.Block)
 		assert.Equal(t, uint64(1), block.Header.Number)
 		receivedChan <- struct{}{}
@@ -957,12 +965,13 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 // coordinatorMock mocking structure to capture mock interface for
 // coord to simulate coord flow during the test
 type coordinatorMock struct {
+	committer.Committer
 	mock.Mock
 }
 
-func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64) (*pcomm.Block, PvtDataCollections, error) {
+func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64) (*pcomm.Block, gutil.PvtDataCollections, error) {
 	args := mock.Called(seqNum)
-	return args.Get(0).(*pcomm.Block), args.Get(1).(PvtDataCollections), args.Error(2)
+	return args.Get(0).(*pcomm.Block), args.Get(1).(gutil.PvtDataCollections), args.Error(2)
 }
 
 func (mock *coordinatorMock) GetBlockByNum(seqNum uint64) (*pcomm.Block, error) {
@@ -970,7 +979,7 @@ func (mock *coordinatorMock) GetBlockByNum(seqNum uint64) (*pcomm.Block, error) 
 	return args.Get(0).(*pcomm.Block), args.Error(1)
 }
 
-func (mock *coordinatorMock) StoreBlock(block *pcomm.Block, data PvtDataCollections) ([]string, error) {
+func (mock *coordinatorMock) StoreBlock(block *pcomm.Block, data gutil.PvtDataCollections) ([]string, error) {
 	args := mock.Called(block, data)
 	return args.Get(0).([]string), args.Error(1)
 }
@@ -1009,7 +1018,7 @@ func (mock *receivedMessageMock) GetConnectionInfo() *proto.ConnectionInfo {
 
 type testData struct {
 	block   *pcomm.Block
-	pvtData PvtDataCollections
+	pvtData gutil.PvtDataCollections
 }
 
 func TestTransferOfPrivateRWSet(t *testing.T) {
@@ -1051,7 +1060,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 					Data: [][]byte{{1}, {2}, {3}},
 				},
 			},
-			pvtData: PvtDataCollections{
+			pvtData: gutil.PvtDataCollections{
 				{
 					SeqInBlock: uint64(0),
 					WriteSet: &rwset.TxPvtReadWriteSet{
@@ -1083,7 +1092,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 					Data: [][]byte{{4}, {5}, {6}},
 				},
 			},
-			pvtData: PvtDataCollections{
+			pvtData: gutil.PvtDataCollections{
 				{
 					SeqInBlock: uint64(2),
 					WriteSet: &rwset.TxPvtReadWriteSet{
@@ -1112,7 +1121,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 	coord1.On("Close")
 
 	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor}}
-	st := NewGossipCoordinatedStateProvider(chainID, servicesAdapater, coord1)
+	st := NewGossipStateProvider(chainID, servicesAdapater, coord1)
 	defer st.Stop()
 
 	// Mocked state request message
@@ -1265,7 +1274,7 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		Data: &pcomm.BlockData{
 			Data: [][]byte{{1}, {2}, {3}},
 		},
-	}, PvtDataCollections{}, nil)
+	}, gutil.PvtDataCollections{}, nil)
 
 	peers["peer1"].coord.On("GetPvtDataAndBlockByNum", uint64(3)).Return(&pcomm.Block{
 		Header: &pcomm.BlockHeader{
@@ -1276,7 +1285,7 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		Data: &pcomm.BlockData{
 			Data: [][]byte{{4}, {5}, {6}},
 		},
-	}, PvtDataCollections{&ledger.TxPvtData{
+	}, gutil.PvtDataCollections{&ledger.TxPvtData{
 		SeqInBlock: uint64(1),
 		WriteSet: &rwset.TxPvtReadWriteSet{
 			DataModel: rwset.TxReadWriteSet_KV,
@@ -1345,11 +1354,11 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	cryptoService := &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor}
 
 	mediator := &ServicesMediator{GossipAdapter: peers["peer1"], MCSAdapter: cryptoService}
-	peer1State := NewGossipCoordinatedStateProvider(chainID, mediator, peers["peer1"].coord)
+	peer1State := NewGossipStateProvider(chainID, mediator, peers["peer1"].coord)
 	defer peer1State.Stop()
 
 	mediator = &ServicesMediator{GossipAdapter: peers["peer2"], MCSAdapter: cryptoService}
-	peer2State := NewGossipCoordinatedStateProvider(chainID, mediator, peers["peer2"].coord)
+	peer2State := NewGossipStateProvider(chainID, mediator, peers["peer2"].coord)
 	defer peer2State.Stop()
 
 	// Make sure state was replicated

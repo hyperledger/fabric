@@ -24,6 +24,7 @@ const (
 	LoggingPullModule      = "gossip/pull"
 	LoggingServiceModule   = "gossip/service"
 	LoggingStateModule     = "gossip/state"
+	LoggingPrivModule      = "gossip/privdata"
 )
 
 var loggersByModules = make(map[string]*logging.Logger)

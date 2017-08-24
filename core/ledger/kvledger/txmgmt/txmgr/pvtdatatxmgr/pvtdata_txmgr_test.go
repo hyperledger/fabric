@@ -71,21 +71,6 @@ func testTransientHandlerTxmgr(t *testing.T, testEnv *TestEnv) {
 		assert.NoError(t, err)
 		entriesAfterReadOnlyPvtSimulation := retrieveTestEntriesFromTStore(t, testEnv.TStore, txid)
 		assert.Nil(t, entriesAfterReadOnlyPvtSimulation)
-
-		// run a private simulation that inlovles writes and the transient store should have a corresponding entry at the end
-		sim3, err := txmgr.NewTxSimulator(txid)
-		assert.NoError(t, err)
-		sim3.GetState("ns1", "key1")
-		sim3.SetState("ns1", "key1", []byte("value1"))
-		sim3.GetPrivateData("ns1", "key1", "coll1")
-		sim3.SetPrivateData("ns1", "key1", "coll1", []byte("value1"))
-		sim3Res, err := sim3.GetTxSimulationResults()
-		assert.NoError(t, err)
-		sim3ResBytes, err := sim3Res.GetPvtSimulationBytes()
-		assert.NoError(t, err)
-		entriesAfterWritePvtSimulation := retrieveTestEntriesFromTStore(t, testEnv.TStore, txid)
-		assert.Equal(t, 1, len(entriesAfterWritePvtSimulation))
-		assert.Equal(t, sim3ResBytes, entriesAfterWritePvtSimulation[0].PvtSimulationResults)
 	})
 }
 

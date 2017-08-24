@@ -26,7 +26,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/ledger"
+	ledgerproto "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -90,7 +90,7 @@ func TestRecovery(t *testing.T) {
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
 	ledger, err := provider.(*Provider).openInternal(constructTestLedgerID(1))
-	ledger.Commit(genesisBlock)
+	ledger.CommitWithPvtData(&ledgerproto.BlockAndPvtData{Block: genesisBlock})
 	ledger.Close()
 
 	// Case 1: assume a crash happens, force underconstruction flag to be set to simulate
@@ -128,7 +128,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 	defer env.cleanup()
 	numLedgers := 10
 	provider, _ := NewProvider()
-	ledgers := make([]ledger.PeerLedger, numLedgers)
+	ledgers := make([]ledgerproto.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		bg, gb := testutil.NewBlockGenerator(t, constructTestLedgerID(i), false)
 		l, err := provider.Create(gb)
@@ -143,7 +143,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 		testutil.AssertNoError(t, err, "")
 		pubSimBytes, _ := res.GetPubSimulationBytes()
 		b := bg.NextBlock([][]byte{pubSimBytes})
-		err = l.Commit(b)
+		err = l.CommitWithPvtData(&ledgerproto.BlockAndPvtData{Block: b})
 		l.Close()
 		testutil.AssertNoError(t, err, "")
 	}
@@ -152,7 +152,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 
 	provider, _ = NewProvider()
 	defer provider.Close()
-	ledgers = make([]ledger.PeerLedger, numLedgers)
+	ledgers = make([]ledgerproto.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		l, err := provider.Open(constructTestLedgerID(i))
 		testutil.AssertNoError(t, err, "")
@@ -191,7 +191,7 @@ func TestLedgerBackup(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.Commit(block1)
+	ledger.CommitWithPvtData(&ledgerproto.BlockAndPvtData{Block: block1})
 
 	txid = util.GenerateUUID()
 	simulator, _ = ledger.NewTxSimulator(txid)
@@ -202,7 +202,7 @@ func TestLedgerBackup(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.Commit(block2)
+	ledger.CommitWithPvtData(&ledgerproto.BlockAndPvtData{Block: block2})
 
 	ledger.Close()
 	provider.Close()

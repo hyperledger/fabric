@@ -281,7 +281,9 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 			//see comment on _commitLock_
 			_commitLock_.Lock()
 			defer _commitLock_.Unlock()
-			if err := lgr.Commit(block); err != nil {
+			if err := lgr.CommitWithPvtData(&ledger.BlockAndPvtData{
+				Block: block,
+			}); err != nil {
 				return err
 			}
 		}

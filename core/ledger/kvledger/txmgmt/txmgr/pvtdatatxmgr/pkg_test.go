@@ -9,7 +9,6 @@ package pvtdatatxmgr
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
@@ -47,10 +46,8 @@ func (env *TestEnv) Init(t *testing.T, testLedgerID string) {
 	env.DBEnv.Init(t)
 	env.DB = env.DBEnv.GetDBHandle(testLedgerID)
 	env.TStoreEnv = transientstore.NewTestStoreEnv(t)
-	var err error
-	env.TStore, err = env.TStoreEnv.TestStoreProvider.OpenStore(testLedgerID)
-	testutil.AssertNoError(t, err, "")
-	env.Txmgr = NewLockbasedTxMgr(env.DB, env.TStore)
+	env.Txmgr = NewLockbasedTxMgr(env.DB)
+	env.TStore = env.TStoreEnv.TestStore
 }
 
 // Cleanup cleansup the test environment

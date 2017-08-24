@@ -13,7 +13,6 @@ import (
 	"time"
 
 	pb "github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	common2 "github.com/hyperledger/fabric/gossip/common"
@@ -90,6 +89,28 @@ type MCSAdapter interface {
 	VerifyByChannel(chainID common2.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error
 }
 
+// ledgerResources defines abilities that the ledger provides
+type ledgerResources interface {
+	// StoreBlock deliver new block with underlined private data
+	// returns missing transaction ids
+	StoreBlock(block *common.Block, data util.PvtDataCollections) ([]string, error)
+
+	// GetPvtDataAndBlockByNum get block by number and returns also all related private data
+	// the order of private data in slice of PvtDataCollections doesn't implies the order of
+	// transactions in the block related to these private data, to get the correct placement
+	// need to read TxPvtData.SeqInBlock field
+	GetPvtDataAndBlockByNum(seqNum uint64) (*common.Block, util.PvtDataCollections, error)
+
+	// GetBlockByNum returns block and related to the block private data
+	GetBlockByNum(seqNum uint64) (*common.Block, error)
+
+	// Get recent block sequence number
+	LedgerHeight() (uint64, error)
+
+	// Close ledgerResources
+	Close()
+}
+
 // ServicesMediator aggregated adapter to compound all mediator
 // required by state transfer into single struct
 type ServicesMediator struct {
@@ -115,7 +136,7 @@ type GossipStateProviderImpl struct {
 	// Queue of payloads which wasn't acquired yet
 	payloads PayloadsBuffer
 
-	coordinator Coordinator
+	ledger ledgerResources
 
 	stateResponseCh chan proto.ReceivedMessage
 
@@ -138,7 +159,7 @@ func init() {
 
 // NewGossipCoordinatedStateProvider creates state provider with coordinator instance
 // to orchestrate arrival of private rwsets and blocks before committing them into the ledger.
-func NewGossipCoordinatedStateProvider(chainID string, services *ServicesMediator, coordinator Coordinator) GossipStateProvider {
+func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger ledgerResources) GossipStateProvider {
 
 	logger := util.GetLogger(util.LoggingStateModule, "")
 
@@ -171,7 +192,7 @@ func NewGossipCoordinatedStateProvider(chainID string, services *ServicesMediato
 	// Filter message which are only relevant for nodeMetastate transfer
 	_, commChan := services.Accept(remoteStateMsgFilter, true)
 
-	height, err := coordinator.LedgerHeight()
+	height, err := ledger.LedgerHeight()
 	if height == 0 {
 		// Panic here since this is an indication of invalid situation which should not happen in normal
 		// code path.
@@ -201,7 +222,7 @@ func NewGossipCoordinatedStateProvider(chainID string, services *ServicesMediato
 		// Create a queue for payload received
 		payloads: NewPayloadsBuffer(height),
 
-		coordinator: coordinator,
+		ledger: ledger,
 
 		stateResponseCh: make(chan proto.ReceivedMessage, defChannelBufferSize),
 
@@ -239,12 +260,6 @@ func NewGossipCoordinatedStateProvider(chainID string, services *ServicesMediato
 	go s.processStateRequests()
 
 	return s
-}
-
-// NewGossipStateProvider creates initialized instance of gossip state provider with committer
-// which is wrapped up into coordinator, kept for API compatibility
-func NewGossipStateProvider(chainID string, services *ServicesMediator, committer committer.Committer) GossipStateProvider {
-	return NewGossipCoordinatedStateProvider(chainID, services, NewCoordinator(committer))
 }
 
 func (s *GossipStateProviderImpl) listen() {
@@ -333,7 +348,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 		return
 	}
 
-	currentHeight, err := s.coordinator.LedgerHeight()
+	currentHeight, err := s.ledger.LedgerHeight()
 	if err != nil {
 		logger.Errorf("Cannot access to current ledger height, due to %+v", errors.WithStack(err))
 		return
@@ -348,7 +363,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 	response := &proto.RemoteStateResponse{Payloads: make([]*proto.Payload, 0)}
 	for seqNum := request.StartSeqNum; seqNum <= endSeqNum; seqNum++ {
 		logger.Debug("Reading block ", seqNum, " with private data from the coordinator service")
-		block, pvtData, err := s.coordinator.GetPvtDataAndBlockByNum(seqNum)
+		block, pvtData, err := s.ledger.GetPvtDataAndBlockByNum(seqNum)
 
 		if err != nil {
 			logger.Errorf("Wasn't able to read block with sequence number %d from ledger, "+
@@ -430,7 +445,7 @@ func (s *GossipStateProviderImpl) Stop() {
 		// Make sure all go-routines has finished
 		s.done.Wait()
 		// Close all resources
-		s.coordinator.Close()
+		s.ledger.Close()
 		close(s.stateRequestCh)
 		close(s.stateResponseCh)
 		close(s.stopCh)
@@ -480,7 +495,7 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 				logger.Debug("New block with claimed sequence number ", payload.SeqNum, " transactions num ", len(rawBlock.Data.Data))
 
 				// Read all private data into slice
-				var p PvtDataCollections
+				var p util.PvtDataCollections
 				if payload.PrivateData != nil {
 					err := p.Unmarshal(payload.PrivateData)
 					if err != nil {
@@ -511,7 +526,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 			s.stopCh <- struct{}{}
 			return
 		case <-time.After(defAntiEntropyInterval):
-			current, err := s.coordinator.LedgerHeight()
+			current, err := s.ledger.LedgerHeight()
 			if err != nil {
 				// Unable to read from ledger continue to the next round
 				logger.Errorf("Cannot obtain ledger height, due to %+v", errors.WithStack(err))
@@ -664,7 +679,7 @@ func (s *GossipStateProviderImpl) hasRequiredHeight(height uint64) func(peer dis
 func (s *GossipStateProviderImpl) GetBlock(index uint64) *common.Block {
 	// Try to read missing block from the ledger, should return no nil with
 	// content including at least one block
-	if block, err := s.coordinator.GetBlockByNum(index); block != nil && err != nil {
+	if block, err := s.ledger.GetBlockByNum(index); block != nil && err != nil {
 		return block
 	}
 
@@ -689,7 +704,7 @@ func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMod
 		return errors.New("Given payload is nil")
 	}
 	logger.Debug("Adding new payload into the buffer, seqNum = ", payload.SeqNum)
-	height, err := s.coordinator.LedgerHeight()
+	height, err := s.ledger.LedgerHeight()
 	if err != nil {
 		return errors.Wrap(err, "Failed obtaining ledger height")
 	}
@@ -705,10 +720,10 @@ func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMod
 	return s.payloads.Push(payload)
 }
 
-func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData PvtDataCollections) error {
+func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData util.PvtDataCollections) error {
 
 	// Commit block with available private transactions
-	if _, err := s.coordinator.StoreBlock(block, pvtData); err != nil {
+	if _, err := s.ledger.StoreBlock(block, pvtData); err != nil {
 		logger.Errorf("Got error while committing(%+v)", errors.WithStack(err))
 		return err
 	}
