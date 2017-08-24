@@ -639,8 +639,12 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	return nil
 }
 
-func getArgsAndEnv(t *testing.T) {
+func getArgsAndEnv(t *testing.T, auth accesscontrol.Authenticator) {
 	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info"}
+
+	//set the authenticator for generating TLS stuff
+	newCCSupport.auth = auth
+
 	ccContext := ccprovider.NewCCContext("dummyChannelId", "mycc", "v0", "dummyTxid", false, nil, nil)
 	args, envs, err := newCCSupport.getArgsAndEnv(ccContext, pb.ChaincodeSpec_NODE)
 	if err != nil {
@@ -711,7 +715,8 @@ func TestCCFramework(t *testing.T) {
 	//call's history result
 	getHistory(t, chainID, ccname, ccSide)
 
-	getArgsAndEnv(t)
+	//just use the previous authhandler for generating TLS key/pair
+	getArgsAndEnv(t, theChaincodeSupport.auth)
 
 	ccSide.Quit()
 }
