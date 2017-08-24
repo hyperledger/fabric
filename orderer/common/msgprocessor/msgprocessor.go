@@ -48,7 +48,7 @@ const (
 // arrives through the Broadcast interface.
 type Processor interface {
 	// ClassifyMsg inspects the message header to determine which type of processing is necessary
-	ClassifyMsg(chdr *cb.ChannelHeader) (Classification, error)
+	ClassifyMsg(chdr *cb.ChannelHeader) Classification
 
 	// ProcessNormalMsg will check the validity of a message based on the current configuration.  It returns the current
 	// configuration sequence number and nil on success, or an error if the message is not valid

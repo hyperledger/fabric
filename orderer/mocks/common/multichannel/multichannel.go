@@ -44,9 +44,6 @@ type ConsenterSupport struct {
 	// ClassifyMsgVal is returned by ClassifyMsg
 	ClassifyMsgVal msgprocessor.Classification
 
-	// ClassifyMsgErr is the err returned by ClassifyMsg
-	ClassifyMsgErr error
-
 	// ConfigSeqVal is returned as the configSeq for Process*Msg
 	ConfigSeqVal uint64
 
@@ -120,8 +117,8 @@ func (mcs *ConsenterSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
 }
 
 // ClassifyMsg returns ClassifyMsgVal, ClassifyMsgErr
-func (mcs *ConsenterSupport) ClassifyMsg(chdr *cb.ChannelHeader) (msgprocessor.Classification, error) {
-	return mcs.ClassifyMsgVal, mcs.ClassifyMsgErr
+func (mcs *ConsenterSupport) ClassifyMsg(chdr *cb.ChannelHeader) msgprocessor.Classification {
+	return mcs.ClassifyMsgVal
 }
 
 // ProcessNormalMsg returns ConfigSeqVal, ProcessNormalMsgErr

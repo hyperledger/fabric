@@ -68,10 +68,7 @@ func (mch *mockChain) Start() {
 				logger.Panicf("If a message has arrived to this point, it should already have had header inspected once: %s", err)
 			}
 
-			class, err := mch.support.ClassifyMsg(chdr)
-			if err != nil {
-				logger.Panicf("If a message has arrived to this point, it should already have been classified once: %s", err)
-			}
+			class := mch.support.ClassifyMsg(chdr)
 			switch class {
 			case msgprocessor.ConfigUpdateMsg:
 				batch := mch.support.BlockCutter().Cut()

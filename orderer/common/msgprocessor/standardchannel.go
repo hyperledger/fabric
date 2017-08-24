@@ -58,20 +58,16 @@ func CreateStandardChannelFilters(filterSupport channelconfig.Resources) *RuleSe
 }
 
 // ClassifyMsg inspects the message to determine which type of processing is necessary
-func (s *StandardChannel) ClassifyMsg(chdr *cb.ChannelHeader) (Classification, error) {
+func (s *StandardChannel) ClassifyMsg(chdr *cb.ChannelHeader) Classification {
 	switch chdr.Type {
 	case int32(cb.HeaderType_CONFIG_UPDATE):
-		return ConfigUpdateMsg, nil
+		return ConfigUpdateMsg
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		// XXX eventually, this should return an error, but for now to allow the old message flow, return ConfigUpdateMsg
-		return ConfigUpdateMsg, nil
-		// return 0, fmt.Errorf("Transactions of type ORDERER_TRANSACTION cannot be Broadcast")
+		return ConfigUpdateMsg
 	case int32(cb.HeaderType_CONFIG):
-		// XXX eventually, this should return an error, but for now to allow the old message flow, return ConfigUpdateMsg
-		return ConfigUpdateMsg, nil
-		// return 0, fmt.Errorf("Transactions of type CONFIG cannot be Broadcast")
+		return ConfigUpdateMsg
 	default:
-		return NormalMsg, nil
+		return NormalMsg
 	}
 }
 
