@@ -218,12 +218,6 @@ func getLogLevelFromViper(module string) string {
 	return levelString
 }
 
-// // ChaincodeStream standard stream for ChaincodeMessage type.
-// type ChaincodeStream interface {
-// 	Send(*pb.ChaincodeMessage) error
-// 	Recv() (*pb.ChaincodeMessage, error)
-// }
-
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
 	auth              accesscontrol.Authenticator
@@ -414,6 +408,8 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCCont
 		args = theChaincodeSupport.appendTLScerts(args, certKeyPair)
 	case pb.ChaincodeSpec_JAVA:
 		args = []string{"java", "-jar", "chaincode.jar", "--peerAddress", chaincodeSupport.peerAddress}
+	case pb.ChaincodeSpec_NODE:
+		args = []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; node chaincode.js --peer.address %s", chaincodeSupport.peerAddress)}
 	default:
 		return nil, nil, fmt.Errorf("Unknown chaincodeType: %s", cLang)
 	}

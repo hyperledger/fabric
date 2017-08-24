@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/core/config"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -60,6 +61,8 @@ func Find(chaincodeType pb.ChaincodeSpec_Type) (Platform, error) {
 		return &car.Platform{}, nil
 	case pb.ChaincodeSpec_JAVA:
 		return &java.Platform{}, nil
+	case pb.ChaincodeSpec_NODE:
+		return &node.Platform{}, nil
 	default:
 		return nil, fmt.Errorf("Unknown chaincodeType: %s", chaincodeType)
 	}

@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -638,6 +639,32 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	return nil
 }
 
+func getArgsAndEnv(t *testing.T) {
+	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info"}
+	ccContext := ccprovider.NewCCContext("dummyChannelId", "mycc", "v0", "dummyTxid", false, nil, nil)
+	args, envs, err := newCCSupport.getArgsAndEnv(ccContext, pb.ChaincodeSpec_NODE)
+	if err != nil {
+		t.Fatalf("calling getArgsAndEnv() failed with error %s", err)
+	}
+
+	if len(args) != 3 {
+		t.Fatalf("calling getArgsAndEnv() should have returned an array of 3 elements for Args, but got %v", args)
+	}
+
+	if args[0] != "/bin/sh" || args[1] != "-c" && !strings.HasPrefix(args[2], "cd /usr/local/src; node chaincode.js --peer.address") {
+		t.Fatalf("calling getArgsAndEnv() should have returned the start command for node.js chaincode, but got %v", args)
+	}
+
+	if len(envs) != 4 {
+		t.Fatalf("calling getArgsAndEnv() should have returned an array of 4 elements for Envs, but got %v", envs)
+	}
+
+	if envs[0] != "CORE_CHAINCODE_ID_NAME=mycc:v0" || envs[1] != "CORE_PEER_TLS_ENABLED=true" ||
+		envs[2] != "CORE_CHAINCODE_LOGGING_LEVEL=debug" || envs[3] != "CORE_CHAINCODE_LOGGING_SHIM=info" {
+		t.Fatalf("calling getArgsAndEnv() should have returned the proper environment variables, but got %v", envs)
+	}
+}
+
 func TestCCFramework(t *testing.T) {
 	//register 2 channels
 	chainID := "mockchainid"
@@ -683,6 +710,8 @@ func TestCCFramework(t *testing.T) {
 
 	//call's history result
 	getHistory(t, chainID, ccname, ccSide)
+
+	getArgsAndEnv(t)
 
 	ccSide.Quit()
 }
