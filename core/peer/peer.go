@@ -303,8 +303,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		Validator: validator,
 		Committer: c,
 		Store:     store,
-		Pp:        &noopPolicyParser{},
-		Ps:        &noopPolicyStore{},
+		Cs:        &privdata.NopCollectionStore{},
 	})
 
 	chains.Lock()
@@ -624,33 +623,4 @@ func CreatePeerServer(listenAddress string,
 // GetPeerServer returns the peer server instance
 func GetPeerServer() comm.GRPCServer {
 	return peerServer
-}
-
-// TODO: This is a temporary implementation until the PolicyParser would be implemented
-type noopPolicyParser struct {
-}
-
-func (*noopPolicyParser) Parse(privdata.SerializedPolicy) privdata.Filter {
-	return func(common.SignedData) bool {
-		return true
-	}
-}
-
-// TODO: This is a temporary implementation until the PolicyStore would be implemented
-type noopPolicyStore struct {
-}
-
-func (*noopPolicyStore) CollectionPolicy(common.CollectionCriteria) privdata.SerializedPolicy {
-	return &serializedPolicy{}
-}
-
-type serializedPolicy struct {
-}
-
-func (*serializedPolicy) Channel() string {
-	panic("implement me")
-}
-
-func (*serializedPolicy) Raw() []byte {
-	panic("implement me")
 }

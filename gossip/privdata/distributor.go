@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
@@ -35,7 +36,7 @@ type gossipAdapter interface {
 // PvtDataDistributor interface to defines API of distributing private data
 type PvtDataDistributor interface {
 	// Distribute broadcast reliably private data read write set based on policies
-	Distribute(txID string, privData *rwset.TxPvtReadWriteSet, ps privdata.PolicyStore, pp privdata.PolicyParser) error
+	Distribute(txID string, privData *rwset.TxPvtReadWriteSet, cs privdata.CollectionStore) error
 }
 
 // distributorImpl the implementation of the private data distributor interface
@@ -58,20 +59,30 @@ func NewDistributor(chainID string, gossip gossipAdapter) PvtDataDistributor {
 }
 
 // Distribute broadcast reliably private data read write set based on policies
-func (d *distributorImpl) Distribute(txID string, privData *rwset.TxPvtReadWriteSet, ps privdata.PolicyStore, pp privdata.PolicyParser) error {
+func (d *distributorImpl) Distribute(txID string, privData *rwset.TxPvtReadWriteSet, cs privdata.CollectionStore) error {
 	for _, pvtRwset := range privData.NsPvtRwset {
 		namespace := pvtRwset.Namespace
 		for _, collection := range pvtRwset.CollectionPvtRwset {
 			collectionName := collection.CollectionName
-			policyFilter := pp.Parse(ps.CollectionPolicy(common.CollectionCriteria{
+			colAP := cs.GetCollectionAccessPolicy(common.CollectionCriteria{
 				Namespace:  namespace,
 				Collection: collectionName,
 				TxId:       txID,
 				Channel:    d.chainID,
-			}))
+			})
+			if colAP == nil {
+				logger.Error("Could not find collection access policy for collection", collectionName)
+				return errors.New("Collection access policy not found")
+			}
+
+			colFilter := colAP.GetAccessFilter()
+			if colFilter == nil {
+				logger.Error("Collection access policy for collection", collectionName, "has no filter")
+				return errors.New("No collection access policy filter")
+			}
 
 			routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChainID(d.chainID), func(signature api.PeerSignature) bool {
-				return policyFilter(common.SignedData{
+				return colFilter(common.SignedData{
 					Data:      signature.Message,
 					Signature: signature.Signature,
 					Identity:  []byte(signature.PeerIdentity),

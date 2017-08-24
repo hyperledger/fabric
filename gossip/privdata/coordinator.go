@@ -71,8 +71,7 @@ type Fetcher interface {
 }
 
 type Support struct {
-	privdata.PolicyParser
-	privdata.PolicyStore
+	privdata.CollectionStore
 	txvalidator.Validator
 	committer.Committer
 	TransientStore
@@ -503,12 +502,12 @@ func (c *coordinator) isEligible(chdr *common.ChannelHeader, namespace string, c
 		Collection: col,
 		TxId:       chdr.TxId,
 	}
-	sp := c.PolicyStore.CollectionPolicy(cp)
+	sp := c.CollectionStore.GetCollectionAccessPolicy(cp)
 	if sp == nil {
 		logger.Warning("Failed obtaining policy for", cp, "skipping collection")
 		return false
 	}
-	filt := c.PolicyParser.Parse(sp)
+	filt := sp.GetAccessFilter()
 	if filt == nil {
 		logger.Warning("Failed parsing policy for", cp, "skipping collection")
 		return false
@@ -586,12 +585,12 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common
 					Namespace:  ns.Namespace,
 					Collection: col.CollectionName,
 				}
-				sp := c.PolicyStore.CollectionPolicy(cc)
+				sp := c.CollectionStore.GetCollectionAccessPolicy(cc)
 				if sp == nil {
 					logger.Warning("Failed obtaining policy for", cc)
 					continue
 				}
-				isAuthorized := c.PolicyParser.Parse(sp)
+				isAuthorized := sp.GetAccessFilter()
 				if isAuthorized == nil {
 					logger.Warning("Failed obtaining filter for", cc)
 					continue
