@@ -103,7 +103,7 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string
 	A = args[0]
 	B = args[1]
 
-	if A = B {
+	if A == B {
              return shim.Error("Failed to transfer to own account") 
 	}
 
