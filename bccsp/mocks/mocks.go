@@ -22,6 +22,8 @@ import (
 	"hash"
 	"reflect"
 
+	"bytes"
+
 	"github.com/hyperledger/fabric/bccsp"
 )
 
@@ -35,33 +37,44 @@ type MockBCCSP struct {
 
 	VerifyValue bool
 	VerifyErr   error
+
+	ExpectedSig []byte
+
+	KeyImportValue bccsp.Key
+	KeyImportErr   error
+
+	EncryptError error
+	DecryptError error
+
+	HashVal []byte
+	HashErr error
 }
 
-func (*MockBCCSP) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
+func (*MockBCCSP) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	panic("Not yet implemented")
 }
 
-func (*MockBCCSP) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
+func (*MockBCCSP) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (bccsp.Key, error) {
 	panic("Not yet implemented")
 }
 
-func (*MockBCCSP) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (m *MockBCCSP) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (bccsp.Key, error) {
+	return m.KeyImportValue, m.KeyImportErr
+}
+
+func (*MockBCCSP) GetKey(ski []byte) (bccsp.Key, error) {
 	panic("Not yet implemented")
 }
 
-func (*MockBCCSP) GetKey(ski []byte) (k bccsp.Key, err error) {
+func (m *MockBCCSP) Hash(msg []byte, opts bccsp.HashOpts) ([]byte, error) {
+	return m.HashVal, m.HashErr
+}
+
+func (*MockBCCSP) GetHash(opts bccsp.HashOpts) (hash.Hash, error) {
 	panic("Not yet implemented")
 }
 
-func (*MockBCCSP) Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error) {
-	panic("Not yet implemented")
-}
-
-func (*MockBCCSP) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
-	panic("Not yet implemented")
-}
-
-func (b *MockBCCSP) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
+func (b *MockBCCSP) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
 	if !reflect.DeepEqual(b.SignArgKey, k) {
 		return nil, errors.New("invalid key")
 	}
@@ -75,16 +88,35 @@ func (b *MockBCCSP) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (sig
 	return b.SignValue, b.SignErr
 }
 
-func (b *MockBCCSP) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
-	return b.VerifyValue, b.VerifyErr
+func (b *MockBCCSP) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
+	// we want to mock a success
+	if b.VerifyValue {
+		return b.VerifyValue, nil
+	}
+
+	// we want to mock a failure because of an error
+	if b.VerifyErr != nil {
+		return b.VerifyValue, b.VerifyErr
+	}
+
+	// in neither case, compare the signature with the expected one
+	return bytes.Equal(b.ExpectedSig, signature), nil
 }
 
-func (*MockBCCSP) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) (ciphertext []byte, err error) {
-	panic("Not yet implemented")
+func (m *MockBCCSP) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) ([]byte, error) {
+	if m.EncryptError == nil {
+		return plaintext, nil
+	} else {
+		return nil, m.EncryptError
+	}
 }
 
-func (*MockBCCSP) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) (plaintext []byte, err error) {
-	panic("Not yet implemented")
+func (m *MockBCCSP) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) ([]byte, error) {
+	if m.DecryptError == nil {
+		return ciphertext, nil
+	} else {
+		return nil, m.DecryptError
+	}
 }
 
 type MockKey struct {
@@ -93,6 +125,7 @@ type MockKey struct {
 	Symm       bool
 	PK         bccsp.Key
 	PKErr      error
+	Pvt        bool
 }
 
 func (m *MockKey) Bytes() ([]byte, error) {
@@ -107,8 +140,8 @@ func (m *MockKey) Symmetric() bool {
 	return m.Symm
 }
 
-func (*MockKey) Private() bool {
-	panic("Not yet implemented")
+func (m *MockKey) Private() bool {
+	return m.Pvt
 }
 
 func (m *MockKey) PublicKey() (bccsp.Key, error) {
@@ -145,11 +178,11 @@ func (*KeyStore) ReadOnly() bool {
 	panic("Not yet implemented")
 }
 
-func (ks *KeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
+func (ks *KeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 	return ks.GetKeyValue, ks.GetKeyErr
 }
 
-func (ks *KeyStore) StoreKey(k bccsp.Key) (err error) {
+func (ks *KeyStore) StoreKey(k bccsp.Key) error {
 	return ks.StoreKeyErr
 }
 
@@ -164,6 +197,7 @@ func (*KeyImportOpts) Ephemeral() bool {
 }
 
 type EncrypterOpts struct{}
+type DecrypterOpts struct{}
 
 type HashOpts struct{}
 
