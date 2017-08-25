@@ -16,11 +16,9 @@ limitations under the License.
 package factory
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -51,7 +49,7 @@ func (f *SWFactory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 	} else if swOpts.FileKeystore != nil {
 		fks, err := sw.NewFileBasedKeyStore(nil, swOpts.FileKeystore.KeyStorePath, false)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to initialize software key store: %s", err)
+			return nil, errors.Wrapf(err, "Failed to initialize software key store")
 		}
 		ks = fks
 	} else {

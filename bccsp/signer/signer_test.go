@@ -39,11 +39,11 @@ func TestInitFailures(t *testing.T) {
 
 	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PKErr: errors.New("No PK")})
 	assert.Error(t, err)
-	assert.Equal(t, "failed getting public key [No PK]", err.Error())
+	assert.Equal(t, "failed getting public key: No PK", err.Error())
 
 	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesErr: errors.New("No bytes")}})
 	assert.Error(t, err)
-	assert.Equal(t, "failed marshalling public key [No bytes]", err.Error())
+	assert.Equal(t, "failed marshalling public key: No bytes", err.Error())
 
 	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesValue: []byte{0, 1, 2, 3}}})
 	assert.Error(t, err)

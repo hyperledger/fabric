@@ -18,10 +18,9 @@ limitations under the License.
 package factory
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
+	"github.com/pkg/errors"
 )
 
 type FactoryOpts struct {
@@ -64,7 +63,7 @@ func setFactories(config *FactoryOpts) error {
 		f := &SWFactory{}
 		err := initBCCSP(f, config)
 		if err != nil {
-			factoriesInitError = fmt.Errorf("Failed initializing SW.BCCSP [%s]", err)
+			factoriesInitError = errors.Wrap(err, "Failed initializing SW.BCCSP")
 		}
 	}
 
@@ -73,14 +72,14 @@ func setFactories(config *FactoryOpts) error {
 		f := &PKCS11Factory{}
 		err := initBCCSP(f, config)
 		if err != nil {
-			factoriesInitError = fmt.Errorf("Failed initializing PKCS11.BCCSP %s\n[%s]", factoriesInitError, err)
+			factoriesInitError = errors.Wrapf(err, "Failed initializing PKCS11.BCCSP %s", factoriesInitError)
 		}
 	}
 
 	var ok bool
 	defaultBCCSP, ok = bccspMap[config.ProviderName]
 	if !ok {
-		factoriesInitError = fmt.Errorf("%s\nCould not find default `%s` BCCSP", factoriesInitError, config.ProviderName)
+		factoriesInitError = errors.Errorf("%s\nCould not find default `%s` BCCSP", factoriesInitError, config.ProviderName)
 	}
 
 	return factoriesInitError
@@ -95,12 +94,12 @@ func GetBCCSPFromOpts(config *FactoryOpts) (bccsp.BCCSP, error) {
 	case "PKCS11":
 		f = &PKCS11Factory{}
 	default:
-		return nil, fmt.Errorf("Could not find BCCSP, no '%s' provider", config.ProviderName)
+		return nil, errors.Errorf("Could not find BCCSP, no '%s' provider", config.ProviderName)
 	}
 
 	csp, err := f.Get(config)
 	if err != nil {
-		return nil, fmt.Errorf("Could not initialize BCCSP %s [%s]", f.Name(), err)
+		return nil, errors.Wrapf(err, "Could not initialize BCCSP %s", f.Name())
 	}
 	return csp, nil
 }
