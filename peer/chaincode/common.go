@@ -308,8 +308,16 @@ func ChaincodeInvokeOrQuery(
 		funcName = "query"
 	}
 
+	// extract the transient field if it exists
+	var tMap map[string][]byte
+	if transient != "" {
+		if err := json.Unmarshal([]byte(transient), &tMap); err != nil {
+			return nil, fmt.Errorf("Error parsing transient string: %s", err)
+		}
+	}
+
 	var prop *pb.Proposal
-	prop, _, err = putils.CreateProposalFromCIS(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator)
+	prop, _, err = putils.CreateChaincodeProposalWithTransient(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator, tMap)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s", funcName, err)
 	}
