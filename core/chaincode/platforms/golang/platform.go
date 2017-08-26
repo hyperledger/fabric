@@ -116,7 +116,7 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 			return fmt.Errorf("error validating chaincode path: %s", err)
 		}
 		if !exists {
-			return fmt.Errorf("path to chaincode does not exist: %s", spec.ChaincodeId.Path)
+			return fmt.Errorf("path to chaincode does not exist: %s", pathToCheck)
 		}
 	}
 	return nil
