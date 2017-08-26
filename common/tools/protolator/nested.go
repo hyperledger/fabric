@@ -65,7 +65,7 @@ func (nff nestedFieldFactory) NewProtoField(msg proto.Message, fieldName string,
 type nestedMapFieldFactory struct{}
 
 func (nmff nestedMapFieldFactory) Handles(msg proto.Message, fieldName string, fieldType reflect.Type, fieldValue reflect.Value) bool {
-	return fieldType.Kind() == reflect.Map && fieldType.Elem().AssignableTo(protoMsgType) && !fieldType.Elem().AssignableTo(timestampType)
+	return fieldType.Kind() == reflect.Map && fieldType.Elem().AssignableTo(protoMsgType) && !fieldType.Elem().AssignableTo(timestampType) && fieldType.Key().Kind() == reflect.String
 }
 
 func (nmff nestedMapFieldFactory) NewProtoField(msg proto.Message, fieldName string, fieldType reflect.Type, fieldValue reflect.Value) (protoField, error) {
