@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/pkg/errors"
 )
 
 // ReceivedMessageImpl is an implementation of ReceivedMessage
@@ -30,7 +31,8 @@ func (m *ReceivedMessageImpl) GetSourceEnvelope() *proto.Envelope {
 func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
 	sMsg, err := msg.NoopSign()
 	if err != nil {
-		m.conn.logger.Error("Failed creating SignedGossipMessage:", err)
+		err = errors.WithStack(err)
+		m.conn.logger.Errorf("Failed creating SignedGossipMessage: %+v", err)
 		return
 	}
 	m.conn.send(sMsg, func(e error) {})

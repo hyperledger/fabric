@@ -13,10 +13,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"math/big"
 	"os"
+
+	"errors"
 
 	"github.com/hyperledger/fabric/common/util"
 	gutil "github.com/hyperledger/fabric/gossip/util"

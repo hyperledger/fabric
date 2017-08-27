@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
@@ -147,7 +148,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 			secAdv:          secAdv,
 		}
 	})
-	return err
+	return errors.WithStack(err)
 }
 
 // GetGossipService returns an instance of gossip service
@@ -172,7 +173,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 		var err error
 		g.deliveryService, err = g.deliveryFactory.Service(gossipServiceInstance, endpoints, g.mcs)
 		if err != nil {
-			logger.Warning("Cannot create delivery client, due to", err)
+			logger.Warningf("Cannot create delivery client, due to %+v", errors.WithStack(err))
 		}
 	}
 
@@ -291,12 +292,12 @@ func (g *gossipServiceImpl) onStatusChangeFactory(chainID string, committer bloc
 			}
 			logger.Info("Elected as a leader, starting delivery service for channel", chainID)
 			if err := g.deliveryService.StartDeliverForChannel(chainID, committer, yield); err != nil {
-				logger.Error("Delivery service is not able to start blocks delivery for chain, due to", err)
+				logger.Errorf("Delivery service is not able to start blocks delivery for chain, due to %+v", errors.WithStack(err))
 			}
 		} else {
 			logger.Info("Renounced leadership, stopping delivery service for channel", chainID)
 			if err := g.deliveryService.StopDeliverForChannel(chainID); err != nil {
-				logger.Error("Delivery service is not able to stop blocks delivery for chain, due to", err)
+				logger.Errorf("Delivery service is not able to stop blocks delivery for chain, due to %+v", errors.WithStack(err))
 			}
 
 		}
