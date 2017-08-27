@@ -18,10 +18,9 @@ package mocks
 
 import (
 	"bytes"
-
-	"fmt"
-
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -90,6 +89,10 @@ func (id *MockIdentity) SatisfiesPrincipal(p *mspproto.MSPPrincipal) error {
 		return fmt.Errorf("Different identities [% x]!=[% x]", id.identity, p.Principal)
 	}
 	return nil
+}
+
+func (id *MockIdentity) ExpiresAt() time.Time {
+	return time.Time{}
 }
 
 func (id *MockIdentity) GetIdentifier() *msp.IdentityIdentifier {

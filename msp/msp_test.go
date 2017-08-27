@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -745,6 +746,15 @@ func TestAdminPolicyPrincipalFails(t *testing.T) {
 
 	err = id.SatisfiesPrincipal(principal)
 	assert.Error(t, err)
+}
+
+func TestIdentityExpiresAt(t *testing.T) {
+	thisMSP := getLocalMSP(t, "testdata/expiration")
+	assert.NotNil(t, thisMSP)
+	si, err := thisMSP.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+	expirationDate := si.GetPublicVersion().ExpiresAt()
+	assert.Equal(t, time.Date(2027, 8, 17, 12, 19, 48, 0, time.UTC), expirationDate)
 }
 
 func TestIdentityPolicyPrincipal(t *testing.T) {

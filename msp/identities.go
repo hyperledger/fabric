@@ -24,6 +24,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -77,6 +78,11 @@ func newIdentity(cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity,
 		Id:    hex.EncodeToString(digest)}
 
 	return &identity{id: id, cert: cert, pk: pk, msp: msp}, nil
+}
+
+// ExpiresAt returns the time at which the Identity expires.
+func (id *identity) ExpiresAt() time.Time {
+	return id.cert.NotAfter
 }
 
 // SatisfiesPrincipal returns null if this instance matches the supplied principal or an error otherwise

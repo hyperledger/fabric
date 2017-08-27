@@ -18,10 +18,9 @@ package mocks
 
 import (
 	"bytes"
-
-	"fmt"
-
 	"errors"
+	"fmt"
+	"time"
 
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
@@ -109,6 +108,10 @@ func (d *IdentityDeserializer) DeserializeIdentity(serializedIdentity []byte) (m
 
 type Identity struct {
 	Msg []byte
+}
+
+func (id *Identity) ExpiresAt() time.Time {
+	return time.Time{}
 }
 
 func (id *Identity) SatisfiesPrincipal(*mspproto.MSPPrincipal) error {

@@ -17,6 +17,8 @@ limitations under the License.
 package msp
 
 import (
+	"time"
+
 	m "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/msp"
 )
@@ -93,6 +95,10 @@ func newNoopIdentity() (m.Identity, error) {
 
 func (id *noopidentity) SatisfiesPrincipal(*msp.MSPPrincipal) error {
 	return nil
+}
+
+func (id *noopidentity) ExpiresAt() time.Time {
+	return time.Time{}
 }
 
 func (id *noopidentity) GetIdentifier() *m.IdentityIdentifier {
