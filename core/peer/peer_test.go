@@ -144,8 +144,6 @@ func TestCreateChainFromBlock(t *testing.T) {
 	grpcServer := grpc.NewServer()
 	socket, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 13611))
 	assert.NoError(t, err)
-	go grpcServer.Serve(socket)
-	defer grpcServer.Stop()
 
 	msptesttools.LoadMSPSetupForTesting()
 
@@ -163,6 +161,9 @@ func TestCreateChainFromBlock(t *testing.T) {
 		messageCryptoService, secAdv, defaultSecureDialOpts)
 
 	assert.NoError(t, err)
+
+	go grpcServer.Serve(socket)
+	defer grpcServer.Stop()
 
 	err = CreateChainFromBlock(block)
 	if err != nil {
