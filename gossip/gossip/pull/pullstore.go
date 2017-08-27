@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 // Constants go here.
@@ -189,7 +190,7 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 		for i, pulledMsg := range res.Data {
 			msg, err := pulledMsg.ToGossipMessage()
 			if err != nil {
-				p.logger.Warning("Data update contains an invalid message:", err)
+				p.logger.Warningf("Data update contains an invalid message: %+v", errors.WithStack(err))
 				return
 			}
 			p.MsgCons(msg)
@@ -267,7 +268,7 @@ func (p *pullMediatorImpl) Hello(dest string, nonce uint64) {
 	p.logger.Debug("Sending", p.config.MsgType, "hello to", dest)
 	sMsg, err := helloMsg.NoopSign()
 	if err != nil {
-		p.logger.Error("Failed creating SignedGossipMessage:", err)
+		p.logger.Errorf("Failed creating SignedGossipMessage: %+v", errors.WithStack(err))
 		return
 	}
 	p.Sndr.Send(sMsg, p.peersWithEndpoints(dest)...)
@@ -316,7 +317,7 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 	}
 	sMsg, err := req.NoopSign()
 	if err != nil {
-		p.logger.Warning("Failed creating SignedGossipMessage:", err)
+		p.logger.Warningf("Failed creating SignedGossipMessage: %+v", errors.WithStack(err))
 		return
 	}
 	p.Sndr.Send(sMsg, p.peersWithEndpoints(dest)...)

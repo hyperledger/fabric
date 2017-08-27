@@ -8,7 +8,6 @@ package msgstore
 
 import (
 	"sync"
-
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/common"

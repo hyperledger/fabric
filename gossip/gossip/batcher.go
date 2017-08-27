@@ -7,10 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package gossip
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type emitBatchCallback func([]interface{})
@@ -36,7 +37,7 @@ type batchingEmitter interface {
 // cb: a callback that is called in order for the forwarding to take place
 func newBatchingEmitter(iterations, burstSize int, latency time.Duration, cb emitBatchCallback) batchingEmitter {
 	if iterations < 0 {
-		panic(fmt.Errorf("Got a negative iterations number"))
+		panic(errors.Errorf("Got a negative iterations number"))
 	}
 
 	p := &batchingEmitterImpl{
