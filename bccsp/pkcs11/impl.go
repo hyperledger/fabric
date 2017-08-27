@@ -21,8 +21,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"errors"
-	"fmt"
 	"math/big"
 	"os"
 
@@ -31,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/miekg/pkcs11"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -45,12 +44,12 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 	conf := &config{}
 	err := conf.setSecurityLevel(opts.SecLevel, opts.HashFamily)
 	if err != nil {
-		return nil, fmt.Errorf("Failed initializing configuration [%s]", err)
+		return nil, errors.Wrapf(err, "Failed initializing configuration")
 	}
 
 	swCSP, err := sw.New(opts.SecLevel, opts.HashFamily, keyStore)
 	if err != nil {
-		return nil, fmt.Errorf("Failed initializing fallback SW BCCSP [%s]", err)
+		return nil, errors.Wrapf(err, "Failed initializing fallback SW BCCSP")
 	}
 
 	// Check KeyStore
@@ -63,8 +62,8 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 	label := opts.Label
 	ctx, slot, session, err := loadLib(lib, pin, label)
 	if err != nil {
-		return nil, fmt.Errorf("Failed initializing PKCS11 library %s %s [%s]",
-			lib, label, err)
+		return nil, errors.Wrapf(err, "Failed initializing PKCS11 library %s %s",
+			lib, label)
 	}
 
 	sessions := make(chan pkcs11.SessionHandle, sessionCacheSize)
@@ -100,14 +99,14 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	case *bccsp.ECDSAKeyGenOpts:
 		ski, pub, err := csp.generateECKey(csp.conf.ellipticCurve, opts.Ephemeral())
 		if err != nil {
-			return nil, fmt.Errorf("Failed generating ECDSA key [%s]", err)
+			return nil, errors.Wrapf(err, "Failed generating ECDSA key")
 		}
 		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
 
 	case *bccsp.ECDSAP256KeyGenOpts:
 		ski, pub, err := csp.generateECKey(oidNamedCurveP256, opts.Ephemeral())
 		if err != nil {
-			return nil, fmt.Errorf("Failed generating ECDSA P256 key [%s]", err)
+			return nil, errors.Wrapf(err, "Failed generating ECDSA P256 key")
 		}
 
 		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
@@ -115,7 +114,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	case *bccsp.ECDSAP384KeyGenOpts:
 		ski, pub, err := csp.generateECKey(oidNamedCurveP384, opts.Ephemeral())
 		if err != nil {
-			return nil, fmt.Errorf("Failed generating ECDSA P384 key [%s]", err)
+			return nil, errors.Wrapf(err, "Failed generating ECDSA P384 key [%s]")
 		}
 
 		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
@@ -187,14 +186,14 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 
 			ski, err := csp.importECKey(oid, nil, ecPt, opts.Ephemeral(), publicKeyFlag)
 			if err != nil {
-				return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+				return nil, errors.Wrapf(err, "Failed getting importing EC Public Key")
 			}
 			reRandomizedKey := &ecdsaPublicKey{ski, tempSK}
 
 			return reRandomizedKey, nil
 
 		default:
-			return nil, fmt.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
+			return nil, errors.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
 
 		}
 	case *ecdsaPrivateKey:
@@ -256,14 +255,14 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 
 			ski, err := csp.importECKey(oid, tempSK.D.Bytes(), ecPt, opts.Ephemeral(), privateKeyFlag)
 			if err != nil {
-				return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+				return nil, errors.Wrapf(err, "Failed getting importing EC Public Key")
 			}
 			reRandomizedKey := &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, &tempSK.PublicKey}}
 
 			return reRandomizedKey, nil
 
 		default:
-			return nil, fmt.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
+			return nil, errors.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
 
 		}
 
@@ -299,7 +298,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 
 		lowLevelKey, err := utils.DERToPublicKey(der)
 		if err != nil {
-			return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
+			return nil, errors.Wrapf(err, "Failed converting PKIX to ECDSA public key")
 		}
 
 		ecdsaPK, ok := lowLevelKey.(*ecdsa.PublicKey)
@@ -328,7 +327,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			}
 			ski, err = csp.importECKey(oid, nil, ecPt, opts.Ephemeral(), publicKeyFlag)
 			if err != nil {
-				return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+				return nil, errors.Wrapf(err, "Failed getting importing EC Public Key")
 			}
 		}
 
@@ -351,7 +350,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 
 		lowLevelKey, err := utils.DERToPrivateKey(der)
 		if err != nil {
-			return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
+			return nil, errors.Wrapf(err, "Failed converting PKIX to ECDSA public key [%s]")
 		}
 
 		ecdsaSK, ok := lowLevelKey.(*ecdsa.PrivateKey)
@@ -367,7 +366,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 
 		ski, err := csp.importECKey(oid, ecdsaSK.D.Bytes(), ecPt, opts.Ephemeral(), privateKeyFlag)
 		if err != nil {
-			return nil, fmt.Errorf("Failed getting importing EC Private Key [%s]", err)
+			return nil, errors.Wrapf(err, "Failed getting importing EC Private Key")
 		}
 
 		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, &ecdsaSK.PublicKey}}
@@ -400,7 +399,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			}
 			ski, err = csp.importECKey(oid, nil, ecPt, opts.Ephemeral(), publicKeyFlag)
 			if err != nil {
-				return nil, fmt.Errorf("Failed getting importing EC Public Key [%s]", err)
+				return nil, errors.Wrapf(err, "Failed getting importing EC Public Key")
 			}
 		}
 

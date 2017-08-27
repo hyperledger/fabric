@@ -16,11 +16,11 @@ limitations under the License.
 package factory
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -76,7 +76,7 @@ func GetDefault() bccsp.BCCSP {
 func GetBCCSP(name string) (bccsp.BCCSP, error) {
 	csp, ok := bccspMap[name]
 	if !ok {
-		return nil, fmt.Errorf("Could not find BCCSP, no '%s' provider", name)
+		return nil, errors.Errorf("Could not find BCCSP, no '%s' provider", name)
 	}
 	return csp, nil
 }
@@ -84,7 +84,7 @@ func GetBCCSP(name string) (bccsp.BCCSP, error) {
 func initBCCSP(f BCCSPFactory, config *FactoryOpts) error {
 	csp, err := f.Get(config)
 	if err != nil {
-		return fmt.Errorf("Could not initialize BCCSP %s [%s]", f.Name(), err)
+		return errors.Errorf("Could not initialize BCCSP %s [%s]", f.Name(), err)
 	}
 
 	logger.Debugf("Initialize BCCSP [%s]", f.Name())
