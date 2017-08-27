@@ -23,6 +23,9 @@ apt-get install --yes libyaml-dev
 apt-get install --yes python-setuptools
 apt-get install --yes python-pip
 apt-get install --yes build-essential
+# required dependencies for cryptography, which is required by pyOpenSSL
+# https://cryptography.io/en/stable/installation/#building-cryptography-on-linux
+apt-get install --yes libssl-dev libffi-dev
 pip install --upgrade pip
 pip install behave
 pip install nose
