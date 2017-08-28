@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/msp/cache"
 )
 
 // LoadLocalMsp loads the local MSP from the specified directory
@@ -135,11 +136,17 @@ func GetLocalMSP() msp.MSP {
 		if lclMsp == nil {
 			var err error
 			created = true
-			lclMsp, err = msp.NewBccspMsp()
+
+			bccspMSP, err := msp.NewBccspMsp()
 			if err != nil {
 				mspLogger.Fatalf("Failed to initialize local MSP, received err %s", err)
 			}
-			localMsp = lclMsp
+
+			lclMsp, err = cache.New(bccspMSP)
+			if err != nil {
+				mspLogger.Fatalf("Failed to initialize local MSP, received err %s", err)
+			}
+			localMsp = bccspMSP
 		}
 	}
 

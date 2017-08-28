@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/msp/cache"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 )
 
@@ -96,7 +97,12 @@ func (bh *MSPConfigHandler) ProposeMSP(tx interface{}, mspConfig *mspprotos.MSPC
 	}
 
 	// create the msp instance
-	mspInst, err := msp.NewBccspMsp()
+	bccspMSP, err := msp.NewBccspMsp()
+	if err != nil {
+		return nil, fmt.Errorf("Creating the MSP manager failed, err %s", err)
+	}
+
+	mspInst, err := cache.New(bccspMSP)
 	if err != nil {
 		return nil, fmt.Errorf("Creating the MSP manager failed, err %s", err)
 	}

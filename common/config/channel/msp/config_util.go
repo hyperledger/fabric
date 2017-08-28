@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/msp/cache"
 )
 
 var logger = flogging.MustGetLogger("configvalues/msp")
@@ -51,7 +52,12 @@ func TemplateGroupMSPWithAdminRolePrincipal(configPath []string, mspConfig *mspp
 	}
 
 	// create the msp instance
-	mspInst, err := msp.NewBccspMsp()
+	bccspMSP, err := msp.NewBccspMsp()
+	if err != nil {
+		logger.Panicf("Creating the MSP manager failed, err %s", err)
+	}
+
+	mspInst, err := cache.New(bccspMSP)
 	if err != nil {
 		logger.Panicf("Creating the MSP manager failed, err %s", err)
 	}
