@@ -19,11 +19,6 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-func TestConsensusType(t *testing.T) {
-	oc := &OrdererConfig{protos: &OrdererProtos{ConsensusType: &ab.ConsensusType{Type: "foo"}}}
-	assert.NoError(t, oc.validateConsensusType(), "Should have validly set new consensus type")
-}
-
 func TestBatchSize(t *testing.T) {
 	validMaxMessageCount := uint32(10)
 	validAbsoluteMaxBytes := uint32(1000)

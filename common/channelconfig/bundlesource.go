@@ -93,3 +93,8 @@ func (bs *BundleSource) ApplicationConfig() (Application, bool) {
 func (bs *BundleSource) ConfigtxManager() configtxapi.Manager {
 	return bs.StableBundle().ConfigtxManager()
 }
+
+// ValidateNew passes through to the current bundle
+func (bs *BundleSource) ValidateNew(resources Resources) error {
+	return bs.StableBundle().ValidateNew(resources)
+}

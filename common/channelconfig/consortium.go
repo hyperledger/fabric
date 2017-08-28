@@ -20,14 +20,14 @@ type ConsortiumProtos struct {
 // ConsortiumConfig holds the consoritums configuration information
 type ConsortiumConfig struct {
 	protos *ConsortiumProtos
-	orgs   map[string]*OrganizationConfig
+	orgs   map[string]Org
 }
 
 // NewConsortiumConfig creates a new instance of the consoritums config
 func NewConsortiumConfig(consortiumGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*ConsortiumConfig, error) {
 	cc := &ConsortiumConfig{
 		protos: &ConsortiumProtos{},
-		orgs:   make(map[string]*OrganizationConfig),
+		orgs:   make(map[string]Org),
 	}
 
 	if err := DeserializeProtoValuesFromGroup(consortiumGroup, cc.protos); err != nil {
@@ -45,7 +45,7 @@ func NewConsortiumConfig(consortiumGroup *cb.ConfigGroup, mspConfig *MSPConfigHa
 }
 
 // Organizations returns the set of organizations in the consortium
-func (cc *ConsortiumConfig) Organizations() map[string]*OrganizationConfig {
+func (cc *ConsortiumConfig) Organizations() map[string]Org {
 	return cc.orgs
 }
 

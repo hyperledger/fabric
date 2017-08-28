@@ -64,6 +64,9 @@ type Consortiums interface {
 type Consortium interface {
 	// ChannelCreationPolicy returns the policy to check when instantiating a channel for this consortium
 	ChannelCreationPolicy() *cb.Policy
+
+	// Organizations returns the organizations for this consortium
+	Organizations() map[string]Org
 }
 
 // Orderer stores the common shared orderer config
@@ -116,4 +119,7 @@ type Resources interface {
 
 	// MSPManager returns the msp.MSPManager for the chain
 	MSPManager() msp.MSPManager
+
+	// ValidateNew should return an error if a new set of configuration resources is incompatible with the current one
+	ValidateNew(resources Resources) error
 }

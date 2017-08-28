@@ -80,6 +80,77 @@ func (b *Bundle) ConfigtxManager() configtxapi.Manager {
 	return b.configtxManager
 }
 
+// ValidateNew checks if a new bundle's contained configuration is valid to be derived from the current bundle.
+// This allows checks of the nature "Make sure that the consensus type did not change." which is otherwise
+func (b *Bundle) ValidateNew(nb Resources) error {
+	if oc, ok := b.OrdererConfig(); ok {
+		noc, ok := nb.OrdererConfig()
+		if !ok {
+			return fmt.Errorf("Current config has orderer section, but new config does not")
+		}
+
+		if oc.ConsensusType() != noc.ConsensusType() {
+			return fmt.Errorf("Attempted to change consensus type from %s to %s", oc.ConsensusType(), noc.ConsensusType())
+		}
+
+		for orgName, org := range oc.Organizations() {
+			norg, ok := noc.Organizations()[orgName]
+			if !ok {
+				continue
+			}
+			mspID := org.MSPID()
+			if mspID != norg.MSPID() {
+				return fmt.Errorf("Orderer org %s attempted to change MSP ID from %s to %s", orgName, mspID, norg.MSPID())
+			}
+		}
+	}
+
+	if ac, ok := b.ApplicationConfig(); ok {
+		nac, ok := nb.ApplicationConfig()
+		if !ok {
+			return fmt.Errorf("Current config has consortiums section, but new config does not")
+		}
+
+		for orgName, org := range ac.Organizations() {
+			norg, ok := nac.Organizations()[orgName]
+			if !ok {
+				continue
+			}
+			mspID := org.MSPID()
+			if mspID != norg.MSPID() {
+				return fmt.Errorf("Application org %s attempted to change MSP ID from %s to %s", orgName, mspID, norg.MSPID())
+			}
+		}
+	}
+
+	if cc, ok := b.ConsortiumsConfig(); ok {
+		ncc, ok := nb.ConsortiumsConfig()
+		if !ok {
+			return fmt.Errorf("Current config has consortiums section, but new config does not")
+		}
+
+		for consortiumName, consortium := range cc.Consortiums() {
+			nconsortium, ok := ncc.Consortiums()[consortiumName]
+			if !ok {
+				continue
+			}
+
+			for orgName, org := range consortium.Organizations() {
+				norg, ok := nconsortium.Organizations()[orgName]
+				if !ok {
+					continue
+				}
+				mspID := org.MSPID()
+				if mspID != norg.MSPID() {
+					return fmt.Errorf("Consortium %s org %s attempted to change MSP ID from %s to %s", consortiumName, orgName, mspID, norg.MSPID())
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 type simpleProposer struct {
 	policyManager policies.Manager
 }

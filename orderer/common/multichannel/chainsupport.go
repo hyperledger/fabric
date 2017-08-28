@@ -97,7 +97,15 @@ func (cs *ChainSupport) Validate(configEnv *cb.ConfigEnvelope) error {
 
 // ProposeConfigUpdate passes through to the underlying configtxapi.Manager
 func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
-	return cs.ConfigtxManager().ProposeConfigUpdate(configtx)
+	env, err := cs.ConfigtxManager().ProposeConfigUpdate(configtx)
+	if err != nil {
+		return nil, err
+	}
+	bundle, err := cs.CreateBundle(cs.ChainID(), env.Config)
+	if err != nil {
+		return nil, err
+	}
+	return env, cs.ValidateNew(bundle)
 }
 
 // ChainID passes through to the underlying configtxapi.Manager

@@ -116,7 +116,6 @@ func (oc *OrdererConfig) Organizations() map[string]Org {
 
 func (oc *OrdererConfig) Validate() error {
 	for _, validator := range []func() error{
-		oc.validateConsensusType,
 		oc.validateBatchSize,
 		oc.validateBatchTimeout,
 		oc.validateKafkaBrokers,
@@ -126,11 +125,6 @@ func (oc *OrdererConfig) Validate() error {
 		}
 	}
 
-	return nil
-}
-
-func (oc *OrdererConfig) validateConsensusType() error {
-	// XXX TODO add check to prevent changing consensus type back
 	return nil
 }
 

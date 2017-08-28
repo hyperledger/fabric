@@ -84,6 +84,10 @@ func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
 		if err != nil {
 			return err
 		}
+		err = cs.bundleSource.ValidateNew(bundle)
+		if err != nil {
+			return err
+		}
 		cs.bundleSource.Update(bundle)
 	}
 	return nil

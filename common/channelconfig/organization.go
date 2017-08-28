@@ -84,7 +84,5 @@ func (oc *OrganizationConfig) validateMSP() error {
 		return fmt.Errorf("MSP for org %s has empty MSP ID", oc.name)
 	}
 
-	// XXX TODO Add back a check for MSP ID modification
-
 	return nil
 }
