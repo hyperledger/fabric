@@ -6,12 +6,20 @@
 OrdererOrgs:
   - Name: Orderer
     Domain: orderer.net
+    CA:
+        Country: US
+        Province: California
+        Locality: San Francisco
     Specs:
       - Hostname: orderer
 
 PeerOrgs:
   - Name: Org1
     Domain: org1.net
+    CA:
+        Country: US
+        Province: California
+        Locality: San Francisco
     Template:
       Count: 4
       Start: 1

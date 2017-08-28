@@ -33,7 +33,13 @@ import (
 )
 
 type CA struct {
-	Name string
+	Name               string
+	Country            string
+	Province           string
+	Locality           string
+	OrganizationalUnit string
+	StreetAddress      string
+	PostalCode         string
 	//SignKey  *ecdsa.PrivateKey
 	Signer   crypto.Signer
 	SignCert *x509.Certificate
@@ -41,7 +47,7 @@ type CA struct {
 
 // NewCA creates an instance of CA and saves the signing key pair in
 // baseDir/name
-func NewCA(baseDir, org, name string) (*CA, error) {
+func NewCA(baseDir, org, name, country, province, locality, orgUnit, streetAddress, postalCode string) (*CA, error) {
 
 	var response error
 	var ca *CA
@@ -64,7 +70,7 @@ func NewCA(baseDir, org, name string) (*CA, error) {
 				template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
 
 				//set the organization for the subject
-				subject := subjectTemplate()
+				subject := subjectTemplateAdditional(country, province, locality, orgUnit, streetAddress, postalCode)
 				subject.Organization = []string{org}
 				subject.CommonName = name
 
@@ -76,9 +82,15 @@ func NewCA(baseDir, org, name string) (*CA, error) {
 				response = err
 				if err == nil {
 					ca = &CA{
-						Name:     name,
-						Signer:   signer,
-						SignCert: x509Cert,
+						Name:               name,
+						Signer:             signer,
+						SignCert:           x509Cert,
+						Country:            country,
+						Province:           province,
+						Locality:           locality,
+						OrganizationalUnit: orgUnit,
+						StreetAddress:      streetAddress,
+						PostalCode:         postalCode,
 					}
 				}
 			}
@@ -97,7 +109,7 @@ func (ca *CA) SignCertificate(baseDir, name string, sans []string, pub *ecdsa.Pu
 	template.ExtKeyUsage = eku
 
 	//set the organization for the subject
-	subject := subjectTemplate()
+	subject := subjectTemplateAdditional(ca.Country, ca.Province, ca.Locality, ca.OrganizationalUnit, ca.StreetAddress, ca.PostalCode)
 	subject.CommonName = name
 
 	template.Subject = subject
@@ -128,6 +140,31 @@ func subjectTemplate() pkix.Name {
 		Locality: []string{"San Francisco"},
 		Province: []string{"California"},
 	}
+}
+
+// Additional for X509 subject
+func subjectTemplateAdditional(country, province, locality, orgUnit, streetAddress, postalCode string) pkix.Name {
+	name := subjectTemplate()
+	if len(country) >= 1 {
+		name.Country = []string{country}
+	}
+	if len(province) >= 1 {
+		name.Province = []string{province}
+	}
+
+	if len(locality) >= 1 {
+		name.Locality = []string{locality}
+	}
+	if len(orgUnit) >= 1 {
+		name.OrganizationalUnit = []string{orgUnit}
+	}
+	if len(streetAddress) >= 1 {
+		name.StreetAddress = []string{streetAddress}
+	}
+	if len(postalCode) >= 1 {
+		name.PostalCode = []string{postalCode}
+	}
+	return name
 }
 
 // default template for X509 certificates
