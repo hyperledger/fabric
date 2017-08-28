@@ -6,13 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 
 package channelconfig
 
-// TODO, move this code elsewhere
-/*
-	if ppr.initializationLogSuppression {
-		ppr.initializationLogSuppression = false
-	}
+import (
+	"github.com/hyperledger/fabric/common/policies"
+)
 
-	pm := ppr.policyManager
+func LogSanityChecks(res Resources) {
+	pm := res.PolicyManager()
 	for _, policyName := range []string{policies.ChannelReaders, policies.ChannelWriters} {
 		_, ok := pm.GetPolicy(policyName)
 		if !ok {
@@ -45,4 +44,4 @@ package channelconfig
 			}
 		}
 	}
-*/
+}

@@ -84,6 +84,9 @@ func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
 		if err != nil {
 			return err
 		}
+
+		channelconfig.LogSanityChecks(bundle)
+
 		err = cs.bundleSource.ValidateNew(bundle)
 		if err != nil {
 			return err
@@ -216,6 +219,8 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	if err != nil {
 		return err
 	}
+
+	channelconfig.LogSanityChecks(bundle)
 
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 

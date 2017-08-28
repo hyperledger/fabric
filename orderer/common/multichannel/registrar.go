@@ -46,6 +46,11 @@ func (cr *configResources) CreateBundle(channelID string, config *cb.Config) (*c
 	return channelconfig.NewBundle(channelID, config)
 }
 
+func (cr *configResources) Update(bndl *channelconfig.Bundle) {
+	channelconfig.LogSanityChecks(bndl)
+	cr.mutableResources.Update(bndl)
+}
+
 func (cr *configResources) SharedConfig() channelconfig.Orderer {
 	oc, ok := cr.OrdererConfig()
 	if !ok {
@@ -219,6 +224,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 	if err != nil {
 		logger.Panicf("Error creating channelconfig bundle: %s", err)
 	}
+	channelconfig.LogSanityChecks(bundle)
 
 	ledger, err := r.ledgerFactory.GetOrCreate(chdr.ChannelId)
 	if err != nil {
