@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package cauthdsl
@@ -30,7 +20,30 @@ import (
 
 var cauthdslLogger = flogging.MustGetLogger("cauthdsl")
 
-// compile recursively builds a go evaluatable function corresponding to the policy specified
+// deduplicate removes any duplicated identities while otherwise preserving identity order
+func deduplicate(sds []*cb.SignedData, deserializer msp.IdentityDeserializer) []*cb.SignedData {
+	ids := make(map[string]struct{})
+	result := make([]*cb.SignedData, 0, len(sds))
+	for i, sd := range sds {
+		identity, err := deserializer.DeserializeIdentity(sd.Identity)
+		if err != nil {
+			cauthdslLogger.Errorf("Principal deserialization failure (%s) for identity %x", err, sd.Identity)
+			continue
+		}
+		key := identity.GetIdentifier().Mspid + identity.GetIdentifier().Id
+
+		if _, ok := ids[key]; ok {
+			cauthdslLogger.Warningf("De-duplicating identity %x at index %d in signature set", sd.Identity, i)
+		} else {
+			result = append(result, sd)
+			ids[key] = struct{}{}
+		}
+	}
+	return result
+}
+
+// compile recursively builds a go evaluatable function corresponding to the policy specified, remember to call deduplicate on identities before
+// passing them to this function for evaluation
 func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal, deserializer msp.IdentityDeserializer) (func([]*cb.SignedData, []bool) bool, error) {
 	if policy == nil {
 		return nil, fmt.Errorf("Empty policy element")
