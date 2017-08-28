@@ -561,10 +561,11 @@ func addPeersToChannel(t *testing.T, n int, portPrefix int, channel string, peer
 
 	wg := sync.WaitGroup{}
 	for _, i := range peerIndexes {
+		metaBytes, _ := gossipCommon.NewNodeMetastate(0).Bytes()
 		wg.Add(1)
 		go func(i int) {
 			peers[i].JoinChan(jcm, gossipCommon.ChainID(channel))
-			peers[i].UpdateChannelMetadata([]byte("bla bla"), gossipCommon.ChainID(channel))
+			peers[i].UpdateChannelMetadata(metaBytes, gossipCommon.ChainID(channel))
 			wg.Done()
 		}(i)
 	}

@@ -205,7 +205,7 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 	for _, peers := range orgs2Peers {
 		for _, p := range peers {
 			p.JoinChan(jcm, channel)
-			p.UpdateChannelMetadata([]byte("bla"), channel)
+			p.UpdateChannelMetadata(createMetadata(1), channel)
 		}
 	}
 
@@ -396,11 +396,11 @@ func TestConfidentiality(t *testing.T) {
 			if isOrgInChan(org, ch) {
 				for _, p := range peers {
 					p.JoinChan(joinChanMsgsByChan[ch], common.ChainID(ch))
-					p.UpdateChannelMetadata([]byte{}, common.ChainID(ch))
+					p.UpdateChannelMetadata(createMetadata(1), common.ChainID(ch))
 					go func(p Gossip) {
 						for i := 0; i < 5; i++ {
 							time.Sleep(time.Second)
-							p.UpdateChannelMetadata([]byte{}, common.ChainID(ch))
+							p.UpdateChannelMetadata(createMetadata(1), common.ChainID(ch))
 						}
 					}(p)
 				}

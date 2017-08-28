@@ -301,7 +301,7 @@ func TestPull(t *testing.T) {
 			defer wg.Done()
 			pI := newGossipInstanceWithOnlyPull(portPrefix, i, 100, 0)
 			pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-			pI.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+			pI.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
 			peers[i-1] = pI
 		}(i)
 	}
@@ -311,7 +311,7 @@ func TestPull(t *testing.T) {
 
 	boot := newGossipInstanceWithOnlyPull(portPrefix, 0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	boot.UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
+	boot.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
 
 	knowAll := func() bool {
 		for i := 1; i <= n; i++ {
@@ -399,7 +399,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 		go func(i int) {
 			peers[i] = newGossipInstance(portPrefix, i+anchorPeercount, 100)
 			peers[i].JoinChan(jcm, common.ChainID("A"))
-			peers[i].UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
+			peers[i].UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
 			wg.Done()
 		}(i)
 	}
@@ -411,7 +411,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 	// Now start a random anchor peer
 	anchorPeer := newGossipInstance(portPrefix, rand.Intn(anchorPeercount), 100)
 	anchorPeer.JoinChan(jcm, common.ChainID("A"))
-	anchorPeer.UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
+	anchorPeer.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
 
 	defer anchorPeer.Stop()
 	waitUntilOrFail(t, checkPeersMembership(t, peers, n))
@@ -452,7 +452,7 @@ func TestMembership(t *testing.T) {
 	var lastPeer = fmt.Sprintf("localhost:%d", n+portPrefix)
 	boot := newGossipInstance(portPrefix, 0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	boot.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+	boot.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
 
 	peers := make([]Gossip, n)
 	wg := sync.WaitGroup{}
@@ -463,7 +463,7 @@ func TestMembership(t *testing.T) {
 			pI := newGossipInstance(portPrefix, i, 100, 0)
 			peers[i-1] = pI
 			pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-			pI.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+			pI.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
 		}(i)
 	}
 
@@ -489,11 +489,11 @@ func TestMembership(t *testing.T) {
 	peers[len(peers)-1].UpdateMetadata([]byte("bla bla"))
 
 	metaDataUpdated := func() bool {
-		if "bla bla" != string(metadataOfPeer(boot.Peers(), lastPeer)) {
+		if !bytes.Equal([]byte("bla bla"), metadataOfPeer(boot.Peers(), lastPeer)) {
 			return false
 		}
 		for i := 0; i < n-1; i++ {
-			if "bla bla" != string(metadataOfPeer(peers[i].Peers(), lastPeer)) {
+			if !bytes.Equal([]byte("bla bla"), metadataOfPeer(peers[i].Peers(), lastPeer)) {
 				return false
 			}
 		}
@@ -534,7 +534,7 @@ func TestDissemination(t *testing.T) {
 	msgsCount2Send := 10
 	boot := newGossipInstance(portPrefix, 0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	boot.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+	boot.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
 
 	peers := make([]Gossip, n)
 	receivedMessages := make([]int, n)
@@ -544,7 +544,7 @@ func TestDissemination(t *testing.T) {
 		pI := newGossipInstance(portPrefix, i, 100, 0)
 		peers[i-1] = pI
 		pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-		pI.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+		pI.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
 		acceptChan, _ := pI.Accept(acceptData, false)
 		go func(index int, ch <-chan *proto.GossipMessage) {
 			defer wg.Done()
@@ -555,16 +555,16 @@ func TestDissemination(t *testing.T) {
 		}(i-1, acceptChan)
 		// Change metadata in last node
 		if i == n {
-			pI.UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
+			pI.UpdateChannelMetadata(createMetadata(2), common.ChainID("A"))
 		}
 	}
 	var lastPeer = fmt.Sprintf("localhost:%d", n+portPrefix)
 	metaDataUpdated := func() bool {
-		if "bla bla" != string(metadataOfPeer(boot.PeersOfChannel(common.ChainID("A")), lastPeer)) {
+		if !bytes.Equal(createMetadata(2), metadataOfPeer(boot.PeersOfChannel(common.ChainID("A")), lastPeer)) {
 			return false
 		}
 		for i := 0; i < n-1; i++ {
-			if "bla bla" != string(metadataOfPeer(peers[i].PeersOfChannel(common.ChainID("A")), lastPeer)) {
+			if !bytes.Equal(createMetadata(2), metadataOfPeer(peers[i].PeersOfChannel(common.ChainID("A")), lastPeer)) {
 				return false
 			}
 		}
@@ -575,7 +575,7 @@ func TestDissemination(t *testing.T) {
 	waitUntilOrFail(t, checkPeersMembership(t, peers, n))
 	t.Log("Membership establishment took", time.Since(membershipTime))
 
-	for i := 1; i <= msgsCount2Send; i++ {
+	for i := 2; i <= msgsCount2Send+1; i++ {
 		boot.Gossip(createDataMsg(uint64(i), []byte{}, common.ChainID("A")))
 	}
 
@@ -852,8 +852,8 @@ func TestDataLeakage(t *testing.T) {
 
 	channels := []common.ChainID{common.ChainID("A"), common.ChainID("B")}
 
-	channelAmetadata := []byte("some metadata of channel A")
-	channelBmetadata := []byte("some metadata on channel B")
+	channelAmetadata := createMetadata(1)
+	channelBmetadata := createMetadata(2)
 
 	for i, channel := range channels {
 		for j := 0; j < (n / 2); j++ {
@@ -916,8 +916,8 @@ func TestDataLeakage(t *testing.T) {
 	}
 
 	t1 = time.Now()
-	peers[0].Gossip(createDataMsg(1, []byte{}, channels[0]))
-	peers[n/2].Gossip(createDataMsg(2, []byte{}, channels[1]))
+	peers[0].Gossip(createDataMsg(2, []byte{}, channels[0]))
+	peers[n/2].Gossip(createDataMsg(3, []byte{}, channels[1]))
 	waitUntilOrFailBlocking(t, gotMessages)
 	t.Log("Dissemination took", time.Since(t1))
 	stop := func() {
@@ -953,7 +953,7 @@ func TestDisseminateAll2All(t *testing.T) {
 			bootPeers := append(totPeers, totalPeers[i+1:]...)
 			pI := newGossipInstance(portPrefix, i, 100, bootPeers...)
 			pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-			pI.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+			pI.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
 			peers[i] = pI
 			wg.Done()
 		}(i)
@@ -1286,4 +1286,10 @@ func checkPeersMembership(t *testing.T, peers []Gossip, n int) func() bool {
 		}
 		return true
 	}
+}
+
+func createMetadata(height int) []byte {
+	nodeMeta := common.NewNodeMetastate(uint64(height))
+	metaBytes, _ := nodeMeta.Bytes()
+	return metaBytes
 }
