@@ -121,13 +121,13 @@ func (l *kvLedger) recoverDBs() error {
 //state DB or history DB or both
 func (l *kvLedger) recommitLostBlocks(firstBlockNum uint64, lastBlockNum uint64, recoverables ...recoverable) error {
 	var err error
-	var block *common.Block
+	var blockAndPvtdata *ledger.BlockAndPvtData
 	for blockNumber := firstBlockNum; blockNumber <= lastBlockNum; blockNumber++ {
-		if block, err = l.GetBlockByNumber(blockNumber); err != nil {
+		if blockAndPvtdata, err = l.GetPvtDataAndBlockByNum(blockNumber, nil); err != nil {
 			return err
 		}
 		for _, r := range recoverables {
-			if err := r.CommitLostBlock(&ledger.BlockAndPvtData{Block: block}); err != nil {
+			if err := r.CommitLostBlock(blockAndPvtdata); err != nil {
 				return err
 			}
 		}
