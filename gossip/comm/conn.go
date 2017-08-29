@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -51,7 +52,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	cs.RUnlock()
 
 	if isClosing {
-		return nil, errors.New("Shutting down")
+		return nil, fmt.Errorf("Shutting down")
 	}
 
 	pkiID := peer.PKIID
@@ -84,7 +85,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	isClosing = cs.isClosing
 	cs.RUnlock()
 	if isClosing {
-		return nil, errors.New("ConnStore is closing")
+		return nil, fmt.Errorf("ConnStore is closing")
 	}
 
 	cs.Lock()
@@ -103,7 +104,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 
 	// no one connected to us AND we failed connecting!
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	// at this point in the code, we created a connection to a remote peer
@@ -285,7 +286,7 @@ func (conn *connection) serviceConnection() error {
 			conn.stopChan <- stop
 			return nil
 		case err := <-errChan:
-			return errors.WithStack(err)
+			return err
 		case msg := <-msgChan:
 			conn.handler(msg)
 		}
@@ -304,7 +305,7 @@ func (conn *connection) writeToStream() {
 		case m := <-conn.outBuff:
 			err := stream.Send(m.envelope)
 			if err != nil {
-				go m.onErr(errors.WithStack(err))
+				go m.onErr(err)
 				return
 			}
 		case stop := <-conn.stopChan:
@@ -323,7 +324,7 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.S
 		stream := conn.getStream()
 		if stream == nil {
 			conn.logger.Error(conn.pkiID, "Stream is nil, aborting!")
-			errChan <- errors.New("Stream is nil")
+			errChan <- fmt.Errorf("Stream is nil")
 			return
 		}
 		envelope, err := stream.Recv()
@@ -333,13 +334,13 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.S
 		}
 		if err != nil {
 			errChan <- err
-			conn.logger.Debugf("%v Got error, aborting: %+v", conn.pkiID, errors.WithStack(err))
+			conn.logger.Debugf("%v Got error, aborting: %v", err)
 			return
 		}
 		msg, err := envelope.ToGossipMessage()
 		if err != nil {
 			errChan <- err
-			conn.logger.Warning("%v Got error, aborting: %+v", conn.pkiID, errors.WithStack(err))
+			conn.logger.Warning("%v Got error, aborting: %v", err)
 		}
 		msgChan <- msg
 	}
