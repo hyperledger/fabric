@@ -17,11 +17,10 @@ limitations under the License.
 package mgmt
 
 import (
-	"fmt"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/msp"
 	mspproto "github.com/hyperledger/fabric/protos/msp"
+	"github.com/pkg/errors"
 )
 
 // DeserializersManager is a support interface to
@@ -50,7 +49,7 @@ func (m *mspDeserializersManager) Deserialize(raw []byte) (*mspproto.SerializedI
 	sId := &mspproto.SerializedIdentity{}
 	err := proto.Unmarshal(raw, sId)
 	if err != nil {
-		return nil, fmt.Errorf("Could not deserialize a SerializedIdentity, err %s", err)
+		return nil, errors.Wrap(err, "could not deserialize a SerializedIdentity")
 	}
 	return sId, nil
 }

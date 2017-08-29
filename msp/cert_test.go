@@ -46,11 +46,11 @@ func TestSanitizeCertWithRSA(t *testing.T) {
 func TestSanitizeCertInvalidInput(t *testing.T) {
 	_, err := sanitizeECDSASignedCert(nil, nil)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Certificate must be different from nil.")
+	assert.Contains(t, err.Error(), "certificate must be different from nil")
 
 	_, err = sanitizeECDSASignedCert(&x509.Certificate{}, nil)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Parent certificate must be different from nil")
+	assert.Contains(t, err.Error(), "parent certificate must be different from nil")
 
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.NoError(t, err)

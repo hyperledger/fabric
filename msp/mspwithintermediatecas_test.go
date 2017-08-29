@@ -111,5 +111,5 @@ func TestMSPWithIntermediateCAs2(t *testing.T) {
 	assert.NoError(t, err)
 	err = thisMSP.Validate(id2)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid validation chain. Parent certificate should be a leaf of the certification tree ")
+	assert.Contains(t, err.Error(), "invalid validation chain. Parent certificate should be a leaf of the certification tree ")
 }

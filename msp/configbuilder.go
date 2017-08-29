@@ -33,7 +33,7 @@ type Configuration struct {
 func readFile(file string) ([]byte, error) {
 	fileCont, err := ioutil.ReadFile(file)
 	if err != nil {
-		return nil, fmt.Errorf("Could not read file %s, err %s", file, err)
+		return nil, errors.Wrapf(err, "could not read file %s", file)
 	}
 
 	return fileCont, nil
@@ -42,12 +42,12 @@ func readFile(file string) ([]byte, error) {
 func readPemFile(file string) ([]byte, error) {
 	bytes, err := readFile(file)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "reading from file %s failed", file)
 	}
 
 	b, _ := pem.Decode(bytes)
 	if b == nil { // TODO: also check that the type is what we expect (cert vs key..)
-		return nil, fmt.Errorf("No pem content for file %s", file)
+		return nil, errors.Errorf("no pem content for file %s", file)
 	}
 
 	return bytes, nil
@@ -64,7 +64,7 @@ func getPemMaterialFromDir(dir string) ([][]byte, error) {
 	content := make([][]byte, 0)
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		return nil, fmt.Errorf("Could not read directory %s, err %s", err, dir)
+		return nil, errors.Wrapf(err, "could not read directory %s", err)
 	}
 
 	for _, f := range files {
@@ -77,7 +77,7 @@ func getPemMaterialFromDir(dir string) ([][]byte, error) {
 
 		item, err := readPemFile(fullName)
 		if err != nil {
-			mspLogger.Warningf("Failed readgin file %s: %s", fullName, err)
+			mspLogger.Warningf("Failed reading file %s: %s", fullName, err)
 			continue
 		}
 
@@ -127,12 +127,12 @@ func GetLocalMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) 
 
 	err := factory.InitFactories(bccspConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Could not initialize BCCSP Factories [%s]", err)
+		return nil, errors.WithMessage(err, "could not initialize BCCSP Factories")
 	}
 
 	signcert, err := getPemMaterialFromDir(signcertDir)
 	if err != nil || len(signcert) == 0 {
-		return nil, fmt.Errorf("Could not load a valid signer certificate from directory %s, err %s", signcertDir, err)
+		return nil, errors.Wrapf(err, "could not load a valid signer certificate from directory %s", signcertDir)
 	}
 
 	/* FIXME: for now we're making the following assumptions
@@ -161,19 +161,19 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 
 	cacerts, err := getPemMaterialFromDir(cacertDir)
 	if err != nil || len(cacerts) == 0 {
-		return nil, fmt.Errorf("Could not load a valid ca certificate from directory %s, err %s", cacertDir, err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not load a valid ca certificate from directory %s", cacertDir))
 	}
 
 	admincert, err := getPemMaterialFromDir(admincertDir)
 	if err != nil || len(admincert) == 0 {
-		return nil, fmt.Errorf("Could not load a valid admin certificate from directory %s, err %s", admincertDir, err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("could not load a valid admin certificate from directory %s", admincertDir))
 	}
 
 	intermediatecerts, err := getPemMaterialFromDir(intermediatecertsDir)
 	if os.IsNotExist(err) {
 		mspLogger.Debugf("Intermediate certs folder not found at [%s]. Skipping. [%s]", intermediatecertsDir, err)
 	} else if err != nil {
-		return nil, fmt.Errorf("Failed loading intermediate ca certs at [%s]: [%s]", intermediatecertsDir, err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("failed loading intermediate ca certs at [%s]", intermediatecertsDir))
 	}
 
 	tlsCACerts, err := getPemMaterialFromDir(tlscacertDir)
@@ -181,13 +181,13 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	if os.IsNotExist(err) {
 		mspLogger.Debugf("TLS CA certs folder not found at [%s]. Skipping and ignoring TLS intermediate CA folder. [%s]", tlsintermediatecertsDir, err)
 	} else if err != nil {
-		return nil, fmt.Errorf("Failed loading TLS ca certs at [%s]: [%s]", tlsintermediatecertsDir, err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("failed loading TLS ca certs at [%s]", tlsintermediatecertsDir))
 	} else if len(tlsCACerts) != 0 {
 		tlsIntermediateCerts, err = getPemMaterialFromDir(tlsintermediatecertsDir)
 		if os.IsNotExist(err) {
 			mspLogger.Debugf("TLS intermediate certs folder not found at [%s]. Skipping. [%s]", tlsintermediatecertsDir, err)
 		} else if err != nil {
-			return nil, fmt.Errorf("Failed loading TLS intermediate ca certs at [%s]: [%s]", tlsintermediatecertsDir, err)
+			return nil, errors.WithMessage(err, fmt.Sprintf("failed loading TLS intermediate ca certs at [%s]", tlsintermediatecertsDir))
 		}
 	} else {
 		mspLogger.Debugf("TLS CA certs folder at [%s] is empty. Skipping.", tlsintermediatecertsDir)
@@ -197,7 +197,7 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	if os.IsNotExist(err) {
 		mspLogger.Debugf("crls folder not found at [%s]. Skipping. [%s]", crlsDir, err)
 	} else if err != nil {
-		return nil, fmt.Errorf("Failed loading crls at [%s]: [%s]", crlsDir, err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("failed loading crls at [%s]", crlsDir))
 	}
 
 	// Load configuration file
@@ -210,13 +210,13 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 		// return an error
 		raw, err := ioutil.ReadFile(configFile)
 		if err != nil {
-			return nil, fmt.Errorf("Failed loading configuration file at [%s]: [%s]", configFile, err)
+			return nil, errors.Wrapf(err, "failed loading configuration file at [%s]", configFile)
 		}
 
 		configuration := Configuration{}
 		err = yaml.Unmarshal(raw, &configuration)
 		if err != nil {
-			return nil, fmt.Errorf("Failed unmarshalling configuration file at [%s]: [%s]", configFile, err)
+			return nil, errors.Wrapf(err, "failed unmarshalling configuration file at [%s]", configFile)
 		}
 
 		// Prepare OrganizationalUnitIdentifiers
@@ -225,7 +225,7 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 				f := filepath.Join(dir, ouID.Certificate)
 				raw, err = ioutil.ReadFile(f)
 				if err != nil {
-					return nil, fmt.Errorf("Failed loading OrganizationalUnit certificate at [%s]: [%s]", f, err)
+					return nil, errors.Wrapf(err, "failed loading OrganizationalUnit certificate at [%s]", f)
 				}
 				oui := &msp.FabricOUIdentifier{
 					Certificate:                  raw,
