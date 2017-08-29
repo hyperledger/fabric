@@ -128,6 +128,58 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 	return wrappedOrdererTransaction, s.support.Sequence(), nil
 }
 
+// ProcessConfigMsg takes envelope of following two types:
+//   - `HeaderType_CONFIG`: system channel itself is the target of config, we simply unpack `ConfigUpdate`
+//     envelope from `LastUpdate` field and call `ProcessConfigUpdateMsg` on the underlying standard channel
+//   - `HeaderType_ORDERER_TRANSACTION`: it's a channel creation message, we unpack `ConfigUpdate` envelope
+//     and run `ProcessConfigUpdateMsg` on it
+func (s *SystemChannel) ProcessConfigMsg(env *cb.Envelope) (*cb.Envelope, uint64, error) {
+	payload, err := utils.UnmarshalPayload(env.Payload)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if payload.Header == nil {
+		return nil, 0, fmt.Errorf("Abort processing config msg because no head was set")
+	}
+
+	if payload.Header.ChannelHeader == nil {
+		return nil, 0, fmt.Errorf("Abort processing config msg because no channel header was set")
+	}
+
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Abort processing config msg because channel header unmarshalling error: %s", err)
+	}
+
+	switch chdr.Type {
+	case int32(cb.HeaderType_CONFIG):
+		configEnvelope := &cb.ConfigEnvelope{}
+		if err = proto.Unmarshal(payload.Data, configEnvelope); err != nil {
+			return nil, 0, err
+		}
+
+		return s.StandardChannel.ProcessConfigUpdateMsg(configEnvelope.LastUpdate)
+
+	case int32(cb.HeaderType_ORDERER_TRANSACTION):
+		env, err := utils.UnmarshalEnvelope(payload.Data)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Abort processing config msg because payload data unmarshalling error: %s", err)
+		}
+
+		configEnvelope := &cb.ConfigEnvelope{}
+		_, err = utils.UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, configEnvelope)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Abort processing config msg because payload data unmarshalling error: %s", err)
+		}
+
+		return s.ProcessConfigUpdateMsg(configEnvelope.LastUpdate)
+
+	default:
+		return nil, 0, fmt.Errorf("Panic processing config msg due to unexpected envelope type %s", cb.HeaderType_name[chdr.Type])
+	}
+}
+
 // DefaultTemplatorSupport is the subset of the channel config required by the DefaultTemplator.
 type DefaultTemplatorSupport interface {
 	// ConsortiumsConfig returns the ordering system channel's Consortiums config.

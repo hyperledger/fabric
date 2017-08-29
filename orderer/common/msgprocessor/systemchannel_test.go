@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -200,6 +199,200 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		assert.Equal(t, cs, ms.SequenceVal)
 		assert.NotNil(t, config)
 		assert.Nil(t, err)
+	})
+}
+
+func TestSystemChannelConfigMsg(t *testing.T) {
+	t.Run("ConfigMsg", func(t *testing.T) {
+		t.Run("BadPayloadData", func(t *testing.T) {
+			mscs := &mockSystemChannelSupport{
+				NewChannelConfigVal: &mockconfigtx.Manager{
+					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+				},
+			}
+			ms := &mockSystemChannelFilterSupport{
+				SequenceVal:            7,
+				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+			}
+			_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+				Payload: utils.MarshalOrPanic(&cb.Payload{
+					Header: &cb.Header{
+						ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+							ChannelId: testChannelID,
+							Type:      int32(cb.HeaderType_CONFIG),
+						}),
+					},
+					Data: []byte("hello"),
+				}),
+			})
+			assert.Error(t, err)
+		})
+
+		t.Run("Good", func(t *testing.T) {
+			mscs := &mockSystemChannelSupport{
+				NewChannelConfigVal: &mockconfigtx.Manager{
+					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+				},
+			}
+			ms := &mockSystemChannelFilterSupport{
+				SequenceVal:            7,
+				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+			}
+			config, seq, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+				Payload: utils.MarshalOrPanic(&cb.Payload{
+					Header: &cb.Header{
+						ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+							ChannelId: testChannelID,
+							Type:      int32(cb.HeaderType_CONFIG),
+						}),
+					},
+				}),
+			})
+			assert.Equal(t, seq, ms.SequenceVal)
+			assert.NotNil(t, config)
+			assert.Nil(t, err)
+			hdr, err := utils.ChannelHeader(config)
+			assert.Equal(
+				t,
+				int32(cb.HeaderType_CONFIG),
+				hdr.Type,
+				"Expect type of returned envelope to be %d, but got %d", cb.HeaderType_CONFIG, hdr.Type)
+		})
+	})
+
+	t.Run("OrdererTxMsg", func(t *testing.T) {
+		t.Run("BadPayloadData", func(t *testing.T) {
+			mscs := &mockSystemChannelSupport{
+				NewChannelConfigVal: &mockconfigtx.Manager{
+					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+				},
+			}
+			ms := &mockSystemChannelFilterSupport{
+				SequenceVal:            7,
+				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+			}
+			_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+				Payload: utils.MarshalOrPanic(&cb.Payload{
+					Header: &cb.Header{
+						ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+							ChannelId: testChannelID,
+							Type:      int32(cb.HeaderType_ORDERER_TRANSACTION),
+						}),
+					},
+					Data: []byte("hello"),
+				}),
+			})
+			assert.Error(t, err)
+		})
+
+		t.Run("WrongEnvelopeType", func(t *testing.T) {
+			mscs := &mockSystemChannelSupport{
+				NewChannelConfigVal: &mockconfigtx.Manager{
+					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+				},
+			}
+			ms := &mockSystemChannelFilterSupport{
+				SequenceVal:            7,
+				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+			}
+			_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+				Payload: utils.MarshalOrPanic(&cb.Payload{
+					Header: &cb.Header{
+						ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+							ChannelId: testChannelID,
+							Type:      int32(cb.HeaderType_ORDERER_TRANSACTION),
+						}),
+					},
+					Data: utils.MarshalOrPanic(&cb.Envelope{
+						Payload: utils.MarshalOrPanic(&cb.Payload{
+							Header: &cb.Header{
+								ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+									ChannelId: testChannelID,
+									Type:      int32(cb.HeaderType_MESSAGE),
+								}),
+							},
+						}),
+					}),
+				}),
+			})
+			assert.Error(t, err)
+		})
+
+		t.Run("GoodConfigMsg", func(t *testing.T) {
+			mscs := &mockSystemChannelSupport{
+				NewChannelConfigVal: &mockconfigtx.Manager{
+					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+				},
+			}
+			ms := &mockSystemChannelFilterSupport{
+				SequenceVal:            7,
+				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+			}
+			config, seq, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+				Payload: utils.MarshalOrPanic(&cb.Payload{
+					Header: &cb.Header{
+						ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+							ChannelId: testChannelID,
+							Type:      int32(cb.HeaderType_ORDERER_TRANSACTION),
+						}),
+					},
+					Data: utils.MarshalOrPanic(&cb.Envelope{
+						Payload: utils.MarshalOrPanic(&cb.Payload{
+							Header: &cb.Header{
+								ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+									ChannelId: testChannelID,
+									Type:      int32(cb.HeaderType_CONFIG),
+								}),
+							},
+							Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
+								LastUpdate: &cb.Envelope{
+									Payload: utils.MarshalOrPanic(&cb.Payload{
+										Header: &cb.Header{
+											ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+												ChannelId: testChannelID + "different",
+												Type:      int32(cb.HeaderType_CONFIG_UPDATE),
+											}),
+										},
+									}),
+								},
+							}),
+						}),
+					}),
+				}),
+			})
+			assert.Equal(t, seq, ms.SequenceVal)
+			assert.NotNil(t, config)
+			assert.Nil(t, err)
+			hdr, err := utils.ChannelHeader(config)
+			assert.Equal(
+				t,
+				int32(cb.HeaderType_ORDERER_TRANSACTION),
+				hdr.Type,
+				"Expect type of returned envelope to be %d, but got %d", cb.HeaderType_ORDERER_TRANSACTION, hdr.Type)
+		})
+	})
+
+	t.Run("OtherMsgType", func(t *testing.T) {
+		mscs := &mockSystemChannelSupport{
+			NewChannelConfigVal: &mockconfigtx.Manager{
+				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+			},
+		}
+		ms := &mockSystemChannelFilterSupport{
+			SequenceVal:            7,
+			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+		}
+		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+			Payload: utils.MarshalOrPanic(&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+						ChannelId: testChannelID,
+						Type:      int32(cb.HeaderType_MESSAGE),
+					}),
+				},
+			}),
+		})
+		assert.Error(t, err)
 	})
 }
 

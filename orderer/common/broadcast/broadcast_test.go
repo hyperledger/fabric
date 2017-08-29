@@ -136,6 +136,10 @@ func (ms *mockSupport) ProcessConfigUpdateMsg(msg *cb.Envelope) (*cb.Envelope, u
 	return ms.ProcessConfigEnv, ms.ProcessConfigSeq, ms.ProcessErr
 }
 
+func (ms *mockSupport) ProcessConfigMsg(msg *cb.Envelope) (*cb.Envelope, uint64, error) {
+	return ms.ProcessConfigEnv, ms.ProcessConfigSeq, ms.ProcessErr
+}
+
 func getMockSupportManager() *mockSupportManager {
 	return &mockSupportManager{
 		MsgProcessorVal: &mockSupport{},
