@@ -198,7 +198,7 @@ func TestNewChain(t *testing.T) {
 	chainSupport, ok := manager.GetChain(manager.SystemChannelID())
 	assert.True(t, ok, "Could not find system channel")
 
-	chainSupport.Configure(wrapped, wrapped, 0)
+	chainSupport.Configure(wrapped, 0)
 	func() {
 		it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 		defer it.Close()
