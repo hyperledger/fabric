@@ -6,7 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 
 package privdata
 
-import "github.com/hyperledger/fabric/protos/ledger/rwset"
+import (
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+)
 
 // SerializedPolicy defines a persisted policy
 type SerializedPolicy interface {
@@ -15,9 +18,6 @@ type SerializedPolicy interface {
 	// Raw returns the policy in its raw form
 	Raw() []byte
 }
-
-// SerializedIdentity defines an identity of a network participant
-type SerializedIdentity []byte
 
 // PolicyStore defines an object that retrieves stored SerializedPolicies
 // based on the collection's properties
@@ -29,11 +29,13 @@ type PolicyStore interface {
 	CollectionPolicy(rwset.CollectionCriteria) SerializedPolicy
 }
 
-// Filter defines a rule that filters out SerializedIdentities
-// that the policy doesn't hold for them.
-// Returns: True, if the policy holds for the given SerializedIdentity,
+// Filter defines a rule that filters peers according to data signed by them.
+// The Identity in the SignedData is a SerializedIdentity of a peer.
+// The Data is a message the peer signed, and the Signature is the corresponding
+// Signature on that Data.
+// Returns: True, if the policy holds for the given signed data.
 //          False otherwise
-type Filter func(SerializedIdentity) bool
+type Filter func(common.SignedData) bool
 
 // PolicyParser parses SerializedPolicies and returns a Filter
 type PolicyParser interface {
