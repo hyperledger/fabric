@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/identity"
@@ -21,6 +22,17 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
+
+type transientStoreMock struct {
+}
+
+func (*transientStoreMock) Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults []byte) error {
+	panic("implement me")
+}
+
+func (transientStoreMock) GetSelfSimulatedTxPvtRWSetByTxid(txid string) (*transientstore.EndorserPvtSimulationResults, error) {
+	panic("implement me")
+}
 
 type embeddingDeliveryService struct {
 	deliverclient.DeliverService
@@ -102,7 +114,7 @@ func TestLeaderYield(t *testing.T) {
 			secAdv:          &secAdvMock{},
 		}
 		gossipServiceInstance = gs
-		gs.InitializeChannel(channelName, &mockLedgerInfo{1}, []string{"localhost:7050"})
+		gs.InitializeChannel(channelName, &mockLedgerInfo{1}, &transientStoreMock{}, []string{"localhost:7050"})
 		return gs
 	}
 

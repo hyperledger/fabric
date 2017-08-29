@@ -43,27 +43,25 @@ var logger = flogging.MustGetLogger("kvledger")
 // KVLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
 type kvLedger struct {
-	ledgerID       string
-	blockStore     *ledgerstorage.Store
-	txtmgmt        txmgr.TxMgr
-	historyDB      historydb.HistoryDB
-	transientStore transientstore.Store
+	ledgerID   string
+	blockStore *ledgerstorage.Store
+	txtmgmt    txmgr.TxMgr
+	historyDB  historydb.HistoryDB
 }
 
 // NewKVLedger constructs new `KVLedger`
 func newKVLedger(ledgerID string, blockStore *ledgerstorage.Store,
-	versionedDB privacyenabledstate.DB, historyDB historydb.HistoryDB,
-	transientStore transientstore.Store) (*kvLedger, error) {
+	versionedDB privacyenabledstate.DB, historyDB historydb.HistoryDB) (*kvLedger, error) {
 
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 
 	//Initialize transaction manager using state database
 	var txmgmt txmgr.TxMgr
-	txmgmt = pvtdatatxmgr.NewLockbasedTxMgr(versionedDB, transientStore)
+	txmgmt = pvtdatatxmgr.NewLockbasedTxMgr(versionedDB)
 
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying
 	// id store, blockstore, txmgr (state database), history database
-	l := &kvLedger{ledgerID, blockStore, txmgmt, historyDB, transientStore}
+	l := &kvLedger{ledgerID, blockStore, txmgmt, historyDB}
 
 	//Recover both state DB and history DB if they are out of sync with block storage
 	if err := l.recoverDBs(); err != nil {
@@ -210,17 +208,6 @@ func (l *kvLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error
 	return l.historyDB.NewHistoryQueryExecutor(l.blockStore)
 }
 
-// Commit commits the valid block (returned in the method RemoveInvalidTransactionsAndPrepare) and related state changes
-// TODO when we move the transient store outside the ledger, the commiter would invoke function `CommitWithPvtData` and this
-// function will be removed
-func (l *kvLedger) Commit(block *common.Block) error {
-	pvtdata, err := retrievePrivateData(l.transientStore, block)
-	if err != nil {
-		return err
-	}
-	return l.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block, BlockPvtData: pvtdata})
-}
-
 // CommitWithPvtData commits the block and the corresponding pvt data in an atomic operation
 func (l *kvLedger) CommitWithPvtData(pvtdataAndBlock *ledger.BlockAndPvtData) error {
 	var err error
@@ -282,7 +269,6 @@ func (l *kvLedger) PrivateDataMinBlockNum() (uint64, error) {
 func (l *kvLedger) Close() {
 	l.blockStore.Shutdown()
 	l.txtmgmt.Shutdown()
-	l.transientStore.Shutdown()
 }
 
 // retrievePrivateData retrieves the pvt data from the transient store for committing it into the

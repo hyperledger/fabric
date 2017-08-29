@@ -58,10 +58,8 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	testDB := testDBEnv.GetDBHandle(testLedgerID)
 
 	testTStoreEnv := transientstore.NewTestStoreEnv(t)
-	testTransientStore, err := testTStoreEnv.TestStoreProvider.OpenStore(testLedgerID)
-	testutil.AssertNoError(t, err, "")
 
-	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB, testTransientStore)
+	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB)
 	testHistoryDBProvider := NewHistoryDBProvider()
 	testHistoryDB, err := testHistoryDBProvider.GetDBHandle("TestHistoryDB")
 	testutil.AssertNoError(t, err, "")

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -25,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
@@ -48,6 +49,22 @@ type chainSupport struct {
 	channelconfig.Resources
 	channelconfig.Application
 	ledger ledger.PeerLedger
+}
+
+var transientStoreFactory = &storeProvider{}
+
+type storeProvider struct {
+	transientstore.StoreProvider
+	sync.Mutex
+}
+
+func (sp *storeProvider) OpenStore(ledgerID string) (transientstore.Store, error) {
+	sp.Lock()
+	defer sp.Unlock()
+	if sp.StoreProvider == nil {
+		sp.StoreProvider = transientstore.NewStoreProvider()
+	}
+	return sp.StoreProvider.OpenStore(ledgerID)
 }
 
 func (cs *chainSupport) Ledger() ledger.PeerLedger {
@@ -229,7 +246,12 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	if len(ordererAddresses) == 0 {
 		return errors.New("No ordering service endpoint provided in configuration block")
 	}
-	service.GetGossipService().InitializeChannel(cs.ChainID(), c, ordererAddresses)
+	// TODO: does someone need to call Close() on the transientStoreFactory at shutdown of the peer?
+	store, err := transientStoreFactory.OpenStore(cs.ChainID())
+	if err != nil {
+		return errors.Wrapf(err, "Failed opening transient store for %s", cs.ChainID())
+	}
+	service.GetGossipService().InitializeChannel(cs.ChainID(), c, store, ordererAddresses)
 
 	chains.Lock()
 	defer chains.Unlock()

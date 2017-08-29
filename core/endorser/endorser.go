@@ -52,20 +52,24 @@ var endorserLogger = flogging.MustGetLogger("endorser")
 // The Jira issue that documents Endorser flow along with its relationship to
 // the lifecycle chaincode - https://jira.hyperledger.org/browse/FAB-181
 
+type privateDataDistributor func(channel string, txID string, privateData []byte) error
+
 // Endorser provides the Endorser service ProcessProposal
 type Endorser struct {
-	policyChecker policy.PolicyChecker
+	policyChecker         policy.PolicyChecker
+	distributePrivateData privateDataDistributor
 }
 
 // NewEndorserServer creates and returns a new Endorser server instance.
-func NewEndorserServer() pb.EndorserServer {
-	e := new(Endorser)
-	e.policyChecker = policy.NewPolicyChecker(
-		peer.NewChannelPolicyManagerGetter(),
-		mgmt.GetLocalMSP(),
-		mgmt.NewLocalMSPPrincipalGetter(),
-	)
-
+func NewEndorserServer(privDist privateDataDistributor) pb.EndorserServer {
+	e := &Endorser{
+		distributePrivateData: privDist,
+		policyChecker: policy.NewPolicyChecker(
+			peer.NewChannelPolicyManagerGetter(),
+			mgmt.GetLocalMSP(),
+			mgmt.NewLocalMSPPrincipalGetter(),
+		),
+	}
 	return e
 }
 
@@ -257,6 +261,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	//---3. execute the proposal and get simulation results
 	var simResult *ledger.TxSimulationResults
 	var pubSimResBytes []byte
+	var prvtSimResBytes []byte
 	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent
 	res, ccevent, err = e.callChaincode(ctx, chainID, version, txid, signedProp, prop, cis, cid, txsim)
@@ -268,6 +273,16 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	if txsim != nil {
 		if simResult, err = txsim.GetTxSimulationResults(); err != nil {
 			return nil, nil, nil, nil, err
+		}
+
+		if prvtSimResBytes, err = simResult.GetPvtSimulationBytes(); err != nil {
+			return nil, nil, nil, nil, err
+		}
+
+		if len(prvtSimResBytes) > 0 {
+			if err := e.distributePrivateData(chainID, txid, prvtSimResBytes); err != nil {
+				return nil, nil, nil, nil, err
+			}
 		}
 
 		if pubSimResBytes, err = simResult.GetPubSimulationBytes(); err != nil {
@@ -541,7 +556,9 @@ func (e *Endorser) commitTxSimulation(proposal *pb.Proposal, chainID string, sig
 	block := common.NewBlock(blockNumber, []byte{})
 	block.Data.Data = [][]byte{txBytes}
 	block.Header.DataHash = block.Data.Hash()
-	if err = lgr.Commit(block); err != nil {
+	if err = lgr.CommitWithPvtData(&ledger.BlockAndPvtData{
+		Block: block,
+	}); err != nil {
 		return err
 	}
 

@@ -169,7 +169,11 @@ func serve(args []string) error {
 	// Register the Admin server
 	pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer())
 
-	serverEndorser := endorser.NewEndorserServer()
+	privDataDist := func(channel string, txID string, privateData []byte) error {
+		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, nil, nil)
+	}
+
+	serverEndorser := endorser.NewEndorserServer(privDataDist)
 	libConf := library.Config{
 		AuthFilterFactory: viper.GetString("peer.handlers.authFilter"),
 		DecoratorFactory:  viper.GetString("peer.handlers.decorator"),

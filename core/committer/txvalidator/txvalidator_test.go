@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
@@ -153,7 +154,9 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 	// Initialize metadata
 	utils.InitBlockMetadata(block)
 	// Commit block to the ledger
-	ledger.Commit(block)
+	ledger.CommitWithPvtData(&ledger2.BlockAndPvtData{
+		Block: block,
+	})
 
 	// Validation should invalidate transaction,
 	// because it's already committed

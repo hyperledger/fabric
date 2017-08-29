@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
@@ -275,7 +276,7 @@ func addBlockForTesting(t *testing.T, chainid string) *common.Block {
 	pubSimResBytes2, _ := simRes2.GetPubSimulationBytes()
 
 	block1 := bg.NextBlock([][]byte{pubSimResBytes1, pubSimResBytes2})
-	ledger.Commit(block1)
+	ledger.CommitWithPvtData(&ledger2.BlockAndPvtData{Block: block1})
 
 	return block1
 }

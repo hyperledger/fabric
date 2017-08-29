@@ -30,9 +30,6 @@ import (
 // change
 type Committer interface {
 
-	// Commit block to the ledger
-	Commit(block *common.Block) error
-
 	// CommitWithPvtData block and private data into the ledger
 	CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error
 
