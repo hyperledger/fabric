@@ -34,7 +34,7 @@ var binaryWrapper = "valueBytes"
 // currently defaulted to 0 and is not used
 var querySkip = 0
 
-// BatchDocument defines a document for a batch
+//BatchableDocument defines a document for a batch
 type BatchableDocument struct {
 	CouchDoc couchdb.CouchDoc
 	Deleted  bool
@@ -158,7 +158,7 @@ func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.Version
 	return &statedb.VersionedValue{Value: returnValue, Version: returnVersion}, nil
 }
 
-// GetVersion implements method in VersionedDB interface
+//GetCachedVersion implements method in VersionedDB interface
 func (vdb *VersionedDB) GetCachedVersion(namespace string, key string) (*version.Height, bool) {
 
 	logger.Debugf("Retrieving cached version: %s~%s", key, namespace)
@@ -214,9 +214,6 @@ func removeDataWrapper(wrappedValue []byte, attachments []*couchdb.AttachmentInf
 	// initialize the return value
 	returnValue := []byte{}
 
-	// initialize a default return version
-	returnVersion := version.NewHeight(0, 0)
-
 	// create a generic map for the json
 	jsonResult := make(map[string]interface{})
 
@@ -242,7 +239,7 @@ func removeDataWrapper(wrappedValue []byte, attachments []*couchdb.AttachmentInf
 
 	}
 
-	returnVersion = createVersionHeightFromVersionString(jsonResult["version"].(string))
+	returnVersion := createVersionHeightFromVersionString(jsonResult["version"].(string))
 
 	return returnValue, returnVersion
 
@@ -417,7 +414,7 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 
 	// Use the batchUpdateMap for tracking couchdb updates by ID
 	// this will be used in case there are retries required
-	batchUpdateMap := make(map[string]interface{})
+	batchUpdateMap := make(map[string]*BatchableDocument)
 
 	namespaces := updateBatch.GetUpdatedNamespaces()
 	for _, ns := range namespaces {
@@ -465,8 +462,8 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 				}
 			}
 
-			// Add the current docment to the update map
-			batchUpdateMap[string(compositeKey)] = BatchableDocument{CouchDoc: *couchDoc, Deleted: isDelete}
+			// Add the current docment, revision and delete flag to the update map
+			batchUpdateMap[string(compositeKey)] = &BatchableDocument{CouchDoc: *couchDoc, Deleted: isDelete}
 
 		}
 	}
@@ -476,7 +473,7 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 		//Add the documents to the batch update array
 		batchUpdateDocs := []*couchdb.CouchDoc{}
 		for _, updateDocument := range batchUpdateMap {
-			batchUpdateDocument := updateDocument.(BatchableDocument)
+			batchUpdateDocument := updateDocument
 			batchUpdateDocs = append(batchUpdateDocs, &batchUpdateDocument.CouchDoc)
 		}
 
@@ -495,17 +492,35 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 			// If the document returned an error, retry the individual document
 			if respDoc.Ok != true {
 
-				batchUpdateDocument := batchUpdateMap[respDoc.ID].(BatchableDocument)
+				batchUpdateDocument := batchUpdateMap[respDoc.ID]
 
 				var err error
 
+				//Remove the "_rev" from the JSON before saving
+				//this will allow the CouchDB retry logic to retry revisions without encountering
+				//a mismatch between the "If-Match" and the "_rev" tag in the JSON
+				if batchUpdateDocument.CouchDoc.JSONValue != nil {
+					err = removeJSONRevision(&batchUpdateDocument.CouchDoc.JSONValue)
+					if err != nil {
+						return err
+					}
+				}
+
 				// Check to see if the document was added to the batch as a delete type document
 				if batchUpdateDocument.Deleted {
+
+					//Log the warning message that a retry is being attempted for batch delete issue
+					logger.Warningf("CouchDB batch document delete encountered an problem. Retrying delete for document ID:%s", respDoc.ID)
+
 					// If this is a deleted document, then retry the delete
 					// If the delete fails due to a document not being found (404 error),
 					// the document has already been deleted and the DeleteDoc will not return an error
 					err = vdb.db.DeleteDoc(respDoc.ID, "")
 				} else {
+
+					//Log the warning message that a retry is being attempted for batch update issue
+					logger.Warningf("CouchDB batch document update encountered an problem. Retrying update for document ID:%s", respDoc.ID)
+
 					// Save the individual document to couchdb
 					// Note that this will do retries as needed
 					_, err = vdb.db.SaveDoc(respDoc.ID, "", &batchUpdateDocument.CouchDoc)
@@ -672,6 +687,32 @@ func createCouchdbDocJSON(id, revision string, value []byte, chaincodeID string,
 	// documentJSON represents the JSON document that will be sent in the CouchDB bulk update
 	documentJSON, _ := json.Marshal(jsonMap)
 	return documentJSON
+}
+
+// removeJSONRevision removes the "_rev" if this is a JSON
+func removeJSONRevision(jsonValue *[]byte) error {
+
+	jsonMap := make(map[string]interface{})
+
+	//Unmarshal the value into a map
+	err := json.Unmarshal(*jsonValue, &jsonMap)
+	if err != nil {
+		logger.Errorf("Failed to unmarshal couchdb JSON data %s\n", err.Error())
+		return err
+	}
+
+	//delete the "_rev" entry
+	delete(jsonMap, "_rev")
+
+	//marshal the updated map back into the byte array
+	*jsonValue, err = json.Marshal(jsonMap)
+	if err != nil {
+		logger.Errorf("Failed to marshal couchdb JSON data %s\n", err.Error())
+		return err
+	}
+
+	return nil
+
 }
 
 // Savepoint docid (key) for couchdb
