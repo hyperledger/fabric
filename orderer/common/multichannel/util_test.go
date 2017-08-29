@@ -70,7 +70,7 @@ func (mch *mockChain) Start() {
 
 			class := mch.support.ClassifyMsg(chdr)
 			switch class {
-			case msgprocessor.ConfigUpdateMsg:
+			case msgprocessor.ConfigMsg:
 				batch := mch.support.BlockCutter().Cut()
 				if batch != nil {
 					block := mch.support.CreateNextBlock(batch)
@@ -90,6 +90,8 @@ func (mch *mockChain) Start() {
 					block := mch.support.CreateNextBlock(batch)
 					mch.support.WriteBlock(block, nil)
 				}
+			case msgprocessor.ConfigUpdateMsg:
+				logger.Panicf("Not expecting msg class ConfigUpdateMsg here")
 			default:
 				logger.Panicf("Unsupported msg classification: %v", class)
 			}

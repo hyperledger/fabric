@@ -39,9 +39,13 @@ const (
 	// Messages of this type should be processed by ProcessNormalMsg.
 	NormalMsg Classification = iota
 
-	// ConfigUpdateMsg is the class of configuration related messages.
+	// ConfigUpdateMsg indicates messages of type CONFIG_UPDATE.
 	// Messages of this type should be processed by ProcessConfigUpdateMsg.
 	ConfigUpdateMsg
+
+	// ConfigMsg indicates message of type ORDERER_TRANSACTION or CONFIG.
+	// Messages of this type should be processed by ProcessConfigMsg
+	ConfigMsg
 )
 
 // Processor provides the methods necessary to classify and process any message which

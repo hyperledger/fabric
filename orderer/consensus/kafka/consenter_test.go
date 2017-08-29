@@ -20,7 +20,6 @@ import (
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -164,12 +163,6 @@ func setupTestLogging(logLevel string, verbose bool) {
 	if verbose {
 		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Ldate|log.Lmicroseconds|log.Lshortfile)
 	}
-}
-
-// Taken from orderer/solo/consensus_test.go
-func syncQueueMessage(message *cb.Envelope, chain *chainImpl, mockBlockcutter *mockblockcutter.Receiver) {
-	chain.enqueue(message)
-	mockBlockcutter.Block <- struct{}{} // We'll move past this line (and the function will return) only when the mock blockcutter is about to return
 }
 
 func tamperBytes(original []byte) []byte {

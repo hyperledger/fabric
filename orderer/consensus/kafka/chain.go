@@ -122,37 +122,46 @@ func (chain *chainImpl) Halt() {
 
 // Implements the consensus.Chain interface. Called by Broadcast().
 func (chain *chainImpl) Order(env *cb.Envelope, configSeq uint64) error {
-	if !chain.enqueue(env) {
-		return fmt.Errorf("Could not enqueue")
+	marshaledEnv, err := utils.Marshal(env)
+	if err != nil {
+		return fmt.Errorf("cannot enqueue, unable to marshal envelope because = %s", err)
+	}
+	if !chain.enqueue(newNormalMessage(marshaledEnv, configSeq)) {
+		return fmt.Errorf("cannot enqueue")
 	}
 	return nil
 }
 
 // Implements the consensus.Chain interface. Called by Broadcast().
 func (chain *chainImpl) Configure(config *cb.Envelope, configSeq uint64) error {
-	return chain.Order(config, configSeq)
+	marshaledConfig, err := utils.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("cannot enqueue, unable to marshal config because = %s", err)
+	}
+	if !chain.enqueue(newConfigMessage(marshaledConfig, configSeq)) {
+		return fmt.Errorf("cannot enqueue")
+	}
+	return nil
 }
 
 // enqueue accepts a message and returns true on acceptance, or false otheriwse.
-func (chain *chainImpl) enqueue(env *cb.Envelope) bool {
+func (chain *chainImpl) enqueue(kafkaMsg *ab.KafkaMessage) bool {
 	logger.Debugf("[channel: %s] Enqueueing envelope...", chain.support.ChainID())
 	select {
 	case <-chain.startChan: // The Start phase has completed
 		select {
 		case <-chain.haltChan: // The chain has been halted, stop here
-			logger.Warningf("[channel: %s] Will not enqueue, consenter for this channel has been halted", chain.support.ChainID())
+			logger.Warningf("[channel: %s] consenter for this channel has been halted", chain.support.ChainID())
 			return false
 		default: // The post path
-			marshaledEnv, err := utils.Marshal(env)
+			payload, err := utils.Marshal(kafkaMsg)
 			if err != nil {
-				logger.Errorf("[channel: %s] cannot enqueue, unable to marshal envelope = %s", chain.support.ChainID(), err)
+				logger.Errorf("[channel: %s] unable to marshal Kafka message because = %s", chain.support.ChainID(), err)
 				return false
 			}
-			// We're good to go
-			payload := utils.MarshalOrPanic(newRegularMessage(marshaledEnv))
 			message := newProducerMessage(chain.channel, payload)
-			if _, _, err := chain.producer.SendMessage(message); err != nil {
-				logger.Errorf("[channel: %s] cannot enqueue envelope = %s", chain.support.ChainID(), err)
+			if _, _, err = chain.producer.SendMessage(message); err != nil {
+				logger.Errorf("[channel: %s] cannot enqueue envelope because = %s", chain.support.ChainID(), err)
 				return false
 			}
 			logger.Debugf("[channel: %s] Envelope enqueued successfully", chain.support.ChainID())
@@ -353,11 +362,25 @@ func newConnectMessage() *ab.KafkaMessage {
 	}
 }
 
-func newRegularMessage(payload []byte) *ab.KafkaMessage {
+func newNormalMessage(payload []byte, configSeq uint64) *ab.KafkaMessage {
 	return &ab.KafkaMessage{
 		Type: &ab.KafkaMessage_Regular{
 			Regular: &ab.KafkaMessageRegular{
-				Payload: payload,
+				Payload:   payload,
+				ConfigSeq: configSeq,
+				Class:     ab.KafkaMessageRegular_NORMAL,
+			},
+		},
+	}
+}
+
+func newConfigMessage(config []byte, configSeq uint64) *ab.KafkaMessage {
+	return &ab.KafkaMessage{
+		Type: &ab.KafkaMessage_Regular{
+			Regular: &ab.KafkaMessageRegular{
+				Payload:   config,
+				ConfigSeq: configSeq,
+				Class:     ab.KafkaMessageRegular_CONFIG,
 			},
 		},
 	}
@@ -387,51 +410,13 @@ func processConnect(channelName string) error {
 }
 
 func processRegular(regularMessage *ab.KafkaMessageRegular, support consensus.ConsenterSupport, timer *<-chan time.Time, receivedOffset int64, lastCutBlockNumber *uint64) error {
-	env := new(cb.Envelope)
-	if err := proto.Unmarshal(regularMessage.Payload, env); err != nil {
-		// This shouldn't happen, it should be filtered at ingress
-		return fmt.Errorf("unmarshal/%s", err)
-	}
-
-	chdr, err := utils.ChannelHeader(env)
-	if err != nil {
-		logger.Panicf("If a message has arrived to this point, it should already have had its header inspected once")
-	}
-
-	class := support.ClassifyMsg(chdr)
-	switch class {
-	case msgprocessor.ConfigUpdateMsg:
-		_, err := support.ProcessNormalMsg(env)
-		if err != nil {
-			logger.Warningf("[channel: %s] Discarding bad config message: %s", support.ChainID(), err)
-			break
-		}
-
-		batch := support.BlockCutter().Cut()
-		if batch != nil {
-			block := support.CreateNextBlock(batch)
-			encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: receivedOffset - 1})
-			support.WriteBlock(block, encodedLastOffsetPersisted)
-			*lastCutBlockNumber++
-		}
-		block := support.CreateNextBlock([]*cb.Envelope{env})
-		encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: receivedOffset})
-		support.WriteConfigBlock(block, encodedLastOffsetPersisted)
-		*lastCutBlockNumber++
-		*timer = nil
-	case msgprocessor.NormalMsg:
-		_, err := support.ProcessNormalMsg(env)
-		if err != nil {
-			logger.Warningf("Discarding bad normal message: %s", err)
-			break
-		}
-
-		batches, pending := support.BlockCutter().Ordered(env)
+	commitNormalMsg := func(message *cb.Envelope) {
+		batches, pending := support.BlockCutter().Ordered(message)
 		logger.Debugf("[channel: %s] Ordering results: items in batch = %d, pending = %v", support.ChainID(), len(batches), pending)
 		if len(batches) == 0 && *timer == nil {
 			*timer = time.After(support.SharedConfig().BatchTimeout())
 			logger.Debugf("[channel: %s] Just began %s batch timer", support.ChainID(), support.SharedConfig().BatchTimeout().String())
-			return nil
+			return
 		}
 
 		offset := receivedOffset
@@ -453,9 +438,101 @@ func processRegular(regularMessage *ab.KafkaMessageRegular, support consensus.Co
 		if len(batches) > 0 {
 			*timer = nil
 		}
-	default:
-		logger.Panicf("[channel: %s] Unsupported message classification: %v", support.ChainID(), class)
 	}
+
+	commitConfigMsg := func(message *cb.Envelope) {
+		logger.Debugf("[channel: %s] Received config message", support.ChainID())
+		batch := support.BlockCutter().Cut()
+
+		if batch != nil {
+			logger.Debugf("[channel: %s] Cut pending messages into block", support.ChainID())
+			block := support.CreateNextBlock(batch)
+			encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: receivedOffset - 1})
+			support.WriteBlock(block, encodedLastOffsetPersisted)
+			*lastCutBlockNumber++
+		}
+
+		logger.Debugf("[channel: %s] Creating isolated block for config message", support.ChainID())
+		block := support.CreateNextBlock([]*cb.Envelope{message})
+		encodedLastOffsetPersisted := utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: receivedOffset})
+		support.WriteConfigBlock(block, encodedLastOffsetPersisted)
+		*lastCutBlockNumber++
+		*timer = nil
+	}
+
+	seq := support.Sequence()
+
+	env := &cb.Envelope{}
+	if err := proto.Unmarshal(regularMessage.Payload, env); err != nil {
+		// This shouldn't happen, it should be filtered at ingress
+		return fmt.Errorf("failed to unmarshal payload of regular message because = %s", err)
+	}
+
+	logger.Debugf("[channel: %s] Processing regular Kafka message of type %s", support.ChainID(), regularMessage.Class.String())
+
+	switch regularMessage.Class {
+	case ab.KafkaMessageRegular_UNKNOWN:
+		// Received regular message of type UNKNOWN, indicating it's from v1.0.x orderer
+		chdr, err := utils.ChannelHeader(env)
+		if err != nil {
+			return fmt.Errorf("discarding bad config message because of channel header unmarshalling error = %s", err)
+		}
+
+		class := support.ClassifyMsg(chdr)
+		switch class {
+		case msgprocessor.ConfigMsg:
+			if _, _, err := support.ProcessConfigMsg(env); err != nil {
+				return fmt.Errorf("discarding bad config message because = %s", err)
+			}
+
+			commitConfigMsg(env)
+
+		case msgprocessor.NormalMsg:
+			if _, err := support.ProcessNormalMsg(env); err != nil {
+				return fmt.Errorf("discarding bad normal message because = %s", err)
+			}
+
+			commitNormalMsg(env)
+
+		case msgprocessor.ConfigUpdateMsg:
+			return fmt.Errorf("not expecting message of type ConfigUpdate")
+
+		default:
+			logger.Panicf("[channel: %s] Unsupported message classification: %v", support.ChainID(), class)
+		}
+
+	case ab.KafkaMessageRegular_NORMAL:
+		if regularMessage.ConfigSeq < seq {
+			logger.Debugf("[channel: %s] Config sequence has advanced since this normal message being validated, re-validating", support.ChainID())
+			if _, err := support.ProcessNormalMsg(env); err != nil {
+				return fmt.Errorf("discarding bad normal message because = %s", err)
+			}
+
+			// TODO re-submit stale normal message via `Order`, instead of discarding it immediately. Fix this as part of FAB-5720
+			return fmt.Errorf("discarding stale normal message because config seq has advanced")
+		}
+
+		commitNormalMsg(env)
+
+	case ab.KafkaMessageRegular_CONFIG:
+		if regularMessage.ConfigSeq < seq {
+			logger.Debugf("[channel: %s] Config sequence has advanced since this config message being validated, re-validating", support.ChainID())
+			_, _, err := support.ProcessConfigMsg(env)
+			if err != nil {
+				return fmt.Errorf("rejecting config message because = %s", err)
+			}
+
+			// TODO re-submit resulting config message via `Configure`, instead of discarding it. Fix this as part of FAB-5720
+			// Configure(configUpdateEnv, newConfigEnv, seq)
+			return fmt.Errorf("discarding stale config message because config seq has advanced")
+		}
+
+		commitConfigMsg(env)
+
+	default:
+		return fmt.Errorf("unsupported regular kafka message type: %v", regularMessage.Class.String())
+	}
+
 	return nil
 }
 

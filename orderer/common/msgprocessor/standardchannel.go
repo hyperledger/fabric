@@ -63,9 +63,11 @@ func (s *StandardChannel) ClassifyMsg(chdr *cb.ChannelHeader) Classification {
 	case int32(cb.HeaderType_CONFIG_UPDATE):
 		return ConfigUpdateMsg
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		return ConfigUpdateMsg
+		// In order to maintain backwards compatibility, we must classify these messages
+		return ConfigMsg
 	case int32(cb.HeaderType_CONFIG):
-		return ConfigUpdateMsg
+		// In order to maintain backwards compatibility, we must classify these messages
+		return ConfigMsg
 	default:
 		return NormalMsg
 	}
