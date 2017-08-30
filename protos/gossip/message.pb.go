@@ -1525,7 +1525,9 @@ func (m *RemotePvtDataResponse) GetPayloads() []*PrivatePayload {
 // inside the block
 type PvtDataPayload struct {
 	TxSeqInBlock uint64 `protobuf:"varint,1,opt,name=tx_seq_in_block,json=txSeqInBlock" json:"tx_seq_in_block,omitempty"`
-	Payload      []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
+	// Encodes marhslaed bytes of rwset.TxPvtReadWriteSet
+	// defined in rwset.proto
+	Payload []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
 }
 
 func (m *PvtDataPayload) Reset()                    { *m = PvtDataPayload{} }

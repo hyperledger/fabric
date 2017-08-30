@@ -39,6 +39,8 @@ It has these top-level messages:
 	BlockDataHashingStructure
 	OrdererAddresses
 	Consortium
+	Capabilities
+	Capability
 	BlockchainInfo
 	Policy
 	SignaturePolicyEnvelope

@@ -46,3 +46,25 @@ message OrdererAddresses {
 message Consortium {
     string name = 1;
 }
+
+
+// Capabilities message contains all the capabilities that a channel requires
+// participant entities to comply with. The entity should drop off the channel
+// if it can't fulfill any of the required capabilities.
+// Capabilities is encoded into the configuaration as Values of each type
+// Orderer, Channel, or Application.
+// The key string should represent the capability name, and it must be unique
+// within each type. For readability, it may be advisable to prefix the key with
+// its type (eg app-acl)
+message Capabilities {
+	map<string, Capability> capabilities = 1;
+}
+
+// Capability holds a set of options. We can add more as needed in the
+// future. For now, whether it is required or not. If a configured capability
+// is not required, it must be completely compatible with previous releases.
+// Compatible features are not required to be encoded as capabilities; they
+// only provide flexibility for the admins to control the features.
+message Capability {
+	bool required = 1;
+}
