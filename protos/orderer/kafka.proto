@@ -41,6 +41,7 @@ message KafkaMessageRegular {
     bytes payload = 1;
     uint64 config_seq = 2;
     Class class = 3;
+    int64 original_offset = 4;
 }
 
 // KafkaMessageTimeToCut is used to signal to the orderers
@@ -57,9 +58,17 @@ message KafkaMessageConnect {
     bytes payload = 1;
 }
 
-// LastOffsetPersisted is the encoded value for the Metadata message
-// which is encoded in the ORDERER block metadata index for the case
-// of the Kafka-based orderer.
+// KafkaMetadata is encoded into the ORDERER block to keep track of
+// Kafka-related metadata associated with this block.
 message KafkaMetadata {
-	int64 last_offset_persisted  = 1;
+    // LastOffsetPersisted is the encoded value for the Metadata message
+    // which is encoded in the ORDERER block metadata index for the case
+    // of the Kafka-based orderer.
+    int64 last_offset_persisted = 1;
+
+    // LastOriginalOffsetProcessed is used to keep track of the newest
+    // offset processed if a message is re-validated and re-ordered.
+    // This value is used to deduplicate re-submitted messages from
+    // multiple orderer so that we don't bother re-processing it again.
+    int64 last_original_offset_processed = 2;
 }

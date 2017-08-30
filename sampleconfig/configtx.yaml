@@ -74,6 +74,24 @@ Profiles:
                     - <<: *SampleOrg
                       AdminPrincipal: Role.MEMBER
 
+    # SampleSingleMSPKafkaV1.1 mimics the SampleDevModeKafka definition
+    # but additionally defines the v1.1 only capabilities which do
+    # not allow a mixed v1.0.x v1.1.x network
+    SampleDevModeKafkaV1.1:
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: kafka
+            Organizations:
+                - <<: *SampleOrg
+                  AdminPrincipal: Role.MEMBER
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - <<: *SampleOrg
+                      AdminPrincipal: Role.MEMBER
+
     # SampleSingleMSPSolo defines a configuration which uses the Solo orderer,
     # and contains a single MSP definition (the MSP sampleconfig).
     # The Consortium SampleConsortium has only a single member, SampleOrg.
