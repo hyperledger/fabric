@@ -263,7 +263,7 @@ func TestAnchorPeer(t *testing.T) {
 	p := newGossipInstanceWithExternalEndpoint(portPrefix, 0, cs, endpoint)
 	defer p.Stop()
 	p.JoinChan(jcm, channel)
-	p.UpdateChannelMetadata([]byte("bla"), channel)
+	p.UpdateChannelMetadata(createMetadata(1), channel)
 
 	time.Sleep(time.Second * 5)
 

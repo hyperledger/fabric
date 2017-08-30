@@ -722,7 +722,6 @@ func (gc *gossipChannel) UpdateStateInfo(msg *proto.SignedGossipMessage) {
 	if !msg.IsStateInfoMsg() {
 		return
 	}
-	gc.stateInfoMsgStore.Add(msg)
 	gc.Lock()
 	defer gc.Unlock()
 
@@ -731,6 +730,7 @@ func (gc *gossipChannel) UpdateStateInfo(msg *proto.SignedGossipMessage) {
 		gc.logger.Warningf("Can't extract ledger height from metadata %+v", errors.WithStack(err))
 		return
 	}
+	gc.stateInfoMsgStore.Add(msg)
 	gc.ledgerHeight = nodeMeta.LedgerHeight
 	gc.stateInfoMsg = msg
 	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(1))
