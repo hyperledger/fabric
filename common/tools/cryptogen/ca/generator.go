@@ -186,7 +186,7 @@ func x509Template() x509.Certificate {
 
 }
 
-// generate a signed X509 certficate using ECDSA
+// generate a signed X509 certificate using ECDSA
 func genCertificateECDSA(baseDir, name string, template, parent *x509.Certificate, pub *ecdsa.PublicKey,
 	priv interface{}) (*x509.Certificate, error) {
 
