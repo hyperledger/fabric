@@ -560,10 +560,10 @@ func TestCloseKafkaObjects(t *testing.T) {
 		// Set up a chain with just the minimum necessary fields instantiated so
 		// as to test the function
 		bareMinimumChain := &chainImpl{
-			support:         mockSupport,
-			producer:        producer,
-			parentConsumer:  parentConsumer,
-			channelConsumer: channelConsumer,
+			ConsenterSupport: mockSupport,
+			producer:         producer,
+			parentConsumer:   parentConsumer,
+			channelConsumer:  channelConsumer,
 		}
 
 		errs := bareMinimumChain.closeKafkaObjects()
@@ -599,10 +599,10 @@ func TestCloseKafkaObjects(t *testing.T) {
 		assert.NoError(t, err, "Expected no error when setting up the mock partition consumer")
 
 		bareMinimumChain := &chainImpl{
-			support:         mockSupport,
-			producer:        producer,
-			parentConsumer:  mockParentConsumer,
-			channelConsumer: mockChannelConsumer,
+			ConsenterSupport: mockSupport,
+			producer:         producer,
+			parentConsumer:   mockParentConsumer,
+			channelConsumer:  mockChannelConsumer,
 		}
 
 		errs := bareMinimumChain.closeKafkaObjects()
@@ -791,7 +791,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				channelConsumer: mockChannelConsumer,
 
 				channel:            mockChannel,
-				support:            mockSupport,
+				ConsenterSupport:   mockSupport,
 				lastCutBlockNumber: lastCutBlockNumber,
 
 				errorChan: errorChan,
@@ -850,7 +850,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				channelConsumer: mockChannelConsumer,
 
 				channel:            mockChannel,
-				support:            mockSupport,
+				ConsenterSupport:   mockSupport,
 				lastCutBlockNumber: lastCutBlockNumber,
 
 				errorChan: errorChan,
@@ -899,7 +899,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				channelConsumer: mockChannelConsumer,
 
 				channel:            mockChannel,
-				support:            mockSupport,
+				ConsenterSupport:   mockSupport,
 				lastCutBlockNumber: lastCutBlockNumber,
 
 				errorChan: errorChan,
@@ -948,7 +948,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				channelConsumer: mockChannelConsumer,
 
 				channel:            mockChannel,
-				support:            mockSupport,
+				ConsenterSupport:   mockSupport,
 				lastCutBlockNumber: lastCutBlockNumber,
 
 				errorChan: errorChan,
@@ -992,8 +992,8 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				parentConsumer:  mockParentConsumer,
 				channelConsumer: mockChannelConsumer,
 
-				channel: mockChannel,
-				support: mockSupport,
+				channel:          mockChannel,
+				ConsenterSupport: mockSupport,
 
 				errorChan: errorChan,
 				haltChan:  haltChan,
@@ -1035,8 +1035,8 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				parentConsumer:  mockParentConsumer,
 				channelConsumer: mockChannelConsumer,
 
-				channel: mockChannel,
-				support: mockSupport,
+				channel:          mockChannel,
+				ConsenterSupport: mockSupport,
 
 				errorChan: errorChan,
 				haltChan:  haltChan,
@@ -1088,7 +1088,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1143,7 +1143,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1206,7 +1206,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1289,7 +1289,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1344,7 +1344,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1398,7 +1398,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1448,7 +1448,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1509,7 +1509,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1566,7 +1566,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1641,7 +1641,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1709,7 +1709,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1792,7 +1792,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1852,7 +1852,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1913,7 +1913,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -1973,7 +1973,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -2052,7 +2052,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -2113,7 +2113,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					channelConsumer: mockChannelConsumer,
 
 					channel:            mockChannel,
-					support:            mockSupport,
+					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
 					errorChan: errorChan,
@@ -2178,8 +2178,8 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				parentConsumer:  mockParentConsumer,
 				channelConsumer: mockChannelConsumer,
 
-				channel: mockChannel,
-				support: mockSupport,
+				channel:          mockChannel,
+				ConsenterSupport: mockSupport,
 
 				errorChan: errorChan,
 				haltChan:  haltChan,
@@ -2245,8 +2245,8 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				parentConsumer:  mockParentConsumer,
 				channelConsumer: mockChannelConsumer,
 
-				channel: mockChannel,
-				support: mockSupport,
+				channel:          mockChannel,
+				ConsenterSupport: mockSupport,
 
 				errorChan: errorChan,
 				haltChan:  haltChan,
