@@ -1,18 +1,9 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 package pkcs11
 
 import (
@@ -270,9 +261,10 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 	hash := sha256.Sum256(ecpt)
 	ski = hash[:]
 
-	// set CKA_ID of the both keys to SKI(public key)
+	// set CKA_ID of the both keys to SKI(public key) and CKA_LABEL to hex string of SKI
 	setski_t := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, hex.EncodeToString(ski)),
 	}
 
 	logger.Infof("Generated new P11 key, SKI %x\n", ski)
@@ -376,8 +368,6 @@ func (csp *impl) importECKey(curve asn1.ObjectIdentifier, privKey, ecPt []byte, 
 	session := csp.getSession()
 	defer csp.returnSession(session)
 
-	id := nextIDCtr()
-
 	marshaledOID, err := asn1.Marshal(curve)
 	if err != nil {
 		return nil, fmt.Errorf("Could not marshal OID [%s]", err.Error())
@@ -386,10 +376,11 @@ func (csp *impl) importECKey(curve asn1.ObjectIdentifier, privKey, ecPt []byte, 
 	var keyTemplate []*pkcs11.Attribute
 	if keyType == publicKeyFlag {
 		logger.Debug("Importing Public EC Key")
-		publabel := fmt.Sprintf("BCPUB%s", id.Text(16))
 
 		hash := sha256.Sum256(ecPt)
 		ski = hash[:]
+
+		publabel := hex.EncodeToString(ski)
 
 		// Add DER encoding for the CKA_EC_POINT
 		ecPt = append([]byte{0x04, byte(len(ecPt))}, ecPt...)
@@ -413,7 +404,7 @@ func (csp *impl) importECKey(curve asn1.ObjectIdentifier, privKey, ecPt []byte, 
 		}
 
 		logger.Debugf("Importing Private EC Key [%d]\n%s\n", len(privKey)*8, hex.Dump(privKey))
-		prvlabel := fmt.Sprintf("BCPRV%s", id.Text(16))
+		prvlabel := hex.EncodeToString(ski)
 		keyTemplate = []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
