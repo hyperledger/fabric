@@ -72,6 +72,10 @@ func pkcs7UnPadding(src []byte) ([]byte, error) {
 }
 
 func aesCBCEncrypt(key, s []byte) ([]byte, error) {
+	return aesCBCEncryptWithRand(rand.Reader, key, s)
+}
+
+func aesCBCEncryptWithRand(prng io.Reader, key, s []byte) ([]byte, error) {
 	if len(s)%aes.BlockSize != 0 {
 		return nil, errors.New("Invalid plaintext. It must be a multiple of the block size")
 	}
@@ -83,11 +87,34 @@ func aesCBCEncrypt(key, s []byte) ([]byte, error) {
 
 	ciphertext := make([]byte, aes.BlockSize+len(s))
 	iv := ciphertext[:aes.BlockSize]
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+	if _, err := io.ReadFull(prng, iv); err != nil {
 		return nil, err
 	}
 
 	mode := cipher.NewCBCEncrypter(block, iv)
+	mode.CryptBlocks(ciphertext[aes.BlockSize:], s)
+
+	return ciphertext, nil
+}
+
+func aesCBCEncryptWithIV(IV []byte, key, s []byte) ([]byte, error) {
+	if len(s)%aes.BlockSize != 0 {
+		return nil, errors.New("Invalid plaintext. It must be a multiple of the block size")
+	}
+
+	if len(IV) != aes.BlockSize {
+		return nil, errors.New("Invalid IV. It must have length the block size")
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	ciphertext := make([]byte, aes.BlockSize+len(s))
+	copy(ciphertext[:aes.BlockSize], IV)
+
+	mode := cipher.NewCBCEncrypter(block, IV)
 	mode.CryptBlocks(ciphertext[aes.BlockSize:], s)
 
 	return ciphertext, nil
@@ -125,6 +152,24 @@ func AESCBCPKCS7Encrypt(key, src []byte) ([]byte, error) {
 	return aesCBCEncrypt(key, tmp)
 }
 
+// AESCBCPKCS7Encrypt combines CBC encryption and PKCS7 padding using as prng the passed to the function
+func AESCBCPKCS7EncryptWithRand(prng io.Reader, key, src []byte) ([]byte, error) {
+	// First pad
+	tmp := pkcs7Padding(src)
+
+	// Then encrypt
+	return aesCBCEncryptWithRand(prng, key, tmp)
+}
+
+// AESCBCPKCS7Encrypt combines CBC encryption and PKCS7 padding, the IV used is the one passed to the function
+func AESCBCPKCS7EncryptWithIV(IV []byte, key, src []byte) ([]byte, error) {
+	// First pad
+	tmp := pkcs7Padding(src)
+
+	// Then encrypt
+	return aesCBCEncryptWithIV(IV, key, tmp)
+}
+
 // AESCBCPKCS7Decrypt combines CBC decryption and PKCS7 unpadding
 func AESCBCPKCS7Decrypt(key, src []byte) ([]byte, error) {
 	// First decrypt
@@ -137,11 +182,26 @@ func AESCBCPKCS7Decrypt(key, src []byte) ([]byte, error) {
 
 type aescbcpkcs7Encryptor struct{}
 
-func (*aescbcpkcs7Encryptor) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) (ciphertext []byte, err error) {
-	switch opts.(type) {
-	case *bccsp.AESCBCPKCS7ModeOpts, bccsp.AESCBCPKCS7ModeOpts:
+func (e *aescbcpkcs7Encryptor) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) (ciphertext []byte, err error) {
+	switch o := opts.(type) {
+	case *bccsp.AESCBCPKCS7ModeOpts:
+		// AES in CBC mode with PKCS7 padding
+
+		if len(o.IV) != 0 && o.PRNG != nil {
+			return nil, errors.New("Invalid options. Either IV or PRNG should be different from nil, or both nil.")
+		}
+
+		if len(o.IV) != 0 {
+			// Encrypt with the passed IV
+			return AESCBCPKCS7EncryptWithIV(o.IV, k.(*aesPrivateKey).privKey, plaintext)
+		} else if o.PRNG != nil {
+			// Encrypt with PRNG
+			return AESCBCPKCS7EncryptWithRand(o.PRNG, k.(*aesPrivateKey).privKey, plaintext)
+		}
 		// AES in CBC mode with PKCS7 padding
 		return AESCBCPKCS7Encrypt(k.(*aesPrivateKey).privKey, plaintext)
+	case bccsp.AESCBCPKCS7ModeOpts:
+		return e.Encrypt(k, plaintext, &o)
 	default:
 		return nil, fmt.Errorf("Mode not recognized [%s]", opts)
 	}

@@ -20,7 +20,10 @@ import (
 	"crypto/aes"
 	"crypto/rand"
 	"math/big"
+	mrand "math/rand"
 	"testing"
+
+	"io"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/mocks"
@@ -412,6 +415,58 @@ func TestCBCEncryptCBCDecrypt(t *testing.T) {
 	}
 }
 
+// TestCBCEncryptWithRandCBCDecrypt encrypts with CBCEncrypt using the passed prng and decrypt with CBCDecrypt.
+func TestCBCEncryptWithRandCBCDecrypt(t *testing.T) {
+
+	key := make([]byte, 32)
+	rand.Reader.Read(key)
+
+	//                  1234567890123456
+	var ptext = []byte("a 16 byte messag")
+
+	encrypted, encErr := aesCBCEncryptWithRand(rand.Reader, key, ptext)
+	if encErr != nil {
+		t.Fatalf("Error encrypting '%s': %v", ptext, encErr)
+	}
+
+	decrypted, decErr := aesCBCDecrypt(key, encrypted)
+	if decErr != nil {
+		t.Fatalf("Error decrypting '%s': %v", ptext, decErr)
+	}
+
+	if string(ptext[:]) != string(decrypted[:]) {
+		t.Fatal("Encryption->Decryption with same key should result in the original plaintext.")
+	}
+}
+
+// TestCBCEncryptWithIVCBCDecrypt encrypts with CBCEncrypt using the passed IV and decrypt with CBCDecrypt.
+func TestCBCEncryptWithIVCBCDecrypt(t *testing.T) {
+
+	key := make([]byte, 32)
+	rand.Reader.Read(key)
+
+	//                  1234567890123456
+	var ptext = []byte("a 16 byte messag")
+
+	iv := make([]byte, aes.BlockSize)
+	_, err := io.ReadFull(rand.Reader, iv)
+	assert.NoError(t, err)
+
+	encrypted, encErr := aesCBCEncryptWithIV(iv, key, ptext)
+	if encErr != nil {
+		t.Fatalf("Error encrypting '%s': %v", ptext, encErr)
+	}
+
+	decrypted, decErr := aesCBCDecrypt(key, encrypted)
+	if decErr != nil {
+		t.Fatalf("Error decrypting '%s': %v", ptext, decErr)
+	}
+
+	if string(ptext[:]) != string(decrypted[:]) {
+		t.Fatal("Encryption->Decryption with same key should result in the original plaintext.")
+	}
+}
+
 // TestAESRelatedUtilFunctions tests various functions commonly used in fabric wrt AES
 func TestAESRelatedUtilFunctions(t *testing.T) {
 
@@ -523,7 +578,18 @@ func TestAESCBCPKCS7EncryptorDecrypt(t *testing.T) {
 	_, err = encryptor.Encrypt(k, msg, &mocks.EncrypterOpts{})
 	assert.Error(t, err)
 
-	ct, err := encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
+	_, err = encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{IV: []byte{1}})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid IV. It must have length the block size")
+
+	_, err = encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{IV: []byte{1}, PRNG: rand.Reader})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid options. Either IV or PRNG should be different from nil, or both nil.")
+
+	ct, err := encryptor.Encrypt(k, msg, bccsp.AESCBCPKCS7ModeOpts{})
+	assert.NoError(t, err)
+
+	ct, err = encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
 	assert.NoError(t, err)
 
 	decryptor := &aescbcpkcs7Decryptor{}
@@ -537,4 +603,57 @@ func TestAESCBCPKCS7EncryptorDecrypt(t *testing.T) {
 	msg2, err := decryptor.Decrypt(k, ct, &bccsp.AESCBCPKCS7ModeOpts{})
 	assert.NoError(t, err)
 	assert.Equal(t, msg, msg2)
+}
+
+func TestAESCBCPKCS7EncryptorWithIVSameCiphertext(t *testing.T) {
+	raw, err := GetRandomBytes(32)
+	assert.NoError(t, err)
+
+	k := &aesPrivateKey{privKey: raw, exportable: false}
+
+	msg := []byte("Hello World")
+	encryptor := &aescbcpkcs7Encryptor{}
+
+	iv := make([]byte, aes.BlockSize)
+
+	ct, err := encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{IV: iv})
+	assert.NoError(t, err)
+	assert.NotNil(t, ct)
+	assert.Equal(t, iv, ct[:aes.BlockSize])
+
+	ct2, err := encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{IV: iv})
+	assert.NoError(t, err)
+	assert.NotNil(t, ct2)
+	assert.Equal(t, iv, ct2[:aes.BlockSize])
+
+	assert.Equal(t, ct, ct2)
+}
+
+func TestAESCBCPKCS7EncryptorWithRandSameCiphertext(t *testing.T) {
+	raw, err := GetRandomBytes(32)
+	assert.NoError(t, err)
+
+	k := &aesPrivateKey{privKey: raw, exportable: false}
+
+	msg := []byte("Hello World")
+	encryptor := &aescbcpkcs7Encryptor{}
+
+	r := mrand.New(mrand.NewSource(0))
+	iv := make([]byte, aes.BlockSize)
+	_, err = io.ReadFull(r, iv)
+	assert.NoError(t, err)
+
+	r = mrand.New(mrand.NewSource(0))
+	ct, err := encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{PRNG: r})
+	assert.NoError(t, err)
+	assert.NotNil(t, ct)
+	assert.Equal(t, iv, ct[:aes.BlockSize])
+
+	r = mrand.New(mrand.NewSource(0))
+	ct2, err := encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{PRNG: r})
+	assert.NoError(t, err)
+	assert.NotNil(t, ct2)
+	assert.Equal(t, iv, ct2[:aes.BlockSize])
+
+	assert.Equal(t, ct, ct2)
 }

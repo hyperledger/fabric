@@ -187,10 +187,6 @@ func (opts *AESKeyGenOpts) Ephemeral() bool {
 	return opts.Temporary
 }
 
-// AESCBCPKCS7ModeOpts contains options for AES encryption in CBC mode
-// with PKCS7 padding.
-type AESCBCPKCS7ModeOpts struct{}
-
 // HMACTruncated256AESDeriveKeyOpts contains options for HMAC truncated
 // at 256 bits key derivation.
 type HMACTruncated256AESDeriveKeyOpts struct {
