@@ -13,6 +13,7 @@ unit-tests:
     - OUTPUT
     - TEST_PKGS=${TEST_PKGS}
     - CORE_VM_DOCKER_ATTACHSTDOUT=true
+    - VERBOSE
     - JOB_TYPE=${JOB_TYPE}
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
