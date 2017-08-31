@@ -424,8 +424,10 @@ func (*ChaincodeData) ProtoMessage() {}
 // chaincode package without importing it; more methods
 // should be added below if necessary
 type ChaincodeProvider interface {
-	// GetContext returns a ledger context
-	GetContext(ledger ledger.PeerLedger, txid string) (context.Context, error)
+	// GetContext returns a ledger context and a tx simulator; it's the
+	// caller's responsability to release the simulator by calling its
+	// done method once it is no longer useful
+	GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error)
 	// GetCCContext returns an opaque chaincode context
 	GetCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) interface{}
 	// GetCCValidationInfoFromLSCC returns the VSCC and the policy listed by LSCC for the supplied chaincode
@@ -438,8 +440,6 @@ type ChaincodeProvider interface {
 	ExecuteWithErrorFilter(ctxt context.Context, cccid interface{}, spec interface{}) ([]byte, *pb.ChaincodeEvent, error)
 	// Stop stops the chaincode given context and deployment spec
 	Stop(ctxt context.Context, cccid interface{}, spec *pb.ChaincodeDeploymentSpec) error
-	// ReleaseContext releases the context returned previously by GetContext
-	ReleaseContext()
 }
 
 var ccFactory ChaincodeProviderFactory

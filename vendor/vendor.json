@@ -639,6 +639,12 @@
 			"revisionTime": "2015-10-26T13:59:20-05:00"
 		},
 		{
+			"checksumSHA1": "vcN67ZjTbGpLLwSghHCbAEvmzMo=",
+			"path": "golang.org/x/sync/semaphore",
+			"revision": "8e0aa688b654ef28caa72506fa5ec8dba9fc7690",
+			"revisionTime": "2017-07-19T03:38:01Z"
+		},
+		{
 			"checksumSHA1": "aVgPDgwY3/t4J/JOw9H3FVMHqh0=",
 			"path": "golang.org/x/sys/unix",
 			"revision": "c200b10b5d5e122be351b67af224adc6128af5bf",

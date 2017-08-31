@@ -19,6 +19,7 @@ package ccprovider
 import (
 	"context"
 
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -48,9 +49,79 @@ type mockCcProviderImpl struct {
 type mockCcProviderContextImpl struct {
 }
 
-// GetContext does nothing
-func (c *mockCcProviderImpl) GetContext(ledger ledger.PeerLedger, txid string) (context.Context, error) {
+type mockTxSim struct {
+}
+
+func (m *mockTxSim) GetState(namespace string, key string) ([]byte, error) {
 	return nil, nil
+}
+
+func (m *mockTxSim) GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error) {
+	return nil, nil
+}
+
+func (m *mockTxSim) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
+	return nil, nil
+}
+
+func (m *mockTxSim) ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error) {
+	return nil, nil
+}
+
+func (m *mockTxSim) Done() {
+}
+
+func (m *mockTxSim) SetState(namespace string, key string, value []byte) error {
+	return nil
+}
+
+func (m *mockTxSim) DeleteState(namespace string, key string) error {
+	return nil
+}
+
+func (m *mockTxSim) SetStateMultipleKeys(namespace string, kvs map[string][]byte) error {
+	return nil
+}
+
+func (m *mockTxSim) ExecuteUpdate(query string) error {
+	return nil
+}
+
+func (m *mockTxSim) GetTxSimulationResults() (*ledger.TxSimulationResults, error) {
+	return nil, nil
+}
+
+func (m *mockTxSim) DeletePrivateData(namespace, collection, key string) error {
+	return nil
+}
+
+func (m *mockTxSim) ExecuteQueryOnPrivateData(namespace, collection, query string) (commonledger.ResultsIterator, error) {
+	return nil, nil
+}
+
+func (m *mockTxSim) GetPrivateData(namespace, collection, key string) ([]byte, error) {
+	return nil, nil
+}
+
+func (m *mockTxSim) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error) {
+	return nil, nil
+}
+
+func (m *mockTxSim) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error) {
+	return nil, nil
+}
+
+func (m *mockTxSim) SetPrivateData(namespace, collection, key string, value []byte) error {
+	return nil
+}
+
+func (m *mockTxSim) SetPrivateDataMultipleKeys(namespace, collection string, kvs map[string][]byte) error {
+	return nil
+}
+
+// GetContext does nothing
+func (c *mockCcProviderImpl) GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error) {
+	return nil, &mockTxSim{}, nil
 }
 
 // GetCCContext does nothing
@@ -84,8 +155,4 @@ func (c *mockCcProviderImpl) ExecuteWithErrorFilter(ctxt context.Context, cccid 
 // Stop stops the chaincode given context and deployment spec
 func (c *mockCcProviderImpl) Stop(ctxt context.Context, cccid interface{}, spec *peer.ChaincodeDeploymentSpec) error {
 	return nil
-}
-
-// ReleaseContext does nothing
-func (c *mockCcProviderImpl) ReleaseContext() {
 }

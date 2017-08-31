@@ -45,6 +45,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/sync/semaphore"
 )
 
 func signedByAnyMember(ids []string) []byte {
@@ -59,7 +60,11 @@ func setupLedgerAndValidator(t *testing.T) (ledger.PeerLedger, Validator) {
 	assert.NoError(t, err)
 	theLedger, err := ledgermgmt.CreateLedger(gb)
 	assert.NoError(t, err)
-	theValidator := NewTxValidator(&mockSupport{l: theLedger})
+	vcs := struct {
+		*mockSupport
+		*semaphore.Weighted
+	}{&mockSupport{l: theLedger}, semaphore.NewWeighted(10)}
+	theValidator := NewTxValidator(vcs)
 
 	return theLedger, theValidator
 }
@@ -562,7 +567,11 @@ func (exec *mockQueryExecutor) Done() {
 // returned from the function call.
 func TestLedgerIsNoAvailable(t *testing.T) {
 	theLedger := new(mockLedger)
-	validator := NewTxValidator(&mockSupport{l: theLedger})
+	vcs := struct {
+		*mockSupport
+		*semaphore.Weighted
+	}{&mockSupport{l: theLedger}, semaphore.NewWeighted(10)}
+	validator := NewTxValidator(vcs)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, createRWset(t, ccID), t)
@@ -586,7 +595,11 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 
 func TestValidationInvalidEndorsing(t *testing.T) {
 	theLedger := new(mockLedger)
-	validator := NewTxValidator(&mockSupport{l: theLedger})
+	vcs := struct {
+		*mockSupport
+		*semaphore.Weighted
+	}{&mockSupport{l: theLedger}, semaphore.NewWeighted(10)}
+	validator := NewTxValidator(vcs)
 
 	ccID := "mycc"
 	tx := getEnv(ccID, createRWset(t, ccID), t)

@@ -9,6 +9,7 @@ package peer
 import (
 	"fmt"
 	"net"
+	"runtime"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -35,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc"
 )
 
@@ -152,10 +154,20 @@ func MockSetMSPIDGetter(mspIDGetter func(string) []string) {
 	mockMSPIDGetter = mspIDGetter
 }
 
+// validationWorkersSemaphore is the semaphore used to ensure that
+// there are not too many concurrent tx validation goroutines
+var validationWorkersSemaphore *semaphore.Weighted
+
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
 func Initialize(init func(string)) {
+	nWorkers := viper.GetInt("peer.validatorPoolSize")
+	if nWorkers <= 0 {
+		nWorkers = runtime.NumCPU()
+	}
+	validationWorkersSemaphore = semaphore.NewWeighted(int64(nWorkers))
+
 	chainInitializer = init
 
 	var cb *common.Block
@@ -300,7 +312,11 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	cs.Resources = bundleSource
 	cs.bundleSource = bundleSource
 
-	validator := txvalidator.NewTxValidator(cs)
+	vcs := struct {
+		*chainSupport
+		*semaphore.Weighted
+	}{cs, validationWorkersSemaphore}
+	validator := txvalidator.NewTxValidator(vcs)
 	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
 		chainID, err := utils.GetChainIDFromBlock(block)
 		if err != nil {

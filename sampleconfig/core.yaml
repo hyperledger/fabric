@@ -276,6 +276,13 @@ peer:
         authFilter: "DefaultAuth"
         decorator: "DefaultDecorator"
 
+    # Number of goroutines that will execute transaction validation in parallel.
+    # By default, the peer chooses the number of CPUs on the machine. Set this
+    # variable to override that choice.
+    # NOTE: overriding this value might negatively influence the performance of
+    # the peer so please change this value only if you know what you're doing
+    validatorPoolSize:
+
 ###############################################################################
 #
 #    VM section
