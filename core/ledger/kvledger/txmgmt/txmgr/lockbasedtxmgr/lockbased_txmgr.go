@@ -1,17 +1,6 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package lockbasedtxmgr
@@ -22,6 +11,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -78,6 +68,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
 	batch, err := txmgr.validator.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
 	if err != nil {
+		txmgr.clearCache()
 		return err
 	}
 	txmgr.currentBlock = block
@@ -92,6 +83,11 @@ func (txmgr *LockBasedTxMgr) Shutdown() {
 
 // Commit implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Commit() error {
+	// If statedb implementation needed bulk read optimization, cache might have been populated by
+	// ValidateAndPrepare(). Once the block is validated and committed, populated cache needs to
+	// be cleared.
+	defer txmgr.clearCache()
+
 	logger.Debugf("Committing updates to state database")
 	txmgr.commitRWLock.Lock()
 	defer txmgr.commitRWLock.Unlock()
@@ -105,12 +101,26 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		return err
 	}
 	logger.Debugf("Updates committed to state database")
+
 	return nil
 }
 
 // Rollback implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Rollback() {
 	txmgr.batch = nil
+	// If statedb implementation needed bulk read optimization, cache might have been populated by
+	// ValidateAndPrepareBatch(). As the block commit is rollbacked, populated cache needs to
+	// be cleared now.
+	txmgr.clearCache()
+}
+
+// clearCache empty the cache maintained by the statedb implementation
+func (txmgr *LockBasedTxMgr) clearCache() {
+	commonStorageDB, _ := txmgr.db.(*privacyenabledstate.CommonStorageDB)
+	bulkOptimizable, ok := commonStorageDB.VersionedDB.(statedb.BulkOptimizable)
+	if ok {
+		bulkOptimizable.ClearCachedVersions()
+	}
 }
 
 // ShouldRecover implements method in interface kvledger.Recoverer

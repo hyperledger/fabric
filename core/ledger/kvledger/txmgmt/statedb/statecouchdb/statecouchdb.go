@@ -1,17 +1,6 @@
 /*
-Copyright IBM Corp. 2016, 2017 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package statecouchdb
@@ -178,7 +167,10 @@ func (vdb *VersionedDB) GetVersion(namespace string, key string) (*version.Heigh
 
 		couchDBCompositeKey := constructCompositeKey(namespace, key)
 		couchDoc, _, err := vdb.db.ReadDoc(string(couchDBCompositeKey))
-		if err == nil {
+		if err != nil {
+			return nil, err
+		}
+		if couchDoc == nil {
 			return nil, nil
 		}
 
@@ -192,7 +184,6 @@ func (vdb *VersionedDB) GetVersion(namespace string, key string) (*version.Heigh
 		if docMetadata.Version == "" {
 			return nil, nil
 		}
-
 		returnVersion = createVersionHeightFromVersionString(docMetadata.Version)
 	}
 
@@ -299,10 +290,6 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 
 // ApplyUpdates implements method in VersionedDB interface
 func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
-
-	// Clear the version cache
-	// TODO Move this to txmgmt since that is where cache is populated
-	defer vdb.ClearCachedVersions()
 
 	// STEP 1: GATHER DOCUMENT REVISION NUMBERS REQUIRED FOR THE COUCHDB BULK UPDATE
 
@@ -517,6 +504,8 @@ func createVersionHeightFromVersionString(encodedVersion string) *version.Height
 
 // ClearCachedVersions clears committedVersions and revisionNumbers
 func (vdb *VersionedDB) ClearCachedVersions() {
+
+	logger.Debugf("Clear Cache")
 
 	versionMap := make(map[statedb.CompositeKey]*version.Height)
 	revMap := make(map[statedb.CompositeKey]string)

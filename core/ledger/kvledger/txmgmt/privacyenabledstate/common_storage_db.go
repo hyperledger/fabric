@@ -82,6 +82,15 @@ func (s *CommonStorageDB) GetValueHash(namespace, collection string, keyHash []b
 	return s.GetState(deriveHashedDataNs(namespace, collection), keyHashStr)
 }
 
+// GetHashedDataNsAndKeyHashStr implements corresponding function in interface DB
+func (s *CommonStorageDB) GetHashedDataNsAndKeyHashStr(namespace, collection string, keyHash []byte) (string, string) {
+	keyHashStr := string(keyHash)
+	if !s.BytesKeySuppoted() {
+		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
+	}
+	return deriveHashedDataNs(namespace, collection), keyHashStr
+}
+
 // GetPrivateDataMultipleKeys implements corresponding function in interface DB
 func (s *CommonStorageDB) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([]*statedb.VersionedValue, error) {
 	return s.GetStateMultipleKeys(derivePvtDataNs(namespace, collection), keys)
