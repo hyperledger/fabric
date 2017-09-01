@@ -662,6 +662,16 @@ func (g *gossipServiceImpl) PeersOfChannel(channel common.ChainID) []discovery.N
 	return gc.GetPeers()
 }
 
+// PeerFilter receives a SubChannelSelectionCriteria and returns a RoutingFilter that selects
+// only peer identities that match the given criteria, and that they published their channel participation
+func (g *gossipServiceImpl) PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
+	gc := g.chanState.getGossipChannelByChainID(channel)
+	if gc == nil {
+		return nil, errors.Errorf("Channel %s doesn't exist", string(channel))
+	}
+	return gc.PeerFilter(messagePredicate), nil
+}
+
 // Stop stops the gossip component
 func (g *gossipServiceImpl) Stop() {
 	if g.toDie() {

@@ -9,6 +9,7 @@ package filter
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/stretchr/testify/assert"
@@ -34,6 +35,27 @@ func TestCombineRoutingFilters(t *testing.T) {
 	assert.True(t, CombineRoutingFilters(a, b)(nm))
 	assert.False(t, CombineRoutingFilters(CombineRoutingFilters(a, b), SelectNonePolicy)(nm))
 	assert.False(t, CombineRoutingFilters(a, b)(discovery.NetworkMember{InternalEndpoint: "b"}))
+}
+
+func TestFirst(t *testing.T) {
+	peerA := discovery.NetworkMember{Endpoint: "a"}
+	peerB := discovery.NetworkMember{Endpoint: "b"}
+	peers := []discovery.NetworkMember{peerA, peerB}
+	assert.Equal(t, &comm.RemotePeer{Endpoint: "a"}, First(peers, func(discovery.NetworkMember) bool {
+		return true
+	}))
+
+	assert.Equal(t, &comm.RemotePeer{Endpoint: "b"}, First(peers, func(nm discovery.NetworkMember) bool {
+		return nm.PreferredEndpoint() == "b"
+	}))
+
+	peerAA := discovery.NetworkMember{Endpoint: "aa"}
+	peerAB := discovery.NetworkMember{Endpoint: "ab"}
+	peers = append(peers, peerAA)
+	peers = append(peers, peerAB)
+	assert.Equal(t, &comm.RemotePeer{Endpoint: "aa"}, First(peers, func(nm discovery.NetworkMember) bool {
+		return len(nm.PreferredEndpoint()) > 1
+	}))
 }
 
 func TestSelectPeers(t *testing.T) {

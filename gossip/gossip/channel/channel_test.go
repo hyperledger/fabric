@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"sync"
@@ -1427,6 +1428,7 @@ func TestGossipChannelEligibility(t *testing.T) {
 		{PKIid: pkiIDInOrg1},
 		{PKIid: pkiIDInOrg1ButNotEligible},
 		{PKIid: pkiIDinOrg2},
+		{PKIid: pkiIDinOrg3},
 	}
 	adapter.On("GetMembership").Return(members)
 	adapter.On("Gossip", mock.Anything)
@@ -1453,14 +1455,35 @@ func TestGossipChannelEligibility(t *testing.T) {
 	})
 	// Every peer sends a StateInfo message
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
-	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDinOrg2, channelA)})
-	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1ButNotEligible, channelA)})
-	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDinOrg3, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDinOrg2, msg: createStateInfoMsg(1, pkiIDinOrg2, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1ButNotEligible, msg: createStateInfoMsg(1, pkiIDInOrg1ButNotEligible, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDinOrg3, msg: createStateInfoMsg(1, pkiIDinOrg3, channelA)})
 
 	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
 	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg2}))
 	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1ButNotEligible}))
 	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg3}))
+
+	// Ensure peers from the channel are returned
+	assert.True(t, gc.PeerFilter(func(signature api.PeerSignature) bool {
+		return true
+	})(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
+	assert.True(t, gc.PeerFilter(func(signature api.PeerSignature) bool {
+		return true
+	})(discovery.NetworkMember{PKIid: pkiIDinOrg2}))
+	// But not peers which aren't in the channel
+	assert.False(t, gc.PeerFilter(func(signature api.PeerSignature) bool {
+		return true
+	})(discovery.NetworkMember{PKIid: pkiIDinOrg3}))
+
+	// Ensure the given predicate is considered
+	assert.True(t, gc.PeerFilter(func(signature api.PeerSignature) bool {
+		return bytes.Equal(signature.PeerIdentity, []byte("pkiIDinOrg2"))
+	})(discovery.NetworkMember{PKIid: pkiIDinOrg2}))
+
+	assert.False(t, gc.PeerFilter(func(signature api.PeerSignature) bool {
+		return bytes.Equal(signature.PeerIdentity, []byte("pkiIDinOrg2"))
+	})(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
 
 	// Remove org2 from the channel
 	gc.ConfigureChannel(&joinChanMsg{

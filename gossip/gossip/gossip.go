@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/filter"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
@@ -41,6 +42,10 @@ type Gossip interface {
 
 	// Gossip sends a message to other peers to the network
 	Gossip(msg *proto.GossipMessage)
+
+	// PeerFilter receives a SubChannelSelectionCriteria and returns a RoutingFilter that selects
+	// only peer identities that match the given criteria, and that they published their channel participation
+	PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error)
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// If passThrough is false, the messages are processed by the gossip layer beforehand.

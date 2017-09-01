@@ -48,6 +48,10 @@ type GossipChannel interface {
 	// GetPeers returns a list of peers with metadata as published by them
 	GetPeers() []discovery.NetworkMember
 
+	// PeerFilter receives a SubChannelSelectionCriteria and returns a RoutingFilter that selects
+	// only peer identities that match the given criteria
+	PeerFilter(api.SubChannelSelectionCriteria) filter.RoutingFilter
+
 	// IsMemberInChan checks whether the given member is eligible to be in the channel
 	IsMemberInChan(member discovery.NetworkMember) bool
 
@@ -370,6 +374,27 @@ func (gc *gossipChannel) IsMemberInChan(member discovery.NetworkMember) bool {
 	}
 
 	return gc.IsOrgInChannel(org)
+}
+
+// PeerFilter receives a SubChannelSelectionCriteria and returns a RoutingFilter that selects
+// only peer identities that match the given criteria
+func (gc *gossipChannel) PeerFilter(messagePredicate api.SubChannelSelectionCriteria) filter.RoutingFilter {
+	return func(member discovery.NetworkMember) bool {
+		peerIdentity := gc.GetIdentityByPKIID(member.PKIid)
+		if len(peerIdentity) == 0 {
+			return false
+		}
+		msg := gc.stateInfoMsgStore.MembershipStore.MsgByID(member.PKIid)
+		if msg == nil {
+			return false
+		}
+
+		return messagePredicate(api.PeerSignature{
+			Message:      msg.Payload,
+			Signature:    msg.Signature,
+			PeerIdentity: peerIdentity,
+		})
+	}
 }
 
 // IsOrgInChannel returns whether the given organization is in the channel
@@ -722,6 +747,7 @@ func (gc *gossipChannel) UpdateStateInfo(msg *proto.SignedGossipMessage) {
 	if !msg.IsStateInfoMsg() {
 		return
 	}
+
 	gc.Lock()
 	defer gc.Unlock()
 
