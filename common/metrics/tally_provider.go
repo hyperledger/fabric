@@ -7,17 +7,24 @@ SPDX-License-Identifier: Apache-2.0
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"net/http"
+	"sort"
 	"sync"
 	"time"
 
-	"sort"
-
 	"github.com/cactus/go-statsd-client/statsd"
+	"github.com/op/go-logging"
+	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/uber-go/tally"
+	promreporter "github.com/uber-go/tally/prometheus"
 	statsdreporter "github.com/uber-go/tally/statsd"
 )
+
+var logger = logging.MustGetLogger("common/metrics/tally")
 
 var scopeRegistryKey = tally.KeyForPrefixedStringMap
 
@@ -187,11 +194,33 @@ func (s *scope) SubScope(prefix string) Scope {
 
 type statsdReporter struct {
 	reporter tally.StatsReporter
+	statter  statsd.Statter
+}
+
+type promReporter struct {
+	reporter promreporter.Reporter
+	server   *http.Server
+	registry *prom.Registry
 }
 
 func newStatsdReporter(statsd statsd.Statter, opts statsdreporter.Options) tally.StatsReporter {
 	reporter := statsdreporter.NewReporter(statsd, opts)
-	return &statsdReporter{reporter: reporter}
+	return &statsdReporter{reporter: reporter, statter: statsd}
+}
+
+func newPrometheusReporter(opts promreporter.Options) promreporter.Reporter {
+	reporter := promreporter.NewReporter(opts)
+	//TODO:Use config instead of hard code
+	server := &http.Server{Addr: ":8080", Handler: nil}
+	//TODO:Return this error to caller
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			logger.Errorf("Metrics prometheus reporter start failed %s", err)
+		}
+	}()
+	promReporter := &promReporter{reporter: reporter, server: server, registry: opts.Registerer.(*prom.Registry)}
+	http.Handle("/metrics", promReporter.HTTPHandler())
+	return promReporter
 }
 
 func (r *statsdReporter) ReportCounter(name string, tags map[string]string, value int64) {
@@ -242,6 +271,84 @@ func (r *statsdReporter) Tagging() bool {
 
 func (r *statsdReporter) Flush() {
 	// no-op
+}
+
+func (r *statsdReporter) Close() error {
+	return r.statter.Close()
+}
+
+func (r *promReporter) RegisterCounter(
+	name string,
+	tagKeys []string,
+	desc string,
+) (*prom.CounterVec, error) {
+	return r.reporter.RegisterCounter(name, tagKeys, desc)
+}
+
+// AllocateCounter implements tally.CachedStatsReporter.
+func (r *promReporter) AllocateCounter(name string, tags map[string]string) tally.CachedCount {
+	return r.reporter.AllocateCounter(name, tags)
+}
+
+func (r *promReporter) RegisterGauge(
+	name string,
+	tagKeys []string,
+	desc string,
+) (*prom.GaugeVec, error) {
+	return r.reporter.RegisterGauge(name, tagKeys, desc)
+}
+
+// AllocateGauge implements tally.CachedStatsReporter.
+func (r *promReporter) AllocateGauge(name string, tags map[string]string) tally.CachedGauge {
+	return r.reporter.AllocateGauge(name, tags)
+}
+
+func (r *promReporter) RegisterTimer(
+	name string,
+	tagKeys []string,
+	desc string,
+	opts *promreporter.RegisterTimerOptions,
+) (promreporter.TimerUnion, error) {
+	return r.reporter.RegisterTimer(name, tagKeys, desc, opts)
+}
+
+// AllocateTimer implements tally.CachedStatsReporter.
+func (r *promReporter) AllocateTimer(name string, tags map[string]string) tally.CachedTimer {
+	return r.reporter.AllocateTimer(name, tags)
+}
+
+func (r *promReporter) AllocateHistogram(
+	name string,
+	tags map[string]string,
+	buckets tally.Buckets,
+) tally.CachedHistogram {
+	return r.reporter.AllocateHistogram(name, tags, buckets)
+}
+
+func (r *promReporter) Capabilities() tally.Capabilities {
+	return r
+}
+
+func (r *promReporter) Reporting() bool {
+	return true
+}
+
+func (r *promReporter) Tagging() bool {
+	return true
+}
+
+// Flush does nothing for prometheus
+func (r *promReporter) Flush() {
+
+}
+
+func (r *promReporter) Close() error {
+	//TODO: Timeout here?
+	return r.server.Shutdown(context.Background())
+}
+
+func (r *promReporter) HTTPHandler() http.Handler {
+	return promhttp.HandlerFor(r.registry, promhttp.HandlerOpts{})
 }
 
 func (s *scope) fullyQualifiedName(name string) string {

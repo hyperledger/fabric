@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	namespace string = "hyperledger.fabric"
+	namespace string = "hyperledger_fabric"
 )
 
 var rootScope Scope
