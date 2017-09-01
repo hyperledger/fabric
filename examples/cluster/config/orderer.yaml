@@ -222,5 +222,5 @@ Kafka:
         # value of RootCAs.
         #File: path/to/RootCAs
 
-    # Kafka version of the Kafka cluster brokers (defaults to 0.9.0.1)
+    # Kafka version of the Kafka cluster brokers (defaults to 0.10.2.0)
     Version:

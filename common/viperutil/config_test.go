@@ -95,6 +95,7 @@ func TestKafkaVersionDecode(t *testing.T) {
 		{"0.10.0.0", sarama.V0_10_0_0, false},
 		{"0.10.0.1", sarama.V0_10_0_1, false},
 		{"0.10.1.0", sarama.V0_10_1_0, false},
+		{"0.10.2.0", sarama.V0_10_2_0, false},
 		{"Unsupported", sarama.KafkaVersion{}, true},
 	}
 
