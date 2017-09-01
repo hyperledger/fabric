@@ -32,11 +32,11 @@ mspmap.peer3      := $(PEER_PATH)/peer3.org1.net
 mspmap.peer4      := $(PEER_PATH)/peer4.org1.net
 mspmap.cli        := $(USERS_PATH)/Admin@org1.net
 
-COMPOSE=docker-compose -f compose/docker-compose.yaml
-DRUN=$(COMPOSE) run --rm cli
-
+RELEASE ?= latest
+CA_RELEASE ?= $(RELEASE)
+FABRIC_RELEASE ?= $(RELEASE)
+DOCKER_NS ?= hyperledger
 TLS ?= true
-export TLS_ENABLED=$(TLS)
 
 CRYPTOGEN=build/bin/cryptogen
 CONFIGTXGEN=build/bin/configtxgen
@@ -48,15 +48,8 @@ pkgmap.configtxgen    := $(FABRICPKG)/common/configtx/tool/configtxgen
 help:
 	@cat usage.txt
 
-compose-up: nodes
-	@echo "Booting docker-compose environment"
-	$(COMPOSE) up -d $(DAEMONS)
-	$(DRUN) ./configure.sh $(CHANNEL_NAME) "$(CHANNEL_TXNS)" "$(PEERS)" $(TLS)
-	@./compose/report-env.sh "$(DAEMONS)" build/client.config $(TLS)
-
-compose-down:
-	$(COMPOSE) down
-	rm -rf build/nodes $(CRYPTOOUTPUT)
+compose: nodes build/docker-compose.yaml build/compose-up.sh build/configure.sh
+	@echo "Build complete: run 'build/compose-up.sh'"
 
 nodes: $(patsubst %,build/nodes/%,$(NODES))
 
@@ -117,6 +110,29 @@ build/nodes/tlsca: build/nodes/tlsca/fabric-tlsca-server-config.yaml
 build/nodes/%: build/nodes/%/msp build/nodes/%/configtx.yaml build/nodes/%/core.yaml
 	@echo "Built $@"
 
-clean: compose-down
-	rm -rf build
-	rm $(CHANNEL_NAME).block
+build/docker-compose.yaml: compose/docker-compose.yaml.in
+	@mkdir -p $(@D)
+	cat $< \
+		| sed -e 's/_TLS_ENABLED_/${TLS}/g' \
+		| sed -e 's/_DOCKER_NS_/${DOCKER_NS}/g' \
+		| sed -e 's/_CA_RELEASE_/${CA_RELEASE}/g' \
+		| sed -e 's/_FABRIC_RELEASE_/${FABRIC_RELEASE}/g' \
+		> $@
+
+build/compose-up.sh: compose/compose-up.sh.in
+	@mkdir -p $(@D)
+	cat $< \
+		| sed -e 's/_COMPOSE_DAEMONS_/${DAEMONS}/g' \
+		| sed -e 's/_COMPOSE_CHANNEL_NAME_/${CHANNEL_NAME}/g' \
+		| sed -e 's/_COMPOSE_PEERS_/${PEERS}/g' \
+		| sed -e 's/_COMPOSE_NODES_/${NODES}/g' \
+		| sed -e 's/_COMPOSE_TLS_/${TLS}/g' \
+		> $@
+	chmod +x $@
+
+build/configure.sh: compose/configure.sh.in
+	cp $< $@
+
+clean:
+	-rm -rf build
+	-rm $(CHANNEL_NAME).block
