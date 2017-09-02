@@ -119,6 +119,12 @@ message GossipMessage {
         PeerIdentity peer_identity = 21;
 
         Acknowledgement ack = 22;
+
+        // Used to request private data
+        RemotePvtDataRequest privateReq = 23;
+
+        // Used to respond to private data requests
+        RemotePvtDataResponse privateRes = 24;
     }
 }
 
@@ -298,13 +304,27 @@ message RemoteStateResponse {
 // RemotePrivateDataRequest message used to request
 // missing private rwset
 message RemotePvtDataRequest {
-    repeated string digest = 1;
+    repeated PvtDataDigest digests = 1;
+}
+
+// PvtDataDigest defines a digest of private data
+message PvtDataDigest {
+    string tx_id = 1;
+    string collection = 2;
+    uint64 block_seq = 3;
+    uint64 seq_in_block = 4;
 }
 
 // RemotePrivateData message to response on private
 // data replication request
 message RemotePvtDataResponse {
-    repeated PrivatePayload payloads = 1;
+    repeated PvtDataElement elements = 1;
+}
+
+message PvtDataElement {
+    PvtDataDigest digest = 1;
+    // the payload is a marshaled kvrwset.KVRWSet
+    repeated bytes payload = 2;
 }
 
 // PvtPayload augments private rwset data and tx index
