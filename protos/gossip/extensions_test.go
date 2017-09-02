@@ -673,21 +673,6 @@ func TestGossipMessageLeadershipMessageTagType(t *testing.T) {
 	assert.Error(t, msg.IsTagLegal())
 }
 
-func TestConnectionInfo_IsAuthenticated(t *testing.T) {
-	connInfo := &ConnectionInfo{
-		ID: common.PKIidType("peerID"),
-	}
-
-	assert.False(t, connInfo.IsAuthenticated())
-
-	connInfo = &ConnectionInfo{
-		ID:   common.PKIidType("peerID"),
-		Auth: &AuthInfo{},
-	}
-
-	assert.True(t, connInfo.IsAuthenticated())
-}
-
 func TestGossipMessageSign(t *testing.T) {
 	idSigner := func(msg []byte) ([]byte, error) {
 		return msg, nil

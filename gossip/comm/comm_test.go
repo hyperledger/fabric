@@ -203,7 +203,6 @@ func TestHandshake(t *testing.T) {
 		assert.Equal(t, expectedPKIID, msg.GetConnectionInfo().ID)
 		assert.Equal(t, api.PeerIdentityType(endpoint), msg.GetConnectionInfo().Identity)
 		assert.NotNil(t, msg.GetConnectionInfo().Auth)
-		assert.True(t, msg.GetConnectionInfo().IsAuthenticated())
 		sig, _ := (&naiveSecProvider{}).Sign(msg.GetConnectionInfo().Auth.SignedData)
 		assert.Equal(t, sig, msg.GetConnectionInfo().Auth.Signature)
 	}
@@ -230,8 +229,8 @@ func TestHandshake(t *testing.T) {
 	}
 	assert.Equal(t, common.PKIidType("localhost:9608"), msg.GetConnectionInfo().ID)
 	assert.Equal(t, api.PeerIdentityType("localhost:9608"), msg.GetConnectionInfo().Identity)
-	assert.Nil(t, msg.GetConnectionInfo().Auth)
-	assert.False(t, msg.GetConnectionInfo().IsAuthenticated())
+	sig, _ := (&naiveSecProvider{}).Sign(msg.GetConnectionInfo().Auth.SignedData)
+	assert.Equal(t, sig, msg.GetConnectionInfo().Auth.Signature)
 
 	inst.Stop()
 	s.Stop()

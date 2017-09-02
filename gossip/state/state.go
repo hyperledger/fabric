@@ -175,11 +175,6 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 		if !msg.IsRemoteStateMessage() {
 			return false
 		}
-		// If we're not running with authentication, no point
-		// in enforcing access control
-		if !receivedMsg.GetConnectionInfo().IsAuthenticated() {
-			return true
-		}
 		connInfo := receivedMsg.GetConnectionInfo()
 		authErr := services.VerifyByChannel(msg.Channel, connInfo.Identity, connInfo.Auth.Signature, connInfo.Auth.SignedData)
 		if authErr != nil {

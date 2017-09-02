@@ -405,20 +405,10 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 	remoteCertHash := extractCertificateHashFromContext(ctx)
 	var err error
 	var cMsg *proto.SignedGossipMessage
-	var signer proto.Signer
 	useTLS := c.selfCertHash != nil
 
-	// If TLS is enabled, sign the connection message in order to bind
-	// the TLS session to the peer's identity
-	if useTLS {
-		signer = func(msg []byte) ([]byte, error) {
-			return c.idMapper.Sign(msg)
-		}
-	} else { // If we don't use TLS, we have no unique text to sign,
-		//  so don't sign anything
-		signer = func(msg []byte) ([]byte, error) {
-			return msg, nil
-		}
+	signer := func(msg []byte) ([]byte, error) {
+		return c.idMapper.Sign(msg)
 	}
 
 	// TLS enabled but not detected on other side
@@ -461,6 +451,10 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 		ID:       receivedMsg.PkiId,
 		Identity: receivedMsg.Identity,
 		Endpoint: remoteAddress,
+		Auth: &proto.AuthInfo{
+			Signature:  m.Signature,
+			SignedData: m.Payload,
+		},
 	}
 
 	// if TLS is enabled and detected, verify remote peer
@@ -470,19 +464,16 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 		if !bytes.Equal(remoteCertHash, receivedMsg.TlsCertHash) {
 			return nil, errors.Errorf("Expected %v in remote hash of TLS cert, but got %v", remoteCertHash, receivedMsg.TlsCertHash)
 		}
-		verifier := func(peerIdentity []byte, signature, message []byte) error {
-			pkiID := c.idMapper.GetPKIidOfCert(api.PeerIdentityType(peerIdentity))
-			return c.idMapper.Verify(pkiID, signature, message)
-		}
-		err = m.Verify(receivedMsg.Identity, verifier)
-		if err != nil {
-			c.logger.Errorf("Failed verifying signature from %s : %v", remoteAddress, err)
-			return nil, err
-		}
-		connInfo.Auth = &proto.AuthInfo{
-			Signature:  m.Signature,
-			SignedData: m.Payload,
-		}
+	}
+	// Final step - verify the signature on the connection message itself
+	verifier := func(peerIdentity []byte, signature, message []byte) error {
+		pkiID := c.idMapper.GetPKIidOfCert(api.PeerIdentityType(peerIdentity))
+		return c.idMapper.Verify(pkiID, signature, message)
+	}
+	err = m.Verify(receivedMsg.Identity, verifier)
+	if err != nil {
+		c.logger.Errorf("Failed verifying signature from %s : %v", remoteAddress, err)
+		return nil, err
 	}
 
 	c.logger.Debug("Authenticated", remoteAddress)

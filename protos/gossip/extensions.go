@@ -345,12 +345,6 @@ func (c *ConnectionInfo) String() string {
 	return fmt.Sprintf("%s %v", c.Endpoint, c.ID)
 }
 
-// IsAuthenticated returns whether the connection to the remote peer
-// was authenticated when the handshake took place
-func (c *ConnectionInfo) IsAuthenticated() bool {
-	return c.Auth != nil
-}
-
 // AuthInfo represents the authentication
 // data that was provided by the remote peer
 // at the connection time
