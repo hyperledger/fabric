@@ -9,7 +9,7 @@ package msgprocessor
 import (
 	"fmt"
 
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -89,7 +89,7 @@ func (scf *SystemChainFilter) Apply(env *cb.Envelope) error {
 	return scf.authorizeAndInspect(configTx)
 }
 
-func (scf *SystemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) (configtxapi.Manager, error) {
+func (scf *SystemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) (*cb.ConfigEnvelope, error) {
 	if configEnvelope.LastUpdate == nil {
 		return nil, fmt.Errorf("updated config does not include a config update")
 	}
@@ -104,23 +104,12 @@ func (scf *SystemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) (conf
 		return nil, fmt.Errorf("error proposing channel update to new channel config: %s", err)
 	}
 
-	err = configManager.Apply(newChannelConfigEnv)
+	err = configManager.Validate(newChannelConfigEnv)
 	if err != nil {
 		return nil, fmt.Errorf("error applying channel update to new channel config: %s", err)
 	}
 
-	return configManager, nil
-}
-
-func (scf *SystemChainFilter) inspect(proposedManager, configManager configtxapi.Manager) error {
-	proposedEnv := proposedManager.ConfigEnvelope()
-	actualEnv := configManager.ConfigEnvelope()
-
-	// reflect.DeepEqual will not work here, because it considers nil and empty maps as unequal
-	if !proto.Equal(proposedEnv.Config, actualEnv.Config) {
-		return fmt.Errorf("config proposed by the channel creation request did not match the config received with the channel creation request")
-	}
-	return nil
+	return newChannelConfigEnv, nil
 }
 
 func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
@@ -150,16 +139,21 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	}
 
 	// Make sure that the config was signed by the appropriate authorized entities
-	proposedManager, err := scf.authorize(configEnvelope)
+	proposedEnv, err := scf.authorize(configEnvelope)
 	if err != nil {
 		return err
 	}
 
-	configManager, err := channelconfig.New(configTx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create config manager and handlers: %s", err)
+	// reflect.DeepEqual will not work here, because it considers nil and empty maps as unequal
+	if !proto.Equal(proposedEnv.Config, configEnvelope.Config) {
+		return fmt.Errorf("config proposed by the channel creation request did not match the config received with the channel creation request")
 	}
 
-	// Make sure that the config does not modify any of the orderer
-	return scf.inspect(proposedManager, configManager)
+	// Make sure the config can be parsed into a bundle
+	_, err = channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config)
+	if err != nil {
+		return fmt.Errorf("failed to create config bundle: %s", err)
+	}
+
+	return nil
 }

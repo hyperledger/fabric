@@ -25,44 +25,45 @@ import (
 )
 
 type implicitMetaPolicy struct {
-	conf        *cb.ImplicitMetaPolicy
 	threshold   int
 	subPolicies []Policy
 }
 
 // NewPolicy creates a new policy based on the policy bytes
-func newImplicitMetaPolicy(data []byte) (*implicitMetaPolicy, error) {
-	imp := &cb.ImplicitMetaPolicy{}
-	if err := proto.Unmarshal(data, imp); err != nil {
+func newImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*implicitMetaPolicy, error) {
+	definition := &cb.ImplicitMetaPolicy{}
+	if err := proto.Unmarshal(data, definition); err != nil {
 		return nil, fmt.Errorf("Error unmarshaling to ImplicitMetaPolicy: %s", err)
 	}
 
-	return &implicitMetaPolicy{
-		conf: imp,
-	}, nil
-}
+	subPolicies := make([]Policy, len(managers))
 
-func (imp *implicitMetaPolicy) initialize(config *policyConfig) {
-	imp.subPolicies = make([]Policy, len(config.managers))
 	i := 0
-	for _, manager := range config.managers {
-		imp.subPolicies[i], _ = manager.GetPolicy(imp.conf.SubPolicy)
+	for _, manager := range managers {
+		subPolicies[i], _ = manager.GetPolicy(definition.SubPolicy)
 		i++
 	}
 
-	switch imp.conf.Rule {
+	var threshold int
+
+	switch definition.Rule {
 	case cb.ImplicitMetaPolicy_ANY:
-		imp.threshold = 1
+		threshold = 1
 	case cb.ImplicitMetaPolicy_ALL:
-		imp.threshold = len(imp.subPolicies)
+		threshold = len(subPolicies)
 	case cb.ImplicitMetaPolicy_MAJORITY:
-		imp.threshold = len(imp.subPolicies)/2 + 1
+		threshold = len(subPolicies)/2 + 1
 	}
 
 	// In the special case that there are no policies, consider 0 to be a majority or any
-	if len(imp.subPolicies) == 0 {
-		imp.threshold = 0
+	if len(subPolicies) == 0 {
+		threshold = 0
 	}
+
+	return &implicitMetaPolicy{
+		subPolicies: subPolicies,
+		threshold:   threshold,
+	}, nil
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy

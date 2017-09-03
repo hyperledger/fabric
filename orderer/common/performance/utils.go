@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/localmsp"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/msp"

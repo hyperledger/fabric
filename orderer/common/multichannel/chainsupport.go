@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
@@ -20,7 +19,6 @@ import (
 // ChainSupport holds the resources for a particular channel.
 type ChainSupport struct {
 	*ledgerResources
-	configtxapi.Manager
 	msgprocessor.Processor
 	*BlockWriter
 	consensus.Chain
@@ -49,7 +47,6 @@ func newChainSupport(
 		ledgerResources: ledgerResources,
 		LocalSigner:     signer,
 		cutter:          blockcutter.NewReceiverImpl(ledgerResources.SharedConfig()),
-		Manager:         ledgerResources.ConfigtxManager(),
 	}
 
 	// Set up the msgprocessor
@@ -91,4 +88,37 @@ func (cs *ChainSupport) start() {
 // BlockCutter returns the blockcutter.Receiver instance for this channel.
 func (cs *ChainSupport) BlockCutter() blockcutter.Receiver {
 	return cs.cutter
+}
+
+// Validate passes through to the underlying configtxapi.Manager
+func (cs *ChainSupport) Validate(configEnv *cb.ConfigEnvelope) error {
+	return cs.ConfigtxManager().Validate(configEnv)
+}
+
+// ProposeConfigUpdate passes through to the underlying configtxapi.Manager
+func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
+	env, err := cs.ConfigtxManager().ProposeConfigUpdate(configtx)
+	if err != nil {
+		return nil, err
+	}
+	bundle, err := cs.CreateBundle(cs.ChainID(), env.Config)
+	if err != nil {
+		return nil, err
+	}
+	return env, cs.ValidateNew(bundle)
+}
+
+// ChainID passes through to the underlying configtxapi.Manager
+func (cs *ChainSupport) ChainID() string {
+	return cs.ConfigtxManager().ChainID()
+}
+
+// ConfigEnvelope passes through to the underlying configtxapi.Manager
+func (cs *ChainSupport) ConfigEnvelope() *cb.ConfigEnvelope {
+	return cs.ConfigtxManager().ConfigEnvelope()
+}
+
+// Sequence passes through to the underlying configtxapi.Manager
+func (cs *ChainSupport) Sequence() uint64 {
+	return cs.ConfigtxManager().Sequence()
 }

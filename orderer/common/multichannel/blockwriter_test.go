@@ -19,6 +19,7 @@ package multichannel
 import (
 	"testing"
 
+	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
@@ -32,6 +33,12 @@ type mockBlockWriterSupport struct {
 	*mockconfigtx.Manager
 	crypto.LocalSigner
 	ledger.ReadWriter
+}
+
+func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {}
+
+func (mbws mockBlockWriterSupport) CreateBundle(channelID string, config *cb.Config) (*newchannelconfig.Bundle, error) {
+	return nil, nil
 }
 
 func TestCreateBlock(t *testing.T) {

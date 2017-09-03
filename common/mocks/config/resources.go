@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -34,6 +34,9 @@ type Resources struct {
 
 	// MSPManagerVal is returned as the result of MSPManager()
 	MSPManagerVal msp.MSPManager
+
+	// ValidateNewErr is returned as the result of ValidateNew
+	ValidateNewErr error
 }
 
 // ConfigtxMangaer returns ConfigtxManagerVal
@@ -68,4 +71,9 @@ func (r *Resources) ConsortiumsConfig() (channelconfig.Consortiums, bool) {
 // Returns the MSPManagerVal
 func (r *Resources) MSPManager() msp.MSPManager {
 	return r.MSPManagerVal
+}
+
+// ValidateNew returns ValidateNewErr
+func (r *Resources) ValidateNew(res channelconfig.Resources) error {
+	return r.ValidateNewErr
 }

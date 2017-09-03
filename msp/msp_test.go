@@ -140,9 +140,9 @@ func TestMSPSetupBad(t *testing.T) {
 
 	mgr := NewMSPManager()
 	err = mgr.Setup(nil)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	err = mgr.Setup([]MSP{})
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
 func TestDoubleSetup(t *testing.T) {

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package consensus
 
 import (
-	"github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
@@ -79,7 +79,7 @@ type ConsenterSupport interface {
 	BlockCutter() blockcutter.Receiver
 
 	// SharedConfig provides the shared config from the channel's current config block.
-	SharedConfig() config.Orderer
+	SharedConfig() channelconfig.Orderer
 
 	// CreateNextBlock takes a list of messages and creates the next block based on the block with highest block number committed to the ledger
 	// Note that either WriteBlock or WriteConfigBlock must be called before invoking this method a second time.

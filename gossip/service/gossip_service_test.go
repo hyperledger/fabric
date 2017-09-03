@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
@@ -756,7 +756,7 @@ func TestChannelConfig(t *testing.T) {
 
 	mc := &mockConfig{
 		sequence: 1,
-		orgs: map[string]config.ApplicationOrg{
+		orgs: map[string]channelconfig.ApplicationOrg{
 			string(orgInChannelA): &appGrp{
 				mspID:       string(orgInChannelA),
 				anchorPeers: []*peer.AnchorPeer{},

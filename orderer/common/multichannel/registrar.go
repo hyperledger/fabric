@@ -12,7 +12,8 @@ package multichannel
 import (
 	"fmt"
 
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
@@ -32,8 +33,22 @@ const (
 	epoch      = 0
 )
 
-type configResources struct {
+type mutableResources interface {
 	channelconfig.Resources
+	Update(*channelconfig.Bundle)
+}
+
+type configResources struct {
+	mutableResources
+}
+
+func (cr *configResources) CreateBundle(channelID string, config *cb.Config) (*channelconfig.Bundle, error) {
+	return channelconfig.NewBundle(channelID, config)
+}
+
+func (cr *configResources) Update(bndl *channelconfig.Bundle) {
+	channelconfig.LogSanityChecks(bndl)
+	cr.mutableResources.Update(bndl)
 }
 
 func (cr *configResources) SharedConfig() channelconfig.Orderer {
@@ -186,20 +201,38 @@ func (r *Registrar) GetChain(chainID string) (*ChainSupport, bool) {
 }
 
 func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
-	configManager, err := channelconfig.New(configTx, nil)
+	payload, err := utils.UnmarshalPayload(configTx.Payload)
 	if err != nil {
-		logger.Panicf("Error creating configtx manager and handlers: %s", err)
+		logger.Panicf("Error umarshaling envelope to payload: %s", err)
 	}
 
-	chainID := configManager.ChainID()
+	if payload.Header == nil {
+		logger.Panicf("Missing channel header: %s", err)
+	}
 
-	ledger, err := r.ledgerFactory.GetOrCreate(chainID)
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
-		logger.Panicf("Error getting ledger for %s", chainID)
+		logger.Panicf("Error unmarshaling channel header: %s", err)
+	}
+
+	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	if err != nil {
+		logger.Panicf("Error umarshaling config envelope from payload data: %s", err)
+	}
+
+	bundle, err := channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config)
+	if err != nil {
+		logger.Panicf("Error creating channelconfig bundle: %s", err)
+	}
+	channelconfig.LogSanityChecks(bundle)
+
+	ledger, err := r.ledgerFactory.GetOrCreate(chdr.ChannelId)
+	if err != nil {
+		logger.Panicf("Error getting ledger for %s", chdr.ChannelId)
 	}
 
 	return &ledgerResources{
-		configResources: &configResources{Resources: configManager},
+		configResources: &configResources{mutableResources: channelconfig.NewBundleSource(bundle)},
 		ReadWriter:      ledger,
 	}
 }

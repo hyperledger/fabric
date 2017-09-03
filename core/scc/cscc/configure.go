@@ -26,7 +26,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -175,10 +175,10 @@ func validateConfigBlock(block *common.Block) error {
 		return errors.New("No channel configuration groups are available")
 	}
 
-	_, exists := configEnv.Config.ChannelGroup.Groups[config.ApplicationGroupKey]
+	_, exists := configEnv.Config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey]
 	if !exists {
 		return errors.New(fmt.Sprintf("Invalid configuration block, missing %s "+
-			"configuration group", config.ApplicationGroupKey))
+			"configuration group", channelconfig.ApplicationGroupKey))
 	}
 
 	return nil

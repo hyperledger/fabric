@@ -23,7 +23,7 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	localsigner "github.com/hyperledger/fabric/common/localmsp"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"

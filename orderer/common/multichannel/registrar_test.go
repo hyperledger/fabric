@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"

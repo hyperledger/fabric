@@ -11,7 +11,7 @@ import (
 	"net"
 	"sync"
 
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -44,8 +44,13 @@ var peerServer comm.GRPCServer
 // singleton instance to manage CAs for the peer across channel config changes
 var rootCASupport = comm.GetCASupport()
 
-type chainSupport struct {
+type gossipSupport struct {
+	channelconfig.Application
 	configtxapi.Manager
+}
+
+type chainSupport struct {
+	bundleSource *channelconfig.BundleSource
 	channelconfig.Resources
 	channelconfig.Application
 	ledger ledger.PeerLedger
@@ -65,6 +70,30 @@ func (sp *storeProvider) OpenStore(ledgerID string) (transientstore.Store, error
 		sp.StoreProvider = transientstore.NewStoreProvider()
 	}
 	return sp.StoreProvider.OpenStore(ledgerID)
+}
+
+func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
+	err := cs.ConfigtxManager().Validate(configtx)
+	if err != nil {
+		return err
+	}
+
+	// If the chainSupport is being mocked, this field will be nil
+	if cs.bundleSource != nil {
+		bundle, err := channelconfig.NewBundle(cs.ConfigtxManager().ChainID(), configtx.Config)
+		if err != nil {
+			return err
+		}
+
+		channelconfig.LogSanityChecks(bundle)
+
+		err = cs.bundleSource.ValidateNew(bundle)
+		if err != nil {
+			return err
+		}
+		cs.bundleSource.Update(bundle)
+	}
+	return nil
 }
 
 func (cs *chainSupport) Ledger() ledger.PeerLedger {
@@ -186,17 +215,23 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return err
 	}
 
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig)
+	if err != nil {
+		return err
+	}
+
+	channelconfig.LogSanityChecks(bundle)
+
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 
-	gossipCallbackWrapper := func(channelConf *channelconfig.Initializer) {
-		ac, ok := channelConf.ApplicationConfig()
+	gossipCallbackWrapper := func(bundle *channelconfig.Bundle) {
+		ac, ok := bundle.ApplicationConfig()
 		if !ok {
 			// TODO, handle a missing ApplicationConfig more gracefully
 			ac = nil
 		}
-		gossipEventer.ProcessConfigUpdate(&chainSupport{
-			Resources:   channelConf,
-			Manager:     channelConf.ConfigtxManager(),
+		gossipEventer.ProcessConfigUpdate(&gossipSupport{
+			Manager:     bundle.ConfigtxManager(),
 			Application: ac,
 		})
 		service.GetGossipService().SuspectPeers(func(identity api.PeerIdentityType) bool {
@@ -208,31 +243,41 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		})
 	}
 
-	trustedRootsCallbackWrapper := func(channelConf *channelconfig.Initializer) {
-		updateTrustedRoots(channelConf)
+	trustedRootsCallbackWrapper := func(bundle *channelconfig.Bundle) {
+		updateTrustedRoots(bundle)
 	}
 
-	configtxManager, err := channelconfig.New(
-		envelopeConfig,
-		[]func(channelConf *channelconfig.Initializer){gossipCallbackWrapper, trustedRootsCallbackWrapper},
-	)
-	if err != nil {
-		return err
+	mspCallback := func(bundle *channelconfig.Bundle) {
+		// TODO remove once all references to mspmgmt are gone from peer code
+		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
-	// TODO remove once all references to mspmgmt are gone from peer code
-	mspmgmt.XXXSetMSPManager(cid, configtxManager.MSPManager())
-
-	ac, ok := configtxManager.ApplicationConfig()
+	ac, ok := bundle.ApplicationConfig()
 	if !ok {
 		ac = nil
 	}
 	cs := &chainSupport{
-		Manager:     configtxManager,
-		Resources:   configtxManager,
 		Application: ac, // TODO, refactor as this is accessible through Manager
 		ledger:      ledger,
 	}
+
+	peerSingletonCallback := func(bundle *channelconfig.Bundle) {
+		ac, ok := bundle.ApplicationConfig()
+		if !ok {
+			ac = nil
+		}
+		cs.Application = ac
+	}
+
+	bundleSource := channelconfig.NewBundleSource(
+		bundle,
+		gossipCallbackWrapper,
+		trustedRootsCallbackWrapper,
+		mspCallback,
+		peerSingletonCallback,
+	)
+	cs.Resources = bundleSource
+	cs.bundleSource = bundleSource
 
 	c := committer.NewLedgerCommitterReactive(ledger, txvalidator.NewTxValidator(cs), func(block *common.Block) error {
 		chainID, err := utils.GetChainIDFromBlock(block)
@@ -242,16 +287,17 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return SetCurrConfigBlock(block, chainID)
 	})
 
-	ordererAddresses := configtxManager.ChannelConfig().OrdererAddresses()
+	ordererAddresses := bundle.ChannelConfig().OrdererAddresses()
 	if len(ordererAddresses) == 0 {
 		return errors.New("No ordering service endpoint provided in configuration block")
 	}
+
 	// TODO: does someone need to call Close() on the transientStoreFactory at shutdown of the peer?
-	store, err := transientStoreFactory.OpenStore(cs.ChainID())
+	store, err := transientStoreFactory.OpenStore(bundle.ConfigtxManager().ChainID())
 	if err != nil {
-		return errors.Wrapf(err, "Failed opening transient store for %s", cs.ChainID())
+		return errors.Wrapf(err, "Failed opening transient store for %s", bundle.ConfigtxManager().ChainID())
 	}
-	service.GetGossipService().InitializeChannel(cs.ChainID(), c, store, ordererAddresses)
+	service.GetGossipService().InitializeChannel(bundle.ConfigtxManager().ChainID(), c, store, ordererAddresses)
 
 	chains.Lock()
 	defer chains.Unlock()
@@ -260,6 +306,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		cb:        cb,
 		committer: c,
 	}
+
 	return nil
 }
 
@@ -291,29 +338,17 @@ func MockCreateChain(cid string) error {
 		}
 	}
 
-	// Here we need to mock also the policy manager
-	// in order for the ACL to be checked
-	initializer := mockconfigtx.Initializer{
-		PolicyProposerVal: &mockconfigtx.PolicyProposer{
-			Transactional: mockconfigtx.Transactional{},
-		},
-		ValueProposerVal: &mockconfigtx.ValueProposer{
-			Transactional: mockconfigtx.Transactional{},
-		},
-	}
-	manager := &mockconfigtx.Manager{
-		Initializer: initializer,
-	}
-
 	chains.Lock()
 	defer chains.Unlock()
 
 	chains.list[cid] = &chain{
 		cs: &chainSupport{
-			Manager: manager,
 			Resources: &mockchannelconfig.Resources{
 				PolicyManagerVal: &mockpolicies.Manager{
 					Policy: &mockpolicies.Policy{},
+				},
+				ConfigtxManagerVal: &mockconfigtx.Manager{
+					Initializer: mockconfigtx.Initializer{},
 				},
 			},
 			ledger: ledger},

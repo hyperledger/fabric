@@ -9,13 +9,13 @@ package policies
 import (
 	"fmt"
 	"strings"
-	"sync"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/flogging"
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -67,25 +67,6 @@ type Manager interface {
 	Manager(path []string) (Manager, bool)
 }
 
-// Proposer is the interface used by the configtx manager for policy management
-type Proposer interface {
-	// BeginPolicyProposals starts a policy update transaction
-	BeginPolicyProposals(tx interface{}, groups []string) ([]Proposer, error)
-
-	// ProposePolicy createss a pending policy update from a ConfigPolicy and returns the deserialized
-	// value of the Policy representation
-	ProposePolicy(tx interface{}, name string, policy *cb.ConfigPolicy) (proto.Message, error)
-
-	// RollbackProposals discards the pending policy updates
-	RollbackProposals(tx interface{})
-
-	// CommitProposals commits the pending policy updates
-	CommitProposals(tx interface{})
-
-	// PreCommit tests if a commit will apply
-	PreCommit(tx interface{}) error
-}
-
 // Provider provides the backing implementation of a policy
 type Provider interface {
 	// NewPolicy creates a new policy based on the policy bytes
@@ -100,43 +81,75 @@ type ChannelPolicyManagerGetter interface {
 	Manager(channelID string) (Manager, bool)
 }
 
-type policyConfig struct {
-	policies map[string]Policy
-	managers map[string]*ManagerImpl
-	imps     []*implicitMetaPolicy
-}
-
 // ManagerImpl is an implementation of Manager and configtx.ConfigHandler
 // In general, it should only be referenced as an Impl for the configtx.ConfigManager
 type ManagerImpl struct {
-	parent        *ManagerImpl
-	basePath      string // The group level path
-	fqPrefix      string // If this manager is treated as the root, the fully qualified prefix for policy names
-	fqPath        string // The true absolute path, taking parents into consideration
-	providers     map[int32]Provider
-	config        *policyConfig
-	pendingConfig map[interface{}]*policyConfig
-	pendingLock   sync.RWMutex
+	path     string // The group level path
+	policies map[string]Policy
+	managers map[string]*ManagerImpl
 }
 
 // NewManagerImpl creates a new ManagerImpl with the given CryptoHelper
-func NewManagerImpl(basePath string, providers map[int32]Provider) *ManagerImpl {
+func NewManagerImpl(path string, providers map[int32]Provider, root *cb.ConfigGroup) (*ManagerImpl, error) {
+	var err error
 	_, ok := providers[int32(cb.Policy_IMPLICIT_META)]
 	if ok {
 		logger.Panicf("ImplicitMetaPolicy type must be provider by the policy manager")
 	}
 
-	return &ManagerImpl{
-		basePath:  basePath,
-		fqPrefix:  PathSeparator + basePath + PathSeparator,
-		fqPath:    PathSeparator + basePath, // Overridden after construction in the sub-manager case
-		providers: providers,
-		config: &policyConfig{
-			policies: make(map[string]Policy),
-			managers: make(map[string]*ManagerImpl),
-		},
-		pendingConfig: make(map[interface{}]*policyConfig),
+	managers := make(map[string]*ManagerImpl)
+
+	for groupName, group := range root.Groups {
+		managers[groupName], err = NewManagerImpl(path+PathSeparator+groupName, providers, group)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	policies := make(map[string]Policy)
+	for policyName, configPolicy := range root.Policies {
+		policy := configPolicy.Policy
+		if policy == nil {
+			return nil, fmt.Errorf("policy %s at path %s was nil", policyName, path)
+		}
+
+		var cPolicy Policy
+
+		if policy.Type == int32(cb.Policy_IMPLICIT_META) {
+			imp, err := newImplicitMetaPolicy(policy.Value, managers)
+			if err != nil {
+				return nil, errors.Wrapf(err, "implicit policy %s at path %s did not compile", policyName, path)
+			}
+			cPolicy = imp
+		} else {
+			provider, ok := providers[int32(policy.Type)]
+			if !ok {
+				return nil, fmt.Errorf("policy %s at path %s has unknown policy type: %v", policyName, path, policy.Type)
+			}
+
+			var err error
+			cPolicy, _, err = provider.NewPolicy(policy.Value)
+			if err != nil {
+				return nil, errors.Wrapf(err, "policy %s at path %s did not compile", policyName, path)
+			}
+		}
+
+		policies[policyName] = cPolicy
+
+		logger.Debugf("Proposed new policy %s for %s", policyName, path)
+	}
+
+	for groupName, manager := range managers {
+		for policyName, policy := range manager.policies {
+			policies[groupName+PathSeparator+policyName] = policy
+		}
+	}
+
+	return &ManagerImpl{
+		path:     path,
+		policies: policies,
+		managers: managers,
+	}, nil
 }
 
 type rejectPolicy string
@@ -145,28 +158,17 @@ func (rp rejectPolicy) Evaluate(signedData []*cb.SignedData) error {
 	return fmt.Errorf("No such policy type: %s", rp)
 }
 
-// Basepath returns the basePath the manager was instantiated with
-func (pm *ManagerImpl) BasePath() string {
-	return pm.basePath
-}
-
-func (pm *ManagerImpl) PolicyNames() []string {
-	policyNames := make([]string, len(pm.config.policies))
-	i := 0
-	for policyName := range pm.config.policies {
-		policyNames[i] = policyName
-		i++
-	}
-	return policyNames
-}
-
 // Manager returns the sub-policy manager for a given path and whether it exists
 func (pm *ManagerImpl) Manager(path []string) (Manager, bool) {
+	logger.Debugf("Manager %s looking up path %v", pm.path, path)
+	for manager := range pm.managers {
+		logger.Debugf("Manager %s has managers %s", pm.path, manager)
+	}
 	if len(path) == 0 {
 		return pm, true
 	}
 
-	m, ok := pm.config.managers[path[0]]
+	m, ok := pm.managers[path[0]]
 	if !ok {
 		return nil, false
 	}
@@ -183,148 +185,27 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 	var relpath string
 
 	if strings.HasPrefix(id, PathSeparator) {
-		if pm.parent != nil {
-			return pm.parent.GetPolicy(id)
-		}
-		if !strings.HasPrefix(id, pm.fqPrefix) {
+		if !strings.HasPrefix(id, PathSeparator+pm.path) {
 			if logger.IsEnabledFor(logging.DEBUG) {
-				logger.Debugf("Requested policy from root manager with wrong basePath: %s, returning rejectAll", id)
+				logger.Debugf("Requested absolute policy %s from %s, returning rejectAll", id, pm.path)
 			}
 			return rejectPolicy(id), false
 		}
-		relpath = id[len(pm.fqPrefix):]
+		// strip off the leading slash, the path, and the trailing slash
+		relpath = id[1+len(pm.path)+1:]
 	} else {
 		relpath = id
 	}
 
-	policy, ok := pm.config.policies[relpath]
+	policy, ok := pm.policies[relpath]
 	if !ok {
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Returning dummy reject all policy because %s could not be found in /%s/%s", id, pm.basePath, relpath)
+			logger.Debugf("Returning dummy reject all policy because %s could not be found in %s/%s", id, pm.path, relpath)
 		}
 		return rejectPolicy(relpath), false
 	}
 	if logger.IsEnabledFor(logging.DEBUG) {
-		logger.Debugf("Returning policy %s from manager %s for evaluation", relpath, pm.fqPath)
+		logger.Debugf("Returning policy %s from manager %s for evaluation", relpath, pm.path)
 	}
 	return policy, true
-}
-
-// BeginPolicies is used to start a new config proposal
-func (pm *ManagerImpl) BeginPolicyProposals(tx interface{}, groups []string) ([]Proposer, error) {
-	pm.pendingLock.Lock()
-	defer pm.pendingLock.Unlock()
-	pendingConfig, ok := pm.pendingConfig[tx]
-	if ok {
-		logger.Panicf("Serious Programming error: cannot call begin multiply for the same proposal")
-	}
-
-	pendingConfig = &policyConfig{
-		policies: make(map[string]Policy),
-		managers: make(map[string]*ManagerImpl),
-	}
-	pm.pendingConfig[tx] = pendingConfig
-
-	managers := make([]Proposer, len(groups))
-	for i, group := range groups {
-		newManager := NewManagerImpl(group, pm.providers)
-		newManager.parent = pm
-		mi := newManager
-		var fqPath []string
-		for mi != nil {
-			fqPath = append([]string{PathSeparator, mi.basePath}, fqPath...)
-			mi = mi.parent
-		}
-		newManager.fqPath = strings.Join(fqPath, "")
-		pendingConfig.managers[group] = newManager
-		managers[i] = newManager
-	}
-	return managers, nil
-}
-
-// RollbackProposals is used to abandon a new config proposal
-func (pm *ManagerImpl) RollbackProposals(tx interface{}) {
-	pm.pendingLock.Lock()
-	defer pm.pendingLock.Unlock()
-	delete(pm.pendingConfig, tx)
-}
-
-// PreCommit is currently a no-op for the policy manager and always returns nil
-func (pm *ManagerImpl) PreCommit(tx interface{}) error {
-	return nil
-}
-
-// CommitProposals is used to commit a new config proposal
-func (pm *ManagerImpl) CommitProposals(tx interface{}) {
-	pm.pendingLock.Lock()
-	defer pm.pendingLock.Unlock()
-	pendingConfig, ok := pm.pendingConfig[tx]
-	if !ok {
-		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
-	}
-
-	if pendingConfig == nil {
-		logger.Panicf("Programming error, cannot call commit without an existing proposal")
-	}
-
-	for managerPath, m := range pendingConfig.managers {
-		for _, policyName := range m.PolicyNames() {
-			fqKey := managerPath + PathSeparator + policyName
-			pendingConfig.policies[fqKey], _ = m.GetPolicy(policyName)
-			logger.Debugf("In commit adding relative sub-policy %s to %s", fqKey, pm.basePath)
-		}
-	}
-
-	// Now that all the policies are present, initialize the meta policies
-	for _, imp := range pendingConfig.imps {
-		imp.initialize(pendingConfig)
-	}
-
-	pm.config = pendingConfig
-	delete(pm.pendingConfig, tx)
-}
-
-// ProposePolicy takes key, path, and ConfigPolicy and registers it in the proposed PolicyManager, or errors
-// It also returns the deserialized policy value for tracking and inspection at the invocation side.
-func (pm *ManagerImpl) ProposePolicy(tx interface{}, key string, configPolicy *cb.ConfigPolicy) (proto.Message, error) {
-	pm.pendingLock.RLock()
-	pendingConfig, ok := pm.pendingConfig[tx]
-	pm.pendingLock.RUnlock()
-	if !ok {
-		logger.Panicf("Serious Programming error: called Propose without Begin")
-	}
-
-	policy := configPolicy.Policy
-	if policy == nil {
-		return nil, fmt.Errorf("Policy cannot be nil")
-	}
-
-	var cPolicy Policy
-	var deserialized proto.Message
-
-	if policy.Type == int32(cb.Policy_IMPLICIT_META) {
-		imp, err := newImplicitMetaPolicy(policy.Value)
-		if err != nil {
-			return nil, err
-		}
-		pendingConfig.imps = append(pendingConfig.imps, imp)
-		cPolicy = imp
-		deserialized = imp.conf
-	} else {
-		provider, ok := pm.providers[int32(policy.Type)]
-		if !ok {
-			return nil, fmt.Errorf("Unknown policy type: %v", policy.Type)
-		}
-
-		var err error
-		cPolicy, deserialized, err = provider.NewPolicy(policy.Value)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	pendingConfig.policies[key] = cPolicy
-
-	logger.Debugf("Proposed new policy %s for %s", key, pm.basePath)
-	return deserialized, nil
 }

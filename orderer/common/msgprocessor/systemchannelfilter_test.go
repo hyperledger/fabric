@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -91,7 +91,7 @@ func (mcc *mockChainCreator) NewChannelConfig(envConfigUpdate *cb.Envelope) (con
 	}
 	confUpdate := configtx.UnmarshalConfigUpdateOrPanic(configtx.UnmarshalConfigUpdateEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(envConfigUpdate.Payload).Data).ConfigUpdate)
 	return &mockconfigtx.Manager{
-		ConfigEnvelopeVal: &cb.ConfigEnvelope{
+		ProposeConfigUpdateVal: &cb.ConfigEnvelope{
 			Config:     &cb.Config{Sequence: 1, ChannelGroup: confUpdate.WriteSet},
 			LastUpdate: envConfigUpdate,
 		},
@@ -116,7 +116,7 @@ func TestGoodProposal(t *testing.T) {
 	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
-	assert.Nil(t, NewSystemChannelFilter(mcc.ms, mcc).Apply(wrapped), "Did not accept valid transaction")
+	assert.NoError(t, NewSystemChannelFilter(mcc.ms, mcc).Apply(wrapped), "Did not accept valid transaction")
 }
 
 func TestProposalRejectedByConfig(t *testing.T) {

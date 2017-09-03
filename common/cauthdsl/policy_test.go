@@ -24,6 +24,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/stretchr/testify/assert"
 )
 
 var acceptAllPolicy *cb.Policy
@@ -56,17 +57,6 @@ func makePolicySource(policyResult bool) *cb.Policy {
 	}
 }
 
-func addPolicy(manager policies.Proposer, id string, policy *cb.Policy) {
-	manager.BeginPolicyProposals(id, nil)
-	_, err := manager.ProposePolicy(id, id, &cb.ConfigPolicy{
-		Policy: policy,
-	})
-	if err != nil {
-		panic(err)
-	}
-	manager.CommitProposals(id)
-}
-
 func providerMap() map[int32]policies.Provider {
 	r := make(map[int32]policies.Provider)
 	r[int32(cb.Policy_SIGNATURE)] = NewPolicyProvider(&mockDeserializer{})
@@ -75,40 +65,41 @@ func providerMap() map[int32]policies.Provider {
 
 func TestAccept(t *testing.T) {
 	policyID := "policyID"
-	m := policies.NewManagerImpl("test", providerMap())
-	addPolicy(m, policyID, acceptAllPolicy)
+	m, err := policies.NewManagerImpl("test", providerMap(), &cb.ConfigGroup{
+		Policies: map[string]*cb.ConfigPolicy{
+			policyID: &cb.ConfigPolicy{Policy: acceptAllPolicy},
+		},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, m)
+
 	policy, ok := m.GetPolicy(policyID)
-	if !ok {
-		t.Error("Should have found policy which was just added, but did not")
-	}
-	err := policy.Evaluate([]*cb.SignedData{})
-	if err != nil {
-		t.Fatalf("Should not have errored evaluating an acceptAll policy: %s", err)
-	}
+	assert.True(t, ok, "Should have found policy which was just added, but did not")
+	err = policy.Evaluate([]*cb.SignedData{})
+	assert.NoError(t, err, "Should not have errored evaluating an acceptAll policy")
 }
 
 func TestReject(t *testing.T) {
 	policyID := "policyID"
-	m := policies.NewManagerImpl("test", providerMap())
-	addPolicy(m, policyID, rejectAllPolicy)
+	m, err := policies.NewManagerImpl("test", providerMap(), &cb.ConfigGroup{
+		Policies: map[string]*cb.ConfigPolicy{
+			policyID: &cb.ConfigPolicy{Policy: rejectAllPolicy},
+		},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, m)
 	policy, ok := m.GetPolicy(policyID)
-	if !ok {
-		t.Error("Should have found policy which was just added, but did not")
-	}
-	err := policy.Evaluate([]*cb.SignedData{})
-	if err == nil {
-		t.Fatal("Should have errored evaluating the rejectAll policy")
-	}
+	assert.True(t, ok, "Should have found policy which was just added, but did not")
+	err = policy.Evaluate([]*cb.SignedData{})
+	assert.Error(t, err, "Should have errored evaluating an rejectAll policy")
 }
 
 func TestRejectOnUnknown(t *testing.T) {
-	m := policies.NewManagerImpl("test", providerMap())
+	m, err := policies.NewManagerImpl("test", providerMap(), &cb.ConfigGroup{})
+	assert.NoError(t, err)
+	assert.NotNil(t, m)
 	policy, ok := m.GetPolicy("FakePolicyID")
-	if ok {
-		t.Error("Should not have found policy which was never added, but did")
-	}
-	err := policy.Evaluate([]*cb.SignedData{})
-	if err == nil {
-		t.Fatal("Should have errored evaluating the default policy")
-	}
+	assert.False(t, ok, "Should not have found policy which was never added, but did")
+	err = policy.Evaluate([]*cb.SignedData{})
+	assert.Error(t, err, "Should have errored evaluating the default policy")
 }

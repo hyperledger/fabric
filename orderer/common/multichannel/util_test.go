@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package multichannel
@@ -19,7 +9,7 @@ package multichannel
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
@@ -116,8 +106,8 @@ func (mch *mockChain) Halt() {
 
 func makeConfigTx(chainID string, i int) *cb.Envelope {
 	group := cb.NewConfigGroup()
-	group.Groups[config.OrdererGroupKey] = cb.NewConfigGroup()
-	group.Groups[config.OrdererGroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
+	group.Groups[channelconfig.OrdererGroupKey] = cb.NewConfigGroup()
+	group.Groups[channelconfig.OrdererGroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
 		Value: []byte(fmt.Sprintf("%d", i)),
 	}
 	configTemplate := configtx.NewSimpleTemplate(group)

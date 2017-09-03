@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"

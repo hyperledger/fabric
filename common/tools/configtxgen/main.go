@@ -14,8 +14,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
-	channelconfig "github.com/hyperledger/fabric/common/config/channel"
-	mspconfig "github.com/hyperledger/fabric/common/config/channel/msp"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/metadata"
@@ -110,7 +109,7 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 	}
 
 	configGroup := channelconfig.TemplateAnchorPeers(org.Name, anchorPeers)
-	configGroup.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Values[channelconfig.AnchorPeersKey].ModPolicy = mspconfig.AdminsPolicyKey
+	configGroup.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Values[channelconfig.AnchorPeersKey].ModPolicy = channelconfig.AdminsPolicyKey
 	configUpdate := &cb.ConfigUpdate{
 		ChannelId: channelID,
 		WriteSet:  configGroup,
@@ -120,22 +119,22 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 	// Add all the existing config to the readset
 	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey] = cb.NewConfigGroup()
 	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Version = 1
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].ModPolicy = mspconfig.AdminsPolicyKey
+	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].ModPolicy = channelconfig.AdminsPolicyKey
 	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name] = cb.NewConfigGroup()
 	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Values[channelconfig.MSPKey] = &cb.ConfigValue{}
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.ReadersPolicyKey] = &cb.ConfigPolicy{}
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.WritersPolicyKey] = &cb.ConfigPolicy{}
-	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.AdminsPolicyKey] = &cb.ConfigPolicy{}
+	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.ReadersPolicyKey] = &cb.ConfigPolicy{}
+	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.WritersPolicyKey] = &cb.ConfigPolicy{}
+	configUpdate.ReadSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.AdminsPolicyKey] = &cb.ConfigPolicy{}
 
 	// Add all the existing at the same versions to the writeset
 	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Version = 1
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].ModPolicy = mspconfig.AdminsPolicyKey
+	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].ModPolicy = channelconfig.AdminsPolicyKey
 	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Version = 1
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].ModPolicy = mspconfig.AdminsPolicyKey
+	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].ModPolicy = channelconfig.AdminsPolicyKey
 	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Values[channelconfig.MSPKey] = &cb.ConfigValue{}
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.ReadersPolicyKey] = &cb.ConfigPolicy{}
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.WritersPolicyKey] = &cb.ConfigPolicy{}
-	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.AdminsPolicyKey] = &cb.ConfigPolicy{}
+	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.ReadersPolicyKey] = &cb.ConfigPolicy{}
+	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.WritersPolicyKey] = &cb.ConfigPolicy{}
+	configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups[org.Name].Policies[channelconfig.AdminsPolicyKey] = &cb.ConfigPolicy{}
 
 	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
 		ConfigUpdate: utils.MarshalOrPanic(configUpdate),

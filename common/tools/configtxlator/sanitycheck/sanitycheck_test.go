@@ -21,7 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/config/channel"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
@@ -75,7 +75,7 @@ func TestEmptyConfigCheck(t *testing.T) {
 func TestWrongMSPID(t *testing.T) {
 	localConfig := proto.Clone(insecureConfig).(*cb.Config)
 	policyName := "foo"
-	localConfig.ChannelGroup.Groups[config.OrdererGroupKey].Policies[policyName] = &cb.ConfigPolicy{
+	localConfig.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Policies[policyName] = &cb.ConfigPolicy{
 		Policy: &cb.Policy{
 			Type:  int32(cb.Policy_SIGNATURE),
 			Value: utils.MarshalOrPanic(cauthdsl.SignedByMspAdmin("MissingOrg")),
@@ -86,7 +86,7 @@ func TestWrongMSPID(t *testing.T) {
 	assert.Empty(t, result.GeneralErrors)
 	assert.Empty(t, result.ElementErrors)
 	assert.Len(t, result.ElementWarnings, 1)
-	assert.Equal(t, ".groups."+config.OrdererGroupKey+".policies."+policyName, result.ElementWarnings[0].Path)
+	assert.Equal(t, ".groups."+channelconfig.OrdererGroupKey+".policies."+policyName, result.ElementWarnings[0].Path)
 }
 
 func TestCorruptRolePrincipal(t *testing.T) {
