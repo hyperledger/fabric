@@ -183,6 +183,7 @@ func New(conf *genesisconfig.Profile) Generator {
 				Type:  int32(cb.Policy_SIGNATURE),
 				Value: utils.MarshalOrPanic(cauthdsl.AcceptAllPolicy),
 			},
+			ModPolicy: OrdererAdminsPolicy,
 		}
 
 		bs.consortiumsGroups = append(bs.consortiumsGroups, tcg)
