@@ -1,3 +1,18 @@
+## v1.0.2
+Thu Aug 31 03:53:34 EDT 2017
+
+* [5f853da](https://github.com/hyperledger/fabric/commit/5f853da) [FAB-5899](https://jira.hyperledger.org/browse/FAB-5899) unable to use signed install package
+* [f2d52f5](https://github.com/hyperledger/fabric/commit/f2d52f5) [FAB-5713](https://jira.hyperledger.org/browse/FAB-5713) properly log x509 certs
+* [650fb6b](https://github.com/hyperledger/fabric/commit/650fb6b) [FAB-5845](https://jira.hyperledger.org/browse/FAB-5845) Separate trusted roots upon join channel
+* [3852561](https://github.com/hyperledger/fabric/commit/3852561) [FAB-5753](https://jira.hyperledger.org/browse/FAB-5753) Deduplicate identities in cauthdsl
+* [615eb21](https://github.com/hyperledger/fabric/commit/615eb21) [FAB-5937](https://jira.hyperledger.org/browse/FAB-5937) Bad default mod_policy for Consortiums
+* [1c56557](https://github.com/hyperledger/fabric/commit/1c56557) [FAB-5927](https://jira.hyperledger.org/browse/FAB-5927) Upgrade to baseimage/baseos to v0.3.2
+* [9d55853](https://github.com/hyperledger/fabric/commit/9d55853) [FAB-5633](https://jira.hyperledger.org/browse/FAB-5633) Add logging to deliverclient/client.go
+* [a3f5cb4](https://github.com/hyperledger/fabric/commit/a3f5cb4) [FAB-5526](https://jira.hyperledger.org/browse/FAB-5526) Ask user's env when reporting problems
+* [bc6420d](https://github.com/hyperledger/fabric/commit/bc6420d) [FAB-5793](https://jira.hyperledger.org/browse/FAB-5793) Block deliver if payload buffer is too full
+* [a3b40de](https://github.com/hyperledger/fabric/commit/a3b40de) [FAB-5709](https://jira.hyperledger.org/browse/FAB-5709) Infer `LastOffsetPersisted` correctly
+* [ae4e37d](https://github.com/hyperledger/fabric/commit/ae4e37d) [FAB-5652](https://jira.hyperledger.org/browse/FAB-5652) Prepare fabric for 1.0.2 release
+
 ## v1.0.1
 Sun Aug 5 08:55:45 EDT 2017
 
