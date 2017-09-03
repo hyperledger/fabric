@@ -276,7 +276,7 @@ func (le *leaderElectionSvcImpl) leaderElection() {
 	// If someone declared itself as a leader, give up
 	// on trying to become a leader too
 	if le.isLeaderExists() {
-		le.logger.Debug(le.id, ": Some peer is already a leader")
+		le.logger.Info(le.id, ": Some peer is already a leader")
 		return
 	}
 
@@ -372,13 +372,13 @@ func (le *leaderElectionSvcImpl) IsLeader() bool {
 }
 
 func (le *leaderElectionSvcImpl) beLeader() {
-	le.logger.Debug(le.id, ": Becoming a leader")
+	le.logger.Info(le.id, ": Becoming a leader")
 	atomic.StoreInt32(&le.isLeader, int32(1))
 	le.callback(true)
 }
 
 func (le *leaderElectionSvcImpl) stopBeingLeader() {
-	le.logger.Debug(le.id, "Stopped being a leader")
+	le.logger.Info(le.id, "Stopped being a leader")
 	atomic.StoreInt32(&le.isLeader, int32(0))
 	le.callback(false)
 }
