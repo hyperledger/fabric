@@ -40,6 +40,7 @@ func addFlags(cmd *cobra.Command) {
 	flags.StringVarP(&orderingEndpoint, "orderer", "o", "", "Ordering service endpoint")
 	flags.BoolVarP(&tls, "tls", "", false, "Use TLS when communicating with the orderer endpoint")
 	flags.StringVarP(&caFile, "cafile", "", "", "Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint")
+	flags.StringVarP(&transient, "transient", "", "", "Transient map of arguments in JSON encoding")
 }
 
 // Cmd returns the cobra command for Chaincode
@@ -76,6 +77,7 @@ var (
 	orderingEndpoint  string
 	tls               bool
 	caFile            string
+	transient         string
 )
 
 var chaincodeCmd = &cobra.Command{
