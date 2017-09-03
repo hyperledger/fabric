@@ -12,13 +12,14 @@ import "github.com/hyperledger/fabric/gossip/common"
 // or which peers are eligible of receiving a certain message
 type RoutingFilter func(peerIdentity PeerIdentityType) bool
 
-// CollectionCriteria describes a certain sub-channel, or a part of it
-type CollectionCriteria []byte
+// CollectionCriteria describes a way of selecting peers from a sub-channel
+// given their signatures
+type SubChannelSelectionCriteria func(signature PeerSignature) bool
 
 // RoutingFilterFactory defines an object that given a CollectionCriteria and a channel,
 // it can ascertain which peers should be aware of the data related to the
 // CollectionCriteria.
 type RoutingFilterFactory interface {
 	// Peers returns a RoutingFilter for given chainID and CollectionCriteria
-	Peers(common.ChainID, CollectionCriteria) RoutingFilter
+	Peers(common.ChainID, SubChannelSelectionCriteria) RoutingFilter
 }

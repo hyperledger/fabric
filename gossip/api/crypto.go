@@ -59,3 +59,11 @@ type PeerSuspector func(identity PeerIdentityType) bool
 // PeerSecureDialOpts returns the gRPC DialOptions to use for connection level
 // security when communicating with remote peer endpoints
 type PeerSecureDialOpts func() []grpc.DialOption
+
+// PeerSignature defines a signature of a peer
+// on a given message
+type PeerSignature struct {
+	Signature    []byte
+	Message      []byte
+	PeerIdentity PeerIdentityType
+}

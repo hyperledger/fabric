@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/filter"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -36,6 +37,10 @@ func (s *secAdvMock) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIde
 
 type gossipMock struct {
 	mock.Mock
+}
+
+func (*gossipMock) PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
+	panic("implement me")
 }
 
 func (*gossipMock) SuspectPeers(s api.PeerSuspector) {

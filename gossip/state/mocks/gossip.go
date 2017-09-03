@@ -11,12 +11,17 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/filter"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/mock"
 )
 
 type GossipMock struct {
 	mock.Mock
+}
+
+func (*GossipMock) PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
+	panic("implement me")
 }
 
 func (g *GossipMock) SuspectPeers(s api.PeerSuspector) {

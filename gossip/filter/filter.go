@@ -65,3 +65,13 @@ func SelectPeers(k int, peerPool []discovery.NetworkMember, filter RoutingFilter
 
 	return remotePeers
 }
+
+// First returns the first peer that matches the given filter
+func First(peerPool []discovery.NetworkMember, filter RoutingFilter) *comm.RemotePeer {
+	for _, p := range peerPool {
+		if filter(p) {
+			return &comm.RemotePeer{PKIID: p.PKIid, Endpoint: p.PreferredEndpoint()}
+		}
+	}
+	return nil
+}
