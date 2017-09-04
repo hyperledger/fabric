@@ -78,7 +78,7 @@ type gossipServiceImpl struct {
 	coordinators    map[string]privdata2.Coordinator
 	chains          map[string]state.GossipStateProvider
 	leaderElection  map[string]election.LeaderElectionService
-	deliveryService deliverclient.DeliverService
+	deliveryService map[string]deliverclient.DeliverService
 	deliveryFactory DeliveryServiceFactory
 	lock            sync.RWMutex
 	idMapper        identity.Mapper
@@ -149,6 +149,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 			coordinators:    make(map[string]privdata2.Coordinator),
 			chains:          make(map[string]state.GossipStateProvider),
 			leaderElection:  make(map[string]election.LeaderElectionService),
+			deliveryService: make(map[string]deliverclient.DeliverService),
 			deliveryFactory: factory,
 			idMapper:        idMapper,
 			peerIdentity:    peerIdentity,
@@ -188,9 +189,9 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 	coordinator := privdata2.NewCoordinator(committer, store)
 	g.coordinators[chainID] = coordinator
 	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapater, coordinator)
-	if g.deliveryService == nil {
+	if g.deliveryService[chainID] == nil {
 		var err error
-		g.deliveryService, err = g.deliveryFactory.Service(gossipServiceInstance, endpoints, g.mcs)
+		g.deliveryService[chainID], err = g.deliveryFactory.Service(gossipServiceInstance, endpoints, g.mcs)
 		if err != nil {
 			logger.Warningf("Cannot create delivery client, due to %+v", errors.WithStack(err))
 		}
@@ -198,7 +199,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 
 	// Delivery service might be nil only if it was not able to get connected
 	// to the ordering service
-	if g.deliveryService != nil {
+	if g.deliveryService[chainID] != nil {
 		// Parameters:
 		//              - peer.gossip.useLeaderElection
 		//              - peer.gossip.orgLeader
@@ -217,7 +218,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 			g.leaderElection[chainID] = g.newLeaderElectionComponent(chainID, g.onStatusChangeFactory(chainID, committer))
 		} else if isStaticOrgLeader {
 			logger.Debug("This peer is configured to connect to ordering service for blocks delivery, channel", chainID)
-			g.deliveryService.StartDeliverForChannel(chainID, committer, func() {})
+			g.deliveryService[chainID].StartDeliverForChannel(chainID, committer, func() {})
 		} else {
 			logger.Debug("This peer is not configured to connect to ordering service for blocks delivery, channel", chainID)
 		}
@@ -279,11 +280,12 @@ func (g *gossipServiceImpl) Stop() {
 		}
 		g.chains[chainID].Stop()
 		g.coordinators[chainID].Close()
+
+		if g.deliveryService[chainID] != nil {
+			g.deliveryService[chainID].Stop()
+		}
 	}
 	g.gossipSvc.Stop()
-	if g.deliveryService != nil {
-		g.deliveryService.Stop()
-	}
 }
 
 func (g *gossipServiceImpl) newLeaderElectionComponent(chainID string, callback func(bool)) election.LeaderElectionService {
@@ -311,12 +313,12 @@ func (g *gossipServiceImpl) onStatusChangeFactory(chainID string, committer bloc
 				le.Yield()
 			}
 			logger.Info("Elected as a leader, starting delivery service for channel", chainID)
-			if err := g.deliveryService.StartDeliverForChannel(chainID, committer, yield); err != nil {
+			if err := g.deliveryService[chainID].StartDeliverForChannel(chainID, committer, yield); err != nil {
 				logger.Errorf("Delivery service is not able to start blocks delivery for chain, due to %+v", errors.WithStack(err))
 			}
 		} else {
 			logger.Info("Renounced leadership, stopping delivery service for channel", chainID)
-			if err := g.deliveryService.StopDeliverForChannel(chainID); err != nil {
+			if err := g.deliveryService[chainID].StopDeliverForChannel(chainID); err != nil {
 				logger.Errorf("Delivery service is not able to stop blocks delivery for chain, due to %+v", errors.WithStack(err))
 			}
 
