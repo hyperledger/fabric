@@ -60,9 +60,6 @@ func TestInitGossipService(t *testing.T) {
 	socket, error := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5611))
 	assert.NoError(t, error)
 
-	go grpcServer.Serve(socket)
-	defer grpcServer.Stop()
-
 	msptesttools.LoadMSPSetupForTesting()
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 
@@ -79,6 +76,9 @@ func TestInitGossipService(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+
+	go grpcServer.Serve(socket)
+	defer grpcServer.Stop()
 
 	defer GetGossipService().Stop()
 	gossip := GetGossipService()
