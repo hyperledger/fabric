@@ -25,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 )
@@ -60,8 +59,6 @@ type lockBasedEnv struct {
 	testDBEnv privacyenabledstate.TestEnv
 	testDB    privacyenabledstate.DB
 
-	testTStoreEnv *transientstore.StoreEnv
-
 	txmgr txmgr.TxMgr
 }
 
@@ -75,7 +72,6 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string) {
 	env.testDBEnv.Init(t)
 	env.testDB = env.testDBEnv.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
-	env.testTStoreEnv = transientstore.NewTestStoreEnv(t)
 	env.txmgr = NewLockBasedTxMgr(env.testDB)
 }
 
@@ -90,7 +86,6 @@ func (env *lockBasedEnv) getVDB() privacyenabledstate.DB {
 func (env *lockBasedEnv) cleanup() {
 	env.txmgr.Shutdown()
 	env.testDBEnv.Cleanup()
-	env.testTStoreEnv.Cleanup()
 }
 
 //////////// txMgrTestHelper /////////////

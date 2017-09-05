@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-// validateAndPreparePvtBatch pulls out the private write-set from transient store for the transactions that are marked as valid
+// validateAndPreparePvtBatch pulls out the private write-set for the transactions that are marked as valid
 // by the internal public data validator. Finally, it validates (if not already self-endorsed) the pvt rwset against the
 // corresponding hash present in the public rwset
 func validateAndPreparePvtBatch(block *valinternal.Block, pvtdata map[uint64]*ledger.TxPvtData) (*privacyenabledstate.PvtUpdateBatch, error) {

@@ -20,7 +20,6 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/transientstore"
 
 	"fmt"
 )
@@ -44,6 +43,4 @@ func remove() {
 	if err != nil {
 		logger.Errorf("Error: %s", err)
 	}
-	transientStorePath := transientstore.GetTransientStorePath()
-	os.RemoveAll(transientStorePath)
 }
