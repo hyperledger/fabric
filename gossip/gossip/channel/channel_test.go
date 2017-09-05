@@ -158,6 +158,11 @@ func (m *receivedMsg) Respond(msg *proto.GossipMessage) {
 	m.Called(msg)
 }
 
+// Ack returns to the sender an acknowledgement for the message
+func (m *receivedMsg) Ack(err error) {
+
+}
+
 func (m *receivedMsg) GetConnectionInfo() *proto.ConnectionInfo {
 	return &proto.ConnectionInfo{
 		ID: m.PKIID,

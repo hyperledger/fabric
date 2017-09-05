@@ -212,6 +212,11 @@ func (m *GossipMessage) IsDataReq() bool {
 	return m.GetDataReq() != nil
 }
 
+// IsAck returns whether this GossipMessage is an acknowledgement
+func (m *GossipMessage) IsAck() bool {
+	return m.GetAck() != nil
+}
+
 // IsDataUpdate returns whether this GossipMessage is a data update message
 func (m *GossipMessage) IsDataUpdate() bool {
 	return m.GetDataUpdate() != nil
@@ -329,6 +334,11 @@ type ReceivedMessage interface {
 	// GetConnectionInfo returns information about the remote peer
 	// that sent the message
 	GetConnectionInfo() *ConnectionInfo
+
+	// Ack returns to the sender an acknowledgement for the message
+	// An ack can receive an error that indicates that the operation related
+	// to the message has failed
+	Ack(err error)
 }
 
 // ConnectionInfo represents information about

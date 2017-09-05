@@ -9,6 +9,7 @@ package comm
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"reflect"
@@ -67,6 +68,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 	}
 
 	commInst := &commImpl{
+		pubSub:         util.NewPubSub(),
 		selfCertHash:   certHash,
 		PKIID:          idMapper.GetPKIidOfCert(peerIdentity),
 		idMapper:       idMapper,
@@ -124,6 +126,7 @@ func NewCommInstance(s *grpc.Server, cert *tls.Certificate, idStore identity.Map
 }
 
 type commImpl struct {
+	pubSub         *util.PubSub
 	selfCertHash   []byte
 	peerIdentity   api.PeerIdentityType
 	idMapper       identity.Mapper
@@ -201,7 +204,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 					connInfo:            connInfo,
 				})
 			}
-			conn.handler = h
+			conn.handler = interceptAcks(h, connInfo.ID, c.pubSub)
 			return conn, nil
 		}
 		c.logger.Warningf("Authentication failed: %+v", err)
@@ -214,17 +217,16 @@ func (c *commImpl) Send(msg *proto.SignedGossipMessage, peers ...*RemotePeer) {
 	if c.isStopping() || len(peers) == 0 {
 		return
 	}
-
 	c.logger.Debug("Entering, sending", msg, "to ", len(peers), "peers")
 
 	for _, peer := range peers {
 		go func(peer *RemotePeer, msg *proto.SignedGossipMessage) {
-			c.sendToEndpoint(peer, msg)
+			c.sendToEndpoint(peer, msg, nonBlockingSend)
 		}(peer, msg)
 	}
 }
 
-func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.SignedGossipMessage) {
+func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.SignedGossipMessage, shouldBlock blockingBehavior) {
 	if c.isStopping() {
 		return
 	}
@@ -238,7 +240,7 @@ func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.SignedGossipMessa
 			c.logger.Warningf("%v isn't responsive: %v", peer, err)
 			c.disconnect(peer.PKIID)
 		}
-		conn.send(msg, disConnectOnErr)
+		conn.send(msg, disConnectOnErr, shouldBlock)
 		return
 	}
 	c.logger.Warningf("Failed obtaining connection for %v reason: %v", peer, err)
@@ -481,6 +483,63 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 	return connInfo, nil
 }
 
+// SendWithAck sends a message to remote peers, waiting for acknowledgement from minAck of them, or until a certain timeout expires
+func (c *commImpl) SendWithAck(msg *proto.SignedGossipMessage, timeout time.Duration, minAck int, peers ...*RemotePeer) AggregatedSendResult {
+	if len(peers) == 0 {
+		return nil
+	}
+	var err error
+
+	// Roll a random NONCE to be used as a send ID to differentiate
+	// between different invocations
+	msg.Nonce = util.RandomUInt64()
+	// Replace the envelope in the message to update the NONCE
+	msg, err = msg.NoopSign()
+
+	if c.isStopping() || err != nil {
+		if err == nil {
+			err = errors.New("comm is stopping")
+		}
+		results := []SendResult{}
+		for _, p := range peers {
+			results = append(results, SendResult{
+				error:      err,
+				RemotePeer: *p,
+			})
+		}
+		return results
+	}
+	c.logger.Debug("Entering, sending", msg, "to ", len(peers), "peers")
+	sndFunc := func(peer *RemotePeer, msg *proto.SignedGossipMessage) {
+		c.sendToEndpoint(peer, msg, blockingSend)
+	}
+	// Subscribe to acks
+	subscriptions := make(map[string]func() error)
+	for _, p := range peers {
+		topic := topicForAck(msg.Nonce, p.PKIID)
+		sub := c.pubSub.Subscribe(topic, timeout)
+		subscriptions[string(p.PKIID)] = func() error {
+			msg, err := sub.Listen()
+			if err != nil {
+				return err
+			}
+			if msg, isAck := msg.(*proto.Acknowledgement); !isAck {
+				return fmt.Errorf("Received a message of type %s, expected *proto.Acknowledgement", reflect.TypeOf(msg))
+			} else {
+				if msg.Error != "" {
+					return errors.New(msg.Error)
+				}
+			}
+			return nil
+		}
+	}
+	waitForAck := func(p *RemotePeer) error {
+		return subscriptions[string(p.PKIID)]()
+	}
+	ackOperation := newAckSendOperation(sndFunc, waitForAck)
+	return ackOperation.send(msg, minAck, peers...)
+}
+
 func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	if c.isStopping() {
 		return fmt.Errorf("Shutting down")
@@ -509,7 +568,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 		})
 	}
 
-	conn.handler = h
+	conn.handler = interceptAcks(h, connInfo.ID, c.pubSub)
 
 	defer func() {
 		c.logger.Debug("Client", extractRemoteAddress(stream), " disconnected")
@@ -626,4 +685,8 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, api.PeerSecureDialOp
 	}
 	s = grpc.NewServer(serverOpts...)
 	return s, ll, secureDialOpts, returnedCertHash
+}
+
+func topicForAck(nonce uint64, pkiID common.PKIidType) string {
+	return fmt.Sprintf("%d %s", nonce, hex.EncodeToString(pkiID))
 }

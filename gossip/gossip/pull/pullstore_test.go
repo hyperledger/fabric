@@ -59,6 +59,11 @@ func (pm *pullMsg) GetConnectionInfo() *proto.ConnectionInfo {
 	return nil
 }
 
+// Ack returns to the sender an acknowledgement for the message
+func (pm *pullMsg) Ack(err error) {
+
+}
+
 type pullInstance struct {
 	self          discovery.NetworkMember
 	mediator      Mediator

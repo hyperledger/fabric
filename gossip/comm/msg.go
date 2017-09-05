@@ -35,7 +35,7 @@ func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
 		m.conn.logger.Errorf("Failed creating SignedGossipMessage: %+v", err)
 		return
 	}
-	m.conn.send(sMsg, func(e error) {})
+	m.conn.send(sMsg, func(e error) {}, blockingSend)
 }
 
 // GetGossipMessage returns the inner GossipMessage
@@ -47,4 +47,18 @@ func (m *ReceivedMessageImpl) GetGossipMessage() *proto.SignedGossipMessage {
 // that send the message
 func (m *ReceivedMessageImpl) GetConnectionInfo() *proto.ConnectionInfo {
 	return m.connInfo
+}
+
+// Ack returns to the sender an acknowledgement for the message
+func (m *ReceivedMessageImpl) Ack(err error) {
+	ackMsg := &proto.GossipMessage{
+		Nonce: m.GetGossipMessage().Nonce,
+		Content: &proto.GossipMessage_Ack{
+			Ack: &proto.Acknowledgement{},
+		},
+	}
+	if err != nil {
+		ackMsg.GetAck().Error = err.Error()
+	}
+	m.Respond(ackMsg)
 }
