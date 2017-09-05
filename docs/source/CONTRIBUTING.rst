@@ -72,8 +72,10 @@ If you are a user and you find a bug, please submit an issue using
 Please try to provide sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
 hours. If not, please bump the issue with a comment and request that it be
-reviewed. You can also post to the ``#fabric-maintainers`` channel in
-`chat <https://chat.hyperledger.org/channel/fabric-maintainers>`__.
+reviewed. You can also post to the relevant fabric channel in
+`Hyperledger Rocket Chat <https://chat.hyperledger.org>`__.  For example, a doc bug should
+be broadcast to ``#fabric-documentation``, a database bug to ``#fabric-ledger``,
+and so on... 
 
 Fixing issues and working stories
 ---------------------------------
