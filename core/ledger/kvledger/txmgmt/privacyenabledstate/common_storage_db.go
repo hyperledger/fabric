@@ -68,6 +68,50 @@ func NewCommonStorageDB(vdb statedb.VersionedDB, ledgerid string) (DB, error) {
 	return &CommonStorageDB{VersionedDB: vdb}, nil
 }
 
+// IsBulkOptimizable implements corresponding function in interface DB
+func (s *CommonStorageDB) IsBulkOptimizable() bool {
+	if _, ok := s.VersionedDB.(statedb.BulkOptimizable); ok {
+		return true
+	}
+	return false
+}
+
+// LoadCommittedVersionsOfPubAndHashedKeys implements corresponding function in interface DB
+func (s *CommonStorageDB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*statedb.CompositeKey,
+	hashedKeys []*HashedCompositeKey) {
+
+	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
+	if !ok {
+		return
+	}
+
+	// Here, hashedKeys are merged into pubKeys to get a combined set of keys for combined loading
+	for _, key := range hashedKeys {
+		ns := derivePvtDataNs(key.Namespace, key.CollectionName)
+		// No need to check for duplicates as hashedKeys are in separate namespace
+		var keyHashStr string
+		if !s.BytesKeySuppoted() {
+			keyHashStr = base64.StdEncoding.EncodeToString([]byte(key.KeyHash))
+		} else {
+			keyHashStr = key.KeyHash
+		}
+		pubKeys = append(pubKeys, &statedb.CompositeKey{
+			Namespace: ns,
+			Key:       keyHashStr,
+		})
+	}
+
+	bulkOptimizable.LoadCommittedVersions(pubKeys)
+}
+
+// ClearCommittedVersions implements corresponding function in interface DB
+func (s *CommonStorageDB) ClearCommittedVersions() {
+	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
+	if ok {
+		bulkOptimizable.ClearCachedVersions()
+	}
+}
+
 // GetPrivateData implements corresponding function in interface DB
 func (s *CommonStorageDB) GetPrivateData(namespace, collection, key string) (*statedb.VersionedValue, error) {
 	return s.GetState(derivePvtDataNs(namespace, collection), key)
@@ -83,12 +127,12 @@ func (s *CommonStorageDB) GetValueHash(namespace, collection string, keyHash []b
 }
 
 // GetHashedDataNsAndKeyHashStr implements corresponding function in interface DB
-func (s *CommonStorageDB) GetHashedDataNsAndKeyHashStr(namespace, collection string, keyHash []byte) (string, string) {
+func (s *CommonStorageDB) GetKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, error) {
 	keyHashStr := string(keyHash)
 	if !s.BytesKeySuppoted() {
 		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
 	}
-	return deriveHashedDataNs(namespace, collection), keyHashStr
+	return s.GetVersion(deriveHashedDataNs(namespace, collection), keyHashStr)
 }
 
 // GetPrivateDataMultipleKeys implements corresponding function in interface DB

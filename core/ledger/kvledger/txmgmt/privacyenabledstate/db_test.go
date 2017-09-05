@@ -106,11 +106,7 @@ func testDB(t *testing.T, env TestEnv) {
 	assert.NoError(t, err)
 	assert.Equal(t, &statedb.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
 
-	ns, key := db.GetHashedDataNsAndKeyHashStr("ns1", "coll1", util.ComputeStringHash("key1"))
-	vv, err = db.GetState(ns, key)
-	assert.NoError(t, err)
-	assert.Equal(t, &statedb.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
-	committedVersion, err := db.GetVersion(ns, key)
+	committedVersion, err := db.GetKeyHashVersion("ns1", "coll1", util.ComputeStringHash("key1"))
 	assert.NoError(t, err)
 	assert.Equal(t, version.NewHeight(1, 4), committedVersion)
 
