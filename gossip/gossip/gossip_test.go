@@ -45,6 +45,7 @@ var tests = []func(t *testing.T){
 	TestDataLeakage,
 	//TestDisseminateAll2All: {},
 	TestIdentityExpiration,
+	TestSendByCriteria,
 	TestMultipleOrgEndpointLeakage,
 	TestConfidentiality,
 	TestAnchorPeer,
@@ -999,6 +1000,149 @@ func TestDisseminateAll2All(t *testing.T) {
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestDisseminateAll2All>>>")
 	testWG.Done()
+}
+
+func TestSendByCriteria(t *testing.T) {
+	t.Parallel()
+	defer testWG.Done()
+
+	portPrefix := 20000
+	g1 := newGossipInstance(portPrefix, 0, 100)
+	g2 := newGossipInstance(portPrefix, 1, 100, 0)
+	g3 := newGossipInstance(portPrefix, 2, 100, 0)
+	g4 := newGossipInstance(portPrefix, 3, 100, 0)
+	peers := []Gossip{g1, g2, g3, g4}
+	metaState := &common.NodeMetastate{}
+	metaState.LedgerHeight = 1
+	b, _ := metaState.Bytes()
+	for _, p := range peers {
+		p.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+		p.UpdateChannelMetadata(b, common.ChainID("A"))
+	}
+	defer stopPeers(peers)
+	msg, _ := createDataMsg(1, []byte{}, common.ChainID("A")).NoopSign()
+
+	// We send without specifying a timeout
+	criteria := SendCriteria{}
+	err := g1.SendByCriteria(msg, criteria)
+	assert.Error(t, err)
+	assert.Equal(t, "Timeout should be specified", err.Error())
+
+	// We send without specifying a minimum acknowledge threshold
+	criteria.Timeout = time.Second * 3
+	err = g1.SendByCriteria(msg, criteria)
+	// Should work, because minAck is 0 (not specified)
+	assert.NoError(t, err)
+
+	// We send without specifying a channel
+	criteria.Channel = common.ChainID("B")
+	err = g1.SendByCriteria(msg, criteria)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "but no such channel exists")
+
+	// We send to peers from the channel, but we expect 10 acknowledgements.
+	// It should immediately return because we don't know about 10 peers so no point in even trying
+	criteria.Channel = common.ChainID("A")
+	criteria.MinAck = 10
+	err = g1.SendByCriteria(msg, criteria)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Requested to send to at least 10 peers, but know only of")
+
+	// We send to a minimum of 3 peers with acknowledgement, while no peer acknowledges the messages.
+	// Wait until g1 sees the rest of the peers in the channel
+	waitUntilOrFail(t, func() bool {
+		return len(g1.PeersOfChannel(common.ChainID("A"))) > 2
+	})
+	criteria.MinAck = 3
+	err = g1.SendByCriteria(msg, criteria)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "timed out")
+	assert.Contains(t, err.Error(), "3")
+
+	// We retry the test above, but this time the peers acknowledge
+	// Peers now ack
+	acceptDataMsgs := func(m interface{}) bool {
+		return m.(proto.ReceivedMessage).GetGossipMessage().IsDataMsg()
+	}
+	_, ackChan2 := g2.Accept(acceptDataMsgs, true)
+	_, ackChan3 := g3.Accept(acceptDataMsgs, true)
+	_, ackChan4 := g4.Accept(acceptDataMsgs, true)
+	ack := func(c <-chan proto.ReceivedMessage) {
+		msg := <-c
+		msg.Ack(nil)
+	}
+
+	go ack(ackChan2)
+	go ack(ackChan3)
+	go ack(ackChan4)
+	err = g1.SendByCriteria(msg, criteria)
+	assert.NoError(t, err)
+
+	// We send to 3 peers, but 2 out of 3 peers acknowledge with an error
+	nack := func(c <-chan proto.ReceivedMessage) {
+		msg := <-c
+		msg.Ack(fmt.Errorf("uh oh"))
+	}
+	go ack(ackChan2)
+	go nack(ackChan3)
+	go nack(ackChan4)
+	err = g1.SendByCriteria(msg, criteria)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "uh oh")
+
+	// We try to send to either g2 or g3, but neither would ack us, so we would fail.
+	// However - what we actually check in this test is that we send to peers according to the
+	// filter passed in the criteria
+	failOnAckRequest := func(c <-chan proto.ReceivedMessage, peerId int) {
+		msg := <-c
+		if msg == nil {
+			return
+		}
+		t.Fatalf("%d got a message, but shouldn't have!", peerId)
+	}
+	g2Endpoint := fmt.Sprintf("localhost:%d", portPrefix+1)
+	g3Endpoint := fmt.Sprintf("localhost:%d", portPrefix+2)
+	criteria.IsEligible = func(nm discovery.NetworkMember) bool {
+		return nm.InternalEndpoint == g2Endpoint || nm.InternalEndpoint == g3Endpoint
+	}
+	criteria.MinAck = 1
+	go failOnAckRequest(ackChan4, 3)
+	err = g1.SendByCriteria(msg, criteria)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "timed out")
+	assert.Contains(t, err.Error(), "2")
+	// Finally, ack the lost messages, to cleanup for the next test
+	ack(ackChan2)
+	ack(ackChan3)
+
+	// We may send to 2 peers, but we check that if we specify a max criteria.MaxPeers,
+	// this property is respected - and only 1 peer receives a message, and not both
+	criteria.MaxPeers = 1
+	// invoke f() in case message has been received
+	waitForMessage := func(c <-chan proto.ReceivedMessage, f func()) {
+		select {
+		case msg := <-c:
+			if msg == nil {
+				return
+			}
+		case <-time.After(time.Second * 5):
+			return
+		}
+		f()
+	}
+	var messagesSent uint32
+	go waitForMessage(ackChan2, func() {
+		atomic.AddUint32(&messagesSent, 1)
+	})
+	go waitForMessage(ackChan3, func() {
+		atomic.AddUint32(&messagesSent, 1)
+	})
+	err = g1.SendByCriteria(msg, criteria)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "timed out")
+	// Check how many messages were sent.
+	// Only 1 should have been sent
+	assert.Equal(t, uint32(1), atomic.LoadUint32(&messagesSent))
 }
 
 func TestIdentityExpiration(t *testing.T) {

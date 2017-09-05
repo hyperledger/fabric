@@ -592,6 +592,49 @@ func (g *gossipServiceImpl) gossipInChan(messages []*proto.SignedGossipMessage, 
 	}
 }
 
+// SendByCriteria sends a given message to all peers that match the given SendCriteria
+func (g *gossipServiceImpl) SendByCriteria(msg *proto.SignedGossipMessage, criteria SendCriteria) error {
+	if criteria.Timeout == 0 {
+		return errors.New("Timeout should be specified")
+	}
+
+	if criteria.IsEligible == nil {
+		criteria.IsEligible = filter.SelectAllPolicy
+	}
+
+	membership := g.disc.GetMembership()
+	if criteria.MaxPeers == 0 {
+		criteria.MaxPeers = len(membership)
+	}
+
+	if len(criteria.Channel) > 0 {
+		gc := g.chanState.getGossipChannelByChainID(criteria.Channel)
+		if gc == nil {
+			return fmt.Errorf("Requested to Send for channel %s, but no such channel exists", string(criteria.Channel))
+		}
+		membership = gc.GetPeers()
+	}
+
+	peers2send := filter.SelectPeers(criteria.MaxPeers, membership, criteria.IsEligible)
+	if len(peers2send) < criteria.MinAck {
+		return fmt.Errorf("Requested to send to at least %d peers, but know only of %d suitable peers", criteria.MinAck, len(peers2send))
+	}
+
+	results := g.comm.SendWithAck(msg, criteria.Timeout, criteria.MinAck, peers2send...)
+
+	for _, res := range results {
+		if res.Error() == "" {
+			continue
+		}
+		g.logger.Warning("Failed sending to", res.Endpoint, "error:", res.Error())
+	}
+
+	if results.AckCount() < criteria.MinAck {
+		return errors.New(results.String())
+	}
+	return nil
+}
+
 // Gossip sends a message to other peers to the network
 func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 	// Educate developers to Gossip messages with the right tags.

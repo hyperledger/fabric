@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
+	"github.com/hyperledger/fabric/gossip/gossip"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/mock"
 )
@@ -66,4 +67,8 @@ func (g *GossipMock) JoinChan(joinMsg api.JoinChannelMessage, chainID common.Cha
 
 func (g *GossipMock) Stop() {
 
+}
+
+func (g *GossipMock) SendByCriteria(*proto.SignedGossipMessage, gossip.SendCriteria) error {
+	return nil
 }
