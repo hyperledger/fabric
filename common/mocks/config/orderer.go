@@ -27,6 +27,8 @@ type Orderer struct {
 	MaxChannelsCountVal uint64
 	// OrganizationsVal is returned as the result of Organizations()
 	OrganizationsVal map[string]channelconfig.Org
+	// CapabilitiesVal is returned as the result of Capabilities()
+	CapabilitiesVal channelconfig.OrdererCapabilities
 }
 
 // ConsensusType returns the ConsensusTypeVal
@@ -57,4 +59,9 @@ func (scm *Orderer) MaxChannelsCount() uint64 {
 // Organizations returns OrganizationsVal
 func (scm *Orderer) Organizations() map[string]channelconfig.Org {
 	return scm.OrganizationsVal
+}
+
+// Capabilities returns CapabilitiesVal
+func (scm *Orderer) Capabilities() channelconfig.OrdererCapabilities {
+	return scm.CapabilitiesVal
 }
