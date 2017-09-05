@@ -34,7 +34,7 @@ function validateArgs () {
 }
 
 function clearContainers () {
-        CONTAINER_IDS=$(docker ps -aq)
+        CONTAINER_IDS=$(docker ps -aq --format "{{.Names}}" | grep -e .*example.com.* -e cli)
         if [ -z "$CONTAINER_IDS" -o "$CONTAINER_IDS" = " " ]; then
                 echo "---- No containers available for deletion ----"
         else
