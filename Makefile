@@ -51,7 +51,7 @@ PKGNAME = github.com/$(PROJECT_NAME)
 CGO_FLAGS = CGO_CFLAGS=" "
 ARCH=$(shell uname -m)
 MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
-CHAINTOOL_RELEASE=1.0.0
+CHAINTOOL_RELEASE=1.0.1
 BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 
 # defined in common/metadata/metadata.go
