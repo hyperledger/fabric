@@ -90,11 +90,11 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 
 	if port > 0 {
 		commInst.stopWG.Add(1)
+		proto.RegisterGossipServer(s, commInst)
 		go func() {
 			defer commInst.stopWG.Done()
 			s.Serve(ll)
 		}()
-		proto.RegisterGossipServer(s, commInst)
 	}
 
 	return commInst, nil

@@ -211,13 +211,12 @@ func TestHandshake(t *testing.T) {
 	ll, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 9611))
 	assert.NoError(t, err)
 	s := grpc.NewServer()
-	go s.Serve(ll)
-
 	id := []byte("localhost:9611")
 	idMapper := identity.NewIdentityMapper(naiveSec, id)
 	inst, err := NewCommInstance(s, nil, idMapper, api.PeerIdentityType("localhost:9611"), func() []grpc.DialOption {
 		return []grpc.DialOption{grpc.WithInsecure()}
 	})
+	go s.Serve(ll)
 	assert.NoError(t, err)
 	var msg proto.ReceivedMessage
 
