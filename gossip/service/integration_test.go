@@ -139,8 +139,8 @@ func TestLeaderYield(t *testing.T) {
 		return -1
 	}
 
-	ds0 := p0.deliveryService.(*embeddingDeliveryService)
-	ds1 := p1.deliveryService.(*embeddingDeliveryService)
+	ds0 := p0.deliveryService[channelName].(*embeddingDeliveryService)
+	ds1 := p1.deliveryService[channelName].(*embeddingDeliveryService)
 
 	// Wait for p0 to connect to the ordering service
 	ds0.waitForDeliveryServiceActivation()
@@ -159,6 +159,6 @@ func TestLeaderYield(t *testing.T) {
 	assert.Equal(t, 1, getLeader())
 	p0.chains[channelName].Stop()
 	p1.chains[channelName].Stop()
-	p0.deliveryService.Stop()
-	p1.deliveryService.Stop()
+	p0.deliveryService[channelName].Stop()
+	p1.deliveryService[channelName].Stop()
 }

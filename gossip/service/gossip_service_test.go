@@ -143,7 +143,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	startsNum := 0
 	for i := 0; i < n; i++ {
 		// Is mockDeliverService.StartDeliverForChannel in current peer for the specific channel was invoked
-		if gossips[i].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName] {
+		if gossips[i].(*gossipServiceImpl).deliveryService[channelName].(*mockDeliverService).running[channelName] {
 			startsNum++
 		}
 	}
@@ -190,8 +190,8 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	}
 
 	for i := 0; i < n; i++ {
-		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService, "Delivery service not initiated in peer %d", i)
-		assert.True(t, gossips[i].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
+		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
+		assert.True(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
 	}
 
 	channelName = "chanB"
@@ -201,8 +201,8 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	}
 
 	for i := 0; i < n; i++ {
-		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService, "Delivery service not initiated in peer %d", i)
-		assert.True(t, gossips[i].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
+		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
+		assert.True(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
 	}
 
 	stopPeers(gossips)
@@ -238,8 +238,8 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	}
 
 	for i := 0; i < n; i++ {
-		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService, "Delivery service not initiated in peer %d", i)
-		assert.False(t, gossips[i].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName], "Block deliverer should not be started for peer %d", i)
+		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
+		assert.False(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer should not be started for peer %d", i)
 	}
 
 	stopPeers(gossips)
@@ -633,6 +633,7 @@ func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gos
 		chains:          make(map[string]state.GossipStateProvider),
 		leaderElection:  make(map[string]election.LeaderElectionService),
 		coordinators:    make(map[string]privdata.Coordinator),
+		deliveryService: make(map[string]deliverclient.DeliverService),
 		deliveryFactory: &deliveryFactoryImpl{},
 		idMapper:        idMapper,
 		peerIdentity:    api.PeerIdentityType(conf.InternalEndpoint),
