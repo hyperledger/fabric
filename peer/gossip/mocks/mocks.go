@@ -91,6 +91,20 @@ func (m *DeserializersManager) GetChannelDeserializers() map[string]msp.Identity
 	return m.ChannelDeserializers
 }
 
+type IdentityDeserializerWithExpiration struct {
+	*IdentityDeserializer
+	Expiration time.Time
+}
+
+func (d *IdentityDeserializerWithExpiration) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
+	id, err := d.IdentityDeserializer.DeserializeIdentity(serializedIdentity)
+	if err != nil {
+		return nil, err
+	}
+	id.(*Identity).expirationDate = d.Expiration
+	return id, nil
+}
+
 type IdentityDeserializer struct {
 	Identity []byte
 	Msg      []byte
@@ -107,11 +121,12 @@ func (d *IdentityDeserializer) DeserializeIdentity(serializedIdentity []byte) (m
 }
 
 type Identity struct {
-	Msg []byte
+	expirationDate time.Time
+	Msg            []byte
 }
 
 func (id *Identity) ExpiresAt() time.Time {
-	return time.Time{}
+	return id.expirationDate
 }
 
 func (id *Identity) SatisfiesPrincipal(*mspproto.MSPPrincipal) error {

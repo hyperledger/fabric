@@ -17,7 +17,6 @@ import (
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
-	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/integration"
 	privdata2 "github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state"
@@ -81,7 +80,6 @@ type gossipServiceImpl struct {
 	deliveryService map[string]deliverclient.DeliverService
 	deliveryFactory DeliveryServiceFactory
 	lock            sync.RWMutex
-	idMapper        identity.Mapper
 	mcs             api.MessageCryptoService
 	peerIdentity    []byte
 	secAdv          api.SecurityAdvisor
@@ -140,9 +138,8 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
 
-		idMapper := identity.NewIdentityMapper(mcs, peerIdentity)
 		gossip, err = integration.NewGossipComponent(peerIdentity, endpoint, s, secAdv,
-			mcs, idMapper, secureDialOpts, bootPeers...)
+			mcs, secureDialOpts, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
 			mcs:             mcs,
 			gossipSvc:       gossip,
@@ -151,7 +148,6 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 			leaderElection:  make(map[string]election.LeaderElectionService),
 			deliveryService: make(map[string]deliverclient.DeliverService),
 			deliveryFactory: factory,
-			idMapper:        idMapper,
 			peerIdentity:    peerIdentity,
 			secAdv:          secAdv,
 		}
@@ -289,7 +285,7 @@ func (g *gossipServiceImpl) Stop() {
 }
 
 func (g *gossipServiceImpl) newLeaderElectionComponent(chainID string, callback func(bool)) election.LeaderElectionService {
-	PKIid := g.idMapper.GetPKIidOfCert(g.peerIdentity)
+	PKIid := g.mcs.GetPKIidOfCert(g.peerIdentity)
 	adapter := election.NewAdapter(g, PKIid, gossipCommon.ChainID(chainID))
 	return election.NewLeaderElectionService(adapter, string(PKIid), callback)
 }

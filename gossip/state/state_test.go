@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip"
-	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state/mocks"
 	gutil "github.com/hyperledger/fabric/gossip/util"
@@ -93,6 +92,10 @@ func (*orgCryptoService) Verify(joinChanMsg api.JoinChannelMessage) error {
 
 type cryptoServiceMock struct {
 	acceptor peerIdentityAcceptor
+}
+
+func (cryptoServiceMock) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
 }
 
 // GetPKIidOfCert returns the PKI-ID of a peer's identity
@@ -234,9 +237,8 @@ func newGossipConfig(id int, boot ...int) *gossip.Config {
 // Create gossip instance
 func newGossipInstance(config *gossip.Config, mcs api.MessageCryptoService) gossip.Gossip {
 	id := api.PeerIdentityType(config.InternalEndpoint)
-	idMapper := identity.NewIdentityMapper(mcs, id)
 	return gossip.NewGossipServiceWithServer(config, &orgCryptoService{}, mcs,
-		idMapper, id, nil)
+		id, nil)
 }
 
 // Create new instance of KVLedger to be used for testing

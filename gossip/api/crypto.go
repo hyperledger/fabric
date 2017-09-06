@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package api
 
 import (
+	"time"
+
 	"github.com/hyperledger/fabric/gossip/common"
 	"google.golang.org/grpc"
 )
@@ -47,6 +49,15 @@ type MessageCryptoService interface {
 	// If the identity is invalid, revoked, expired it returns an error.
 	// Else, returns nil
 	ValidateIdentity(peerIdentity PeerIdentityType) error
+
+	// Expiration returns:
+	// - The time when the identity expires, nil
+	//   In case it can expire
+	// - A zero value time.Time, nil
+	//   in case it cannot expire
+	// - A zero value, error in case it cannot be
+	//   determined if the identity can expire or not
+	Expiration(peerIdentity PeerIdentityType) (time.Time, error)
 }
 
 // PeerIdentityType is the peer's certificate

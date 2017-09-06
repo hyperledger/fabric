@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/election"
-	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -109,7 +108,6 @@ func TestLeaderYield(t *testing.T) {
 			chains:          make(map[string]state.GossipStateProvider),
 			leaderElection:  make(map[string]election.LeaderElectionService),
 			deliveryFactory: &embeddingDeliveryServiceFactory{&deliveryFactoryImpl{}},
-			idMapper:        identity.NewIdentityMapper(mcs, peerIdentity),
 			peerIdentity:    peerIdentity,
 			secAdv:          &secAdvMock{},
 		}

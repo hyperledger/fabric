@@ -103,6 +103,10 @@ type cryptoService struct {
 	mock.Mock
 }
 
+func (cs *cryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
+}
+
 func (cs *cryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
 	panic("Should not be called in this test")
 }

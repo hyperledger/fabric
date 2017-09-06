@@ -11,26 +11,42 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var (
 	msgCryptoService = &naiveCryptoService{revokedIdentities: map[string]struct{}{}}
-	dummyID          = api.PeerIdentityType{}
+	dummyID          = api.PeerIdentityType("dummyID")
 )
 
 type naiveCryptoService struct {
+	mock.Mock
 	revokedIdentities map[string]struct{}
 }
 
+var noopPurgeTrigger = func(_ common.PKIidType, _ api.PeerIdentityType) {}
+
 func init() {
 	util.SetupTestLogging()
+	msgCryptoService.On("Expiration", api.PeerIdentityType(dummyID)).Return(time.Now().Add(time.Hour), nil)
+	msgCryptoService.On("Expiration", api.PeerIdentityType("yacovm")).Return(time.Now().Add(time.Hour), nil)
+	msgCryptoService.On("Expiration", api.PeerIdentityType("not-yacovm")).Return(time.Now().Add(time.Hour), nil)
+	msgCryptoService.On("Expiration", api.PeerIdentityType("invalidIdentity")).Return(time.Now().Add(time.Hour), nil)
+}
+
+func (cs *naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	args := cs.Called(peerIdentity)
+	t, err := args.Get(0), args.Get(1)
+	if err == nil {
+		return t.(time.Time), nil
+	}
+	return time.Time{}, err.(error)
 }
 
 func (cs *naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
@@ -75,20 +91,25 @@ func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, 
 }
 
 func TestPut(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
+	identity3 := []byte("invalidIdentity")
+	msgCryptoService.revokedIdentities[string(identity3)] = struct{}{}
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
 	pkiID2 := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity2))
+	pkiID3 := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity3))
+	assert.NoError(t, idStore.Put(pkiID, identity))
 	assert.NoError(t, idStore.Put(pkiID, identity))
 	assert.Error(t, idStore.Put(nil, identity))
 	assert.Error(t, idStore.Put(pkiID2, nil))
 	assert.Error(t, idStore.Put(pkiID2, identity))
 	assert.Error(t, idStore.Put(pkiID, identity2))
+	assert.Error(t, idStore.Put(pkiID3, identity3))
 }
 
 func TestGet(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -103,7 +124,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -116,7 +137,22 @@ func TestVerify(t *testing.T) {
 }
 
 func TestListInvalidIdentities(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID)
+	deletedIdentities := make(chan string, 1)
+	assertDeletedIdentity := func(expected string) {
+		select {
+		case <-time.After(time.Second * 10):
+			t.Fatalf("Didn't detect a deleted identity, expected %s to be deleted", expected)
+		case actual := <-deletedIdentities:
+			assert.Equal(t, expected, actual)
+		}
+	}
+	// set the time-based expiration time limit to something small
+	SetIdentityUsageThreshold(time.Millisecond * 500)
+	assert.Equal(t, time.Millisecond*500, GetIdentityUsageThreshold())
+	selfPKIID := msgCryptoService.GetPKIidOfCert(dummyID)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, func(_ common.PKIidType, identity api.PeerIdentityType) {
+		deletedIdentities <- string(identity)
+	})
 	identity := []byte("yacovm")
 	// Test for a revoked identity
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -126,39 +162,35 @@ func TestListInvalidIdentities(t *testing.T) {
 	assert.NotNil(t, cert)
 	// Revoke the certificate
 	msgCryptoService.revokedIdentities[string(pkiID)] = struct{}{}
-	idStore.ListInvalidIdentities(func(_ api.PeerIdentityType) bool {
+	idStore.SuspectPeers(func(_ api.PeerIdentityType) bool {
 		return true
 	})
 	// Make sure it is not found anymore
 	cert, err = idStore.Get(pkiID)
 	assert.Error(t, err)
 	assert.Nil(t, cert)
+	assertDeletedIdentity("yacovm")
 
 	// Clean the MCS revocation mock
 	msgCryptoService.revokedIdentities = map[string]struct{}{}
 	// Now, test for a certificate that has not been used
 	// for a long time
-
 	// Add back the identity
 	pkiID = msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
 	assert.NoError(t, idStore.Put(pkiID, api.PeerIdentityType(identity)))
-	// set the time-based expiration time limit to something small
-	usageThreshold = time.Millisecond * 500
-	idStore.ListInvalidIdentities(func(_ api.PeerIdentityType) bool {
-		return false
-	})
 	// Check it exists in the meantime
 	cert, err = idStore.Get(pkiID)
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	time.Sleep(time.Second * 3)
-	idStore.ListInvalidIdentities(func(_ api.PeerIdentityType) bool {
-		return false
-	})
 	// Make sure it has expired
 	cert, err = idStore.Get(pkiID)
 	assert.Error(t, err)
 	assert.Nil(t, cert)
+	assertDeletedIdentity("yacovm")
+	// Make sure our own identity hasn't been expired
+	_, err = idStore.Get(selfPKIID)
+	assert.NoError(t, err)
 
 	// Now test that an identity that is frequently used doesn't expire
 	// Add back the identity
@@ -181,4 +213,84 @@ func TestListInvalidIdentities(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, cert)
 	stopChan <- struct{}{}
+	// Stop the identity store - this would make periodical un-usage
+	// expiration stop
+	idStore.Stop()
+	time.Sleep(time.Second * 3)
+	// Ensure it hasn't expired even though time has passed
+	cert, err = idStore.Get(pkiID)
+	assert.NoError(t, err)
+	assert.NotNil(t, cert)
+}
+
+func TestExpiration(t *testing.T) {
+	deletedIdentities := make(chan string, 1)
+	SetIdentityUsageThreshold(time.Second * 500)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, func(_ common.PKIidType, identity api.PeerIdentityType) {
+		deletedIdentities <- string(identity)
+	})
+	assertDeletedIdentity := func(expected string) {
+		select {
+		case <-time.After(time.Second * 10):
+			t.Fatalf("Didn't detect a deleted identity, expected %s to be deleted", expected)
+		case actual := <-deletedIdentities:
+			assert.Equal(t, expected, actual)
+		}
+	}
+	x509Identity := api.PeerIdentityType("x509Identity")
+	nonX509Identity := api.PeerIdentityType("nonX509Identity")
+	notSupportedIdentity := api.PeerIdentityType("notSupportedIdentity")
+	x509PkiID := idStore.GetPKIidOfCert(x509Identity)
+	nonX509PkiID := idStore.GetPKIidOfCert(nonX509Identity)
+	notSupportedPkiID := idStore.GetPKIidOfCert(notSupportedIdentity)
+	msgCryptoService.On("Expiration", x509Identity).Return(time.Now().Add(time.Second), nil)
+	msgCryptoService.On("Expiration", nonX509Identity).Return(time.Time{}, nil)
+	msgCryptoService.On("Expiration", notSupportedIdentity).Return(time.Time{}, errors.New("no MSP supports given identity"))
+	// Add all identities
+	err := idStore.Put(x509PkiID, x509Identity)
+	assert.NoError(t, err)
+	err = idStore.Put(nonX509PkiID, nonX509Identity)
+	assert.NoError(t, err)
+	err = idStore.Put(notSupportedPkiID, notSupportedIdentity)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no MSP supports given identity")
+
+	// Make sure the x509 cert and the non x509 cert exist in the store
+	returnedIdentity, err := idStore.Get(x509PkiID)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, returnedIdentity)
+
+	returnedIdentity, err = idStore.Get(nonX509PkiID)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, returnedIdentity)
+
+	// Wait for the x509 identity to expire
+	time.Sleep(time.Second * 3)
+
+	// Ensure only the non x509 identity exists now
+	returnedIdentity, err = idStore.Get(x509PkiID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "PKIID wasn't found")
+	assert.Empty(t, returnedIdentity)
+	assertDeletedIdentity("x509Identity")
+
+	returnedIdentity, err = idStore.Get(nonX509PkiID)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, returnedIdentity)
+
+	// Ensure that when it is revoked, an expiration timer isn't cancelled for it
+	msgCryptoService.revokedIdentities[string(nonX509PkiID)] = struct{}{}
+	idStore.SuspectPeers(func(_ api.PeerIdentityType) bool {
+		return true
+	})
+	assertDeletedIdentity("nonX509Identity")
+	msgCryptoService.revokedIdentities = map[string]struct{}{}
+}
+
+func TestExpirationPanic(t *testing.T) {
+	identity3 := []byte("invalidIdentity")
+	msgCryptoService.revokedIdentities[string(identity3)] = struct{}{}
+	assert.Panics(t, func() {
+		NewIdentityMapper(msgCryptoService, identity3, noopPurgeTrigger)
+	})
 }

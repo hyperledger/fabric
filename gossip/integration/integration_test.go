@@ -12,10 +12,11 @@ import (
 	"strings"
 	"testing"
 
+	"time"
+
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -52,15 +53,13 @@ func TestNewGossipCryptoService(t *testing.T) {
 	endpoint3 := "localhost:5613"
 	msptesttools.LoadMSPSetupForTesting()
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
-	idMapper := identity.NewIdentityMapper(cryptSvc, peerIdentity)
-
-	g1, err := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc, idMapper,
+	g1, err := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc,
 		defaultSecureDialOpts)
 	assert.NoError(t, err)
-	g2, err := NewGossipComponent(peerIdentity, endpoint2, s2, secAdv, cryptSvc, idMapper,
+	g2, err := NewGossipComponent(peerIdentity, endpoint2, s2, secAdv, cryptSvc,
 		defaultSecureDialOpts, endpoint1)
 	assert.NoError(t, err)
-	g3, err := NewGossipComponent(peerIdentity, endpoint3, s3, secAdv, cryptSvc, idMapper,
+	g3, err := NewGossipComponent(peerIdentity, endpoint3, s3, secAdv, cryptSvc,
 		defaultSecureDialOpts, endpoint1)
 	assert.NoError(t, err)
 	defer g1.Stop()
@@ -75,11 +74,10 @@ func TestBadInitialization(t *testing.T) {
 	msptesttools.LoadMSPSetupForTesting()
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	s1 := grpc.NewServer()
-	idMapper := identity.NewIdentityMapper(cryptSvc, peerIdentity)
 	_, err := newConfig("anEndpointWithoutAPort", "anEndpointWithoutAPort")
 
 	viper.Set("peer.tls.enabled", true)
-	_, err = NewGossipComponent(peerIdentity, "localhost:5000", s1, secAdv, cryptSvc, idMapper,
+	_, err = NewGossipComponent(peerIdentity, "localhost:5000", s1, secAdv, cryptSvc,
 		defaultSecureDialOpts)
 	assert.Error(t, err)
 }
@@ -104,6 +102,10 @@ func (sa *secAdviser) OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityTyp
 }
 
 type cryptoService struct {
+}
+
+func (s *cryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
 }
 
 func (s *cryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {

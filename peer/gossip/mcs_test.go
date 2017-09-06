@@ -19,6 +19,7 @@ package gossip
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -33,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/protos/common"
+	pmsp "github.com/hyperledger/fabric/protos/msp"
 	protospeer "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
@@ -253,4 +255,63 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner crypto.L
 	assert.NoError(t, err, "Failed marshalling block")
 
 	return blockRaw, msg
+}
+
+func TestExpiration(t *testing.T) {
+	expirationDate := time.Now().Add(time.Minute)
+	id1 := &pmsp.SerializedIdentity{
+		Mspid:   "X509BasedMSP",
+		IdBytes: []byte("X509BasedIdentity"),
+	}
+
+	x509IdentityBytes, _ := proto.Marshal(id1)
+
+	id2 := &pmsp.SerializedIdentity{
+		Mspid:   "nonX509BasedMSP",
+		IdBytes: []byte("nonX509RawIdentity"),
+	}
+
+	nonX509IdentityBytes, _ := proto.Marshal(id2)
+
+	deserializersManager := &mocks.DeserializersManager{
+		LocalDeserializer: &mocks.IdentityDeserializer{
+			Identity: []byte{1, 2, 3},
+			Msg:      []byte{1, 2, 3},
+		},
+		ChannelDeserializers: map[string]msp.IdentityDeserializer{
+			"X509BasedMSP": &mocks.IdentityDeserializerWithExpiration{
+				Expiration: expirationDate,
+				IdentityDeserializer: &mocks.IdentityDeserializer{
+					Identity: x509IdentityBytes,
+					Msg:      []byte("x509IdentityBytes"),
+				},
+			},
+			"nonX509BasedMSP": &mocks.IdentityDeserializer{
+				Identity: nonX509IdentityBytes,
+				Msg:      []byte("nonX509IdentityBytes"),
+			},
+		},
+	}
+	msgCryptoService := NewMCS(
+		&mocks.ChannelPolicyManagerGetterWithManager{},
+		&mockscrypto.LocalSigner{Identity: []byte("Yacov")},
+		deserializersManager,
+	)
+
+	// Green path I check the expiration date is as expected
+	exp, err := msgCryptoService.Expiration(x509IdentityBytes)
+	assert.NoError(t, err)
+	assert.Equal(t, expirationDate.Second(), exp.Second())
+
+	// Green path II - a non-x509 identity has a zero expiration time
+	exp, err = msgCryptoService.Expiration(nonX509IdentityBytes)
+	assert.NoError(t, err)
+	assert.Zero(t, exp)
+
+	// Bad path I - corrupt the x509 identity and make sure error is returned
+	x509IdentityBytes = append(x509IdentityBytes, 0, 0, 0, 0, 0, 0)
+	exp, err = msgCryptoService.Expiration(x509IdentityBytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "No MSP found able to do that")
+	assert.Zero(t, exp)
 }

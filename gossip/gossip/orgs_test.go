@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
@@ -36,6 +35,10 @@ func init() {
 
 type configurableCryptoService struct {
 	m map[string]api.OrgIdentityType
+}
+
+func (c *configurableCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
+	return time.Now().Add(time.Hour), nil
 }
 
 func (c *configurableCryptoService) putInOrg(port int, org string) {
@@ -110,8 +113,7 @@ func newGossipInstanceWithExternalEndpoint(portPrefix int, id int, mcs *configur
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 	}
 	selfId := api.PeerIdentityType(conf.InternalEndpoint)
-	idMapper := identity.NewIdentityMapper(mcs, selfId)
-	g := NewGossipServiceWithServer(conf, mcs, mcs, idMapper, selfId,
+	g := NewGossipServiceWithServer(conf, mcs, mcs, selfId,
 		nil)
 
 	return g
