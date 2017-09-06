@@ -1089,6 +1089,10 @@ func (g *gossipServiceImpl) connect2BootstrapPeers() {
 }
 
 func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID) (*proto.SignedGossipMessage, error) {
+	metaState, err := common.FromBytes(metadata)
+	if err != nil {
+		return nil, err
+	}
 	pkiID := g.comm.GetPKIid()
 	stateInfMsg := &proto.StateInfo{
 		Channel_MAC: channel.GenerateMAC(pkiID, chainID),
@@ -1097,6 +1101,9 @@ func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.C
 		Timestamp: &proto.PeerTime{
 			IncNum: uint64(g.incTime.UnixNano()),
 			SeqNum: uint64(time.Now().UnixNano()),
+		},
+		Properties: &proto.Properties{
+			LedgerHeight: metaState.LedgerHeight,
 		},
 	}
 	m := &proto.GossipMessage{
@@ -1112,7 +1119,7 @@ func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.C
 	signer := func(msg []byte) ([]byte, error) {
 		return g.mcs.Sign(msg)
 	}
-	_, err := sMsg.Sign(signer)
+	_, err = sMsg.Sign(signer)
 	return sMsg, errors.WithStack(err)
 }
 

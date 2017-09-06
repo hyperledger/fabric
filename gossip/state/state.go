@@ -547,10 +547,15 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 func (s *GossipStateProviderImpl) maxAvailableLedgerHeight() uint64 {
 	max := uint64(0)
 	for _, p := range s.mediator.PeersOfChannel(common2.ChainID(s.chainID)) {
-		if nodeMetastate, err := common2.FromBytes(p.Metadata); err == nil {
-			if max < nodeMetastate.LedgerHeight {
-				max = nodeMetastate.LedgerHeight
-			}
+		var peerHeight uint64
+		if p.Properties != nil {
+			peerHeight = p.Properties.LedgerHeight
+		} else if nodeMetastate, err := common2.FromBytes(p.Metadata); err == nil {
+			peerHeight = nodeMetastate.LedgerHeight
+		}
+
+		if max < peerHeight {
+			max = peerHeight
 		}
 	}
 	return max
@@ -660,6 +665,9 @@ func (s *GossipStateProviderImpl) filterPeers(predicate func(peer discovery.Netw
 // by provided input parameter
 func (s *GossipStateProviderImpl) hasRequiredHeight(height uint64) func(peer discovery.NetworkMember) bool {
 	return func(peer discovery.NetworkMember) bool {
+		if peer.Properties != nil {
+			return peer.Properties.LedgerHeight >= height
+		}
 		if nodeMetadata, err := common2.FromBytes(peer.Metadata); err != nil {
 			logger.Errorf("Unable to de-serialize node meta state, error = %+v", errors.WithStack(err))
 		} else if nodeMetadata.LedgerHeight >= height {

@@ -21,7 +21,7 @@ type NodeMetastate struct {
 	LedgerHeight uint64
 }
 
-// NewNodeMetastate creates new meta data with given ledger height148.69
+// NewNodeMetastate creates new meta data with given ledger height
 func NewNodeMetastate(height uint64) *NodeMetastate {
 	return &NodeMetastate{height}
 }

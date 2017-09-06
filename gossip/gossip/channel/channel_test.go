@@ -412,6 +412,7 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	nodeMeta, err := common.FromBytes(msg.GetStateInfo().Metadata)
 	assert.NoError(t, err, "ReceivedMetadata is invalid")
 	assert.Equal(t, ledgerHeight, int(nodeMeta.LedgerHeight), "Received different ledger height than expected")
+	assert.Equal(t, ledgerHeight, int(msg.GetStateInfo().Properties.LedgerHeight))
 }
 
 func TestChannelMsgStoreEviction(t *testing.T) {
@@ -1751,6 +1752,9 @@ func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common
 				Timestamp:   &proto.PeerTime{IncNum: uint64(time.Now().UnixNano()), SeqNum: 1},
 				Metadata:    metaBytes,
 				PkiId:       []byte(pkiID),
+				Properties: &proto.Properties{
+					LedgerHeight: uint64(ledgerHeight),
+				},
 			},
 		},
 	}).NoopSign()

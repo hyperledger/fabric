@@ -580,6 +580,16 @@ func digestsToHex(digests []string) []string {
 	return a
 }
 
+// LedgerHeight returns the ledger height that is specified
+// in the StateInfo message
+func (msg *StateInfo) LedgerHeight() (uint64, error) {
+	if msg.Properties != nil {
+		return msg.Properties.LedgerHeight, nil
+	}
+	metaState, err := common.FromBytes(msg.Metadata)
+	return metaState.LedgerHeight, err
+}
+
 // Abs returns abs(a-b)
 func abs(a, b uint64) uint64 {
 	if a > b {

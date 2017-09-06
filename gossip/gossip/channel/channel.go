@@ -282,6 +282,7 @@ func (gc *gossipChannel) GetPeers() []discovery.NetworkMember {
 			continue
 		}
 		member.Metadata = stateInf.GetStateInfo().Metadata
+		member.Properties = stateInf.GetStateInfo().Properties
 		members = append(members, member)
 	}
 	return members
@@ -751,13 +752,8 @@ func (gc *gossipChannel) UpdateStateInfo(msg *proto.SignedGossipMessage) {
 	gc.Lock()
 	defer gc.Unlock()
 
-	nodeMeta, err := common.FromBytes(msg.GetStateInfo().Metadata)
-	if err != nil {
-		gc.logger.Warningf("Can't extract ledger height from metadata %+v", errors.WithStack(err))
-		return
-	}
 	gc.stateInfoMsgStore.Add(msg)
-	gc.ledgerHeight = nodeMeta.LedgerHeight
+	gc.ledgerHeight = msg.GetStateInfo().Properties.LedgerHeight
 	gc.stateInfoMsg = msg
 	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(1))
 }
