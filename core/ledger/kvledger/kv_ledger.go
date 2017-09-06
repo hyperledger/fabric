@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package kvledger
@@ -20,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
@@ -28,14 +17,11 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/pvtdatatxmgr"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
-	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
 )
 
 var logger = flogging.MustGetLogger("kvledger")
@@ -57,7 +43,7 @@ func newKVLedger(ledgerID string, blockStore *ledgerstorage.Store,
 
 	//Initialize transaction manager using state database
 	var txmgmt txmgr.TxMgr
-	txmgmt = pvtdatatxmgr.NewLockbasedTxMgr(versionedDB)
+	txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(versionedDB)
 
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying
 	// id store, blockstore, txmgr (state database), history database
@@ -269,39 +255,4 @@ func (l *kvLedger) PrivateDataMinBlockNum() (uint64, error) {
 func (l *kvLedger) Close() {
 	l.blockStore.Shutdown()
 	l.txtmgmt.Shutdown()
-}
-
-// retrievePrivateData retrieves the pvt data from the transient store for committing it into the
-// pvt data store along with block commit.
-// KVLedger does this job temporarily for phase-1 and will be moved out to committer
-func retrievePrivateData(transientStore transientstore.Store, block *common.Block) (map[uint64]*ledger.TxPvtData, error) {
-	pvtdata := make(map[uint64]*ledger.TxPvtData)
-	for txIndex, envBytes := range block.Data.Data {
-		env, err := utils.GetEnvelopeFromBlock(envBytes)
-		if err != nil {
-			return nil, err
-		}
-		payload, err := utils.GetPayload(env)
-		if err != nil {
-			return nil, err
-		}
-		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-		if err != nil {
-			return nil, err
-		}
-		pvtEndorsement, err := transientStore.GetSelfSimulatedTxPvtRWSetByTxid(chdr.TxId)
-		if err != nil {
-			return nil, err
-		}
-		if pvtEndorsement == nil {
-			continue
-		}
-		txPvtRWSet := &rwset.TxPvtReadWriteSet{}
-		if err := proto.Unmarshal(pvtEndorsement.PvtSimulationResults, txPvtRWSet); err != nil {
-			return nil, err
-		}
-		seqInBlock := uint64(txIndex)
-		pvtdata[seqInBlock] = &ledger.TxPvtData{SeqInBlock: seqInBlock, WriteSet: txPvtRWSet}
-	}
-	return pvtdata, nil
 }

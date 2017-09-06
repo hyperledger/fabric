@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/spf13/viper"
 )
 
@@ -39,9 +38,8 @@ type levelDBLockBasedHistoryEnv struct {
 	t                   testing.TB
 	testBlockStorageEnv *testBlockStoreEnv
 
-	testDBEnv             privacyenabledstate.TestEnv
-	testTransientStoreEnv *transientstore.StoreEnv
-	txmgr                 txmgr.TxMgr
+	testDBEnv privacyenabledstate.TestEnv
+	txmgr     txmgr.TxMgr
 
 	testHistoryDBProvider historydb.HistoryDBProvider
 	testHistoryDB         historydb.HistoryDB
@@ -57,8 +55,6 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	testDBEnv.Init(t)
 	testDB := testDBEnv.GetDBHandle(testLedgerID)
 
-	testTStoreEnv := transientstore.NewTestStoreEnv(t)
-
 	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB)
 	testHistoryDBProvider := NewHistoryDBProvider()
 	testHistoryDB, err := testHistoryDBProvider.GetDBHandle("TestHistoryDB")
@@ -66,8 +62,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 
 	return &levelDBLockBasedHistoryEnv{t,
 		blockStorageTestEnv, testDBEnv,
-		testTStoreEnv, txMgr,
-		testHistoryDBProvider, testHistoryDB}
+		txMgr, testHistoryDBProvider, testHistoryDB}
 }
 
 func (env *levelDBLockBasedHistoryEnv) cleanup() {
@@ -77,13 +72,11 @@ func (env *levelDBLockBasedHistoryEnv) cleanup() {
 
 	// clean up history
 	env.testHistoryDBProvider.Close()
-	env.testTransientStoreEnv.Cleanup()
 	removeDBPath(env.t)
 }
 
 func removeDBPath(t testing.TB) {
 	removePath(t, ledgerconfig.GetHistoryLevelDBPath())
-	removePath(t, ledgerconfig.GetTransientStorePath())
 }
 
 func removePath(t testing.TB, path string) {
