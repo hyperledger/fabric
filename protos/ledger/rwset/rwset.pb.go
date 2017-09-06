@@ -219,6 +219,8 @@ func (m *CollectionPvtReadWriteSet) GetRwset() []byte {
 	return nil
 }
 
+// CollectionProperty defines an element of a private data that corresponds
+// to a certain transaction and collection
 type CollectionCriteria struct {
 	Channel    string `protobuf:"bytes,1,opt,name=channel" json:"channel,omitempty"`
 	TxId       string `protobuf:"bytes,2,opt,name=tx_id,json=txId" json:"tx_id,omitempty"`

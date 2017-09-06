@@ -75,3 +75,17 @@ func First(peerPool []discovery.NetworkMember, filter RoutingFilter) *comm.Remot
 	}
 	return nil
 }
+
+// AnyMatch filters out peers that don't match any of the given filters
+func AnyMatch(peerPool []discovery.NetworkMember, filters ...RoutingFilter) []discovery.NetworkMember {
+	var res []discovery.NetworkMember
+	for _, peer := range peerPool {
+		for _, matches := range filters {
+			if matches(peer) {
+				res = append(res, peer)
+				break
+			}
+		}
+	}
+	return res
+}

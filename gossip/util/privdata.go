@@ -9,7 +9,10 @@ package util
 import (
 	"fmt"
 
+	"encoding/hex"
+
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
@@ -66,4 +69,21 @@ func (pvt *PvtDataCollections) Unmarshal(data [][]byte) error {
 	}
 
 	return nil
+}
+
+// PrivateRWSets creates an aggregated slice of RWSets
+func PrivateRWSets(rwsets ...PrivateRWSet) [][]byte {
+	res := [][]byte{}
+	for _, rws := range rwsets {
+		res = append(res, []byte(rws))
+	}
+	return res
+}
+
+// PrivateRWSet contains the bytes of CollectionPvtReadWriteSet
+type PrivateRWSet []byte
+
+// Digest returns a deterministic and collision-free representation of the PrivateRWSet
+func (rws PrivateRWSet) Digest() string {
+	return hex.EncodeToString(util.ComputeSHA256(rws))
 }
