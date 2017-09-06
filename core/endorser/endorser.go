@@ -9,6 +9,8 @@ package endorser
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"golang.org/x/net/context"
@@ -52,7 +54,7 @@ var endorserLogger = flogging.MustGetLogger("endorser")
 // The Jira issue that documents Endorser flow along with its relationship to
 // the lifecycle chaincode - https://jira.hyperledger.org/browse/FAB-181
 
-type privateDataDistributor func(channel string, txID string, privateData []byte) error
+type privateDataDistributor func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error
 
 // Endorser provides the Endorser service ProcessProposal
 type Endorser struct {
@@ -261,7 +263,6 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	//---3. execute the proposal and get simulation results
 	var simResult *ledger.TxSimulationResults
 	var pubSimResBytes []byte
-	var prvtSimResBytes []byte
 	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent
 	res, ccevent, err = e.callChaincode(ctx, chainID, version, txid, signedProp, prop, cis, cid, txsim)
@@ -275,16 +276,11 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 			return nil, nil, nil, nil, err
 		}
 
-		if prvtSimResBytes, err = simResult.GetPvtSimulationBytes(); err != nil {
-			return nil, nil, nil, nil, err
-		}
-
-		if len(prvtSimResBytes) > 0 {
-			if err := e.distributePrivateData(chainID, txid, prvtSimResBytes); err != nil {
+		if simResult.PvtSimulationResults != nil {
+			if err := e.distributePrivateData(chainID, txid, simResult.PvtSimulationResults); err != nil {
 				return nil, nil, nil, nil, err
 			}
 		}
-
 		if pubSimResBytes, err = simResult.GetPubSimulationBytes(); err != nil {
 			return nil, nil, nil, nil, err
 		}

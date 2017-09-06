@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package transientstore
@@ -19,8 +9,12 @@ package transientstore
 import (
 	"errors"
 
-	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
@@ -44,10 +38,10 @@ type StoreProvider interface {
 // the permanent storage or the pruning of some data items is enforced by the policy
 type Store interface {
 	// Persist stores the private read-write set of a transaction in the transient store
-	Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults []byte) error
+	Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error
 	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 	// RWSets persisted from different endorsers (via Gossip)
-	GetTxPvtRWSetByTxid(txid string) (commonledger.ResultsIterator, error)
+	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (*rwsetScanner, error)
 	// GetSelfSimulatedTxPvtRWSetByTxid returns the private read-write set generated from the simulation
 	// performed by the peer itself
 	GetSelfSimulatedTxPvtRWSetByTxid(txid string) (*EndorserPvtSimulationResults, error)
@@ -64,7 +58,7 @@ type Store interface {
 type EndorserPvtSimulationResults struct {
 	EndorserID             string
 	EndorsementBlockHeight uint64
-	PvtSimulationResults   []byte
+	PvtSimulationResults   *rwset.TxPvtReadWriteSet
 }
 
 //////////////////////////////////////////////
@@ -85,23 +79,14 @@ type store struct {
 }
 
 type rwsetScanner struct {
-	txid  string
-	dbItr iterator.Iterator
+	txid   string
+	dbItr  iterator.Iterator
+	filter ledger.PvtNsCollFilter
 }
 
 // NewStoreProvider instantiates TransientStoreProvider
 func NewStoreProvider() StoreProvider {
 	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: GetTransientStorePath()})
-	return &storeProvider{dbProvider: dbProvider}
-}
-
-// NewCustomPathStoreProvider constructs a StoreProvider at the given path
-// This function is used by ledger to construct a dedicated store till the time the store is managed
-// by the transient coordinator. A separate store location by the ledger is desired so that
-// the coordinator can be developed independently to handle the management of the transient store at default location.
-// Once the coordinator is developed, the ledger can stop using the transient store and this function can be removed.
-func NewCustomPathStoreProvider(path string) StoreProvider {
-	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: path})
 	return &storeProvider{dbProvider: dbProvider}
 }
 
@@ -118,12 +103,16 @@ func (provider *storeProvider) Close() {
 
 // Persist stores the private read-write set of a transaction in the transient store
 func (s *store) Persist(txid string, endorserid string,
-	endorsementBlkHt uint64, privateSimulationResults []byte) error {
+	endorsementBlkHt uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
 	dbBatch := leveldbhelper.NewUpdateBatch()
 
 	// Create compositeKey with appropriate prefix, txid, endorserid and endorsementBlkHt
 	compositeKey := createCompositeKeyForPvtRWSet(txid, endorserid, endorsementBlkHt)
-	dbBatch.Put(compositeKey, privateSimulationResults)
+	privateSimulationResultsBytes, err := proto.Marshal(privateSimulationResults)
+	if err != nil {
+		return err
+	}
+	dbBatch.Put(compositeKey, privateSimulationResultsBytes)
 
 	// Create compositeKey with appropriate prefix, endorsementBlkHt, txid, endorserid & Store
 	// the compositeKey (purge index) a null byte as value.
@@ -136,34 +125,29 @@ func (s *store) Persist(txid string, endorserid string,
 // GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 // RWSets persisted from different endorserids. Eventually, we may pass a set of collections name
 // (filters) along with txid.
-func (s *store) GetTxPvtRWSetByTxid(txid string) (commonledger.ResultsIterator, error) {
+func (s *store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (*rwsetScanner, error) {
 	// Construct startKey and endKey to do an range query
 	startKey := createTxidRangeStartKey(txid)
 	endKey := createTxidRangeEndKey(txid)
 
 	iter := s.db.GetIterator(startKey, endKey)
-	return &rwsetScanner{txid, iter}, nil
+	return &rwsetScanner{txid, iter, filter}, nil
 }
 
 // GetSelfSimulatedTxPvtRWSetByTxid returns the private write set generated from the simulation performed
 // by the peer itself. Eventually, we may pass a set of collections name (filters) along with txid.
 func (s *store) GetSelfSimulatedTxPvtRWSetByTxid(txid string) (*EndorserPvtSimulationResults, error) {
 	var err error
-	var itr commonledger.ResultsIterator
-	if itr, err = s.GetTxPvtRWSetByTxid(txid); err != nil {
+	var itr *rwsetScanner
+	if itr, err = s.GetTxPvtRWSetByTxid(txid, nil); err != nil {
 		return nil, err
 	}
 	defer itr.Close()
-	var temp commonledger.QueryResult
 	var res *EndorserPvtSimulationResults
 	for {
-		if temp, err = itr.Next(); err != nil {
+		if res, err = itr.Next(); res == nil || err != nil {
 			return nil, err
 		}
-		if temp == nil {
-			return nil, nil
-		}
-		res = temp.(*EndorserPvtSimulationResults)
 		if selfSimulated(res) {
 			return res, nil
 		}
@@ -219,17 +203,24 @@ func (s *store) Shutdown() {
 
 // Next moves the iterator to the next key/value pair.
 // It returns whether the iterator is exhausted.
-func (scanner *rwsetScanner) Next() (commonledger.QueryResult, error) {
+func (scanner *rwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 	if !scanner.dbItr.Next() {
 		return nil, nil
 	}
 	dbKey := scanner.dbItr.Key()
 	dbVal := scanner.dbItr.Value()
 	endorserid, endorsementBlkHt := splitCompositeKeyOfPvtRWSet(dbKey)
+
+	txPvtRWSet := &rwset.TxPvtReadWriteSet{}
+	if err := proto.Unmarshal(dbVal, txPvtRWSet); err != nil {
+		return nil, err
+	}
+	filteredTxPvtRWSet := pvtdatastorage.TrimPvtWSet(txPvtRWSet, scanner.filter)
+
 	return &EndorserPvtSimulationResults{
 		EndorserID:             endorserid,
 		EndorsementBlockHeight: endorsementBlkHt,
-		PvtSimulationResults:   dbVal,
+		PvtSimulationResults:   filteredTxPvtRWSet,
 	}, nil
 }
 

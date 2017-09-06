@@ -167,7 +167,7 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 			return nil, err
 		}
 		logger.Debugf("Retrieving pvtdata for bNum=%d, tNum=%d", bNum, tNum)
-		filteredWSet := trimPvtWSet(pvtWSet, filter)
+		filteredWSet := TrimPvtWSet(pvtWSet, filter)
 		pvtData = append(pvtData, &ledger.TxPvtData{SeqInBlock: tNum, WriteSet: filteredWSet})
 	}
 	return pvtData, nil
@@ -246,7 +246,9 @@ func (s *store) getLastCommittedBlockNum() (bool, uint64, error) {
 	return false, decodeBlockNum(v), nil
 }
 
-func trimPvtWSet(pvtWSet *rwset.TxPvtReadWriteSet, filter ledger.PvtNsCollFilter) *rwset.TxPvtReadWriteSet {
+// TrimPvtWSet returns a `TxPvtReadWriteSet` that retains only list of 'ns/collections' supplied in the filter
+// A nil filter does not filter any results and returns the original `pvtWSet` as is
+func TrimPvtWSet(pvtWSet *rwset.TxPvtReadWriteSet, filter ledger.PvtNsCollFilter) *rwset.TxPvtReadWriteSet {
 	if filter == nil {
 		return pvtWSet
 	}

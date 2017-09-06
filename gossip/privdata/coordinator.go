@@ -9,7 +9,6 @@ package privdata
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -31,7 +30,7 @@ func init() {
 // TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger
 type TransientStore interface {
 	// Persist stores the private read-write set of a transaction in the transient store
-	Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults []byte) error
+	Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error
 
 	// GetSelfSimulatedTxPvtRWSetByTxid returns the private read-write set generated from the simulation
 	// performed by the peer itself
@@ -42,7 +41,7 @@ type TransientStore interface {
 type PrivateDataDistributor interface {
 	// Distribute distributes a given private data with a specific transactionID
 	// to peers according policies that are derived from the given PolicyStore and PolicyParser
-	Distribute(privateData []byte, txID string, ps privdata.PolicyStore, pp privdata.PolicyParser) error
+	Distribute(privateData *rwset.TxPvtReadWriteSet, txID string, ps privdata.PolicyStore, pp privdata.PolicyParser) error
 }
 
 // Coordinator orchestrates the flow of the new
@@ -82,7 +81,7 @@ func NewCoordinator(committer committer.Committer, store TransientStore) Coordin
 
 // Distribute distributes a given private data with a specific transactionID
 // to peers according policies that are derived from the given PolicyStore and PolicyParser
-func (c *coordinator) Distribute(privateData []byte, txID string, ps privdata.PolicyStore, pp privdata.PolicyParser) error {
+func (c *coordinator) Distribute(privateData *rwset.TxPvtReadWriteSet, txID string, ps privdata.PolicyStore, pp privdata.PolicyParser) error {
 	// TODO: also need to distribute the data...
 	return c.TransientStore.Persist(txID, "", 0, privateData)
 }
@@ -163,10 +162,7 @@ func (c *coordinator) retrievePrivateData(block *common.Block) (map[uint64]*ledg
 		if pvtEndorsement == nil {
 			continue
 		}
-		txPvtRWSet := &rwset.TxPvtReadWriteSet{}
-		if err := proto.Unmarshal(pvtEndorsement.PvtSimulationResults, txPvtRWSet); err != nil {
-			return nil, err
-		}
+		txPvtRWSet := pvtEndorsement.PvtSimulationResults
 		seqInBlock := uint64(txIndex)
 		pvtdata[seqInBlock] = &ledger.TxPvtData{SeqInBlock: seqInBlock, WriteSet: txPvtRWSet}
 	}

@@ -9,6 +9,8 @@ package service
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/deliverservice"
@@ -41,7 +43,7 @@ type GossipService interface {
 
 	// DistributePrivateData distributes private data to the peers in the collections
 	// according to policies induced by the PolicyStore and PolicyParser
-	DistributePrivateData(chainID string, txID string, privateData []byte, ps privdata.PolicyStore, pp privdata.PolicyParser) error
+	DistributePrivateData(chainID string, txID string, privateData *rwset.TxPvtReadWriteSet, ps privdata.PolicyStore, pp privdata.PolicyParser) error
 	// NewConfigEventer creates a ConfigProcessor which the configtx.Manager can ultimately route config updates to
 	NewConfigEventer() ConfigProcessor
 	// InitializeChannel allocates the state provider and should be invoked once per channel per execution
@@ -160,7 +162,7 @@ func GetGossipService() GossipService {
 	return gossipServiceInstance
 }
 
-func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, privData []byte, ps privdata.PolicyStore, pp privdata.PolicyParser) error {
+func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, privData *rwset.TxPvtReadWriteSet, ps privdata.PolicyStore, pp privdata.PolicyParser) error {
 	g.lock.RLock()
 	coord, exists := g.coordinators[chainID]
 	g.lock.RUnlock()

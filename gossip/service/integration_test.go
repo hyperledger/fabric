@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -25,7 +27,7 @@ import (
 type transientStoreMock struct {
 }
 
-func (*transientStoreMock) Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults []byte) error {
+func (*transientStoreMock) Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
 	panic("implement me")
 }
 

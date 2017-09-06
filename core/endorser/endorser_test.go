@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -746,7 +748,7 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	endorserServer = NewEndorserServer(func(channel string, txID string, privateData []byte) error {
+	endorserServer = NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error {
 		return nil
 	})
 

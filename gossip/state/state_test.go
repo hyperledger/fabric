@@ -167,7 +167,7 @@ func (node *peerNode) shutdown() {
 type mockTransientStore struct {
 }
 
-func (*mockTransientStore) Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults []byte) error {
+func (*mockTransientStore) Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
 	panic("implement me")
 }
 

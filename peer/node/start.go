@@ -18,6 +18,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/core"
@@ -169,7 +171,7 @@ func serve(args []string) error {
 	// Register the Admin server
 	pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer())
 
-	privDataDist := func(channel string, txID string, privateData []byte) error {
+	privDataDist := func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, nil, nil)
 	}
 

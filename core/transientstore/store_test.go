@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package transientstore
@@ -21,7 +11,11 @@ import (
 	"os"
 	"testing"
 
-	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/davecgh/go-spew/spew"
+
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -78,6 +72,7 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	env := NewTestStoreEnv(t)
 	assert := assert.New(t)
 	txid := "txid-1"
+	samplePvtRWSet := samplePvtData(t)
 
 	// Create private simulation results for txid-1
 	var endorsersResults []*EndorserPvtSimulationResults
@@ -86,7 +81,7 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	endorser0SimulationResults := &EndorserPvtSimulationResults{
 		EndorserID:             "endorser0",
 		EndorsementBlockHeight: 10,
-		PvtSimulationResults:   []byte("results"),
+		PvtSimulationResults:   samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser0SimulationResults)
 
@@ -94,7 +89,7 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	endorser1SimulationResults := &EndorserPvtSimulationResults{
 		EndorserID:             "endorser1",
 		EndorsementBlockHeight: 10,
-		PvtSimulationResults:   []byte("results"),
+		PvtSimulationResults:   samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser1SimulationResults)
 
@@ -107,19 +102,17 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	}
 
 	// Retrieve simulation results of txid-1 from  store
-	var iter commonledger.ResultsIterator
-	iter, err = env.TestStore.GetTxPvtRWSetByTxid(txid)
+	iter, err := env.TestStore.GetTxPvtRWSetByTxid(txid, nil)
 	assert.NoError(err)
 
-	var result commonledger.QueryResult
 	var actualEndorsersResults []*EndorserPvtSimulationResults
-	for true {
-		result, err = iter.Next()
+	for {
+		result, err := iter.Next()
 		assert.NoError(err)
 		if result == nil {
 			break
 		}
-		actualEndorsersResults = append(actualEndorsersResults, result.(*EndorserPvtSimulationResults))
+		actualEndorsersResults = append(actualEndorsersResults, result)
 	}
 	iter.Close()
 	assert.Equal(endorsersResults, actualEndorsersResults)
@@ -133,7 +126,7 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	selfSimulatedResults := &EndorserPvtSimulationResults{
 		EndorserID:             "",
 		EndorsementBlockHeight: 10,
-		PvtSimulationResults:   []byte("results"),
+		PvtSimulationResults:   samplePvtRWSet,
 	}
 
 	// Persist self simulated results
@@ -151,6 +144,7 @@ func TestStorePurge(t *testing.T) {
 	assert := assert.New(t)
 
 	txid := "txid-1"
+	samplePvtRWSet := samplePvtData(t)
 
 	// Create private simulation results for txid-1
 	var endorsersResults []*EndorserPvtSimulationResults
@@ -159,7 +153,7 @@ func TestStorePurge(t *testing.T) {
 	endorser0SimulationResults := &EndorserPvtSimulationResults{
 		EndorserID:             "endorser0",
 		EndorsementBlockHeight: 10,
-		PvtSimulationResults:   []byte("results"),
+		PvtSimulationResults:   samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser0SimulationResults)
 
@@ -167,7 +161,7 @@ func TestStorePurge(t *testing.T) {
 	endorser1SimulationResults := &EndorserPvtSimulationResults{
 		EndorserID:             "endorser1",
 		EndorsementBlockHeight: 11,
-		PvtSimulationResults:   []byte("results"),
+		PvtSimulationResults:   samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser1SimulationResults)
 
@@ -175,7 +169,7 @@ func TestStorePurge(t *testing.T) {
 	endorser2SimulationResults := &EndorserPvtSimulationResults{
 		EndorserID:             "endorser2",
 		EndorsementBlockHeight: 12,
-		PvtSimulationResults:   []byte("results"),
+		PvtSimulationResults:   samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser2SimulationResults)
 
@@ -183,7 +177,7 @@ func TestStorePurge(t *testing.T) {
 	endorser3SimulationResults := &EndorserPvtSimulationResults{
 		EndorserID:             "endorser3",
 		EndorsementBlockHeight: 12,
-		PvtSimulationResults:   []byte("results"),
+		PvtSimulationResults:   samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser3SimulationResults)
 
@@ -191,7 +185,7 @@ func TestStorePurge(t *testing.T) {
 	endorser4SimulationResults := &EndorserPvtSimulationResults{
 		EndorserID:             "endorser4",
 		EndorsementBlockHeight: 13,
-		PvtSimulationResults:   []byte("results"),
+		PvtSimulationResults:   samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser4SimulationResults)
 
@@ -209,8 +203,7 @@ func TestStorePurge(t *testing.T) {
 	assert.NoError(err)
 
 	// Retrieve simulation results of txid-1 from  store
-	var iter commonledger.ResultsIterator
-	iter, err = env.TestStore.GetTxPvtRWSetByTxid(txid)
+	iter, err := env.TestStore.GetTxPvtRWSetByTxid(txid, nil)
 	assert.NoError(err)
 
 	// Expected results for txid-1
@@ -220,15 +213,14 @@ func TestStorePurge(t *testing.T) {
 	expectedEndorsersResults = append(expectedEndorsersResults, endorser4SimulationResults) //endorsed at height 13
 
 	// Check whether actual results and expected results are same
-	var result commonledger.QueryResult
 	var actualEndorsersResults []*EndorserPvtSimulationResults
 	for true {
-		result, err = iter.Next()
+		result, err := iter.Next()
 		assert.NoError(err)
 		if result == nil {
 			break
 		}
-		actualEndorsersResults = append(actualEndorsersResults, result.(*EndorserPvtSimulationResults))
+		actualEndorsersResults = append(actualEndorsersResults, result)
 	}
 	iter.Close()
 	assert.Equal(expectedEndorsersResults, actualEndorsersResults)
@@ -255,4 +247,80 @@ func TestStorePurge(t *testing.T) {
 	assert.NoError(err)
 
 	env.Cleanup()
+}
+
+func TestTransientStoreRetrievalWithFilter(t *testing.T) {
+	env := NewTestStoreEnv(t)
+	store := env.TestStore
+
+	samplePvtSimRes := samplePvtData(t)
+
+	testTxid := "testTxid"
+	numEntries := 5
+	for i := 0; i < numEntries; i++ {
+		store.Persist(testTxid, "", uint64(i), samplePvtSimRes)
+	}
+
+	filter := ledger.NewPvtNsCollFilter()
+	filter.Add("ns-1", "coll-1")
+	filter.Add("ns-2", "coll-2")
+
+	itr, err := store.GetTxPvtRWSetByTxid(testTxid, filter)
+	assert.NoError(t, err)
+
+	var actualRes []*EndorserPvtSimulationResults
+	for {
+		res, err := itr.Next()
+		if res == nil || err != nil {
+			assert.NoError(t, err)
+			break
+		}
+		actualRes = append(actualRes, res)
+	}
+
+	// prepare the trimmed pvtrwset manually - retain only "ns-1/coll-1" and "ns-2/coll-2"
+	expectedSimulationRes := samplePvtSimRes
+	expectedSimulationRes.NsPvtRwset[0].CollectionPvtRwset = expectedSimulationRes.NsPvtRwset[0].CollectionPvtRwset[0:1]
+	expectedSimulationRes.NsPvtRwset[1].CollectionPvtRwset = expectedSimulationRes.NsPvtRwset[1].CollectionPvtRwset[1:]
+
+	var expectedRes []*EndorserPvtSimulationResults
+	for i := 0; i < numEntries; i++ {
+		expectedRes = append(expectedRes, &EndorserPvtSimulationResults{"", uint64(i), expectedSimulationRes})
+	}
+	assert.Equal(t, expectedRes, actualRes)
+	t.Logf("Actual Res = %s", spew.Sdump(actualRes))
+}
+
+func samplePvtData(t *testing.T) *rwset.TxPvtReadWriteSet {
+	pvtWriteSet := &rwset.TxPvtReadWriteSet{DataModel: rwset.TxReadWriteSet_KV}
+	pvtWriteSet.NsPvtRwset = []*rwset.NsPvtReadWriteSet{
+		&rwset.NsPvtReadWriteSet{
+			Namespace: "ns-1",
+			CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+				&rwset.CollectionPvtReadWriteSet{
+					CollectionName: "coll-1",
+					Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll1"),
+				},
+				&rwset.CollectionPvtReadWriteSet{
+					CollectionName: "coll-2",
+					Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll2"),
+				},
+			},
+		},
+
+		&rwset.NsPvtReadWriteSet{
+			Namespace: "ns-2",
+			CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+				&rwset.CollectionPvtReadWriteSet{
+					CollectionName: "coll-1",
+					Rwset:          []byte("RandomBytes-PvtRWSet-ns2-coll1"),
+				},
+				&rwset.CollectionPvtReadWriteSet{
+					CollectionName: "coll-2",
+					Rwset:          []byte("RandomBytes-PvtRWSet-ns2-coll2"),
+				},
+			},
+		},
+	}
+	return pvtWriteSet
 }
