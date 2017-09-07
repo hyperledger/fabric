@@ -63,7 +63,7 @@ func (d *distributorImpl) Distribute(txID string, privData *rwset.TxPvtReadWrite
 		namespace := pvtRwset.Namespace
 		for _, collection := range pvtRwset.CollectionPvtRwset {
 			collectionName := collection.CollectionName
-			policyFilter := pp.Parse(ps.CollectionPolicy(rwset.CollectionCriteria{
+			policyFilter := pp.Parse(ps.CollectionPolicy(common.CollectionCriteria{
 				Namespace:  namespace,
 				Collection: collectionName,
 				TxId:       txID,

@@ -31,7 +31,6 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
@@ -641,7 +640,7 @@ func (*noopPolicyParser) Parse(privdata.SerializedPolicy) privdata.Filter {
 type noopPolicyStore struct {
 }
 
-func (*noopPolicyStore) CollectionPolicy(rwset.CollectionCriteria) privdata.SerializedPolicy {
+func (*noopPolicyStore) CollectionPolicy(common.CollectionCriteria) privdata.SerializedPolicy {
 	return &serializedPolicy{}
 }
 

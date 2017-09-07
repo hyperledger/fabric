@@ -63,12 +63,3 @@ message CollectionPvtReadWriteSet {
     string collection_name = 1;
     bytes rwset = 2; // Data model specific serialized proto message (e.g., kvrwset.KVRWSet for KV and Document data models)
 }
-
-// CollectionProperty defines an element of a private data that corresponds
-// to a certain transaction and collection
-message CollectionCriteria {
-    string channel = 1;
-    string tx_id = 2;
-    string collection = 3;
-    string namespace = 4;
-}

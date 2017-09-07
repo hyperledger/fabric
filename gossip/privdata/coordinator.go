@@ -497,7 +497,7 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 
 // isEligible checks if this peer is eligible for a collection in a given namespace
 func (c *coordinator) isEligible(chdr *common.ChannelHeader, namespace string, col string) bool {
-	cp := rwset.CollectionCriteria{
+	cp := common.CollectionCriteria{
 		Channel:    chdr.ChannelId,
 		Namespace:  namespace,
 		Collection: col,
@@ -580,7 +580,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common
 
 		for _, ns := range item.WriteSet.NsPvtRwset {
 			for _, col := range ns.CollectionPvtRwset {
-				cc := rwset.CollectionCriteria{
+				cc := common.CollectionCriteria{
 					Channel:    chdr.ChannelId,
 					TxId:       chdr.TxId,
 					Namespace:  ns.Namespace,

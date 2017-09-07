@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	fcommon "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -79,7 +78,7 @@ func (ps *mockPolicyStore) withPolicy(collection string) *mockSerializedPolicy {
 	return sp
 }
 
-func (ps mockPolicyStore) CollectionPolicy(cc rwset.CollectionCriteria) privdata.SerializedPolicy {
+func (ps mockPolicyStore) CollectionPolicy(cc fcommon.CollectionCriteria) privdata.SerializedPolicy {
 	return ps.m[cc.Collection]
 }
 
