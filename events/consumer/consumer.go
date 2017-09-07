@@ -26,7 +26,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	ehpb "github.com/hyperledger/fabric/protos/peer"
@@ -42,6 +44,13 @@ type EventsClient struct {
 	regTimeout  time.Duration
 	stream      ehpb.Events_ChatClient
 	adapter     EventAdapter
+}
+
+// RegistrationConfig holds the information to be used when registering for
+// events from the eventhub
+type RegistrationConfig struct {
+	InterestedEvents []*ehpb.Interest
+	Timestamp        *timestamp.Timestamp
 }
 
 //NewEventsClient Returns a new grpc.ClientConn to the configured local PEER.
@@ -96,12 +105,12 @@ func (ec *EventsClient) send(emsg *ehpb.Event) error {
 }
 
 // RegisterAsync - registers interest in a event and doesn't wait for a response
-func (ec *EventsClient) RegisterAsync(ies []*ehpb.Interest) error {
+func (ec *EventsClient) RegisterAsync(config *RegistrationConfig) error {
 	creator, err := getCreatorFromLocalMSP()
 	if err != nil {
 		return fmt.Errorf("error getting creator from MSP: %s", err)
 	}
-	emsg := &ehpb.Event{Event: &ehpb.Event_Register{Register: &ehpb.Register{Events: ies}}, Creator: creator}
+	emsg := &ehpb.Event{Event: &ehpb.Event_Register{Register: &ehpb.Register{Events: config.InterestedEvents}}, Creator: creator, Timestamp: config.Timestamp}
 
 	if err = ec.send(emsg); err != nil {
 		consumerLogger.Errorf("error on Register send %s\n", err)
@@ -110,9 +119,9 @@ func (ec *EventsClient) RegisterAsync(ies []*ehpb.Interest) error {
 }
 
 // register - registers interest in a event
-func (ec *EventsClient) register(ies []*ehpb.Interest) error {
+func (ec *EventsClient) register(config *RegistrationConfig) error {
 	var err error
-	if err = ec.RegisterAsync(ies); err != nil {
+	if err = ec.RegisterAsync(config); err != nil {
 		return err
 	}
 
@@ -221,7 +230,8 @@ func (ec *EventsClient) Start() error {
 		return fmt.Errorf("could not create client conn to %s:%s", ec.peerAddress, err)
 	}
 
-	if err = ec.register(ies); err != nil {
+	regConfig := &RegistrationConfig{InterestedEvents: ies, Timestamp: util.CreateUtcTimestamp()}
+	if err = ec.register(regConfig); err != nil {
 		return err
 	}
 

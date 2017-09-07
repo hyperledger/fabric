@@ -34,6 +34,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	"github.com/hyperledger/fabric/common/util"
@@ -250,7 +251,8 @@ func TestReceiveCCWildcard(t *testing.T) {
 	var err error
 
 	adapter.count = 1
-	obcEHClient.RegisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: ""}}}})
+	config := &consumer.RegistrationConfig{InterestedEvents: []*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: ""}}}}, Timestamp: util.CreateUtcTimestamp()}
+	obcEHClient.RegisterAsync(config)
 
 	select {
 	case <-adapter.notfy:
@@ -303,17 +305,18 @@ func TestFailReceive(t *testing.T) {
 
 func TestUnregister(t *testing.T) {
 	var err error
-	obcEHClient.RegisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event10"}}}})
+	config := &consumer.RegistrationConfig{InterestedEvents: []*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event11"}}}}, Timestamp: util.CreateUtcTimestamp()}
+	obcEHClient.RegisterAsync(config)
 
 	adapter.count = 1
 	select {
 	case <-adapter.notfy:
 	case <-time.After(2 * time.Second):
-		t.Fail()
+		t.FailNow()
 		t.Logf("timed out on message")
 	}
 
-	emsg := createTestChaincodeEvent("0xffffffff", "event10")
+	emsg := createTestChaincodeEvent("0xffffffff", "event11")
 	if err = Send(emsg); err != nil {
 		t.Fail()
 		t.Logf("Error sending message %s", err)
@@ -326,7 +329,7 @@ func TestUnregister(t *testing.T) {
 		t.Fail()
 		t.Logf("timed out on message")
 	}
-	obcEHClient.UnregisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event10"}}}})
+	obcEHClient.UnregisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event11"}}}})
 	adapter.count = 1
 	select {
 	case <-adapter.notfy:
@@ -336,7 +339,7 @@ func TestUnregister(t *testing.T) {
 	}
 
 	adapter.count = 1
-	emsg = createTestChaincodeEvent("0xffffffff", "event10")
+	emsg = createTestChaincodeEvent("0xffffffff", "event11")
 	if err = Send(emsg); err != nil {
 		t.Fail()
 		t.Logf("Error sending message %s", err)
@@ -345,17 +348,30 @@ func TestUnregister(t *testing.T) {
 	select {
 	case <-adapter.notfy:
 		t.Fail()
-		t.Logf("should NOT have received event1")
+		t.Logf("should NOT have received event11")
 	case <-time.After(5 * time.Second):
 	}
 
 }
 
+func TestRegister_outOfTimeWindow(t *testing.T) {
+	interestedEvent := []*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event10"}}}}
+	config := &consumer.RegistrationConfig{InterestedEvents: interestedEvent, Timestamp: &timestamp.Timestamp{Seconds: 0}}
+	obcEHClient.RegisterAsync(config)
+
+	adapter.count = 0
+	select {
+	case <-adapter.notfy:
+		t.Fail()
+		t.Logf("register with out of range timestamp should fail")
+	case <-time.After(2 * time.Second):
+	}
+}
+
 func TestNewEventsServer(t *testing.T) {
+	config := &EventsServerConfig{BufferSize: uint(viper.GetInt("peer.events.buffersize")), Timeout: viper.GetDuration("peer.events.timeout"), TimeWindow: viper.GetDuration("peer.events.timewindow")}
 	doubleCreation := func() {
-		NewEventsServer(
-			uint(viper.GetInt("peer.events.buffersize")),
-			viper.GetDuration("peer.events.timeout"))
+		NewEventsServer(config)
 	}
 	assert.Panics(t, doubleCreation)
 
@@ -474,10 +490,11 @@ func TestMain(m *testing.M) {
 	// use a buffer of 100 and blocking timeout
 	viper.Set("peer.events.buffersize", 100)
 	viper.Set("peer.events.timeout", 0)
+	timeWindow, _ := time.ParseDuration("1m")
+	viper.Set("peer.events.timewindow", timeWindow)
 
-	ehServer = NewEventsServer(
-		uint(viper.GetInt("peer.events.buffersize")),
-		viper.GetDuration("peer.events.timeout"))
+	ehConfig := &EventsServerConfig{BufferSize: uint(viper.GetInt("peer.events.buffersize")), Timeout: viper.GetDuration("peer.events.timeout"), TimeWindow: viper.GetDuration("peer.events.timewindow")}
+	ehServer = NewEventsServer(ehConfig)
 	ehpb.RegisterEventsServer(grpcServer, ehServer)
 
 	go grpcServer.Serve(lis)

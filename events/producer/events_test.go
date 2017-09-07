@@ -121,7 +121,7 @@ func TestDeRegister(t *testing.T) {
 	assert.Error(t, deRegisterHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, nil))
 }
 
-func TestRegister(t *testing.T) {
+func TestRegisterHandler(t *testing.T) {
 	f := func() {
 		registerHandler(nil, nil)
 	}
@@ -157,10 +157,9 @@ func TestProcessEvents(t *testing.T) {
 }
 
 func TestInitializeEvents_twice(t *testing.T) {
+	config := &EventsServerConfig{BufferSize: uint(viper.GetInt("peer.events.buffersize")), Timeout: viper.GetDuration("peer.events.timeout"), TimeWindow: viper.GetDuration("peer.events.timewindow")}
 	initializeEventsTwice := func() {
-		initializeEvents(
-			uint(viper.GetInt("peer.events.buffersize")),
-			viper.GetDuration("peer.events.timeout"))
+		initializeEvents(config)
 	}
 	assert.Panics(t, initializeEventsTwice)
 }

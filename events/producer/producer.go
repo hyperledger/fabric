@@ -31,16 +31,23 @@ var logger = flogging.MustGetLogger("eventhub_producer")
 type EventsServer struct {
 }
 
+// EventsServerConfig contains the setup config for the events server
+type EventsServerConfig struct {
+	BufferSize uint
+	Timeout    time.Duration
+	TimeWindow time.Duration
+}
+
 //singleton - if we want to create multiple servers, we need to subsume events.gEventConsumers into EventsServer
 var globalEventsServer *EventsServer
 
 // NewEventsServer returns a EventsServer
-func NewEventsServer(bufferSize uint, timeout time.Duration) *EventsServer {
+func NewEventsServer(config *EventsServerConfig) *EventsServer {
 	if globalEventsServer != nil {
 		panic("Cannot create multiple event hub servers")
 	}
 	globalEventsServer = new(EventsServer)
-	initializeEvents(bufferSize, timeout)
+	initializeEvents(config)
 	//initializeCCEventProcessor(bufferSize, timeout)
 	return globalEventsServer
 }
