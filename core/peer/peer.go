@@ -93,9 +93,27 @@ func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
 		if err != nil {
 			return err
 		}
+
+		capabilitiesSupportedOrPanic(bundle)
+
 		cs.bundleSource.Update(bundle)
 	}
 	return nil
+}
+
+func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
+	ac, ok := res.ApplicationConfig()
+	if !ok {
+		peerLogger.Panicf("[channel %s] does not have application config so is incompatible", res.ConfigtxManager().ChainID())
+	}
+
+	if err := ac.Capabilities().Supported(); err != nil {
+		peerLogger.Panicf("[channel %s] incompatible %s", res.ConfigtxManager(), err)
+	}
+
+	if err := res.ChannelConfig().Capabilities().Supported(); err != nil {
+		peerLogger.Panicf("[channel %s] incompatible %s", res.ConfigtxManager(), err)
+	}
 }
 
 func (cs *chainSupport) Ledger() ledger.PeerLedger {
@@ -171,7 +189,7 @@ func Initialize(init func(string)) {
 	}
 }
 
-// Take care to initialize chain after peer joined, for example deploys system CCs
+// InitChain takes care to initialize chain after peer joined, for example deploys system CCs
 func InitChain(cid string) {
 	if chainInitializer != nil {
 		// Initialize chaincode, namely deploy system CC
@@ -221,6 +239,8 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	if err != nil {
 		return err
 	}
+
+	capabilitiesSupportedOrPanic(bundle)
 
 	channelconfig.LogSanityChecks(bundle)
 

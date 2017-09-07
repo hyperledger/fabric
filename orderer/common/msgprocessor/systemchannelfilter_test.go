@@ -12,7 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
@@ -85,15 +84,31 @@ func (mcc *mockChainCreator) ChannelsCount() int {
 	return len(mcc.newChains)
 }
 
-func (mcc *mockChainCreator) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error) {
+func (mcc *mockChainCreator) CreateBundle(channelID string, config *cb.Config) (channelconfig.Resources, error) {
+	return &mockconfig.Resources{
+		ConfigtxManagerVal: &mockconfigtx.Manager{
+			ChainIDVal: channelID,
+		},
+		OrdererConfigVal: &mockconfig.Orderer{
+			CapabilitiesVal: &mockconfig.OrdererCapabilities{},
+		},
+		ChannelConfigVal: &mockconfig.Channel{
+			CapabilitiesVal: &mockconfig.ChannelCapabilities{},
+		},
+	}, nil
+}
+
+func (mcc *mockChainCreator) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfig.Resources, error) {
 	if mcc.NewChannelConfigErr != nil {
 		return nil, mcc.NewChannelConfigErr
 	}
 	confUpdate := configtx.UnmarshalConfigUpdateOrPanic(configtx.UnmarshalConfigUpdateEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(envConfigUpdate.Payload).Data).ConfigUpdate)
-	return &mockconfigtx.Manager{
-		ProposeConfigUpdateVal: &cb.ConfigEnvelope{
-			Config:     &cb.Config{Sequence: 1, ChannelGroup: confUpdate.WriteSet},
-			LastUpdate: envConfigUpdate,
+	return &mockconfig.Resources{
+		ConfigtxManagerVal: &mockconfigtx.Manager{
+			ProposeConfigUpdateVal: &cb.ConfigEnvelope{
+				Config:     &cb.Config{Sequence: 1, ChannelGroup: confUpdate.WriteSet},
+				LastUpdate: envConfigUpdate,
+			},
 		},
 	}, nil
 }

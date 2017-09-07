@@ -14,7 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
@@ -22,9 +22,9 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 
-	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -38,6 +38,29 @@ var logger *logging.Logger
 
 func init() {
 	logger = flogging.MustGetLogger(pkgLogID)
+}
+
+// checkResources makes sure that the channel config is compatible with this binary and logs sanity checks
+func checkResources(res channelconfig.Resources) error {
+	channelconfig.LogSanityChecks(res)
+	oc, ok := res.OrdererConfig()
+	if !ok {
+		return errors.New("config does not contain orderer config")
+	}
+	if err := oc.Capabilities().Supported(); err != nil {
+		return errors.Wrapf(err, "config requires unsupported orderer capabilities: %s", err)
+	}
+	if err := res.ChannelConfig().Capabilities().Supported(); err != nil {
+		return errors.Wrapf(err, "config requires unsupported channel capabilities: %s", err)
+	}
+	return nil
+}
+
+// checkResourcesOrPanic invokes checkResources and panics if an error is returned
+func checkResourcesOrPanic(res channelconfig.Resources) {
+	if err := checkResources(res); err != nil {
+		logger.Panicf("[channel %s] %s", res.ConfigtxManager().ChainID(), err)
+	}
 }
 
 type mutableResources interface {
@@ -54,7 +77,7 @@ func (cr *configResources) CreateBundle(channelID string, config *cb.Config) (*c
 }
 
 func (cr *configResources) Update(bndl *channelconfig.Bundle) {
-	channelconfig.LogSanityChecks(bndl)
+	checkResourcesOrPanic(bndl)
 	cr.mutableResources.Update(bndl)
 }
 
@@ -226,7 +249,8 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 	if err != nil {
 		logger.Panicf("Error creating channelconfig bundle: %s", err)
 	}
-	channelconfig.LogSanityChecks(bundle)
+
+	checkResourcesOrPanic(bundle)
 
 	ledger, err := r.ledgerFactory.GetOrCreate(chdr.ChannelId)
 	if err != nil {
@@ -266,6 +290,11 @@ func (r *Registrar) ChannelsCount() int {
 }
 
 // NewChannelConfig produces a new template channel configuration based on the system channel's current config.
-func (r *Registrar) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error) {
+func (r *Registrar) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfig.Resources, error) {
 	return r.templator.NewChannelConfig(envConfigUpdate)
+}
+
+// CreateBundle calls channelconfig.NewBundle
+func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelconfig.Resources, error) {
+	return channelconfig.NewBundle(channelID, config)
 }

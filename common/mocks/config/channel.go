@@ -59,3 +59,14 @@ func (scm *Channel) OrdererAddresses() []string {
 func (scm *Channel) Capabilities() channelconfig.ChannelCapabilities {
 	return scm.CapabilitiesVal
 }
+
+// ChannelCapabilities mocks the channelconfig.ChannelCapabilities interface
+type ChannelCapabilities struct {
+	// SupportedErr is returned by Supported()
+	SupportedErr error
+}
+
+// Supported returns SupportedErr
+func (oc *ChannelCapabilities) Supported() error {
+	return oc.SupportedErr
+}

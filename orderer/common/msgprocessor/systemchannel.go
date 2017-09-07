@@ -23,7 +23,7 @@ import (
 // ChannelConfigTemplator can be used to generate config templates.
 type ChannelConfigTemplator interface {
 	// NewChannelConfig creates a new template configuration manager.
-	NewChannelConfig(env *cb.Envelope) (configtxapi.Manager, error)
+	NewChannelConfig(env *cb.Envelope) (channelconfig.Resources, error)
 }
 
 // SystemChannel implements the Processor interface for the system channel.
@@ -95,12 +95,12 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 
 	// If the channel ID does not match the system channel, then this must be a channel creation transaction
 
-	ctxm, err := s.templator.NewChannelConfig(envConfigUpdate)
+	bundle, err := s.templator.NewChannelConfig(envConfigUpdate)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	newChannelConfigEnv, err := ctxm.ProposeConfigUpdate(envConfigUpdate)
+	newChannelConfigEnv, err := bundle.ConfigtxManager().ProposeConfigUpdate(envConfigUpdate)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -205,7 +205,7 @@ func NewDefaultTemplator(support DefaultTemplatorSupport) *DefaultTemplator {
 }
 
 // NewChannelConfig creates a new template channel configuration based on the current config in the ordering system channel.
-func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error) {
+func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfig.Resources, error) {
 	configUpdatePayload, err := utils.UnmarshalPayload(envConfigUpdate.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("Failing initial channel config creation because of payload unmarshaling error: %s", err)
@@ -323,5 +323,5 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (conf
 		return nil, err
 	}
 
-	return bundle.ConfigtxManager(), nil
+	return bundle, nil
 }
