@@ -25,6 +25,7 @@ func TestSatisfied(t *testing.T) {
 		for _, provider := range []*registry{
 			NewChannelProvider(capsMap).registry,
 			NewOrdererProvider(capsMap).registry,
+			NewApplicationProvider(capsMap).registry,
 		} {
 			assert.Nil(t, provider.Supported())
 		}
@@ -42,6 +43,7 @@ func TestSatisfied(t *testing.T) {
 		for _, provider := range []*registry{
 			NewChannelProvider(capsMap).registry,
 			NewOrdererProvider(capsMap).registry,
+			NewApplicationProvider(capsMap).registry,
 		} {
 			assert.Nil(t, provider.Supported())
 		}
@@ -57,6 +59,7 @@ func TestNotSatisfied(t *testing.T) {
 	for _, provider := range []*registry{
 		NewChannelProvider(capsMap).registry,
 		NewOrdererProvider(capsMap).registry,
+		NewApplicationProvider(capsMap).registry,
 	} {
 		assert.Error(t, provider.Supported())
 	}
