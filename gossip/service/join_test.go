@@ -80,6 +80,10 @@ func (g *gossipMock) JoinChan(joinMsg api.JoinChannelMessage, chainID common.Cha
 	g.Called(joinMsg, chainID)
 }
 
+func (g *gossipMock) LeaveChan(chainID common.ChainID) {
+	panic("implement me")
+}
+
 func (*gossipMock) Stop() {
 	panic("implement me")
 }

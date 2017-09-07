@@ -145,6 +145,7 @@ message StateInfo {
 
 message Properties {
     uint64 ledger_height = 1;
+    bool left_channel = 2;
 }
 
 // StateInfoSnapshot is an aggregation of StateInfo messages
