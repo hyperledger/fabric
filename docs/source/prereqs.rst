@@ -114,6 +114,8 @@ Check your version(s):
 
   python --version
 
+.. _windows-extras:
+
 Windows extras
 --------------
 
