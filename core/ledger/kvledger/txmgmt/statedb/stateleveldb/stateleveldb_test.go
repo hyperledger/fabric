@@ -109,3 +109,9 @@ func TestGetStateMultipleKeys(t *testing.T) {
 	defer env.Cleanup()
 	commontests.TestGetStateMultipleKeys(t, env.DBProvider)
 }
+
+func TestGetVersion(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestGetVersion(t, env.DBProvider)
+}
