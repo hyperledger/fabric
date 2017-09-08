@@ -35,6 +35,10 @@ const (
 
 	// GroupKey is the name of the channel group
 	ChannelGroupKey = "Channel"
+
+	// CapabilitiesKey is the name of the key which refers to capabilities, it appears at the channel,
+	// application, and orderer levels and this constant is used for all three.
+	CapabilitiesKey = "Capabilities"
 )
 
 // ChannelValues gives read only access to the channel configuration

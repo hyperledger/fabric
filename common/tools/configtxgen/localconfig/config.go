@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package localconfig
@@ -60,6 +50,8 @@ const (
 	SampleDevModeSoloProfile = "SampleDevModeSolo"
 	// SampleSingleMSPSoloProfile references the sample profile which includes only the sample MSP and uses solo for ordering.
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
+	// SampleSingleMSPSoloV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities defined and uses solo for ordering.
+	SampleSingleMSPSoloV11Profile = "SampleSingleMSPSoloV1.1"
 
 	// SampleInsecureKafkaProfile references the sample profile which does not include any MSPs and uses Kafka for ordering.
 	SampleInsecureKafkaProfile = "SampleInsecureKafka"
@@ -67,6 +59,8 @@ const (
 	SampleDevModeKafkaProfile = "SampleDevModeKafka"
 	// SampleSingleMSPKafkaProfile references the sample profile which includes only the sample MSP and uses Kafka for ordering.
 	SampleSingleMSPKafkaProfile = "SampleSingleMSPKafka"
+	// SampleSingleMSPKafkaV11Profile references the sample profile which includes only the sample MSPwith v1.1 capabilities defined  and uses Kafka for ordering.
+	SampleSingleMSPKafkaV11Profile = "SampleSingleMSPKafkaV1.1"
 
 	// SampleSingleMSPChannelProfile references the sample profile which includes only the sample MSP and is used to create a channel
 	SampleSingleMSPChannelProfile = "SampleSingleMSPChannel"
@@ -84,18 +78,20 @@ const (
 
 // TopLevel consists of the structs used by the configtxgen tool.
 type TopLevel struct {
-	Profiles      map[string]*Profile `yaml:"Profiles"`
-	Organizations []*Organization     `yaml:"Organizations"`
-	Application   *Application        `yaml:"Application"`
-	Orderer       *Orderer            `yaml:"Orderer"`
+	Profiles      map[string]*Profile        `yaml:"Profiles"`
+	Organizations []*Organization            `yaml:"Organizations"`
+	Application   *Application               `yaml:"Application"`
+	Orderer       *Orderer                   `yaml:"Orderer"`
+	Capabilities  map[string]map[string]bool `yaml:"Capabilities"`
 }
 
 // Profile encodes orderer/application configuration combinations for the configtxgen tool.
 type Profile struct {
-	Consortium  string                 `yaml:"Consortium"`
-	Application *Application           `yaml:"Application"`
-	Orderer     *Orderer               `yaml:"Orderer"`
-	Consortiums map[string]*Consortium `yaml:"Consortiums"`
+	Consortium   string                 `yaml:"Consortium"`
+	Application  *Application           `yaml:"Application"`
+	Orderer      *Orderer               `yaml:"Orderer"`
+	Consortiums  map[string]*Consortium `yaml:"Consortiums"`
+	Capabilities map[string]bool        `yaml:"Capabilities"`
 }
 
 // Consortium represents a group of organizations which may create channels with eachother
@@ -106,6 +102,7 @@ type Consortium struct {
 // Application encodes the application-level configuration needed in config transactions.
 type Application struct {
 	Organizations []*Organization `yaml:"Organizations"`
+	Capabilities  map[string]bool `yaml:"Capabilities"`
 }
 
 // Organization encodes the organization-level configuration needed in config transactions.
@@ -127,12 +124,6 @@ type AnchorPeer struct {
 	Port int    `yaml:"Port"`
 }
 
-// ApplicationOrganization ...
-// TODO This should probably be removed
-type ApplicationOrganization struct {
-	Organization `yaml:"Organization"`
-}
-
 // Orderer contains configuration which is used for the
 // bootstrapping of an orderer by the provisional bootstrapper.
 type Orderer struct {
@@ -143,6 +134,7 @@ type Orderer struct {
 	Kafka         Kafka           `yaml:"Kafka"`
 	Organizations []*Organization `yaml:"Organizations"`
 	MaxChannels   uint64          `yaml:"MaxChannels"`
+	Capabilities  map[string]bool `yaml:"Capabilities"`
 }
 
 // BatchSize contains configuration affecting the size of batches.

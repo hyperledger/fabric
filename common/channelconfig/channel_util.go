@@ -62,3 +62,20 @@ func TemplateOrdererAddresses(addresses []string) *cb.ConfigGroup {
 func DefaultOrdererAddresses() *cb.ConfigGroup {
 	return TemplateOrdererAddresses(defaultOrdererAddresses)
 }
+
+func capabilitiesFromBoolMap(capabilities map[string]bool) *cb.Capabilities {
+	value := &cb.Capabilities{
+		Capabilities: make(map[string]*cb.Capability),
+	}
+	for capability, required := range capabilities {
+		value.Capabilities[capability] = &cb.Capability{
+			Required: required,
+		}
+	}
+	return value
+}
+
+// TemplateChannelCapabilities creates a config value representing the channel capabilities
+func TemplateChannelCapabilities(capabilities map[string]bool) *cb.ConfigGroup {
+	return configGroup(CapabilitiesKey, utils.MarshalOrPanic(capabilitiesFromBoolMap(capabilities)))
+}

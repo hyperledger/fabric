@@ -45,3 +45,8 @@ func TemplateChannelRestrictions(maxChannels uint64) *cb.ConfigGroup {
 func TemplateKafkaBrokers(brokers []string) *cb.ConfigGroup {
 	return ordererConfigGroup(KafkaBrokersKey, utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: brokers}))
 }
+
+// TemplateOrdererCapabilities creates a config value representing the orderer capabilities
+func TemplateOrdererCapabilities(capabilities map[string]bool) *cb.ConfigGroup {
+	return ordererConfigGroup(CapabilitiesKey, utils.MarshalOrPanic(capabilitiesFromBoolMap(capabilities)))
+}
