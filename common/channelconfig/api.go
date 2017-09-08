@@ -115,6 +115,10 @@ type ApplicationCapabilities interface {
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel
 type OrdererCapabilities interface {
+	// SetChannelModPolicyDuringCreate specifies whether the v1.0 undesirable behavior of setting the /Channel
+	// group's mod_policy to "" should be fixed or not.
+	SetChannelModPolicyDuringCreate() bool
+
 	// Supported returns an error if there are unknown capabilities in this channel which are required
 	Supported() error
 }
