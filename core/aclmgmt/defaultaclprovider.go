@@ -77,10 +77,10 @@ func (d *defaultACLProvider) initialize() {
 	//--------------- CSCC resources -----------
 	//p resources (implemented by the chaincode currently)
 	d.pResourcePolicyMap[CSCC_JoinChain] = ""
-	d.cResourcePolicyMap[CSCC_GetChannels] = ""
+	d.pResourcePolicyMap[CSCC_GetChannels] = ""
 
 	//c resources
-	d.pResourcePolicyMap[CSCC_GetConfigBlock] = CHANNELREADERS
+	d.cResourcePolicyMap[CSCC_GetConfigBlock] = CHANNELREADERS
 
 	//---------------- non-scc resources ------------
 	//Propose
