@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package utils
@@ -427,6 +417,30 @@ func CreateProposalFromCISAndTxid(txid string, typ common.HeaderType, chainID st
 // CreateProposalFromCIS returns a proposal given a serialized identity and a ChaincodeInvocationSpec
 func CreateProposalFromCIS(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, string, error) {
 	return CreateChaincodeProposal(typ, chainID, cis, creator)
+}
+
+// CreateGetChaincodesProposal returns a GETCHAINCODES proposal given a serialized identity
+func CreateGetChaincodesProposal(chainID string, creator []byte) (*peer.Proposal, string, error) {
+	ccinp := &peer.ChaincodeInput{Args: [][]byte{[]byte("getchaincodes")}}
+	lsccSpec := &peer.ChaincodeInvocationSpec{
+		ChaincodeSpec: &peer.ChaincodeSpec{
+			Type:        peer.ChaincodeSpec_GOLANG,
+			ChaincodeId: &peer.ChaincodeID{Name: "lscc"},
+			Input:       ccinp},
+	}
+	return CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, chainID, lsccSpec, creator)
+}
+
+// CreateGetChaincodesProposal returns a GETINSTALLEDCHAINCODES proposal given a serialized identity
+func CreateGetInstalledChaincodesProposal(creator []byte) (*peer.Proposal, string, error) {
+	ccinp := &peer.ChaincodeInput{Args: [][]byte{[]byte("getinstalledchaincodes")}}
+	lsccSpec := &peer.ChaincodeInvocationSpec{
+		ChaincodeSpec: &peer.ChaincodeSpec{
+			Type:        peer.ChaincodeSpec_GOLANG,
+			ChaincodeId: &peer.ChaincodeID{Name: "lscc"},
+			Input:       ccinp},
+	}
+	return CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "", lsccSpec, creator)
 }
 
 // CreateInstallProposalFromCDS returns a install proposal given a serialized identity and a ChaincodeDeploymentSpec

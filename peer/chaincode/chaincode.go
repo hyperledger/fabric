@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package chaincode
@@ -28,8 +18,8 @@ import (
 
 const (
 	chainFuncName = "chaincode"
-	shortDes      = "Operate a chaincode: install|instantiate|invoke|package|query|signpackage|upgrade."
-	longDes       = "Operate a chaincode: install|instantiate|invoke|package|query|signpackage|upgrade."
+	shortDes      = "Operate a chaincode: install|instantiate|invoke|package|query|signpackage|upgrade|list."
+	longDes       = "Operate a chaincode: install|instantiate|invoke|package|query|signpackage|upgrade|list."
 )
 
 var logger = flogging.MustGetLogger("chaincodeCmd")
@@ -54,6 +44,7 @@ func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeCmd.AddCommand(queryCmd(cf))
 	chaincodeCmd.AddCommand(signpackageCmd(cf))
 	chaincodeCmd.AddCommand(upgradeCmd(cf))
+	chaincodeCmd.AddCommand(listCmd(cf))
 
 	return chaincodeCmd
 }
@@ -118,6 +109,10 @@ func resetFlags() {
 		fmt.Sprint("The name of the endorsement system chaincode to be used for this chaincode"))
 	flags.StringVarP(&vscc, "vscc", "V", common.UndefinedParamValue,
 		fmt.Sprint("The name of the verification system chaincode to be used for this chaincode"))
+	flags.BoolVarP(&getInstalledChaincodes, "installed", "", false,
+		"Get the installed chaincodes on a peer")
+	flags.BoolVarP(&getInstantiatedChaincodes, "instantiated", "", false,
+		"Get the instantiated chaincodes on a channel")
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {
