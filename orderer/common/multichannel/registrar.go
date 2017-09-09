@@ -179,13 +179,8 @@ func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader
 		cs = r.systemChannel
 	}
 
-	class, err := cs.ClassifyMsg(chdr)
-	if err != nil {
-		return nil, false, nil, fmt.Errorf("could not classify message: %s", err)
-	}
-
 	isConfig := false
-	switch class {
+	switch cs.ClassifyMsg(chdr) {
 	case msgprocessor.ConfigUpdateMsg:
 		isConfig = true
 	default:

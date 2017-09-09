@@ -124,7 +124,7 @@ func (ms *mockSupport) Configure(configUpdate *cb.Envelope, config *cb.Envelope,
 	return ms.Order(config, configSeq)
 }
 
-func (ms *mockSupport) ClassifyMsg(chdr *cb.ChannelHeader) (msgprocessor.Classification, error) {
+func (ms *mockSupport) ClassifyMsg(chdr *cb.ChannelHeader) msgprocessor.Classification {
 	panic("UNIMPLMENTED")
 }
 

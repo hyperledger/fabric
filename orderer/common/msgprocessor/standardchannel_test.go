@@ -42,24 +42,20 @@ func (ms *mockSystemChannelFilterSupport) ChainID() string {
 
 func TestClassifyMsg(t *testing.T) {
 	t.Run("ConfigUpdate", func(t *testing.T) {
-		class, err := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIG_UPDATE)})
+		class := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIG_UPDATE)})
 		assert.Equal(t, class, ConfigUpdateMsg)
-		assert.Nil(t, err)
 	})
 	t.Run("OrdererTx", func(t *testing.T) {
-		class, err := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_ORDERER_TRANSACTION)})
+		class := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_ORDERER_TRANSACTION)})
 		assert.Equal(t, class, ConfigUpdateMsg)
-		assert.Nil(t, err)
 	})
 	t.Run("ConfigTx", func(t *testing.T) {
-		class, err := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIG)})
+		class := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIG)})
 		assert.Equal(t, class, ConfigUpdateMsg)
-		assert.Nil(t, err)
 	})
 	t.Run("EndorserTx", func(t *testing.T) {
-		class, err := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_ENDORSER_TRANSACTION)})
+		class := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_ENDORSER_TRANSACTION)})
 		assert.Equal(t, class, NormalMsg)
-		assert.Nil(t, err)
 	})
 }
 
