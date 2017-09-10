@@ -26,7 +26,7 @@ Prerequisites
 - `Homebrew <https://brew.sh/>`__ - OSX only
 - `Xcode <https://itunes.apple.com/us/app/xcode/id497799835?mt=12>`__ - OSX only (this can take upwards of an hour)
 - `Docker Toolbox <https://docs.docker.com/toolbox/toolbox_install_windows/>`__ - Windows users only
-- `Go <https://golang.org/>`__ - 1.7 or higher
+- `Go <https://golang.org/>`__ - 1.9 or higher
 
 On Windows machines you will also need the following which provides a better alternative to the Windows command prompt:
 

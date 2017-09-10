@@ -49,12 +49,12 @@ following command from a terminal prompt:
 Go Programming Language
 -----------------------
 
-Hyperledger Fabric uses the Go programming language 1.7.x for many of its
+Hyperledger Fabric uses the Go programming language 1.9.x for many of its
 components.
 
-.. note: Go version 1.8.x will yield test failures
+.. note: building with Go version 1.8.x is not supported
 
-  - `Go <https://golang.org/>`__ - version 1.7.x
+  - `Go <https://golang.org/>`__ - version 1.9.x
 
 Given that we are writing a Go chaincode program, we need to be sure that the
 source code is located somewhere within the ``$GOPATH`` tree. First, you will

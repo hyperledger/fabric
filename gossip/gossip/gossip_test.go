@@ -1282,6 +1282,10 @@ var runTests = func(g goroutine) bool {
 	return searchInStackTrace("testing.RunTests", g.stack)
 }
 
+var tRunner = func(g goroutine) bool {
+	return searchInStackTrace("testing.tRunner", g.stack)
+}
+
 var waitForTestCompl = func(g goroutine) bool {
 	return searchInStackTrace("waitForTestCompletion", g.stack)
 }
@@ -1318,7 +1322,7 @@ func anyOfPredicates(predicates ...goroutinePredicate) goroutinePredicate {
 
 func shouldNotBeRunningAtEnd(gr goroutine) bool {
 	return !anyOfPredicates(runTests, goExit, testingg, waitForTestCompl, gossipTest,
-		clientConn, connectionLeak, connectionLeak2)(gr)
+		clientConn, connectionLeak, connectionLeak2, tRunner)(gr)
 }
 
 func ensureGoroutineExit(t *testing.T) {
