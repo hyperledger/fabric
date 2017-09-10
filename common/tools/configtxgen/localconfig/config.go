@@ -54,14 +54,22 @@ func init() {
 }
 
 const (
-	// SampleInsecureProfile references the sample profile which does not include any MSPs and uses solo for ordering.
-	SampleInsecureProfile = "SampleInsecureSolo"
+	// SampleInsecureSoloProfile references the sample profile which does not include any MSPs and uses solo for ordering.
+	SampleInsecureSoloProfile = "SampleInsecureSolo"
+	// SampleDevModeSoloProfile references the sample profile which requires only basic membership for admin privileges and uses solo for ordering.
+	SampleDevModeSoloProfile = "SampleDevModeSolo"
 	// SampleSingleMSPSoloProfile references the sample profile which includes only the sample MSP and uses solo for ordering.
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
+
+	// SampleInsecureKafkaProfile references the sample profile which does not include any MSPs and uses Kafka for ordering.
+	SampleInsecureKafkaProfile = "SampleInsecureKafka"
+	// SampleDevModeKafkaProfile references the sample profile which requires only basic membership for admin privileges and uses Kafka for ordering.
+	SampleDevModeKafkaProfile = "SampleDevModeKafka"
+	// SampleSingleMSPKafkaProfile references the sample profile which includes only the sample MSP and uses Kafka for ordering.
+	SampleSingleMSPKafkaProfile = "SampleSingleMSPKafka"
+
 	// SampleSingleMSPChannelProfile references the sample profile which includes only the sample MSP and is used to create a channel
 	SampleSingleMSPChannelProfile = "SampleSingleMSPChannel"
-	// SampleDevModeSolo references the sample profile which requires only basic membership for admin privileges and uses solo for ordering
-	SampleDevModeSolo = "SampleDevModeSolo"
 
 	// SampleConsortiumName is the sample consortium from the sample configtx.yaml
 	SampleConsortiumName = "SampleConsortium"

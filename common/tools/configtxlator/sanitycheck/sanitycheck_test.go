@@ -41,7 +41,7 @@ var (
 func init() {
 	factory.InitFactories(nil)
 
-	insecureConf := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	insecureConf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
 	insecureGB := provisional.New(insecureConf).GenesisBlockForChannel(provisional.TestChainID)
 	insecureCtx := utils.ExtractEnvelopeOrPanic(insecureGB, 0)
 	insecureConfig = configtx.UnmarshalConfigEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(insecureCtx.Payload).Data).Config

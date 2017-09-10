@@ -40,7 +40,7 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 	mockSigningIdentity, _ = mmsp.NewNoopMsp().GetDefaultSigningIdentity()
 
-	conf = genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	conf = genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
 	genesisBlock = provisional.New(conf).GenesisBlock()
 }
 

@@ -50,7 +50,7 @@ func TestInspectBlock(t *testing.T) {
 	blockDest := tmpDir + string(os.PathSeparator) + "block"
 
 	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
 
 	assert.NoError(t, doOutputBlock(config, "foo", blockDest), "Good block generation request")
 	assert.NoError(t, doInspectBlock(blockDest), "Good block inspection request")
@@ -60,7 +60,7 @@ func TestMissingOrdererSection(t *testing.T) {
 	blockDest := tmpDir + string(os.PathSeparator) + "block"
 
 	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
 	config.Orderer = nil
 
 	assert.Error(t, doOutputBlock(config, "foo", blockDest), "Missing orderer section")

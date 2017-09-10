@@ -138,7 +138,7 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 
 	mockchain := "mockchain"
 	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
 	pgen := provisional.New(config)
 	genesisBlock := pgen.GenesisBlockForChannel(mockchain)
 
