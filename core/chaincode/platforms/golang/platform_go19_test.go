@@ -1,4 +1,4 @@
-// +build !go1.9
+// +build go1.9
 
 /*
 Copyright IBM Corp. All Rights Reserved.
@@ -14,6 +14,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -100,18 +101,15 @@ func TestValidateCDS(t *testing.T) {
 }
 
 func TestPlatform_GoPathNotSet(t *testing.T) {
-	p := &Platform{}
-	spec := &pb.ChaincodeSpec{
-		ChaincodeId: &pb.ChaincodeID{
-			Path: "/opt/gopath/src/github.com/hyperledger/fabric",
-		},
-	}
 	gopath := os.Getenv("GOPATH")
 	defer os.Setenv("GOPATH", gopath)
 	os.Setenv("GOPATH", "")
 
-	err := p.ValidateSpec(spec)
-	assert.Contains(t, err.Error(), "invalid GOPATH environment variable value")
+	// Go 1.9 sets GOPATH to $HOME/go if GOPATH is not set
+	defaultGopath := filepath.Join(os.Getenv("HOME"), "go")
+	currentGopath, err := getGopath()
+	assert.NoError(t, err, "Expected default GOPATH")
+	assert.Equal(t, defaultGopath, currentGopath)
 }
 
 func Test_findSource(t *testing.T) {
