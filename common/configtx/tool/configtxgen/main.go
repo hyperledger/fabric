@@ -123,6 +123,7 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 	}
 
 	configGroup := config.TemplateAnchorPeers(org.Name, anchorPeers)
+	configGroup.Groups[config.ApplicationGroupKey].Groups[org.Name].Values[config.AnchorPeersKey].ModPolicy = mspconfig.AdminsPolicyKey
 	configUpdate := &cb.ConfigUpdate{
 		ChannelId: channelID,
 		WriteSet:  configGroup,
@@ -132,6 +133,7 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 	// Add all the existing config to the readset
 	configUpdate.ReadSet.Groups[config.ApplicationGroupKey] = cb.NewConfigGroup()
 	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].Version = 1
+	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].ModPolicy = mspconfig.AdminsPolicyKey
 	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].Groups[org.Name] = cb.NewConfigGroup()
 	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Values[config.MSPKey] = &cb.ConfigValue{}
 	configUpdate.ReadSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.ReadersPolicyKey] = &cb.ConfigPolicy{}
@@ -140,7 +142,9 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 
 	// Add all the existing at the same versions to the writeset
 	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Version = 1
+	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].ModPolicy = mspconfig.AdminsPolicyKey
 	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Version = 1
+	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org.Name].ModPolicy = mspconfig.AdminsPolicyKey
 	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Values[config.MSPKey] = &cb.ConfigValue{}
 	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.ReadersPolicyKey] = &cb.ConfigPolicy{}
 	configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups[org.Name].Policies[mspconfig.WritersPolicyKey] = &cb.ConfigPolicy{}

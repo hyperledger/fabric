@@ -82,14 +82,14 @@ func (r *deliverClient) readBlock() (*common.Block, error) {
 
 	switch t := msg.Type.(type) {
 	case *ab.DeliverResponse_Status:
-		logger.Debugf("Got status:%T ", t)
-		return nil, fmt.Errorf("can't read the block")
+		logger.Debugf("Got status: %v", t)
+		return nil, fmt.Errorf("can't read the block: %v", t)
 	case *ab.DeliverResponse_Block:
-		logger.Debugf("Received block:%v ", t.Block.Header.Number)
+		logger.Debugf("Received block: %v", t.Block.Header.Number)
 		r.client.Recv() // Flush the success message
 		return t.Block, nil
 	default:
-		return nil, fmt.Errorf("response error")
+		return nil, fmt.Errorf("response error: unknown type %T", t)
 	}
 }
 

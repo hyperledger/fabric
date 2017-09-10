@@ -1,3 +1,62 @@
+## v1.0.2
+Thu Aug 31 03:53:34 EDT 2017
+
+* [5f853da](https://github.com/hyperledger/fabric/commit/5f853da) [FAB-5899](https://jira.hyperledger.org/browse/FAB-5899) unable to use signed install package
+* [f2d52f5](https://github.com/hyperledger/fabric/commit/f2d52f5) [FAB-5713](https://jira.hyperledger.org/browse/FAB-5713) properly log x509 certs
+* [650fb6b](https://github.com/hyperledger/fabric/commit/650fb6b) [FAB-5845](https://jira.hyperledger.org/browse/FAB-5845) Separate trusted roots upon join channel
+* [3852561](https://github.com/hyperledger/fabric/commit/3852561) [FAB-5753](https://jira.hyperledger.org/browse/FAB-5753) Deduplicate identities in cauthdsl
+* [615eb21](https://github.com/hyperledger/fabric/commit/615eb21) [FAB-5937](https://jira.hyperledger.org/browse/FAB-5937) Bad default mod_policy for Consortiums
+* [1c56557](https://github.com/hyperledger/fabric/commit/1c56557) [FAB-5927](https://jira.hyperledger.org/browse/FAB-5927) Upgrade to baseimage/baseos to v0.3.2
+* [9d55853](https://github.com/hyperledger/fabric/commit/9d55853) [FAB-5633](https://jira.hyperledger.org/browse/FAB-5633) Add logging to deliverclient/client.go
+* [a3f5cb4](https://github.com/hyperledger/fabric/commit/a3f5cb4) [FAB-5526](https://jira.hyperledger.org/browse/FAB-5526) Ask user's env when reporting problems
+* [bc6420d](https://github.com/hyperledger/fabric/commit/bc6420d) [FAB-5793](https://jira.hyperledger.org/browse/FAB-5793) Block deliver if payload buffer is too full
+* [a3b40de](https://github.com/hyperledger/fabric/commit/a3b40de) [FAB-5709](https://jira.hyperledger.org/browse/FAB-5709) Infer `LastOffsetPersisted` correctly
+* [ae4e37d](https://github.com/hyperledger/fabric/commit/ae4e37d) [FAB-5652](https://jira.hyperledger.org/browse/FAB-5652) Prepare fabric for 1.0.2 release
+
+## v1.0.1
+Sun Aug 5 08:55:45 EDT 2017
+
+* [3abe144](https://github.com/hyperledger/fabric/commit/3abe144) [FAB-5627](https://jira.hyperledger.org/browse/FAB-5627) Missing checks at endorser.go
+* [0631ccd](https://github.com/hyperledger/fabric/commit/0631ccd) [FAB-5606](https://jira.hyperledger.org/browse/FAB-5606) Failed ctxu may mutate cache
+* [9b37c12](https://github.com/hyperledger/fabric/commit/9b37c12) [FAB-5529](https://jira.hyperledger.org/browse/FAB-5529) Missing check at endorser
+* [b3c1430](https://github.com/hyperledger/fabric/commit/b3c1430) [FAB-5525](https://jira.hyperledger.org/browse/FAB-5525) Fix configtx memory allocation bug
+* [201a814](https://github.com/hyperledger/fabric/commit/201a814) [FAB-5498](https://jira.hyperledger.org/browse/FAB-5498) Missing RLock in onStatusChangeFactory
+* [1b6820a](https://github.com/hyperledger/fabric/commit/1b6820a) [FAB-5484](https://jira.hyperledger.org/browse/FAB-5484) Fixes documentation for Windows users
+* [36e5140](https://github.com/hyperledger/fabric/commit/36e5140) [FAB-5329](https://jira.hyperledger.org/browse/FAB-5329) Able to instantiate on a taken chaincode ID
+* [65730c8](https://github.com/hyperledger/fabric/commit/65730c8) [FAB-5474](https://jira.hyperledger.org/browse/FAB-5474) add links to godoc resources
+* [e7b20bd](https://github.com/hyperledger/fabric/commit/e7b20bd) [FAB-5458](https://jira.hyperledger.org/browse/FAB-5458) wrong type check in validator
+* [6eab9cf](https://github.com/hyperledger/fabric/commit/6eab9cf) [FAB-5459](https://jira.hyperledger.org/browse/FAB-5459) Recompute configmap instead of updating
+* [2232d0e](https://github.com/hyperledger/fabric/commit/2232d0e) [FAB-5391](https://jira.hyperledger.org/browse/FAB-5391)Prevent concurrent invokes launching cc cont
+* [7d59d5a](https://github.com/hyperledger/fabric/commit/7d59d5a) [FAB-5446](https://jira.hyperledger.org/browse/FAB-5446) Fix orderer metadata local test
+* [f80789d](https://github.com/hyperledger/fabric/commit/f80789d) [FAB-5422](https://jira.hyperledger.org/browse/FAB-5422) fix syntax error
+* [6962ee3](https://github.com/hyperledger/fabric/commit/6962ee3) [FAB-5313](https://jira.hyperledger.org/browse/FAB-5313) Leader election yield if deliver unavailable
+* [15c3bbe](https://github.com/hyperledger/fabric/commit/15c3bbe) [FAB-5154](https://jira.hyperledger.org/browse/FAB-5154) update prereqs to Docker 17.03.0-ce
+* [0cf4c35](https://github.com/hyperledger/fabric/commit/0cf4c35) [FAB-5353](https://jira.hyperledger.org/browse/FAB-5353): Qualify sys. failure vs validation error
+* [fbb84cc](https://github.com/hyperledger/fabric/commit/fbb84cc) [FAB-5422](https://jira.hyperledger.org/browse/FAB-5422) make "Still have questions" prominent
+* [210598f](https://github.com/hyperledger/fabric/commit/210598f) [FAB-5421](https://jira.hyperledger.org/browse/FAB-5421) Add configtxlator to fabric-tools image
+* [7de02d2](https://github.com/hyperledger/fabric/commit/7de02d2) [FAB-5418](https://jira.hyperledger.org/browse/FAB-5418) Add prereq for npm on Windows
+* [03afad8](https://github.com/hyperledger/fabric/commit/03afad8) [FAB-5413](https://jira.hyperledger.org/browse/FAB-5413) Add initial execution in retry process.
+* [c97a93a](https://github.com/hyperledger/fabric/commit/c97a93a) [FAB-5407](https://jira.hyperledger.org/browse/FAB-5407) Fix issue with pubkey pkcs11 CKA_PRIVATE
+* [4223020](https://github.com/hyperledger/fabric/commit/4223020) [FAB-5390](https://jira.hyperledger.org/browse/FAB-5390) update chaintool URL
+* [ecda4c2](https://github.com/hyperledger/fabric/commit/ecda4c2) [FAB-5330](https://jira.hyperledger.org/browse/FAB-5330) Prevent payload buffer overpopulation
+* [e3df726](https://github.com/hyperledger/fabric/commit/e3df726) [FAB-5342](https://jira.hyperledger.org/browse/FAB-5342) spelling mistake in log: overflown
+* [22e1299](https://github.com/hyperledger/fabric/commit/22e1299) [FAB-5365](https://jira.hyperledger.org/browse/FAB-5365) Fix bad error in peer CLI Deliver
+* [3cde835](https://github.com/hyperledger/fabric/commit/3cde835) [FAB-5339](https://jira.hyperledger.org/browse/FAB-5339) Add missing nil check to extensions.go
+* [b817672](https://github.com/hyperledger/fabric/commit/b817672) [FAB-5341](https://jira.hyperledger.org/browse/FAB-5341) Solo should respect batchtimeout reconf
+* [36b08c7](https://github.com/hyperledger/fabric/commit/36b08c7) [FAB-5340](https://jira.hyperledger.org/browse/FAB-5340) Respect new max message size on reconf
+* [3a2dd8e](https://github.com/hyperledger/fabric/commit/3a2dd8e) [FAB-5309](https://jira.hyperledger.org/browse/FAB-5309) Set mod_policy for new channel policies
+* [ca167ce](https://github.com/hyperledger/fabric/commit/ca167ce) [FAB-5331](https://jira.hyperledger.org/browse/FAB-5331) Fix formatting of channel name
+* [28c8efd](https://github.com/hyperledger/fabric/commit/28c8efd) [FAB-5293](https://jira.hyperledger.org/browse/FAB-5293) Log buffer overflow events
+* [fc736ec](https://github.com/hyperledger/fabric/commit/fc736ec) [FAB-5280](https://jira.hyperledger.org/browse/FAB-5280) Fix git clone fabric-samples for Windows
+* [1d3d922](https://github.com/hyperledger/fabric/commit/1d3d922) [FAB-5497](https://jira.hyperledger.org/browse/FAB-5497) Create 1.0.1 fabric release
+* [bcecd47](https://github.com/hyperledger/fabric/commit/bcecd47) [FAB-5304](https://jira.hyperledger.org/browse/FAB-5304) fix trademark guideline violations
+* [ef359a7](https://github.com/hyperledger/fabric/commit/ef359a7) [FAB-5282](https://jira.hyperledger.org/browse/FAB-5282) - fix license headers
+* [206272e](https://github.com/hyperledger/fabric/commit/206272e) [FAB-5279](https://jira.hyperledger.org/browse/FAB-5279) update release version
+* [f56a82e](https://github.com/hyperledger/fabric/commit/f56a82e) [FAB-5070](https://jira.hyperledger.org/browse/FAB-5070) Finalize release notes for v1.0.0
+* [474efd4](https://github.com/hyperledger/fabric/commit/474efd4) [FAB-5257](https://jira.hyperledger.org/browse/FAB-5257) - Remove rc1 refs
+* [b5c74cb](https://github.com/hyperledger/fabric/commit/b5c74cb) [FAB-5272](https://jira.hyperledger.org/browse/FAB-5272) Fix npm version in readthedocs
+* [e50ca0c](https://github.com/hyperledger/fabric/commit/e50ca0c) [FAB-5070](https://jira.hyperledger.org/browse/FAB-5070) Prepare for v1.0.1 release
+
 ## v1.0.0
 Tue Jul 11 14:45:03 CEST 2017
 

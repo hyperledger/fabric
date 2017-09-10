@@ -13,23 +13,35 @@ the [Hyperledger Project Lifecycle document](https://wiki.hyperledger.org/commun
 [![GoDoc](https://godoc.org/github.com/hyperledger/fabric?status.svg)](https://godoc.org/github.com/hyperledger/fabric)
 [![Documentation Status](https://readthedocs.org/projects/hyperledger-fabric/badge/?version=latest)](http://hyperledger-fabric.readthedocs.io/en/latest/?badge=latest)
 
-## Hyperledger fabric
+## Hyperledger Fabric
 
-The fabric is an implementation of blockchain technology, leveraging familiar
-and proven technologies. It is a modular architecture allowing pluggable
-implementations of various function. It features powerful container technology
-to host any mainstream language for smart contracts development.
+Hyperledger Fabric is a platform for distributed ledger solutions, underpinned
+by a modular architecture delivering high degrees of confidentiality,
+resiliency, flexibility and scalability. It is designed to support pluggable
+implementations of different components, and accommodate the complexity and
+intricacies that exist across the economic ecosystem.
+
+Hyperledger Fabric delivers a uniquely elastic and extensible architecture,
+distinguishing it from alternative blockchain solutions. Planning for the
+future of enterprise blockchain requires building on top of a fully-vetted,
+open source architecture; Hyperledger Fabric is your starting point.
 
 ## Documentation, Getting Started and Developer Guides
 
-This is a **read-only mirror** of the formal Gerrit repository, please visit our
+Please visit our
 [online documentation](http://hyperledger-fabric.readthedocs.io/en/latest/) for
 information on getting started using and developing with the fabric, SDK and chaincode.
 
+It's recommended for first-time users to begin by going through the
+[Getting Started](http://hyperledger-fabric.readthedocs.io/en/latest/getting_started.html)
+section of the documentation in order to gain familiarity with the Hyperledger
+Fabric components and the basic transaction flow. 
+
 ## Contributing
 
-We welcome contributions to the Hyperledger Project in many forms. There’s always plenty to do!
-Check [the documentation on how to contribute to this project](http://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html) for the full details.
+We welcome contributions to the Hyperledger Fabric Project in many forms.
+There’s always plenty to do! Check [the documentation on how to contribute to this project](http://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html)
+for the full details.
 
 ## Community
 

@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package msp
@@ -22,10 +12,11 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/pem"
+	"errors"
+	"fmt"
 	"math/big"
 	"time"
-
-	"errors"
 
 	"github.com/hyperledger/fabric/bccsp/sw"
 )
@@ -101,7 +92,7 @@ func sanitizeECDSASignedCert(cert *x509.Certificate, parentCert *x509.Certificat
 	//    the lower level interface that represent an x509 certificate
 	//    encoding
 	var newCert certificate
-	_, err = asn1.Unmarshal(cert.Raw, &newCert)
+	newCert, err = certFromX509Cert(cert)
 	if err != nil {
 		return nil, err
 	}
@@ -118,4 +109,38 @@ func sanitizeECDSASignedCert(cert *x509.Certificate, parentCert *x509.Certificat
 
 	// 4. parse newRaw to get an x509 certificate
 	return x509.ParseCertificate(newRaw)
+}
+
+func certFromX509Cert(cert *x509.Certificate) (certificate, error) {
+	var newCert certificate
+	_, err := asn1.Unmarshal(cert.Raw, &newCert)
+	if err != nil {
+		return certificate{}, err
+	}
+	return newCert, nil
+}
+
+// String returns a PEM representation of a certificate
+func (c certificate) String() string {
+	b, err := asn1.Marshal(c)
+	if err != nil {
+		return fmt.Sprintf("Failed marshaling cert: %v", err)
+	}
+	block := &pem.Block{
+		Bytes: b,
+		Type:  "CERTIFICATE",
+	}
+	b = pem.EncodeToMemory(block)
+	return string(b)
+}
+
+// certToPEM converts the given x509.Certificate to a PEM
+// encoded string
+func certToPEM(certificate *x509.Certificate) string {
+	cert, err := certFromX509Cert(certificate)
+	if err != nil {
+		mspIdentityLogger.Warning("Failed converting certificate to asn1", err)
+		return ""
+	}
+	return cert.String()
 }

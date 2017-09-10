@@ -29,13 +29,13 @@ var logger = logging.MustGetLogger("orderer/mocks/blockcutter")
 
 // Receiver mocks the blockcutter.Receiver interface
 type Receiver struct {
-	// QueueNext causes Ordered returns nil false when not set to true
-	QueueNext bool
-
-	// IsolatedTx causes Ordered returns [][]{curBatch, []{newTx}}, true when set to true
+	// IsolatedTx causes Ordered returns [][]{curBatch, []{newTx}}, true, false when set to true
 	IsolatedTx bool
 
-	// CutNext causes Ordered returns [][]{append(curBatch, newTx)}, true when set to true
+	// CutAncestors causes Ordered returns [][]{curBatch, []{newTx}}, true, true when set to true
+	CutAncestors bool
+
+	// CutNext causes Ordered returns [][]{append(curBatch, newTx)}, true, false when set to true
 	CutNext bool
 
 	// CurBatch is the currently outstanding messages in the batch
@@ -49,10 +49,10 @@ type Receiver struct {
 // NewReceiver returns the mock blockcutter.Receiver implemenation
 func NewReceiver() *Receiver {
 	return &Receiver{
-		QueueNext:  true,
-		IsolatedTx: false,
-		CutNext:    false,
-		Block:      make(chan struct{}),
+		IsolatedTx:   false,
+		CutAncestors: false,
+		CutNext:      false,
+		Block:        make(chan struct{}),
 	}
 }
 
@@ -65,21 +65,23 @@ func noopCommitters(size int) []filter.Committer {
 }
 
 // Ordered will add or cut the batch according to the state of Receiver, it blocks reading from Block on return
-func (mbc *Receiver) Ordered(env *cb.Envelope) ([][]*cb.Envelope, [][]filter.Committer, bool) {
+func (mbc *Receiver) Ordered(env *cb.Envelope) ([][]*cb.Envelope, [][]filter.Committer, bool, bool) {
 	defer func() {
 		<-mbc.Block
 	}()
-
-	if !mbc.QueueNext {
-		logger.Debugf("Not queueing message")
-		return nil, nil, false
-	}
 
 	if mbc.IsolatedTx {
 		logger.Debugf("Receiver: Returning dual batch")
 		res := [][]*cb.Envelope{mbc.CurBatch, []*cb.Envelope{env}}
 		mbc.CurBatch = nil
-		return res, [][]filter.Committer{noopCommitters(len(res[0])), noopCommitters(len(res[1]))}, true
+		return res, [][]filter.Committer{noopCommitters(len(res[0])), noopCommitters(len(res[1]))}, true, false
+	}
+
+	if mbc.CutAncestors {
+		logger.Debugf("Receiver: Returning current batch and appending newest env")
+		res := [][]*cb.Envelope{mbc.CurBatch}
+		mbc.CurBatch = []*cb.Envelope{env}
+		return res, [][]filter.Committer{noopCommitters(len(res))}, true, true
 	}
 
 	mbc.CurBatch = append(mbc.CurBatch, env)
@@ -88,11 +90,11 @@ func (mbc *Receiver) Ordered(env *cb.Envelope) ([][]*cb.Envelope, [][]filter.Com
 		logger.Debugf("Returning regular batch")
 		res := [][]*cb.Envelope{mbc.CurBatch}
 		mbc.CurBatch = nil
-		return res, [][]filter.Committer{noopCommitters(len(res))}, true
+		return res, [][]filter.Committer{noopCommitters(len(res))}, true, false
 	}
 
 	logger.Debugf("Appending to batch")
-	return nil, nil, true
+	return nil, nil, true, true
 }
 
 // Cut terminates the current batch, returning it

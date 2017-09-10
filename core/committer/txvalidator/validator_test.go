@@ -17,15 +17,18 @@ limitations under the License.
 package txvalidator
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ctxt "github.com/hyperledger/fabric/common/configtx/test"
+	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -41,6 +44,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func signedByAnyMember(ids []string) []byte {
@@ -385,12 +389,216 @@ func TestInvokeNoBlock(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// mockLedger structure used to test ledger
+// failure, therefore leveraging mocking
+// library as need to simulate ledger which not
+// able to get access to state db
+type mockLedger struct {
+	mock.Mock
+}
+
+// GetTransactionByID returns transaction by ud
+func (m *mockLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, error) {
+	args := m.Called(txID)
+	return args.Get(0).(*peer.ProcessedTransaction), args.Error(1)
+}
+
+// GetBlockByHash returns block using its hash value
+func (m *mockLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
+	args := m.Called(blockHash)
+	return args.Get(0).(*common.Block), nil
+}
+
+// GetBlockByTxID given transaction id return block transaction was committed with
+func (m *mockLedger) GetBlockByTxID(txID string) (*common.Block, error) {
+	args := m.Called(txID)
+	return args.Get(0).(*common.Block), nil
+}
+
+// GetTxValidationCodeByTxID returns validation code of give tx
+func (m *mockLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+	args := m.Called(txID)
+	return args.Get(0).(peer.TxValidationCode), nil
+}
+
+// NewTxSimulator creates new transaction simulator
+func (m *mockLedger) NewTxSimulator() (ledger.TxSimulator, error) {
+	args := m.Called()
+	return args.Get(0).(ledger.TxSimulator), nil
+}
+
+// NewQueryExecutor creates query executor
+func (m *mockLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
+	args := m.Called()
+	return args.Get(0).(ledger.QueryExecutor), nil
+}
+
+// NewHistoryQueryExecutor history query executor
+func (m *mockLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
+	args := m.Called()
+	return args.Get(0).(ledger.HistoryQueryExecutor), nil
+}
+
+// Prune prune using policy
+func (m *mockLedger) Prune(policy ledger2.PrunePolicy) error {
+	return nil
+}
+
+func (m *mockLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
+	args := m.Called()
+	return args.Get(0).(*common.BlockchainInfo), nil
+}
+
+func (m *mockLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
+	args := m.Called(blockNumber)
+	return args.Get(0).(*common.Block), nil
+}
+
+func (m *mockLedger) GetBlocksIterator(startBlockNumber uint64) (ledger2.ResultsIterator, error) {
+	args := m.Called(startBlockNumber)
+	return args.Get(0).(ledger2.ResultsIterator), nil
+}
+
+func (m *mockLedger) Close() {
+
+}
+
+func (m *mockLedger) Commit(block *common.Block) error {
+	return nil
+}
+
+// mockQueryExecutor mock of the query executor,
+// needed to simulate inability to access state db, e.g.
+// the case where due to db failure it's not possible to
+// query for state, for example if we would like to query
+// the lccc for VSCC info and db is not avaible we expect
+// to stop validating block and fail commit procedure with
+// an error.
+type mockQueryExecutor struct {
+	mock.Mock
+}
+
+func (exec *mockQueryExecutor) GetState(namespace string, key string) ([]byte, error) {
+	args := exec.Called(namespace, key)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (exec *mockQueryExecutor) GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error) {
+	args := exec.Called(namespace, keys)
+	return args.Get(0).([][]byte), args.Error(1)
+}
+
+func (exec *mockQueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger2.ResultsIterator, error) {
+	args := exec.Called(namespace, startKey, endKey)
+	return args.Get(0).(ledger2.ResultsIterator), args.Error(1)
+}
+
+func (exec *mockQueryExecutor) ExecuteQuery(namespace, query string) (ledger2.ResultsIterator, error) {
+	args := exec.Called(namespace)
+	return args.Get(0).(ledger2.ResultsIterator), args.Error(1)
+}
+
+func (exec *mockQueryExecutor) Done() {
+}
+
+// TestLedgerIsNoAvailable simulates and provides a test for following scenario,
+// which is based on FAB-535. Test checks the validation path which expects that
+// DB won't available while trying to lookup for VSCC from LCCC and therefore
+// transaction validation will have to fail. In such case the outcome should be
+// the error return from validate block method and proccessing of transactions
+// has to stop. There is suppose to be clear indication of the failure with error
+// returned from the function call.
+func TestLedgerIsNoAvailable(t *testing.T) {
+	theLedger := new(mockLedger)
+	validator := NewTxValidator(&mockSupport{l: theLedger})
+
+	ccID := "mycc"
+	tx := getEnv(ccID, createRWset(t, ccID), t)
+
+	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
+
+	queryExecutor := new(mockQueryExecutor)
+	queryExecutor.On("GetState", mock.Anything, mock.Anything).Return([]byte{}, errors.New("Unable to connect to DB"))
+	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
+
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+	err := validator.Validate(b)
+
+	assertion := assert.New(t)
+	// We suppose to get the error which indicates we cannot commit the block
+	assertion.Error(err)
+	// The error exptected to be of type VSCCInfoLookupFailureError
+	assertion.NotNil(err.(*VSCCInfoLookupFailureError))
+}
+
+func TestValidationInvalidEndorsing(t *testing.T) {
+	theLedger := new(mockLedger)
+	validator := NewTxValidator(&mockSupport{l: theLedger})
+
+	ccID := "mycc"
+	tx := getEnv(ccID, createRWset(t, ccID), t)
+
+	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Cannot find the transaction"))
+
+	cd := &ccp.ChaincodeData{
+		Name:    ccID,
+		Version: ccVersion,
+		Vscc:    "vscc",
+		Policy:  signedByAnyMember([]string{"DEFAULT"}),
+	}
+
+	cdbytes := utils.MarshalOrPanic(cd)
+
+	queryExecutor := new(mockQueryExecutor)
+	queryExecutor.On("GetState", "lscc", ccID).Return(cdbytes, nil)
+	theLedger.On("NewQueryExecutor", mock.Anything).Return(queryExecutor, nil)
+
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+	// Keep default callback
+	c := executeChaincodeProvider.getCallback()
+	executeChaincodeProvider.setCallback(func() (*peer.Response, *peer.ChaincodeEvent, error) {
+		return &peer.Response{Status: shim.ERROR}, nil, nil
+	})
+	err := validator.Validate(b)
+	// Restore default callback
+	executeChaincodeProvider.setCallback(c)
+	assert.NoError(t, err)
+	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+}
+
+type ccResultCallback func() (*peer.Response, *peer.ChaincodeEvent, error)
+
+type ccExecuteChaincode struct {
+	executeChaincodeCalback ccResultCallback
+}
+
+func (cc *ccExecuteChaincode) ExecuteChaincodeResult() (*peer.Response, *peer.ChaincodeEvent, error) {
+	return cc.executeChaincodeCalback()
+}
+
+func (cc *ccExecuteChaincode) getCallback() ccResultCallback {
+	return cc.executeChaincodeCalback
+}
+
+func (cc *ccExecuteChaincode) setCallback(calback ccResultCallback) {
+	cc.executeChaincodeCalback = calback
+}
+
 var signer msp.SigningIdentity
+
 var signerSerialized []byte
+
+var executeChaincodeProvider = &ccExecuteChaincode{
+	executeChaincodeCalback: func() (*peer.Response, *peer.ChaincodeEvent, error) {
+		return &peer.Response{Status: shim.OK}, nil, nil
+	},
+}
 
 func TestMain(m *testing.M) {
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{})
-	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{})
+	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{executeChaincodeProvider})
 
 	msptesttools.LoadMSPSetupForTesting()
 

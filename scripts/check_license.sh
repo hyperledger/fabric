@@ -6,12 +6,12 @@
 #
 
 CHECK=$(git diff --name-only HEAD * | grep -v .png$ | grep -v .rst$ | grep -v .git \
-  | grep -v .md$ | grep -v ^vendor/ | grep -v ^build/ | grep -v .pb.go$ | sort -u)
+  | grep -v .md$ | grep -v ^vendor/ | grep -v ^build/ | grep -v .pb.go$ | grep -v .txt | sort -u)
 
 if [[ -z "$CHECK" ]]; then
   CHECK=$(git diff-tree --no-commit-id --name-only -r $(git log -2 \
     --pretty=format:"%h") | grep -v .png$ | grep -v .rst$ | grep -v .git \
-    | grep -v .md$ | grep -v ^vendor/ | grep -v ^build/ | grep -v .pb.go$ | sort -u)
+    | grep -v .md$ | grep -v ^vendor/ | grep -v ^build/ | grep -v .pb.go$ | grep -v .txt | sort -u)
 fi
 
 echo "Checking committed files for SPDX-License-Identifier headers ..."

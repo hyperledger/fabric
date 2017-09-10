@@ -34,12 +34,20 @@ var (
 	reConnectBackoffThreshold   = float64(time.Hour)
 )
 
+// SetReconnectTotalTimeThreshold sets the total time the delivery service
+// may spend in reconnection attempts until its retry logic gives up
+// and returns an error
+func SetReconnectTotalTimeThreshold(duration time.Duration) {
+	reConnectTotalTimeThreshold = duration
+}
+
 // DeliverService used to communicate with orderers to obtain
 // new blocks and send them to the committer service
 type DeliverService interface {
 	// StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
 	// to channel peers.
-	StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error
+	// When the delivery finishes, the finalizer func is called
+	StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, finalizer func()) error
 
 	// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
 	// to channel peers.
@@ -117,7 +125,7 @@ func (d *deliverServiceImpl) validateConfiguration() error {
 // initializes the grpc stream for given chainID, creates blocks provider instance
 // that spawns in go routine to read new blocks starting from the position provided by ledger
 // info instance.
-func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, finalizer func()) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	if d.stopping {
@@ -133,7 +141,10 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		client := d.newClient(chainID, ledgerInfo)
 		logger.Debug("This peer will pass blocks from orderer service to other peers for channel", chainID)
 		d.blockProviders[chainID] = blocksprovider.NewBlocksProvider(chainID, client, d.conf.Gossip, d.conf.CryptoSvc)
-		go d.blockProviders[chainID].DeliverBlocks()
+		go func() {
+			d.blockProviders[chainID].DeliverBlocks()
+			finalizer()
+		}()
 	}
 	return nil
 }

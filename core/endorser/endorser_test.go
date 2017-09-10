@@ -17,21 +17,21 @@ limitations under the License.
 package endorser
 
 import (
+	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
-	"path/filepath"
-
-	"errors"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
@@ -50,10 +50,9 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	pbutils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-
-	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -369,6 +368,29 @@ func TestJavaDeploy(t *testing.T) {
 	chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
+func TestJavaCheckWithDifferentPackageTypes(t *testing.T) {
+	//try SignedChaincodeDeploymentSpec with go chaincode (type 1)
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "gocc", Path: "path/to/cc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("someargs")}}}
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: []byte("some code")}
+	env := &common.Envelope{Payload: pbutils.MarshalOrPanic(&common.Payload{Data: pbutils.MarshalOrPanic(&pb.SignedChaincodeDeploymentSpec{ChaincodeDeploymentSpec: pbutils.MarshalOrPanic(cds)})})}
+	//wrap the package in an invocation spec to lscc...
+	b := pbutils.MarshalOrPanic(env)
+
+	lsccCID := &pb.ChaincodeID{Name: "lscc", Version: util.GetSysCCVersion()}
+	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: lsccCID, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("install"), b}}}}
+
+	e := &Endorser{}
+	err := e.disableJavaCCInst(lsccCID, lsccSpec)
+	assert.Nil(t, err)
+
+	//now try plain ChaincodeDeploymentSpec...should succeed (go chaincode)
+	b = pbutils.MarshalOrPanic(cds)
+
+	lsccSpec = &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: lsccCID, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("install"), b}}}}
+	err = e.disableJavaCCInst(lsccCID, lsccSpec)
+	assert.Nil(t, err)
+}
+
 //TestRedeploy - deploy two times, second time should fail but example02 should remain deployed
 func TestRedeploy(t *testing.T) {
 	chainID := util.GetTestChainID()
@@ -627,6 +649,20 @@ func TestWritersACLFail(t *testing.T) {
 	t.Logf("TestWritersACLFail passed")
 
 	chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+}
+
+func TestHeaderExtensionNoChaincodeID(t *testing.T) {
+	creator, _ := signer.Serialize()
+	nonce := []byte{1, 2, 3}
+	digest, err := factory.GetDefault().Hash(append(nonce, creator...), &bccsp.SHA256Opts{})
+	txID := hex.EncodeToString(digest)
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: nil, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs()}}
+	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
+	prop, _, _ := pbutils.CreateChaincodeProposalWithTxIDNonceAndTransient(txID, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), invocation, []byte{1, 2, 3}, creator, nil)
+	signedProp, _ := getSignedProposal(prop, signer)
+	_, err = endorserServer.ProcessProposal(context.Background(), signedProp)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "ChaincodeHeaderExtension.ChaincodeId is nil")
 }
 
 // TestAdminACLFail deploys tried to deploy a chaincode;
