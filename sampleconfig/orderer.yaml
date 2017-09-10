@@ -237,7 +237,7 @@ Kafka:
 ################################################################################
 Debug:
 
-    # BroadcasTraceDir when set will cause each request to the Broadcast service
+    # BroadcastTraceDir when set will cause each request to the Broadcast service
     # for this orderer to be written to a file in this directory
     BroadcastTraceDir:
 
