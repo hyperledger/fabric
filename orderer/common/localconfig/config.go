@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	pkgLogID = "orderer/common/localconfig"
+	pkgLogID = "orderer/common/config"
 
 	// Prefix identifies the prefix for the orderer-related ENV vars.
 	Prefix = "ORDERER"
@@ -50,7 +50,7 @@ var (
 
 func init() {
 	logger = flogging.MustGetLogger(pkgLogID)
-	flogging.SetModuleLevel(pkgLogID, "error")
+	flogging.SetModuleLevel(pkgLogID, "ERROR")
 
 	configName = strings.ToLower(Prefix)
 }

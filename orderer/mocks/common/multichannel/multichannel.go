@@ -14,11 +14,7 @@ import (
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/op/go-logging"
 )
-
-var logger = logging.MustGetLogger("orderer/mocks/multichannel")
 
 // ConsenterSupport is used to mock the multichannel.ConsenterSupport interface
 // Whenever a block is written, it writes to the Batches channel to allow for synchronization

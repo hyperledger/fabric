@@ -40,7 +40,13 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-var logger = logging.MustGetLogger("orderer/server/main")
+const pkgLogID = "orderer/common/server"
+
+var logger *logging.Logger
+
+func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
+}
 
 //command line flags
 var (

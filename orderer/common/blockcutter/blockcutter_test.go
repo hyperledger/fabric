@@ -23,12 +23,12 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
-	logging "github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
-	logging.SetLevel(logging.DEBUG, "")
+	flogging.SetModuleLevel(pkgLogID, "DEBUG")
 }
 
 var tx = &cb.Envelope{Payload: []byte("GOOD")}

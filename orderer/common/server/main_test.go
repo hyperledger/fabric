@@ -28,14 +28,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func init() {
+	flogging.SetModuleLevel(pkgLogID, "DEBUG")
+}
+
 func TestInitializeLoggingLevel(t *testing.T) {
 	initializeLoggingLevel(
 		&config.TopLevel{
-			General: config.General{LogLevel: "debug"},
+			// We specify the package name here, in contrast to what's expected
+			// in production usage. We do this so as to prevent the unwanted
+			// global log level setting in tests of this package (for example,
+			// the benchmark-related ones) that would occur otherwise.
+			General: config.General{LogLevel: "foo=debug"},
 			Kafka:   config.Kafka{Verbose: true},
 		},
 	)
-	assert.Equal(t, flogging.GetModuleLevel("orderer/main"), "DEBUG")
+	assert.Equal(t, flogging.GetModuleLevel("foo"), "DEBUG")
 	assert.NotNil(t, sarama.Logger)
 }
 

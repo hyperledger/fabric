@@ -10,17 +10,17 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
-	logging.SetLevel(logging.DEBUG, "")
+	flogging.SetModuleLevel(pkgLogID, "DEBUG")
 }
 
 func makeEnvelope() *cb.Envelope {

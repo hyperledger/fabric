@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/flogging"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
@@ -26,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
-	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,7 +37,7 @@ var mockSigningIdentity msp.SigningIdentity
 const NoConsortiumChain = "no-consortium-chain"
 
 func init() {
-	logging.SetLevel(logging.DEBUG, "")
+	flogging.SetModuleLevel(pkgLogID, "DEBUG")
 	mockSigningIdentity, _ = mmsp.NewNoopMsp().GetDefaultSigningIdentity()
 
 	conf = genesisconfig.Load(genesisconfig.SampleInsecureProfile)

@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -26,12 +27,18 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 )
 
-var logger = logging.MustGetLogger("orderer/multichannel")
-
 const (
+	pkgLogID = "orderer/commmon/multichannel"
+
 	msgVersion = int32(0)
 	epoch      = 0
 )
+
+var logger *logging.Logger
+
+func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
+}
 
 type mutableResources interface {
 	channelconfig.Resources
