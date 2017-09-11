@@ -70,4 +70,5 @@ message CollectionCriteria {
     string channel = 1;
     string tx_id = 2;
     string collection = 3;
+    string namespace = 4;
 }

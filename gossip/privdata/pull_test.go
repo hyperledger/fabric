@@ -96,8 +96,8 @@ type dataRetrieverMock struct {
 	mock.Mock
 }
 
-func (dr *dataRetrieverMock) CollectionRWSet(txID, collection string) []util.PrivateRWSet {
-	return dr.Called(txID, collection).Get(0).([]util.PrivateRWSet)
+func (dr *dataRetrieverMock) CollectionRWSet(txID, collection, namespace string) []util.PrivateRWSet {
+	return dr.Called(txID, collection, namespace).Get(0).([]util.PrivateRWSet)
 }
 
 type receivedMsg struct {
@@ -225,15 +225,15 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 	p2TransientStore := newPRWSet()
 	policyStore = newPolicyStore().withPolicy("col1").thatMapsTo("p1")
 	p2 := gn.newPuller("p2", policyStore)
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1").Return(p2TransientStore)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1", "ns1").Return(p2TransientStore)
 
 	p3 := gn.newPuller("p3", newPolicyStore())
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1").Run(func(_ mock.Arguments) {
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1", "ns1").Run(func(_ mock.Arguments) {
 		t.Fatal("p3 shouldn't have been selected for pull")
 	})
 
 	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1"}},
+		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1", Namespace: "ns1"}},
 	})
 	rws1 := util.PrivateRWSet(fetchedMessages[0].Payload[0])
 	rws2 := util.PrivateRWSet(fetchedMessages[0].Payload[1])
@@ -252,15 +252,15 @@ func TestPullerDataNotAvailable(t *testing.T) {
 
 	policyStore = newPolicyStore().withPolicy("col1").thatMapsTo("p1")
 	p2 := gn.newPuller("p2", policyStore)
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1").Return([]util.PrivateRWSet{})
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1", "ns1").Return([]util.PrivateRWSet{})
 
 	p3 := gn.newPuller("p3", newPolicyStore())
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1").Run(func(_ mock.Arguments) {
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1", "ns1").Run(func(_ mock.Arguments) {
 		t.Fatal("p3 shouldn't have been selected for pull")
 	})
 
 	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1"}},
+		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1", Namespace: "ns1"}},
 	})
 	assert.Empty(t, fetchedMessages)
 	assert.NoError(t, err)
@@ -273,7 +273,7 @@ func TestPullerNoPeersKnown(t *testing.T) {
 	policyStore := newPolicyStore().withPolicy("col1").thatMapsTo("p2").withPolicy("col1").thatMapsTo("p3")
 	p1 := gn.newPuller("p1", policyStore)
 	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1"}},
+		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1", Namespace: "ns1"}},
 	})
 	assert.Empty(t, fetchedMessages)
 	assert.Error(t, err)
@@ -288,7 +288,7 @@ func TestPullPeerFilterError(t *testing.T) {
 	p1 := gn.newPuller("p1", policyStore)
 	gn.peers[0].On("PeerFilter", mock.Anything, mock.Anything).Return(nil, errors.New("Failed obtaining filter"))
 	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1"}},
+		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1", Namespace: "ns1"}},
 	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed obtaining filter")
@@ -305,13 +305,13 @@ func TestPullerPeerNotEligible(t *testing.T) {
 
 	policyStore = newPolicyStore().withPolicy("col1").thatMapsTo("p2")
 	p2 := gn.newPuller("p2", policyStore)
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1").Run(func(_ mock.Arguments) {
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1", "ns1").Run(func(_ mock.Arguments) {
 		t.Fatal("p2 shouldn't have approved the pull")
 	})
 
 	policyStore = newPolicyStore().withPolicy("col1").thatMapsTo("p3")
 	p3 := gn.newPuller("p3", policyStore)
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1").Run(func(_ mock.Arguments) {
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1", "ns1").Run(func(_ mock.Arguments) {
 		t.Fatal("p3 shouldn't have approved the pull")
 	})
 
@@ -334,15 +334,17 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 	p2TransientStore := newPRWSet()
 	policyStore = newPolicyStore().withPolicy("col2").thatMapsTo("p1")
 	p2 := gn.newPuller("p2", policyStore)
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col2").Return(p2TransientStore)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col2", "ns1").Return(p2TransientStore)
 
 	p3TransientStore := newPRWSet()
 	policyStore = newPolicyStore().withPolicy("col3").thatMapsTo("p1")
 	p3 := gn.newPuller("p3", policyStore)
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col3").Return(p3TransientStore)
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col3", "ns1").Return(p3TransientStore)
 
 	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{{Collection: "col2", TxId: "txID1"}, {Collection: "col3", TxId: "txID1"}},
+		Digests: []*proto.PvtDataDigest{
+			{Collection: "col2", TxId: "txID1", Namespace: "ns1"},
+			{Collection: "col3", TxId: "txID1", Namespace: "ns1"}},
 	})
 	assert.NoError(t, err)
 	rws1 := util.PrivateRWSet(fetchedMessages[0].Payload[0])
@@ -373,26 +375,26 @@ func TestPullerRetries(t *testing.T) {
 	// p2
 	policyStore = newPolicyStore().withPolicy("col1").thatMapsTo("p2")
 	p2 := gn.newPuller("p2", policyStore)
-	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1").Return(transientStore)
+	p2.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1", "ns1").Return(transientStore)
 
 	// p3
 	policyStore = newPolicyStore().withPolicy("col1").thatMapsTo("p1")
 	p3 := gn.newPuller("p3", policyStore)
-	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1").Return(transientStore)
+	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1", "ns1").Return(transientStore)
 
 	// p4
 	policyStore = newPolicyStore().withPolicy("col1").thatMapsTo("p4")
 	p4 := gn.newPuller("p4", policyStore)
-	p4.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1").Return(transientStore)
+	p4.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1", "ns1").Return(transientStore)
 
 	// p5
 	policyStore = newPolicyStore().withPolicy("col1").thatMapsTo("p5")
 	p5 := gn.newPuller("p5", policyStore)
-	p5.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1").Return(transientStore)
+	p5.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", "txID1", "col1", "ns1").Return(transientStore)
 
 	// Fetch from someone
 	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1"}},
+		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1", Namespace: "ns1"}},
 	})
 	assert.NoError(t, err)
 	rws1 := util.PrivateRWSet(fetchedMessages[0].Payload[0])

@@ -310,9 +310,10 @@ message RemotePvtDataRequest {
 // PvtDataDigest defines a digest of private data
 message PvtDataDigest {
     string tx_id = 1;
-    string collection = 2;
-    uint64 block_seq = 3;
-    uint64 seq_in_block = 4;
+    string namespace = 2;
+    string collection = 3;
+    uint64 block_seq = 4;
+    uint64 seq_in_block = 5;
 }
 
 // RemotePrivateData message to response on private

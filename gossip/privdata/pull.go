@@ -35,7 +35,7 @@ const (
 
 type PrivateDataRetriever interface {
 	// CollectionRWSet returns the bytes of CollectionPvtReadWriteSet for a given txID and collection from the transient store
-	CollectionRWSet(txID, collection string) []util.PrivateRWSet
+	CollectionRWSet(txID, collection, namespace string) []util.PrivateRWSet
 }
 
 // gossip defines capabilities that the gossip module gives the Coordinator
@@ -130,6 +130,7 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 			Channel:    p.channel,
 			Collection: dig.Collection,
 			TxId:       dig.TxId,
+			Namespace:  dig.Namespace,
 		})
 		if pol == nil {
 			logger.Debug("No policy found for channel", p.channel, ", collection", dig.Collection, "txID", dig.TxId, "skipping...")
@@ -148,7 +149,7 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 		}
 		// TODO: dig in the ledger if it's not in the transient store
 		// Else, it's eligible to receive the private data, so we append it to the returned slice
-		rwSets := p.CollectionRWSet(dig.TxId, dig.Collection)
+		rwSets := p.CollectionRWSet(dig.TxId, dig.Collection, dig.Namespace)
 		logger.Debug("Found", len(rwSets), "for TxID", dig.TxId, ", collection", dig.Collection, "for", message.GetConnectionInfo().Endpoint)
 		if len(rwSets) == 0 {
 			continue
@@ -353,6 +354,7 @@ func (p *puller) computeFilters(req *proto.RemotePvtDataRequest) (digestToFilter
 			Channel:    p.channel,
 			TxId:       digest.TxId,
 			Collection: digest.Collection,
+			Namespace:  digest.Namespace,
 		})
 		if pol == nil {
 			return nil, errors.Errorf("Failed obtaining policy for channel %s, txID %s, collection %s", p.channel, digest.TxId, digest.Collection)
