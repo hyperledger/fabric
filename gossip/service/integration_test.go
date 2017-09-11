@@ -32,7 +32,7 @@ func (*transientStoreMock) Persist(txid string, endorsementBlkHt uint64, private
 	panic("implement me")
 }
 
-func (transientStoreMock) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (*transientstore.RwsetScanner, error) {
+func (transientStoreMock) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
 	panic("implement me")
 }
 
@@ -115,7 +115,10 @@ func TestLeaderYield(t *testing.T) {
 			secAdv:          &secAdvMock{},
 		}
 		gossipServiceInstance = gs
-		gs.InitializeChannel(channelName, &mockLedgerInfo{1}, &transientStoreMock{}, []string{"localhost:7050"})
+		gs.InitializeChannel(channelName, []string{"localhost:7050"}, Support{
+			Committer: &mockLedgerInfo{1},
+			Store:     &transientStoreMock{},
+		})
 		return gs
 	}
 

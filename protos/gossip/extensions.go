@@ -203,6 +203,11 @@ func (m *GossipMessage) IsDataReq() bool {
 	return m.GetDataReq() != nil
 }
 
+// IsPrivateDataMsg returns whether this message is related to private data
+func (m *GossipMessage) IsPrivateDataMsg() bool {
+	return m.GetPrivateReq() != nil || m.GetPrivateRes() != nil
+}
+
 // IsAck returns whether this GossipMessage is an acknowledgement
 func (m *GossipMessage) IsAck() bool {
 	return m.GetAck() != nil

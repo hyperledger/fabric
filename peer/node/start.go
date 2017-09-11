@@ -172,7 +172,7 @@ func serve(args []string) error {
 	pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer())
 
 	privDataDist := func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error {
-		return service.GetGossipService().DistributePrivateData(channel, txID, privateData, nil, nil)
+		return service.GetGossipService().DistributePrivateData(channel, txID, privateData)
 	}
 
 	serverEndorser := endorser.NewEndorserServer(privDataDist)

@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -30,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
@@ -297,7 +299,12 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	if err != nil {
 		return errors.Wrapf(err, "Failed opening transient store for %s", bundle.ConfigtxManager().ChainID())
 	}
-	service.GetGossipService().InitializeChannel(bundle.ConfigtxManager().ChainID(), c, store, ordererAddresses)
+	service.GetGossipService().InitializeChannel(bundle.ConfigtxManager().ChainID(), ordererAddresses, service.Support{
+		Committer: c,
+		Store:     store,
+		Pp:        &noopPolicyParser{},
+		Ps:        &noopPolicyStore{},
+	})
 
 	chains.Lock()
 	defer chains.Unlock()
@@ -616,4 +623,33 @@ func CreatePeerServer(listenAddress string,
 // GetPeerServer returns the peer server instance
 func GetPeerServer() comm.GRPCServer {
 	return peerServer
+}
+
+// TODO: This is a temporary implementation until the PolicyParser would be implemented
+type noopPolicyParser struct {
+}
+
+func (*noopPolicyParser) Parse(privdata.SerializedPolicy) privdata.Filter {
+	return func(common.SignedData) bool {
+		return true
+	}
+}
+
+// TODO: This is a temporary implementation until the PolicyStore would be implemented
+type noopPolicyStore struct {
+}
+
+func (*noopPolicyStore) CollectionPolicy(rwset.CollectionCriteria) privdata.SerializedPolicy {
+	return &serializedPolicy{}
+}
+
+type serializedPolicy struct {
+}
+
+func (*serializedPolicy) Channel() string {
+	panic("implement me")
+}
+
+func (*serializedPolicy) Raw() []byte {
+	panic("implement me")
 }

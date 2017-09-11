@@ -172,7 +172,7 @@ func (*mockTransientStore) Persist(txid string, endorsementBlkHt uint64, private
 	panic("implement me")
 }
 
-func (mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (*transientstore.RwsetScanner, error) {
+func (mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
 	panic("implement me")
 }
 
@@ -264,7 +264,7 @@ func newPeerNodeWithGossip(config *gossip.Config, committer committer.Committer,
 	// basic parts
 
 	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: cs}
-	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, privdata.NewCoordinator(committer, &mockTransientStore{}))
+	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, privdata.NewCoordinator(committer, &mockTransientStore{}, nil))
 	if sp == nil {
 		return nil
 	}
@@ -1083,9 +1083,9 @@ func (mock *coordinatorMock) GetBlockByNum(seqNum uint64) (*pcomm.Block, error) 
 	return args.Get(0).(*pcomm.Block), args.Error(1)
 }
 
-func (mock *coordinatorMock) StoreBlock(block *pcomm.Block, data gutil.PvtDataCollections) ([]string, error) {
+func (mock *coordinatorMock) StoreBlock(block *pcomm.Block, data gutil.PvtDataCollections) error {
 	args := mock.Called(block, data)
-	return args.Get(0).([]string), args.Error(1)
+	return args.Error(1)
 }
 
 func (mock *coordinatorMock) LedgerHeight() (uint64, error) {

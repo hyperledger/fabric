@@ -51,7 +51,7 @@ func (*mockTransientStore) Persist(txid string, endorsementBlkHt uint64, private
 	panic("implement me")
 }
 
-func (*mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (*transientstore.RwsetScanner, error) {
+func (*mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
 	panic("implement me")
 }
 
@@ -131,7 +131,10 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
 
-		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{1}, &mockTransientStore{}, []string{"localhost:5005"})
+		gossips[i].InitializeChannel(channelName, []string{"localhost:5005"}, Support{
+			Store:     &mockTransientStore{},
+			Committer: &mockLedgerInfo{1},
+		})
 		service, exist := gossips[i].(*gossipServiceImpl).leaderElection[channelName]
 		assert.True(t, exist, "Leader election service should be created for peer %d and channel %s", i, channelName)
 		services[i] = &electionService{nil, false, 0}
@@ -187,7 +190,10 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{1}, &mockTransientStore{}, []string{"localhost:5005"})
+		gossips[i].InitializeChannel(channelName, []string{"localhost:5005"}, Support{
+			Committer: &mockLedgerInfo{1},
+			Store:     &mockTransientStore{},
+		})
 	}
 
 	for i := 0; i < n; i++ {
@@ -198,7 +204,10 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	channelName = "chanB"
 	for i := 0; i < n; i++ {
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{1}, &mockTransientStore{}, []string{"localhost:5005"})
+		gossips[i].InitializeChannel(channelName, []string{"localhost:5005"}, Support{
+			Committer: &mockLedgerInfo{1},
+			Store:     &mockTransientStore{},
+		})
 	}
 
 	for i := 0; i < n; i++ {
@@ -235,7 +244,10 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{1}, &mockTransientStore{}, []string{"localhost:5005"})
+		gossips[i].InitializeChannel(channelName, []string{"localhost:5005"}, Support{
+			Committer: &mockLedgerInfo{1},
+			Store:     &mockTransientStore{},
+		})
 	}
 
 	for i := 0; i < n; i++ {
@@ -272,7 +284,10 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
 		assert.Panics(t, func() {
-			gossips[i].InitializeChannel(channelName, &mockLedgerInfo{1}, &mockTransientStore{}, []string{"localhost:5005"})
+			gossips[i].InitializeChannel(channelName, []string{"localhost:5005"}, Support{
+				Committer: &mockLedgerInfo{1},
+				Store:     &mockTransientStore{},
+			})
 		}, "Dynamic leader lection based and static connection to ordering service can't exist simultaniosly")
 	}
 
