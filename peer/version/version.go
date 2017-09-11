@@ -45,7 +45,8 @@ func GetInfo() string {
 		metadata.BaseDockerLabel, metadata.DockerNamespace)
 
 	return fmt.Sprintf("%s:\n Version: %s\n Go version: %s\n OS/Arch: %s\n"+
-		" Chaincode:\n %s\n",
+		" Experimental features: %s\n Chaincode:\n %s\n",
 		ProgramName, metadata.Version, runtime.Version(),
-		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH), ccinfo)
+		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		metadata.Experimental, ccinfo)
 }

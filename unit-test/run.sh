@@ -34,8 +34,9 @@ if [ "$JOB_TYPE"  = "VERIFY" ]; then
   if [[ ! -z "$TEST_PKGS" ]]; then
      echo "Testing packages:"
      echo $TEST_PKGS
+     echo " with tags " $GO_TAGS
      # use go test -cover as this is much more efficient than gocov
-     time go test -cover -ldflags "$GO_LDFLAGS" $TEST_PKGS -p 1 -timeout=20m
+     time go test -cover -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $TEST_PKGS -p 1 -timeout=20m
   else
      echo "Nothing changed in unit test!!!"
   fi
@@ -72,9 +73,9 @@ PKGS=`echo $PKGS | sed  's@'github.com/hyperledger/fabric/core/chaincode/platfor
 PKGS=`echo $PKGS | sed  's@'github.com/hyperledger/fabric/core/chaincode/platforms/java'@@g'`
 fi
 
-echo " DONE!"
+echo -e "\nDONE!"
+echo -e "Running tests with tags ${GO_TAGS} ..."
 
-echo "Running tests..."
 #go test -cover -ldflags "$GO_LDFLAGS" $PKGS -p 1 -timeout=20m
-gocov test -ldflags "$GO_LDFLAGS" $PKGS -p 1 -timeout=20m | gocov-xml > report.xml
+gocov test -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $PKGS -p 1 -timeout=20m | gocov-xml > report.xml
 fi

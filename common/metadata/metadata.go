@@ -22,3 +22,4 @@ var BaseVersion string
 var BaseDockerLabel string
 var DockerNamespace string
 var BaseDockerNamespace string
+var Experimental string

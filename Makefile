@@ -39,6 +39,11 @@ PROJECT_NAME   = hyperledger/fabric
 BASE_VERSION = 1.1.0
 PREV_VERSION = 1.0.0
 IS_RELEASE = false
+EXPERIMENTAL ?= true
+
+ifeq ($(EXPERIMENTAL),true)
+GO_TAGS += experimental
+endif
 
 ifneq ($(IS_RELEASE),true)
 EXTRA_VERSION ?= snapshot-$(shell git rev-parse --short HEAD)
@@ -60,6 +65,7 @@ METADATA_VAR += BaseVersion=$(BASEIMAGE_RELEASE)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
+METADATA_VAR += Experimental=$(EXPERIMENTAL)
 
 GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
 
@@ -67,7 +73,7 @@ GO_TAGS ?=
 
 CHAINTOOL_URL ?= https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/chaintool-$(CHAINTOOL_RELEASE)/hyperledger-fabric-chaintool-$(CHAINTOOL_RELEASE).jar
 
-export GO_LDFLAGS
+export GO_LDFLAGS GO_TAGS
 
 EXECUTABLES = go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
@@ -167,7 +173,7 @@ verify: unit-test-clean peer-docker testenv couchdb
 
 # Generates a string to the terminal suitable for manual augmentation / re-issue, useful for running tests by hand
 test-cmd:
-	@echo "go test -ldflags \"$(GO_LDFLAGS)\""
+	@echo "go test -tags \"$(GO_TAGS)\" -ldflags \"$(GO_LDFLAGS)\""
 
 docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 native: peer orderer configtxgen cryptogen configtxlator
@@ -200,7 +206,7 @@ build/docker/bin/%: $(PROJECT_FILES)
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/$(TARGET)/pkg):/opt/gopath/pkg \
 		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
-		go install -ldflags "$(DOCKER_GO_LDFLAGS)" $(pkgmap.$(@F))
+		go install -tags "$(GO_TAGS)" -ldflags "$(DOCKER_GO_LDFLAGS)" $(pkgmap.$(@F))
 	@touch $@
 
 build/bin:
