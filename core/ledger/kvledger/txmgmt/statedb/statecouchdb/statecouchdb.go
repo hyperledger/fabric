@@ -294,7 +294,7 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 	// STEP 1: GATHER DOCUMENT REVISION NUMBERS REQUIRED FOR THE COUCHDB BULK UPDATE
 
 	// initialize a missing key list
-	missingKeys := []*statedb.CompositeKey{}
+	var missingKeys []*statedb.CompositeKey
 
 	// Revision numbers are needed for couchdb updates.
 	// vdb.committedDataCache.revisionNumbers is a cache of revision numbers based on ID
@@ -313,6 +313,7 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 
 			if !keyFound {
 				// Add the key to the missing key list
+				// As there can be no duplicates in UpdateBatch, no need check for duplicates.
 				missingKeys = append(missingKeys, &compositeKey)
 			}
 		}
@@ -439,11 +440,11 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 
 // printCompositeKeys is a convenience method to print readable log entries for arrays of pointers
 // to composite keys
-func printCompositeKeys(keyPointers []*statedb.CompositeKey) string {
+func printCompositeKeys(keys []*statedb.CompositeKey) string {
 
 	compositeKeyString := []string{}
-	for _, keyPointer := range keyPointers {
-		compositeKeyString = append(compositeKeyString, "["+keyPointer.Namespace+","+keyPointer.Key+"]")
+	for _, key := range keys {
+		compositeKeyString = append(compositeKeyString, "["+key.Namespace+","+key.Key+"]")
 	}
 	return strings.Join(compositeKeyString, ",")
 }

@@ -33,36 +33,50 @@ func NewValidator(db privacyenabledstate.DB) *Validator {
 // transaction's read set into a cache.
 func (v *Validator) preLoadCommittedVersionOfRSet(block *valinternal.Block) {
 
-	// Collect read set of all transactions in a given block
-	var readSetKeys []*statedb.CompositeKey
+	// Collect both public and hashed keys in read sets of all transactions in a given block
+	var pubKeys []*statedb.CompositeKey
+	var hashedKeys []*privacyenabledstate.HashedCompositeKey
+
+	// pubKeysMap and hashedKeysMap are used to avoid duplicate entries in the
+	// pubKeys and hashedKeys. Though map alone can be used to collect keys in
+	// read sets and pass as an argument in LoadCommittedVersionOfPubAndHashedKeys(),
+	// array is used for better code readability. On the negative side, this approach
+	// might use some extra memory.
+	pubKeysMap := make(map[statedb.CompositeKey]interface{})
+	hashedKeysMap := make(map[privacyenabledstate.HashedCompositeKey]interface{})
+
 	for _, tx := range block.Txs {
 		for _, nsRWSet := range tx.RWSet.NsRwSets {
 			for _, kvRead := range nsRWSet.KvRwSet.Reads {
-				readSetKeys = append(readSetKeys, &statedb.CompositeKey{
+				compositeKey := statedb.CompositeKey{
 					Namespace: nsRWSet.NameSpace,
 					Key:       kvRead.Key,
-				})
+				}
+				if _, ok := pubKeysMap[compositeKey]; !ok {
+					pubKeysMap[compositeKey] = nil
+					pubKeys = append(pubKeys, &compositeKey)
+				}
+
 			}
 			for _, colHashedRwSet := range nsRWSet.CollHashedRwSets {
 				for _, kvHashedRead := range colHashedRwSet.HashedRwSet.HashedReads {
-					ns, key := v.db.GetHashedDataNsAndKeyHashStr(nsRWSet.NameSpace, colHashedRwSet.CollectionName,
-						kvHashedRead.KeyHash)
-					readSetKeys = append(readSetKeys, &statedb.CompositeKey{
-						Namespace: ns,
-						Key:       key,
-					})
+					hashedCompositeKey := privacyenabledstate.HashedCompositeKey{
+						Namespace:      nsRWSet.NameSpace,
+						CollectionName: colHashedRwSet.CollectionName,
+						KeyHash:        string(kvHashedRead.KeyHash),
+					}
+					if _, ok := hashedKeysMap[hashedCompositeKey]; !ok {
+						hashedKeysMap[hashedCompositeKey] = nil
+						hashedKeys = append(hashedKeys, &hashedCompositeKey)
+					}
 				}
 			}
 		}
 	}
 
 	// Load committed version of all keys into a cache
-	if len(readSetKeys) > 0 {
-		commonStorageDB := v.db.(*privacyenabledstate.CommonStorageDB)
-		bulkOptimizable, ok := commonStorageDB.VersionedDB.(statedb.BulkOptimizable)
-		if ok {
-			bulkOptimizable.LoadCommittedVersions(readSetKeys)
-		}
+	if len(pubKeys) > 0 || len(hashedKeys) > 0 {
+		v.db.LoadCommittedVersionsOfPubAndHashedKeys(pubKeys, hashedKeys)
 	}
 }
 
@@ -71,9 +85,7 @@ func (v *Validator) ValidateAndPrepareBatch(block *valinternal.Block, doMVCCVali
 	// Check whether statedb implements BulkOptimizable interface. For now,
 	// only CouchDB implements BulkOptimizable to reduce the number of REST
 	// API calls from peer to CouchDB instance.
-	commonStorageDB := v.db.(*privacyenabledstate.CommonStorageDB)
-	_, ok := commonStorageDB.VersionedDB.(statedb.BulkOptimizable)
-	if ok {
+	if v.db.IsBulkOptimizable() {
 		v.preLoadCommittedVersionOfRSet(block)
 	}
 
@@ -250,8 +262,7 @@ func (v *Validator) validateKVReadHash(ns, coll string, kvReadHash *kvrwset.KVRe
 	if updates.Contains(ns, coll, kvReadHash.KeyHash) {
 		return false, nil
 	}
-	ns, key := v.db.GetHashedDataNsAndKeyHashStr(ns, coll, kvReadHash.KeyHash)
-	committedVersion, err := v.db.GetVersion(ns, key)
+	committedVersion, err := v.db.GetKeyHashVersion(ns, coll, kvReadHash.KeyHash)
 	if err != nil {
 		return false, err
 	}
