@@ -28,7 +28,7 @@ import (
 
 type Messages struct {
 	GeneralErrors   []string          `json:"general_errors"`
-	ElementWarnings []*ElementMessage `json:"element_errors"`
+	ElementWarnings []*ElementMessage `json:"element_warnings"`
 	ElementErrors   []*ElementMessage `json:"element_errors"`
 }
 

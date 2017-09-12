@@ -52,7 +52,7 @@ To build and test the following prerequisites must be installed first:
     -  node v7 is not currently supported
 - gulp command
     - `npm install -g gulp`
-- go (v1.7 or later)
+- go (v1.9 or later)
     - refer to [Go - Getting Started](https://golang.org/doc/install)
 - others:
     - in Ubuntu: `apt install -y build-essential python libltdl-dev`
@@ -107,7 +107,7 @@ If you do not have access to a Fabric network, please see the section on [Creati
 ### Example
 `./pte_driver.sh userInputs/runCases.txt`
 
-`userInputs/runCases.txt` contains the list of user specified test cases to be executed. Each line is a test case and includes two parameters: **SDK type** and **user input file**.  
+`userInputs/runCases.txt` contains the list of user specified test cases to be executed. Each line is a test case and includes two parameters: **SDK type** and **user input file**.
 
 For instance, a run cases file containing two test cases using the node SDK would be:
 ```
@@ -360,7 +360,7 @@ The output includes network id, thread id, transaction type, total transactions,
             "fcn": "invoke",
             "args": ["put", "a", "string-msg"]
         }
-    },   
+    },
     "SCFile": [
         {"ServiceCredentials":"SCFiles/config-local.json"}
     ]

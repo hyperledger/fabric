@@ -24,8 +24,8 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 -  `Git client <https://git-scm.com/downloads>`__
--  `Go <https://golang.org/>`__ - 1.7 or later (for releases before
-   v1.0, 1.6 or later)
+-  `Go <https://golang.org/>`__ - 1.9 or later (for v1.0.X releases, use
+   Go 1.7.X)
 -  For macOS,
    `Xcode <https://itunes.apple.com/us/app/xcode/id497799835?mt=12>`__
    must be installed
@@ -41,7 +41,7 @@ Prerequisites
     brew install gnu-tar --with-default-names
 
 -  (only if using Vagrant) - `Vagrant <https://www.vagrantup.com/>`__ -
-   1.7.4 or later
+   1.9 or later
 -  (only if using Vagrant) -
    `VirtualBox <https://www.virtualbox.org/>`__ - 5.0 or later
 -  BIOS Enabled Virtualization - Varies based on hardware
