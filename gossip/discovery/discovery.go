@@ -70,6 +70,7 @@ type NetworkMember struct {
 	Metadata         []byte
 	PKIid            common.PKIidType
 	InternalEndpoint string
+	Properties       *proto.Properties
 }
 
 // String returns a string representation of the NetworkMember

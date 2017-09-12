@@ -13,6 +13,7 @@ import (
 	"math/rand"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -551,6 +552,107 @@ func TestGossipReception(t *testing.T) {
 	case <-time.After(time.Second * 15):
 		assert.Fail(t, "Didn't commit a block within a timely manner")
 	}
+}
+
+func TestMetadataCompatibility(t *testing.T) {
+	// Scenario: For each test, spawn a peer and supply it
+	// with a specific mock of PeersOfChannel from peers that
+	// either set both metadata properly, or only the properties, or none, or both.
+	// Ensure the logic handles all of the 4 possible cases as needed
+
+	// Returns whether the given networkMember was selected or not
+	wasNetworkMemberSelected := func(t *testing.T, networkMember discovery.NetworkMember, wg *sync.WaitGroup) bool {
+		var wasGivenNetworkMemberSelected int32
+		finChan := make(chan struct{})
+		g := &mocks.GossipMock{}
+		g.On("Send", mock.Anything, mock.Anything).Run(func(arguments mock.Arguments) {
+			defer wg.Done()
+			msg := arguments.Get(0).(*proto.GossipMessage)
+			assert.NotNil(t, msg.GetStateRequest())
+			peer := arguments.Get(1).([]*comm.RemotePeer)[0]
+			if bytes.Equal(networkMember.PKIid, peer.PKIID) {
+				atomic.StoreInt32(&wasGivenNetworkMemberSelected, 1)
+			}
+			finChan <- struct{}{}
+		})
+		g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
+		g.On("Accept", mock.Anything, true).Return(nil, make(<-chan proto.ReceivedMessage))
+		metaState := common.NewNodeMetastate(5)
+		b, _ := metaState.Bytes()
+		defaultPeer := discovery.NetworkMember{
+			InternalEndpoint: "b",
+			PKIid:            common.PKIidType("b"),
+			Metadata:         b,
+			Properties: &proto.Properties{
+				LedgerHeight: 5,
+			},
+		}
+		g.On("PeersOfChannel", mock.Anything).Return([]discovery.NetworkMember{
+			defaultPeer,
+			networkMember,
+		})
+		mc := &mockCommitter{}
+		mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
+		p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
+		defer p.shutdown()
+		select {
+		case <-time.After(time.Second * 20):
+			t.Fatal("Didn't send a request within a timely manner")
+		case <-finChan:
+		}
+		return atomic.LoadInt32(&wasGivenNetworkMemberSelected) == 1
+	}
+
+	peerWithoutMetadata := discovery.NetworkMember{
+		PKIid: common.PKIidType("peerWithoutMetadata"),
+		Properties: &proto.Properties{
+			LedgerHeight: 10,
+		},
+		InternalEndpoint: "peerWithoutMetadata",
+	}
+
+	ms := common.NodeMetastate{
+		LedgerHeight: 10,
+	}
+	b, _ := ms.Bytes()
+	peerWithoutProperties := discovery.NetworkMember{
+		PKIid:            common.PKIidType("peerWithoutProperties"),
+		InternalEndpoint: "peerWithoutProperties",
+		Metadata:         b,
+	}
+
+	peerWithoutEverything := discovery.NetworkMember{
+		PKIid:            common.PKIidType("peerWithoutProperties"),
+		InternalEndpoint: "peerWithoutProperties",
+	}
+
+	peerWithEverything := discovery.NetworkMember{
+		PKIid:            common.PKIidType("peerWitEverything"),
+		InternalEndpoint: "peerWitEverything",
+		Metadata:         b,
+		Properties: &proto.Properties{
+			LedgerHeight: 10,
+		},
+	}
+
+	tests := []struct {
+		shouldGivenBeSelected bool
+		member                discovery.NetworkMember
+	}{
+		{member: peerWithoutMetadata, shouldGivenBeSelected: true},
+		{member: peerWithoutProperties, shouldGivenBeSelected: true},
+		{member: peerWithoutEverything, shouldGivenBeSelected: false},
+		{member: peerWithEverything, shouldGivenBeSelected: true},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(tests))
+	for _, tst := range tests {
+		go func(shouldGivenBeSelected bool, member discovery.NetworkMember) {
+			assert.Equal(t, shouldGivenBeSelected, wasNetworkMemberSelected(t, member, &wg))
+		}(tst.shouldGivenBeSelected, tst.member)
+	}
+	wg.Wait()
 }
 
 func TestAccessControl(t *testing.T) {

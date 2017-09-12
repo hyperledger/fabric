@@ -30,6 +30,10 @@ func (g *GossipMock) SuspectPeers(s api.PeerSuspector) {
 
 }
 
+func (g *GossipMock) LeaveChan(_ common.ChainID) {
+	panic("implement me")
+}
+
 func (g *GossipMock) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
 	g.Called(msg, peers)
 }

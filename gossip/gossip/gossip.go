@@ -58,6 +58,12 @@ type Gossip interface {
 	// JoinChan makes the Gossip instance join a channel
 	JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID)
 
+	// LeaveChan makes the Gossip instance leave a channel.
+	// It still disseminates stateInfo message, but doesn't participate
+	// in block pulling anymore, and can't return anymore a list of peers
+	// in the channel.
+	LeaveChan(chainID common.ChainID)
+
 	// SuspectPeers makes the gossip instance validate identities of suspected peers, and close
 	// any connections to peers with identities that are found invalid
 	SuspectPeers(s api.PeerSuspector)

@@ -188,6 +188,22 @@ func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID com
 	}
 }
 
+func (g *gossipServiceImpl) LeaveChan(chainID common.ChainID) {
+	gc := g.chanState.getGossipChannelByChainID(chainID)
+	if gc == nil {
+		g.logger.Debug("No such channel", chainID)
+		return
+	}
+	b, _ := (&common.NodeMetastate{}).Bytes()
+	stateInfMsg, err := g.createStateInfoMsg(b, chainID, true)
+	if err != nil {
+		g.logger.Errorf("Failed creating StateInfo message: %+v", errors.WithStack(err))
+		return
+	}
+	gc.UpdateStateInfo(stateInfMsg)
+	gc.LeaveChannel()
+}
+
 // SuspectPeers makes the gossip instance validate identities of suspected peers, and close
 // any connections to peers with identities that are found invalid
 func (g *gossipServiceImpl) SuspectPeers(isSuspected api.PeerSuspector) {
@@ -733,7 +749,7 @@ func (g *gossipServiceImpl) UpdateChannelMetadata(md []byte, chainID common.Chai
 		g.logger.Debug("No such channel", chainID)
 		return
 	}
-	stateInfMsg, err := g.createStateInfoMsg(md, chainID)
+	stateInfMsg, err := g.createStateInfoMsg(md, chainID, false)
 	if err != nil {
 		g.logger.Errorf("Failed creating StateInfo message: %+v", errors.WithStack(err))
 		return
@@ -1088,7 +1104,11 @@ func (g *gossipServiceImpl) connect2BootstrapPeers() {
 
 }
 
-func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID) (*proto.SignedGossipMessage, error) {
+func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID, leftChannel bool) (*proto.SignedGossipMessage, error) {
+	metaState, err := common.FromBytes(metadata)
+	if err != nil {
+		return nil, err
+	}
 	pkiID := g.comm.GetPKIid()
 	stateInfMsg := &proto.StateInfo{
 		Channel_MAC: channel.GenerateMAC(pkiID, chainID),
@@ -1098,6 +1118,12 @@ func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.C
 			IncNum: uint64(g.incTime.UnixNano()),
 			SeqNum: uint64(time.Now().UnixNano()),
 		},
+		Properties: &proto.Properties{
+			LedgerHeight: metaState.LedgerHeight,
+		},
+	}
+	if leftChannel {
+		stateInfMsg.Properties.LeftChannel = true
 	}
 	m := &proto.GossipMessage{
 		Nonce: 0,
@@ -1112,7 +1138,7 @@ func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.C
 	signer := func(msg []byte) ([]byte, error) {
 		return g.mcs.Sign(msg)
 	}
-	_, err := sMsg.Sign(signer)
+	_, err = sMsg.Sign(signer)
 	return sMsg, errors.WithStack(err)
 }
 

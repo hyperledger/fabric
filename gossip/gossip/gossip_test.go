@@ -42,6 +42,7 @@ var tests = []func(t *testing.T){
 	TestMembershipConvergence,
 	TestMembershipRequestSpoofing,
 	TestDataLeakage,
+	TestLeaveChannel,
 	//TestDisseminateAll2All: {},
 	TestIdentityExpiration,
 	TestSendByCriteria,
@@ -270,6 +271,50 @@ func newGossipInstanceWithOnlyPull(portPrefix int, id int, maxMsgCount int, boot
 	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService,
 		selfId, nil)
 	return g
+}
+
+func TestLeaveChannel(t *testing.T) {
+	t.Parallel()
+	defer testWG.Done()
+	portPrefix := 4500
+	// Scenario: Have 3 peers in a channel and make one of them leave it.
+	// Ensure the peers don't recognize the other peer when it left the channel
+
+	p0 := newGossipInstance(portPrefix, 0, 100, 2)
+	p0.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	p0.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	defer p0.Stop()
+
+	p1 := newGossipInstance(portPrefix, 1, 100, 0)
+	p1.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	p1.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	defer p1.Stop()
+
+	p2 := newGossipInstance(portPrefix, 2, 100, 1)
+	p2.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	p2.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	defer p2.Stop()
+
+	countMembership := func(g Gossip, expected int) func() bool {
+		return func() bool {
+			peers := g.PeersOfChannel(common.ChainID("A"))
+			return len(peers) == expected
+		}
+	}
+
+	// Wait until everyone sees each other in the channel
+	waitUntilOrFail(t, countMembership(p0, 2))
+	waitUntilOrFail(t, countMembership(p1, 2))
+	waitUntilOrFail(t, countMembership(p2, 2))
+
+	// Now p2 leaves the channel
+	p2.LeaveChan(common.ChainID("A"))
+
+	// Ensure channel membership is adjusted accordingly
+	waitUntilOrFail(t, countMembership(p0, 1))
+	waitUntilOrFail(t, countMembership(p1, 1))
+	waitUntilOrFail(t, countMembership(p2, 0))
+
 }
 
 func TestPull(t *testing.T) {
@@ -897,8 +942,10 @@ func TestDataLeakage(t *testing.T) {
 			assert.Len(t, peers[instanceIndex].PeersOfChannel(channel), 2)
 			if i == 0 {
 				assert.Equal(t, channelAmetadata, peers[instanceIndex].PeersOfChannel(channel)[0].Metadata)
+				assert.Equal(t, uint64(1), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.LedgerHeight)
 			} else {
 				assert.Equal(t, channelBmetadata, peers[instanceIndex].PeersOfChannel(channel)[0].Metadata)
+				assert.Equal(t, uint64(2), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.LedgerHeight)
 			}
 		}
 	}

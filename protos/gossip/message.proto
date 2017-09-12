@@ -139,6 +139,13 @@ message StateInfo {
     // that the peer that sent this message knows
     // the name of the channel.
     bytes channel_MAC  = 4;
+
+    Properties properties = 5;
+}
+
+message Properties {
+    uint64 ledger_height = 1;
+    bool left_channel = 2;
 }
 
 // StateInfoSnapshot is an aggregation of StateInfo messages

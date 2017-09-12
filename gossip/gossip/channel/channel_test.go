@@ -374,6 +374,81 @@ func TestMsgStoreNotExpire(t *testing.T) {
 	assert.Len(t, c, 2)
 }
 
+func TestLeaveChannel(t *testing.T) {
+	// Scenario: Have our peer receive a stateInfo message
+	// from a peer that has left the channel, and ensure that it skips it
+	// when returning membership.
+	// Next, have our own peer leave the channel and ensure:
+	// 1) It doesn't return any members of the channel when queried
+	// 2) It doesn't send anymore pull for blocks
+	// 3) When asked for pull for blocks, it ignores the request
+	t.Parallel()
+
+	jcm := &joinChanMsg{
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			"ORG1": {},
+			"ORG2": {},
+		},
+	}
+
+	cs := &cryptoService{}
+	cs.On("VerifyBlock", mock.Anything).Return(nil)
+	adapter := new(gossipAdapterMock)
+	adapter.On("Gossip", mock.Anything)
+	adapter.On("DeMultiplex", mock.Anything)
+	members := []discovery.NetworkMember{
+		{PKIid: pkiIDInOrg1},
+		{PKIid: pkiIDinOrg2},
+	}
+	var helloPullWG sync.WaitGroup
+	helloPullWG.Add(1)
+	configureAdapter(adapter, members...)
+	gc := NewGossipChannel(common.PKIidType("p0"), orgInChannelA, cs, channelA, adapter, jcm)
+	adapter.On("Send", mock.Anything, mock.Anything).Run(func(arguments mock.Arguments) {
+		msg := arguments.Get(0).(*proto.SignedGossipMessage)
+		if msg.IsPullMsg() {
+			helloPullWG.Done()
+			assert.False(t, gc.(*gossipChannel).hasLeftChannel())
+		}
+	})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDinOrg2, msg: createStateInfoMsg(1, pkiIDinOrg2, channelA)})
+	// Have some peer send a block to us, so we can send some peer a digest when hello is sent to us
+	gc.HandleMessage(&receivedMsg{msg: createDataMsg(2, channelA), PKIID: pkiIDInOrg1})
+	assert.Len(t, gc.GetPeers(), 2)
+	// Now, have peer in org2 "leave the channel" by publishing is an update
+	stateInfoMsg := &receivedMsg{PKIID: pkiIDinOrg2, msg: createStateInfoMsg(0, pkiIDinOrg2, channelA)}
+	stateInfoMsg.GetGossipMessage().GetStateInfo().Properties.LeftChannel = true
+	gc.HandleMessage(stateInfoMsg)
+	assert.Len(t, gc.GetPeers(), 1)
+	// Ensure peer in org1 remained and peer in org2 is skipped
+	assert.Equal(t, pkiIDInOrg1, gc.GetPeers()[0].PKIid)
+	var digestSendTime int32
+	var DigestSentWg sync.WaitGroup
+	DigestSentWg.Add(1)
+	hello := createHelloMsg(pkiIDInOrg1)
+	hello.On("Respond", mock.Anything).Run(func(arguments mock.Arguments) {
+		atomic.AddInt32(&digestSendTime, 1)
+		// Ensure we only respond with digest before we leave the channel
+		assert.Equal(t, int32(1), atomic.LoadInt32(&digestSendTime))
+		DigestSentWg.Done()
+	})
+	// Wait until we send a hello pull message
+	helloPullWG.Wait()
+	go gc.HandleMessage(hello)
+	DigestSentWg.Wait()
+	// Make the peer leave the channel
+	gc.LeaveChannel()
+	// Send another hello. Shouldn't respond
+	go gc.HandleMessage(hello)
+	// Ensure it doesn't know now any other peer
+	assert.Len(t, gc.GetPeers(), 0)
+	// Sleep 3 times the pull interval.
+	// we're not supposed to send a pull during this time.
+	time.Sleep(conf.PullInterval * 3)
+
+}
+
 func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	t.Parallel()
 	ledgerHeight := 5
@@ -412,6 +487,7 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	nodeMeta, err := common.FromBytes(msg.GetStateInfo().Metadata)
 	assert.NoError(t, err, "ReceivedMetadata is invalid")
 	assert.Equal(t, ledgerHeight, int(nodeMeta.LedgerHeight), "Received different ledger height than expected")
+	assert.Equal(t, ledgerHeight, int(msg.GetStateInfo().Properties.LedgerHeight))
 }
 
 func TestChannelMsgStoreEviction(t *testing.T) {
@@ -1751,6 +1827,9 @@ func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common
 				Timestamp:   &proto.PeerTime{IncNum: uint64(time.Now().UnixNano()), SeqNum: 1},
 				Metadata:    metaBytes,
 				PkiId:       []byte(pkiID),
+				Properties: &proto.Properties{
+					LedgerHeight: uint64(ledgerHeight),
+				},
 			},
 		},
 	}).NoopSign()
