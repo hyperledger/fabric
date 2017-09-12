@@ -14,9 +14,11 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -643,4 +645,46 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	err = simulator.SetState("ns", "key", []byte("value"))
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
 	testutil.AssertEquals(t, ok, true)
+}
+
+func TestTxSimulatorMissingPvtdata(t *testing.T) {
+	testEnv := testEnvs[0]
+	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries")
+	defer testEnv.cleanup()
+
+	db := testEnv.getVDB()
+	updateBatch := privacyenabledstate.NewUpdateBatch()
+	updateBatch.HashUpdates.Put("ns1", "coll1", util.ComputeStringHash("key1"), util.ComputeStringHash("value1"), version.NewHeight(1, 1))
+	updateBatch.PvtUpdates.Put("ns1", "coll1", "key1", []byte("value1"), version.NewHeight(1, 1))
+	db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1))
+
+	txMgr := testEnv.getTxMgr()
+	simulator, _ := txMgr.NewTxSimulator("testTxid1")
+	val, _ := simulator.GetPrivateData("ns1", "coll1", "key1")
+	testutil.AssertEquals(t, val, []byte("value1"))
+	simulator.Done()
+
+	updateBatch = privacyenabledstate.NewUpdateBatch()
+	updateBatch.HashUpdates.Put("ns1", "coll1", util.ComputeStringHash("key1"), util.ComputeStringHash("value1"), version.NewHeight(2, 1))
+	updateBatch.HashUpdates.Put("ns1", "coll2", util.ComputeStringHash("key2"), util.ComputeStringHash("value2"), version.NewHeight(2, 1))
+	updateBatch.HashUpdates.Put("ns1", "coll3", util.ComputeStringHash("key3"), util.ComputeStringHash("value3"), version.NewHeight(2, 1))
+	updateBatch.PvtUpdates.Put("ns1", "coll3", "key3", []byte("value3"), version.NewHeight(2, 1))
+	db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(2, 1))
+	simulator, _ = txMgr.NewTxSimulator("testTxid2")
+	defer simulator.Done()
+
+	val, err := simulator.GetPrivateData("ns1", "coll1", "key1")
+	_, ok := err.(*txmgr.ErrPvtdataNotAvailable)
+	testutil.AssertEquals(t, ok, true)
+
+	val, err = simulator.GetPrivateData("ns1", "coll2", "key2")
+	_, ok = err.(*txmgr.ErrPvtdataNotAvailable)
+	testutil.AssertEquals(t, ok, true)
+
+	val, err = simulator.GetPrivateData("ns1", "coll3", "key3")
+	testutil.AssertEquals(t, val, []byte("value3"))
+
+	val, err = simulator.GetPrivateData("ns1", "coll4", "key4")
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, val)
 }
