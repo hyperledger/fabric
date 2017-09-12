@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	"github.com/stretchr/testify/assert"
 )
@@ -73,7 +73,7 @@ func TestMultiReinitialization(t *testing.T) {
 	assert.NoError(t, err, "Error creating temp dir: %s", err)
 
 	flf := New(dir)
-	_, err = flf.GetOrCreate(provisional.TestChainID)
+	_, err = flf.GetOrCreate(genesisconfig.TestChainID)
 	assert.NoError(t, err, "Error GetOrCreate chain")
 	assert.Equal(t, 1, len(flf.ChainIDs()), "Expected 1 chain")
 	flf.Close()

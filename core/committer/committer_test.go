@@ -22,8 +22,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/protos/common"
@@ -101,7 +101,7 @@ func TestNewLedgerCommitterReactive(t *testing.T) {
 	assert.NoError(t, err)
 
 	profile := localconfig.Load(localconfig.SampleSingleMSPSoloProfile)
-	block := provisional.New(profile).GenesisBlockForChannel(chainID)
+	block := encoder.New(profile).GenesisBlockForChannel(chainID)
 
 	committer.Commit(block)
 	assert.Equal(t, int32(1), atomic.LoadInt32(&configArrived))

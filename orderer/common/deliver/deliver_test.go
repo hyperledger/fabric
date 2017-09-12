@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/common/ledger/ram"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -144,7 +144,7 @@ func (mcs *mockSupport) Reader() ledger.Reader {
 
 func NewRAMLedger() ledger.ReadWriter {
 	rlf := ramledger.New(ledgerSize + 1)
-	rl, _ := rlf.GetOrCreate(provisional.TestChainID)
+	rl, _ := rlf.GetOrCreate(genesisconfig.TestChainID)
 	rl.Append(genesisBlock)
 	return rl
 }

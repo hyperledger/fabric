@@ -20,7 +20,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/op/go-logging"
@@ -161,7 +161,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 					GenesisMethod:  tc.genesisMethod,
 					GenesisProfile: "SampleSingleMSPSolo",
 					GenesisFile:    "genesisblock",
-					SystemChannel:  provisional.TestChainID,
+					SystemChannel:  genesisconfig.TestChainID,
 				},
 			}
 
@@ -223,7 +223,7 @@ func TestInitializeMultiChainManager(t *testing.T) {
 			LedgerType:     "ram",
 			GenesisMethod:  "provisional",
 			GenesisProfile: "SampleSingleMSPSolo",
-			SystemChannel:  provisional.TestChainID,
+			SystemChannel:  genesisconfig.TestChainID,
 			LocalMSPDir:    localMSPDir,
 			LocalMSPID:     "DEFAULT",
 			BCCSP: &factory.FactoryOpts{

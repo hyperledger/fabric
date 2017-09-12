@@ -20,7 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	. "github.com/hyperledger/fabric/orderer/common/ledger"
 	fileledger "github.com/hyperledger/fabric/orderer/common/ledger/file"
 )
@@ -64,7 +64,7 @@ func (env *fileLedgerTestFactory) Persistent() bool {
 
 func (env *fileLedgerTestFactory) New() (Factory, ReadWriter) {
 	flf := fileledger.New(env.location)
-	fl, err := flf.GetOrCreate(provisional.TestChainID)
+	fl, err := flf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
 		panic(err)
 	}

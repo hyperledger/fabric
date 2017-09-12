@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -48,7 +48,7 @@ func initialize(t *testing.T) (*testEnv, *jsonLedger) {
 		t.Fatalf("Error creating temp dir: %s", err)
 	}
 	flf := New(name).(*jsonLedgerFactory)
-	fl, err := flf.GetOrCreate(provisional.TestChainID)
+	fl, err := flf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
 		panic(err)
 	}

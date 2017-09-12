@@ -19,7 +19,7 @@ package ramledger
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 
 	logging "github.com/op/go-logging"
 )
@@ -30,11 +30,11 @@ func init() {
 
 func TestGetOrCreate(t *testing.T) {
 	rlf := New(3)
-	channel, err := rlf.GetOrCreate(provisional.TestChainID)
+	channel, err := rlf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
 		panic(err)
 	}
-	channel2, err := rlf.GetOrCreate(provisional.TestChainID)
+	channel2, err := rlf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
 		panic(err)
 	}

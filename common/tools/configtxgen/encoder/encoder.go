@@ -10,6 +10,7 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/msp"
@@ -271,4 +272,38 @@ func NewConsortiumGroup(conf *genesisconfig.Consortium) (*cb.ConfigGroup, error)
 
 	consortiumGroup.ModPolicy = ordererAdminsPolicyName
 	return consortiumGroup, nil
+}
+
+// Bootstrapper is a wrapper around NewChannelConfigGroup which can produce genesis blocks
+type Bootstrapper struct {
+	channelGroup *cb.ConfigGroup
+}
+
+// New creates a new Bootstrapper for generating genesis blocks
+func New(config *genesisconfig.Profile) *Bootstrapper {
+	channelGroup, err := NewChannelGroup(config)
+	if err != nil {
+		logger.Panicf("Error creating channel group: %s", err)
+	}
+	return &Bootstrapper{
+		channelGroup: channelGroup,
+	}
+}
+
+// GenesisBlock produces a genesis block for the default test chain id
+func (bs *Bootstrapper) GenesisBlock() *cb.Block {
+	block, err := genesis.NewFactoryImpl(bs.channelGroup).Block(genesisconfig.TestChainID)
+	if err != nil {
+		logger.Panicf("Error creating genesis block from channel group: %s", err)
+	}
+	return block
+}
+
+// GenesisBlockForChannel produces a genesis block for a given channel ID
+func (bs *Bootstrapper) GenesisBlockForChannel(channelID string) *cb.Block {
+	block, err := genesis.NewFactoryImpl(bs.channelGroup).Block(channelID)
+	if err != nil {
+		logger.Panicf("Error creating genesis block from channel group: %s", err)
+	}
+	return block
 }

@@ -18,8 +18,8 @@ import (
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/common/ledger/ram"
@@ -44,7 +44,7 @@ func init() {
 	mockSigningIdentity, _ = mmsp.NewNoopMsp().GetDefaultSigningIdentity()
 
 	conf = genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
-	genesisBlock = provisional.New(conf).GenesisBlock()
+	genesisBlock = encoder.New(conf).GenesisBlock()
 }
 
 func mockCrypto() crypto.LocalSigner {
@@ -53,7 +53,7 @@ func mockCrypto() crypto.LocalSigner {
 
 func NewRAMLedgerAndFactory(maxSize int) (ledger.Factory, ledger.ReadWriter) {
 	rlf := ramledger.New(10)
-	rl, err := rlf.GetOrCreate(provisional.TestChainID)
+	rl, err := rlf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
 		panic(err)
 	}
@@ -73,13 +73,13 @@ func NewRAMLedger(maxSize int) ledger.ReadWriter {
 func TestGetConfigTx(t *testing.T) {
 	rl := NewRAMLedger(10)
 	for i := 0; i < 5; i++ {
-		rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, i)}))
+		rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, i)}))
 	}
-	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(provisional.TestChainID, 5)}))
-	ctx := makeConfigTx(provisional.TestChainID, 6)
+	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(genesisconfig.TestChainID, 5)}))
+	ctx := makeConfigTx(genesisconfig.TestChainID, 6)
 	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
 
-	block := ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 7)})
+	block := ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 7)})
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&cb.Metadata{Value: utils.MarshalOrPanic(&cb.LastConfig{Index: 7})})
 	rl.Append(block)
 
@@ -92,14 +92,14 @@ func TestGetConfigTxFailure(t *testing.T) {
 	rl := NewRAMLedger(10)
 	for i := 0; i < 10; i++ {
 		rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{
-			makeNormalTx(provisional.TestChainID, i),
-			makeConfigTx(provisional.TestChainID, i),
+			makeNormalTx(genesisconfig.TestChainID, i),
+			makeConfigTx(genesisconfig.TestChainID, i),
 		}))
 	}
-	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 11)}))
+	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 11)}))
 	assert.Panics(t, func() { getConfigTx(rl) }, "Should have panicked because there was no config tx")
 
-	block := ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 12)})
+	block := ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 12)})
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = []byte("bad metadata")
 	assert.Panics(t, func() { getConfigTx(rl) }, "Should have panicked because of bad last config metadata")
 }
@@ -122,7 +122,7 @@ func TestMultiSystemChannel(t *testing.T) {
 		rl, err := lf.GetOrCreate(id)
 		assert.NoError(t, err)
 
-		err = rl.Append(provisional.New(conf).GenesisBlockForChannel(id))
+		err = rl.Append(encoder.New(conf).GenesisBlockForChannel(id))
 		assert.NoError(t, err)
 	}
 
@@ -144,12 +144,12 @@ func TestManagerImpl(t *testing.T) {
 	_, ok := manager.GetChain("Fake")
 	assert.False(t, ok, "Should not have found a chain that was not created")
 
-	chainSupport, ok := manager.GetChain(provisional.TestChainID)
+	chainSupport, ok := manager.GetChain(genesisconfig.TestChainID)
 	assert.True(t, ok, "Should have gotten chain which was initialized by ramledger")
 
 	messages := make([]*cb.Envelope, conf.Orderer.BatchSize.MaxMessageCount)
 	for i := 0; i < int(conf.Orderer.BatchSize.MaxMessageCount); i++ {
-		messages[i] = makeNormalTx(provisional.TestChainID, i)
+		messages[i] = makeNormalTx(genesisconfig.TestChainID, i)
 	}
 
 	for _, message := range messages {

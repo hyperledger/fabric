@@ -12,11 +12,8 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,22 +38,6 @@ func hasModPolicySet(t *testing.T, groupName string, cg *cb.ConfigGroup) {
 }
 
 func TestConfigParsing(t *testing.T) {
-	config := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
-	group, err := NewChannelGroup(config)
-	assert.NoError(t, err)
-	assert.NotNil(t, group)
-
-	_, err = channelconfig.NewBundle("test", &cb.Config{
-		ChannelGroup: group,
-	})
-	assert.NoError(t, err)
-
-	hasModPolicySet(t, "Channel", group)
-}
-
-// This test will be removed with the legacy provisional package, but demonstrates
-// that the old and new encoders produce identical output
-func TestEquivalentParsing(t *testing.T) {
 	for _, profile := range []string{
 		genesisconfig.SampleInsecureSoloProfile,
 		genesisconfig.SampleSingleMSPSoloProfile,
@@ -65,15 +46,18 @@ func TestEquivalentParsing(t *testing.T) {
 		genesisconfig.SampleSingleMSPKafkaProfile,
 		genesisconfig.SampleDevModeKafkaProfile,
 	} {
-		config := genesisconfig.Load(profile)
-		group, err := NewChannelGroup(config)
-		assert.NoError(t, err)
-		assert.NotNil(t, group)
+		t.Run(profile, func(t *testing.T) {
+			config := genesisconfig.Load(profile)
+			group, err := NewChannelGroup(config)
+			assert.NoError(t, err)
+			assert.NotNil(t, group)
 
-		gb := provisional.New(config).GenesisBlockForChannel("foo")
-		env := utils.ExtractEnvelopeOrPanic(gb, 0)
-		configEnv := &cb.ConfigEnvelope{}
-		utils.UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, configEnv)
-		assert.True(t, proto.Equal(configEnv.Config.ChannelGroup, group))
+			_, err = channelconfig.NewBundle("test", &cb.Config{
+				ChannelGroup: group,
+			})
+			assert.NoError(t, err)
+
+			hasModPolicySet(t, "Channel", group)
+		})
 	}
 }

@@ -20,9 +20,11 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	. "github.com/hyperledger/fabric/common/tools/protolator"
+	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -53,18 +55,20 @@ func bidirectionalMarshal(t *testing.T, doc proto.Message) {
 }
 
 func TestConfigUpdate(t *testing.T) {
-	p := provisional.New(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile))
-	ct := p.ChannelTemplate()
-	cue, err := ct.Envelope("Foo")
+	cg, err := encoder.NewChannelGroup(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile))
 	assert.NoError(t, err)
 
-	bidirectionalMarshal(t, cue)
+	bidirectionalMarshal(t, &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
+			ReadSet:  cg,
+			WriteSet: cg,
+		}),
+	})
 }
 
 func TestGenesisBlock(t *testing.T) {
-	p := provisional.New(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile))
+	p := encoder.New(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile))
 	gb := p.GenesisBlockForChannel("foo")
 
 	bidirectionalMarshal(t, gb)
-
 }
