@@ -61,8 +61,12 @@ DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
 
 BASE_DOCKER_LABEL=org.hyperledger.fabric
 
+DOCKER_DYNAMIC_LINK ?= false
 DOCKER_GO_LDFLAGS += $(GO_LDFLAGS)
+
+ifeq ($(DOCKER_DYNAMIC_LINK),false)
 DOCKER_GO_LDFLAGS += -linkmode external -extldflags '-static -lpthread'
+endif
 
 #
 # What is a .dummy file?
