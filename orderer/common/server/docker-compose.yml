@@ -1,0 +1,132 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+version: '3'
+
+# Defines a 3 broker Kafka cluster environment.
+# - Kafka brokers are exposed on the host network on ports 9092, 9192, & 9292.
+# - No communication security (e.g. TLS) has been enabled.
+# - A 3 node Zookeeper cluster is also defined, but not exposed to the host.
+# - Kafka brokers use separate listeners for communication inside and outside
+#   the docker environment.
+#   - EXTERNAL listener ports are mapped to the host network.
+#   - REPLICATION listener ports are used for broker-to-broker communication.
+#
+#      Host          Kafka                    Internal       Zookeeper
+#      Network       Cluster                  Network        Cluster
+#      ┌───┐                                  ┌───┐
+#      │   │        ┌───────────────┐         │   │    ┌──────┐
+# ┌────┴─┐ │   ┌────┴─┐             │         │   │◀──▶│ 2181 ├─────────────┐
+# │ 9092 │─┼──▶│ 9092 │  kafka0     │         │   │    └────┬─┘             │
+# └────┬─┘ │   └────┬─┘           ┌─┴────┐    │   │         │  zookeeper0   │
+#      │   │        └─────────────┤ 9093 │◀──▶│   │         │               │
+#      │   │                      └──────┘    │   │         └───────────────┘
+#      │   │                                  │   │
+#      │   │        ┌───────────────┐         │   │    ┌──────┐
+# ┌────┴─┐ │   ┌────┴─┐             │         │   │◀──▶│ 2181 ├─────────────┐
+# │ 9192 │─┼──▶│ 9092 │  kafka1     │         │   │    └────┬─┘             │
+# └────┬─┘ │   └────┬─┘           ┌─┴────┐    │   │         │  zookeeper0   │
+#      │   │        └─────────────┤ 9093 │◀──▶│   │         │               │
+#      │   │                      └──────┘    │   │         └───────────────┘
+#      │   │                                  │   │
+#      │   │        ┌───────────────┐         │   │    ┌──────┐
+# ┌────┴─┐ │   ┌────┴─┐             │         │   │◀──▶│ 2181 ├─────────────┐
+# │ 9292 │─┼──▶│ 9092 │  kafka2     │         │   │    └────┬─┘             │
+# └────┬─┘ │   └────┬─┘           ┌─┴────┐    │   │         │  zookeeper0   │
+#      │   │        └─────────────┤ 9093 │◀──▶│   │         │               │
+#      │   │                      └──────┘    │   │         └───────────────┘
+#      │   │                                  │   │
+#      └───┘                                  └───┘
+
+services:
+
+  zookeeper0:
+    image: hyperledger/fabric-zookeeper
+    restart: always
+    environment:
+      - ZOO_MY_ID=200
+      - ZOO_SERVERS=server.200=zookeeper0:2888:3888 server.201=zookeeper1:2888:3888 server.202=zookeeper2:2888:3888
+
+  zookeeper1:
+    image: hyperledger/fabric-zookeeper
+    restart: always
+    environment:
+      - ZOO_MY_ID=201
+      - ZOO_SERVERS=server.200=zookeeper0:2888:3888 server.201=zookeeper1:2888:3888 server.202=zookeeper2:2888:3888
+
+  zookeeper2:
+    image: hyperledger/fabric-zookeeper
+    restart: always
+    environment:
+      - ZOO_MY_ID=202
+      - ZOO_SERVERS=server.200=zookeeper0:2888:3888 server.201=zookeeper1:2888:3888 server.202=zookeeper2:2888:3888
+
+  kafka0:
+    image: hyperledger/fabric-kafka
+    restart: always
+    environment:
+      - KAFKA_BROKER_ID=800
+      - KAFKA_HOST_NAME=kafka0
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+      - KAFKA_LISTENERS=EXTERNAL://0.0.0.0:9092,REPLICATION://0.0.0.0:9093
+      - KAFKA_ADVERTISED_LISTENERS=EXTERNAL://localhost:9092,REPLICATION://kafka0:9093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=EXTERNAL:PLAINTEXT,REPLICATION:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=REPLICATION
+      - KAFKA_MESSAGE_MAX_BYTES=103809024
+      - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
+      - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    ports:
+      - 9092:9092
+
+  kafka1:
+    image: hyperledger/fabric-kafka
+    restart: always
+    environment:
+      - KAFKA_BROKER_ID=801
+      - KAFKA_HOST_NAME=kafka1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+      - KAFKA_LISTENERS=EXTERNAL://0.0.0.0:9092,REPLICATION://0.0.0.0:9093
+      - KAFKA_ADVERTISED_LISTENERS=EXTERNAL://localhost:9192,REPLICATION://kafka1:9093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=EXTERNAL:PLAINTEXT,REPLICATION:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=REPLICATION
+      - KAFKA_MESSAGE_MAX_BYTES=103809024
+      - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
+      - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    ports:
+      - 9192:9092
+
+  kafka2:
+    image: hyperledger/fabric-kafka
+    restart: always
+    environment:
+      - KAFKA_BROKER_ID=802
+      - KAFKA_HOST_NAME=kafka2
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+      - KAFKA_LISTENERS=EXTERNAL://0.0.0.0:9092,REPLICATION://0.0.0.0:9093
+      - KAFKA_ADVERTISED_LISTENERS=EXTERNAL://localhost:9292,REPLICATION://kafka2:9093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=EXTERNAL:PLAINTEXT,REPLICATION:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=REPLICATION
+      - KAFKA_MESSAGE_MAX_BYTES=103809024
+      - KAFKA_REPLICA_FETCH_MAX_BYTES=103809024
+      - KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    ports:
+      - 9292:9092
