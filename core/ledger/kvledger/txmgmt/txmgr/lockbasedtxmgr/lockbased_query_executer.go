@@ -55,18 +55,22 @@ func (q *lockBasedQueryExecutor) ExecuteQuery(namespace, query string) (ledger.R
 	return q.helper.executeQuery(namespace, query)
 }
 
+// GetPrivateData implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) GetPrivateData(namespace, collection, key string) ([]byte, error) {
 	return q.helper.getPrivateData(namespace, collection, key)
 }
 
+// GetPrivateDataMultipleKeys implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error) {
 	return q.helper.getPrivateDataMultipleKeys(namespace, collection, keys)
 }
 
+// GetPrivateDataRangeScanIterator implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (ledger.ResultsIterator, error) {
 	return q.helper.getPrivateDataRangeScanIterator(namespace, collection, startKey, endKey)
 }
 
+// ExecuteQueryOnPrivateData implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) ExecuteQueryOnPrivateData(namespace, collection, query string) (ledger.ResultsIterator, error) {
 	return q.helper.executeQueryOnPrivateData(namespace, collection, query)
 }

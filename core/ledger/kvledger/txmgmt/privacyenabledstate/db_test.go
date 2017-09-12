@@ -9,8 +9,10 @@ package privacyenabledstate
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
@@ -128,6 +130,221 @@ func testDB(t *testing.T, env TestEnv) {
 }
 
 //TODO add tests for functions GetPrivateStateMultipleKeys and GetPrivateStateRangeScanIterator
+
+func TestGetStateMultipleKeys(t *testing.T) {
+	for _, env := range testEnvs {
+		t.Run(env.GetName(), func(t *testing.T) {
+			testGetStateMultipleKeys(t, env)
+		})
+	}
+}
+
+func testGetStateMultipleKeys(t *testing.T, env TestEnv) {
+	env.Init(t)
+	defer env.Cleanup()
+	db := env.GetDBHandle("test-ledger-id")
+
+	updates := NewUpdateBatch()
+
+	updates.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
+	updates.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
+	updates.PubUpdates.Put("ns1", "key3", []byte("value3"), version.NewHeight(1, 3))
+
+	putPvtUpdates(t, updates, "ns1", "coll1", "key1", []byte("pvt_value1"), version.NewHeight(1, 4))
+	putPvtUpdates(t, updates, "ns1", "coll1", "key2", []byte("pvt_value2"), version.NewHeight(1, 5))
+	putPvtUpdates(t, updates, "ns1", "coll1", "key3", []byte("pvt_value3"), version.NewHeight(1, 6))
+	db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 6))
+
+	versionedVals, err := db.GetStateMultipleKeys("ns1", []string{"key1", "key3"})
+	assert.NoError(t, err)
+	assert.Equal(t,
+		[]*statedb.VersionedValue{
+			&statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)},
+			&statedb.VersionedValue{Value: []byte("value3"), Version: version.NewHeight(1, 3)},
+		},
+		versionedVals)
+
+	pvtVersionedVals, err := db.GetPrivateDataMultipleKeys("ns1", "coll1", []string{"key1", "key3"})
+	assert.NoError(t, err)
+	assert.Equal(t,
+		[]*statedb.VersionedValue{
+			&statedb.VersionedValue{Value: []byte("pvt_value1"), Version: version.NewHeight(1, 4)},
+			&statedb.VersionedValue{Value: []byte("pvt_value3"), Version: version.NewHeight(1, 6)},
+		},
+		pvtVersionedVals)
+}
+
+func TestGetStateRangeScanIterator(t *testing.T) {
+	for _, env := range testEnvs {
+		t.Run(env.GetName(), func(t *testing.T) {
+			testGetStateMultipleKeys(t, env)
+		})
+	}
+}
+
+func testGetStateRangeScanIterator(t *testing.T, env TestEnv) {
+	env.Init(t)
+	defer env.Cleanup()
+	db := env.GetDBHandle("test-ledger-id")
+
+	updates := NewUpdateBatch()
+
+	updates.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
+	updates.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
+	updates.PubUpdates.Put("ns1", "key3", []byte("value3"), version.NewHeight(1, 3))
+	updates.PubUpdates.Put("ns1", "key4", []byte("value4"), version.NewHeight(1, 4))
+	updates.PubUpdates.Put("ns2", "key5", []byte("value5"), version.NewHeight(1, 5))
+	updates.PubUpdates.Put("ns2", "key6", []byte("value6"), version.NewHeight(1, 6))
+	updates.PubUpdates.Put("ns3", "key7", []byte("value7"), version.NewHeight(1, 7))
+
+	putPvtUpdates(t, updates, "ns1", "coll1", "key1", []byte("pvt_value1"), version.NewHeight(1, 1))
+	putPvtUpdates(t, updates, "ns1", "coll1", "key2", []byte("pvt_value2"), version.NewHeight(1, 2))
+	putPvtUpdates(t, updates, "ns1", "coll1", "key3", []byte("pvt_value3"), version.NewHeight(1, 3))
+	putPvtUpdates(t, updates, "ns1", "coll1", "key4", []byte("pvt_value4"), version.NewHeight(1, 4))
+	putPvtUpdates(t, updates, "ns2", "coll1", "key5", []byte("pvt_value5"), version.NewHeight(1, 5))
+	putPvtUpdates(t, updates, "ns2", "coll1", "key6", []byte("pvt_value6"), version.NewHeight(1, 6))
+	putPvtUpdates(t, updates, "ns3", "coll1", "key7", []byte("pvt_value7"), version.NewHeight(1, 7))
+	db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 7))
+
+	itr1, _ := db.GetStateRangeScanIterator("ns1", "key1", "")
+	testItr(t, itr1, []string{"key1", "key2", "key3", "key4"})
+
+	itr2, _ := db.GetStateRangeScanIterator("ns1", "key2", "key3")
+	testItr(t, itr2, []string{"key2"})
+
+	itr3, _ := db.GetStateRangeScanIterator("ns1", "", "")
+	testItr(t, itr3, []string{"key1", "key2", "key3", "key4"})
+
+	itr4, _ := db.GetStateRangeScanIterator("ns2", "", "")
+	testItr(t, itr4, []string{"key5", "key6"})
+
+	pvtItr1, _ := db.GetPrivateDataRangeScanIterator("ns1", "coll1", "key1", "")
+	testItr(t, pvtItr1, []string{"key1", "key2", "key3", "key4"})
+
+	pvtItr2, _ := db.GetPrivateDataRangeScanIterator("ns1", "coll1", "key2", "key3")
+	testItr(t, pvtItr2, []string{"key2"})
+
+	pvtItr3, _ := db.GetPrivateDataRangeScanIterator("ns1", "coll1", "", "")
+	testItr(t, pvtItr3, []string{"key1", "key2", "key3", "key4"})
+
+	pvtItr4, _ := db.GetPrivateDataRangeScanIterator("ns2", "coll1", "", "")
+	testItr(t, pvtItr4, []string{"key5", "key6"})
+}
+
+func TestQueryOnCouchDB(t *testing.T) {
+	for _, env := range testEnvs {
+		_, ok := env.(*CouchDBCommonStorageTestEnv)
+		if !ok {
+			continue
+		}
+		t.Run(env.GetName(), func(t *testing.T) {
+			testQueryOnCouchDB(t, env)
+		})
+	}
+}
+
+func testQueryOnCouchDB(t *testing.T, env TestEnv) {
+	env.Init(t)
+	defer env.Cleanup()
+	db := env.GetDBHandle("test-ledger-id")
+	updates := NewUpdateBatch()
+
+	jsonValues := []string{
+		`{"asset_name": "marble1", "color": "blue", "size": 1, "owner": "tom"}`,
+		`{"asset_name": "marble2","color": "blue","size": 2,"owner": "jerry"}`,
+		`{"asset_name": "marble3","color": "blue","size": 3,"owner": "fred"}`,
+		`{"asset_name": "marble4","color": "blue","size": 4,"owner": "martha"}`,
+		`{"asset_name": "marble5","color": "blue","size": 5,"owner": "fred"}`,
+		`{"asset_name": "marble6","color": "blue","size": 6,"owner": "elaine"}`,
+		`{"asset_name": "marble7","color": "blue","size": 7,"owner": "fred"}`,
+		`{"asset_name": "marble8","color": "blue","size": 8,"owner": "elaine"}`,
+		`{"asset_name": "marble9","color": "green","size": 9,"owner": "fred"}`,
+		`{"asset_name": "marble10","color": "green","size": 10,"owner": "mary"}`,
+		`{"asset_name": "marble11","color": "cyan","size": 1000007,"owner": "joe"}`,
+	}
+
+	for i, jsonValue := range jsonValues {
+		updates.PubUpdates.Put("ns1", testKey(i), []byte(jsonValue), version.NewHeight(1, uint64(i)))
+		updates.PubUpdates.Put("ns2", testKey(i), []byte(jsonValue), version.NewHeight(1, uint64(i)))
+		putPvtUpdates(t, updates, "ns1", "coll1", testKey(i), []byte(jsonValue), version.NewHeight(1, uint64(i)))
+		putPvtUpdates(t, updates, "ns2", "coll1", testKey(i), []byte(jsonValue), version.NewHeight(1, uint64(i)))
+	}
+	db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(1, 11))
+
+	// query for owner=jerry, use namespace "ns1"
+	itr, err := db.ExecuteQuery("ns1", `{"selector":{"owner":"jerry"}}`)
+	testutil.AssertNoError(t, err, "")
+	testQueryItr(t, itr, []string{testKey(1)}, []string{"jerry"})
+
+	// query for owner=jerry, use namespace "ns2"
+	itr, err = db.ExecuteQuery("ns2", `{"selector":{"owner":"jerry"}}`)
+	testutil.AssertNoError(t, err, "")
+	testQueryItr(t, itr, []string{testKey(1)}, []string{"jerry"})
+
+	// query for pvt data owner=jerry, use namespace "ns1"
+	itr, err = db.ExecuteQueryOnPrivateData("ns1", "coll1", `{"selector":{"owner":"jerry"}}`)
+	testutil.AssertNoError(t, err, "")
+	testQueryItr(t, itr, []string{testKey(1)}, []string{"jerry"})
+
+	// query for pvt data owner=jerry, use namespace "ns2"
+	itr, err = db.ExecuteQueryOnPrivateData("ns2", "coll1", `{"selector":{"owner":"jerry"}}`)
+	testutil.AssertNoError(t, err, "")
+	testQueryItr(t, itr, []string{testKey(1)}, []string{"jerry"})
+
+	// query using bad query string
+	itr, err = db.ExecuteQueryOnPrivateData("ns1", "coll1", "this is an invalid query string")
+	testutil.AssertError(t, err, "Should have received an error for invalid query string")
+
+	// query returns 0 records
+	itr, err = db.ExecuteQueryOnPrivateData("ns1", "coll1", `{"selector":{"owner":"not_a_valid_name"}}`)
+	testutil.AssertNoError(t, err, "")
+	testQueryItr(t, itr, []string{}, []string{})
+
+	// query with embedded implicit "AND" and explicit "OR", namespace "ns1"
+	itr, err = db.ExecuteQueryOnPrivateData("ns1", "coll1", `{"selector":{"color":"green","$or":[{"owner":"fred"},{"owner":"mary"}]}}`)
+	testutil.AssertNoError(t, err, "")
+	testQueryItr(t, itr, []string{testKey(8), testKey(9)}, []string{"green"}, []string{"green"})
+
+	// query with integer with digit-count equals 7 and response received is also received
+	// with same digit-count and there is no float transformation
+	itr, err = db.ExecuteQueryOnPrivateData("ns2", "coll1", `{"selector":{"$and":[{"size":{"$eq": 1000007}}]}}`)
+	testutil.AssertNoError(t, err, "")
+	testQueryItr(t, itr, []string{testKey(10)}, []string{"joe", "1000007"})
+}
+
+func testItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
+	defer itr.Close()
+	for _, expectedKey := range expectedKeys {
+		queryResult, _ := itr.Next()
+		vkv := queryResult.(*statedb.VersionedKV)
+		key := vkv.Key
+		testutil.AssertEquals(t, key, expectedKey)
+	}
+	last, err := itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, last)
+}
+
+func testQueryItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string, expectedValStrs ...[]string) {
+	defer itr.Close()
+	for i, expectedKey := range expectedKeys {
+		queryResult, _ := itr.Next()
+		vkv := queryResult.(*statedb.VersionedKV)
+		key := vkv.Key
+		valStr := string(vkv.Value)
+		testutil.AssertEquals(t, key, expectedKey)
+		for _, expectedValStr := range expectedValStrs[i] {
+			testutil.AssertEquals(t, strings.Contains(valStr, expectedValStr), true)
+		}
+	}
+	last, err := itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, last)
+}
+
+func testKey(i int) string {
+	return fmt.Sprintf("key%d", i)
+}
 
 func putPvtUpdates(t *testing.T, updates *UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
 	updates.PvtUpdates.Put(ns, coll, key, value, ver)

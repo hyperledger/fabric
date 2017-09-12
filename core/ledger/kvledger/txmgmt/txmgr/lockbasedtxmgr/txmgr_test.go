@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -619,4 +620,27 @@ func TestValidateKey(t *testing.T) {
 		}
 		testEnv.cleanup()
 	}
+}
+
+// TestTxSimulatorUnsupportedTx verifies that a simulation must throw an error when an unsupported transaction
+// is perfromed - queries on private data are supported in a read-only tran
+func TestTxSimulatorUnsupportedTx(t *testing.T) {
+	testEnv := testEnvs[0]
+	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries")
+	defer testEnv.cleanup()
+	txMgr := testEnv.getTxMgr()
+
+	simulator, _ := txMgr.NewTxSimulator("txid1")
+	err := simulator.SetState("ns", "key", []byte("value"))
+	testutil.AssertNoError(t, err, "")
+	_, err = simulator.GetPrivateDataRangeScanIterator("ns1", "coll1", "startKey", "endKey")
+	_, ok := err.(*txmgr.ErrUnsupportedTransaction)
+	testutil.AssertEquals(t, ok, true)
+
+	simulator, _ = txMgr.NewTxSimulator("txid2")
+	_, err = simulator.GetPrivateDataRangeScanIterator("ns1", "coll1", "startKey", "endKey")
+	testutil.AssertNoError(t, err, "")
+	err = simulator.SetState("ns", "key", []byte("value"))
+	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
+	testutil.AssertEquals(t, ok, true)
 }

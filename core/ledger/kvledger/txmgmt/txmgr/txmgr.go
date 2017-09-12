@@ -33,3 +33,12 @@ type TxMgr interface {
 	Rollback()
 	Shutdown()
 }
+
+// ErrUnsupportedTransaction is expected to be thrown if a unsupported query is performed in an update transaction
+type ErrUnsupportedTransaction struct {
+	Msg string
+}
+
+func (e *ErrUnsupportedTransaction) Error() string {
+	return e.Msg
+}
