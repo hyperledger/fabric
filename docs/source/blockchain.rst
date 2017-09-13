@@ -145,10 +145,10 @@ Like other blockchain technologies, it has a ledger, uses smart contracts,
 and is a system by which participants manage their transactions.
 
 Where Hyperledger Fabric breaks from some other blockchain systems is that
-it is **private** and **permissioned**. Rather than the “proof of work” some
-blockchain networks use to verify identity (allowing anyone who meets those
-criteria to join the network), the members of a Hyperledger Fabric network
-enroll through a **membership services provider**.
+it is **private** and **permissioned**. Rather than an open permissionless system
+that allows unknown identities to participate in the network (requiring protocols
+like Proof of Work to validate transactions and secure the network), the members
+of a Hyperledger Fabric network enroll through a **membership services provider**.
 
 Hyperledger Fabric also offers several pluggable options. Ledger data can be
 stored in multiple formats, consensus mechanisms can be switched in and out,
