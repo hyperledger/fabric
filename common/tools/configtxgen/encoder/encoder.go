@@ -18,6 +18,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -272,6 +273,72 @@ func NewConsortiumGroup(conf *genesisconfig.Consortium) (*cb.ConfigGroup, error)
 
 	consortiumGroup.ModPolicy = ordererAdminsPolicyName
 	return consortiumGroup, nil
+}
+
+// NewChannelCreateConfigUpdate generates a ConfigUpdate which can be sent to the orderer to create a new channel.  Optionally, the channel group of the
+// ordering system channel may be passed in, and the resulting ConfigUpdate will extract the appropriate versions from this file.
+func NewChannelCreateConfigUpdate(channelID, consortiumName string, orgs []string, orderingSystemChannelGroup *cb.ConfigGroup) (*cb.ConfigUpdate, error) {
+	var applicationGroup *cb.ConfigGroup
+	channelGroupVersion := uint64(0)
+
+	if orderingSystemChannelGroup != nil {
+		// In the case that a ordering system channel definition was provided, pull the appropriate versions
+		if orderingSystemChannelGroup.Groups == nil {
+			return nil, errors.New("missing all channel groups")
+		}
+
+		consortiums, ok := orderingSystemChannelGroup.Groups[channelconfig.ConsortiumsGroupKey]
+		if !ok {
+			return nil, errors.New("bad consortiums group")
+		}
+
+		consortium, ok := consortiums.Groups[consortiumName]
+		if !ok || (len(orgs) > 0 && consortium.Groups == nil) {
+			return nil, errors.Errorf("bad consortium: %s", consortiumName)
+		}
+
+		applicationGroup = cb.NewConfigGroup()
+		for _, org := range orgs {
+			orgGroup, ok := consortium.Groups[org]
+			if !ok {
+				return nil, errors.Errorf("missing organization: %s", org)
+			}
+			applicationGroup.Groups[org] = &cb.ConfigGroup{Version: orgGroup.Version}
+		}
+
+		channelGroupVersion = orderingSystemChannelGroup.Version
+	} else {
+		// Otherwise assume the orgs have not been modified
+		applicationGroup = cb.NewConfigGroup()
+		for _, org := range orgs {
+			applicationGroup.Groups[org] = &cb.ConfigGroup{}
+		}
+	}
+
+	rSet := cb.NewConfigGroup()
+	rSet.Version = channelGroupVersion
+
+	// add the consortium name to the rSet
+
+	addValue(rSet, channelconfig.ConsortiumValue(consortiumName), "") // TODO, this emulates the old behavior, but is it desirable?
+
+	// create the new channel's application group
+
+	rSet.Groups[channelconfig.ApplicationGroupKey] = applicationGroup
+
+	wSet := proto.Clone(rSet).(*cb.ConfigGroup)
+
+	applicationGroup = wSet.Groups[channelconfig.ApplicationGroupKey]
+	applicationGroup.Version = 1
+	applicationGroup.Policies = make(map[string]*cb.ConfigPolicy)
+	addImplicitMetaPolicyDefaults(applicationGroup)
+	applicationGroup.ModPolicy = channelconfig.AdminsPolicyKey
+
+	return &cb.ConfigUpdate{
+		ChannelId: channelID,
+		ReadSet:   rSet,
+		WriteSet:  wSet,
+	}, nil
 }
 
 // Bootstrapper is a wrapper around NewChannelConfigGroup which can produce genesis blocks
