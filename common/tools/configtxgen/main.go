@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 var exitCode = 0
@@ -204,8 +205,25 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 	return nil
 }
 
+func doPrintOrg(t *genesisconfig.TopLevel, printOrg string) error {
+	for _, org := range t.Organizations {
+		if org.Name == printOrg {
+			og, err := encoder.NewOrdererOrgGroup(org)
+			if err != nil {
+				return errors.Wrapf(err, "bad org definition for org %s", org.Name)
+			}
+
+			if err := protolator.DeepMarshalJSON(os.Stdout, og); err != nil {
+				return errors.Wrapf(err, "malformed org definition for org: %s", org.Name)
+			}
+			return nil
+		}
+	}
+	return errors.Errorf("organization %s not found", printOrg)
+}
+
 func main() {
-	var outputBlock, outputChannelCreateTx, profile, channelID, inspectBlock, inspectChannelCreateTx, outputAnchorPeersUpdate, asOrg string
+	var outputBlock, outputChannelCreateTx, profile, channelID, inspectBlock, inspectChannelCreateTx, outputAnchorPeersUpdate, asOrg, printOrg string
 
 	flag.StringVar(&outputBlock, "outputBlock", "", "The path to write the genesis block to (if set)")
 	flag.StringVar(&channelID, "channelID", genesisconfig.TestChainID, "The channel ID to use in the configtx")
@@ -215,6 +233,7 @@ func main() {
 	flag.StringVar(&inspectChannelCreateTx, "inspectChannelCreateTx", "", "Prints the configuration contained in the transaction at the specified path")
 	flag.StringVar(&outputAnchorPeersUpdate, "outputAnchorPeersUpdate", "", "Creates an config update to update an anchor peer (works only with the default channel creation, and only for the first update)")
 	flag.StringVar(&asOrg, "asOrg", "", "Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set")
+	flag.StringVar(&printOrg, "printOrg", "", "Prints the definition of an organization as JSON. (useful for adding an org to a channel manually)")
 
 	version := flag.Bool("version", false, "Show version information")
 
@@ -242,16 +261,21 @@ func main() {
 
 	logger.Info("Loading configuration")
 	factory.InitFactories(nil)
-	config := genesisconfig.Load(profile)
+	var profileConfig *genesisconfig.Profile
+	if outputBlock != "" || outputChannelCreateTx != "" || outputAnchorPeersUpdate != "" {
+		profileConfig = genesisconfig.Load(profile)
+	}
+
+	topLevelConfig := genesisconfig.LoadTopLevel()
 
 	if outputBlock != "" {
-		if err := doOutputBlock(config, channelID, outputBlock); err != nil {
+		if err := doOutputBlock(profileConfig, channelID, outputBlock); err != nil {
 			logger.Fatalf("Error on outputBlock: %s", err)
 		}
 	}
 
 	if outputChannelCreateTx != "" {
-		if err := doOutputChannelCreateTx(config, channelID, outputChannelCreateTx); err != nil {
+		if err := doOutputChannelCreateTx(profileConfig, channelID, outputChannelCreateTx); err != nil {
 			logger.Fatalf("Error on outputChannelCreateTx: %s", err)
 		}
 	}
@@ -269,8 +293,14 @@ func main() {
 	}
 
 	if outputAnchorPeersUpdate != "" {
-		if err := doOutputAnchorPeersUpdate(config, channelID, outputAnchorPeersUpdate, asOrg); err != nil {
+		if err := doOutputAnchorPeersUpdate(profileConfig, channelID, outputAnchorPeersUpdate, asOrg); err != nil {
 			logger.Fatalf("Error on inspectChannelCreateTx: %s", err)
+		}
+	}
+
+	if printOrg != "" {
+		if err := doPrintOrg(topLevelConfig, printOrg); err != nil {
+			logger.Fatalf("Error on printOrg: %s", err)
 		}
 	}
 }

@@ -180,7 +180,7 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
 	mspConfig, err := msp.GetVerifyingMspConfig(conf.MSPDir, conf.ID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "1 - Error loading MSP configuration for org %s: %s", conf.Name)
+		return nil, errors.Wrapf(err, "1 - Error loading MSP configuration for org: %s", conf.Name)
 	}
 
 	ordererOrgGroup := cb.NewConfigGroup()
