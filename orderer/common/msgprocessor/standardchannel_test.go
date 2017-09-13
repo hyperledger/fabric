@@ -47,11 +47,11 @@ func TestClassifyMsg(t *testing.T) {
 	})
 	t.Run("OrdererTx", func(t *testing.T) {
 		class := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_ORDERER_TRANSACTION)})
-		assert.Equal(t, class, ConfigUpdateMsg)
+		assert.Equal(t, class, ConfigMsg)
 	})
 	t.Run("ConfigTx", func(t *testing.T) {
 		class := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIG)})
-		assert.Equal(t, class, ConfigUpdateMsg)
+		assert.Equal(t, class, ConfigMsg)
 	})
 	t.Run("EndorserTx", func(t *testing.T) {
 		class := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_ENDORSER_TRANSACTION)})
