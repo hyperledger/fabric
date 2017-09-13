@@ -121,28 +121,6 @@ func TestNegativeChannelCreateConfigUpdate(t *testing.T) {
 	})
 }
 
-// This is a temporary test to make sure that the newly implement channel creation method properly replicates
-// the old behavior
-func TestCompatability(t *testing.T) {
-	config := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
-	group, err := NewChannelGroup(config)
-	assert.NoError(t, err)
-	assert.NotNil(t, group)
-
-	channelID := "channel.id"
-	orgs := []string{genesisconfig.SampleOrgName}
-	configUpdate, err := NewChannelCreateConfigUpdate(channelID, genesisconfig.SampleConsortiumName, orgs, group)
-	assert.NoError(t, err)
-	assert.NotNil(t, configUpdate)
-
-	template := channelconfig.NewChainCreationTemplate(genesisconfig.SampleConsortiumName, orgs)
-	configEnv, err := template.Envelope(channelID)
-	assert.NoError(t, err)
-	oldUpdate := configtx.UnmarshalConfigUpdateOrPanic(configEnv.ConfigUpdate)
-	oldUpdate.IsolatedData = nil
-	assert.True(t, proto.Equal(oldUpdate, configUpdate))
-}
-
 func TestMakeChannelCreationTransactionWithSigner(t *testing.T) {
 	channelID := "foo"
 

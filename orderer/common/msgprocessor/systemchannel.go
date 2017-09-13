@@ -316,7 +316,10 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	// Set the new config orderer group to the system channel orderer group and the application group to the new application group
 	channelGroup.Groups[channelconfig.OrdererGroupKey] = systemChannelGroup.Groups[channelconfig.OrdererGroupKey]
 	channelGroup.Groups[channelconfig.ApplicationGroupKey] = applicationGroup
-	channelGroup.Values[channelconfig.ConsortiumKey] = channelconfig.TemplateConsortium(consortium.Name).Values[channelconfig.ConsortiumKey]
+	channelGroup.Values[channelconfig.ConsortiumKey] = &cb.ConfigValue{
+		Value:     utils.MarshalOrPanic(channelconfig.ConsortiumValue(consortium.Name).Value()),
+		ModPolicy: channelconfig.AdminsPolicyKey,
+	}
 
 	// Non-backwards compatible bugfix introduced in v1.1
 	// The capability check should be removed once v1.0 is deprecated

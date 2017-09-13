@@ -11,7 +11,6 @@ import (
 
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/stretchr/testify/assert"
@@ -22,31 +21,6 @@ import (
 // There's additionally really nothing to test without simply re-implementing the function
 // in the test, which also provides no value.  But, not including these produces an artificially
 // low code coverage count, so here they are.
-
-func TestChannelUtils(t *testing.T) {
-	assert.NotNil(t, TemplateConsortium("test"))
-	assert.NotNil(t, DefaultHashingAlgorithm())
-	assert.NotNil(t, DefaultBlockDataHashingStructure())
-	assert.NotNil(t, DefaultOrdererAddresses())
-
-}
-
-func TestOrdererUtils(t *testing.T) {
-	assert.NotNil(t, TemplateConsensusType("foo"))
-	assert.NotNil(t, TemplateBatchSize(&ab.BatchSize{}))
-	assert.NotNil(t, TemplateBatchTimeout("3s"))
-	assert.NotNil(t, TemplateChannelRestrictions(0))
-	assert.NotNil(t, TemplateKafkaBrokers([]string{"foo"}))
-}
-
-func TestApplicationUtils(t *testing.T) {
-	assert.NotNil(t, TemplateAnchorPeers("foo", nil))
-}
-
-func TestConsortiumsUtils(t *testing.T) {
-	assert.NotNil(t, TemplateConsortiumsGroup())
-	assert.NotNil(t, TemplateConsortiumChannelCreationPolicy("foo", &cb.Policy{}))
-}
 
 func basicTest(t *testing.T, sv *StandardConfigValue) {
 	assert.NotNil(t, sv)
