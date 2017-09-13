@@ -12,8 +12,10 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
+	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -139,4 +141,48 @@ func TestCompatability(t *testing.T) {
 	oldUpdate := configtx.UnmarshalConfigUpdateOrPanic(configEnv.ConfigUpdate)
 	oldUpdate.IsolatedData = nil
 	assert.True(t, proto.Equal(oldUpdate, configUpdate))
+}
+
+func TestMakeChannelCreationTransactionWithSigner(t *testing.T) {
+	channelID := "foo"
+
+	signer, err := mmsp.NewNoopMsp().GetDefaultSigningIdentity()
+	assert.NoError(t, err, "Creating noop MSP")
+
+	cct, err := MakeChannelCreationTransaction(channelID, "test", signer, nil)
+	assert.NoError(t, err, "Making chain creation tx")
+
+	assert.NotEmpty(t, cct.Signature, "Should have signature")
+
+	payload, err := utils.UnmarshalPayload(cct.Payload)
+	assert.NoError(t, err, "Unmarshaling payload")
+
+	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
+	assert.NoError(t, err, "Unmarshaling ConfigUpdateEnvelope")
+
+	assert.NotEmpty(t, configUpdateEnv.Signatures, "Should have config env sigs")
+
+	sigHeader, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
+	assert.NoError(t, err, "Unmarshaling SignatureHeader")
+	assert.NotEmpty(t, sigHeader.Creator, "Creator specified")
+}
+
+func TestMakeChannelCreationTransactionNoSigner(t *testing.T) {
+	channelID := "foo"
+	cct, err := MakeChannelCreationTransaction(channelID, "test", nil, nil)
+	assert.NoError(t, err, "Making chain creation tx")
+
+	assert.Empty(t, cct.Signature, "Should have empty signature")
+
+	payload, err := utils.UnmarshalPayload(cct.Payload)
+	assert.NoError(t, err, "Unmarshaling payload")
+
+	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
+	assert.NoError(t, err, "Unmarshaling ConfigUpdateEnvelope")
+
+	assert.Empty(t, configUpdateEnv.Signatures, "Should have no config env sigs")
+
+	sigHeader, err := utils.GetSignatureHeader(payload.Header.SignatureHeader)
+	assert.NoError(t, err, "Unmarshaling SignatureHeader")
+	assert.Empty(t, sigHeader.Creator, "No creator specified")
 }

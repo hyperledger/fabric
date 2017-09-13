@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
@@ -183,7 +182,7 @@ func TestNewChain(t *testing.T) {
 
 	manager := NewRegistrar(lf, consenters, mockCrypto())
 
-	envConfigUpdate, err := channelconfig.MakeChainCreationTransaction(newChainID, genesisconfig.SampleConsortiumName, mockSigningIdentity)
+	envConfigUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, genesisconfig.SampleConsortiumName, mockSigningIdentity, nil)
 	assert.NoError(t, err, "Constructing chain creation tx")
 
 	res, err := manager.NewChannelConfig(envConfigUpdate)

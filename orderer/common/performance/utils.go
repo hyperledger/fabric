@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -111,10 +111,11 @@ func CreateChannel(server *BenchmarkServer) string {
 	defer client.Close()
 
 	channelID := RandomID(10)
-	createChannelTx, _ := channelconfig.MakeChainCreationTransaction(
+	createChannelTx, _ := encoder.MakeChannelCreationTransaction(
 		channelID,
 		genesisconfig.SampleConsortiumName,
 		signer,
+		nil,
 		genesisconfig.SampleOrgName)
 	client.SendRequest(createChannelTx)
 	if client.GetResponse().Status != cb.Status_SUCCESS {

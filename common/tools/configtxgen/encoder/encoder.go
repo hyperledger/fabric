@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -25,6 +26,9 @@ import (
 const (
 	pkgLogID                = "common/tools/configtxgen/encoder"
 	ordererAdminsPolicyName = "/Channel/Orderer/Admins"
+
+	msgVersion = int32(0)
+	epoch      = 0
 )
 
 var logger = flogging.MustGetLogger(pkgLogID)
@@ -339,6 +343,54 @@ func NewChannelCreateConfigUpdate(channelID, consortiumName string, orgs []strin
 		ReadSet:   rSet,
 		WriteSet:  wSet,
 	}, nil
+}
+
+// MakeChannelCreationTransaction is a handy utility function for creating transactions for channel creation
+func MakeChannelCreationTransaction(channelID string, consortium string, signer msp.SigningIdentity, orderingSystemChannelConfigGroup *cb.ConfigGroup, orgs ...string) (*cb.Envelope, error) {
+	newChannelConfigUpdate, err := NewChannelCreateConfigUpdate(channelID, consortium, orgs, orderingSystemChannelConfigGroup)
+	if err != nil {
+		return nil, errors.Wrap(err, "config update generation failure")
+	}
+
+	newConfigUpdateEnv := &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: utils.MarshalOrPanic(newChannelConfigUpdate),
+	}
+
+	payloadSignatureHeader := &cb.SignatureHeader{}
+	if signer != nil {
+		sSigner, err := signer.Serialize()
+		if err != nil {
+			return nil, errors.Wrap(err, "serialization of identity failed")
+		}
+
+		newConfigUpdateEnv.Signatures = []*cb.ConfigSignature{&cb.ConfigSignature{
+			SignatureHeader: utils.MarshalOrPanic(utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())),
+		}}
+
+		newConfigUpdateEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigUpdateEnv.Signatures[0].SignatureHeader, newConfigUpdateEnv.ConfigUpdate))
+		if err != nil {
+			return nil, errors.Wrap(err, "signature failure over config update")
+		}
+
+		payloadSignatureHeader = utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())
+	}
+
+	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, msgVersion, channelID, epoch)
+	utils.SetTxID(payloadChannelHeader, payloadSignatureHeader)
+	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
+	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(newConfigUpdateEnv)}
+	paylBytes := utils.MarshalOrPanic(payload)
+
+	var sig []byte
+	if signer != nil {
+		// sign the payload
+		sig, err = signer.Sign(paylBytes)
+		if err != nil {
+			return nil, errors.Wrap(err, "signature failure over config update envelope")
+		}
+	}
+
+	return &cb.Envelope{Payload: paylBytes, Signature: sig}, nil
 }
 
 // Bootstrapper is a wrapper around NewChannelConfigGroup which can produce genesis blocks

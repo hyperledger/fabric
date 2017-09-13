@@ -16,29 +16,45 @@ import (
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/stretchr/testify/assert"
 )
 
+var validConfig *cb.Config
+
+func init() {
+	cg, err := encoder.NewChannelGroup(genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile))
+	if err != nil {
+		panic(err)
+	}
+	validConfig = &cb.Config{
+		Sequence:     1,
+		ChannelGroup: cg,
+	}
+}
+
 func mockCrypto() crypto.LocalSigner {
 	return mockcrypto.FakeLocalSigner
 }
 
-func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
-	configUpdateTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, msgVersion, epoch)
+func makeConfigTxFromConfigUpdateTx(configUpdateTx *cb.Envelope) *cb.Envelope {
+	confUpdate := configtx.UnmarshalConfigUpdateOrPanic(
+		configtx.UnmarshalConfigUpdateEnvelopeOrPanic(
+			utils.UnmarshalPayloadOrPanic(configUpdateTx.Payload).Data,
+		).ConfigUpdate,
+	)
+	res, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, confUpdate.ChannelId, nil, &cb.ConfigEnvelope{
+		Config:     validConfig,
+		LastUpdate: configUpdateTx,
+	}, 0, 0)
 	if err != nil {
 		panic(err)
 	}
-	configTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
-		Config:     &cb.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
-		LastUpdate: configUpdateTx},
-		msgVersion, epoch)
-	if err != nil {
-		panic(err)
-	}
-	return configTx
+	return res
 }
 
 func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
@@ -102,11 +118,10 @@ func (mcc *mockChainCreator) NewChannelConfig(envConfigUpdate *cb.Envelope) (cha
 	if mcc.NewChannelConfigErr != nil {
 		return nil, mcc.NewChannelConfigErr
 	}
-	confUpdate := configtx.UnmarshalConfigUpdateOrPanic(configtx.UnmarshalConfigUpdateEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(envConfigUpdate.Payload).Data).ConfigUpdate)
 	return &mockconfig.Resources{
 		ConfigtxManagerVal: &mockconfigtx.Manager{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{
-				Config:     &cb.Config{Sequence: 1, ChannelGroup: confUpdate.WriteSet},
+				Config:     validConfig,
 				LastUpdate: envConfigUpdate,
 			},
 		},
@@ -118,17 +133,10 @@ func TestGoodProposal(t *testing.T) {
 
 	mcc := newMockChainCreator()
 
-	configEnv, err := configtx.NewCompositeTemplate(
-		configtx.NewSimpleTemplate(
-			channelconfig.DefaultHashingAlgorithm(),
-			channelconfig.DefaultBlockDataHashingStructure(),
-			channelconfig.TemplateOrdererAddresses([]string{"foo"}),
-		),
-		channelconfig.NewChainCreationTemplate("SampleConsortium", []string{}),
-	).Envelope(newChainID)
+	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, "SampleConsortium", nil, nil)
 	assert.Nil(t, err, "Error constructing configtx")
+	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
 
-	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 	wrapped := wrapConfigTx(ingressTx)
 
 	assert.NoError(t, NewSystemChannelFilter(mcc.ms, mcc).Apply(wrapped), "Did not accept valid transaction")
@@ -140,18 +148,10 @@ func TestProposalRejectedByConfig(t *testing.T) {
 	mcc := newMockChainCreator()
 	mcc.NewChannelConfigErr = fmt.Errorf("desired err text")
 
-	configEnv, err := configtx.NewCompositeTemplate(
-		configtx.NewSimpleTemplate(
-			channelconfig.DefaultHashingAlgorithm(),
-			channelconfig.DefaultBlockDataHashingStructure(),
-			channelconfig.TemplateOrdererAddresses([]string{"foo"}),
-		),
-		channelconfig.NewChainCreationTemplate("SampleConsortium", []string{}),
-	).Envelope(newChainID)
-	if err != nil {
-		t.Fatalf("Error constructing configtx")
-	}
-	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, "SampleConsortium", nil, nil)
+	assert.Nil(t, err, "Error constructing configtx")
+	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
+
 	wrapped := wrapConfigTx(ingressTx)
 
 	err = NewSystemChannelFilter(mcc.ms, mcc).Apply(wrapped)
@@ -168,18 +168,10 @@ func TestNumChainsExceeded(t *testing.T) {
 	mcc.ms.msc.MaxChannelsCountVal = 1
 	mcc.newChains = make([]*cb.Envelope, 2)
 
-	configEnv, err := configtx.NewCompositeTemplate(
-		configtx.NewSimpleTemplate(
-			channelconfig.DefaultHashingAlgorithm(),
-			channelconfig.DefaultBlockDataHashingStructure(),
-			channelconfig.TemplateOrdererAddresses([]string{"foo"}),
-		),
-		channelconfig.NewChainCreationTemplate("SampleConsortium", []string{}),
-	).Envelope(newChainID)
-	if err != nil {
-		t.Fatalf("Error constructing configtx")
-	}
-	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, "SampleConsortium", nil, nil)
+	assert.Nil(t, err, "Error constructing configtx")
+	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
+
 	wrapped := wrapConfigTx(ingressTx)
 
 	err = NewSystemChannelFilter(mcc.ms, mcc).Apply(wrapped)
