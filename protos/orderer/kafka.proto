@@ -33,7 +33,14 @@ message KafkaMessage {
 
 // KafkaMessageRegular wraps a marshalled envelope.
 message KafkaMessageRegular {
+    enum Class {
+        UNKNOWN = 0;
+        NORMAL = 1;
+        CONFIG = 2;
+    }
     bytes payload = 1;
+    uint64 config_seq = 2;
+    Class class = 3;
 }
 
 // KafkaMessageTimeToCut is used to signal to the orderers
