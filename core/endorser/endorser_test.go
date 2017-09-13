@@ -501,7 +501,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	_, err = invokeWithOverride(txid, chainID, spec, nonce)
 	if err == nil {
 		t.Fail()
-		t.Log("Replay attack protection faild. Transaction with duplicaged txid passed")
+		t.Log("Replay attack protection faild. Transaction with duplicated txid passed")
 		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
