@@ -194,5 +194,6 @@ type ProviderType int
 // The ProviderType of a member relative to the member API
 const (
 	FABRIC ProviderType = iota // MSP is of FABRIC type
+	IDEMIX                     // MSP is of IDEMIX type
 	OTHER                      // MSP is of OTHER TYPE
 )

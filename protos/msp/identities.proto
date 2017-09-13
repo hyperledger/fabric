@@ -1,18 +1,9 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 
 syntax = "proto3";
 
@@ -30,4 +21,26 @@ message SerializedIdentity {
 
     // the Identity, serialized according to the rules of its MPS
     bytes id_bytes = 2;
+}
+
+// This struct represents an Idemix Identity
+// to be used to serialize it and deserialize it.
+// The IdemixMSP will first serialize an idemix identity to bytes using
+// this proto, and then uses these bytes as id_bytes in SerializedIdentity
+message SerializedIdemixIdentity {
+    // NymX is the X-component of the pseudonym elliptic curve point.
+    // It is a []byte representation of an amcl.BIG
+    // The pseudonym can be seen as a public key of the identity, it is used to verify signatures.
+	bytes NymX = 1;
+
+    // NymX is the Y-component of the pseudonym elliptic curve point.
+    // It is a []byte representation of an amcl.BIG
+    // The pseudonym can be seen as a public key of the identity, it is used to verify signatures.
+	bytes NymY = 2;
+
+    // OU contains the organizational unit of the idemix identity
+	bytes OU = 3;
+
+    // Role contains the role of this identity (e.g., ADMIN or MEMBER)
+    bytes Role = 4;
 }

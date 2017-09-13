@@ -19,10 +19,9 @@ package msp
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/msp"
-
-	"github.com/golang/protobuf/proto"
 )
 
 var mspLogger = flogging.MustGetLogger("msp")
@@ -92,6 +91,8 @@ func (mgr *mspManagerImpl) DeserializeIdentity(serializedID []byte) (Identity, e
 
 	switch t := msp.(type) {
 	case *bccspmsp:
+		return t.deserializeIdentityInternal(sId.IdBytes)
+	case *idemixmsp:
 		return t.deserializeIdentityInternal(sId.IdBytes)
 	default:
 		return t.DeserializeIdentity(serializedID)
