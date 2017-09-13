@@ -223,4 +223,4 @@ Kafka:
         #File: path/to/RootCAs
 
     # Kafka version of the Kafka cluster brokers (defaults to 0.10.2.0)
-    Version:
+    Version: 0.10.2.0
