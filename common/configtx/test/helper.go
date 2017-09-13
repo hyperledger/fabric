@@ -51,7 +51,7 @@ func MakeGenesisBlockFromMSPs(chainID string, appMSPConf, ordererMSPConf *msppro
 
 // OrderererTemplate returns the test orderer template
 func OrdererTemplate() configtx.Template {
-	genConf := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	genConf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
 	return provisional.New(genConf).ChannelTemplate()
 }
 

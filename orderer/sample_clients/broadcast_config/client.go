@@ -72,7 +72,7 @@ type argsImpl struct {
 
 func init() {
 	conf = config.Load()
-	genConf = genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	genConf = genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
 
 	// Load local MSP
 	err := mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)

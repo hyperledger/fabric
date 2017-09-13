@@ -84,7 +84,7 @@ const (
 )
 
 var envvars = map[string]string{
-	"ORDERER_GENERAL_GENESISPROFILE":                            localconfig.SampleDevModeSolo,
+	"ORDERER_GENERAL_GENESISPROFILE":                            localconfig.SampleDevModeSoloProfile,
 	"ORDERER_GENERAL_LEDGERTYPE":                                "file",
 	"ORDERER_GENERAL_LOGLEVEL":                                  "error",
 	localconfig.Prefix + "_ORDERER_BATCHSIZE_MAXMESSAGECOUNT":   strconv.Itoa(MaxMessageCount),
