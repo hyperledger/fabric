@@ -56,6 +56,12 @@ type ConsenterSupport struct {
 	// ProcessConfigUpdateMsgErr is returned as the error for ProcessConfigUpdateMsg
 	ProcessConfigUpdateMsgErr error
 
+	// ProcessConfigMsgVal is returned as the error for ProcessConfigMsg
+	ProcessConfigMsgVal *cb.Envelope
+
+	// ProcessConfigMsgErr is returned by ProcessConfigMsg
+	ProcessConfigMsgErr error
+
 	// SequenceVal is returned by Sequence
 	SequenceVal uint64
 }
@@ -129,6 +135,11 @@ func (mcs *ConsenterSupport) ProcessNormalMsg(env *cb.Envelope) (configSeq uint6
 // ProcessConfigUpdateMsg returns ProcessConfigUpdateMsgVal, ConfigSeqVal, ProcessConfigUpdateMsgErr
 func (mcs *ConsenterSupport) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
 	return mcs.ProcessConfigUpdateMsgVal, mcs.ConfigSeqVal, mcs.ProcessConfigUpdateMsgErr
+}
+
+// ProcessConfigMsg returns ProcessConfigMsgVal, ConfigSeqVal, ProcessConfigMsgErr
+func (mcs *ConsenterSupport) ProcessConfigMsg(env *cb.Envelope) (*cb.Envelope, uint64, error) {
+	return mcs.ProcessConfigMsgVal, mcs.ConfigSeqVal, mcs.ProcessConfigMsgErr
 }
 
 // Sequence returns SequenceVal

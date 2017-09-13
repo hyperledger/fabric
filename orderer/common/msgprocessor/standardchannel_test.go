@@ -12,7 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/crypto"
 	cb "github.com/hyperledger/fabric/protos/common"
-
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -96,5 +96,51 @@ func TestConfigUpdateMsg(t *testing.T) {
 		assert.NotNil(t, config)
 		assert.Equal(t, cs, ms.SequenceVal)
 		assert.Nil(t, err)
+	})
+}
+
+func TestProcessConfigMsg(t *testing.T) {
+	t.Run("WrongType", func(t *testing.T) {
+		ms := &mockSystemChannelFilterSupport{
+			SequenceVal:            7,
+			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+		}
+		_, _, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+			Payload: utils.MarshalOrPanic(&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+						ChannelId: testChannelID,
+						Type:      int32(cb.HeaderType_ORDERER_TRANSACTION),
+					}),
+				},
+			}),
+		})
+		assert.Error(t, err)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		ms := &mockSystemChannelFilterSupport{
+			SequenceVal:            7,
+			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
+		}
+		config, cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+			Payload: utils.MarshalOrPanic(&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+						ChannelId: testChannelID,
+						Type:      int32(cb.HeaderType_CONFIG),
+					}),
+				},
+			}),
+		})
+		assert.NotNil(t, config)
+		assert.Equal(t, cs, ms.SequenceVal)
+		assert.Nil(t, err)
+		hdr, err := utils.ChannelHeader(config)
+		assert.Equal(
+			t,
+			int32(cb.HeaderType_CONFIG),
+			hdr.Type,
+			"Expect type of returned envelope to be %d, but got %d", cb.HeaderType_CONFIG, hdr.Type)
 	})
 }

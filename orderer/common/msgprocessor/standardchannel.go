@@ -115,3 +115,17 @@ func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.E
 
 	return config, seq, nil
 }
+
+// ProcessConfigMsg takes an envelope of type `HeaderType_CONFIG`, unpacks the `ConfigEnvelope` from it
+// extracts the `ConfigUpdate` from `LastUpdate` field, and calls `ProcessConfigUpdateMsg` on it.
+func (s *StandardChannel) ProcessConfigMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
+	logger.Debugf("Processing config message for channel %s", s.support.ChainID())
+
+	configEnvelope := &cb.ConfigEnvelope{}
+	_, err = utils.UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, configEnvelope)
+	if err != nil {
+		return
+	}
+
+	return s.ProcessConfigUpdateMsg(configEnvelope.LastUpdate)
+}
