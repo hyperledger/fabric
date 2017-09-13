@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	ledger "github.com/hyperledger/fabric/orderer/common/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -31,11 +32,14 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 )
 
-var logger = logging.MustGetLogger("orderer/jsonledger")
+const pkgLogID = "orderer/ledger/jsonledger"
+
+var logger *logging.Logger
 var closedChan chan struct{}
 var fileLock sync.Mutex
 
 func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
 	closedChan = make(chan struct{})
 	close(closedChan)
 }

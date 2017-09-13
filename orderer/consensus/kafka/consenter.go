@@ -15,7 +15,7 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-const pkgLogID = "orderer/kafka"
+const pkgLogID = "orderer/consensus/kafka"
 
 var logger *logging.Logger
 

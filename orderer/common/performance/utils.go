@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	Kilo = 1024 // TODO(jay_guo) consider adding an unit pkg
+	// Kilo allows us to convert byte units to kB.
+	Kilo = 1024 // TODO Consider adding a unit pkg
 )
 
 var conf *config.TopLevel

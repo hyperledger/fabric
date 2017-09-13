@@ -19,6 +19,7 @@ package deliver
 import (
 	"io"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
@@ -31,7 +32,13 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-var logger = logging.MustGetLogger("orderer/common/deliver")
+const pkgLogID = "orderer/common/deliver"
+
+var logger *logging.Logger
+
+func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
+}
 
 // Handler defines an interface which handles Deliver requests
 type Handler interface {

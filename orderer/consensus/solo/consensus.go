@@ -20,12 +20,19 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("orderer/solo")
+const pkgLogID = "orderer/consensus/solo"
+
+var logger *logging.Logger
+
+func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
+}
 
 type consenter struct{}
 

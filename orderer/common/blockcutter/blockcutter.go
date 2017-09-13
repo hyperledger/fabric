@@ -10,10 +10,17 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("orderer/common/blockcutter")
+const pkgLogID = "orderer/common/blockcutter"
+
+var logger *logging.Logger
+
+func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
+}
 
 // Receiver defines a sink for the ordered broadcast messages
 type Receiver interface {

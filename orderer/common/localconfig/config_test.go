@@ -24,9 +24,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	flogging.SetModuleLevel(pkgLogID, "DEBUG")
+}
 
 func TestGoodConfig(t *testing.T) {
 	assert.NotNil(t, Load(), "Could not load config")

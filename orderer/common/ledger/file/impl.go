@@ -17,6 +17,7 @@ limitations under the License.
 package fileledger
 
 import (
+	"github.com/hyperledger/fabric/common/flogging"
 	cl "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	ledger "github.com/hyperledger/fabric/orderer/common/ledger"
@@ -25,10 +26,14 @@ import (
 	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("orderer/fileledger")
+const pkgLogID = "orderer/ledger/fileledger"
+
+var logger *logging.Logger
+
 var closedChan chan struct{}
 
 func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
 	closedChan = make(chan struct{})
 	close(closedChan)
 }

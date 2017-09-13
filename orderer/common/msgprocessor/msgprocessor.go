@@ -13,15 +13,22 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
+	logging "github.com/op/go-logging"
 )
 
-var logger = flogging.MustGetLogger("common/msgprocessor")
-
 const (
+	pkgLogID = "orderer/common/msgprocessor"
+
 	// These should eventually be derived from the channel support once enabled
 	msgVersion = int32(0)
 	epoch      = 0
 )
+
+var logger *logging.Logger
+
+func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
+}
 
 // ErrChannelDoesNotExist is returned by the system channel for transactions which
 // are not for the system channel ID and are not attempting to create a new channel

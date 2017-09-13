@@ -20,13 +20,20 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("orderer/ramledger")
+const pkgLogID = "orderer/ledger/ramledger"
+
+var logger *logging.Logger
+
+func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
+}
 
 type cursor struct {
 	list *simpleList

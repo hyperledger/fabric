@@ -9,6 +9,7 @@ package broadcast
 import (
 	"io"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -18,7 +19,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-var logger = logging.MustGetLogger("orderer/common/broadcast")
+const pkgLogID = "orderer/common/broadcast"
+
+var logger *logging.Logger
+
+func init() {
+	logger = flogging.MustGetLogger(pkgLogID)
+}
 
 // Handler defines an interface which handles broadcasts
 type Handler interface {
@@ -113,9 +120,7 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			}
 		}
 
-		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("[channel: %s] Broadcast has successfully enqueued message of type %s from %s", chdr.ChannelId, cb.HeaderType_name[chdr.Type], addr)
-		}
+		logger.Debugf("[channel: %s] Broadcast has successfully enqueued message of type %s from %s", chdr.ChannelId, cb.HeaderType_name[chdr.Type], addr)
 
 		err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
 		if err != nil {
