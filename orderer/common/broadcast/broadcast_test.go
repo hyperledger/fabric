@@ -120,7 +120,7 @@ func (ms *mockSupport) Order(env *cb.Envelope, configSeq uint64) error {
 }
 
 // Configure sends a reconfiguration message for ordering
-func (ms *mockSupport) Configure(configUpdate *cb.Envelope, config *cb.Envelope, configSeq uint64) error {
+func (ms *mockSupport) Configure(config *cb.Envelope, configSeq uint64) error {
 	return ms.Order(config, configSeq)
 }
 

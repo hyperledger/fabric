@@ -257,7 +257,7 @@ func TestConfigMsg(t *testing.T) {
 	defer bs.Halt()
 
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
-	assert.Nil(t, bs.Configure(nil, testMessage, 0))
+	assert.Nil(t, bs.Configure(testMessage, 0))
 
 	select {
 	case <-support.Blocks:

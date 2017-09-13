@@ -48,7 +48,7 @@ type Consenter interface {
 
 	// Configure accepts a reconfiguration or returns an error indicating the cause of failure
 	// It ultimately passes through to the consensus.Chain interface
-	Configure(configUpdateMsg *cb.Envelope, config *cb.Envelope, configSeq uint64) error
+	Configure(config *cb.Envelope, configSeq uint64) error
 }
 
 type handlerImpl struct {
@@ -106,7 +106,7 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 				return srv.Send(&ab.BroadcastResponse{Status: ClassifyError(err), Info: err.Error()})
 			}
 
-			err = processor.Configure(msg, config, configSeq)
+			err = processor.Configure(config, configSeq)
 			if err != nil {
 				logger.Warningf("[channel: %s] Rejecting broadcast of config message from %s with SERVICE_UNAVAILABLE: rejected by Configure: %s", chdr.ChannelId, addr, err)
 				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: err.Error()})

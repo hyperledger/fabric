@@ -129,7 +129,7 @@ func (chain *chainImpl) Order(env *cb.Envelope, configSeq uint64) error {
 }
 
 // Implements the consensus.Chain interface. Called by Broadcast().
-func (chain *chainImpl) Configure(configUpdate *cb.Envelope, config *cb.Envelope, configSeq uint64) error {
+func (chain *chainImpl) Configure(config *cb.Envelope, configSeq uint64) error {
 	return chain.Order(config, configSeq)
 }
 

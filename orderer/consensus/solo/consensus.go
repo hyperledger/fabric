@@ -36,9 +36,9 @@ type chain struct {
 }
 
 type message struct {
-	configSeq  uint64
-	configMsg  *cb.Envelope
-	initialMsg *cb.Envelope
+	configSeq uint64
+	normalMsg *cb.Envelope
+	configMsg *cb.Envelope
 }
 
 // New creates a new consenter for the solo consensus scheme.
@@ -78,8 +78,8 @@ func (ch *chain) Halt() {
 func (ch *chain) Order(env *cb.Envelope, configSeq uint64) error {
 	select {
 	case ch.sendChan <- &message{
-		configSeq:  configSeq,
-		initialMsg: env,
+		configSeq: configSeq,
+		normalMsg: env,
 	}:
 		return nil
 	case <-ch.exitChan:
@@ -88,12 +88,11 @@ func (ch *chain) Order(env *cb.Envelope, configSeq uint64) error {
 }
 
 // Configure accepts configuration update messages for ordering
-func (ch *chain) Configure(impetus *cb.Envelope, config *cb.Envelope, configSeq uint64) error {
+func (ch *chain) Configure(config *cb.Envelope, configSeq uint64) error {
 	select {
 	case ch.sendChan <- &message{
-		configSeq:  configSeq,
-		initialMsg: impetus,
-		configMsg:  config,
+		configSeq: configSeq,
+		configMsg: config,
 	}:
 		return nil
 	case <-ch.exitChan:
@@ -118,13 +117,13 @@ func (ch *chain) main() {
 			if msg.configMsg == nil {
 				// NormalMsg
 				if msg.configSeq < seq {
-					_, err = ch.support.ProcessNormalMsg(msg.initialMsg)
+					_, err = ch.support.ProcessNormalMsg(msg.normalMsg)
 					if err != nil {
 						logger.Warningf("Discarding bad normal message: %s", err)
 						continue
 					}
 				}
-				batches, _ := ch.support.BlockCutter().Ordered(msg.initialMsg)
+				batches, _ := ch.support.BlockCutter().Ordered(msg.normalMsg)
 				if len(batches) == 0 && timer == nil {
 					timer = time.After(ch.support.SharedConfig().BatchTimeout())
 					continue
@@ -139,7 +138,7 @@ func (ch *chain) main() {
 			} else {
 				// ConfigMsg
 				if msg.configSeq < seq {
-					msg.configMsg, _, err = ch.support.ProcessConfigUpdateMsg(msg.initialMsg)
+					msg.configMsg, _, err = ch.support.ProcessConfigMsg(msg.configMsg)
 					if err != nil {
 						logger.Warningf("Discarding bad config message: %s", err)
 						continue
