@@ -210,7 +210,8 @@ func SetLogLevelFromViper(module string) error {
 	if err != nil {
 		return err
 	}
-	_, err = flogging.SetModuleLevel(module, logLevelFromViper)
+	// only set logging modules that begin with the supplied module name here
+	_, err = flogging.SetModuleLevel("^"+module, logLevelFromViper)
 	return err
 }
 
