@@ -17,7 +17,9 @@ limitations under the License.
 package dockercontroller
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -59,6 +61,9 @@ type DockerVM struct {
 type dockerClient interface {
 	// CreateContainer creates a docker container, returns an error in case of failure
 	CreateContainer(opts docker.CreateContainerOptions) (*docker.Container, error)
+	// UploadToContainer uploads a tar archive to be extracted to a path in the
+	// filesystem of the container.
+	UploadToContainer(id string, opts docker.UploadToContainerOptions) error
 	// StartContainer starts a docker container, returns an error in case of failure
 	StartContainer(id string, cfg *docker.HostConfig) error
 	// AttachToContainer attaches to a docker container, returns an error in case of
@@ -211,7 +216,7 @@ func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID,
 
 //Start starts a container using a previously created docker image
 func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
-	args []string, env []string, builder container.BuildSpecFactory, prelaunchFunc container.PrelaunchFunc) error {
+	args []string, env []string, filesToUpload map[string][]byte, builder container.BuildSpecFactory, prelaunchFunc container.PrelaunchFunc) error {
 	imageID, err := vm.GetVMName(ccid, formatImageName)
 	if err != nil {
 		return err
@@ -336,6 +341,37 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID,
 				containerLogger.Info(line)
 			}
 		}()
+	}
+
+	// upload specified files to the container before starting it
+	// this can be used for configurations such as TLS key and certs
+	if len(filesToUpload) != 0 {
+		// the docker upload API takes a tar file, so we need to first
+		// consolidate the file entries to a tar
+		payload := bytes.NewBuffer(nil)
+		gw := gzip.NewWriter(payload)
+		tw := tar.NewWriter(gw)
+
+		for path, fileToUpload := range filesToUpload {
+			cutil.WriteBytesToPackage(path, fileToUpload, tw)
+		}
+
+		// Write the tar file out
+		if err = tw.Close(); err != nil {
+			return fmt.Errorf("Error writing files to upload to Docker instance into a temporary tar blob: %s", err)
+		}
+
+		gw.Close()
+
+		err = client.UploadToContainer(containerID, docker.UploadToContainerOptions{
+			InputStream:          bytes.NewReader(payload.Bytes()),
+			Path:                 "/",
+			NoOverwriteDirNonDir: false,
+		})
+
+		if err != nil {
+			return fmt.Errorf("Error uploading files to the container instance %s: %s", containerID, err)
+		}
 	}
 
 	if prelaunchFunc != nil {

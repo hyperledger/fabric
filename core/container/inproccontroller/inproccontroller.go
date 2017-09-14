@@ -154,7 +154,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 }
 
 //Start starts a previously registered system codechain
-func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, builder container.BuildSpecFactory, prelaunchFunc container.PrelaunchFunc) error {
+func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder container.BuildSpecFactory, prelaunchFunc container.PrelaunchFunc) error {
 	path := ccid.ChaincodeSpec.ChaincodeId.Path
 
 	ipctemplate := typeRegistry[path]

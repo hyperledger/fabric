@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -56,6 +57,10 @@ const (
 
 	//HistoryQueryExecutorKey is used to attach ledger history query executor context
 	HistoryQueryExecutorKey key = "historyqueryexecutorkey"
+
+	// Mutual TLS auth client key and cert paths in the chaincode container
+	TLSClientKeyPath  string = "/etc/hyperledger/fabric/client.key"
+	TLSClientCertPath string = "/etc/hyperledger/fabric/client.crt"
 )
 
 //this is basically the singleton that supports the
@@ -356,15 +361,20 @@ func (chaincodeSupport *ChaincodeSupport) sendReady(context context.Context, ccc
 	return err
 }
 
-func (chaincodeSupport *ChaincodeSupport) appendTLScerts(args []string, keyPair *accesscontrol.CertAndPrivKeyPair) []string {
+// returns a map of file path <-> []byte for all files related to TLS
+func (chaincodeSupport *ChaincodeSupport) getTLSFiles(keyPair *accesscontrol.CertAndPrivKeyPair) map[string][]byte {
 	if keyPair == nil {
-		return args
+		return nil
 	}
-	return append(args, []string{"--key", keyPair.Key, "--cert", keyPair.Cert}...)
+
+	return map[string][]byte{
+		TLSClientKeyPath:  []byte(keyPair.Key),
+		TLSClientCertPath: []byte(keyPair.Cert),
+	}
 }
 
 //get args and env given chaincodeID
-func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCContext, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, err error) {
+func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(cccid *ccprovider.CCContext, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, filesToUpload map[string][]byte, err error) {
 	canName := cccid.GetCanonicalName()
 	envs = []string{"CORE_CHAINCODE_ID_NAME=" + canName}
 
@@ -382,12 +392,14 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCCont
 	if chaincodeSupport.peerTLS {
 		certKeyPair, err = chaincodeSupport.auth.Generate(cccid.GetCanonicalName())
 		if err != nil {
-			return nil, nil, errors.WithMessage(err, fmt.Sprintf("failed generating TLS cert for %s", cccid.GetCanonicalName()))
+			return nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("failed generating TLS cert for %s", cccid.GetCanonicalName()))
 		}
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
 		if chaincodeSupport.peerTLSSvrHostOrd != "" {
 			envs = append(envs, "CORE_PEER_TLS_SERVERHOSTOVERRIDE="+chaincodeSupport.peerTLSSvrHostOrd)
 		}
+		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_KEY_PATH=%s", TLSClientKeyPath))
+		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_CERT_PATH=%s", TLSClientCertPath))
 	} else {
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=false")
 	}
@@ -406,17 +418,23 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCCont
 	switch cLang {
 	case pb.ChaincodeSpec_GOLANG, pb.ChaincodeSpec_CAR:
 		args = []string{"chaincode", fmt.Sprintf("-peer.address=%s", chaincodeSupport.peerAddress)}
-		args = theChaincodeSupport.appendTLScerts(args, certKeyPair)
 	case pb.ChaincodeSpec_JAVA:
 		args = []string{"java", "-jar", "chaincode.jar", "--peerAddress", chaincodeSupport.peerAddress}
 	case pb.ChaincodeSpec_NODE:
 		args = []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; node chaincode.js --peer.address %s", chaincodeSupport.peerAddress)}
+
 	default:
-		return nil, nil, errors.Errorf("unknown chaincodeType: %s", cLang)
+		return nil, nil, nil, errors.Errorf("unknown chaincodeType: %s", cLang)
 	}
+
+	filesToUpload = theChaincodeSupport.getTLSFiles(certKeyPair)
+
 	chaincodeLogger.Debugf("Executable is %s", args[0])
 	chaincodeLogger.Debugf("Args %v", args)
-	return args, envs, nil
+	chaincodeLogger.Debugf("Envs %v", envs)
+	chaincodeLogger.Debugf("FilesToUpload %v", reflect.ValueOf(filesToUpload).MapKeys())
+
+	return args, envs, filesToUpload, nil
 }
 
 //launchAndWaitForRegister will launch container if not already running. Use
@@ -467,7 +485,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 
 	//launch the chaincode
 
-	args, env, err := chaincodeSupport.getArgsAndEnv(cccid, cLang)
+	args, env, filesToUpload, err := chaincodeSupport.getLaunchConfigs(cccid, cLang)
 	if err != nil {
 		return err
 	}
@@ -487,7 +505,8 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 		return nil
 	}
 
-	sir := container.StartImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, Version: cccid.Version}, Builder: builder, Args: args, Env: env, PrelaunchFunc: preLaunchFunc}
+	ccid := ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, Version: cccid.Version}
+	sir := container.StartImageReq{CCID: ccid, Builder: builder, Args: args, Env: env, FilesToUpload: filesToUpload, PrelaunchFunc: preLaunchFunc}
 
 	ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), chaincodeSupport)
 

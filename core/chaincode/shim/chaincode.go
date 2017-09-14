@@ -22,6 +22,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 	"unicode/utf8"
@@ -88,8 +89,22 @@ var streamGetter peerStreamGetter
 func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 	flag.StringVar(&peerAddress, "peer.address", "", "peer address")
 	if comm.TLSEnabled() {
-		flag.StringVar(&key, "key", "", "key in BASE64")
-		flag.StringVar(&cert, "cert", "", "certificate in BASE64")
+		keyPath := viper.GetString("tls.client.key.path")
+		certPath := viper.GetString("tls.client.cert.path")
+
+		data, err1 := ioutil.ReadFile(keyPath)
+		if err1 != nil {
+			chaincodeLogger.Errorf("Error trying to read file content %s: %s", keyPath, err1)
+			return nil, fmt.Errorf("Error trying to read file content %s: %s", keyPath, err1)
+		}
+		key = string(data)
+
+		data, err1 = ioutil.ReadFile(certPath)
+		if err1 != nil {
+			chaincodeLogger.Errorf("Error trying to read file content %s: %s", certPath, err1)
+			return nil, fmt.Errorf("Error trying to read file content %s: %s", certPath, err1)
+		}
+		cert = string(data)
 	}
 
 	flag.Parse()

@@ -156,13 +156,14 @@ type StartImageReq struct {
 	Builder       api.BuildSpecFactory
 	Args          []string
 	Env           []string
+	FilesToUpload map[string][]byte
 	PrelaunchFunc api.PrelaunchFunc
 }
 
 func (si StartImageReq) do(ctxt context.Context, v api.VM) VMCResp {
 	var resp VMCResp
 
-	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.Builder, si.PrelaunchFunc); err != nil {
+	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.FilesToUpload, si.Builder, si.PrelaunchFunc); err != nil {
 		resp = VMCResp{Err: err}
 	} else {
 		resp = VMCResp{}
