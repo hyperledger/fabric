@@ -120,7 +120,7 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	ou := &m.OrganizationUnit{
 		msp.name,
 		conf.Signer.OrganizationalUnitIdentifier,
-		nil,
+		ipk.Hash,
 	}
 
 	// Check if credential contains the right amount of attribute values (Role and OU)
@@ -129,20 +129,13 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	}
 
 	// Check if credential contains the correct OU attribute value
-	ouBytes, err := proto.Marshal(ou)
-	if err != nil {
-		return errors.Wrap(err, "Setting up default signer failed")
-	}
+	ouBytes := []byte(conf.Signer.OrganizationalUnitIdentifier)
 	if !bytes.Equal(idemix.BigToBytes(idemix.HashModOrder(ouBytes)), cred.Attrs[0]) {
 		return errors.New("Credential does not contain the correct OU attribute value")
 	}
 
 	// Check if credential contains the correct OU attribute value
-	roleBytes, err := proto.Marshal(role)
-	if err != nil {
-		return errors.Wrap(err, "Setting up default signer failed")
-	}
-	if !bytes.Equal(idemix.BigToBytes(idemix.HashModOrder(roleBytes)), cred.Attrs[1]) {
+	if !bytes.Equal(idemix.BigToBytes(amcl.NewBIGint(int(role.Role))), cred.Attrs[1]) {
 		return errors.New("Credential does not contain the correct Role attribute value")
 	}
 
@@ -251,15 +244,8 @@ func (msp *idemixmsp) Validate(id Identity) error {
 }
 
 func (id *idemixidentity) verifyProof() error {
-	ouBytes, err := proto.Marshal(id.OU)
-	if err != nil {
-		return errors.Wrapf(err, "error marshalling OU of identity %s", id.GetIdentifier())
-	}
-	roleBytes, err := proto.Marshal(id.Role)
-	if err != nil {
-		return errors.Wrapf(err, "error marshalling Role of identity %s", id.GetIdentifier())
-	}
-	attributeValues := []*amcl.BIG{idemix.HashModOrder(ouBytes), idemix.HashModOrder(roleBytes)}
+	ouBytes := []byte(id.OU.OrganizationalUnitIdentifier)
+	attributeValues := []*amcl.BIG{idemix.HashModOrder(ouBytes), amcl.NewBIGint(int(id.Role.Role))}
 
 	return id.associationProof.Ver(discloseFlags, id.msp.ipk, nil, attributeValues)
 }

@@ -265,23 +265,38 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	return mspconf, nil
 }
 
-// IdemixConfig is the filename of the idemix msp config file
-const IdemixConfig = "idemixmspconfig"
+const (
+	IdemixConfigDirMsp              = "msp"
+	IdemixConfigDirUser             = "user"
+	IdemixConfigFileIssuerPublicKey = "IssuerPublicKey"
+	IdemixConfigFileSigner          = "SignerConfig"
+)
 
 // GetIdemixMspConfig returns the configuration for the Idemix MSP
-func GetIdemixMspConfig(dir string) (*msp.MSPConfig, error) {
-	confStringBytes, err := readFile(filepath.Join(dir, IdemixConfig))
+func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
+	ipkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileIssuerPublicKey))
 	if err != nil {
-		return nil, errors.Wrapf(err, "error reading idemix config file")
+		return nil, errors.Wrapf(err, "failed to read issuer public key file")
 	}
-	config := &msp.IdemixMSPConfig{}
-	err = proto.UnmarshalText(string(confStringBytes), config)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error unmarshalling idemix config")
+
+	idemixConfig := &msp.IdemixMSPConfig{
+		Name: ID,
+		IPk:  ipkBytes,
 	}
-	confBytes, err := proto.Marshal(config)
+
+	signerBytes, err := readFile(filepath.Join(dir, IdemixConfigDirUser, IdemixConfigFileSigner))
+	if err == nil {
+		signerConfig := &msp.IdemixMSPSignerConfig{}
+		err = proto.Unmarshal(signerBytes, signerConfig)
+		if err != nil {
+			return nil, err
+		}
+		idemixConfig.Signer = signerConfig
+	}
+
+	confBytes, err := proto.Marshal(idemixConfig)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating idemix config")
+		return nil, err
 	}
 
 	return &msp.MSPConfig{Config: confBytes, Type: int32(IDEMIX)}, nil
