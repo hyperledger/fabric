@@ -30,11 +30,10 @@ func init() {
 // TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger
 type TransientStore interface {
 	// Persist stores the private read-write set of a transaction in the transient store
-	Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error
-
-	// GetSelfSimulatedTxPvtRWSetByTxid returns the private read-write set generated from the simulation
-	// performed by the peer itself
-	GetSelfSimulatedTxPvtRWSetByTxid(txid string) (*transientstore.EndorserPvtSimulationResults, error)
+	Persist(txid string, endorsementBlkHt uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error
+	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
+	// RWSets persisted from different endorsers (via Gossip)
+	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (*transientstore.RwsetScanner, error)
 }
 
 // PrivateDataDistributor distributes private data to peers
@@ -83,7 +82,7 @@ func NewCoordinator(committer committer.Committer, store TransientStore) Coordin
 // to peers according policies that are derived from the given PolicyStore and PolicyParser
 func (c *coordinator) Distribute(privateData *rwset.TxPvtReadWriteSet, txID string, ps privdata.PolicyStore, pp privdata.PolicyParser) error {
 	// TODO: also need to distribute the data...
-	return c.TransientStore.Persist(txID, "", 0, privateData)
+	return c.TransientStore.Persist(txID, 0, privateData)
 }
 
 // StoreBlock stores block with private data into the ledger
@@ -155,10 +154,33 @@ func (c *coordinator) retrievePrivateData(block *common.Block) (map[uint64]*ledg
 		if err != nil {
 			return nil, err
 		}
-		pvtEndorsement, err := c.TransientStore.GetSelfSimulatedTxPvtRWSetByTxid(chdr.TxId)
+		// TODO: For now, we assume that all peers have access to all collections.
+		// Once the peer to collection mapping is available via RSCC,
+		// we need to build the filter based on the ns/collections that this peer
+		// has access to and pass the filter to GetTxPvtRWSetByTxid instead of nil.
+		iter, err := c.TransientStore.GetTxPvtRWSetByTxid(chdr.TxId, nil)
 		if err != nil {
 			return nil, err
 		}
+
+		var pvtEndorsement *transientstore.EndorserPvtSimulationResults
+
+		for {
+			pvtEndorsement, err = iter.Next()
+			if err != nil {
+				return nil, err
+			}
+			if pvtEndorsement == nil {
+				break
+			}
+			// TODO: When we introduce collection filters, we need to compare hashes
+			// and collect the correct private write set. For now, we assume that
+			// all entries are correct and each entry contains required collections.
+			// Hence, with the first entry, we can break this loop.
+			break
+		}
+		iter.Close()
+
 		if pvtEndorsement == nil {
 			continue
 		}

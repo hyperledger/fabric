@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package transientstore
@@ -31,14 +21,14 @@ var (
 )
 
 // createCompositeKeyForPvtRWSet creates a key for storing private read-write set
-// in the transient store. The structure of the key is <prwsetPrefix>~txid~endorserid~endorsementBlkHt.
-func createCompositeKeyForPvtRWSet(txid string, endorserid string, endorsementBlkHt uint64) []byte {
+// in the transient store. The structure of the key is <prwsetPrefix>~txid~uuid~endorsementBlkHt.
+func createCompositeKeyForPvtRWSet(txid string, uuid string, endorsementBlkHt uint64) []byte {
 	var compositeKey []byte
 	compositeKey = append(compositeKey, prwsetPrefix)
 	compositeKey = append(compositeKey, compositeKeySep)
 	compositeKey = append(compositeKey, []byte(txid)...)
 	compositeKey = append(compositeKey, compositeKeySep)
-	compositeKey = append(compositeKey, []byte(endorserid)...)
+	compositeKey = append(compositeKey, []byte(uuid)...)
 	compositeKey = append(compositeKey, compositeKeySep)
 	compositeKey = append(compositeKey, util.EncodeOrderPreservingVarUint64(endorsementBlkHt)...)
 
@@ -47,8 +37,8 @@ func createCompositeKeyForPvtRWSet(txid string, endorserid string, endorsementBl
 
 // createCompositeKeyForPurgeIndex creates a key to index private read-write set based on
 // endorsement block height such that purge based on block height can be achieved. The structure
-// of the key is <purgeIndexPrefix>~endorsementBlkHt~txid~endorserid.
-func createCompositeKeyForPurgeIndex(endorsementBlkHt uint64, txid string, endorserid string) []byte {
+// of the key is <purgeIndexPrefix>~endorsementBlkHt~txid~uuid.
+func createCompositeKeyForPurgeIndex(endorsementBlkHt uint64, txid string, uuid string) []byte {
 	var compositeKey []byte
 	compositeKey = append(compositeKey, purgeIndexPrefix)
 	compositeKey = append(compositeKey, compositeKeySep)
@@ -56,28 +46,28 @@ func createCompositeKeyForPurgeIndex(endorsementBlkHt uint64, txid string, endor
 	compositeKey = append(compositeKey, compositeKeySep)
 	compositeKey = append(compositeKey, []byte(txid)...)
 	compositeKey = append(compositeKey, compositeKeySep)
-	compositeKey = append(compositeKey, []byte(endorserid)...)
+	compositeKey = append(compositeKey, []byte(uuid)...)
 
 	return compositeKey
 }
 
-// splitCompositeKeyOfPvtRWSet splits the compositeKey (<prwsetPrefix>~txid~endorserid~endorsementBlkHt) into endorserId and endorsementBlkHt.
-func splitCompositeKeyOfPvtRWSet(compositeKey []byte) (endorserid string, endorsementBlkHt uint64) {
+// splitCompositeKeyOfPvtRWSet splits the compositeKey (<prwsetPrefix>~txid~uuid~endorsementBlkHt) into endorserId and endorsementBlkHt.
+func splitCompositeKeyOfPvtRWSet(compositeKey []byte) (uuid string, endorsementBlkHt uint64) {
 	compositeKey = compositeKey[2:]
 	firstSepIndex := bytes.IndexByte(compositeKey, compositeKeySep)
 	secondSepIndex := firstSepIndex + bytes.IndexByte(compositeKey[firstSepIndex+1:], compositeKeySep) + 1
-	endorserid = string(compositeKey[firstSepIndex+1 : secondSepIndex])
+	uuid = string(compositeKey[firstSepIndex+1 : secondSepIndex])
 	endorsementBlkHt, _ = util.DecodeOrderPreservingVarUint64(compositeKey[secondSepIndex+1:])
-	return endorserid, endorsementBlkHt
+	return uuid, endorsementBlkHt
 }
 
-// splitCompositeKeyOfPurgeIndex splits the compositeKey (<purgeIndexPrefix>~endorsementBlkHt~txid~endorserid) into txid, endorserid and endorsementBlkHt.
-func splitCompositeKeyOfPurgeIndex(compositeKey []byte) (txid string, endorserid string, endorsementBlkHt uint64) {
+// splitCompositeKeyOfPurgeIndex splits the compositeKey (<purgeIndexPrefix>~endorsementBlkHt~txid~uuid) into txid, uuid and endorsementBlkHt.
+func splitCompositeKeyOfPurgeIndex(compositeKey []byte) (txid string, uuid string, endorsementBlkHt uint64) {
 	var n int
 	endorsementBlkHt, n = util.DecodeOrderPreservingVarUint64(compositeKey[2:])
 	splits := bytes.Split(compositeKey[n+3:], []byte{compositeKeySep})
 	txid = string(splits[0])
-	endorserid = string(splits[1])
+	uuid = string(splits[1])
 	return
 }
 

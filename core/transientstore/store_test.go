@@ -9,11 +9,14 @@ package transientstore
 import (
 	"fmt"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 
 	"github.com/spf13/viper"
@@ -29,17 +32,17 @@ func TestPurgeIndexKeyCodingEncoding(t *testing.T) {
 	assert := assert.New(t)
 	blkHts := []uint64{0, 10, 20000}
 	txids := []string{"txid", ""}
-	endorserids := []string{"endorserid", ""}
+	uuids := []string{"uuid", ""}
 	for _, blkHt := range blkHts {
 		for _, txid := range txids {
-			for _, endorserid := range endorserids {
-				testCase := fmt.Sprintf("blkHt=%d,txid=%s,endorserid=%s", blkHt, txid, endorserid)
+			for _, uuid := range uuids {
+				testCase := fmt.Sprintf("blkHt=%d,txid=%s,uuid=%s", blkHt, txid, uuid)
 				t.Run(testCase, func(t *testing.T) {
 					t.Logf("Running test case [%s]", testCase)
-					purgeIndexKey := createCompositeKeyForPurgeIndex(blkHt, txid, endorserid)
-					txid1, endorserid1, blkHt1 := splitCompositeKeyOfPurgeIndex(purgeIndexKey)
+					purgeIndexKey := createCompositeKeyForPurgeIndex(blkHt, txid, uuid)
+					txid1, uuid1, blkHt1 := splitCompositeKeyOfPurgeIndex(purgeIndexKey)
 					assert.Equal(txid, txid1)
-					assert.Equal(endorserid, endorserid1)
+					assert.Equal(uuid, uuid1)
 					assert.Equal(blkHt, blkHt1)
 				})
 			}
@@ -51,16 +54,16 @@ func TestRWSetKeyCodingEncoding(t *testing.T) {
 	assert := assert.New(t)
 	blkHts := []uint64{0, 10, 20000}
 	txids := []string{"txid", ""}
-	endorserids := []string{"endorserid", ""}
+	uuids := []string{"uuid", ""}
 	for _, blkHt := range blkHts {
 		for _, txid := range txids {
-			for _, endorserid := range endorserids {
-				testCase := fmt.Sprintf("blkHt=%d,txid=%s,endorserid=%s", blkHt, txid, endorserid)
+			for _, uuid := range uuids {
+				testCase := fmt.Sprintf("blkHt=%d,txid=%s,uuid=%s", blkHt, txid, uuid)
 				t.Run(testCase, func(t *testing.T) {
 					t.Logf("Running test case [%s]", testCase)
-					rwsetKey := createCompositeKeyForPvtRWSet(txid, endorserid, blkHt)
-					endorserid1, blkHt1 := splitCompositeKeyOfPvtRWSet(rwsetKey)
-					assert.Equal(endorserid, endorserid1)
+					rwsetKey := createCompositeKeyForPvtRWSet(txid, uuid, blkHt)
+					uuid1, blkHt1 := splitCompositeKeyOfPvtRWSet(rwsetKey)
+					assert.Equal(uuid, uuid1)
 					assert.Equal(blkHt, blkHt1)
 				})
 			}
@@ -79,7 +82,6 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 
 	// Results produced by endorser 1
 	endorser0SimulationResults := &EndorserPvtSimulationResults{
-		EndorserID:             "endorser0",
 		EndorsementBlockHeight: 10,
 		PvtSimulationResults:   samplePvtRWSet,
 	}
@@ -87,7 +89,6 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 
 	// Results produced by endorser 2
 	endorser1SimulationResults := &EndorserPvtSimulationResults{
-		EndorserID:             "endorser1",
 		EndorsementBlockHeight: 10,
 		PvtSimulationResults:   samplePvtRWSet,
 	}
@@ -96,8 +97,8 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	// Persist simulation results into  store
 	var err error
 	for i := 0; i < len(endorsersResults); i++ {
-		err = env.TestStore.Persist(txid, endorsersResults[i].EndorserID,
-			endorsersResults[i].EndorsementBlockHeight, endorsersResults[i].PvtSimulationResults)
+		err = env.TestStore.Persist(txid, endorsersResults[i].EndorsementBlockHeight,
+			endorsersResults[i].PvtSimulationResults)
 		assert.NoError(err)
 	}
 
@@ -115,28 +116,9 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 		actualEndorsersResults = append(actualEndorsersResults, result)
 	}
 	iter.Close()
+	sortResults(endorsersResults)
+	sortResults(actualEndorsersResults)
 	assert.Equal(endorsersResults, actualEndorsersResults)
-
-	// No selfSimulated results for the txid. Result and err should be nil
-	endorserResults, err := env.TestStore.GetSelfSimulatedTxPvtRWSetByTxid(txid)
-	assert.NoError(err)
-	assert.Nil(endorserResults)
-
-	// Self simulated results
-	selfSimulatedResults := &EndorserPvtSimulationResults{
-		EndorserID:             "",
-		EndorsementBlockHeight: 10,
-		PvtSimulationResults:   samplePvtRWSet,
-	}
-
-	// Persist self simulated results
-	err = env.TestStore.Persist(txid, selfSimulatedResults.EndorserID,
-		selfSimulatedResults.EndorsementBlockHeight, selfSimulatedResults.PvtSimulationResults)
-	assert.NoError(err)
-
-	// Retrieve self simulated results
-	endorserResults, err = env.TestStore.GetSelfSimulatedTxPvtRWSetByTxid(txid)
-	assert.Equal(selfSimulatedResults, endorserResults)
 }
 
 func TestStorePurge(t *testing.T) {
@@ -151,7 +133,6 @@ func TestStorePurge(t *testing.T) {
 
 	// Results produced by endorser 1
 	endorser0SimulationResults := &EndorserPvtSimulationResults{
-		EndorserID:             "endorser0",
 		EndorsementBlockHeight: 10,
 		PvtSimulationResults:   samplePvtRWSet,
 	}
@@ -159,7 +140,6 @@ func TestStorePurge(t *testing.T) {
 
 	// Results produced by endorser 2
 	endorser1SimulationResults := &EndorserPvtSimulationResults{
-		EndorserID:             "endorser1",
 		EndorsementBlockHeight: 11,
 		PvtSimulationResults:   samplePvtRWSet,
 	}
@@ -167,7 +147,6 @@ func TestStorePurge(t *testing.T) {
 
 	// Results produced by endorser 3
 	endorser2SimulationResults := &EndorserPvtSimulationResults{
-		EndorserID:             "endorser2",
 		EndorsementBlockHeight: 12,
 		PvtSimulationResults:   samplePvtRWSet,
 	}
@@ -175,7 +154,6 @@ func TestStorePurge(t *testing.T) {
 
 	// Results produced by endorser 3
 	endorser3SimulationResults := &EndorserPvtSimulationResults{
-		EndorserID:             "endorser3",
 		EndorsementBlockHeight: 12,
 		PvtSimulationResults:   samplePvtRWSet,
 	}
@@ -183,7 +161,6 @@ func TestStorePurge(t *testing.T) {
 
 	// Results produced by endorser 3
 	endorser4SimulationResults := &EndorserPvtSimulationResults{
-		EndorserID:             "endorser4",
 		EndorsementBlockHeight: 13,
 		PvtSimulationResults:   samplePvtRWSet,
 	}
@@ -192,8 +169,8 @@ func TestStorePurge(t *testing.T) {
 	// Persist simulation results into  store
 	var err error
 	for i := 0; i < 5; i++ {
-		err = env.TestStore.Persist(txid, endorsersResults[i].EndorserID,
-			endorsersResults[i].EndorsementBlockHeight, endorsersResults[i].PvtSimulationResults)
+		err = env.TestStore.Persist(txid, endorsersResults[i].EndorsementBlockHeight,
+			endorsersResults[i].PvtSimulationResults)
 		assert.NoError(err)
 	}
 
@@ -223,6 +200,12 @@ func TestStorePurge(t *testing.T) {
 		actualEndorsersResults = append(actualEndorsersResults, result)
 	}
 	iter.Close()
+
+	// Note that the ordering of actualRes and expectedRes is dependent on the uuid. Hence, we are sorting
+	// expectedRes and actualRes.
+	sortResults(expectedEndorsersResults)
+	sortResults(actualEndorsersResults)
+
 	assert.Equal(expectedEndorsersResults, actualEndorsersResults)
 
 	// Get the minimum retained endorsement block height
@@ -258,7 +241,7 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	testTxid := "testTxid"
 	numEntries := 5
 	for i := 0; i < numEntries; i++ {
-		store.Persist(testTxid, "", uint64(i), samplePvtSimRes)
+		store.Persist(testTxid, uint64(i), samplePvtSimRes)
 	}
 
 	filter := ledger.NewPvtNsCollFilter()
@@ -285,10 +268,30 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 
 	var expectedRes []*EndorserPvtSimulationResults
 	for i := 0; i < numEntries; i++ {
-		expectedRes = append(expectedRes, &EndorserPvtSimulationResults{"", uint64(i), expectedSimulationRes})
+		expectedRes = append(expectedRes, &EndorserPvtSimulationResults{uint64(i), expectedSimulationRes})
 	}
+
+	// Note that the ordering of actualRes and expectedRes is dependent on the uuid. Hence, we are sorting
+	// expectedRes and actualRes.
+	sortResults(expectedRes)
+	sortResults(actualRes)
 	assert.Equal(t, expectedRes, actualRes)
 	t.Logf("Actual Res = %s", spew.Sdump(actualRes))
+}
+
+func sortResults(res []*EndorserPvtSimulationResults) {
+	// Results are sorted by ascending order of endorsement block height. When the endorsement block
+	// heights are same, we sort by comparing the hash of private write set.
+	var sortCondition = func(i, j int) bool {
+		if res[i].EndorsementBlockHeight == res[j].EndorsementBlockHeight {
+			res_i, _ := proto.Marshal(res[i].PvtSimulationResults)
+			res_j, _ := proto.Marshal(res[j].PvtSimulationResults)
+			// if hashes are same, any order would work.
+			return string(util.ComputeHash(res_i)) < string(util.ComputeHash(res_j))
+		}
+		return res[i].EndorsementBlockHeight < res[j].EndorsementBlockHeight
+	}
+	sort.SliceStable(res, sortCondition)
 }
 
 func samplePvtData(t *testing.T) *rwset.TxPvtReadWriteSet {

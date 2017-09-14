@@ -22,11 +22,11 @@ import (
 type mockTransientStore struct {
 }
 
-func (*mockTransientStore) Persist(txid string, endorserid string, endorsementBlkHt uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
+func (*mockTransientStore) Persist(txid string, endorsementBlkHt uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
 	panic("implement me")
 }
 
-func (*mockTransientStore) GetSelfSimulatedTxPvtRWSetByTxid(txid string) (*transientstore.EndorserPvtSimulationResults, error) {
+func (*mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (*transientstore.RwsetScanner, error) {
 	panic("implement me")
 }
 
