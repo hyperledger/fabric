@@ -119,19 +119,12 @@ func (cas *CASupport) GetPeerCredentials(tlsCert tls.Certificate) credentials.Tr
 		Certificates: []tls.Certificate{tlsCert},
 	}
 	var certPool = x509.NewCertPool()
-	// loop through the orderer CAs
+	// loop through the server root CAs
 	roots, _ := cas.GetServerRootCAs()
 	for _, root := range roots {
-		block, _ := pem.Decode(root)
-		if block != nil {
-			cert, err := x509.ParseCertificate(block.Bytes)
-			if err == nil {
-				certPool.AddCert(cert)
-			} else {
-				commLogger.Warningf("Failed to add root cert to credentials (%s)", err)
-			}
-		} else {
-			commLogger.Warning("Failed to add root cert to credentials")
+		err := AddPemToCertPool(root, certPool)
+		if err != nil {
+			commLogger.Warningf("Failed adding certificates to peer's client TLS trust pool: %s", err)
 		}
 	}
 	tlsConfig.RootCAs = certPool
