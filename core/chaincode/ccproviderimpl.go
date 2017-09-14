@@ -19,11 +19,10 @@ package chaincode
 import (
 	"context"
 
-	"fmt"
-
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/pkg/errors"
 )
 
 // ccProviderFactory implements the ccprovider.ChaincodeProviderFactory
@@ -87,7 +86,7 @@ func (c *ccProviderImpl) GetCCValidationInfoFromLSCC(ctxt context.Context, txid 
 	}
 
 	if data == nil || data.Vscc == "" || data.Policy == nil {
-		return "", nil, fmt.Errorf("Incorrect validation info in LSCC")
+		return "", nil, errors.New("incorrect validation info in LSCC")
 	}
 
 	return data.Vscc, data.Policy, nil

@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/pkg/errors"
 )
 
 //create a chaincode invocation spec
@@ -44,10 +45,10 @@ func GetCDSFromLSCC(ctxt context.Context, txid string, signedProp *pb.SignedProp
 	cccid := ccprovider.NewCCContext(chainID, "lscc", version, txid, true, signedProp, prop)
 	res, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
 	if err != nil {
-		return nil, fmt.Errorf("Execute getdepspec(%s, %s) of LSCC error: %s", chainID, chaincodeID, err)
+		return nil, errors.WithMessage(err, fmt.Sprintf("execute getdepspec(%s, %s) of LSCC error", chainID, chaincodeID))
 	}
 	if res.Status != shim.OK {
-		return nil, fmt.Errorf("Get ChaincodeDeploymentSpec for %s/%s from LSCC error: %s", chaincodeID, chainID, res.Message)
+		return nil, errors.Errorf("get ChaincodeDeploymentSpec for %s/%s from LSCC error: %s", chaincodeID, chainID, res.Message)
 	}
 
 	return res.Payload, nil
@@ -60,7 +61,7 @@ func GetChaincodeDataFromLSCC(ctxt context.Context, txid string, signedProp *pb.
 	res, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})
 	if err == nil {
 		if res.Status != shim.OK {
-			return nil, fmt.Errorf("%s", res.Message)
+			return nil, errors.New(res.Message)
 		}
 		cd := &ccprovider.ChaincodeData{}
 		err = proto.Unmarshal(res.Payload, cd)
@@ -84,7 +85,7 @@ func ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args []
 	res, ccevent, err = Execute(ctxt, cccid, spec)
 	if err != nil {
 		chaincodeLogger.Errorf("Error executing chaincode: %s", err)
-		return nil, nil, fmt.Errorf("Error executing chaincode: %s", err)
+		return nil, nil, errors.WithMessage(err, "error executing chaincode")
 	}
 
 	return res, ccevent, err
