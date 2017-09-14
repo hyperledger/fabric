@@ -17,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
@@ -40,11 +39,9 @@ func TestInitializeLoggingLevel(t *testing.T) {
 			// global log level setting in tests of this package (for example,
 			// the benchmark-related ones) that would occur otherwise.
 			General: config.General{LogLevel: "foo=debug"},
-			Kafka:   config.Kafka{Verbose: true},
 		},
 	)
 	assert.Equal(t, flogging.GetModuleLevel("foo"), "DEBUG")
-	assert.NotNil(t, sarama.Logger)
 }
 
 func TestInitializeProfilingService(t *testing.T) {
