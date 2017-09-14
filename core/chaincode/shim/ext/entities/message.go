@@ -8,7 +8,8 @@ package entities
 
 import (
 	"encoding/json"
-	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 // SignedMessage is a simple struct that contains space
@@ -28,17 +29,17 @@ type SignedMessage struct {
 // Sign signs the SignedMessage and stores the signature in the Sig field
 func (m *SignedMessage) Sign(signer Signer) error {
 	if signer == nil {
-		return fmt.Errorf("nil signer")
+		return errors.New("nil signer")
 	}
 
 	m.Sig = nil
 	bytes, err := json.Marshal(m)
 	if err != nil {
-		return fmt.Errorf("sign error: json.Marshal returned %s", err)
+		return errors.Wrap(err, "sign error: json.Marshal returned")
 	}
 	sig, err := signer.Sign(bytes)
 	if err != nil {
-		return fmt.Errorf("sign error: signer.Sign returned %s", err)
+		return errors.WithMessage(err, "sign error: signer.Sign returned")
 	}
 	m.Sig = sig
 
@@ -48,7 +49,7 @@ func (m *SignedMessage) Sign(signer Signer) error {
 // Verify verifies the signature over Payload stored in Sig
 func (m *SignedMessage) Verify(verifier Signer) (bool, error) {
 	if verifier == nil {
-		return false, fmt.Errorf("nil verifier")
+		return false, errors.New("nil verifier")
 	}
 
 	sig := m.Sig
@@ -59,7 +60,7 @@ func (m *SignedMessage) Verify(verifier Signer) (bool, error) {
 
 	bytes, err := json.Marshal(m)
 	if err != nil {
-		return false, fmt.Errorf("sign error: json.Marshal returned %s", err)
+		return false, errors.Wrap(err, "sign error: json.Marshal returned")
 	}
 
 	return verifier.Verify(sig, bytes)

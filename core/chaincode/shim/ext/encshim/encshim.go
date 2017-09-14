@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/chaincode/shim/ext/entities"
+	"github.com/pkg/errors"
 )
 
 type encShimImpl struct {
@@ -20,7 +21,7 @@ type encShimImpl struct {
 
 func NewEncShim(stub shim.ChaincodeStubInterface) (EncShim, error) {
 	if stub == nil {
-		return nil, fmt.Errorf("NewEncShim error, nil stub")
+		return nil, errors.New("NewEncShim error, nil stub")
 	}
 
 	return &encShimImpl{
@@ -40,12 +41,12 @@ func (s *encShimImpl) GetState(key string) ([]byte, error) {
 	// stub is guaranteed to be valid by the constructor
 
 	if s.ent == nil {
-		return nil, fmt.Errorf("nil entity, With should have been called")
+		return nil, errors.New("nil entity, With should have been called")
 	}
 
 	ciphertext, err := s.stub.GetState(key)
 	if err != nil {
-		return nil, fmt.Errorf("GetState error, stub.GetState returned %s", err)
+		return nil, errors.WithMessage(err, "GetState error, stub.GetState returned")
 	} else if len(ciphertext) == 0 {
 		return nil, &NilKeyError{key: key}
 	}
@@ -57,17 +58,17 @@ func (s *encShimImpl) PutState(key string, value []byte) error {
 	// stub is guaranteed to be valid by the constructor
 
 	if s.ent == nil {
-		return fmt.Errorf("nil entity, With should have been called")
+		return errors.New("nil entity, With should have been called")
 	}
 
 	ciphertext, err := s.ent.Encrypt(value)
 	if err != nil {
-		return fmt.Errorf("PutState error, enc.Encrypt returned %s", err)
+		return errors.WithMessage(err, "PutState error, enc.Encrypt returned")
 	}
 
 	err = s.stub.PutState(key, ciphertext)
 	if err != nil {
-		return fmt.Errorf("PutState error, stub.PutState returned %s", err)
+		return errors.WithMessage(err, "PutState error, stub.PutState returned")
 	}
 
 	return nil

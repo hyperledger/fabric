@@ -20,7 +20,6 @@ package shim
 
 import (
 	"container/list"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 // Logger for the shim package.
@@ -159,7 +159,7 @@ func (stub *MockStub) GetState(key string) ([]byte, error) {
 func (stub *MockStub) PutState(key string, value []byte) error {
 	if stub.TxID == "" {
 		mockLogger.Error("Cannot PutState without a transactions - call stub.MockTransactionStart()?")
-		return errors.New("Cannot PutState without a transactions - call stub.MockTransactionStart()?")
+		return errors.New("cannot PutState without a transactions - call stub.MockTransactionStart()?")
 	}
 
 	mockLogger.Debug("MockStub", stub.Name, "Putting", key, value)
@@ -228,13 +228,13 @@ func (stub *MockStub) GetQueryResult(query string) (StateQueryIteratorInterface,
 	// Not implemented since the mock engine does not have a query engine.
 	// However, a very simple query engine that supports string matching
 	// could be implemented to test that the framework supports queries
-	return nil, errors.New("Not Implemented")
+	return nil, errors.New("not implemented")
 }
 
 // GetHistoryForKey function can be invoked by a chaincode to return a history of
 // key values across time. GetHistoryForKey is intended to be used for read-only queries.
 func (stub *MockStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error) {
-	return nil, errors.New("Not Implemented")
+	return nil, errors.New("not implemented")
 }
 
 //GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
