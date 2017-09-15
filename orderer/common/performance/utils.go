@@ -46,7 +46,7 @@ func init() {
 	msp := mspmgmt.GetLocalMSP()
 	signer, err = msp.GetDefaultSigningIdentity()
 	if err != nil {
-		panic(fmt.Errorf("Failed to get default signer: %s", err))
+		panic(fmt.Errorf("Failed to initialize get default signer: %s", err))
 	}
 }
 
