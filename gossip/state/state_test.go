@@ -1097,6 +1097,11 @@ func (mock *coordinatorMock) Close() {
 	mock.Called()
 }
 
+// StorePvtData used to persist private date into transient store
+func (mock *coordinatorMock) StorePvtData(txid string, privData *rwset.TxPvtReadWriteSet) error {
+	return mock.Called().Error(0)
+}
+
 type receivedMessageMock struct {
 	mock.Mock
 }
@@ -1362,7 +1367,13 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	// Initialize peer
 	for _, peer := range peers {
 		peer.On("Accept", mock.Anything, false).Return(peer.Gossip(), nil)
-		peer.On("Accept", mock.Anything, true).Return(nil, peer.Comm())
+
+		peer.On("Accept", mock.Anything, true).
+			Return(nil, peer.Comm()).
+			Once().
+			On("Accept", mock.Anything, true).
+			Return(nil, make(<-chan proto.ReceivedMessage))
+
 		peer.On("UpdateChannelMetadata", mock.Anything, mock.Anything)
 		peer.coord.On("Close")
 		peer.On("Close")

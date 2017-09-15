@@ -39,21 +39,16 @@ type TransientStore interface {
 	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error)
 }
 
-// PrivateDataDistributor distributes private data to peers
-type PrivateDataDistributor interface {
-	// Distribute distributes a given private data with a specific transactionID
-	// to peers according policies that are derived from the given PolicyStore and PolicyParser
-	Distribute(privateData *rwset.TxPvtReadWriteSet, txID string) error
-}
-
 // Coordinator orchestrates the flow of the new
 // blocks arrival and in flight transient data, responsible
 // to complete missing parts of transient data for given block.
 type Coordinator interface {
-	PrivateDataDistributor
 	// StoreBlock deliver new block with underlined private data
 	// returns missing transaction ids
 	StoreBlock(block *common.Block, data util.PvtDataCollections) error
+
+	// StorePvtData used to persist private date into transient store
+	StorePvtData(txid string, privData *rwset.TxPvtReadWriteSet) error
 
 	// GetPvtDataAndBlockByNum get block by number and returns also all related private data
 	// the order of private data in slice of PvtDataCollections doesn't implies the order of
@@ -86,11 +81,9 @@ func NewCoordinator(committer committer.Committer, store TransientStore, gossipF
 	return &coordinator{Committer: committer, TransientStore: store, gossipFetcher: gossipFetcher}
 }
 
-// Distribute distributes a given private data with a specific transactionID
-// to peers according policies that are derived from the given PolicyStore and PolicyParser
-func (c *coordinator) Distribute(privateData *rwset.TxPvtReadWriteSet, txID string) error {
-	// TODO: also need to distribute the data...
-	return c.TransientStore.Persist(txID, 0, privateData)
+// StorePvtData used to persist private date into transient store
+func (c *coordinator) StorePvtData(txID string, privData *rwset.TxPvtReadWriteSet) error {
+	return c.TransientStore.Persist(txID, 0, privData)
 }
 
 // StoreBlock stores block with private data into the ledger

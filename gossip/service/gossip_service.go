@@ -75,9 +75,19 @@ func (*deliveryFactoryImpl) Service(g GossipService, endpoints []string, mcs api
 	})
 }
 
+type privateHandler struct {
+	support     Support
+	coordinator privdata2.Coordinator
+	distributor privdata2.PvtDataDistributor
+}
+
+func (p privateHandler) close() {
+	p.coordinator.Close()
+}
+
 type gossipServiceImpl struct {
 	gossipSvc
-	coordinators    map[string]privdata2.Coordinator
+	privateHandlers map[string]privateHandler
 	chains          map[string]state.GossipStateProvider
 	leaderElection  map[string]election.LeaderElectionService
 	deliveryService map[string]deliverclient.DeliverService
@@ -146,7 +156,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 		gossipServiceInstance = &gossipServiceImpl{
 			mcs:             mcs,
 			gossipSvc:       gossip,
-			coordinators:    make(map[string]privdata2.Coordinator),
+			privateHandlers: make(map[string]privateHandler),
 			chains:          make(map[string]state.GossipStateProvider),
 			leaderElection:  make(map[string]election.LeaderElectionService),
 			deliveryService: make(map[string]deliverclient.DeliverService),
@@ -163,14 +173,26 @@ func GetGossipService() GossipService {
 	return gossipServiceInstance
 }
 
+// DistributePrivateData distribute private read write set inside the channel based on the collections policies
 func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, privData *rwset.TxPvtReadWriteSet) error {
 	g.lock.RLock()
-	coord, exists := g.coordinators[chainID]
+	handler, exists := g.privateHandlers[chainID]
 	g.lock.RUnlock()
 	if !exists {
-		return errors.Errorf("No coordinator for %s", chainID)
+		return errors.Errorf("No private data handler for %s", chainID)
 	}
-	return coord.Distribute(privData, txID)
+
+	if err := handler.distributor.Distribute(txID, privData, handler.support.Ps, handler.support.Pp); err != nil {
+		logger.Error("Failed to distributed private collection, txID", txID, "channel", chainID, "due to", err)
+		return err
+	}
+
+	if err := handler.coordinator.StorePvtData(txID, privData); err != nil {
+		logger.Error("Failed to store private data into transient store, txID",
+			txID, "channel", chainID, "due to", err)
+		return err
+	}
+	return nil
 }
 
 // NewConfigEventer creates a ConfigProcessor which the configtx.Manager can ultimately route config updates to
@@ -194,7 +216,11 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	servicesAdapter := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
 	fetcher := privdata2.NewPuller(support.Ps, support.Pp, g.gossipSvc, NewDataRetriever(support.Store), chainID)
 	coordinator := privdata2.NewCoordinator(support.Committer, support.Store, fetcher)
-	g.coordinators[chainID] = coordinator
+	g.privateHandlers[chainID] = privateHandler{
+		support:     support,
+		coordinator: coordinator,
+		distributor: privdata2.NewDistributor(chainID, g),
+	}
 	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator)
 	if g.deliveryService[chainID] == nil {
 		var err error
@@ -286,7 +312,7 @@ func (g *gossipServiceImpl) Stop() {
 			le.Stop()
 		}
 		g.chains[chainID].Stop()
-		g.coordinators[chainID].Close()
+		g.privateHandlers[chainID].close()
 
 		if g.deliveryService[chainID] != nil {
 			g.deliveryService[chainID].Stop()

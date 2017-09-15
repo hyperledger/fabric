@@ -181,6 +181,10 @@ peer:
             # Time between peer sends propose message and declares itself as a leader (sends declaration message) (unit: second)
             leaderElectionDuration: 5s
 
+        pvtData:
+            maxPeers: 3
+            minAck:   3
+
     # EventHub related configuration
     events:
         # The address that the Event service will be enabled on the peer

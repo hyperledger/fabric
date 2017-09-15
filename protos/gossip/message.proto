@@ -125,6 +125,10 @@ message GossipMessage {
 
         // Used to respond to private data requests
         RemotePvtDataResponse privateRes = 24;
+
+        // Encapsulates private data used to distribute
+        // private rwset after the endorsement
+        PrivateDataMessage private_data = 25;
     }
 }
 
@@ -228,6 +232,13 @@ message DataMessage {
     Payload payload = 1;
 }
 
+// PrivateDataMessage message which includes private
+// data information to distributed once transaction
+// has been endorsed
+message PrivateDataMessage {
+    PrivatePayload payload = 1;
+}
+
 // Payload contains a block
 message Payload {
     uint64 seq_num              = 1;
@@ -240,7 +251,9 @@ message Payload {
 // based on collection partitioning
 message PrivatePayload {
     string collection_name      = 1;
-    repeated bytes private_data = 2;
+    string namespace            = 2;
+    string tx_id                = 3;
+    bytes private_rwset         = 4;
 }
 
 // Membership messages
@@ -287,7 +300,6 @@ message Member {
     bytes  metadata = 2;
     bytes  pki_id    = 3;
 }
-
 
 // Empty is used for pinging and in tests
 message Empty {}

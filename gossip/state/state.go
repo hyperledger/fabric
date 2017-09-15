@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -95,6 +96,9 @@ type ledgerResources interface {
 	// returns missing transaction ids
 	StoreBlock(block *common.Block, data util.PvtDataCollections) error
 
+	// StorePvtData used to persist private date into transient store
+	StorePvtData(txid string, privData *rwset.TxPvtReadWriteSet) error
+
 	// GetPvtDataAndBlockByNum get block by number and returns also all related private data
 	// the order of private data in slice of PvtDataCollections doesn't implies the order of
 	// transactions in the block related to these private data, to get the correct placement
@@ -122,7 +126,6 @@ type ServicesMediator struct {
 // the struct to handle in memory sliding window of
 // new ledger block to be acquired by hyper ledger
 type GossipStateProviderImpl struct {
-
 	// Chain id
 	chainID string
 
@@ -132,6 +135,8 @@ type GossipStateProviderImpl struct {
 	gossipChan <-chan *proto.GossipMessage
 
 	commChan <-chan proto.ReceivedMessage
+
+	pvtDataChan <-chan proto.ReceivedMessage
 
 	// Queue of payloads which wasn't acquired yet
 	payloads PayloadsBuffer
@@ -187,6 +192,23 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 	// Filter message which are only relevant for nodeMetastate transfer
 	_, commChan := services.Accept(remoteStateMsgFilter, true)
 
+	// Filter private data messages
+	_, pvtDataChan := services.Accept(func(message interface{}) bool {
+		receivedMsg := message.(proto.ReceivedMessage)
+		msg := receivedMsg.GetGossipMessage()
+		if msg.GetPrivateData() == nil {
+			return false
+		}
+		connInfo := receivedMsg.GetConnectionInfo()
+		authErr := services.VerifyByChannel(msg.Channel, connInfo.Identity, connInfo.Auth.Signature, connInfo.Auth.SignedData)
+		if authErr != nil {
+			logger.Warning("Got unauthorized private data message from", string(connInfo.Identity))
+			return false
+		}
+		return true
+
+	}, true)
+
 	height, err := ledger.LedgerHeight()
 	if height == 0 {
 		// Panic here since this is an indication of invalid situation which should not happen in normal
@@ -213,6 +235,9 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 
 		// Channel to read direct messages from other peers
 		commChan: commChan,
+
+		// Channel for private data messages
+		pvtDataChan: pvtDataChan,
 
 		// Create a queue for payload received
 		payloads: NewPayloadsBuffer(height),
@@ -268,12 +293,53 @@ func (s *GossipStateProviderImpl) listen() {
 		case msg := <-s.commChan:
 			logger.Debug("Direct message ", msg)
 			go s.directMessage(msg)
+		case msg := <-s.pvtDataChan:
+			logger.Debug("Private data message ", msg)
+			go s.privateDataMessage(msg)
 		case <-s.stopCh:
 			s.stopCh <- struct{}{}
 			logger.Debug("Stop listening for new messages")
 			return
 		}
 	}
+}
+func (s *GossipStateProviderImpl) privateDataMessage(msg proto.ReceivedMessage) {
+	if !bytes.Equal(msg.GetGossipMessage().Channel, []byte(s.chainID)) {
+		logger.Warning("Received state transfer request for channel",
+			string(msg.GetGossipMessage().Channel), "while expecting channel", s.chainID, "skipping request...")
+		return
+	}
+
+	gossipMsg := msg.GetGossipMessage()
+	pvtDataMsg := gossipMsg.GetPrivateData()
+
+	collectionName := pvtDataMsg.Payload.CollectionName
+	txID := pvtDataMsg.Payload.TxId
+	pvtRwSet := pvtDataMsg.Payload.PrivateRwset
+
+	if len(pvtRwSet) == 0 {
+		logger.Warning("Malformed private data message, no rwset provided, collection name = ", collectionName)
+		return
+	}
+
+	txPvtRwSet := &rwset.TxPvtReadWriteSet{
+		DataModel: rwset.TxReadWriteSet_KV,
+		NsPvtRwset: []*rwset.NsPvtReadWriteSet{{
+			Namespace: pvtDataMsg.Payload.Namespace,
+			CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{{
+				CollectionName: collectionName,
+				Rwset:          pvtRwSet,
+			}}},
+		},
+	}
+
+	if err := s.ledger.StorePvtData(txID, txPvtRwSet); err != nil {
+		logger.Errorf("Wasn't able to persist private data for collection %s, due to %s", collectionName, err)
+		msg.Ack(err) // Sending NACK to indicate failure of storing collection
+	}
+
+	msg.Ack(nil)
+	logger.Debug("Private data for collection", collectionName, "has been stored")
 }
 
 func (s *GossipStateProviderImpl) directMessage(msg proto.ReceivedMessage) {
