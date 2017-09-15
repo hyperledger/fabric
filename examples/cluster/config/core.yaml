@@ -396,11 +396,28 @@ ledger:
     # stateDatabase - options are "goleveldb", "CouchDB"
     # goleveldb - default state database stored in goleveldb.
     # CouchDB - store state database in CouchDB
-    stateDatabase: goleveldb
+    stateDatabase: CouchDB
     couchDBConfig:
+       # It is recommended to run CouchDB on the same server as the peer, and
+       # not map the CouchDB container port to a server port in docker-compose.
+       # Otherwise proper security must be provided on the connection between
+       # CouchDB client (on the peer) and server.
        couchDBAddress: 127.0.0.1:5984
+       # This username must have read and write authority on CouchDB
        username:
+       # The password is recommended to pass as an environment variable
+       # during start up (eg LEDGER_COUCHDBCONFIG_PASSWORD).
+       # If it is stored here, the file must be access control protected
+       # to prevent unintended users from discovering the password.
        password:
+       # Number of retries for CouchDB errors
+       maxRetries: 3
+       # Number of retries for CouchDB errors during peer startup
+       maxRetriesOnStartup: 10
+       # CouchDB request timeout (unit: duration, e.g. 20s)
+       requestTimeout: 35s
+       # Limit on the number of records to return per query
+       queryLimit: 10000
 
     # historyDatabase - options are true or false
     # Indicates if the history of key updates should be stored in goleveldb
