@@ -24,7 +24,8 @@ type DB interface {
 	statedb.VersionedDB
 	IsBulkOptimizable() bool
 	LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*statedb.CompositeKey, hashedKeys []*HashedCompositeKey)
-	ClearCommittedVersions()
+	GetCachedKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, bool)
+	ClearCachedVersions()
 	GetPrivateData(namespace, collection, key string) (*statedb.VersionedValue, error)
 	GetValueHash(namespace, collection string, keyHash []byte) (*statedb.VersionedValue, error)
 	GetKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, error)

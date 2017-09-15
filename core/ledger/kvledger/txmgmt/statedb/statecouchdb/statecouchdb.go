@@ -159,14 +159,27 @@ func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.Version
 }
 
 // GetVersion implements method in VersionedDB interface
-func (vdb *VersionedDB) GetVersion(namespace string, key string) (*version.Height, error) {
+func (vdb *VersionedDB) GetCachedVersion(namespace string, key string) (*version.Height, bool) {
+
+	logger.Debugf("Retrieving cached version: %s~%s", key, namespace)
 
 	compositeKey := statedb.CompositeKey{Namespace: namespace, Key: key}
 
 	// Retrieve the version from committed data cache.
 	// Since the cache was populated based on block readsets,
 	// checks during validation should find the version here
-	returnVersion, keyFound := vdb.committedDataCache.committedVersions[compositeKey]
+	version, keyFound := vdb.committedDataCache.committedVersions[compositeKey]
+
+	if !keyFound {
+		return nil, false
+	}
+	return version, true
+}
+
+// GetVersion implements method in VersionedDB interface
+func (vdb *VersionedDB) GetVersion(namespace string, key string) (*version.Height, error) {
+
+	returnVersion, keyFound := vdb.GetCachedVersion(namespace, key)
 
 	// If the version was not found in the committed data cache, retrieve it from statedb.
 	if !keyFound {
@@ -539,6 +552,8 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) {
 
 	keysToRetrieve := []string{}
 	for _, key := range keys {
+
+		logger.Debugf("Load into version cache: %s~%s", key.Key, key.Namespace)
 
 		// create composite key for couchdb
 		compositeDBKey := constructCompositeKey(key.Namespace, key.Key)

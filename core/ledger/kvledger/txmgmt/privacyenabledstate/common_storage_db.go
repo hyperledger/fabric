@@ -87,7 +87,7 @@ func (s *CommonStorageDB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*sta
 
 	// Here, hashedKeys are merged into pubKeys to get a combined set of keys for combined loading
 	for _, key := range hashedKeys {
-		ns := derivePvtDataNs(key.Namespace, key.CollectionName)
+		ns := deriveHashedDataNs(key.Namespace, key.CollectionName)
 		// No need to check for duplicates as hashedKeys are in separate namespace
 		var keyHashStr string
 		if !s.BytesKeySuppoted() {
@@ -104,8 +104,8 @@ func (s *CommonStorageDB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*sta
 	bulkOptimizable.LoadCommittedVersions(pubKeys)
 }
 
-// ClearCommittedVersions implements corresponding function in interface DB
-func (s *CommonStorageDB) ClearCommittedVersions() {
+// ClearCachedVersions implements corresponding function in interface DB
+func (s *CommonStorageDB) ClearCachedVersions() {
 	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
 	if ok {
 		bulkOptimizable.ClearCachedVersions()
@@ -133,6 +133,19 @@ func (s *CommonStorageDB) GetKeyHashVersion(namespace, collection string, keyHas
 		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
 	}
 	return s.GetVersion(deriveHashedDataNs(namespace, collection), keyHashStr)
+}
+
+func (s *CommonStorageDB) GetCachedKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, bool) {
+	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
+	if !ok {
+		return nil, false
+	}
+
+	keyHashStr := string(keyHash)
+	if !s.BytesKeySuppoted() {
+		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
+	}
+	return bulkOptimizable.GetCachedVersion(deriveHashedDataNs(namespace, collection), keyHashStr)
 }
 
 // GetPrivateDataMultipleKeys implements corresponding function in interface DB

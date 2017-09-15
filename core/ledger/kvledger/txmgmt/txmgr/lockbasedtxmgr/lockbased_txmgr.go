@@ -116,7 +116,7 @@ func (txmgr *LockBasedTxMgr) Rollback() {
 // clearCache empty the cache maintained by the statedb implementation
 func (txmgr *LockBasedTxMgr) clearCache() {
 	if txmgr.db.IsBulkOptimizable() {
-		txmgr.db.ClearCommittedVersions()
+		txmgr.db.ClearCachedVersions()
 	}
 }
 
