@@ -202,6 +202,27 @@ type Base64Attachment struct {
 	AttachmentData string `json:"data"`
 }
 
+//ListIndexResponse contains the definition for listing couchdb indexes
+type ListIndexResponse struct {
+	TotalRows int               `json:"total_rows"`
+	Indexes   []IndexDefinition `json:"indexes"`
+}
+
+//IndexDefinition contains the definition for a couchdb index
+type IndexDefinition struct {
+	DesignDocument string          `json:"ddoc"`
+	Name           string          `json:"name"`
+	Type           string          `json:"type"`
+	Definition     json.RawMessage `json:"def"`
+}
+
+//IndexResult contains the definition for a couchdb index
+type IndexResult struct {
+	DesignDocument string `json:"designdoc"`
+	Name           string `json:"name"`
+	Definition     string `json:"definition"`
+}
+
 // closeResponseBody discards the body and then closes it to enable returning it to
 // connection pool
 func closeResponseBody(resp *http.Response) {
@@ -1003,6 +1024,122 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 	logger.Debugf("Exiting QueryDocuments()")
 
 	return &results, nil
+
+}
+
+// ListIndex method lists the defined indexes for a database
+func (dbclient *CouchDatabase) ListIndex() (*[]IndexResult, error) {
+
+	logger.Debugf("Entering ListIndex()")
+
+	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return nil, err
+	}
+
+	indexURL.Path = dbclient.DBName + "/_index/"
+
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodGet, indexURL.String(), nil, "", "", maxRetries, true)
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponseBody(resp)
+
+	//handle as JSON document
+	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonResponse = &ListIndexResponse{}
+
+	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
+	if err2 != nil {
+		return nil, err2
+	}
+
+	var results []IndexResult
+
+	for _, row := range jsonResponse.Indexes {
+
+		//if the DesignDocument does not begin with "_design/", then this is a system
+		//level index and is not meaningful and cannot be edited or deleted
+		designDoc := row.DesignDocument
+		s := strings.SplitAfterN(designDoc, "_design/", 2)
+		if len(s) > 1 {
+			designDoc = s[1]
+
+			//Add the index definition to the results
+			var addIndexResult = &IndexResult{DesignDocument: designDoc, Name: row.Name, Definition: fmt.Sprintf("%s", row.Definition)}
+			results = append(results, *addIndexResult)
+		}
+
+	}
+
+	logger.Debugf("Exiting ListIndex()")
+
+	return &results, nil
+
+}
+
+// CreateIndex method provides a function creating an index
+func (dbclient *CouchDatabase) CreateIndex(indexdefinition string) error {
+
+	logger.Debugf("Entering CreateIndex()  indexdefinition=%s", indexdefinition)
+
+	//Test to see if this is a valid JSON
+	if IsJSON(indexdefinition) != true {
+		return fmt.Errorf("JSON format is not valid")
+	}
+
+	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return err
+	}
+
+	indexURL.Path = dbclient.DBName + "/_index"
+
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, indexURL.String(), []byte(indexdefinition), "", "", maxRetries, true)
+	if err != nil {
+		return err
+	}
+	defer closeResponseBody(resp)
+
+	return nil
+
+}
+
+// DeleteIndex method provides a function deleting an index
+func (dbclient *CouchDatabase) DeleteIndex(designdoc, indexname string) error {
+
+	logger.Debugf("Entering DeleteIndex()  designdoc=%s  indexname=%s", designdoc, indexname)
+
+	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return err
+	}
+
+	indexURL.Path = dbclient.DBName + "/_index/" + designdoc + "/json/" + indexname
+
+	//get the number of retries
+	maxRetries := dbclient.CouchInstance.conf.MaxRetries
+
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, indexURL.String(), nil, "", "", maxRetries, true)
+	if err != nil {
+		return err
+	}
+	defer closeResponseBody(resp)
+
+	return nil
 
 }
 
