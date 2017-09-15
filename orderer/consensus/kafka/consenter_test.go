@@ -8,8 +8,6 @@ package kafka
 
 import (
 	"fmt"
-	"log"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -54,15 +52,15 @@ func init() {
 	mockLocalConfig = newMockLocalConfig(false, mockRetryOptions, false)
 	mockBrokerConfig = newMockBrokerConfig(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
 	mockConsenter = newMockConsenter(mockBrokerConfig, mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version)
-	setupTestLogging("ERROR", mockLocalConfig.Kafka.Verbose)
+	setupTestLogging("ERROR")
 }
 
 func TestNew(t *testing.T) {
-	_ = consensus.Consenter(New(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version))
+	_ = consensus.Consenter(New(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, mockLocalConfig.Kafka.Verbose))
 }
 
 func TestHandleChain(t *testing.T) {
-	consenter := consensus.Consenter(New(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version))
+	consenter := consensus.Consenter(New(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, mockLocalConfig.Kafka.Verbose))
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
@@ -154,15 +152,11 @@ func newMockLocalConfig(enableTLS bool, retryOptions localconfig.Retry, verboseL
 	}
 }
 
-func setupTestLogging(logLevel string, verbose bool) {
+func setupTestLogging(logLevel string) {
 	// This call allows us to (a) get the logging backend initialization that
 	// takes place in the `flogging` package, and (b) adjust the verbosity of
 	// the logs when running tests on this package.
 	flogging.SetModuleLevel(pkgLogID, logLevel)
-
-	if verbose {
-		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Ldate|log.Lmicroseconds|log.Lshortfile)
-	}
 }
 
 func tamperBytes(original []byte) []byte {
