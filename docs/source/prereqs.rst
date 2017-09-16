@@ -19,10 +19,10 @@ You will need the following installed on the platform on which you will be
 operating, or developing on (or for), Hyperledger Fabric:
 
   - MacOSX, *nix, or Windows 10: `Docker <https://www.docker.com/products/overview>`__
-    Docker version 17.03.1-ce or greater is required.
+    Docker version 17.06.2-ce or greater is required.
   - Older versions of Windows: `Docker
     Toolbox <https://docs.docker.com/toolbox/toolbox_install_windows/>`__ -
-    again, Docker version Docker 17.03.1-ce or greater is required.
+    again, Docker version Docker 17.06.2-ce or greater is required.
 
 You can check the version of Docker you have installed with the following
 command from a terminal prompt:
@@ -33,7 +33,7 @@ command from a terminal prompt:
 
 .. note:: Installing Docker for Mac or Windows, or Docker Toolbox will also
           install Docker Compose. If you already had Docker installed, you
-          should check that you have Docker Compose version 1.8 or greater
+          should check that you have Docker Compose version 1.14.0 or greater
           installed. If not, we recommend that you install a more recent
           version of Docker.
 
