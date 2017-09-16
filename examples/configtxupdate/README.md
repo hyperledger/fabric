@@ -106,14 +106,14 @@ Edit the `genesis_block.json` file in your favorite JSON editor, or manipulate i
 ```
 $ export MAXBATCHSIZEPATH=".data.data[0].payload.data.config.channel_group.groups.Orderer.values.BatchSize.value.max_message_count"
 # Display the old batch size
-$ jq "$MAXBATCHSIZEPATH" genesis_block.json 
+$ jq "$MAXBATCHSIZEPATH" genesis_block.json
 10
 
 # Set the new batch size
 $ jq "$MAXBATCHSIZEPATH = 20" genesis_block.json  > updated_genesis_block.json
 
 # Display the new batch size
-$ jq "$MAXBATCHSIZEPATH" updated_genesis_block.json 
+$ jq "$MAXBATCHSIZEPATH" updated_genesis_block.json
 20
 ```
 The genesis block is now ready to be re-encoded into the native proto form to be used for bootstrapping.
@@ -281,7 +281,7 @@ CGO_CFLAGS=" " GOBIN=/home/yellickj/go/src/github.com/hyperledger/fabric/build/b
 Binary available as build/bin/orderer
 ```
 
-Start the orderer using the `SampleDevModSolo` profile option.
+Start the orderer using the `SampleDevModeSolo` profile option.
 
 ```
 ORDERER_GENERAL_LOGLEVEL=debug ORDERER_GENERAL_GENESISPROFILE=SampleDevModeSolo orderer
