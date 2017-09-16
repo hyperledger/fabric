@@ -290,10 +290,21 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 		"github.com/hyperledger/fabric/protos/peer":         true,
 	}
 
+	// Golang "pseudo-packages" - packages which don't actually exist
+	var pseudo = map[string]bool{
+		"C": true,
+	}
+
 	imports = filter(imports, func(pkg string) bool {
 		// Drop if provided by CCENV
 		if _, ok := provided[pkg]; ok == true {
 			logger.Debugf("Discarding provided package %s", pkg)
+			return false
+		}
+
+		// Drop pseudo-packages
+		if _, ok := pseudo[pkg]; ok == true {
+			logger.Debugf("Discarding pseudo-package %s", pkg)
 			return false
 		}
 
