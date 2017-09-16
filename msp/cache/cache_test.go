@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cache
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/hyperledger/fabric/msp"
@@ -115,23 +116,47 @@ func TestGetTLSIntermediateCerts(t *testing.T) {
 
 func TestDeserializeIdentity(t *testing.T) {
 	mockMSP := &mocks.MockMSP{}
-	i, err := New(mockMSP)
+	wrappedMSP, err := New(mockMSP)
 	assert.NoError(t, err)
 
 	// Check id is cached
 	mockIdentity := &mocks.MockIdentity{ID: "Alice"}
+	mockIdentity2 := &mocks.MockIdentity{ID: "Bob"}
 	serializedIdentity := []byte{1, 2, 3}
+	serializedIdentity2 := []byte{4, 5, 6}
 	mockMSP.On("DeserializeIdentity", serializedIdentity).Return(mockIdentity, nil)
-	id, err := i.DeserializeIdentity(serializedIdentity)
-	assert.NoError(t, err)
-	assert.Equal(t, mockIdentity, id)
+	mockMSP.On("DeserializeIdentity", serializedIdentity2).Return(mockIdentity2, nil)
+	// Prime the cache
+	wrappedMSP.DeserializeIdentity(serializedIdentity)
+	wrappedMSP.DeserializeIdentity(serializedIdentity2)
+
+	// Stress the cache and ensure concurrent operations
+	// do not result in a failure
+	var wg sync.WaitGroup
+	wg.Add(10000)
+	for i := 0; i < 10000; i++ {
+		go func(m msp.MSP) {
+			sIdentity := serializedIdentity
+			expectedIdentity := mockIdentity
+			defer wg.Done()
+			if i%2 == 0 {
+				sIdentity = serializedIdentity2
+				expectedIdentity = mockIdentity2
+			}
+			id, err := wrappedMSP.DeserializeIdentity(sIdentity)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedIdentity, id)
+		}(wrappedMSP)
+	}
+	wg.Wait()
+
 	mockMSP.AssertExpectations(t)
 	// Check the cache
-	_, ok := i.(*cachedMSP).deserializeIdentityCache.Get(string(serializedIdentity))
+	_, ok := wrappedMSP.(*cachedMSP).deserializeIdentityCache.Get(string(serializedIdentity))
 	assert.True(t, ok)
 
 	// Check the same object is returned
-	id, err = i.DeserializeIdentity(serializedIdentity)
+	id, err := wrappedMSP.DeserializeIdentity(serializedIdentity)
 	assert.NoError(t, err)
 	assert.True(t, mockIdentity == id)
 	mockMSP.AssertExpectations(t)
@@ -140,12 +165,12 @@ func TestDeserializeIdentity(t *testing.T) {
 	mockIdentity = &mocks.MockIdentity{ID: "Bob"}
 	serializedIdentity = []byte{1, 2, 3, 4}
 	mockMSP.On("DeserializeIdentity", serializedIdentity).Return(mockIdentity, errors.New("Invalid identity"))
-	id, err = i.DeserializeIdentity(serializedIdentity)
+	id, err = wrappedMSP.DeserializeIdentity(serializedIdentity)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid identity")
 	mockMSP.AssertExpectations(t)
 
-	_, ok = i.(*cachedMSP).deserializeIdentityCache.Get(string(serializedIdentity))
+	_, ok = wrappedMSP.(*cachedMSP).deserializeIdentityCache.Get(string(serializedIdentity))
 	assert.False(t, ok)
 }
 

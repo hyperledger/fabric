@@ -8,7 +8,6 @@ package cache
 
 import (
 	"fmt"
-
 	"sync"
 
 	"github.com/golang/groupcache/lru"
@@ -45,24 +44,24 @@ type cachedMSP struct {
 	// cache for DeserializeIdentity.
 	deserializeIdentityCache *lru.Cache
 
-	dicMutex sync.RWMutex // synchronize access to cache
+	dicMutex sync.Mutex // synchronize access to cache
 
 	// cache for validateIdentity
 	validateIdentityCache *lru.Cache
 
-	vicMutex sync.RWMutex // synchronize access to cache
+	vicMutex sync.Mutex // synchronize access to cache
 
 	// basically a map of principals=>identities=>stringified to booleans
 	// specifying whether this identity satisfies this principal
 	satisfiesPrincipalCache *lru.Cache
 
-	spcMutex sync.RWMutex // synchronize access to cache
+	spcMutex sync.Mutex // synchronize access to cache
 }
 
 func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
-	c.dicMutex.RLock()
+	c.dicMutex.Lock()
 	cached, ok := c.deserializeIdentityCache.Get(string(serializedIdentity))
-	c.dicMutex.RUnlock()
+	c.dicMutex.Unlock()
 	if ok {
 		return cached.(msp.Identity), nil
 	}
@@ -86,9 +85,9 @@ func (c *cachedMSP) Validate(id msp.Identity) error {
 	identifier := id.GetIdentifier()
 	key := string(identifier.Mspid + ":" + identifier.Id)
 
-	c.vicMutex.RLock()
+	c.vicMutex.Lock()
 	_, ok := c.validateIdentityCache.Get(key)
-	c.vicMutex.RUnlock()
+	c.vicMutex.Unlock()
 	if ok {
 		// cache only stores if the identity is valid.
 		return nil
@@ -110,9 +109,9 @@ func (c *cachedMSP) SatisfiesPrincipal(id msp.Identity, principal *pmsp.MSPPrinc
 	principalKey := string(principal.PrincipalClassification) + string(principal.Principal)
 	key := identityKey + principalKey
 
-	c.spcMutex.RLock()
+	c.spcMutex.Lock()
 	v, ok := c.satisfiesPrincipalCache.Get(key)
-	c.spcMutex.RUnlock()
+	c.spcMutex.Unlock()
 	if ok {
 		if v == nil {
 			return nil
