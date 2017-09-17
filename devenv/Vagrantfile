@@ -25,8 +25,6 @@ set -x
 
 echo "127.0.0.1 couchdb" | tee -a /etc/hosts
 
-export DOCKER_STORAGE_BACKEND="#{ENV['DOCKER_STORAGE_BACKEND']}"
-
 cd #{SRCMOUNT}/devenv
 ./setup.sh
 

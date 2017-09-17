@@ -28,50 +28,30 @@ apt-get install -y build-essential git make curl unzip g++ libtool
 # Install Docker
 # ----------------------------------------------------------------
 
-# Storage backend logic
-case "${DOCKER_STORAGE_BACKEND}" in
-  aufs|AUFS|"")
-    DOCKER_STORAGE_BACKEND_STRING="aufs" ;;
-  btrfs|BTRFS)
-    # mkfs
-    apt-get install -y btrfs-tools
-    mkfs.btrfs -f /dev/sdb
-    rm -Rf /var/lib/docker
-    mkdir -p /var/lib/docker
-    . <(sudo blkid -o udev /dev/sdb)
-    echo "UUID=${ID_FS_UUID} /var/lib/docker btrfs defaults 0 0" >> /etc/fstab
-    mount /var/lib/docker
-
-    DOCKER_STORAGE_BACKEND_STRING="btrfs" ;;
-  *) echo "Unknown storage backend ${DOCKER_STORAGE_BACKEND}"
-     exit 1;;
-esac
-
 # Update system
 apt-get update -qq
 
 # Prep apt-get for docker install
 apt-get install -y apt-transport-https ca-certificates
-apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 
 # Add docker repository
-echo deb https://apt.dockerproject.org/repo ubuntu-xenial main > /etc/apt/sources.list.d/docker.list
+add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
 
 # Update system
 apt-get update -qq
 
 # Install docker
-apt-get install -y linux-image-extra-$(uname -r) apparmor docker-engine
+#apt-get install -y docker-ce=17.06.2~ce~0~ubuntu  # in case we need to set the version
+apt-get install -y docker-ce
 
 # Install docker-compose
-curl -L https://github.com/docker/compose/releases/download/1.8.1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+curl -L https://github.com/docker/compose/releases/download/1.14.0/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 
-# Configure docker
-DOCKER_OPTS="-s=${DOCKER_STORAGE_BACKEND_STRING} -r=true --api-cors-header='*' -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock ${DOCKER_OPTS}"
-sed -i.bak '/^DOCKER_OPTS=/{h;s|=.*|=\"'"${DOCKER_OPTS}"'\"|};${x;/^$/{s||DOCKER_OPTS=\"'"${DOCKER_OPTS}"'\"|;H};x}' /etc/default/docker
-
-service docker restart
 usermod -a -G docker ubuntu # Add ubuntu user to the docker group
 
 # Test docker
@@ -80,7 +60,7 @@ docker run --rm busybox echo All good
 # ----------------------------------------------------------------
 # Install Golang
 # ----------------------------------------------------------------
-GO_VER=1.7.5
+GO_VER=1.9
 GO_URL=https://storage.googleapis.com/golang/go${GO_VER}.linux-amd64.tar.gz
 
 # Set Go environment variables needed by other scripts
@@ -99,12 +79,9 @@ mkdir -p $GOROOT
 curl -sL $GO_URL | (cd $GOROOT && tar --strip-components 1 -xz)
 
 # ----------------------------------------------------------------
-# Install NodeJS
+# Install nvm and Node.js
 # ----------------------------------------------------------------
-NODE_VER=6.9.5
-NODE_URL=https://nodejs.org/dist/v$NODE_VER/node-v$NODE_VER-linux-x64.tar.gz
-
-curl -sL $NODE_URL | (cd /usr/local && tar --strip-components 1 -xz )
+runuser -l ubuntu -c '/hyperledger/devenv/install_nvm.sh'
 
 # ----------------------------------------------------------------
 # Install Behave

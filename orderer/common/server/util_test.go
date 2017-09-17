@@ -8,6 +8,7 @@ package server
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	config "github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -25,7 +26,7 @@ func TestCreateLedgerFactory(t *testing.T) {
 		{"RAM", "ram", "", "", false},
 		{"JSONwithPathSet", "json", "test-dir", "", false},
 		{"JSONwithPathUnset", "json", "", "test-prefix", false},
-		{"FilewithPathSet", "file", "test-dir", "", false},
+		{"FilewithPathSet", "file", filepath.Join(os.TempDir(), "test-dir"), "", false},
 		{"FilewithPathUnset", "file", "", "test-prefix", false},
 	}
 
