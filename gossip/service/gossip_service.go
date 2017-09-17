@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/election"
@@ -24,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
-	proto "github.com/hyperledger/fabric/protos/gossip"
+	gproto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -43,15 +44,15 @@ type GossipService interface {
 
 	// DistributePrivateData distributes private data to the peers in the collections
 	// according to policies induced by the PolicyStore and PolicyParser
-	DistributePrivateData(chainID string, txID string, privateData *rwset.TxPvtReadWriteSet, ps privdata.PolicyStore, pp privdata.PolicyParser) error
+	DistributePrivateData(chainID string, txID string, privateData *rwset.TxPvtReadWriteSet) error
 	// NewConfigEventer creates a ConfigProcessor which the configtx.Manager can ultimately route config updates to
 	NewConfigEventer() ConfigProcessor
 	// InitializeChannel allocates the state provider and should be invoked once per channel per execution
-	InitializeChannel(chainID string, committer committer.Committer, store privdata2.TransientStore, endpoints []string)
+	InitializeChannel(chainID string, endpoints []string, support Support)
 	// GetBlock returns block for given chain
 	GetBlock(chainID string, index uint64) *common.Block
 	// AddPayload appends message payload to for given chain
-	AddPayload(chainID string, payload *proto.Payload) error
+	AddPayload(chainID string, payload *gproto.Payload) error
 }
 
 // DeliveryServiceFactory factory to create and initialize delivery service instance
@@ -162,14 +163,14 @@ func GetGossipService() GossipService {
 	return gossipServiceInstance
 }
 
-func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, privData *rwset.TxPvtReadWriteSet, ps privdata.PolicyStore, pp privdata.PolicyParser) error {
+func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, privData *rwset.TxPvtReadWriteSet) error {
 	g.lock.RLock()
 	coord, exists := g.coordinators[chainID]
 	g.lock.RUnlock()
 	if !exists {
 		return errors.Errorf("No coordinator for %s", chainID)
 	}
-	return coord.Distribute(privData, txID, ps, pp)
+	return coord.Distribute(privData, txID)
 }
 
 // NewConfigEventer creates a ConfigProcessor which the configtx.Manager can ultimately route config updates to
@@ -177,19 +178,27 @@ func (g *gossipServiceImpl) NewConfigEventer() ConfigProcessor {
 	return newConfigEventer(g)
 }
 
+type Support struct {
+	Committer committer.Committer
+	Store     privdata2.TransientStore
+	Pp        privdata.PolicyParser
+	Ps        privdata.PolicyStore
+}
+
 // InitializeChannel allocates the state provider and should be invoked once per channel per execution
-func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committer.Committer, store privdata2.TransientStore, endpoints []string) {
+func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string, support Support) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for chainID", chainID)
-	servicesAdapater := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
-	coordinator := privdata2.NewCoordinator(committer, store)
+	servicesAdapter := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
+	fetcher := privdata2.NewPuller(support.Ps, support.Pp, g.gossipSvc, NewDataRetriever(support.Store), chainID)
+	coordinator := privdata2.NewCoordinator(support.Committer, support.Store, fetcher)
 	g.coordinators[chainID] = coordinator
-	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapater, coordinator)
+	g.chains[chainID] = state.NewGossipStateProvider(chainID, servicesAdapter, coordinator)
 	if g.deliveryService[chainID] == nil {
 		var err error
-		g.deliveryService[chainID], err = g.deliveryFactory.Service(gossipServiceInstance, endpoints, g.mcs)
+		g.deliveryService[chainID], err = g.deliveryFactory.Service(g, endpoints, g.mcs)
 		if err != nil {
 			logger.Warningf("Cannot create delivery client, due to %+v", errors.WithStack(err))
 		}
@@ -213,10 +222,10 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 
 		if leaderElection {
 			logger.Debug("Delivery uses dynamic leader election mechanism, channel", chainID)
-			g.leaderElection[chainID] = g.newLeaderElectionComponent(chainID, g.onStatusChangeFactory(chainID, committer))
+			g.leaderElection[chainID] = g.newLeaderElectionComponent(chainID, g.onStatusChangeFactory(chainID, support.Committer))
 		} else if isStaticOrgLeader {
 			logger.Debug("This peer is configured to connect to ordering service for blocks delivery, channel", chainID)
-			g.deliveryService[chainID].StartDeliverForChannel(chainID, committer, func() {})
+			g.deliveryService[chainID].StartDeliverForChannel(chainID, support.Committer, func() {})
 		} else {
 			logger.Debug("This peer is not configured to connect to ordering service for blocks delivery, channel", chainID)
 		}
@@ -259,7 +268,7 @@ func (g *gossipServiceImpl) GetBlock(chainID string, index uint64) *common.Block
 }
 
 // AddPayload appends message payload to for given chain
-func (g *gossipServiceImpl) AddPayload(chainID string, payload *proto.Payload) error {
+func (g *gossipServiceImpl) AddPayload(chainID string, payload *gproto.Payload) error {
 	g.lock.RLock()
 	defer g.lock.RUnlock()
 	return g.chains[chainID].AddPayload(payload)
@@ -331,4 +340,46 @@ func orgListFromConfig(config Config) []string {
 		orgList = append(orgList, appOrg.MSPID())
 	}
 	return orgList
+}
+
+type dataRetriever struct {
+	store privdata2.TransientStore
+}
+
+func (dr *dataRetriever) CollectionRWSet(txID, collection, namespace string) []util.PrivateRWSet {
+	filter := map[string]ledger.PvtCollFilter{
+		namespace: map[string]bool{
+			collection: true,
+		},
+	}
+
+	it, err := dr.store.GetTxPvtRWSetByTxid(txID, filter)
+	if err != nil {
+		return nil
+	}
+	defer it.Close()
+	pRWsets := []util.PrivateRWSet{}
+	for {
+		res, err := it.Next()
+		if err != nil || res == nil {
+			return pRWsets
+		}
+		rws := res.PvtSimulationResults
+		// Iterate over all namespaces
+		for _, nsws := range rws.NsPvtRwset {
+			// and in each namespace- iterate over all collections
+			for _, col := range nsws.CollectionPvtRwset {
+				// This isn't the collection we're looking for
+				if col.CollectionName != collection {
+					continue
+				}
+				// Add the collection pRWset to the accumulated set
+				pRWsets = append(pRWsets, col.Rwset)
+			}
+		}
+	}
+}
+
+func NewDataRetriever(store privdata2.TransientStore) *dataRetriever {
+	return &dataRetriever{store: store}
 }

@@ -308,8 +308,9 @@ func (g *gossipServiceImpl) start() {
 
 		isConn := gMsg.GetGossipMessage().GetConn() != nil
 		isEmpty := gMsg.GetGossipMessage().GetEmpty() != nil
+		isPrivateData := gMsg.GetGossipMessage().IsPrivateDataMsg()
 
-		return !(isConn || isEmpty)
+		return !(isConn || isEmpty || isPrivateData)
 	}
 
 	incMsgs := g.comm.Accept(msgSelector)

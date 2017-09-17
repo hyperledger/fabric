@@ -84,7 +84,7 @@ func NewPuller(ps privdata.PolicyStore, pp privdata.PolicyParser, g gossip, data
 		if !bytes.Equal(msg.Channel, []byte(p.channel)) {
 			return false
 		}
-		return msg.GetPrivateReq() != nil || msg.GetPrivateRes() != nil
+		return msg.IsPrivateDataMsg()
 	}, true)
 	go p.listen()
 	return p
@@ -96,6 +96,11 @@ func (p *puller) listen() {
 		case <-p.stopChan:
 			return
 		case msg := <-p.msgChan:
+			if msg == nil {
+				// comm module stopped, hence this channel
+				// closed
+				return
+			}
 			if msg.GetGossipMessage().GetPrivateRes() != nil {
 				p.handleResponse(msg)
 			}
@@ -109,7 +114,9 @@ func (p *puller) listen() {
 func (p *puller) handleRequest(message proto.ReceivedMessage) {
 	logger.Debug("Got", message.GetGossipMessage(), "from", message.GetConnectionInfo().Endpoint)
 	message.Respond(&proto.GossipMessage{
-		Nonce: message.GetGossipMessage().Nonce,
+		Channel: []byte(p.channel),
+		Tag:     proto.GossipMessage_CHAN_ONLY,
+		Nonce:   message.GetGossipMessage().Nonce,
 		Content: &proto.GossipMessage_PrivateRes{
 			PrivateRes: &proto.RemotePvtDataResponse{
 				Elements: p.createResponse(message),
@@ -265,6 +272,7 @@ func (p *puller) scatterRequests(members []discovery.NetworkMember, peersDigestM
 	var subscriptions []util.Subscription
 	for peer, digests := range peersDigestMapping {
 		msg := &proto.GossipMessage{
+			Tag:     proto.GossipMessage_CHAN_ONLY,
 			Channel: []byte(p.channel),
 			Nonce:   util.RandomUInt64(),
 			Content: &proto.GossipMessage_PrivateReq{
