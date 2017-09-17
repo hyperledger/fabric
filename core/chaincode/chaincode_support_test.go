@@ -639,33 +639,53 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	return nil
 }
 
-func getArgsAndEnv(t *testing.T, auth accesscontrol.Authenticator) {
+func getLaunchConfigs(t *testing.T, auth accesscontrol.Authenticator) {
 	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info"}
 
 	//set the authenticator for generating TLS stuff
 	newCCSupport.auth = auth
 
 	ccContext := ccprovider.NewCCContext("dummyChannelId", "mycc", "v0", "dummyTxid", false, nil, nil)
-	args, envs, err := newCCSupport.getArgsAndEnv(ccContext, pb.ChaincodeSpec_NODE)
+	args, envs, filesToUpload, err := newCCSupport.getLaunchConfigs(ccContext, pb.ChaincodeSpec_GOLANG)
 	if err != nil {
-		t.Fatalf("calling getArgsAndEnv() failed with error %s", err)
+		t.Fatalf("calling getLaunchConfigs() failed with error %s", err)
 	}
 
-	if len(args) != 3 {
-		t.Fatalf("calling getArgsAndEnv() should have returned an array of 3 elements for Args, but got %v", args)
+	if len(args) != 2 {
+		t.Fatalf("calling getLaunchConfigs() for golang chaincode should have returned an array of 2 elements for Args, but got %v", args)
 	}
-
-	if args[0] != "/bin/sh" || args[1] != "-c" && !strings.HasPrefix(args[2], "cd /usr/local/src; node chaincode.js --peer.address") {
-		t.Fatalf("calling getArgsAndEnv() should have returned the start command for node.js chaincode, but got %v", args)
+	if args[0] != "chaincode" || !strings.HasPrefix(args[1], "-peer.address") {
+		t.Fatalf("calling getLaunchConfigs() should have returned the start command for golang chaincode, but got %v", args)
 	}
-
-	if len(envs) != 4 {
-		t.Fatalf("calling getArgsAndEnv() should have returned an array of 4 elements for Envs, but got %v", envs)
+	if len(envs) != 6 {
+		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 6 elements for Envs, but got %v", envs)
 	}
-
 	if envs[0] != "CORE_CHAINCODE_ID_NAME=mycc:v0" || envs[1] != "CORE_PEER_TLS_ENABLED=true" ||
+		envs[2] != "CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key" || envs[3] != "CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt" ||
+		envs[4] != "CORE_CHAINCODE_LOGGING_LEVEL=debug" || envs[5] != "CORE_CHAINCODE_LOGGING_SHIM=info" {
+		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned the proper environment variables, but got %v", envs)
+	}
+	if len(filesToUpload) != 2 {
+		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 2 elements for filesToUpload, but got %v", len(filesToUpload))
+	}
+
+	args, envs, _, err = newCCSupport.getLaunchConfigs(ccContext, pb.ChaincodeSpec_NODE)
+	if len(args) != 3 {
+		t.Fatalf("calling getLaunchConfigs() for node chaincode should have returned an array of 3 elements for Args, but got %v", args)
+	}
+
+	if args[0] != "/bin/sh" || args[1] != "-c" || !strings.HasPrefix(args[2], "cd /usr/local/src; node chaincode.js --peer.address") {
+		t.Fatalf("calling getLaunchConfigs() should have returned the start command for node.js chaincode, but got %v", args)
+	}
+
+	newCCSupport.peerTLS = false
+	args, envs, _, err = newCCSupport.getLaunchConfigs(ccContext, pb.ChaincodeSpec_GOLANG)
+	if len(envs) != 4 {
+		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned an array of 4 elements for Envs, but got %v", envs)
+	}
+	if envs[0] != "CORE_CHAINCODE_ID_NAME=mycc:v0" || envs[1] != "CORE_PEER_TLS_ENABLED=false" ||
 		envs[2] != "CORE_CHAINCODE_LOGGING_LEVEL=debug" || envs[3] != "CORE_CHAINCODE_LOGGING_SHIM=info" {
-		t.Fatalf("calling getArgsAndEnv() should have returned the proper environment variables, but got %v", envs)
+		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned the proper environment variables, but got %v", envs)
 	}
 }
 
@@ -716,7 +736,7 @@ func TestCCFramework(t *testing.T) {
 	getHistory(t, chainID, ccname, ccSide)
 
 	//just use the previous authhandler for generating TLS key/pair
-	getArgsAndEnv(t, theChaincodeSupport.auth)
+	getLaunchConfigs(t, theChaincodeSupport.auth)
 
 	ccSide.Quit()
 }
