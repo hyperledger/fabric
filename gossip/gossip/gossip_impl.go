@@ -427,7 +427,7 @@ func (g *gossipServiceImpl) validateMsg(msg proto.ReceivedMessage) bool {
 
 	if msg.GetGossipMessage().IsStateInfoMsg() {
 		if err := g.validateStateInfoMsg(msg.GetGossipMessage()); err != nil {
-			g.logger.Warningf("StateInfo message %v is found invalid: %+v", msg, err)
+			g.logger.Warningf("StateInfo message %v is found invalid: %v", msg, err)
 			return false
 		}
 	}
