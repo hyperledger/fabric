@@ -47,7 +47,7 @@ type distributorImpl struct {
 }
 
 // NewDistributor a constructor for private data distributor capable to send
-// private read write sets for underlined collection
+// private read write sets for underlying collection
 func NewDistributor(chainID string, gossip gossipAdapter) PvtDataDistributor {
 	return &distributorImpl{
 		chainID:       chainID,
