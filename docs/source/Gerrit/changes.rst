@@ -42,17 +42,19 @@ commit file is illustrated below in detail:
 
 ::
 
-    A short description of your change with no period at the end
+    [FAB-XXXX] A short description of your change with no period at the end
 
     You can add more details here in several paragraphs, but please keep each line
     width less than 80 characters. A bug fix should include the issue number.
 
-    Fix Issue # 7050.
-
     Change-Id: IF7b6ac513b2eca5f2bab9728ebd8b7e504d3cebe1
     Signed-off-by: Your Name <commit-sender@email.address>
 
-Each commit must contain the following line at the bottom of the commit
+Include the issue ID in the one line description of your commit message for
+readability. Gerrit will link issue IDs automatically to the corresponding
+entry in Jira.
+
+Each commit must also contain the following line at the bottom of the commit
 message:
 
 ::
