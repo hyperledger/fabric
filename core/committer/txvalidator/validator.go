@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/errors"
+	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	coreUtil "github.com/hyperledger/fabric/common/util"
@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -43,7 +44,7 @@ type Support interface {
 	// Ledger returns the ledger associated with this validator
 	Ledger() ledger.PeerLedger
 
-	// MSPManager returns the MSP manager for this chain
+	// MSPManager returns the MSP manager for this channel
 	MSPManager() msp.MSPManager
 
 	// Apply attempts to apply a configtx to become the new config
@@ -95,7 +96,7 @@ var logger *logging.Logger // package-level logger
 
 func init() {
 	// Init logger with module name
-	logger = flogging.MustGetLogger("txvalidator")
+	logger = flogging.MustGetLogger("committer/txvalidator")
 }
 
 type blockValidationRequest struct {
@@ -281,7 +282,7 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 	}
 
 	if env, err := utils.GetEnvelopeFromBlock(d); err != nil {
-		logger.Warningf("Error getting tx from block(%s)", err)
+		logger.Warningf("Error getting tx from block: %+v", err)
 		results <- &blockValidationResult{
 			tIdx:           tIdx,
 			validationCode: peer.TxValidationCode_INVALID_OTHER_REASON,
@@ -321,10 +322,10 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 		}
 
 		channel := chdr.ChannelId
-		logger.Debugf("Transaction is for chain %s", channel)
+		logger.Debugf("Transaction is for channel %s", channel)
 
 		if !v.chainExists(channel) {
-			logger.Errorf("Dropping transaction for non-existent chain %s", channel)
+			logger.Errorf("Dropping transaction for non-existent channel %s", channel)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,
 				validationCode: peer.TxValidationCode_TARGET_CHAIN_NOT_FOUND,
@@ -350,13 +351,13 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 			if err != nil {
 				logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
 				switch err.(type) {
-				case *errors.VSCCExecutionFailureError:
+				case *commonerrors.VSCCExecutionFailureError:
 					results <- &blockValidationResult{
 						tIdx: tIdx,
 						err:  err,
 					}
 					return
-				case *errors.VSCCInfoLookupFailureError:
+				case *commonerrors.VSCCInfoLookupFailureError:
 					results <- &blockValidationResult{
 						tIdx: tIdx,
 						err:  err,
@@ -373,7 +374,7 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 
 			invokeCC, upgradeCC, err := v.getTxCCInstance(payload)
 			if err != nil {
-				logger.Errorf("Get chaincode instance from transaction txId = %s returned error %s", txID, err)
+				logger.Errorf("Get chaincode instance from transaction txId = %s returned error: %+v", txID, err)
 				results <- &blockValidationResult{
 					tIdx:           tIdx,
 					validationCode: peer.TxValidationCode_INVALID_OTHER_REASON,
@@ -382,14 +383,14 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 			}
 			txsChaincodeName = invokeCC
 			if upgradeCC != nil {
-				logger.Infof("Find chaincode upgrade transaction for chaincode %s on chain %s with new version %s", upgradeCC.ChaincodeName, upgradeCC.ChainID, upgradeCC.ChaincodeVersion)
+				logger.Infof("Find chaincode upgrade transaction for chaincode %s on channel %s with new version %s", upgradeCC.ChaincodeName, upgradeCC.ChainID, upgradeCC.ChaincodeVersion)
 				txsUpgradedChaincode = upgradeCC
 			}
 		} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
 			configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 			if err != nil {
-				err := fmt.Errorf("Error unmarshaling config which passed initial validity checks: %s", err)
-				logger.Critical(err)
+				err = errors.WithMessage(err, "error unmarshalling config which passed initial validity checks")
+				logger.Criticalf("%+v", err)
 				results <- &blockValidationResult{
 					tIdx: tIdx,
 					err:  err,
@@ -398,8 +399,8 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 			}
 
 			if err := v.support.Apply(configEnvelope); err != nil {
-				err := fmt.Errorf("Error validating config which passed initial validity checks: %s", err)
-				logger.Critical(err)
+				err = errors.WithMessage(err, "error validating config which passed initial validity checks")
+				logger.Criticalf("%+v", err)
 				results <- &blockValidationResult{
 					tIdx: tIdx,
 					err:  err,
@@ -428,7 +429,7 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 		}
 
 		if _, err := proto.Marshal(env); err != nil {
-			logger.Warningf("Cannot marshal transaction due to %s", err)
+			logger.Warningf("Cannot marshal transaction: %s", err)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,
 				validationCode: peer.TxValidationCode_MARSHAL_TX_ERROR,
@@ -454,7 +455,7 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 	}
 }
 
-// generateCCKey generates a unique identifier for chaincode in specific chain
+// generateCCKey generates a unique identifier for chaincode in specific channel
 func (v *txValidator) generateCCKey(ccName, chainID string) string {
 	return fmt.Sprintf("%s/%s", ccName, chainID)
 }
@@ -528,21 +529,21 @@ func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 	// Transaction
 	tx, err := utils.GetTransaction(payload.Data)
 	if err != nil {
-		logger.Errorf("GetTransaction failed: %s", err)
+		logger.Errorf("GetTransaction failed: %+v", err)
 		return invokeIns, nil, nil
 	}
 
 	// ChaincodeActionPayload
 	cap, err := utils.GetChaincodeActionPayload(tx.Actions[0].Payload)
 	if err != nil {
-		logger.Errorf("GetChaincodeActionPayload failed: %s", err)
+		logger.Errorf("GetChaincodeActionPayload failed: %+v", err)
 		return invokeIns, nil, nil
 	}
 
 	// ChaincodeProposalPayload
 	cpp, err := utils.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
 	if err != nil {
-		logger.Errorf("GetChaincodeProposalPayload failed: %s", err)
+		logger.Errorf("GetChaincodeProposalPayload failed: %+v", err)
 		return invokeIns, nil, nil
 	}
 
@@ -550,7 +551,7 @@ func (v *txValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 	cis := &peer.ChaincodeInvocationSpec{}
 	err = proto.Unmarshal(cpp.Input, cis)
 	if err != nil {
-		logger.Errorf("GetChaincodeInvokeSpec failed: %s", err)
+		logger.Errorf("GetChaincodeInvokeSpec failed: %+v", err)
 		return invokeIns, nil, nil
 	}
 
@@ -670,11 +671,11 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	writesToNonInvokableSCC := false
 	respPayload, err := utils.GetActionFromEnvelope(envBytes)
 	if err != nil {
-		return fmt.Errorf("GetActionFromEnvelope failed, error %s", err), peer.TxValidationCode_BAD_RESPONSE_PAYLOAD
+		return errors.WithMessage(err, "GetActionFromEnvelope failed"), peer.TxValidationCode_BAD_RESPONSE_PAYLOAD
 	}
 	txRWSet := &rwsetutil.TxRwSet{}
 	if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
-		return fmt.Errorf("txRWSet.FromProtoBytes failed, error %s", err), peer.TxValidationCode_BAD_RWSET
+		return errors.WithMessage(err, "txRWSet.FromProtoBytes failed"), peer.TxValidationCode_BAD_RWSET
 	}
 	for _, ns := range txRWSet.NsRwSets {
 		if v.txWritesToNamespace(ns) {
@@ -700,19 +701,19 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 
 	// sanity check on ccID
 	if ccID == "" {
-		err := fmt.Errorf("invalid chaincode ID")
-		logger.Errorf("%s", err)
+		err = errors.New("invalid chaincode ID")
+		logger.Errorf("%+v", err)
 		return err, peer.TxValidationCode_INVALID_OTHER_REASON
 	}
 	if ccID != respPayload.ChaincodeId.Name {
-		err := fmt.Errorf("inconsistent ccid info (%s/%s)", ccID, respPayload.ChaincodeId.Name)
-		logger.Errorf("%s", err)
+		err = errors.Errorf("inconsistent ccid info (%s/%s)", ccID, respPayload.ChaincodeId.Name)
+		logger.Errorf("%+v", err)
 		return err, peer.TxValidationCode_INVALID_OTHER_REASON
 	}
 	// sanity check on ccver
 	if ccVer == "" {
-		err := fmt.Errorf("invalid chaincode version")
-		logger.Errorf("%s", err)
+		err = errors.New("invalid chaincode version")
+		logger.Errorf("%+v", err)
 		return err, peer.TxValidationCode_INVALID_OTHER_REASON
 	}
 
@@ -729,7 +730,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		//    only two functions of LSCC write to its namespace: deploy and upgrade and
 		//    neither should be used by an application chaincode
 		if writesToLSCC {
-			return fmt.Errorf("Chaincode %s attempted to write to the namespace of LSCC", ccID),
+			return errors.Errorf("chaincode %s attempted to write to the namespace of LSCC", ccID),
 				peer.TxValidationCode_ILLEGAL_WRITESET
 		}
 		// 2) we don't write to the namespace of a chaincode that we cannot invoke - if
@@ -740,7 +741,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		//    any endorsement policies to speak of. So if the chaincode can't be invoked
 		//    it can't be written to by an invocation of an application chaincode
 		if writesToNonInvokableSCC {
-			return fmt.Errorf("Chaincode %s attempted to write to the namespace of a system chaincode that cannot be invoked", ccID),
+			return errors.Errorf("chaincode %s attempted to write to the namespace of a system chaincode that cannot be invoked", ccID),
 				peer.TxValidationCode_ILLEGAL_WRITESET
 		}
 
@@ -749,7 +750,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 			// Get latest chaincode version, vscc and validate policy
 			txcc, vscc, policy, err := v.GetInfoForValidate(chdr.TxId, chdr.ChannelId, ns)
 			if err != nil {
-				logger.Errorf("GetInfoForValidate for txId = %s returned error %s", chdr.TxId, err)
+				logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
 				return err, peer.TxValidationCode_INVALID_OTHER_REASON
 			}
 
@@ -757,15 +758,15 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 			// invoked, we check that the version of the cc that was
 			// invoked corresponds to the version that lscc has returned
 			if ns == ccID && txcc.ChaincodeVersion != ccVer {
-				err := fmt.Errorf("Chaincode %s:%s/%s didn't match %s:%s/%s in lscc", ccID, ccVer, chdr.ChannelId, txcc.ChaincodeName, txcc.ChaincodeVersion, chdr.ChannelId)
-				logger.Errorf(err.Error())
+				err = errors.Errorf("chaincode %s:%s/%s didn't match %s:%s/%s in lscc", ccID, ccVer, chdr.ChannelId, txcc.ChaincodeName, txcc.ChaincodeVersion, chdr.ChannelId)
+				logger.Errorf("%+v", err)
 				return err, peer.TxValidationCode_EXPIRED_CHAINCODE
 			}
 
 			// do VSCC validation
 			if err = v.VSCCValidateTxForCC(envBytes, chdr.TxId, chdr.ChannelId, vscc.ChaincodeName, vscc.ChaincodeVersion, policy); err != nil {
 				switch err.(type) {
-				case *errors.VSCCEndorsementPolicyError:
+				case *commonerrors.VSCCEndorsementPolicyError:
 					return err, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE
 				default:
 					return err, peer.TxValidationCode_INVALID_OTHER_REASON
@@ -778,14 +779,14 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		// transaction; if we didn't, we wouldn't know how to decide whether it's
 		// valid or not because in v1, system chaincodes have no endorsement policy
 		if v.sccprovider.IsSysCCAndNotInvokableExternal(ccID) {
-			return fmt.Errorf("Committing an invocation of cc %s is illegal", ccID),
+			return errors.Errorf("committing an invocation of cc %s is illegal", ccID),
 				peer.TxValidationCode_ILLEGAL_WRITESET
 		}
 
 		// Get latest chaincode version, vscc and validate policy
 		_, vscc, policy, err := v.GetInfoForValidate(chdr.TxId, chdr.ChannelId, ccID)
 		if err != nil {
-			logger.Errorf("GetInfoForValidate for txId = %s returned error %s", chdr.TxId, err)
+			logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
 			return err, peer.TxValidationCode_INVALID_OTHER_REASON
 		}
 
@@ -796,7 +797,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		// they have to modify VSCC to provide appropriate validation
 		if err = v.VSCCValidateTxForCC(envBytes, chdr.TxId, vscc.ChainID, vscc.ChaincodeName, vscc.ChaincodeVersion, policy); err != nil {
 			switch err.(type) {
-			case *errors.VSCCEndorsementPolicyError:
+			case *commonerrors.VSCCEndorsementPolicyError:
 				return err, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE
 			default:
 				return err, peer.TxValidationCode_INVALID_OTHER_REASON
@@ -812,9 +813,9 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 	defer logger.Debugf("VSCCValidateTxForCC completes for envbytes %p", envBytes)
 	ctxt, txsim, err := v.ccprovider.GetContext(v.support.Ledger(), txid)
 	if err != nil {
-		msg := fmt.Sprintf("Cannot obtain context for txid=%s, err %s", txid, err)
+		msg := fmt.Sprintf("Cannot obtain context for txid=%s, err: %s", txid, err)
 		logger.Errorf(msg)
-		return &errors.VSCCExecutionFailureError{msg}
+		return &commonerrors.VSCCExecutionFailureError{msg}
 	}
 	defer txsim.Done()
 
@@ -832,13 +833,13 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 	logger.Debug("Invoking VSCC txid", txid, "chaindID", chid)
 	res, _, err := v.ccprovider.ExecuteChaincode(ctxt, cccid, args)
 	if err != nil {
-		msg := fmt.Sprintf("Invoke VSCC failed for transaction txid=%s, error %s", txid, err)
+		msg := fmt.Sprintf("Invoke VSCC failed for transaction txid=%s, error: %s", txid, err)
 		logger.Errorf(msg)
-		return &errors.VSCCExecutionFailureError{msg}
+		return &commonerrors.VSCCExecutionFailureError{msg}
 	}
 	if res.Status != shim.OK {
 		logger.Errorf("VSCC check failed for transaction txid=%s, error %s", txid, res.Message)
-		return &errors.VSCCEndorsementPolicyError{fmt.Sprintf("%s", res.Message)}
+		return &commonerrors.VSCCEndorsementPolicyError{fmt.Sprintf("%s", res.Message)}
 	}
 
 	return nil
@@ -847,36 +848,36 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 func (v *vsccValidatorImpl) getCDataForCC(chid, ccid string) (resourcesconfig.ChaincodeDefinition, error) {
 	l := v.support.Ledger()
 	if l == nil {
-		return nil, fmt.Errorf("nil ledger instance")
+		return nil, errors.New("nil ledger instance")
 	}
 
 	qe, err := l.NewQueryExecutor()
 	if err != nil {
-		return nil, fmt.Errorf("Could not retrieve QueryExecutor, error %s", err)
+		return nil, errors.WithMessage(err, "could not retrieve QueryExecutor")
 	}
 	defer qe.Done()
 
 	bytes, err := qe.GetState("lscc", ccid)
 	if err != nil {
-		return nil, &errors.VSCCInfoLookupFailureError{fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, err)}
+		return nil, &commonerrors.VSCCInfoLookupFailureError{fmt.Sprintf("Could not retrieve state for chaincode %s, error %s", ccid, err)}
 	}
 
 	if bytes == nil {
-		return nil, fmt.Errorf("lscc's state for [%s] not found.", ccid)
+		return nil, errors.Errorf("lscc's state for [%s] not found.", ccid)
 	}
 
 	cd := &ccprovider.ChaincodeData{}
 	err = proto.Unmarshal(bytes, cd)
 	if err != nil {
-		return nil, fmt.Errorf("Unmarshalling ChaincodeQueryResponse failed, error %s", err)
+		return nil, errors.Wrap(err, "unmarshalling ChaincodeQueryResponse failed")
 	}
 
 	if cd.Vscc == "" {
-		return nil, fmt.Errorf("lscc's state for [%s] is invalid, vscc field must be set.", ccid)
+		return nil, errors.Errorf("lscc's state for [%s] is invalid, vscc field must be set", ccid)
 	}
 
 	if len(cd.Policy) == 0 {
-		return nil, fmt.Errorf("lscc's state for [%s] is invalid, policy field must be set.", ccid)
+		return nil, errors.Errorf("lscc's state for [%s] is invalid, policy field must be set", ccid)
 	}
 
 	return cd, err
