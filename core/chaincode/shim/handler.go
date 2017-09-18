@@ -213,13 +213,13 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 			handler.triggerNextState(nextStateMsg, send)
 		}()
 
-		errFunc := func(err error, payload []byte, ce *pb.ChaincodeEvent, errFmt string, args ...string) *pb.ChaincodeMessage {
+		errFunc := func(err error, payload []byte, ce *pb.ChaincodeEvent, errFmt string, args ...interface{}) *pb.ChaincodeMessage {
 			if err != nil {
 				// Send ERROR message to chaincode support and change state
 				if payload == nil {
 					payload = []byte(err.Error())
 				}
-				chaincodeLogger.Errorf(errFmt, args)
+				chaincodeLogger.Errorf(errFmt, args...)
 				return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChaincodeEvent: ce}
 			}
 			return nil
@@ -290,10 +290,10 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 			handler.triggerNextState(nextStateMsg, send)
 		}()
 
-		errFunc := func(err error, ce *pb.ChaincodeEvent, errStr string, args ...string) *pb.ChaincodeMessage {
+		errFunc := func(err error, ce *pb.ChaincodeEvent, errStr string, args ...interface{}) *pb.ChaincodeMessage {
 			if err != nil {
 				payload := []byte(err.Error())
-				chaincodeLogger.Errorf(errStr, args)
+				chaincodeLogger.Errorf(errStr, args...)
 				return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChaincodeEvent: ce}
 			}
 			return nil
