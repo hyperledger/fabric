@@ -15,16 +15,17 @@ import (
 )
 
 // New creates a Kafka-based consenter. Called by orderer's main.go.
-func New(tlsConfig localconfig.TLS, retryOptions localconfig.Retry, kafkaVersion sarama.KafkaVersion, verbose bool) consensus.Consenter {
-	if verbose {
+func New(config localconfig.Kafka) consensus.Consenter {
+	if config.Verbose {
 		logging.SetLevel(logging.DEBUG, saramaLogID)
 	}
-	brokerConfig := newBrokerConfig(tlsConfig, retryOptions, kafkaVersion, defaultPartition)
+	brokerConfig := newBrokerConfig(config.TLS, config.Retry, config.Version, defaultPartition)
 	return &consenterImpl{
 		brokerConfigVal: brokerConfig,
-		tlsConfigVal:    tlsConfig,
-		retryOptionsVal: retryOptions,
-		kafkaVersionVal: kafkaVersion}
+		tlsConfigVal:    config.TLS,
+		retryOptionsVal: config.Retry,
+		kafkaVersionVal: config.Version,
+	}
 }
 
 // consenterImpl holds the implementation of type that satisfies the

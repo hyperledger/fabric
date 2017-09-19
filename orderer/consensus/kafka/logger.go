@@ -8,6 +8,8 @@ package kafka
 
 import (
 	"fmt"
+	"strings"
+	"sync"
 
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -21,6 +23,8 @@ const (
 
 var logger *logging.Logger
 
+var saramaLogger eventLogger
+
 // init initializes the package logger
 func init() {
 	logger = flogging.MustGetLogger(pkgLogID)
@@ -30,13 +34,28 @@ func init() {
 func init() {
 	loggingProvider := flogging.MustGetLogger(saramaLogID)
 	loggingProvider.ExtraCalldepth = 3
-	sarama.Logger = &saramaLoggerImpl{
+	saramaEventLogger := &saramaLoggerImpl{
 		logger: loggingProvider,
+		eventListenerSupport: &eventListenerSupport{
+			listeners: make(map[string][]chan string),
+		},
 	}
+	sarama.Logger = saramaEventLogger
+	saramaLogger = saramaEventLogger
+}
+
+// eventLogger adapts a go-logging Logger to the sarama.Logger interface.
+// Additionally, listeners can be registered to be notified when a substring has
+// been logged.
+type eventLogger interface {
+	sarama.StdLogger
+	NewListener(substr string) <-chan string
+	RemoveListener(substr string, listener <-chan string)
 }
 
 type saramaLoggerImpl struct {
-	logger *logging.Logger
+	logger               *logging.Logger
+	eventListenerSupport *eventListenerSupport
 }
 
 func (l saramaLoggerImpl) Print(args ...interface{}) {
@@ -52,5 +71,66 @@ func (l saramaLoggerImpl) Println(args ...interface{}) {
 }
 
 func (l saramaLoggerImpl) print(message string) {
+	l.eventListenerSupport.fire(message)
 	l.logger.Debug(message)
+}
+
+// this should be more than enough for a well behaved listener
+const listenerChanSize = 100
+
+func (l saramaLoggerImpl) NewListener(substr string) <-chan string {
+	listener := make(chan string, listenerChanSize)
+	l.eventListenerSupport.addListener(substr, listener)
+	return listener
+}
+
+func (l saramaLoggerImpl) RemoveListener(substr string, listener <-chan string) {
+	l.eventListenerSupport.removeListener(substr, listener)
+}
+
+// eventListenerSupport maintains a map of substrings to a list of listeners
+// interested in receiving a notification when the substring is logged.
+type eventListenerSupport struct {
+	sync.Mutex
+	listeners map[string][]chan string
+}
+
+// addListener adds a listener to the list of listeners for the specified substring
+func (b *eventListenerSupport) addListener(substr string, listener chan string) {
+	b.Lock()
+	defer b.Unlock()
+	if listeners, ok := b.listeners[substr]; ok {
+		b.listeners[substr] = append(listeners, listener)
+	} else {
+		b.listeners[substr] = []chan string{listener}
+	}
+}
+
+// fire sends the specified message to each listener that is registered with
+// a substring contained in the message
+func (b *eventListenerSupport) fire(message string) {
+	b.Lock()
+	defer b.Unlock()
+	for substr, listeners := range b.listeners {
+		if strings.Contains(message, substr) {
+			for _, listener := range listeners {
+				listener <- message
+			}
+		}
+	}
+}
+
+// addListener removes a listener from the list of listeners for the specified substring
+func (b *eventListenerSupport) removeListener(substr string, listener <-chan string) {
+	b.Lock()
+	defer b.Unlock()
+	if listeners, ok := b.listeners[substr]; ok {
+		for i, l := range listeners {
+			if l == listener {
+				copy(listeners[i:], listeners[i+1:])
+				listeners[len(listeners)-1] = nil
+				b.listeners[substr] = listeners[:len(listeners)-1]
+			}
+		}
+	}
 }

@@ -13,7 +13,9 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/Shopify/sarama/mocks"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
+	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
@@ -21,6 +23,7 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var (
@@ -2323,4 +2326,414 @@ func newMockOrdererTxEnvelope() *cb.Envelope {
 			&cb.ChannelHeader{Type: int32(cb.HeaderType_ORDERER_TRANSACTION), ChannelId: "foo"})},
 		Data: utils.MarshalOrPanic(newMockConfigEnvelope()),
 	})}
+}
+
+func TestDeliverSession(t *testing.T) {
+
+	type testEnvironment struct {
+		channelID  string
+		topic      string
+		partition  int32
+		height     int64
+		nextOffset int64
+		support    *mockConsenterSupport
+		broker0    *sarama.MockBroker
+		broker1    *sarama.MockBroker
+		broker2    *sarama.MockBroker
+		testMsg    sarama.Encoder
+	}
+
+	// initializes test environment
+	newTestEnvironment := func(t *testing.T) *testEnvironment {
+
+		channelID := channelNameForTest(t)
+		topic := channelID
+		partition := int32(defaultPartition)
+		height := int64(100)
+		nextOffset := height + 1
+		broker0 := sarama.NewMockBroker(t, 0)
+		broker1 := sarama.NewMockBroker(t, 1)
+		broker2 := sarama.NewMockBroker(t, 2)
+
+		// broker0 will seed the info about the other brokers and the partition leader
+		broker0.SetHandlerByMap(map[string]sarama.MockResponse{
+			"MetadataRequest": sarama.NewMockMetadataResponse(t).
+				SetBroker(broker1.Addr(), broker1.BrokerID()).
+				SetBroker(broker2.Addr(), broker2.BrokerID()).
+				SetLeader(topic, partition, broker1.BrokerID()),
+		})
+
+		// configure broker1 with responses needed for startup
+		broker1.SetHandlerByMap(map[string]sarama.MockResponse{
+			// CONNECT ProduceRequest
+			"ProduceRequest": sarama.NewMockProduceResponse(t).
+				SetError(topic, partition, sarama.ErrNoError),
+			// respond to request for offset of topic
+			"OffsetRequest": sarama.NewMockOffsetResponse(t).
+				SetOffset(topic, partition, sarama.OffsetOldest, 0).
+				SetOffset(topic, partition, sarama.OffsetNewest, nextOffset),
+			// respond to fetch requests with empty response while starting up
+			"FetchRequest": sarama.NewMockFetchResponse(t, 1),
+		})
+
+		// configure broker2 with a default fetch request response
+		broker2.SetHandlerByMap(map[string]sarama.MockResponse{
+			// respond to fetch requests with empty response while starting up
+			"FetchRequest": sarama.NewMockFetchResponse(t, 1),
+		})
+
+		// setup mock blockcutter
+		blockcutter := &mockReceiver{}
+		blockcutter.On("Ordered", mock.Anything).Return([][]*cb.Envelope{{&cb.Envelope{}}}, false)
+
+		// setup mock chain support and mock method calls
+		support := &mockConsenterSupport{}
+		support.On("Height").Return(uint64(height))
+		support.On("ChainID").Return(topic)
+		support.On("Sequence").Return(uint64(0))
+		support.On("SharedConfig").Return(&mockconfig.Orderer{KafkaBrokersVal: []string{broker0.Addr()}})
+		support.On("ClassifyMsg", mock.Anything).Return(msgprocessor.NormalMsg, nil)
+		support.On("ProcessNormalMsg", mock.Anything).Return(uint64(0), nil)
+		support.On("BlockCutter").Return(blockcutter)
+		support.On("CreateNextBlock", mock.Anything).Return(&cb.Block{})
+
+		// test message that will be returned by mock brokers
+		testMsg := sarama.ByteEncoder(utils.MarshalOrPanic(
+			newRegularMessage(utils.MarshalOrPanic(&cb.Envelope{
+				Payload: utils.MarshalOrPanic(&cb.Payload{
+					Header: &cb.Header{
+						ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+							ChannelId: topic,
+						}),
+					},
+					Data: []byte("TEST_DATA"),
+				})})),
+		))
+
+		return &testEnvironment{
+			channelID:  channelID,
+			topic:      topic,
+			partition:  partition,
+			height:     height,
+			nextOffset: nextOffset,
+			support:    support,
+			broker0:    broker0,
+			broker1:    broker1,
+			broker2:    broker2,
+			testMsg:    testMsg,
+		}
+	}
+
+	// BrokerDeath simulates the partition leader dying and a
+	// second broker becoming the leader before the deliver session times out.
+	t.Run("BrokerDeath", func(t *testing.T) {
+
+		// initialize test environment
+		env := newTestEnvironment(t)
+
+		// broker1 will be closed within the test
+		defer env.broker0.Close()
+		defer env.broker2.Close()
+
+		// initialize consenter
+		consenter := New(mockLocalConfig.Kafka)
+
+		// initialize chain
+		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
+		chain, err := consenter.HandleChain(env.support, metadata)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// start the chain, and wait for it to settle down
+		chain.Start()
+		select {
+		case <-chain.(*chainImpl).startChan:
+			logger.Debug("chain started")
+		case <-time.After(shortTimeout):
+			t.Fatal("chain should have started by now")
+		}
+
+		// direct blocks to this channel
+		blocks := make(chan *cb.Block, 1)
+		env.support.On("WriteBlock", mock.Anything, mock.Anything).Return().Run(func(arg1 mock.Arguments) {
+			blocks <- arg1.Get(0).(*cb.Block)
+		})
+
+		// send a few messages from broker1
+		fetchResponse1 := sarama.NewMockFetchResponse(t, 1)
+		for i := 0; i < 5; i++ {
+			fetchResponse1.SetMessage(env.topic, env.partition, env.nextOffset, env.testMsg)
+			env.nextOffset++
+		}
+		env.broker1.SetHandlerByMap(map[string]sarama.MockResponse{
+			"FetchRequest": fetchResponse1,
+		})
+
+		logger.Debug("Waiting for messages from broker1")
+		for i := 0; i < 5; i++ {
+			select {
+			case <-blocks:
+			case <-time.After(shortTimeout):
+				t.Fatalf("timed out waiting for messages (receieved %d messages)", i)
+			}
+		}
+
+		// prepare broker2 to send a few messages
+		fetchResponse2 := sarama.NewMockFetchResponse(t, 1)
+		for i := 0; i < 5; i++ {
+			fetchResponse2.SetMessage(env.topic, env.partition, env.nextOffset, env.testMsg)
+			env.nextOffset++
+		}
+
+		env.broker2.SetHandlerByMap(map[string]sarama.MockResponse{
+			"ProduceRequest": sarama.NewMockProduceResponse(t).
+				SetError(env.topic, env.partition, sarama.ErrNoError),
+			"FetchRequest": fetchResponse2,
+		})
+
+		// shutdown broker1
+		env.broker1.Close()
+
+		// prepare broker0 to respond that broker2 is now the leader
+		env.broker0.SetHandlerByMap(map[string]sarama.MockResponse{
+			"MetadataRequest": sarama.NewMockMetadataResponse(t).
+				SetLeader(env.topic, env.partition, env.broker2.BrokerID()),
+		})
+
+		logger.Debug("Waiting for messages from broker2")
+		for i := 0; i < 5; i++ {
+			select {
+			case <-blocks:
+			case <-time.After(shortTimeout):
+				t.Fatalf("timed out waiting for messages (receieved %d messages)", i)
+			}
+		}
+
+		chain.Halt()
+	})
+
+	// An ErrOffsetOutOfRange is non-recoverable
+	t.Run("ErrOffsetOutOfRange", func(t *testing.T) {
+
+		// initialize test environment
+		env := newTestEnvironment(t)
+
+		// broker cleanup
+		defer env.broker2.Close()
+		defer env.broker1.Close()
+		defer env.broker0.Close()
+
+		// initialize consenter
+		consenter := New(mockLocalConfig.Kafka)
+
+		// initialize chain
+		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
+		chain, err := consenter.HandleChain(env.support, metadata)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// start the chain, and wait for it to settle down
+		chain.Start()
+		select {
+		case <-chain.(*chainImpl).startChan:
+			logger.Debug("chain started")
+		case <-time.After(shortTimeout):
+			t.Fatal("chain should have started by now")
+		}
+
+		// direct blocks to this channel
+		blocks := make(chan *cb.Block, 1)
+		env.support.On("WriteBlock", mock.Anything, mock.Anything).Return().Run(func(arg1 mock.Arguments) {
+			blocks <- arg1.Get(0).(*cb.Block)
+		})
+
+		// set broker1 to respond to two fetch requests:
+		// - The first fetch request will get an ErrOffsetOutOfRange error response.
+		// - The second fetch request will get a valid (i.e. non-error) response.
+		fetchResponse := &sarama.FetchResponse{}
+		fetchResponse.AddError(env.topic, env.partition, sarama.ErrOffsetOutOfRange)
+		fetchResponse.AddMessage(env.topic, env.partition, nil, env.testMsg, env.nextOffset)
+		env.nextOffset++
+		env.broker1.SetHandlerByMap(map[string]sarama.MockResponse{
+			"FetchRequest": sarama.NewMockWrapper(fetchResponse),
+			// answers for CONNECT message
+			"ProduceRequest": sarama.NewMockProduceResponse(t).
+				SetError(env.topic, env.partition, sarama.ErrNoError),
+		})
+
+		select {
+		case <-blocks:
+			// the valid fetch response should not of been fetched
+			t.Fatal("Did not expect new blocks")
+		case <-time.After(shortTimeout):
+			t.Fatal("Errored() should have closed by now")
+		case <-chain.Errored():
+		}
+
+		chain.Halt()
+	})
+
+	// test chain timeout
+	t.Run("DeliverSessionTimedOut", func(t *testing.T) {
+
+		// initialize test environment
+		env := newTestEnvironment(t)
+
+		// broker cleanup
+		defer env.broker2.Close()
+		defer env.broker1.Close()
+		defer env.broker0.Close()
+
+		// initialize consenter
+		consenter := New(mockLocalConfig.Kafka)
+
+		// initialize chain
+		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
+		chain, err := consenter.HandleChain(env.support, metadata)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// start the chain, and wait for it to settle down
+		chain.Start()
+		select {
+		case <-chain.(*chainImpl).startChan:
+			logger.Debug("chain started")
+		case <-time.After(shortTimeout):
+			t.Fatal("chain should have started by now")
+		}
+
+		// direct blocks to this channel
+		blocks := make(chan *cb.Block, 1)
+		env.support.On("WriteBlock", mock.Anything, mock.Anything).Return().Run(func(arg1 mock.Arguments) {
+			blocks <- arg1.Get(0).(*cb.Block)
+		})
+
+		metadataResponse := new(sarama.MetadataResponse)
+		metadataResponse.AddTopicPartition(env.topic, env.partition, -1, []int32{}, []int32{}, sarama.ErrBrokerNotAvailable)
+
+		// configure seed broker to return error on metadata request, otherwise the
+		// consumer client will keep 'subscribing' successfully to the topic/partition
+		env.broker0.SetHandlerByMap(map[string]sarama.MockResponse{
+			"MetadataRequest": sarama.NewMockWrapper(metadataResponse),
+		})
+
+		// set broker1 to return an error.
+		// Note that the following are not considered errors from the sarama client
+		// consumer's point of view:
+		// - ErrUnknownTopicOrPartition
+		// - ErrNotLeaderForPartition
+		// - ErrLeaderNotAvailable
+		// - ErrReplicaNotAvailable:
+		fetchResponse := &sarama.FetchResponse{}
+		fetchResponse.AddError(env.topic, env.partition, sarama.ErrUnknown)
+		env.broker1.SetHandlerByMap(map[string]sarama.MockResponse{
+			"FetchRequest": sarama.NewMockWrapper(fetchResponse),
+			// answers for CONNECT message
+			"ProduceRequest": sarama.NewMockProduceResponse(t).
+				SetError(env.topic, env.partition, sarama.ErrNoError),
+		})
+
+		select {
+		case <-blocks:
+			t.Fatal("Did not expect new blocks")
+		case <-time.After(mockRetryOptions.NetworkTimeouts.ReadTimeout + shortTimeout):
+			t.Fatal("Errored() should have closed by now")
+		case <-chain.Errored():
+			t.Log("Errored() closed")
+		}
+
+		chain.Halt()
+	})
+
+}
+
+type mockReceiver struct {
+	mock.Mock
+}
+
+func (r *mockReceiver) Ordered(msg *cb.Envelope) (messageBatches [][]*cb.Envelope, pending bool) {
+	args := r.Called(msg)
+	return args.Get(0).([][]*cb.Envelope), args.Bool(1)
+}
+
+func (r *mockReceiver) Cut() []*cb.Envelope {
+	args := r.Called()
+	return args.Get(0).([]*cb.Envelope)
+}
+
+type mockConsenterSupport struct {
+	mock.Mock
+}
+
+func (c *mockConsenterSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
+	args := c.Called()
+	return args.Get(0).(*cb.SignatureHeader), args.Error(1)
+}
+
+func (c *mockConsenterSupport) Sign(message []byte) ([]byte, error) {
+	args := c.Called(message)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (c *mockConsenterSupport) ClassifyMsg(chdr *cb.ChannelHeader) msgprocessor.Classification {
+	args := c.Called(chdr)
+	return args.Get(0).(msgprocessor.Classification)
+}
+
+func (c *mockConsenterSupport) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, err error) {
+	args := c.Called(env)
+	return args.Get(0).(uint64), args.Error(1)
+}
+
+func (c *mockConsenterSupport) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
+	args := c.Called(env)
+	return args.Get(0).(*cb.Envelope), args.Get(1).(uint64), args.Error(2)
+}
+
+func (c *mockConsenterSupport) ProcessConfigMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
+	args := c.Called(env)
+	return args.Get(0).(*cb.Envelope), args.Get(1).(uint64), args.Error(2)
+}
+
+func (c *mockConsenterSupport) BlockCutter() blockcutter.Receiver {
+	args := c.Called()
+	return args.Get(0).(blockcutter.Receiver)
+}
+
+func (c *mockConsenterSupport) SharedConfig() channelconfig.Orderer {
+	args := c.Called()
+	return args.Get(0).(channelconfig.Orderer)
+}
+
+func (c *mockConsenterSupport) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
+	args := c.Called(messages)
+	return args.Get(0).(*cb.Block)
+}
+
+func (c *mockConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []byte) {
+	c.Called(block, encodedMetadataValue)
+	return
+}
+
+func (c *mockConsenterSupport) WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) {
+	c.Called(block, encodedMetadataValue)
+	return
+}
+
+func (c *mockConsenterSupport) Sequence() uint64 {
+	args := c.Called()
+	return args.Get(0).(uint64)
+}
+
+func (c *mockConsenterSupport) ChainID() string {
+	args := c.Called()
+	return args.String(0)
+}
+
+func (c *mockConsenterSupport) Height() uint64 {
+	args := c.Called()
+	return args.Get(0).(uint64)
 }
