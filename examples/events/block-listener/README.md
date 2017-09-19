@@ -1,7 +1,6 @@
 # What is block-listener
 block-listener.go connects to a peer in order to receive block and chaincode
-events (if there are chaincode events being sent). Currently, this example only
-works with TLS disabled in the environment.
+events (if there are chaincode events being sent).
 
 # To Run
 ```sh
@@ -13,10 +12,17 @@ Please note that the default MSP under fabric/sampleconfig will be used if no
 MSP parameters are provided.
 
 # Example with the e2e_cli example
-In order to use the block listener with the e2e_cli example, make sure that TLS
-has been disabled by setting CORE_PEER_TLS_ENABLED=***false*** in
-``docker-compose-cli.yaml``, ``base/docker-compose-base.yaml`` and
-``base/peer-base.yaml``.
+The block listener can be used with TLS enabled or disabled. By default,
+the e2e_cli example will have TLS enabled. In order to allow the
+block-listener sample to connect to peers on e2e_cli example with a TLS
+enabled, the easiest way would be to map 127.0.0.1 to the hostname of peer
+that you are connecting to, such as peer0.org1.example.com. For example on
+\*nix based systems this would be an entry in /etc/hosts file.
+
+If you would prefer to disable TLS, you may do so by setting
+CORE_PEER_TLS_ENABLED=***false*** in ``docker-compose-cli.yaml`` and
+``base/peer-base.yaml`` as well as
+ORDERER_GENERAL_TLS_ENABLED=***false*** in``base/docker-compose-base.yaml``.
 
 Next, run the [e2e_cli example](https://github.com/hyperledger/fabric/tree/master/examples/e2e_cli).
 
@@ -25,30 +31,48 @@ Once the "All in one" command:
 ./network_setup.sh up
 ```
 has completed, attach the event client to peer peer0.org1.example.com by doing
-the following (assuming you are running block-listener in the host environment):
+the following (assuming you are running block-listener in the host environment)
+if TLS is enabled:
 ```sh
-./block-listener -events-address=127.0.0.1:7053 -events-mspdir=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp -events-mspid=Org1MSP
+CORE_PEER_TLS_ENABLED=true CORE_PEER_TLS_ROOTCERT_FILE=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt ./block-listener -events-address=peer0.org1.example.com:7053 -events-mspdir=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp -events-mspid=Org1MSP
 ```
 
-The event client should output "Event Address: 127.0.0.1:7053" and wait for
-events.
+If TLS is disabled, you can simply run:
+```sh
+./block-listener -events-address=peer0.org1.example.com:7053 -events-mspdir=$GOPATH/src/github.com/hyperledger/fabric/examples/e2e_cli/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp -events-mspid=Org1MSP
+```
+
+The event client should output "Event Address: peer0.org1.example.com:7053"
+and wait for events.
 
 Exec into the cli container:
 
 ```sh
 docker exec -it cli bash
 ```
-Setup the environment variables for peer0.org1.example.com
+
+Next, setup the environment variables for peer0.org1.example.com.
+If TLS is enabled:
+```sh
+CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+CORE_PEER_LOCALMSPID="Org1MSP"
+ORDERER_CA=$GOPATH/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem
+```
+If TLS is disabled:
 ```sh
 CORE_PEER_MSPCONFIGPATH=$GOPATH/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 CORE_PEER_ADDRESS=peer0.org1.example.com:7051
 CORE_PEER_LOCALMSPID="Org1MSP"
 ```
 
-Create an invoke transaction:
-
+Create an invoke transaction. If TLS is enabled:
 ```sh
-peer chaincode invoke -o orderer.example.com:7050 -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}'
+peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C mychannel -n mycc -c '{"Args":["invoke","a","b","10"]}'
+```
+If TLS is disabled:
+```sh
+peer chaincode invoke -o orderer.example.com:7050 -C mychannel -n mycc -c '{"Args":["invoke","a","b","10"]}'
 ```
 Now you should see the block content displayed in the terminal running the block
 listener.
