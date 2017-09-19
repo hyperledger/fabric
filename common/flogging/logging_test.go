@@ -62,6 +62,8 @@ func TestSetModuleLevel(t *testing.T) {
 			[]string{"foo/bar", "bar/baz"}, false, false},
 		testCase{"RegexComplex", []string{"^[a-z]+\\/[a-z]+#.+$", "warning"}, []string{flogging.DefaultLevel(), flogging.DefaultLevel(), "WARNING", "WARNING", "WARNING"},
 			[]string{"gossip/util", "orderer/util", "gossip/gossip#0.0.0.0:7051", "gossip/conn#-1", "orderer/conn#0.0.0.0:7051"}, false, false},
+		testCase{"RegexPrefix", []string{"^test", "warning"}, []string{"WARNING", "WARNING", flogging.DefaultLevel()},
+			[]string{"test", "test/peer", "peer/test"}, false, false},
 		testCase{"RegexInvalid", []string{"(", "warning"}, []string{flogging.DefaultLevel()},
 			[]string{"foo"}, false, true},
 		testCase{"RevertLevels", []string{"revertmodule1", "warning", "revertmodule2", "debug"}, []string{"WARNING", "DEBUG", "DEBUG"},
