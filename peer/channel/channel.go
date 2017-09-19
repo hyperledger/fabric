@@ -34,8 +34,8 @@ import (
 
 const (
 	channelFuncName = "channel"
-	shortDes        = "Operate a channel: create|fetch|join|list|update."
-	longDes         = "Operate a channel: create|fetch|join|list|update."
+	shortDes        = "Operate a channel: create|fetch|join|list|update|signconfigtx|getinfo."
+	longDes         = "Operate a channel: create|fetch|join|list|update|signconfigtx|getinfo."
 )
 
 var logger = flogging.MustGetLogger("channelCmd")
@@ -74,6 +74,7 @@ func Cmd(cf *ChannelCmdFactory) *cobra.Command {
 	channelCmd.AddCommand(listCmd(cf))
 	channelCmd.AddCommand(updateCmd(cf))
 	channelCmd.AddCommand(signconfigtxCmd(cf))
+	channelCmd.AddCommand(getinfoCmd(cf))
 
 	return channelCmd
 }
