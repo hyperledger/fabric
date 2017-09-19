@@ -136,8 +136,6 @@ type GossipStateProviderImpl struct {
 
 	commChan <-chan proto.ReceivedMessage
 
-	pvtDataChan <-chan proto.ReceivedMessage
-
 	// Queue of payloads which wasn't acquired yet
 	payloads PayloadsBuffer
 
@@ -177,13 +175,13 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 	remoteStateMsgFilter := func(message interface{}) bool {
 		receivedMsg := message.(proto.ReceivedMessage)
 		msg := receivedMsg.GetGossipMessage()
-		if !msg.IsRemoteStateMessage() {
+		if !(msg.IsRemoteStateMessage() || msg.GetPrivateData() != nil) {
 			return false
 		}
 		connInfo := receivedMsg.GetConnectionInfo()
 		authErr := services.VerifyByChannel(msg.Channel, connInfo.Identity, connInfo.Auth.Signature, connInfo.Auth.SignedData)
 		if authErr != nil {
-			logger.Warning("Got unauthorized nodeMetastate transfer request from", string(connInfo.Identity))
+			logger.Warning("Got unauthorized request from", string(connInfo.Identity))
 			return false
 		}
 		return true
@@ -191,23 +189,6 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 
 	// Filter message which are only relevant for nodeMetastate transfer
 	_, commChan := services.Accept(remoteStateMsgFilter, true)
-
-	// Filter private data messages
-	_, pvtDataChan := services.Accept(func(message interface{}) bool {
-		receivedMsg := message.(proto.ReceivedMessage)
-		msg := receivedMsg.GetGossipMessage()
-		if msg.GetPrivateData() == nil {
-			return false
-		}
-		connInfo := receivedMsg.GetConnectionInfo()
-		authErr := services.VerifyByChannel(msg.Channel, connInfo.Identity, connInfo.Auth.Signature, connInfo.Auth.SignedData)
-		if authErr != nil {
-			logger.Warning("Got unauthorized private data message from", string(connInfo.Identity))
-			return false
-		}
-		return true
-
-	}, true)
 
 	height, err := ledger.LedgerHeight()
 	if height == 0 {
@@ -235,9 +216,6 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 
 		// Channel to read direct messages from other peers
 		commChan: commChan,
-
-		// Channel for private data messages
-		pvtDataChan: pvtDataChan,
 
 		// Create a queue for payload received
 		payloads: NewPayloadsBuffer(height),
@@ -291,17 +269,27 @@ func (s *GossipStateProviderImpl) listen() {
 			logger.Debug("Received new message via gossip channel")
 			go s.queueNewMessage(msg)
 		case msg := <-s.commChan:
-			logger.Debug("Direct message ", msg)
-			go s.directMessage(msg)
-		case msg := <-s.pvtDataChan:
-			logger.Debug("Private data message ", msg)
-			go s.privateDataMessage(msg)
+			logger.Debug("Dispatching a message", msg)
+			go s.dispatch(msg)
 		case <-s.stopCh:
 			s.stopCh <- struct{}{}
 			logger.Debug("Stop listening for new messages")
 			return
 		}
 	}
+}
+func (s *GossipStateProviderImpl) dispatch(msg proto.ReceivedMessage) {
+	// Check type of the message
+	if msg.GetGossipMessage().IsRemoteStateMessage() {
+		logger.Debug("Handling direct state transfer message")
+		// Got state transfer request response
+		s.directMessage(msg)
+	} else if msg.GetGossipMessage().GetPrivateData() != nil {
+		logger.Debug("Handling private data collection message")
+		// Handling private data replication message
+		s.privateDataMessage(msg)
+	}
+
 }
 func (s *GossipStateProviderImpl) privateDataMessage(msg proto.ReceivedMessage) {
 	if !bytes.Equal(msg.GetGossipMessage().Channel, []byte(s.chainID)) {
