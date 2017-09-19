@@ -24,8 +24,9 @@ func TestGetVersionInfo(t *testing.T) {
 		common.Version = "testVersion"
 	}
 
-	expected := fmt.Sprintf("%s:\n Version: %s\n Go version: %s\n OS/Arch: %s",
-		metadata.ProgramName, common.Version, runtime.Version(),
-		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH))
+	expected := fmt.Sprintf("%s:\n Version: %s\n Go version: %s\n OS/Arch: %s\n"+
+		" Experimental features: %s\n", metadata.ProgramName, common.Version,
+		runtime.Version(), fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		common.Experimental)
 	assert.Equal(t, expected, metadata.GetVersionInfo())
 }

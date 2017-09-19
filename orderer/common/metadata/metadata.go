@@ -29,7 +29,7 @@ func GetVersionInfo() string {
 		Version = "development build"
 	}
 
-	return fmt.Sprintf("%s:\n Version: %s\n Go version: %s\n OS/Arch: %s",
-		ProgramName, Version, runtime.Version(),
-		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH))
+	return fmt.Sprintf("%s:\n Version: %s\n Go version: %s\n OS/Arch: %s\n"+
+		" Experimental features: %s\n", ProgramName, Version, runtime.Version(),
+		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH), common.Experimental)
 }

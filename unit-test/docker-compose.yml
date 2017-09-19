@@ -22,6 +22,7 @@ unit-tests:
   environment:
     - UNIT_TEST_PEER_IP=vp
     - GO_LDFLAGS
+    - GO_TAGS
     - OUTPUT
     - TEST_PKGS=${TEST_PKGS}
     - CORE_VM_DOCKER_ATTACHSTDOUT=true
