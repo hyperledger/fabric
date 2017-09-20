@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -29,6 +28,14 @@ import (
 
 // SimpleChaincode example simple Chaincode implementation
 type SimpleChaincode struct {
+}
+
+func toChaincodeArgs(args ...string) [][]byte {
+	bargs := make([][]byte, len(args))
+	for i, arg := range args {
+		bargs[i] = []byte(arg)
+	}
+	return bargs
 }
 
 // Init takes two arguments, a string and int. These are stored in the key/value pair in the state
@@ -84,7 +91,7 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string
 	}
 
 	f := "invoke"
-	invokeArgs := util.ToChaincodeArgs(f, "a", "b", "10")
+	invokeArgs := toChaincodeArgs(f, "a", "b", "10")
 	response := stub.InvokeChaincode(chainCodeToCall, invokeArgs, channelID)
 	if response.Status != shim.OK {
 		errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", string(response.Payload))
@@ -131,7 +138,7 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
 		queryKey := args[2]
 		channel := args[3]
 		f := "query"
-		invokeArgs := util.ToChaincodeArgs(f, queryKey)
+		invokeArgs := toChaincodeArgs(f, queryKey)
 		response := stub.InvokeChaincode(chainCodeToCall, invokeArgs, channel)
 		if response.Status != shim.OK {
 			errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", err.Error())
