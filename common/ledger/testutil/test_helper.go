@@ -96,7 +96,7 @@ func ConstructTransaction(_ *testing.T, simulationResults []byte, txid string, s
 	if sign {
 		txEnv, txID, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GetTestChainID(), ccid, nil, simulationResults, txid, nil, nil)
 	} else {
-		txEnv, txID, err = ptestutils.ConstructUnsingedTxEnv(util.GetTestChainID(), ccid, nil, simulationResults, txid, nil, nil)
+		txEnv, txID, err = ptestutils.ConstructUnsignedTxEnv(util.GetTestChainID(), ccid, nil, simulationResults, txid, nil, nil)
 	}
 	return txEnv, txID, err
 }
@@ -152,7 +152,7 @@ func ConstructBytesProposalResponsePayload(version string, simulationResults []b
 		Name:    "foo",
 		Version: version,
 	}
-	return ptestutils.ConstractBytesProposalResponsePayload(util.GetTestChainID(), ccid, nil, simulationResults)
+	return ptestutils.ConstructBytesProposalResponsePayload(util.GetTestChainID(), ccid, nil, simulationResults)
 }
 
 func newBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *common.Block {

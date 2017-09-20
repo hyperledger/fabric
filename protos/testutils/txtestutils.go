@@ -51,8 +51,8 @@ func init() {
 	}
 }
 
-// ConstractBytesProposalResponsePayload constructs a ProposalResponsePayload byte for tests with a default signer.
-func ConstractBytesProposalResponsePayload(chainID string, ccid *pb.ChaincodeID, pResponse *pb.Response, simulationResults []byte) ([]byte, error) {
+// ConstructBytesProposalResponsePayload constructs a ProposalResponsePayload byte for tests with a default signer.
+func ConstructBytesProposalResponsePayload(chainID string, ccid *pb.ChaincodeID, pResponse *pb.Response, simulationResults []byte) ([]byte, error) {
 	ss, err := signer.Serialize()
 	if err != nil {
 		return nil, err
@@ -116,8 +116,8 @@ func ConstructSingedTxEnv(chainID string, ccid *pb.ChaincodeID, pResponse *pb.Re
 var mspLcl msp.MSP
 var sigId msp.SigningIdentity
 
-// ConstructUnsingedTxEnv creates a Transaction envelope from given inputs
-func ConstructUnsingedTxEnv(chainID string, ccid *pb.ChaincodeID, response *pb.Response, simulationResults []byte, txid string, events []byte, visibility []byte) (*common.Envelope, string, error) {
+// ConstructUnsignedTxEnv creates a Transaction envelope from given inputs
+func ConstructUnsignedTxEnv(chainID string, ccid *pb.ChaincodeID, response *pb.Response, simulationResults []byte, txid string, events []byte, visibility []byte) (*common.Envelope, string, error) {
 	if mspLcl == nil {
 		mspLcl = mmsp.NewNoopMsp()
 		sigId, _ = mspLcl.GetDefaultSigningIdentity()
