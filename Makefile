@@ -375,10 +375,6 @@ release/%/install: $(PROJECT_FILES)
 		| sed -e 's/_BASE_DOCKER_TAG_/$(BASE_DOCKER_TAG)/g' \
 		> $(@D)/bin/get-docker-images.sh
 		@chmod +x $(@D)/bin/get-docker-images.sh
-	@cat $(@D)/../templates/get-byfn.in \
-		| sed -e 's/_VERSION_/$(PROJECT_VERSION)/g' \
-		> $(@D)/bin/get-byfn.sh
-		@chmod +x $(@D)/bin/get-byfn.sh
 
 .PHONY: dist
 dist: dist-clean release
