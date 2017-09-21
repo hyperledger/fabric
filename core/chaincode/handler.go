@@ -163,7 +163,7 @@ func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	var err error
 	if err = handler.ChatStream.Send(msg); err != nil {
 		err = errors.WithMessage(err, fmt.Sprintf("[%s]Error sending %s", shorttxid(msg.Txid), msg.Type.String()))
-		chaincodeLogger.Errorf("%s", err)
+		chaincodeLogger.Errorf("%+v", err)
 	}
 	return err
 }
@@ -324,14 +324,14 @@ func (handler *Handler) processStream() error {
 		case in = <-msgAvail:
 			// Defer the deregistering of the this handler.
 			if err == io.EOF {
-				chaincodeLogger.Debugf("Received EOF, ending chaincode support stream, %s", err)
+				chaincodeLogger.Debugf("Received EOF, ending chaincode support stream: %+v", err)
 				return err
 			} else if err != nil {
-				chaincodeLogger.Errorf("Error handling chaincode support stream: %s", err)
+				chaincodeLogger.Errorf("Error handling chaincode support stream: %+v", err)
 				return err
 			} else if in == nil {
 				err = errors.New("received nil message, ending chaincode support stream")
-				chaincodeLogger.Debug("Received nil message, ending chaincode support stream")
+				chaincodeLogger.Debug("%+v", err)
 				return err
 			}
 			chaincodeLogger.Debugf("[%s]Received message %s from shim", shorttxid(in.Txid), in.Type.String())
@@ -352,7 +352,7 @@ func (handler *Handler) processStream() error {
 			in = nsInfo.msg
 			if in == nil {
 				err = errors.New("next state nil message, ending chaincode support stream")
-				chaincodeLogger.Debug("next state nil message, ending chaincode support stream")
+				chaincodeLogger.Debug("%+v", err)
 				return err
 			}
 			chaincodeLogger.Debugf("[%s]Move state message %s", shorttxid(in.Txid), in.Type.String())
@@ -370,8 +370,9 @@ func (handler *Handler) processStream() error {
 
 		err = handler.HandleMessage(in)
 		if err != nil {
-			chaincodeLogger.Errorf("[%s]error handling message, ending stream: %s", shorttxid(in.Txid), err)
-			return errors.WithMessage(err, "error handling message, ending stream")
+			err = errors.WithMessage(err, "error handling message, ending stream")
+			chaincodeLogger.Errorf("[%s] %+v", shorttxid(in.Txid), err)
+			return err
 		}
 
 		if nsInfo != nil && nsInfo.sendToCC {
