@@ -74,7 +74,7 @@ func (imp *implicitMetaPolicy) Evaluate(signatureSet []*cb.SignedData) error {
 			// This log message may be large and expensive to construct, so worth checking the log level
 			if logger.IsEnabledFor(logging.DEBUG) {
 				var b bytes.Buffer
-				b.WriteString(fmt.Sprintf("Evaluation Failed: Only %d policies were satisfied, but needed %d of [ ", remaining, imp.threshold))
+				b.WriteString(fmt.Sprintf("Evaluation Failed: Only %d policies were satisfied, but needed %d of [ ", imp.threshold-remaining, imp.threshold))
 				for m := range imp.managers {
 					b.WriteString(m)
 					b.WriteString(".")
