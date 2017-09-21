@@ -158,8 +158,9 @@ func (stub *MockStub) GetState(key string) ([]byte, error) {
 // PutState writes the specified `value` and `key` into the ledger.
 func (stub *MockStub) PutState(key string, value []byte) error {
 	if stub.TxID == "" {
-		mockLogger.Error("Cannot PutState without a transactions - call stub.MockTransactionStart()?")
-		return errors.New("cannot PutState without a transactions - call stub.MockTransactionStart()?")
+		err := errors.New("cannot PutState without a transactions - call stub.MockTransactionStart()?")
+		mockLogger.Errorf("%+v", err)
+		return err
 	}
 
 	mockLogger.Debug("MockStub", stub.Name, "Putting", key, value)
@@ -394,13 +395,15 @@ func (iter *MockStateRangeQueryIterator) HasNext() bool {
 // Next returns the next key and value in the range query iterator.
 func (iter *MockStateRangeQueryIterator) Next() (*queryresult.KV, error) {
 	if iter.Closed == true {
-		mockLogger.Error("MockStateRangeQueryIterator.Next() called after Close()")
-		return nil, errors.New("MockStateRangeQueryIterator.Next() called after Close()")
+		err := errors.New("MockStateRangeQueryIterator.Next() called after Close()")
+		mockLogger.Errorf("%+v", err)
+		return nil, err
 	}
 
 	if iter.HasNext() == false {
-		mockLogger.Error("MockStateRangeQueryIterator.Next() called when it does not HaveNext()")
-		return nil, errors.New("MockStateRangeQueryIterator.Next() called when it does not HaveNext()")
+		err := errors.New("MockStateRangeQueryIterator.Next() called when it does not HaveNext()")
+		mockLogger.Errorf("%+v", err)
+		return nil, err
 	}
 
 	for iter.Current != nil {
@@ -416,16 +419,18 @@ func (iter *MockStateRangeQueryIterator) Next() (*queryresult.KV, error) {
 		}
 		iter.Current = iter.Current.Next()
 	}
-	mockLogger.Error("MockStateRangeQueryIterator.Next() went past end of range")
-	return nil, errors.New("MockStateRangeQueryIterator.Next() went past end of range")
+	err := errors.New("MockStateRangeQueryIterator.Next() went past end of range")
+	mockLogger.Errorf("%+v", err)
+	return nil, err
 }
 
 // Close closes the range query iterator. This should be called when done
 // reading from the iterator to free up resources.
 func (iter *MockStateRangeQueryIterator) Close() error {
 	if iter.Closed == true {
-		mockLogger.Error("MockStateRangeQueryIterator.Close() called after Close()")
-		return errors.New("MockStateRangeQueryIterator.Close() called after Close()")
+		err := errors.New("MockStateRangeQueryIterator.Close() called after Close()")
+		mockLogger.Errorf("%+v", err)
+		return err
 	}
 
 	iter.Closed = true

@@ -351,7 +351,7 @@ func (handler *Handler) afterResponse(e *fsm.Event) {
 	}
 
 	if err := handler.sendChannel(msg); err != nil {
-		chaincodeLogger.Errorf("[%s]error sending %s (state:%s): %s", shorttxid(msg.Txid), msg.Type, handler.FSM.Current(), err)
+		chaincodeLogger.Errorf("[%s]error sending %s (state:%s): %+v", shorttxid(msg.Txid), msg.Type, handler.FSM.Current(), err)
 	} else {
 		chaincodeLogger.Debugf("[%s]Received %s, communicated (state:%s)", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
 	}
