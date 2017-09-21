@@ -63,7 +63,7 @@ def after_scenario(context, scenario):
                 with open(fileName, "w+") as logfile:
                     sys_rc = subprocess.call(["docker", "logs", containerName], stdout=logfile, stderr=logfile)
                     if sys_rc !=0 :
-                        print("Cannot get logs for {0}. Docker rc = {1}".format(namepart,sys_rc))
+                        print("Cannot get logs for {0}. Docker rc = {1}".format(namePart, sys_rc))
     if 'doNotDecompose' in scenario.tags:
         if 'compose_yaml' in context:
             print("Not going to decompose after scenario {0}, with yaml '{1}'".format(scenario.name, context.compose_yaml))
