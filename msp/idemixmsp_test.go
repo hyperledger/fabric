@@ -19,7 +19,7 @@ import (
 func setup(configPath string) (MSP, error) {
 	msp, err := newIdemixMsp()
 	if err != nil {
-		return nil, errors.Wrap(err, "Getting MSP failed")
+		return nil, err
 	}
 
 	conf, err := GetIdemixMspConfig(configPath)
@@ -123,10 +123,7 @@ func TestSigning(t *testing.T) {
 
 	msg := []byte("TestMessage")
 	sig, err := id.Sign(msg)
-	if err != nil {
-		t.Fatalf("Signing failed: %s", err)
-		return
-	}
+	assert.NoError(t, err)
 
 	err = id.Verify(msg, sig)
 	assert.NoError(t, err)
@@ -165,28 +162,15 @@ func TestIdentitySerialization(t *testing.T) {
 
 	// Test serialization of identities
 	serializedID, err := id.Serialize()
-	if err != nil {
-		t.Fatalf("Serialize signing identity should have succeeded")
-		return
-	}
+	assert.NoError(t, err)
 
 	verID, err := msp.DeserializeIdentity(serializedID)
-	if err != nil {
-		t.Fatalf("DeserializeIdentity should have succeeded for signing identity but gave error %s", err)
-		return
-	}
 
 	err = verID.Validate()
-	if err != nil {
-		t.Fatalf("Id should be valid but gave error %s", err)
-		return
-	}
+	assert.NoError(t, err)
 
 	err = msp.Validate(verID)
-	if err != nil {
-		t.Fatalf("Id should be valid but gave error %s", err)
-		return
-	}
+	assert.NoError(t, err)
 }
 
 func TestIdentitySerializationBad(t *testing.T) {
@@ -194,10 +178,7 @@ func TestIdentitySerializationBad(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = msp.DeserializeIdentity([]byte("barf"))
-	if err == nil {
-		t.Fatalf("DeserializeIdentity should have failed for bad input")
-		return
-	}
+	assert.Error(t, err, "DeserializeIdentity should have failed for bad input")
 }
 
 func TestIdentitySerializationWrongMSP(t *testing.T) {
@@ -212,10 +193,7 @@ func TestIdentitySerializationWrongMSP(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = msp1.DeserializeIdentity(idBytes)
-	if err == nil {
-		t.Fatalf("DeserializeIdentity should have failed for ID of other MSP")
-		return
-	}
+	assert.Error(t, err, "DeserializeIdentity should have failed for ID of other MSP")
 }
 
 func TestPrincipalIdentity(t *testing.T) {
@@ -233,9 +211,7 @@ func TestPrincipalIdentity(t *testing.T) {
 		Principal:               idBytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err != nil {
-		t.Fatalf("Identity MSP principal failed: %s", err)
-	}
+	assert.NoError(t, err)
 }
 
 func TestPrincipalIdentityWrongIdentity(t *testing.T) {
@@ -259,10 +235,7 @@ func TestPrincipalIdentityWrongIdentity(t *testing.T) {
 		Principal:               idBytes}
 
 	err = id2.SatisfiesPrincipal(principal)
-	if err == nil {
-		t.Fatalf("Identity MSP principal for different user should fail")
-		return
-	}
+	assert.Error(t, err, "Identity MSP principal for different user should fail")
 }
 
 func TestPrincipalIdentityBadIdentity(t *testing.T) {
@@ -279,10 +252,7 @@ func TestPrincipalIdentityBadIdentity(t *testing.T) {
 		Principal:               idBytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err == nil {
-		t.Fatalf("Identity MSP principal for a bad principal should fail")
-		return
-	}
+	assert.Error(t, err, "Identity MSP principal for a bad principal should fail")
 }
 
 func TestIdemixIsWellFormed(t *testing.T) {
@@ -325,9 +295,7 @@ func TestPrincipalOU(t *testing.T) {
 		Principal:               bytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err != nil {
-		t.Fatalf("OU MSP principal failed: %s", err)
-	}
+	assert.NoError(t, err)
 }
 
 func TestPrincipalOUWrongOU(t *testing.T) {
@@ -350,9 +318,7 @@ func TestPrincipalOUWrongOU(t *testing.T) {
 		Principal:               bytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err == nil {
-		t.Fatalf("OU MSP principal should have failed for user of different OU")
-	}
+	assert.Error(t, err, "OU MSP principal should have failed for user of different OU")
 }
 
 func TestPrincipalOUWrongMSP(t *testing.T) {
@@ -375,9 +341,7 @@ func TestPrincipalOUWrongMSP(t *testing.T) {
 		Principal:               bytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err == nil {
-		t.Fatalf("OU MSP principal should have failed for user of different MSP")
-	}
+	assert.Error(t, err, "OU MSP principal should have failed for user of different MSP")
 }
 
 func TestPrincipalOUBad(t *testing.T) {
@@ -395,9 +359,7 @@ func TestPrincipalOUBad(t *testing.T) {
 		Principal:               bytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err == nil {
-		t.Fatalf("OU MSP principal should have failed for a bad OU principal")
-	}
+	assert.Error(t, err, "OU MSP principal should have failed for a bad OU principal")
 }
 
 func TestPrincipalRoleMember(t *testing.T) {
@@ -415,9 +377,7 @@ func TestPrincipalRoleMember(t *testing.T) {
 		Principal:               principalBytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err != nil {
-		t.Fatalf("Role MSP principal failed: %s", err)
-	}
+	assert.NoError(t, err)
 }
 
 func TestPrincipalRoleAdmin(t *testing.T) {
@@ -436,10 +396,7 @@ func TestPrincipalRoleAdmin(t *testing.T) {
 
 	// Admin should also satisfy member
 	err = id1.SatisfiesPrincipal(principal)
-	if err != nil {
-		t.Fatalf("Admin should satisfy Role=Member principal but returned error: %s", err)
-		return
-	}
+	assert.NoError(t, err)
 
 	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: id1.GetMSPIdentifier()})
 	assert.NoError(t, err)
@@ -449,9 +406,7 @@ func TestPrincipalRoleAdmin(t *testing.T) {
 		Principal:               principalBytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err != nil {
-		t.Fatalf("Admin should satisfy Role=Admin principal but returned error: %s", err)
-	}
+	assert.NoError(t, err)
 }
 
 func TestPrincipalRoleNotAdmin(t *testing.T) {
@@ -469,9 +424,7 @@ func TestPrincipalRoleNotAdmin(t *testing.T) {
 		Principal:               principalBytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err == nil {
-		t.Fatalf("Member should not satisfy Admin principal")
-	}
+	assert.Error(t, err, "Member should not satisfy Admin principal")
 }
 
 func TestPrincipalRoleWrongMSP(t *testing.T) {
@@ -489,9 +442,7 @@ func TestPrincipalRoleWrongMSP(t *testing.T) {
 		Principal:               principalBytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err == nil {
-		t.Fatalf("Role MSP principal should have failed for user of different MSP")
-	}
+	assert.Error(t, err, "Role MSP principal should have failed for user of different MSP")
 }
 
 func TestPrincipalRoleBadRole(t *testing.T) {
@@ -510,9 +461,7 @@ func TestPrincipalRoleBadRole(t *testing.T) {
 		Principal:               principalBytes}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err == nil {
-		t.Fatalf("Role MSP principal should have failed for a bad Role")
-	}
+	assert.Error(t, err, "Role MSP principal should have failed for a bad Role")
 }
 
 func TestPrincipalBad(t *testing.T) {
@@ -527,7 +476,5 @@ func TestPrincipalBad(t *testing.T) {
 		Principal:               nil}
 
 	err = id1.SatisfiesPrincipal(principal)
-	if err == nil {
-		t.Fatalf("Principal with bad Classification should fail")
-	}
+	assert.Error(t, err, "Principal with bad Classification should fail")
 }

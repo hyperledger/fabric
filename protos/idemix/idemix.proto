@@ -102,3 +102,19 @@ message Signature {
 	ECP Nym = 12;
 	bytes ProofSRNym = 13;
 }
+
+// NymSignature specifies a signature object that signs a message
+// with respect to a pseudonym. It differs from the standard idemix.signature in the fact that
+// the  standard signature object also proves that the pseudonym is based on a secret certified by
+// a CA (issuer), whereas NymSignature only proves that the the owner of the pseudonym
+// signed the message
+message NymSignature {
+    // ProofC is the Fiat-Shamir challenge of the ZKP
+    bytes ProofC = 1;
+    // ProofSSK is the s-value proving knowledge of the user secret key
+    bytes ProofSSk = 2;
+    //ProofSRNym is the s-value proving knowledge of the pseudonym secret
+    bytes ProofSRNym = 3;
+    // Nonce is a fresh nonce used for the signature
+    bytes Nonce = 4;
+}
