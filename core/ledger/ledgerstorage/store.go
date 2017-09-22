@@ -116,7 +116,7 @@ func (s *Store) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsColl
 	if block, err = s.RetrieveBlockByNumber(blockNum); err != nil {
 		return nil, err
 	}
-	if pvtdata, err = s.GetPvtDataByNum(blockNum, filter); err != nil {
+	if pvtdata, err = s.getPvtDataByNumWithoutLock(blockNum, filter); err != nil {
 		return nil, err
 	}
 	return &ledger.BlockAndPvtData{Block: block, BlockPvtData: constructPvtdataMap(pvtdata)}, nil
@@ -128,7 +128,13 @@ func (s *Store) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsColl
 func (s *Store) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
 	s.rwlock.RLock()
 	defer s.rwlock.RUnlock()
+	return s.getPvtDataByNumWithoutLock(blockNum, filter)
+}
 
+// getPvtDataByNumWithoutLock returns only the pvt data  corresponding to the given block number.
+// This function does not acquire a readlock and it is expected that in most of the circumstances, the caller
+// posesses a read lock on `s.rwlock`
+func (s *Store) getPvtDataByNumWithoutLock(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
 	var pvtdata []*ledger.TxPvtData
 	var err error
 	if pvtdata, err = s.pvtdataStore.GetPvtDataByBlockNum(blockNum, filter); err != nil {

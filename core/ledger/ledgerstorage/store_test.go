@@ -17,8 +17,11 @@ limitations under the License.
 package ledgerstorage
 
 import (
+	"fmt"
 	"os"
+	"runtime"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
@@ -26,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -36,6 +40,50 @@ func TestMain(m *testing.M) {
 	flogging.SetModuleLevel("pvtdatastorage", "debug")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/core/ledger/ledgerstorage")
 	os.Exit(m.Run())
+}
+
+func TestStoreConcurrentReadWrite(t *testing.T) {
+	testEnv := newTestEnv(t)
+	defer testEnv.cleanup()
+	provider := NewProvider()
+	defer provider.Close()
+	store, err := provider.Open("testLedger")
+	assert.NoError(t, err)
+	defer store.Shutdown()
+
+	// Modify store to have a BlockStore that has a custom slowdown
+	store.BlockStore = newSlowBlockStore(store.BlockStore, time.Second)
+
+	sampleData := sampleData(t)
+	// Commit first block
+	store.CommitWithPvtData(sampleData[0])
+	go func() {
+		time.Sleep(time.Millisecond * 500)
+		// Commit all but first block
+		for _, sampleDatum := range sampleData[1:] {
+			store.CommitWithPvtData(sampleDatum)
+		}
+
+	}()
+
+	c := make(chan struct{})
+	go func() {
+		// Read first block
+		_, err := store.GetPvtDataAndBlockByNum(0, nil)
+		assert.NoError(t, err)
+		c <- struct{}{}
+	}()
+
+	select {
+	case <-c:
+		t.Log("Obtained private data and block by number")
+	case <-time.After(time.Second * 10):
+		assert.Fail(t, "Didn't finish within a timely manner, perhaps the system is deadlocked?")
+		buf := make([]byte, 1<<16)
+		runtime.Stack(buf, true)
+		fmt.Printf("%s", buf)
+	}
+
 }
 
 func TestStore(t *testing.T) {
@@ -187,4 +235,26 @@ func samplePvtData(t *testing.T, txNums []uint64) map[uint64]*ledger.TxPvtData {
 		pvtData = append(pvtData, &ledger.TxPvtData{SeqInBlock: txNum, WriteSet: pvtWriteSet})
 	}
 	return constructPvtdataMap(pvtData)
+}
+
+type slowBlockStore struct {
+	delay time.Duration
+	blkstorage.BlockStore
+}
+
+func newSlowBlockStore(store blkstorage.BlockStore, delay time.Duration) blkstorage.BlockStore {
+	return &slowBlockStore{
+		delay:      delay,
+		BlockStore: store,
+	}
+}
+
+func (bs *slowBlockStore) RetrieveBlockByNumber(blockNum uint64) (*common.Block, error) {
+	time.Sleep(bs.delay)
+	return bs.BlockStore.RetrieveBlockByNumber(blockNum)
+}
+
+func (bs *slowBlockStore) AddBlock(block *common.Block) error {
+	time.Sleep(bs.delay)
+	return bs.BlockStore.AddBlock(block)
 }
