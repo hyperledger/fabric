@@ -34,12 +34,12 @@ type connFactory interface {
 }
 
 type connectionStore struct {
-	logger           *logging.Logger          // logger
-	isClosing        bool                     // whether this connection store is shutting down
-	connFactory      connFactory              // creates a connection to remote peer
-	sync.RWMutex                              // synchronize access to shared variables
-	pki2Conn         map[string]*connection   // mapping between pkiID to connections
-	destinationLocks map[string]*sync.RWMutex //mapping between pkiIDs and locks,
+	logger           *logging.Logger        // logger
+	isClosing        bool                   // whether this connection store is shutting down
+	connFactory      connFactory            // creates a connection to remote peer
+	sync.RWMutex                            // synchronize access to shared variables
+	pki2Conn         map[string]*connection // mapping between pkiID to connections
+	destinationLocks map[string]*sync.Mutex //mapping between pkiIDs and locks,
 	// used to prevent concurrent connection establishment to the same remote endpoint
 }
 
@@ -48,7 +48,7 @@ func newConnStore(connFactory connFactory, logger *logging.Logger) *connectionSt
 		connFactory:      connFactory,
 		isClosing:        false,
 		pki2Conn:         make(map[string]*connection),
-		destinationLocks: make(map[string]*sync.RWMutex),
+		destinationLocks: make(map[string]*sync.Mutex),
 		logger:           logger,
 	}
 }
@@ -68,7 +68,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	cs.Lock()
 	destinationLock, hasConnected := cs.destinationLocks[string(pkiID)]
 	if !hasConnected {
-		destinationLock = &sync.RWMutex{}
+		destinationLock = &sync.Mutex{}
 		cs.destinationLocks[string(pkiID)] = destinationLock
 	}
 	cs.Unlock()

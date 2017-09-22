@@ -80,7 +80,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		lsnr:           ll,
 		gSrv:           s,
 		msgPublisher:   NewChannelDemultiplexer(),
-		lock:           &sync.RWMutex{},
+		lock:           &sync.Mutex{},
 		deadEndpoints:  make(chan common.PKIidType, 100),
 		stopping:       int32(0),
 		exitChan:       make(chan struct{}, 1),
@@ -137,7 +137,7 @@ type commImpl struct {
 	PKIID          []byte
 	deadEndpoints  chan common.PKIidType
 	msgPublisher   *ChannelDeMultiplexer
-	lock           *sync.RWMutex
+	lock           *sync.Mutex
 	lsnr           net.Listener
 	gSrv           *grpc.Server
 	exitChan       chan struct{}
