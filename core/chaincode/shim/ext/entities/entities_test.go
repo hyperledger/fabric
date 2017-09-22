@@ -146,13 +146,13 @@ func TestSign(t *testing.T) {
 func TestNewAES256EncrypterEntity(t *testing.T) {
 	factory.InitFactories(nil)
 
-	_, err := NewAES256EncrypterEntity("ID", nil, []byte("0123456789012345"))
+	_, err := NewAES256EncrypterEntity("ID", nil, []byte("0123456789012345"), nil)
 	assert.Error(t, err)
 
-	_, err = NewAES256EncrypterEntity("ID", factory.GetDefault(), []byte("0123456789012345"))
+	_, err = NewAES256EncrypterEntity("ID", factory.GetDefault(), []byte("0123456789012345"), nil)
 	assert.Error(t, err)
 
-	ent, err := NewAES256EncrypterEntity("ID", factory.GetDefault(), []byte("01234567890123456789012345678901"))
+	ent, err := NewAES256EncrypterEntity("ID", factory.GetDefault(), []byte("01234567890123456789012345678901"), nil)
 	assert.NoError(t, err)
 
 	m := []byte("MESSAGE")

@@ -15,6 +15,24 @@ follows
 peer chaincode invoke -n enccc -C my-ch -c '{"Args":["ENC","PUT","key","value"]}' --transient "{\"ENCKEY\":\"$ENCKEY\"}"
 ```
 
+This call will encrypt using a random IV. This may be undesirable for
+instance if the chaincode invocation needs to be endorsed by multiple
+peers since it would cause the endorsement of conflicting read/write sets.
+It is possible to encrypt deterministically by specifying the IV, as
+follows: at first the IV must be created
+
+```
+IV=`openssl rand 16 -base64`
+```
+
+Then, the IV may be specified in the transient field
+
+```
+peer chaincode invoke -n enccc -C my-ch -c '{"Args":["ENC","PUT","key","value"]}' --transient "{\"ENCKEY\":\"$ENCKEY\",\"IV\":\"$IV\"}"
+```
+
+Two such invocations will produce equal KVS writes, which can be endorsed by multiple nodes.
+
 The value can be retrieved back as follows
 
 ```

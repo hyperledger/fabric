@@ -23,8 +23,10 @@ type pkiEntity struct {
 }
 
 // NewAES256EncrypterEntity returns an encrypter entity that is
-// capable of performing AES 256 bit encryption using PKCS#7 padding
-func NewAES256EncrypterEntity(ID string, b bccsp.BCCSP, key []byte) (EncrypterEntity, error) {
+// capable of performing AES 256 bit encryption using PKCS#7 padding.
+// Optionally, the IV can be provided in which case it is used during
+// the encryption; othjerwise, a random one is generated.
+func NewAES256EncrypterEntity(ID string, b bccsp.BCCSP, key, IV []byte) (EncrypterEntity, error) {
 	if b == nil {
 		return nil, errors.New("nil BCCSP")
 	}
@@ -34,7 +36,7 @@ func NewAES256EncrypterEntity(ID string, b bccsp.BCCSP, key []byte) (EncrypterEn
 		return nil, errors.WithMessage(err, "bccspInst.KeyImport failed")
 	}
 
-	return NewEncrypterEntity(ID, b, k, &bccsp.AESCBCPKCS7ModeOpts{}, &bccsp.AESCBCPKCS7ModeOpts{})
+	return NewEncrypterEntity(ID, b, k, &bccsp.AESCBCPKCS7ModeOpts{IV: IV}, &bccsp.AESCBCPKCS7ModeOpts{})
 }
 
 // NewEncrypterEntity returns an EncrypterEntity that is capable
