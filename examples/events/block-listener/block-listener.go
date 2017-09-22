@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/events/consumer"
@@ -29,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/spf13/viper"
 )
 
 type adapter struct {
@@ -135,6 +137,12 @@ func getChainCodeEvents(tdata []byte) (*pb.ChaincodeEvent, error) {
 }
 
 func main() {
+	// For environment variables
+	viper.SetEnvPrefix("core")
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+
 	var eventAddress string
 	var chaincodeID string
 	var mspDir string
