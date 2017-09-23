@@ -379,9 +379,10 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg proto.ReceivedMessage)
 		if max < payload.SeqNum {
 			max = payload.SeqNum
 		}
-		err := s.payloads.Push(payload)
+
+		err := s.addPayload(payload, blocking)
 		if err != nil {
-			logger.Warningf("Payload with sequence number %d was received earlier", payload.SeqNum)
+			logger.Warningf("Payload with sequence number %d wasn't added to payload buffer: %v", payload.SeqNum, err)
 		}
 	}
 	return max, nil

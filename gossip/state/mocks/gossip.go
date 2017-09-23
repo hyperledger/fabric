@@ -33,16 +33,17 @@ func (*GossipMock) SuspectPeers(s api.PeerSuspector) {
 	panic("implement me")
 }
 
-func (*GossipMock) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
-	panic("implement me")
+func (g *GossipMock) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
+	g.Called(msg, peers)
 }
 
 func (*GossipMock) Peers() []discovery.NetworkMember {
 	panic("implement me")
 }
 
-func (*GossipMock) PeersOfChannel(common.ChainID) []discovery.NetworkMember {
-	return nil
+func (g *GossipMock) PeersOfChannel(chainID common.ChainID) []discovery.NetworkMember {
+	args := g.Called(chainID)
+	return args.Get(0).([]discovery.NetworkMember)
 }
 
 func (*GossipMock) UpdateMetadata(metadata []byte) {
@@ -60,7 +61,7 @@ func (*GossipMock) Gossip(msg *proto.GossipMessage) {
 func (g *GossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
 	args := g.Called(acceptor, passThrough)
 	if args.Get(0) == nil {
-		return nil, args.Get(1).(<-chan proto.ReceivedMessage)
+		return nil, args.Get(1).(chan proto.ReceivedMessage)
 	}
 	return args.Get(0).(<-chan *proto.GossipMessage), nil
 }
