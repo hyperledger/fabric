@@ -39,8 +39,7 @@ func validateAndPreparePvtBatch(block *valinternal.Block, pvtdata map[uint64]*le
 		}
 		txPvtdata := pvtdata[uint64(tx.IndexInBlock)]
 		if txPvtdata == nil {
-			return nil,
-				&validator.ErrMissingPvtdata{Msg: fmt.Sprintf("Pvt data missing for the transaction tx num [%d]", tx.IndexInBlock)}
+			continue
 		}
 		if requiresPvtdataValidation(txPvtdata) {
 			if err := validatePvtdata(tx, txPvtdata); err != nil {

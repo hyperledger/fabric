@@ -18,12 +18,16 @@ package lockbasedtxmgr
 
 import (
 	"errors"
+	"fmt"
+
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
@@ -98,11 +102,26 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
-	versionedValue, err := h.txmgr.db.GetPrivateData(ns, coll, key)
-	if err != nil {
+
+	var err error
+	var hashVersion *version.Height
+	var versionedValue *statedb.VersionedValue
+
+	if versionedValue, err = h.txmgr.db.GetPrivateData(ns, coll, key); err != nil {
 		return nil, err
 	}
+
 	val, ver := decomposeVersionedValue(versionedValue)
+
+	keyHash := util.ComputeStringHash(key)
+	if hashVersion, err = h.txmgr.db.GetKeyHashVersion(ns, coll, keyHash); err != nil {
+		return nil, err
+	}
+	if !version.AreSame(hashVersion, ver) {
+		return nil, &txmgr.ErrPvtdataNotAvailable{Msg: fmt.Sprintf(
+			"The available copy of the private data is not latest. The latest version = %#v, available version = %#v",
+			hashVersion, ver)}
+	}
 	if h.rwsetBuilder != nil {
 		h.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
 	}
