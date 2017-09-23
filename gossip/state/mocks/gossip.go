@@ -61,7 +61,7 @@ func (g *GossipMock) Gossip(msg *proto.GossipMessage) {
 func (g *GossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
 	args := g.Called(acceptor, passThrough)
 	if args.Get(0) == nil {
-		return nil, args.Get(1).(<-chan proto.ReceivedMessage)
+		return nil, args.Get(1).(chan proto.ReceivedMessage)
 	}
 	return args.Get(0).(<-chan *proto.GossipMessage), nil
 }
