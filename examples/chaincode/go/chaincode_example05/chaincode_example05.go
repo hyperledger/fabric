@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -29,6 +28,14 @@ import (
 
 // SimpleChaincode example simple Chaincode implementation
 type SimpleChaincode struct {
+}
+
+func toChaincodeArgs(args ...string) [][]byte {
+	bargs := make([][]byte, len(args))
+	for i, arg := range args {
+		bargs[i] = []byte(arg)
+	}
+	return bargs
 }
 
 // Init takes two arguments, a string and int. The string will be a key with
@@ -80,7 +87,7 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string
 
 	// Query chaincode_example02
 	f := "query"
-	queryArgs := util.ToChaincodeArgs(f, "a")
+	queryArgs := toChaincodeArgs(f, "a")
 
 	//   if chaincode being invoked is on the same channel,
 	//   then channel defaults to the current channel and args[2] can be "".
@@ -100,7 +107,7 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string
 		return shim.Error(errStr)
 	}
 
-	queryArgs = util.ToChaincodeArgs(f, "b")
+	queryArgs = toChaincodeArgs(f, "b")
 	response = stub.InvokeChaincode(chaincodeName, queryArgs, channelName)
 	if response.Status != shim.OK {
 		errStr := fmt.Sprintf("Failed to query chaincode. Got error: %s", response.Payload)
@@ -147,7 +154,7 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
 
 	// Query chaincode_example02
 	f := "query"
-	queryArgs := util.ToChaincodeArgs(f, "a")
+	queryArgs := toChaincodeArgs(f, "a")
 
 	//   if chaincode being invoked is on the same channel,
 	//   then channel defaults to the current channel and args[2] can be "".
@@ -166,7 +173,7 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
 		return shim.Error(errStr)
 	}
 
-	queryArgs = util.ToChaincodeArgs(f, "b")
+	queryArgs = toChaincodeArgs(f, "b")
 	response = stub.InvokeChaincode(chaincodeName, queryArgs, channelName)
 	if response.Status != shim.OK {
 		errStr := fmt.Sprintf("Failed to query chaincode. Got error: %s", response.Payload)
