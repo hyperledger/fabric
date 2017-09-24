@@ -8,7 +8,6 @@ package gossip
 
 import (
 	"bytes"
-	"sync"
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -22,7 +21,6 @@ import (
 
 // certStore supports pull dissemination of identity messages
 type certStore struct {
-	sync.RWMutex
 	selfIdentity api.PeerIdentityType
 	idMapper     identity.Mapper
 	pull         pull.Mediator
