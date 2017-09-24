@@ -159,6 +159,17 @@ func (mock *committerMock) Close() {
 	mock.Called()
 }
 
+type validatorMock struct {
+	err error
+}
+
+func (v *validatorMock) Validate(block *common.Block) error {
+	if v.err != nil {
+		return v.err
+	}
+	return nil
+}
+
 type digests []*proto.PvtDataDigest
 
 func (d digests) Equal(other digests) bool {
@@ -425,6 +436,84 @@ var expectedCommittedPrivateData2 = map[uint64]*ledger.TxPvtData{
 	}},
 }
 
+func TestCoordinatorStoreInvalidBlock(t *testing.T) {
+	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
+	committer := &committerMock{}
+	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
+		t.Fatal("Shouldn't have committed")
+	}).Return(nil)
+	store := &mockTransientStore{t: t}
+	fetcher := &fetcherMock{t: t}
+	pdFactory := &pvtDataFactory{}
+	bf := &blockFactory{
+		channelID: "test",
+	}
+
+	block := bf.withoutMetadata().create()
+	// Scenario I: Block we got doesn't have any metadata with it
+	pvtData := pdFactory.create()
+	coordinator := NewCoordinator(committer, store, fetcher, &validatorMock{})
+	err := coordinator.StoreBlock(block, pvtData)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
+
+	// Scenario II: Validator has an error while validating the block
+	block = bf.create()
+	pvtData = pdFactory.create()
+	coordinator = NewCoordinator(committer, store, fetcher, &validatorMock{fmt.Errorf("failed validating block")})
+	err = coordinator.StoreBlock(block, pvtData)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed validating block")
+
+	// Scenario III: Block we got contains an inadequate length of Tx filter in the metadata
+	block = bf.withMetadataSize(100).create()
+	pvtData = pdFactory.create()
+	coordinator = NewCoordinator(committer, store, fetcher, &validatorMock{})
+	err = coordinator.StoreBlock(block, pvtData)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Block data size")
+	assert.Contains(t, err.Error(), "is different from Tx filter size")
+
+	// Scenario IV: The second transaction in the block we got is invalid, and we have no private data for that.
+	// If the coordinator would try to fetch private data, the test would fall because we haven't defined the
+	// mock operations for the transientstore (or for gossip) in this test.
+	var commitHappened bool
+	assertCommitHappened := func() {
+		assert.True(t, commitHappened)
+		commitHappened = false
+	}
+	committer = &committerMock{}
+	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
+		var privateDataPassed2Ledger privateData = args.Get(0).(*ledger.BlockAndPvtData).BlockPvtData
+		commitHappened = true
+		// Only the first transaction's private data is passed to the ledger
+		assert.Len(t, privateDataPassed2Ledger, 1)
+		assert.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
+		// The private data passed to the ledger contains "ns1" and has 2 collections in it
+		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
+		assert.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
+		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
+	}).Return(nil)
+	block = bf.withInvalidTxns(1).AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
+	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
+	coordinator = NewCoordinator(committer, store, fetcher, &validatorMock{})
+	err = coordinator.StoreBlock(block, pvtData)
+	assert.NoError(t, err)
+	assertCommitHappened()
+
+	// Scenario V: Block doesn't contain a header
+	block.Header = nil
+	err = coordinator.StoreBlock(block, pvtData)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Block header is nil")
+
+	// Scenario V: Block doesn't contain Data
+	block.Data = nil
+	err = coordinator.StoreBlock(block, pvtData)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Block data is empty")
+}
+
 func TestCoordinatorStoreBlock(t *testing.T) {
 	// Green path test, all private data should be obtained successfully
 	var commitHappened bool
@@ -452,7 +541,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	// If the coordinator tries fetching from the transientstore, or peers it would result in panic,
 	// because we didn't define yet the "On(...)" invocation of the transient store or other peers.
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").addRWSet().addNSRWSet("ns2", "c1").create()
-	coordinator := NewCoordinator(committer, store, fetcher)
+	coordinator := NewCoordinator(committer, store, fetcher, &validatorMock{})
 	err := coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -551,7 +640,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData2))
 		commitHappened = true
 	}).Return(nil)
-	coordinator = NewCoordinator(committer, store, fetcher)
+	coordinator = NewCoordinator(committer, store, fetcher, &validatorMock{})
 	err = coordinator.StoreBlock(block, nil)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -561,7 +650,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	committer := &committerMock{}
 	store := &mockTransientStore{t: t}
 	fetcher := &fetcherMock{t: t}
-	coordinator := NewCoordinator(committer, store, fetcher)
+	coordinator := NewCoordinator(committer, store, fetcher, &validatorMock{})
 
 	// Bad path: block is not returned
 	committer.On("GetBlocks", mock.Anything).Return([]*common.Block{})

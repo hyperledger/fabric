@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	"github.com/hyperledger/fabric/core/mocks/validator"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +41,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.NoError(t, err, "Error while creating ledger: %s", err)
 	defer ledger.Close()
 
-	committer := NewLedgerCommitter(ledger, &validator.MockValidator{})
+	committer := NewLedgerCommitter(ledger)
 	height, err := committer.LedgerHeight()
 	assert.Equal(t, uint64(1), height)
 	assert.NoError(t, err)
@@ -92,7 +91,7 @@ func TestNewLedgerCommitterReactive(t *testing.T) {
 	defer ledger.Close()
 
 	var configArrived int32
-	committer := NewLedgerCommitterReactive(ledger, &validator.MockValidator{}, func(_ *common.Block) error {
+	committer := NewLedgerCommitterReactive(ledger, func(_ *common.Block) error {
 		atomic.AddInt32(&configArrived, 1)
 		return nil
 	})

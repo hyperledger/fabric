@@ -281,7 +281,8 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	cs.Resources = bundleSource
 	cs.bundleSource = bundleSource
 
-	c := committer.NewLedgerCommitterReactive(ledger, txvalidator.NewTxValidator(cs), func(block *common.Block) error {
+	validator := txvalidator.NewTxValidator(cs)
+	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
 		chainID, err := utils.GetChainIDFromBlock(block)
 		if err != nil {
 			return err
@@ -300,6 +301,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return errors.Wrapf(err, "Failed opening transient store for %s", bundle.ConfigtxManager().ChainID())
 	}
 	service.GetGossipService().InitializeChannel(bundle.ConfigtxManager().ChainID(), ordererAddresses, service.Support{
+		Validator: validator,
 		Committer: c,
 		Store:     store,
 		Pp:        &noopPolicyParser{},

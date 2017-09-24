@@ -12,6 +12,7 @@ import (
 
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -19,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	gossip2 "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -71,14 +73,15 @@ type fetcher interface {
 }
 
 type coordinator struct {
+	txvalidator.Validator
 	committer.Committer
 	TransientStore
 	gossipFetcher fetcher
 }
 
 // NewCoordinator creates a new instance of coordinator
-func NewCoordinator(committer committer.Committer, store TransientStore, gossipFetcher fetcher) Coordinator {
-	return &coordinator{Committer: committer, TransientStore: store, gossipFetcher: gossipFetcher}
+func NewCoordinator(committer committer.Committer, store TransientStore, gossipFetcher fetcher, validator txvalidator.Validator) Coordinator {
+	return &coordinator{Committer: committer, TransientStore: store, gossipFetcher: gossipFetcher, Validator: validator}
 }
 
 // StorePvtData used to persist private date into transient store
@@ -94,6 +97,13 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	if block.Header == nil {
 		return errors.New("Block header is nil")
 	}
+
+	logger.Debug("Validating block", block.Header.Number)
+	err := c.Validator.Validate(block)
+	if err != nil {
+		return errors.WithMessage(err, "Validation failed")
+	}
+
 	blockAndPvtData := &ledger.BlockAndPvtData{
 		Block:        block,
 		BlockPvtData: make(map[uint64]*ledger.TxPvtData),
@@ -387,10 +397,21 @@ func (k *rwSetKey) toTxPvtReadWriteSet(rws []byte) *rwset.TxPvtReadWriteSet {
 }
 
 func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets map[rwSetKey][]byte) (rwSetKeysByTxIDs, error) {
+	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_TRANSACTIONS_FILTER) {
+		return nil, errors.New("Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
+	}
+	txsFilter := txValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	if len(txsFilter) != len(block.Data.Data) {
+		return nil, errors.Errorf("Block data size(%d) is different from Tx filter size(%d)", len(block.Data.Data), len(txsFilter))
+	}
+
 	privateRWsetsInBlock := make(map[rwSetKey]struct{})
 	missing := make(rwSetKeysByTxIDs)
-
 	for seqInBlock, envBytes := range block.Data.Data {
+		if txsFilter[seqInBlock] != uint8(peer.TxValidationCode_VALID) {
+			logger.Debug("Skipping Tx", seqInBlock, "because it's invalid. Status is", txsFilter[seqInBlock])
+			continue
+		}
 		env, err := utils.GetEnvelopeFromBlock(envBytes)
 		if err != nil {
 			return nil, err

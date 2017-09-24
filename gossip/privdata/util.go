@@ -16,9 +16,14 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
+type txValidationFlags []uint8
+
 type blockFactory struct {
-	channelID    string
-	transactions [][]byte
+	channelID     string
+	transactions  [][]byte
+	metadataSize  int
+	lacksMetadata bool
+	invalidTxns   map[int]struct{}
 }
 
 func (bf *blockFactory) AddTxn(txID string, nsName string, hash []byte, collections ...string) *blockFactory {
@@ -91,9 +96,9 @@ func (bf *blockFactory) AddTxn(txID string, nsName string, hash []byte, collecti
 
 func (bf *blockFactory) create() *common.Block {
 	defer func() {
-		bf.transactions = nil
+		*bf = blockFactory{}
 	}()
-	return &common.Block{
+	block := &common.Block{
 		Header: &common.BlockHeader{
 			Number: 1,
 		},
@@ -101,6 +106,42 @@ func (bf *blockFactory) create() *common.Block {
 			Data: bf.transactions,
 		},
 	}
+
+	if bf.lacksMetadata {
+		return block
+	}
+	block.Metadata = &common.BlockMetadata{
+		Metadata: make([][]byte, common.BlockMetadataIndex_TRANSACTIONS_FILTER+1),
+	}
+	if bf.metadataSize > 0 {
+		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = make([]uint8, bf.metadataSize)
+	} else {
+		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = make([]uint8, len(block.Data.Data))
+	}
+
+	for txSeqInBlock := range bf.invalidTxns {
+		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER][txSeqInBlock] = uint8(peer.TxValidationCode_INVALID_ENDORSER_TRANSACTION)
+	}
+
+	return block
+}
+
+func (bf *blockFactory) withoutMetadata() *blockFactory {
+	bf.lacksMetadata = true
+	return bf
+}
+
+func (bf *blockFactory) withMetadataSize(mdSize int) *blockFactory {
+	bf.metadataSize = mdSize
+	return bf
+}
+
+func (bf *blockFactory) withInvalidTxns(sequences ...int) *blockFactory {
+	bf.invalidTxns = make(map[int]struct{})
+	for _, seq := range sequences {
+		bf.invalidTxns[seq] = struct{}{}
+	}
+	return bf
 }
 
 func sampleNsRwSet(ns string, hash []byte, collections ...string) *rwsetutil.NsRwSet {

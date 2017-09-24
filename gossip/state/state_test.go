@@ -246,7 +246,7 @@ func newGossipInstance(config *gossip.Config, mcs api.MessageCryptoService) goss
 func newCommitter(id int) committer.Committer {
 	cb, _ := test.MakeGenesisBlock(strconv.Itoa(id))
 	ledger, _ := ledgermgmt.CreateLedger(cb)
-	return committer.NewLedgerCommitter(ledger, &validator.MockValidator{})
+	return committer.NewLedgerCommitter(ledger)
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
@@ -264,7 +264,8 @@ func newPeerNodeWithGossip(config *gossip.Config, committer committer.Committer,
 	// basic parts
 
 	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: cs}
-	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, privdata.NewCoordinator(committer, &mockTransientStore{}, nil))
+	coord := privdata.NewCoordinator(committer, &mockTransientStore{}, nil, &validator.MockValidator{})
+	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, coord)
 	if sp == nil {
 		return nil
 	}
@@ -572,6 +573,11 @@ func TestGossipReception(t *testing.T) {
 		},
 		Data: &pcomm.BlockData{
 			Data: [][]byte{},
+		},
+		Metadata: &pcomm.BlockMetadata{
+			Metadata: [][]byte{
+				{}, {}, {}, {},
+			},
 		},
 	}
 	b, _ := pb.Marshal(rawblock)

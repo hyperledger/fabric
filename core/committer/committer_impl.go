@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
@@ -43,9 +42,8 @@ func init() {
 // it keeps the reference to the ledger to commit blocks and retrieve
 // chain information
 type LedgerCommitter struct {
-	ledger    ledger.PeerLedger
-	validator txvalidator.Validator
-	eventer   ConfigBlockEventer
+	ledger  ledger.PeerLedger
+	eventer ConfigBlockEventer
 }
 
 // ConfigBlockEventer callback function proto type to define action
@@ -54,15 +52,15 @@ type ConfigBlockEventer func(block *common.Block) error
 
 // NewLedgerCommitter is a factory function to create an instance of the committer
 // which passes incoming blocks via validation and commits them into the ledger.
-func NewLedgerCommitter(ledger ledger.PeerLedger, validator txvalidator.Validator) *LedgerCommitter {
-	return NewLedgerCommitterReactive(ledger, validator, func(_ *common.Block) error { return nil })
+func NewLedgerCommitter(ledger ledger.PeerLedger) *LedgerCommitter {
+	return NewLedgerCommitterReactive(ledger, func(_ *common.Block) error { return nil })
 }
 
 // NewLedgerCommitterReactive is a factory function to create an instance of the committer
 // same as way as NewLedgerCommitter, while also provides an option to specify callback to
 // be called upon new configuration block arrival and commit event
-func NewLedgerCommitterReactive(ledger ledger.PeerLedger, validator txvalidator.Validator, eventer ConfigBlockEventer) *LedgerCommitter {
-	return &LedgerCommitter{ledger: ledger, validator: validator, eventer: eventer}
+func NewLedgerCommitterReactive(ledger ledger.PeerLedger, eventer ConfigBlockEventer) *LedgerCommitter {
+	return &LedgerCommitter{ledger: ledger, eventer: eventer}
 }
 
 // Commit commits block to into the ledger
@@ -88,12 +86,6 @@ func (lc *LedgerCommitter) Commit(block *common.Block) error {
 // preCommit takes care to validate the block and update based on its
 // content
 func (lc *LedgerCommitter) preCommit(block *common.Block) error {
-	// Validate and mark invalid transactions
-	logger.Debug("Validating block")
-	if err := lc.validator.Validate(block); err != nil {
-		return err
-	}
-
 	// Updating CSCC with new configuration block
 	if utils.IsConfigBlock(block) {
 		logger.Debug("Received configuration update, calling CSCC ConfigUpdate")

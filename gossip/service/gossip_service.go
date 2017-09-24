@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 
 	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
@@ -201,6 +202,7 @@ func (g *gossipServiceImpl) NewConfigEventer() ConfigProcessor {
 }
 
 type Support struct {
+	Validator txvalidator.Validator
 	Committer committer.Committer
 	Store     privdata2.TransientStore
 	Pp        privdata.PolicyParser
@@ -215,7 +217,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	logger.Debug("Creating state provider for chainID", chainID)
 	servicesAdapter := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
 	fetcher := privdata2.NewPuller(support.Ps, support.Pp, g.gossipSvc, NewDataRetriever(support.Store), chainID)
-	coordinator := privdata2.NewCoordinator(support.Committer, support.Store, fetcher)
+	coordinator := privdata2.NewCoordinator(support.Committer, support.Store, fetcher, support.Validator)
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
