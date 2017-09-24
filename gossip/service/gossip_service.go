@@ -217,7 +217,14 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	logger.Debug("Creating state provider for chainID", chainID)
 	servicesAdapter := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
 	fetcher := privdata2.NewPuller(support.Ps, support.Pp, g.gossipSvc, NewDataRetriever(support.Store), chainID)
-	coordinator := privdata2.NewCoordinator(support.Committer, support.Store, fetcher, support.Validator)
+	coordinator := privdata2.NewCoordinator(privdata2.Support{
+		PolicyParser:   support.Pp,
+		PolicyStore:    support.Ps,
+		Validator:      support.Validator,
+		TransientStore: support.Store,
+		Committer:      support.Committer,
+		Fetcher:        fetcher,
+	}, g.createSelfSignedData())
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
@@ -259,6 +266,19 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		}
 	} else {
 		logger.Warning("Delivery client is down won't be able to pull blocks for chain", chainID)
+	}
+}
+
+func (g *gossipServiceImpl) createSelfSignedData() common.SignedData {
+	msg := make([]byte, 32)
+	sig, err := g.mcs.Sign(msg)
+	if err != nil {
+		logger.Panicf("Failed creating self signed data because message signing failed: %v", err)
+	}
+	return common.SignedData{
+		Data:      msg,
+		Signature: sig,
+		Identity:  g.peerIdentity,
 	}
 }
 

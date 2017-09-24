@@ -264,7 +264,11 @@ func newPeerNodeWithGossip(config *gossip.Config, committer committer.Committer,
 	// basic parts
 
 	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: cs}
-	coord := privdata.NewCoordinator(committer, &mockTransientStore{}, nil, &validator.MockValidator{})
+	coord := privdata.NewCoordinator(privdata.Support{
+		Validator:      &validator.MockValidator{},
+		TransientStore: &mockTransientStore{},
+		Committer:      committer,
+	}, pcomm.SignedData{})
 	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, coord)
 	if sp == nil {
 		return nil

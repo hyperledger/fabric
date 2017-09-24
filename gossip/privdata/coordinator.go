@@ -13,6 +13,7 @@ import (
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -68,20 +69,27 @@ type Coordinator interface {
 	Close()
 }
 
-type fetcher interface {
+type Fetcher interface {
 	fetch(req *gossip2.RemotePvtDataRequest) ([]*gossip2.PvtDataElement, error)
 }
 
-type coordinator struct {
+type Support struct {
+	privdata.PolicyParser
+	privdata.PolicyStore
 	txvalidator.Validator
 	committer.Committer
 	TransientStore
-	gossipFetcher fetcher
+	Fetcher
+}
+
+type coordinator struct {
+	selfSignedData common.SignedData
+	Support
 }
 
 // NewCoordinator creates a new instance of coordinator
-func NewCoordinator(committer committer.Committer, store TransientStore, gossipFetcher fetcher, validator txvalidator.Validator) Coordinator {
-	return &coordinator{Committer: committer, TransientStore: store, gossipFetcher: gossipFetcher, Validator: validator}
+func NewCoordinator(support Support, selfSignedData common.SignedData) Coordinator {
+	return &coordinator{Support: support, selfSignedData: selfSignedData}
 }
 
 // StorePvtData used to persist private date into transient store
@@ -164,7 +172,7 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, missingKeys rwsetKeys, own
 		})
 	})
 
-	fetchedData, err := c.gossipFetcher.fetch(req)
+	fetchedData, err := c.fetch(req)
 	if err != nil {
 		logger.Warning("Failed fetching private data for block", blockSeq, "from peers:", err)
 		return
@@ -445,6 +453,9 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 
 		for _, ns := range txRWSet.NsRwSets {
 			for _, hashed := range ns.CollHashedRwSets {
+				if !c.isEligible(chdr, ns.NameSpace, hashed.CollectionName) {
+					continue
+				}
 				key := rwSetKey{
 					txID:       chdr.TxId,
 					seqInBlock: uint64(seqInBlock),
@@ -474,6 +485,31 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 	}
 
 	return missing, nil
+}
+
+// isEligible checks if this peer is eligible for a collection in a given namespace
+func (c *coordinator) isEligible(chdr *common.ChannelHeader, namespace string, col string) bool {
+	cp := rwset.CollectionCriteria{
+		Channel:    chdr.ChannelId,
+		Namespace:  namespace,
+		Collection: col,
+		TxId:       chdr.TxId,
+	}
+	sp := c.PolicyStore.CollectionPolicy(cp)
+	if sp == nil {
+		logger.Warning("Failed obtaining policy for", cp, "skipping collection")
+		return false
+	}
+	filt := c.PolicyParser.Parse(sp)
+	if filt == nil {
+		logger.Warning("Failed parsing policy for", cp, "skipping collection")
+		return false
+	}
+	eligible := filt(c.selfSignedData)
+	if !eligible {
+		logger.Debug("Skipping", cp, "because we're not eligible for the private data")
+	}
+	return eligible
 }
 
 // GetPvtDataAndBlockByNum get block by number and returns also all related private data
