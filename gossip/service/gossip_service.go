@@ -50,8 +50,6 @@ type GossipService interface {
 	NewConfigEventer() ConfigProcessor
 	// InitializeChannel allocates the state provider and should be invoked once per channel per execution
 	InitializeChannel(chainID string, endpoints []string, support Support)
-	// GetBlock returns block for given chain
-	GetBlock(chainID string, index uint64) *common.Block
 	// AddPayload appends message payload to for given chain
 	AddPayload(chainID string, payload *gproto.Payload) error
 }
@@ -306,13 +304,6 @@ func (g *gossipServiceImpl) configUpdated(config Config) {
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for chainID", config.ChainID())
 	g.JoinChan(jcm, gossipCommon.ChainID(config.ChainID()))
-}
-
-// GetBlock returns block for given chain
-func (g *gossipServiceImpl) GetBlock(chainID string, index uint64) *common.Block {
-	g.lock.RLock()
-	defer g.lock.RUnlock()
-	return g.chains[chainID].GetBlock(index)
 }
 
 // AddPayload appends message payload to for given chain

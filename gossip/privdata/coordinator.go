@@ -57,10 +57,7 @@ type Coordinator interface {
 	// the order of private data in slice of PvtDataCollections doesn't implies the order of
 	// transactions in the block related to these private data, to get the correct placement
 	// need to read TxPvtData.SeqInBlock field
-	GetPvtDataAndBlockByNum(seqNum uint64) (*common.Block, util.PvtDataCollections, error)
-
-	// GetBlockByNum returns block and related to the block private data
-	GetBlockByNum(seqNum uint64) (*common.Block, error)
+	GetPvtDataAndBlockByNum(seqNum uint64, peerAuth common.SignedData) (*common.Block, util.PvtDataCollections, error)
 
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
@@ -404,35 +401,27 @@ func (k *rwSetKey) toTxPvtReadWriteSet(rws []byte) *rwset.TxPvtReadWriteSet {
 	}
 }
 
-func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets map[rwSetKey][]byte) (rwSetKeysByTxIDs, error) {
-	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_TRANSACTIONS_FILTER) {
-		return nil, errors.New("Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
-	}
-	txsFilter := txValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-	if len(txsFilter) != len(block.Data.Data) {
-		return nil, errors.Errorf("Block data size(%d) is different from Tx filter size(%d)", len(block.Data.Data), len(txsFilter))
-	}
+type blockData [][]byte
 
-	privateRWsetsInBlock := make(map[rwSetKey]struct{})
-	missing := make(rwSetKeysByTxIDs)
-	for seqInBlock, envBytes := range block.Data.Data {
+func (data blockData) forEach(txsFilter txValidationFlags, consumer func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet)) error {
+	for seqInBlock, envBytes := range data {
 		if txsFilter[seqInBlock] != uint8(peer.TxValidationCode_VALID) {
 			logger.Debug("Skipping Tx", seqInBlock, "because it's invalid. Status is", txsFilter[seqInBlock])
 			continue
 		}
 		env, err := utils.GetEnvelopeFromBlock(envBytes)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		payload, err := utils.GetPayload(env)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		if chdr.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) {
@@ -450,7 +439,24 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 			logger.Warning("Failed obtaining TxRwSet from ChaincodeAction's results", err)
 			continue
 		}
+		consumer(uint64(seqInBlock), chdr, txRWSet)
+	}
+	return nil
+}
 
+func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets map[rwSetKey][]byte) (rwSetKeysByTxIDs, error) {
+	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_TRANSACTIONS_FILTER) {
+		return nil, errors.New("Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
+	}
+	txsFilter := txValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	if len(txsFilter) != len(block.Data.Data) {
+		return nil, errors.Errorf("Block data size(%d) is different from Tx filter size(%d)", len(block.Data.Data), len(txsFilter))
+	}
+
+	privateRWsetsInBlock := make(map[rwSetKey]struct{})
+	missing := make(rwSetKeysByTxIDs)
+	data := blockData(block.Data.Data)
+	err := data.forEach(txsFilter, func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet) {
 		for _, ns := range txRWSet.NsRwSets {
 			for _, hashed := range ns.CollHashedRwSets {
 				if !c.isEligible(chdr, ns.NameSpace, hashed.CollectionName) {
@@ -458,7 +464,7 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 				}
 				key := rwSetKey{
 					txID:       chdr.TxId,
-					seqInBlock: uint64(seqInBlock),
+					seqInBlock: seqInBlock,
 					hash:       hex.EncodeToString(hashed.PvtRwSetHash),
 					namespace:  ns.NameSpace,
 					collection: hashed.CollectionName,
@@ -467,14 +473,16 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 				if _, exists := ownedRWsets[key]; !exists {
 					txAndSeq := txAndSeqInBlock{
 						txID:       chdr.TxId,
-						seqInBlock: uint64(seqInBlock),
+						seqInBlock: seqInBlock,
 					}
 					missing[txAndSeq] = append(missing[txAndSeq], key)
 				}
 			} // for all hashed RW sets
 		} // for all RW sets
-	} // for all transactions in block
-
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 	// In the end, iterate over the ownedRWsets, and if the key doesn't exist in
 	// the privateRWsetsInBlock - delete it from the ownedRWsets
 	for k := range ownedRWsets {
@@ -512,30 +520,93 @@ func (c *coordinator) isEligible(chdr *common.ChannelHeader, namespace string, c
 	return eligible
 }
 
+type seqAndDataModel struct {
+	seq       uint64
+	dataModel rwset.TxReadWriteSet_DataModel
+}
+
+// map from seqAndDataModel to:
+//     maap from namespace to []*rwset.CollectionPvtReadWriteSet
+type aggregatedCollections map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet
+
+func (ac aggregatedCollections) addCollection(seqInBlock uint64, dm rwset.TxReadWriteSet_DataModel, namespace string, col *rwset.CollectionPvtReadWriteSet) {
+	seq := seqAndDataModel{
+		dataModel: dm,
+		seq:       seqInBlock,
+	}
+	if _, exists := ac[seq]; !exists {
+		ac[seq] = make(map[string][]*rwset.CollectionPvtReadWriteSet)
+	}
+	ac[seq][namespace] = append(ac[seq][namespace], col)
+}
+
+func (ac aggregatedCollections) asPrivateData() []*ledger.TxPvtData {
+	var data []*ledger.TxPvtData
+	for seq, ns := range ac {
+		txPrivateData := &ledger.TxPvtData{
+			SeqInBlock: seq.seq,
+			WriteSet: &rwset.TxPvtReadWriteSet{
+				DataModel: seq.dataModel,
+			},
+		}
+		for namespaceName, cols := range ns {
+			txPrivateData.WriteSet.NsPvtRwset = append(txPrivateData.WriteSet.NsPvtRwset, &rwset.NsPvtReadWriteSet{
+				Namespace:          namespaceName,
+				CollectionPvtRwset: cols,
+			})
+		}
+		data = append(data, txPrivateData)
+	}
+	return data
+}
+
 // GetPvtDataAndBlockByNum get block by number and returns also all related private data
 // the order of private data in slice of PvtDataCollections doesn't implies the order of
 // transactions in the block related to these private data, to get the correct placement
 // need to read TxPvtData.SeqInBlock field
-func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64) (*common.Block, util.PvtDataCollections, error) {
+func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common.SignedData) (*common.Block, util.PvtDataCollections, error) {
 	blockAndPvtData, err := c.Committer.GetPvtDataAndBlockByNum(seqNum)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot retrieve block number %d, due to %s", seqNum, err)
 	}
 
-	var blockPvtData util.PvtDataCollections
+	seqs2Namespaces := aggregatedCollections(make(map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet))
+	data := blockData(blockAndPvtData.Block.Data.Data)
+	err = data.forEach(make(txValidationFlags, len(data)), func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet) {
+		item, exists := blockAndPvtData.BlockPvtData[seqInBlock]
+		if !exists {
+			return
+		}
 
-	for _, item := range blockAndPvtData.BlockPvtData {
-		blockPvtData = append(blockPvtData, item)
+		for _, ns := range item.WriteSet.NsPvtRwset {
+			for _, col := range ns.CollectionPvtRwset {
+				cc := rwset.CollectionCriteria{
+					Channel:    chdr.ChannelId,
+					TxId:       chdr.TxId,
+					Namespace:  ns.Namespace,
+					Collection: col.CollectionName,
+				}
+				sp := c.PolicyStore.CollectionPolicy(cc)
+				if sp == nil {
+					logger.Warning("Failed obtaining policy for", cc)
+					continue
+				}
+				isAuthorized := c.PolicyParser.Parse(sp)
+				if isAuthorized == nil {
+					logger.Warning("Failed obtaining filter for", cc)
+					continue
+				}
+				if !isAuthorized(peerAuthInfo) {
+					logger.Debug("Skipping", cc, "because peer isn't authorized")
+					continue
+				}
+				seqs2Namespaces.addCollection(seqInBlock, item.WriteSet.DataModel, ns.Namespace, col)
+			}
+		}
+	})
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
 	}
 
-	return blockAndPvtData.Block, blockPvtData, nil
-}
-
-// GetBlockByNum returns block by sequence number
-func (c *coordinator) GetBlockByNum(seqNum uint64) (*common.Block, error) {
-	blocks := c.GetBlocks([]uint64{seqNum})
-	if len(blocks) == 0 {
-		return nil, fmt.Errorf("cannot retrieve block number %d", seqNum)
-	}
-	return blocks[0], nil
+	return blockAndPvtData.Block, seqs2Namespaces.asPrivateData(), nil
 }

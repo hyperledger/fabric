@@ -222,19 +222,19 @@ func (f *fetcherMock) fetch(req *proto.RemotePvtDataRequest) ([]*proto.PvtDataEl
 	return nil, args.Get(1).(error)
 }
 
-func createPolicyStore(selfSignedData common.SignedData) *policyStore {
+func createPolicyStore(expectedSignedData common.SignedData) *policyStore {
 	return &policyStore{
-		selfSignedData: selfSignedData,
-		policies:       make(map[serializedPolicy]rwset.CollectionCriteria),
-		store:          make(map[rwset.CollectionCriteria]serializedPolicy),
+		expectedSignedData: expectedSignedData,
+		policies:           make(map[serializedPolicy]rwset.CollectionCriteria),
+		store:              make(map[rwset.CollectionCriteria]serializedPolicy),
 	}
 }
 
 type policyStore struct {
-	selfSignedData common.SignedData
-	acceptsAll     bool
-	store          map[rwset.CollectionCriteria]serializedPolicy
-	policies       map[serializedPolicy]rwset.CollectionCriteria
+	expectedSignedData common.SignedData
+	acceptsAll         bool
+	store              map[rwset.CollectionCriteria]serializedPolicy
+	policies           map[serializedPolicy]rwset.CollectionCriteria
 }
 
 func (ps *policyStore) thatAcceptsAll() *policyStore {
@@ -282,7 +282,7 @@ func (*policyParser) Parse(serializedPol privdata.SerializedPolicy) privdata.Fil
 	sp := serializedPol.(*serializedPolicy)
 	return func(sd common.SignedData) bool {
 		that, _ := asn1.Marshal(sd)
-		this, _ := asn1.Marshal(sp.ps.selfSignedData)
+		this, _ := asn1.Marshal(sp.ps.expectedSignedData)
 		if hex.EncodeToString(that) != hex.EncodeToString(this) {
 			panic("Self signed data passed isn't equal to expected")
 		}
@@ -810,56 +810,63 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 }
 
 func TestCoordinatorGetBlocks(t *testing.T) {
+	sd := common.SignedData{
+		Identity:  []byte{0, 1, 2},
+		Signature: []byte{3, 4, 5},
+		Data:      []byte{6, 7, 8},
+	}
+	ps := createPolicyStore(sd).thatAcceptsAll()
+	pp := &policyParser{}
 	committer := &committerMock{}
 	store := &mockTransientStore{t: t}
 	fetcher := &fetcherMock{t: t}
 	coordinator := NewCoordinator(Support{
+		PolicyStore:    ps,
+		PolicyParser:   pp,
 		Committer:      committer,
 		Fetcher:        fetcher,
 		TransientStore: store,
 		Validator:      &validatorMock{},
-	}, common.SignedData{})
+	}, sd)
 
-	// Bad path: block is not returned
-	committer.On("GetBlocks", mock.Anything).Return([]*common.Block{})
-	block, err := coordinator.GetBlockByNum(1)
-	assert.Contains(t, err.Error(), "cannot retrieve block number 1")
-	assert.Error(t, err)
-	assert.Nil(t, block)
+	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
+	bf := &blockFactory{
+		channelID: "test",
+	}
+	block := bf.AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
 
-	// Green path: Block is returned
-	committer.Mock = mock.Mock{}
-	committer.On("GetBlocks", mock.Anything).Return([]*common.Block{
-		{
-			Header: &common.BlockHeader{
-				Number: 1,
-			},
-		},
+	// Green path - block and private data is returned, but the requester isn't eligible for all the private data,
+	// but only to a subset of it.
+	ps = createPolicyStore(sd).thatAccepts(rwset.CollectionCriteria{
+		Namespace:  "ns1",
+		Collection: "c2",
+		TxId:       "tx1",
+		Channel:    "test",
 	})
-	block, err = coordinator.GetBlockByNum(1)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(1), block.Header.Number)
-
+	committer.Mock = mock.Mock{}
 	committer.On("GetPvtDataAndBlockByNum", mock.Anything).Return(&ledger.BlockAndPvtData{
-		Block: block,
-		BlockPvtData: map[uint64]*ledger.TxPvtData{
-			0: {
-				SeqInBlock: 0,
-			},
-		},
+		Block:        block,
+		BlockPvtData: expectedCommittedPrivateData1,
 	}, nil)
-
-	// Green path - block and private data is returned
-	block2, privData, err := coordinator.GetPvtDataAndBlockByNum(1)
+	coordinator = NewCoordinator(Support{
+		PolicyStore:    ps,
+		PolicyParser:   pp,
+		Committer:      committer,
+		Fetcher:        fetcher,
+		TransientStore: store,
+		Validator:      &validatorMock{},
+	}, sd)
+	expectedPrivData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c2").create()
+	block2, returnedPrivateData, err := coordinator.GetPvtDataAndBlockByNum(1, sd)
 	assert.NoError(t, err)
 	assert.Equal(t, block, block2)
-	assert.Equal(t, util.PvtDataCollections{{SeqInBlock: 0}}, privData)
+	assert.Equal(t, expectedPrivData, []*ledger.TxPvtData(returnedPrivateData))
 
 	// Bad path - error occurs when trying to retrieve the block and private data
 	committer.Mock = mock.Mock{}
 	committer.On("GetPvtDataAndBlockByNum", mock.Anything).Return(nil, errors.New("uh oh"))
-	block2, privData, err = coordinator.GetPvtDataAndBlockByNum(1)
+	block2, returnedPrivateData, err = coordinator.GetPvtDataAndBlockByNum(1, sd)
 	assert.Nil(t, block2)
-	assert.Empty(t, privData)
+	assert.Empty(t, returnedPrivateData)
 	assert.Error(t, err)
 }
