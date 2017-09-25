@@ -264,7 +264,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	var ccevent *pb.ChaincodeEvent
 	res, ccevent, err = e.callChaincode(ctx, chainID, version, txid, signedProp, prop, cis, cid, txsim)
 	if err != nil {
-		endorserLogger.Errorf("failed to invoke chaincode %s on transaction %s, error: %s", cid, txid, err)
+		endorserLogger.Errorf("failed to invoke chaincode %s on transaction %s, error: %+v", cid, txid, err)
 		return nil, nil, nil, nil, err
 	}
 
