@@ -305,7 +305,7 @@ Configuration Transaction Generator
 The ``configtxgen tool`` is used to create four configuration artifacts:
 
   * orderer ``genesis block``,
-  * channel ``channel configuration transaction``,
+  * channel ``configuration transaction``,
   * and two ``anchor peer transactions`` - one for each Peer Org.
 
 Please see :doc:`configtxgen` for a complete description of the use of this
