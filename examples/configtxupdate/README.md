@@ -81,7 +81,7 @@ CGO_CFLAGS=" " GOBIN=/home/yellickj/go/src/github.com/hyperledger/fabric/build/b
 Binary available as build/bin/configtxgen
 ```
 
-It is recommended to run the example by invoking the script `fabric/example/configtxupdate/bootstrap_batchsize/script.sh` as follows:
+It is recommended to run the example by invoking the script `fabric/examples/configtxupdate/bootstrap_batchsize/script.sh` as follows:
 
 ```
 INTERACTIVE=true ./script.sh
@@ -160,7 +160,7 @@ ORDERER_GENERAL_LOGLEVEL=debug orderer
 
 Reconfiguring a channel can be performed in a very similar way to modifying a genesis config.
 
-The recommended path to proceed with this example is to run the script located at `fabric/example/configtxupdate/reconfigure_batchsize/script.sh` by invoking
+The recommended path to proceed with this example is to run the script located at `fabric/examples/configtxupdate/reconfigure_batchsize/script.sh` by invoking
 
 ```
 INTERACTIVE=true ./script.sh
