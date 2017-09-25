@@ -160,3 +160,14 @@ func TestGetVersion(t *testing.T) {
 		commontests.TestGetVersion(t, env.DBProvider)
 	}
 }
+
+func TestSmallBatchSize(t *testing.T) {
+	if ledgerconfig.IsCouchDBEnabled() == true {
+		viper.Set("ledger.state.couchDBConfig.maxBatchUpdateSize", 2)
+		env := NewTestVDBEnv(t)
+		env.Cleanup("testsmallbatchsize")
+		defer env.Cleanup("testsmallbatchsize")
+		defer viper.Set("ledger.state.couchDBConfig.maxBatchUpdateSize", 1000)
+		commontests.TestSmallBatchSize(t, env.DBProvider)
+	}
+}

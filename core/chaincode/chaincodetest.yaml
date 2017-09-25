@@ -448,7 +448,8 @@ ledger:
        requestTimeout: 35s
        # Limit on the number of records to return per query
        queryLimit: 10000
-
+       # Limit on the number of records per CouchDB bulk update batch
+       maxBatchUpdateSize: 500
 
   history:
     # enableHistoryDatabase - options are true or false

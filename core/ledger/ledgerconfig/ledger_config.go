@@ -84,6 +84,16 @@ func GetQueryLimit() int {
 	return queryLimit
 }
 
+//GetMaxBatchUpdateSize exposes the maxBatchUpdateSize variable
+func GetMaxBatchUpdateSize() int {
+	maxBatchUpdateSize := viper.GetInt("ledger.state.couchDBConfig.maxBatchUpdateSize")
+	// if maxBatchUpdateSize was unset, default to 500
+	if !viper.IsSet("ledger.state.couchDBConfig.maxBatchUpdateSize") {
+		maxBatchUpdateSize = 500
+	}
+	return maxBatchUpdateSize
+}
+
 //IsHistoryDBEnabled exposes the historyDatabase variable
 func IsHistoryDBEnabled() bool {
 	return viper.GetBool("ledger.history.enableHistoryDatabase")

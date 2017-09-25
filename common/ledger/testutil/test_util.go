@@ -18,6 +18,7 @@ package testutil
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -52,9 +53,26 @@ func AssertEquals(t testing.TB, actual interface{}, expected interface{}) {
 	if expected == nil && isNil(actual) {
 		return
 	}
+
+	//convert JSONs to maps, this will allow comparison by DeepEqual
+	actual = convertJSONToMap(actual)
+	expected = convertJSONToMap(expected)
+
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("Values are not equal.\n Actual=[%#v], \n Expected=[%#v]\n %s", actual, expected, getCallerInfo())
 	}
+}
+
+// convertJSONToMap will convert a JSON in a byte array to a MAP
+func convertJSONToMap(value interface{}) interface{} {
+	var valueMap map[string]interface{}
+	valueBytes, ok := value.([]byte)
+	if ok {
+		if json.Unmarshal(valueBytes, &valueMap) == nil {
+			return valueMap
+		}
+	}
+	return value
 }
 
 // AssertNotEquals varifies that the two values are not equal
