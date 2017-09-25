@@ -34,6 +34,12 @@ var binaryWrapper = "valueBytes"
 // currently defaulted to 0 and is not used
 var querySkip = 0
 
+// BatchDocument defines a document for a batch
+type BatchableDocument struct {
+	CouchDoc couchdb.CouchDoc
+	Deleted  bool
+}
+
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
 	couchInstance *couchdb.CouchInstance
@@ -381,7 +387,7 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 			}
 
 			// Add the current docment to the update map
-			batchUpdateMap[string(compositeKey)] = couchDoc
+			batchUpdateMap[string(compositeKey)] = BatchableDocument{CouchDoc: *couchDoc, Deleted: isDelete}
 
 		}
 	}
@@ -390,7 +396,8 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 
 		batchUpdateDocs := []*couchdb.CouchDoc{}
 		for _, updateDocument := range batchUpdateMap {
-			batchUpdateDocs = append(batchUpdateDocs, updateDocument.(*couchdb.CouchDoc))
+			batchUpdateDocument := updateDocument.(BatchableDocument)
+			batchUpdateDocs = append(batchUpdateDocs, &batchUpdateDocument.CouchDoc)
 		}
 
 		// Do the bulk update into couchdb
@@ -408,11 +415,23 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 			// If the document returned an error, retry the individual document
 			if respDoc.Ok != true {
 
-				// Save the individual document to couchdb
-				// Note that this will do retries as needed
-				_, err := vdb.db.SaveDoc(respDoc.ID, "", batchUpdateMap[respDoc.ID].(*couchdb.CouchDoc))
+				batchUpdateDocument := batchUpdateMap[respDoc.ID].(BatchableDocument)
 
-				// If the single document update with retries returns an error, then throw the error
+				var err error
+
+				// Check to see if the document was added to the batch as a delete type document
+				if batchUpdateDocument.Deleted {
+					// If this is a deleted document, then retry the delete
+					// If the delete fails due to a document not being found (404 error),
+					// the document has already been deleted and the DeleteDoc will not return an error
+					err = vdb.db.DeleteDoc(respDoc.ID, "")
+				} else {
+					// Save the individual document to couchdb
+					// Note that this will do retries as needed
+					_, err = vdb.db.SaveDoc(respDoc.ID, "", &batchUpdateDocument.CouchDoc)
+				}
+
+				// If the single document update or delete returns an error, then throw the error
 				if err != nil {
 
 					errorString := fmt.Sprintf("Error occurred while saving document ID = %v  Error: %s  Reason: %s\n",
@@ -420,6 +439,7 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 
 					logger.Errorf(errorString)
 					return fmt.Errorf(errorString)
+
 				}
 			}
 		}
