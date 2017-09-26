@@ -111,15 +111,13 @@ func GetChain() *ChaincodeSupport {
 	return theChaincodeSupport
 }
 
-func (chaincodeSupport *ChaincodeSupport) preLaunchSetup(chaincode string) chan bool {
+func (chaincodeSupport *ChaincodeSupport) preLaunchSetup(chaincode string, notfy chan bool) {
 	chaincodeSupport.runningChaincodes.Lock()
 	defer chaincodeSupport.runningChaincodes.Unlock()
 	//register placeholder Handler. This will be transferred in registerHandler
 	//NOTE: from this point, existence of handler for this chaincode means the chaincode
 	//is in the process of getting started (or has been started)
-	notfy := make(chan bool, 1)
 	chaincodeSupport.runningChaincodes.chaincodeMap[chaincode] = &chaincodeRTEnv{handler: &Handler{readyNotify: notfy}}
-	return notfy
 }
 
 //call this under lock
@@ -438,9 +436,60 @@ func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(cccid *ccprovider.CCC
 	return args, envs, filesToUpload, nil
 }
 
+//---------- Begin - launchAndWaitForRegister related functionality --------
+
+//a launcher interface to encapsulate chaincode execution. This
+//helps with UT of launchAndWaitForRegister
+type launcherIntf interface {
+	launch(ctxt context.Context, notfy chan bool) (interface{}, error)
+}
+
+//ccLaucherImpl will use the container launcher mechanism to launch the actual chaincode
+type ccLauncherImpl struct {
+	ctxt      context.Context
+	ccSupport *ChaincodeSupport
+	cccid     *ccprovider.CCContext
+	cds       *pb.ChaincodeDeploymentSpec
+	builder   api.BuildSpecFactory
+}
+
+//launches the chaincode using the supplied context and notifier
+func (ccl *ccLauncherImpl) launch(ctxt context.Context, notfy chan bool) (interface{}, error) {
+	//launch the chaincode
+	args, env, filesToUpload, err := ccl.ccSupport.getLaunchConfigs(ccl.cccid, ccl.cds.ChaincodeSpec.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	canName := ccl.cccid.GetCanonicalName()
+
+	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", canName, ccl.ccSupport.peerNetworkID, ccl.ccSupport.peerID)
+	chaincodeLogger.Debugf("start container with args: %s", strings.Join(args, " "))
+	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(env, "\n\t"))
+
+	//set up the shadow handler JIT before container launch to
+	//reduce window of when an external chaincode can sneak in
+	//and use the launching context and make it its own
+	preLaunchFunc := func() error {
+		ccl.ccSupport.preLaunchSetup(canName, notfy)
+		return nil
+	}
+
+	ccid := ccintf.CCID{ChaincodeSpec: ccl.cds.ChaincodeSpec, NetworkID: ccl.ccSupport.peerNetworkID, PeerID: ccl.ccSupport.peerID, Version: ccl.cccid.Version}
+	sir := container.StartImageReq{CCID: ccid, Builder: ccl.builder, Args: args, Env: env, FilesToUpload: filesToUpload, PrelaunchFunc: preLaunchFunc}
+	ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), ccl.ccSupport)
+
+	vmtype, _ := ccl.ccSupport.getVMType(ccl.cds)
+	resp, err := container.VMCProcess(ipcCtxt, vmtype, sir)
+
+	return resp, err
+}
+
 //launchAndWaitForRegister will launch container if not already running. Use
-//the targz to create the image if not found
-func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec, cLang pb.ChaincodeSpec_Type, builder api.BuildSpecFactory) error {
+//the targz to create the image if not found. It uses the supplied launcher
+//for launching the chaincode. UTs use the launcher freely to test various
+//conditions such as timeouts, failed launches and other errors
+func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec, launcher launcherIntf) error {
 	canName := cccid.GetCanonicalName()
 	if canName == "" {
 		return errors.New("chaincode name not set")
@@ -484,50 +533,47 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 
 	chaincodeSupport.runningChaincodes.Unlock()
 
-	//launch the chaincode
+	//loopback notifier when everything goes ok and chaincode registers
+	//correctly
+	notfy := make(chan bool, 1)
 
-	args, env, filesToUpload, err := chaincodeSupport.getLaunchConfigs(cccid, cLang)
-	if err != nil {
-		return err
-	}
+	errChan := make(chan error)
+	go func() {
+		var err error
+		defer func() {
+			//notify ONLY if we encountered an error
+			//else either timeout or ready notify should
+			//kick in
+			if err != nil {
+				errChan <- err
+			}
+		}()
 
-	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", canName, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID)
-	chaincodeLogger.Debugf("start container with args: %s", strings.Join(args, " "))
-	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(env, "\n\t"))
-
-	vmtype, _ := chaincodeSupport.getVMType(cds)
-
-	//set up the shadow handler JIT before container launch to
-	//reduce window of when an external chaincode can sneak in
-	//and use the launching context and make it its own
-	var notfy chan bool
-	preLaunchFunc := func() error {
-		notfy = chaincodeSupport.preLaunchSetup(canName)
-		return nil
-	}
-
-	ccid := ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, Version: cccid.Version}
-	sir := container.StartImageReq{CCID: ccid, Builder: builder, Args: args, Env: env, FilesToUpload: filesToUpload, PrelaunchFunc: preLaunchFunc}
-
-	ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), chaincodeSupport)
-
-	resp, err := container.VMCProcess(ipcCtxt, vmtype, sir)
-	if err != nil || (resp != nil && resp.(container.VMCResp).Err != nil) {
-		if err == nil {
-			err = resp.(container.VMCResp).Err
+		resp, err := launcher.launch(ctxt, notfy)
+		if err != nil || (resp != nil && resp.(container.VMCResp).Err != nil) {
+			if err == nil {
+				err = resp.(container.VMCResp).Err
+			}
+			err = errors.WithMessage(err, "error starting container")
+			chaincodeSupport.runningChaincodes.Lock()
+			delete(chaincodeSupport.runningChaincodes.chaincodeMap, canName)
+			chaincodeSupport.runningChaincodes.Unlock()
 		}
-		err = errors.WithMessage(err, "error starting container")
-		chaincodeSupport.runningChaincodes.Lock()
-		delete(chaincodeSupport.runningChaincodes.chaincodeMap, canName)
-		chaincodeSupport.runningChaincodes.Unlock()
-		return err
-	}
+	}()
+
+	var err error
 
 	//wait for REGISTER state
 	select {
 	case ok := <-notfy:
 		if !ok {
 			err = errors.Errorf("registration failed for %s(networkid:%s,peerid:%s,tx:%s)", canName, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID, cccid.TxID)
+		}
+	case err = <-errChan:
+		// When the launch completed, errors from the launch if any will be handled below.
+		// Just test for invalid nil error notification (we expect only errors to be notified)
+		if err == nil {
+			panic("nil error notified. the launch contract is to notify errors only")
 		}
 	case <-time.After(chaincodeSupport.ccStartupTimeout):
 		err = errors.Errorf("timeout expired while starting chaincode %s(networkid:%s,peerid:%s,tx:%s)", canName, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID, cccid.TxID)
@@ -541,6 +587,8 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 	}
 	return err
 }
+
+//---------- End - launchAndWaitForRegister related functionality --------
 
 //Stop stops a chaincode if running
 func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
@@ -690,8 +738,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 
 		builder := func() (io.Reader, error) { return platforms.GenerateDockerBuild(cds) }
 
-		cLang := cds.ChaincodeSpec.Type
-		err = chaincodeSupport.launchAndWaitForRegister(context, cccid, cds, cLang, builder)
+		err = chaincodeSupport.launchAndWaitForRegister(context, cccid, cds, &ccLauncherImpl{context, chaincodeSupport, cccid, cds, builder})
 		if err != nil {
 			chaincodeLogger.Errorf("launchAndWaitForRegister failed: %+v", err)
 			return cID, cMsg, err
