@@ -18,6 +18,7 @@ package scc
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -30,6 +31,7 @@ import (
 
 func init() {
 	viper.Set("chaincode.system", map[string]string{"lscc": "enable", "a": "enable"})
+	viper.Set("peer.fileSystemPath", os.TempDir())
 	ccprovider.RegisterChaincodeProviderFactory(&ccprovider2.MockCcProviderFactory{})
 	RegisterSysCCs()
 }
