@@ -264,7 +264,11 @@ func newPeerNodeWithGossip(config *gossip.Config, committer committer.Committer,
 	// basic parts
 
 	servicesAdapater := &ServicesMediator{GossipAdapter: g, MCSAdapter: cs}
-	coord := privdata.NewCoordinator(committer, &mockTransientStore{}, nil, &validator.MockValidator{})
+	coord := privdata.NewCoordinator(privdata.Support{
+		Validator:      &validator.MockValidator{},
+		TransientStore: &mockTransientStore{},
+		Committer:      committer,
+	}, pcomm.SignedData{})
 	sp := NewGossipStateProvider(util.GetTestChainID(), servicesAdapater, coord)
 	if sp == nil {
 		return nil
@@ -557,12 +561,6 @@ func TestFailures(t *testing.T) {
 	mc.Mock = mock.Mock{}
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), errors.New("Failed accessing ledger"))
 	assert.Nil(t, newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g))
-	// Reprogram mock
-	mc.Mock = mock.Mock{}
-	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
-	mc.On("GetBlocks", mock.Anything).Return(nil)
-	p := newPeerNodeWithGossip(newGossipConfig(0), mc, noopPeerIdentityAcceptor, g)
-	assert.Nil(t, p.s.GetBlock(uint64(1)))
 }
 
 func TestGossipReception(t *testing.T) {
@@ -1150,7 +1148,7 @@ type coordinatorMock struct {
 	mock.Mock
 }
 
-func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64) (*pcomm.Block, gutil.PvtDataCollections, error) {
+func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64, _ pcomm.SignedData) (*pcomm.Block, gutil.PvtDataCollections, error) {
 	args := mock.Called(seqNum)
 	return args.Get(0).(*pcomm.Block), args.Get(1).(gutil.PvtDataCollections), args.Error(2)
 }
@@ -1329,6 +1327,9 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 	msg, _ := requestGossipMsg.NoopSign()
 
 	requestMsg.On("GetGossipMessage").Return(msg)
+	requestMsg.On("GetConnectionInfo").Return(&proto.ConnectionInfo{
+		Auth: &proto.AuthInfo{},
+	})
 
 	// Channel to send responses back
 	responseChannel := make(chan proto.ReceivedMessage)
@@ -1525,6 +1526,9 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		requestMsg := new(receivedMessageMock)
 		msg, _ := request.NoopSign()
 		requestMsg.On("GetGossipMessage").Return(msg)
+		requestMsg.On("GetConnectionInfo").Return(&proto.ConnectionInfo{
+			Auth: &proto.AuthInfo{},
+		})
 
 		requestMsg.On("Respond", mock.Anything).Run(func(args mock.Arguments) {
 			response := args.Get(0).(*proto.GossipMessage)

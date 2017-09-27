@@ -174,7 +174,7 @@ type TxPvtData struct {
 	WriteSet   *rwset.TxPvtReadWriteSet
 }
 
-// BlockAndPvtData encapsultes the block and a map that contains the tuples <seqInBlock, *TxPvtData>
+// BlockAndPvtData encapsulates the block and a map that contains the tuples <seqInBlock, *TxPvtData>
 // The map is expected to contain the entries only for the transactions that has associated pvt data
 type BlockAndPvtData struct {
 	Block        *common.Block

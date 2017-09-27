@@ -30,9 +30,6 @@ import (
 // capable to full fill missing blocks by running state replication and
 // sending request to get missing block to other nodes
 type GossipStateProvider interface {
-	// Retrieve block with sequence number equal to index
-	GetBlock(index uint64) *common.Block
-
 	AddPayload(payload *proto.Payload) error
 
 	// Stop terminates state transfer object
@@ -100,13 +97,10 @@ type ledgerResources interface {
 	StorePvtData(txid string, privData *rwset.TxPvtReadWriteSet) error
 
 	// GetPvtDataAndBlockByNum get block by number and returns also all related private data
-	// the order of private data in slice of PvtDataCollections doesn't implies the order of
+	// the order of private data in slice of PvtDataCollections doesn't imply the order of
 	// transactions in the block related to these private data, to get the correct placement
 	// need to read TxPvtData.SeqInBlock field
-	GetPvtDataAndBlockByNum(seqNum uint64) (*common.Block, util.PvtDataCollections, error)
-
-	// GetBlockByNum returns block and related to the block private data
-	GetBlockByNum(seqNum uint64) (*common.Block, error)
+	GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common.SignedData) (*common.Block, util.PvtDataCollections, error)
 
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
@@ -412,7 +406,13 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 	response := &proto.RemoteStateResponse{Payloads: make([]*proto.Payload, 0)}
 	for seqNum := request.StartSeqNum; seqNum <= endSeqNum; seqNum++ {
 		logger.Debug("Reading block ", seqNum, " with private data from the coordinator service")
-		block, pvtData, err := s.ledger.GetPvtDataAndBlockByNum(seqNum)
+		connInfo := msg.GetConnectionInfo()
+		peerAuthInfo := common.SignedData{
+			Data:      connInfo.Auth.SignedData,
+			Signature: connInfo.Auth.Signature,
+			Identity:  connInfo.Identity,
+		}
+		block, pvtData, err := s.ledger.GetPvtDataAndBlockByNum(seqNum, peerAuthInfo)
 
 		if err != nil {
 			logger.Errorf("Wasn't able to read block with sequence number %d from ledger, "+
@@ -731,17 +731,6 @@ func (s *GossipStateProviderImpl) hasRequiredHeight(height uint64) func(peer dis
 
 		return false
 	}
-}
-
-// GetBlock return ledger block given its sequence number as a parameter
-func (s *GossipStateProviderImpl) GetBlock(index uint64) *common.Block {
-	// Try to read missing block from the ledger, should return no nil with
-	// content including at least one block
-	if block, err := s.ledger.GetBlockByNum(index); block != nil && err != nil {
-		return block
-	}
-
-	return nil
 }
 
 // AddPayload add new payload into state.

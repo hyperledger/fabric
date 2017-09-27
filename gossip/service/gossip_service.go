@@ -50,8 +50,6 @@ type GossipService interface {
 	NewConfigEventer() ConfigProcessor
 	// InitializeChannel allocates the state provider and should be invoked once per channel per execution
 	InitializeChannel(chainID string, endpoints []string, support Support)
-	// GetBlock returns block for given chain
-	GetBlock(chainID string, index uint64) *common.Block
 	// AddPayload appends message payload to for given chain
 	AddPayload(chainID string, payload *gproto.Payload) error
 }
@@ -217,7 +215,14 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	logger.Debug("Creating state provider for chainID", chainID)
 	servicesAdapter := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
 	fetcher := privdata2.NewPuller(support.Ps, support.Pp, g.gossipSvc, NewDataRetriever(support.Store), chainID)
-	coordinator := privdata2.NewCoordinator(support.Committer, support.Store, fetcher, support.Validator)
+	coordinator := privdata2.NewCoordinator(privdata2.Support{
+		PolicyParser:   support.Pp,
+		PolicyStore:    support.Ps,
+		Validator:      support.Validator,
+		TransientStore: support.Store,
+		Committer:      support.Committer,
+		Fetcher:        fetcher,
+	}, g.createSelfSignedData())
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
@@ -262,6 +267,19 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	}
 }
 
+func (g *gossipServiceImpl) createSelfSignedData() common.SignedData {
+	msg := make([]byte, 32)
+	sig, err := g.mcs.Sign(msg)
+	if err != nil {
+		logger.Panicf("Failed creating self signed data because message signing failed: %v", err)
+	}
+	return common.SignedData{
+		Data:      msg,
+		Signature: sig,
+		Identity:  g.peerIdentity,
+	}
+}
+
 // configUpdated constructs a joinChannelMessage and sends it to the gossipSvc
 func (g *gossipServiceImpl) configUpdated(config Config) {
 	myOrg := string(g.secAdv.OrgByPeerIdentity(api.PeerIdentityType(g.peerIdentity)))
@@ -286,13 +304,6 @@ func (g *gossipServiceImpl) configUpdated(config Config) {
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for chainID", config.ChainID())
 	g.JoinChan(jcm, gossipCommon.ChainID(config.ChainID()))
-}
-
-// GetBlock returns block for given chain
-func (g *gossipServiceImpl) GetBlock(chainID string, index uint64) *common.Block {
-	g.lock.RLock()
-	defer g.lock.RUnlock()
-	return g.chains[chainID].GetBlock(index)
 }
 
 // AddPayload appends message payload to for given chain

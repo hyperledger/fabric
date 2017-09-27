@@ -96,7 +96,7 @@ func (bf *blockFactory) AddTxn(txID string, nsName string, hash []byte, collecti
 
 func (bf *blockFactory) create() *common.Block {
 	defer func() {
-		*bf = blockFactory{}
+		*bf = blockFactory{channelID: bf.channelID}
 	}()
 	block := &common.Block{
 		Header: &common.BlockHeader{
