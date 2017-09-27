@@ -43,9 +43,7 @@ type PvtDataDistributor interface {
 
 // distributorImpl the implementation of the private data distributor interface
 type distributorImpl struct {
-	chainID  string
-	minAck   int
-	maxPeers int
+	chainID string
 	gossipAdapter
 }
 
@@ -55,8 +53,6 @@ func NewDistributor(chainID string, gossip gossipAdapter) PvtDataDistributor {
 	return &distributorImpl{
 		chainID:       chainID,
 		gossipAdapter: gossip,
-		minAck:        viper.GetInt("peer.gossip.pvtData.minAck"),
-		maxPeers:      viper.GetInt("peer.gossip.pvtData.maxPeers"),
 	}
 }
 
@@ -98,54 +94,64 @@ func (d *distributorImpl) computeDisseminationPlan(txID string, privData *rwset.
 				return nil, errors.Errorf("No collection access policy filter computed for %v", cc)
 			}
 
-			routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChainID(d.chainID), func(signature api.PeerSignature) bool {
-				return colFilter(common.SignedData{
-					Data:      signature.Message,
-					Signature: signature.Signature,
-					Identity:  []byte(signature.PeerIdentity),
-				})
-			})
-
+			pvtDataMsg, err := d.createPrivateDataMessage(txID, namespace, collection.CollectionName, collection.Rwset)
 			if err != nil {
-				logger.Error("Failed to retrieve peer routing filter for", cc, " due to", err)
-				return nil, err
+				return nil, errors.WithStack(err)
 			}
 
-			msg := &proto.GossipMessage{
-				Channel: []byte(d.chainID),
-				Nonce:   util.RandomUInt64(),
-				Tag:     proto.GossipMessage_CHAN_ONLY,
-				Content: &proto.GossipMessage_PrivateData{
-					PrivateData: &proto.PrivateDataMessage{
-						Payload: &proto.PrivatePayload{
-							Namespace:      namespace,
-							CollectionName: collectionName,
-							TxId:           txID,
-							PrivateRwset:   collection.Rwset,
-						},
-					},
-				},
-			}
-
-			pvtDataMsg, err := msg.NoopSign()
+			dPlan, err := d.disseminationPlanForMsg(colAP, colFilter, pvtDataMsg)
 			if err != nil {
-				return nil, err
+				return nil, errors.WithStack(err)
 			}
-
-			sc := gossip2.SendCriteria{
-				Timeout:  time.Second,
-				Channel:  gossipCommon.ChainID(d.chainID),
-				MaxPeers: d.maxPeers,
-				MinAck:   d.minAck,
-				IsEligible: func(member discovery.NetworkMember) bool {
-					return routingFilter(member)
-				},
-			}
-			disseminationPlan = append(disseminationPlan, &dissemination{
-				criteria: sc,
-				msg:      pvtDataMsg,
-			})
+			disseminationPlan = append(disseminationPlan, dPlan...)
 		}
+	}
+	return disseminationPlan, nil
+}
+
+func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAccessPolicy, colFilter privdata.Filter, pvtDataMsg *proto.SignedGossipMessage) ([]*dissemination, error) {
+	var disseminationPlan []*dissemination
+	for _, expectedToBeInOurOrg := range []bool{true, false} {
+		var expectedToBeInOurOrg bool = expectedToBeInOurOrg
+		minAck := colAP.RequiredExternalPeerCount()
+		if expectedToBeInOurOrg {
+			minAck = colAP.RequiredInternalPeerCount()
+		}
+
+		routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChainID(d.chainID), func(signature api.PeerSignature, isOurOrg bool) bool {
+			if isOurOrg != expectedToBeInOurOrg {
+				return false
+			}
+			return colFilter(common.SignedData{
+				Data:      signature.Message,
+				Signature: signature.Signature,
+				Identity:  []byte(signature.PeerIdentity),
+			})
+		})
+
+		if err != nil {
+			logger.Error("Failed to retrieve peer routing filter for channel", d.chainID, ":", err)
+			return nil, err
+		}
+
+		maxPeers := viper.GetInt("peer.gossip.pvtData.maxExternalPeers")
+		if expectedToBeInOurOrg {
+			maxPeers = viper.GetInt("peer.gossip.pvtData.maxInternalPeers")
+		}
+
+		sc := gossip2.SendCriteria{
+			Timeout:  time.Second,
+			Channel:  gossipCommon.ChainID(d.chainID),
+			MaxPeers: maxPeers,
+			MinAck:   minAck,
+			IsEligible: func(member discovery.NetworkMember) bool {
+				return routingFilter(member)
+			},
+		}
+		disseminationPlan = append(disseminationPlan, &dissemination{
+			criteria: sc,
+			msg:      pvtDataMsg,
+		})
 	}
 	return disseminationPlan, nil
 }
@@ -171,4 +177,28 @@ func (d *distributorImpl) disseminate(disseminationPlan []*dissemination) error 
 		return errors.Errorf("Failed disseminating %d out of %d private RWSets", failureCount, len(disseminationPlan))
 	}
 	return nil
+}
+
+func (d *distributorImpl) createPrivateDataMessage(txID, namespace, collectionName string, rwset []byte) (*proto.SignedGossipMessage, error) {
+	msg := &proto.GossipMessage{
+		Channel: []byte(d.chainID),
+		Nonce:   util.RandomUInt64(),
+		Tag:     proto.GossipMessage_CHAN_ONLY,
+		Content: &proto.GossipMessage_PrivateData{
+			PrivateData: &proto.PrivateDataMessage{
+				Payload: &proto.PrivatePayload{
+					Namespace:      namespace,
+					CollectionName: collectionName,
+					TxId:           txID,
+					PrivateRwset:   rwset,
+				},
+			},
+		},
+	}
+
+	pvtDataMsg, err := msg.NoopSign()
+	if err != nil {
+		return nil, err
+	}
+	return pvtDataMsg, nil
 }

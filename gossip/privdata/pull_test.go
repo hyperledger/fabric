@@ -161,7 +161,7 @@ func (g *mockGossip) PeerFilter(channel common.ChainID, messagePredicate api.Sub
 	return func(member discovery.NetworkMember) bool {
 		return messagePredicate(api.PeerSignature{
 			PeerIdentity: api.PeerIdentityType(member.PKIid),
-		})
+		}, true)
 	}, nil
 }
 
