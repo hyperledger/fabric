@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
@@ -86,11 +84,11 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 	if oc, ok := b.OrdererConfig(); ok {
 		noc, ok := nb.OrdererConfig()
 		if !ok {
-			return fmt.Errorf("Current config has orderer section, but new config does not")
+			return errors.New("Current config has orderer section, but new config does not")
 		}
 
 		if oc.ConsensusType() != noc.ConsensusType() {
-			return fmt.Errorf("Attempted to change consensus type from %s to %s", oc.ConsensusType(), noc.ConsensusType())
+			return errors.Errorf("Attempted to change consensus type from %s to %s", oc.ConsensusType(), noc.ConsensusType())
 		}
 
 		for orgName, org := range oc.Organizations() {
@@ -100,7 +98,7 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 			}
 			mspID := org.MSPID()
 			if mspID != norg.MSPID() {
-				return fmt.Errorf("Orderer org %s attempted to change MSP ID from %s to %s", orgName, mspID, norg.MSPID())
+				return errors.Errorf("Orderer org %s attempted to change MSP ID from %s to %s", orgName, mspID, norg.MSPID())
 			}
 		}
 	}
@@ -108,7 +106,7 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 	if ac, ok := b.ApplicationConfig(); ok {
 		nac, ok := nb.ApplicationConfig()
 		if !ok {
-			return fmt.Errorf("Current config has consortiums section, but new config does not")
+			return errors.New("Current config has application section, but new config does not")
 		}
 
 		for orgName, org := range ac.Organizations() {
@@ -118,7 +116,7 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 			}
 			mspID := org.MSPID()
 			if mspID != norg.MSPID() {
-				return fmt.Errorf("Application org %s attempted to change MSP ID from %s to %s", orgName, mspID, norg.MSPID())
+				return errors.Errorf("Application org %s attempted to change MSP ID from %s to %s", orgName, mspID, norg.MSPID())
 			}
 		}
 	}
@@ -126,7 +124,7 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 	if cc, ok := b.ConsortiumsConfig(); ok {
 		ncc, ok := nb.ConsortiumsConfig()
 		if !ok {
-			return fmt.Errorf("Current config has consortiums section, but new config does not")
+			return errors.Errorf("Current config has consortiums section, but new config does not")
 		}
 
 		for consortiumName, consortium := range cc.Consortiums() {
@@ -142,7 +140,7 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 				}
 				mspID := org.MSPID()
 				if mspID != norg.MSPID() {
-					return fmt.Errorf("Consortium %s org %s attempted to change MSP ID from %s to %s", consortiumName, orgName, mspID, norg.MSPID())
+					return errors.Errorf("Consortium %s org %s attempted to change MSP ID from %s to %s", consortiumName, orgName, mspID, norg.MSPID())
 				}
 			}
 		}
@@ -179,7 +177,7 @@ func NewBundleFromEnvelope(env *cb.Envelope) (*Bundle, error) {
 	}
 
 	if payload.Header == nil {
-		return nil, fmt.Errorf("envelope header cannot be nil")
+		return nil, errors.Errorf("envelope header cannot be nil")
 	}
 
 	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
@@ -192,12 +190,8 @@ func NewBundleFromEnvelope(env *cb.Envelope) (*Bundle, error) {
 
 // NewBundle creates a new immutable bundle of configuration
 func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
-	if config == nil {
-		return nil, fmt.Errorf("config cannot be nil")
-	}
-
-	if config.ChannelGroup == nil {
-		return nil, fmt.Errorf("config must contain a channel group")
+	if err := preValidate(config); err != nil {
+		return nil, err
 	}
 
 	channelConfig, err := NewChannelConfig(config.ChannelGroup)
@@ -240,4 +234,30 @@ func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
 		channelConfig:   channelConfig,
 		configtxManager: configtxManager,
 	}, nil
+}
+
+func preValidate(config *cb.Config) error {
+	if config == nil {
+		return errors.New("config cannot be nil")
+	}
+
+	if config.ChannelGroup == nil {
+		return errors.New("config must contain a channel group")
+	}
+
+	if og, ok := config.ChannelGroup.Groups[OrdererGroupKey]; ok {
+		if _, ok := og.Values[CapabilitiesKey]; !ok {
+			if _, ok := config.ChannelGroup.Values[CapabilitiesKey]; ok {
+				return errors.New("cannot enable channel capabilities without orderer support first")
+			}
+
+			if ag, ok := config.ChannelGroup.Groups[ApplicationGroupKey]; ok {
+				if _, ok := ag.Values[CapabilitiesKey]; ok {
+					return errors.New("cannot enable application capabilities without orderer support first")
+				}
+			}
+		}
+	}
+
+	return nil
 }
