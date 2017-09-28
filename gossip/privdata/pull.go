@@ -62,19 +62,17 @@ type puller struct {
 	stopChan chan struct{}
 	msgChan  <-chan proto.ReceivedMessage
 	channel  string
-	ps       privdata.PolicyStore
-	pp       privdata.PolicyParser
+	cs       privdata.CollectionStore
 	gossip
 	PrivateDataRetriever
 }
 
-func NewPuller(ps privdata.PolicyStore, pp privdata.PolicyParser, g gossip, dataRetriever PrivateDataRetriever, channel string) *puller {
+func NewPuller(cs privdata.CollectionStore, g gossip, dataRetriever PrivateDataRetriever, channel string) *puller {
 	p := &puller{
 		pubSub:               util.NewPubSub(),
 		stopChan:             make(chan struct{}),
 		channel:              channel,
-		pp:                   pp,
-		ps:                   ps,
+		cs:                   cs,
 		gossip:               g,
 		PrivateDataRetriever: dataRetriever,
 	}
@@ -132,18 +130,22 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 	}()
 	msg := message.GetGossipMessage()
 	for _, dig := range msg.GetPrivateReq().Digests {
-		pol := p.ps.CollectionPolicy(fcommon.CollectionCriteria{
+		colAP := p.cs.GetCollectionAccessPolicy(fcommon.CollectionCriteria{
 			Channel:    p.channel,
 			Collection: dig.Collection,
 			TxId:       dig.TxId,
 			Namespace:  dig.Namespace,
 		})
-		if pol == nil {
+		if colAP == nil {
 			logger.Debug("No policy found for channel", p.channel, ", collection", dig.Collection, "txID", dig.TxId, "skipping...")
 			continue
 		}
-		polFilter := p.pp.Parse(pol)
-		eligibleForCollection := polFilter(fcommon.SignedData{
+		colFilter := colAP.GetAccessFilter()
+		if colFilter == nil {
+			logger.Debug("Collection ", dig.Collection, " has no access filter, txID", dig.TxId, "skipping...")
+			continue
+		}
+		eligibleForCollection := colFilter(fcommon.SignedData{
 			Identity:  message.GetConnectionInfo().Identity,
 			Data:      authInfo.SignedData,
 			Signature: authInfo.Signature,
@@ -357,18 +359,18 @@ func (dig2Filter digestToFilterMapping) String() string {
 func (p *puller) computeFilters(req *proto.RemotePvtDataRequest) (digestToFilterMapping, error) {
 	filters := make(map[proto.PvtDataDigest]filter.RoutingFilter)
 	for _, digest := range req.Digests {
-		pol := p.ps.CollectionPolicy(fcommon.CollectionCriteria{
+		collection := p.cs.GetCollectionAccessPolicy(fcommon.CollectionCriteria{
 			Channel:    p.channel,
 			TxId:       digest.TxId,
 			Collection: digest.Collection,
 			Namespace:  digest.Namespace,
 		})
-		if pol == nil {
-			return nil, errors.Errorf("Failed obtaining policy for channel %s, txID %s, collection %s", p.channel, digest.TxId, digest.Collection)
+		if collection == nil {
+			return nil, errors.Errorf("Failed obtaining collection policy for channel %s, txID %s, collection %s", p.channel, digest.TxId, digest.Collection)
 		}
-		f := p.pp.Parse(pol)
+		f := collection.GetAccessFilter()
 		if f == nil {
-			return nil, errors.Errorf("Failed obtaining filter for channel %s, txID %s, collection %s", p.channel, digest.TxId, digest.Collection)
+			return nil, errors.Errorf("Failed obtaining collection filter for channel %s, txID %s, collection %s", p.channel, digest.TxId, digest.Collection)
 		}
 		rf, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature) bool {
 			return f(fcommon.SignedData{

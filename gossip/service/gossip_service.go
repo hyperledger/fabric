@@ -181,7 +181,7 @@ func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, p
 		return errors.Errorf("No private data handler for %s", chainID)
 	}
 
-	if err := handler.distributor.Distribute(txID, privData, handler.support.Ps, handler.support.Pp); err != nil {
+	if err := handler.distributor.Distribute(txID, privData, handler.support.Cs); err != nil {
 		logger.Error("Failed to distributed private collection, txID", txID, "channel", chainID, "due to", err)
 		return err
 	}
@@ -203,8 +203,7 @@ type Support struct {
 	Validator txvalidator.Validator
 	Committer committer.Committer
 	Store     privdata2.TransientStore
-	Pp        privdata.PolicyParser
-	Ps        privdata.PolicyStore
+	Cs        privdata.CollectionStore
 }
 
 // InitializeChannel allocates the state provider and should be invoked once per channel per execution
@@ -214,14 +213,13 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for chainID", chainID)
 	servicesAdapter := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
-	fetcher := privdata2.NewPuller(support.Ps, support.Pp, g.gossipSvc, NewDataRetriever(support.Store), chainID)
+	fetcher := privdata2.NewPuller(support.Cs, g.gossipSvc, NewDataRetriever(support.Store), chainID)
 	coordinator := privdata2.NewCoordinator(privdata2.Support{
-		PolicyParser:   support.Pp,
-		PolicyStore:    support.Ps,
-		Validator:      support.Validator,
-		TransientStore: support.Store,
-		Committer:      support.Committer,
-		Fetcher:        fetcher,
+		CollectionStore: support.Cs,
+		Validator:       support.Validator,
+		TransientStore:  support.Store,
+		Committer:       support.Committer,
+		Fetcher:         fetcher,
 	}, g.createSelfSignedData())
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,

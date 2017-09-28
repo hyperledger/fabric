@@ -222,73 +222,73 @@ func (f *fetcherMock) fetch(req *proto.RemotePvtDataRequest) ([]*proto.PvtDataEl
 	return nil, args.Get(1).(error)
 }
 
-func createPolicyStore(expectedSignedData common.SignedData) *policyStore {
-	return &policyStore{
+func createcollectionStore(expectedSignedData common.SignedData) *collectionStore {
+	return &collectionStore{
 		expectedSignedData: expectedSignedData,
-		policies:           make(map[serializedPolicy]common.CollectionCriteria),
-		store:              make(map[common.CollectionCriteria]serializedPolicy),
+		policies:           make(map[collectionAccessPolicy]common.CollectionCriteria),
+		store:              make(map[common.CollectionCriteria]collectionAccessPolicy),
 	}
 }
 
-type policyStore struct {
+type collectionStore struct {
 	expectedSignedData common.SignedData
 	acceptsAll         bool
-	store              map[common.CollectionCriteria]serializedPolicy
-	policies           map[serializedPolicy]common.CollectionCriteria
+	store              map[common.CollectionCriteria]collectionAccessPolicy
+	policies           map[collectionAccessPolicy]common.CollectionCriteria
 }
 
-func (ps *policyStore) thatAcceptsAll() *policyStore {
-	ps.acceptsAll = true
-	return ps
+func (cs *collectionStore) thatAcceptsAll() *collectionStore {
+	cs.acceptsAll = true
+	return cs
 }
 
-func (ps *policyStore) thatAccepts(cc common.CollectionCriteria) *policyStore {
-	sp := serializedPolicy{
-		ps: ps,
+func (cs *collectionStore) thatAccepts(cc common.CollectionCriteria) *collectionStore {
+	sp := collectionAccessPolicy{
+		cs: cs,
 		n:  util.RandomUInt64(),
 	}
-	ps.store[cc] = sp
-	ps.policies[sp] = cc
-	return ps
+	cs.store[cc] = sp
+	cs.policies[sp] = cc
+	return cs
 }
 
-func (ps *policyStore) CollectionPolicy(cc common.CollectionCriteria) privdata.SerializedPolicy {
-	if sp, exists := ps.store[cc]; exists {
+func (cs *collectionStore) GetCollectionAccessPolicy(cc common.CollectionCriteria) privdata.CollectionAccessPolicy {
+	if sp, exists := cs.store[cc]; exists {
 		return &sp
 	}
-	return &serializedPolicy{
-		ps: ps,
+	return &collectionAccessPolicy{
+		cs: cs,
 		n:  util.RandomUInt64(),
 	}
 }
 
-type serializedPolicy struct {
-	ps *policyStore
+func (cs *collectionStore) GetCollection(cc common.CollectionCriteria) privdata.Collection {
+	panic("implement me")
+}
+
+type collectionAccessPolicy struct {
+	cs *collectionStore
 	n  uint64
 }
 
-func (*serializedPolicy) Channel() string {
-	panic("implement me")
-}
-
-func (*serializedPolicy) Raw() []byte {
-	panic("implement me")
-}
-
-type policyParser struct {
-}
-
-func (*policyParser) Parse(serializedPol privdata.SerializedPolicy) privdata.Filter {
-	sp := serializedPol.(*serializedPolicy)
+func (cap *collectionAccessPolicy) GetAccessFilter() privdata.Filter {
 	return func(sd common.SignedData) bool {
 		that, _ := asn1.Marshal(sd)
-		this, _ := asn1.Marshal(sp.ps.expectedSignedData)
+		this, _ := asn1.Marshal(cap.cs.expectedSignedData)
 		if hex.EncodeToString(that) != hex.EncodeToString(this) {
 			panic("Self signed data passed isn't equal to expected")
 		}
-		_, exists := sp.ps.policies[*sp]
-		return exists || sp.ps.acceptsAll
+		_, exists := cap.cs.policies[*cap]
+		return exists || cap.cs.acceptsAll
 	}
+}
+
+func (cap *collectionAccessPolicy) RequiredExternalPeerCount() int {
+	return 0
+}
+
+func (cap *collectionAccessPolicy) RequiredInternalPeerCount() int {
+	return 0
 }
 
 func TestPvtDataCollections_FailOnEmptyPayload(t *testing.T) {
@@ -518,8 +518,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		t.Fatal("Shouldn't have committed")
 	}).Return(nil)
-	ps := createPolicyStore(peerSelfSignedData).thatAcceptsAll()
-	pp := &policyParser{}
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
 	store := &mockTransientStore{t: t}
 	fetcher := &fetcherMock{t: t}
 	pdFactory := &pvtDataFactory{}
@@ -531,12 +530,11 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	// Scenario I: Block we got doesn't have any metadata with it
 	pvtData := pdFactory.create()
 	coordinator := NewCoordinator(Support{
-		PolicyStore:    ps,
-		PolicyParser:   pp,
-		Committer:      committer,
-		Fetcher:        fetcher,
-		TransientStore: store,
-		Validator:      &validatorMock{},
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
 	}, peerSelfSignedData)
 	err := coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)
@@ -546,12 +544,11 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	block = bf.create()
 	pvtData = pdFactory.create()
 	coordinator = NewCoordinator(Support{
-		PolicyStore:    ps,
-		PolicyParser:   pp,
-		Committer:      committer,
-		Fetcher:        fetcher,
-		TransientStore: store,
-		Validator:      &validatorMock{fmt.Errorf("failed validating block")},
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{fmt.Errorf("failed validating block")},
 	}, peerSelfSignedData)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)
@@ -561,12 +558,11 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	block = bf.withMetadataSize(100).create()
 	pvtData = pdFactory.create()
 	coordinator = NewCoordinator(Support{
-		PolicyStore:    ps,
-		PolicyParser:   pp,
-		Committer:      committer,
-		Fetcher:        fetcher,
-		TransientStore: store,
-		Validator:      &validatorMock{},
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
 	}, peerSelfSignedData)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)
@@ -596,12 +592,11 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	block = bf.withInvalidTxns(1).AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
 	coordinator = NewCoordinator(Support{
-		PolicyParser:   pp,
-		PolicyStore:    ps,
-		Committer:      committer,
-		Fetcher:        fetcher,
-		TransientStore: store,
-		Validator:      &validatorMock{},
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
 	}, peerSelfSignedData)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
@@ -628,8 +623,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	}
 	// Green path test, all private data should be obtained successfully
 
-	ps := createPolicyStore(peerSelfSignedData).thatAcceptsAll()
-	pp := &policyParser{}
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
 
 	var commitHappened bool
 	assertCommitHappened := func() {
@@ -657,12 +651,11 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	// because we didn't define yet the "On(...)" invocation of the transient store or other peers.
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").addRWSet().addNSRWSet("ns2", "c1").create()
 	coordinator := NewCoordinator(Support{
-		PolicyStore:    ps,
-		PolicyParser:   pp,
-		Committer:      committer,
-		Fetcher:        fetcher,
-		TransientStore: store,
-		Validator:      &validatorMock{},
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
 	}, peerSelfSignedData)
 	err := coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
@@ -763,12 +756,11 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		commitHappened = true
 	}).Return(nil)
 	coordinator = NewCoordinator(Support{
-		PolicyStore:    ps,
-		PolicyParser:   pp,
-		Committer:      committer,
-		Fetcher:        fetcher,
-		TransientStore: store,
-		Validator:      &validatorMock{},
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
 	}, peerSelfSignedData)
 	err = coordinator.StoreBlock(block, nil)
 	assert.NoError(t, err)
@@ -779,13 +771,12 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	// private data from the transient store or peers, and in fact- if it attempts to fetch the data it's not eligible
 	// for from the transient store or from peers - the test would fail because the Mock wasn't initialized.
 	block = bf.AddTxn("tx3", "ns3", hash, "c3", "c2", "c1").AddTxn("tx1", "ns1", hash, "c1").create()
-	ps = createPolicyStore(peerSelfSignedData).thatAccepts(common.CollectionCriteria{
+	cs = createcollectionStore(peerSelfSignedData).thatAccepts(common.CollectionCriteria{
 		TxId:       "tx3",
 		Collection: "c3",
 		Namespace:  "ns3",
 		Channel:    "test",
 	})
-	pp = &policyParser{}
 	store = &mockTransientStore{t: t}
 	fetcher = &fetcherMock{t: t}
 	committer = &committerMock{}
@@ -795,12 +786,11 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		commitHappened = true
 	}).Return(nil)
 	coordinator = NewCoordinator(Support{
-		PolicyStore:    ps,
-		PolicyParser:   pp,
-		Committer:      committer,
-		Fetcher:        fetcher,
-		TransientStore: store,
-		Validator:      &validatorMock{},
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
 	}, peerSelfSignedData)
 
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns3", "c3").create()
@@ -815,18 +805,16 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 		Signature: []byte{3, 4, 5},
 		Data:      []byte{6, 7, 8},
 	}
-	ps := createPolicyStore(sd).thatAcceptsAll()
-	pp := &policyParser{}
+	cs := createcollectionStore(sd).thatAcceptsAll()
 	committer := &committerMock{}
 	store := &mockTransientStore{t: t}
 	fetcher := &fetcherMock{t: t}
 	coordinator := NewCoordinator(Support{
-		PolicyStore:    ps,
-		PolicyParser:   pp,
-		Committer:      committer,
-		Fetcher:        fetcher,
-		TransientStore: store,
-		Validator:      &validatorMock{},
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
 	}, sd)
 
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
@@ -837,7 +825,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 
 	// Green path - block and private data is returned, but the requester isn't eligible for all the private data,
 	// but only to a subset of it.
-	ps = createPolicyStore(sd).thatAccepts(common.CollectionCriteria{
+	cs = createcollectionStore(sd).thatAccepts(common.CollectionCriteria{
 		Namespace:  "ns1",
 		Collection: "c2",
 		TxId:       "tx1",
@@ -849,12 +837,11 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 		BlockPvtData: expectedCommittedPrivateData1,
 	}, nil)
 	coordinator = NewCoordinator(Support{
-		PolicyStore:    ps,
-		PolicyParser:   pp,
-		Committer:      committer,
-		Fetcher:        fetcher,
-		TransientStore: store,
-		Validator:      &validatorMock{},
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
 	}, sd)
 	expectedPrivData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c2").create()
 	block2, returnedPrivateData, err := coordinator.GetPvtDataAndBlockByNum(1, sd)
