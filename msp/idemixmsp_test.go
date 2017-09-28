@@ -17,7 +17,7 @@ import (
 )
 
 func setup(configPath string) (MSP, error) {
-	msp, err := NewIdemixMsp()
+	msp, err := newIdemixMsp()
 	if err != nil {
 		return nil, errors.Wrap(err, "Getting MSP failed")
 	}
@@ -64,7 +64,7 @@ func TestSetupBad(t *testing.T) {
 	_, err := setup("testdata/idemix/badpath")
 	assert.Error(t, err)
 
-	msp1, err := NewIdemixMsp()
+	msp1, err := newIdemixMsp()
 	assert.NoError(t, err)
 
 	// Setup with nil config

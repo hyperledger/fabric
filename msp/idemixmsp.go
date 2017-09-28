@@ -38,8 +38,8 @@ type idemixmsp struct {
 	name   string
 }
 
-// NewIdemixMsp creates a new instance of idemixmsp
-func NewIdemixMsp() (MSP, error) {
+// newIdemixMsp creates a new instance of idemixmsp
+func newIdemixMsp() (MSP, error) {
 	mspLogger.Debugf("Creating Idemix-based MSP instance")
 
 	msp := idemixmsp{}

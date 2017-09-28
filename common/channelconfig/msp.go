@@ -40,24 +40,24 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 	}
 
 	// create the msp instance
-	bccspMSP, err := msp.NewBccspMsp()
+	mspInst, err := msp.New(&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_0}})
 	if err != nil {
 		return nil, fmt.Errorf("Creating the MSP manager failed, err %s", err)
 	}
 
-	mspInst, err := cache.New(bccspMSP)
+	casheMSP, err := cache.New(mspInst)
 	if err != nil {
 		return nil, fmt.Errorf("Creating the MSP manager failed, err %s", err)
 	}
 
 	// set it up
-	err = mspInst.Setup(mspConfig)
+	err = casheMSP.Setup(mspConfig)
 	if err != nil {
 		return nil, fmt.Errorf("Setting up the MSP manager failed, err %s", err)
 	}
 
 	// add the MSP to the map of pending MSPs
-	mspID, _ := mspInst.GetIdentifier()
+	mspID, _ := casheMSP.GetIdentifier()
 
 	existingPendingMSPConfig, ok := bh.idMap[mspID]
 	if ok && !proto.Equal(existingPendingMSPConfig.mspConfig, mspConfig) {
@@ -67,11 +67,11 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 	if !ok {
 		bh.idMap[mspID] = &pendingMSPConfig{
 			mspConfig: mspConfig,
-			msp:       mspInst,
+			msp:       casheMSP,
 		}
 	}
 
-	return mspInst, nil
+	return casheMSP, nil
 }
 
 func (bh *MSPConfigHandler) CreateMSPManager() (msp.MSPManager, error) {

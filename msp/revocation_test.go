@@ -87,7 +87,7 @@ func TestRevokedIntermediateCA(t *testing.T) {
 	conf, err := GetLocalMspConfig(dir, nil, "DEFAULT")
 	assert.NoError(t, err)
 
-	thisMSP, err := NewBccspMsp()
+	thisMSP, err := newBccspMsp()
 	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)

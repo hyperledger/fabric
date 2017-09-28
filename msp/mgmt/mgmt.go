@@ -123,16 +123,16 @@ func GetLocalMSP() msp.MSP {
 			var err error
 			created = true
 
-			bccspMSP, err := msp.NewBccspMsp()
+			mspInst, err := msp.New(&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_0}})
 			if err != nil {
 				mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
 			}
 
-			lclMsp, err = cache.New(bccspMSP)
+			lclMsp, err = cache.New(mspInst)
 			if err != nil {
 				mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
 			}
-			localMsp = bccspMSP
+			localMsp = mspInst
 		}
 	}
 

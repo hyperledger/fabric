@@ -38,24 +38,24 @@ func TemplateGroupMSPWithAdminRolePrincipal(configPath []string, mspConfig *mspp
 	}
 
 	// create the msp instance
-	bccspMSP, err := msp.NewBccspMsp()
+	mspInst, err := msp.New(&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_0}})
 	if err != nil {
 		logger.Panicf("Creating the MSP manager failed, err %s", err)
 	}
 
-	mspInst, err := cache.New(bccspMSP)
+	cacheMSP, err := cache.New(mspInst)
 	if err != nil {
 		logger.Panicf("Creating the MSP manager failed, err %s", err)
 	}
 
 	// set it up
-	err = mspInst.Setup(mspConfig)
+	err = cacheMSP.Setup(mspConfig)
 	if err != nil {
 		logger.Panicf("Setting up the MSP manager failed, err %s", err)
 	}
 
 	// add the MSP to the map of pending MSPs
-	mspID, _ := mspInst.GetIdentifier()
+	mspID, _ := cacheMSP.GetIdentifier()
 
 	memberPolicy := &cb.ConfigPolicy{
 		Policy: &cb.Policy{

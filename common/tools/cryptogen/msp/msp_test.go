@@ -92,7 +92,7 @@ func TestGenerateLocalMSP(t *testing.T) {
 	// finally check to see if we can load this as a local MSP config
 	testMSPConfig, err := fabricmsp.GetLocalMspConfig(mspDir, nil, testName)
 	assert.NoError(t, err, "Error parsing local MSP config")
-	testMSP, err := fabricmsp.NewBccspMsp()
+	testMSP, err := fabricmsp.New(&fabricmsp.BCCSPNewOpts{NewBaseOpts: fabricmsp.NewBaseOpts{Version: fabricmsp.MSPv1_0}})
 	assert.NoError(t, err, "Error creating new BCCSP MSP")
 	err = testMSP.Setup(testMSPConfig)
 	assert.NoError(t, err, "Error setting up local MSP")
@@ -137,7 +137,7 @@ func TestGenerateVerifyingMSP(t *testing.T) {
 	// finally check to see if we can load this as a verifying MSP config
 	testMSPConfig, err := fabricmsp.GetVerifyingMspConfig(mspDir, testName)
 	assert.NoError(t, err, "Error parsing verifying MSP config")
-	testMSP, err := fabricmsp.NewBccspMsp()
+	testMSP, err := fabricmsp.New(&fabricmsp.BCCSPNewOpts{NewBaseOpts: fabricmsp.NewBaseOpts{Version: fabricmsp.MSPv1_0}})
 	assert.NoError(t, err, "Error creating new BCCSP MSP")
 	err = testMSP.Setup(testMSPConfig)
 	assert.NoError(t, err, "Error setting up verifying MSP")
