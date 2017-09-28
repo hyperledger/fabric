@@ -89,6 +89,7 @@ func (nodePlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeployment
 	}
 	tr := tar.NewReader(gr)
 
+	var foundPackageJson = false
 	for {
 		header, err := tr.Next()
 		if err != nil {
@@ -102,7 +103,9 @@ func (nodePlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeployment
 		if !re.MatchString(header.Name) {
 			return fmt.Errorf("illegal file detected in payload: \"%s\"", header.Name)
 		}
-
+		if header.Name == "src/package.json" {
+			foundPackageJson = true
+		}
 		// --------------------------------------------------------------------------------------
 		// Check that file mode makes sense
 		// --------------------------------------------------------------------------------------
@@ -115,6 +118,9 @@ func (nodePlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeployment
 		if header.Mode&^0100666 != 0 {
 			return fmt.Errorf("illegal file mode detected for file %s: %o", header.Name, header.Mode)
 		}
+	}
+	if !foundPackageJson {
+		return fmt.Errorf("no package.json found at the root of the chaincode package")
 	}
 
 	return nil

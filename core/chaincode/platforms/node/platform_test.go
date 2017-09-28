@@ -79,7 +79,7 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cp, err := writeCodePackage(tmpfile.Name(), "filename.txt")
+	cp, err := writeCodePackage(tmpfile.Name(), "filename.txt", 0100744)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatalf("should have returned error about illegal file detected, but got '%s'", err)
 	}
 
-	cp, err = writeCodePackage(tmpfile.Name(), "src/filename.txt")
+	cp, err = writeCodePackage(tmpfile.Name(), "src/filename.txt", 0100744)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,6 +103,30 @@ func TestValidateDeploymentSpec(t *testing.T) {
 		t.Fatal("should have failed to validate because file in the archive is executable")
 	} else if !strings.HasPrefix(err.Error(), "illegal file mode detected for file") {
 		t.Fatalf("should have returned error about illegal file mode detected, but got '%s'", err)
+	}
+
+	cp, err = writeCodePackage(tmpfile.Name(), "src/filename.txt", 0100666)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cds.CodePackage = cp
+	err = platform.ValidateDeploymentSpec(cds)
+	if err == nil {
+		t.Fatal("should have failed to validate because no 'package.json' found")
+	} else if !strings.HasPrefix(err.Error(), "no package.json found at the root of the chaincode package") {
+		t.Fatalf("should have returned error about no package.json found, but got '%s'", err)
+	}
+
+	cp, err = writeCodePackage(tmpfile.Name(), "src/package.json", 0100666)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cds.CodePackage = cp
+	err = platform.ValidateDeploymentSpec(cds)
+	if err != nil {
+		t.Fatalf("should have returned no errors, but got '%s'", err)
 	}
 }
 
@@ -148,6 +172,9 @@ func TestGenerateDockerBuild(t *testing.T) {
 		{
 		  "name": "fabric-shim-test",
 		  "version": "1.0.0-snapshot",
+	      "script": {
+	        "start": "node chaincode.js"
+	      },
 		  "dependencies": {
 		    "is-sorted": "*"
 		  }
@@ -207,12 +234,12 @@ func TestGenerateDockerBuild(t *testing.T) {
 	}
 }
 
-func writeCodePackage(file string, packagePath string) ([]byte, error) {
+func writeCodePackage(file string, packagePath string, mode int64) ([]byte, error) {
 	payload := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	if err := writeFileToPackage(file, packagePath, tw); err != nil {
+	if err := writeFileToPackage(file, packagePath, tw, mode); err != nil {
 		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
 	}
 
@@ -227,7 +254,7 @@ func writeCodePackage(file string, packagePath string) ([]byte, error) {
 	return payload.Bytes(), nil
 }
 
-func writeFileToPackage(localpath string, packagepath string, tw *tar.Writer) error {
+func writeFileToPackage(localpath string, packagepath string, tw *tar.Writer, mode int64) error {
 	fd, err := os.Open(localpath)
 	if err != nil {
 		return fmt.Errorf("%s: %s", localpath, err)
@@ -247,7 +274,8 @@ func writeFileToPackage(localpath string, packagepath string, tw *tar.Writer) er
 	//Let's take the variance out of the tar, make headers identical by using zero time
 	oldname := header.Name
 	header.Name = packagepath
-	header.Mode = 0100744
+	header.Mode = mode
+	//header.Mode = 0100744
 
 	if err = tw.WriteHeader(header); err != nil {
 		return fmt.Errorf("Error write header for (path: %s, oldname:%s,newname:%s,sz:%d) : %s", localpath, oldname, packagepath, header.Size, err)
