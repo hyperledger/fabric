@@ -15,17 +15,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+// SigFilterSupport provides the resources required for the signature filter
+type SigFilterSupport interface {
+	// PolicyManager returns a reference to the current policy manager
+	PolicyManager() policies.Manager
+}
+
 type sigFilter struct {
-	policyName    string
-	policyManager policies.Manager
+	policyName string
+	support    SigFilterSupport
 }
 
 // NewSigFilter creates a new signature filter, at every evaluation, the policy manager is called
 // to retrieve the latest version of the policy
-func NewSigFilter(policyName string, policyManager policies.Manager) Rule {
+func NewSigFilter(policyName string, support SigFilterSupport) Rule {
 	return &sigFilter{
-		policyName:    policyName,
-		policyManager: policyManager,
+		policyName: policyName,
+		support:    support,
 	}
 }
 
@@ -37,7 +43,7 @@ func (sf *sigFilter) Apply(message *cb.Envelope) error {
 		return fmt.Errorf("could not convert message to signedData: %s", err)
 	}
 
-	policy, ok := sf.policyManager.GetPolicy(sf.policyName)
+	policy, ok := sf.support.PolicyManager().GetPolicy(sf.policyName)
 	if !ok {
 		return fmt.Errorf("could not find policy %s", sf.policyName)
 	}

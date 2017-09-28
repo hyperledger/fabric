@@ -50,7 +50,7 @@ func CreateSystemChannelFilters(chainCreator ChainCreator, ledgerResources chann
 	return NewRuleSet([]Rule{
 		EmptyRejectRule,
 		NewSizeFilter(ordererConfig),
-		NewSigFilter(policies.ChannelWriters, ledgerResources.PolicyManager()),
+		NewSigFilter(policies.ChannelWriters, ledgerResources),
 		NewSystemChannelFilter(ledgerResources, chainCreator),
 	})
 }
