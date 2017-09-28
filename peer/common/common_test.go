@@ -122,7 +122,7 @@ func TestSetLogLevelFromViper(t *testing.T) {
 		},
 		{
 			name:    "Valid module name",
-			args:    args{module: "peer"},
+			args:    args{module: "level"},
 			wantErr: false,
 		},
 		{
