@@ -32,7 +32,11 @@ func (*transientStoreMock) Persist(txid string, blockHeight uint64, privateSimul
 	panic("implement me")
 }
 
-func (transientStoreMock) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
+func (*transientStoreMock) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
+	panic("implement me")
+}
+
+func (*transientStoreMock) PurgeByTxids(txids []string) error {
 	panic("implement me")
 }
 

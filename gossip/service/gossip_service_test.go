@@ -54,6 +54,10 @@ func (*mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsC
 	panic("implement me")
 }
 
+func (*mockTransientStore) PurgeByTxids(txids []string) error {
+	panic("implement me")
+}
+
 func TestInitGossipService(t *testing.T) {
 	// Test whenever gossip service is indeed singleton
 	grpcServer := grpc.NewServer()
