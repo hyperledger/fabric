@@ -39,8 +39,8 @@ func TestPurgeIndexKeyCodingEncoding(t *testing.T) {
 				testCase := fmt.Sprintf("blkHt=%d,txid=%s,uuid=%s", blkHt, txid, uuid)
 				t.Run(testCase, func(t *testing.T) {
 					t.Logf("Running test case [%s]", testCase)
-					purgeIndexKey := createCompositeKeyForPurgeIndex(blkHt, txid, uuid)
-					txid1, uuid1, blkHt1 := splitCompositeKeyOfPurgeIndex(purgeIndexKey)
+					purgeIndexKey := createCompositeKeyForPurgeIndexByHeight(blkHt, txid, uuid)
+					txid1, uuid1, blkHt1 := splitCompositeKeyOfPurgeIndexByHeight(purgeIndexKey)
 					assert.Equal(txid, txid1)
 					assert.Equal(uuid, uuid1)
 					assert.Equal(blkHt, blkHt1)
@@ -121,7 +121,164 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	assert.Equal(endorsersResults, actualEndorsersResults)
 }
 
-func TestStorePurge(t *testing.T) {
+func TestTransientStorePurgeByTxids(t *testing.T) {
+	env := NewTestStoreEnv(t)
+	assert := assert.New(t)
+
+	var txids []string
+	var endorsersResults []*EndorserPvtSimulationResults
+
+	samplePvtRWSet := samplePvtData(t)
+
+	// Create two private write set entry for txid-1
+	txids = append(txids, "txid-1")
+	endorser0SimulationResults := &EndorserPvtSimulationResults{
+		EndorsementBlockHeight: 10,
+		PvtSimulationResults:   samplePvtRWSet,
+	}
+	endorsersResults = append(endorsersResults, endorser0SimulationResults)
+
+	txids = append(txids, "txid-1")
+	endorser1SimulationResults := &EndorserPvtSimulationResults{
+		EndorsementBlockHeight: 11,
+		PvtSimulationResults:   samplePvtRWSet,
+	}
+	endorsersResults = append(endorsersResults, endorser1SimulationResults)
+
+	// Create one private write set entry for txid-2
+	txids = append(txids, "txid-2")
+	endorser2SimulationResults := &EndorserPvtSimulationResults{
+		EndorsementBlockHeight: 11,
+		PvtSimulationResults:   samplePvtRWSet,
+	}
+	endorsersResults = append(endorsersResults, endorser2SimulationResults)
+
+	// Create three private write set entry for txid-3
+	txids = append(txids, "txid-3")
+	endorser3SimulationResults := &EndorserPvtSimulationResults{
+		EndorsementBlockHeight: 12,
+		PvtSimulationResults:   samplePvtRWSet,
+	}
+	endorsersResults = append(endorsersResults, endorser3SimulationResults)
+
+	txids = append(txids, "txid-3")
+	endorser4SimulationResults := &EndorserPvtSimulationResults{
+		EndorsementBlockHeight: 12,
+		PvtSimulationResults:   samplePvtRWSet,
+	}
+	endorsersResults = append(endorsersResults, endorser4SimulationResults)
+
+	txids = append(txids, "txid-3")
+	endorser5SimulationResults := &EndorserPvtSimulationResults{
+		EndorsementBlockHeight: 13,
+		PvtSimulationResults:   samplePvtRWSet,
+	}
+	endorsersResults = append(endorsersResults, endorser5SimulationResults)
+
+	var err error
+	for i := 0; i < len(txids); i++ {
+		err = env.TestStore.Persist(txids[i], endorsersResults[i].EndorsementBlockHeight,
+			endorsersResults[i].PvtSimulationResults)
+		assert.NoError(err)
+	}
+
+	// Retrieve simulation results of txid-2 from  store
+	iter, err := env.TestStore.GetTxPvtRWSetByTxid("txid-2", nil)
+	assert.NoError(err)
+
+	// Expected results for txid-2
+	var expectedEndorsersResults []*EndorserPvtSimulationResults
+	expectedEndorsersResults = append(expectedEndorsersResults, endorser2SimulationResults)
+
+	// Check whether actual results and expected results are same
+	var actualEndorsersResults []*EndorserPvtSimulationResults
+	for true {
+		result, err := iter.Next()
+		assert.NoError(err)
+		if result == nil {
+			break
+		}
+		actualEndorsersResults = append(actualEndorsersResults, result)
+	}
+	iter.Close()
+
+	// Note that the ordering of actualRes and expectedRes is dependent on the uuid. Hence, we are sorting
+	// expectedRes and actualRes.
+	sortResults(expectedEndorsersResults)
+	sortResults(actualEndorsersResults)
+
+	assert.Equal(expectedEndorsersResults, actualEndorsersResults)
+
+	// Remove all private write set of txid-2 and txid-3
+	toRemoveTxids := []string{"txid-2", "txid-3"}
+	err = env.TestStore.PurgeByTxids(toRemoveTxids)
+	assert.NoError(err)
+
+	for _, txid := range toRemoveTxids {
+
+		// Check whether private write sets of txid-2 are removed
+		var expectedEndorsersResults *EndorserPvtSimulationResults
+		expectedEndorsersResults = nil
+		iter, err = env.TestStore.GetTxPvtRWSetByTxid(txid, nil)
+		assert.NoError(err)
+		// Should return nil, nil
+		result, err := iter.Next()
+		assert.NoError(err)
+		assert.Equal(expectedEndorsersResults, result)
+	}
+
+	// Retrieve simulation results of txid-1 from store
+	iter, err = env.TestStore.GetTxPvtRWSetByTxid("txid-1", nil)
+	assert.NoError(err)
+
+	// Expected results for txid-1
+	expectedEndorsersResults = nil
+	expectedEndorsersResults = append(expectedEndorsersResults, endorser0SimulationResults)
+	expectedEndorsersResults = append(expectedEndorsersResults, endorser1SimulationResults)
+
+	// Check whether actual results and expected results are same
+	actualEndorsersResults = nil
+	for true {
+		result, err := iter.Next()
+		assert.NoError(err)
+		if result == nil {
+			break
+		}
+		actualEndorsersResults = append(actualEndorsersResults, result)
+	}
+	iter.Close()
+
+	// Note that the ordering of actualRes and expectedRes is dependent on the uuid. Hence, we are sorting
+	// expectedRes and actualRes.
+	sortResults(expectedEndorsersResults)
+	sortResults(actualEndorsersResults)
+
+	assert.Equal(expectedEndorsersResults, actualEndorsersResults)
+
+	toRemoveTxids = []string{"txid-1"}
+	err = env.TestStore.PurgeByTxids(toRemoveTxids)
+	assert.NoError(err)
+
+	for _, txid := range toRemoveTxids {
+
+		// Check whether private write sets of txid-1 are removed
+		var expectedEndorsersResults *EndorserPvtSimulationResults
+		expectedEndorsersResults = nil
+		iter, err = env.TestStore.GetTxPvtRWSetByTxid(txid, nil)
+		assert.NoError(err)
+		// Should return nil, nil
+		result, err := iter.Next()
+		assert.NoError(err)
+		assert.Equal(expectedEndorsersResults, result)
+	}
+
+	// There should be no entries in the  store
+	_, err = env.TestStore.GetMinEndorsementBlkHt()
+	assert.Equal(err, ErrStoreEmpty)
+
+}
+
+func TestTransientStorePurgeByHeight(t *testing.T) {
 	env := NewTestStoreEnv(t)
 	assert := assert.New(t)
 
@@ -176,7 +333,7 @@ func TestStorePurge(t *testing.T) {
 
 	// Retain results generate at block height greater than or equal to 12
 	minEndorsementBlkHtToRetain := uint64(12)
-	err = env.TestStore.Purge(minEndorsementBlkHtToRetain)
+	err = env.TestStore.PurgeByHeight(minEndorsementBlkHtToRetain)
 	assert.NoError(err)
 
 	// Retrieve simulation results of txid-1 from  store
@@ -216,7 +373,7 @@ func TestStorePurge(t *testing.T) {
 
 	// Retain results generate at block height greater than or equal to 15
 	minEndorsementBlkHtToRetain = uint64(15)
-	err = env.TestStore.Purge(minEndorsementBlkHtToRetain)
+	err = env.TestStore.PurgeByHeight(minEndorsementBlkHtToRetain)
 	assert.NoError(err)
 
 	// There should be no entries in the  store
@@ -225,7 +382,7 @@ func TestStorePurge(t *testing.T) {
 
 	// Retain results generate at block height greater than or equal to 15
 	minEndorsementBlkHtToRetain = uint64(15)
-	err = env.TestStore.Purge(minEndorsementBlkHtToRetain)
+	err = env.TestStore.PurgeByHeight(minEndorsementBlkHtToRetain)
 	// Should not return any error
 	assert.NoError(err)
 
