@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	fcommon "github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
@@ -133,7 +132,7 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 	}()
 	msg := message.GetGossipMessage()
 	for _, dig := range msg.GetPrivateReq().Digests {
-		pol := p.ps.CollectionPolicy(rwset.CollectionCriteria{
+		pol := p.ps.CollectionPolicy(fcommon.CollectionCriteria{
 			Channel:    p.channel,
 			Collection: dig.Collection,
 			TxId:       dig.TxId,
@@ -358,7 +357,7 @@ func (dig2Filter digestToFilterMapping) String() string {
 func (p *puller) computeFilters(req *proto.RemotePvtDataRequest) (digestToFilterMapping, error) {
 	filters := make(map[proto.PvtDataDigest]filter.RoutingFilter)
 	for _, digest := range req.Digests {
-		pol := p.ps.CollectionPolicy(rwset.CollectionCriteria{
+		pol := p.ps.CollectionPolicy(fcommon.CollectionCriteria{
 			Channel:    p.channel,
 			TxId:       digest.TxId,
 			Collection: digest.Collection,

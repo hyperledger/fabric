@@ -8,7 +8,6 @@ package privdata
 
 import (
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 )
 
 // SerializedPolicy defines a persisted policy
@@ -26,7 +25,7 @@ type PolicyStore interface {
 	// If the TxID exists in the ledger, the policy that is returned is the latest policy
 	// which was committed into the ledger before this txID was committed.
 	// Else - it's the latest policy for the collection.
-	CollectionPolicy(rwset.CollectionCriteria) SerializedPolicy
+	CollectionPolicy(common.CollectionCriteria) SerializedPolicy
 }
 
 // Filter defines a rule that filters peers according to data signed by them.

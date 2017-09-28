@@ -225,16 +225,16 @@ func (f *fetcherMock) fetch(req *proto.RemotePvtDataRequest) ([]*proto.PvtDataEl
 func createPolicyStore(expectedSignedData common.SignedData) *policyStore {
 	return &policyStore{
 		expectedSignedData: expectedSignedData,
-		policies:           make(map[serializedPolicy]rwset.CollectionCriteria),
-		store:              make(map[rwset.CollectionCriteria]serializedPolicy),
+		policies:           make(map[serializedPolicy]common.CollectionCriteria),
+		store:              make(map[common.CollectionCriteria]serializedPolicy),
 	}
 }
 
 type policyStore struct {
 	expectedSignedData common.SignedData
 	acceptsAll         bool
-	store              map[rwset.CollectionCriteria]serializedPolicy
-	policies           map[serializedPolicy]rwset.CollectionCriteria
+	store              map[common.CollectionCriteria]serializedPolicy
+	policies           map[serializedPolicy]common.CollectionCriteria
 }
 
 func (ps *policyStore) thatAcceptsAll() *policyStore {
@@ -242,7 +242,7 @@ func (ps *policyStore) thatAcceptsAll() *policyStore {
 	return ps
 }
 
-func (ps *policyStore) thatAccepts(cc rwset.CollectionCriteria) *policyStore {
+func (ps *policyStore) thatAccepts(cc common.CollectionCriteria) *policyStore {
 	sp := serializedPolicy{
 		ps: ps,
 		n:  util.RandomUInt64(),
@@ -252,7 +252,7 @@ func (ps *policyStore) thatAccepts(cc rwset.CollectionCriteria) *policyStore {
 	return ps
 }
 
-func (ps *policyStore) CollectionPolicy(cc rwset.CollectionCriteria) privdata.SerializedPolicy {
+func (ps *policyStore) CollectionPolicy(cc common.CollectionCriteria) privdata.SerializedPolicy {
 	if sp, exists := ps.store[cc]; exists {
 		return &sp
 	}
@@ -779,7 +779,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	// private data from the transient store or peers, and in fact- if it attempts to fetch the data it's not eligible
 	// for from the transient store or from peers - the test would fail because the Mock wasn't initialized.
 	block = bf.AddTxn("tx3", "ns3", hash, "c3", "c2", "c1").AddTxn("tx1", "ns1", hash, "c1").create()
-	ps = createPolicyStore(peerSelfSignedData).thatAccepts(rwset.CollectionCriteria{
+	ps = createPolicyStore(peerSelfSignedData).thatAccepts(common.CollectionCriteria{
 		TxId:       "tx3",
 		Collection: "c3",
 		Namespace:  "ns3",
@@ -837,7 +837,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 
 	// Green path - block and private data is returned, but the requester isn't eligible for all the private data,
 	// but only to a subset of it.
-	ps = createPolicyStore(sd).thatAccepts(rwset.CollectionCriteria{
+	ps = createPolicyStore(sd).thatAccepts(common.CollectionCriteria{
 		Namespace:  "ns1",
 		Collection: "c2",
 		TxId:       "tx1",
