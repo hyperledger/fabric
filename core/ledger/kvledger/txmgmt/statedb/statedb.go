@@ -58,6 +58,7 @@ type VersionedDB interface {
 //databases capable of batch operations
 type BulkOptimizable interface {
 	LoadCommittedVersions(keys []*CompositeKey)
+	GetCachedVersion(namespace, key string) (*version.Height, bool)
 	ClearCachedVersions()
 }
 
