@@ -23,7 +23,39 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Usage: BENCHMARK=true go test -run=TestOrdererBenchmark[Solo|Kafka][Broadcast|Deliver]
+// USAGE
+//
+//  BENCHMARK=true go test -run=TestOrdererBenchmark[Solo|Kafka][Broadcast|Deliver]
+//
+// You can specify a specific test permutation by specifying the complete subtest
+// name corresponding to the permutation you would like to run. e.g:
+//
+//  TestOrdererBenchmark[Solo|Kafka][Broadcast|Deliver]/10ch/10000tx/10kb/10bc/0dc/10ord
+//
+// (The permutation has to be valid as defined in the source code)
+//
+// RUNNING KAFKA ORDERER BENCHMARKS
+//
+// A Kafka cluster is required to run the Kafka-based benchmark. The benchmark
+// expects to find a seed broker is listening on localhost:9092.
+//
+// A suitable Kafka cluster is provided as a docker compose application defined
+// in the docker-compose.yml file provided with this package. To run the Kafka
+// benchmarks with the provided Kafaka cluster:
+//
+//    From this package's directory, first run:
+//
+//       docker-compose up -d
+//
+//    Then execute:
+//
+//       BENCHMARK=true go test -run TestOrdererBenchmarkKafkaBroadcast
+//
+// If you are not using the Kafka cluster provided in the docker-compose.yml,
+// the list of seed brokers can be adjusted by setting the value of
+// x_ORDERERS_KAFKA_BROKERS in the `envvars` map below.
+//
+// DESCRIPTION
 //
 // Benchmark test makes [ch] channels, creates [bc] clients per channel per orderer. There
 // are [ord] orderer instances in total. A client ONLY interacts with ONE channel and ONE
@@ -69,10 +101,6 @@ import (
 // as deliver is effectively retrieving pre-generated blocks, so it shouldn't be choked
 // by slower broadcast.
 //
-// Note: At least three Kafka brokers listening on localhost:[9092-9094] are required to
-// run the  Kafka-based benchmark. This is set in the `envvars` map and can be adjusted
-// if need be.
-// TODO Spin up ephemeral Kafka containers for test
 
 const (
 	MaxMessageCount = 10
@@ -92,7 +120,7 @@ var envvars = map[string]string{
 	localconfig.Prefix + "_ORDERER_BATCHSIZE_MAXMESSAGECOUNT":   strconv.Itoa(MaxMessageCount),
 	localconfig.Prefix + "_ORDERER_BATCHSIZE_ABSOLUTEMAXBYTES":  strconv.Itoa(AbsoluteMaxBytes) + " KB",
 	localconfig.Prefix + "_ORDERER_BATCHSIZE_PREFERREDMAXBYTES": strconv.Itoa(PreferredMaxBytes) + " KB",
-	localconfig.Prefix + "_ORDERER_KAFKA_BROKERS":               "[localhost:9092, localhost:9093, localhost:9094]",
+	localconfig.Prefix + "_ORDERER_KAFKA_BROKERS":               "[localhost:9092]",
 }
 
 type factors struct {
