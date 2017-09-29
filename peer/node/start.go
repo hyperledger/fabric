@@ -282,7 +282,7 @@ func serve(args []string) error {
 
 	// set the logging level for specific modules defined via environment
 	// variables or core.yaml
-	overrideLogModules := []string{"msp", "gossip", "ledger", "cauthdsl", "policies", "grpc"}
+	overrideLogModules := []string{"msp", "gossip", "ledger", "cauthdsl", "policies", "grpc", "peer.gossip"}
 	for _, module := range overrideLogModules {
 		err = common.SetLogLevelFromViper(module)
 		if err != nil {

@@ -167,12 +167,12 @@ func (s *mspMessageCryptoService) VerifyBlock(chainID common.ChainID, seqNum uin
 		return fmt.Errorf("Could not acquire policy manager for channel %s", channelID)
 	}
 	// ok is true if it was the manager requested, or false if it is the default manager
-	mcsLogger.Debugf("Got policy manager for channel [%s] with flag [%s]", channelID, ok)
+	mcsLogger.Debugf("Got policy manager for channel [%s] with flag [%t]", channelID, ok)
 
 	// Get block validation policy
 	policy, ok := cpm.GetPolicy(policies.BlockValidation)
 	// ok is true if it was the policy requested, or false if it is the default policy
-	mcsLogger.Debugf("Got block validation policy for channel [%s] with flag [%s]", channelID, ok)
+	mcsLogger.Debugf("Got block validation policy for channel [%s] with flag [%t]", channelID, ok)
 
 	// - Prepare SignedData
 	signatureSet := []*pcommon.SignedData{}
@@ -241,11 +241,11 @@ func (s *mspMessageCryptoService) VerifyByChannel(chainID common.ChainID, peerId
 	if cpm == nil {
 		return fmt.Errorf("Could not acquire policy manager for channel %s", string(chainID))
 	}
-	mcsLogger.Debugf("Got policy manager for channel [%s] with flag [%s]", string(chainID), flag)
+	mcsLogger.Debugf("Got policy manager for channel [%s] with flag [%t]", string(chainID), flag)
 
 	// Get channel reader policy
 	policy, flag := cpm.GetPolicy(policies.ChannelApplicationReaders)
-	mcsLogger.Debugf("Got reader policy for channel [%s] with flag [%s]", string(chainID), flag)
+	mcsLogger.Debugf("Got reader policy for channel [%s] with flag [%t]", string(chainID), flag)
 
 	return policy.Evaluate(
 		[]*pcommon.SignedData{{

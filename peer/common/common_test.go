@@ -150,6 +150,11 @@ func TestSetLogLevelFromViper(t *testing.T) {
 			args:    args{module: "policies"},
 			wantErr: false,
 		},
+		{
+			name:    "Valid module name",
+			args:    args{module: "peer.gossip"},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
