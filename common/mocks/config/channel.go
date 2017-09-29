@@ -16,7 +16,10 @@ limitations under the License.
 
 package config
 
-import "github.com/hyperledger/fabric/common/util"
+import (
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/util"
+)
 
 func nearIdentityHash(input []byte) []byte {
 	return util.ConcatenateBytes([]byte("FakeHash("), input, []byte(""))
@@ -30,6 +33,8 @@ type Channel struct {
 	BlockDataHashingStructureWidthVal uint32
 	// OrdererAddressesVal is returned as the result of OrdererAddresses()
 	OrdererAddressesVal []string
+	// CapabilitiesVal is returned as the result of Capabilities()
+	CapabilitiesVal channelconfig.ChannelCapabilities
 }
 
 // HashingAlgorithm returns the HashingAlgorithmVal if set, otherwise a fake simple hash function
@@ -48,4 +53,9 @@ func (scm *Channel) BlockDataHashingStructureWidth() uint32 {
 // OrdererAddresses returns the OrdererAddressesVal
 func (scm *Channel) OrdererAddresses() []string {
 	return scm.OrdererAddressesVal
+}
+
+// Capabilities returns CapabilitiesVal
+func (scm *Channel) Capabilities() channelconfig.ChannelCapabilities {
+	return scm.CapabilitiesVal
 }

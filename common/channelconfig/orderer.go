@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/common/capabilities"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -48,6 +49,7 @@ type OrdererProtos struct {
 	BatchTimeout        *ab.BatchTimeout
 	KafkaBrokers        *ab.KafkaBrokers
 	ChannelRestrictions *ab.ChannelRestrictions
+	Capabilities        *cb.Capabilities
 }
 
 // OrdererConfig holds the orderer configuration information
@@ -112,6 +114,11 @@ func (oc *OrdererConfig) MaxChannelsCount() uint64 {
 // Organizations returns a map of the orgs in the channel
 func (oc *OrdererConfig) Organizations() map[string]Org {
 	return oc.orgs
+}
+
+// Capabilities returns the capabilities the ordering network has for this channel
+func (oc *OrdererConfig) Capabilities() OrdererCapabilities {
+	return capabilities.NewOrdererProvider(oc.protos.Capabilities.Capabilities)
 }
 
 func (oc *OrdererConfig) Validate() error {

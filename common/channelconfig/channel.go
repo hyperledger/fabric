@@ -11,6 +11,7 @@ import (
 	"math"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -56,6 +57,7 @@ type ChannelProtos struct {
 	BlockDataHashingStructure *cb.BlockDataHashingStructure
 	OrdererAddresses          *cb.OrdererAddresses
 	Consortium                *cb.Consortium
+	Capabilities              *cb.Capabilities
 }
 
 // ChannelConfig stores the channel configuration
@@ -149,6 +151,11 @@ func (cc *ChannelConfig) OrdererAddresses() []string {
 // ConsortiumName returns the name of the consortium this channel was created under
 func (cc *ChannelConfig) ConsortiumName() string {
 	return cc.protos.Consortium.Name
+}
+
+// Capabilities returns information about the available capabilities for this channel
+func (cc *ChannelConfig) Capabilities() ChannelCapabilities {
+	return capabilities.NewChannelProvider(cc.protos.Capabilities.Capabilities)
 }
 
 // Validate inspects the generated configuration protos and ensures that the values are correct
