@@ -13,11 +13,11 @@ The standard usage is expected to be:
 4. `configtxlator` used to compute config update representation of changes to the config
 5. SDK submits signs and submits config
 
-The `configtxlator` tool exposes a truly stateless REST API for interacting with configuration elements.  These REST components support converting the native configuration format to/from a human readable JSON representation, as well as computing computing configuration updates based on the difference between two configurations.
+The `configtxlator` tool exposes a truly stateless REST API for interacting with configuration elements.  These REST components support converting the native configuration format to/from a human readable JSON representation, as well as computing configuration updates based on the difference between two configurations.
 
 Because the `configtxlator` service deliberately does not contain any crypto material, or otherwise secret information, it does not include any authorization or access control.  The anticipated typical deployment would be to operate as a sandboxed container, locally with the application, so that there is a dedicated configtxlator process for each consumer of it.
 
-## Buliding and running the configtxlator
+## Building and running the configtxlator
 
 The `configtxlator` binary may be produced by executing `make configtxlator`.
 
@@ -37,7 +37,7 @@ For instance, to decode a configuration block saved as `configuration_block.pb`,
 curl -X POST --data-binary @configuration_block.pb http://127.0.0.1:7059/protolator/decode/common.Block
 ```
 
-To convert the human readable JSON version of the proto message, simply post the JSON version to `http://$SERVER:$PORT/protolator/encode/<message.Name` where `<message.Name>` is again the fully qualified proto name of the message.
+To convert the human readable JSON version of the proto message, simply post the JSON version to `http://$SERVER:$PORT/protolator/encode/<message.Name>` where `<message.Name>` is again the fully qualified proto name of the message.
 
 For instance, re-encode the block saved as `configuration_block.json`, run the command:
 
@@ -57,7 +57,7 @@ For example, given the original config as the file `original_config.pb` and the 
 curl -X POST -F channel=desiredchannel -F original=@original_config.pb -F updated=@updated_config.pb http://127.0.0.1:7059/configtxlator/compute/update-from-configs
 ```
 
-## Bootstraping example
+## Bootstrapping example
 
 First build and start the `configtxlator`.
 
@@ -102,7 +102,7 @@ Decode the genesis block into a human editable form.
 ```
 curl -X POST --data-binary @genesis_block.pb http://127.0.0.1:7059/protolator/decode/common.Block > genesis_block.json
 ```
-Edit the `genesis_block.json` file in your favorite JSON editor, or manipulate it programatically, here, we use the JSON CLI tool `jq`.  For simplicity, we are editing the batch size for the channel, because it is a single numeric field, but any edits, including policy and MSP edits may be made here.
+Edit the `genesis_block.json` file in your favorite JSON editor, or manipulate it programmatically, here, we use the JSON CLI tool `jq`.  For simplicity, we are editing the batch size for the channel, because it is a single numeric field, but any edits, including policy and MSP edits may be made here.
 ```
 $ export MAXBATCHSIZEPATH=".data.data[0].payload.data.config.channel_group.groups.Orderer.values.BatchSize.value.max_message_count"
 # Display the old batch size
