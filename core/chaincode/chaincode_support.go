@@ -421,7 +421,7 @@ func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(cccid *ccprovider.CCC
 	case pb.ChaincodeSpec_JAVA:
 		args = []string{"java", "-jar", "chaincode.jar", "--peerAddress", chaincodeSupport.peerAddress}
 	case pb.ChaincodeSpec_NODE:
-		args = []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; node chaincode.js --peer.address %s", chaincodeSupport.peerAddress)}
+		args = []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", chaincodeSupport.peerAddress)}
 
 	default:
 		return nil, nil, nil, errors.Errorf("unknown chaincodeType: %s", cLang)
