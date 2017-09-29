@@ -12,10 +12,6 @@ import (
 	"github.com/hyperledger/fabric/protos/msp"
 )
 
-// FIXME: we need better comments on the interfaces!!
-// FIXME: we need better comments on the interfaces!!
-// FIXME: we need better comments on the interfaces!!
-
 // IdentityDeserializer is implemented by both MSPManger and MSP
 type IdentityDeserializer interface {
 	// DeserializeIdentity deserializes an identity.

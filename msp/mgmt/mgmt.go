@@ -20,19 +20,18 @@ import (
 	"reflect"
 	"sync"
 
-	"errors"
-
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
+	"github.com/pkg/errors"
 )
 
 // LoadLocalMsp loads the local MSP from the specified directory
 func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) error {
 	if mspID == "" {
-		return errors.New("The local MSP must have an ID")
+		return errors.New("the local MSP must have an ID")
 	}
 
 	conf, err := msp.GetLocalMspConfig(dir, bccspConfig, mspID)
@@ -126,12 +125,12 @@ func GetLocalMSP() msp.MSP {
 
 			bccspMSP, err := msp.NewBccspMsp()
 			if err != nil {
-				mspLogger.Fatalf("Failed to initialize local MSP, received err %s", err)
+				mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
 			}
 
 			lclMsp, err = cache.New(bccspMSP)
 			if err != nil {
-				mspLogger.Fatalf("Failed to initialize local MSP, received err %s", err)
+				mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
 			}
 			localMsp = bccspMSP
 		}
@@ -160,7 +159,7 @@ func GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
 func GetLocalSigningIdentityOrPanic() msp.SigningIdentity {
 	id, err := GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
-		mspLogger.Panicf("Failed getting local signing identity [%s]", err)
+		mspLogger.Panicf("Failed getting local signing identity [%+v]", err)
 	}
 	return id
 }
