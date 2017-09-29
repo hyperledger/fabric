@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -60,25 +62,40 @@ func NewDistributor(chainID string, gossip gossipAdapter) PvtDataDistributor {
 
 // Distribute broadcast reliably private data read write set based on policies
 func (d *distributorImpl) Distribute(txID string, privData *rwset.TxPvtReadWriteSet, cs privdata.CollectionStore) error {
+	disseminationPlan, err := d.computeDisseminationPlan(txID, privData, cs)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return d.disseminate(disseminationPlan)
+}
+
+type dissemination struct {
+	msg      *proto.SignedGossipMessage
+	criteria gossip2.SendCriteria
+}
+
+func (d *distributorImpl) computeDisseminationPlan(txID string, privData *rwset.TxPvtReadWriteSet, cs privdata.CollectionStore) ([]*dissemination, error) {
+	var disseminationPlan []*dissemination
 	for _, pvtRwset := range privData.NsPvtRwset {
 		namespace := pvtRwset.Namespace
 		for _, collection := range pvtRwset.CollectionPvtRwset {
 			collectionName := collection.CollectionName
-			colAP := cs.GetCollectionAccessPolicy(common.CollectionCriteria{
+			cc := common.CollectionCriteria{
 				Namespace:  namespace,
 				Collection: collectionName,
 				TxId:       txID,
 				Channel:    d.chainID,
-			})
+			}
+			colAP := cs.GetCollectionAccessPolicy(cc)
 			if colAP == nil {
-				logger.Error("Could not find collection access policy for collection", collectionName)
-				return errors.New("Collection access policy not found")
+				logger.Error("Could not find collection access policy for", cc)
+				return nil, errors.Errorf("Collection access policy for %v not found", cc)
 			}
 
 			colFilter := colAP.GetAccessFilter()
 			if colFilter == nil {
-				logger.Error("Collection access policy for collection", collectionName, "has no filter")
-				return errors.New("No collection access policy filter")
+				logger.Error("Collection access policy for", cc, "has no filter")
+				return nil, errors.Errorf("No collection access policy filter computed for %v", cc)
 			}
 
 			routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChainID(d.chainID), func(signature api.PeerSignature) bool {
@@ -90,8 +107,8 @@ func (d *distributorImpl) Distribute(txID string, privData *rwset.TxPvtReadWrite
 			})
 
 			if err != nil {
-				logger.Error("Failed to retrieve peer routing filter, due to", err, "collection name", collectionName)
-				return err
+				logger.Error("Failed to retrieve peer routing filter for", cc, " due to", err)
+				return nil, err
 			}
 
 			msg := &proto.GossipMessage{
@@ -112,10 +129,10 @@ func (d *distributorImpl) Distribute(txID string, privData *rwset.TxPvtReadWrite
 
 			pvtDataMsg, err := msg.NoopSign()
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			err = d.gossipAdapter.SendByCriteria(pvtDataMsg, gossip2.SendCriteria{
+			sc := gossip2.SendCriteria{
 				Timeout:  time.Second,
 				Channel:  gossipCommon.ChainID(d.chainID),
 				MaxPeers: d.maxPeers,
@@ -123,15 +140,35 @@ func (d *distributorImpl) Distribute(txID string, privData *rwset.TxPvtReadWrite
 				IsEligible: func(member discovery.NetworkMember) bool {
 					return routingFilter(member)
 				},
-			})
-
-			if err != nil {
-				logger.Warning("Could not send private data for channel", d.chainID,
-					"collection name", collectionName, "due to", err)
-
-				return err
 			}
+			disseminationPlan = append(disseminationPlan, &dissemination{
+				criteria: sc,
+				msg:      pvtDataMsg,
+			})
 		}
+	}
+	return disseminationPlan, nil
+}
+
+func (d *distributorImpl) disseminate(disseminationPlan []*dissemination) error {
+	var failures uint32
+	var wg sync.WaitGroup
+	wg.Add(len(disseminationPlan))
+	for _, dis := range disseminationPlan {
+		go func(dis *dissemination) {
+			defer wg.Done()
+			err := d.SendByCriteria(dis.msg, dis.criteria)
+			if err != nil {
+				atomic.AddUint32(&failures, 1)
+				m := dis.msg.GetPrivateData().Payload
+				logger.Error("Failed disseminating private RWSet for TxID", m.TxId, ", namespace", m.Namespace, "collection", m.CollectionName, ":", err)
+			}
+		}(dis)
+	}
+	wg.Wait()
+	failureCount := atomic.LoadUint32(&failures)
+	if failureCount != 0 {
+		return errors.Errorf("Failed disseminating %d out of %d private RWSets", failureCount, len(disseminationPlan))
 	}
 	return nil
 }
