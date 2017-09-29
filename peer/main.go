@@ -49,13 +49,9 @@ var mainCmd = &cobra.Command{
 	Use: "peer",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// check for CORE_LOGGING_LEVEL environment variable, which should override
-		// all other log settings
-		loggingSpec := viper.GetString("logging_level")
-
-		if loggingSpec == "" {
-			// if CORE_LOGGING_LEVEL not set, use the value for 'peer' from core.yaml
-			loggingSpec = viper.GetString("logging.peer")
-		}
+		// all other log settings. otherwise, this will use the value for from
+		// core.yaml
+		loggingSpec := viper.GetString("logging.level")
 		flogging.InitFromSpec(loggingSpec)
 
 		return nil

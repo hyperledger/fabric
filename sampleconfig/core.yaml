@@ -25,8 +25,7 @@ logging:
     # 2. The environment variable CORE_LOGGING_LEVEL otherwise applies to
     #    all peer commands if defined as a non-empty string.
     #
-    # 3. The value of peer that directly follows in this file. It can also
-    #    be set via the environment variable CORE_LOGGING_PEER.
+    # 3. The value of `level` that directly follows in this file.
     #
     # If no overall default level is provided via any of the above methods,
     # the peer will default to INFO (the value of defaultLevel in
@@ -35,7 +34,7 @@ logging:
     # Default for all modules running within the scope of a peer.
     # Note: this value is only used when --logging-level or CORE_LOGGING_LEVEL
     #       are not set
-    peer:       info
+    level:       info
 
     # The overall default values mentioned above can be overridden for the
     # specific components listed in the override section below.
