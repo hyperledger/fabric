@@ -1130,6 +1130,7 @@ func TestBatchBatchOperations(t *testing.T) {
 		byteJSON03 := []byte(`{"_id":"marble03","asset_name":"marble03","color":"green","size":"3","owner":"jerry"}`)
 		byteJSON04 := []byte(`{"_id":"marble04","asset_name":"marble04","color":"purple","size":"4","owner":"tom"}`)
 		byteJSON05 := []byte(`{"_id":"marble05","asset_name":"marble05","color":"blue","size":"5","owner":"jerry"}`)
+		byteJSON06 := []byte(`{"_id":"marble06#$&'()*+,/:;=?@[]","asset_name":"marble06#$&'()*+,/:;=?@[]","color":"blue","size":"6","owner":"jerry"}`)
 
 		attachment1 := &AttachmentInfo{}
 		attachment1.AttachmentBytes = []byte(`marble01 - test attachment`)
@@ -1166,6 +1167,13 @@ func TestBatchBatchOperations(t *testing.T) {
 		attachments5 := []*AttachmentInfo{}
 		attachments5 = append(attachments5, attachment5)
 
+		attachment6 := &AttachmentInfo{}
+		attachment6.AttachmentBytes = []byte(`marble06#$&'()*+,/:;=?@[] - test attachment`)
+		attachment6.ContentType = "application/octet-stream"
+		attachment6.Name = "data"
+		attachments6 := []*AttachmentInfo{}
+		attachments6 = append(attachments6, attachment6)
+
 		database := "testbatch"
 		err := cleanup(database)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
@@ -1188,12 +1196,14 @@ func TestBatchBatchOperations(t *testing.T) {
 		value3 := &CouchDoc{JSONValue: byteJSON03, Attachments: attachments3}
 		value4 := &CouchDoc{JSONValue: byteJSON04, Attachments: attachments4}
 		value5 := &CouchDoc{JSONValue: byteJSON05, Attachments: attachments5}
+		value6 := &CouchDoc{JSONValue: byteJSON06, Attachments: attachments6}
 
 		batchUpdateDocs = append(batchUpdateDocs, value1)
 		batchUpdateDocs = append(batchUpdateDocs, value2)
 		batchUpdateDocs = append(batchUpdateDocs, value3)
 		batchUpdateDocs = append(batchUpdateDocs, value4)
 		batchUpdateDocs = append(batchUpdateDocs, value5)
+		batchUpdateDocs = append(batchUpdateDocs, value6)
 
 		batchUpdateResp, err := db.BatchUpdateDocuments(batchUpdateDocs)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when attempting to update a batch of documents"))
@@ -1209,6 +1219,18 @@ func TestBatchBatchOperations(t *testing.T) {
 		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when attempting read a document"))
 
 		assetResp := &Asset{}
+		geterr = json.Unmarshal(dbGetResp.JSONValue, &assetResp)
+		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
+		//Verify the owner retrieved matches
+		testutil.AssertEquals(t, assetResp.Owner, "jerry")
+
+		//----------------------------------------------
+		// Test Retrieve JSON using ID with URL special characters,
+		// this will confirm that batch document IDs and URL IDs are consistent, even if they include special characters
+		dbGetResp, _, geterr = db.ReadDoc("marble06#$&'()*+,/:;=?@[]")
+		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when attempting read a document"))
+
+		assetResp = &Asset{}
 		geterr = json.Unmarshal(dbGetResp.JSONValue, &assetResp)
 		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
 		//Verify the owner retrieved matches
