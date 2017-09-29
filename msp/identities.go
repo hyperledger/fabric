@@ -50,7 +50,9 @@ type identity struct {
 }
 
 func newIdentity(cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity, error) {
-	mspIdentityLogger.Debugf("Creating identity instance for cert %s", cert)
+	if mspIdentityLogger.IsEnabledFor(logging.DEBUG) {
+		mspIdentityLogger.Debugf("Creating identity instance for cert %s", certToPEM(cert))
+	}
 
 	// Sanitize first the certificate
 	cert, err := msp.sanitizeCert(cert)
