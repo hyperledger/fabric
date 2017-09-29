@@ -20,6 +20,7 @@ import (
 
 const ENCKEY = "ENCKEY"
 const SIGKEY = "SIGKEY"
+const IV = "IV"
 
 // EncCC example simple Chaincode implementation of a chaincode that uses encshim
 type EncCC struct {
@@ -35,9 +36,9 @@ func (t *EncCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
 // encrypted it with an AES 256 bit key that has been provided to the chaincode through the
 // transient field; and "GET" that shows how to read from the ledger and decrypt using an AES 256
 // bit key that has been provided to the chaincode through the transient field.
-func (t *EncCC) Encrypter(stub shim.ChaincodeStubInterface, f string, args []string, encKey []byte) pb.Response {
-	// create the encrypter entity - we give it an ID, the bccsp instance and the key
-	ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, encKey)
+func (t *EncCC) Encrypter(stub shim.ChaincodeStubInterface, f string, args []string, encKey, IV []byte) pb.Response {
+	// create the encrypter entity - we give it an ID, the bccsp instance, the key and (optionally) the IV
+	ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, encKey, IV)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("entities.NewAES256EncrypterEntity failed, err %s", err))
 	}
@@ -156,7 +157,7 @@ type keyValuePair struct {
 // entity directly to decrypt previously encrypted key-value pairs
 func (t *EncCC) RangeDecrypter(stub shim.ChaincodeStubInterface, encKey []byte) pb.Response {
 	// create the encrypter entity - we give it an ID, the bccsp instance and the key
-	ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, encKey)
+	ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, encKey, nil)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("entities.NewAES256EncrypterEntity failed, err %s", err))
 	}
@@ -211,7 +212,7 @@ func (t *EncCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 			return shim.Error(fmt.Sprintf("Expected transient key %s", ENCKEY))
 		}
 
-		return t.Encrypter(stub, args[0], args[1:], tMap[ENCKEY])
+		return t.Encrypter(stub, args[0], args[1:], tMap[ENCKEY], tMap[IV])
 	case "SIG":
 		// make sure keys are there in the transient map - the assumption is that they
 		// are associated to the string "ENCKEY" and "SIGKEY"
