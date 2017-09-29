@@ -36,7 +36,6 @@ func NewOrderer(port int, t *testing.T) *Orderer {
 	if err != nil {
 		panic(err)
 	}
-	go srv.Serve(lsnr)
 	o := &Orderer{Server: srv,
 		Listener:         lsnr,
 		t:                t,
@@ -45,6 +44,7 @@ func NewOrderer(port int, t *testing.T) *Orderer {
 		stopChan:         make(chan struct{}, 1),
 	}
 	orderer.RegisterAtomicBroadcastServer(srv, o)
+	go srv.Serve(lsnr)
 	return o
 }
 
