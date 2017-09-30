@@ -35,7 +35,7 @@ information on getting started using and developing with the fabric, SDK and cha
 It's recommended for first-time users to begin by going through the
 [Getting Started](http://hyperledger-fabric.readthedocs.io/en/latest/getting_started.html)
 section of the documentation in order to gain familiarity with the Hyperledger
-Fabric components and the basic transaction flow. 
+Fabric components and the basic transaction flow.
 
 ## Contributing
 
@@ -61,4 +61,4 @@ for the full details.
 
 ## License <a name="license"></a>
 
-<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+Hyperledger Project source code files are made available under the Apache License, Version 2.0 (Apache-2.0), located in the [LICENSE](LICENSE) file. Hyperledger Project documentation files are made available under the Creative Commons Attribution 4.0 International License (CC-BY-4.0), available at http://creativecommons.org/licenses/by/4.0/.
