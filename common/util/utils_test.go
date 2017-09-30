@@ -25,12 +25,21 @@ import (
 	"github.com/op/go-logging"
 )
 
-func TestComputeCryptoHash(t *testing.T) {
+func TestComputeSHA256(t *testing.T) {
 	if bytes.Compare(ComputeSHA256([]byte("foobar")), ComputeSHA256([]byte("foobar"))) != 0 {
 		t.Fatalf("Expected hashes to match, but they did not match")
 	}
 	if bytes.Compare(ComputeSHA256([]byte("foobar1")), ComputeSHA256([]byte("foobar2"))) == 0 {
 		t.Fatalf("Expected hashes to be different, but they match")
+	}
+}
+
+func TestComputeSHA3256(t *testing.T) {
+	if bytes.Compare(ComputeSHA3256([]byte("foobar")), ComputeSHA3256([]byte("foobar"))) != 0 {
+		t.Fatalf("Expected hashes to match, but they did not match")
+	}
+	if bytes.Compare(ComputeSHA3256([]byte("foobar1")), ComputeSHA3256([]byte("foobar2"))) == 0 {
+		t.Fatalf("Expected hashed to be different, but they match")
 	}
 }
 
@@ -82,7 +91,21 @@ func TestGeneratIDfromTxSHAHash(t *testing.T) {
 func TestGenerateIDWithAlg(t *testing.T) {
 	_, err := GenerateIDWithAlg("sha256", []byte{1, 1, 1, 1})
 	if err != nil {
-		t.Fatalf("Decoder failure: %v", err)
+		t.Fatalf("Generator failure: %v", err)
+	}
+}
+
+func TestGenerateIDWithDefaultAlg(t *testing.T) {
+	_, err := GenerateIDWithAlg("", []byte{1, 1, 1, 1})
+	if err != nil {
+		t.Fatalf("Generator failure: %v", err)
+	}
+}
+
+func TestGenerateIDWithWrongAlg(t *testing.T) {
+	_, err := GenerateIDWithAlg("foobar", []byte{1, 1, 1, 1})
+	if err == nil {
+		t.Fatalf("Expected error")
 	}
 }
 
@@ -97,6 +120,32 @@ func TestFindMissingElements(t *testing.T) {
 	for i := range expectedDelta {
 		if strings.Compare(expectedDelta[i], actualDelta[i]) != 0 {
 			t.Fatalf("Got %v, expected %v", actualDelta, expectedDelta)
+		}
+	}
+}
+
+func TestToChaincodeArgs(t *testing.T) {
+	expected := [][]byte{[]byte("foo"), []byte("bar")}
+	actual := ToChaincodeArgs("foo", "bar")
+	if len(expected) != len(actual) {
+		t.Fatalf("Got %v, expected %v", actual, expected)
+	}
+	for i := range expected {
+		if bytes.Compare(expected[i], actual[i]) != 0 {
+			t.Fatalf("Got %v, expected %v", actual, expected)
+		}
+	}
+}
+
+func TestArrayToChaincodeArgs(t *testing.T) {
+	expected := [][]byte{[]byte("foo"), []byte("bar")}
+	actual := ArrayToChaincodeArgs([]string{"foo", "bar"})
+	if len(expected) != len(actual) {
+		t.Fatalf("Got %v, expected %v", actual, expected)
+	}
+	for i := range expected {
+		if bytes.Compare(expected[i], actual[i]) != 0 {
+			t.Fatalf("Got %v, expected %v", actual, expected)
 		}
 	}
 }
