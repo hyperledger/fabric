@@ -8,7 +8,7 @@ can compile these images locally to ensure they are up to date. It is up
 to the user how to build the images, although a typical approach is
 through vagrant. If you do choose to build through vagrant, make sure
 you have followed the steps outlined in `setting up the development
-environment <dev-setup/devenv.md>`__. Then from the fabric directory
+environment <dev-setup/devenv.html>`__. Then from the fabric directory
 within your vagrant environment, execute the ``make peer-docker`` and
 ``make orderer-docker`` commands.
 
