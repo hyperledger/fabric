@@ -65,3 +65,14 @@ func (scm *Orderer) Organizations() map[string]channelconfig.Org {
 func (scm *Orderer) Capabilities() channelconfig.OrdererCapabilities {
 	return scm.CapabilitiesVal
 }
+
+// OrdererCapabilities mocks the channelconfig.OrdererCapabilities interface
+type OrdererCapabilities struct {
+	// SupportedErr is returned by Supported()
+	SupportedErr error
+}
+
+// Supported returns SupportedErr
+func (oc *OrdererCapabilities) Supported() error {
+	return oc.SupportedErr
+}

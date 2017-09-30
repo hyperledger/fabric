@@ -15,7 +15,9 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
+	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/msp"
@@ -27,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -183,10 +186,10 @@ func TestNewChain(t *testing.T) {
 	envConfigUpdate, err := channelconfig.MakeChainCreationTransaction(newChainID, genesisconfig.SampleConsortiumName, mockSigningIdentity)
 	assert.NoError(t, err, "Constructing chain creation tx")
 
-	cm, err := manager.NewChannelConfig(envConfigUpdate)
+	res, err := manager.NewChannelConfig(envConfigUpdate)
 	assert.NoError(t, err, "Constructing initial channel config")
 
-	configEnv, err := cm.ProposeConfigUpdate(envConfigUpdate)
+	configEnv, err := res.ConfigtxManager().ProposeConfigUpdate(envConfigUpdate)
 	assert.NoError(t, err, "Proposing initial update")
 	assert.Equal(t, expectedLastConfigSeq, configEnv.GetConfig().Sequence, "Sequence of config envelope for new channel should always be set to %d", expectedLastConfigSeq)
 
@@ -279,4 +282,68 @@ func testLastConfigBlockNumber(t *testing.T, block *cb.Block, expectedBlockNumbe
 	err = proto.Unmarshal(metadataItem.Value, lastConfig)
 	assert.NoError(t, err, "LAST_CONFIG metadata item should carry last config value")
 	assert.Equal(t, expectedBlockNumber, lastConfig.Index, "LAST_CONFIG value should point to last config block")
+}
+
+func TestResourcesCheck(t *testing.T) {
+	t.Run("GoodResources", func(t *testing.T) {
+		err := checkResources(&mockchannelconfig.Resources{
+			PolicyManagerVal: &mockpolicies.Manager{},
+			OrdererConfigVal: &mockchannelconfig.Orderer{
+				CapabilitiesVal: &mockchannelconfig.OrdererCapabilities{},
+			},
+			ChannelConfigVal: &mockchannelconfig.Channel{
+				CapabilitiesVal: &mockchannelconfig.OrdererCapabilities{},
+			},
+		})
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("MissingOrdererConfigPanic", func(t *testing.T) {
+		err := checkResources(&mockchannelconfig.Resources{
+			PolicyManagerVal: &mockpolicies.Manager{},
+		})
+
+		assert.Error(t, err)
+		assert.Regexp(t, "config does not contain orderer config", err.Error())
+	})
+
+	t.Run("MissingOrdererCapability", func(t *testing.T) {
+		err := checkResources(&mockchannelconfig.Resources{
+			PolicyManagerVal: &mockpolicies.Manager{},
+			OrdererConfigVal: &mockchannelconfig.Orderer{
+				CapabilitiesVal: &mockchannelconfig.OrdererCapabilities{
+					SupportedErr: errors.New("An error"),
+				},
+			},
+		})
+
+		assert.Error(t, err)
+		assert.Regexp(t, "config requires unsupported orderer capabilities:", err.Error())
+	})
+
+	t.Run("MissingChannelCapability", func(t *testing.T) {
+		err := checkResources(&mockchannelconfig.Resources{
+			PolicyManagerVal: &mockpolicies.Manager{},
+			OrdererConfigVal: &mockchannelconfig.Orderer{
+				CapabilitiesVal: &mockchannelconfig.OrdererCapabilities{},
+			},
+			ChannelConfigVal: &mockchannelconfig.Channel{
+				CapabilitiesVal: &mockchannelconfig.ChannelCapabilities{
+					SupportedErr: errors.New("An error"),
+				},
+			},
+		})
+
+		assert.Error(t, err)
+		assert.Regexp(t, "config requires unsupported channel capabilities:", err.Error())
+	})
+
+	t.Run("MissingOrdererConfigPanic", func(t *testing.T) {
+		assert.Panics(t, func() {
+			checkResourcesOrPanic(&mockchannelconfig.Resources{
+				PolicyManagerVal: &mockpolicies.Manager{},
+			})
+		})
+	})
 }

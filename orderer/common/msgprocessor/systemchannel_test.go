@@ -12,8 +12,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
+	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
@@ -27,8 +27,10 @@ type mockSystemChannelSupport struct {
 	NewChannelConfigErr error
 }
 
-func (mscs *mockSystemChannelSupport) NewChannelConfig(env *cb.Envelope) (configtxapi.Manager, error) {
-	return mscs.NewChannelConfigVal, mscs.NewChannelConfigErr
+func (mscs *mockSystemChannelSupport) NewChannelConfig(env *cb.Envelope) (channelconfig.Resources, error) {
+	return &mockchannelconfig.Resources{
+		ConfigtxManagerVal: mscs.NewChannelConfigVal,
+	}, mscs.NewChannelConfigErr
 }
 
 func TestProcessSystemChannelNormalMsg(t *testing.T) {
