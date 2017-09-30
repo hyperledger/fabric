@@ -17,6 +17,7 @@ limitations under the License.
 package solo
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -308,5 +309,81 @@ func TestRecoverFromError(t *testing.T) {
 	case <-support.Blocks:
 	case <-time.After(time.Second):
 		t.Fatalf("Expected block to be cut")
+	}
+}
+
+// This test checks that solo consenter re-validates message if config sequence has advanced
+func TestRevalidation(t *testing.T) {
+	batchTimeout, _ := time.ParseDuration("1h")
+	support := &mockmultichannel.ConsenterSupport{
+		Blocks:          make(chan *cb.Block),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+		SequenceVal:     uint64(1),
+	}
+	defer close(support.BlockCutterVal.Block)
+	bs := newChain(support)
+	wg := goWithWait(bs.main)
+	defer bs.Halt()
+
+	t.Run("ConfigMsg", func(t *testing.T) {
+		support.ProcessConfigMsgVal = testMessage
+
+		t.Run("Valid", func(t *testing.T) {
+			assert.Nil(t, bs.Configure(testMessage, 0))
+
+			select {
+			case <-support.Blocks:
+			case <-time.After(time.Second):
+				t.Fatalf("Expected one block to be cut but never got it")
+			}
+		})
+
+		t.Run("Invalid", func(t *testing.T) {
+			support.ProcessConfigMsgErr = fmt.Errorf("Config message is not valid")
+			assert.Nil(t, bs.Configure(testMessage, 0))
+
+			select {
+			case <-support.Blocks:
+				t.Fatalf("Expected no block to be cut")
+			case <-time.After(100 * time.Millisecond):
+			}
+		})
+
+	})
+
+	t.Run("NormalMsg", func(t *testing.T) {
+		support.BlockCutterVal.CutNext = true
+
+		t.Run("Valid", func(t *testing.T) {
+			syncQueueMessage(testMessage, bs, support.BlockCutterVal)
+
+			select {
+			case <-support.Blocks:
+			case <-time.After(time.Second):
+				t.Fatalf("Expected one block to be cut but never got it")
+			}
+		})
+
+		t.Run("Invalid", func(t *testing.T) {
+			support.ProcessNormalMsgErr = fmt.Errorf("Normal message is not valid")
+			// We are not calling `syncQueueMessage` here because we don't expect
+			// `Ordered` to be invoked at all in this case, so we don't need to
+			// synchronize on `support.BlockCutterVal.Block`.
+			assert.Nil(t, bs.Order(testMessage, 0))
+
+			select {
+			case <-support.Blocks:
+				t.Fatalf("Expected no block to be cut")
+			case <-time.After(100 * time.Millisecond):
+			}
+		})
+	})
+
+	bs.Halt()
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("Should have exited")
+	case <-wg.done:
 	}
 }
