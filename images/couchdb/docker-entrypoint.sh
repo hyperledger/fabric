@@ -44,4 +44,6 @@ if [ "$1" = '/opt/couchdb/bin/couchdb' ]; then
 	sleep 1
 fi
 
-exec "$@"
+chown -R couchdb:couchdb /opt/couchdb/data
+
+su-exec couchdb "$@"
