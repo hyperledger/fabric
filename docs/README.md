@@ -81,7 +81,7 @@ In addition, if you'd like, you may also run a local web server with the followi
 
 ```
 sudo apt-get install apache2
-cd source/build/html
+cd build/html
 sudo cp -r * /var/www/html/
 ```
 
