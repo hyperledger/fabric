@@ -119,7 +119,7 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 	}
 	if !version.AreSame(hashVersion, ver) {
 		return nil, &txmgr.ErrPvtdataNotAvailable{Msg: fmt.Sprintf(
-			"The available copy of the private data is not latest. The latest version = %#v, available version = %#v",
+			"Private data matching public hash version is not available. Public hash version = %#v, Private data version = %#v",
 			hashVersion, ver)}
 	}
 	if h.rwsetBuilder != nil {
