@@ -110,7 +110,7 @@ func (v *Validator) ValidateAndPrepareBatch(block *valinternal.Block, doMVCCVali
 	return updates, nil
 }
 
-//validate endorser transaction
+// validateEndorserTX validates endorser transaction
 func (v *Validator) validateEndorserTX(
 	txRWSet *rwsetutil.TxRwSet,
 	doMVCCValidation bool,
@@ -179,7 +179,7 @@ func (v *Validator) validateKVRead(ns string, kvRead *kvrwset.KVRead, updates *p
 		return false, err
 	}
 
-	logger.Debugf("Comapring versions for key [%s]: committed version=%#v and read version=%#v",
+	logger.Debugf("Comparing versions for key [%s]: committed version=%#v and read version=%#v",
 		kvRead.Key, committedVersion, rwsetutil.NewVersion(kvRead.Version))
 	if !version.AreSame(committedVersion, rwsetutil.NewVersion(kvRead.Version)) {
 		logger.Debugf("Version mismatch for key [%s:%s]. Committed version = [%#v], Version in readSet [%#v]",
@@ -201,7 +201,7 @@ func (v *Validator) validateRangeQueries(ns string, rangeQueriesInfo []*kvrwset.
 	return true, nil
 }
 
-// validateRangeQuery performs a phatom read check i.e., it
+// validateRangeQuery performs a phantom read check i.e., it
 // checks whether the results of the range query are still the same when executed on the
 // statedb (latest state as of last committed block) + updates (prepared by the writes of preceding valid transactions
 // in the current block and yet to be committed as part of group commit at the end of the validation of the block)
