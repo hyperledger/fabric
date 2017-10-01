@@ -24,7 +24,7 @@ var (
 	maxSendMsgSize = 100 * 1024 * 1024
 	// Default keepalive options
 	keepaliveOptions = KeepaliveOptions{
-		ClientKeepaliveTime:    300,  // 5 min
+		ClientKeepaliveTime:    60,   // 1 min
 		ClientKeepaliveTimeout: 20,   // 20 sec - gRPC default
 		ServerKeepaliveTime:    7200, // 2 hours - gRPC default
 		ServerKeepaliveTimeout: 20,   // 20 sec - gRPC default
