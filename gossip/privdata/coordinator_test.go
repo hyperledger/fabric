@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -26,6 +27,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+func init() {
+	viper.Set("peer.gossip.pvtData.pullRetryThreshold", time.Second*3)
+}
 
 type persistCall struct {
 	*mock.Call
@@ -806,6 +811,8 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		var privateDataPassed2Ledger privateData = args.Get(0).(*ledger.BlockAndPvtData).BlockPvtData
 		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData2))
+		fmt.Println(privateDataPassed2Ledger)
+		fmt.Println(expectedCommittedPrivateData2)
 		commitHappened = true
 	}).Return(nil)
 	coordinator = NewCoordinator(Support{
@@ -858,6 +865,92 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	assertCommitHappened()
 	// In any case, all transactions in the block are purged from the transient store
 	assertPurged("tx3", "tx1")
+}
+
+func TestProceedWithoutPrivateData(t *testing.T) {
+	// Scenario: we are missing private data (c2 in ns3) and it cannot be obtained from any peer.
+	// Block needs to be committed with missing private data.
+	peerSelfSignedData := common.SignedData{
+		Identity:  []byte{0, 1, 2},
+		Signature: []byte{3, 4, 5},
+		Data:      []byte{6, 7, 8},
+	}
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
+	var commitHappened bool
+	assertCommitHappened := func() {
+		assert.True(t, commitHappened)
+		commitHappened = false
+	}
+	committer := &committerMock{}
+	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
+		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
+		var privateDataPassed2Ledger privateData = blockAndPrivateData.BlockPvtData
+		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData2))
+		missingPrivateData := blockAndPrivateData.Missing
+		assert.Equal(t, []ledger.MissingPrivateData{{
+			SeqInBlock: 0,
+			Collection: "c2",
+			Namespace:  "ns3",
+			TxId:       "tx1",
+		}}, missingPrivateData)
+		commitHappened = true
+	}).Return(nil)
+	purgedTxns := make(map[string]struct{})
+	store := &mockTransientStore{t: t}
+	store.On("GetTxPvtRWSetByTxid", "tx1", mock.Anything).Return(&mockRWSetScanner{}, nil)
+	store.On("PurgeByTxids", mock.Anything).Run(func(args mock.Arguments) {
+		for _, txn := range args.Get(0).([]string) {
+			purgedTxns[txn] = struct{}{}
+		}
+	}).Return(nil)
+	assertPurged := func(txns ...string) {
+		for _, txn := range txns {
+			_, exists := purgedTxns[txn]
+			assert.True(t, exists)
+			delete(purgedTxns, txn)
+		}
+		assert.Len(t, purgedTxns, 0)
+	}
+
+	fetcher := &fetcherMock{t: t}
+	// Have the peer return in response to the pull, a private data with a non matching hash
+	fetcher.On("fetch", mock.Anything).expectingReq(&proto.RemotePvtDataRequest{
+		Digests: []*proto.PvtDataDigest{
+			{
+				TxId: "tx1", Namespace: "ns3", Collection: "c2", BlockSeq: 1,
+			},
+		},
+	}).Return([]*proto.PvtDataElement{
+		{
+			Digest: &proto.PvtDataDigest{
+				BlockSeq:   1,
+				Collection: "c2",
+				Namespace:  "ns3",
+				TxId:       "tx1",
+			},
+			Payload: [][]byte{[]byte("wrong pre-image")},
+		},
+	}, nil)
+
+	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
+	pdFactory := &pvtDataFactory{}
+	bf := &blockFactory{
+		channelID: "test",
+	}
+
+	block := bf.AddTxn("tx1", "ns3", hash, "c3", "c2").create()
+	pvtData := pdFactory.addRWSet().addNSRWSet("ns3", "c3").create()
+	coordinator := NewCoordinator(Support{
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
+	}, peerSelfSignedData)
+	err := coordinator.StoreBlock(block, pvtData)
+	assert.NoError(t, err)
+	assertCommitHappened()
+	assertPurged("tx1")
 }
 
 func TestCoordinatorGetBlocks(t *testing.T) {

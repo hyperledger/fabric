@@ -174,11 +174,22 @@ type TxPvtData struct {
 	WriteSet   *rwset.TxPvtReadWriteSet
 }
 
+// MissingPrivateData represents a private RWSet
+// that isn't present among the private data passed
+// to the ledger at the commit of the corresponding block
+type MissingPrivateData struct {
+	TxId       string
+	SeqInBlock int
+	Namespace  string
+	Collection string
+}
+
 // BlockAndPvtData encapsulates the block and a map that contains the tuples <seqInBlock, *TxPvtData>
 // The map is expected to contain the entries only for the transactions that has associated pvt data
 type BlockAndPvtData struct {
 	Block        *common.Block
 	BlockPvtData map[uint64]*TxPvtData
+	Missing      []MissingPrivateData
 }
 
 // PvtCollFilter represents the set of the collection names (as keys of the map with value 'true')

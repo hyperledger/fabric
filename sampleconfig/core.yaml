@@ -183,6 +183,9 @@ peer:
             leaderElectionDuration: 5s
 
         pvtData:
+            # pullRetryThreshold determines the maximum duration of time private data corresponding for a given block
+            # would be attempted to be pulled from peers until the block would be committed without the private data
+            pullRetryThreshold: 60s
             # minInternalPeers defines the minimum number of peers from the peer's organization
             # that an endorsement containing private data would target for dissemination.
             # The endorsement would fail if an insufficient number of acknowledgements from
