@@ -200,9 +200,9 @@ func (p *puller) waitForMembership() []discovery.NetworkMember {
 	return members
 }
 
-func (p *puller) fetch(req *proto.RemotePvtDataRequest) ([]*proto.PvtDataElement, error) {
+func (p *puller) fetch(dig2src dig2sources) ([]*proto.PvtDataElement, error) {
 	// computeFilters returns a map from a digest to a routing filter
-	dig2Filter, err := p.computeFilters(req)
+	dig2Filter, err := p.computeFilters(dig2src.keys())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -355,9 +355,9 @@ func (dig2Filter digestToFilterMapping) String() string {
 	return buffer.String()
 }
 
-func (p *puller) computeFilters(req *proto.RemotePvtDataRequest) (digestToFilterMapping, error) {
+func (p *puller) computeFilters(digests []*proto.PvtDataDigest) (digestToFilterMapping, error) {
 	filters := make(map[proto.PvtDataDigest]filter.RoutingFilter)
-	for _, digest := range req.Digests {
+	for _, digest := range digests {
 		collection := p.cs.RetrieveCollectionAccessPolicy(fcommon.CollectionCriteria{
 			Channel:    p.channel,
 			TxId:       digest.TxId,

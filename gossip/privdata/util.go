@@ -7,12 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protos/common"
+	gossip2 "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -27,6 +31,10 @@ type blockFactory struct {
 }
 
 func (bf *blockFactory) AddTxn(txID string, nsName string, hash []byte, collections ...string) *blockFactory {
+	return bf.AddTxnWithEndorsement(txID, nsName, hash, "", collections...)
+}
+
+func (bf *blockFactory) AddTxnWithEndorsement(txID string, nsName string, hash []byte, org string, collections ...string) *blockFactory {
 	txn := &peer.Transaction{
 		Actions: []*peer.TransactionAction{
 			{},
@@ -61,6 +69,16 @@ func (bf *blockFactory) AddTxn(txID string, nsName string, hash []byte, collecti
 		Action: &peer.ChaincodeEndorsedAction{
 			ProposalResponsePayload: respPayloadBytes,
 		},
+	}
+
+	if org != "" {
+		sId := &msp.SerializedIdentity{Mspid: org, IdBytes: []byte(fmt.Sprintf("p0%s", org))}
+		b, _ := proto.Marshal(sId)
+		ccPayload.Action.Endorsements = []*peer.Endorsement{
+			{
+				Endorser: b,
+			},
+		}
 	}
 
 	ccPayloadBytes, err := proto.Marshal(ccPayload)
@@ -220,4 +238,37 @@ func (df *pvtDataFactory) create() []*ledger.TxPvtData {
 		df.data = nil
 	}()
 	return df.data
+}
+
+type digestsAndSourceFactory struct {
+	d2s     dig2sources
+	lastDig *gossip2.PvtDataDigest
+}
+
+func (f *digestsAndSourceFactory) mapDigest(dig *gossip2.PvtDataDigest) *digestsAndSourceFactory {
+	f.lastDig = dig
+	return f
+}
+
+func (f *digestsAndSourceFactory) toSources(orgs ...string) *digestsAndSourceFactory {
+	if f.d2s == nil {
+		f.d2s = make(dig2sources)
+	}
+	var endorsements []*peer.Endorsement
+	for i, org := range orgs {
+		sId := &msp.SerializedIdentity{
+			Mspid:   org,
+			IdBytes: []byte(fmt.Sprintf("p%d.%s", i, org)),
+		}
+		b, _ := proto.Marshal(sId)
+		endorsements = append(endorsements, &peer.Endorsement{
+			Endorser: b,
+		})
+	}
+	f.d2s[f.lastDig] = endorsements
+	return f
+}
+
+func (f *digestsAndSourceFactory) create() dig2sources {
+	return f.d2s
 }
