@@ -222,7 +222,7 @@ func initializeMultichannelRegistrar(conf *config.TopLevel, signer crypto.LocalS
 
 	consenters := make(map[string]consensus.Consenter)
 	consenters["solo"] = solo.New()
-	consenters["kafka"] = kafka.New(conf.Kafka.TLS, conf.Kafka.Retry, conf.Kafka.Version, conf.Kafka.Verbose)
+	consenters["kafka"] = kafka.New(conf.Kafka)
 
 	return multichannel.NewRegistrar(lf, consenters, signer)
 }

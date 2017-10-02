@@ -54,7 +54,7 @@ func (mbs *mockBroadcastSrv) Recv() (*cb.Envelope, error) {
 	return mbs.msg, mbs.err
 }
 
-func (mbs *mockBroadcastSrv) Send(br *ab.BroadcastResponse) error {
+func (mb *mockBroadcastSrv) Send(br *ab.BroadcastResponse) error {
 	panic("Unimplimented")
 }
 

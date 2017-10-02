@@ -56,11 +56,11 @@ func init() {
 }
 
 func TestNew(t *testing.T) {
-	_ = consensus.Consenter(New(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, mockLocalConfig.Kafka.Verbose))
+	_ = consensus.Consenter(New(mockLocalConfig.Kafka))
 }
 
 func TestHandleChain(t *testing.T) {
-	consenter := consensus.Consenter(New(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, mockLocalConfig.Kafka.Verbose))
+	consenter := consensus.Consenter(New(mockLocalConfig.Kafka))
 
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
@@ -145,6 +145,9 @@ func newMockLocalConfig(enableTLS bool, retryOptions localconfig.Retry, verboseL
 			},
 		},
 		Kafka: localconfig.Kafka{
+			TLS: localconfig.TLS{
+				Enabled: enableTLS,
+			},
 			Retry:   retryOptions,
 			Verbose: verboseLog,
 			Version: sarama.V0_9_0_1, // sarama.MockBroker only produces messages compatible with version < 0.10
@@ -157,6 +160,7 @@ func setupTestLogging(logLevel string) {
 	// takes place in the `flogging` package, and (b) adjust the verbosity of
 	// the logs when running tests on this package.
 	flogging.SetModuleLevel(pkgLogID, logLevel)
+	flogging.SetModuleLevel(saramaLogID, logLevel)
 }
 
 func tamperBytes(original []byte) []byte {
