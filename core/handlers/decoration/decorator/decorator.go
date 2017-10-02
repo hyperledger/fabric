@@ -4,18 +4,15 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package decoration
+package decorator
 
-import "github.com/hyperledger/fabric/protos/peer"
-
-// Decorator decorates a chaincode input
-type Decorator interface {
-	// Decorate decorates a chaincode input by changing it
-	Decorate(proposal *peer.Proposal, input *peer.ChaincodeInput) *peer.ChaincodeInput
-}
+import (
+	"github.com/hyperledger/fabric/core/handlers/decoration"
+	"github.com/hyperledger/fabric/protos/peer"
+)
 
 // NewDecorator creates a new decorator
-func NewDecorator() Decorator {
+func NewDecorator() decoration.Decorator {
 	return &decorator{}
 }
 
