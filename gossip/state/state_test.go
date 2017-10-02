@@ -181,6 +181,11 @@ type mockCommitter struct {
 	sync.Mutex
 }
 
+func (mc *mockCommitter) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
+	args := mc.Called(blockNum, filter)
+	return args.Get(0).([]*ledger.TxPvtData), args.Error(1)
+}
+
 func (mc *mockCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
 	mc.Lock()
 	m := mc.Mock

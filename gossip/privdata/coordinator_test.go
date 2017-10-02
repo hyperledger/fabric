@@ -126,6 +126,11 @@ type committerMock struct {
 	mock.Mock
 }
 
+func (mock *committerMock) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
+	args := mock.Called(blockNum, filter)
+	return args.Get(0).([]*ledger.TxPvtData), args.Error(1)
+}
+
 func (mock *committerMock) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
 	args := mock.Called(blockAndPvtData)
 	return args.Error(0)

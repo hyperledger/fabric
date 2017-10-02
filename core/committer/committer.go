@@ -37,6 +37,11 @@ type Committer interface {
 	// sequence number
 	GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error)
 
+	// GetPvtDataByNum returns a slice of the private data from the ledger
+	// for given block and based on the filter which indicates a map of
+	// collections and namespaces of private data to retrieve
+	GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error)
+
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
 

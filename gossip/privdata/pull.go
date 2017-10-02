@@ -34,7 +34,7 @@ const (
 
 type PrivateDataRetriever interface {
 	// CollectionRWSet returns the bytes of CollectionPvtReadWriteSet for a given txID and collection from the transient store
-	CollectionRWSet(txID, collection, namespace string) []util.PrivateRWSet
+	CollectionRWSet(dig *proto.PvtDataDigest) []util.PrivateRWSet
 }
 
 // gossip defines capabilities that the gossip module gives the Coordinator
@@ -155,9 +155,8 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 			logger.Debug("Peer", message.GetConnectionInfo().Endpoint, "isn't eligible for txID", dig.TxId, "at collection", dig.Collection)
 			continue
 		}
-		// TODO: dig in the ledger if it's not in the transient store
-		// Else, it's eligible to receive the private data, so we append it to the returned slice
-		rwSets := p.CollectionRWSet(dig.TxId, dig.Collection, dig.Namespace)
+
+		rwSets := p.CollectionRWSet(dig)
 		logger.Debug("Found", len(rwSets), "for TxID", dig.TxId, ", collection", dig.Collection, "for", message.GetConnectionInfo().Endpoint)
 		if len(rwSets) == 0 {
 			continue

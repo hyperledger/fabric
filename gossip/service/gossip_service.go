@@ -9,14 +9,11 @@ package service
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
-
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/election"
@@ -27,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
 	gproto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -206,6 +204,11 @@ type Support struct {
 	Cs        privdata.CollectionStore
 }
 
+type DataStoreSupport struct {
+	committer.Committer
+	privdata2.TransientStore
+}
+
 // InitializeChannel allocates the state provider and should be invoked once per channel per execution
 func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string, support Support) {
 	g.lock.Lock()
@@ -213,7 +216,18 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for chainID", chainID)
 	servicesAdapter := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
-	fetcher := privdata2.NewPuller(support.Cs, g.gossipSvc, NewDataRetriever(support.Store), chainID)
+
+	// Embed transient store and committer APIs to fulfill
+	// DataStore interface to capture ability of retrieving
+	// private data
+	storeSupport := &DataStoreSupport{
+		TransientStore: support.Store,
+		Committer:      support.Committer,
+	}
+	// Initialize private data fetcher
+	dataRetriever := privdata2.NewDataRetriever(storeSupport)
+	fetcher := privdata2.NewPuller(support.Cs, g.gossipSvc, dataRetriever, chainID)
+
 	coordinator := privdata2.NewCoordinator(privdata2.Support{
 		CollectionStore: support.Cs,
 		Validator:       support.Validator,
@@ -221,6 +235,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, endpoints []string
 		Committer:       support.Committer,
 		Fetcher:         fetcher,
 	}, g.createSelfSignedData())
+
 	g.privateHandlers[chainID] = privateHandler{
 		support:     support,
 		coordinator: coordinator,
@@ -377,46 +392,4 @@ func orgListFromConfig(config Config) []string {
 		orgList = append(orgList, appOrg.MSPID())
 	}
 	return orgList
-}
-
-type dataRetriever struct {
-	store privdata2.TransientStore
-}
-
-func (dr *dataRetriever) CollectionRWSet(txID, collection, namespace string) []util.PrivateRWSet {
-	filter := map[string]ledger.PvtCollFilter{
-		namespace: map[string]bool{
-			collection: true,
-		},
-	}
-
-	it, err := dr.store.GetTxPvtRWSetByTxid(txID, filter)
-	if err != nil {
-		return nil
-	}
-	defer it.Close()
-	pRWsets := []util.PrivateRWSet{}
-	for {
-		res, err := it.Next()
-		if err != nil || res == nil {
-			return pRWsets
-		}
-		rws := res.PvtSimulationResults
-		// Iterate over all namespaces
-		for _, nsws := range rws.NsPvtRwset {
-			// and in each namespace- iterate over all collections
-			for _, col := range nsws.CollectionPvtRwset {
-				// This isn't the collection we're looking for
-				if col.CollectionName != collection {
-					continue
-				}
-				// Add the collection pRWset to the accumulated set
-				pRWsets = append(pRWsets, col.Rwset)
-			}
-		}
-	}
-}
-
-func NewDataRetriever(store privdata2.TransientStore) *dataRetriever {
-	return &dataRetriever{store: store}
 }

@@ -322,6 +322,10 @@ type mockLedgerInfo struct {
 	Height uint64
 }
 
+func (li *mockLedgerInfo) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
+	panic("implement me")
+}
+
 func (li *mockLedgerInfo) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
 	panic("implement me")
 }

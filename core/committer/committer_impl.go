@@ -42,7 +42,7 @@ func init() {
 // it keeps the reference to the ledger to commit blocks and retrieve
 // chain information
 type LedgerCommitter struct {
-	ledger  ledger.PeerLedger
+	ledger.PeerLedger
 	eventer ConfigBlockEventer
 }
 
@@ -60,7 +60,7 @@ func NewLedgerCommitter(ledger ledger.PeerLedger) *LedgerCommitter {
 // same as way as NewLedgerCommitter, while also provides an option to specify callback to
 // be called upon new configuration block arrival and commit event
 func NewLedgerCommitterReactive(ledger ledger.PeerLedger, eventer ConfigBlockEventer) *LedgerCommitter {
-	return &LedgerCommitter{ledger: ledger, eventer: eventer}
+	return &LedgerCommitter{PeerLedger: ledger, eventer: eventer}
 }
 
 // Commit commits block to into the ledger
@@ -73,7 +73,7 @@ func (lc *LedgerCommitter) Commit(block *common.Block) error {
 	}
 
 	// Committing new block
-	if err := lc.ledger.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block}); err != nil {
+	if err := lc.PeerLedger.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block}); err != nil {
 		return err
 	}
 
@@ -107,7 +107,7 @@ func (lc *LedgerCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvt
 	// TODO: Need to validate the hashes of private data with those in the block
 
 	// Committing new block
-	if err := lc.ledger.CommitWithPvtData(blockAndPvtData); err != nil {
+	if err := lc.PeerLedger.CommitWithPvtData(blockAndPvtData); err != nil {
 		return err
 	}
 
@@ -120,7 +120,7 @@ func (lc *LedgerCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvt
 // GetPvtDataAndBlockByNum retrieves private data and block for given sequence number
 func (lc *LedgerCommitter) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error) {
 	// TODO: Need to create filter based on chaincode collections policies
-	return lc.ledger.GetPvtDataAndBlockByNum(seqNum, nil)
+	return lc.PeerLedger.GetPvtDataAndBlockByNum(seqNum, nil)
 }
 
 // postCommit publish event or handle other tasks once block committed to the ledger
@@ -143,7 +143,7 @@ func (lc *LedgerCommitter) postCommit(block *common.Block) {
 func (lc *LedgerCommitter) LedgerHeight() (uint64, error) {
 	var info *common.BlockchainInfo
 	var err error
-	if info, err = lc.ledger.GetBlockchainInfo(); err != nil {
+	if info, err = lc.GetBlockchainInfo(); err != nil {
 		logger.Errorf("Cannot get blockchain info, %s\n", info)
 		return uint64(0), err
 	}
@@ -156,7 +156,7 @@ func (lc *LedgerCommitter) GetBlocks(blockSeqs []uint64) []*common.Block {
 	var blocks []*common.Block
 
 	for _, seqNum := range blockSeqs {
-		if blck, err := lc.ledger.GetBlockByNumber(seqNum); err != nil {
+		if blck, err := lc.GetBlockByNumber(seqNum); err != nil {
 			logger.Errorf("Not able to acquire block num %d, from the ledger skipping...\n", seqNum)
 			continue
 		} else {
@@ -166,9 +166,4 @@ func (lc *LedgerCommitter) GetBlocks(blockSeqs []uint64) []*common.Block {
 	}
 
 	return blocks
-}
-
-// Close the ledger
-func (lc *LedgerCommitter) Close() {
-	lc.ledger.Close()
 }
