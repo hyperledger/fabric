@@ -197,8 +197,13 @@ func joinChain(chainID string, block *common.Block) pb.Response {
 
 	peer.InitChain(chainID)
 
-	if err := producer.SendProducerBlockEvent(block); err != nil {
-		cnflogger.Errorf("Error sending block event %s", err)
+	bevent, _, _, err := producer.CreateBlockEvents(block)
+	if err != nil {
+		cnflogger.Errorf("Error processing block events for block number [%d]: %s", block.Header.Number, err)
+	} else {
+		if err := producer.Send(bevent); err != nil {
+			cnflogger.Errorf("Channel [%s] Error sending block event for block number [%d]: %s", chainID, block.Header.Number, err)
+		}
 	}
 
 	return shim.Success(nil)

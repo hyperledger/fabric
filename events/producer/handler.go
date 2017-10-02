@@ -51,6 +51,8 @@ func getInterestKey(interest pb.Interest) string {
 	switch interest.EventType {
 	case pb.EventType_BLOCK:
 		key = "/" + strconv.Itoa(int(pb.EventType_BLOCK))
+	case pb.EventType_FILTEREDBLOCK:
+		key = "/" + strconv.Itoa(int(pb.EventType_FILTEREDBLOCK))
 	case pb.EventType_REJECTION:
 		key = "/" + strconv.Itoa(int(pb.EventType_REJECTION))
 	case pb.EventType_CHAINCODE:

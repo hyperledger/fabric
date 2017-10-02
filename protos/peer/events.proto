@@ -30,10 +30,11 @@ package protos;
 //----Event objects----
 
 enum EventType {
-        REGISTER = 0;
-        BLOCK = 1;
-	CHAINCODE = 2;
-	REJECTION = 3;
+    REGISTER = 0;
+    BLOCK = 1;
+    CHAINCODE = 2;
+    REJECTION = 3;
+    FILTEREDBLOCK = 4;
 }
 
 //ChaincodeReg is used for registering chaincode Interests
@@ -74,6 +75,22 @@ message Unregister {
     repeated Interest events = 1;
 }
 
+//FilteredBlock is sent by producers and contains minimal information
+//about the block.
+message FilteredBlock {
+    string channel_id = 1;
+    uint64 number = 2; // The position in the blockchain
+    repeated FilteredTransaction filtered_tx = 3;
+}
+
+//FilteredTransaction is a minimal set of information about a transaction
+//within a block.
+message FilteredTransaction {
+    string txid = 1;
+    TxValidationCode tx_validation_code = 2;
+    ChaincodeEvent ccEvent = 3;
+}
+
 // SignedEvent is used for any communication between consumer and producer
 message SignedEvent {
     // Signature over the event bytes
@@ -99,6 +116,8 @@ message Event {
 
         //Unregister consumer sent events
         Unregister unregister = 5;
+
+	FilteredBlock filtered_block = 7;
     }
     // Creator of the event, specified as a certificate chain
     bytes creator = 6;

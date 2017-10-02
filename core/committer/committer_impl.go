@@ -125,9 +125,17 @@ func (lc *LedgerCommitter) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.Block
 
 // postCommit publish event or handle other tasks once block committed to the ledger
 func (lc *LedgerCommitter) postCommit(block *common.Block) {
-	// send block event *after* the block has been committed
-	if err := producer.SendProducerBlockEvent(block); err != nil {
-		logger.Errorf("Error publishing block %d, because: %v", block.Header.Number, err)
+	// create/send block events *after* the block has been committed
+	bevent, fbevent, channelID, err := producer.CreateBlockEvents(block)
+	if err != nil {
+		logger.Errorf("Channel [%s] Error processing block events for block number [%d]: %s", channelID, block.Header.Number, err)
+	} else {
+		if err := producer.Send(bevent); err != nil {
+			logger.Errorf("Channel [%s] Error sending block event for block number [%d]: %s", channelID, block.Header.Number, err)
+		}
+		if err := producer.Send(fbevent); err != nil {
+			logger.Errorf("Channel [%s] Error sending filtered block event for block number [%d]: %s", channelID, block.Header.Number, err)
+		}
 	}
 }
 
