@@ -15,15 +15,11 @@ import (
 type NopCollection struct {
 }
 
-func (nc *NopCollection) GetCollectionID() string {
+func (nc *NopCollection) CollectionID() string {
 	return ""
 }
 
-func (nc *NopCollection) GetEndorsementPolicy() string {
-	return ""
-}
-
-func (nc *NopCollection) GetMemberOrgs() []string {
+func (nc *NopCollection) MemberOrgs() []string {
 	return nil
 }
 
@@ -35,7 +31,7 @@ func (nc *NopCollection) RequiredInternalPeerCount() int {
 	return viper.GetInt("peer.gossip.pvtData.minInternalPeers")
 }
 
-func (nc *NopCollection) GetAccessFilter() Filter {
+func (nc *NopCollection) AccessFilter() Filter {
 	// return true for all
 	return func(common.SignedData) bool {
 		return true
@@ -45,10 +41,10 @@ func (nc *NopCollection) GetAccessFilter() Filter {
 type NopCollectionStore struct {
 }
 
-func (*NopCollectionStore) GetCollection(common.CollectionCriteria) Collection {
+func (*NopCollectionStore) RetrieveCollection(common.CollectionCriteria) Collection {
 	return &NopCollection{}
 }
 
-func (*NopCollectionStore) GetCollectionAccessPolicy(common.CollectionCriteria) CollectionAccessPolicy {
+func (*NopCollectionStore) RetrieveCollectionAccessPolicy(common.CollectionCriteria) CollectionAccessPolicy {
 	return &NopCollection{}
 }

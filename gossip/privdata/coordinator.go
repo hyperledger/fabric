@@ -504,12 +504,12 @@ func (c *coordinator) isEligible(chdr *common.ChannelHeader, namespace string, c
 		Collection: col,
 		TxId:       chdr.TxId,
 	}
-	sp := c.CollectionStore.GetCollectionAccessPolicy(cp)
+	sp := c.CollectionStore.RetrieveCollectionAccessPolicy(cp)
 	if sp == nil {
 		logger.Warning("Failed obtaining policy for", cp, "skipping collection")
 		return false
 	}
-	filt := sp.GetAccessFilter()
+	filt := sp.AccessFilter()
 	if filt == nil {
 		logger.Warning("Failed parsing policy for", cp, "skipping collection")
 		return false
@@ -587,12 +587,12 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common
 					Namespace:  ns.Namespace,
 					Collection: col.CollectionName,
 				}
-				sp := c.CollectionStore.GetCollectionAccessPolicy(cc)
+				sp := c.CollectionStore.RetrieveCollectionAccessPolicy(cc)
 				if sp == nil {
 					logger.Warning("Failed obtaining policy for", cc)
 					continue
 				}
-				isAuthorized := sp.GetAccessFilter()
+				isAuthorized := sp.AccessFilter()
 				if isAuthorized == nil {
 					logger.Warning("Failed obtaining filter for", cc)
 					continue

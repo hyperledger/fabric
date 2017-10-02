@@ -82,13 +82,13 @@ func (d *distributorImpl) computeDisseminationPlan(txID string, privData *rwset.
 				TxId:       txID,
 				Channel:    d.chainID,
 			}
-			colAP := cs.GetCollectionAccessPolicy(cc)
+			colAP := cs.RetrieveCollectionAccessPolicy(cc)
 			if colAP == nil {
 				logger.Error("Could not find collection access policy for", cc)
 				return nil, errors.Errorf("Collection access policy for %v not found", cc)
 			}
 
-			colFilter := colAP.GetAccessFilter()
+			colFilter := colAP.AccessFilter()
 			if colFilter == nil {
 				logger.Error("Collection access policy for", cc, "has no filter")
 				return nil, errors.Errorf("No collection access policy filter computed for %v", cc)

@@ -130,7 +130,7 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 	}()
 	msg := message.GetGossipMessage()
 	for _, dig := range msg.GetPrivateReq().Digests {
-		colAP := p.cs.GetCollectionAccessPolicy(fcommon.CollectionCriteria{
+		colAP := p.cs.RetrieveCollectionAccessPolicy(fcommon.CollectionCriteria{
 			Channel:    p.channel,
 			Collection: dig.Collection,
 			TxId:       dig.TxId,
@@ -140,7 +140,7 @@ func (p *puller) createResponse(message proto.ReceivedMessage) []*proto.PvtDataE
 			logger.Debug("No policy found for channel", p.channel, ", collection", dig.Collection, "txID", dig.TxId, "skipping...")
 			continue
 		}
-		colFilter := colAP.GetAccessFilter()
+		colFilter := colAP.AccessFilter()
 		if colFilter == nil {
 			logger.Debug("Collection ", dig.Collection, " has no access filter, txID", dig.TxId, "skipping...")
 			continue
@@ -358,7 +358,7 @@ func (dig2Filter digestToFilterMapping) String() string {
 func (p *puller) computeFilters(req *proto.RemotePvtDataRequest) (digestToFilterMapping, error) {
 	filters := make(map[proto.PvtDataDigest]filter.RoutingFilter)
 	for _, digest := range req.Digests {
-		collection := p.cs.GetCollectionAccessPolicy(fcommon.CollectionCriteria{
+		collection := p.cs.RetrieveCollectionAccessPolicy(fcommon.CollectionCriteria{
 			Channel:    p.channel,
 			TxId:       digest.TxId,
 			Collection: digest.Collection,
@@ -367,7 +367,7 @@ func (p *puller) computeFilters(req *proto.RemotePvtDataRequest) (digestToFilter
 		if collection == nil {
 			return nil, errors.Errorf("Failed obtaining collection policy for channel %s, txID %s, collection %s", p.channel, digest.TxId, digest.Collection)
 		}
-		f := collection.GetAccessFilter()
+		f := collection.AccessFilter()
 		if f == nil {
 			return nil, errors.Errorf("Failed obtaining collection filter for channel %s, txID %s, collection %s", p.channel, digest.TxId, digest.Collection)
 		}

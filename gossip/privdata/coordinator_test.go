@@ -258,7 +258,7 @@ func (cs *collectionStore) thatAccepts(cc common.CollectionCriteria) *collection
 	return cs
 }
 
-func (cs *collectionStore) GetCollectionAccessPolicy(cc common.CollectionCriteria) privdata.CollectionAccessPolicy {
+func (cs *collectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCriteria) privdata.CollectionAccessPolicy {
 	if sp, exists := cs.store[cc]; exists {
 		return &sp
 	}
@@ -268,7 +268,7 @@ func (cs *collectionStore) GetCollectionAccessPolicy(cc common.CollectionCriteri
 	}
 }
 
-func (cs *collectionStore) GetCollection(cc common.CollectionCriteria) privdata.Collection {
+func (cs *collectionStore) RetrieveCollection(cc common.CollectionCriteria) privdata.Collection {
 	panic("implement me")
 }
 
@@ -285,7 +285,7 @@ func (cap *collectionAccessPolicy) RequiredExternalPeerCount() int {
 	return viper.GetInt("peer.gossip.pvtData.minExternalPeers")
 }
 
-func (cap *collectionAccessPolicy) GetAccessFilter() privdata.Filter {
+func (cap *collectionAccessPolicy) AccessFilter() privdata.Filter {
 	return func(sd common.SignedData) bool {
 		that, _ := asn1.Marshal(sd)
 		this, _ := asn1.Marshal(cap.cs.expectedSignedData)

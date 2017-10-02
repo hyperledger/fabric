@@ -16,29 +16,29 @@ type Collection interface {
 	// as txid, nonce, creator -- for future use
 	// SetTxContext(parameters ...interface{})
 
-	// GetCollectionID returns this collection's ID
-	GetCollectionID() string
+	// CollectionID returns this collection's ID
+	CollectionID() string
 
 	// GetEndorsementPolicy returns the endorsement policy for validation -- for
 	// future use
 	// GetEndorsementPolicy() string
 
-	// GetMemberOrgs returns the collection's members as MSP IDs. This serves as
+	// MemberOrgs returns the collection's members as MSP IDs. This serves as
 	// a human-readable way of quickly identifying who is part of a collection.
-	GetMemberOrgs() []string
+	MemberOrgs() []string
 }
 
-// CollectionAccess encapsulates functions for the access policy of a collection
+// CollectionAccessPolicy encapsulates functions for the access policy of a collection
 type CollectionAccessPolicy interface {
-	// GetAccessFilter returns a member filter function for a collection
-	GetAccessFilter() Filter
+	// AccessFilter returns a member filter function for a collection
+	AccessFilter() Filter
 
 	// RequiredExternalPeerCount returns the minimum number of external peers
-	// required to hold private data
+	// required to send private data to
 	RequiredExternalPeerCount() int
 
 	// RequiredExternalPeerCount returns the minimum number of internal peers
-	// required to hold private data
+	// required to send private data to
 	RequiredInternalPeerCount() int
 }
 
@@ -59,8 +59,8 @@ type CollectionStore interface {
 	// latest configuration that was committed into the ledger before this txID
 	// was committed.
 	// Else - it's the latest configuration for the collection.
-	GetCollection(common.CollectionCriteria) Collection
+	RetrieveCollection(common.CollectionCriteria) Collection
 
 	// GetCollectionAccessPolicy retrieves a collection's access policy
-	GetCollectionAccessPolicy(common.CollectionCriteria) CollectionAccessPolicy
+	RetrieveCollectionAccessPolicy(common.CollectionCriteria) CollectionAccessPolicy
 }

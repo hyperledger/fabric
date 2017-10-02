@@ -33,6 +33,10 @@ message StaticCollectionConfig {
     // a reference to a policy residing / managed in the config block
     // to define which orgs have access to this collection’s private data
     CollectionPolicyConfig member_orgs_policy = 2;
+    // the minimum number of internal/external peers required to be sent
+    // private data to
+    int32 required_internal_peer_count = 3;
+    int32 required_external_peer_count = 4;
 }
 
 

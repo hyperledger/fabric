@@ -52,11 +52,11 @@ func (cs *mockCollectionStore) withPolicy(collection string) *mockCollectionAcce
 	return coll
 }
 
-func (cs mockCollectionStore) GetCollectionAccessPolicy(cc fcommon.CollectionCriteria) privdata.CollectionAccessPolicy {
+func (cs mockCollectionStore) RetrieveCollectionAccessPolicy(cc fcommon.CollectionCriteria) privdata.CollectionAccessPolicy {
 	return cs.m[cc.Collection]
 }
 
-func (cs mockCollectionStore) GetCollection(cc fcommon.CollectionCriteria) privdata.Collection {
+func (cs mockCollectionStore) RetrieveCollection(cc fcommon.CollectionCriteria) privdata.Collection {
 	panic("implement me")
 }
 
@@ -78,7 +78,7 @@ func (mc *mockCollectionAccess) thatMapsTo(peers ...string) *mockCollectionStore
 	return mc.cs
 }
 
-func (mc *mockCollectionAccess) GetAccessFilter() privdata.Filter {
+func (mc *mockCollectionAccess) AccessFilter() privdata.Filter {
 	policyLock.Lock()
 	defer policyLock.Unlock()
 	return policy2Filter[mc]
