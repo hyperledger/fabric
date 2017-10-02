@@ -9,7 +9,7 @@ package rscc
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/config/resources"
+	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -41,7 +41,7 @@ type policyEvaluator interface {
 
 //policyEvaluatorImpl implements policyEvaluator
 type policyEvaluatorImpl struct {
-	bundle *resources.Bundle
+	bundle *resourcesconfig.Bundle
 }
 
 func (pe *policyEvaluatorImpl) PolicyRefForResource(resName string) string {
