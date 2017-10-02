@@ -183,7 +183,7 @@ func (nodePlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpe
 	codepackage := bytes.NewReader(cds.CodePackage)
 	binpackage := bytes.NewBuffer(nil)
 	err := util.DockerBuild(util.DockerBuildOptions{
-		Cmd:          fmt.Sprint("cp -R /chaincode/input/src/* /chaincode/output && cd /chaincode/output && npm install --production"),
+		Cmd:          fmt.Sprint("cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production"),
 		InputStream:  codepackage,
 		OutputStream: binpackage,
 	})
