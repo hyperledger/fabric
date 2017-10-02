@@ -36,8 +36,11 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	//"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -259,6 +262,9 @@ func deployOrUpgrade(endorserServer pb.EndorserServer, chainID string, spec *pb.
 		return nil, nil, err
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, signedProp).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, signedProp).Return(nil)
 	var resp *pb.ProposalResponse
 	resp, err = endorserServer.ProcessProposal(context.Background(), signedProp)
 
@@ -290,6 +296,9 @@ func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.Proposal, *pb.ProposalR
 		return nil, nil, "", nil, err
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, signedProp).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, signedProp).Return(nil)
 	resp, err := endorserServer.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
 		return nil, nil, "", nil, err
@@ -318,6 +327,9 @@ func invokeWithOverride(txid string, chainID string, spec *pb.ChaincodeSpec, non
 		return nil, err
 	}
 
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, signedProp).Return(nil)
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, signedProp).Return(nil)
 	resp, err := endorserServer.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
 		return nil, fmt.Errorf("Error endorsing %s %s: %s\n", txid, spec.ChaincodeId, err)
@@ -664,9 +676,30 @@ func TestHeaderExtensionNoChaincodeID(t *testing.T) {
 	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
 	prop, _, _ := pbutils.CreateChaincodeProposalWithTxIDNonceAndTransient(txID, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), invocation, []byte{1, 2, 3}, creator, nil)
 	signedProp, _ := getSignedProposal(prop, signer)
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, util.GetTestChainID(), signedProp).Return(nil)
 	_, err = endorserServer.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "ChaincodeHeaderExtension.ChaincodeId is nil")
+}
+
+//rest of the code tests good ACL. Lets now test bad ACL
+func TestResourceBasedACL(t *testing.T) {
+	creator, _ := signer.Serialize()
+	nonce := []byte{1, 2, 3}
+	digest, err := factory.GetDefault().Hash(append(nonce, creator...), &bccsp.SHA256Opts{})
+	txID := hex.EncodeToString(digest)
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Path: "/path/to/mycc", Name: "mycc", Version: "0"}, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs()}}
+	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
+	prop, _, _ := pbutils.CreateChaincodeProposalWithTxIDNonceAndTransient(txID, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), invocation, []byte{1, 2, 3}, creator, nil)
+	signedProp, _ := getSignedProposal(prop, signer)
+
+	//return Bad ACL
+	mockAclProvider.Reset()
+	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, util.GetTestChainID(), signedProp).Return(errors.New("Bad ACL"))
+	_, err = endorserServer.ProcessProposal(context.Background(), signedProp)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Bad ACL")
 }
 
 // TestAdminACLFail deploys tried to deploy a chaincode;
@@ -736,7 +769,14 @@ func newTempDir() string {
 	return tempDir
 }
 
+var mockAclProvider *mocks.MockACLProvider
+
 func TestMain(m *testing.M) {
+	mockAclProvider = &mocks.MockACLProvider{}
+	mockAclProvider.Reset()
+
+	aclmgmt.RegisterACLProvider(mockAclProvider)
+
 	setupTestConfig()
 
 	chainID := util.GetTestChainID()

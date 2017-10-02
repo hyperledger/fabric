@@ -155,6 +155,11 @@ func (s *MockCCComm) Run() error {
 	for {
 		msg, err := s.Recv()
 
+		//stream could just be closed
+		if msg == nil {
+			return err
+		}
+
 		if err != nil {
 			return err
 		}
