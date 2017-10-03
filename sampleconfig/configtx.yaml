@@ -93,6 +93,41 @@ Profiles:
                 Organizations:
                     - *SampleOrg
 
+    # SampleSingleMSPSoloV1.1 mimics the SampleSingleMSPSolo definition but
+    # additionally defines the v1.1 only capabilities which do not allow a
+    # mixed v1.0.x v1.1.x network.
+    SampleSingleMSPSoloV1.1:
+        Capabilities:
+            <<: *GlobalCapabilities
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *SampleOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *SampleOrg
+
+    # SampleSingleMSPKafkaV1.1 defines a configuration that differs from the
+    # SampleSingleMSPSoloV1.1 one only in that it uses the Kafka-based orderer.
+    SampleSingleMSPKafkaV1.1:
+        Capabilities:
+            <<: *GlobalCapabilities
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: kafka
+            Organizations:
+                - *SampleOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *SampleOrg
+
+
     # SampleNoConsortium is very similar to SampleInsecureSolo, except it does
     # not define Consortiums.
     SampleNoConsortium:
@@ -114,6 +149,17 @@ Profiles:
         Application:
             Organizations:
                 - *SampleOrg
+
+    # SampleSingleMSPChannelV1.1 defines a channel just as SampleSingleMSPChannel
+    # However, it also defines the capabilities map which makes this channel
+    # incompatible with v1.0.x peers.
+    SampleSingleMSPChannelV1.1:
+        Consortium: SampleConsortium
+        Application:
+            Organizations:
+                - *SampleOrg
+            Capabilities:
+                <<: *ApplicationCapabilities
 
 ################################################################################
 #
@@ -220,3 +266,40 @@ Application: &ApplicationDefaults
     # Organizations is the list of orgs which are defined as participants on
     # the application side of the network.
     Organizations:
+
+################################################################################
+#
+#   SECTION: Capabilities
+#
+#   - This section defines the capabilities of fabric network. This is a new   
+#   concept as of v1.1.0 and should not be utilized in mixed networks with
+#   v1.0.x peers and orderers.  Capabilities define features which must be
+#   present in a fabric binary for that binary to safely participate in the
+#   fabric network.  For instance, if a new MSP type is added, newer binaries
+#   might recognize and validate the signatures from this type, while older
+#   binaries without this support would be unable to validate those
+#   transactions.  This could lead to different versions of the fabric binaries
+#   having different world states.  Instead, defining a capability for a channel
+#   informs those binaries without this capability that they must cease
+#   processing transactions until they have been upgraded.  For v1.0.x if any
+#   capabilities are defined (including a map with all capabilities turned off)
+#   then the v1.0.x peer will deliberately crash.
+#
+################################################################################
+Capabilities:
+    # Global capabilities apply to both the orderers and the peers and must be
+    # supported by both.  Set the value of the capability to true to require it.
+    Global: &GlobalCapabilities
+        "V1.1": true
+
+    # Orderer capabilities apply only to the orderers, and may be safely
+    # manipulated without concern for upgrading peers.  Set the value of the
+    # capability to true to require it.
+    Orderer: &OrdererCapabilities
+        "V1.1": true
+
+    # Application capabilities apply only to the peer network, and may be safely
+    # manipulated without concern for upgrading orderers.  Set the value of the
+    # capability to true to require it.
+    Application: &ApplicationCapabilities
+        "V1.1": true

@@ -90,6 +90,10 @@ func New(conf *genesisconfig.Profile) Generator {
 		},
 	}
 
+	if len(conf.Capabilities) > 0 {
+		bs.channelGroups = append(bs.channelGroups, channelconfig.TemplateChannelCapabilities(conf.Capabilities))
+	}
+
 	if conf.Orderer != nil {
 		// Orderer addresses
 		oa := channelconfig.TemplateOrdererAddresses(conf.Orderer.Addresses)
@@ -113,6 +117,10 @@ func New(conf *genesisconfig.Profile) Generator {
 			policies.TemplateImplicitMetaAnyPolicy([]string{channelconfig.OrdererGroupKey}, channelconfig.ReadersPolicyKey),
 			policies.TemplateImplicitMetaAnyPolicy([]string{channelconfig.OrdererGroupKey}, channelconfig.WritersPolicyKey),
 			policies.TemplateImplicitMetaMajorityPolicy([]string{channelconfig.OrdererGroupKey}, channelconfig.AdminsPolicyKey),
+		}
+
+		if len(conf.Orderer.Capabilities) > 0 {
+			bs.ordererGroups = append(bs.ordererGroups, channelconfig.TemplateOrdererCapabilities(conf.Orderer.Capabilities))
 		}
 
 		for _, org := range conf.Orderer.Organizations {
@@ -144,6 +152,11 @@ func New(conf *genesisconfig.Profile) Generator {
 			policies.TemplateImplicitMetaAnyPolicy([]string{channelconfig.ApplicationGroupKey}, channelconfig.WritersPolicyKey),
 			policies.TemplateImplicitMetaMajorityPolicy([]string{channelconfig.ApplicationGroupKey}, channelconfig.AdminsPolicyKey),
 		}
+
+		if len(conf.Application.Capabilities) > 0 {
+			bs.applicationGroups = append(bs.applicationGroups, channelconfig.TemplateApplicationCapabilities(conf.Application.Capabilities))
+		}
+
 		for _, org := range conf.Application.Organizations {
 			mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.ID)
 			if err != nil {
