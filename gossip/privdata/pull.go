@@ -372,7 +372,7 @@ func (p *puller) computeFilters(req *proto.RemotePvtDataRequest) (digestToFilter
 		if f == nil {
 			return nil, errors.Errorf("Failed obtaining collection filter for channel %s, txID %s, collection %s", p.channel, digest.TxId, digest.Collection)
 		}
-		rf, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature) bool {
+		rf, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature, _ bool) bool {
 			return f(fcommon.SignedData{
 				Signature: peerSignature.Signature,
 				Identity:  peerSignature.PeerIdentity,

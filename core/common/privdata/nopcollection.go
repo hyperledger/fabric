@@ -8,6 +8,7 @@ package privdata
 
 import (
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/spf13/viper"
 )
 
 // NopCollection implements an allow-all collection which all orgs are a member of
@@ -27,11 +28,11 @@ func (nc *NopCollection) GetMemberOrgs() []string {
 }
 
 func (nc *NopCollection) RequiredExternalPeerCount() int {
-	return 0
+	return viper.GetInt("peer.gossip.pvtData.minExternalPeers")
 }
 
 func (nc *NopCollection) RequiredInternalPeerCount() int {
-	return 0
+	return viper.GetInt("peer.gossip.pvtData.minInternalPeers")
 }
 
 func (nc *NopCollection) GetAccessFilter() Filter {

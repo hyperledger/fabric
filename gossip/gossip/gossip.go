@@ -8,6 +8,7 @@ package gossip
 
 import (
 	"crypto/tls"
+	"fmt"
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/api"
@@ -80,6 +81,11 @@ type SendCriteria struct {
 	IsEligible filter.RoutingFilter // IsEligible defines whether a specific peer is eligible of receiving the message
 	Channel    common.ChainID       // Channel specifies a channel to send this message on. \
 	// Only peers that joined the channel would receive this message
+}
+
+// String returns a string representation of this SendCriteria
+func (sc SendCriteria) String() string {
+	return fmt.Sprintf("channel: %s, tout: %v, minAck: %d, maxPeers: %d", sc.Channel, sc.Timeout, sc.MinAck, sc.MaxPeers)
 }
 
 // Config is the configuration of the gossip component

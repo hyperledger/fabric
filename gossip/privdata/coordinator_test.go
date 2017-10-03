@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -271,24 +272,24 @@ type collectionAccessPolicy struct {
 	n  uint64
 }
 
+func (cap *collectionAccessPolicy) RequiredInternalPeerCount() int {
+	return viper.GetInt("peer.gossip.pvtData.minInternalPeers")
+}
+
+func (cap *collectionAccessPolicy) RequiredExternalPeerCount() int {
+	return viper.GetInt("peer.gossip.pvtData.minExternalPeers")
+}
+
 func (cap *collectionAccessPolicy) GetAccessFilter() privdata.Filter {
 	return func(sd common.SignedData) bool {
 		that, _ := asn1.Marshal(sd)
 		this, _ := asn1.Marshal(cap.cs.expectedSignedData)
 		if hex.EncodeToString(that) != hex.EncodeToString(this) {
-			panic("Self signed data passed isn't equal to expected")
+			panic(fmt.Errorf("self signed data passed isn't equal to expected:%v, %v", sd, cap.cs.expectedSignedData))
 		}
 		_, exists := cap.cs.policies[*cap]
 		return exists || cap.cs.acceptsAll
 	}
-}
-
-func (cap *collectionAccessPolicy) RequiredExternalPeerCount() int {
-	return 0
-}
-
-func (cap *collectionAccessPolicy) RequiredInternalPeerCount() int {
-	return 0
 }
 
 func TestPvtDataCollections_FailOnEmptyPayload(t *testing.T) {
