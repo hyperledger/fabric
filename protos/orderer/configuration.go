@@ -109,6 +109,8 @@ func (docv *DynamicOrdererConfigValue) VariablyOpaqueFieldProto(name string) (pr
 		return &KafkaBrokers{}, nil
 	case "ChannelRestrictions":
 		return &ChannelRestrictions{}, nil
+	case "Capabilities":
+		return &common.Capabilities{}, nil
 	default:
 		return nil, fmt.Errorf("unknown Orderer ConfigValue name: %s", docv.name)
 	}

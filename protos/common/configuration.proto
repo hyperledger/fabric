@@ -48,23 +48,42 @@ message Consortium {
 }
 
 
-// Capabilities message contains all the capabilities that a channel requires
-// participant entities to comply with. The entity should drop off the channel
-// if it can't fulfill any of the required capabilities.
-// Capabilities is encoded into the configuaration as Values of each type
-// Orderer, Channel, or Application.
-// The key string should represent the capability name, and it must be unique
-// within each type. For readability, it may be advisable to prefix the key with
-// its type (eg app-acl)
+// Capabilities message defines the capabilities a particular binary must implement
+// for that binary to be able to safely participate in the channel.  The capabilities
+// message is defined at the /Channel level, the /Channel/Application level, and the
+// /Channel/Orderer level.
+//
+// The /Channel level capabilties define capabilities which both the orderer and peer
+// binaries must satisfy.  These capabilties might be things like a new MSP type,
+// or a new policy type.
+//
+// The /Channel/Orderer level capabilties define capabilities which must be supported
+// by the orderer, but which have no bearing on the behavior of the peer.  For instance
+// if the orderer changes the logic for how it constructs new channels, only all orderers
+// must agree on the new logic.  The peers do not need to be aware of this change as
+// they only interact with the channel after it has been constructed.
+//
+// Finally, the /Channel/Application level capabilities define capabilities which the peer
+// binary must satisfy, but which have no bearing on the orderer.  For instance, if the
+// peer adds a new UTXO transaction type, or changes the chaincode lifecycle requirements,
+// all peers must agree on the new logic.  However, orderers never inspect transactions
+// this deeply, and therefore have no need to be aware of the change.
+//
+// The capabilities strings defined in these messages typically correspond to release
+// binary versions (e.g. "V1.1"), and are used primarilly as a mechanism for a fully
+// upgraded network to switch from one set of logic to a new one.
+//
+// Although for V1.1, the orderers must be upgraded to V1.1 prior to the rest of the
+// network, going forward, because of the split between the /Channel, /Channel/Orderer
+// and /Channel/Application capabilities.  It should be possible for the orderer and
+// application networks to upgrade themselves independently (with the exception of any
+// new capabilities defined at the /Channel level).
 message Capabilities {
 	map<string, Capability> capabilities = 1;
 }
 
-// Capability holds a set of options. We can add more as needed in the
-// future. For now, whether it is required or not. If a configured capability
-// is not required, it must be completely compatible with previous releases.
-// Compatible features are not required to be encoded as capabilities; they
-// only provide flexibility for the admins to control the features.
-message Capability {
-	bool required = 1;
-}
+// Capability is an empty message for the time being.  It is defined as a protobuf
+// message rather than a constant, so that we may extend capabilities with other fields
+// if the need arises in the future.  For the time being, a capability being in the
+// capabilities map requires that that capability be supported.
+message Capability { }

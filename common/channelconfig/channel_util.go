@@ -68,9 +68,10 @@ func capabilitiesFromBoolMap(capabilities map[string]bool) *cb.Capabilities {
 		Capabilities: make(map[string]*cb.Capability),
 	}
 	for capability, required := range capabilities {
-		value.Capabilities[capability] = &cb.Capability{
-			Required: required,
+		if !required {
+			continue
 		}
+		value.Capabilities[capability] = &cb.Capability{}
 	}
 	return value
 }

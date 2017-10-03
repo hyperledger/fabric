@@ -42,15 +42,12 @@ func newRegistry(p provider, capabilities map[string]*cb.Capability) *registry {
 
 // Supported checks that all of the required capabilities are supported by this binary.
 func (r *registry) Supported() error {
-	for capabilityName, capability := range r.capabilities {
+	for capabilityName := range r.capabilities {
 		if r.provider.HasCapability(capabilityName) {
 			continue
 		}
 
-		if capability.Required {
-			return errors.Errorf("%s capability %s is required but not supported", r.provider.Type(), capabilityName)
-		}
-		logger.Debugf("Found unknown %s capability %s but it is not required", r.provider.Type(), capabilityName)
+		return errors.Errorf("%s capability %s is required but not supported", r.provider.Type(), capabilityName)
 	}
 	return nil
 }
