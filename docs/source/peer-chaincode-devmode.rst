@@ -11,6 +11,8 @@ of the box” - with one exception: we create two channels instead of
 using the default ``testchainid`` channel to show how the single running
 instance can be accessed from multiple channels.
 
+- Note: Make sure peer is not using TLS when running in dev mode.
+
 All commands are executed from the ``fabric`` folder.
 
 Start the orderer
