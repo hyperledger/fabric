@@ -82,22 +82,22 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 
 	// Results produced by endorser 1
 	endorser0SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 10,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 10,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser0SimulationResults)
 
 	// Results produced by endorser 2
 	endorser1SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 10,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 10,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser1SimulationResults)
 
 	// Persist simulation results into  store
 	var err error
 	for i := 0; i < len(endorsersResults); i++ {
-		err = env.TestStore.Persist(txid, endorsersResults[i].EndorsementBlockHeight,
+		err = env.TestStore.Persist(txid, endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResults)
 		assert.NoError(err)
 	}
@@ -133,51 +133,51 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	// Create two private write set entry for txid-1
 	txids = append(txids, "txid-1")
 	endorser0SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 10,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 10,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser0SimulationResults)
 
 	txids = append(txids, "txid-1")
 	endorser1SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 11,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 11,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser1SimulationResults)
 
 	// Create one private write set entry for txid-2
 	txids = append(txids, "txid-2")
 	endorser2SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 11,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 11,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser2SimulationResults)
 
 	// Create three private write set entry for txid-3
 	txids = append(txids, "txid-3")
 	endorser3SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 12,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 12,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser3SimulationResults)
 
 	txids = append(txids, "txid-3")
 	endorser4SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 12,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 12,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser4SimulationResults)
 
 	txids = append(txids, "txid-3")
 	endorser5SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 13,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 13,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser5SimulationResults)
 
 	var err error
 	for i := 0; i < len(txids); i++ {
-		err = env.TestStore.Persist(txids[i], endorsersResults[i].EndorsementBlockHeight,
+		err = env.TestStore.Persist(txids[i], endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResults)
 		assert.NoError(err)
 	}
@@ -273,7 +273,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	}
 
 	// There should be no entries in the  store
-	_, err = env.TestStore.GetMinEndorsementBlkHt()
+	_, err = env.TestStore.GetMinTransientBlkHt()
 	assert.Equal(err, ErrStoreEmpty)
 
 }
@@ -290,50 +290,50 @@ func TestTransientStorePurgeByHeight(t *testing.T) {
 
 	// Results produced by endorser 1
 	endorser0SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 10,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 10,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser0SimulationResults)
 
 	// Results produced by endorser 2
 	endorser1SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 11,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 11,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser1SimulationResults)
 
 	// Results produced by endorser 3
 	endorser2SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 12,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 12,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser2SimulationResults)
 
 	// Results produced by endorser 3
 	endorser3SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 12,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 12,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser3SimulationResults)
 
 	// Results produced by endorser 3
 	endorser4SimulationResults := &EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 13,
-		PvtSimulationResults:   samplePvtRWSet,
+		ReceivedAtBlockHeight: 13,
+		PvtSimulationResults:  samplePvtRWSet,
 	}
 	endorsersResults = append(endorsersResults, endorser4SimulationResults)
 
 	// Persist simulation results into  store
 	var err error
 	for i := 0; i < 5; i++ {
-		err = env.TestStore.Persist(txid, endorsersResults[i].EndorsementBlockHeight,
+		err = env.TestStore.Persist(txid, endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResults)
 		assert.NoError(err)
 	}
 
 	// Retain results generate at block height greater than or equal to 12
-	minEndorsementBlkHtToRetain := uint64(12)
-	err = env.TestStore.PurgeByHeight(minEndorsementBlkHtToRetain)
+	minTransientBlkHtToRetain := uint64(12)
+	err = env.TestStore.PurgeByHeight(minTransientBlkHtToRetain)
 	assert.NoError(err)
 
 	// Retrieve simulation results of txid-1 from  store
@@ -365,24 +365,24 @@ func TestTransientStorePurgeByHeight(t *testing.T) {
 
 	assert.Equal(expectedEndorsersResults, actualEndorsersResults)
 
-	// Get the minimum retained endorsement block height
-	var actualMinEndorsementBlkHt uint64
-	actualMinEndorsementBlkHt, err = env.TestStore.GetMinEndorsementBlkHt()
+	// Get the minimum block height remaining in transient store
+	var actualMinTransientBlkHt uint64
+	actualMinTransientBlkHt, err = env.TestStore.GetMinTransientBlkHt()
 	assert.NoError(err)
-	assert.Equal(minEndorsementBlkHtToRetain, actualMinEndorsementBlkHt)
+	assert.Equal(minTransientBlkHtToRetain, actualMinTransientBlkHt)
 
-	// Retain results generate at block height greater than or equal to 15
-	minEndorsementBlkHtToRetain = uint64(15)
-	err = env.TestStore.PurgeByHeight(minEndorsementBlkHtToRetain)
+	// Retain results at block height greater than or equal to 15
+	minTransientBlkHtToRetain = uint64(15)
+	err = env.TestStore.PurgeByHeight(minTransientBlkHtToRetain)
 	assert.NoError(err)
 
 	// There should be no entries in the  store
-	actualMinEndorsementBlkHt, err = env.TestStore.GetMinEndorsementBlkHt()
+	actualMinTransientBlkHt, err = env.TestStore.GetMinTransientBlkHt()
 	assert.Equal(err, ErrStoreEmpty)
 
-	// Retain results generate at block height greater than or equal to 15
-	minEndorsementBlkHtToRetain = uint64(15)
-	err = env.TestStore.PurgeByHeight(minEndorsementBlkHtToRetain)
+	// Retain results at block height greater than or equal to 15
+	minTransientBlkHtToRetain = uint64(15)
+	err = env.TestStore.PurgeByHeight(minTransientBlkHtToRetain)
 	// Should not return any error
 	assert.NoError(err)
 
@@ -437,16 +437,16 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 }
 
 func sortResults(res []*EndorserPvtSimulationResults) {
-	// Results are sorted by ascending order of endorsement block height. When the endorsement block
+	// Results are sorted by ascending order of received at block height. When the block
 	// heights are same, we sort by comparing the hash of private write set.
 	var sortCondition = func(i, j int) bool {
-		if res[i].EndorsementBlockHeight == res[j].EndorsementBlockHeight {
+		if res[i].ReceivedAtBlockHeight == res[j].ReceivedAtBlockHeight {
 			res_i, _ := proto.Marshal(res[i].PvtSimulationResults)
 			res_j, _ := proto.Marshal(res[j].PvtSimulationResults)
 			// if hashes are same, any order would work.
 			return string(util.ComputeHash(res_i)) < string(util.ComputeHash(res_j))
 		}
-		return res[i].EndorsementBlockHeight < res[j].EndorsementBlockHeight
+		return res[i].ReceivedAtBlockHeight < res[j].ReceivedAtBlockHeight
 	}
 	sort.SliceStable(res, sortCondition)
 }

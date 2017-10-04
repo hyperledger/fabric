@@ -71,7 +71,7 @@ func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 
 	rwSetScanner.
 		On("Next").Return(&transientstore.EndorserPvtSimulationResults{
-		EndorsementBlockHeight: 2,
+		ReceivedAtBlockHeight: 2,
 		PvtSimulationResults: &rwset.TxPvtReadWriteSet{
 			DataModel: rwset.TxReadWriteSet_KV,
 			NsPvtRwset: []*rwset.NsPvtReadWriteSet{

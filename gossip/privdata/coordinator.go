@@ -35,10 +35,10 @@ func init() {
 
 // TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger
 type TransientStore interface {
-	// Persist stores the private read-write set of a transaction in the transient store
-	Persist(txid string, endorsementBlkHt uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error
+	// Persist stores the private write set of a transaction in the transient store
+	Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error
 	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
-	// RWSets persisted from different endorsers (via Gossip)
+	// write sets persisted from different endorsers (via Gossip)
 	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error)
 }
 
@@ -90,6 +90,7 @@ func NewCoordinator(support Support, selfSignedData common.SignedData) Coordinat
 
 // StorePvtData used to persist private date into transient store
 func (c *coordinator) StorePvtData(txID string, privData *rwset.TxPvtReadWriteSet) error {
+	// TODO pass received at block height instead of 0
 	return c.TransientStore.Persist(txID, 0, privData)
 }
 
@@ -192,6 +193,7 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, missingKeys rwsetKeys, own
 			}
 			ownedRWsets[key] = rws
 			delete(missingKeys, key)
+			// TODO Pass received at block height instead of 0
 			c.TransientStore.Persist(dig.TxId, 0, key.toTxPvtReadWriteSet(rws))
 			logger.Debug("Fetched", key)
 		}
