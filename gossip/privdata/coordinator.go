@@ -113,8 +113,11 @@ func NewCoordinator(support Support, selfSignedData common.SignedData) Coordinat
 
 // StorePvtData used to persist private date into transient store
 func (c *coordinator) StorePvtData(txID string, privData *rwset.TxPvtReadWriteSet) error {
-	// TODO pass received at block height instead of 0
-	return c.TransientStore.Persist(txID, 0, privData)
+	height, err := c.Support.LedgerHeight()
+	if err != nil {
+		return errors.Wrap(err, "failed obtaining ledger height, thus cannot persist private data")
+	}
+	return c.TransientStore.Persist(txID, height, privData)
 }
 
 // StoreBlock stores block with private data into the ledger
@@ -239,8 +242,9 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][
 			}
 			ownedRWsets[key] = rws
 			delete(privateInfo.missingKeys, key)
-			// TODO Pass received at block height instead of 0
-			c.TransientStore.Persist(dig.TxId, 0, key.toTxPvtReadWriteSet(rws))
+			// If we fetch private data that is associated to block i, then our last block persisted must be i-1
+			// so our ledger height is i, since blocks start from 0.
+			c.TransientStore.Persist(dig.TxId, blockSeq, key.toTxPvtReadWriteSet(rws))
 			logger.Debug("Fetched", key)
 		}
 	}

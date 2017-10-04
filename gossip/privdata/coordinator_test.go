@@ -80,7 +80,7 @@ func (store *mockTransientStore) Persist(txid string, blockHeight uint64, res *r
 		store.t.Fatal("Shouldn't have persisted", res)
 	}
 	delete(store.persists, key)
-	store.Called(txid, res)
+	store.Called(txid, blockHeight, res)
 	return nil
 }
 
@@ -163,6 +163,9 @@ func (mock *committerMock) Commit(block *common.Block) error {
 
 func (mock *committerMock) LedgerHeight() (uint64, error) {
 	args := mock.Called()
+	if args.Get(0) == nil {
+		return uint64(0), args.Error(1)
+	}
 	return args.Get(0).(uint64), args.Error(1)
 }
 
@@ -787,7 +790,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 			Payload: [][]byte{[]byte("rws-pre-image")},
 		},
 	}, nil)
-	store.On("Persist", mock.Anything, mock.Anything).
+	store.On("Persist", mock.Anything, uint64(1), mock.Anything).
 		expectRWSet("ns1", "c2", []byte("rws-pre-image")).
 		expectRWSet("ns2", "c1", []byte("rws-pre-image")).Return(nil)
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1").create()
@@ -831,7 +834,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		}
 	}).Return(nil)
 	store.On("GetTxPvtRWSetByTxid", "tx3", mock.Anything).Return(&mockRWSetScanner{err: errors.New("uh oh")}, nil)
-	store.On("Persist", mock.Anything, mock.Anything).expectRWSet("ns3", "c3", []byte("rws-pre-image"))
+	store.On("Persist", mock.Anything, uint64(1), mock.Anything).expectRWSet("ns3", "c3", []byte("rws-pre-image"))
 	committer = &committerMock{}
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		var privateDataPassed2Ledger privateData = args.Get(0).(*ledger.BlockAndPvtData).BlockPvtData
@@ -1031,4 +1034,31 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	assert.Nil(t, block2)
 	assert.Empty(t, returnedPrivateData)
 	assert.Error(t, err)
+}
+
+func TestCoordinatorStorePvtData(t *testing.T) {
+	cs := createcollectionStore(common.SignedData{}).thatAcceptsAll()
+	committer := &committerMock{}
+	committer.On("LedgerHeight").Return(uint64(5), nil).Once()
+	store := &mockTransientStore{t: t}
+	store.On("Persist", mock.Anything, uint64(5), mock.Anything).
+		expectRWSet("ns1", "c1", []byte("rws-pre-image")).Return(nil)
+	fetcher := &fetcherMock{t: t}
+	coordinator := NewCoordinator(Support{
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
+	}, common.SignedData{})
+	pvtData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c1").create()
+	// Green path: ledger height can be retrieved from ledger/committer
+	err := coordinator.StorePvtData("tx1", pvtData[0].WriteSet)
+	assert.NoError(t, err)
+
+	// Bad path: ledger height cannot be retrieved from ledger/committer
+	committer.On("LedgerHeight").Return(uint64(0), errors.New("I/O error: file system full"))
+	err = coordinator.StorePvtData("tx1", pvtData[0].WriteSet)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "I/O error: file system full")
 }
