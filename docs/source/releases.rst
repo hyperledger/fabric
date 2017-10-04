@@ -1,6 +1,36 @@
 Release Notes
 =============
 
+`v1.0.3 <https://github.com/hyperledger/fabric/releases/tag/v1.0.3>`__
+October 3, 2017
+
+Bug fixes, documentation and test coverage improvements, UX improvements
+based on user feedback and changes to address a variety of static scan
+findings (unused code, static security scanning, spelling, linting and more).
+
+Known Vulnerabilities
+none
+
+Resolved Vulnerabilities
+none
+
+Known Issues & Workarounds
+The fabric-ccenv image which is used to build chaincode, currently includes
+the github.com/hyperledger/fabric/core/chaincode/shim ("shim") package.
+This is convenient, as it provides the ability to package chaincode
+without the need to include the "shim". However, this may cause issues in future
+releases (and/or when trying to use packages which are included by the "shim").
+
+In order to avoid any issues, users are advised to manually vendor the "shim"
+package with their chaincode prior to using the peer CLI for packaging and/or
+for installing chaincode.
+
+Please refer to https://jira.hyperledger.org/browse/FAB-5177 for more details,
+and kindly be aware that given the above, we may end up changing the
+fabric-ccenv in the future.
+
+`Change Log <https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v103>`__
+
 `v1.0.2 <https://github.com/hyperledger/fabric/releases/tag/v1.0.2>`__
 August 31, 2017
 
