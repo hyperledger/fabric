@@ -99,3 +99,42 @@ func TestMapConfigBack(t *testing.T) {
 	newConfig.Values["Value"] = &cb.ConfigValue{}
 	assert.NotEqual(t, config, newConfig, "Mutating the new config should not mutate the existing config")
 }
+
+func TestHackInMapConfigBack(t *testing.T) {
+	config := cb.NewConfigGroup()
+	config.Values["ChannelValue1"] = &cb.ConfigValue{}
+	config.Values["ChannelValue2"] = &cb.ConfigValue{}
+	config.Groups["Orderer"] = cb.NewConfigGroup()
+	config.Groups["Orderer"].Values["Capabilities"] = &cb.ConfigValue{}
+	config.Groups["Orderer"].Policies["OrdererPolicy"] = &cb.ConfigPolicy{}
+	config.Groups["Orderer"].Groups["OrdererOrg"] = cb.NewConfigGroup()
+	config.Groups["Orderer"].Groups["OrdererOrg"].Values["OrdererOrgValue"] = &cb.ConfigValue{}
+	config.Groups["Application"] = cb.NewConfigGroup()
+	config.Groups["Application"].Policies["ApplicationPolicy"] = &cb.ConfigPolicy{}
+	config.Groups["Application"].Policies["ApplicationValue"] = &cb.ConfigPolicy{}
+
+	confMap, err := MapConfig(config, "Channel")
+	assert.NoError(t, err, "Should not have errored building map")
+
+	newConfig, err := configMapToConfig(confMap, "Channel")
+	assert.NoError(t, err, "Should not have errored building config")
+
+	var checkModPolicy func(cg *cb.ConfigGroup)
+	checkModPolicy = func(cg *cb.ConfigGroup) {
+		assert.NotEmpty(t, cg.ModPolicy, "empty group mod_policy")
+
+		for key, value := range cg.Values {
+			assert.NotEmpty(t, value.ModPolicy, "empty value mod_policy %s", key)
+		}
+
+		for key, policy := range cg.Policies {
+			assert.NotEmpty(t, policy.ModPolicy, "empty policy mod_policy %s", key)
+		}
+
+		for _, group := range cg.Groups {
+			checkModPolicy(group)
+		}
+	}
+
+	checkModPolicy(newConfig)
+}

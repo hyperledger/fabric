@@ -31,6 +31,10 @@ const (
 	PolicyPrefix = "[Policy] " // The plurarility doesn't match, but, it makes the logs much easier being the same length as "Groups" and "Values"
 
 	PathSeparator = "/"
+
+	// Hacky fix constants, used in recurseConfigMap
+	hackyFixOrdererCapabilities = "[Values] /Channel/Orderer/Capabilities"
+	hackyFixNewModPolicy        = "Admins"
 )
 
 // MapConfig is intended to be called outside this file
@@ -160,6 +164,36 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 		}
 		newConfigGroup.Policies[key] = proto.Clone(policy.ConfigPolicy).(*cb.ConfigPolicy)
 		logger.Debugf("Setting policy for key %s to %+v", key, group.Policies[key])
+	}
+
+	// This is a really very hacky fix to facilitate upgrading channels which were constructed
+	// using the channel generation from v1.0 with bugs FAB-5309, and FAB-6080.
+	// In summary, these channels were constructed with a bug which left mod_policy unset in some cases.
+	// If mod_policy is unset, it's impossible to modify the element, and current code disallows
+	// unset mod_policy values.  This hack 'fixes' existing config with empty mod_policy values.
+	// If the capabilities framework is on, it sets any unset mod_policy to 'Admins'.
+	// This code needs to sit here until validation of v1.0 chains is deprecated from the codebase.
+	if _, ok := configMap[hackyFixOrdererCapabilities]; ok {
+		// Hacky fix constants, used in recurseConfigMap
+		if newConfigGroup.ModPolicy == "" {
+			logger.Debugf("Performing upgrade of group %s empty mod_policy", groupPath)
+			newConfigGroup.ModPolicy = hackyFixNewModPolicy
+		}
+
+		for key, value := range newConfigGroup.Values {
+			if value.ModPolicy == "" {
+				logger.Debugf("Performing upgrade of value %s empty mod_policy", ValuePrefix+path+PathSeparator+key)
+				value.ModPolicy = hackyFixNewModPolicy
+			}
+		}
+
+		for key, policy := range newConfigGroup.Policies {
+			if policy.ModPolicy == "" {
+				logger.Debugf("Performing upgrade of policy %s empty mod_policy", PolicyPrefix+path+PathSeparator+key)
+
+				policy.ModPolicy = hackyFixNewModPolicy
+			}
+		}
 	}
 
 	return newConfigGroup, nil
