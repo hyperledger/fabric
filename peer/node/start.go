@@ -318,7 +318,7 @@ func createChaincodeServer(caCert []byte, peerHostname string) (comm.GRPCServer,
 		config.ClientRootCAs = append(config.ClientRootCAs, caCert)
 	}
 
-	srv, err = comm.NewGRPCServer(cclistenAddress, config)
+	srv, err = comm.NewChaincodeGRPCServer(cclistenAddress, config)
 	if err != nil {
 		panic(err)
 	}

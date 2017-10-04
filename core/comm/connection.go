@@ -169,9 +169,32 @@ func GetPeerTestingAddress(port string) string {
 	return getEnv("UNIT_TEST_PEER_IP", "localhost") + ":" + port
 }
 
-// NewClientConnectionWithAddress Returns a new grpc.ClientConn to the given address.
+// NewClientConnectionWithAddress Returns a new grpc.ClientConn to the given address
 func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled bool, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
+	return newClientConnectionWithAddressWithKa(peerAddress, block, tslEnabled, creds, nil)
+}
+
+// NewChaincodeClientConnectionWithAddress Returns a new chaincode type grpc.ClientConn to the given address
+func NewChaincodeClientConnectionWithAddress(peerAddress string, block bool, tslEnabled bool, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
+	ka := chaincodeKeepaliveOptions
+	//client side's keepalive parameter better be greater than EnforcementPolicies MinTime
+	//to prevent server killing the connection due to timing issues. Just increase by a min
+	ka.ClientKeepaliveTime += 60
+
+	return newClientConnectionWithAddressWithKa(peerAddress, block, tslEnabled, creds, &ka)
+}
+
+// newClientConnectionWithAddressWithKa Returns a new grpc.ClientConn to the given address using specied keepalive options
+func newClientConnectionWithAddressWithKa(peerAddress string, block bool, tslEnabled bool, creds credentials.TransportCredentials, ka *KeepaliveOptions) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
+
+	//preserve old behavior for non chaincode. We probably
+	//want to change this in future to have peer client
+	//send keepalives too
+	if ka != nil {
+		opts = clientKeepaliveOptionsWithKa(ka)
+	}
+
 	if tslEnabled {
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	} else {

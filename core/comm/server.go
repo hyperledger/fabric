@@ -90,8 +90,26 @@ type grpcServerImpl struct {
 }
 
 //NewGRPCServer creates a new implementation of a GRPCServer given a
-//listen address.
+//listen address
 func NewGRPCServer(address string, secureConfig SecureServerConfig) (GRPCServer, error) {
+	return newGRPCServerWithKa(address, secureConfig, &keepaliveOptions)
+}
+
+//NewChaincodeGRPCServer creates a new implementation of a chaincode GRPCServer given a
+//listen address
+func NewChaincodeGRPCServer(address string, secureConfig SecureServerConfig) (GRPCServer, error) {
+	return newGRPCServerWithKa(address, secureConfig, &chaincodeKeepaliveOptions)
+}
+
+//NewGRPCServerFromListener creates a new implementation of a GRPCServer given
+//an existing net.Listener instance using default keepalive
+func NewGRPCServerFromListener(listener net.Listener, secureConfig SecureServerConfig) (GRPCServer, error) {
+	return newGRPCServerFromListenerWithKa(listener, secureConfig, &keepaliveOptions)
+}
+
+//newGRPCServerWithKa creates a new implementation of a GRPCServer given a
+//listen address with specified keepalive options
+func newGRPCServerWithKa(address string, secureConfig SecureServerConfig, ka *KeepaliveOptions) (GRPCServer, error) {
 
 	if address == "" {
 		return nil, errors.New("Missing address parameter")
@@ -103,14 +121,13 @@ func NewGRPCServer(address string, secureConfig SecureServerConfig) (GRPCServer,
 		return nil, err
 	}
 
-	return NewGRPCServerFromListener(lis, secureConfig)
+	return newGRPCServerFromListenerWithKa(lis, secureConfig, ka)
 
 }
 
-//NewGRPCServerFromListener creates a new implementation of a GRPCServer given
-//an existing net.Listener instance.
-func NewGRPCServerFromListener(listener net.Listener, secureConfig SecureServerConfig) (GRPCServer, error) {
-
+//newGRPCServerFromListenerWithKa creates a new implementation of a GRPCServer given
+//an existing net.Listener instance with specfied keepalive
+func newGRPCServerFromListenerWithKa(listener net.Listener, secureConfig SecureServerConfig, ka *KeepaliveOptions) (GRPCServer, error) {
 	grpcServer := &grpcServerImpl{
 		address:  listener.Addr().String(),
 		listener: listener,
@@ -169,7 +186,7 @@ func NewGRPCServerFromListener(listener net.Listener, secureConfig SecureServerC
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(MaxSendMsgSize()))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(MaxRecvMsgSize()))
 	// set the keepalive options
-	serverOpts = append(serverOpts, ServerKeepaliveOptions()...)
+	serverOpts = append(serverOpts, serverKeepaliveOptionsWithKa(ka)...)
 
 	grpcServer.server = grpc.NewServer(serverOpts...)
 

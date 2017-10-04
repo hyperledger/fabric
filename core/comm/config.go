@@ -22,12 +22,20 @@ var (
 	// Max send and receive bytes for grpc clients and servers
 	maxRecvMsgSize = 100 * 1024 * 1024
 	maxSendMsgSize = 100 * 1024 * 1024
-	// Default keepalive options
+	// Default peer keepalive options
 	keepaliveOptions = KeepaliveOptions{
 		ClientKeepaliveTime:    60,   // 1 min
 		ClientKeepaliveTimeout: 20,   // 20 sec - gRPC default
 		ServerKeepaliveTime:    7200, // 2 hours - gRPC default
 		ServerKeepaliveTimeout: 20,   // 20 sec - gRPC default
+	}
+	// chaincode keepalive options separate from peer keepalive
+	// options above (for flexibility)
+	chaincodeKeepaliveOptions = KeepaliveOptions{
+		ClientKeepaliveTime:    60, // 1 min
+		ClientKeepaliveTimeout: 20, // 20 sec - gRPC default
+		ServerKeepaliveTime:    60, // 1 min
+		ServerKeepaliveTimeout: 20, // 20 sec - gRPC default
 	}
 )
 
@@ -98,15 +106,19 @@ func SetKeepaliveOptions(ka KeepaliveOptions) {
 
 // ServerKeepaliveOptions returns the gRPC keepalive options for servers
 func ServerKeepaliveOptions() []grpc.ServerOption {
+	return serverKeepaliveOptionsWithKa(&keepaliveOptions)
+}
+
+func serverKeepaliveOptionsWithKa(ka *KeepaliveOptions) []grpc.ServerOption {
 	var serverOpts []grpc.ServerOption
 	kap := keepalive.ServerParameters{
-		Time:    time.Duration(keepaliveOptions.ServerKeepaliveTime) * time.Second,
-		Timeout: time.Duration(keepaliveOptions.ServerKeepaliveTimeout) * time.Second,
+		Time:    time.Duration(ka.ServerKeepaliveTime) * time.Second,
+		Timeout: time.Duration(ka.ServerKeepaliveTimeout) * time.Second,
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveParams(kap))
 	kep := keepalive.EnforcementPolicy{
 		// needs to match clientKeepalive
-		MinTime: time.Duration(keepaliveOptions.ClientKeepaliveTime) * time.Second,
+		MinTime: time.Duration(ka.ClientKeepaliveTime) * time.Second,
 		// allow keepalive w/o rpc
 		PermitWithoutStream: true,
 	}
@@ -116,10 +128,14 @@ func ServerKeepaliveOptions() []grpc.ServerOption {
 
 // ClientKeepaliveOptions returns the gRPC keepalive options for clients
 func ClientKeepaliveOptions() []grpc.DialOption {
+	return clientKeepaliveOptionsWithKa(&keepaliveOptions)
+}
+
+func clientKeepaliveOptionsWithKa(ka *KeepaliveOptions) []grpc.DialOption {
 	var dialOpts []grpc.DialOption
 	kap := keepalive.ClientParameters{
-		Time:                time.Duration(keepaliveOptions.ClientKeepaliveTime) * time.Second,
-		Timeout:             time.Duration(keepaliveOptions.ClientKeepaliveTimeout) * time.Second,
+		Time:                time.Duration(ka.ClientKeepaliveTime) * time.Second,
+		Timeout:             time.Duration(ka.ClientKeepaliveTimeout) * time.Second,
 		PermitWithoutStream: true,
 	}
 	dialOpts = append(dialOpts, grpc.WithKeepaliveParams(kap))
