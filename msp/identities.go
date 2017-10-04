@@ -179,7 +179,7 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 func (id *identity) Serialize() ([]byte, error) {
 	// mspIdentityLogger.Infof("Serializing identity %s", id.id)
 
-	pb := &pem.Block{Bytes: id.cert.Raw}
+	pb := &pem.Block{Bytes: id.cert.Raw, Type: "CERTIFICATE"}
 	pemBytes := pem.EncodeToMemory(pb)
 	if pemBytes == nil {
 		return nil, errors.New("encoding of identity failed")
