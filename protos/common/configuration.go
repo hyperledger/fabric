@@ -85,6 +85,8 @@ func (dccv *DynamicChannelConfigValue) VariablyOpaqueFieldProto(name string) (pr
 		return &OrdererAddresses{}, nil
 	case "Consortium":
 		return &Consortium{}, nil
+	case "Capabilities":
+		return &Capabilities{}, nil
 	default:
 		return nil, fmt.Errorf("unknown Channel ConfigValue name: %s", dccv.name)
 	}
