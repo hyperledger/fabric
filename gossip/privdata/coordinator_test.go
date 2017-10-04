@@ -59,7 +59,7 @@ func (store *mockTransientStore) On(methodName string, arguments ...interface{})
 	}
 }
 
-func (store *mockTransientStore) Persist(txid string, endorsementBlkHt uint64, res *rwset.TxPvtReadWriteSet) error {
+func (store *mockTransientStore) Persist(txid string, blockHeight uint64, res *rwset.TxPvtReadWriteSet) error {
 	key := rwsTriplet{
 		namespace:  res.NsPvtRwset[0].Namespace,
 		collection: res.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName,
