@@ -16,7 +16,7 @@ We’ll go through three principle steps:
   interact with, so we'll download one stripped down to just the components we need
   to run queries and updates:
 
-.. image:: images/AppConceptsOverview.png
+  .. image:: images/AppConceptsOverview.png
 
   **2. Learning the parameters of the sample smart contract our app will use.** Our
   smart contract contains various functions that allow us to interact with the ledger
