@@ -365,6 +365,12 @@
 			"revisionTime": "2017-01-30T13:11:20Z"
 		},
 		{
+			"checksumSHA1": "cJE7dphDlam/i7PhnsyosNWtbd4=",
+			"path": "github.com/mattn/go-runewidth",
+			"revision": "97311d9f7767e3d6f422ea06661bc2c7a19e8a5d",
+			"revisionTime": "2017-05-10T07:48:58Z"
+		},
+		{
 			"checksumSHA1": "yOED17cgEIwsqkhg16Y0xiTHiZ0=",
 			"path": "github.com/miekg/pkcs11",
 			"revision": "2c6cdd29253e84b5f0f1bec7d77cce36f12d15bd",
@@ -777,6 +783,13 @@
 			"path": "gopkg.in/alecthomas/kingpin.v2",
 			"revision": "7f0871f2e17818990e4eed73f9b5c2f429501228",
 			"revisionTime": "2017-03-28T23:38:35Z"
+		},
+		{
+			
+			"checksumSHA1": "Omo/Z5hYCGVrR6tDwoJWUCSQgNg=",
+			"path": "gopkg.in/cheggaaa/pb.v1",
+			"revision": "657164d0228d6bebe316fdf725c69f131a50fb10",
+			"revisionTime": "2017-08-24T10:41:20Z"
 		},
 		{
 			"checksumSHA1": "0KwOlQV1dNUh9X8t+5s7nX5bqfk=",

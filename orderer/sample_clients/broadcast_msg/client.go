@@ -23,6 +23,7 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 type broadcastClient struct {
@@ -72,6 +73,7 @@ func main() {
 	var messages uint64
 	var goroutines uint64
 	var msgSize uint64
+	var bar *pb.ProgressBar
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
 	flag.StringVar(&channelID, "channelID", provisional.TestChainID, "The channel ID to broadcast to.")
@@ -94,13 +96,17 @@ func main() {
 	if roundMsgs != messages {
 		fmt.Println("Rounding messages to", roundMsgs)
 	}
+	bar = pb.New64(int64(roundMsgs))
+	bar.ShowPercent = true
+	bar.ShowSpeed = true
+	bar = bar.Start()
 
 	msgData := make([]byte, msgSize)
 
 	var wg sync.WaitGroup
 	wg.Add(int(goroutines))
 	for i := uint64(0); i < goroutines; i++ {
-		go func(i uint64) {
+		go func(i uint64, pb *pb.ProgressBar) {
 			client, err := ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
 			if err != nil {
 				fmt.Println("Error connecting:", err)
@@ -112,6 +118,9 @@ func main() {
 			go func() {
 				for i := uint64(0); i < msgsPerGo; i++ {
 					err = s.getAck()
+					if err == nil && bar != nil {
+						bar.Increment()
+					}
 				}
 				if err != nil {
 					fmt.Printf("\nError: %v\n", err)
@@ -126,9 +135,9 @@ func main() {
 			<-done
 			wg.Done()
 			client.CloseSend()
-			fmt.Println("Go routine", i, "exiting")
-		}(i)
+		}(i, bar)
 	}
 
 	wg.Wait()
+	bar.FinishPrint("----------------------broadcast message finish-------------------------------")
 }
