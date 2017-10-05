@@ -84,8 +84,9 @@ func ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args []
 	spec, err = createCIS(cccid.Name, args)
 	res, ccevent, err = Execute(ctxt, cccid, spec)
 	if err != nil {
-		chaincodeLogger.Errorf("Error executing chaincode: %s", err)
-		return nil, nil, errors.WithMessage(err, "error executing chaincode")
+		err = errors.WithMessage(err, "error executing chaincode")
+		chaincodeLogger.Errorf("%+v", err)
+		return nil, nil, err
 	}
 
 	return res, ccevent, err

@@ -153,7 +153,7 @@ func NewChaincodeSupport(getCCEndpoint func() (*pb.PeerEndpoint, error), userrun
 
 	ccEndpoint, err := getCCEndpoint()
 	if err != nil {
-		chaincodeLogger.Errorf("Error getting chaincode endpoint because %v, using %s", err, peerAddressDefault)
+		chaincodeLogger.Errorf("Error getting chaincode endpoint using %s: %+v", peerAddressDefault, err)
 		theChaincodeSupport.peerAddress = peerAddressDefault
 	} else {
 		theChaincodeSupport.peerAddress = ccEndpoint.Address
@@ -325,8 +325,9 @@ func (chaincodeSupport *ChaincodeSupport) sendReady(context context.Context, ccc
 	var ok bool
 	if chrte, ok = chaincodeSupport.chaincodeHasBeenLaunched(canName); !ok {
 		chaincodeSupport.runningChaincodes.Unlock()
-		chaincodeLogger.Debugf("handler not found for chaincode %s", canName)
-		return errors.Errorf("handler not found for chaincode %s", canName)
+		err := errors.Errorf("handler not found for chaincode %s", canName)
+		chaincodeLogger.Debugf("%+v", err)
+		return err
 	}
 	chaincodeSupport.runningChaincodes.Unlock()
 
@@ -532,10 +533,10 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 		err = errors.Errorf("timeout expired while starting chaincode %s(networkid:%s,peerid:%s,tx:%s)", canName, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID, cccid.TxID)
 	}
 	if err != nil {
-		chaincodeLogger.Debugf("stopping due to error while launching %s", err)
+		chaincodeLogger.Debugf("stopping due to error while launching: %+v", err)
 		errIgnore := chaincodeSupport.Stop(ctxt, cccid, cds)
 		if errIgnore != nil {
-			chaincodeLogger.Debugf("error on stop %s(%s)", errIgnore, err)
+			chaincodeLogger.Debugf("stop failed: %+v", errIgnore)
 		}
 	}
 	return err
@@ -606,8 +607,8 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 	if chrte, ok = chaincodeSupport.chaincodeHasBeenLaunched(canName); ok {
 		if !chrte.handler.registered {
 			chaincodeSupport.runningChaincodes.Unlock()
-			chaincodeLogger.Debugf("premature execution - chaincode (%s) launched and waiting for registration", canName)
 			err = errors.Errorf("premature execution - chaincode (%s) launched and waiting for registration", canName)
+			chaincodeLogger.Debugf("%+v", err)
 			return cID, cMsg, err
 		}
 		if chrte.handler.isRunning() {
@@ -692,7 +693,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 		cLang := cds.ChaincodeSpec.Type
 		err = chaincodeSupport.launchAndWaitForRegister(context, cccid, cds, cLang, builder)
 		if err != nil {
-			chaincodeLogger.Errorf("launchAndWaitForRegister failed %s", err)
+			chaincodeLogger.Errorf("launchAndWaitForRegister failed: %+v", err)
 			return cID, cMsg, err
 		}
 	}
@@ -701,11 +702,11 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 		//launch will set the chaincode in Ready state
 		err = chaincodeSupport.sendReady(context, cccid, chaincodeSupport.ccStartupTimeout)
 		if err != nil {
-			chaincodeLogger.Errorf("sending init failed(%s)", err)
 			err = errors.WithMessage(err, "failed to init chaincode")
+			chaincodeLogger.Errorf("%+v", err)
 			errIgnore := chaincodeSupport.Stop(context, cccid, cds)
 			if errIgnore != nil {
-				chaincodeLogger.Errorf("stop failed %s(%s)", errIgnore, err)
+				chaincodeLogger.Errorf("stop failed: %+v", errIgnore)
 			}
 		}
 		chaincodeLogger.Debug("sending init completed")
