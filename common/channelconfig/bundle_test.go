@@ -9,6 +9,7 @@ package channelconfig
 import (
 	"testing"
 
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/stretchr/testify/assert"
@@ -44,7 +45,7 @@ func TestValidateNew(t *testing.T) {
 
 		err := cb.ValidateNew(nb)
 		assert.Error(t, err)
-		assert.Regexp(t, "Current config has consortiums section, but new config does not", err.Error())
+		assert.Regexp(t, "Current config has application section, but new config does not", err.Error())
 	})
 
 	t.Run("DisappearingConsortiumsConfig", func(t *testing.T) {
@@ -198,5 +199,79 @@ func TestValidateNew(t *testing.T) {
 		err := cb.ValidateNew(nb)
 		assert.Error(t, err)
 		assert.Regexp(t, "Consortium consortium1 org org3 attempted to change MSP ID from", err.Error())
+	})
+}
+
+func TestPrevalidation(t *testing.T) {
+	t.Run("NilConfig", func(t *testing.T) {
+		err := preValidate(nil)
+
+		assert.Error(t, err)
+		assert.Regexp(t, "config cannot be nil", err.Error())
+	})
+
+	t.Run("NilChannelGroup", func(t *testing.T) {
+		err := preValidate(&cb.Config{})
+
+		assert.Error(t, err)
+		assert.Regexp(t, "config must contain a channel group", err.Error())
+	})
+
+	t.Run("BadChannelCapabilities", func(t *testing.T) {
+		err := preValidate(&cb.Config{
+			ChannelGroup: &cb.ConfigGroup{
+				Groups: map[string]*cb.ConfigGroup{
+					OrdererGroupKey: &cb.ConfigGroup{},
+				},
+				Values: map[string]*cb.ConfigValue{
+					CapabilitiesKey: &cb.ConfigValue{},
+				},
+			},
+		})
+
+		assert.Error(t, err)
+		assert.Regexp(t, "cannot enable channel capabilities without orderer support first", err.Error())
+	})
+
+	t.Run("BadApplicationCapabilities", func(t *testing.T) {
+		err := preValidate(&cb.Config{
+			ChannelGroup: &cb.ConfigGroup{
+				Groups: map[string]*cb.ConfigGroup{
+					ApplicationGroupKey: &cb.ConfigGroup{
+						Values: map[string]*cb.ConfigValue{
+							CapabilitiesKey: &cb.ConfigValue{},
+						},
+					},
+					OrdererGroupKey: &cb.ConfigGroup{},
+				},
+			},
+		})
+
+		assert.Error(t, err)
+		assert.Regexp(t, "cannot enable application capabilities without orderer support first", err.Error())
+	})
+
+	t.Run("ValidCapabilities", func(t *testing.T) {
+		err := preValidate(&cb.Config{
+			ChannelGroup: &cb.ConfigGroup{
+				Groups: map[string]*cb.ConfigGroup{
+					ApplicationGroupKey: &cb.ConfigGroup{
+						Values: map[string]*cb.ConfigValue{
+							CapabilitiesKey: &cb.ConfigValue{},
+						},
+					},
+					OrdererGroupKey: &cb.ConfigGroup{
+						Values: map[string]*cb.ConfigValue{
+							CapabilitiesKey: &cb.ConfigValue{},
+						},
+					},
+				},
+				Values: map[string]*cb.ConfigValue{
+					CapabilitiesKey: &cb.ConfigValue{},
+				},
+			},
+		})
+
+		assert.NoError(t, err)
 	})
 }
