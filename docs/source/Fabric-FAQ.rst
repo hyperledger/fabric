@@ -152,5 +152,19 @@ of native currency is that some amount will get transacted (the chaincode
 defining that currency will get called) every time a transaction is processed
 on its chain.
 
+Differences in Most Recent Releases
+-----------
+Q. As part of the v1.0.0 release, what are the highlight differences between v0.6 and v1.0?
+
+A. The differences between any subsequent releases are provided together with the
+`Release Notes <http://hyperledger-fabric.readthedocs.io/en/latest/releases.html>`__.
+Since Fabric is a pluggable modular framework, you can refer to the `design-docs
+<https://wiki.hyperleger.org/projects/fabric/design-docs>`__ for further information of these difference.
+
+Q. Where to get help for the technical questions not answered above?
+
+A. Please use `StackOverflow <https://stackoverflow.com/questions/tagged/hyperledger>`__.
+
+
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
