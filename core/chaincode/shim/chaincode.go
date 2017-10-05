@@ -94,15 +94,17 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 
 		data, err1 := ioutil.ReadFile(keyPath)
 		if err1 != nil {
-			chaincodeLogger.Errorf("Error trying to read file content %s: %s", keyPath, err1)
-			return nil, fmt.Errorf("Error trying to read file content %s: %s", keyPath, err1)
+			err1 = errors.Wrap(err1, fmt.Sprintf("error trying to read file content %s", keyPath))
+			chaincodeLogger.Errorf("%+v", err1)
+			return nil, err1
 		}
 		key = string(data)
 
 		data, err1 = ioutil.ReadFile(certPath)
 		if err1 != nil {
-			chaincodeLogger.Errorf("Error trying to read file content %s: %s", certPath, err1)
-			return nil, fmt.Errorf("Error trying to read file content %s: %s", certPath, err1)
+			err1 = errors.Wrap(err1, fmt.Sprintf("error trying to read file content %s", certPath))
+			chaincodeLogger.Errorf("%+v", err1)
+			return nil, err1
 		}
 		cert = string(data)
 	}
@@ -114,8 +116,9 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 	// Establish connection with validating peer
 	clientConn, err := newPeerClientConnection()
 	if err != nil {
-		chaincodeLogger.Errorf("Error trying to connect to local peer: %s", err)
-		return nil, errors.Wrap(err, "error trying to connect to local peer")
+		err = errors.Wrap(err, "error trying to connect to local peer")
+		chaincodeLogger.Errorf("%+v", err)
+		return nil, err
 	}
 
 	chaincodeLogger.Debugf("os.Args returns: %s", os.Args)
@@ -308,14 +311,14 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 				return
 			case in = <-msgAvail:
 				if err == io.EOF {
-					chaincodeLogger.Debugf("Received EOF, ending chaincode stream, %s", err)
+					chaincodeLogger.Debugf("Received EOF, ending chaincode stream: %+v", err)
 					return
 				} else if err != nil {
-					chaincodeLogger.Errorf("Received error from server: %s, ending chaincode stream", err)
+					chaincodeLogger.Errorf("Received error from server, ending chaincode stream: %+v", err)
 					return
 				} else if in == nil {
 					err = errors.New("received nil message, ending chaincode stream")
-					chaincodeLogger.Debug("Received nil message, ending chaincode stream")
+					chaincodeLogger.Debug("%+v", err)
 					return
 				}
 				chaincodeLogger.Debugf("[%s]Received message %s from shim", shorttxid(in.Txid), in.Type.String())
@@ -601,7 +604,7 @@ func (iter *CommonIterator) getResultFromBytes(queryResultBytes *pb.QueryResultB
 	if rType == STATE_QUERY_RESULT {
 		stateQueryResult := &queryresult.KV{}
 		if err := proto.Unmarshal(queryResultBytes.ResultBytes, stateQueryResult); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "error unmarshaling result from bytes")
 		}
 		return stateQueryResult, nil
 
@@ -633,7 +636,7 @@ func (iter *CommonIterator) nextResult(rType resultType) (commonledger.QueryResu
 		// On valid access of an element from cached results
 		queryResult, err := iter.getResultFromBytes(iter.response.Results[iter.currentLoc], rType)
 		if err != nil {
-			chaincodeLogger.Errorf("Failed to decode query results [%s]", err)
+			chaincodeLogger.Errorf("Failed to decode query results: %+v", err)
 			return nil, err
 		}
 		iter.currentLoc++
@@ -641,7 +644,7 @@ func (iter *CommonIterator) nextResult(rType resultType) (commonledger.QueryResu
 		if iter.currentLoc == len(iter.response.Results) && iter.response.HasMore {
 			// On access of last item, pre-fetch to update HasMore flag
 			if err = iter.fetchNextQueryResult(); err != nil {
-				chaincodeLogger.Errorf("Failed to fetch next results [%s]", err)
+				chaincodeLogger.Errorf("Failed to fetch next results: %+v", err)
 				return nil, err
 			}
 		}
