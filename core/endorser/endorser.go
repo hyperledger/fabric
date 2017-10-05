@@ -200,9 +200,14 @@ func (e *Endorser) disableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvoc
 
 	cds := ccpack.GetDepSpec()
 
-	//finally, if JAVA error out
-	if cds.ChaincodeSpec.Type == pb.ChaincodeSpec_JAVA {
-		return errors.New("Java chaincode is work-in-progress and disabled")
+	if javaEnabled() {
+		endorserLogger.Debug("java chaincode enabled")
+	} else {
+		endorserLogger.Debug("java chaincode disabled")
+		//finally, if JAVA not enabled error out
+		if cds.ChaincodeSpec.Type == pb.ChaincodeSpec_JAVA {
+			return errors.New("Java chaincode is work-in-progress and disabled")
+		}
 	}
 
 	//not a java install, instantiate or upgrade op
