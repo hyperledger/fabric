@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -408,7 +409,11 @@ func (mdts *mockDefaultTemplatorSupport) Signer() crypto.LocalSigner {
 
 func TestNewChannelConfig(t *testing.T) {
 	channelID := "foo"
-	singleMSPGenesisBlock := provisional.New(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)).GenesisBlockForChannel(channelID)
+	gConf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
+	gConf.Orderer.Capabilities = map[string]bool{
+		capabilities.OrdererV11: true,
+	}
+	singleMSPGenesisBlock := provisional.New(gConf).GenesisBlockForChannel(channelID)
 	configEnv := configtx.UnmarshalConfigEnvelopeOrPanic(
 		utils.UnmarshalPayloadOrPanic(
 			utils.ExtractEnvelopeOrPanic(singleMSPGenesisBlock, 0).Payload,
@@ -673,7 +678,8 @@ func TestNewChannelConfig(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		createTx, err := channelconfig.MakeChainCreationTransaction("foo", genesisconfig.SampleConsortiumName, nil, genesisconfig.SampleOrgName)
 		assert.Nil(t, err)
-		_, err = templator.NewChannelConfig(createTx)
+		res, err := templator.NewChannelConfig(createTx)
 		assert.Nil(t, err)
+		assert.NotEmpty(t, res.ConfigtxManager().ConfigEnvelope().Config.ChannelGroup.ModPolicy)
 	})
 }

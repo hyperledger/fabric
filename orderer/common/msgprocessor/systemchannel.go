@@ -185,6 +185,9 @@ type DefaultTemplatorSupport interface {
 	// ConsortiumsConfig returns the ordering system channel's Consortiums config.
 	ConsortiumsConfig() (channelconfig.Consortiums, bool)
 
+	// OrdererConfig returns the ordering configuration and whether the configuration exists
+	OrdererConfig() (channelconfig.Orderer, bool)
+
 	// ConfigtxManager returns the configtx manager corresponding to the system channel's current config.
 	ConfigtxManager() configtxapi.Manager
 
@@ -314,6 +317,12 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	channelGroup.Groups[channelconfig.OrdererGroupKey] = systemChannelGroup.Groups[channelconfig.OrdererGroupKey]
 	channelGroup.Groups[channelconfig.ApplicationGroupKey] = applicationGroup
 	channelGroup.Values[channelconfig.ConsortiumKey] = channelconfig.TemplateConsortium(consortium.Name).Values[channelconfig.ConsortiumKey]
+
+	// Non-backwards compatible bugfix introduced in v1.1
+	// The capability check should be removed once v1.0 is deprecated
+	if oc, ok := dt.support.OrdererConfig(); ok && oc.Capabilities().SetChannelModPolicyDuringCreate() {
+		channelGroup.ModPolicy = systemChannelGroup.ModPolicy
+	}
 
 	bundle, err := channelconfig.NewBundle(channelHeader.ChannelId, &cb.Config{
 		ChannelGroup: channelGroup,
