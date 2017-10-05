@@ -145,12 +145,8 @@ func (c *clientIdentityImpl) init() error {
 	c.mspID = signingID.GetMspid()
 	idbytes := signingID.GetIdBytes()
 	block, _ := pem.Decode(idbytes)
-	if block == nil || block.Type != "CERTIFICATE" {
-		bt := "none"
-		if block != nil {
-			bt = block.Type
-		}
-		return errors.Errorf("unexpected PEM block found. Expected a certificate but found a block of type: %s", bt)
+	if block == nil {
+		return errors.New("Expecting a PEM-encoded X509 certificate; PEM block not found")
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
