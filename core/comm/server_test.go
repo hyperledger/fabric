@@ -475,11 +475,9 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 	}
 }
 
-func TestNewGRPCServer(t *testing.T) {
-
-	t.Parallel()
-	testAddress := "localhost:9053"
-	srv, err := comm.NewGRPCServer(testAddress,
+//pass a server func to test different types of servers
+func testNewGRPCServer(t *testing.T, testAddress string, svrfunc func(string, comm.SecureServerConfig) (comm.GRPCServer, error)) {
+	srv, err := svrfunc(testAddress,
 		comm.SecureServerConfig{UseTLS: false})
 	//check for error
 	if err != nil {
@@ -518,7 +516,16 @@ func TestNewGRPCServer(t *testing.T) {
 	} else {
 		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
 	}
+}
 
+func TestNewGRPCServer(t *testing.T) {
+	t.Parallel()
+	testNewGRPCServer(t, "localhost:9053", comm.NewGRPCServer)
+}
+
+func TestNewChaincodeGRPCServer(t *testing.T) {
+	t.Parallel()
+	testNewGRPCServer(t, "localhost:9059", comm.NewChaincodeGRPCServer)
 }
 
 func TestNewGRPCServerFromListener(t *testing.T) {
