@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -30,6 +29,14 @@ import (
 //     called chaincode's function = args[0]
 //     called chaincode's args = args[1:]
 type PassthruChaincode struct {
+}
+
+func toChaincodeArgs(args ...string) [][]byte {
+	bargs := make([][]byte, len(args))
+	for i, arg := range args {
+		bargs[i] = []byte(arg)
+	}
+	return bargs
 }
 
 //Init func will return error if function has string "error" anywhere
@@ -48,7 +55,7 @@ func (p *PassthruChaincode) iq(stub shim.ChaincodeStubInterface, function string
 	}
 	chaincodeID := function
 
-	return stub.InvokeChaincode(chaincodeID, util.ToChaincodeArgs(args...), "")
+	return stub.InvokeChaincode(chaincodeID, toChaincodeArgs(args...), "")
 }
 
 // Invoke passes through the invoke call
