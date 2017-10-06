@@ -7,18 +7,21 @@ SPDX-License-Identifier: Apache-2.0
 package metrics
 
 import (
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"io"
-	"net"
-	"strings"
-
 	"github.com/cactus/go-statsd-client/statsd"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/uber-go/tally"
+	promreporter "github.com/uber-go/tally/prometheus"
 	statsdreporter "github.com/uber-go/tally/statsd"
 )
 
@@ -379,11 +382,53 @@ func TestMetricsByStatsdReporter(t *testing.T) {
 	result := string(buffer[:n])
 
 	expected := []string{
-		`hyperledger.fabric.peer.success_total.component-committer.env-test:1|c`,
-		`hyperledger.fabric.peer.channel_total.component-committer.env-test:4|g`,
+		`hyperledger_fabric.peer.success_total.component-committer.env-test:1|c`,
+		`hyperledger_fabric.peer.channel_total.component-committer.env-test:4|g`,
 	}
 
 	for i, res := range strings.Split(result, "\n") {
+		if res != expected[i] {
+			t.Errorf("Got `%s`, expected `%s`", res, expected[i])
+		}
+	}
+}
+
+func TestMetricsByPrometheusReporter(t *testing.T) {
+	t.Parallel()
+	r := newTestPrometheusReporter()
+
+	opts := tally.ScopeOptions{
+		Prefix:         namespace,
+		Separator:      promreporter.DefaultSeparator,
+		CachedReporter: r}
+
+	s, c := newRootScope(opts, 1*time.Second)
+	defer c.Close()
+
+	scrape := func() string {
+		resp, _ := http.Get("http://localhost:8080/metrics")
+		buf, _ := ioutil.ReadAll(resp.Body)
+		return string(buf)
+	}
+	subs := s.SubScope("peer").Tagged(map[string]string{"component": "committer", "env": "test"})
+	subs.Counter("success_total").Inc(1)
+	subs.Gauge("channel_total").Update(4)
+
+	time.Sleep(2 * time.Second)
+
+	expected := []string{
+		`# HELP hyperledger_fabric_peer_channel_total hyperledger_fabric_peer_channel_total gauge`,
+		`# TYPE hyperledger_fabric_peer_channel_total gauge`,
+		`hyperledger_fabric_peer_channel_total{component="committer",env="test"} 4`,
+		`# HELP hyperledger_fabric_peer_success_total hyperledger_fabric_peer_success_total counter`,
+		`# TYPE hyperledger_fabric_peer_success_total counter`,
+		`hyperledger_fabric_peer_success_total{component="committer",env="test"} 1`,
+		``,
+	}
+
+	result := strings.Split(scrape(), "\n")
+
+	for i, res := range result {
 		if res != expected[i] {
 			t.Errorf("Got `%s`, expected `%s`", res, expected[i])
 		}
@@ -396,4 +441,9 @@ func newTestStatsdReporter() tally.StatsReporter {
 
 	opts := statsdreporter.Options{}
 	return newStatsdReporter(statter, opts)
+}
+
+func newTestPrometheusReporter() promreporter.Reporter {
+	opts := promreporter.Options{Registerer: prometheus.NewRegistry()}
+	return newPrometheusReporter(opts)
 }
