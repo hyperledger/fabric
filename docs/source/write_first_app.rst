@@ -134,6 +134,10 @@ First, let's run our ``query.js`` program to return a listing of all the cars on
 the ledger. A function that will query all the cars, ``queryAllCars``, is
 pre-loaded in the app, so we can simply run the program as is:
 
+.. note:: If you're running on MacOS, you need to edit the content of the variable
+          `network_url` in the query.js and replace `localhost` with the IP address
+	  of the VM used by Docker. Use `docker-machine env` to find this value
+	  
 .. code:: bash
 
   node query.js
