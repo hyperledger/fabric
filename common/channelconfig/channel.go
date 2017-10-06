@@ -83,8 +83,6 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup) (*ChannelConfig, error) {
 		protos: &ChannelProtos{},
 	}
 
-	mspConfigHandler := NewMSPConfigHandler()
-
 	if err := DeserializeProtoValuesFromGroup(channelGroup, cc.protos); err != nil {
 		return nil, errors.Wrap(err, "failed to deserialize values")
 	}
@@ -92,6 +90,9 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup) (*ChannelConfig, error) {
 	if err := cc.Validate(); err != nil {
 		return nil, err
 	}
+
+	capabilities := cc.Capabilities()
+	mspConfigHandler := NewMSPConfigHandler(capabilities.MSPVersion())
 
 	var err error
 	for groupName, group := range channelGroup.Groups {

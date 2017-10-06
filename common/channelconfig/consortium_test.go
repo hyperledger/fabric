@@ -8,12 +8,14 @@ package channelconfig
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/capabilities"
 	cb "github.com/hyperledger/fabric/protos/common"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConsortiumConfig(t *testing.T) {
-	cc, err := NewConsortiumConfig(&cb.ConfigGroup{}, NewMSPConfigHandler())
+	cc, err := NewConsortiumConfig(&cb.ConfigGroup{}, NewMSPConfigHandler(capabilities.MSPv1_0))
 	assert.NoError(t, err)
 	orgs := cc.Organizations()
 	assert.Equal(t, 0, len(orgs))

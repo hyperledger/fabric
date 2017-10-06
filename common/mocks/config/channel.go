@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/util"
 )
@@ -64,9 +65,17 @@ func (scm *Channel) Capabilities() channelconfig.ChannelCapabilities {
 type ChannelCapabilities struct {
 	// SupportedErr is returned by Supported()
 	SupportedErr error
+
+	// MSPVersionVal is returned by MSPVersion()
+	MSPVersionVal capabilities.MSPVersion
 }
 
 // Supported returns SupportedErr
-func (oc *ChannelCapabilities) Supported() error {
-	return oc.SupportedErr
+func (cc *ChannelCapabilities) Supported() error {
+	return cc.SupportedErr
+}
+
+// MSPVersion returns MSPVersionVal
+func (cc *ChannelCapabilities) MSPVersion() capabilities.MSPVersion {
+	return cc.MSPVersionVal
 }

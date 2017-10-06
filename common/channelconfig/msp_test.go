@@ -9,6 +9,7 @@ package channelconfig
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
@@ -26,7 +27,7 @@ func TestMSPConfigManager(t *testing.T) {
 
 	// test success:
 
-	mspCH := NewMSPConfigHandler()
+	mspCH := NewMSPConfigHandler(capabilities.MSPv1_0)
 
 	_, err = mspCH.ProposeMSP(conf)
 	assert.NoError(t, err)
@@ -44,7 +45,7 @@ func TestMSPConfigManager(t *testing.T) {
 }
 
 func TestMSPConfigFailure(t *testing.T) {
-	mspCH := NewMSPConfigHandler()
+	mspCH := NewMSPConfigHandler(capabilities.MSPv1_0)
 
 	// begin/propose/commit
 	t.Run("Bad proto", func(t *testing.T) {

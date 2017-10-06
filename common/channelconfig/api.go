@@ -9,6 +9,7 @@ package channelconfig
 import (
 	"time"
 
+	"github.com/hyperledger/fabric/common/capabilities"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -105,6 +106,10 @@ type Orderer interface {
 type ChannelCapabilities interface {
 	// Supported returns an error if there are unknown capabilities in this channel which are required
 	Supported() error
+
+	// MSPVersion specifies the version of the MSP this channel must understand, including the MSP types
+	// and MSP principal types.
+	MSPVersion() capabilities.MSPVersion
 }
 
 // ApplicationCapabilities defines the capabilities for the application portion of a channel

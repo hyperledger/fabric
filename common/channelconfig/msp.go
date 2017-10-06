@@ -9,6 +9,7 @@ package channelconfig
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -23,17 +24,21 @@ type pendingMSPConfig struct {
 
 // MSPConfigHandler
 type MSPConfigHandler struct {
-	idMap map[string]*pendingMSPConfig
+	version capabilities.MSPVersion
+	idMap   map[string]*pendingMSPConfig
 }
 
-func NewMSPConfigHandler() *MSPConfigHandler {
+func NewMSPConfigHandler(mspVersion capabilities.MSPVersion) *MSPConfigHandler {
 	return &MSPConfigHandler{
-		idMap: make(map[string]*pendingMSPConfig),
+		version: mspVersion,
+		idMap:   make(map[string]*pendingMSPConfig),
 	}
 }
 
 // ProposeValue called when an org defines an MSP
 func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP, error) {
+	// TODO utilize bh.version to initialize the MSP
+
 	// check that the type for that MSP is supported
 	if mspConfig.Type != int32(msp.FABRIC) {
 		return nil, fmt.Errorf("Setup error: unsupported msp type %d", mspConfig.Type)

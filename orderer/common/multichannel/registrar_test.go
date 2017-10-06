@@ -292,7 +292,7 @@ func TestResourcesCheck(t *testing.T) {
 				CapabilitiesVal: &mockchannelconfig.OrdererCapabilities{},
 			},
 			ChannelConfigVal: &mockchannelconfig.Channel{
-				CapabilitiesVal: &mockchannelconfig.OrdererCapabilities{},
+				CapabilitiesVal: &mockchannelconfig.ChannelCapabilities{},
 			},
 		})
 
