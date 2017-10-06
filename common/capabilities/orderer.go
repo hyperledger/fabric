@@ -12,7 +12,9 @@ import (
 
 const (
 	ordererTypeName = "Orderer"
-	OrdererV11      = "V1.1"
+
+	// OrdererV1_1 is the capabilties string for standard new non-backwards compatible fabric v1.1 orderer capabilities.
+	OrdererV1_1 = "V1.1"
 )
 
 // OrdererProvider provides capabilities information for orderer level config.
@@ -25,7 +27,7 @@ type OrdererProvider struct {
 func NewOrdererProvider(capabilities map[string]*cb.Capability) *OrdererProvider {
 	cp := &OrdererProvider{}
 	cp.registry = newRegistry(cp, capabilities)
-	_, cp.v11BugFixes = capabilities[OrdererV11]
+	_, cp.v11BugFixes = capabilities[OrdererV1_1]
 	return cp
 }
 
@@ -38,6 +40,8 @@ func (cp *OrdererProvider) Type() string {
 func (cp *OrdererProvider) HasCapability(capability string) bool {
 	switch capability {
 	// Add new capability names here
+	case OrdererV1_1:
+		return true
 	default:
 		return false
 	}

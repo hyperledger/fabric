@@ -411,7 +411,7 @@ func TestNewChannelConfig(t *testing.T) {
 	channelID := "foo"
 	gConf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
 	gConf.Orderer.Capabilities = map[string]bool{
-		capabilities.OrdererV11: true,
+		capabilities.OrdererV1_1: true,
 	}
 	singleMSPGenesisBlock := provisional.New(gConf).GenesisBlockForChannel(channelID)
 	configEnv := configtx.UnmarshalConfigEnvelopeOrPanic(
