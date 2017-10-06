@@ -1,10 +1,10 @@
 /*
-Copyright IBM Corp. All Rights Reserved.
+Copyright IBM Corp, SecureKey Technologies Inc. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
 
-package decoration
+package main
 
 import (
 	"testing"

@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. All Rights Reserved.
+Copyright IBM Corp, SecureKey Technologies Inc. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -14,15 +14,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRegistry(t *testing.T) {
-	r := InitRegistry(Config{})
+func TestInitRegistry(t *testing.T) {
+	r := InitRegistry(Config{
+		AuthFilters: []*HandlerConfig{&HandlerConfig{Name: "DefaultAuth"}},
+		Decorators:  []*HandlerConfig{&HandlerConfig{Name: "DefaultDecorator"}},
+	})
 	assert.NotNil(t, r)
-	authHandler := r.Lookup(AuthKey)
-	assert.NotNil(t, authHandler)
-	_, isAuthFilter := authHandler.(auth.Filter)
-	assert.True(t, isAuthFilter)
-	decorator := r.Lookup(DecoratorKey)
-	assert.NotNil(t, decorator)
-	_, isDecorator := decorator.(decoration.Decorator)
-	assert.True(t, isDecorator)
+	authHandlers := r.Lookup(Auth)
+	assert.NotNil(t, authHandlers)
+	filters, isAuthFilters := authHandlers.([]auth.Filter)
+	assert.True(t, isAuthFilters)
+	assert.Len(t, filters, 1)
+
+	decorationHandlers := r.Lookup(Decoration)
+	assert.NotNil(t, decorationHandlers)
+	decorators, isDecorators := decorationHandlers.([]decoration.Decorator)
+	assert.True(t, isDecorators)
+	assert.Len(t, decorators, 1)
+}
+
+func TestLoadCompiledInvalid(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected panic with invalid factory method")
+		}
+	}()
+
+	testReg := registry{}
+	testReg.loadCompiled("InvalidFactory", Auth)
 }

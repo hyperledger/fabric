@@ -20,6 +20,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -43,6 +44,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -175,13 +177,12 @@ func serve(args []string) error {
 	}
 
 	serverEndorser := endorser.NewEndorserServer(privDataDist)
-	libConf := library.Config{
-		AuthFilterFactory: viper.GetString("peer.handlers.authFilter"),
-		DecoratorFactory:  viper.GetString("peer.handlers.decorator"),
+	libConf := library.Config{}
+	if err = viperutil.EnhancedExactUnmarshalKey("peer.handlers", &libConf); err != nil {
+		return errors.WithMessage(err, "could not load YAML config")
 	}
-	auth := library.InitRegistry(libConf).Lookup(library.AuthKey).(authHandler.Filter)
-	auth.Init(serverEndorser)
-
+	authFilters := library.InitRegistry(libConf).Lookup(library.Auth).([]authHandler.Filter)
+	auth := authHandler.ChainFilters(serverEndorser, authFilters...)
 	// Register the Endorser server
 	pb.RegisterEndorserServer(peerServer.Server(), auth)
 

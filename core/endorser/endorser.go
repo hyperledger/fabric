@@ -109,9 +109,9 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	cccid := ccprovider.NewCCContext(chainID, cid.Name, version, txid, scc, signedProp, prop)
 
 	// decorate the chaincode input
-	decorator := library.InitRegistry(library.Config{}).Lookup(library.DecoratorKey).(decoration.Decorator)
+	decorators := library.InitRegistry(library.Config{}).Lookup(library.Decoration).([]decoration.Decorator)
 	cis.ChaincodeSpec.Input.Decorations = make(map[string][]byte)
-	cis.ChaincodeSpec.Input = decorator.Decorate(prop, cis.ChaincodeSpec.Input)
+	cis.ChaincodeSpec.Input = decoration.Apply(prop, cis.ChaincodeSpec.Input, decorators...)
 	cccid.ProposalDecorations = cis.ChaincodeSpec.Input.Decorations
 
 	res, ccevent, err = chaincode.ExecuteChaincode(ctxt, cccid, cis.ChaincodeSpec.Input.Args)

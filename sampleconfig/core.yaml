@@ -268,13 +268,36 @@ peer:
     profile:
         enabled:     false
         listenAddress: 0.0.0.0:6060
+
     # Handlers defines custom handlers that can filter and mutate
     # objects passing within the peer, such as:
     #   Auth filter - reject or forward proposals from clients
     #   Decorators  - append or mutate the chaincode input passed to the chaincode
+    # Valid handler definition contains:
+    #   - A name which is a factory method name defined in
+    #     core/handlers/library/library.go for statically compiled handlers
+    #   - library path to shared object binary for pluggable filters
+    # Auth filters and decorators are chained and executed in the order that
+    # they are defined. For example:
+    # authFilters:
+    #   -
+    #     name: FilterOne
+    #     library: /opt/lib/filter.so
+    #   -
+    #     name: FilterTwo
+    # decorators:
+    #   -
+    #     name: DecoratorOne
+    #   -
+    #     name: DecoratorTwo
+    #     library: /opt/lib/decorator.so
     handlers:
-        authFilter: "DefaultAuth"
-        decorator: "DefaultDecorator"
+        authFilters:
+          -
+            name: DefaultAuth
+        decorators:
+          -
+            name: DefaultDecorator
 
 ###############################################################################
 #

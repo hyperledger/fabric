@@ -17,6 +17,7 @@ limitations under the License.
 package node
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -24,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/viperutil"
+	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -115,4 +118,27 @@ func TestWritePid(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHandlerMap(t *testing.T) {
+	config1 := `
+  peer:
+    handlers:
+      authFilters:
+        -
+          name: filter1
+          library: /opt/lib/filter1.so
+        -
+          name: filter2
+  `
+	viper.SetConfigType("yaml")
+	err := viper.ReadConfig(bytes.NewBuffer([]byte(config1)))
+	assert.NoError(t, err)
+
+	libConf := library.Config{}
+	err = viperutil.EnhancedExactUnmarshalKey("peer.handlers", &libConf)
+	assert.NoError(t, err)
+	assert.Len(t, libConf.AuthFilters, 2, "expected two filters")
+	assert.Equal(t, "/opt/lib/filter1.so", libConf.AuthFilters[0].Library)
+	assert.Equal(t, "filter2", libConf.AuthFilters[1].Name)
 }
