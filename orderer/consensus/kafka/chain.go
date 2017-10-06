@@ -240,7 +240,10 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 			logger.Warningf("[channel: %s] Consenter for channel exiting", chain.ChainID())
 			counts[indexExitChanPass]++
 			return counts, nil
-		case kafkaErr := <-chain.channelConsumer.Errors():
+		case kafkaErr, ok := <-chain.channelConsumer.Errors():
+			if !ok {
+				continue // chain is halting
+			}
 			logger.Errorf("[channel: %s] Error during consumption: %s", chain.ChainID(), kafkaErr)
 			counts[indexRecvError]++
 			select {
