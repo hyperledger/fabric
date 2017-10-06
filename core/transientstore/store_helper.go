@@ -122,6 +122,8 @@ func createTxidRangeEndKey(txid string) []byte {
 	endKey = append(endKey, prwsetPrefix)
 	endKey = append(endKey, compositeKeySep)
 	endKey = append(endKey, []byte(txid)...)
+	// As txid is a fixed length string (i.e., 128 bits long UUID), 0xff can be used as a stopper.
+	// Otherwise a super-string of a given txid would also fall under the end key of range query.
 	endKey = append(endKey, byte(0xff))
 	return endKey
 }
@@ -137,7 +139,7 @@ func createPurgeIndexByHeightRangeStartKey(blockHeight uint64) []byte {
 	return startKey
 }
 
-// createPurgeIndexByHeightRangeStartKey returns a endKey to do a range query on index stored in transient store
+// createPurgeIndexByHeightRangeEndKey returns a endKey to do a range query on index stored in transient store
 // using blockHeight
 func createPurgeIndexByHeightRangeEndKey(blockHeight uint64) []byte {
 	var endKey []byte
@@ -159,13 +161,15 @@ func createPurgeIndexByTxidRangeStartKey(txid string) []byte {
 	return startKey
 }
 
-// createPurgeIndexByTxidRangeStartKey returns a endKey to do a range query on index stored in transient store
+// createPurgeIndexByTxidRangeEndKey returns a endKey to do a range query on index stored in transient store
 // using txid
 func createPurgeIndexByTxidRangeEndKey(txid string) []byte {
 	var endKey []byte
 	endKey = append(endKey, purgeIndexByTxidPrefix)
 	endKey = append(endKey, compositeKeySep)
 	endKey = append(endKey, []byte(txid)...)
+	// As txid is a fixed length string (i.e., 128 bits long UUID), 0xff can be used as a stopper.
+	// Otherwise a super-string of a given txid would also fall under the end key of range query.
 	endKey = append(endKey, byte(0xff))
 	return endKey
 }
