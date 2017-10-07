@@ -76,6 +76,16 @@ fi
 echo -e "\nDONE!"
 echo -e "Running tests with tags ${GO_TAGS} ..."
 
-#go test -cover -ldflags "$GO_LDFLAGS" $PKGS -p 1 -timeout=20m
-gocov test -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $PKGS -p 1 -timeout=20m | gocov-xml > report.xml
+# Initialize profile.cov
+date
+echo "mode: set" > profile.cov
+for pkg in $PKGS
+do
+    :> profile_tmp.cov
+    go test -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $pkg -timeout=20m
+    tail -n +2 profile_tmp.cov >> profile.cov || echo "Unable to append coverage for $pkg"
+done
+#convert to cobertura format
+gocov convert profile.cov |gocov-xml > report.xml
+date
 fi
