@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	cutils "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -42,6 +43,7 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	mspproto "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -1479,6 +1481,67 @@ func (c *mockPolicyChecker) CheckPolicyBySignedData(channelID, policyName string
 
 func (c *mockPolicyChecker) CheckPolicyNoChannel(policyName string, signedProp *peer.SignedProposal) error {
 	return nil
+}
+
+func TestValidateDeployRWSetAndCollection(t *testing.T) {
+	cd := &ccprovider.ChaincodeData{Name: "mycc"}
+
+	v := new(ValidatorOneValidSignature)
+	stub := shim.NewMockStub("validatoronevalidsignature", v)
+
+	r1 := stub.MockInit("1", [][]byte{})
+	if r1.Status != shim.OK {
+		fmt.Println("Init failed", string(r1.Message))
+		t.FailNow()
+	}
+
+	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: "b"}, {Key: "c"}}}
+
+	err := v.validateDeployRWSetAndCollection(rwset, nil, nil)
+	assert.Error(t, err)
+
+	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: "b"}}}
+
+	err = v.validateDeployRWSetAndCollection(rwset, cd, nil)
+	assert.Error(t, err)
+
+	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}}}
+
+	err = v.validateDeployRWSetAndCollection(rwset, cd, nil)
+	assert.NoError(t, err)
+
+	lsccargs := [][]byte{nil, nil, nil, nil, nil, nil}
+
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs)
+	assert.NoError(t, err)
+
+	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc")}}}
+
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs)
+	assert.NoError(t, err)
+
+	lsccargs = [][]byte{nil, nil, nil, nil, nil, []byte("barf")}
+
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs)
+	assert.Error(t, err)
+
+	lsccargs = [][]byte{nil, nil, nil, nil, nil, []byte("barf")}
+	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: []byte("barf")}}}
+
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs)
+	assert.Error(t, err)
+
+	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection"}}}
+	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{cc}}
+	ccpBytes, err := proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	lsccargs = [][]byte{nil, nil, nil, nil, nil, ccpBytes}
+	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: ccpBytes}}}
+
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs)
+	assert.NoError(t, err)
 }
 
 var lccctestpath = "/tmp/lscc-validation-test"
