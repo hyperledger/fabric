@@ -51,11 +51,11 @@ func (cs *mockCollectionStore) withPolicy(collection string) *mockCollectionAcce
 	return coll
 }
 
-func (cs mockCollectionStore) RetrieveCollectionAccessPolicy(cc fcommon.CollectionCriteria) privdata.CollectionAccessPolicy {
-	return cs.m[cc.Collection]
+func (cs mockCollectionStore) RetrieveCollectionAccessPolicy(cc fcommon.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
+	return cs.m[cc.Collection], nil
 }
 
-func (cs mockCollectionStore) RetrieveCollection(cc fcommon.CollectionCriteria) privdata.Collection {
+func (cs mockCollectionStore) RetrieveCollection(fcommon.CollectionCriteria) (privdata.Collection, error) {
 	panic("implement me")
 }
 

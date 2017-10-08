@@ -88,7 +88,7 @@ func TestDistributor(t *testing.T) {
 		Namespace:  "ns2",
 		Channel:    "test",
 		Collection: "c2",
-	})
+	}).andIsLenient()
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").addRWSet().addNSRWSet("ns2", "c1", "c2").create()
 	err := d.Distribute("tx1", pvtData[0].WriteSet, cs)
 	assert.NoError(t, err)

@@ -13,6 +13,13 @@ option java_package = "org.hyperledger.fabric.protos.common";
 
 package common;
 
+// CollectionConfigPackage represents an array of CollectionConfig
+// messages; the extra struct is required because repeated oneof is
+// forbidden by the protobuf syntax
+message CollectionConfigPackage {
+    repeated CollectionConfig config = 1;
+}
+
 // CollectionConfig defines the configuration of a collection object;
 // it currently contains a single, static type.
 // Dynamic collections are deferred.

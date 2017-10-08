@@ -283,12 +283,18 @@ func createcollectionStore(expectedSignedData common.SignedData) *collectionStor
 type collectionStore struct {
 	expectedSignedData common.SignedData
 	acceptsAll         bool
+	lenient            bool
 	store              map[common.CollectionCriteria]collectionAccessPolicy
 	policies           map[collectionAccessPolicy]common.CollectionCriteria
 }
 
 func (cs *collectionStore) thatAcceptsAll() *collectionStore {
 	cs.acceptsAll = true
+	return cs
+}
+
+func (cs *collectionStore) andIsLenient() *collectionStore {
+	cs.lenient = true
 	return cs
 }
 
@@ -302,17 +308,20 @@ func (cs *collectionStore) thatAccepts(cc common.CollectionCriteria) *collection
 	return cs
 }
 
-func (cs *collectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCriteria) privdata.CollectionAccessPolicy {
+func (cs *collectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
 	if sp, exists := cs.store[cc]; exists {
-		return &sp
+		return &sp, nil
 	}
-	return &collectionAccessPolicy{
-		cs: cs,
-		n:  util.RandomUInt64(),
+	if cs.acceptsAll || cs.lenient {
+		return &collectionAccessPolicy{
+			cs: cs,
+			n:  util.RandomUInt64(),
+		}, nil
 	}
+	return nil, errors.New("not found")
 }
 
-func (cs *collectionStore) RetrieveCollection(cc common.CollectionCriteria) privdata.Collection {
+func (cs *collectionStore) RetrieveCollection(common.CollectionCriteria) (privdata.Collection, error) {
 	panic("implement me")
 }
 

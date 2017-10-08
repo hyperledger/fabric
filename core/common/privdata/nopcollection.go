@@ -37,10 +37,10 @@ func (nc *NopCollection) AccessFilter() Filter {
 type NopCollectionStore struct {
 }
 
-func (*NopCollectionStore) RetrieveCollection(common.CollectionCriteria) Collection {
-	return &NopCollection{}
+func (*NopCollectionStore) RetrieveCollection(common.CollectionCriteria) (Collection, error) {
+	return &NopCollection{}, nil
 }
 
-func (*NopCollectionStore) RetrieveCollectionAccessPolicy(common.CollectionCriteria) CollectionAccessPolicy {
-	return &NopCollection{}
+func (*NopCollectionStore) RetrieveCollectionAccessPolicy(common.CollectionCriteria) (CollectionAccessPolicy, error) {
+	return &NopCollection{}, nil
 }
