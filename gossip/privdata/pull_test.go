@@ -87,11 +87,7 @@ func (mc *mockCollectionAccess) AccessFilter() privdata.Filter {
 	return policy2Filter[mc]
 }
 
-func (mc *mockCollectionAccess) RequiredExternalPeerCount() int {
-	return 0
-}
-
-func (mc *mockCollectionAccess) RequiredInternalPeerCount() int {
+func (mc *mockCollectionAccess) RequiredPeerCount() int {
 	return 0
 }
 
@@ -164,7 +160,7 @@ func (g *mockGossip) PeerFilter(channel common.ChainID, messagePredicate api.Sub
 	return func(member discovery.NetworkMember) bool {
 		return messagePredicate(api.PeerSignature{
 			PeerIdentity: api.PeerIdentityType(member.PKIid),
-		}, true)
+		})
 	}, nil
 }
 

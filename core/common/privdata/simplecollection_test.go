@@ -117,8 +117,7 @@ func TestSetupGoodConfigCollection(t *testing.T) {
 	assert.True(t, members[1] == "signer1")
 
 	// check required peer count
-	assert.True(t, sc.RequiredInternalPeerCount() == 1)
-	assert.True(t, sc.RequiredExternalPeerCount() == 1)
+	assert.True(t, sc.RequiredPeerCount() == 1)
 }
 
 func TestSimpleCollectionFilter(t *testing.T) {

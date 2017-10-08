@@ -111,48 +111,35 @@ func (d *distributorImpl) computeDisseminationPlan(txID string, privData *rwset.
 
 func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAccessPolicy, colFilter privdata.Filter, pvtDataMsg *proto.SignedGossipMessage) ([]*dissemination, error) {
 	var disseminationPlan []*dissemination
-	for _, expectedToBeInOurOrg := range []bool{true, false} {
-		var expectedToBeInOurOrg bool = expectedToBeInOurOrg
-		minAck := colAP.RequiredExternalPeerCount()
-		if expectedToBeInOurOrg {
-			minAck = colAP.RequiredInternalPeerCount()
-		}
-
-		routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChainID(d.chainID), func(signature api.PeerSignature, isOurOrg bool) bool {
-			if isOurOrg != expectedToBeInOurOrg {
-				return false
-			}
-			return colFilter(common.SignedData{
-				Data:      signature.Message,
-				Signature: signature.Signature,
-				Identity:  []byte(signature.PeerIdentity),
-			})
+	minAck := colAP.RequiredPeerCount()
+	routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChainID(d.chainID), func(signature api.PeerSignature) bool {
+		return colFilter(common.SignedData{
+			Data:      signature.Message,
+			Signature: signature.Signature,
+			Identity:  []byte(signature.PeerIdentity),
 		})
+	})
 
-		if err != nil {
-			logger.Error("Failed to retrieve peer routing filter for channel", d.chainID, ":", err)
-			return nil, err
-		}
-
-		maxPeers := viper.GetInt("peer.gossip.pvtData.maxExternalPeers")
-		if expectedToBeInOurOrg {
-			maxPeers = viper.GetInt("peer.gossip.pvtData.maxInternalPeers")
-		}
-
-		sc := gossip2.SendCriteria{
-			Timeout:  time.Second,
-			Channel:  gossipCommon.ChainID(d.chainID),
-			MaxPeers: maxPeers,
-			MinAck:   minAck,
-			IsEligible: func(member discovery.NetworkMember) bool {
-				return routingFilter(member)
-			},
-		}
-		disseminationPlan = append(disseminationPlan, &dissemination{
-			criteria: sc,
-			msg:      pvtDataMsg,
-		})
+	if err != nil {
+		logger.Error("Failed to retrieve peer routing filter for channel", d.chainID, ":", err)
+		return nil, err
 	}
+
+	maxPeers := viper.GetInt("peer.gossip.pvtData.maxPeers")
+
+	sc := gossip2.SendCriteria{
+		Timeout:  time.Second,
+		Channel:  gossipCommon.ChainID(d.chainID),
+		MaxPeers: maxPeers,
+		MinAck:   minAck,
+		IsEligible: func(member discovery.NetworkMember) bool {
+			return routingFilter(member)
+		},
+	}
+	disseminationPlan = append(disseminationPlan, &dissemination{
+		criteria: sc,
+		msg:      pvtDataMsg,
+	})
 	return disseminationPlan, nil
 }
 

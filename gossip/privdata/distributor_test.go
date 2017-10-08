@@ -41,19 +41,13 @@ func (g *gossipMock) PeerFilter(channel gcommon.ChainID, messagePredicate api.Su
 		return nil, g.err
 	}
 	return func(member discovery.NetworkMember) bool {
-		var fromOurOrg bool
-		if string(member.PKIid) == "ORG1" {
-			fromOurOrg = true
-		}
-		return messagePredicate(g.PeerSignature, fromOurOrg)
+		return messagePredicate(g.PeerSignature)
 	}, nil
 }
 
 func TestDistributor(t *testing.T) {
-	viper.Set("peer.gossip.pvtData.minInternalPeers", 1)
-	viper.Set("peer.gossip.pvtData.maxInternalPeers", 2)
-	viper.Set("peer.gossip.pvtData.minExternalPeers", 3)
-	viper.Set("peer.gossip.pvtData.maxExternalPeers", 4)
+	viper.Set("peer.gossip.pvtData.minPeers", 1)
+	viper.Set("peer.gossip.pvtData.maxPeers", 2)
 	g := &gossipMock{
 		Mock: mock.Mock{},
 		PeerSignature: api.PeerSignature{
@@ -96,7 +90,6 @@ func TestDistributor(t *testing.T) {
 		Collection: "c2",
 	})
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").addRWSet().addNSRWSet("ns2", "c1", "c2").create()
-	// Each private RWSet is sent to inside our org, and outside of the org, totalling in 8 sends.
 	err := d.Distribute("tx1", pvtData[0].WriteSet, cs)
 	assert.NoError(t, err)
 	err = d.Distribute("tx2", pvtData[1].WriteSet, cs)
@@ -108,38 +101,16 @@ func TestDistributor(t *testing.T) {
 		// The mock collection store returns policies that for ns1 and c1, or ns2 and c2 return true regardless
 		// of the network member, and for any other collection and namespace combination - return false
 
-		// If this is a dissemination to a foreign org, ensure MaxPeers is maxExternalPeers which is 4
-		// and MinAck is minExternalPeers which is is 3
-		foreignOrg := sc.IsEligible(discovery.NetworkMember{PKIid: gcommon.PKIidType("ORG2")})
-		if foreignOrg {
-			assert.Equal(t, 4, sc.MaxPeers)
-			assert.Equal(t, 3, sc.MinAck)
-		}
-
-		// If this is a dissemination within the org
-		intraOrg := sc.IsEligible(discovery.NetworkMember{PKIid: gcommon.PKIidType("ORG1")})
-		if intraOrg {
-			// Ensure MaxPeers is maxInternalPeers which is 2
-			//and MinAck is minInternalPeers which is 1
-			assert.Equal(t, 2, sc.MaxPeers)
-			assert.Equal(t, 1, sc.MinAck)
-		}
-
-		// If this private payload isn't allowed to be disseminated to any org,
-		// ensure this is because the private data is either ns1 and c2 or ns2 and c1.
-		// Otherwise, this private data is allowed to be disseminated to someone,
-		// so it has to be ns1 and c1 or ns2 and c2
-		if !foreignOrg && !intraOrg {
-			assert.True(t, (pp.Namespace == "ns1" && pp.CollectionName == "c2") || (pp.Namespace == "ns2" && pp.CollectionName == "c1"))
-		} else {
-			assert.True(t, (pp.Namespace == "ns1" && pp.CollectionName == "c1") || (pp.Namespace == "ns2" && pp.CollectionName == "c2"))
-		}
+		// Ensure MaxPeers is maxInternalPeers which is 2
+		//and MinAck is minInternalPeers which is 1
+		assert.Equal(t, 2, sc.MaxPeers)
+		assert.Equal(t, 1, sc.MinAck)
 	}
 	i := 0
 	for dis := range sendings {
 		assertACL(dis.PrivatePayload, dis.SendCriteria)
 		i++
-		if i == 8 {
+		if i == 4 {
 			break
 		}
 	}
@@ -157,5 +128,5 @@ func TestDistributor(t *testing.T) {
 	g.err = nil
 	err = d.Distribute("tx1", pvtData[0].WriteSet, cs)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed disseminating 4 out of 4 private RWSets")
+	assert.Contains(t, err.Error(), "Failed disseminating 2 out of 2 private RWSets")
 }

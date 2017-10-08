@@ -413,13 +413,11 @@ func (gc *gossipChannel) PeerFilter(messagePredicate api.SubChannelSelectionCrit
 			return false
 		}
 
-		sameOrg := bytes.Equal(gc.selfOrg, gc.GetOrgOfPeer(member.PKIid))
-
 		return messagePredicate(api.PeerSignature{
 			Message:      msg.Payload,
 			Signature:    msg.Signature,
 			PeerIdentity: peerIdentity,
-		}, sameOrg)
+		})
 	}
 }
 

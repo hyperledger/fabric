@@ -186,23 +186,14 @@ peer:
             # pullRetryThreshold determines the maximum duration of time private data corresponding for a given block
             # would be attempted to be pulled from peers until the block would be committed without the private data
             pullRetryThreshold: 60s
-            # minInternalPeers defines the minimum number of peers from the peer's organization
+            # minPeers defines the minimum number of peers
             # that an endorsement containing private data would target for dissemination.
             # The endorsement would fail if an insufficient number of acknowledgements from
             # peers of the peer's organization wasn't obtained.
-            minInternalPeers: 1
-            # maxInternalPeers defines the maximum number of peers from the peer's organization
+            minPeers: 1
+            # maxPeers defines the maximum number of peers
             # that an endorsement containing private data would target for dissemination
-            maxInternalPeers: 1
-
-            # minInternalPeers defines the minimum number of peers foreign to the peer's organization
-            # that an endorsement containing private data would target for dissemination
-            # The endorsement would fail if an insufficient number of acknowledgements from
-            # peers foreign to the peer's organization wasn't obtained.
-            minExternalPeers: 1
-            # maxInternalPeers defines the maximum number of peers foreign to the peer's organization
-            # that an endorsement containing private data would target for dissemination
-            maxExternalPeers: 1
+            maxPeers: 1
 
     # EventHub related configuration
     events:

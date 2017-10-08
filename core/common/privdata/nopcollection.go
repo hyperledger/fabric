@@ -23,12 +23,8 @@ func (nc *NopCollection) MemberOrgs() []string {
 	return nil
 }
 
-func (nc *NopCollection) RequiredExternalPeerCount() int {
-	return viper.GetInt("peer.gossip.pvtData.minExternalPeers")
-}
-
-func (nc *NopCollection) RequiredInternalPeerCount() int {
-	return viper.GetInt("peer.gossip.pvtData.minInternalPeers")
+func (nc *NopCollection) RequiredPeerCount() int {
+	return viper.GetInt("peer.gossip.pvtData.minPeers")
 }
 
 func (nc *NopCollection) AccessFilter() Filter {

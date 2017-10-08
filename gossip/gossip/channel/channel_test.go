@@ -1550,28 +1550,23 @@ func TestGossipChannelEligibility(t *testing.T) {
 	assert.False(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDinOrg3}))
 
 	// Ensure peers from the channel are returned
-	assert.True(t, gc.PeerFilter(func(signature api.PeerSignature, sameOrg bool) bool {
-		assert.True(t, sameOrg)
+	assert.True(t, gc.PeerFilter(func(signature api.PeerSignature) bool {
 		return true
 	})(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
-	assert.True(t, gc.PeerFilter(func(signature api.PeerSignature, sameOrg bool) bool {
-		assert.False(t, sameOrg)
+	assert.True(t, gc.PeerFilter(func(signature api.PeerSignature) bool {
 		return true
 	})(discovery.NetworkMember{PKIid: pkiIDinOrg2}))
 	// But not peers which aren't in the channel
-	assert.False(t, gc.PeerFilter(func(signature api.PeerSignature, sameOrg bool) bool {
-		assert.False(t, sameOrg)
+	assert.False(t, gc.PeerFilter(func(signature api.PeerSignature) bool {
 		return true
 	})(discovery.NetworkMember{PKIid: pkiIDinOrg3}))
 
 	// Ensure the given predicate is considered
-	assert.True(t, gc.PeerFilter(func(signature api.PeerSignature, sameOrg bool) bool {
-		assert.False(t, sameOrg)
+	assert.True(t, gc.PeerFilter(func(signature api.PeerSignature) bool {
 		return bytes.Equal(signature.PeerIdentity, []byte("pkiIDinOrg2"))
 	})(discovery.NetworkMember{PKIid: pkiIDinOrg2}))
 
-	assert.False(t, gc.PeerFilter(func(signature api.PeerSignature, sameOrg bool) bool {
-		assert.True(t, sameOrg)
+	assert.False(t, gc.PeerFilter(func(signature api.PeerSignature) bool {
 		return bytes.Equal(signature.PeerIdentity, []byte("pkiIDinOrg2"))
 	})(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
 
