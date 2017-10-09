@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
@@ -25,6 +27,11 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
+)
+
+const (
+	pullRetrySleepInterval = time.Second
 )
 
 var logger *logging.Logger // package-level logger
@@ -142,12 +149,21 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 		return exists
 	})
 
-	logger.Debug("Fetching", len(missingKeys), "rwsets from peers")
-	for len(missingKeys) > 0 {
+	retryThresh := viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold")
+	logger.Debug("Fetching", len(missingKeys), "rwsets from peers for a maximum duration of", retryThresh)
+	start := time.Now()
+	limit := start.Add(retryThresh)
+	for len(missingKeys) > 0 && time.Now().Before(limit) {
 		c.fetchFromPeers(block.Header.Number, missingKeys, ownedRWsets)
+		time.Sleep(pullRetrySleepInterval)
 	}
-	logger.Debug("Fetched all missing rwsets from peers")
+	if len(missingKeys) == 0 {
+		logger.Debug("Fetched all missing rwsets from peers")
+	} else {
+		logger.Warning("Missing", missingKeys)
+	}
 
+	// populate the private RWSets passed to the ledger
 	for seqInBlock, nsRWS := range ownedRWsets.bySeqsInBlock() {
 		rwsets := nsRWS.toRWSet()
 		logger.Debug("Added", len(rwsets.NsPvtRwset), "rwsets to sequence", seqInBlock, "for block", block.Header.Number)
@@ -155,6 +171,16 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 			SeqInBlock: seqInBlock,
 			WriteSet:   rwsets,
 		}
+	}
+
+	// populate missing RWSets to be passed to the ledger
+	for missingRWS := range missingKeys {
+		blockAndPvtData.Missing = append(blockAndPvtData.Missing, ledger.MissingPrivateData{
+			TxId:       missingRWS.txID,
+			Namespace:  missingRWS.namespace,
+			Collection: missingRWS.collection,
+			SeqInBlock: int(missingRWS.seqInBlock),
+		})
 	}
 
 	// commit block and private data
@@ -185,6 +211,7 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, missingKeys rwsetKeys, own
 		})
 	})
 
+	logger.Debug("Fetching", req.Digests, "from peers")
 	fetchedData, err := c.fetch(req)
 	if err != nil {
 		logger.Warning("Failed fetching private data for block", blockSeq, "from peers:", err)
@@ -347,6 +374,15 @@ func (s rwsetByKeys) bySeqsInBlock() map[uint64]readWriteSets {
 
 type rwsetKeys map[rwSetKey]struct{}
 
+// String returns a string representation of the rwsetKeys
+func (s rwsetKeys) String() string {
+	var buffer bytes.Buffer
+	for k := range s {
+		buffer.WriteString(fmt.Sprintf("%s\n", k.String()))
+	}
+	return buffer.String()
+}
+
 // foreach invokes given function in each key
 func (s rwsetKeys) foreach(f func(key rwSetKey)) {
 	for k := range s {
@@ -399,6 +435,11 @@ type rwSetKey struct {
 	namespace  string
 	collection string
 	hash       string
+}
+
+// String returns a string representation of the rwSetKey
+func (k *rwSetKey) String() string {
+	return fmt.Sprintf("txID: %s, seq: %d, namespace: %s, collection: %s, hash: %s", k.txID, k.seqInBlock, k.namespace, k.collection, k.hash)
 }
 
 func (k *rwSetKey) toTxPvtReadWriteSet(rws []byte) *rwset.TxPvtReadWriteSet {
