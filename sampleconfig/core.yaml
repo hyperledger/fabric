@@ -113,12 +113,12 @@ peer:
         # connection with ordering service and use delivery protocol
         # to pull ledger blocks from ordering service. It is recommended to
         # use leader election for large networks of peers.
-        useLeaderElection: false
+        useLeaderElection: true
         # Statically defines peer to be an organization "leader",
         # where this means that current peer will maintain connection
         # with ordering service and disseminate block across peers in
         # its own organization
-        orgLeader: true
+        orgLeader: false
 
         # Overrides the endpoint that the peer publishes to peers
         # in its organization. For peers in foreign organizations
