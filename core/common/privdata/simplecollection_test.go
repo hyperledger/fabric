@@ -82,6 +82,10 @@ func (md *mockDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.
 	return &mockIdentity{idBytes: serializedIdentity}, nil
 }
 
+func (md *mockDeserializer) IsWellFormed(_ *mb.SerializedIdentity) error {
+	return nil
+}
+
 func TestSetupBadConfig(t *testing.T) {
 	// set up simple collection with invalid data
 	var sc SimpleCollection

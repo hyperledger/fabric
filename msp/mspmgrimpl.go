@@ -29,6 +29,9 @@ type mspManagerImpl struct {
 	// map that contains all MSPs that we have setup or otherwise added
 	mspsMap map[string]MSP
 
+	// map that maps MSPs by their provider types
+	mspsByProviders map[ProviderType][]MSP
+
 	// error that might have occurred at startup
 	up bool
 }
@@ -52,6 +55,9 @@ func (mgr *mspManagerImpl) Setup(msps []MSP) error {
 	// create the map that assigns MSP IDs to their manager instance - once
 	mgr.mspsMap = make(map[string]MSP)
 
+	// create the map that sorts MSPs by their provider types
+	mgr.mspsByProviders = make(map[ProviderType][]MSP)
+
 	for _, msp := range msps {
 		// add the MSP to the map of active MSPs
 		mspID, err := msp.GetIdentifier()
@@ -59,6 +65,8 @@ func (mgr *mspManagerImpl) Setup(msps []MSP) error {
 			return errors.WithMessage(err, "could not extract msp identifier")
 		}
 		mgr.mspsMap[mspID] = msp
+		providerType := msp.GetType()
+		mgr.mspsByProviders[providerType] = append(mgr.mspsByProviders[providerType], msp)
 	}
 
 	mgr.up = true
@@ -96,4 +104,17 @@ func (mgr *mspManagerImpl) DeserializeIdentity(serializedID []byte) (Identity, e
 	default:
 		return t.DeserializeIdentity(serializedID)
 	}
+}
+
+func (mgr *mspManagerImpl) IsWellFormed(identity *msp.SerializedIdentity) error {
+	// Iterate over all the MSPs by their providers, and find at least 1 MSP that can attest
+	// that this identity is well formed
+	for _, mspList := range mgr.mspsByProviders {
+		// We are guaranteed to have at least 1 MSP in each list from the initialization at Setup()
+		msp := mspList[0]
+		if err := msp.IsWellFormed(identity); err == nil {
+			return nil
+		}
+	}
+	return errors.New("no MSP provider recognizes the identity")
 }

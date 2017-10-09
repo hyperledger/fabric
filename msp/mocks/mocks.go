@@ -18,6 +18,10 @@ type MockMSP struct {
 	mock.Mock
 }
 
+func (m *MockMSP) IsWellFormed(_ *pmsp.SerializedIdentity) error {
+	return nil
+}
+
 func (m *MockMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
 	args := m.Called(serializedIdentity)
 	return args.Get(0).(msp.Identity), args.Error(1)

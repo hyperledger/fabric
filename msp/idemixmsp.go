@@ -328,6 +328,18 @@ func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal)
 	}
 }
 
+// IsWellFormed checks if the given identity can be deserialized into its provider-specific .
+// In this MSP implementation, an identity is considered well formed if it contains a
+// marshaled SerializedIdemixIdentity protobuf message.
+func (id *idemixmsp) IsWellFormed(identity *m.SerializedIdentity) error {
+	sId := new(m.SerializedIdemixIdentity)
+	err := proto.Unmarshal(identity.IdBytes, sId)
+	if err != nil {
+		return errors.Wrap(err, "not an idemix identity")
+	}
+	return nil
+}
+
 func (msp *idemixmsp) GetTLSRootCerts() [][]byte {
 	// TODO
 	return nil

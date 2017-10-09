@@ -78,6 +78,10 @@ func (d *MockIdentityDeserializer) DeserializeIdentity(serializedIdentity []byte
 	return nil, errors.New("Invalid Identity")
 }
 
+func (d *MockIdentityDeserializer) IsWellFormed(_ *mspproto.SerializedIdentity) error {
+	return nil
+}
+
 type MockIdentity struct {
 	identity []byte
 	msg      []byte

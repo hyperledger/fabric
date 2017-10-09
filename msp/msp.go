@@ -19,6 +19,9 @@ type IdentityDeserializer interface {
 	// an msp that is different from this one that is performing
 	// the deserialization.
 	DeserializeIdentity(serializedIdentity []byte) (Identity, error)
+
+	// IsWellFormed checks if the given identity can be deserialized into its provider-specific form
+	IsWellFormed(identity *msp.SerializedIdentity) error
 }
 
 // Membership service provider APIs for Hyperledger Fabric:

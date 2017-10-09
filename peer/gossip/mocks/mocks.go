@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	mspproto "github.com/hyperledger/fabric/protos/msp"
+	"github.com/stretchr/testify/mock"
 )
 
 type ChannelPolicyManagerGetter struct{}
@@ -108,6 +109,7 @@ func (d *IdentityDeserializerWithExpiration) DeserializeIdentity(serializedIdent
 type IdentityDeserializer struct {
 	Identity []byte
 	Msg      []byte
+	mock.Mock
 }
 
 func (d *IdentityDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
@@ -118,6 +120,13 @@ func (d *IdentityDeserializer) DeserializeIdentity(serializedIdentity []byte) (m
 	}
 
 	return nil, errors.New("Invalid Identity")
+}
+
+func (d *IdentityDeserializer) IsWellFormed(identity *mspproto.SerializedIdentity) error {
+	if len(d.ExpectedCalls) == 0 {
+		return nil
+	}
+	return d.Called(identity).Error(0)
 }
 
 type Identity struct {

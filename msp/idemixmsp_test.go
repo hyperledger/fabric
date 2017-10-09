@@ -285,6 +285,26 @@ func TestPrincipalIdentityBadIdentity(t *testing.T) {
 	}
 }
 
+func TestIdemixIsWellFormed(t *testing.T) {
+	idemixMSP, err := setup("testdata/idemix/MSP1OU1")
+	assert.NoError(t, err)
+
+	id, err := getDefaultSigner(idemixMSP)
+	assert.NoError(t, err)
+	rawId, err := id.Serialize()
+	assert.NoError(t, err)
+	sId := &msp.SerializedIdentity{}
+	err = proto.Unmarshal(rawId, sId)
+	assert.NoError(t, err)
+	err = idemixMSP.IsWellFormed(sId)
+	assert.NoError(t, err)
+	// Corrupt the identity bytes
+	sId.IdBytes = append(sId.IdBytes, 1)
+	err = idemixMSP.IsWellFormed(sId)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not an idemix identity")
+}
+
 func TestPrincipalOU(t *testing.T) {
 	msp1, err := setup("testdata/idemix/MSP1OU1")
 	assert.NoError(t, err)

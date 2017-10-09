@@ -258,6 +258,64 @@ func TestSerializeIdentities(t *testing.T) {
 	}
 }
 
+func TestIsWellFormed(t *testing.T) {
+	mspMgr := NewMSPManager()
+
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		return
+	}
+
+	serializedID, err := id.Serialize()
+	if err != nil {
+		t.Fatalf("Serialize should have succeeded, got err %s", err)
+		return
+	}
+
+	sId := &msp.SerializedIdentity{}
+	err = proto.Unmarshal(serializedID, sId)
+	assert.NoError(t, err)
+
+	// An MSP Manager without any MSPs should not recognize the identity since
+	// not providers are registered
+	err = mspMgr.IsWellFormed(sId)
+	assert.Error(t, err)
+	assert.Equal(t, "no MSP provider recognizes the identity", err.Error())
+
+	// Add the MSP to the MSP Manager
+	mspMgr.Setup([]MSP{localMsp})
+
+	err = localMsp.IsWellFormed(sId)
+	assert.NoError(t, err)
+	err = mspMgr.IsWellFormed(sId)
+	assert.NoError(t, err)
+
+	bl, _ := pem.Decode(sId.IdBytes)
+	assert.Equal(t, "CERTIFICATE", bl.Type)
+
+	// Now, strip off the type from the PEM block. It should still be valid
+	bl.Type = ""
+	sId.IdBytes = pem.EncodeToMemory(bl)
+
+	err = localMsp.IsWellFormed(sId)
+	assert.NoError(t, err)
+
+	// Now, corrupt the type of the PEM block.
+	// make sure it isn't considered well formed by both an MSP and an MSP Manager
+	bl.Type = "foo"
+	sId.IdBytes = pem.EncodeToMemory(bl)
+	err = localMsp.IsWellFormed(sId)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "pem type is")
+	assert.Contains(t, err.Error(), "should be 'CERTIFICATE' or missing")
+
+	err = mspMgr.IsWellFormed(sId)
+	assert.Error(t, err)
+	assert.Equal(t, "no MSP provider recognizes the identity", err.Error())
+}
+
 func TestValidateCAIdentity(t *testing.T) {
 	caID := getIdentity(t, cacerts)
 
