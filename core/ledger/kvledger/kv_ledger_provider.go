@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb/historyleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -43,6 +44,7 @@ type Provider struct {
 	vdbProvider         privacyenabledstate.DBProvider
 	historydbProvider   historydb.HistoryDBProvider
 	stateListeners      []ledger.StateListener
+	bookkeepingProvider bookkeeping.Provider
 }
 
 // NewProvider instantiates a new Provider.
@@ -63,11 +65,10 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	}
 
 	// Initialize the history database (index for history of values by key)
-	var historydbProvider historydb.HistoryDBProvider
-	historydbProvider = historyleveldb.NewHistoryDBProvider()
-
+	historydbProvider := historyleveldb.NewHistoryDBProvider()
+	bookkeepingProvider := bookkeeping.NewProvider()
 	logger.Info("ledger provider Initialized")
-	provider := &Provider{idStore, ledgerStoreProvider, vdbProvider, historydbProvider, nil}
+	provider := &Provider{idStore, ledgerStoreProvider, vdbProvider, historydbProvider, nil, bookkeepingProvider}
 	provider.recoverUnderConstructionLedger()
 	return provider, nil
 }
@@ -149,7 +150,7 @@ func (provider *Provider) openInternal(ledgerID string) (ledger.PeerLedger, erro
 
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying data stores
 	// (id store, blockstore, state database, history database)
-	l, err := newKVLedger(ledgerID, blockStore, vDB, historyDB, provider.stateListeners)
+	l, err := newKVLedger(ledgerID, blockStore, vDB, historyDB, provider.stateListeners, provider.bookkeepingProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -172,6 +173,7 @@ func (provider *Provider) Close() {
 	provider.ledgerStoreProvider.Close()
 	provider.vdbProvider.Close()
 	provider.historydbProvider.Close()
+	provider.bookkeepingProvider.Close()
 }
 
 // recoverUnderConstructionLedger checks whether the under construction flag is set - this would be the case

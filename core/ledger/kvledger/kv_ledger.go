@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
@@ -41,13 +42,14 @@ type kvLedger struct {
 // NewKVLedger constructs new `KVLedger`
 func newKVLedger(ledgerID string, blockStore *ledgerstorage.Store,
 	versionedDB privacyenabledstate.DB, historyDB historydb.HistoryDB,
-	stateListeners []ledger.StateListener) (*kvLedger, error) {
-
+	stateListeners []ledger.StateListener, bookkeeperProvider bookkeeping.Provider) (*kvLedger, error) {
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
-
 	//Initialize transaction manager using state database
 	var txmgmt txmgr.TxMgr
-	txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(ledgerID, versionedDB, stateListeners)
+	txmgmt, err := lockbasedtxmgr.NewLockBasedTxMgr(ledgerID, versionedDB, stateListeners, bookkeeperProvider)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying
 	// id store, blockstore, txmgr (state database), history database

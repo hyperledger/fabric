@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -31,6 +32,8 @@ func TestMain(m *testing.M) {
 	flogging.SetModuleLevel("statebasedval", "debug")
 	flogging.SetModuleLevel("statecouchdb", "debug")
 	flogging.SetModuleLevel("valimpl", "debug")
+	flogging.SetModuleLevel("pvtstatepurgemgmt", "debug")
+
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/txmgr/lockbasedtxmgr")
 	os.Exit(m.Run())
 }
@@ -735,4 +738,65 @@ func TestDeleteOnCursor(t *testing.T) {
 	testutil.AssertEquals(t, key, "key_005")
 	itr3.Close()
 	s3.Done()
+}
+
+func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
+	ledgerid := "TestTxSimulatorMissingPvtdataExpiry"
+	testEnv := testEnvs[0]
+	testEnv.init(t, ledgerid)
+	defer testEnv.cleanup()
+
+	txMgr := testEnv.getTxMgr()
+
+	viper.Set(fmt.Sprintf("ledger.pvtdata.btlpolicy.%s.ns.coll", ledgerid), 1)
+	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
+
+	blkAndPvtdata := prepareNextBlockForTest(t, txMgr, bg, "txid-1",
+		map[string]string{"pubkey1": "pub-value1"}, map[string]string{"pvtkey1": "pvt-value1"})
+	testutil.AssertNoError(t, txMgr.ValidateAndPrepare(blkAndPvtdata, true), "")
+	testutil.AssertNoError(t, txMgr.Commit(), "")
+
+	simulator, _ := txMgr.NewTxSimulator("tx-tmp")
+	pvtval, _ := simulator.GetPrivateData("ns", "coll", "pvtkey1")
+	testutil.AssertEquals(t, pvtval, []byte("pvt-value1"))
+	simulator.Done()
+
+	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-2",
+		map[string]string{"pubkey1": "pub-value2"}, map[string]string{"pvtkey2": "pvt-value2"})
+	testutil.AssertNoError(t, txMgr.ValidateAndPrepare(blkAndPvtdata, true), "")
+	testutil.AssertNoError(t, txMgr.Commit(), "")
+
+	simulator, _ = txMgr.NewTxSimulator("tx-tmp")
+	pvtval, _ = simulator.GetPrivateData("ns", "coll", "pvtkey1")
+	testutil.AssertEquals(t, pvtval, []byte("pvt-value1"))
+	simulator.Done()
+
+	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-2",
+		map[string]string{"pubkey1": "pub-value3"}, map[string]string{"pvtkey3": "pvt-value3"})
+	testutil.AssertNoError(t, txMgr.ValidateAndPrepare(blkAndPvtdata, true), "")
+	testutil.AssertNoError(t, txMgr.Commit(), "")
+
+	simulator, _ = txMgr.NewTxSimulator("tx-tmp")
+	pvtval, _ = simulator.GetPrivateData("ns", "coll", "pvtkey1")
+	testutil.AssertNil(t, pvtval)
+	simulator.Done()
+}
+
+func prepareNextBlockForTest(t *testing.T, txMgr txmgr.TxMgr, bg *testutil.BlockGenerator,
+	txid string, pubKVs map[string]string, pvtKVs map[string]string) *ledger.BlockAndPvtData {
+	simulator, _ := txMgr.NewTxSimulator(txid)
+	//simulating transaction
+	for k, v := range pubKVs {
+		simulator.SetState("ns", k, []byte(v))
+	}
+	for k, v := range pvtKVs {
+		simulator.SetPrivateData("ns", "coll", k, []byte(v))
+	}
+	simulator.Done()
+	simRes, _ := simulator.GetTxSimulationResults()
+	pubSimBytes, _ := simRes.GetPubSimulationBytes()
+	block := bg.NextBlock([][]byte{pubSimBytes})
+	return &ledger.BlockAndPvtData{Block: block,
+		BlockPvtData: map[uint64]*ledger.TxPvtData{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
+	}
 }
