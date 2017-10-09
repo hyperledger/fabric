@@ -76,6 +76,8 @@ type chainImpl struct {
 	// channel never re-opens when closed. Its closing triggers the exit of the
 	// processMessagesToBlock loop.
 	haltChan chan struct{}
+	// notification that the chain has stopped processing messages into blocks
+	doneProcessingMessagesToBlocks chan struct{}
 	// Close when the retriable steps in Start have completed.
 	startChan chan struct{}
 	// timer controls the batch timeout of cutting pending messages into block
@@ -111,8 +113,12 @@ func (chain *chainImpl) Halt() {
 			logger.Warningf("[channel: %s] Halting of chain requested again", chain.ChainID())
 		default:
 			logger.Criticalf("[channel: %s] Halting of chain requested", chain.ChainID())
+			// stat shutdown of chain
 			close(chain.haltChan)
-			chain.closeKafkaObjects() // Also close the producer and the consumer
+			// wait for processing of messages to blocks to finish shutting down
+			<-chain.doneProcessingMessagesToBlocks
+			// close the kafka producer and the consumer
+			chain.closeKafkaObjects()
 			logger.Debugf("[channel: %s] Closed the haltChan", chain.ChainID())
 		}
 	default:
@@ -206,6 +212,8 @@ func startThread(chain *chainImpl) {
 	}
 	logger.Infof("[channel: %s] Channel consumer set up successfully", chain.channel.topic())
 
+	chain.doneProcessingMessagesToBlocks = make(chan struct{})
+
 	close(chain.startChan)                // Broadcast requests will now go through
 	chain.errorChan = make(chan struct{}) // Deliver requests will also go through
 
@@ -220,6 +228,11 @@ func startThread(chain *chainImpl) {
 func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 	counts := make([]uint64, 11) // For metrics and tests
 	msg := new(ab.KafkaMessage)
+
+	defer func() {
+		// notify that we are not processing messages to blocks
+		close(chain.doneProcessingMessagesToBlocks)
+	}()
 
 	defer func() { // When Halt() is called
 		select {
@@ -240,10 +253,7 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 			logger.Warningf("[channel: %s] Consenter for channel exiting", chain.ChainID())
 			counts[indexExitChanPass]++
 			return counts, nil
-		case kafkaErr, ok := <-chain.channelConsumer.Errors():
-			if !ok {
-				continue // chain is halting
-			}
+		case kafkaErr := <-chain.channelConsumer.Errors():
 			logger.Errorf("[channel: %s] Error during consumption: %s", chain.ChainID(), kafkaErr)
 			counts[indexRecvError]++
 			select {

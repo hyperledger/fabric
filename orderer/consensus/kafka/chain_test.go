@@ -797,8 +797,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				ConsenterSupport:   mockSupport,
 				lastCutBlockNumber: lastCutBlockNumber,
 
-				errorChan: errorChan,
-				haltChan:  haltChan,
+				errorChan:                      errorChan,
+				haltChan:                       haltChan,
+				doneProcessingMessagesToBlocks: make(chan struct{}),
 			}
 
 			// We need the mock blockcutter to deliver a non-empty batch
@@ -856,8 +857,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				ConsenterSupport:   mockSupport,
 				lastCutBlockNumber: lastCutBlockNumber,
 
-				errorChan: errorChan,
-				haltChan:  haltChan,
+				errorChan:                      errorChan,
+				haltChan:                       haltChan,
+				doneProcessingMessagesToBlocks: make(chan struct{}),
 			}
 
 			var counts []uint64
@@ -905,8 +907,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				ConsenterSupport:   mockSupport,
 				lastCutBlockNumber: lastCutBlockNumber,
 
-				errorChan: errorChan,
-				haltChan:  haltChan,
+				errorChan:                      errorChan,
+				haltChan:                       haltChan,
+				doneProcessingMessagesToBlocks: make(chan struct{}),
 			}
 
 			var counts []uint64
@@ -954,8 +957,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				ConsenterSupport:   mockSupport,
 				lastCutBlockNumber: lastCutBlockNumber,
 
-				errorChan: errorChan,
-				haltChan:  haltChan,
+				errorChan:                      errorChan,
+				haltChan:                       haltChan,
+				doneProcessingMessagesToBlocks: make(chan struct{}),
 			}
 
 			var counts []uint64
@@ -998,8 +1002,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				channel:          mockChannel,
 				ConsenterSupport: mockSupport,
 
-				errorChan: errorChan,
-				haltChan:  haltChan,
+				errorChan:                      errorChan,
+				haltChan:                       haltChan,
+				doneProcessingMessagesToBlocks: make(chan struct{}),
 			}
 
 			var counts []uint64
@@ -1041,8 +1046,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				channel:          mockChannel,
 				ConsenterSupport: mockSupport,
 
-				errorChan: errorChan,
-				haltChan:  haltChan,
+				errorChan:                      errorChan,
+				haltChan:                       haltChan,
+				doneProcessingMessagesToBlocks: make(chan struct{}),
 			}
 
 			var counts []uint64
@@ -1094,8 +1100,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1149,9 +1156,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
-				}
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{})}
 
 				var counts []uint64
 				done := make(chan struct{})
@@ -1212,8 +1219,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1295,8 +1303,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1350,8 +1359,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1404,8 +1414,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1454,8 +1465,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1515,8 +1527,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1572,8 +1585,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1647,8 +1661,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1715,8 +1730,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1798,8 +1814,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1858,8 +1875,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1919,8 +1937,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -1979,8 +1998,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -2058,8 +2078,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -2119,8 +2140,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					ConsenterSupport:   mockSupport,
 					lastCutBlockNumber: lastCutBlockNumber,
 
-					errorChan: errorChan,
-					haltChan:  haltChan,
+					errorChan:                      errorChan,
+					haltChan:                       haltChan,
+					doneProcessingMessagesToBlocks: make(chan struct{}),
 				}
 
 				var counts []uint64
@@ -2184,8 +2206,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				channel:          mockChannel,
 				ConsenterSupport: mockSupport,
 
-				errorChan: errorChan,
-				haltChan:  haltChan,
+				errorChan:                      errorChan,
+				haltChan:                       haltChan,
+				doneProcessingMessagesToBlocks: make(chan struct{}),
 			}
 
 			var counts []uint64
@@ -2251,8 +2274,9 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				channel:          mockChannel,
 				ConsenterSupport: mockSupport,
 
-				errorChan: errorChan,
-				haltChan:  haltChan,
+				errorChan:                      errorChan,
+				haltChan:                       haltChan,
+				doneProcessingMessagesToBlocks: make(chan struct{}),
 			}
 
 			var counts []uint64
