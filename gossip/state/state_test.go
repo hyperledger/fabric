@@ -176,6 +176,10 @@ func (mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCo
 	panic("implement me")
 }
 
+func (*mockTransientStore) PurgeByTxids(txids []string) error {
+	panic("implement me")
+}
+
 type mockCommitter struct {
 	mock.Mock
 	sync.Mutex

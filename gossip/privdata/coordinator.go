@@ -40,6 +40,10 @@ type TransientStore interface {
 	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 	// write sets persisted from different endorsers (via Gossip)
 	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error)
+
+	// PurgeByTxids removes private read-write set of a given set of transactions from the
+	// transient store
+	PurgeByTxids(txids []string) error
 }
 
 // Coordinator orchestrates the flow of the new
@@ -121,7 +125,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 	logger.Info("Got block", block.Header.Number, "with", len(privateDataSets), "rwsets")
 
-	missing, err := c.listMissingPrivateData(block, ownedRWsets)
+	missing, txList, err := c.listMissingPrivateData(block, ownedRWsets)
 	if err != nil {
 		logger.Warning(err)
 		return err
@@ -144,7 +148,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 	logger.Debug("Fetched all missing rwsets from peers")
 
-	for seqInBlock, nsRWS := range ownedRWsets.BySeqsInBlock() {
+	for seqInBlock, nsRWS := range ownedRWsets.bySeqsInBlock() {
 		rwsets := nsRWS.toRWSet()
 		logger.Debug("Added", len(rwsets.NsPvtRwset), "rwsets to sequence", seqInBlock, "for block", block.Header.Number)
 		blockAndPvtData.BlockPvtData[seqInBlock] = &ledger.TxPvtData{
@@ -154,7 +158,19 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 
 	// commit block and private data
-	return c.CommitWithPvtData(blockAndPvtData)
+	err = c.CommitWithPvtData(blockAndPvtData)
+	if err != nil {
+		return errors.Wrap(err, "commit failed")
+	}
+
+	if len(blockAndPvtData.BlockPvtData) > 0 {
+		// Finally, purge all transactions in block - valid or not valid.
+		if err := c.PurgeByTxids(txList); err != nil {
+			logger.Error("Purging transactions", txList, "failed:", err)
+		}
+	}
+
+	return nil
 }
 
 func (c *coordinator) fetchFromPeers(blockSeq uint64, missingKeys rwsetKeys, ownedRWsets map[rwSetKey][]byte) {
@@ -318,7 +334,7 @@ type readWriteSet struct {
 
 type rwsetByKeys map[rwSetKey][]byte
 
-func (s rwsetByKeys) BySeqsInBlock() map[uint64]readWriteSets {
+func (s rwsetByKeys) bySeqsInBlock() map[uint64]readWriteSets {
 	res := make(map[uint64]readWriteSets)
 	for k, rws := range s {
 		res[k.seqInBlock] = append(res[k.seqInBlock], readWriteSet{
@@ -402,30 +418,38 @@ func (k *rwSetKey) toTxPvtReadWriteSet(rws []byte) *rwset.TxPvtReadWriteSet {
 	}
 }
 
+type txns []string
 type blockData [][]byte
 
-func (data blockData) forEach(txsFilter txValidationFlags, consumer func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet)) error {
+func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet)) (txns, error) {
+	var txList []string
 	for seqInBlock, envBytes := range data {
-		if txsFilter[seqInBlock] != uint8(peer.TxValidationCode_VALID) {
-			logger.Debug("Skipping Tx", seqInBlock, "because it's invalid. Status is", txsFilter[seqInBlock])
-			continue
-		}
 		env, err := utils.GetEnvelopeFromBlock(envBytes)
 		if err != nil {
-			return err
+			logger.Warning("Invalid envelope:", err)
+			continue
 		}
 
 		payload, err := utils.GetPayload(env)
 		if err != nil {
-			return err
+			logger.Warning("Invalid payload:", err)
+			continue
 		}
 
 		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 		if err != nil {
-			return err
+			logger.Warning("Invalid channel header:", err)
+			continue
 		}
 
 		if chdr.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) {
+			continue
+		}
+
+		txList = append(txList, chdr.TxId)
+
+		if txsFilter[seqInBlock] != uint8(peer.TxValidationCode_VALID) {
+			logger.Debug("Skipping Tx", seqInBlock, "because it's invalid. Status is", txsFilter[seqInBlock])
 			continue
 		}
 
@@ -442,22 +466,22 @@ func (data blockData) forEach(txsFilter txValidationFlags, consumer func(seqInBl
 		}
 		consumer(uint64(seqInBlock), chdr, txRWSet)
 	}
-	return nil
+	return txList, nil
 }
 
-func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets map[rwSetKey][]byte) (rwSetKeysByTxIDs, error) {
+func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets map[rwSetKey][]byte) (rwSetKeysByTxIDs, txns, error) {
 	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_TRANSACTIONS_FILTER) {
-		return nil, errors.New("Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
+		return nil, nil, errors.New("Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
 	}
 	txsFilter := txValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	if len(txsFilter) != len(block.Data.Data) {
-		return nil, errors.Errorf("Block data size(%d) is different from Tx filter size(%d)", len(block.Data.Data), len(txsFilter))
+		return nil, nil, errors.Errorf("Block data size(%d) is different from Tx filter size(%d)", len(block.Data.Data), len(txsFilter))
 	}
 
 	privateRWsetsInBlock := make(map[rwSetKey]struct{})
 	missing := make(rwSetKeysByTxIDs)
 	data := blockData(block.Data.Data)
-	err := data.forEach(txsFilter, func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet) {
+	txList, err := data.forEachTxn(txsFilter, func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet) {
 		for _, ns := range txRWSet.NsRwSets {
 			for _, hashed := range ns.CollHashedRwSets {
 				if !c.isEligible(chdr, ns.NameSpace, hashed.CollectionName) {
@@ -482,7 +506,7 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 		} // for all RW sets
 	})
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	// In the end, iterate over the ownedRWsets, and if the key doesn't exist in
 	// the privateRWsetsInBlock - delete it from the ownedRWsets
@@ -493,7 +517,7 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 		}
 	}
 
-	return missing, nil
+	return missing, txList, nil
 }
 
 // isEligible checks if this peer is eligible for a collection in a given namespace
@@ -573,7 +597,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common
 
 	seqs2Namespaces := aggregatedCollections(make(map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet))
 	data := blockData(blockAndPvtData.Block.Data.Data)
-	err = data.forEach(make(txValidationFlags, len(data)), func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet) {
+	_, err = data.forEachTxn(make(txValidationFlags, len(data)), func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet) {
 		item, exists := blockAndPvtData.BlockPvtData[seqInBlock]
 		if !exists {
 			return
