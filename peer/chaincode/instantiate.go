@@ -53,6 +53,7 @@ func instantiateCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"policy",
 		"escc",
 		"vscc",
+		"collections-config",
 	}
 	attachFlags(chaincodeInstantiateCmd, flagList)
 
@@ -76,7 +77,7 @@ func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envel
 		return nil, fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
-	prop, _, err := utils.CreateDeployProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc))
+	prop, _, err := utils.CreateDeployProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc), collectionConfigBytes)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s", chainFuncName, err)
 	}

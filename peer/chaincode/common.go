@@ -8,11 +8,12 @@ package chaincode
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
@@ -23,6 +24,7 @@ import (
 	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -155,6 +157,66 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 	return nil
 }
 
+type collectionConfigJson struct {
+	Name          string `json:"name"`
+	Policy        string `json:"policy"`
+	RequiredCount int32  `json:"requiredPeerCount"`
+	MaxPeerCount  int32  `json:"maxPeerCount"`
+}
+
+// getCollectionConfig retrieves the collection configuration
+// from the supplied file; the supplied file must contain a
+// json-formatted array of collectionConfigJson elements
+func getCollectionConfigFromFile(ccFile string) ([]byte, error) {
+	fileBytes, err := ioutil.ReadFile(ccFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not read file '%s'", ccFile)
+	}
+
+	return getCollectionConfigFromBytes(fileBytes)
+}
+
+// getCollectionConfig retrieves the collection configuration
+// from the supplied byte array; the byte array must contain a
+// json-formatted array of collectionConfigJson elements
+func getCollectionConfigFromBytes(cconfBytes []byte) ([]byte, error) {
+	cconf := &[]collectionConfigJson{}
+	err := json.Unmarshal(cconfBytes, cconf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse the collection configuration")
+	}
+
+	ccarray := make([]*pcommon.CollectionConfig, 0, len(*cconf))
+	for _, cconfitem := range *cconf {
+		p, err := cauthdsl.FromString(cconfitem.Policy)
+		if err != nil {
+			return nil, errors.WithMessage(err, fmt.Sprintf("invalid policy %s", cconfitem.Policy))
+		}
+
+		cpc := &pcommon.CollectionPolicyConfig{
+			Payload: &pcommon.CollectionPolicyConfig_SignaturePolicy{
+				SignaturePolicy: p,
+			},
+		}
+
+		cc := &pcommon.CollectionConfig{
+			Payload: &pcommon.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &pcommon.StaticCollectionConfig{
+					Name:              cconfitem.Name,
+					MemberOrgsPolicy:  cpc,
+					RequiredPeerCount: cconfitem.RequiredCount,
+					MaximumPeerCount:  cconfitem.MaxPeerCount,
+				},
+			},
+		}
+
+		ccarray = append(ccarray, cc)
+	}
+
+	ccp := &pcommon.CollectionConfigPackage{ccarray}
+	return proto.Marshal(ccp)
+}
+
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	//we need chaincode name for everything, including deploy
 	if chaincodeName == common.UndefinedParamValue {
@@ -188,6 +250,14 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 			return fmt.Errorf("Invalid policy %s", policy)
 		}
 		policyMarshalled = putils.MarshalOrPanic(p)
+	}
+
+	if collectionsConfigFile != common.UndefinedParamValue {
+		var err error
+		collectionConfigBytes, err = getCollectionConfigFromFile(collectionsConfigFile)
+		if err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("invalid collection configuration in file %s", collectionsConfigFile))
+		}
 	}
 
 	// Check that non-empty chaincode parameters contain only Args as a key.
