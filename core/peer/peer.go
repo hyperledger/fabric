@@ -12,8 +12,6 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger/customtx"
-
 	"github.com/hyperledger/fabric/common/channelconfig"
 	cc "github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -33,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/customtx"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -376,11 +375,14 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	if err != nil {
 		return errors.Wrapf(err, "Failed opening transient store for %s", bundle.ConfigtxValidator().ChainID())
 	}
+	simpleCollectionStore := privdata.NewSimpleCollectionStore(&collectionSupport{
+		PeerLedger: ledger,
+	})
 	service.GetGossipService().InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, service.Support{
 		Validator: validator,
 		Committer: c,
 		Store:     store,
-		Cs:        &privdata.NopCollectionStore{},
+		Cs:        simpleCollectionStore,
 	})
 
 	chains.Lock()
@@ -722,6 +724,22 @@ func CreatePeerServer(listenAddress string,
 // GetPeerServer returns the peer server instance
 func GetPeerServer() comm.GRPCServer {
 	return peerServer
+}
+
+type collectionSupport struct {
+	ledger.PeerLedger
+}
+
+func (cs *collectionSupport) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
+	return cs.NewQueryExecutor()
+}
+
+func (*collectionSupport) GetCollectionKVSKey(cc common.CollectionCriteria) string {
+	return privdata.BuildCollectionKVSKey(cc.Namespace)
+}
+
+func (*collectionSupport) GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
+	return mspmgmt.GetManagerForChain(chainID)
 }
 
 //
