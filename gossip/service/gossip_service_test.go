@@ -46,6 +46,10 @@ func init() {
 type mockTransientStore struct {
 }
 
+func (*mockTransientStore) PurgeByHeight(maxBlockNumToRetain uint64) error {
+	return nil
+}
+
 func (*mockTransientStore) Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
 	panic("implement me")
 }

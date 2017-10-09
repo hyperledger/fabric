@@ -33,13 +33,21 @@ import (
 )
 
 const (
-	pullRetrySleepInterval = time.Second
+	pullRetrySleepInterval           = time.Second
+	transientBlockRetentionConfigKey = "peer.gossip.pvtData.transientstoreMaxBlockRetention"
+	transientBlockRetentionDefault   = 1000
 )
 
 var logger *logging.Logger // package-level logger
 
+var transientBlockRetention = uint64(viper.GetInt(transientBlockRetentionConfigKey))
+
 func init() {
 	logger = util.GetLogger(util.LoggingPrivModule, "")
+	if transientBlockRetention == 0 {
+		logger.Warning("Configuration key", transientBlockRetentionConfigKey, "isn't set, defaulting to", transientBlockRetentionDefault)
+		transientBlockRetention = transientBlockRetentionDefault
+	}
 }
 
 // TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger
@@ -53,6 +61,14 @@ type TransientStore interface {
 	// PurgeByTxids removes private read-write set of a given set of transactions from the
 	// transient store
 	PurgeByTxids(txids []string) error
+
+	// PurgeByHeight removes private write sets at block height lesser than
+	// a given maxBlockNumToRetain. In other words, Purge only retains private write sets
+	// that were persisted at block height of maxBlockNumToRetain or higher. Though the private
+	// write sets stored in transient store is removed by coordinator using PurgebyTxids()
+	// after successful block commit, PurgeByHeight() is still required to remove orphan entries (as
+	// transaction that gets endorsed may not be submitted by the client for commit)
+	PurgeByHeight(maxBlockNumToRetain uint64) error
 }
 
 // Coordinator orchestrates the flow of the new
@@ -197,6 +213,14 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 		// Finally, purge all transactions in block - valid or not valid.
 		if err := c.PurgeByTxids(privateInfo.txns); err != nil {
 			logger.Error("Purging transactions", privateInfo.txns, "failed:", err)
+		}
+	}
+
+	seq := block.Header.Number
+	if seq%transientBlockRetention == 0 && seq > transientBlockRetention {
+		err := c.PurgeByHeight(seq - transientBlockRetention)
+		if err != nil {
+			logger.Error("Failed purging data from transient store at block", seq, ":", err)
 		}
 	}
 

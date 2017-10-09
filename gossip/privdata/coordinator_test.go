@@ -84,6 +84,10 @@ func (store *mockTransientStore) Persist(txid string, blockHeight uint64, res *r
 	return nil
 }
 
+func (store *mockTransientStore) PurgeByHeight(maxBlockNumToRetain uint64) error {
+	return store.Called(maxBlockNumToRetain).Error(0)
+}
+
 func (store *mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
 	store.lastReqTxID = txid
 	store.lastReqFilter = filter
@@ -1034,6 +1038,53 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	assert.Nil(t, block2)
 	assert.Empty(t, returnedPrivateData)
 	assert.Error(t, err)
+}
+
+func TestPurgeByHeight(t *testing.T) {
+	// Scenario: commit 3000 blocks and ensure that PurgeByHeight is called
+	// at commit of blocks 2000 and 3000 with values of max block to retain of 1000 and 2000
+	peerSelfSignedData := common.SignedData{}
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
+
+	var purgeHappened bool
+	assertPurgeHappened := func() {
+		assert.True(t, purgeHappened)
+		purgeHappened = false
+	}
+	committer := &committerMock{}
+	committer.On("CommitWithPvtData", mock.Anything).Return(nil)
+	store := &mockTransientStore{t: t}
+	store.On("PurgeByHeight", uint64(1000)).Return(nil).Once().Run(func(_ mock.Arguments) {
+		purgeHappened = true
+	})
+	store.On("PurgeByHeight", uint64(2000)).Return(nil).Once().Run(func(_ mock.Arguments) {
+		purgeHappened = true
+	})
+	store.On("PurgeByTxids", mock.Anything).Return(nil)
+	fetcher := &fetcherMock{t: t}
+
+	bf := &blockFactory{
+		channelID: "test",
+	}
+	coordinator := NewCoordinator(Support{
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
+	}, peerSelfSignedData)
+
+	for i := 0; i <= 3000; i++ {
+		block := bf.create()
+		block.Header.Number = uint64(i)
+		err := coordinator.StoreBlock(block, nil)
+		assert.NoError(t, err)
+		if i != 2000 && i != 3000 {
+			assert.False(t, purgeHappened)
+		} else {
+			assertPurgeHappened()
+		}
+	}
 }
 
 func TestCoordinatorStorePvtData(t *testing.T) {

@@ -28,6 +28,10 @@ import (
 type transientStoreMock struct {
 }
 
+func (*transientStoreMock) PurgeByHeight(maxBlockNumToRetain uint64) error {
+	return nil
+}
+
 func (*transientStoreMock) Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
 	panic("implement me")
 }

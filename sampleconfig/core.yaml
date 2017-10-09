@@ -194,6 +194,12 @@ peer:
             # maxPeers defines the maximum number of peers
             # that an endorsement containing private data would target for dissemination
             maxPeers: 1
+            # As private data enters the transient store, it is associated with the peer's ledger's height at that time.
+            # transientstoreMaxBlockRetention defines the maximum difference between the current ledger's height upon commit,
+            # and the private data residing inside the transient store that is guaranteed not to be purged.
+            # Private data is purged from the transient store when blocks with sequences that are multiples
+            # of transientstoreMaxBlockRetention are committed.
+            transientstoreMaxBlockRetention: 500
 
     # EventHub related configuration
     events:
