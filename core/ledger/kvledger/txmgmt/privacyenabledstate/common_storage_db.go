@@ -84,7 +84,6 @@ func (s *CommonStorageDB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*sta
 	if !ok {
 		return nil
 	}
-
 	// Here, hashedKeys are merged into pubKeys to get a combined set of keys for combined loading
 	for _, key := range hashedKeys {
 		ns := deriveHashedDataNs(key.Namespace, key.CollectionName)
