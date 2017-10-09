@@ -10,7 +10,9 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric/protos/common"
+	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -44,4 +46,26 @@ func TestApplicationUtils(t *testing.T) {
 func TestConsortiumsUtils(t *testing.T) {
 	assert.NotNil(t, TemplateConsortiumsGroup())
 	assert.NotNil(t, TemplateConsortiumChannelCreationPolicy("foo", &cb.Policy{}))
+}
+
+func basicTest(t *testing.T, sv *StandardConfigValue) {
+	assert.NotNil(t, sv)
+	assert.NotEmpty(t, sv.Key())
+	assert.NotNil(t, sv.Value())
+}
+
+func TestUtilsBasic(t *testing.T) {
+	basicTest(t, ConsortiumValue("foo"))
+	basicTest(t, HashingAlgorithmValue())
+	basicTest(t, BlockDataHashingStructureValue())
+	basicTest(t, OrdererAddressesValue([]string{"foo:1", "bar:2"}))
+	basicTest(t, ConsensusTypeValue("foo"))
+	basicTest(t, BatchSizeValue(1, 2, 3))
+	basicTest(t, BatchTimeoutValue("1s"))
+	basicTest(t, ChannelRestrictionsValue(7))
+	basicTest(t, KafkaBrokersValue([]string{"foo:1", "bar:2"}))
+	basicTest(t, MSPValue(&mspprotos.MSPConfig{}))
+	basicTest(t, CapabilitiesValue(map[string]bool{"foo": true, "bar": false}))
+	basicTest(t, AnchorPeersValue([]*pb.AnchorPeer{&pb.AnchorPeer{}, &pb.AnchorPeer{}}))
+	basicTest(t, ChannelCreationPolicyValue(&cb.Policy{}))
 }
