@@ -1,0 +1,544 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Use Cases &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/>
+        <link rel="next" title="Demos" href="../demos.html"/>
+        <link rel="prev" title="The Fabric Model" href="../fabric_model.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Use Cases</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#b2b-contract">B2B Contract</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#persona">Persona</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#key-components">Key Components</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#manufacturing-supply-chain">Manufacturing Supply Chain</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Persona</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Key Components</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#asset-depository">Asset Depository</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id3">Persona</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">Key Components</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#one-trade-one-contract">One Trade, One Contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#direct-communication">Direct Communication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#separation-of-asset-ownership-and-custodians-duties">Separation of Asset Ownership and Custodian’s Duties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interoperability-of-assets">Interoperability of Assets</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Use Cases</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/biz/usecases.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="use-cases">
+<h1>Use Cases<a class="headerlink" href="#use-cases" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="b2b-contract">
+<h2>B2B Contract<a class="headerlink" href="#b2b-contract" title="Permalink to this headline">¶</a></h2>
+<p>Business contracts can be codified to allow two or more parties to
+automate contractual agreements in a trusted way. Although information
+on blockchain is naturally “public”, B2B contracts may require privacy
+control to protect sensitive business information from being disclosed
+to outside parties that also have access to the ledger.</p>
+<p>While confidential agreements are a key business case, there are many
+scenarios where contracts can and should be easily discoverable by all
+parties on a ledger. For example, a ledger used to create offers (asks)
+seeking bids, by definition, requires access without restriction. This
+type of contract may need to be standardized so that bidders can easily
+find them, effectively creating an electronic trading platform with
+smart contracts (aka chaincode).</p>
+<div class="section" id="persona">
+<h3>Persona<a class="headerlink" href="#persona" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Contract participant – Contract counter parties</li>
+<li>Third party participant – A third party stakeholder guaranteeing the
+integrity of the contract.</li>
+</ul>
+</div>
+<div class="section" id="key-components">
+<h3>Key Components<a class="headerlink" href="#key-components" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Multi-sig contract activation - When a contract is first deployed by
+one of the counter parties, it will be in the pending activation
+state. To activate a contract, signatures from other counterparties
+and/or third party participants are required.</li>
+<li>Multi-sig contract execution - Some contracts will require one of
+many signatures to execute. For example, in trade finance, a payment
+instruction can only be executed if either the recipient or an
+authorized third party (e.g. UPS) confirms the shipment of the good.</li>
+<li>Discoverability - If a contract is a business offer seeking bids, it
+must be easily searchable. In addition, such contracts must have the
+built-in intelligence to evaluate, select and honor bids.</li>
+<li>Atomicity of contract execution - Atomicity of the contract is needed
+to guarantee that asset transfers can only occur when payment is
+received (Delivery vs. Payment). If any step in the execution process
+fails, the entire transaction must be rolled back.</li>
+<li>Contract to chain-code communication - Contracts must be able to
+communicate with chaincodes that are deployed on the same ledger.</li>
+<li>Longer Duration contract - Timer is required to support B2B contracts
+that have long execution windows.</li>
+<li>Reuseable contracts - Often-used contracts can be standardized for
+reuse.</li>
+<li>Auditable contractual agreement - Any contract can be made auditable
+to third parties.</li>
+<li>Contract life-cycle management - B2B contracts are unique and cannot
+always be standardized. An efficient contract management system is
+needed to enhance the scalability of the ledger network.</li>
+<li>Validation access – Only nodes with validation rights are allowed to
+validate transactions of a B2B contract.</li>
+<li>View access – B2B contracts may include confidential information, so
+only accounts with predefined access rights are allowed to view and
+interrogate them.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="manufacturing-supply-chain">
+<h2>Manufacturing Supply Chain<a class="headerlink" href="#manufacturing-supply-chain" title="Permalink to this headline">¶</a></h2>
+<p>Final assemblers, such as automobile manufacturers, can create a supply
+chain network managed by its peers and suppliers so that a final
+assembler can better manage its suppliers and be more responsive to
+events that would require vehicle recalls (possibly triggered by faulty
+parts provided by a supplier). The blockchain fabric must provide a
+standard protocol to allow every participant on a supply chain network
+to input and track numbered parts that are produced and used on a
+specific vehicle.</p>
+<p>Why is this specific example an abstract use case? Because while all
+blockchain cases store immutable information, and some add the need for
+transfer of assets between parties, this case emphasizes the need to
+provide deep searchability backwards through as many as 5-10 transaction
+layers. This backwards search capability is the core of establishing
+provenance of any manufactured good that is made up of other component
+goods and supplies.</p>
+<div class="section" id="id1">
+<h3>Persona<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Final Assembler – The business entity that performs the final
+assembly of a product.</li>
+<li>Part supplier – Supplier of parts. Suppliers can also be assemblers
+by assembling parts that they receive from their sub-suppliers, and
+then sending their finished product to the final (root) assembler.</li>
+</ul>
+</div>
+<div class="section" id="id2">
+<h3>Key Components<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Payment upon delivery of goods - Integration with off-chain payment
+systems is required, so that payment instructions can be sent when
+parts are received.</li>
+<li>Third party Audit - All supplied parts must be auditable by third
+parties. For example, regulators might need to track the total number
+of parts supplied by a specific supplier, for tax accounting
+purposes.</li>
+<li>Obfuscation of shipments - Balances must be obfuscated so that no
+supplier can deduce the business activities of any other supplier.</li>
+<li>Obfuscation of market size - Total balances must be obfuscated so
+that part suppliers cannot deduce their own market share to use as
+leverage when negotiating contractual terms.</li>
+<li>Validation Access – Only nodes with validation rights are allowed to
+validate transactions (shipment of parts).</li>
+<li>View access – Only accounts with view access rights are allowed to
+interrogate balances of shipped parts and available parts.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="asset-depository">
+<h2>Asset Depository<a class="headerlink" href="#asset-depository" title="Permalink to this headline">¶</a></h2>
+<p>Assets such as financial securities must be able to be dematerialized on
+a blockchain network so that all stakeholders of an asset type will have
+direct access to that asset, allowing them to initiate trades and
+acquire information on an asset without going through layers of
+intermediaries. Trades should be settled in near real time and all
+stakeholders must be able to access asset information in near real time.
+A stakeholder should be able to add business rules on any given asset
+type, as one example of using automation logic to further reduce
+operating costs.</p>
+<div class="section" id="id3">
+<h3>Persona<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Investor – Beneficial and legal owner of an asset.</li>
+<li>Issuer – Business entity that issued the asset which is now
+dematerialized on the ledger network.</li>
+<li>Custodian – Hired by investors to manage their assets, and offer
+other value-add services on top of the assets being managed.</li>
+<li>Securities Depository – Depository of dematerialized assets.</li>
+</ul>
+</div>
+<div class="section" id="id4">
+<h3>Key Components<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Asset to cash - Integration with off-chain payment systems is
+necessary so that issuers can make payments to and receive payments
+from investors.</li>
+<li>Reference Rate - Some types of assets (such as floating rate notes)
+may have attributes linked to external data (such as reference rate),
+and such information must be fed into the ledger network.</li>
+<li>Asset Timer - Many types of financial assets have predefined life
+spans and are required to make periodic payments to their owners, so
+a timer is required to automate the operation management of these
+assets.</li>
+<li>Asset Auditor - Asset transactions must be made auditable to third
+parties. For example, regulators may want to audit transactions and
+movements of assets to measure market risks.</li>
+<li>Obfuscation of account balances - Individual account balances must be
+obfuscated so that no one can deduce the exact amount that an
+investor owns.</li>
+<li>Validation Access – Only nodes with validation rights are allowed to
+validate transactions that update the balances of an asset type (this
+could be restricted to CSD and/or the issuer).</li>
+<li>View access – Only accounts with view access rights are allowed to
+interrogate the chaincode that defines an asset type. If an asset
+represents shares of publicly traded companies, then the view access
+right must be granted to every entity on the network.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="one-trade-one-contract">
+<h2>One Trade, One Contract<a class="headerlink" href="#one-trade-one-contract" title="Permalink to this headline">¶</a></h2>
+<p>From the time that a trade is captured by the front office until the
+trade is finally settled, only one contract that specifies the trade
+will be created and used by all participants. The middle office will
+enrich the same electronic contract submitted by the front office, and
+that same contract will then be used by counter parties to confirm and
+affirm the trade. Finally, securities depository will settle the trade
+by executing the trading instructions specified on the contract. When
+dealing with bulk trades, the original contract can be broken down into
+sub-contracts that are always linked to the original parent contract.</p>
+</div>
+<div class="section" id="direct-communication">
+<h2>Direct Communication<a class="headerlink" href="#direct-communication" title="Permalink to this headline">¶</a></h2>
+<p>Company A announces its intention to raise 2 Billion USD by way of
+rights issue. Because this is a voluntary action, Company A needs to
+ensure that complete details of the offer are sent to shareholders in
+real time, regardless of how many intermediaries are involved in the
+process (such as receiving/paying agents, CSD, ICSD, local/global
+custodian banks, asset management firms, etc). Once a shareholder has
+made a decision, that decision will also be processed and settled
+(including the new issuance of shares) in real time. If a shareholder
+sold its rights to a third party, the securities depository must be able
+to record the new shares under the name of their new rightful owner.</p>
+</div>
+<div class="section" id="separation-of-asset-ownership-and-custodians-duties">
+<h2>Separation of Asset Ownership and Custodian’s Duties<a class="headerlink" href="#separation-of-asset-ownership-and-custodians-duties" title="Permalink to this headline">¶</a></h2>
+<p>Assets should always be owned by their actual owners, and asset owners
+must be able to allow third-party professionals to manage their assets
+without having to pass legal ownership of assets to third parties (such
+as nominee or street name entities). If issuers need to send messages or
+payments to asset owners (for example, listed share holders), issuers
+send them directly to asset owners. Third-party asset managers and/or
+custodians can always buy, sell, and lend assets on behalf of their
+owners. Under this arrangement, asset custodians can focus on providing
+value-add services to shareowners, without worrying about asset
+ownership duties such as managing and redirecting payments from issuers
+to shareowners.</p>
+</div>
+<div class="section" id="interoperability-of-assets">
+<h2>Interoperability of Assets<a class="headerlink" href="#interoperability-of-assets" title="Permalink to this headline">¶</a></h2>
+<p>If an organization requires 20,000 units of asset B, but instead owns
+10,000 units of asset A, it needs a way to exchange asset A for asset B.
+Though the current market might not offer enough liquidity to fulfill
+this trade quickly, there might be plenty of liquidity available between
+asset A and asset C, and also between asset C and asset B. Instead of
+settling for market limits on direct trading (A for B) in this case, a
+chain network connects buyers with “buried” sellers, finds the best
+match (which could be buried under several layers of assets), and
+executes the transaction.</p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../demos.html" class="btn btn-neutral float-right" title="Demos" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../fabric_model.html" class="btn btn-neutral" title="The Fabric Model" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

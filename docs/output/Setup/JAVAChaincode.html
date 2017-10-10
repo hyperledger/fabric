@@ -1,0 +1,472 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Java chaincode &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Java chaincode</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/Setup/JAVAChaincode.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="java-chaincode">
+<h1>Java chaincode<a class="headerlink" href="#java-chaincode" title="Permalink to this headline">¶</a></h1>
+<p>Note: This guide generally assumes you have followed the Chaincode
+development environment setup tutorial
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/docs/Setup/Chaincode-setup.md">here</a>.</p>
+<div class="section" id="to-get-started-developing-java-chaincode">
+<h2>To get started developing Java chaincode<a class="headerlink" href="#to-get-started-developing-java-chaincode" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li>Ensure you have gradle</li>
+</ol>
+<ul class="simple">
+<li>Download the binary distribution from
+<a class="reference external" href="http://gradle.org/gradle-download/">http://gradle.org/gradle-download/</a></li>
+<li>Unpack, move to the desired location, and add gradle’s bin directory
+to your system path</li>
+<li>Ensure <code class="docutils literal"><span class="pre">gradle</span> <span class="pre">-v</span></code> works from the command-line, and shows version
+2.12 or greater</li>
+<li>Optionally, enable the <a class="reference external" href="https://docs.gradle.org/current/userguide/gradle_daemon.html">gradle
+daemon</a>
+for faster builds</li>
+</ul>
+<ol class="arabic simple" start="2">
+<li>Ensure you have the Java 1.8 <strong>JDK</strong> installed. Also ensure Java’s
+directory is on your path with <code class="docutils literal"><span class="pre">java</span> <span class="pre">-version</span></code></li>
+</ol>
+<ul class="simple">
+<li>Additionally, you will need to have the <a class="reference external" href="https://docs.oracle.com/cd/E19182-01/821-0917/6nluh6gq9/index.html"><code class="docutils literal"><span class="pre">JAVA_HOME</span></code></a> variable set to your
+<strong>JDK</strong> installation in your system path</li>
+</ul>
+<ol class="arabic simple" start="3">
+<li>From your command line terminal, move to the <code class="docutils literal"><span class="pre">devenv</span></code> subdirectory
+of your workspace environment. Log into a Vagrant terminal by
+executing the following command:</li>
+</ol>
+<blockquote>
+<div><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">vagrant</span> <span class="n">ssh</span>
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="arabic" start="4">
+<li><p class="first">Build and run the peer process.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric
+make peer
+peer node start
+</pre></div>
+</div>
+</li>
+<li><p class="first">The following steps is for deploying chaincode in non-dev mode.</p>
+<ul class="simple">
+<li>Deploy the chaincode,</li>
+</ul>
+</li>
+</ol>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">deploy</span> <span class="o">-</span><span class="n">l</span> <span class="n">java</span> <span class="o">-</span><span class="n">p</span> <span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">gopath</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">/</span><span class="n">examples</span><span class="o">/</span><span class="n">chaincode</span><span class="o">/</span><span class="n">java</span><span class="o">/</span><span class="n">SimpleSample</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;: [&quot;init&quot;, &quot;a&quot;,&quot;100&quot;, &quot;b&quot;, &quot;200&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">6d9a704d95284593fe802a5de89f84e86fb975f00830bc6488713f9441b835cf32d9cd07b087b90e5cb57a88360f90a4de39521a5595545ad689cd64791679e9</span></code></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">This</span> <span class="n">command</span> <span class="n">will</span> <span class="n">give</span> <span class="n">the</span> <span class="s1">&#39;name&#39;</span> <span class="k">for</span> <span class="n">this</span> <span class="n">chaincode</span><span class="p">,</span> <span class="ow">and</span> <span class="n">use</span> <span class="n">this</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">all</span> <span class="n">the</span> <span class="n">further</span> <span class="n">commands</span> <span class="k">with</span> <span class="n">the</span> <span class="o">-</span><span class="n">n</span> <span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="n">parameter</span>
+
+
+<span class="o">*</span> <span class="n">PS</span><span class="o">.</span> <span class="n">This</span> <span class="n">may</span> <span class="n">take</span> <span class="n">a</span> <span class="n">few</span> <span class="n">minutes</span> <span class="n">depending</span> <span class="n">on</span> <span class="n">the</span> <span class="n">environment</span> <span class="k">as</span> <span class="n">it</span> <span class="n">deploys</span> <span class="n">the</span> <span class="n">chaincode</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">container</span><span class="p">,</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>Invoke a transfer transaction,</li>
+</ul>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">invoke</span> <span class="o">-</span><span class="n">l</span> <span class="n">java</span> \
+<span class="o">-</span><span class="n">n</span> <span class="mi">6</span><span class="n">d9a704d95284593fe802a5de89f84e86fb975f00830bc6488713f9441b835cf32d9cd07b087b90e5cb57a88360f90a4de39521a5595545ad689cd64791679e9</span> \
+<span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;: [&quot;transfer&quot;, &quot;a&quot;, &quot;b&quot;, &quot;10&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">c7dde1d7-fae5-4b68-9ab1-928d61d1e346</span></code></p>
+<ul class="simple">
+<li>Query the values of a and b after the transfer</li>
+</ul>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">l</span> <span class="n">java</span> \
+<span class="o">-</span><span class="n">n</span> <span class="mi">6</span><span class="n">d9a704d95284593fe802a5de89f84e86fb975f00830bc6488713f9441b835cf32d9cd07b087b90e5cb57a88360f90a4de39521a5595545ad689cd64791679e9</span> \
+<span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{ &quot;Args&quot;: [&quot;query&quot;, &quot;a&quot;]}&#39;</span>
+<span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="s2">&quot;Amount&quot;</span><span class="p">:</span><span class="s2">&quot;80&quot;</span><span class="p">}</span>
+
+
+<span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">l</span> <span class="n">java</span> \
+<span class="o">-</span><span class="n">n</span> <span class="mi">6</span><span class="n">d9a704d95284593fe802a5de89f84e86fb975f00830bc6488713f9441b835cf32d9cd07b087b90e5cb57a88360f90a4de39521a5595545ad689cd64791679e9</span> \
+<span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{ &quot;Args&quot;: [&quot;query&quot;, &quot;b&quot;]}&#39;</span>
+<span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span><span class="s2">&quot;b&quot;</span><span class="p">,</span><span class="s2">&quot;Amount&quot;</span><span class="p">:</span><span class="s2">&quot;220&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="java-chaincode-deployment-in-dev-mode">
+<h2>Java chaincode deployment in DEV Mode<a class="headerlink" href="#java-chaincode-deployment-in-dev-mode" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p class="first">Follow the step 1 to 3 as above,</p>
+</li>
+<li><p class="first">Build and run the peer process</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric
+make peer
+peer node start --peer-chaincodedev
+</pre></div>
+</div>
+</li>
+<li><p class="first">Open the second Vagrant terminal and build the Java shim layer and
+publish it to Local Maven Repo</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric/core/chaincode/shim/java
+gradle -b build.gradle clean
+gradle -b build.gradle build
+</pre></div>
+</div>
+</li>
+<li><p class="first">Change to examples folder to build and run,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric/examples/chaincode/java/SimpleSample
+gradle -b build.gradle build
+</pre></div>
+</div>
+</li>
+<li><p class="first">Run the SimpleSample chaincode using the
+<code class="docutils literal"><span class="pre">gradle</span> <span class="pre">-b</span> <span class="pre">build.gradle</span> <span class="pre">run</span></code></p>
+</li>
+<li><p class="first">Open the third Vagrant terminal to run init and invoke on the
+chaincode</p>
+<p>peer chaincode deploy -l java -n SimpleSample -c ‘{“Args”: [“init”,
+“a”,”100”, “b”, “200”]}’</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">2016</span><span class="o">/</span><span class="mi">06</span><span class="o">/</span><span class="mi">28</span> <span class="mi">19</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mi">15</span> <span class="n">Load</span> <span class="n">docker</span> <span class="n">HostConfig</span><span class="p">:</span> <span class="o">%+</span><span class="n">v</span> <span class="o">&amp;</span><span class="p">{[]</span> <span class="p">[]</span> <span class="p">[]</span>  <span class="p">[]</span> <span class="n">false</span> <span class="nb">map</span><span class="p">[]</span> <span class="p">[]</span> <span class="n">false</span> <span class="p">[]</span> <span class="p">[]</span> <span class="p">[]</span> <span class="p">[]</span> <span class="n">host</span>    <span class="p">{</span> <span class="mi">0</span><span class="p">}</span> <span class="p">[]</span> <span class="p">{</span> <span class="nb">map</span><span class="p">[]}</span> <span class="n">false</span> <span class="p">[]</span>  <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="n">false</span> <span class="mi">0</span>    <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="p">[]}</span>
+<span class="mi">19</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mf">15.461</span> <span class="p">[</span><span class="n">crypto</span><span class="p">]</span> <span class="n">main</span> <span class="o">-&gt;</span> <span class="n">INFO</span> <span class="mi">002</span> <span class="n">Log</span> <span class="n">level</span> <span class="n">recognized</span> <span class="s1">&#39;info&#39;</span><span class="p">,</span> <span class="nb">set</span> <span class="n">to</span> <span class="n">INFO</span>
+<span class="n">SimpleSample</span>
+</pre></div>
+</div>
+<p>peer chaincode invoke -l java -n SimpleSample -c ‘{“Args”:
+[“transfer”, “a”, “b”, “10”]}’</p>
+</li>
+</ol>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">2016</span><span class="o">/</span><span class="mi">06</span><span class="o">/</span><span class="mi">28</span> <span class="mi">19</span><span class="p">:</span><span class="mi">11</span><span class="p">:</span><span class="mi">13</span> <span class="n">Load</span> <span class="n">docker</span> <span class="n">HostConfig</span><span class="p">:</span> <span class="o">%+</span><span class="n">v</span> <span class="o">&amp;</span><span class="p">{[]</span> <span class="p">[]</span> <span class="p">[]</span>  <span class="p">[]</span> <span class="n">false</span> <span class="nb">map</span><span class="p">[]</span> <span class="p">[]</span> <span class="n">false</span> <span class="p">[]</span> <span class="p">[]</span> <span class="p">[]</span> <span class="p">[]</span> <span class="n">host</span>    <span class="p">{</span> <span class="mi">0</span><span class="p">}</span> <span class="p">[]</span> <span class="p">{</span> <span class="nb">map</span><span class="p">[]}</span> <span class="n">false</span> <span class="p">[]</span>  <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="n">false</span> <span class="mi">0</span>    <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="p">[]}</span>
+<span class="mi">19</span><span class="p">:</span><span class="mi">11</span><span class="p">:</span><span class="mf">13.553</span> <span class="p">[</span><span class="n">crypto</span><span class="p">]</span> <span class="n">main</span> <span class="o">-&gt;</span> <span class="n">INFO</span> <span class="mi">002</span> <span class="n">Log</span> <span class="n">level</span> <span class="n">recognized</span> <span class="s1">&#39;info&#39;</span><span class="p">,</span> <span class="nb">set</span> <span class="n">to</span> <span class="n">INFO</span>
+<span class="mi">978</span><span class="n">ff89e</span><span class="o">-</span><span class="n">e4ef</span><span class="o">-</span><span class="mi">43</span><span class="n">da</span><span class="o">-</span><span class="n">a9f8</span><span class="o">-</span><span class="mi">625</span><span class="n">f2f6f04e5</span>
+</pre></div>
+</div>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">l</span> <span class="n">java</span> <span class="o">-</span><span class="n">n</span> <span class="n">SimpleSample</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{ &quot;Args&quot;: [&quot;query&quot;, &quot;a&quot;]}&#39;</span>
+</pre></div>
+</div>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">2016</span><span class="o">/</span><span class="mi">06</span><span class="o">/</span><span class="mi">28</span> <span class="mi">19</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mi">19</span> <span class="n">Load</span> <span class="n">docker</span> <span class="n">HostConfig</span><span class="p">:</span> <span class="o">%+</span><span class="n">v</span> <span class="o">&amp;</span><span class="p">{[]</span> <span class="p">[]</span> <span class="p">[]</span>  <span class="p">[]</span> <span class="n">false</span> <span class="nb">map</span><span class="p">[]</span> <span class="p">[]</span> <span class="n">false</span> <span class="p">[]</span> <span class="p">[]</span> <span class="p">[]</span> <span class="p">[]</span> <span class="n">host</span>    <span class="p">{</span> <span class="mi">0</span><span class="p">}</span> <span class="p">[]</span> <span class="p">{</span> <span class="nb">map</span><span class="p">[]}</span> <span class="n">false</span> <span class="p">[]</span>  <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="n">false</span> <span class="mi">0</span>    <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="p">[]}</span>
+<span class="mi">19</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mf">19.289</span> <span class="p">[</span><span class="n">crypto</span><span class="p">]</span> <span class="n">main</span> <span class="o">-&gt;</span> <span class="n">INFO</span> <span class="mi">002</span> <span class="n">Log</span> <span class="n">level</span> <span class="n">recognized</span> <span class="s1">&#39;info&#39;</span><span class="p">,</span> <span class="nb">set</span> <span class="n">to</span> <span class="n">INFO</span>
+<span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="s2">&quot;Amount&quot;</span><span class="p">:</span><span class="s2">&quot;90&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">l</span> <span class="n">java</span> <span class="o">-</span><span class="n">n</span> <span class="n">SimpleSample</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;: [&quot;query&quot;, &quot;b&quot;]}&#39;</span>
+</pre></div>
+</div>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">2016</span><span class="o">/</span><span class="mi">06</span><span class="o">/</span><span class="mi">28</span> <span class="mi">19</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mi">25</span> <span class="n">Load</span> <span class="n">docker</span> <span class="n">HostConfig</span><span class="p">:</span> <span class="o">%+</span><span class="n">v</span> <span class="o">&amp;</span><span class="p">{[]</span> <span class="p">[]</span> <span class="p">[]</span>  <span class="p">[]</span> <span class="n">false</span> <span class="nb">map</span><span class="p">[]</span> <span class="p">[]</span> <span class="n">false</span> <span class="p">[]</span> <span class="p">[]</span> <span class="p">[]</span> <span class="p">[]</span> <span class="n">host</span>    <span class="p">{</span> <span class="mi">0</span><span class="p">}</span> <span class="p">[]</span> <span class="p">{</span> <span class="nb">map</span><span class="p">[]}</span> <span class="n">false</span> <span class="p">[]</span>  <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="n">false</span> <span class="mi">0</span>    <span class="mi">0</span> <span class="mi">0</span> <span class="mi">0</span> <span class="p">[]}</span>
+<span class="mi">19</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mf">25.667</span> <span class="p">[</span><span class="n">crypto</span><span class="p">]</span> <span class="n">main</span> <span class="o">-&gt;</span> <span class="n">INFO</span> <span class="mi">002</span> <span class="n">Log</span> <span class="n">level</span> <span class="n">recognized</span> <span class="s1">&#39;info&#39;</span><span class="p">,</span> <span class="nb">set</span> <span class="n">to</span> <span class="n">INFO</span>
+<span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span><span class="s2">&quot;b&quot;</span><span class="p">,</span><span class="s2">&quot;Amount&quot;</span><span class="p">:</span><span class="s2">&quot;210&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="developing-new-java-chaincode">
+<h2>Developing new JAVA chaincode<a class="headerlink" href="#developing-new-java-chaincode" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li>Create a new Java project structure.</li>
+<li>Use existing <code class="docutils literal"><span class="pre">build.grade</span></code> from any example JAVA Chaincode project
+like <code class="docutils literal"><span class="pre">examples/chaincode/java/SimpleSample</span></code>.</li>
+<li>Make your main class extend <code class="docutils literal"><span class="pre">ChaincodeBase</span></code> class and implement the
+following methods from base class.<ul>
+<li><code class="docutils literal"><span class="pre">public</span> <span class="pre">Response</span> <span class="pre">init(ChaincodeStub</span> <span class="pre">stub)</span></code></li>
+<li><code class="docutils literal"><span class="pre">public</span> <span class="pre">Response</span> <span class="pre">invoke(ChaincodeStub</span> <span class="pre">stub);</span></code></li>
+<li><code class="docutils literal"><span class="pre">public</span> <span class="pre">String</span> <span class="pre">getChaincodeID()</span></code></li>
+</ul>
+</li>
+<li>Modify the <code class="docutils literal"><span class="pre">mainClassName</span></code> in <code class="docutils literal"><span class="pre">build.gradle</span></code> to point to your new
+class.</li>
+<li>Build this project using <code class="docutils literal"><span class="pre">gradle</span> <span class="pre">-b</span> <span class="pre">build.gradle</span> <span class="pre">build</span></code></li>
+<li>Run this chaincode after starting a peer in dev-mode as above using
+<code class="docutils literal"><span class="pre">gradle</span> <span class="pre">-b</span> <span class="pre">build.gradle</span> <span class="pre">run</span></code></li>
+</ol>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

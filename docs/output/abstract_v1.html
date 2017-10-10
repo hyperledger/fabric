@@ -1,0 +1,402 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>HYPERLEDGER FABRIC v1.0 &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>HYPERLEDGER FABRIC v1.0</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/abstract_v1.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="hyperledger-fabric-v1-0">
+<h1>HYPERLEDGER FABRIC v1.0<a class="headerlink" href="#hyperledger-fabric-v1-0" title="Permalink to this headline">¶</a></h1>
+<p>Hyperledger Fabric is a platform that enables the delivery of a secure,
+robust, permissioned blockchain for the enterprise that incorporates a
+byzantine fault tolerant consensus. We have learned much as we
+progressed through the v0.6-preview release. In particular, that in
+order to provide for the scalability and confidentiality needs of many
+use cases, a refactoring of the architecture was needed. The
+v0.6-preview release will be the final (barring any bug fixes) release
+based upon the original architecture.</p>
+<p>Hyperledger Fabric’s v1.0 architecture has been designed to address two
+vital enterprise-grade requirements – <strong>security</strong> and <strong>scalability</strong>.
+Businesses and organizations can leverage this new architecture to
+execute confidential transactions on networks with shared or common
+assets – e.g. supply chain, FOREX market, healthcare, etc. The
+progression to v1.0 will be incremental, with myriad windows for
+community members to contribute code and start curating the fabric to
+fit specific business needs.</p>
+<div class="section" id="where-we-are">
+<h2>WHERE WE ARE:<a class="headerlink" href="#where-we-are" title="Permalink to this headline">¶</a></h2>
+<p>The current implementation involves every validating peer shouldering
+the responsibility for the full gauntlet of network functionality. They
+execute transactions, perform consensus, and maintain the shared ledger.
+Not only does this configuration lay a huge computational burden on each
+peer, hindering scalability, but it also constricts important facets of
+privacy and confidentiality. Namely, there is no mechanism to “channel”
+or “silo” confidential transactions. Every peer can see the most minute,
+and at times, sensitive details and logic of every transaction. This is
+untenable for many enterprise businesses, who must abide by stringent
+regulatory statutes.</p>
+</div>
+<div class="section" id="where-we-re-going">
+<h2>WHERE WE’RE GOING<a class="headerlink" href="#where-we-re-going" title="Permalink to this headline">¶</a></h2>
+<div class="line-block">
+<div class="line">The new architecture introduces a clear functional separation of peer
+roles, and allows a transaction to pass through the network in a
+structured and modularized fashion.</div>
+<div class="line">The peers are diverged into two distinct roles – Endorser &amp; Committer.
+As an endorser, the peer will simulate the transaction and ensure that
+the outcome is both deterministic and stable. As a committer, the peer
+will validate the integrity of a transaction and then append to the
+ledger. Now confidential transactions can be sent to specific
+endorsers and their correlating committers, without the broader
+network being made cognizant of the transaction. Additionally,
+policies can be set to determine what levels of “endorsement” and
+“validation” are acceptable for a specific class of transactions.</div>
+<div class="line">A failure to meet these thresholds would simply result in a
+transaction being withdrawn or labeled as “invalid”, rather than
+imploding or stagnating the entire network.</div>
+<div class="line">This new model also introduces the possibility for more elaborate
+networks, such as a foreign exchange market. For example, trade
+settlement might be contingent upon a mandatory “endorsement” from a
+trusted third party (e.g. a clearing house).</div>
+</div>
+<div class="line-block">
+<div class="line">The consensus or “ordering” process (i.e. algorithmic computation) is
+entirely abstracted from the peer. This modularity not only provides a
+powerful security layer – the ordering nodes are agnostic to the
+transaction logic – but it also generates a framework where ordering
+can become a pluggable implementation and scalability can truly occur.</div>
+<div class="line">There is no longer a parallel relationship between the number of peers
+in a network and the number of orderers. Now networks can grow
+dynamically (i.e. add endorsers and committers) without having to add
+corresponding orderers, all the while existing in a modular
+infrastructure designed to support high transaction throughput.
+Moreover, networks now have the capability to completely liberate
+themselves from the computational and legal burden of ordering by
+tapping into a pre-existing or third party-hosted “ordering service.”</div>
+</div>
+<p>As v1.0 manifests, we will see the foundation for interoperable
+blockchain networks that have the ability to scale and transact in a
+manner adherent with regulatory and industry standards. Watch how fabric
+v1.0 and the Hyperledger Project are building a true blockchain for
+business -</p>
+<p><a href="#id1"><span class="problematic" id="id2">|HYPERLEDGERv1.0\_ANIMATION|</span></a></p>
+</div>
+<div class="section" id="how-to-contribute">
+<h2>HOW TO CONTRIBUTE<a class="headerlink" href="#how-to-contribute" title="Permalink to this headline">¶</a></h2>
+<p>Use the following links to explore upcoming additions to the codebase
+that will spawn the capabilities in v1.0:</p>
+<ul class="simple">
+<li>Familiarize yourself with the <a class="reference external" href="CONTRIBUTING.md">guidelines for code
+contributions</a> to this project. <strong>Note</strong>: In
+order to participate in the development of the Hyperledger Fabric
+project, you will need an <a class="reference external" href="Gerrit/lf-account.md">LF account</a>. This
+will give you single sign-on to JIRA and Gerrit.</li>
+<li>Explore the design document for the new
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/proposals/r1/Next-Consensus-Architecture-Proposal.md">architecture</a></li>
+<li>Explore design docs for the various <a class="reference external" href="https://wiki.hyperledger.org/community/fabric-design-docs">Fabric
+components</a></li>
+<li>Explore <a class="reference external" href="https://jira.hyperledger.org/projects/FAB/issues/">JIRA</a>
+for open Hyperledger Fabric issues.</li>
+<li>Explore the
+<a class="reference external" href="https://jira.hyperledger.org/projects/FAB/issues/">JIRA</a> backlog
+for upcoming Hyperledger Fabric issues.</li>
+<li>Explore <a class="reference external" href="https://jira.hyperledger.org/issues/?filter=10147">JIRA</a>
+for Hyperledger Fabric issues tagged with “help wanted.”</li>
+<li>Explore the <a class="reference external" href="https://github.com/hyperledger/fabric">source code</a></li>
+<li>Explore the
+<a class="reference external" href="http://hyperledger-fabric.readthedocs.io/en/latest/">documentation</a></li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

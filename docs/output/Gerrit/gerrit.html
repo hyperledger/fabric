@@ -1,0 +1,534 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Working with Gerrit &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/>
+        <link rel="next" title="Submitting a Change to Gerrit" href="changes.html"/>
+        <link rel="prev" title="Requesting a Linux Foundation Account" href="lf-account.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Working with Gerrit</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#git-review">Git-review</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sandbox-project">Sandbox project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#getting-deeper-into-gerrit">Getting deeper into Gerrit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#working-with-a-local-clone-of-the-repository">Working with a local clone of the repository</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#submitting-a-change">Submitting a Change</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#use-git-review">Use git review</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#not-use-git-review">Not Use git review</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-reviewers">Adding reviewers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reviewing-using-gerrit">Reviewing Using Gerrit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#viewing-pending-changes">Viewing Pending Changes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Working with Gerrit</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/Gerrit/gerrit.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="working-with-gerrit">
+<h1>Working with Gerrit<a class="headerlink" href="#working-with-gerrit" title="Permalink to this headline">¶</a></h1>
+<p>Follow these instructions to collaborate on the Hyperledger Fabric
+Project through the Gerrit review system.</p>
+<p>Please be sure that you are subscribed to the <a class="reference external" href="http://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric">mailing
+list</a>
+and of course, you can reach out on
+<a class="reference external" href="https://chat.hyperledger.org/">chat</a> if you need help.</p>
+<p>Gerrit assigns the following roles to users:</p>
+<ul class="simple">
+<li><strong>Submitters</strong>: May submit changes for consideration, review other
+code changes, and make recommendations for acceptance or rejection by
+voting +1 or -1, respectively.</li>
+<li><strong>Maintainers</strong>: May approve or reject changes based upon feedback
+from reviewers voting +2 or -2, respectively.</li>
+<li><strong>Builders</strong>: (e.g. Jenkins) May use the build automation
+infrastructure to verify the change.</li>
+</ul>
+<p>Maintainers should be familiar with the <a class="reference external" href="reviewing.md">review
+process</a>. However, anyone is welcome to (and
+encouraged!) review changes, and hence may find that document of value.</p>
+<div class="section" id="git-review">
+<h2>Git-review<a class="headerlink" href="#git-review" title="Permalink to this headline">¶</a></h2>
+<p>There’s a <strong>very</strong> useful tool for working with Gerrit called
+<a class="reference external" href="https://www.mediawiki.org/wiki/Gerrit/git-review">git-review</a>. This
+command-line tool can automate most of the ensuing sections for you. Of
+course, reading the information below is also highly recommended so that
+you understand what’s going on behind the scenes.</p>
+</div>
+<div class="section" id="sandbox-project">
+<h2>Sandbox project<a class="headerlink" href="#sandbox-project" title="Permalink to this headline">¶</a></h2>
+<p>We have created a <a class="reference external" href="https://gerrit.hyperledger.org/r/#/admin/projects/lf-sandbox">sandbox
+project</a>
+to allow developers to familiarize themselves with Gerrit and our
+workflows. Please do feel free to use this project to experiment with
+the commands and tools, below.</p>
+</div>
+<div class="section" id="getting-deeper-into-gerrit">
+<h2>Getting deeper into Gerrit<a class="headerlink" href="#getting-deeper-into-gerrit" title="Permalink to this headline">¶</a></h2>
+<p>A comprehensive walk-through of Gerrit is beyond the scope of this
+document. There are plenty of resources available on the Internet. A
+good summary can be found
+<a class="reference external" href="https://www.mediawiki.org/wiki/Gerrit/Tutorial">here</a>. We have also
+provided a set of <a class="reference external" href="best-practices.md">Best Practices</a> that you may
+find helpful.</p>
+</div>
+<div class="section" id="working-with-a-local-clone-of-the-repository">
+<h2>Working with a local clone of the repository<a class="headerlink" href="#working-with-a-local-clone-of-the-repository" title="Permalink to this headline">¶</a></h2>
+<p>To work on something, whether a new feature or a bugfix:</p>
+<ol class="arabic">
+<li><p class="first">Open the Gerrit <a class="reference external" href="https://gerrit.hyperledger.org/r/#/admin/projects/">Projects
+page</a></p>
+</li>
+<li><p class="first">Select the project you wish to work on.</p>
+</li>
+<li><p class="first">Open a terminal window and clone the project locally using the
+<code class="docutils literal"><span class="pre">Clone</span> <span class="pre">with</span> <span class="pre">git</span> <span class="pre">hook</span></code> URL. Be sure that <code class="docutils literal"><span class="pre">ssh</span></code> is also selected,
+as this will make authentication much simpler:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">LFID</span><span class="nd">@gerrit</span><span class="o">.</span><span class="n">hyperledger</span><span class="o">.</span><span class="n">org</span><span class="p">:</span><span class="mi">29418</span><span class="o">/</span><span class="n">fabric</span> <span class="o">&amp;&amp;</span> <span class="n">scp</span> <span class="o">-</span><span class="n">p</span> <span class="o">-</span><span class="n">P</span> <span class="mi">29418</span> <span class="n">LFID</span><span class="nd">@gerrit</span><span class="o">.</span><span class="n">hyperledger</span><span class="o">.</span><span class="n">org</span><span class="p">:</span><span class="n">hooks</span><span class="o">/</span><span class="n">commit</span><span class="o">-</span><span class="n">msg</span> <span class="n">fabric</span><span class="o">/.</span><span class="n">git</span><span class="o">/</span><span class="n">hooks</span><span class="o">/</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Note:</strong> if you are cloning the fabric project repository, you will
+want to clone it to the <code class="docutils literal"><span class="pre">$GOPATH/src/github.com/hyperledger</span></code> directory
+so that it will build, and so that you can use it with the Vagrant
+<a class="reference external" href="../dev-setup/devenv.md">development environment</a>.</p>
+<ol class="arabic simple" start="4">
+<li>Create a descriptively-named branch off of your cloned repository</li>
+</ol>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">fabric</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="n">issue</span><span class="o">-</span><span class="n">nnnn</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="5">
+<li>Commit your code. For an in-depth discussion of creating an effective
+commit, please read <a class="reference external" href="changes.md">this document</a>.</li>
+</ol>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">s</span> <span class="o">-</span><span class="n">a</span>
+</pre></div>
+</div>
+<p>Then input precise and readable commit msg and submit.</p>
+<ol class="arabic simple" start="6">
+<li>Any code changes that affect documentation should be accompanied by
+corresponding changes (or additions) to the documentation and tests.
+This will ensure that if the merged PR is reversed, all traces of the
+change will be reversed as well.</li>
+</ol>
+</div>
+<div class="section" id="submitting-a-change">
+<h2>Submitting a Change<a class="headerlink" href="#submitting-a-change" title="Permalink to this headline">¶</a></h2>
+<p>Currently, Gerrit is the only method to submit a change for review.
+<strong>Please review the `guidelines &lt;changes.md&gt;`__ for making and
+submitting a change</strong>.</p>
+<div class="section" id="use-git-review">
+<h3>Use git review<a class="headerlink" href="#use-git-review" title="Permalink to this headline">¶</a></h3>
+<p><strong>Note:</strong> if you prefer, you can use the <a class="reference external" href="#git-review">git-review</a>
+tool instead of the following. e.g.</p>
+<p>Add the following section to <code class="docutils literal"><span class="pre">.git/config</span></code>, and replace <code class="docutils literal"><span class="pre">&lt;USERNAME&gt;</span></code>
+with your gerrit id.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">remote</span> <span class="s2">&quot;gerrit&quot;</span><span class="p">]</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">ssh</span><span class="p">:</span><span class="o">//&lt;</span><span class="n">USERNAME</span><span class="o">&gt;</span><span class="nd">@gerrit</span><span class="o">.</span><span class="n">hyperledger</span><span class="o">.</span><span class="n">org</span><span class="p">:</span><span class="mi">29418</span><span class="o">/</span><span class="n">fabric</span><span class="o">.</span><span class="n">git</span>
+    <span class="n">fetch</span> <span class="o">=</span> <span class="o">+</span><span class="n">refs</span><span class="o">/</span><span class="n">heads</span><span class="o">/*</span><span class="p">:</span><span class="n">refs</span><span class="o">/</span><span class="n">remotes</span><span class="o">/</span><span class="n">gerrit</span><span class="o">/*</span>
+</pre></div>
+</div>
+<p>Then submit your change with <code class="docutils literal"><span class="pre">git</span> <span class="pre">review</span></code>.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd &lt;your code dir&gt;
+$ git review
+</pre></div>
+</div>
+<p>When you update your patch, you can commit with <code class="docutils literal"><span class="pre">git</span> <span class="pre">commit</span> <span class="pre">--amend</span></code>,
+and then repeat the <code class="docutils literal"><span class="pre">git</span> <span class="pre">review</span></code> command.</p>
+</div>
+<div class="section" id="not-use-git-review">
+<h3>Not Use git review<a class="headerlink" href="#not-use-git-review" title="Permalink to this headline">¶</a></h3>
+<p>Directions for building the source code can be found
+<a class="reference external" href="../dev-setup/build.md">here</a>.</p>
+<p>When a change is ready for submission, Gerrit requires that the change
+be pushed to a special branch. The name of this special branch contains
+a reference to the final branch where the code should reside, once
+accepted.</p>
+<p>For the Hyperledger Fabric Project, the special branch is called
+<code class="docutils literal"><span class="pre">refs/for/master</span></code>.</p>
+<p>To push the current local development branch to the gerrit server, open
+a terminal window at the root of your cloned repository:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">&lt;</span><span class="n">your</span> <span class="n">clone</span> <span class="nb">dir</span><span class="o">&gt;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">HEAD</span><span class="p">:</span><span class="n">refs</span><span class="o">/</span><span class="k">for</span><span class="o">/</span><span class="n">master</span>
+</pre></div>
+</div>
+<p>If the command executes correctly, the output should look similar to
+this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Counting</span> <span class="n">objects</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="n">done</span><span class="o">.</span>
+<span class="n">Writing</span> <span class="n">objects</span><span class="p">:</span> <span class="mi">100</span><span class="o">%</span> <span class="p">(</span><span class="mi">3</span><span class="o">/</span><span class="mi">3</span><span class="p">),</span> <span class="mi">306</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="mi">0</span> <span class="nb">bytes</span><span class="o">/</span><span class="n">s</span><span class="p">,</span> <span class="n">done</span><span class="o">.</span>
+<span class="n">Total</span> <span class="mi">3</span> <span class="p">(</span><span class="n">delta</span> <span class="mi">0</span><span class="p">),</span> <span class="n">reused</span> <span class="mi">0</span> <span class="p">(</span><span class="n">delta</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">remote</span><span class="p">:</span> <span class="n">Processing</span> <span class="n">changes</span><span class="p">:</span> <span class="n">new</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="n">refs</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="n">done</span>
+<span class="n">remote</span><span class="p">:</span>
+<span class="n">remote</span><span class="p">:</span> <span class="n">New</span> <span class="n">Changes</span><span class="p">:</span>
+<span class="n">remote</span><span class="p">:</span>   <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">gerrit</span><span class="o">.</span><span class="n">hyperledger</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">r</span><span class="o">/</span><span class="mi">6</span> <span class="n">Test</span> <span class="n">commit</span>
+<span class="n">remote</span><span class="p">:</span>
+<span class="n">To</span> <span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">LFID</span><span class="nd">@gerrit</span><span class="o">.</span><span class="n">hyperledger</span><span class="o">.</span><span class="n">org</span><span class="p">:</span><span class="mi">29418</span><span class="o">/</span><span class="n">fabric</span>
+<span class="o">*</span> <span class="p">[</span><span class="n">new</span> <span class="n">branch</span><span class="p">]</span>      <span class="n">HEAD</span> <span class="o">-&gt;</span> <span class="n">refs</span><span class="o">/</span><span class="k">for</span><span class="o">/</span><span class="n">master</span>
+</pre></div>
+</div>
+<p>The gerrit server generates a link where the change can be tracked.</p>
+</div>
+</div>
+<div class="section" id="adding-reviewers">
+<h2>Adding reviewers<a class="headerlink" href="#adding-reviewers" title="Permalink to this headline">¶</a></h2>
+<p>Optionally, you can add reviewers to your change.</p>
+<p>To specify a list of reviewers via the command line, add
+<code class="docutils literal"><span class="pre">%r=reviewer&#64;project.org</span></code> to your push command. For example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">HEAD</span><span class="p">:</span><span class="n">refs</span><span class="o">/</span><span class="k">for</span><span class="o">/</span><span class="n">master</span><span class="o">%</span><span class="n">r</span><span class="o">=</span><span class="n">rev1</span><span class="nd">@email</span><span class="o">.</span><span class="n">com</span><span class="p">,</span><span class="n">r</span><span class="o">=</span><span class="n">rev2</span><span class="nd">@notemail</span><span class="o">.</span><span class="n">com</span>
+</pre></div>
+</div>
+<p>Alternatively, you can auto-configure GIT to add a set of reviewers if
+your commits will have the same reviewers all at the time.</p>
+<p>To add a list of default reviewers, open the :file:<code class="docutils literal"><span class="pre">.git/config</span></code> file
+in the project directory and add the following line in the
+<code class="docutils literal"><span class="pre">[</span> <span class="pre">branch</span> <span class="pre">“master”</span> <span class="pre">]</span></code> section:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>[branch &quot;master&quot;] #.... push =
+HEAD:refs/for/master%r=rev1@email.com,r=rev2@notemail.com`
+</pre></div>
+</div>
+<p>Make sure to use actual email addresses instead of the
+<code class="docutils literal"><span class="pre">&#64;email.com</span> <span class="pre">and</span> <span class="pre">&#64;notemail.com</span></code> addressses. Don’t forget to replace
+<code class="docutils literal"><span class="pre">origin</span></code> with your git remote name.</p>
+</div>
+<div class="section" id="reviewing-using-gerrit">
+<h2>Reviewing Using Gerrit<a class="headerlink" href="#reviewing-using-gerrit" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><strong>Add</strong>: This button allows the change submitter to manually add
+names of people who should review a change; start typing a name and
+the system will auto-complete based on the list of people registered
+and with access to the system. They will be notified by email that
+you are requesting their input.</li>
+<li><strong>Abandon</strong>: This button is available to the submitter only; it
+allows a committer to abandon a change and remove it from the merge
+queue.</li>
+<li><strong>Change-ID</strong>: This ID is generated by Gerrit (or system). It becomes
+useful when the review process determines that your commit(s) have to
+be amended. You may submit a new version; and if the same Change-ID
+header (and value) are present, Gerrit will remember it and present
+it as another version of the same change.</li>
+<li><strong>Status</strong>: Currently, the example change is in review status, as
+indicated by “Needs Verified” in the upper-left corner. The list of
+Reviewers will all emit their opinion, voting +1 if they agree to the
+merge, -1 if they disagree. Gerrit users with a Maintainer role can
+agree to the merge or refuse it by voting +2 or -2 respectively.</li>
+</ul>
+<p>Notifications are sent to the email address in your commit message’s
+Signed-off-by line. Visit your <a class="reference external" href="https://gerrit.hyperledger.org/r/#/dashboard/self">Gerrit
+dashboard</a>, to
+check the progress of your requests.</p>
+<p>The history tab in Gerrit will show you the in-line comments and the
+author of the review.</p>
+</div>
+<div class="section" id="viewing-pending-changes">
+<h2>Viewing Pending Changes<a class="headerlink" href="#viewing-pending-changes" title="Permalink to this headline">¶</a></h2>
+<p>Find all pending changes by clicking on the <code class="docutils literal"><span class="pre">All</span> <span class="pre">--&gt;</span> <span class="pre">Changes</span></code> link in
+the upper-left corner, or <a class="reference external" href="https://gerrit.hyperledger.org/r/#/q/project:fabric">open this
+link</a>.</p>
+<p>If you collaborate in multiple projects, you may wish to limit searching
+to the specific branch through the search bar in the upper-right side.</p>
+<p>Add the filter <em>project:fabric</em> to limit the visible changes to only
+those from the Hyperledger Fabric Project.</p>
+<p>List all current changes you submitted, or list just those changes in
+need of your input by clicking on <code class="docutils literal"><span class="pre">My</span> <span class="pre">--&gt;</span> <span class="pre">Changes</span></code> or <a class="reference external" href="https://gerrit.hyperledger.org/r/#/dashboard/self">open this
+link</a></p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="changes.html" class="btn btn-neutral float-right" title="Submitting a Change to Gerrit" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="lf-account.html" class="btn btn-neutral" title="Requesting a Linux Foundation Account" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,487 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Logging Control &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/>
+        <link rel="next" title="Architecture Explained" href="../arch-deep-dive.html"/>
+        <link rel="prev" title="Chaincode Packaging and Signing" href="../cc-packaging-and-signing.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Logging Control</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#peer">peer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#go-chaincodes">Go chaincodes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#api">API</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Logging Control</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/Setup/logging-control.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="logging-control">
+<h1>Logging Control<a class="headerlink" href="#logging-control" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>Logging in the <code class="docutils literal"><span class="pre">peer</span></code> application and in the <code class="docutils literal"><span class="pre">shim</span></code> interface to
+chaincodes is programmed using facilities provided by the
+<code class="docutils literal"><span class="pre">github.com/op/go-logging</span></code> package. This package supports</p>
+<ul class="simple">
+<li>Logging control based on the severity of the message</li>
+<li>Logging control based on the software <em>module</em> generating the message</li>
+<li>Different pretty-printing options based on the severity of the
+message</li>
+</ul>
+<p>All logs are currently directed to <code class="docutils literal"><span class="pre">stderr</span></code>, and the pretty-printing
+is currently fixed. However global and module-level control of logging
+by severity is provided for both users and developers. There are
+currently no formalized rules for the types of information provided at
+each severity level, however when submitting bug reports the developers
+may want to see full logs down to the DEBUG level.</p>
+<p>In pretty-printed logs the logging level is indicated both by color and
+by a 4-character code, e.g, “ERRO” for ERROR, “DEBU” for DEBUG, etc. In
+the logging context a <em>module</em> is an arbitrary name (string) given by
+developers to groups of related messages. In the pretty-printed example
+below, the logging modules “peer”, “rest” and “main” are generating
+logs.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">16</span><span class="p">:</span><span class="mi">47</span><span class="p">:</span><span class="mf">09.634</span> <span class="p">[</span><span class="n">peer</span><span class="p">]</span> <span class="n">GetLocalAddress</span> <span class="o">-&gt;</span> <span class="n">INFO</span> <span class="mi">033</span> <span class="n">Auto</span> <span class="n">detected</span> <span class="n">peer</span> <span class="n">address</span><span class="p">:</span> <span class="mf">9.3</span><span class="o">.</span><span class="mf">158.178</span><span class="p">:</span><span class="mi">7051</span>
+<span class="mi">16</span><span class="p">:</span><span class="mi">47</span><span class="p">:</span><span class="mf">09.635</span> <span class="p">[</span><span class="n">rest</span><span class="p">]</span> <span class="n">StartOpenchainRESTServer</span> <span class="o">-&gt;</span> <span class="n">INFO</span> <span class="mi">035</span> <span class="n">Initializing</span> <span class="n">the</span> <span class="n">REST</span> <span class="n">service</span><span class="o">...</span>
+<span class="mi">16</span><span class="p">:</span><span class="mi">47</span><span class="p">:</span><span class="mf">09.635</span> <span class="p">[</span><span class="n">main</span><span class="p">]</span> <span class="n">serve</span> <span class="o">-&gt;</span> <span class="n">INFO</span> <span class="mi">036</span> <span class="n">Starting</span> <span class="n">peer</span> <span class="k">with</span> <span class="nb">id</span><span class="o">=</span><span class="n">name</span><span class="p">:</span><span class="s2">&quot;vp1&quot;</span> <span class="p">,</span> <span class="n">network</span> <span class="nb">id</span><span class="o">=</span><span class="n">dev</span><span class="p">,</span> <span class="n">address</span><span class="o">=</span><span class="mf">9.3</span><span class="o">.</span><span class="mf">158.178</span><span class="p">:</span><span class="mi">7051</span><span class="p">,</span> <span class="n">discovery</span><span class="o">.</span><span class="n">rootnode</span><span class="o">=</span><span class="p">,</span> <span class="n">validator</span><span class="o">=</span><span class="n">true</span>
+</pre></div>
+</div>
+<p>An arbitrary number of logging modules can be created at runtime,
+therefore there is no “master list” of modules, and logging control
+constructs can not check whether logging modules actually do or will
+exist. Also note that the logging module system does not understand
+hierarchy or wildcarding: You may see module names like “foo/bar” in the
+code, but the logging system only sees a flat string. It doesn’t
+understand that “foo/bar” is related to “foo” in any way, or that
+“foo/*” might indicate all “submodules” of foo.</p>
+</div>
+<div class="section" id="peer">
+<h2>peer<a class="headerlink" href="#peer" title="Permalink to this headline">¶</a></h2>
+<p>The logging level of the <code class="docutils literal"><span class="pre">peer</span></code> command can be controlled from the
+command line for each invocation using the <code class="docutils literal"><span class="pre">--logging-level</span></code> flag, for
+example</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">node</span> <span class="n">start</span> <span class="o">--</span><span class="n">logging</span><span class="o">-</span><span class="n">level</span><span class="o">=</span><span class="n">debug</span>
+</pre></div>
+</div>
+<p>The default logging level for each individual <code class="docutils literal"><span class="pre">peer</span></code> subcommand can
+also be set in the
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml">core.yaml</a>
+file. For example the key <code class="docutils literal"><span class="pre">logging.node</span></code> sets the default level for
+the <code class="docutils literal"><span class="pre">node</span></code> subcommmand. Comments in the file also explain how the
+logging level can be overridden in various ways by using environment
+varaibles.</p>
+<p>Logging severity levels are specified using case-insensitive strings
+chosen from</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CRITICAL</span> <span class="o">|</span> <span class="n">ERROR</span> <span class="o">|</span> <span class="n">WARNING</span> <span class="o">|</span> <span class="n">NOTICE</span> <span class="o">|</span> <span class="n">INFO</span> <span class="o">|</span> <span class="n">DEBUG</span>
+</pre></div>
+</div>
+<p>The full logging level specification for the <code class="docutils literal"><span class="pre">peer</span></code> is of the form</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[</span><span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span><span class="p">[,</span><span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;...</span><span class="p">]</span><span class="o">=</span><span class="p">]</span><span class="o">&lt;</span><span class="n">level</span><span class="o">&gt;</span><span class="p">[:[</span><span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span><span class="p">[,</span><span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;...</span><span class="p">]</span><span class="o">=</span><span class="p">]</span><span class="o">&lt;</span><span class="n">level</span><span class="o">&gt;...</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>A logging level by itself is taken as the overall default. Otherwise,
+overrides for individual or groups of modules can be specified using the</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span><span class="p">[,</span><span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;...</span><span class="p">]</span><span class="o">=&lt;</span><span class="n">level</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>syntax. Examples of specifications (valid for all of
+<code class="docutils literal"><span class="pre">--logging-level</span></code>, environment variable and
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml">core.yaml</a>
+settings):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">info</span>                                       <span class="o">-</span> <span class="n">Set</span> <span class="n">default</span> <span class="n">to</span> <span class="n">INFO</span>
+<span class="n">warning</span><span class="p">:</span><span class="n">main</span><span class="p">,</span><span class="n">db</span><span class="o">=</span><span class="n">debug</span><span class="p">:</span><span class="n">chaincode</span><span class="o">=</span><span class="n">info</span>       <span class="o">-</span> <span class="n">Default</span> <span class="n">WARNING</span><span class="p">;</span> <span class="n">Override</span> <span class="k">for</span> <span class="n">main</span><span class="p">,</span><span class="n">db</span><span class="p">,</span><span class="n">chaincode</span>
+<span class="n">chaincode</span><span class="o">=</span><span class="n">info</span><span class="p">:</span><span class="n">main</span><span class="o">=</span><span class="n">debug</span><span class="p">:</span><span class="n">db</span><span class="o">=</span><span class="n">debug</span><span class="p">:</span><span class="n">warning</span> <span class="o">-</span> <span class="n">Same</span> <span class="k">as</span> <span class="n">above</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="go-chaincodes">
+<h2>Go chaincodes<a class="headerlink" href="#go-chaincodes" title="Permalink to this headline">¶</a></h2>
+<p>The standard mechanism to log within a chaincode application is to
+integrate with the logging transport exposed to each chaincode instance
+via the peer. The chaincode <code class="docutils literal"><span class="pre">shim</span></code> package provides APIs that allow a
+chaincode to create and manage logging objects whose logs will be
+formatted and interleaved consistently with the <code class="docutils literal"><span class="pre">shim</span></code> logs.</p>
+<p>As independently executed programs, user-provided chaincodes may
+technically also produce output on stdout/stderr. While naturally useful
+for “devmode”, these channels are normally disabled on a production
+network to mitigate abuse from broken or malicious code. However, it is
+possible to enable this output even for peer-managed containers (e.g.
+“netmode”) on a per-peer basis via the
+CORE_VM_DOCKER_ATTACHSTDOUT=true configuration option.</p>
+<p>Once enabled, each chaincode will receive its own logging channel keyed
+by its container-id. Any output written to either stdout or stderr will
+be integrated with the peer’s log on a per-line basis. It is not
+recommended to enable this for production.</p>
+<div class="section" id="api">
+<h3>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">NewLogger(name</span> <span class="pre">string)</span> <span class="pre">*ChaincodeLogger</span></code> - Create a logging object
+for use by a chaincode</p>
+<p><code class="docutils literal"><span class="pre">(c</span> <span class="pre">*ChaincodeLogger)</span> <span class="pre">SetLevel(level</span> <span class="pre">LoggingLevel)</span></code> - Set the logging
+level of the logger</p>
+<p><code class="docutils literal"><span class="pre">(c</span> <span class="pre">*ChaincodeLogger)</span> <span class="pre">IsEnabledFor(level</span> <span class="pre">LoggingLevel)</span> <span class="pre">bool</span></code> - Return
+true if logs will be generated at the given level</p>
+<p><code class="docutils literal"><span class="pre">LogLevel(levelString</span> <span class="pre">string)</span> <span class="pre">(LoggingLevel,</span> <span class="pre">error)</span></code> - Convert a
+string to a <code class="docutils literal"><span class="pre">LoggingLevel</span></code></p>
+<p>A <code class="docutils literal"><span class="pre">LoggingLevel</span></code> is a member of the enumeration</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">LogDebug</span><span class="p">,</span> <span class="n">LogInfo</span><span class="p">,</span> <span class="n">LogNotice</span><span class="p">,</span> <span class="n">LogWarning</span><span class="p">,</span> <span class="n">LogError</span><span class="p">,</span> <span class="n">LogCritical</span>
+</pre></div>
+</div>
+<p>which can be used directly, or generated by passing a case-insensitive
+version of the strings</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">DEBUG</span><span class="p">,</span> <span class="n">INFO</span><span class="p">,</span> <span class="n">NOTICE</span><span class="p">,</span> <span class="n">WARNING</span><span class="p">,</span> <span class="n">ERROR</span><span class="p">,</span> <span class="n">CRITICAL</span>
+</pre></div>
+</div>
+<p>to the <code class="docutils literal"><span class="pre">LogLevel</span></code> API.</p>
+<p>Formatted logging at various severity levels is provided by the
+functions</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Debug</span><span class="p">(</span><span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Info</span><span class="p">(</span><span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Notice</span><span class="p">(</span><span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="ne">Warning</span><span class="p">(</span><span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Error</span><span class="p">(</span><span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Critical</span><span class="p">(</span><span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Debugf</span><span class="p">(</span><span class="nb">format</span> <span class="n">string</span><span class="p">,</span> <span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Infof</span><span class="p">(</span><span class="nb">format</span> <span class="n">string</span><span class="p">,</span> <span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Noticef</span><span class="p">(</span><span class="nb">format</span> <span class="n">string</span><span class="p">,</span> <span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Warningf</span><span class="p">(</span><span class="nb">format</span> <span class="n">string</span><span class="p">,</span> <span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Errorf</span><span class="p">(</span><span class="nb">format</span> <span class="n">string</span><span class="p">,</span> <span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+<span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">ChaincodeLogger</span><span class="p">)</span> <span class="n">Criticalf</span><span class="p">(</span><span class="nb">format</span> <span class="n">string</span><span class="p">,</span> <span class="n">args</span> <span class="o">...</span><span class="n">interface</span><span class="p">{})</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">f</span></code> forms of the logging APIs provide for precise control over the
+formatting of the logs. The non-<code class="docutils literal"><span class="pre">f</span></code> forms of the APIs currently
+insert a space between the printed representations of the arguments, and
+arbitrarily choose the formats to use.</p>
+<p>In the current implementation, the logs produced by the <code class="docutils literal"><span class="pre">shim</span></code> and a
+<code class="docutils literal"><span class="pre">ChaincodeLogger</span></code> are timestamped, marked with the logger <em>name</em> and
+severity level, and written to <code class="docutils literal"><span class="pre">stderr</span></code>. Note that logging level
+control is currently based on the <em>name</em> provided when the
+<code class="docutils literal"><span class="pre">ChaincodeLogger</span></code> is created. To avoid ambiguities, all
+<code class="docutils literal"><span class="pre">ChaincodeLogger</span></code> should be given unique names other than “shim”. The
+logger <em>name</em> will appear in all log messages created by the logger. The
+<code class="docutils literal"><span class="pre">shim</span></code> logs as “shim”.</p>
+<p>Go language chaincodes can also control the logging level of the
+chaincode <code class="docutils literal"><span class="pre">shim</span></code> interface through the <code class="docutils literal"><span class="pre">SetLoggingLevel</span></code> API.</p>
+<p><code class="docutils literal"><span class="pre">SetLoggingLevel(LoggingLevel</span> <span class="pre">level)</span></code> - Control the logging level of
+the shim</p>
+<p>The default logging level for the shim is <code class="docutils literal"><span class="pre">LogDebug</span></code>.</p>
+<p>Below is a simple example of how a chaincode might create a private
+logging object logging at the <code class="docutils literal"><span class="pre">LogInfo</span></code> level, and also control the
+amount of logging provided by the <code class="docutils literal"><span class="pre">shim</span></code> based on an environment
+variable.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">logger</span> <span class="o">=</span> <span class="n">shim</span><span class="o">.</span><span class="n">NewLogger</span><span class="p">(</span><span class="s2">&quot;myChaincode&quot;</span><span class="p">)</span>
+
+<span class="n">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">SetLevel</span><span class="p">(</span><span class="n">shim</span><span class="o">.</span><span class="n">LogInfo</span><span class="p">)</span>
+
+    <span class="n">logLevel</span><span class="p">,</span> <span class="n">_</span> <span class="p">:</span><span class="o">=</span> <span class="n">shim</span><span class="o">.</span><span class="n">LogLevel</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">Getenv</span><span class="p">(</span><span class="s2">&quot;SHIM_LOGGING_LEVEL&quot;</span><span class="p">))</span>
+    <span class="n">shim</span><span class="o">.</span><span class="n">SetLoggingLevel</span><span class="p">(</span><span class="n">logLevel</span><span class="p">)</span>
+    <span class="o">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../arch-deep-dive.html" class="btn btn-neutral float-right" title="Architecture Explained" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../cc-packaging-and-signing.html" class="btn btn-neutral" title="Chaincode Packaging and Signing" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

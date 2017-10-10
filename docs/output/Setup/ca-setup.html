@@ -1,0 +1,1511 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Fabric CA User’s Guide &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/>
+        <link rel="next" title="Endorsement policies" href="../endorsement-policies.html"/>
+        <link rel="prev" title="Transaction Flow" href="../txflow.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Fabric CA User’s Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#table-of-contents">Table of Contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#install">Install</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#start-server-natively">Start Server Natively</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#start-server-via-docker">Start Server via Docker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#explore-the-fabric-ca-cli">Explore the Fabric CA CLI</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#file-formats">File Formats</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#fabric-ca-server-s-configuration-file-format">Fabric CA server’s configuration file format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fabric-ca-client-s-configuration-file-format">Fabric CA client’s configuration file format</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-settings-precedence">Configuration Settings Precedence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#a-word-on-file-paths">A word on file paths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fabric-ca-server">Fabric CA Server</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#initializing-the-server">Initializing the server</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#starting-the-server">Starting the server</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configuring-the-database">Configuring the database</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#postgres">Postgres</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mysql">MySQL</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#configuring-ldap">Configuring LDAP</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#setting-up-a-cluster">Setting up a cluster</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#fabric-ca-client">Fabric CA Client</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#enrolling-the-bootstrap-identity">Enrolling the bootstrap identity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#registering-a-new-identity">Registering a new identity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#enrolling-a-peer-identity">Enrolling a Peer Identity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#getting-a-ca-certificate-chain-from-another-fabric-ca-server">Getting a CA certificate chain from another Fabric CA server</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reenrolling-an-identity">Reenrolling an Identity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#revoking-a-certificate-or-identity">Revoking a certificate or identity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#enabling-tls">Enabling TLS</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#appendix">Appendix</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#postgres-ssl-configuration">Postgres SSL Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mysql-ssl-configuration">MySQL SSL Configuration</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Fabric CA User’s Guide</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/Setup/ca-setup.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="fabric-ca-user-s-guide">
+<h1>Fabric CA User’s Guide<a class="headerlink" href="#fabric-ca-user-s-guide" title="Permalink to this headline">¶</a></h1>
+<p>Fabric CA is a Certificate Authority for Hyperledger Fabric.</p>
+<div class="line-block">
+<div class="line">It provides features such as:</div>
+<div class="line">1) registration of identities, or connects to LDAP as the user
+registry;</div>
+<div class="line">2) issuance of Enrollment Certificates (ECerts);</div>
+<div class="line">3) issuance of Transaction Certificates (TCerts), providing both
+anonymity and unlinkability when transacting on a Hyperledger Fabric
+blockchain;</div>
+<div class="line">4) certificate renewal and revocation.</div>
+</div>
+<p>Fabric CA consists of both a server and a client component as described
+later in this document.</p>
+<p>For developers interested in contributing to Fabric CA, see the <a class="reference external" href="https://github.com/hyperledger/fabric-ca">Fabric
+CA repository</a> for more
+information.</p>
+<div class="section" id="table-of-contents">
+<span id="back-to-top"></span><h2>Table of Contents<a class="headerlink" href="#table-of-contents" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#getting-started">Getting Started</a><ol class="arabic">
+<li><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li><a class="reference internal" href="#install">Install</a></li>
+<li><a class="reference internal" href="#explore-the-fabric-ca-cli">Explore the Fabric CA CLI</a></li>
+</ol>
+</li>
+<li><a class="reference internal" href="#file-formats">File Formats</a><ol class="arabic">
+<li><a class="reference internal" href="#fabric-ca-server-s-configuration-file-format">Fabric CA server’s configuration file format</a></li>
+<li><a class="reference internal" href="#fabric-ca-client-s-configuration-file-format">Fabric CA client’s configuration file format</a></li>
+</ol>
+</li>
+<li><a class="reference internal" href="#configuration-settings-precedence">Configuration Settings Precedence</a></li>
+<li><a class="reference internal" href="#fabric-ca-server">Fabric CA Server</a><ol class="arabic">
+<li><a class="reference internal" href="#initializing-the-server">Initializing the server</a></li>
+<li><a class="reference internal" href="#starting-the-server">Starting the server</a></li>
+<li><a class="reference internal" href="#configuring-the-database">Configuring the database</a></li>
+<li><a class="reference internal" href="#configuring-ldap">Configuring LDAP</a></li>
+<li><a class="reference internal" href="#setting-up-a-cluster">Setting up a cluster</a></li>
+</ol>
+</li>
+<li><a class="reference internal" href="#fabric-ca-client">Fabric CA Client</a><ol class="arabic">
+<li><a href="#id1"><span class="problematic" id="id2">`Enrolling the bootstrap user`_</span></a></li>
+<li><a class="reference internal" href="#registering-a-new-identity">Registering a new identity</a></li>
+<li><a class="reference internal" href="#enrolling-a-peer-identity">Enrolling a peer identity</a></li>
+<li><a class="reference internal" href="#reenrolling-an-identity">Reenrolling an identity</a></li>
+<li><a class="reference internal" href="#revoking-a-certificate-or-identity">Revoking a certificate or identity</a></li>
+<li><a class="reference internal" href="#enabling-tls">Enabling TLS</a></li>
+</ol>
+</li>
+<li><a class="reference internal" href="#appendix">Appendix</a></li>
+</ol>
+</div>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>The diagram below illustrates how the Fabric CA server fits into the
+overall Hyperledger Fabric architecture.</p>
+<img alt="../_images/fabric-ca.png" src="../_images/fabric-ca.png" />
+<p>There are two ways of interacting with a Fabric CA server:
+via the Fabric CA client or through one of the Fabric SDKs.
+All communication to the Fabric CA server is via REST APIs.
+See <cite>fabric-ca/swagger/swagger-fabric-ca.json</cite> for the swagger documentation
+for these REST APIs.</p>
+<p>The Fabric CA client or SDK may connect to a server in a cluster of Fabric CA
+servers.   This is illustrated in the top right section of the diagram.
+The client routes to an HA Proxy endpoint which load balances traffic to one
+of the fabric-ca-server cluster members.
+All Fabric CA servers in a cluster share the same database for
+keeping track of identities and certificates.  If LDAP is configured, the identity
+information is kept in LDAP rather than the database.</p>
+</div>
+<div class="section" id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="prerequisites">
+<h3>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Go 1.7+ installation or later</li>
+<li><strong>GOPATH</strong> environment variable is set correctly</li>
+<li>libtool and libtdhl-dev packages are installed</li>
+</ul>
+<p>The following installs the libtool dependencies.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># sudo apt install libtool libltdl-dev</span>
+</pre></div>
+</div>
+<p>For more information on libtool, see <a class="reference external" href="https://www.gnu.org/software/libtool">https://www.gnu.org/software/libtool</a>.</p>
+<p>For more information on libtdhr-dev, see <a class="reference external" href="https://www.gnu.org/software/libtool/manual/html_node/Using-libltdl.html">https://www.gnu.org/software/libtool/manual/html_node/Using-libltdl.html</a>.</p>
+</div>
+<div class="section" id="install">
+<h3>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h3>
+<p>The following installs both the <cite>fabric-ca-server</cite> and <cite>fabric-ca-client</cite> commands.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># go get -u github.com/hyperledger/fabric-ca/cmd/...</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="start-server-natively">
+<h3>Start Server Natively<a class="headerlink" href="#start-server-natively" title="Permalink to this headline">¶</a></h3>
+<p>The following starts the <cite>fabric-ca-server</cite> with default settings.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># fabric-ca-server start -b admin:adminpw</span>
+</pre></div>
+</div>
+<p>The <cite>-b</cite> option provides the enrollment ID and secret for a bootstrap
+administrator.  A default configuration file named <cite>fabric-ca-server-config.yaml</cite>
+is created in the local directory which can be customized.</p>
+</div>
+<div class="section" id="start-server-via-docker">
+<h3>Start Server via Docker<a class="headerlink" href="#start-server-via-docker" title="Permalink to this headline">¶</a></h3>
+<p>You can build and start the server via docker-compose as shown below.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># cd $GOPATH/src/github.com/hyperledger/fabric-ca</span>
+<span class="c1"># make docker</span>
+<span class="c1"># cd docker/server</span>
+<span class="c1"># docker-compose up -d</span>
+</pre></div>
+</div>
+<p>The hyperledger/fabric-ca docker image contains both the fabric-ca-server and
+the fabric-ca-client.</p>
+</div>
+<div class="section" id="explore-the-fabric-ca-cli">
+<h3>Explore the Fabric CA CLI<a class="headerlink" href="#explore-the-fabric-ca-cli" title="Permalink to this headline">¶</a></h3>
+<p>This section simply provides the usage messages for the Fabric CA server and client
+for convenience.  Additional usage information is provided in following sections.</p>
+<p>The following shows the Fabric CA server usage message.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Hyperledger</span> <span class="n">Fabric</span> <span class="n">Certificate</span> <span class="n">Authority</span> <span class="n">Server</span>
+
+<span class="n">Usage</span><span class="p">:</span>
+  <span class="n">fabric</span><span class="o">-</span><span class="n">ca</span><span class="o">-</span><span class="n">server</span> <span class="p">[</span><span class="n">command</span><span class="p">]</span>
+
+<span class="n">Available</span> <span class="n">Commands</span><span class="p">:</span>
+  <span class="n">init</span>        <span class="n">Initialize</span> <span class="n">the</span> <span class="n">Fabric</span> <span class="n">CA</span> <span class="n">server</span>
+  <span class="n">start</span>       <span class="n">Start</span> <span class="n">the</span> <span class="n">Fabric</span> <span class="n">CA</span> <span class="n">server</span>
+
+<span class="n">Flags</span><span class="p">:</span>
+      <span class="o">--</span><span class="n">address</span> <span class="n">string</span>                         <span class="n">Listening</span> <span class="n">address</span> <span class="n">of</span> <span class="n">Fabric</span> <span class="n">CA</span> <span class="n">server</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;0.0.0.0&quot;</span><span class="p">)</span>
+  <span class="o">-</span><span class="n">b</span><span class="p">,</span> <span class="o">--</span><span class="n">boot</span> <span class="n">string</span>                            <span class="n">The</span> <span class="n">user</span><span class="p">:</span><span class="k">pass</span> <span class="k">for</span> <span class="n">bootstrap</span> <span class="n">admin</span> <span class="n">which</span> <span class="ow">is</span> <span class="n">required</span> <span class="n">to</span> <span class="n">build</span> <span class="n">default</span> <span class="n">config</span> <span class="n">file</span>
+      <span class="o">--</span><span class="n">ca</span><span class="o">.</span><span class="n">certfile</span> <span class="n">string</span>                     <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="n">CA</span> <span class="n">certificate</span> <span class="n">file</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;ca-cert.pem&quot;</span><span class="p">)</span>
+      <span class="o">--</span><span class="n">ca</span><span class="o">.</span><span class="n">chainfile</span> <span class="n">string</span>                    <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="n">CA</span> <span class="n">chain</span> <span class="n">file</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;ca-chain.pem&quot;</span><span class="p">)</span>
+      <span class="o">--</span><span class="n">ca</span><span class="o">.</span><span class="n">keyfile</span> <span class="n">string</span>                      <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="n">CA</span> <span class="n">key</span> <span class="n">file</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;ca-key.pem&quot;</span><span class="p">)</span>
+  <span class="o">-</span><span class="n">n</span><span class="p">,</span> <span class="o">--</span><span class="n">ca</span><span class="o">.</span><span class="n">name</span> <span class="n">string</span>                         <span class="n">Certificate</span> <span class="n">Authority</span> <span class="n">name</span>
+  <span class="o">-</span><span class="n">c</span><span class="p">,</span> <span class="o">--</span><span class="n">config</span> <span class="n">string</span>                          <span class="n">Configuration</span> <span class="n">file</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;fabric-ca-server-config.yaml&quot;</span><span class="p">)</span>
+      <span class="o">--</span><span class="n">csr</span><span class="o">.</span><span class="n">cn</span> <span class="n">string</span>                          <span class="n">The</span> <span class="n">common</span> <span class="n">name</span> <span class="n">field</span> <span class="n">of</span> <span class="n">the</span> <span class="n">certificate</span> <span class="n">signing</span> <span class="n">request</span> <span class="n">to</span> <span class="n">a</span> <span class="n">parent</span> <span class="n">Fabric</span> <span class="n">CA</span> <span class="n">server</span>
+      <span class="o">--</span><span class="n">csr</span><span class="o">.</span><span class="n">hosts</span> <span class="n">stringSlice</span>                  <span class="n">A</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">space</span><span class="o">-</span><span class="n">separated</span> <span class="n">host</span> <span class="n">names</span> <span class="ow">in</span> <span class="n">a</span> <span class="n">certificate</span> <span class="n">signing</span> <span class="n">request</span> <span class="n">to</span> <span class="n">a</span> <span class="n">parent</span> <span class="n">Fabric</span> <span class="n">CA</span> <span class="n">server</span>
+      <span class="o">--</span><span class="n">csr</span><span class="o">.</span><span class="n">serialnumber</span> <span class="n">string</span>                <span class="n">The</span> <span class="n">serial</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">a</span> <span class="n">certificate</span> <span class="n">signing</span> <span class="n">request</span> <span class="n">to</span> <span class="n">a</span> <span class="n">parent</span> <span class="n">Fabric</span> <span class="n">CA</span> <span class="n">server</span>
+      <span class="o">--</span><span class="n">db</span><span class="o">.</span><span class="n">datasource</span> <span class="n">string</span>                   <span class="n">Data</span> <span class="n">source</span> <span class="n">which</span> <span class="ow">is</span> <span class="n">database</span> <span class="n">specific</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;fabric-ca-server.db&quot;</span><span class="p">)</span>
+      <span class="o">--</span><span class="n">db</span><span class="o">.</span><span class="n">tls</span><span class="o">.</span><span class="n">certfiles</span> <span class="n">stringSlice</span>           <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">trusted</span> <span class="n">certificate</span> <span class="n">files</span>
+      <span class="o">--</span><span class="n">db</span><span class="o">.</span><span class="n">tls</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">certfile</span> <span class="n">string</span>          <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="n">certificate</span> <span class="n">file</span> <span class="n">when</span> <span class="n">mutual</span> <span class="n">authenticate</span> <span class="ow">is</span> <span class="n">enabled</span>
+      <span class="o">--</span><span class="n">db</span><span class="o">.</span><span class="n">tls</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">keyfile</span> <span class="n">string</span>           <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="n">key</span> <span class="n">file</span> <span class="n">when</span> <span class="n">mutual</span> <span class="n">authentication</span> <span class="ow">is</span> <span class="n">enabled</span>
+      <span class="o">--</span><span class="n">db</span><span class="o">.</span><span class="n">type</span> <span class="n">string</span>                         <span class="n">Type</span> <span class="n">of</span> <span class="n">database</span><span class="p">;</span> <span class="n">one</span> <span class="n">of</span><span class="p">:</span> <span class="n">sqlite3</span><span class="p">,</span> <span class="n">postgres</span><span class="p">,</span> <span class="n">mysql</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;sqlite3&quot;</span><span class="p">)</span>
+  <span class="o">-</span><span class="n">d</span><span class="p">,</span> <span class="o">--</span><span class="n">debug</span>                                  <span class="n">Enable</span> <span class="n">debug</span> <span class="n">level</span> <span class="n">logging</span>
+      <span class="o">--</span><span class="n">ldap</span><span class="o">.</span><span class="n">enabled</span>                           <span class="n">Enable</span> <span class="n">the</span> <span class="n">LDAP</span> <span class="n">client</span> <span class="k">for</span> <span class="n">authentication</span> <span class="ow">and</span> <span class="n">attributes</span>
+      <span class="o">--</span><span class="n">ldap</span><span class="o">.</span><span class="n">groupfilter</span> <span class="n">string</span>                <span class="n">The</span> <span class="n">LDAP</span> <span class="n">group</span> <span class="nb">filter</span> <span class="k">for</span> <span class="n">a</span> <span class="n">single</span> <span class="n">affiliation</span> <span class="n">group</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;(memberUid=</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">)</span>
+      <span class="o">--</span><span class="n">ldap</span><span class="o">.</span><span class="n">url</span> <span class="n">string</span>                        <span class="n">LDAP</span> <span class="n">client</span> <span class="n">URL</span> <span class="n">of</span> <span class="n">form</span> <span class="n">ldap</span><span class="p">:</span><span class="o">//</span><span class="n">adminDN</span><span class="p">:</span><span class="n">adminPassword</span><span class="nd">@host</span><span class="p">[:</span><span class="n">port</span><span class="p">]</span><span class="o">/</span><span class="n">base</span>
+      <span class="o">--</span><span class="n">ldap</span><span class="o">.</span><span class="n">userfilter</span> <span class="n">string</span>                 <span class="n">The</span> <span class="n">LDAP</span> <span class="n">user</span> <span class="nb">filter</span> <span class="n">to</span> <span class="n">use</span> <span class="n">when</span> <span class="n">searching</span> <span class="k">for</span> <span class="n">users</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;(uid=</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">)</span>
+  <span class="o">-</span><span class="n">p</span><span class="p">,</span> <span class="o">--</span><span class="n">port</span> <span class="nb">int</span>                               <span class="n">Listening</span> <span class="n">port</span> <span class="n">of</span> <span class="n">Fabric</span> <span class="n">CA</span> <span class="n">server</span> <span class="p">(</span><span class="n">default</span> <span class="mi">7054</span><span class="p">)</span>
+      <span class="o">--</span><span class="n">registry</span><span class="o">.</span><span class="n">maxenrollments</span> <span class="nb">int</span>            <span class="n">Maximum</span> <span class="n">number</span> <span class="n">of</span> <span class="n">enrollments</span><span class="p">;</span> <span class="n">valid</span> <span class="k">if</span> <span class="n">LDAP</span> <span class="ow">not</span> <span class="n">enabled</span>
+      <span class="o">--</span><span class="n">tls</span><span class="o">.</span><span class="n">certfile</span> <span class="n">string</span>                    <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="n">TLS</span> <span class="n">certificate</span> <span class="n">file</span> <span class="k">for</span> <span class="n">server</span><span class="s1">&#39;s listening port (default &quot;ca-cert.pem&quot;)</span>
+      <span class="o">--</span><span class="n">tls</span><span class="o">.</span><span class="n">clientauth</span><span class="o">.</span><span class="n">certfiles</span> <span class="n">stringSlice</span>   <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">trusted</span> <span class="n">certificate</span> <span class="n">files</span>
+      <span class="o">--</span><span class="n">tls</span><span class="o">.</span><span class="n">clientauth</span><span class="o">.</span><span class="n">type</span> <span class="n">string</span>             <span class="n">Policy</span> <span class="n">the</span> <span class="n">server</span> <span class="n">will</span> <span class="n">follow</span> <span class="k">for</span> <span class="n">TLS</span> <span class="n">Client</span> <span class="n">Authentication</span><span class="o">.</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;noclientcert&quot;</span><span class="p">)</span>
+      <span class="o">--</span><span class="n">tls</span><span class="o">.</span><span class="n">enabled</span>                            <span class="n">Enable</span> <span class="n">TLS</span> <span class="n">on</span> <span class="n">the</span> <span class="n">listening</span> <span class="n">port</span>
+      <span class="o">--</span><span class="n">tls</span><span class="o">.</span><span class="n">keyfile</span> <span class="n">string</span>                     <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="n">TLS</span> <span class="n">key</span> <span class="k">for</span> <span class="n">server</span><span class="s1">&#39;s listening port (default &quot;ca-key.pem&quot;)</span>
+  <span class="o">-</span><span class="n">u</span><span class="p">,</span> <span class="o">--</span><span class="n">url</span> <span class="n">string</span>                             <span class="n">URL</span> <span class="n">of</span> <span class="n">the</span> <span class="n">parent</span> <span class="n">Fabric</span> <span class="n">CA</span> <span class="n">server</span>
+
+
+<span class="n">Use</span> <span class="s2">&quot;fabric-ca-server [command] --help&quot;</span> <span class="k">for</span> <span class="n">more</span> <span class="n">information</span> <span class="n">about</span> <span class="n">a</span> <span class="n">command</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>The following shows the Fabric CA client usage message:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># fabric-ca-client</span>
+<span class="n">Hyperledger</span> <span class="n">Fabric</span> <span class="n">Certificate</span> <span class="n">Authority</span> <span class="n">Client</span>
+
+<span class="n">Usage</span><span class="p">:</span>
+  <span class="n">fabric</span><span class="o">-</span><span class="n">ca</span><span class="o">-</span><span class="n">client</span> <span class="p">[</span><span class="n">command</span><span class="p">]</span>
+
+<span class="n">Available</span> <span class="n">Commands</span><span class="p">:</span>
+  <span class="n">enroll</span>      <span class="n">Enroll</span> <span class="n">an</span> <span class="n">identity</span>
+  <span class="n">getcacert</span>   <span class="n">Get</span> <span class="n">CA</span> <span class="n">certificate</span> <span class="n">chain</span>
+  <span class="n">reenroll</span>    <span class="n">Reenroll</span> <span class="n">an</span> <span class="n">identity</span>
+  <span class="n">register</span>    <span class="n">Register</span> <span class="n">an</span> <span class="n">identity</span>
+  <span class="n">revoke</span>      <span class="n">Revoke</span> <span class="n">an</span> <span class="n">identity</span>
+
+<span class="n">Flags</span><span class="p">:</span>
+  <span class="o">-</span><span class="n">c</span><span class="p">,</span> <span class="o">--</span><span class="n">config</span> <span class="n">string</span>                <span class="n">Configuration</span> <span class="n">file</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;$HOME/.fabric-ca-client/fabric-ca-client-config.yaml&quot;</span><span class="p">)</span>
+      <span class="o">--</span><span class="n">csr</span><span class="o">.</span><span class="n">cn</span> <span class="n">string</span>                <span class="n">The</span> <span class="n">common</span> <span class="n">name</span> <span class="n">field</span> <span class="n">of</span> <span class="n">the</span> <span class="n">certificate</span> <span class="n">signing</span> <span class="n">request</span>
+      <span class="o">--</span><span class="n">csr</span><span class="o">.</span><span class="n">hosts</span> <span class="n">stringSlice</span>        <span class="n">A</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">space</span><span class="o">-</span><span class="n">separated</span> <span class="n">host</span> <span class="n">names</span> <span class="ow">in</span> <span class="n">a</span> <span class="n">certificate</span> <span class="n">signing</span> <span class="n">request</span>
+      <span class="o">--</span><span class="n">csr</span><span class="o">.</span><span class="n">serialnumber</span> <span class="n">string</span>      <span class="n">The</span> <span class="n">serial</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">a</span> <span class="n">certificate</span> <span class="n">signing</span> <span class="n">request</span>
+  <span class="o">-</span><span class="n">d</span><span class="p">,</span> <span class="o">--</span><span class="n">debug</span>                        <span class="n">Enable</span> <span class="n">debug</span> <span class="n">level</span> <span class="n">logging</span>
+      <span class="o">--</span><span class="n">enrollment</span><span class="o">.</span><span class="n">hosts</span> <span class="n">string</span>      <span class="n">Comma</span><span class="o">-</span><span class="n">separated</span> <span class="n">host</span> <span class="nb">list</span>
+      <span class="o">--</span><span class="n">enrollment</span><span class="o">.</span><span class="n">label</span> <span class="n">string</span>      <span class="n">Label</span> <span class="n">to</span> <span class="n">use</span> <span class="ow">in</span> <span class="n">HSM</span> <span class="n">operations</span>
+      <span class="o">--</span><span class="n">enrollment</span><span class="o">.</span><span class="n">profile</span> <span class="n">string</span>    <span class="n">Name</span> <span class="n">of</span> <span class="n">the</span> <span class="n">signing</span> <span class="n">profile</span> <span class="n">to</span> <span class="n">use</span> <span class="ow">in</span> <span class="n">issuing</span> <span class="n">the</span> <span class="n">certificate</span>
+      <span class="o">--</span><span class="nb">id</span><span class="o">.</span><span class="n">affiliation</span> <span class="n">string</span>        <span class="n">The</span> <span class="n">identity</span><span class="s1">&#39;s affiliation</span>
+      <span class="o">--</span><span class="nb">id</span><span class="o">.</span><span class="n">attr</span> <span class="n">string</span>               <span class="n">Attributes</span> <span class="n">associated</span> <span class="k">with</span> <span class="n">this</span> <span class="n">identity</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span> <span class="n">hf</span><span class="o">.</span><span class="n">Revoker</span><span class="o">=</span><span class="n">true</span><span class="p">)</span>
+      <span class="o">--</span><span class="nb">id</span><span class="o">.</span><span class="n">maxenrollments</span> <span class="nb">int</span>        <span class="n">The</span> <span class="n">maximum</span> <span class="n">number</span> <span class="n">of</span> <span class="n">times</span> <span class="n">the</span> <span class="n">secret</span> <span class="n">can</span> <span class="n">be</span> <span class="n">reused</span> <span class="n">to</span> <span class="n">enroll</span>
+      <span class="o">--</span><span class="nb">id</span><span class="o">.</span><span class="n">name</span> <span class="n">string</span>               <span class="n">Unique</span> <span class="n">name</span> <span class="n">of</span> <span class="n">the</span> <span class="n">identity</span>
+      <span class="o">--</span><span class="nb">id</span><span class="o">.</span><span class="n">secret</span> <span class="n">string</span>             <span class="n">The</span> <span class="n">enrollment</span> <span class="n">secret</span> <span class="k">for</span> <span class="n">the</span> <span class="n">identity</span> <span class="n">being</span> <span class="n">registered</span>
+      <span class="o">--</span><span class="nb">id</span><span class="o">.</span><span class="n">type</span> <span class="n">string</span>               <span class="n">Type</span> <span class="n">of</span> <span class="n">identity</span> <span class="n">being</span> <span class="n">registered</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span> <span class="s1">&#39;peer, app, user&#39;</span><span class="p">)</span>
+  <span class="o">-</span><span class="n">M</span><span class="p">,</span> <span class="o">--</span><span class="n">mspdir</span> <span class="n">string</span>                <span class="n">Membership</span> <span class="n">Service</span> <span class="n">Provider</span> <span class="n">directory</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;msp&quot;</span><span class="p">)</span>
+  <span class="o">-</span><span class="n">m</span><span class="p">,</span> <span class="o">--</span><span class="n">myhost</span> <span class="n">string</span>                <span class="n">Hostname</span> <span class="n">to</span> <span class="n">include</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">certificate</span> <span class="n">signing</span> <span class="n">request</span> <span class="n">during</span> <span class="n">enrollment</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;$HOSTNAME&quot;</span><span class="p">)</span>
+      <span class="o">--</span><span class="n">tls</span><span class="o">.</span><span class="n">certfiles</span> <span class="n">stringSlice</span>    <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">trusted</span> <span class="n">certificate</span> <span class="n">files</span>
+      <span class="o">--</span><span class="n">tls</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">certfile</span> <span class="n">string</span>   <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="n">certificate</span> <span class="n">file</span> <span class="n">when</span> <span class="n">mutual</span> <span class="n">authenticate</span> <span class="ow">is</span> <span class="n">enabled</span>
+      <span class="o">--</span><span class="n">tls</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">keyfile</span> <span class="n">string</span>    <span class="n">PEM</span><span class="o">-</span><span class="n">encoded</span> <span class="n">key</span> <span class="n">file</span> <span class="n">when</span> <span class="n">mutual</span> <span class="n">authentication</span> <span class="ow">is</span> <span class="n">enabled</span>
+  <span class="o">-</span><span class="n">u</span><span class="p">,</span> <span class="o">--</span><span class="n">url</span> <span class="n">string</span>                   <span class="n">URL</span> <span class="n">of</span> <span class="n">the</span> <span class="n">Fabric</span> <span class="n">CA</span> <span class="n">server</span> <span class="p">(</span><span class="n">default</span> <span class="s2">&quot;http://localhost:7054&quot;</span><span class="p">)</span>
+
+<span class="n">Use</span> <span class="s2">&quot;fabric-ca-client [command] --help&quot;</span> <span class="k">for</span> <span class="n">more</span> <span class="n">information</span> <span class="n">about</span> <span class="n">a</span> <span class="n">command</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Note that command line options that are string slices (lists) can be specified either by specifying the option with space-separated list elements or by specifying the option multiple times, each with a string value that make up the list. For example, to specify <code class="docutils literal"><span class="pre">host1</span></code> and <code class="docutils literal"><span class="pre">host2</span></code> for <cite>csr.hosts</cite> option, you can either pass <cite>–csr.hosts “host1 host2”</cite> or <cite>–csr.hosts host1 –csr.hosts host2</cite></p>
+<p><a class="reference internal" href="#back-to-top">Back to Top</a></p>
+</div>
+</div>
+<div class="section" id="file-formats">
+<h2>File Formats<a class="headerlink" href="#file-formats" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="fabric-ca-server-s-configuration-file-format">
+<h3>Fabric CA server’s configuration file format<a class="headerlink" href="#fabric-ca-server-s-configuration-file-format" title="Permalink to this headline">¶</a></h3>
+<p>A configuration file can be provided to the server using the <code class="docutils literal"><span class="pre">-c</span></code> or <code class="docutils literal"><span class="pre">--config</span></code>
+option. If the <code class="docutils literal"><span class="pre">--config</span></code> option is used and the specified file doesn’t exist,
+a default configuration file (like the one shown below) will be created in the
+specified location. However, if no config option was used, it will be created in
+the server’s home directory (see <a class="reference external" href="#server">Fabric CA Server</a> section more info).</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># Server&#39;s listening port (default: 7054)</span>
+<span class="n">port</span><span class="p">:</span> <span class="mi">7054</span>
+
+<span class="c1"># Enables debug logging (default: false)</span>
+<span class="n">debug</span><span class="p">:</span> <span class="n">false</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  TLS section for the server&#39;s listening port</span>
+<span class="c1">#############################################################################</span>
+<span class="n">tls</span><span class="p">:</span>
+  <span class="c1"># Enable TLS (default: false)</span>
+  <span class="n">enabled</span><span class="p">:</span> <span class="n">false</span>
+  <span class="n">certfile</span><span class="p">:</span> <span class="n">ca</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+  <span class="n">keyfile</span><span class="p">:</span> <span class="n">ca</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">pem</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  The CA section contains the key and certificate files used when</span>
+<span class="c1">#  issuing enrollment certificates (ECerts) and transaction</span>
+<span class="c1">#  certificates (TCerts).</span>
+<span class="c1">#############################################################################</span>
+<span class="n">ca</span><span class="p">:</span>
+  <span class="c1"># Certificate file (default: ca-cert.pem)</span>
+  <span class="n">certfile</span><span class="p">:</span> <span class="n">ca</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+  <span class="c1"># Key file (default: ca-key.pem)</span>
+  <span class="n">keyfile</span><span class="p">:</span> <span class="n">ca</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">pem</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  The registry section controls how the Fabric CA server does two things:</span>
+<span class="c1">#  1) authenticates enrollment requests which contain identity name and</span>
+<span class="c1">#     password (also known as enrollment ID and secret).</span>
+<span class="c1">#  2) once authenticated, retrieves the identity&#39;s attribute names and</span>
+<span class="c1">#     values which the Fabric CA server optionally puts into TCerts</span>
+<span class="c1">#     which it issues for transacting on the Hyperledger Fabric blockchain.</span>
+<span class="c1">#     These attributes are useful for making access control decisions in</span>
+<span class="c1">#     chaincode.</span>
+<span class="c1">#  There are two main configuration options:</span>
+<span class="c1">#  1) The Fabric CA server is the registry</span>
+<span class="c1">#  2) An LDAP server is the registry, in which case the Fabric CA server</span>
+<span class="c1">#     calls the LDAP server to perform these tasks.</span>
+<span class="c1">#############################################################################</span>
+<span class="n">registry</span><span class="p">:</span>
+  <span class="c1"># Maximum number of times a password/secret can be reused for enrollment</span>
+  <span class="c1"># (default: 0, which means there is no limit)</span>
+  <span class="n">maxEnrollments</span><span class="p">:</span> <span class="mi">0</span>
+
+  <span class="c1"># Contains identity information which is used when LDAP is disabled</span>
+  <span class="n">identities</span><span class="p">:</span>
+     <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="o">&lt;&lt;&lt;</span><span class="n">ADMIN</span><span class="o">&gt;&gt;&gt;</span>
+       <span class="k">pass</span><span class="p">:</span> <span class="o">&lt;&lt;&lt;</span><span class="n">ADMINPW</span><span class="o">&gt;&gt;&gt;</span>
+       <span class="nb">type</span><span class="p">:</span> <span class="n">client</span>
+       <span class="n">affiliation</span><span class="p">:</span> <span class="s2">&quot;&quot;</span>
+       <span class="n">attrs</span><span class="p">:</span>
+          <span class="n">hf</span><span class="o">.</span><span class="n">Registrar</span><span class="o">.</span><span class="n">Roles</span><span class="p">:</span> <span class="s2">&quot;client,user,peer,validator,auditor,ca&quot;</span>
+          <span class="n">hf</span><span class="o">.</span><span class="n">Registrar</span><span class="o">.</span><span class="n">DelegateRoles</span><span class="p">:</span> <span class="s2">&quot;client,user,validator,auditor&quot;</span>
+          <span class="n">hf</span><span class="o">.</span><span class="n">Revoker</span><span class="p">:</span> <span class="n">true</span>
+          <span class="n">hf</span><span class="o">.</span><span class="n">IntermediateCA</span><span class="p">:</span> <span class="n">true</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  Database section</span>
+<span class="c1">#  Supported types are: &quot;sqlite3&quot;, &quot;postgres&quot;, and &quot;mysql&quot;.</span>
+<span class="c1">#  The datasource value depends on the type.</span>
+<span class="c1">#  If the type is &quot;sqlite3&quot;, the datasource value is a file name to use</span>
+<span class="c1">#  as the database store.  Since &quot;sqlite3&quot; is an embedded database, it</span>
+<span class="c1">#  may not be used if you want to run the Fabric CA server in a cluster.</span>
+<span class="c1">#  To run the Fabric CA server in a cluster, you must choose &quot;postgres&quot;</span>
+<span class="c1">#  or &quot;mysql&quot;.</span>
+<span class="c1">#############################################################################</span>
+<span class="n">db</span><span class="p">:</span>
+  <span class="nb">type</span><span class="p">:</span> <span class="n">sqlite3</span>
+  <span class="n">datasource</span><span class="p">:</span> <span class="n">fabric</span><span class="o">-</span><span class="n">ca</span><span class="o">-</span><span class="n">server</span><span class="o">.</span><span class="n">db</span>
+  <span class="n">tls</span><span class="p">:</span>
+      <span class="n">enabled</span><span class="p">:</span> <span class="n">false</span>
+      <span class="n">certfiles</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">db</span><span class="o">-</span><span class="n">server</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+      <span class="n">client</span><span class="p">:</span>
+        <span class="n">certfile</span><span class="p">:</span> <span class="n">db</span><span class="o">-</span><span class="n">client</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+        <span class="n">keyfile</span><span class="p">:</span> <span class="n">db</span><span class="o">-</span><span class="n">client</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">pem</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  LDAP section</span>
+<span class="c1">#  If LDAP is enabled, the Fabric CA server calls LDAP to:</span>
+<span class="c1">#  1) authenticate enrollment ID and secret (i.e. identity name and password)</span>
+<span class="c1">#     for enrollment requests</span>
+<span class="c1">#  2) To retrieve identity attributes</span>
+<span class="c1">#############################################################################</span>
+<span class="n">ldap</span><span class="p">:</span>
+   <span class="c1"># Enables or disables the LDAP client (default: false)</span>
+   <span class="n">enabled</span><span class="p">:</span> <span class="n">false</span>
+   <span class="c1"># The URL of the LDAP server</span>
+   <span class="n">url</span><span class="p">:</span> <span class="n">ldap</span><span class="p">:</span><span class="o">//&lt;</span><span class="n">adminDN</span><span class="o">&gt;</span><span class="p">:</span><span class="o">&lt;</span><span class="n">adminPassword</span><span class="o">&gt;@&lt;</span><span class="n">host</span><span class="o">&gt;</span><span class="p">:</span><span class="o">&lt;</span><span class="n">port</span><span class="o">&gt;/&lt;</span><span class="n">base</span><span class="o">&gt;</span>
+   <span class="n">tls</span><span class="p">:</span>
+      <span class="n">certfiles</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">ldap</span><span class="o">-</span><span class="n">server</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+      <span class="n">client</span><span class="p">:</span>
+         <span class="n">certfile</span><span class="p">:</span> <span class="n">ldap</span><span class="o">-</span><span class="n">client</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+         <span class="n">keyfile</span><span class="p">:</span> <span class="n">ldap</span><span class="o">-</span><span class="n">client</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">pem</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  Affiliation section</span>
+<span class="c1">#############################################################################</span>
+<span class="n">affiliations</span><span class="p">:</span>
+   <span class="n">org1</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">department1</span>
+      <span class="o">-</span> <span class="n">department2</span>
+   <span class="n">org2</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">department1</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  Signing section</span>
+<span class="c1">#############################################################################</span>
+<span class="n">signing</span><span class="p">:</span>
+    <span class="n">profiles</span><span class="p">:</span>
+      <span class="n">ca</span><span class="p">:</span>
+         <span class="n">usage</span><span class="p">:</span>
+           <span class="o">-</span> <span class="n">cert</span> <span class="n">sign</span>
+         <span class="n">expiry</span><span class="p">:</span> <span class="mi">8000</span><span class="n">h</span>
+         <span class="n">caconstraint</span><span class="p">:</span>
+           <span class="n">isca</span><span class="p">:</span> <span class="n">true</span>
+    <span class="n">default</span><span class="p">:</span>
+      <span class="n">usage</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">cert</span> <span class="n">sign</span>
+      <span class="n">expiry</span><span class="p">:</span> <span class="mi">8000</span><span class="n">h</span>
+
+<span class="c1">###########################################################################</span>
+<span class="c1">#  Certificate Signing Request section for generating the CA certificate</span>
+<span class="c1">###########################################################################</span>
+<span class="n">csr</span><span class="p">:</span>
+   <span class="n">cn</span><span class="p">:</span> <span class="n">fabric</span><span class="o">-</span><span class="n">ca</span><span class="o">-</span><span class="n">server</span>
+   <span class="n">names</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">C</span><span class="p">:</span> <span class="n">US</span>
+        <span class="n">ST</span><span class="p">:</span> <span class="n">North</span> <span class="n">Carolina</span>
+        <span class="n">L</span><span class="p">:</span>
+        <span class="n">O</span><span class="p">:</span> <span class="n">Hyperledger</span>
+        <span class="n">OU</span><span class="p">:</span> <span class="n">Fabric</span>
+   <span class="n">hosts</span><span class="p">:</span>
+     <span class="o">-</span> <span class="o">&lt;&lt;&lt;</span><span class="n">MYHOST</span><span class="o">&gt;&gt;&gt;</span>
+   <span class="n">ca</span><span class="p">:</span>
+      <span class="n">pathlen</span><span class="p">:</span>
+      <span class="n">pathlenzero</span><span class="p">:</span>
+      <span class="n">expiry</span><span class="p">:</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  Crypto section configures the crypto primitives used for all</span>
+<span class="c1">#############################################################################</span>
+<span class="n">crypto</span><span class="p">:</span>
+  <span class="n">software</span><span class="p">:</span>
+     <span class="n">hash_family</span><span class="p">:</span> <span class="n">SHA2</span>
+     <span class="n">security_level</span><span class="p">:</span> <span class="mi">256</span>
+     <span class="n">ephemeral</span><span class="p">:</span> <span class="n">false</span>
+     <span class="n">key_store_dir</span><span class="p">:</span> <span class="n">keys</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="fabric-ca-client-s-configuration-file-format">
+<h3>Fabric CA client’s configuration file format<a class="headerlink" href="#fabric-ca-client-s-configuration-file-format" title="Permalink to this headline">¶</a></h3>
+<p>A configuration file can be provided to the client using the <code class="docutils literal"><span class="pre">-c</span></code> or <code class="docutils literal"><span class="pre">--config</span></code>
+option. If the config option is used and the specified file doesn’t exist,
+a default configuration file (like the one shown below) will be created in the
+specified location. However, if no config option was used, it will be created in
+the client’s home directory (see <a class="reference external" href="#client">Fabric CA Client</a> section more info).</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1">#############################################################################</span>
+<span class="c1"># Client Configuration</span>
+<span class="c1">#############################################################################</span>
+
+<span class="c1"># URL of the Fabric CA server (default: http://localhost:7054)</span>
+<span class="n">URL</span><span class="p">:</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mi">7054</span>
+
+<span class="c1"># Membership Service Provider (MSP) directory</span>
+<span class="c1"># When the client is used to enroll a peer or an orderer, this field must be</span>
+<span class="c1"># set to the MSP directory of the peer/orderer</span>
+<span class="n">MSPDir</span><span class="p">:</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#    TLS section for secure socket connection</span>
+<span class="c1">#############################################################################</span>
+<span class="n">tls</span><span class="p">:</span>
+  <span class="c1"># Enable TLS (default: false)</span>
+  <span class="n">enabled</span><span class="p">:</span> <span class="n">false</span>
+  <span class="n">certfiles</span><span class="p">:</span>
+  <span class="n">client</span><span class="p">:</span>
+    <span class="n">certfile</span><span class="p">:</span>
+    <span class="n">keyfile</span><span class="p">:</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  Certificate Signing Request section for generating the CSR for</span>
+<span class="c1">#  an enrollment certificate (ECert)</span>
+<span class="c1">#############################################################################</span>
+<span class="n">csr</span><span class="p">:</span>
+  <span class="n">cn</span><span class="p">:</span> <span class="o">&lt;&lt;&lt;</span><span class="n">ENROLLMENT_ID</span><span class="o">&gt;&gt;&gt;</span>
+  <span class="n">names</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">C</span><span class="p">:</span> <span class="n">US</span>
+      <span class="n">ST</span><span class="p">:</span> <span class="n">North</span> <span class="n">Carolina</span>
+      <span class="n">L</span><span class="p">:</span>
+      <span class="n">O</span><span class="p">:</span> <span class="n">Hyperledger</span>
+      <span class="n">OU</span><span class="p">:</span> <span class="n">Fabric</span>
+  <span class="n">hosts</span><span class="p">:</span>
+   <span class="o">-</span> <span class="o">&lt;&lt;&lt;</span><span class="n">MYHOST</span><span class="o">&gt;&gt;&gt;</span>
+  <span class="n">ca</span><span class="p">:</span>
+    <span class="n">pathlen</span><span class="p">:</span>
+    <span class="n">pathlenzero</span><span class="p">:</span>
+    <span class="n">expiry</span><span class="p">:</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  Registration section used to register a new identity with Fabric CA server</span>
+<span class="c1">#############################################################################</span>
+<span class="nb">id</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span>
+  <span class="nb">type</span><span class="p">:</span>
+  <span class="n">affiliation</span><span class="p">:</span>
+  <span class="n">attributes</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">name</span><span class="p">:</span>
+      <span class="n">value</span><span class="p">:</span>
+
+<span class="c1">#############################################################################</span>
+<span class="c1">#  Enrollment section used to enroll an identity with Fabric CA server</span>
+<span class="c1">#############################################################################</span>
+<span class="n">enrollment</span><span class="p">:</span>
+  <span class="n">hosts</span><span class="p">:</span>
+  <span class="n">profile</span><span class="p">:</span>
+  <span class="n">label</span><span class="p">:</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="#back-to-top">Back to Top</a></p>
+</div>
+</div>
+<div class="section" id="configuration-settings-precedence">
+<h2>Configuration Settings Precedence<a class="headerlink" href="#configuration-settings-precedence" title="Permalink to this headline">¶</a></h2>
+<p>The Fabric CA provides 3 ways to configure settings on the Fabric CA server
+and client. The precedence order is:</p>
+<ol class="arabic simple">
+<li>CLI flags</li>
+<li>Environment variables</li>
+<li>Configuration file</li>
+</ol>
+<p>In the remainder of this document, we refer to making changes to
+configuration files. However, configuration file changes can be
+overridden through environment variables or CLI flags.</p>
+<p>For example, if we have the following in the client configuration file:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">tls</span><span class="p">:</span>
+  <span class="c1"># Enable TLS (default: false)</span>
+  <span class="n">enabled</span><span class="p">:</span> <span class="n">false</span>
+
+  <span class="c1"># TLS for the client&#39;s listenting port (default: false)</span>
+  <span class="n">certfiles</span><span class="p">:</span>
+  <span class="n">client</span><span class="p">:</span>
+    <span class="n">certfile</span><span class="p">:</span> <span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+    <span class="n">keyfile</span><span class="p">:</span>
+</pre></div>
+</div>
+<p>The following environment variable may be used to override the <code class="docutils literal"><span class="pre">cert.pem</span></code>
+setting in the configuration file:</p>
+<p><code class="docutils literal"><span class="pre">export</span> <span class="pre">FABRIC_CA_CLIENT_TLS_CLIENT_CERTFILE=cert2.pem</span></code></p>
+<p>If we wanted to override both the environment variable and configuration
+file, we can use a command line flag.</p>
+<p><code class="docutils literal"><span class="pre">fabric-ca-client</span> <span class="pre">enroll</span> <span class="pre">--tls.client.certfile</span> <span class="pre">cert3.pem</span></code></p>
+<p>The same approach applies to fabric-ca-server, except instead of using
+<code class="docutils literal"><span class="pre">FABIRC_CA_CLIENT</span></code> as the prefix to environment variables,
+<code class="docutils literal"><span class="pre">FABRIC_CA_SERVER</span></code> is used.</p>
+</div>
+<div class="section" id="a-word-on-file-paths">
+<span id="server"></span><h2>A word on file paths<a class="headerlink" href="#a-word-on-file-paths" title="Permalink to this headline">¶</a></h2>
+<p>All the properties in the Fabric CA server and client configuration file,
+that specify file names support both relative and absolute paths.
+Relative paths are relative to the config directory, where the
+configuration file is located. For example, if the config directory is
+<code class="docutils literal"><span class="pre">~/config</span></code> and the tls section is as shown below, the Fabric CA server
+or client will look for the <code class="docutils literal"><span class="pre">root.pem</span></code> file in the <code class="docutils literal"><span class="pre">~/config</span></code>
+directory, <code class="docutils literal"><span class="pre">cert.pem</span></code> file in the <code class="docutils literal"><span class="pre">~/config/certs</span></code> directory and the
+<code class="docutils literal"><span class="pre">key.pem</span></code> file in the <code class="docutils literal"><span class="pre">/abs/path</span></code> directory</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">tls</span><span class="p">:</span>
+  <span class="n">enabled</span><span class="p">:</span> <span class="n">true</span>
+  <span class="n">certfiles</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">root</span><span class="o">.</span><span class="n">pem</span>
+  <span class="n">client</span><span class="p">:</span>
+    <span class="n">certfile</span><span class="p">:</span> <span class="n">certs</span><span class="o">/</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+    <span class="n">keyfile</span><span class="p">:</span> <span class="o">/</span><span class="nb">abs</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">key</span><span class="o">.</span><span class="n">pem</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="fabric-ca-server">
+<h2>Fabric CA Server<a class="headerlink" href="#fabric-ca-server" title="Permalink to this headline">¶</a></h2>
+<p>This section describes the Fabric CA server.</p>
+<p>You may initialize the Fabric CA server before starting it. This provides an opportunity for you to generate a default configuration file but to review and customize its settings before starting it.</p>
+<div class="line-block">
+<div class="line">The Fabric CA server’s home directory is determined as follows:</div>
+<div class="line">- if the <code class="docutils literal"><span class="pre">FABRIC_CA_SERVER_HOME</span></code> environment variable is set, use
+its value;</div>
+<div class="line">- otherwise, if <code class="docutils literal"><span class="pre">FABRIC_CA_HOME</span></code> environment variable is set, use
+its value;</div>
+<div class="line">- otherwise, if the <code class="docutils literal"><span class="pre">CA_CFG_PATH</span></code> environment variable is set, use
+its value;</div>
+<div class="line">- otherwise, use current working directory.</div>
+</div>
+<p>For the remainder of this server section, we assume that you have set
+the <code class="docutils literal"><span class="pre">FABRIC_CA_HOME</span></code> environment variable to
+<code class="docutils literal"><span class="pre">$HOME/fabric-ca/server</span></code>.</p>
+<p>The instructions below assume that the server configuration file exists
+in the server’s home directory.</p>
+<div class="section" id="initializing-the-server">
+<span id="initialize"></span><h3>Initializing the server<a class="headerlink" href="#initializing-the-server" title="Permalink to this headline">¶</a></h3>
+<p>Initialize the Fabric CA server as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># fabric-ca-server init -b admin:adminpw</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">-b</span></code> (bootstrap identity) option is required for initialization. At
+least one bootstrap identity is required to start the Fabric CA server. The
+server configuration file contains a Certificate Signing Request (CSR)
+section that can be configured. The following is a sample CSR.</p>
+<p>If you are going to connect to the Fabric CA server remotely over TLS,
+replace “localhost” in the CSR section below with the hostname where you
+will be running your Fabric CA server.</p>
+<div class="highlight-default" id="csr-fields"><div class="highlight"><pre><span></span><span class="n">cn</span><span class="p">:</span> <span class="n">localhost</span>
+<span class="n">key</span><span class="p">:</span>
+    <span class="n">algo</span><span class="p">:</span> <span class="n">ecdsa</span>
+    <span class="n">size</span><span class="p">:</span> <span class="mi">256</span>
+<span class="n">names</span><span class="p">:</span>
+  <span class="o">-</span> <span class="n">C</span><span class="p">:</span> <span class="n">US</span>
+    <span class="n">ST</span><span class="p">:</span> <span class="s2">&quot;North Carolina&quot;</span>
+    <span class="n">L</span><span class="p">:</span>
+    <span class="n">O</span><span class="p">:</span> <span class="n">Hyperledger</span>
+    <span class="n">OU</span><span class="p">:</span> <span class="n">Fabric</span>
+</pre></div>
+</div>
+<p>All of the fields above pertain to the X.509 signing key and certificate which
+is generated by the <code class="docutils literal"><span class="pre">fabric-ca-server</span> <span class="pre">init</span></code>.  This corresponds to the
+<code class="docutils literal"><span class="pre">ca.certfile</span></code> and <code class="docutils literal"><span class="pre">ca.keyfile</span></code> files in the server’s configuration file.
+The fields are as follows:</p>
+<ul class="simple">
+<li><strong>cn</strong> is the Common Name</li>
+<li><strong>key</strong> specifies the algorithm and key size as described below</li>
+<li><strong>O</strong> is the organization name</li>
+<li><strong>OU</strong> is the organizational unit</li>
+<li><strong>L</strong> is the location or city</li>
+<li><strong>ST</strong> is the state</li>
+<li><strong>C</strong> is the country</li>
+</ul>
+<p>If custom values for the CSR are required, you may customize the configuration
+file, delete the files specified by the <code class="docutils literal"><span class="pre">ca.certfile</span></code> and <code class="docutils literal"><span class="pre">ca-keyfile</span></code>
+configuration items, and then run the <code class="docutils literal"><span class="pre">fabric-ca-server</span> <span class="pre">init</span> <span class="pre">-b</span> <span class="pre">admin:adminpw</span></code>
+command again.</p>
+<p>The <code class="docutils literal"><span class="pre">fabric-ca-server</span> <span class="pre">init</span></code> command generates a self-signed CA certificate
+unless the <code class="docutils literal"><span class="pre">-u</span> <span class="pre">&lt;parent-fabric-ca-server-URL&gt;</span></code> option is specified.
+If the <code class="docutils literal"><span class="pre">-u</span></code> is specified, the server’s CA certificate is signed by the
+parent Fabric CA server.  The <code class="docutils literal"><span class="pre">fabric-ca-server</span> <span class="pre">init</span></code> command also
+generates a default configuration file named <strong>fabric-ca-server-config.yaml</strong>
+in the server’s home directory.</p>
+<p>Algorithms and key sizes</p>
+<p>The CSR can be customized to generate X.509 certificates and keys that
+support both RSA and Elliptic Curve (ECDSA). The following setting is an
+example of the implementation of Elliptic Curve Digital Signature
+Algorithm (ECDSA) with curve <code class="docutils literal"><span class="pre">prime256v1</span></code> and signature algorithm
+<code class="docutils literal"><span class="pre">ecdsa-with-SHA256</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">key</span><span class="p">:</span>
+   <span class="n">algo</span><span class="p">:</span> <span class="n">ecdsa</span>
+   <span class="n">size</span><span class="p">:</span> <span class="mi">256</span>
+</pre></div>
+</div>
+<p>The choice of algorithm and key size are based on security needs.</p>
+<p>Elliptic Curve (ECDSA) offers the following key size options:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="18%" />
+<col width="31%" />
+<col width="51%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">size</th>
+<th class="head">ASN1 OID</th>
+<th class="head">Signature Algorithm</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>256</td>
+<td>prime256v1</td>
+<td>ecdsa-with-SHA256</td>
+</tr>
+<tr class="row-odd"><td>384</td>
+<td>secp384r1</td>
+<td>ecdsa-with-SHA384</td>
+</tr>
+<tr class="row-even"><td>521</td>
+<td>secp521r1</td>
+<td>ecdsa-with-SHA512</td>
+</tr>
+</tbody>
+</table>
+<p>RSA offers the following key size options:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="15%" />
+<col width="34%" />
+<col width="51%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">size</th>
+<th class="head">Modulus (bits)</th>
+<th class="head">Signature Algorithm</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>2048</td>
+<td>2048</td>
+<td>sha256WithRSAEncryption</td>
+</tr>
+<tr class="row-odd"><td>4096</td>
+<td>4096</td>
+<td>sha512WithRSAEncryption</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="starting-the-server">
+<h3>Starting the server<a class="headerlink" href="#starting-the-server" title="Permalink to this headline">¶</a></h3>
+<p>Start the Fabric CA server as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># fabric-ca-server start -b &lt;admin&gt;:&lt;adminpw&gt;</span>
+</pre></div>
+</div>
+<p>If the server has not been previously initialized, it will initialize
+itself as it starts for the first time.  During this initialization, the
+server will generate the ca-cert.pem and ca-key.pem files if they don’t
+yet exist and will also create a default configuration file if it does
+not exist.  See the <a class="reference external" href="#initialize">Initialize the Fabric CA server</a> section.</p>
+<p>Unless the Fabric CA server is configured to use LDAP, it must be
+configured with at least one pre-registered bootstrap identity to enable you
+to register and enroll other identities. The <code class="docutils literal"><span class="pre">-b</span></code> option specifies the
+name and password for a bootstrap identity.</p>
+<p>A different configuration file may be specified with the <code class="docutils literal"><span class="pre">-c</span></code> option
+as shown below.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># fabric-ca-server start -c &lt;path-to-config-file&gt; -b &lt;admin&gt;:&lt;adminpw&gt;</span>
+</pre></div>
+</div>
+<p>To cause the Fabric CA server to listen on <code class="docutils literal"><span class="pre">https</span></code> rather than
+<code class="docutils literal"><span class="pre">http</span></code>, set <code class="docutils literal"><span class="pre">tls.enabled</span></code> to <code class="docutils literal"><span class="pre">true</span></code>.</p>
+<p>To limit the number of times that the same secret (or password) can be
+used for enrollment, set the <code class="docutils literal"><span class="pre">registry.maxEnrollments</span></code> in the configuration
+file to the appropriate value. If you set the value to 1, the Fabric CA
+server allows passwords to only be used once for a particular enrollment
+ID. If you set the value to 0, the Fabric CA server places no limit on
+the number of times that a secret can be reused for enrollment. The
+default value is 0.</p>
+<p>The Fabric CA server should now be listening on port 7054.</p>
+<p>You may skip to the <a class="reference external" href="#fabric-ca-client">Fabric CA Client</a> section if
+you do not want to configure the Fabric CA server to run in a cluster or
+to use LDAP.</p>
+</div>
+<div class="section" id="configuring-the-database">
+<h3>Configuring the database<a class="headerlink" href="#configuring-the-database" title="Permalink to this headline">¶</a></h3>
+<p>This section describes how to configure the Fabric CA server to connect
+to Postgres or MySQL databases. The default database is SQLite and the
+default database file is <code class="docutils literal"><span class="pre">fabric-ca-server.db</span></code> in the Fabric CA
+server’s home directory.</p>
+<p>If you don’t care about running the Fabric CA server in a cluster, you
+may skip this section; otherwise, you must configure either Postgres or
+MySQL as described below.</p>
+<div class="section" id="postgres">
+<h4>Postgres<a class="headerlink" href="#postgres" title="Permalink to this headline">¶</a></h4>
+<p>The following sample may be added to the server’s configuration file in
+order to connect to a Postgres database. Be sure to customize the
+various values appropriately.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">db</span><span class="p">:</span>
+  <span class="nb">type</span><span class="p">:</span> <span class="n">postgres</span>
+  <span class="n">datasource</span><span class="p">:</span> <span class="n">host</span><span class="o">=</span><span class="n">localhost</span> <span class="n">port</span><span class="o">=</span><span class="mi">5432</span> <span class="n">user</span><span class="o">=</span><span class="n">Username</span> <span class="n">password</span><span class="o">=</span><span class="n">Password</span> <span class="n">dbname</span><span class="o">=</span><span class="n">fabric</span><span class="o">-</span><span class="n">ca</span><span class="o">-</span><span class="n">server</span> <span class="n">sslmode</span><span class="o">=</span><span class="n">verify</span><span class="o">-</span><span class="n">full</span>
+</pre></div>
+</div>
+<p>Specifying <em>sslmode</em> configures the type of SSL authentication. Valid
+values for sslmode are:</p>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>If you would like to use TLS, then the <code class="docutils literal"><span class="pre">db.tls</span></code> section in the Fabric CA server
+configuration file must be specified. If SSL client authentication is enabled
+on the Postgres server, then the client certificate and key file must also be
+specified in the <code class="docutils literal"><span class="pre">db.tls.client</span></code> section. The following is an example
+of the <code class="docutils literal"><span class="pre">db.tls</span></code> section:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">db</span><span class="p">:</span>
+  <span class="o">...</span>
+  <span class="n">tls</span><span class="p">:</span>
+      <span class="n">enabled</span><span class="p">:</span> <span class="n">true</span>
+      <span class="n">certfiles</span><span class="p">:</span>
+        <span class="o">-</span> <span class="n">db</span><span class="o">-</span><span class="n">server</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+      <span class="n">client</span><span class="p">:</span>
+            <span class="n">certfile</span><span class="p">:</span> <span class="n">db</span><span class="o">-</span><span class="n">client</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+            <span class="n">keyfile</span><span class="p">:</span> <span class="n">db</span><span class="o">-</span><span class="n">client</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">pem</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><strong>certfiles</strong> - A list of PEM-encoded trusted root certificate files.</div>
+<div class="line"><strong>certfile</strong> and <strong>keyfile</strong> - PEM-encoded certificate and key files that are used by the Fabric CA server to communicate securely with the Postgres server</div>
+</div>
+</div>
+<div class="section" id="mysql">
+<h4>MySQL<a class="headerlink" href="#mysql" title="Permalink to this headline">¶</a></h4>
+<p>The following sample may be added to the Fabric CA server configuration file in
+order to connect to a MySQL database. Be sure to customize the various
+values appropriately.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>db:
+  type: mysql
+  datasource: root:rootpw@tcp(localhost:3306)/fabric-ca?parseTime=true&amp;tls=custom
+</pre></div>
+</div>
+<p>If connecting over TLS to the MySQL server, the <code class="docutils literal"><span class="pre">db.tls.client</span></code>
+section is also required as described in the <strong>Postgres</strong> section above.</p>
+</div>
+</div>
+<div class="section" id="configuring-ldap">
+<h3>Configuring LDAP<a class="headerlink" href="#configuring-ldap" title="Permalink to this headline">¶</a></h3>
+<p>The Fabric CA server can be configured to read from an LDAP server.</p>
+<p>In particular, the Fabric CA server may connect to an LDAP server to do
+the following:</p>
+<ul class="simple">
+<li>authenticate an identity prior to enrollment</li>
+<li>retrieve an identity’s attribute values which are used for authorization.</li>
+</ul>
+<p>Modify the LDAP section of the Fabric CA server’s configuration file to configure the
+server to connect to an LDAP server.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">ldap</span><span class="p">:</span>
+   <span class="c1"># Enables or disables the LDAP client (default: false)</span>
+   <span class="n">enabled</span><span class="p">:</span> <span class="n">false</span>
+   <span class="c1"># The URL of the LDAP server</span>
+   <span class="n">url</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">scheme</span><span class="o">&gt;</span><span class="p">:</span><span class="o">//&lt;</span><span class="n">adminDN</span><span class="o">&gt;</span><span class="p">:</span><span class="o">&lt;</span><span class="n">adminPassword</span><span class="o">&gt;@&lt;</span><span class="n">host</span><span class="o">&gt;</span><span class="p">:</span><span class="o">&lt;</span><span class="n">port</span><span class="o">&gt;/&lt;</span><span class="n">base</span><span class="o">&gt;</span>
+   <span class="n">userfilter</span><span class="p">:</span> <span class="nb">filter</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">where:</div>
+<div class="line">* <code class="docutils literal"><span class="pre">scheme</span></code> is one of <em>ldap</em> or <em>ldaps</em>;</div>
+<div class="line">* <code class="docutils literal"><span class="pre">adminDN</span></code> is the distinquished name of the admin user;</div>
+<div class="line">* <code class="docutils literal"><span class="pre">pass</span></code> is the password of the admin user;</div>
+<div class="line">* <code class="docutils literal"><span class="pre">host</span></code> is the hostname or IP address of the LDAP server;</div>
+<div class="line">* <code class="docutils literal"><span class="pre">port</span></code> is the optional port number, where default 389 for <em>ldap</em>
+and 636 for <em>ldaps</em>;</div>
+<div class="line">* <code class="docutils literal"><span class="pre">base</span></code> is the optional root of the LDAP tree to use for searches;</div>
+<div class="line">* <code class="docutils literal"><span class="pre">filter</span></code> is a filter to use when searching to convert a login
+user name to a distinquished name. For example, a value of
+<code class="docutils literal"><span class="pre">(uid=%s)</span></code> searches for LDAP entries with the value of a <code class="docutils literal"><span class="pre">uid</span></code>
+attribute whose value is the login user name. Similarly,
+<code class="docutils literal"><span class="pre">(email=%s)</span></code> may be used to login with an email address.</div>
+</div>
+<p>The following is a sample configuration section for the default settings
+for the OpenLDAP server whose docker image is at
+<code class="docutils literal"><span class="pre">https://github.com/osixia/docker-openldap</span></code>.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">ldap</span><span class="p">:</span>
+   <span class="n">enabled</span><span class="p">:</span> <span class="n">true</span>
+   <span class="n">url</span><span class="p">:</span> <span class="n">ldap</span><span class="p">:</span><span class="o">//</span><span class="n">cn</span><span class="o">=</span><span class="n">admin</span><span class="p">,</span><span class="n">dc</span><span class="o">=</span><span class="n">example</span><span class="p">,</span><span class="n">dc</span><span class="o">=</span><span class="n">org</span><span class="p">:</span><span class="n">admin</span><span class="nd">@localhost</span><span class="p">:</span><span class="mi">10389</span><span class="o">/</span><span class="n">dc</span><span class="o">=</span><span class="n">example</span><span class="p">,</span><span class="n">dc</span><span class="o">=</span><span class="n">org</span>
+   <span class="n">userfilter</span><span class="p">:</span> <span class="p">(</span><span class="n">uid</span><span class="o">=%</span><span class="n">s</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See <code class="docutils literal"><span class="pre">FABRIC_CA/scripts/run-ldap-tests</span></code> for a script which starts an
+OpenLDAP docker image, configures it, runs the LDAP tests in
+<code class="docutils literal"><span class="pre">FABRIC_CA/cli/server/ldap/ldap_test.go</span></code>, and stops the OpenLDAP
+server.</p>
+<p>When LDAP is configured, enrollment works as follows:</p>
+<ul class="simple">
+<li>The Fabric CA client or client SDK sends an enrollment request with a
+basic authorization header.</li>
+<li>The Fabric CA server receives the enrollment request, decodes the
+identity name and password in the authorization header, looks up the DN (Distinquished
+Name) associated with the identity name using the “userfilter” from the
+configuration file, and then attempts an LDAP bind with the identity’s
+password. If the LDAP bind is successful, the enrollment processing is
+authorized and can proceed.</li>
+</ul>
+<p>When LDAP is configured, attribute retrieval works as follows:</p>
+<ul class="simple">
+<li>A client SDK sends a request for a batch of tcerts <strong>with one or more
+attributes</strong> to the Fabric CA server.</li>
+<li>The Fabric CA server receives the tcert request and does as follows:<ul>
+<li>extracts the enrollment ID from the token in the authorization
+header (after validating the token);</li>
+<li>does an LDAP search/query to the LDAP server, requesting all of
+the attribute names received in the tcert request;</li>
+<li>the attribute values are placed in the tcert as normal.</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="setting-up-a-cluster">
+<h3>Setting up a cluster<a class="headerlink" href="#setting-up-a-cluster" title="Permalink to this headline">¶</a></h3>
+<p>You may use any IP sprayer to load balance to a cluster of Fabric CA
+servers. This section provides an example of how to set up Haproxy to
+route to a Fabric CA server cluster. Be sure to change hostname and port
+to reflect the settings of your Fabric CA servers.</p>
+<p>haproxy.conf</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">global</span>
+      <span class="n">maxconn</span> <span class="mi">4096</span>
+      <span class="n">daemon</span>
+
+<span class="n">defaults</span>
+      <span class="n">mode</span> <span class="n">http</span>
+      <span class="n">maxconn</span> <span class="mi">2000</span>
+      <span class="n">timeout</span> <span class="n">connect</span> <span class="mi">5000</span>
+      <span class="n">timeout</span> <span class="n">client</span> <span class="mi">50000</span>
+      <span class="n">timeout</span> <span class="n">server</span> <span class="mi">50000</span>
+
+<span class="n">listen</span> <span class="n">http</span><span class="o">-</span><span class="ow">in</span>
+      <span class="n">bind</span> <span class="o">*</span><span class="p">:</span><span class="mi">7054</span>
+      <span class="n">balance</span> <span class="n">roundrobin</span>
+      <span class="n">server</span> <span class="n">server1</span> <span class="n">hostname1</span><span class="p">:</span><span class="n">port</span>
+      <span class="n">server</span> <span class="n">server2</span> <span class="n">hostname2</span><span class="p">:</span><span class="n">port</span>
+      <span class="n">server</span> <span class="n">server3</span> <span class="n">hostname3</span><span class="p">:</span><span class="n">port</span>
+</pre></div>
+</div>
+<p>Note: If using TLS, need to use <code class="docutils literal"><span class="pre">mode</span> <span class="pre">tcp</span></code>.</p>
+<p><a class="reference internal" href="#back-to-top">Back to Top</a></p>
+</div>
+</div>
+<div class="section" id="fabric-ca-client">
+<span id="client"></span><h2>Fabric CA Client<a class="headerlink" href="#fabric-ca-client" title="Permalink to this headline">¶</a></h2>
+<p>This section describes how to use the fabric-ca-client command.</p>
+<div class="line-block">
+<div class="line">The Fabric CA client’s home directory is determined as follows:</div>
+<div class="line">- if the <code class="docutils literal"><span class="pre">FABRIC_CA_CLIENT_HOME</span></code> environment variable is set, use
+its value;</div>
+<div class="line">- otherwise, if the <code class="docutils literal"><span class="pre">FABRIC_CA_HOME</span></code> environment variable is set,
+use its value;</div>
+<div class="line">- otherwise, if the <code class="docutils literal"><span class="pre">CA_CFG_PATH</span></code> environment variable is set, use
+its value;</div>
+<div class="line">- otherwise, use <code class="docutils literal"><span class="pre">$HOME/.fabric-ca-client</span></code>.</div>
+</div>
+<p>The instructions below assume that the client configuration file exists
+in the client’s home directory.</p>
+<div class="section" id="enrolling-the-bootstrap-identity">
+<h3>Enrolling the bootstrap identity<a class="headerlink" href="#enrolling-the-bootstrap-identity" title="Permalink to this headline">¶</a></h3>
+<p>First, if needed, customize the CSR (Certificate Signing Request) section
+in the client configuration file. Note that <code class="docutils literal"><span class="pre">csr.cn</span></code> field must be set
+to the ID of the bootstrap identity. Default CSR values are shown below:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">csr</span><span class="p">:</span>
+  <span class="n">cn</span><span class="p">:</span> <span class="o">&lt;&lt;</span><span class="n">enrollment</span> <span class="n">ID</span><span class="o">&gt;&gt;</span>
+  <span class="n">key</span><span class="p">:</span>
+    <span class="n">algo</span><span class="p">:</span> <span class="n">ecdsa</span>
+    <span class="n">size</span><span class="p">:</span> <span class="mi">256</span>
+  <span class="n">names</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">C</span><span class="p">:</span> <span class="n">US</span>
+      <span class="n">ST</span><span class="p">:</span> <span class="n">North</span> <span class="n">Carolina</span>
+      <span class="n">L</span><span class="p">:</span>
+      <span class="n">O</span><span class="p">:</span> <span class="n">Hyperledger</span> <span class="n">Fabric</span>
+      <span class="n">OU</span><span class="p">:</span> <span class="n">Fabric</span> <span class="n">CA</span>
+  <span class="n">hosts</span><span class="p">:</span>
+   <span class="o">-</span> <span class="o">&lt;&lt;</span><span class="n">hostname</span> <span class="n">of</span> <span class="n">the</span> <span class="n">fabric</span><span class="o">-</span><span class="n">ca</span><span class="o">-</span><span class="n">client</span><span class="o">&gt;&gt;</span>
+  <span class="n">ca</span><span class="p">:</span>
+    <span class="n">pathlen</span><span class="p">:</span>
+    <span class="n">pathlenzero</span><span class="p">:</span>
+    <span class="n">expiry</span><span class="p">:</span>
+</pre></div>
+</div>
+<p>See <a class="reference external" href="#csr-fields">CSR fields</a> for description of the fields.</p>
+<p>Then run <code class="docutils literal"><span class="pre">fabric-ca-client</span> <span class="pre">enroll</span></code> command to enroll the identity. For example,
+following command enrolls an identity whose ID is <strong>admin</strong> and password is <strong>adminpw</strong>
+by calling Fabric CA server that is running locally at 7054 port.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin</span>
+<span class="c1"># fabric-ca-client enroll -u http://admin:adminpw@localhost:7054</span>
+</pre></div>
+</div>
+<p>The enroll command stores an enrollment certificate (ECert), corresponding private key and CA
+certificate chain PEM files in the subdirectories of the Fabric CA client’s <code class="docutils literal"><span class="pre">msp</span></code> directory.
+You will see messages indicating where the PEM files are stored.</p>
+</div>
+<div class="section" id="registering-a-new-identity">
+<h3>Registering a new identity<a class="headerlink" href="#registering-a-new-identity" title="Permalink to this headline">¶</a></h3>
+<p>The identity performing the register request must be currently enrolled, and
+must also have the proper authority to register the type of the identity that is being
+registered.</p>
+<p>In particular, two authorization checks are made by the Fabric CA server
+during registration as follows:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>The invoker’s identity must have the “hf.Registrar.Roles” attribute with a
+comma-separated list of values where one of the value equals the type of
+identity being registered; for example, if the invoker’s identity has the
+“hf.Registrar.Roles” attribute with a value of “peer,app,user”, the invoker can register identities of type peer, app, and user, but not orderer.</li>
+<li>The affiliation of the invoker’s identity must be equal to or a prefix of
+the affiliation of the identity being registered.  For example, an invoker
+with an affiliation of “a.b” may register an identity with an affiliation
+of “a.b.c” but may not register an identity with an affiliation of “a.c”.</li>
+</ol>
+</div></blockquote>
+<p>The following command uses the <strong>admin</strong> identity’s credentials to register a new
+identity with an enrollment id of “admin2”, a type of “user”, an affiliation of
+“org1.department1”, and an attribute named “hf.Revoker” with a value of “true”.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin</span>
+<span class="c1"># fabric-ca-client register --id.name admin2 --id.type user --id.affiliation org1.department1 --id.attr hf.Revoker=true</span>
+</pre></div>
+</div>
+<p>The password, also known as the enrollment secret, is printed.
+This password is required to enroll the identity.
+This allows an administrator to register an identity and give the
+enrollment ID and the secret to someone else to enroll the identity.</p>
+<p>You may set default values for any of the fields used in the register command
+by editing the client’s configuration file.  For example, suppose the configuration
+file contains the following:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nb">id</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span>
+  <span class="nb">type</span><span class="p">:</span> <span class="n">user</span>
+  <span class="n">affiliation</span><span class="p">:</span> <span class="n">org1</span><span class="o">.</span><span class="n">department1</span>
+  <span class="n">attributes</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">hf</span><span class="o">.</span><span class="n">Revoker</span>
+      <span class="n">value</span><span class="p">:</span> <span class="n">true</span>
+    <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">anotherAttrName</span>
+      <span class="n">value</span><span class="p">:</span> <span class="n">anotherAttrValue</span>
+</pre></div>
+</div>
+<p>The following command would then register a new identity with an enrollment id of
+“admin3” which it takes from the command line, and the remainder is taken from the
+configuration file including the identity type: “user”, affiliation: “org1.department1”,
+and two attributes: “hf.Revoker” and “anotherAttrName”.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin</span>
+<span class="c1"># fabric-ca-client register --id.name admin3</span>
+</pre></div>
+</div>
+<p>To register an identity with multiple attributes requires specifying all attribute names and values
+in the configuration file as shown above.</p>
+<p>Next, let’s register a peer identity which will be used to enroll the peer in the following section.
+The following command registers the <strong>peer1</strong> identity.  Note that we choose to specify our own
+password (or secret) rather than letting the server generate one for us.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin</span>
+<span class="c1"># fabric-ca-client register --id.name peer1 --id.type peer --id.affiliation org1.department1 --id.secret peer1pw</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="enrolling-a-peer-identity">
+<h3>Enrolling a Peer Identity<a class="headerlink" href="#enrolling-a-peer-identity" title="Permalink to this headline">¶</a></h3>
+<p>Now that you have successfully registered a peer identity, you may now
+enroll the peer given the enrollment ID and secret (i.e. the <em>password</em>
+from the previous section).  This is similar to enrolling the bootstrap identity
+except that we also demonstrate how to use the “-M” option to populate the
+Hyperledger Fabric MSP (Membership Service Provider) directory structure.</p>
+<p>The following command enrolls peer1.
+Be sure to replace the value of the “-M” option with the path to your
+peer’s MSP directory which is the
+‘mspConfigPath’ setting in the peer’s core.yaml file.
+You may also set the FABRIC_CA_CLIENT_HOME to the home directory of your peer.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/peer1</span>
+<span class="c1"># fabric-ca-client enroll -u http://peer1:peer1pw@localhost:7054 -M $FABRIC_CA_CLIENT_HOME/msp</span>
+</pre></div>
+</div>
+<p>Enrolling an orderer is the same, except the path to the MSP directory is
+the ‘LocalMSPDir’ setting in your orderer’s orderer.yaml file.</p>
+</div>
+<div class="section" id="getting-a-ca-certificate-chain-from-another-fabric-ca-server">
+<h3>Getting a CA certificate chain from another Fabric CA server<a class="headerlink" href="#getting-a-ca-certificate-chain-from-another-fabric-ca-server" title="Permalink to this headline">¶</a></h3>
+<p>In general, the cacerts directory of the MSP directory must contain the certificate authority chains
+of other certificate authorities, representing all of the roots of trust for the peer.</p>
+<p>The <code class="docutils literal"><span class="pre">fabric-ca-client</span> <span class="pre">getcacerts</span></code> command is used to retrieve these certificate chains from other
+Fabric CA server instances.</p>
+<p>For example, the following will start a second Fabric CA server on localhost
+listening on port 7055 with a name of “CA2”.  This represents a completely separate
+root of trust and would be managed by a different member on the blockchain.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># export FABRIC_CA_SERVER_HOME=$HOME/ca2</span>
+<span class="c1"># fabric-ca-server start -b admin:ca2pw -p 7055 -n CA2</span>
+</pre></div>
+</div>
+<p>The following command will install CA2’s certificate chain into peer1’s MSP directory.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/peer1</span>
+<span class="c1"># fabric-ca-client getcacert -u http://localhost:7055 -M $FABRIC_CA_CLIENT_HOME/msp</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="reenrolling-an-identity">
+<h3>Reenrolling an Identity<a class="headerlink" href="#reenrolling-an-identity" title="Permalink to this headline">¶</a></h3>
+<p>Suppose your enrollment certificate is about to expire or has been compromised.
+You can issue the reenroll command to renew your enrollment certificate as follows.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/peer1</span>
+<span class="c1"># fabric-ca-client reenroll</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="revoking-a-certificate-or-identity">
+<h3>Revoking a certificate or identity<a class="headerlink" href="#revoking-a-certificate-or-identity" title="Permalink to this headline">¶</a></h3>
+<p>An identity or a certificate can be revoked. Revoking an identity will revoke all
+the certificates owned by the identity and will also prevent the identity from getting
+any new certificates. Revoking a certificate will invalidate a single certificate.</p>
+<p>In order to revoke a certificate or an identity, the calling identity must have
+the <code class="docutils literal"><span class="pre">hf.Revoker</span></code> attribute. The revoking identity can only revoke a certificate
+or an identity that has an affiliation that is equal to or prefixed by the revoking
+identity’s affiliation.</p>
+<p>For example, a revoker with affiliation <strong>orgs.org1</strong> can revoke an identity
+affiliated with <strong>orgs.org1</strong> or <strong>orgs.org1.department1</strong> but can’t revoke an
+identity affiliated with <strong>orgs.org2</strong>.</p>
+<p>The following command disables an identity and revokes all of the certificates
+associated with the identity. All future requests received by the Fabric CA server
+from this identity will be rejected.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">fabric</span><span class="o">-</span><span class="n">ca</span><span class="o">-</span><span class="n">client</span> <span class="n">revoke</span> <span class="o">-</span><span class="n">e</span> <span class="o">&lt;</span><span class="n">enrollment_id</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">r</span> <span class="o">&lt;</span><span class="n">reason</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>The following are the supported reasons that can be specified using <code class="docutils literal"><span class="pre">-r</span></code> flag:</p>
+<ol class="arabic simple">
+<li>unspecified</li>
+<li>keycompromise</li>
+<li>cacompromise</li>
+<li>affiliationchange</li>
+<li>superseded</li>
+<li>cessationofoperation</li>
+<li>certificatehold</li>
+<li>removefromcrl</li>
+<li>privilegewithdrawn</li>
+<li>aacompromise</li>
+</ol>
+<p>For example, the bootstrap admin who is associated with root of the affiliation tree
+can revoke <strong>peer1</strong>’s identity as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># export FABRIC_CA_CLIENT_HOME=$HOME/fabric-ca/clients/admin</span>
+<span class="c1"># fabric-ca-client revoke -e peer1</span>
+</pre></div>
+</div>
+<p>An enrollment certificate that belongs to an identity can be revoked by
+specifying its AKI (Authority Key Identifier) and serial number as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">fabric</span><span class="o">-</span><span class="n">ca</span><span class="o">-</span><span class="n">client</span> <span class="n">revoke</span> <span class="o">-</span><span class="n">a</span> <span class="n">xxx</span> <span class="o">-</span><span class="n">s</span> <span class="n">yyy</span> <span class="o">-</span><span class="n">r</span> <span class="o">&lt;</span><span class="n">reason</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>For example, you can get the AKI and the serial number of a certificate using the openssl command
+and pass them to the <code class="docutils literal"><span class="pre">revoke</span></code> command to revoke the said certificate as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>serial=$(openssl x509 -in userecert.pem -serial -noout | cut -d &quot;=&quot; -f 2)
+aki=$(openssl x509 -in userecert.pem -text | awk &#39;/keyid/ {gsub(/ *keyid:|:/,&quot;&quot;,$1);print tolower($0)}&#39;)
+fabric-ca-client revoke -s $serial -a $aki -r affiliationchange
+</pre></div>
+</div>
+</div>
+<div class="section" id="enabling-tls">
+<h3>Enabling TLS<a class="headerlink" href="#enabling-tls" title="Permalink to this headline">¶</a></h3>
+<p>This section describes in more detail how to configure TLS for a Fabric CA client.</p>
+<p>The following sections may be configured in the <code class="docutils literal"><span class="pre">fabric-ca-client-config.yaml</span></code>.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">tls</span><span class="p">:</span>
+  <span class="c1"># Enable TLS (default: false)</span>
+  <span class="n">enabled</span><span class="p">:</span> <span class="n">true</span>
+  <span class="n">certfiles</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">root</span><span class="o">.</span><span class="n">pem</span>
+  <span class="n">client</span><span class="p">:</span>
+    <span class="n">certfile</span><span class="p">:</span> <span class="n">tls_client</span><span class="o">-</span><span class="n">cert</span><span class="o">.</span><span class="n">pem</span>
+    <span class="n">keyfile</span><span class="p">:</span> <span class="n">tls_client</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">pem</span>
+</pre></div>
+</div>
+<p>The <strong>certfiles</strong> option is the set of root certificates trusted by the
+client. This will typically just be the root Fabric CA server’s
+certificate found in the server’s home directory in the <strong>ca-cert.pem</strong>
+file.</p>
+<p>The <strong>client</strong> option is required only if mutual TLS is configured on
+the server.</p>
+<p><a class="reference internal" href="#back-to-top">Back to Top</a></p>
+</div>
+</div>
+<div class="section" id="appendix">
+<h2>Appendix<a class="headerlink" href="#appendix" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="postgres-ssl-configuration">
+<h3>Postgres SSL Configuration<a class="headerlink" href="#postgres-ssl-configuration" title="Permalink to this headline">¶</a></h3>
+<p><strong>Basic instructions for configuring SSL on the Postgres server:</strong></p>
+<ol class="arabic simple">
+<li>In postgresql.conf, uncomment SSL and set to “on” (SSL=on)</li>
+<li>Place certificate and key files in the Postgres data directory.</li>
+</ol>
+<p>Instructions for generating self-signed certificates for:
+<a class="reference external" href="https://www.postgresql.org/docs/9.5/static/ssl-tcp.html">https://www.postgresql.org/docs/9.5/static/ssl-tcp.html</a></p>
+<p>Note: Self-signed certificates are for testing purposes and should not
+be used in a production environment</p>
+<p><strong>Postgres Server - Require Client Certificates</strong></p>
+<ol class="arabic simple">
+<li>Place certificates of the certificate authorities (CAs) you trust in the file root.crt in the Postgres data directory</li>
+<li>In postgresql.conf, set “ssl_ca_file” to point to the root cert of the client (CA cert)</li>
+<li>Set the clientcert parameter to 1 on the appropriate hostssl line(s) in pg_hba.conf.</li>
+</ol>
+<p>For more details on configuring SSL on the Postgres server, please refer
+to the following Postgres documentation:
+<a class="reference external" href="https://www.postgresql.org/docs/9.4/static/libpq-ssl.html">https://www.postgresql.org/docs/9.4/static/libpq-ssl.html</a></p>
+</div>
+<div class="section" id="mysql-ssl-configuration">
+<h3>MySQL SSL Configuration<a class="headerlink" href="#mysql-ssl-configuration" title="Permalink to this headline">¶</a></h3>
+<p>On MySQL 5.7.X, certain modes affect whether the server permits ‘0000-00-00’ as a valid date.
+It might be necessary to relax the modes that MySQL server uses. We want to allow
+the server to be able to accept zero date values.</p>
+<p>Please refer to the following MySQL documentation on different modes available
+and select the appropriate settings for the specific version of MySQL that is
+being used.</p>
+<p><a class="reference external" href="https://dev.mysql.com/doc/refman/5.7/en/sql-mode.html">https://dev.mysql.com/doc/refman/5.7/en/sql-mode.html</a></p>
+<p><strong>Basic instructions for configuring SSL on MySQL server:</strong></p>
+<ol class="arabic">
+<li><p class="first">Open or create my.cnf file for the server. Add or uncomment the
+lines below in the [mysqld] section. These should point to the key and
+certificates for the server, and the root CA cert.</p>
+<p>Instructions on creating server and client-side certficates:
+<a class="reference external" href="http://dev.mysql.com/doc/refman/5.7/en/creating-ssl-files-using-openssl.html">http://dev.mysql.com/doc/refman/5.7/en/creating-ssl-files-using-openssl.html</a></p>
+<p>[mysqld] ssl-ca=ca-cert.pem ssl-cert=server-cert.pem ssl-key=server-key.pem</p>
+<p>Can run the following query to confirm SSL has been enabled.</p>
+<p>mysql&gt; SHOW GLOBAL VARIABLES LIKE ‘have_%ssl’;</p>
+<p>Should see:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Variable_name</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>have_openssl</td>
+<td>YES</td>
+</tr>
+<tr class="row-odd"><td>have_ssl</td>
+<td>YES</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><p class="first">After the server-side SSL configuration is finished, the next step is
+to create a user who has a privilege to access the MySQL server over
+SSL. For that, log in to the MySQL server, and type:</p>
+<p>mysql&gt; GRANT ALL PRIVILEGES ON <em>.</em> TO ‘ssluser’&#64;’%’ IDENTIFIED BY
+‘password’ REQUIRE SSL; mysql&gt; FLUSH PRIVILEGES;</p>
+<p>If you want to give a specific IP address from which the user will
+access the server change the ‘%’ to the specific IP address.</p>
+</li>
+</ol>
+<p><strong>MySQL Server - Require Client Certificates</strong></p>
+<p>Options for secure connections are similar to those used on the server side.</p>
+<ul class="simple">
+<li>ssl-ca identifies the Certificate Authority (CA) certificate. This
+option, if used, must specify the same certificate used by the server.</li>
+<li>ssl-cert identifies MySQL server’s certificate.</li>
+<li>ssl-key identifies MySQL server’s private key.</li>
+</ul>
+<p>Suppose that you want to connect using an account that has no special
+encryption requirements or was created using a GRANT statement that
+includes the REQUIRE SSL option. As a recommended set of
+secure-connection options, start the MySQL server with at least
+–ssl-cert and –ssl-key options. Then set the <code class="docutils literal"><span class="pre">db.tls.certfiles</span></code> property
+in the server configuration file and start the Fabric CA server.</p>
+<p>To require that a client certificate also be specified, create the
+account using the REQUIRE X509 option. Then the client must also specify
+proper client key and certificate files; otherwise, the MySQL server
+will reject the connection. To specify client key and certificate files
+for the Fabric CA server, set the <code class="docutils literal"><span class="pre">db.tls.client.certfile</span></code>,
+and <code class="docutils literal"><span class="pre">db.tls.client.keyfile</span></code> configuration properties.</p>
+<p><a class="reference internal" href="#back-to-top">Back to Top</a></p>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../endorsement-policies.html" class="btn btn-neutral float-right" title="Endorsement policies" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../txflow.html" class="btn btn-neutral" title="Transaction Flow" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

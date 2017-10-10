@@ -1,0 +1,377 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Steps to enable TLS for all sever (ECA , ACA , TLSCA , TCA) and between ACA client to server communications. &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Steps to enable TLS for all sever (ECA , ACA , TLSCA , TCA) and between ACA client to server communications.</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/Setup/TLSSetup.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="steps-to-enable-tls-for-all-sever-eca-aca-tlsca-tca-and-between-aca-client-to-server-communications">
+<h1>Steps to enable TLS for all sever (ECA , ACA , TLSCA , TCA) and between ACA client to server communications.<a class="headerlink" href="#steps-to-enable-tls-for-all-sever-eca-aca-tlsca-tca-and-between-aca-client-to-server-communications" title="Permalink to this headline">¶</a></h1>
+<ol class="arabic">
+<li><p class="first">Go to <strong>memebersrvc.yaml</strong> file under the fabric/membersrvc directory
+and edit security section, that is:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">security</span><span class="p">:</span>
+  <span class="n">serverhostoverride</span><span class="p">:</span>
+  <span class="n">tls_enabled</span><span class="p">:</span> <span class="n">false</span>
+  <span class="n">client</span><span class="p">:</span>
+<span class="n">cert</span><span class="p">:</span>
+ <span class="n">file</span><span class="p">:</span>
+</pre></div>
+</div>
+<p>To enable TLS between the ACA client and the rest of the CA Services
+set the <code class="docutils literal"><span class="pre">tls_enbabled</span></code> flag to <code class="docutils literal"><span class="pre">true</span></code>.</p>
+</li>
+<li><p class="first">Next, set <strong>serverhostoverride</strong> field to match <strong>CN</strong> (Common Name)
+of TLS Server certificate. To extract the Common Name from TLS
+Server’s certificate, for example using OpenSSL, you can use the
+following command:</p>
+</li>
+</ol>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">openssl</span> <span class="n">x509</span> <span class="o">-</span><span class="ow">in</span> <span class="o">&lt;&lt;</span><span class="n">certificate</span><span class="o">.</span><span class="n">crt</span> <span class="o">-</span><span class="n">text</span> <span class="o">-</span><span class="n">noout</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal"><span class="pre">certficate.crt</span></code> is the Server Certificate. If you have openssl
+installed on the machine and everything went well, you should expect an
+output of the form:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Certificate</span><span class="p">:</span>
+    <span class="n">Data</span><span class="p">:</span>
+        <span class="n">Version</span><span class="p">:</span> <span class="mi">3</span> <span class="p">(</span><span class="mh">0x2</span><span class="p">)</span>
+        <span class="n">Serial</span> <span class="n">Number</span><span class="p">:</span>
+            <span class="mi">4</span><span class="n">f</span><span class="p">:</span><span class="mi">39</span><span class="p">:</span><span class="mi">0</span><span class="n">f</span><span class="p">:</span><span class="n">ac</span><span class="p">:</span><span class="mi">7</span><span class="n">b</span><span class="p">:</span><span class="n">ce</span><span class="p">:</span><span class="mi">2</span><span class="n">b</span><span class="p">:</span><span class="mi">9</span><span class="n">f</span><span class="p">:</span><span class="mi">28</span><span class="p">:</span><span class="mi">57</span><span class="p">:</span><span class="mi">52</span><span class="p">:</span><span class="mi">4</span><span class="n">a</span><span class="p">:</span><span class="n">bb</span><span class="p">:</span><span class="mi">94</span><span class="p">:</span><span class="n">a6</span><span class="p">:</span><span class="n">e5</span><span class="p">:</span><span class="mi">9</span><span class="n">c</span><span class="p">:</span><span class="mi">69</span><span class="p">:</span><span class="mi">99</span><span class="p">:</span><span class="mi">56</span>
+        <span class="n">Signature</span> <span class="n">Algorithm</span><span class="p">:</span> <span class="n">ecdsa</span><span class="o">-</span><span class="k">with</span><span class="o">-</span><span class="n">SHA256</span>
+        <span class="n">Issuer</span><span class="p">:</span> <span class="n">C</span><span class="o">=</span><span class="n">US</span><span class="p">,</span> <span class="n">ST</span><span class="o">=</span><span class="n">California</span><span class="p">,</span> <span class="n">L</span><span class="o">=</span><span class="n">San</span> <span class="n">Francisco</span><span class="p">,</span> <span class="n">O</span><span class="o">=</span><span class="n">Internet</span> <span class="n">Widgets</span><span class="p">,</span> <span class="n">Inc</span><span class="o">.</span><span class="p">,</span> <span class="n">OU</span><span class="o">=</span><span class="n">WWW</span>
+        <span class="n">Validity</span>
+            <span class="n">Not</span> <span class="n">Before</span><span class="p">:</span> <span class="n">Aug</span> <span class="mi">24</span> <span class="mi">16</span><span class="p">:</span><span class="mi">27</span><span class="p">:</span><span class="mi">00</span> <span class="mi">2016</span> <span class="n">GMT</span>
+            <span class="n">Not</span> <span class="n">After</span> <span class="p">:</span> <span class="n">Aug</span> <span class="mi">24</span> <span class="mi">16</span><span class="p">:</span><span class="mi">27</span><span class="p">:</span><span class="mi">00</span> <span class="mi">2017</span> <span class="n">GMT</span>
+        <span class="o">**</span><span class="n">Subject</span><span class="o">**</span><span class="p">:</span> <span class="n">C</span><span class="o">=</span><span class="n">US</span><span class="p">,</span> <span class="n">ST</span><span class="o">=</span><span class="n">California</span><span class="p">,</span> <span class="n">L</span><span class="o">=</span><span class="n">San</span> <span class="n">Francisco</span><span class="p">,</span> <span class="n">O</span><span class="o">=</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">,</span> <span class="o">**</span><span class="n">CN</span><span class="o">=</span><span class="n">www</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">**</span>
+        <span class="n">Subject</span> <span class="n">Public</span> <span class="n">Key</span> <span class="n">Info</span><span class="p">:</span>
+            <span class="n">Public</span> <span class="n">Key</span> <span class="n">Algorithm</span><span class="p">:</span> <span class="nb">id</span><span class="o">-</span><span class="n">ecPublicKey</span>
+            <span class="n">EC</span> <span class="n">Public</span> <span class="n">Key</span><span class="p">:</span>
+                <span class="n">pub</span><span class="p">:</span>
+                    <span class="mi">04</span><span class="p">:</span><span class="mi">38</span><span class="p">:</span><span class="n">d2</span><span class="p">:</span><span class="mi">62</span><span class="p">:</span><span class="mi">75</span><span class="p">:</span><span class="mi">4</span><span class="n">a</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span><span class="n">d9</span><span class="p">:</span><span class="n">f7</span><span class="p">:</span><span class="n">fe</span><span class="p">:</span><span class="mi">6</span><span class="n">a</span><span class="p">:</span><span class="n">e7</span><span class="p">:</span><span class="n">df</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="n">e2</span><span class="p">:</span>
+                    <span class="mi">15</span><span class="p">:</span><span class="mi">0</span><span class="n">f</span><span class="p">:</span><span class="mi">01</span><span class="p">:</span><span class="mi">9</span><span class="n">c</span><span class="p">:</span><span class="mi">1</span><span class="n">b</span><span class="p">:</span><span class="mi">4</span><span class="n">f</span><span class="p">:</span><span class="n">dc</span><span class="p">:</span><span class="n">ff</span><span class="p">:</span><span class="mi">22</span><span class="p">:</span><span class="mi">97</span><span class="p">:</span><span class="mi">5</span><span class="n">c</span><span class="p">:</span><span class="mi">2</span><span class="n">a</span><span class="p">:</span><span class="n">d9</span><span class="p">:</span><span class="mi">5</span><span class="n">c</span><span class="p">:</span><span class="n">c3</span><span class="p">:</span>
+                    <span class="n">a3</span><span class="p">:</span><span class="n">ef</span><span class="p">:</span><span class="n">e3</span><span class="p">:</span><span class="mi">90</span><span class="p">:</span><span class="mi">3</span><span class="n">b</span><span class="p">:</span><span class="mi">3</span><span class="n">c</span><span class="p">:</span><span class="mi">8</span><span class="n">a</span><span class="p">:</span><span class="n">d2</span><span class="p">:</span><span class="mi">45</span><span class="p">:</span><span class="n">b1</span><span class="p">:</span><span class="mi">60</span><span class="p">:</span><span class="mi">11</span><span class="p">:</span><span class="mi">94</span><span class="p">:</span><span class="mi">5</span><span class="n">e</span><span class="p">:</span><span class="n">a7</span><span class="p">:</span>
+                    <span class="mi">51</span><span class="p">:</span><span class="n">e8</span><span class="p">:</span><span class="n">e5</span><span class="p">:</span><span class="mi">5</span><span class="n">d</span><span class="p">:</span><span class="n">be</span><span class="p">:</span><span class="mi">38</span><span class="p">:</span><span class="mi">39</span><span class="p">:</span><span class="n">da</span><span class="p">:</span><span class="mi">66</span><span class="p">:</span><span class="n">e1</span><span class="p">:</span><span class="mi">99</span><span class="p">:</span><span class="mi">46</span><span class="p">:</span><span class="mi">0</span><span class="n">c</span><span class="p">:</span><span class="n">d3</span><span class="p">:</span><span class="mi">45</span><span class="p">:</span>
+                    <span class="mi">3</span><span class="n">d</span><span class="p">:</span><span class="mi">76</span><span class="p">:</span><span class="mi">7</span><span class="n">e</span><span class="p">:</span><span class="n">b7</span><span class="p">:</span><span class="mi">8</span><span class="n">c</span>
+                <span class="n">ASN1</span> <span class="n">OID</span><span class="p">:</span> <span class="n">prime256v1</span>
+        <span class="n">X509v3</span> <span class="n">extensions</span><span class="p">:</span>
+            <span class="n">X509v3</span> <span class="n">Key</span> <span class="n">Usage</span><span class="p">:</span> <span class="n">critical</span>
+                <span class="n">Digital</span> <span class="n">Signature</span><span class="p">,</span> <span class="n">Key</span> <span class="n">Encipherment</span>
+            <span class="n">X509v3</span> <span class="n">Extended</span> <span class="n">Key</span> <span class="n">Usage</span><span class="p">:</span>
+                <span class="n">TLS</span> <span class="n">Web</span> <span class="n">Server</span> <span class="n">Authentication</span>
+            <span class="n">X509v3</span> <span class="n">Basic</span> <span class="n">Constraints</span><span class="p">:</span> <span class="n">critical</span>
+                <span class="n">CA</span><span class="p">:</span><span class="n">FALSE</span>
+            <span class="n">X509v3</span> <span class="n">Subject</span> <span class="n">Key</span> <span class="n">Identifier</span><span class="p">:</span>
+                <span class="n">E8</span><span class="p">:</span><span class="mi">9</span><span class="n">C</span><span class="p">:</span><span class="mi">86</span><span class="p">:</span><span class="mi">81</span><span class="p">:</span><span class="mi">59</span><span class="p">:</span><span class="n">D4</span><span class="p">:</span><span class="n">D7</span><span class="p">:</span><span class="mi">76</span><span class="p">:</span><span class="mi">43</span><span class="p">:</span><span class="n">C7</span><span class="p">:</span><span class="mi">2</span><span class="n">E</span><span class="p">:</span><span class="mi">92</span><span class="p">:</span><span class="mi">88</span><span class="p">:</span><span class="mi">30</span><span class="p">:</span><span class="mi">1</span><span class="n">B</span><span class="p">:</span><span class="mi">30</span><span class="p">:</span><span class="n">A5</span><span class="p">:</span><span class="n">B3</span><span class="p">:</span><span class="n">A4</span><span class="p">:</span><span class="mi">5</span><span class="n">C</span>
+            <span class="n">X509v3</span> <span class="n">Authority</span> <span class="n">Key</span> <span class="n">Identifier</span><span class="p">:</span>
+                <span class="n">keyid</span><span class="p">:</span><span class="mi">5</span><span class="n">E</span><span class="p">:</span><span class="mi">33</span><span class="p">:</span><span class="n">AC</span><span class="p">:</span><span class="n">E0</span><span class="p">:</span><span class="mi">9</span><span class="n">D</span><span class="p">:</span><span class="n">B9</span><span class="p">:</span><span class="n">F9</span><span class="p">:</span><span class="mi">71</span><span class="p">:</span><span class="mi">5</span><span class="n">F</span><span class="p">:</span><span class="mi">1</span><span class="n">F</span><span class="p">:</span><span class="mi">96</span><span class="p">:</span><span class="n">B5</span><span class="p">:</span><span class="mi">84</span><span class="p">:</span><span class="mi">85</span><span class="p">:</span><span class="mi">35</span><span class="p">:</span><span class="n">BE</span><span class="p">:</span><span class="mi">89</span><span class="p">:</span><span class="mi">8</span><span class="n">C</span><span class="p">:</span><span class="mi">35</span><span class="p">:</span><span class="n">C2</span>
+
+            <span class="n">X509v3</span> <span class="n">Subject</span> <span class="n">Alternative</span> <span class="n">Name</span><span class="p">:</span>
+                <span class="n">DNS</span><span class="p">:</span><span class="n">www</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span>
+    <span class="n">Signature</span> <span class="n">Algorithm</span><span class="p">:</span> <span class="n">ecdsa</span><span class="o">-</span><span class="k">with</span><span class="o">-</span><span class="n">SHA256</span>
+        <span class="mi">30</span><span class="p">:</span><span class="mi">45</span><span class="p">:</span><span class="mi">02</span><span class="p">:</span><span class="mi">21</span><span class="p">:</span><span class="mi">00</span><span class="p">:</span><span class="mi">9</span><span class="n">f</span><span class="p">:</span><span class="mi">7</span><span class="n">e</span><span class="p">:</span><span class="mi">93</span><span class="p">:</span><span class="mi">93</span><span class="p">:</span><span class="n">af</span><span class="p">:</span><span class="mi">3</span><span class="n">d</span><span class="p">:</span><span class="n">cf</span><span class="p">:</span><span class="mi">7</span><span class="n">b</span><span class="p">:</span><span class="mi">77</span><span class="p">:</span><span class="n">f0</span><span class="p">:</span><span class="mi">55</span><span class="p">:</span><span class="mi">2</span><span class="n">d</span><span class="p">:</span><span class="mi">57</span><span class="p">:</span>
+        <span class="mi">9</span><span class="n">d</span><span class="p">:</span><span class="n">a9</span><span class="p">:</span><span class="n">bf</span><span class="p">:</span><span class="n">b0</span><span class="p">:</span><span class="mi">8</span><span class="n">c</span><span class="p">:</span><span class="mi">9</span><span class="n">c</span><span class="p">:</span><span class="mi">2</span><span class="n">e</span><span class="p">:</span><span class="n">cf</span><span class="p">:</span><span class="n">b2</span><span class="p">:</span><span class="n">b4</span><span class="p">:</span><span class="n">d8</span><span class="p">:</span><span class="n">de</span><span class="p">:</span><span class="n">f3</span><span class="p">:</span><span class="mi">79</span><span class="p">:</span><span class="n">c7</span><span class="p">:</span><span class="mi">66</span><span class="p">:</span><span class="mi">7</span><span class="n">c</span><span class="p">:</span><span class="n">e7</span><span class="p">:</span>
+        <span class="mi">4</span><span class="n">d</span><span class="p">:</span><span class="mi">02</span><span class="p">:</span><span class="mi">20</span><span class="p">:</span><span class="mi">7</span><span class="n">e</span><span class="p">:</span><span class="mi">9</span><span class="n">b</span><span class="p">:</span><span class="mi">36</span><span class="p">:</span><span class="n">d1</span><span class="p">:</span><span class="mi">3</span><span class="n">a</span><span class="p">:</span><span class="n">df</span><span class="p">:</span><span class="n">e4</span><span class="p">:</span><span class="n">d2</span><span class="p">:</span><span class="n">d7</span><span class="p">:</span><span class="mi">3</span><span class="n">b</span><span class="p">:</span><span class="mi">9</span><span class="n">d</span><span class="p">:</span><span class="mi">73</span><span class="p">:</span><span class="n">c7</span><span class="p">:</span><span class="mi">61</span><span class="p">:</span><span class="n">a8</span><span class="p">:</span>
+        <span class="mi">2</span><span class="n">e</span><span class="p">:</span><span class="n">a5</span><span class="p">:</span><span class="n">b1</span><span class="p">:</span><span class="mi">23</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mi">65</span><span class="p">:</span><span class="mi">81</span><span class="p">:</span><span class="mi">96</span><span class="p">:</span><span class="n">b1</span><span class="p">:</span><span class="mi">3</span><span class="n">b</span><span class="p">:</span><span class="mi">79</span><span class="p">:</span><span class="n">d4</span><span class="p">:</span><span class="n">a6</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="n">fe</span><span class="p">:</span><span class="n">f2</span><span class="p">:</span><span class="mi">69</span>
+</pre></div>
+</div>
+<p>Now you can use that CN value (<strong>www.example.com</strong> above, for example)
+from the output and use it in the <strong>serverhostoverride</strong> field (under
+the security section of the membersrvc.yaml file)</p>
+<ol class="arabic simple" start="3">
+<li>Last, make sure that path to the corresponding TLS Server Certificate
+is specified under <code class="docutils literal"><span class="pre">security.client.cert.file</span></code></li>
+</ol>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

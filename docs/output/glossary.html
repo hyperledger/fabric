@@ -1,0 +1,596 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Glossary &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/>
+        <link rel="next" title="Contributions Welcome!" href="CONTRIBUTING.html"/>
+        <link rel="prev" title="Identity Management (Membership Service)" href="FAQ/identity_management_FAQ.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Glossary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#anchor-peer">Anchor Peer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#block">Block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#chain">Chain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#chaincode">Chaincode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#channel">Channel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#commitment">Commitment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#concurrency-control-version-check">Concurrency Control Version Check</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-block">Configuration Block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#consensus">Consensus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#current-state">Current State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dynamic-membership">Dynamic Membership</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#endorsement">Endorsement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#endorsement-policy">Endorsement policy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fabric-ca">Fabric-ca</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#genesis-block">Genesis Block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#gossip-protocol">Gossip Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#initialize">Initialize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#instantiate">Instantiate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#invoke">Invoke</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#leading-peer">Leading Peer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ledger">Ledger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#member">Member</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#membership-service-provider">Membership Service Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#membership-services">Membership Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ordering-service">Ordering Service</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#peer">Peer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#policy">Policy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#proposal">Proposal</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#query">Query</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#software-development-kit-sdk">Software Development Kit (SDK)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#state-database">State Database</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#system-chain">System Chain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#transaction">Transaction</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Glossary</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/glossary.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <p><em>Needs Review</em></p>
+<div class="section" id="glossary">
+<h1>Glossary<a class="headerlink" href="#glossary" title="Permalink to this headline">¶</a></h1>
+<p>Terminology is important, so that all Fabric users and developers agree on what
+we mean by each specific term. What is chaincode, for example. So we’ll point you
+there, whenever you want to reassure yourself. Of course, feel free to read the
+entire thing in one sitting if you like, it’s pretty enlightening!</p>
+<div class="section" id="anchor-peer">
+<span id="id1"></span><h2>Anchor Peer<a class="headerlink" href="#anchor-peer" title="Permalink to this headline">¶</a></h2>
+<p>A peer node on a channel that all other peers can discover and communicate with.
+Each <a class="reference internal" href="#member">Member</a> on a channel has an anchor peer (or multiple anchor peers to prevent
+single point of failure), allowing for peers belonging to different Members to
+discover all existing peers on a channel.</p>
+</div>
+<div class="section" id="block">
+<span id="id2"></span><h2>Block<a class="headerlink" href="#block" title="Permalink to this headline">¶</a></h2>
+<p>An ordered set of transactions that is cryptographically linked to the
+preceding block(s) on a channel.</p>
+</div>
+<div class="section" id="chain">
+<span id="id3"></span><h2>Chain<a class="headerlink" href="#chain" title="Permalink to this headline">¶</a></h2>
+<p>The ledger’s chain is a transaction log structured as hash-linked blocks of
+transactions. Peers receive blocks of transactions from the ordering service, mark
+the block’s transactions as valid or invalid based on endorsement policies and
+concurrency violations, and append the block to the hash chain on the peer’s
+file system.</p>
+</div>
+<div class="section" id="chaincode">
+<span id="id4"></span><h2>Chaincode<a class="headerlink" href="#chaincode" title="Permalink to this headline">¶</a></h2>
+<p>Chaincode is software, running on a ledger, to encode assets and the transaction
+instructions (business logic) for modifying the assets.</p>
+</div>
+<div class="section" id="channel">
+<span id="id5"></span><h2>Channel<a class="headerlink" href="#channel" title="Permalink to this headline">¶</a></h2>
+<p>A channel is a private blockchain overlay on a Fabric network, allowing for data
+isolation and confidentiality. A channel-specific ledger is shared across the
+peers in the channel, and transacting parties must be properly authenticated to
+a channel in order to interact with it.  Channels are defined by a
+<a class="reference internal" href="#configuration-block">Configuration-Block</a>.</p>
+</div>
+<div class="section" id="commitment">
+<span id="id6"></span><h2>Commitment<a class="headerlink" href="#commitment" title="Permalink to this headline">¶</a></h2>
+<p>Each <a class="reference internal" href="#peer">Peer</a> on a channel validates ordered blocks of
+transactions and then commits (writes/appends) the blocks to its replica of the
+channel <a class="reference internal" href="#ledger">Ledger</a>. Peers also mark each transaction in each block
+as valid or invalid.</p>
+</div>
+<div class="section" id="concurrency-control-version-check">
+<span id="id7"></span><h2>Concurrency Control Version Check<a class="headerlink" href="#concurrency-control-version-check" title="Permalink to this headline">¶</a></h2>
+<p>Concurrency Control Version Check is a method of keeping state in sync across
+peers on a channel. Peers execute transactions in parallel, and before commitment
+to the ledger, peers check that the data read at execution time has not changed.
+If the data read for the transaction has changed between execution time and
+commitment time, then a Concurrency Control Version Check violation has
+occurred, and the transaction is marked as invalid on the ledger and values
+are not updated in the state database.</p>
+</div>
+<div class="section" id="configuration-block">
+<span id="id8"></span><h2>Configuration Block<a class="headerlink" href="#configuration-block" title="Permalink to this headline">¶</a></h2>
+<p>Contains the configuration data defining members and policies for a system
+chain (ordering service) or channel. Any configuration modifications to a
+channel or overall network (e.g. a member leaving or joining) will result
+in a new configuration block being appended to the appropriate chain. This
+block will contain the contents of the genesis block, plus the delta.</p>
+</div>
+<div class="section" id="consensus">
+<h2>Consensus<a class="headerlink" href="#consensus" title="Permalink to this headline">¶</a></h2>
+<p>A broader term overarching the entire transactional flow, which serves to generate
+an agreement on the order and to confirm the correctness of the set of transactions
+constituting a block.</p>
+</div>
+<div class="section" id="current-state">
+<span id="id9"></span><h2>Current State<a class="headerlink" href="#current-state" title="Permalink to this headline">¶</a></h2>
+<p>The current state of the ledger represents the latest values for all keys ever
+included in its chain transaction log. Peers commit the latest values to ledger
+current state for each valid transaction included in a processed block. Since
+current state represents all latest key values known to the channel, it is
+sometimes referred to as World State. Chaincode executes transaction proposals
+against current state data.</p>
+</div>
+<div class="section" id="dynamic-membership">
+<span id="id10"></span><h2>Dynamic Membership<a class="headerlink" href="#dynamic-membership" title="Permalink to this headline">¶</a></h2>
+<p>Fabric supports the addition/removal of members, peers, and ordering service
+nodes, without compromising the operationality of the overall network. Dynamic
+membership is critical when business relationships adjust and entities need to
+be added/removed for various reasons.</p>
+</div>
+<div class="section" id="endorsement">
+<span id="id11"></span><h2>Endorsement<a class="headerlink" href="#endorsement" title="Permalink to this headline">¶</a></h2>
+<p>Refers to the process where specific peer nodes execute a transaction and return
+a <code class="docutils literal"><span class="pre">YES/NO</span></code> response to the client application that generated the transaction proposal.
+Chaincode applications have corresponding endorsement policies, in which the endorsing
+peers are specified.</p>
+</div>
+<div class="section" id="endorsement-policy">
+<span id="id12"></span><h2>Endorsement policy<a class="headerlink" href="#endorsement-policy" title="Permalink to this headline">¶</a></h2>
+<p>Defines the peer nodes on a channel that must execute transactions attached to a
+specific chaincode application, and the required combination of responses (endorsements).
+A policy could require that a transaction be endorsed by a minimum number of
+endorsing peers, a minimum percentage of endorsing peers, or by all endorsing
+peers that are assigned to a specific chaincode application. Policies can be
+curated based on the application and the desired level of resilience against
+misbehavior (deliberate or not) by the endorsing peers. A distinct endorsement
+policy for install and instantiate transactions is also required.</p>
+</div>
+<div class="section" id="fabric-ca">
+<span id="id13"></span><h2>Fabric-ca<a class="headerlink" href="#fabric-ca" title="Permalink to this headline">¶</a></h2>
+<p>Fabric-ca is the default Certificate Authority component, which issues PKI-based
+certificates to network member organizations and their users. The CA issues one
+root certificate (rootCert) to each member, one enrollment certificate (eCert)
+to each authorized user, and a number of transaction certificates (tCerts) for
+each eCert.</p>
+</div>
+<div class="section" id="genesis-block">
+<span id="id14"></span><h2>Genesis Block<a class="headerlink" href="#genesis-block" title="Permalink to this headline">¶</a></h2>
+<p>The configuration block that initializes a blockchain network or channel, and
+also serves as the first block on a chain.</p>
+</div>
+<div class="section" id="gossip-protocol">
+<span id="id15"></span><h2>Gossip Protocol<a class="headerlink" href="#gossip-protocol" title="Permalink to this headline">¶</a></h2>
+<p>The gossip data dissemination protocol performs three functions:
+1) manages peer discovery and channel membership;
+2) disseminates ledger data across all peers on the channel;
+3) syncs ledger state across all peers on the channel.
+Refer to the <a class="reference internal" href="gossip.html"><span class="doc">Gossip</span></a> topic for more details.</p>
+</div>
+<div class="section" id="initialize">
+<span id="id16"></span><h2>Initialize<a class="headerlink" href="#initialize" title="Permalink to this headline">¶</a></h2>
+<p>A method to initialize a chaincode application.</p>
+</div>
+<div class="section" id="install">
+<h2>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
+<p>The process of placing a chaincode on a peer’s file system.</p>
+</div>
+<div class="section" id="instantiate">
+<h2>Instantiate<a class="headerlink" href="#instantiate" title="Permalink to this headline">¶</a></h2>
+<p>The process of starting a chaincode container.</p>
+</div>
+<div class="section" id="invoke">
+<span id="id17"></span><h2>Invoke<a class="headerlink" href="#invoke" title="Permalink to this headline">¶</a></h2>
+<p>Used to call chaincode functions. Invocations are captured as transaction
+proposals, which then pass through a modular flow of endorsement, ordering,
+validation, committal. The structure of invoke is a function and an array of
+arguments.</p>
+</div>
+<div class="section" id="leading-peer">
+<span id="id18"></span><h2>Leading Peer<a class="headerlink" href="#leading-peer" title="Permalink to this headline">¶</a></h2>
+<p>Each <a class="reference internal" href="#member">Member</a> can own multiple peers on each channel that
+it subscribes to. One of these peers is serves as the leading peer for the channel,
+in order to communicate with the network ordering service on behalf of the
+member. The ordering service “delivers” blocks to the leading peer(s) on a
+channel, who then distribute them to other peers within the same member cluster.</p>
+</div>
+<div class="section" id="ledger">
+<span id="id19"></span><h2>Ledger<a class="headerlink" href="#ledger" title="Permalink to this headline">¶</a></h2>
+<p>A ledger is a channel’s chain and current state data which is maintained by each
+peer on the channel.</p>
+</div>
+<div class="section" id="member">
+<span id="id20"></span><h2>Member<a class="headerlink" href="#member" title="Permalink to this headline">¶</a></h2>
+<p>A legally separate entity that owns a unique root certificate for the network.
+Network components such as peer nodes and application clients will be linked to a member.</p>
+</div>
+<div class="section" id="membership-service-provider">
+<span id="msp"></span><h2>Membership Service Provider<a class="headerlink" href="#membership-service-provider" title="Permalink to this headline">¶</a></h2>
+<p>The Membership Service Provider (MSP) refers to an abstract component of the
+system that provides credentials to clients, and peers for them to participate
+in a Hyperledger Fabric network. Clients use these credentials to authenticate
+their transactions, and peers use these credentials to authenticate transaction
+processing results (endorsements). While strongly connected to the transaction
+processing components of the systems, this interface aims to have membership
+services components defined, in such a way that alternate implementations of
+this can be smoothly plugged in without modifying the core of transaction
+processing components of the system.</p>
+</div>
+<div class="section" id="membership-services">
+<span id="id21"></span><h2>Membership Services<a class="headerlink" href="#membership-services" title="Permalink to this headline">¶</a></h2>
+<p>Membership Services authenticates, authorizes, and manages identities on a
+permissioned blockchain network. The membership services code that runs in peers
+and orderers both authenticates and authorizes blockchain operations.  It is a
+PKI-based implementation of the Membership Services Provider (MSP) abstraction.</p>
+<p>The <code class="docutils literal"><span class="pre">fabric-ca</span></code> component is an implementation of membership services to manage
+identities. In particular, it handles the issuance and revocation of enrollment
+certificates and transaction certificates.</p>
+<p>An enrollment certificate is a long-term identity credential; a transaction
+certificate is a short-term identity credential which is both anonymous and un-linkable.</p>
+</div>
+<div class="section" id="ordering-service">
+<span id="id22"></span><h2>Ordering Service<a class="headerlink" href="#ordering-service" title="Permalink to this headline">¶</a></h2>
+<p>A defined collective of nodes that orders transactions into a block.  The ordering
+service exists independent of the peer processes and orders transactions on a
+first-come-first-serve basis for all channel’s on the network.  The ordering service is
+designed to support pluggable implementations beyond the out-of-the-box SOLO and Kafka varieties.
+The ordering service is a common binding for the overall network; it contains the cryptographic
+identity material tied to each <a class="reference internal" href="#member">Member</a>.</p>
+</div>
+<div class="section" id="peer">
+<span id="id23"></span><h2>Peer<a class="headerlink" href="#peer" title="Permalink to this headline">¶</a></h2>
+<p>A network entity that maintains a ledger and runs chaincode containers in order to perform
+read/write operations to the ledger.  Peers are owned and maintained by members.</p>
+</div>
+<div class="section" id="policy">
+<span id="id24"></span><h2>Policy<a class="headerlink" href="#policy" title="Permalink to this headline">¶</a></h2>
+<p>There are policies for endorsement, validation, block committal, chaincode
+management and network/channel management.</p>
+</div>
+<div class="section" id="proposal">
+<span id="id25"></span><h2>Proposal<a class="headerlink" href="#proposal" title="Permalink to this headline">¶</a></h2>
+<p>A request for endorsement that is aimed at specific peers on a channel. Each
+proposal is either an instantiate or an invoke (read/write) request.</p>
+</div>
+<div class="section" id="query">
+<span id="id26"></span><h2>Query<a class="headerlink" href="#query" title="Permalink to this headline">¶</a></h2>
+<p>A query requests the value of a key(s) against the current state.</p>
+</div>
+<div class="section" id="software-development-kit-sdk">
+<span id="sdk"></span><h2>Software Development Kit (SDK)<a class="headerlink" href="#software-development-kit-sdk" title="Permalink to this headline">¶</a></h2>
+<p>The Hyperledger Fabric client SDK provides a structured environment of libraries
+for developers to write and test chaincode applications. The SDK is fully
+configurable and extensible through a standard interface. Components, including
+cryptographic algorithms for signatures, logging frameworks and state stores,
+are easily swapped in and out of the SDK. The SDK API uses protocol buffers over
+gRPC for transaction processing, membership services, node traversal and event
+handling applications to communicate across the fabric. The SDK comes in
+multiple flavors - Node.js, Java. and Python.</p>
+</div>
+<div class="section" id="state-database">
+<span id="state-db"></span><h2>State Database<a class="headerlink" href="#state-database" title="Permalink to this headline">¶</a></h2>
+<p>Current state data is stored in a state database for efficient reads and queries
+from chaincode. These databases include levelDB and couchDB.</p>
+</div>
+<div class="section" id="system-chain">
+<span id="id27"></span><h2>System Chain<a class="headerlink" href="#system-chain" title="Permalink to this headline">¶</a></h2>
+<p>Contains a configuration block defining the network at a system level. The
+system chain lives within the ordering service, and similar to a channel, has
+an initial configuration containing information such as: MSP information, policies,
+and configuration details.  Any change to the overall network (e.g. a new org
+joining or a new ordering node being added) will result in a new configuration block
+being added to the system chain.</p>
+<p>The system chain can be thought of as the common binding for a channel or group
+of channels.  For instance, a collection of financial institutions may form a
+consortium (represented through the system chain), and then proceed to create
+channels relative to their aligned and varying business agendas.</p>
+</div>
+<div class="section" id="transaction">
+<span id="id28"></span><h2>Transaction<a class="headerlink" href="#transaction" title="Permalink to this headline">¶</a></h2>
+<p>An invoke or instantiate operation.  Invokes are requests to read/write data from
+the ledger.  Instantiate is a request to start a chaincode container on a peer.</p>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="CONTRIBUTING.html" class="btn btn-neutral float-right" title="Contributions Welcome!" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="FAQ/identity_management_FAQ.html" class="btn btn-neutral" title="Identity Management (Membership Service)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

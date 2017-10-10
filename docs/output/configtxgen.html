@@ -1,0 +1,509 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Configuring using the configtxgen tool &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/>
+        <link rel="next" title="Chaincode Packaging and Signing" href="cc-packaging-and-signing.html"/>
+        <link rel="prev" title="Channel Configuration (configtx)" href="configtx.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuring using the configtxgen tool</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#building-the-tool">Building the tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-profiles">Configuration Profiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bootstrapping-the-orderer">Bootstrapping the orderer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-a-channel">Creating a channel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reviewing-a-configuration">Reviewing a configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Configuring using the configtxgen tool</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/configtxgen.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="configuring-using-the-configtxgen-tool">
+<h1>Configuring using the configtxgen tool<a class="headerlink" href="#configuring-using-the-configtxgen-tool" title="Permalink to this headline">¶</a></h1>
+<p>This document describe the usage for the <code class="docutils literal"><span class="pre">configtxgen</span></code> utility for
+manipulating fabric channel configuration.</p>
+<p>For now, the tool is primarily focused on generating the genesis block
+for bootstrapping the orderer, but it is intended to be enhanced in the
+future for generating new channel configurations as well as
+reconfiguring existing channels.</p>
+<div class="section" id="building-the-tool">
+<h2>Building the tool<a class="headerlink" href="#building-the-tool" title="Permalink to this headline">¶</a></h2>
+<p>Building the tool is as simple as <code class="docutils literal"><span class="pre">make</span> <span class="pre">configtxgen</span></code>. This will create
+a <code class="docutils literal"><span class="pre">configtxgen</span></code> binary at <code class="docutils literal"><span class="pre">build/bin/configtxgen</span></code> which is included
+in the Vagrant development environment path by default.</p>
+</div>
+<div class="section" id="configuration-profiles">
+<h2>Configuration Profiles<a class="headerlink" href="#configuration-profiles" title="Permalink to this headline">¶</a></h2>
+<p>The configuration parameters supplied to the <code class="docutils literal"><span class="pre">configtxgen</span></code> tool are
+primarily provided by the <code class="docutils literal"><span class="pre">configtx.yaml</span></code> file. This file is located
+at <code class="docutils literal"><span class="pre">fabric/sampleconfig/configtx.yaml</span></code> in the fabric.git
+repository.</p>
+<p>This configuration file is split primarily into three pieces.</p>
+<ol class="arabic simple">
+<li>The <code class="docutils literal"><span class="pre">Profiles</span></code> section. By default, this section includes some
+sample configurations which can be used for development or testing
+scenarios, and refer to crypto material present in the fabric.git
+tree. These profiles can make a good starting point for construction
+a real deployment profile. The <code class="docutils literal"><span class="pre">configtxgen</span></code> tool allows you to
+specify the profile it is operating under by passing the <code class="docutils literal"><span class="pre">-profile</span></code>
+flag. Profiles may explicitly declare all configuration, but usually
+inherit configuration from the defaults in (3) below.</li>
+<li>The <code class="docutils literal"><span class="pre">Organizations</span></code> section. By default, this section includes a
+single reference to the sampleconfig MSP definition. For production
+deployments, the sample organization should be removed, and the MSP
+definitions of the network members should be referenced and defined
+instead. Each element in the <code class="docutils literal"><span class="pre">Organizations</span></code> section should be
+tagged with an anchor label such as <code class="docutils literal"><span class="pre">&amp;orgName</span></code> which will allow the
+definition to be referenced in the <code class="docutils literal"><span class="pre">Profiles</span></code> sections.</li>
+<li>The default sections. There are default sections for <code class="docutils literal"><span class="pre">Orderer</span></code> and
+<code class="docutils literal"><span class="pre">Application</span></code> configuration, these include attributes like
+<code class="docutils literal"><span class="pre">BatchTimeout</span></code> and are generally used as the base inherited values
+for the profiles.</li>
+</ol>
+<p>This configuration file may be edited, or, individual properties may be
+overridden by setting environment variables, such as
+<code class="docutils literal"><span class="pre">CONFIGTX_ORDERER_ORDERERTYPE=kafka</span></code>. Note that the <code class="docutils literal"><span class="pre">Profiles</span></code>
+element and profile name do not need to be specified.</p>
+</div>
+<div class="section" id="bootstrapping-the-orderer">
+<h2>Bootstrapping the orderer<a class="headerlink" href="#bootstrapping-the-orderer" title="Permalink to this headline">¶</a></h2>
+<p>After creating a configuration profile as desired, simply invoke</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">configtxgen</span> <span class="o">-</span><span class="n">profile</span> <span class="o">&lt;</span><span class="n">profile_name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>This will produce a <code class="docutils literal"><span class="pre">genesis.block</span></code> file in the current directory. You
+may optionally specify another filename by passing in the <code class="docutils literal"><span class="pre">-path</span></code>
+parameter, or, you may skip the writing of the file by passing the
+<code class="docutils literal"><span class="pre">dryRun</span></code> parameter if you simply wish to test parsing of the file.</p>
+<p>Then, to utilize this genesis block, before starting the orderer, simply
+specify <code class="docutils literal"><span class="pre">ORDERER_GENERAL_GENESISMETHOD=file</span></code> and
+<code class="docutils literal"><span class="pre">ORDERER_GENERAL_GENESISFILE=$PWD/genesis.block</span></code> or modify the
+<code class="docutils literal"><span class="pre">orderer.yaml</span></code> file to encode these values.</p>
+</div>
+<div class="section" id="creating-a-channel">
+<h2>Creating a channel<a class="headerlink" href="#creating-a-channel" title="Permalink to this headline">¶</a></h2>
+<p>The tool can also output a channel creation tx by executing</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">configtxgen</span> <span class="o">-</span><span class="n">profile</span> <span class="o">&lt;</span><span class="n">profile_name</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">channelID</span> <span class="o">&lt;</span><span class="n">channel_name</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">outputCreateChannelTx</span> <span class="o">&lt;</span><span class="n">tx_filename</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>This will output a marshaled <code class="docutils literal"><span class="pre">Envelope</span></code> message which may be sent to
+broadcast to create a channel.</p>
+</div>
+<div class="section" id="reviewing-a-configuration">
+<h2>Reviewing a configuration<a class="headerlink" href="#reviewing-a-configuration" title="Permalink to this headline">¶</a></h2>
+<p>In addition to creating configuration, the <code class="docutils literal"><span class="pre">configtxgen</span></code> tool is also
+capable of inspecting configuration.</p>
+<p>It supports inspecting both configuration blocks, and configuration
+transactions. You may use the inspect flags <code class="docutils literal"><span class="pre">-inspectBlock</span></code> and
+<code class="docutils literal"><span class="pre">-inspectChannelCreateTx</span></code> respectively with the path to a file to
+inspect to output a human readable (JSON) representation of the
+configuration.</p>
+<p>You may even wish to combine the inspection with generation. For
+example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ build/bin/configtxgen -channelID foo -outputBlock foo.block -inspectBlock foo.block
+2017/03/01 21:24:24 Loading configuration
+2017/03/01 21:24:24 Checking for configtx.yaml at:
+2017/03/01 21:24:24 Checking for configtx.yaml at:
+2017/03/01 21:24:24 Checking for configtx.yaml at: /home/yellickj/go/src/github.com/hyperledger/fabric/common/configtx/tool
+2017/03/01 21:24:24 map[orderer:map[BatchSize:map[MaxMessageCount:10 AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:&lt;nil&gt; OrdererType:solo Addresses:[127.0.0.1:7050] BatchTimeout:10s] application:map[Organizations:&lt;nil&gt;] profiles:map[SampleInsecureSolo:map[Orderer:map[BatchTimeout:10s BatchSize:map[MaxMessageCount:10 AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:&lt;nil&gt; OrdererType:solo Addresses:[127.0.0.1:7050]] Application:map[Organizations:&lt;nil&gt;]] SampleInsecureKafka:map[Orderer:map[Addresses:[127.0.0.1:7050] BatchTimeout:10s BatchSize:map[AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB MaxMessageCount:10] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:&lt;nil&gt; OrdererType:kafka] Application:map[Organizations:&lt;nil&gt;]] SampleSingleMSPSolo:map[Orderer:map[OrdererType:solo Addresses:[127.0.0.1:7050] BatchTimeout:10s BatchSize:map[MaxMessageCount:10 AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:[map[Name:SampleOrg ID:DEFAULT MSPDir:msp BCCSP:map[Default:SW SW:map[Hash:SHA3 Security:256 FileKeyStore:map[KeyStore:&lt;nil&gt;]]] AnchorPeers:[map[Host:127.0.0.1 Port:7051]]]]] Application:map[Organizations:[map[Name:SampleOrg ID:DEFAULT MSPDir:msp BCCSP:map[Default:SW SW:map[Hash:SHA3 Security:256 FileKeyStore:map[KeyStore:&lt;nil&gt;]]] AnchorPeers:[map[Port:7051 Host:127.0.0.1]]]]]]] organizations:[map[Name:SampleOrg ID:DEFAULT MSPDir:msp BCCSP:map[Default:SW SW:map[Hash:SHA3 Security:256 FileKeyStore:map[KeyStore:&lt;nil&gt;]]] AnchorPeers:[map[Host:127.0.0.1 Port:7051]]]]]
+2017/03/01 21:24:24 Generating genesis block
+2017/03/01 21:24:24 Writing genesis block
+2017/03/01 21:24:24 Inspecting block
+2017/03/01 21:24:24 Parsing genesis block
+Config for channel: foo
+{
+    &quot;&quot;: {
+        &quot;Values&quot;: {},
+        &quot;Groups&quot;: {
+            &quot;/Channel&quot;: {
+                &quot;Values&quot;: {
+                    &quot;HashingAlgorithm&quot;: {
+                        &quot;Version&quot;: &quot;0&quot;,
+                        &quot;ModPolicy&quot;: &quot;&quot;,
+                        &quot;Value&quot;: {
+                            &quot;name&quot;: &quot;SHA256&quot;
+                        }
+                    },
+                    &quot;BlockDataHashingStructure&quot;: {
+                        &quot;Version&quot;: &quot;0&quot;,
+                        &quot;ModPolicy&quot;: &quot;&quot;,
+                        &quot;Value&quot;: {
+                            &quot;width&quot;: 4294967295
+                        }
+                    },
+                    &quot;OrdererAddresses&quot;: {
+                        &quot;Version&quot;: &quot;0&quot;,
+                        &quot;ModPolicy&quot;: &quot;&quot;,
+                        &quot;Value&quot;: {
+                            &quot;addresses&quot;: [
+                                &quot;127.0.0.1:7050&quot;
+                            ]
+                        }
+                    }
+                },
+                &quot;Groups&quot;: {
+                    &quot;/Channel/Orderer&quot;: {
+                        &quot;Values&quot;: {
+                            &quot;ChainCreationPolicyNames&quot;: {
+                                &quot;Version&quot;: &quot;0&quot;,
+                                &quot;ModPolicy&quot;: &quot;&quot;,
+                                &quot;Value&quot;: {
+                                    &quot;names&quot;: [
+                                        &quot;AcceptAllPolicy&quot;
+                                    ]
+                                }
+                            },
+                            &quot;ConsensusType&quot;: {
+                                &quot;Version&quot;: &quot;0&quot;,
+                                &quot;ModPolicy&quot;: &quot;&quot;,
+                                &quot;Value&quot;: {
+                                    &quot;type&quot;: &quot;solo&quot;
+                                }
+                            },
+                            &quot;BatchSize&quot;: {
+                                &quot;Version&quot;: &quot;0&quot;,
+                                &quot;ModPolicy&quot;: &quot;&quot;,
+                                &quot;Value&quot;: {
+                                    &quot;maxMessageCount&quot;: 10,
+                                    &quot;absoluteMaxBytes&quot;: 103809024,
+                                    &quot;preferredMaxBytes&quot;: 524288
+                                }
+                            },
+                            &quot;BatchTimeout&quot;: {
+                                &quot;Version&quot;: &quot;0&quot;,
+                                &quot;ModPolicy&quot;: &quot;&quot;,
+                                &quot;Value&quot;: {
+                                    &quot;timeout&quot;: &quot;10s&quot;
+                                }
+                            },
+                            &quot;IngressPolicyNames&quot;: {
+                                &quot;Version&quot;: &quot;0&quot;,
+                                &quot;ModPolicy&quot;: &quot;&quot;,
+                                &quot;Value&quot;: {
+                                    &quot;names&quot;: [
+                                        &quot;AcceptAllPolicy&quot;
+                                    ]
+                                }
+                            },
+                            &quot;EgressPolicyNames&quot;: {
+                                &quot;Version&quot;: &quot;0&quot;,
+                                &quot;ModPolicy&quot;: &quot;&quot;,
+                                &quot;Value&quot;: {
+                                    &quot;names&quot;: [
+                                        &quot;AcceptAllPolicy&quot;
+                                    ]
+                                }
+                            }
+                        },
+                        &quot;Groups&quot;: {}
+                    },
+                    &quot;/Channel/Application&quot;: {
+                        &quot;Values&quot;: {},
+                        &quot;Groups&quot;: {}
+                    }
+                }
+            }
+        }
+    }
+}
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="cc-packaging-and-signing.html" class="btn btn-neutral float-right" title="Chaincode Packaging and Signing" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="configtx.html" class="btn btn-neutral" title="Channel Configuration (configtx)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

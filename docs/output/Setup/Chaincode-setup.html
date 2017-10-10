@@ -1,0 +1,940 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Writing, Building, and Running Chaincode in a Development Environment &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Writing, Building, and Running Chaincode in a Development Environment</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/Setup/Chaincode-setup.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="writing-building-and-running-chaincode-in-a-development-environment">
+<h1>Writing, Building, and Running Chaincode in a Development Environment<a class="headerlink" href="#writing-building-and-running-chaincode-in-a-development-environment" title="Permalink to this headline">¶</a></h1>
+<p>Chaincode developers need a way to test and debug their chaincode
+without having to set up a complete peer network. By default, when you
+want to interact with chaincode, you need to first <code class="docutils literal"><span class="pre">Deploy</span></code> it using
+the CLI, REST API, gRPC API, or SDK. Upon receiving this request, the
+peer node would typically spin up a Docker container with the relevant
+chaincode. This can make things rather complicated for debugging
+chaincode under development, because of the turnaround time with the
+<code class="docutils literal"><span class="pre">launch</span> <span class="pre">chaincode</span> <span class="pre">-</span> <span class="pre">debug</span> <span class="pre">docker</span> <span class="pre">container</span> <span class="pre">-</span> <span class="pre">fix</span> <span class="pre">problem</span> <span class="pre">-</span> <span class="pre">launch</span> <span class="pre">chaincode</span> <span class="pre">-</span> <span class="pre">lather</span> <span class="pre">-</span> <span class="pre">rinse</span> <span class="pre">-</span> <span class="pre">repeat</span></code>
+cycle. As such, the fabric peer has a <code class="docutils literal"><span class="pre">--peer-chaincodedev</span></code> flag that
+can be passed on start-up to instruct the peer node not to deploy the
+chaincode as a Docker container.</p>
+<p>The following instructions apply to <em>developing</em> chaincode in Go or
+Java. They do not apply to running in a production environment. However,
+if <em>developing</em> chaincode in Java, please see the <a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/docs/Setup/JAVAChaincode.md">Java chaincode
+setup</a>
+instructions first, to be sure your environment is properly configured.</p>
+<p><strong>Note:</strong> We have added support for <a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/docs/SystemChaincode-noop.md">System
+chaincode</a>.</p>
+</div>
+<div class="section" id="choices">
+<h1>Choices<a class="headerlink" href="#choices" title="Permalink to this headline">¶</a></h1>
+<p>Once again, you have the choice of using one of the following
+approaches:</p>
+<ul class="simple">
+<li><a class="reference external" href="#option-1-vagrant-development-environment">Option 1</a> using the
+<strong>Vagrant</strong> <a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/docs/dev-setup/devenv.md">development
+environment</a>
+that is used for developing the fabric itself</li>
+<li><a class="reference external" href="#option-2-docker-for-mac-or-windows">Option 2</a> using Docker for
+Mac or Windows</li>
+<li><a class="reference external" href="#option-3-docker-toolbox">Option 3</a> using Docker toolbox</li>
+</ul>
+<p>By using options <em>2</em> or <em>3</em>, above, you avoid having to build everything
+from scratch, and there’s no need to keep a clone of the fabric GitHub
+repos current/up-to-date. Instead, you can simply pull and run the
+<code class="docutils literal"><span class="pre">fabric-peer</span></code> and <code class="docutils literal"><span class="pre">fabric-membersrvc</span></code> images directly from
+DockerHub.</p>
+<p>You will need multiple terminal windows - essentially one for each
+component. One runs the validating peer; another runs the chaincode; the
+third runs the CLI or REST API commands to execute transactions.
+Finally, when running with security enabled, an additional fourth window
+is required to run the <strong>Certificate Authority (CA)</strong> server. Detailed
+instructions are provided in the sections below.</p>
+</div>
+<div class="section" id="option-1-vagrant-development-environment">
+<h1>Option 1 Vagrant development environment<a class="headerlink" href="#option-1-vagrant-development-environment" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="security-setup-optional">
+<h2>Security Setup (optional)<a class="headerlink" href="#security-setup-optional" title="Permalink to this headline">¶</a></h2>
+<p>From the <code class="docutils literal"><span class="pre">devenv</span></code> subdirectory of your fabric workspace environment,
+<code class="docutils literal"><span class="pre">ssh</span></code> into Vagrant:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric/devenv
+vagrant ssh
+</pre></div>
+</div>
+<p>To set up the local development environment with security enabled, you
+must first build and run the <strong>Certificate Authority (CA)</strong> server:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric
+make membersrvc &amp;&amp; membersrvc
+</pre></div>
+</div>
+<p>Running the above commands builds and runs the CA server with the
+default setup, which is defined in the
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml">membersrvc.yaml</a>
+configuration file. The default configuration includes multiple users
+who are already registered with the CA; these users are listed in the
+<code class="docutils literal"><span class="pre">eca.users</span></code> section of the configuration file. To register additional
+users with the CA for testing, modify the <code class="docutils literal"><span class="pre">eca.users</span></code> section of the
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml">membersrvc.yaml</a>
+file to include additional <code class="docutils literal"><span class="pre">enrollmentID</span></code> and <code class="docutils literal"><span class="pre">enrollmentPW</span></code> pairs.
+Note the integer that precedes the <code class="docutils literal"><span class="pre">enrollmentPW</span></code>. That integer
+indicates the role of the user, where 1 = client, 2 = non-validating
+peer, 4 = validating peer, and 8 = auditor.</p>
+</div>
+<div class="section" id="running-the-validating-peer">
+<h2>Running the validating peer<a class="headerlink" href="#running-the-validating-peer" title="Permalink to this headline">¶</a></h2>
+<p>In a <strong>new</strong> terminal window, from the <code class="docutils literal"><span class="pre">devenv</span></code> subdirectory of your
+fabric workspace environment, <code class="docutils literal"><span class="pre">ssh</span></code> into Vagrant:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric/devenv
+vagrant ssh
+</pre></div>
+</div>
+<p>Build and run the peer process.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric
+make peer
+peer node start --peer-chaincodedev
+</pre></div>
+</div>
+<p>Alternatively, rather than tweaking the <code class="docutils literal"><span class="pre">core.yaml</span></code> and rebuilding,
+you can enable security and privacy on the peer with environment
+variables:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_SECURITY_ENABLED</span><span class="o">=</span><span class="n">true</span> <span class="n">CORE_SECURITY_PRIVACY</span><span class="o">=</span><span class="n">true</span> <span class="n">peer</span> <span class="n">node</span> <span class="n">start</span> <span class="o">--</span><span class="n">peer</span><span class="o">-</span><span class="n">chaincodedev</span>
+</pre></div>
+</div>
+<p>Now, you are ready to start <a class="reference external" href="#running-the-chaincode">running the
+chaincode</a>.</p>
+</div>
+</div>
+<div class="section" id="option-2-docker-for-mac-or-windows">
+<h1>Option 2 Docker for Mac or Windows<a class="headerlink" href="#option-2-docker-for-mac-or-windows" title="Permalink to this headline">¶</a></h1>
+<p>If you would prefer to simply run the fabric components as built and
+published by the Hyperledger project on your Mac or Windows
+laptop/server using the Docker for
+<a class="reference external" href="https://docs.docker.com/engine/installation/mac/">Mac</a> or
+<a class="reference external" href="https://docs.docker.com/engine/installation/windows/">Windows</a>
+platform, following these steps. If using <a class="reference external" href="https://docs.docker.com/toolbox/overview/">Docker
+Toolbox</a>, please skip to
+<a class="reference external" href="#option-3-docker-toolbox">Option 3</a>, below.</p>
+<div class="section" id="pull-images-from-dockerhub">
+<h2>Pull images from DockerHub<a class="headerlink" href="#pull-images-from-dockerhub" title="Permalink to this headline">¶</a></h2>
+<p>First, pull the latest images published by the Hyperledger fabric
+project from DockerHub.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">pull</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">peer</span><span class="p">:</span><span class="n">latest</span>
+<span class="n">docker</span> <span class="n">pull</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">membersrvc</span><span class="p">:</span><span class="n">latest</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="running-the-peer-and-ca">
+<h2>Running the Peer and CA<a class="headerlink" href="#running-the-peer-and-ca" title="Permalink to this headline">¶</a></h2>
+<p>To run the fabric-peer and fabric-membersrvc images, we’ll use <a class="reference external" href="https://docs.docker.com/compose/">Docker
+Compose</a>. It significantly
+simplifies things. To do that, we’ll create a docker-compose.yml file
+with a description of the two services we’ll be running. Here’s the
+docker-compose.yml to launch the two processes:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">membersrvc</span><span class="p">:</span>
+  <span class="n">image</span><span class="p">:</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">membersrvc</span>
+  <span class="n">ports</span><span class="p">:</span>
+    <span class="o">-</span> <span class="s2">&quot;7054:7054&quot;</span>
+  <span class="n">command</span><span class="p">:</span> <span class="n">membersrvc</span>
+<span class="n">vp0</span><span class="p">:</span>
+  <span class="n">image</span><span class="p">:</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">peer</span>
+  <span class="n">ports</span><span class="p">:</span>
+    <span class="o">-</span> <span class="s2">&quot;7050:7050&quot;</span>
+    <span class="o">-</span> <span class="s2">&quot;7051:7051&quot;</span>
+    <span class="o">-</span> <span class="s2">&quot;7053:7053&quot;</span>
+  <span class="n">environment</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_ADDRESSAUTODETECT</span><span class="o">=</span><span class="n">true</span>
+    <span class="o">-</span> <span class="n">CORE_VM_ENDPOINT</span><span class="o">=</span><span class="n">unix</span><span class="p">:</span><span class="o">///</span><span class="n">var</span><span class="o">/</span><span class="n">run</span><span class="o">/</span><span class="n">docker</span><span class="o">.</span><span class="n">sock</span>
+    <span class="o">-</span> <span class="n">CORE_LOGGING_LEVEL</span><span class="o">=</span><span class="n">DEBUG</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_ID</span><span class="o">=</span><span class="n">vp0</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_PKI_ECA_PADDR</span><span class="o">=</span><span class="n">membersrvc</span><span class="p">:</span><span class="mi">7054</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_PKI_TCA_PADDR</span><span class="o">=</span><span class="n">membersrvc</span><span class="p">:</span><span class="mi">7054</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_PKI_TLSCA_PADDR</span><span class="o">=</span><span class="n">membersrvc</span><span class="p">:</span><span class="mi">7054</span>
+    <span class="o">-</span> <span class="n">CORE_SECURITY_ENABLED</span><span class="o">=</span><span class="n">true</span>
+    <span class="o">-</span> <span class="n">CORE_SECURITY_ENROLLID</span><span class="o">=</span><span class="n">test_vp0</span>
+    <span class="o">-</span> <span class="n">CORE_SECURITY_ENROLLSECRET</span><span class="o">=</span><span class="n">MwYpmSRjupbT</span>
+  <span class="n">links</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">membersrvc</span>
+  <span class="n">command</span><span class="p">:</span> <span class="n">sh</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;sleep 5; peer node start --peer-chaincodedev&quot;</span>
+</pre></div>
+</div>
+<p>Save that in a directory with the name <code class="docutils literal"><span class="pre">docker-compose.yml</span></code>. Then, run
+<code class="docutils literal"><span class="pre">docker-compose</span> <span class="pre">up</span></code> to start the two processes.</p>
+<p>Now, you are ready to start <a class="reference external" href="#running-the-chaincode">running the
+chaincode</a>.</p>
+</div>
+</div>
+<div class="section" id="option-3-docker-toolbox">
+<h1>Option 3 Docker Toolbox<a class="headerlink" href="#option-3-docker-toolbox" title="Permalink to this headline">¶</a></h1>
+<p>If you are using <a class="reference external" href="https://docs.docker.com/toolbox/overview/">Docker
+Toolbox</a>, please follow
+these instructions.</p>
+<div class="section" id="id1">
+<h2>Pull images from DockerHub<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>First, pull the latest images published by the Hyperledger fabric
+project from DockerHub.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">pull</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">peer</span><span class="p">:</span><span class="n">latest</span>
+<span class="n">docker</span> <span class="n">pull</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">membersrvc</span><span class="p">:</span><span class="n">latest</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id2">
+<h2>Running the Peer and CA<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>To run the fabric-peer and fabric-membersrvc images, we’ll use <a class="reference external" href="https://docs.docker.com/compose/">Docker
+Compose</a>. It significantly
+simplifies things. To do that, we’ll create a docker-compose.yml file
+with a description of the two services we’ll be running. Here’s the
+docker-compose.yml to launch the two processes:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">membersrvc</span><span class="p">:</span>
+  <span class="n">image</span><span class="p">:</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">membersrvc</span>
+  <span class="n">command</span><span class="p">:</span> <span class="n">membersrvc</span>
+<span class="n">vp0</span><span class="p">:</span>
+  <span class="n">image</span><span class="p">:</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">peer</span>
+  <span class="n">environment</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_ADDRESSAUTODETECT</span><span class="o">=</span><span class="n">true</span>
+    <span class="o">-</span> <span class="n">CORE_VM_ENDPOINT</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">172.17</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">2375</span>
+    <span class="o">-</span> <span class="n">CORE_LOGGING_LEVEL</span><span class="o">=</span><span class="n">DEBUG</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_ID</span><span class="o">=</span><span class="n">vp0</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_PKI_ECA_PADDR</span><span class="o">=</span><span class="n">membersrvc</span><span class="p">:</span><span class="mi">7054</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_PKI_TCA_PADDR</span><span class="o">=</span><span class="n">membersrvc</span><span class="p">:</span><span class="mi">7054</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_PKI_TLSCA_PADDR</span><span class="o">=</span><span class="n">membersrvc</span><span class="p">:</span><span class="mi">7054</span>
+    <span class="o">-</span> <span class="n">CORE_SECURITY_ENABLED</span><span class="o">=</span><span class="n">true</span>
+    <span class="o">-</span> <span class="n">CORE_SECURITY_ENROLLID</span><span class="o">=</span><span class="n">test_vp0</span>
+    <span class="o">-</span> <span class="n">CORE_SECURITY_ENROLLSECRET</span><span class="o">=</span><span class="n">MwYpmSRjupbT</span>
+  <span class="n">links</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">membersrvc</span>
+  <span class="n">command</span><span class="p">:</span> <span class="n">sh</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;sleep 5; peer node start --peer-chaincodedev&quot;</span>
+</pre></div>
+</div>
+<p>Save that in a directory with the name <code class="docutils literal"><span class="pre">docker-compose.yml</span></code>. Then, run
+<code class="docutils literal"><span class="pre">docker-compose</span> <span class="pre">up</span></code> to start the two processes.</p>
+</div>
+</div>
+<div class="section" id="running-the-chaincode">
+<h1>Running the chaincode<a class="headerlink" href="#running-the-chaincode" title="Permalink to this headline">¶</a></h1>
+<p>Start a <strong>new</strong> terminal window.</p>
+<div class="section" id="vagrant">
+<h2>Vagrant<a class="headerlink" href="#vagrant" title="Permalink to this headline">¶</a></h2>
+<p>If you are using <a class="reference external" href="#option-1-vagrant-development-environment">Option
+1</a>, you’ll need to <code class="docutils literal"><span class="pre">ssh</span></code>
+to Vagrant. Otherwise, <a class="reference external" href="#not-vagrant">skip</a> this step.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric/devenv
+vagrant ssh
+</pre></div>
+</div>
+<p>Next, we’ll build the <strong>chaincode_example02</strong> code, which is provided
+in the Hyperledger fabric source code repository. If you are using
+<a class="reference external" href="#option-1-vagrant-development-environment">Option 1</a>, then you can
+do this from your clone of the fabric repository.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+go build
+</pre></div>
+</div>
+</div>
+<div class="section" id="not-vagrant">
+<h2>Not Vagrant<a class="headerlink" href="#not-vagrant" title="Permalink to this headline">¶</a></h2>
+<p>If you are using either <a class="reference external" href="#option-2-docker-for-mac-or-windows">Option
+2</a> or <a class="reference external" href="#option-3-docker-toolbox">Option
+3</a>, you’ll need to download the sample
+chaincode. The chaincode project must be placed somewhere under the
+<code class="docutils literal"><span class="pre">src</span></code> directory in your local <code class="docutils literal"><span class="pre">$GOPATH</span></code> as shown below.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>mkdir -p $GOPATH/src/github.com/chaincode_example02/
+cd $GOPATH/src/github.com/chaincode_example02
+curl --request GET https://raw.githubusercontent.com/hyperledger/fabric/master/examples/chaincode/go/chaincode_example02/chaincode_example02.go &gt; chaincode_example02.go
+</pre></div>
+</div>
+<p>Next, you’ll need to clone the Hyperledger fabric to your local $GOPATH,
+so that you can build your chaincode. <strong>Note:</strong> this is a temporary
+stop-gap until we can provide an independent package for the chaincode
+shim.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>mkdir -p $GOPATH/src/github.com/hyperledger
+cd $GOPATH/src/github.com/hyperledger
+git clone http://gerrit.hyperledger.org/r/fabric
+</pre></div>
+</div>
+<p>Now, you should be able to build your chaincode.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/chaincode_example02
+go build
+</pre></div>
+</div>
+<p>When you are ready to start creating your own Go chaincode, create a new
+subdirectory under $GOPATH/src. You can copy the
+<strong>chaincode_example02</strong> file to the new directory and modify it.</p>
+</div>
+<div class="section" id="starting-and-registering-the-chaincode">
+<h2>Starting and registering the chaincode<a class="headerlink" href="#starting-and-registering-the-chaincode" title="Permalink to this headline">¶</a></h2>
+<p>Run the following chaincode command to start and register the chaincode
+with the validating peer:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_CHAINCODE_ID_NAME</span><span class="o">=</span><span class="n">mycc</span> <span class="n">CORE_PEER_ADDRESS</span><span class="o">=</span><span class="mf">0.0</span><span class="o">.</span><span class="mf">0.0</span><span class="p">:</span><span class="mi">7051</span> <span class="o">./</span><span class="n">chaincode_example02</span>
+</pre></div>
+</div>
+<p>The chaincode console will display the message “Received REGISTERED,
+ready for invocations”, which indicates that the chaincode is ready to
+receive requests. Follow the steps below to send a chaincode deploy,
+invoke or query transaction. If the “Received REGISTERED” message is not
+displayed, then an error has occurred during the deployment; revisit the
+previous steps to resolve the issue.</p>
+</div>
+</div>
+<div class="section" id="running-the-cli-or-rest-api">
+<h1>Running the CLI or REST API<a class="headerlink" href="#running-the-cli-or-rest-api" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference external" href="#chaincode-deploy-via-cli-and-rest">chaincode deploy via CLI and
+REST</a></li>
+<li><a class="reference external" href="#chaincode-invoke-via-cli-and-rest">chaincode invoke via CLI and
+REST</a></li>
+<li><a class="reference external" href="#chaincode-query-via-cli-and-rest">chaincode query via CLI and
+REST</a></li>
+</ul>
+<p>If you were running with security enabled, see <a class="reference external" href="#removing-temporary-files-when-security-is-enabled">Removing temporary files
+when security is
+enabled</a> to learn
+how to clean up the temporary files.</p>
+<p>See the <a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/docs/Setup/logging-control.md">logging
+control</a>
+reference for information on controlling logging output from the
+<code class="docutils literal"><span class="pre">peer</span></code> and chaincodes.</p>
+<div class="section" id="terminal-3-cli-or-rest-api">
+<h2>Terminal 3 (CLI or REST API)<a class="headerlink" href="#terminal-3-cli-or-rest-api" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="note-on-rest-api-port">
+<h3><strong>Note on REST API port</strong><a class="headerlink" href="#note-on-rest-api-port" title="Permalink to this headline">¶</a></h3>
+<p>The default REST interface port is <code class="docutils literal"><span class="pre">7050</span></code>. It can be configured in
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml">core.yaml</a>
+using the <code class="docutils literal"><span class="pre">rest.address</span></code> property. If using Vagrant, the REST port
+mapping is defined in
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/devenv/Vagrantfile">Vagrantfile</a>.</p>
+</div>
+<div class="section" id="note-on-security-functionality">
+<h3><strong>Note on security functionality</strong><a class="headerlink" href="#note-on-security-functionality" title="Permalink to this headline">¶</a></h3>
+<p>Current security implementation assumes that end user authentication
+takes place at the application layer and is not handled by the fabric.
+Authentication may be performed through any means considered appropriate
+for the target application. Upon successful user authentication, the
+application will perform user registration with the CA exactly once. If
+registration is attempted a second time for the same user, an error will
+result. During registration, the application sends a request to the
+certificate authority to verify the user registration and if successful,
+the CA responds with the user certificates and keys. The enrollment and
+transaction certificates received from the CA will be stored locally
+inside <code class="docutils literal"><span class="pre">/var/hyperledger/production/crypto/client/</span></code> directory. This
+directory resides on a specific peer node which allows the user to
+transact only through this specific peer while using the stored crypto
+material. If the end user needs to perform transactions through more
+then one peer node, the application is responsible for replicating the
+crypto material to other peer nodes. This is necessary as registering a
+given user with the CA a second time will fail.</p>
+<p>With security enabled, the CLI commands and REST payloads must be
+modified to include the <code class="docutils literal"><span class="pre">enrollmentID</span></code> of a registered user who is
+logged in; otherwise an error will result. A registered user can be
+logged in through the CLI or the REST API by following the instructions
+below. To log in through the CLI, issue the following commands, where
+<code class="docutils literal"><span class="pre">username</span></code> is one of the <code class="docutils literal"><span class="pre">enrollmentID</span></code> values listed in the
+<code class="docutils literal"><span class="pre">eca.users</span></code> section of the
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml">membersrvc.yaml</a>
+file.</p>
+<p>From your command line terminal, move to the <code class="docutils literal"><span class="pre">devenv</span></code> subdirectory of
+your workspace environment. Log into a Vagrant terminal by executing the
+following command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">vagrant</span> <span class="n">ssh</span>
+</pre></div>
+</div>
+<p>Register the user though the CLI, substituting for <code class="docutils literal"><span class="pre">&lt;username&gt;</span></code>
+appropriately:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric/peer
+peer network login &lt;username&gt;
+</pre></div>
+</div>
+<p>The command will prompt for a password, which must match the
+<code class="docutils literal"><span class="pre">enrollmentPW</span></code> listed for the target user in the <code class="docutils literal"><span class="pre">eca.users</span></code> section
+of the
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml">membersrvc.yaml</a>
+file. If the password entered does not match the <code class="docutils literal"><span class="pre">enrollmentPW</span></code>, an
+error will result.</p>
+<p>To log in through the REST API, send a POST request to the
+<code class="docutils literal"><span class="pre">/registrar</span></code> endpoint, containing the <code class="docutils literal"><span class="pre">enrollmentID</span></code> and
+<code class="docutils literal"><span class="pre">enrollmentPW</span></code> listed in the <code class="docutils literal"><span class="pre">eca.users</span></code> section of the
+<a class="reference external" href="https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml">membersrvc.yaml</a>
+file.</p>
+<p><strong>REST Request:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">POST</span> <span class="n">localhost</span><span class="p">:</span><span class="mi">7050</span><span class="o">/</span><span class="n">registrar</span>
+
+<span class="p">{</span>
+  <span class="s2">&quot;enrollId&quot;</span><span class="p">:</span> <span class="s2">&quot;jim&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;enrollSecret&quot;</span><span class="p">:</span> <span class="s2">&quot;6avZQLwcUe9b&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>REST Response:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">200</span> <span class="n">OK</span>
+<span class="p">{</span>
+    <span class="s2">&quot;OK&quot;</span><span class="p">:</span> <span class="s2">&quot;Login successful for user &#39;jim&#39;.&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="chaincode-deploy-via-cli-and-rest">
+<h3>chaincode deploy via CLI and REST<a class="headerlink" href="#chaincode-deploy-via-cli-and-rest" title="Permalink to this headline">¶</a></h3>
+<p>First, send a chaincode deploy transaction, only once, to the validating
+peer. The CLI connects to the validating peer using the properties
+defined in the core.yaml file. <strong>Note:</strong> The deploy transaction
+typically requires a <code class="docutils literal"><span class="pre">path</span></code> parameter to locate, build, and deploy the
+chaincode. However, because these instructions are specific to local
+development mode and the chaincode is deployed manually, the <code class="docutils literal"><span class="pre">name</span></code>
+parameter is used instead.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">deploy</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;: [&quot;init&quot;, &quot;a&quot;,&quot;100&quot;, &quot;b&quot;, &quot;200&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>Alternatively, you can run the chaincode deploy transaction through the
+REST API.</p>
+<p><strong>REST Request:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">POST</span> <span class="o">&lt;</span><span class="n">host</span><span class="p">:</span><span class="n">port</span><span class="o">&gt;/</span><span class="n">chaincode</span>
+
+<span class="p">{</span>
+  <span class="s2">&quot;jsonrpc&quot;</span><span class="p">:</span> <span class="s2">&quot;2.0&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;deploy&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;chaincodeID&quot;</span><span class="p">:{</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;mycc&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;args&quot;</span><span class="p">:[</span><span class="s2">&quot;init&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;100&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;200&quot;</span><span class="p">]</span>
+    <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>REST Response:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;jsonrpc&quot;</span><span class="p">:</span> <span class="s2">&quot;2.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;mycc&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong> When security is enabled, modify the CLI command and the REST
+API payload to pass the <code class="docutils literal"><span class="pre">enrollmentID</span></code> of a logged in user. To log in
+a registered user through the CLI or the REST API, follow the
+instructions in the <a class="reference external" href="#note-on-security-functionality">note on security
+functionality</a>. On the CLI, the
+<code class="docutils literal"><span class="pre">enrollmentID</span></code> is passed with the <code class="docutils literal"><span class="pre">-u</span></code> parameter; in the REST API,
+the <code class="docutils literal"><span class="pre">enrollmentID</span></code> is passed with the <code class="docutils literal"><span class="pre">secureContext</span></code> element. If
+you are enabling security and privacy on the peer process with
+environment variables, it is important to include these environment
+variables in the command when executing all subsequent peer operations
+(e.g. deploy, invoke, or query).</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_SECURITY_ENABLED</span><span class="o">=</span><span class="n">true</span> <span class="n">CORE_SECURITY_PRIVACY</span><span class="o">=</span><span class="n">true</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">deploy</span> <span class="o">-</span><span class="n">u</span> <span class="n">jim</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;: [&quot;init&quot;, &quot;a&quot;,&quot;100&quot;, &quot;b&quot;, &quot;200&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p><strong>REST Request:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">POST</span> <span class="o">&lt;</span><span class="n">host</span><span class="p">:</span><span class="n">port</span><span class="o">&gt;/</span><span class="n">chaincode</span>
+
+<span class="p">{</span>
+  <span class="s2">&quot;jsonrpc&quot;</span><span class="p">:</span> <span class="s2">&quot;2.0&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;deploy&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;chaincodeID&quot;</span><span class="p">:{</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;mycc&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;args&quot;</span><span class="p">:[</span><span class="s2">&quot;init&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;100&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;200&quot;</span><span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;secureContext&quot;</span><span class="p">:</span> <span class="s2">&quot;jim&quot;</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The deploy transaction initializes the chaincode by executing a target
+initializing function. Though the example shows “init”, the name could
+be arbitrarily chosen by the chaincode developer. You should see the
+following output in the chaincode window:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">TIMESTAMP_SIGNATURE</span><span class="o">&gt;</span> <span class="n">Received</span> <span class="n">INIT</span><span class="p">(</span><span class="n">uuid</span><span class="p">:</span><span class="mi">005</span><span class="n">dea42</span><span class="o">-</span><span class="n">d57f</span><span class="o">-</span><span class="mi">4983</span><span class="o">-</span><span class="mf">803e-3232</span><span class="n">e551bf61</span><span class="p">),</span> <span class="n">initializing</span> <span class="n">chaincode</span>
+<span class="n">Aval</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">Bval</span> <span class="o">=</span> <span class="mi">200</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="chaincode-invoke-via-cli-and-rest">
+<h3>Chaincode invoke via CLI and REST<a class="headerlink" href="#chaincode-invoke-via-cli-and-rest" title="Permalink to this headline">¶</a></h3>
+<p>Run the chaincode invoking transaction on the CLI as many times as
+desired. The <code class="docutils literal"><span class="pre">-n</span></code> argument should match the value provided in the
+chaincode window (started in Vagrant terminal 2):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">invoke</span> <span class="o">-</span><span class="n">l</span> <span class="n">golang</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;: [&quot;invoke&quot;, &quot;a&quot;, &quot;b&quot;, &quot;10&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>Alternatively, run the chaincode invoking transaction through the REST
+API.</p>
+<p><strong>REST Request:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">POST</span> <span class="o">&lt;</span><span class="n">host</span><span class="p">:</span><span class="n">port</span><span class="o">&gt;/</span><span class="n">chaincode</span>
+
+<span class="p">{</span>
+  <span class="s2">&quot;jsonrpc&quot;</span><span class="p">:</span> <span class="s2">&quot;2.0&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;invoke&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s2">&quot;chaincodeID&quot;</span><span class="p">:{</span>
+          <span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;mycc&quot;</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="p">{</span>
+         <span class="s2">&quot;args&quot;</span><span class="p">:[</span><span class="s2">&quot;invoke&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;10&quot;</span><span class="p">]</span>
+      <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">3</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>REST Response:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;jsonrpc&quot;</span><span class="p">:</span> <span class="s2">&quot;2.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;5a4540e5-902b-422d-a6ab-e70ab36a2e6d&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">3</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong> When security is enabled, modify the CLI command and REST API
+payload to pass the <code class="docutils literal"><span class="pre">enrollmentID</span></code> of a logged in user. To log in a
+registered user through the CLI or the REST API, follow the instructions
+in the <a class="reference external" href="#note-on-security-functionality">note on security
+functionality</a>. On the CLI, the
+<code class="docutils literal"><span class="pre">enrollmentID</span></code> is passed with the <code class="docutils literal"><span class="pre">-u</span></code> parameter; in the REST API,
+the <code class="docutils literal"><span class="pre">enrollmentID</span></code> is passed with the <code class="docutils literal"><span class="pre">secureContext</span></code> element. If
+you are enabling security and privacy on the peer process with
+environment variables, it is important to include these environment
+variables in the command when executing all subsequent peer operations
+(e.g. deploy, invoke, or query).</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_SECURITY_ENABLED</span><span class="o">=</span><span class="n">true</span> <span class="n">CORE_SECURITY_PRIVACY</span><span class="o">=</span><span class="n">true</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">invoke</span> <span class="o">-</span><span class="n">u</span> <span class="n">jim</span> <span class="o">-</span><span class="n">l</span> <span class="n">golang</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;: [&quot;invoke&quot;, &quot;a&quot;, &quot;b&quot;, &quot;10&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p><strong>REST Request:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">POST</span> <span class="o">&lt;</span><span class="n">host</span><span class="p">:</span><span class="n">port</span><span class="o">&gt;/</span><span class="n">chaincode</span>
+
+<span class="p">{</span>
+  <span class="s2">&quot;jsonrpc&quot;</span><span class="p">:</span> <span class="s2">&quot;2.0&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;invoke&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s2">&quot;chaincodeID&quot;</span><span class="p">:{</span>
+          <span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;mycc&quot;</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="p">{</span>
+         <span class="s2">&quot;args&quot;</span><span class="p">:[</span><span class="s2">&quot;invoke&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;10&quot;</span><span class="p">]</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;secureContext&quot;</span><span class="p">:</span> <span class="s2">&quot;jim&quot;</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">3</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The invoking transaction runs the specified chaincode function name
+“invoke” with the arguments. This transaction transfers 10 units from A
+to B. You should see the following output in the chaincode window:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">TIMESTAMP_SIGNATURE</span><span class="o">&gt;</span> <span class="n">Received</span> <span class="n">RESPONSE</span><span class="o">.</span> <span class="n">Payload</span> <span class="mi">200</span><span class="p">,</span> <span class="n">Uuid</span> <span class="mi">075</span><span class="n">d72a4</span><span class="o">-</span><span class="mi">4</span><span class="n">d1f</span><span class="o">-</span><span class="mi">4</span><span class="n">a1d</span><span class="o">-</span><span class="n">a735</span><span class="o">-</span><span class="mi">4</span><span class="n">f6f60d597a9</span>
+<span class="n">Aval</span> <span class="o">=</span> <span class="mi">90</span><span class="p">,</span> <span class="n">Bval</span> <span class="o">=</span> <span class="mi">210</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="chaincode-query-via-cli-and-rest">
+<h3>Chaincode query via CLI and REST<a class="headerlink" href="#chaincode-query-via-cli-and-rest" title="Permalink to this headline">¶</a></h3>
+<p>Run a query on the chaincode to retrieve the desired values. The <code class="docutils literal"><span class="pre">-n</span></code>
+argument should match the value provided in the chaincode window
+(started in Vagrant terminal 2):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">l</span> <span class="n">golang</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;: [&quot;query&quot;, &quot;b&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p>The response should be similar to the following:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span><span class="s2">&quot;b&quot;</span><span class="p">,</span><span class="s2">&quot;Amount&quot;</span><span class="p">:</span><span class="s2">&quot;210&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>If a name other than “a” or “b” is provided in a query sent to
+<code class="docutils literal"><span class="pre">chaincode_example02</span></code>, you should see an error response similar to the
+following:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">&quot;Error&quot;</span><span class="p">:</span><span class="s2">&quot;Nil amount for c&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Alternatively, run the chaincode query transaction through the REST API.</p>
+<p><strong>REST Request:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">POST</span> <span class="o">&lt;</span><span class="n">host</span><span class="p">:</span><span class="n">port</span><span class="o">&gt;/</span><span class="n">chaincode</span>
+
+<span class="p">{</span>
+  <span class="s2">&quot;jsonrpc&quot;</span><span class="p">:</span> <span class="s2">&quot;2.0&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;query&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s2">&quot;chaincodeID&quot;</span><span class="p">:{</span>
+          <span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;mycc&quot;</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="p">{</span>
+         <span class="s2">&quot;args&quot;</span><span class="p">:[</span><span class="s2">&quot;query&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">]</span>
+      <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">5</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>REST Response:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;jsonrpc&quot;</span><span class="p">:</span> <span class="s2">&quot;2.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;90&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">5</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong> When security is enabled, modify the CLI command and REST API
+payload to pass the <code class="docutils literal"><span class="pre">enrollmentID</span></code> of a logged in user. To log in a
+registered user through the CLI or the REST API, follow the instructions
+in the <a class="reference external" href="#note-on-security-functionality">note on security
+functionality</a>. On the CLI, the
+<code class="docutils literal"><span class="pre">enrollmentID</span></code> is passed with the <code class="docutils literal"><span class="pre">-u</span></code> parameter; in the REST API,
+the <code class="docutils literal"><span class="pre">enrollmentID</span></code> is passed with the <code class="docutils literal"><span class="pre">secureContext</span></code> element. If
+you are enabling security and privacy on the peer process with
+environment variables, it is important to include these environment
+variables in the command when executing all subsequent peer operations
+(e.g. deploy, invoke, or query).</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CORE_SECURITY_ENABLED</span><span class="o">=</span><span class="n">true</span> <span class="n">CORE_SECURITY_PRIVACY</span><span class="o">=</span><span class="n">true</span> <span class="n">peer</span> <span class="n">chaincode</span> <span class="n">query</span> <span class="o">-</span><span class="n">u</span> <span class="n">jim</span> <span class="o">-</span><span class="n">l</span> <span class="n">golang</span> <span class="o">-</span><span class="n">n</span> <span class="n">mycc</span> <span class="o">-</span><span class="n">c</span> <span class="s1">&#39;{&quot;Args&quot;: [&quot;query&quot;, &quot;b&quot;]}&#39;</span>
+</pre></div>
+</div>
+<p><strong>REST Request:</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">POST</span> <span class="o">&lt;</span><span class="n">host</span><span class="p">:</span><span class="n">port</span><span class="o">&gt;/</span><span class="n">chaincode</span>
+
+<span class="p">{</span>
+  <span class="s2">&quot;jsonrpc&quot;</span><span class="p">:</span> <span class="s2">&quot;2.0&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;query&quot;</span><span class="p">,</span>
+  <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="s2">&quot;chaincodeID&quot;</span><span class="p">:{</span>
+          <span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;mycc&quot;</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="p">{</span>
+         <span class="s2">&quot;args&quot;</span><span class="p">:[</span><span class="s2">&quot;query&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">]</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;secureContext&quot;</span><span class="p">:</span> <span class="s2">&quot;jim&quot;</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">5</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="removing-temporary-files-when-security-is-enabled">
+<h3>Removing temporary files when security is enabled<a class="headerlink" href="#removing-temporary-files-when-security-is-enabled" title="Permalink to this headline">¶</a></h3>
+<p><strong>Note:</strong> this step applies <strong>ONLY</strong> if you were using Option 1 above.
+For Option 2 or 3, the cleanup is handled by Docker.</p>
+<p>After the completion of a chaincode test with security enabled, remove
+the temporary files that were created by the CA server process. To
+remove the client enrollment certificate, enrollment key, transaction
+certificate chain, etc., run the following commands. Note, that you must
+run these commands if you want to register a user who has already been
+registered previously.</p>
+<p>From your command line terminal, <code class="docutils literal"><span class="pre">ssh</span></code> into Vagrant:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric/devenv
+vagrant ssh
+</pre></div>
+</div>
+<p>And then run:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">rm</span> <span class="o">-</span><span class="n">rf</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">hyperledger</span><span class="o">/</span><span class="n">production</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

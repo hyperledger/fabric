@@ -1,0 +1,490 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Release Notes &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="index.html"/>
+        <link rel="next" title="Getting Started" href="getting_startedv2.html"/>
+        <link rel="prev" title="Welcome to Fabric" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Setup/ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Release Notes</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/releases.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="release-notes">
+<h1>Release Notes<a class="headerlink" href="#release-notes" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference external" href="https://github.com/hyperledger/fabric/releases/tag/v1.0.0-alpha">v1.0.0-alpha</a>
+March 16, 2017</p>
+<p>Key enhancements:</p>
+<ul class="simple">
+<li>3b6c70d FAB-1128 further cleanup of protos</li>
+<li>3ac1bd3 FAB-1129 Add cc return value to proposal response</li>
+<li>b95adc8 Introduce two new message for gossip proto</li>
+<li>9bd29d3 Add tests to static bootstrap helper</li>
+<li>2f7153f BCCSP ECDSA/RSA/X509 public/private key import</li>
+<li>cb9a29b [FAB-996] Introduce orderer/commons/util package</li>
+<li>b3b4e54 [FAB-773] gossip state transfer, block re-ordering</li>
+<li>742443e FAB-872 Multichannel support: message extension</li>
+<li>5f98d54 Integration of MSP in endorser</li>
+<li>60706a7 [FAB-1094] util to parse config tx blocks</li>
+<li>445fbdb Added support for advance KV-queries</li>
+<li>4a6b894 Change how chaintool executes</li>
+<li>c1e6fb4 [FAB-1161] Push genesis block upon orderer init</li>
+<li>55fd4c4 BCCSP Generalized Key Import</li>
+<li>5f08c25 Gossip integration auxilary</li>
+<li>21a4c6a FAB-1128 finalize protos - remove discovery and devops</li>
+<li>73c501c [FAB-798] Abstract out the solo broadcast handler</li>
+<li>1b5d378 [FAB-798] Abstract out the solo deliver handler</li>
+<li>b7908a3 [FAB-798] Factor common gRPC components from solo</li>
+<li>a2b9b2e [FAB-798] Factor out block cutting logic</li>
+<li>6b58537 [FAB-421] Add multi-chain support to rawledger</li>
+<li>68aef4e Removing primitives package dependency from BCCSP</li>
+<li>16fa08e TX proposal/endorsement/validation flow (+MSP)</li>
+<li>f6d1be2 [FAB-1190] Make Rawledger accept metadata</li>
+<li>2013daa BCCSP KeyStore</li>
+<li>2830cfb [FAB-884] implement basic query cli</li>
+<li>b1ecf80 FAB-1192 timer should be reset each pop</li>
+<li>a8af1e9 Hook multichain manager into main path</li>
+<li>28f16aa [FAB-931] Add multi-broker Kafka orderer environments</li>
+<li>6856308 Suppress logging output of the peer during unit-tests</li>
+<li>e9f9806 Remove rocksdb dependency</li>
+<li>3731447 FAB-1087 Add config option in core.yaml for history</li>
+<li>80140c9 Allow deploying Java chaincode from remote git repo</li>
+<li>eba912b Add interactive asset management demo</li>
+<li>9baa4eb Add common CLI function to get a server admin client</li>
+<li>0183483 FAB-1291: Couch support for doing a savepoint.</li>
+<li>96637cf Rework of MSP (config and factories)</li>
+<li>ebb3cb9 Enable block event generation</li>
+<li>9662335 Ledger API to retrieve last block</li>
+<li>1f4b004 Refactor MSP package and msp config w/o json</li>
+<li>f97b321 FAB-1020 Configuration system chaincode</li>
+<li>b6ab3f8 Upgrade to golang 1.7 in travis ci</li>
+<li>8417c0e [FAB-1288]: Expose gossip API for cscc.</li>
+<li>2ebd342 FAB-1172 - Advanced simulation functions for CouchDB</li>
+<li>746b873 [FAB-814] Introduce ChainCreators orderer config</li>
+<li>d18aa98 FAB-1140 Ledger History Database framework</li>
+<li>783e7d0 FAB-1020 Configuration system chaincode</li>
+<li>458c521 FAB-1336 Add new ledger blockstorage index.</li>
+<li>6444545 MSP mgr instantiation from Block</li>
+<li>79aa4df [FAB-1384]: Change ValidatedLedger APIs</li>
+<li>0b162ca PKCS11/MSH compatible BCCSP SKI gen</li>
+<li>0567b34 FAB-1395 - Generic query API for CouchDB</li>
+<li>6c45ffa FAB-1259 Create Basic Common GRPC Server</li>
+<li>8d53e6d FAB-1018 MultiChannel API fabric&lt;–&gt;gossip</li>
+<li>d39194c Added support for TLS in java shim</li>
+<li>a9ae6e7 Upgrade golang 1.6 to 1.7 in chaincode examples</li>
+<li>2ae4ed3 [FAB-872] Gossip multi-channel: channel</li>
+<li>fdf2f7a [FAB-872] Gossip multiChannel support</li>
+<li>7b0aef8 FAB-1257 Removal of Table API</li>
+<li>457bb90 FAB-1166 Gossip leader election</li>
+<li>c14896a Ledger query APIs</li>
+<li>4b2947c [FAB-1500] Recovery of history database</li>
+<li>d58d51b [FAB-1390] Refactor ledger interface names</li>
+<li>0377199 [FAB-187] - using policies in VSCC</li>
+<li>c65e40e FAB-829: App library for access control/App. MSP</li>
+<li>a0898e6 [FAB-1648] Install SoftHSM for testing PKCS11 CSP</li>
+<li>4916ac4 [FAB-1648] Vendor PKCS11 bindings</li>
+<li>d5467f3 [FAB-204] Expose ledger rich query API to chaincode</li>
+<li>0a94993 [FAB-1858] Provide gossip with channel config</li>
+<li>9ca80f1 [FAB-1885] GetTransactionByID to return Tran Envelope</li>
+<li>1bd5b2b [FAB-1790, FAB-1791] Chaincode calling chaincode</li>
+<li>25c888d [FAB-1700] Determinsitic BlockData hashing</li>
+<li>4c9bec7 [FAB-1809] Enable tls config for Kafka connection</li>
+<li>d1e939f [FAB-1956] Automatically generate orderer template</li>
+<li>c0ce696 [FAB-2125] Finalize v1 chaincode API names</li>
+<li>32b772c [FAB-2169] Dynamically generate genesis material</li>
+<li>ca02c60 [FAB-2122] Scan codepackage for illegal content</li>
+<li>a971b0f [FAB-2319] Implement hierarchical policies storage</li>
+<li>8e2563d Use a minimal container for GOLANG/CAR chaincode</li>
+<li>29954d6 Orderer Traffic Engine (OTE) FAB-1805</li>
+<li>458328b Chaincode API Enhancement</li>
+<li>589efc6 [FAB-1558] - Revocation support in MSP</li>
+<li>cec4b5c Replace Shake with SHA</li>
+<li>2fc6bc6 [FAB-2080] - peer enforces ACLs on proposals</li>
+<li>3e0481b [FAB-2087] - support for admin policy principals</li>
+<li>9fe8c60 [FAB-1934] admin validation for chain-scoped syscc</li>
+<li>4013cb6 [FAB-2432] Encode anchor peers from configtx.yaml</li>
+<li>81cd41b FAB-1438: Add up, down, scale to compose util</li>
+<li>ff8b3e4 [FAB-2206]Make gossip discovery configurable</li>
+<li>fc62148 FAB2044: Allow OUs to be contained in MSP description</li>
+<li>306aa7d Add query to get instantiated chaincodes on a channel</li>
+<li>151a9a6 Converge deployment spec validation</li>
+<li>f8a8ddd Upgrade to chaincode v0.10.3</li>
+<li>b7b5c4e [FAB-2198] Gossip envelope refactoring</li>
+<li>4246971 Prevent CLI to connect to ordering service on join.</li>
+<li>be91ccc [FAB-2545] Add tool to create various crypto configs</li>
+<li>29ea124 Change project status from Incubation to Active (again)</li>
+<li>5f4b99a [FAB-2503] CLI based End-to-End flow test verification</li>
+<li>5ca0611 Add ability to customize chaincode container log format</li>
+<li>ba68129 FAB-2671 e2e_cli to use OrdererMSP consistently</li>
+<li>6a81ec1 [FAB-2632] Default endorsement policy</li>
+<li>88cb6cc [FAB-2691] Improve Bcst/Dlvr log serviceability</li>
+<li>1f49bfb [FAB-2714] Enable peer to start with TLS enabled</li>
+<li>3ad3e43 [FAB-2710] Gossip: Log WARN upon bad network config</li>
+<li>a3e3940 [FAB-2696] Default chain broken in peer</li>
+<li>124cd2d [FAB-1141] Updating TLS and gossip leader conf</li>
+<li>626fcd3 Add Channel information to block-listener</li>
+<li>3169234 FAB-2081 allow user CC to call system CC</li>
+<li>f8a49c0 [FAB-2745] Update e2e_cli to work with TLS</li>
+<li>844fe2d [FAB-2773] Restrict the total count of channels</li>
+<li>0308f0f [FAB-1141] Enabling TLS in bootstrap feature</li>
+<li>0f38dc1 [FAB-2565] Example docker-compose with CouchDB</li>
+<li>fa3d88c Release 1.0.0-alpha</li>
+</ul>
+<p><a class="reference external" href="https://github.com/hyperledger/fabric/tree/v0.6">v0.6-preview</a>
+September 16, 2016</p>
+<p>A developer preview release of the Hyperledger Fabric intended to
+exercise the release logistics and stabilize a set of capabilities for
+developers to try out. This will be the last release under the original
+architecture. All subsequent releases will deliver on the <a class="reference external" href="TODO">v1.0
+architecture</a>.</p>
+<p>Key enhancements:</p>
+<ul class="simple">
+<li>8de58ed - NodeSDK doc changes – FAB-146</li>
+<li>62d866d - Add flow control to SYNC_STATE_SNAPSHOT</li>
+<li>4d97069 - Adding TLS changes to SDK</li>
+<li>e9d3ac2 - Node-SDK: add support for fabric events(block, chaincode,
+transactional)</li>
+<li>7ed9533 - Allow deploying Java chaincode from remote git repositories</li>
+<li>4bf9b93 - Move Docker-Compose files into their own folder</li>
+<li>ce9fcdc - Print ChaincodeName when deploy with CLI</li>
+<li>4fa1360 - Upgrade go protobuf from 3-beta to 3</li>
+<li>4b13232 - Table implementation in java shim with example</li>
+<li>df741bc - Add support for dynamically registering a user with
+attributes</li>
+<li>4203ea8 - Check for duplicates when adding peers to the chain</li>
+<li>518f3c9 - Update docker openjdk image</li>
+<li>47053cd - Add GetTxID function to Stub interface (FAB-306)</li>
+<li>ac182fa - Remove deprecated devops REST API</li>
+<li>ad4645d - Support hyperledger fabric build on ppc64le platform</li>
+<li>21a4a8a - SDK now properly adding a peer with an invalid URL</li>
+<li>1d8114f - Fix setting of watermark on restore from crash</li>
+<li>a98c59a - Upgrade go protobuff from 3-beta to 3</li>
+<li>937039c - DEVENV: Provide strong feedback when provisioning fails</li>
+<li>d74b1c5 - Make pbft broadcast timeout configurable</li>
+<li>97ed71f - Java shim/chaincode project reorg, separate java docker env</li>
+<li>a76dd3d - Start container with HostConfig was deprecated since v1.10
+and removed since v1.12</li>
+<li>8b63a26 - Add ability to unregister for events</li>
+<li>3f5b2fa - Add automatic peer command detection</li>
+<li>6daedfd - Re-enable sending of chaincode events</li>
+<li>b39c93a - Update Cobra and pflag vendor libraries</li>
+<li>dad7a9d - Reassign port numbers to 7050-7060 range</li>
+</ul>
+<p><a class="reference external" href="https://github.com/hyperledger-archives/fabric/tree/v0.5-developer-preview">v0.5-developer-preview</a>
+June 17, 2016</p>
+<p>A developer preview release of the Hyperledger Fabric intended to
+exercise the release logistics and stabilize a set of capabilities for
+developers to try out.</p>
+<p>Key features:</p>
+<p>Permissioned blockchain with immediate finality Chaincode (aka smart
+contract) execution environments Docker container (user chaincode)
+In-process with peer (system chaincode) Pluggable consensus with PBFT,
+NOOPS (development mode), SIEVE (prototype) Event framework supports
+pre-defined and custom events Client SDK (Node.js), basic REST APIs and
+CLIs Known Key Bugs and work in progress</p>
+<ul class="simple">
+<li>1895 - Client SDK interfaces may crash if wrong parameter specified</li>
+<li>1901 - Slow response after a few hours of stress testing</li>
+<li>1911 - Missing peer event listener on the client SDK</li>
+<li>889 - The attributes in the TCert are not encrypted. This work is
+still on-going</li>
+</ul>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="getting_startedv2.html" class="btn btn-neutral float-right" title="Getting Started" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="Welcome to Fabric" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,639 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Setting Up a Network &mdash; hyperledger-fabricdocs master documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="hyperledger-fabricdocs master documentation" href="../index.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+
+          
+            <a href="../index.html" class="icon icon-home"> hyperledger-fabricdocs
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+<br>
+<a href="https://chat.hyperledger.org">Rocket Chat</a>  <a href="https://jenkins.hyperledger.org/">CI</a>
+<a href="http://stackoverflow.com/questions/tagged/hyperledger-fabric">StackOverflow</a>
+
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get the Code</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_startedv2.html">Getting Started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Key Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../capabilities.html">Fabric Capabilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fabric_model.html">The Fabric Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biz/usecases.html">Use Cases</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../demos.html">Demos</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chaincode.html">What is chaincode?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../videos.html">Videos</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Operations Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtx.html">Channel Configuration (configtx)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configtxgen.html">Configuring using the configtxgen tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cc-packaging-and-signing.html">Chaincode Packaging and Signing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logging-control.html">Logging Control</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arch-deep-dive.html">Architecture Explained</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../txflow.html">Transaction Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ca-setup.html">Fabric CA User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../endorsement-policies.html">Endorsement policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../nodesdk.html">Node SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orderingservice.html">Ordering Service</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../channels.html">Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ledger.html">Ledger</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../readwrite.html">Read-Write set semantics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gossip.html">Gossip data dissemination protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Troubleshooting and FAQs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/architecture_FAQ.html">V1 Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/chaincode_FAQ.html">Chaincode (Smart Contracts and Digital Assets)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQ/identity_management_FAQ.html">Identity Management (Membership Service)</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributions Welcome!</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MAINTAINERS.html">Maintainers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jira_navigation.html">Using Jira to understand current work items</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/devenv.html">Setting up the development environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html">Building the fabric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#building-outside-of-vagrant">Building outside of Vagrant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#configuration">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev-setup/build.html#logging">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/lf-account.html">Requesting a Linux Foundation Account</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/gerrit.html">Working with Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/changes.html">Submitting a Change to Gerrit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/reviewing.html">Reviewing a Change</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Gerrit/best-practices.html">Gerrit Recommended Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html">Coding guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#generating-grpc-code">Generating gRPC code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Style-guides/go-style.html#adding-or-updating-go-packages">Adding or updating Go packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../questions.html">Still Have Questions?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quality.html">Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../status.html">Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">hyperledger-fabricdocs</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Setting Up a Network</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/Setup/Network-setup.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="setting-up-a-network">
+<h1>Setting Up a Network<a class="headerlink" href="#setting-up-a-network" title="Permalink to this headline">¶</a></h1>
+<p>This document covers setting up a network on your local machine for
+various development and testing activities. Unless you are intending to
+contribute to the development of the Hyperledger Fabric project, you’ll
+probably want to follow the more commonly used approach below -
+<a class="reference external" href="#leveraging-published-docker-images">leveraging published Docker
+images</a> for the various
+Hyperledger Fabric components, directly. Otherwise, skip down to the
+<a class="reference external" href="#building-your-own-images">secondary approach</a> below.</p>
+<div class="section" id="leveraging-published-docker-images">
+<h2>Leveraging published Docker images<a class="headerlink" href="#leveraging-published-docker-images" title="Permalink to this headline">¶</a></h2>
+<p>This approach simply leverages the Docker images that the Hyperledger
+Fabric project publishes to
+<a class="reference external" href="https://hub.docker.com/u/hyperledger/">DockerHub</a> and either Docker
+commands or Docker Compose descriptions of the network one wishes to
+create.</p>
+<div class="section" id="installing-docker">
+<h3>Installing Docker<a class="headerlink" href="#installing-docker" title="Permalink to this headline">¶</a></h3>
+<p><strong>Note:</strong> When running Docker <em>natively</em> on Mac and Windows, there is no
+IP forwarding support available. Hence, running more than one
+fabric-peer image is not advised because you do not want to have
+multiple processes binding to the same port. For most application and
+chaincode development/testing running with a single fabric peer should
+not be an issue unless you are interested in performance and resilience
+testing the fabric’s capabilities, such as consensus. For more advanced
+testing, we strongly recommend using the fabric’s Vagrant <a class="reference external" href="../dev-setup/devenv.md">development
+environment</a>.</p>
+<p>With this approach, there are multiple choices as to how to run Docker:
+using <a class="reference external" href="https://docs.docker.com/toolbox/overview/">Docker Toolbox</a> or
+one of the new native Docker runtime environments for <a class="reference external" href="https://docs.docker.com/engine/installation/mac/">Mac
+OSX</a> or
+<a class="reference external" href="https://docs.docker.com/engine/installation/windows/">Windows</a>.
+There are some subtle differences between how Docker runs natively on
+Mac and Windows versus in a virtualized context on Linux. We’ll call
+those out where appropriate below, when we get to the point of actually
+running the various components.</p>
+</div>
+<div class="section" id="pulling-the-images-from-dockerhub">
+<h3>Pulling the images from DockerHub<a class="headerlink" href="#pulling-the-images-from-dockerhub" title="Permalink to this headline">¶</a></h3>
+<p>Once you have Docker (1.11 or greater) installed and running, prior to
+starting any of the fabric components, you will need to first pull the
+fabric images from DockerHub.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">pull</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">peer</span><span class="p">:</span><span class="n">latest</span>
+<span class="n">docker</span> <span class="n">pull</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">membersrvc</span><span class="p">:</span><span class="n">latest</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="building-your-own-images">
+<h2>Building your own images<a class="headerlink" href="#building-your-own-images" title="Permalink to this headline">¶</a></h2>
+<p><strong>Note:</strong> <em>This approach is not necessarily recommended for most users</em>.
+If you have pulled images from DockerHub as described in the previous
+section, you may proceed to the <a class="reference external" href="#starting-up-validating-peers">next
+step</a>.</p>
+<p>The second approach would be to leverage the <a class="reference external" href="../dev-setup/devenv.md">development
+environment</a> setup (which we will assume you
+have already established) to build and deploy your own binaries and/or
+Docker images from a clone of the
+<a class="reference external" href="https://github.com/hyperledger/fabric">hyperledger/fabric</a> GitHub
+repository. This approach is suitable for developers that might wish to
+contribute directly to the Hyperledger Fabric project, or that wish to
+deploy from a fork of the Hyperledger code base.</p>
+<p>The following commands should be run from <em>within</em> the Vagrant
+environment described in <a class="reference external" href="../dev-setup/devenv.md">Setting Up Development
+Environment</a>.</p>
+<p>To create the Docker image for the <code class="docutils literal"><span class="pre">hyperledger/fabric-peer</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $GOPATH/src/github.com/hyperledger/fabric
+make peer-image
+</pre></div>
+</div>
+<p>To create the Docker image for the <code class="docutils literal"><span class="pre">hyperledger/fabric-membersrvc</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="n">membersrvc</span><span class="o">-</span><span class="n">image</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="starting-up-validating-peers">
+<h2>Starting up validating peers<a class="headerlink" href="#starting-up-validating-peers" title="Permalink to this headline">¶</a></h2>
+<p>Check the available images again with <code class="docutils literal"><span class="pre">docker</span> <span class="pre">images</span></code>. You should see
+<code class="docutils literal"><span class="pre">hyperledger/fabric-peer</span></code> and <code class="docutils literal"><span class="pre">hyperledger/fabric-membersrvc</span></code>
+images. For example,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ docker images
+REPOSITORY                      TAG                 IMAGE ID            CREATED             SIZE
+hyperledger/fabric-membersrvc   latest              7d5f6e0bcfac        12 days ago         1.439 GB
+hyperledger/fabric-peer         latest              82ef20d7507c        12 days ago         1.445 GB
+</pre></div>
+</div>
+<p>If you don’t see these, go back to the previous step.</p>
+<p>With the relevant Docker images in hand, we can start running the peer
+and membersrvc services.</p>
+<div class="section" id="determine-value-for-core-vm-endpoint-variable">
+<h3>Determine value for CORE_VM_ENDPOINT variable<a class="headerlink" href="#determine-value-for-core-vm-endpoint-variable" title="Permalink to this headline">¶</a></h3>
+<p>Next, we need to determine the address of your docker daemon for the
+CORE_VM_ENDPOINT. If you are working within the Vagrant development
+environment, or a Docker Toolbox environment, you can determine this
+with the <code class="docutils literal"><span class="pre">ip</span> <span class="pre">add</span></code> command. For example,</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ ip add
+
+&lt;&lt;&lt; detail removed &gt;&gt;&gt;
+
+3: docker0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default
+    link/ether 02:42:ad:be:70:cb brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 scope global docker0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:adff:febe:70cb/64 scope link
+       valid_lft forever preferred_lft forever
+</pre></div>
+</div>
+<p>Your output might contain something like
+<code class="docutils literal"><span class="pre">inet</span> <span class="pre">172.17.0.1/16</span> <span class="pre">scope</span> <span class="pre">global</span> <span class="pre">docker0</span></code>. That means the docker0
+interface is on IP address 172.17.0.1. Use that IP address for the
+<code class="docutils literal"><span class="pre">CORE_VM_ENDPOINT</span></code> option. For more information on the environment
+variables, see <code class="docutils literal"><span class="pre">core.yaml</span></code> configuration file in the <code class="docutils literal"><span class="pre">fabric</span></code>
+repository.</p>
+<p>If you are using the native Docker for Mac or Windows, the value for
+<code class="docutils literal"><span class="pre">CORE_VM_ENDPOINT</span></code> should be set to <code class="docutils literal"><span class="pre">unix:///var/run/docker.sock</span></code>.
+[TODO] double check this. I believe that <code class="docutils literal"><span class="pre">127.0.0.1:2375</span></code> also works.</p>
+</div>
+<div class="section" id="assigning-a-value-for-core-peer-id">
+<h3>Assigning a value for CORE_PEER_ID<a class="headerlink" href="#assigning-a-value-for-core-peer-id" title="Permalink to this headline">¶</a></h3>
+<p>The ID value of <code class="docutils literal"><span class="pre">CORE_PEER_ID</span></code> must be unique for each validating
+peer, and it must be a lowercase string. We often use a convention of
+naming the validating peers vpN where N is an integer starting with 0
+for the root node and incrementing N by 1 for each additional peer node
+started. e.g. vp0, vp1, vp2, …</p>
+</div>
+<div class="section" id="consensus">
+<h3>Consensus<a class="headerlink" href="#consensus" title="Permalink to this headline">¶</a></h3>
+<p>By default, we are using a consensus plugin called <code class="docutils literal"><span class="pre">NOOPS</span></code>, which
+doesn’t really do consensus. If you are running a single peer node,
+running anything other than <code class="docutils literal"><span class="pre">NOOPS</span></code> makes little sense. If you want to
+use some other consensus plugin in the context of multiple peer nodes,
+please see the <a class="reference external" href="#using-a-consensus-plugin">Using a Consensus Plugin</a>
+section, below.</p>
+</div>
+<div class="section" id="docker-compose">
+<h3>Docker Compose<a class="headerlink" href="#docker-compose" title="Permalink to this headline">¶</a></h3>
+<p>We’ll be using Docker Compose to launch our various Fabric component
+containers, as this is the simplest approach. You should have it
+installed from the initial setup steps. Installing Docker Toolbox or any
+of the native Docker runtimes should have installed Compose.</p>
+</div>
+<div class="section" id="start-up-a-validating-peer">
+<h3>Start up a validating peer:<a class="headerlink" href="#start-up-a-validating-peer" title="Permalink to this headline">¶</a></h3>
+<p>Let’s launch the first validating peer (the root node). We’ll set
+CORE_PEER_ID to vp0 and CORE_VM_ENDPOINT as above. Here’s the
+docker-compose.yml for launching a single container within the
+<strong>Vagrant</strong> <a class="reference external" href="../dev-setup/devenv.md">development environment</a>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">vp0</span><span class="p">:</span>
+  <span class="n">image</span><span class="p">:</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">peer</span>
+  <span class="n">environment</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_ID</span><span class="o">=</span><span class="n">vp0</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_ADDRESSAUTODETECT</span><span class="o">=</span><span class="n">true</span>
+    <span class="o">-</span> <span class="n">CORE_VM_ENDPOINT</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">172.17</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">2375</span>
+    <span class="o">-</span> <span class="n">CORE_LOGGING_LEVEL</span><span class="o">=</span><span class="n">DEBUG</span>
+  <span class="n">command</span><span class="p">:</span> <span class="n">peer</span> <span class="n">node</span> <span class="n">start</span>
+</pre></div>
+</div>
+<p>You can launch this Compose file as follows, from the same directory as
+the docker-compose.yml file:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ docker-compose up
+</pre></div>
+</div>
+<p>Here’s the corresponding Docker command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ docker run --rm -it -e CORE_VM_ENDPOINT=http://172.17.0.1:2375 -e CORE_LOGGING_LEVEL=DEBUG -e CORE_PEER_ID=vp0 -e CORE_PEER_ADDRESSAUTODETECT=true hyperledger/fabric-peer peer node start
+</pre></div>
+</div>
+<p>If you are running Docker for Mac or Windows, we’ll need to explicitly
+map the ports, and we will need a different value for CORE_VM_ENDPOINT
+as we discussed above.</p>
+<p>Here’s the docker-compose.yml for Docker on Mac or Windows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">vp0</span><span class="p">:</span>
+  <span class="n">image</span><span class="p">:</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">peer</span>
+  <span class="n">ports</span><span class="p">:</span>
+    <span class="o">-</span> <span class="s2">&quot;7050:7050&quot;</span>
+    <span class="o">-</span> <span class="s2">&quot;7051:7051&quot;</span>
+    <span class="o">-</span> <span class="s2">&quot;7052:7052&quot;</span>
+  <span class="n">environment</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_ADDRESSAUTODETECT</span><span class="o">=</span><span class="n">true</span>
+    <span class="o">-</span> <span class="n">CORE_VM_ENDPOINT</span><span class="o">=</span><span class="n">unix</span><span class="p">:</span><span class="o">///</span><span class="n">var</span><span class="o">/</span><span class="n">run</span><span class="o">/</span><span class="n">docker</span><span class="o">.</span><span class="n">sock</span>
+    <span class="o">-</span> <span class="n">CORE_LOGGING_LEVEL</span><span class="o">=</span><span class="n">DEBUG</span>
+  <span class="n">command</span><span class="p">:</span> <span class="n">peer</span> <span class="n">node</span> <span class="n">start</span>
+</pre></div>
+</div>
+<p>This single peer configuration, running the <code class="docutils literal"><span class="pre">NOOPS</span></code> ‘consensus’
+plugin, should satisfy many development/test scenarios. <code class="docutils literal"><span class="pre">NOOPS</span></code> is not
+really providing consensus, it is essentially a no-op that simulates
+consensus. For instance, if you are simply developing and testing
+chaincode; this should be adequate unless your chaincode is leveraging
+membership services for identity, access control, confidentiality and
+privacy.</p>
+</div>
+<div class="section" id="running-with-the-ca">
+<h3>Running with the CA<a class="headerlink" href="#running-with-the-ca" title="Permalink to this headline">¶</a></h3>
+<p>If you want to take advantage of security (authentication and
+authorization), privacy and confidentiality, then you’ll need to run the
+Fabric’s certificate authority (CA). Please refer to the <a class="reference external" href="ca-setup.md">CA
+Setup</a> instructions.</p>
+</div>
+<div class="section" id="start-up-additional-validating-peers">
+<h3>Start up additional validating peers:<a class="headerlink" href="#start-up-additional-validating-peers" title="Permalink to this headline">¶</a></h3>
+<p>Following the pattern we established
+<a class="reference external" href="#assigning-a-value-for-core_peer_id">above</a> we’ll use <code class="docutils literal"><span class="pre">vp1</span></code> as the
+ID for the second validating peer. If using Docker Compose, we can
+simply link the two peer nodes. Here’s the docker-compose.yml for a
+<strong>Vagrant</strong> environment with two peer nodes - vp0 and vp1:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">vp0</span><span class="p">:</span>
+  <span class="n">image</span><span class="p">:</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">peer</span>
+  <span class="n">environment</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_ADDRESSAUTODETECT</span><span class="o">=</span><span class="n">true</span>
+    <span class="o">-</span> <span class="n">CORE_VM_ENDPOINT</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">172.17</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">2375</span>
+    <span class="o">-</span> <span class="n">CORE_LOGGING_LEVEL</span><span class="o">=</span><span class="n">DEBUG</span>
+  <span class="n">command</span><span class="p">:</span> <span class="n">peer</span> <span class="n">node</span> <span class="n">start</span>
+<span class="n">vp1</span><span class="p">:</span>
+  <span class="n">extends</span><span class="p">:</span>
+    <span class="n">service</span><span class="p">:</span> <span class="n">vp0</span>
+  <span class="n">environment</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_ID</span><span class="o">=</span><span class="n">vp1</span>
+    <span class="o">-</span> <span class="n">CORE_PEER_DISCOVERY_ROOTNODE</span><span class="o">=</span><span class="n">vp0</span><span class="p">:</span><span class="mi">7051</span>
+  <span class="n">links</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">vp0</span>
+</pre></div>
+</div>
+<p>If we wanted to use the docker command line to launch another peer, we
+need to get the IP address of the first validating peer, which will act
+as the root node to which the new peer(s) will connect. The address is
+printed out on the terminal window of the first peer (e.g. 172.17.0.2)
+and should be passed in with the <code class="docutils literal"><span class="pre">CORE_PEER_DISCOVERY_ROOTNODE</span></code>
+environment variable.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">rm</span> <span class="o">-</span><span class="n">it</span> <span class="o">-</span><span class="n">e</span> <span class="n">CORE_VM_ENDPOINT</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">172.17</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">2375</span> <span class="o">-</span><span class="n">e</span> <span class="n">CORE_PEER_ID</span><span class="o">=</span><span class="n">vp1</span> <span class="o">-</span><span class="n">e</span> <span class="n">CORE_PEER_ADDRESSAUTODETECT</span><span class="o">=</span><span class="n">true</span> <span class="o">-</span><span class="n">e</span> <span class="n">CORE_PEER_DISCOVERY_ROOTNODE</span><span class="o">=</span><span class="mf">172.17</span><span class="o">.</span><span class="mf">0.2</span><span class="p">:</span><span class="mi">7051</span> <span class="n">hyperledger</span><span class="o">/</span><span class="n">fabric</span><span class="o">-</span><span class="n">peer</span> <span class="n">peer</span> <span class="n">node</span> <span class="n">start</span>
+</pre></div>
+</div>
+<!-- This needs to be sorted out with a revamped security section
+
+Again, the validating peer `enrollID` and `enrollSecret` (`vp1` and `vp1_secret`) has to be added to [membersrvc.yaml](https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml).
+
+You can start up a few more validating peers in a similar manner if you wish. Remember to change the peer ID and add the enrollID/enrollSecret to the [membersrvc.yaml](https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml).
+
+### Enroll/Login a test user (if security is enabled):
+If security is enabled, you must enroll a user with the certificate authority before sending requests. Choose a user that is already registered, i.e. added to the [membersrvc.yaml](https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml). Then, execute the command below to log in the user on the target validating peer. `CORE_PEER_ADDRESS` specifies the target validating peer for which the user is to be logged in.
+
+```
+CORE_PEER_ADDRESS=172.17.0.2:7051 peer network login jim
+```
+
+**Note:** The certificate authority allows the enrollID and enrollSecret credentials to be used only *once*. Therefore, login by the same user from any other validating peer will result in an error. Currently, the application layer is responsible for duplicating the crypto material returned from the CA to other peer nodes. If you want to test secure transactions from more than one peer node without replicating the returned key and certificate, you can log in with a different user on other peer nodes.
+
+### Deploy, Invoke, and Query a Chaincode
+
+
+**Note:** When security is enabled, modify the CLI commands to deploy, invoke, or query a chaincode to pass the username of a logged in user. To log in a registered user through the CLI, execute the login command from the section above. On the CLI the username is passed with the -u parameter.
+
+We can use the sample chaincode to test the network. You may find the chaincode here `$GOPATH/src/github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02`.
+
+Deploy the chaincode to the network. We can deploy to any validating peer by specifying `CORE_PEER_ADDRESS`:
+
+```
+CORE_PEER_ADDRESS=172.17.0.2:7051 peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
+```
+
+With security enabled, modify the command as follows:
+
+```
+CORE_PEER_ADDRESS=172.17.0.2:7051 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
+```
+
+You can watch for the message "Received build request for chaincode spec" on the output screen of all validating peers.
+
+**Note:** If your GOPATH environment variable contains more than one element, the chaincode must be found in the first one or deployment will fail.
+
+On successful completion, the above command will print the "name" assigned to the deployed chaincode. This "name" is used as the value of the "-n" parameter in invoke and query commands described below. For example the value of "name" could be
+
+    bb540edfc1ee2ac0f5e2ec6000677f4cd1c6728046d5e32dede7fea11a42f86a6943b76a8f9154f4792032551ed320871ff7b7076047e4184292e01e3421889c
+
+In a script the name can be captured for subsequent use. For example, run
+
+    NAME=`CORE_PEER_ADDRESS=172.17.0.2:7051 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode deploy ...`
+
+and then replace `<name_value_returned_from_deploy_command>` in the examples below with `$NAME`.
+
+We can run an invoke transaction to move 10 units from the value of `a` to the value of `b`:
+
+```
+CORE_PEER_ADDRESS=172.17.0.2:7051 peer chaincode invoke -n <name_value_returned_from_deploy_command> -c '{"Function": "invoke", "Args": ["a", "b", "10"]}'
+```
+
+With security enabled, modify the command as follows:
+
+```
+CORE_PEER_ADDRESS=172.17.0.2:7051 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode invoke -u jim -n <name_value_returned_from_deploy_command> -c '{"Function": "invoke", "Args": ["a", "b", "10"]}'
+```
+
+We can also run a query to see the current value `a` has:
+
+```
+CORE_PEER_ADDRESS=172.17.0.2:7051 peer chaincode query -l golang -n <name_value_returned_from_deploy_command> -c '{"Function": "query", "Args": ["a"]}'
+```
+
+With security enabled, modify the command as follows:
+
+```
+CORE_PEER_ADDRESS=172.17.0.2:7051 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode query -u jim -l golang -n <name_value_returned_from_deploy_command> -c '{"Function": "query", "Args": ["a"]}'
+```
+--></div>
+</div>
+<div class="section" id="using-a-consensus-plugin">
+<h2>Using a Consensus Plugin<a class="headerlink" href="#using-a-consensus-plugin" title="Permalink to this headline">¶</a></h2>
+<p>A consensus plugin might require some specific configuration that you
+need to set up. For example, to use the Practical Byzantine Fault
+Tolerant (PBFT) consensus plugin provided as part of the fabric, perform
+the following configuration:</p>
+<ol class="arabic simple">
+<li>In <code class="docutils literal"><span class="pre">core.yaml</span></code>, set the <code class="docutils literal"><span class="pre">peer.validator.consensus</span></code> value to
+<code class="docutils literal"><span class="pre">pbft</span></code></li>
+<li>In <code class="docutils literal"><span class="pre">core.yaml</span></code>, make sure the <code class="docutils literal"><span class="pre">peer.id</span></code> is set sequentially as
+<code class="docutils literal"><span class="pre">vpN</span></code> where <code class="docutils literal"><span class="pre">N</span></code> is an integer that starts from <code class="docutils literal"><span class="pre">0</span></code> and goes to
+<code class="docutils literal"><span class="pre">N-1</span></code>. For example, with 4 validating peers, set the <code class="docutils literal"><span class="pre">peer.id</span></code>
+to<code class="docutils literal"><span class="pre">vp0</span></code>, <code class="docutils literal"><span class="pre">vp1</span></code>, <code class="docutils literal"><span class="pre">vp2</span></code>, <code class="docutils literal"><span class="pre">vp3</span></code>.</li>
+<li>In <code class="docutils literal"><span class="pre">consensus/pbft/config.yaml</span></code>, set the <code class="docutils literal"><span class="pre">general.mode</span></code> value to
+<code class="docutils literal"><span class="pre">batch</span></code> and the <code class="docutils literal"><span class="pre">general.N</span></code> value to the number of validating
+peers on the network, also set <code class="docutils literal"><span class="pre">general.batchsize</span></code> to the number of
+transactions per batch.</li>
+<li>In <code class="docutils literal"><span class="pre">consensus/pbft/config.yaml</span></code>, optionally set timer values for
+the batch period (<code class="docutils literal"><span class="pre">general.timeout.batch</span></code>), the acceptable delay
+between request and execution (<code class="docutils literal"><span class="pre">general.timeout.request</span></code>), and for
+view-change (<code class="docutils literal"><span class="pre">general.timeout.viewchange</span></code>)</li>
+</ol>
+<p>See <code class="docutils literal"><span class="pre">core.yaml</span></code> and <code class="docutils literal"><span class="pre">consensus/pbft/config.yaml</span></code> for more detail.</p>
+<p>All of these setting may be overridden via the command line environment
+variables, e.g. <code class="docutils literal"><span class="pre">CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=pbft</span></code> or
+<code class="docutils literal"><span class="pre">CORE_PBFT_GENERAL_MODE=batch</span></code></p>
+</div>
+<div class="section" id="logging-control">
+<h2>Logging control<a class="headerlink" href="#logging-control" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference external" href="logging-control.md">Logging Control</a> for information on
+controlling logging output from the <code class="docutils literal"><span class="pre">peer</span></code> and deployed chaincodes.</p>
+<!--
+**Note:** When running with security enabled, follow the security setup instructions described in [Chaincode Development](../Setup/Chaincode-setup.md#security-setup-optional) to set up the CA server and log in registered users before sending chaincode transactions. In this case peers started using Docker images need to point to the correct CA address (default is localhost). CA addresses have to be specified in `peer/core.yaml` variables paddr of eca, tca and tlsca. Furthermore, if you are enabling security and privacy on the peer process with environment variables, it is important to include these environment variables in the command when executing all subsequent peer operations (e.g. deploy, invoke, or query).
+--></div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, hyperledger.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'master',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
