@@ -7,60 +7,47 @@ SPDX-License-Identifier: Apache-2.0
 package resourcesconfig
 
 import (
-	"fmt"
-
 	cb "github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 )
 
-// ResourceGroup represents the ConfigGroup at the base of the resource configuration
-type resourceGroup struct {
-	resourcePolicyRefs map[string]string
-}
+const (
+	PeerPoliciesGroupKey = "PeerPolicies"
+	APIsGroupKey         = "APIs"
+)
 
-func (rg *resourceGroup) PolicyRefForResource(resourceName string) string {
-	return rg.resourcePolicyRefs[resourceName]
+// resourceGroup represents the ConfigGroup at the base of the resource configuration.
+type resourceGroup struct {
+	apisGroup         *apisGroup
+	peerPoliciesGroup *peerPoliciesGroup
 }
 
 func newResourceGroup(root *cb.ConfigGroup) (*resourceGroup, error) {
-	resourcePolicyRefs := make(map[string]string)
-
-	for key, value := range root.Values {
-		resource := &pb.Resource{}
-		if err := proto.Unmarshal(value.Value, resource); err != nil {
-			return nil, err
-		}
-
-		// If the policy is fully qualified, ie to /Channel/Application/Readers leave it alone
-		// otherwise, make it fully qualified referring to /Resources/policyName
-		if '/' != resource.PolicyRef[0] {
-			resourcePolicyRefs[key] = "/" + RootGroupKey + "/" + resource.PolicyRef
-		} else {
-			resourcePolicyRefs[key] = resource.PolicyRef
-		}
+	if len(root.Values) > 0 {
+		return nil, errors.New("/Resources group does not support any values")
 	}
 
-	for _, subGroup := range root.Groups {
-		if err := verifyNoMoreValues(subGroup); err != nil {
-			return nil, err
+	// initialize the elements with empty implementations, override if actually set
+	rg := &resourceGroup{
+		apisGroup:         &apisGroup{},
+		peerPoliciesGroup: &peerPoliciesGroup{},
+	}
+
+	for subGroupName, subGroup := range root.Groups {
+		var err error
+		switch subGroupName {
+		case APIsGroupKey:
+			rg.apisGroup, err = newAPIsGroup(subGroup)
+		case PeerPoliciesGroupKey:
+			rg.peerPoliciesGroup, err = newPeerPoliciesGroup(subGroup)
+		default:
+			err = errors.New("unknown sub-group")
+		}
+		if err != nil {
+			return nil, errors.Wrapf(err, "error processing group %s", subGroupName)
 		}
 	}
 
-	return &resourceGroup{
-		resourcePolicyRefs: resourcePolicyRefs,
-	}, nil
-}
-
-func verifyNoMoreValues(subGroup *cb.ConfigGroup) error {
-	if len(subGroup.Values) > 0 {
-		return fmt.Errorf("sub-groups not allowed to have values")
-	}
-	for _, subGroup := range subGroup.Groups {
-		if err := verifyNoMoreValues(subGroup); err != nil {
-			return err
-		}
-	}
-	return nil
+	return rg, nil
 }
