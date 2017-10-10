@@ -110,14 +110,14 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 
 		//init can do GetState (and other Get's) even if Puts cannot be
 		//be handled. Need ledger for this
-		ctxt2, err := ccprov.GetContext(lgr, txid)
+		ctxt2, txsim, err := ccprov.GetContext(lgr, txid)
 		if err != nil {
 			return err
 		}
 
 		ctxt = ctxt2
 
-		defer ccprov.ReleaseContext()
+		defer txsim.Done()
 	}
 
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
