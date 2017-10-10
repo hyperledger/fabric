@@ -24,7 +24,7 @@ any transaction.
 
 .. image:: images/step1.png
 
-1. **Client A initiates a transaction**
+1. **Client A initiates a transaction** (See figure above)
 
 What's happening? - Client A is sending a request to purchase radishes.  The
 request targets ``peerA`` and ``peerB``, who are respectively representative of
