@@ -39,10 +39,17 @@ Profiles:
 
     # SampleDevModeSolo defines a configuration which uses the Solo orderer,
     # contains the sample MSP as both orderer and consortium member, and
-    # requires only basic membership for admin privileges.
+    # requires only basic membership for admin privileges. It also defines
+    # an Application on the ordering system channel, which should usually
+    # be avoided.
     SampleDevModeSolo:
         Orderer:
             <<: *OrdererDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  AdminPrincipal: Role.MEMBER
+        Application:
+            <<: *ApplicationDefaults
             Organizations:
                 - <<: *SampleOrg
                   AdminPrincipal: Role.MEMBER
