@@ -8,6 +8,7 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,7 +18,7 @@ import (
 
 	"github.com/cactus/go-statsd-client/statsd"
 	"github.com/op/go-logging"
-	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/uber-go/tally"
 	promreporter "github.com/uber-go/tally/prometheus"
@@ -58,11 +59,12 @@ type scopeRegistry struct {
 }
 
 type scope struct {
-	separator  string
-	prefix     string
-	tags       map[string]string
-	tallyScope tally.Scope
-	registry   *scopeRegistry
+	separator    string
+	prefix       string
+	tags         map[string]string
+	tallyScope   tally.Scope
+	registry     *scopeRegistry
+	baseReporter tally.BaseStatsReporter
 
 	cm sync.RWMutex
 	gm sync.RWMutex
@@ -71,8 +73,16 @@ type scope struct {
 	gauges   map[string]*gauge
 }
 
-func newRootScope(opts tally.ScopeOptions, interval time.Duration) (Scope, io.Closer) {
-	s, closer := tally.NewRootScope(opts, interval)
+func newRootScope(opts tally.ScopeOptions, interval time.Duration) Scope {
+	s, _ := tally.NewRootScope(opts, interval)
+
+	var baseReporter tally.BaseStatsReporter
+	if opts.Reporter != nil {
+		baseReporter = opts.Reporter
+	} else if opts.CachedReporter != nil {
+		baseReporter = opts.CachedReporter
+	}
+
 	return &scope{
 		prefix:     opts.Prefix,
 		separator:  opts.Separator,
@@ -80,8 +90,51 @@ func newRootScope(opts tally.ScopeOptions, interval time.Duration) (Scope, io.Cl
 		registry: &scopeRegistry{
 			subScopes: make(map[string]*scope),
 		},
-		counters: make(map[string]*counter),
-		gauges:   make(map[string]*gauge)}, closer
+		baseReporter: baseReporter,
+		counters:     make(map[string]*counter),
+		gauges:       make(map[string]*gauge)}
+}
+
+func newStatsdReporter(statsdReporterOpts StatsdReporterOpts) (tally.StatsReporter, error) {
+	if statsdReporterOpts.Address == "" {
+		return nil, errors.New("missing statsd server Address option")
+	}
+
+	if statsdReporterOpts.FlushInterval <= 0 {
+		return nil, errors.New("missing statsd FlushInterval option")
+	}
+
+	if statsdReporterOpts.FlushBytes <= 0 {
+		return nil, errors.New("missing statsd FlushBytes option")
+	}
+
+	statter, err := statsd.NewBufferedClient(statsdReporterOpts.Address,
+		"", statsdReporterOpts.FlushInterval, statsdReporterOpts.FlushBytes)
+	if err != nil {
+		return nil, err
+	}
+	opts := statsdreporter.Options{}
+	reporter := statsdreporter.NewReporter(statter, opts)
+	statsdReporter := &statsdReporter{reporter: reporter, statter: statter}
+	return statsdReporter, nil
+}
+
+func newPromReporter(promReporterOpts PromReporterOpts) (promreporter.Reporter, error) {
+	if promReporterOpts.ListenAddress == "" {
+		return nil, errors.New("missing prometheus listenAddress option")
+	}
+
+	opts := promreporter.Options{Registerer: prometheus.NewRegistry()}
+	reporter := promreporter.NewReporter(opts)
+	mux := http.NewServeMux()
+	handler := promReporterHttpHandler(opts.Registerer.(*prometheus.Registry))
+	mux.Handle("/metrics", handler)
+	server := &http.Server{Addr: promReporterOpts.ListenAddress, Handler: mux}
+	promReporter := &promReporter{
+		reporter: reporter,
+		server:   server,
+		registry: opts.Registerer.(*prometheus.Registry)}
+	return promReporter, nil
 }
 
 func (s *scope) Counter(name string) Counter {
@@ -192,6 +245,20 @@ func (s *scope) SubScope(prefix string) Scope {
 	return subScope
 }
 
+func (s *scope) Close() error {
+	if closer, ok := s.tallyScope.(io.Closer); ok {
+		return closer.Close()
+	}
+	return nil
+}
+
+func (s *scope) Start() error {
+	if server, ok := s.baseReporter.(serve); ok {
+		return server.Start()
+	}
+	return nil
+}
+
 type statsdReporter struct {
 	reporter tally.StatsReporter
 	statter  statsd.Statter
@@ -200,27 +267,7 @@ type statsdReporter struct {
 type promReporter struct {
 	reporter promreporter.Reporter
 	server   *http.Server
-	registry *prom.Registry
-}
-
-func newStatsdReporter(statsd statsd.Statter, opts statsdreporter.Options) tally.StatsReporter {
-	reporter := statsdreporter.NewReporter(statsd, opts)
-	return &statsdReporter{reporter: reporter, statter: statsd}
-}
-
-func newPrometheusReporter(opts promreporter.Options) promreporter.Reporter {
-	reporter := promreporter.NewReporter(opts)
-	//TODO:Use config instead of hard code
-	server := &http.Server{Addr: ":8080", Handler: nil}
-	//TODO:Return this error to caller
-	go func() {
-		if err := server.ListenAndServe(); err != nil {
-			logger.Errorf("Metrics prometheus reporter start failed %s", err)
-		}
-	}()
-	promReporter := &promReporter{reporter: reporter, server: server, registry: opts.Registerer.(*prom.Registry)}
-	http.Handle("/metrics", promReporter.HTTPHandler())
-	return promReporter
+	registry *prometheus.Registry
 }
 
 func (r *statsdReporter) ReportCounter(name string, tags map[string]string, value int64) {
@@ -281,7 +328,7 @@ func (r *promReporter) RegisterCounter(
 	name string,
 	tagKeys []string,
 	desc string,
-) (*prom.CounterVec, error) {
+) (*prometheus.CounterVec, error) {
 	return r.reporter.RegisterCounter(name, tagKeys, desc)
 }
 
@@ -294,7 +341,7 @@ func (r *promReporter) RegisterGauge(
 	name string,
 	tagKeys []string,
 	desc string,
-) (*prom.GaugeVec, error) {
+) (*prometheus.GaugeVec, error) {
 	return r.reporter.RegisterGauge(name, tagKeys, desc)
 }
 
@@ -347,8 +394,12 @@ func (r *promReporter) Close() error {
 	return r.server.Shutdown(context.Background())
 }
 
+func (r *promReporter) Start() error {
+	return r.server.ListenAndServe()
+}
+
 func (r *promReporter) HTTPHandler() http.Handler {
-	return promhttp.HandlerFor(r.registry, promhttp.HandlerOpts{})
+	return promReporterHttpHandler(r.registry)
 }
 
 func (s *scope) fullyQualifiedName(name string) string {
@@ -400,4 +451,8 @@ func tagsToName(name string, tags map[string]string) string {
 	}
 
 	return name
+}
+
+func promReporterHttpHandler(registry *prometheus.Registry) http.Handler {
+	return promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 }
