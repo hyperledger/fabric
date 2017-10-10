@@ -330,6 +330,8 @@ change the argument from ``CAR4`` to ``CAR10``.
 
 In other words, change this:
 
+.. code:: bash
+
   const request = {
         chaincodeId: options.chaincode_id,
         txId: transaction_id,
