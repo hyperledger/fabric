@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/scc/lscc"
+	m "github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
@@ -54,11 +55,29 @@ type ValidatorOneValidSignature struct {
 	// methods of the system chaincode package without
 	// import cycles
 	sccprovider sysccprovider.SystemChaincodeProvider
+
+	// collectionStore provides support to retrieve
+	// collections from the ledger
+	collectionStore privdata.CollectionStore
+}
+
+// collectionStoreSupport implements privdata.Support
+type collectionStoreSupport struct {
+	sysccprovider.SystemChaincodeProvider
+}
+
+func (c *collectionStoreSupport) GetCollectionKVSKey(cc common.CollectionCriteria) string {
+	return privdata.BuildCollectionKVSKey(cc.Namespace)
+}
+
+func (c *collectionStoreSupport) GetIdentityDeserializer(chainID string) m.IdentityDeserializer {
+	return mspmgmt.GetIdentityDeserializer(chainID)
 }
 
 // Init is called once when the chaincode started the first time
 func (vscc *ValidatorOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	vscc.sccprovider = sysccprovider.GetSystemChaincodeProvider()
+	vscc.collectionStore = privdata.NewSimpleCollectionStore(&collectionStoreSupport{vscc.sccprovider})
 
 	return shim.Success(nil)
 }
@@ -228,6 +247,7 @@ func (vscc *ValidatorOneValidSignature) validateDeployRWSetAndCollection(
 	lsccrwset *kvrwset.KVRWSet,
 	cdRWSet *ccprovider.ChaincodeData,
 	lsccArgs [][]byte,
+	chid, ccid string,
 ) error {
 	/********************************************/
 	/* security check 0.a - validation of rwset */
@@ -261,9 +281,19 @@ func (vscc *ValidatorOneValidSignature) validateDeployRWSetAndCollection(
 			cdRWSet.Name, cdRWSet.Version)
 	}
 
-	// TODO: make sure there isn't any existing collection on the ledger for this chaincode
-	//       I'll take care of this as soon as we have implemented a collection store interface
-	//	 to retrieve collection configuration data from the ledger (https://jira.hyperledger.org/browse/FAB-5872)
+	ccp, err := vscc.collectionStore.RetrieveCollectionConfigPackage(common.CollectionCriteria{Channel: chid, Namespace: ccid})
+	if err != nil {
+		// fail if we get any error other than NoSuchCollectionError
+		// because it means something went wrong while looking up the
+		// older collection
+		if _, ok := err.(privdata.NoSuchCollectionError); !ok {
+			return errors.WithMessage(err, fmt.Sprintf("unable to check whether collection existed earlier for chaincode %s:%s",
+				cdRWSet.Name, cdRWSet.Version))
+		}
+	}
+	if ccp != nil {
+		return errors.Errorf("collection data should not exist for chaincode %s:%s", cdRWSet.Name, cdRWSet.Version)
+	}
 
 	if collectionsConfigArgs != nil {
 		collections := &common.CollectionConfigPackage{}
@@ -413,7 +443,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			/****************************************************************************/
 			if ac.PrivateChannelData() {
 				// do extra validation for collections
-				err = vscc.validateDeployRWSetAndCollection(lsccrwset, cdRWSet, lsccArgs)
+				err = vscc.validateDeployRWSetAndCollection(lsccrwset, cdRWSet, lsccArgs, chid, cdsArgs.ChaincodeSpec.ChaincodeId.Name)
 				if err != nil {
 					return err
 				}

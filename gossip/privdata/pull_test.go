@@ -59,6 +59,10 @@ func (cs mockCollectionStore) RetrieveCollection(fcommon.CollectionCriteria) (pr
 	panic("implement me")
 }
 
+func (cs mockCollectionStore) RetrieveCollectionConfigPackage(fcommon.CollectionCriteria) (*fcommon.CollectionConfigPackage, error) {
+	panic("implement me")
+}
+
 type mockCollectionAccess struct {
 	cs *mockCollectionStore
 }

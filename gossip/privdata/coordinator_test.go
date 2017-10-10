@@ -325,6 +325,10 @@ func (cs *collectionStore) RetrieveCollection(common.CollectionCriteria) (privda
 	panic("implement me")
 }
 
+func (cs *collectionStore) RetrieveCollectionConfigPackage(common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
+	panic("implement me")
+}
+
 type collectionAccessPolicy struct {
 	cs *collectionStore
 	n  uint64
