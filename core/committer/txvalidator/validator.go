@@ -208,10 +208,28 @@ func (v *txValidator) Validate(block *common.Block) error {
 	// success
 	v.invalidTXsForUpgradeCC(txsChaincodeNames, txsUpgradedChaincodes, txsfltr)
 
+	// make sure no transaction has skipped validation
+	err = v.allValidated(txsfltr, block)
+	if err != nil {
+		return err
+	}
+
 	// Initialize metadata structure
 	utils.InitBlockMetadata(block)
 
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr
+
+	return nil
+}
+
+// allValidated returns error if some of the validation flags have not been set
+// during validation
+func (v *txValidator) allValidated(txsfltr ledgerUtil.TxValidationFlags, block *common.Block) error {
+	for id, f := range txsfltr {
+		if peer.TxValidationCode(f) == peer.TxValidationCode_NOT_VALIDATED {
+			return errors.Errorf("transaction %d in block %d has skipped validation", id, block.Header.Number)
+		}
+	}
 
 	return nil
 }

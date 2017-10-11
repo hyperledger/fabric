@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package util
@@ -23,9 +13,24 @@ import (
 // TxValidationFlags is array of transaction validation codes. It is used when committer validates block.
 type TxValidationFlags []uint8
 
-// NewTxValidationFlags Create new object-array of validation codes with target size. Default values: valid.
+// NewTxValidationFlags Create new object-array of validation codes with target size.
+// Default values: TxValidationCode_NOT_VALIDATED
 func NewTxValidationFlags(size int) TxValidationFlags {
+	return newTxValidationFlagsSetValue(size, peer.TxValidationCode_NOT_VALIDATED)
+}
+
+// NewTxValidationFlagsSetValue Creates new object-array of validation codes with target size
+// and the supplied value
+func NewTxValidationFlagsSetValue(size int, value peer.TxValidationCode) TxValidationFlags {
+	return newTxValidationFlagsSetValue(size, value)
+}
+
+func newTxValidationFlagsSetValue(size int, value peer.TxValidationCode) TxValidationFlags {
 	inst := make(TxValidationFlags, size)
+	for i := range inst {
+		inst[i] = uint8(value)
+	}
+
 	return inst
 }
 

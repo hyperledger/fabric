@@ -13,8 +13,10 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspproto "github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -29,7 +31,15 @@ func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 		logger.Panicf("Error creating channel config: %s", err)
 	}
 
-	return genesis.NewFactoryImpl(channelGroup).Block(chainID)
+	gb, err := genesis.NewFactoryImpl(channelGroup).Block(chainID)
+	if err != nil || gb == nil {
+		return gb, err
+	}
+
+	txsFilter := util.NewTxValidationFlagsSetValue(len(gb.Data.Data), peer.TxValidationCode_VALID)
+	gb.Metadata.Metadata[cb.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
+
+	return gb, nil
 }
 
 // MakeGenesisBlockWithMSPs creates a genesis block using the MSPs provided for the given chainID

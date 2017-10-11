@@ -31,7 +31,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
 	gb.Data = &common.BlockData{Data: [][]byte{{123}}}
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
-		lutils.NewTxValidationFlags(len(gb.Data.Data))
+		lutils.NewTxValidationFlagsSetValue(len(gb.Data.Data), peer.TxValidationCode_VALID)
 	_, err = preprocessProtoBlock(nil, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
