@@ -21,5 +21,3 @@ cd -
 echo "========== Ledger component performance tests..."
 py.test -v --junitxml results_ledger_lte.xml ledger_lte.py
 
-echo "========== Test Auction Chaincode ..."
-py.test -v --junitxml results_auction_daily.xml testAuctionChaincode.py
