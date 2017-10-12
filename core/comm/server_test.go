@@ -1,5 +1,3 @@
-// +build !go1.9
-
 /*
 Copyright IBM Corp. All Rights Reserved.
 
@@ -351,19 +349,17 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 	//missing port
 	_, err = comm.NewGRPCServer("abcdef", comm.SecureServerConfig{UseTLS: false})
 	//check for error
-	msg = "listen tcp: missing port in address abcdef"
-	assert.EqualError(t, err, msg)
-	if err != nil {
-		t.Log(err.Error())
-	}
+	assert.Error(t, err, "Expected error with missing port")
+	msg = "missing port in address"
+	assert.Contains(t, err.Error(), msg)
 
 	//bad port
 	_, err = comm.NewGRPCServer("localhost:1BBB", comm.SecureServerConfig{UseTLS: false})
-	//check for error
-	msgs := [2]string{"listen tcp: lookup tcp/1BBB: nodename nor servname provided, or not known",
-		"listen tcp: unknown port tcp/1BBB"} //different error on MacOS and in Docker
+	//check for possible errors based on platform and Go release
+	msgs := [3]string{"listen tcp: lookup tcp/1BBB: nodename nor servname provided, or not known",
+		"listen tcp: unknown port tcp/1BBB", "listen tcp: address tcp/1BBB: unknown port"}
 
-	if assert.Error(t, err, "%s or %s expected", msgs[0], msgs[1]) {
+	if assert.Error(t, err, "[%s], [%s] or [%s] expected", msgs[0], msgs[1], msgs[2]) {
 		assert.Contains(t, msgs, err.Error())
 	}
 	if err != nil {
@@ -475,9 +471,11 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 	}
 }
 
-//pass a server func to test different types of servers
-func testNewGRPCServer(t *testing.T, testAddress string, svrfunc func(string, comm.SecureServerConfig) (comm.GRPCServer, error)) {
-	srv, err := svrfunc(testAddress,
+func TestNewGRPCServer(t *testing.T) {
+
+	t.Parallel()
+	testAddress := "localhost:9053"
+	srv, err := comm.NewGRPCServer(testAddress,
 		comm.SecureServerConfig{UseTLS: false})
 	//check for error
 	if err != nil {
@@ -516,16 +514,7 @@ func testNewGRPCServer(t *testing.T, testAddress string, svrfunc func(string, co
 	} else {
 		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
 	}
-}
 
-func TestNewGRPCServer(t *testing.T) {
-	t.Parallel()
-	testNewGRPCServer(t, "localhost:9053", comm.NewGRPCServer)
-}
-
-func TestNewChaincodeGRPCServer(t *testing.T) {
-	t.Parallel()
-	testNewGRPCServer(t, "localhost:9059", comm.NewChaincodeGRPCServer)
 }
 
 func TestNewGRPCServerFromListener(t *testing.T) {
@@ -782,9 +771,8 @@ func TestWithSignedRootCertificates(t *testing.T) {
 	//invoke the EmptyCall service
 	_, err = invokeEmptyCall(testAddress, dialOptions)
 
-	//client should not be able to connect
-	assert.EqualError(t, err, x509.UnknownAuthorityError{}.Error())
-	t.Logf("assert.EqualError: %s", err.Error())
+	//client should be able to connect with Go 1.9
+	assert.NoError(t, err, "Expected client to connect with server cert only")
 
 	//now use the CA certificate
 	certPoolCA := x509.NewCertPool()
@@ -862,9 +850,8 @@ func TestWithSignedIntermediateCertificates(t *testing.T) {
 	//invoke the EmptyCall service
 	_, err = invokeEmptyCall(testAddress, dialOptions)
 
-	//client should not be able to connect
-	assert.EqualError(t, err, x509.UnknownAuthorityError{}.Error())
-	t.Logf("assert.EqualError: %s", err.Error())
+	//client should be able to connect with Go 1.9
+	assert.NoError(t, err, "Expected client to connect with server cert only")
 
 	//now use the CA certificate
 
