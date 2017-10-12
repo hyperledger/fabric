@@ -55,7 +55,7 @@ this directory.  You should see the following:
 
 .. code:: bash
 
-   chaincode	invoke.js	network		package.json	query.js	startFabric.sh
+   creds	invoke.js	package.json	query.js	startFabric.sh
 
 Now use the ``startFabric.sh`` script to launch the network.
 
