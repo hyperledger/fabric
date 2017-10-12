@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
@@ -300,7 +299,7 @@ func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 	if err := proto.Unmarshal(dbVal, txPvtRWSet); err != nil {
 		return nil, err
 	}
-	filteredTxPvtRWSet := pvtdatastorage.TrimPvtWSet(txPvtRWSet, scanner.filter)
+	filteredTxPvtRWSet := trimPvtWSet(txPvtRWSet, scanner.filter)
 
 	return &EndorserPvtSimulationResults{
 		ReceivedAtBlockHeight: blockHeight,

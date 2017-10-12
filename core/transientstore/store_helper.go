@@ -12,6 +12,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
 )
 
 var (
@@ -178,4 +180,38 @@ func createPurgeIndexByTxidRangeEndKey(txid string) []byte {
 func GetTransientStorePath() string {
 	sysPath := config.GetPath("peer.fileSystemPath")
 	return filepath.Join(sysPath, "transientStore")
+}
+
+// trimPvtWSet returns a `TxPvtReadWriteSet` that retains only list of 'ns/collections' supplied in the filter
+// A nil filter does not filter any results and returns the original `pvtWSet` as is
+func trimPvtWSet(pvtWSet *rwset.TxPvtReadWriteSet, filter ledger.PvtNsCollFilter) *rwset.TxPvtReadWriteSet {
+	if filter == nil {
+		return pvtWSet
+	}
+
+	var filteredNsRwSet []*rwset.NsPvtReadWriteSet
+	for _, ns := range pvtWSet.NsPvtRwset {
+		var filteredCollRwSet []*rwset.CollectionPvtReadWriteSet
+		for _, coll := range ns.CollectionPvtRwset {
+			if filter.Has(ns.Namespace, coll.CollectionName) {
+				filteredCollRwSet = append(filteredCollRwSet, coll)
+			}
+		}
+		if filteredCollRwSet != nil {
+			filteredNsRwSet = append(filteredNsRwSet,
+				&rwset.NsPvtReadWriteSet{
+					Namespace:          ns.Namespace,
+					CollectionPvtRwset: filteredCollRwSet,
+				},
+			)
+		}
+	}
+	var filteredTxPvtRwSet *rwset.TxPvtReadWriteSet
+	if filteredNsRwSet != nil {
+		filteredTxPvtRwSet = &rwset.TxPvtReadWriteSet{
+			DataModel:  pvtWSet.GetDataModel(),
+			NsPvtRwset: filteredNsRwSet,
+		}
+	}
+	return filteredTxPvtRwSet
 }
