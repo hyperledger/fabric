@@ -15,12 +15,15 @@ import (
 const (
 	PeerPoliciesGroupKey = "PeerPolicies"
 	APIsGroupKey         = "APIs"
+	ChaincodesGroupKey   = "Chaincodes"
 )
 
 // resourceGroup represents the ConfigGroup at the base of the resource configuration.
+// Note, the members are always initialized, so that there is no need for nil checks.
 type resourceGroup struct {
 	apisGroup         *apisGroup
 	peerPoliciesGroup *peerPoliciesGroup
+	chaincodesGroup   *chaincodesGroup
 }
 
 func newResourceGroup(root *cb.ConfigGroup) (*resourceGroup, error) {
@@ -33,6 +36,7 @@ func newResourceGroup(root *cb.ConfigGroup) (*resourceGroup, error) {
 		apisGroup:         &apisGroup{},
 		peerPoliciesGroup: &peerPoliciesGroup{},
 	}
+	rg.chaincodesGroup, _ = newChaincodesGroup(&cb.ConfigGroup{}) // Initialize to empty
 
 	for subGroupName, subGroup := range root.Groups {
 		var err error
@@ -41,6 +45,8 @@ func newResourceGroup(root *cb.ConfigGroup) (*resourceGroup, error) {
 			rg.apisGroup, err = newAPIsGroup(subGroup)
 		case PeerPoliciesGroupKey:
 			rg.peerPoliciesGroup, err = newPeerPoliciesGroup(subGroup)
+		case ChaincodesGroupKey:
+			rg.chaincodesGroup, err = newChaincodesGroup(subGroup)
 		default:
 			err = errors.New("unknown sub-group")
 		}

@@ -19,17 +19,12 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
+// RootGroupKey is the namespace in the config tree for this set of config
 const RootGroupKey = "Resources"
 
 var logger = flogging.MustGetLogger("common/config/resource")
 
-// PolicyMapper is an interface for
-type PolicyMapper interface {
-	// PolicyRefForAPI takes the name of an API, and returns the policy name
-	// or the empty string if the API is not found
-	PolicyRefForAPI(apiName string) string
-}
-
+// Bundle stores an immutable group of resources configuration
 type Bundle struct {
 	rg  *resourceGroup
 	cm  configtxapi.Manager
@@ -95,18 +90,27 @@ func New(envConfig *cb.Envelope, mspManager msp.MSPManager, channelPolicyManager
 	return b, nil
 }
 
+// RootGroupKey returns the name of the key for the root group (the namespace for this config).
 func (b *Bundle) RootGroupKey() string {
 	return RootGroupKey
 }
 
+// ConfigtxManager returns a reference to a configtx.Manager which can process updates to this config.
 func (b *Bundle) ConfigtxManager() configtxapi.Manager {
 	return b.cm
 }
 
+// PolicyManager returns a policy manager which can resolve names both in the /Channel and /Resources namespaces.
 func (b *Bundle) PolicyManager() policies.Manager {
 	return b.pm
 }
 
+// APIPolicyMapper returns a way to map API names to policies governing their invocation.
 func (b *Bundle) APIPolicyMapper() PolicyMapper {
 	return b.rg.apisGroup
+}
+
+// ChaincodeRegistery returns a way to query for chaincodes defined in this channel.
+func (b *Bundle) ChaincodeRegistry() ChaincodeRegistry {
+	return b.rg.chaincodesGroup
 }
