@@ -24,12 +24,11 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 -  `Git client <https://git-scm.com/downloads>`__
--  `Go <https://golang.org/>`__ - 1.7 or later (for releases before
-   v1.0, 1.6 or later)
+-  `Go <https://golang.org/>`__ - 1.7.5
 -  For macOS,
    `Xcode <https://itunes.apple.com/us/app/xcode/id497799835?mt=12>`__
    must be installed
--  `Docker <https://www.docker.com/products/overview>`__ - 1.12 or later
+-  `Docker <https://www.docker.com/products/overview>`__ - 17.03.0-ce or later
 -  `Docker Compose <https://docs.docker.com/compose/>`__ - 1.8.1 or later
 -  `Pip <https://pip.pypa.io/en/stable/installing/>`__
 -  (macOS) you may need to install gnutar, as macOS comes with bsdtar

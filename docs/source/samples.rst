@@ -44,7 +44,7 @@ you will extract the platform-specific binaries:
 
 .. code:: bash
 
-  curl -sSL https://goo.gl/iX9dek | bash
+  curl -sSL https://goo.gl/Q3YRTi | bash
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl. Please visit the
@@ -79,7 +79,7 @@ The script lists out the Docker images installed upon conclusion.
 
 Look at the names for each image; these are the components that will ultimately
 comprise our Hyperledger Fabric network.  You will also notice that you have
-two instances of the same image ID - one tagged as "x86_64-1.0.0" and
+two instances of the same image ID - one tagged as "x86_64-1.0.X" and
 one tagged as "latest".
 
 .. note:: On different architectures, the x86_64 would be replaced

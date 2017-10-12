@@ -2,7 +2,7 @@ Building Your First Network
 ===========================
 
 .. note:: These instructions have been verified to work against the
-          version "1.0.0" tagged Docker images and the pre-compiled
+          version "1.0.3" tagged Docker images and the pre-compiled
           setup utilities within the supplied tar file. If you run
           these commands with images or tools from the current master
           branch, it is possible that you will see configuration and panic
@@ -267,6 +267,13 @@ and "Specs" parameters under the ``OrdererOrgs`` header:
   # --------------------------------------------------------
   - Name: Orderer
     Domain: example.com
+    CA:
+        Country: US
+        Province: California
+        Locality: San Francisco
+    #   OrganizationalUnit: Hyperledger Fabric
+    #   StreetAddress: address for org # default nil
+    #   PostalCode: postalCode for org # default nil
     # ------------------------------------------------------
     # "Specs" - See PeerOrgs below for complete description
   # -----------------------------------------------------
@@ -393,6 +400,11 @@ in this sample network.
   2017-06-12 21:01:37.562 EDT [msp] getMspConfig -> INFO 003 crls folder not found at [/Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/intermediatecerts]. Skipping.: [stat /Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/crls: no such file or directory]
   2017-06-12 21:01:37.562 EDT [msp] getMspConfig -> INFO 004 MSP configuration file not found at [/Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/config.yaml]: [stat /Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/config.yaml: no such file or directory]
 
+.. _createchanneltx:
+
+Create a Channel Configuration Transaction
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Next, we need to create the channel transaction artifact. Be sure to replace $CHANNEL_NAME or
 set CHANNEL_NAME as an environment variable that can be used throughout these instructions:
 
@@ -451,6 +463,8 @@ Start your network:
 If you want to see the realtime logs for your network, then do not supply the ``-d`` flag.
 If you let the logs stream, then you will need to open a second terminal to execute the CLI calls.
 
+.. _peerenvvars::
+
 Environment variables
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -476,6 +490,13 @@ paths:
 Create & Join Channel
 ^^^^^^^^^^^^^^^^^^^^^
 
+Recall that we created the channel configuration transaction using the
+``configtxgen`` tool in the :ref:`createchanneltx` section, above. You can
+repeat that process to create additional channel configuration transactions,
+using the same or different profiles in the ``configtx.yaml`` that you pass
+to the ``configtxgen`` tool. Then you can repeat the process defined in this
+section to establish those other channels in your network.
+
 We will enter the CLI container using the ``docker exec`` command:
 
 .. code:: bash
@@ -488,13 +509,9 @@ If successful you should see the following:
 
         root@0d78bb69300d:/opt/gopath/src/github.com/hyperledger/fabric/peer#
 
-Recall that we used the configtxgen tool to generate a channel configuration
-artifact - ``channel.tx``. We are going to pass in this artifact to the orderer
-as part of the create channel request.
-
-.. note:: Notice the ``-- cafile`` that we pass as part of this command.  It is
-          the local path to the orderer's root cert, allowing us to verify the
-          TLS handshake.
+Next, we are going to pass in the generated channel configuration transaction
+artifact that we created in the :ref:`createchanneltx` section (we called
+it ``channel.tx``) to the orderer as part of the create channel request.
 
 We specify our channel name with the ``-c`` flag and our channel configuration
 transaction with the ``-f`` flag. In this case it is ``channel.tx``, however
@@ -510,6 +527,10 @@ you can mount your own configuration transaction with a different name.
         # be sure to replace the $CHANNEL_NAME variable appropriately
 
         peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME -f ./channel-artifacts/channel.tx --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+.. note:: Notice the ``-- cafile`` that we pass as part of this command.  It is
+          the local path to the orderer's root cert, allowing us to verify the
+          TLS handshake.
 
 This command returns a genesis block - ``<channel-ID.block>`` - which we will use to join the channel.
 It contains the configuration information specified in ``channel.tx``.
@@ -529,7 +550,8 @@ Now let's join ``peer0.org1.example.com`` to the channel.
          peer channel join -b <channel-ID.block>
 
 You can make other peers join the channel as necessary by making appropriate
-changes in the four environment variables.
+changes in the four environment variables we used in the :ref:`peerenvvars`
+section, above.
 
 Install & Instantiate Chaincode
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -895,6 +917,24 @@ The output should display the two marbles owned by ``jerry``:
 
        Query Result: [{"Key":"marble2", "Record":{"color":"red","docType":"marble","name":"marble2","owner":"jerry","size":50}},{"Key":"marble3", "Record":{"color":"blue","docType":"marble","name":"marble3","owner":"jerry","size":70}}]
 
+
+Why CouchDB
+-------------
+CouchDB is a kind of NoSQL solution. It is a document oriented database where document fields are stored as key-value mpas. Fields can be either a simple key/value pair, list, or map.
+In addition to keyed/composite-key/key-range queries which are supported by LevelDB, CouchDB also supports full data rich queries capability, such as non-key queries against the whole blockchain data,
+since its data content is stored in JSON format and fully queryable. Therefore, CouchDB can meet chaincode, auditing, reporting requirements for many use cases that not supported by LevelDB.
+
+CouchDB can also enhance the security for compliance and data protection in the blockchain. As it is able to implement field-level security through the filtering and masking of individual attributes within a transaction, and only authorizing the read-only permission if needed.
+
+In addition, CouchDB falls into the AP-type (Availability and Partition Tolerance) of the CAP theorem. It uses a master-master replication model with ``Eventual Consistency``.
+More information can be found on the
+`Eventual Consistency page of the CouchDB documentation <http://docs.couchdb.org/en/latest/intro/consistency.html>`__.
+However, under each fabric peer, there is no database replicas, writes to database are guaranteed consistent and durable (not ``Eventual Consistency``).
+
+CouchDB is the first external pluggable state database for Fabric, and there could and should be other external database options. For example, IBM enables the relational database for its blockchain.
+And the CP-type (Consistency and Partition Tolerance) databases may also in need, so as to enable data consistency without application level guarantee.
+
+
 A Note on Data Persistence
 --------------------------
 
@@ -924,21 +964,22 @@ Troubleshooting
 -  Always start your network fresh.  Use the following command
    to remove artifacts, crypto, containers and chaincode images:
 
-.. code:: bash
+   .. code:: bash
 
       ./byfn.sh -m down
 
-- **YOU WILL SEE ERRORS IF YOU DO NOT REMOVE CONTAINERS AND IMAGES**
+   .. note:: You **will** see errors if you do not remove old containers
+             and images.
 
--  If you see Docker errors, first check your version (should be 17.03.1 or above),
+-  If you see Docker errors, first check your docker version (:doc:`prereqs`),
    and then try restarting your Docker process.  Problems with Docker are
    oftentimes not immediately recognizable.  For example, you may see errors
    resulting from an inability to access crypto material mounted within a
    container.
 
--  If they persist remove your images and start from scratch:
+   If they persist remove your images and start from scratch:
 
-.. code:: bash
+   .. code:: bash
 
        docker rm -f $(docker ps -aq)
        docker rmi -f $(docker images -q)
@@ -947,67 +988,70 @@ Troubleshooting
    sure you have properly updated the channel name and chaincode name.  There
    are placeholder values in the supplied sample commands.
 
+
 -  If you see the below error:
 
-.. code:: bash
+   .. code:: bash
 
        Error: Error endorsing chaincode: rpc error: code = 2 desc = Error installing chaincode code mycc:1.0(chaincode /var/hyperledger/production/chaincodes/mycc.1.0 exits)
 
-You likely have chaincode images (e.g. ``dev-peer1.org2.example.com-mycc-1.0`` or
-``dev-peer0.org1.example.com-mycc-1.0``) from prior runs. Remove them and try
-again.
+   You likely have chaincode images (e.g. ``dev-peer1.org2.example.com-mycc-1.0`` or
+   ``dev-peer0.org1.example.com-mycc-1.0``) from prior runs. Remove them and try
+   again.
 
-.. code:: bash
+   .. code:: bash
 
-    docker rmi -f $(docker images | grep peer[0-9]-peer[0-9] | awk '{print $3}')
+       docker rmi -f $(docker images | grep peer[0-9]-peer[0-9] | awk '{print $3}')
 
-- If you see something similar to the following:
+-  If you see something similar to the following:
 
-.. code:: bash
+   .. code:: bash
 
       Error connecting: rpc error: code = 14 desc = grpc: RPC failed fast due to transport failure
       Error: rpc error: code = 14 desc = grpc: RPC failed fast due to transport failure
 
-Make sure you are running your network against the "1.0.0" images that have
-been retagged as "latest".
+   Make sure you are running your network against the "1.0.0" images that have
+   been retagged as "latest".
 
-If you see the below error:
+-  If you see the below error:
 
-.. code:: bash
+   .. code:: bash
 
-  [configtx/tool/localconfig] Load -> CRIT 002 Error reading configuration: Unsupported Config Type ""
-  panic: Error reading configuration: Unsupported Config Type ""
+     [configtx/tool/localconfig] Load -> CRIT 002 Error reading configuration: Unsupported Config Type ""
+     panic: Error reading configuration: Unsupported Config Type ""
 
-Then you did not set the ``FABRIC_CFG_PATH`` environment variable properly.  The
-configtxgen tool needs this variable in order to locate the configtx.yaml.  Go
-back and execute an ``export FABRIC_CFG_PATH=$PWD``, then recreate your
-channel artifacts.
+   Then you did not set the ``FABRIC_CFG_PATH`` environment variable properly.  The
+   configtxgen tool needs this variable in order to locate the configtx.yaml.  Go
+   back and execute an ``export FABRIC_CFG_PATH=$PWD``, then recreate your
+   channel artifacts.
 
 -  To cleanup the network, use the ``down`` option:
 
-.. code:: bash
+   .. code:: bash
 
        ./byfn.sh -m down
 
-- If you see an error stating that you still have "active endpoints", then prune
-  your Docker networks.  This will wipe your previous networks and start you with a
-  fresh environment:
+-  If you see an error stating that you still have "active endpoints", then prune
+   your Docker networks.  This will wipe your previous networks and start you with a
+   fresh environment:
 
-.. code:: bash
+   .. code:: bash
 
         docker network prune
 
-You will see the following message:
+   You will see the following message:
 
-.. code:: bash
+   .. code:: bash
 
-  WARNING! This will remove all networks not used by at least one container.
-  Are you sure you want to continue? [y/N]
+      WARNING! This will remove all networks not used by at least one container.
+      Are you sure you want to continue? [y/N]
 
-Select ``y``.
+   Select ``y``.
 
-- If you continue to see errors, share your logs on the **# fabric-questions**
-  channel on `Hyperledger Rocket Chat <https://chat.hyperledger.org/home>`__.
+.. note:: If you continue to see errors, share your logs on the
+          **fabric-questions** channel on
+          `Hyperledger Rocket Chat <https://chat.hyperledger.org/home>`__
+          or on `StackOverflow <https://stackoverflow.com/questions/tagged/hyperledger-fabric>`__.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

@@ -77,6 +77,7 @@ in particular, ``Init`` and ``Invoke`` functions. So, let's add the go import
 statements for the necessary dependencies for our chaincode. We'll import the
 chaincode shim package and the
 `peer protobuf package <http://godoc.org/github.com/hyperledger/fabric/protos/peer>`_.
+Next, let's add a struct ``SimpleAsset`` as a receiver for Chaincode shim functions.
 
 .. code:: go
 
@@ -88,6 +89,10 @@ chaincode shim package and the
     	"github.com/hyperledger/fabric/core/chaincode/shim"
     	"github.com/hyperledger/fabric/protos/peer"
     )
+
+    // SimpleAsset implements a simple chaincode to manage an asset
+    type SimpleAsset struct {
+    }
 
 Initializing the Chaincode
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

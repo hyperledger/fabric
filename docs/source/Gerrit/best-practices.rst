@@ -88,7 +88,7 @@ as a topic in **TopicName** use the following command as an example:
 
 $ git push REMOTE HEAD:refs/for/master/TopicName
 
-The topic will show up in the review :abbr:``UI`` and in the
+The topic will show up in the review ``UI`` and in the
 ``Open Changes List``. Topic branches will disappear from the master
 tree when its content is merged.
 

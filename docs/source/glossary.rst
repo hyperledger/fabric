@@ -127,8 +127,10 @@ be added/removed for various reasons.
 Endorsement
 -----------
 
-Refers to the process where specific peer nodes execute a transaction and return
-a ``YES/NO`` response to the client application that generated the transaction proposal.
+Refers to the process where specific peer nodes execute a chaincode transaction and return
+a proposal response to the client application. The proposal response includes the
+chaincode execution response message, results (read set and write set), and events,
+as well as a signature to serve as proof of the peer's chaincode execution.
 Chaincode applications have corresponding endorsement policies, in which the endorsing
 peers are specified.
 
@@ -143,8 +145,9 @@ A policy could require that a transaction be endorsed by a minimum number of
 endorsing peers, a minimum percentage of endorsing peers, or by all endorsing
 peers that are assigned to a specific chaincode application. Policies can be
 curated based on the application and the desired level of resilience against
-misbehavior (deliberate or not) by the endorsing peers. A distinct endorsement
-policy for install and instantiate transactions is also required.
+misbehavior (deliberate or not) by the endorsing peers. A transaction that is submitted
+must satisfy the endorsement policy before being marked as valid by committing peers.
+A distinct endorsement policy for install and instantiate transactions is also required.
 
 .. _Fabric-ca:
 
@@ -190,17 +193,25 @@ The process of placing a chaincode on a peer's file system.
 Instantiate
 -----------
 
-The process of starting a chaincode container.
+The process of starting and initializing a chaincode application on a specific channel.
+After instantiation, peers that have the chaincode installed can accept chaincode
+invocations.
 
 .. _Invoke:
 
 Invoke
 ------
 
-Used to call chaincode functions. Invocations are captured as transaction
-proposals, which then pass through a modular flow of endorsement, ordering,
-validation, committal. The structure of invoke is a function and an array of
-arguments.
+Used to call chaincode functions. A client application invokes chaincode by
+sending a transaction proposal to a peer. The peer will execute the chaincode
+and return an endorsed proposal response to the client application. The client
+application will gather enough proposal responses to satisfy an endorsement policy,
+and will then submit the transaction results for ordering, validation, and commit.
+The client application may choose not to submit the transaction results. For example
+if the invoke only queried the ledger, the client application typically would not
+submit the read-only transaction, unless there is desire to log the read on the ledger
+for audit purpose. The invoke includes a channel identifier, the chaincode function to
+invoke, and an array of arguments.
 
 .. _Leading-Peer:
 
@@ -279,7 +290,7 @@ read/write operations to the ledger.  Peers are owned and maintained by members.
 Policy
 ------
 
-There are policies for endorsement, validation, block committal, chaincode
+There are policies for endorsement, validation, chaincode
 management and network/channel management.
 
 .. _Proposal:
@@ -295,7 +306,14 @@ proposal is either an instantiate or an invoke (read/write) request.
 Query
 -----
 
-A query requests the value of a key(s) against the current state.
+A query is a chaincode invocation which reads the ledger current state but does
+not write to the ledger. The chaincode function may query certain keys on the ledger,
+or may query for a set of keys on the ledger. Since queries do not change ledger state,
+the client application will typically not submit these read-only transactions for ordering,
+validation, and commit. Although not typical, the client application can choose to
+submit the read-only transaction for ordering, validation, and commit, for example if the
+client wants auditable proof on the ledger chain that it had knowledge of specific ledger
+state at a certain point in time.
 
 .. _SDK:
 
@@ -316,7 +334,7 @@ State Database
 --------------
 
 Current state data is stored in a state database for efficient reads and queries
-from chaincode. These databases include levelDB and couchDB.
+from chaincode. Supported databases include levelDB and couchDB.
 
 .. _System-Chain:
 
@@ -340,9 +358,11 @@ channels relative to their aligned and varying business agendas.
 Transaction
 -----------
 
-An invoke or instantiate operation.  Invokes are requests to read/write data from
-the ledger.  Instantiate is a request to start a chaincode container on a peer.
+Invoke or instantiate results that are submitted for ordering, validation, and commit.
+Invokes are requests to read/write data from the ledger. Instantiate is a request to
+start and initialize a chaincode on a channel. Application clients gather invoke or
+instantiate responses from endorsing peers and package the results and endorsements
+into a transaction that is submitted for ordering, validation, and commit.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-

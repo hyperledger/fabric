@@ -3,7 +3,7 @@ Membership Service Providers (MSP)
 
 The document serves to provide details on the setup and best practices for MSPs.
 
-Membership service provider (MSP) is a component that aims to offer an
+Membership Service Provider (MSP) is a component that aims to offer an
 abstraction of a membership operation architecture.
 
 In particular, MSP abstracts away all cryptographic mechanisms and protocols
@@ -70,12 +70,12 @@ verification. These parameters are deduced by
 *Valid*  identities for this MSP instance are required to satisfy the following conditions:
 
 - They are in the form of X.509 certificates with a verifiable certificate path to
-  exactly one of the root of trust certificates
-- They are not included in any CRL
+  exactly one of the root of trust certificates;
+- They are not included in any CRL;
 - And they *list* one or more of the Organizational Units of the MSP configuration
   in the ``OU`` field of their X.509 certificate structure.
 
-For more information on the validity of identities in the current MSP implementation
+For more information on the validity of identities in the current MSP implementation,
 we refer the reader to :doc:`msp-identity-validity-rules`.
 
 In addition to verification related parameters, for the MSP to enable
@@ -85,7 +85,7 @@ specify:
 - The signing key used for signing by the node (currently only ECDSA keys are
   supported), and
 - The node's X.509 certificate, that is a valid identity under the
-  verification parameters of this MSP
+  verification parameters of this MSP.
 
 It is important to note that MSP identities never expire; they can only be revoked
 by adding them to the appropriate CRLs. Additionally, there is currently no
@@ -143,7 +143,7 @@ mspconfig folder is expected to be relative to FABRIC_CFG_PATH and is provided
 as the value of parameter ``mspConfigPath`` for the peer, and ``LocalMSPDir``
 for the orderer. The identifier of the node's MSP is provided as a value of
 parameter ``localMspId`` for the peer and ``LocalMSPID`` for the orderer.
-These variables can be overriden via the environment using the CORE prefix for
+These variables can be overridden via the environment using the CORE prefix for
 peer (e.g. CORE_PEER_LOCALMSPID) and the ORDERER prefix for the orderer (e.g.
 ORDERER_GENERAL_LOCALMSPID). Notice that for the orderer setup, one needs to
 generate, and provide to the orderer the genesis block of the system channel.
@@ -296,7 +296,7 @@ considered for that MSP's identity validation:
 In the current MSP implementation we only support method (1) as it is simpler
 and does not require blacklisting the no longer considered intermediate CA.
 
-**5) CAs and TLS CAs
+**6) CAs and TLS CAs**
 
 MSP identities' root CAs and MSP TLS certificates' root CAs (and relative intermediate CAs)
 need to be declared in different folders. This is to avoid confusion between

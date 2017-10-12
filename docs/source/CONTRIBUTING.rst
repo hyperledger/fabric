@@ -72,8 +72,10 @@ If you are a user and you find a bug, please submit an issue using
 Please try to provide sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
 hours. If not, please bump the issue with a comment and request that it be
-reviewed. You can also post to the ``#fabric-maintainers`` channel in
-`chat <https://chat.hyperledger.org/channel/fabric-maintainers>`__.
+reviewed. You can also post to the relevant fabric channel in
+`Hyperledger Rocket Chat <https://chat.hyperledger.org>`__.  For example, a doc bug should
+be broadcast to ``#fabric-documentation``, a database bug to ``#fabric-ledger``,
+and so on... 
 
 Fixing issues and working stories
 ---------------------------------
@@ -247,15 +249,13 @@ designate an initial set of maintainers that will be approved by the
 top-level project's existing maintainers when the project is first
 approved. The project's maintainers will, from time-to-time, consider
 adding or removing a maintainer. An existing maintainer can submit a
-change set to the :doc:`MAINTAINERS.rst <MAINTAINERS>` file. If there are
-less than eight maintainers, a majority of the existing maintainers on
-that project are required to merge the change set. If there are more
-than eight existing maintainers, then if five or more of the maintainers
-concur with the proposal, the change set is then merged and the
-individual is added to (or alternatively, removed from) the maintainers
-group. explicit resignation, some infraction of the `code of
-conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
-or consistently demonstrating poor judgement.
+change set to the :doc:`MAINTAINERS.rst <MAINTAINERS>` file. A nominated
+Contributor may become a Maintainer by a majority approval of the proposal
+by the existing Maintainers. Once approved, the change set is then merged
+and the individual is added to (or alternatively, removed from) the maintainers
+group. Maintainers may be removed by explicit resignation, or for some
+infraction of the `code of conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
+or by consistently demonstrating poor judgement.
 
 Legal stuff
 -----------
