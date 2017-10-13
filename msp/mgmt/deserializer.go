@@ -26,6 +26,9 @@ import (
 // DeserializersManager is a support interface to
 // access the local and channel deserializers
 type DeserializersManager interface {
+
+	// Deserialize receives SerializedIdentity bytes and returns the unmarshaled form
+	// of the SerializedIdentity, or error on failure
 	Deserialize(raw []byte) (*mspproto.SerializedIdentity, error)
 
 	// GetLocalMSPIdentifier returns the local MSP identifier

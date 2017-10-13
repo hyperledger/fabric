@@ -22,13 +22,14 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/gossip/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestMspSecurityAdvisor_OrgByPeerIdentity(t *testing.T) {
 	dm := &mocks.DeserializersManager{
-		LocalDeserializer: &mocks.IdentityDeserializer{[]byte("Alice"), []byte("msg1")},
+		LocalDeserializer: &mocks.IdentityDeserializer{[]byte("Alice"), []byte("msg1"), mock.Mock{}},
 		ChannelDeserializers: map[string]msp.IdentityDeserializer{
-			"A": &mocks.IdentityDeserializer{[]byte("Bob"), []byte("msg2")},
+			"A": &mocks.IdentityDeserializer{[]byte("Bob"), []byte("msg2"), mock.Mock{}},
 		},
 	}
 

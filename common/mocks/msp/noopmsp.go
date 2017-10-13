@@ -86,6 +86,11 @@ func (msp *noopmsp) SatisfiesPrincipal(id m.Identity, principal *msp.MSPPrincipa
 	return nil
 }
 
+// IsWellFormed checks if the given identity can be deserialized into its provider-specific form
+func (msp *noopmsp) IsWellFormed(_ *msp.SerializedIdentity) error {
+	return nil
+}
+
 type noopidentity struct {
 }
 

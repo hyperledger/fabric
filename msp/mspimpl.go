@@ -1112,3 +1112,23 @@ func (msp *bccspmsp) getValidityOptsForCert(cert *x509.Certificate) x509.VerifyO
 
 	return tempOpts
 }
+
+// IsWellFormed checks if the given identity can be deserialized into its provider-specific form.
+// In this MSP implementation, well formed means that the PEM has a Type which is either
+// the string 'CERTIFICATE' or the Type is missing altogether.
+func (msp *bccspmsp) IsWellFormed(identity *m.SerializedIdentity) error {
+	bl, _ := pem.Decode(identity.IdBytes)
+	if bl == nil {
+		return errors.New("PEM decoding resulted in an empty block")
+	}
+	// Important: This method looks very similar to getCertFromPem(idBytes []byte) (*x509.Certificate, error)
+	// But we:
+	// 1) Must ensure PEM block is of type CERTIFICATE or is empty
+	// 2) Must not replace getCertFromPem with this method otherwise we will introduce
+	//    a change in validation logic which will result in a chain fork.
+	if bl.Type != "CERTIFICATE" && bl.Type != "" {
+		return errors.Errorf("pem type is %s, should be 'CERTIFICATE' or missing", bl.Type)
+	}
+	_, err := x509.ParseCertificate(bl.Bytes)
+	return err
+}
