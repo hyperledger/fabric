@@ -67,7 +67,7 @@ func doOutputChannelCreateTx(conf *genesisconfig.Profile, channelID string, outp
 	for _, org := range conf.Application.Organizations {
 		orgNames = append(orgNames, org.Name)
 	}
-	configtx, err := channelconfig.MakeChainCreationTransaction(channelID, conf.Consortium, nil, orgNames...)
+	configtx, err := encoder.MakeChannelCreationTransaction(channelID, conf.Consortium, nil, nil, orgNames...)
 	if err != nil {
 		return fmt.Errorf("Error generating configtx: %s", err)
 	}

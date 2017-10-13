@@ -23,9 +23,9 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	localsigner "github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/util"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -76,7 +76,7 @@ func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
 		return nil, err
 	}
 
-	chCrtEnv, err := channelconfig.MakeChainCreationTransaction(chainID, genesisconfig.SampleConsortiumName, signer)
+	chCrtEnv, err := encoder.MakeChannelCreationTransaction(chainID, genesisconfig.SampleConsortiumName, signer, nil)
 
 	if err != nil {
 		return nil, err

@@ -7,13 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -98,49 +94,4 @@ func (cct *channelCreationTemplate) Envelope(channelID string) (*cb.ConfigUpdate
 			},
 		}),
 	}, nil
-}
-
-// MakeChainCreationTransaction is a handy utility function for creating new chain transactions using the underlying Template framework
-func MakeChainCreationTransaction(channelID string, consortium string, signer msp.SigningIdentity, orgs ...string) (*cb.Envelope, error) {
-	newChainTemplate := NewChainCreationTemplate(consortium, orgs)
-	newConfigUpdateEnv, err := newChainTemplate.Envelope(channelID)
-	if err != nil {
-		return nil, err
-	}
-
-	payloadSignatureHeader := &cb.SignatureHeader{}
-	if signer != nil {
-		sSigner, err := signer.Serialize()
-		if err != nil {
-			return nil, fmt.Errorf("Serialization of identity failed, err %s", err)
-		}
-
-		newConfigUpdateEnv.Signatures = []*cb.ConfigSignature{&cb.ConfigSignature{
-			SignatureHeader: utils.MarshalOrPanic(utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())),
-		}}
-
-		newConfigUpdateEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigUpdateEnv.Signatures[0].SignatureHeader, newConfigUpdateEnv.ConfigUpdate))
-		if err != nil {
-			return nil, err
-		}
-
-		payloadSignatureHeader = utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())
-	}
-
-	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, msgVersion, channelID, epoch)
-	utils.SetTxID(payloadChannelHeader, payloadSignatureHeader)
-	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(newConfigUpdateEnv)}
-	paylBytes := utils.MarshalOrPanic(payload)
-
-	var sig []byte
-	if signer != nil {
-		// sign the payload
-		sig, err = signer.Sign(paylBytes)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &cb.Envelope{Payload: paylBytes, Signature: sig}, nil
 }
