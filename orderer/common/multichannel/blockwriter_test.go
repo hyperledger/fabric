@@ -22,7 +22,7 @@ import (
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -175,7 +175,7 @@ func TestGoodWriteConfig(t *testing.T) {
 		},
 	}
 
-	ctx := makeConfigTx(provisional.TestChainID, 1)
+	ctx := makeConfigTx(genesisconfig.TestChainID, 1)
 	block := cb.NewBlock(1, genesisBlock.Header.Hash())
 	block.Data.Data = [][]byte{utils.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")

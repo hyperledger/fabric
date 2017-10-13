@@ -25,7 +25,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	cl "github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -51,7 +51,7 @@ func initialize(t *testing.T) (*testEnv, *fileLedger) {
 	assert.NoError(t, err, "Error creating temp dir: %s", err)
 
 	flf := New(name).(*fileLedgerFactory)
-	fl, err := flf.GetOrCreate(provisional.TestChainID)
+	fl, err := flf.GetOrCreate(genesisconfig.TestChainID)
 	assert.NoError(t, err, "Error GetOrCreate chain")
 
 	fl.Append(genesisBlock)
@@ -154,7 +154,7 @@ func TestReinitialization(t *testing.T) {
 	// add the block to the ledger
 	ledger1.Append(b1)
 
-	fl, err := tev.flf.GetOrCreate(provisional.TestChainID)
+	fl, err := tev.flf.GetOrCreate(genesisconfig.TestChainID)
 	ledger1, ok := fl.(*fileLedger)
 	assert.NoError(t, err, "Expected to sucessfully get test chain")
 	assert.Equal(t, 1, len(tev.flf.ChainIDs()), "Exptected not new chain to be created")

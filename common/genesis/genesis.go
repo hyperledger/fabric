@@ -17,8 +17,6 @@ limitations under the License.
 package genesis
 
 import (
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/configtx"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -37,32 +35,21 @@ type Factory interface {
 }
 
 type factory struct {
-	template configtx.Template
+	channelGroup *cb.ConfigGroup
 }
 
 // NewFactoryImpl creates a new Factory.
-func NewFactoryImpl(template configtx.Template) Factory {
-	return &factory{template: template}
+func NewFactoryImpl(channelGroup *cb.ConfigGroup) Factory {
+	return &factory{channelGroup: channelGroup}
 }
 
 // Block constructs and returns a genesis block for a given channel ID.
 func (f *factory) Block(channelID string) (*cb.Block, error) {
-	configEnv, err := f.template.Envelope(channelID)
-	if err != nil {
-		return nil, err
-	}
-
-	configUpdate := &cb.ConfigUpdate{}
-	err = proto.Unmarshal(configEnv.ConfigUpdate, configUpdate)
-	if err != nil {
-		return nil, err
-	}
-
 	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG, msgVersion, channelID, epoch)
 	payloadSignatureHeader := utils.MakeSignatureHeader(nil, utils.CreateNonceOrPanic())
 	utils.SetTxID(payloadChannelHeader, payloadSignatureHeader)
 	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: configUpdate.WriteSet}})}
+	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: f.channelGroup}})}
 	envelope := &cb.Envelope{Payload: utils.MarshalOrPanic(payload), Signature: nil}
 
 	block := cb.NewBlock(0, nil)

@@ -44,6 +44,9 @@ func init() {
 }
 
 const (
+	// TestChainID is the channel name used for testing purposes when one is not given
+	TestChainID = "testchainid"
+
 	// SampleInsecureSoloProfile references the sample profile which does not include any MSPs and uses solo for ordering.
 	SampleInsecureSoloProfile = "SampleInsecureSolo"
 	// SampleDevModeSoloProfile references the sample profile which requires only basic membership for admin privileges and uses solo for ordering.

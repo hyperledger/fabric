@@ -22,9 +22,8 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -41,15 +40,17 @@ var (
 func init() {
 	factory.InitFactories(nil)
 
-	insecureConf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
-	insecureGB := provisional.New(insecureConf).GenesisBlockForChannel(provisional.TestChainID)
-	insecureCtx := utils.ExtractEnvelopeOrPanic(insecureGB, 0)
-	insecureConfig = configtx.UnmarshalConfigEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(insecureCtx.Payload).Data).Config
+	insecureChannelGroup, err := encoder.NewChannelGroup(genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile))
+	if err != nil {
+		panic(err)
+	}
+	insecureConfig = &cb.Config{ChannelGroup: insecureChannelGroup}
 
-	singleMSPConf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
-	singleMSPGB := provisional.New(singleMSPConf).GenesisBlockForChannel(provisional.TestChainID)
-	singleMSPCtx := utils.ExtractEnvelopeOrPanic(singleMSPGB, 0)
-	singleMSPConfig = configtx.UnmarshalConfigEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(singleMSPCtx.Payload).Data).Config
+	singleMSPChannelGroup, err := encoder.NewChannelGroup(genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile))
+	if err != nil {
+		panic(err)
+	}
+	singleMSPConfig = &cb.Config{ChannelGroup: singleMSPChannelGroup}
 }
 
 func TestSimpleCheck(t *testing.T) {

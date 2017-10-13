@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -119,7 +119,7 @@ func TestKafkaTLSConfig(t *testing.T) {
 
 func TestSystemChannel(t *testing.T) {
 	conf := Load()
-	assert.Equal(t, provisional.TestChainID, conf.General.SystemChannel, "System channel ID should be '%s' by default", provisional.TestChainID)
+	assert.Equal(t, genesisconfig.TestChainID, conf.General.SystemChannel, "System channel ID should be '%s' by default", genesisconfig.TestChainID)
 }
 
 func TestProfileConfig(t *testing.T) {

@@ -19,19 +19,19 @@ package genesis
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/configtx"
+	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBasicSanity(t *testing.T) {
-	impl := NewFactoryImpl(configtx.NewSimpleTemplate())
+	impl := NewFactoryImpl(cb.NewConfigGroup())
 	_, err := impl.Block("testchainid")
 	assert.NoError(t, err, "Basic sanity fails")
 }
 
 func TestForTransactionID(t *testing.T) {
-	impl := NewFactoryImpl(configtx.NewSimpleTemplate())
+	impl := NewFactoryImpl(cb.NewConfigGroup())
 	block, _ := impl.Block("testchainid")
 	configEnv, _ := utils.ExtractEnvelope(block, 0)
 	configEnvPayload, _ := utils.ExtractPayload(configEnv)

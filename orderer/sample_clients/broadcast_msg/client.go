@@ -14,7 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/localmsp"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -76,7 +76,7 @@ func main() {
 	var bar *pb.ProgressBar
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
-	flag.StringVar(&channelID, "channelID", provisional.TestChainID, "The channel ID to broadcast to.")
+	flag.StringVar(&channelID, "channelID", genesisconfig.TestChainID, "The channel ID to broadcast to.")
 	flag.Uint64Var(&messages, "messages", 1, "The number of messages to broadcast.")
 	flag.Uint64Var(&goroutines, "goroutines", 1, "The number of concurrent go routines to broadcast the messages on")
 	flag.Uint64Var(&msgSize, "size", 1024, "The size in bytes of the data section for the payload")

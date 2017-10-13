@@ -17,7 +17,7 @@ limitations under the License.
 package ledger_test
 
 import (
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	. "github.com/hyperledger/fabric/orderer/common/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/common/ledger/ram"
 )
@@ -49,7 +49,7 @@ func (env *ramledgerTestFactory) Persistent() bool {
 func (env *ramledgerTestFactory) New() (Factory, ReadWriter) {
 	historySize := 10
 	rlf := ramledger.New(historySize)
-	rl, err := rlf.GetOrCreate(provisional.TestChainID)
+	rl, err := rlf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
 		panic(err)
 	}

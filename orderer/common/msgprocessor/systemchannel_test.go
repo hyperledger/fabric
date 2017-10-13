@@ -12,12 +12,11 @@ import (
 
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
@@ -413,14 +412,9 @@ func TestNewChannelConfig(t *testing.T) {
 	gConf.Orderer.Capabilities = map[string]bool{
 		capabilities.OrdererV1_1: true,
 	}
-	singleMSPGenesisBlock := provisional.New(gConf).GenesisBlockForChannel(channelID)
-	configEnv := configtx.UnmarshalConfigEnvelopeOrPanic(
-		utils.UnmarshalPayloadOrPanic(
-			utils.ExtractEnvelopeOrPanic(singleMSPGenesisBlock, 0).Payload,
-		).Data,
-	)
-	ctxm, err := channelconfig.NewBundle(channelID, configEnv.Config)
-	assert.Nil(t, err)
+	channelGroup, err := encoder.NewChannelGroup(gConf)
+	assert.NoError(t, err)
+	ctxm, err := channelconfig.NewBundle(channelID, &cb.Config{ChannelGroup: channelGroup})
 
 	templator := NewDefaultTemplator(&mockDefaultTemplatorSupport{
 		Resources: ctxm,

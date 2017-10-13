@@ -20,7 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	. "github.com/hyperledger/fabric/orderer/common/ledger"
 	jsonledger "github.com/hyperledger/fabric/orderer/common/ledger/json"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -63,7 +63,7 @@ func (env *jsonLedgerTestFactory) Persistent() bool {
 
 func (env *jsonLedgerTestFactory) New() (Factory, ReadWriter) {
 	flf := jsonledger.New(env.location)
-	fl, err := flf.GetOrCreate(provisional.TestChainID)
+	fl, err := flf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
 		panic(err)
 	}

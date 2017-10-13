@@ -16,8 +16,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
@@ -164,7 +164,7 @@ func initializeBootstrapChannel(conf *config.TopLevel, lf ledger.Factory) {
 	// Select the bootstrapping mechanism
 	switch conf.General.GenesisMethod {
 	case "provisional":
-		genesisBlock = provisional.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlockForChannel(conf.General.SystemChannel)
+		genesisBlock = encoder.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlockForChannel(conf.General.SystemChannel)
 	case "file":
 		genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
 	default:

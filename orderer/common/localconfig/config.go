@@ -32,7 +32,7 @@ import (
 	"path/filepath"
 
 	bccsp "github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 )
 
 const (
@@ -177,7 +177,7 @@ var defaults = TopLevel{
 		ListenPort:     7050,
 		GenesisMethod:  "provisional",
 		GenesisProfile: "SampleSingleMSPSolo",
-		SystemChannel:  provisional.TestChainID,
+		SystemChannel:  genesisconfig.TestChainID,
 		GenesisFile:    "genesisblock",
 		Profile: Profile{
 			Enabled: false,
