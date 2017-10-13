@@ -81,7 +81,7 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 					ccEvent, err := utils.GetChaincodeEvents(caPayload.Events)
 					filteredTx := &pb.FilteredTransaction{Txid: chdr.TxId, TxValidationCode: txsFltr.Flag(txIndex)}
 
-					if ccEvent != nil {
+					if err != nil {
 						filteredCcEvent := ccEvent
 						// nil out ccevent payload
 						filteredCcEvent.Payload = nil
