@@ -178,7 +178,10 @@ func (cm *configManager) policyForItem(item comparable) (policies.Policy, bool) 
 	// If the mod_policy path is relative, get the right manager for the context
 	// if the mod_policy path is absolute (starts with /) evaluate at the root
 	if len(modPolicy) > 0 && modPolicy[0] != policies.PathSeparator[0] {
-		// path is always at least of length 1
+		// path should always be at least length 1, panic if not
+		if len(item.path) == 0 {
+			logger.Panicf("Empty path for item %s", item.key)
+		}
 		var ok bool
 		manager, ok = manager.Manager(item.path[1:])
 		if !ok {

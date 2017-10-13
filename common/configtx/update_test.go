@@ -152,41 +152,62 @@ func TestPolicyForItem(t *testing.T) {
 		},
 	}
 
-	policy, ok := cm.policyForItem(comparable{
-		path: []string{"root"},
-		ConfigValue: &cb.ConfigValue{
-			ModPolicy: "rootPolicy",
-		},
+	t.Run("Root manager", func(t *testing.T) {
+		policy, ok := cm.policyForItem(comparable{
+			path: []string{"root"},
+			ConfigValue: &cb.ConfigValue{
+				ModPolicy: "rootPolicy",
+			},
+		})
+		assert.True(t, ok)
+		assert.Equal(t, policy, rootPolicy, "Should have found relative policy off the root manager")
 	})
-	assert.True(t, ok)
-	assert.Equal(t, policy, rootPolicy, "Should have found relative policy off the root manager")
 
-	policy, ok = cm.policyForItem(comparable{
-		path: []string{"root", "wrong"},
-		ConfigValue: &cb.ConfigValue{
-			ModPolicy: "rootPolicy",
-		},
+	t.Run("Nonexistent manager", func(t *testing.T) {
+		_, ok := cm.policyForItem(comparable{
+			path: []string{"root", "wrong"},
+			ConfigValue: &cb.ConfigValue{
+				ModPolicy: "rootPolicy",
+			},
+		})
+		assert.False(t, ok, "Should not have found rootPolicy off a nonexistent manager")
 	})
-	assert.False(t, ok, "Should not have found rootPolicy off a non-existent manager")
 
-	policy, ok = cm.policyForItem(comparable{
-		path: []string{"root", "foo"},
-		ConfigValue: &cb.ConfigValue{
-			ModPolicy: "foo",
-		},
+	t.Run("Foo manager", func(t *testing.T) {
+		policy, ok := cm.policyForItem(comparable{
+			path: []string{"root", "foo"},
+			ConfigValue: &cb.ConfigValue{
+				ModPolicy: "foo",
+			},
+		})
+		assert.True(t, ok)
+		assert.Equal(t, policy, fooPolicy, "Should have found relative foo policy off the foo manager")
 	})
-	assert.True(t, ok)
-	assert.Equal(t, policy, fooPolicy, "Should not have found relative foo policy the foo manager")
 
-	policy, ok = cm.policyForItem(comparable{
-		key:  "foo",
-		path: []string{"root"},
-		ConfigGroup: &cb.ConfigGroup{
-			ModPolicy: "foo",
-		},
+	t.Run("Foo group", func(t *testing.T) {
+		policy, ok := cm.policyForItem(comparable{
+			key:  "foo",
+			path: []string{"root"},
+			ConfigGroup: &cb.ConfigGroup{
+				ModPolicy: "foo",
+			},
+		})
+		assert.True(t, ok)
+		assert.Equal(t, policy, fooPolicy, "Should have found relative foo policy for foo group")
 	})
-	assert.True(t, ok)
-	assert.Equal(t, policy, fooPolicy, "Should have found relative foo policy for foo group")
+
+	t.Run("Empty item path", func(t *testing.T) {
+		policyForItemEmptyPath := func() {
+			cm.policyForItem(comparable{
+				key:  "foo",
+				path: []string{},
+				ConfigGroup: &cb.ConfigGroup{
+					ModPolicy: "foo",
+				},
+			})
+		}
+		assert.Panics(t, policyForItemEmptyPath)
+	})
 }
 
 func TestValidateModPolicy(t *testing.T) {
