@@ -105,6 +105,20 @@ has all the necessary parameters to run and using that file as the input (see
 the section on how to run the tests) . The names of necessary parameters can be
 found in the file `parameters_daily_CI.sh`.
 
+### Running with optional CouchDB
+
+By default, the tests use golveldb as the state database. Fabric provides the
+option of using CouchDB as a pluggable state database. To run the existing
+tests with CouchDB, use the parameter file `parameters_couchdb_daily_CI.sh`:
+```
+./runbenchmark.sh -f parameters_couchdb_daily_CI.sh all
+```
+Note that this parameter file (`parameters_couchdb_daily_CI.sh`) contains the
+following line, which is required to run the tests with CouchDB:
+```
+export useCouchDB="yes"
+```
+
 ## How to View the Test Results
 
 The test results can be viewed as in the stdout where it shows how long each
