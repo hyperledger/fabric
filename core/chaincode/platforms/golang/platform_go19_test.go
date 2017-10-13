@@ -242,6 +242,18 @@ func TestGetDeploymentPayload(t *testing.T) {
 	}
 }
 
+//TestGetLDFlagsOpts tests handling of chaincode.golang.dynamicLink
+func TestGetLDFlagsOpts(t *testing.T) {
+	viper.Set("chaincode.golang.dynamicLink", true)
+	if getLDFlagsOpts() != dynamicLDFlagsOpts {
+		t.Error("Error handling chaincode.golang.dynamicLink configuration. ldflags should be for dynamic linkink")
+	}
+	viper.Set("chaincode.golang.dynamicLink", false)
+	if getLDFlagsOpts() != staticLDFlagsOpts {
+		t.Error("Error handling chaincode.golang.dynamicLink configuration. ldflags should be for static linkink")
+	}
+}
+
 //TestGenerateDockerBuild goes through the functions needed to do docker build
 func TestGenerateDockerBuild(t *testing.T) {
 	platform := &Platform{}

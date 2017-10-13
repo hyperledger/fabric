@@ -391,6 +391,9 @@ chaincode:
         # golang will never need more than baseos
         runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
+        # whether or not golang chaincode should be linked dynamically
+        dynamicLink: false
+
     car:
         # car may need more facilities (JVM, etc) in the future as the catalog
         # of platforms are expanded.  For now, we can just use baseos
