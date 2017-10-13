@@ -109,12 +109,11 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 	group.Groups[channelconfig.OrdererGroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
 		Value: []byte(fmt.Sprintf("%d", i)),
 	}
-	configTemplate := configtx.NewSimpleTemplate(group)
-	configEnv, err := configTemplate.Envelope(chainID)
-	if err != nil {
-		panic(err)
-	}
-	return makeConfigTxFromConfigUpdateEnvelope(chainID, configEnv)
+	return makeConfigTxFromConfigUpdateEnvelope(chainID, &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
+			WriteSet: group,
+		}),
+	})
 }
 
 func wrapConfigTx(env *cb.Envelope) *cb.Envelope {

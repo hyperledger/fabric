@@ -16,6 +16,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	// MSPKey is the key for the MSP definition in orderer groups
+	MSPKey = "MSP"
+)
+
 // OrganizationProtos are used to deserialize the organization config
 type OrganizationProtos struct {
 	MSP *mspprotos.MSPConfig

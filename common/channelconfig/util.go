@@ -7,12 +7,30 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
+	"math"
+
+	"github.com/hyperledger/fabric/bccsp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/golang/protobuf/proto"
+)
+
+const (
+	// ReadersPolicyKey is the key used for the read policy
+	ReadersPolicyKey = "Readers"
+
+	// WritersPolicyKey is the key used for the read policy
+	WritersPolicyKey = "Writers"
+
+	// AdminsPolicyKey is the key used for the read policy
+	AdminsPolicyKey = "Admins"
+
+	defaultHashingAlgorithm = bccsp.SHA256
+
+	defaultBlockDataHashingStructureWidth = math.MaxUint32
 )
 
 // ConfigValue defines a common representation for different *cb.ConfigValue values.

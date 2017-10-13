@@ -12,6 +12,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	// ChannelCreationPolicyKey is the key used in the consortium config to denote the policy
+	// to be used in evaluating whether a channel creation request is authorized
+	ChannelCreationPolicyKey = "ChannelCreationPolicy"
+)
+
 // ConsortiumProtos holds the config protos for the consortium config
 type ConsortiumProtos struct {
 	ChannelCreationPolicy *cb.Policy
