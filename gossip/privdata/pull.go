@@ -202,7 +202,7 @@ func (p *puller) waitForMembership() []discovery.NetworkMember {
 
 func (p *puller) fetch(dig2src dig2sources) ([]*proto.PvtDataElement, error) {
 	// computeFilters returns a map from a digest to a routing filter
-	dig2Filter, err := p.computeFilters(dig2src.keys())
+	dig2Filter, err := p.computeFilters(dig2src)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -216,6 +216,7 @@ func (p *puller) fetch(dig2src dig2sources) ([]*proto.PvtDataElement, error) {
 		logger.Warning("Do not know any peer in the channel(", p.channel, ") that matches the policies , aborting")
 		return nil, errors.New("Empty membership")
 	}
+	members = randomizeMemberList(members)
 	var res []*proto.PvtDataElement
 	// Distribute requests to peers, and obtain subscriptions for all their messages
 	// matchDigestToPeer returns a map from a peer to the digests which we would ask it for
@@ -308,10 +309,14 @@ func (p *puller) assignDigestsToPeers(members []discovery.NetworkMember, dig2Fil
 	}
 	res := make(map[remotePeer][]proto.PvtDataDigest)
 	// Create a mapping between peer and digests to ask for
-	members = randomizeMemberList(members)
-	for dig, filt := range dig2Filter {
-		// Find the first peer that matches the filter
-		selectedPeer := filter.First(members, filt)
+	for dig, collectionFilter := range dig2Filter {
+		// Find a peer that is an endorser
+		selectedPeer := filter.First(members, collectionFilter.endorser)
+		if selectedPeer == nil {
+			logger.Debug("No endorser found for", dig)
+			// Find some peer that is in the collection
+			selectedPeer = filter.First(members, collectionFilter.anyPeer)
+		}
 		if selectedPeer == nil {
 			logger.Debug("No peer matches txID", dig.TxId, "collection", dig.Collection)
 			continue
@@ -332,12 +337,18 @@ func (p *puller) assignDigestsToPeers(members []discovery.NetworkMember, dig2Fil
 	return res, noneSelectedPeers
 }
 
-type digestToFilterMapping map[proto.PvtDataDigest]filter.RoutingFilter
+type collectionRoutingFilter struct {
+	anyPeer  filter.RoutingFilter
+	endorser filter.RoutingFilter
+}
+
+type digestToFilterMapping map[proto.PvtDataDigest]collectionRoutingFilter
 
 func (dig2f digestToFilterMapping) flattenFilterValues() []filter.RoutingFilter {
 	var filters []filter.RoutingFilter
 	for _, f := range dig2f {
-		filters = append(filters, f)
+		filters = append(filters, f.endorser)
+		filters = append(filters, f.anyPeer)
 	}
 	return filters
 }
@@ -355,9 +366,9 @@ func (dig2Filter digestToFilterMapping) String() string {
 	return buffer.String()
 }
 
-func (p *puller) computeFilters(digests []*proto.PvtDataDigest) (digestToFilterMapping, error) {
-	filters := make(map[proto.PvtDataDigest]filter.RoutingFilter)
-	for _, digest := range digests {
+func (p *puller) computeFilters(dig2src dig2sources) (digestToFilterMapping, error) {
+	filters := make(map[proto.PvtDataDigest]collectionRoutingFilter)
+	for digest, sources := range dig2src {
 		collection := p.cs.RetrieveCollectionAccessPolicy(fcommon.CollectionCriteria{
 			Channel:    p.channel,
 			TxId:       digest.TxId,
@@ -371,17 +382,35 @@ func (p *puller) computeFilters(digests []*proto.PvtDataDigest) (digestToFilterM
 		if f == nil {
 			return nil, errors.Errorf("Failed obtaining collection filter for channel %s, txID %s, collection %s", p.channel, digest.TxId, digest.Collection)
 		}
-		rf, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature, _ bool) bool {
+		anyPeerInCollection, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature, _ bool) bool {
 			return f(fcommon.SignedData{
 				Signature: peerSignature.Signature,
 				Identity:  peerSignature.PeerIdentity,
 				Data:      peerSignature.Message,
 			})
 		})
+
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		filters[*digest] = rf
+		sources := sources
+		endorserPeer, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature, _ bool) bool {
+			for _, endorsement := range sources {
+				if bytes.Equal(endorsement.Endorser, []byte(peerSignature.PeerIdentity)) {
+					return true
+				}
+			}
+			return false
+		})
+
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		filters[*digest] = collectionRoutingFilter{
+			anyPeer:  anyPeerInCollection,
+			endorser: endorserPeer,
+		}
 	}
 	return filters, nil
 }

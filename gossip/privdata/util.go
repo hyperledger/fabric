@@ -250,19 +250,14 @@ func (f *digestsAndSourceFactory) mapDigest(dig *gossip2.PvtDataDigest) *digests
 	return f
 }
 
-func (f *digestsAndSourceFactory) toSources(orgs ...string) *digestsAndSourceFactory {
+func (f *digestsAndSourceFactory) toSources(peers ...string) *digestsAndSourceFactory {
 	if f.d2s == nil {
 		f.d2s = make(dig2sources)
 	}
 	var endorsements []*peer.Endorsement
-	for i, org := range orgs {
-		sId := &msp.SerializedIdentity{
-			Mspid:   org,
-			IdBytes: []byte(fmt.Sprintf("p%d.%s", i, org)),
-		}
-		b, _ := proto.Marshal(sId)
+	for _, p := range peers {
 		endorsements = append(endorsements, &peer.Endorsement{
-			Endorser: b,
+			Endorser: []byte(p),
 		})
 	}
 	f.d2s[f.lastDig] = endorsements
