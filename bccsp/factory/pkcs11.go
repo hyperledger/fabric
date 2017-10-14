@@ -23,9 +23,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+// FactoryOpts holds configuration information used to initialize factory implementations
 type FactoryOpts struct {
 	ProviderName string             `mapstructure:"default" json:"default" yaml:"Default"`
 	SwOpts       *SwOpts            `mapstructure:"SW,omitempty" json:"SW,omitempty" yaml:"SwOpts"`
+	PluginOpts   *PluginOpts        `mapstructure:"PLUGIN,omitempty" json:"PLUGIN,omitempty" yaml:"PluginOpts"`
 	Pkcs11Opts   *pkcs11.PKCS11Opts `mapstructure:"PKCS11,omitempty" json:"PKCS11,omitempty" yaml:"PKCS11"`
 }
 
@@ -76,6 +78,15 @@ func setFactories(config *FactoryOpts) error {
 		}
 	}
 
+	// BCCSP Plugin
+	if config.PluginOpts != nil {
+		f := &PluginFactory{}
+		err := initBCCSP(f, config)
+		if err != nil {
+			factoriesInitError = errors.Wrapf(err, "Failed initializing PKCS11.BCCSP %s", factoriesInitError)
+		}
+	}
+
 	var ok bool
 	defaultBCCSP, ok = bccspMap[config.ProviderName]
 	if !ok {
@@ -93,6 +104,8 @@ func GetBCCSPFromOpts(config *FactoryOpts) (bccsp.BCCSP, error) {
 		f = &SWFactory{}
 	case "PKCS11":
 		f = &PKCS11Factory{}
+	case "PLUGIN":
+		f = &PluginFactory{}
 	default:
 		return nil, errors.Errorf("Could not find BCCSP, no '%s' provider", config.ProviderName)
 	}
