@@ -265,6 +265,10 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		}
 
 		if simResult.PvtSimulationResults != nil {
+			if cid.Name == "lscc" {
+				// TODO: remove once we can store collection configuration outside of LSCC
+				return nil, nil, nil, nil, errors.New("Private data is forbidden to be used in instantiate")
+			}
 			if err := e.distributePrivateData(chainID, txid, simResult.PvtSimulationResults); err != nil {
 				return nil, nil, nil, nil, err
 			}
