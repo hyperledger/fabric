@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	pb "github.com/golang/protobuf/proto"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -23,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -206,8 +208,21 @@ type fetchCall struct {
 	*mock.Call
 }
 
-func (fc *fetchCall) expectingReq(req *proto.RemotePvtDataRequest) *fetchCall {
-	fc.fetcher.expectedReq = req
+func (fc *fetchCall) expectingEndorsers(orgs ...string) *fetchCall {
+	if fc.fetcher.expectedEndorsers == nil {
+		fc.fetcher.expectedEndorsers = make(map[string]struct{})
+	}
+	for _, org := range orgs {
+		sId := &msp.SerializedIdentity{Mspid: org, IdBytes: []byte(fmt.Sprintf("p0%s", org))}
+		b, _ := pb.Marshal(sId)
+		fc.fetcher.expectedEndorsers[string(b)] = struct{}{}
+	}
+
+	return fc
+}
+
+func (fc *fetchCall) expectingDigests(dig []*proto.PvtDataDigest) *fetchCall {
+	fc.fetcher.expectedDigests = dig
 	return fc
 }
 
@@ -219,7 +234,8 @@ func (fc *fetchCall) Return(returnArguments ...interface{}) *mock.Call {
 type fetcherMock struct {
 	t *testing.T
 	mock.Mock
-	expectedReq *proto.RemotePvtDataRequest
+	expectedDigests   []*proto.PvtDataDigest
+	expectedEndorsers map[string]struct{}
 }
 
 func (f *fetcherMock) On(methodName string, arguments ...interface{}) *fetchCall {
@@ -229,9 +245,20 @@ func (f *fetcherMock) On(methodName string, arguments ...interface{}) *fetchCall
 	}
 }
 
-func (f *fetcherMock) fetch(req *proto.RemotePvtDataRequest) ([]*proto.PvtDataElement, error) {
-	assert.True(f.t, digests(req.Digests).Equal(digests(f.expectedReq.Digests)))
-	args := f.Called(req)
+func (f *fetcherMock) fetch(dig2src dig2sources) ([]*proto.PvtDataElement, error) {
+	for _, endorsements := range dig2src {
+		for _, endorsement := range endorsements {
+			_, exists := f.expectedEndorsers[string(endorsement.Endorser)]
+			if !exists {
+				f.t.Fatalf("Encountered a non-expected endorser: %s", string(endorsement.Endorser))
+			}
+			// Else, it exists, so delete it so we will end up with an empty expected map at the end of the call
+			delete(f.expectedEndorsers, string(endorsement.Endorser))
+		}
+	}
+	assert.True(f.t, digests(dig2src.keys()).Equal(digests(f.expectedDigests)))
+	assert.Empty(f.t, f.expectedEndorsers)
+	args := f.Called(dig2src)
 	if args.Get(1) == nil {
 		return args.Get(0).([]*proto.PvtDataElement), nil
 	}
@@ -285,6 +312,10 @@ func (cs *collectionStore) RetrieveCollection(cc common.CollectionCriteria) priv
 type collectionAccessPolicy struct {
 	cs *collectionStore
 	n  uint64
+}
+
+func (cap *collectionAccessPolicy) MemberOrgs() []string {
+	return []string{"org0", "org1"}
 }
 
 func (cap *collectionAccessPolicy) RequiredInternalPeerCount() int {
@@ -693,7 +724,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	bf := &blockFactory{
 		channelID: "test",
 	}
-	block := bf.AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
+	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", "c1", "c2").AddTxnWithEndorsement("tx2", "ns2", hash, "org2", "c1").create()
 
 	// Scenario I: Block we got has sufficient private data alongside it.
 	// If the coordinator tries fetching from the transientstore, or peers it would result in panic,
@@ -729,17 +760,17 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 
 	// Scenario III: Block doesn't have sufficient private data alongside it,
 	// it is missing ns1: c2, and the data exists in the transient store,
-	// but it is also missing ns2: c1, and that data doesn't exist in the transient store - but in a peer
-	fetcher.On("fetch", mock.Anything).expectingReq(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{
-			{
-				TxId: "tx1", Namespace: "ns1", Collection: "c2", BlockSeq: 1,
-			},
-			{
-				TxId: "tx2", Namespace: "ns2", Collection: "c1", BlockSeq: 1, SeqInBlock: 1,
-			},
+	// but it is also missing ns2: c1, and that data doesn't exist in the transient store - but in a peer.
+	// Additionally, the coordinator should pass an endorser identity of org1, but not of org2, since
+	// the MemberOrgs() call doesn't return org2 but only org0 and org1.
+	fetcher.On("fetch", mock.Anything).expectingDigests([]*proto.PvtDataDigest{
+		{
+			TxId: "tx1", Namespace: "ns1", Collection: "c2", BlockSeq: 1,
 		},
-	}).Return([]*proto.PvtDataElement{
+		{
+			TxId: "tx2", Namespace: "ns2", Collection: "c1", BlockSeq: 1, SeqInBlock: 1,
+		},
+	}).expectingEndorsers("org1").Return([]*proto.PvtDataElement{
 		{
 			Digest: &proto.PvtDataDigest{
 				BlockSeq:   1,
@@ -782,11 +813,9 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	// In this case, we should try to fetch data from peers.
 	block = bf.AddTxn("tx3", "ns3", hash, "c3").create()
 	fetcher = &fetcherMock{t: t}
-	fetcher.On("fetch", mock.Anything).expectingReq(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{
-			{
-				TxId: "tx3", Namespace: "ns3", Collection: "c3", BlockSeq: 1,
-			},
+	fetcher.On("fetch", mock.Anything).expectingDigests([]*proto.PvtDataDigest{
+		{
+			TxId: "tx3", Namespace: "ns3", Collection: "c3", BlockSeq: 1,
 		},
 	}).Return([]*proto.PvtDataElement{
 		{
@@ -811,8 +840,6 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
 		var privateDataPassed2Ledger privateData = args.Get(0).(*ledger.BlockAndPvtData).BlockPvtData
 		assert.True(t, privateDataPassed2Ledger.Equal(expectedCommittedPrivateData2))
-		fmt.Println(privateDataPassed2Ledger)
-		fmt.Println(expectedCommittedPrivateData2)
 		commitHappened = true
 	}).Return(nil)
 	coordinator = NewCoordinator(Support{
@@ -914,11 +941,9 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 
 	fetcher := &fetcherMock{t: t}
 	// Have the peer return in response to the pull, a private data with a non matching hash
-	fetcher.On("fetch", mock.Anything).expectingReq(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{
-			{
-				TxId: "tx1", Namespace: "ns3", Collection: "c2", BlockSeq: 1,
-			},
+	fetcher.On("fetch", mock.Anything).expectingDigests([]*proto.PvtDataDigest{
+		{
+			TxId: "tx1", Namespace: "ns3", Collection: "c2", BlockSeq: 1,
 		},
 	}).Return([]*proto.PvtDataElement{
 		{

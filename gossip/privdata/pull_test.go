@@ -9,9 +9,8 @@ package privdata
 import (
 	"bytes"
 	"crypto/rand"
-	"testing"
-
 	"sync"
+	"testing"
 
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -76,6 +75,10 @@ func (mc *mockCollectionAccess) thatMapsTo(peers ...string) *mockCollectionStore
 		return false
 	}
 	return mc.cs
+}
+
+func (mc *mockCollectionAccess) MemberOrgs() []string {
+	return nil
 }
 
 func (mc *mockCollectionAccess) AccessFilter() privdata.Filter {
@@ -237,9 +240,9 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 		t.Fatal("p3 shouldn't have been selected for pull")
 	})
 
-	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{dig},
-	})
+	dasf := &digestsAndSourceFactory{}
+
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create())
 	rws1 := util.PrivateRWSet(fetchedMessages[0].Payload[0])
 	rws2 := util.PrivateRWSet(fetchedMessages[0].Payload[1])
 	fetched := []util.PrivateRWSet{rws1, rws2}
@@ -270,9 +273,8 @@ func TestPullerDataNotAvailable(t *testing.T) {
 		t.Fatal("p3 shouldn't have been selected for pull")
 	})
 
-	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{dig},
-	})
+	dasf := &digestsAndSourceFactory{}
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create())
 	assert.Empty(t, fetchedMessages)
 	assert.NoError(t, err)
 }
@@ -283,9 +285,9 @@ func TestPullerNoPeersKnown(t *testing.T) {
 	gn := &gossipNetwork{}
 	policyStore := newCollectionStore().withPolicy("col1").thatMapsTo("p2").withPolicy("col1").thatMapsTo("p3")
 	p1 := gn.newPuller("p1", policyStore)
-	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1", Namespace: "ns1"}},
-	})
+	dasf := &digestsAndSourceFactory{}
+	d2s := dasf.mapDigest(&proto.PvtDataDigest{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
+	fetchedMessages, err := p1.fetch(d2s)
 	assert.Empty(t, fetchedMessages)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Empty membership")
@@ -298,9 +300,9 @@ func TestPullPeerFilterError(t *testing.T) {
 	policyStore := newCollectionStore().withPolicy("col1").thatMapsTo("p2")
 	p1 := gn.newPuller("p1", policyStore)
 	gn.peers[0].On("PeerFilter", mock.Anything, mock.Anything).Return(nil, errors.New("Failed obtaining filter"))
-	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1", Namespace: "ns1"}},
-	})
+	dasf := &digestsAndSourceFactory{}
+	d2s := dasf.mapDigest(&proto.PvtDataDigest{Collection: "col1", TxId: "txID1", Namespace: "ns1"}).toSources().create()
+	fetchedMessages, err := p1.fetch(d2s)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed obtaining filter")
 	assert.Empty(t, fetchedMessages)
@@ -332,10 +334,9 @@ func TestPullerPeerNotEligible(t *testing.T) {
 	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig).Run(func(_ mock.Arguments) {
 		t.Fatal("p3 shouldn't have approved the pull")
 	})
-
-	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{{Collection: "col1", TxId: "txID1"}},
-	})
+	dasf := &digestsAndSourceFactory{}
+	d2s := dasf.mapDigest(&proto.PvtDataDigest{Collection: "col1", TxId: "txID1"}).toSources().create()
+	fetchedMessages, err := p1.fetch(d2s)
 	assert.Empty(t, fetchedMessages)
 	assert.NoError(t, err)
 }
@@ -371,9 +372,8 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 
 	p3.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig2).Return(p3TransientStore)
 
-	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{dig1, dig2},
-	})
+	dasf := &digestsAndSourceFactory{}
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig1).toSources().mapDigest(dig2).toSources().create())
 	assert.NoError(t, err)
 	rws1 := util.PrivateRWSet(fetchedMessages[0].Payload[0])
 	rws2 := util.PrivateRWSet(fetchedMessages[0].Payload[1])
@@ -426,9 +426,8 @@ func TestPullerRetries(t *testing.T) {
 	p5.PrivateDataRetriever.(*dataRetrieverMock).On("CollectionRWSet", dig).Return(transientStore)
 
 	// Fetch from someone
-	fetchedMessages, err := p1.fetch(&proto.RemotePvtDataRequest{
-		Digests: []*proto.PvtDataDigest{dig},
-	})
+	dasf := &digestsAndSourceFactory{}
+	fetchedMessages, err := p1.fetch(dasf.mapDigest(dig).toSources().create())
 	assert.NoError(t, err)
 	rws1 := util.PrivateRWSet(fetchedMessages[0].Payload[0])
 	rws2 := util.PrivateRWSet(fetchedMessages[0].Payload[1])

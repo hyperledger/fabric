@@ -40,6 +40,10 @@ type CollectionAccessPolicy interface {
 	// RequiredExternalPeerCount returns the minimum number of internal peers
 	// required to send private data to
 	RequiredInternalPeerCount() int
+
+	// MemberOrgs returns the collection's members as MSP IDs. This serves as
+	// a human-readable way of quickly identifying who is part of a collection.
+	MemberOrgs() []string
 }
 
 // Filter defines a rule that filters peers according to data signed by them.

@@ -27,6 +27,11 @@ func testHappyPath(t *testing.T) {
 	assert.NotEqual(t, n3, n4)
 }
 
+func TestContains(t *testing.T) {
+	assert.True(t, Contains("foo", []string{"bar", "foo", "baz"}))
+	assert.False(t, Contains("foo", []string{"bar", "baz"}))
+}
+
 func TestGetRandomInt(t *testing.T) {
 	testHappyPath(t)
 }
