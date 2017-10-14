@@ -101,10 +101,9 @@ func TestSetupGoodConfigCollection(t *testing.T) {
 
 	// create static collection config
 	collectionConfig := &pb.StaticCollectionConfig{
-		Name: "test collection",
-		RequiredInternalPeerCount: 1,
-		RequiredExternalPeerCount: 1,
-		MemberOrgsPolicy:          accessPolicy,
+		Name:              "test collection",
+		RequiredPeerCount: 1,
+		MemberOrgsPolicy:  accessPolicy,
 	}
 
 	// set up simple collection with valid data
@@ -132,10 +131,9 @@ func TestSimpleCollectionFilter(t *testing.T) {
 
 	// create static collection config
 	collectionConfig := &pb.StaticCollectionConfig{
-		Name: "test collection",
-		RequiredInternalPeerCount: 1,
-		RequiredExternalPeerCount: 1,
-		MemberOrgsPolicy:          accessPolicy,
+		Name:              "test collection",
+		RequiredPeerCount: 1,
+		MemberOrgsPolicy:  accessPolicy,
 	}
 
 	// set up simple collection

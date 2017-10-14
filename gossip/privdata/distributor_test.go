@@ -17,7 +17,6 @@ import (
 	gossip2 "github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -46,8 +45,6 @@ func (g *gossipMock) PeerFilter(channel gcommon.ChainID, messagePredicate api.Su
 }
 
 func TestDistributor(t *testing.T) {
-	viper.Set("peer.gossip.pvtData.minPeers", 1)
-	viper.Set("peer.gossip.pvtData.maxPeers", 2)
 	g := &gossipMock{
 		Mock: mock.Mock{},
 		PeerSignature: api.PeerSignature{

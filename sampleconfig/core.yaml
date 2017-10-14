@@ -219,14 +219,6 @@ peer:
             # pullRetryThreshold determines the maximum duration of time private data corresponding for a given block
             # would be attempted to be pulled from peers until the block would be committed without the private data
             pullRetryThreshold: 60s
-            # minPeers defines the minimum number of peers
-            # that an endorsement containing private data would target for dissemination.
-            # The endorsement would fail if an insufficient number of acknowledgements from
-            # peers of the peer's organization wasn't obtained.
-            minPeers: 1
-            # maxPeers defines the maximum number of peers
-            # that an endorsement containing private data would target for dissemination
-            maxPeers: 1
             # As private data enters the transient store, it is associated with the peer's ledger's height at that time.
             # transientstoreMaxBlockRetention defines the maximum difference between the current ledger's height upon commit,
             # and the private data residing inside the transient store that is guaranteed not to be purged.

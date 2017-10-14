@@ -21,10 +21,10 @@ import (
 // SimpleCollection implements a collection with static properties
 // and a public member set
 type SimpleCollection struct {
-	name              string
-	accessPolicy      policies.Policy
-	memberOrgs        []string
-	requiredPeerCount int
+	name         string
+	accessPolicy policies.Policy
+	memberOrgs   []string
+	conf         common.StaticCollectionConfig
 }
 
 // CollectionID returns the collection's ID
@@ -40,7 +40,11 @@ func (sc *SimpleCollection) MemberOrgs() []string {
 // RequiredPeerCount returns the minimum number of peers
 // required to send private data to
 func (sc *SimpleCollection) RequiredPeerCount() int {
-	return sc.requiredPeerCount
+	return int(sc.conf.RequiredPeerCount)
+}
+
+func (sc *SimpleCollection) MaximumPeerCount() int {
+	return int(sc.conf.MaximumPeerCount)
 }
 
 // AccessFilter returns the member filter function that evaluates signed data
@@ -60,6 +64,7 @@ func (sc *SimpleCollection) Setup(collectionConfig *common.StaticCollectionConfi
 	if collectionConfig == nil {
 		return errors.New("Nil config passed to collection setup")
 	}
+	sc.conf = *collectionConfig
 	sc.name = collectionConfig.GetName()
 
 	// get the access signature policy envelope
@@ -111,9 +116,6 @@ func (sc *SimpleCollection) Setup(collectionConfig *common.StaticCollectionConfi
 			return errors.New(fmt.Sprintf("Invalid principal type %d", int32(principal.PrincipalClassification)))
 		}
 	}
-
-	// set required peer counts
-	sc.requiredPeerCount = int(collectionConfig.GetRequiredExternalPeerCount())
 
 	return nil
 }

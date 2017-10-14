@@ -91,6 +91,10 @@ func (mc *mockCollectionAccess) RequiredPeerCount() int {
 	return 0
 }
 
+func (mc *mockCollectionAccess) MaximumPeerCount() int {
+	return 0
+}
+
 type dataRetrieverMock struct {
 	mock.Mock
 }

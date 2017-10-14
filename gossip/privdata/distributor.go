@@ -23,7 +23,6 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 )
 
 // gossipAdapter an adapter for API's required from gossip module
@@ -112,7 +111,6 @@ func (d *distributorImpl) computeDisseminationPlan(txID string, privData *rwset.
 
 func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAccessPolicy, colFilter privdata.Filter, pvtDataMsg *proto.SignedGossipMessage) ([]*dissemination, error) {
 	var disseminationPlan []*dissemination
-	minAck := colAP.RequiredPeerCount()
 	routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChainID(d.chainID), func(signature api.PeerSignature) bool {
 		return colFilter(common.SignedData{
 			Data:      signature.Message,
@@ -126,13 +124,11 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		return nil, err
 	}
 
-	maxPeers := viper.GetInt("peer.gossip.pvtData.maxPeers")
-
 	sc := gossip2.SendCriteria{
 		Timeout:  time.Second,
 		Channel:  gossipCommon.ChainID(d.chainID),
-		MaxPeers: maxPeers,
-		MinAck:   minAck,
+		MaxPeers: colAP.MaximumPeerCount(),
+		MinAck:   colAP.RequiredPeerCount(),
 		IsEligible: func(member discovery.NetworkMember) bool {
 			return routingFilter(member)
 		},

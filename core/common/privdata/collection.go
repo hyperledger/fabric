@@ -33,9 +33,14 @@ type CollectionAccessPolicy interface {
 	// AccessFilter returns a member filter function for a collection
 	AccessFilter() Filter
 
-	// RequiredPeerCount returns the minimum number of peers
-	// required to send private data to
+	// The minimum number of peers private data will be sent to upon
+	// endorsement. The endorsement would fail if dissemination to at least
+	// this number of peers is not achieved.
 	RequiredPeerCount() int
+
+	// The maximum number of peers that private data will be sent to
+	// upon endorsement. This number has to be bigger than RequiredPeerCount().
+	MaximumPeerCount() int
 
 	// MemberOrgs returns the collection's members as MSP IDs. This serves as
 	// a human-readable way of quickly identifying who is part of a collection.
