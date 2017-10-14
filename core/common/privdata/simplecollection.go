@@ -21,11 +21,10 @@ import (
 // SimpleCollection implements a collection with static properties
 // and a public member set
 type SimpleCollection struct {
-	name                      string
-	accessPolicy              policies.Policy
-	memberOrgs                []string
-	requiredExternalPeerCount int
-	requiredInternalPeerCount int
+	name              string
+	accessPolicy      policies.Policy
+	memberOrgs        []string
+	requiredPeerCount int
 }
 
 // CollectionID returns the collection's ID
@@ -38,16 +37,10 @@ func (sc *SimpleCollection) MemberOrgs() []string {
 	return sc.memberOrgs
 }
 
-// RequiredExternalPeerCount returns the minimum number of external peers
+// RequiredPeerCount returns the minimum number of peers
 // required to send private data to
-func (sc *SimpleCollection) RequiredExternalPeerCount() int {
-	return sc.requiredExternalPeerCount
-}
-
-// RequiredInternalPeerCount returns the minimum number of internal peers
-// required to send private data to
-func (sc *SimpleCollection) RequiredInternalPeerCount() int {
-	return sc.requiredInternalPeerCount
+func (sc *SimpleCollection) RequiredPeerCount() int {
+	return sc.requiredPeerCount
 }
 
 // AccessFilter returns the member filter function that evaluates signed data
@@ -120,8 +113,7 @@ func (sc *SimpleCollection) Setup(collectionConfig *common.StaticCollectionConfi
 	}
 
 	// set required peer counts
-	sc.requiredInternalPeerCount = int(collectionConfig.GetRequiredInternalPeerCount())
-	sc.requiredExternalPeerCount = int(collectionConfig.GetRequiredExternalPeerCount())
+	sc.requiredPeerCount = int(collectionConfig.GetRequiredExternalPeerCount())
 
 	return nil
 }

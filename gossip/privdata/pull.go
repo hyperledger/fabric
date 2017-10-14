@@ -382,7 +382,7 @@ func (p *puller) computeFilters(dig2src dig2sources) (digestToFilterMapping, err
 		if f == nil {
 			return nil, errors.Errorf("Failed obtaining collection filter for channel %s, txID %s, collection %s", p.channel, digest.TxId, digest.Collection)
 		}
-		anyPeerInCollection, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature, _ bool) bool {
+		anyPeerInCollection, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature) bool {
 			return f(fcommon.SignedData{
 				Signature: peerSignature.Signature,
 				Identity:  peerSignature.PeerIdentity,
@@ -394,7 +394,7 @@ func (p *puller) computeFilters(dig2src dig2sources) (digestToFilterMapping, err
 			return nil, errors.WithStack(err)
 		}
 		sources := sources
-		endorserPeer, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature, _ bool) bool {
+		endorserPeer, err := p.PeerFilter(common.ChainID(p.channel), func(peerSignature api.PeerSignature) bool {
 			for _, endorsement := range sources {
 				if bytes.Equal(endorsement.Endorser, []byte(peerSignature.PeerIdentity)) {
 					return true

@@ -318,12 +318,8 @@ func (cap *collectionAccessPolicy) MemberOrgs() []string {
 	return []string{"org0", "org1"}
 }
 
-func (cap *collectionAccessPolicy) RequiredInternalPeerCount() int {
-	return viper.GetInt("peer.gossip.pvtData.minInternalPeers")
-}
-
-func (cap *collectionAccessPolicy) RequiredExternalPeerCount() int {
-	return viper.GetInt("peer.gossip.pvtData.minExternalPeers")
+func (cap *collectionAccessPolicy) RequiredPeerCount() int {
+	return viper.GetInt("peer.gossip.pvtData.minPeers")
 }
 
 func (cap *collectionAccessPolicy) AccessFilter() privdata.Filter {
