@@ -150,6 +150,7 @@ message StateInfo {
 message Properties {
     uint64 ledger_height = 1;
     bool left_channel = 2;
+    repeated Chaincode chaincodes = 3;
 }
 
 // StateInfoSnapshot is an aggregation of StateInfo messages
@@ -358,4 +359,12 @@ message PvtDataPayload {
 
 message Acknowledgement {
     string error = 1;
+}
+
+// Chaincode represents a Chaincode that is installed
+// on a peer
+message Chaincode {
+    string name = 1;
+    string version = 2;
+    bytes metadata = 3;
 }
