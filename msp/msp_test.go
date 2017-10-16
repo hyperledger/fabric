@@ -202,7 +202,7 @@ func TestGetSigningIdentityFromVerifyingMSP(t *testing.T) {
 		os.Exit(-1)
 	}
 
-	conf, err = GetVerifyingMspConfig(mspDir, "DEFAULT")
+	conf, err = GetVerifyingMspConfig(mspDir, "DEFAULT", ProviderTypeToString(FABRIC))
 	if err != nil {
 		fmt.Printf("Setup should have succeeded, got err %s instead", err)
 		os.Exit(-1)

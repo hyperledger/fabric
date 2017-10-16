@@ -195,4 +195,18 @@ const (
 	FABRIC ProviderType = iota // MSP is of FABRIC type
 	IDEMIX                     // MSP is of IDEMIX type
 	OTHER                      // MSP is of OTHER TYPE
+
+	// NOTE: as new types are added to this set,
+	// the mspTypes array below must be extended
 )
+
+var mspTypeStrings []string = []string{"bccsp", "idemix"}
+
+// ProviderTypeToString returns a string that represents the ProviderType integer
+func ProviderTypeToString(id ProviderType) string {
+	if int(id) < 0 || int(id) > len(mspTypeStrings) {
+		return ""
+	}
+
+	return mspTypeStrings[id]
+}

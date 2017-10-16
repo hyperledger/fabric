@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	cf "github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/msp"
 )
 
 const (
@@ -113,6 +114,7 @@ type Organization struct {
 	Name           string `yaml:"Name"`
 	ID             string `yaml:"ID"`
 	MSPDir         string `yaml:"MSPDir"`
+	MSPType        string `yaml:"MSPType"`
 	AdminPrincipal string `yaml:"AdminPrincipal"`
 
 	// Note: Viper deserialization does not seem to care for
@@ -277,6 +279,11 @@ func (p *Profile) completeInitialization(configDir string) {
 }
 
 func (org *Organization) completeInitialization(configDir string) {
+	// set the MSP type; if none is specified we assume BCCSP
+	if org.MSPType == "" {
+		org.MSPType = msp.ProviderTypeToString(msp.FABRIC)
+	}
+
 	if org.AdminPrincipal == "" {
 		org.AdminPrincipal = AdminRoleAdminPrincipal
 	}
