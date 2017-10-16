@@ -9,11 +9,11 @@ package channelconfig
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
-
-	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 )
 
 type pendingMSPConfig struct {
@@ -36,44 +36,54 @@ func NewMSPConfigHandler(mspVersion msp.MSPVersion) *MSPConfigHandler {
 
 // ProposeValue called when an org defines an MSP
 func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP, error) {
-	// check that the type for that MSP is supported
-	if mspConfig.Type != int32(msp.FABRIC) {
-		return nil, fmt.Errorf("Setup error: unsupported msp type %d", mspConfig.Type)
-	}
+	var theMsp msp.MSP
+	var err error
 
-	// create the msp instance
-	mspInst, err := msp.New(&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: bh.version}})
-	if err != nil {
-		return nil, fmt.Errorf("Creating the MSP manager failed, err %s", err)
-	}
+	switch mspConfig.Type {
+	case int32(msp.FABRIC):
+		// create the bccsp msp instance
+		mspInst, err := msp.New(&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: bh.version}})
+		if err != nil {
+			return nil, errors.WithMessage(err, "creating the MSP manager failed")
+		}
 
-	casheMSP, err := cache.New(mspInst)
-	if err != nil {
-		return nil, fmt.Errorf("Creating the MSP manager failed, err %s", err)
+		// add a cache layer on top
+		theMsp, err = cache.New(mspInst)
+		if err != nil {
+			return nil, errors.WithMessage(err, "creating the MSP cache failed")
+		}
+	case int32(msp.IDEMIX):
+		// create the idemix msp instance
+		theMsp, err = msp.New(&msp.IdemixNewOpts{msp.NewBaseOpts{Version: bh.version}})
+		if err != nil {
+			return nil, errors.WithMessage(err, "creating the MSP manager failed")
+		}
+	default:
+		return nil, errors.New(fmt.Sprintf("Setup error: unsupported msp type %d", mspConfig.Type))
 	}
 
 	// set it up
-	err = casheMSP.Setup(mspConfig)
+	err = theMsp.Setup(mspConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Setting up the MSP manager failed, err %s", err)
+		return nil, errors.WithMessage(err, "setting up the MSP manager failed")
 	}
 
 	// add the MSP to the map of pending MSPs
-	mspID, _ := casheMSP.GetIdentifier()
+	mspID, _ := theMsp.GetIdentifier()
 
 	existingPendingMSPConfig, ok := bh.idMap[mspID]
 	if ok && !proto.Equal(existingPendingMSPConfig.mspConfig, mspConfig) {
-		return nil, fmt.Errorf("Attempted to define two different versions of MSP: %s", mspID)
+		return nil, errors.New(fmt.Sprintf("Attempted to define two different versions of MSP: %s", mspID))
 	}
 
 	if !ok {
 		bh.idMap[mspID] = &pendingMSPConfig{
 			mspConfig: mspConfig,
-			msp:       casheMSP,
+			msp:       theMsp,
 		}
 	}
 
-	return casheMSP, nil
+	return theMsp, nil
 }
 
 func (bh *MSPConfigHandler) CreateMSPManager() (msp.MSPManager, error) {
