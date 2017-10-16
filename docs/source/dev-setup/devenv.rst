@@ -183,6 +183,13 @@ the Microsoft Visual C++ Redistributable package installed. You can
 download the missing package at the following address:
 http://www.microsoft.com/en-us/download/details.aspx?id=8328
 
+**NOTE:** The inclusion of the miekg/pkcs11 package introduces
+an external dependency on the libtdl.h header file during
+a build of fabric. Please ensure your libtool and libtdhl-dev packages
+are installed. Otherwise, you may get a ltdl.h header missing error.
+You can download the missing package by command:
+``sudo apt-get install -y build-essential git make curl unzip g++ libtool``.
+
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
 
