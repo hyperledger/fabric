@@ -4,8 +4,8 @@ Chaincode for Developers
 What is Chaincode?
 ------------------
 
-Chaincode is a program, written in `Go <https://golang.org>`_ that implements a
-prescribed interface. Eventually, other programming languages such as Java,
+Chaincode is a program, written in `Go <https://golang.org>`_, `node.js <https://nodejs.org>`_,
+that implements a prescribed interface. Eventually, other programming languages such as Java,
 will be supported. Chaincode runs in a secured Docker container isolated from
 the endorsing peer process. Chaincode initializes and manages the ledger state
 through transactions submitted by applications.
@@ -23,8 +23,11 @@ and walk through the purpose of each method in the Chaincode Shim API.
 Chaincode API
 -------------
 
-Every chaincode program must implement the
-`Chaincode interface <http://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#Chaincode>`_
+Every chaincode program must implement the ``Chaincode interface``:
+
+  - `Go <http://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#Chaincode>`_
+  - `node.js <https://fabric-shim.github.io/ChaincodeInterface.html>`_
+
 whose methods are called in response to received transactions.
 In particular the ``Init`` method is called when a
 chaincode receives an ``instantiate`` or ``upgrade`` transaction so that the
@@ -32,8 +35,11 @@ chaincode may perform any necessary initialization, including initialization of
 application state. The ``Invoke`` method is called in response to receiving an
 ``invoke`` transaction to process transaction proposals.
 
-The other interface in the chaincode "shim" APIs is the
-`ChaincodeStubInterface <http://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStub>`_
+The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
+
+  - `Go <http://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStub>`_
+  - `node.js <https://fabric-shim.github.io/ChaincodeStub.html>`_
+
 which is used to access and modify the ledger, and to make invocations between
 chaincodes.
 
