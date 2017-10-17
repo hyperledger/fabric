@@ -11,9 +11,9 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/config/resources"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -222,7 +222,7 @@ func (rscc *Rscc) getEnvelopeFromConfig(channel string, cfgb []byte) (*common.En
 
 //create the evaluator to provide evaluation services for resources
 func (rscc *Rscc) createPolicyEvaluator(env *common.Envelope, mspMgr msp.MSPManager, polMgr policies.Manager) (policyEvaluator, error) {
-	bundle, err := resources.New(env, mspMgr, polMgr)
+	bundle, err := resourcesconfig.New(env, mspMgr, polMgr)
 	if err != nil {
 		return nil, err
 	}

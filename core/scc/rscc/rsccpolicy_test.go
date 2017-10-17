@@ -33,7 +33,7 @@ type mockPolicyEvaluatorImpl struct {
 	peval map[string]error
 }
 
-func (pe *mockPolicyEvaluatorImpl) PolicyRefForResource(resName string) string {
+func (pe *mockPolicyEvaluatorImpl) PolicyRefForAPI(resName string) string {
 	return pe.pmap[resName]
 }
 

@@ -91,22 +91,26 @@ func createConfig() []byte {
 	b := utils.MarshalOrPanic(&common.Config{
 		Type: int32(common.ConfigType_RESOURCE),
 		ChannelGroup: &common.ConfigGroup{
-			// All of the default seed data values would inside this ConfigGroup
-			Values: map[string]*common.ConfigValue{
-				"res": &common.ConfigValue{
-					Value: utils.MarshalOrPanic(&pb.Resource{
-						PolicyRef: "respol",
-					}),
-					ModPolicy: "resmodpol",
-				},
-			},
-			Policies: map[string]*common.ConfigPolicy{
-				"respol": &common.ConfigPolicy{
-					Policy: &common.Policy{
-						Type:  int32(common.Policy_SIGNATURE),
-						Value: utils.MarshalOrPanic(cauthdsl.AcceptAllPolicy),
+			Groups: map[string]*common.ConfigGroup{
+				"APIs": &common.ConfigGroup{
+					// All of the default seed data values would inside this ConfigGroup
+					Values: map[string]*common.ConfigValue{
+						"res": &common.ConfigValue{
+							Value: utils.MarshalOrPanic(&pb.Resource{
+								PolicyRef: "respol",
+							}),
+							ModPolicy: "resmodpol",
+						},
 					},
-					ModPolicy: "Example",
+					Policies: map[string]*common.ConfigPolicy{
+						"respol": &common.ConfigPolicy{
+							Policy: &common.Policy{
+								Type:  int32(common.Policy_SIGNATURE),
+								Value: utils.MarshalOrPanic(cauthdsl.AcceptAllPolicy),
+							},
+							ModPolicy: "Example",
+						},
+					},
 				},
 			},
 			ModPolicy: "adminpol",

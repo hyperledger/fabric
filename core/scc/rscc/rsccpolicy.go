@@ -9,7 +9,7 @@ package rscc
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/config/resources"
+	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -35,22 +35,22 @@ func (e InvalidIdInfo) Error() string {
 
 //policyEvalutor interface provides the interfaces for policy evaluation
 type policyEvaluator interface {
-	PolicyRefForResource(resName string) string
+	PolicyRefForAPI(resName string) string
 	Evaluate(polName string, id []*common.SignedData) error
 }
 
 //policyEvaluatorImpl implements policyEvaluator
 type policyEvaluatorImpl struct {
-	bundle *resources.Bundle
+	bundle *resourcesconfig.Bundle
 }
 
-func (pe *policyEvaluatorImpl) PolicyRefForResource(resName string) string {
-	pm := pe.bundle.ResourcePolicyMapper()
+func (pe *policyEvaluatorImpl) PolicyRefForAPI(resName string) string {
+	pm := pe.bundle.APIPolicyMapper()
 	if pm == nil {
 		return ""
 	}
 
-	return pm.PolicyRefForResource(resName)
+	return pm.PolicyRefForAPI(resName)
 }
 
 func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*common.SignedData) error {
@@ -80,7 +80,7 @@ type rsccPolicyProviderImpl struct {
 
 //GetPolicyName returns the policy name given the resource string
 func (rp *rsccPolicyProviderImpl) GetPolicyName(resName string) string {
-	return rp.pEvaluator.PolicyRefForResource(resName)
+	return rp.pEvaluator.PolicyRefForAPI(resName)
 }
 
 func newRsccPolicyProvider(channel string, pEvaluator policyEvaluator) rsccPolicyProvider {

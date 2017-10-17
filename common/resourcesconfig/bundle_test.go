@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package resources
+package resourcesconfig
 
 import (
 	"testing"
@@ -33,26 +33,32 @@ func TestBundleGreenPath(t *testing.T) {
 	env, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, "foo", nil, &cb.ConfigEnvelope{
 		Config: &cb.Config{
 			ChannelGroup: &cb.ConfigGroup{
-				Values: map[string]*cb.ConfigValue{
-					"Foo": &cb.ConfigValue{
-						Value: utils.MarshalOrPanic(&pb.Resource{
-							PolicyRef: "foo",
-						}),
-					},
-					"Bar": &cb.ConfigValue{
-						Value: utils.MarshalOrPanic(&pb.Resource{
-							PolicyRef: "/Channel/foo",
-						}),
-					},
-				},
-				Policies: map[string]*cb.ConfigPolicy{
-					"foo": dummyPolicy,
-					"bar": dummyPolicy,
-				},
 				Groups: map[string]*cb.ConfigGroup{
-					"subGroup": &cb.ConfigGroup{
+					APIsGroupKey: &cb.ConfigGroup{
+						Values: map[string]*cb.ConfigValue{
+							"Foo": &cb.ConfigValue{
+								Value: utils.MarshalOrPanic(&pb.Resource{
+									PolicyRef: "foo",
+								}),
+							},
+							"Bar": &cb.ConfigValue{
+								Value: utils.MarshalOrPanic(&pb.Resource{
+									PolicyRef: "/Channel/foo",
+								}),
+							},
+						},
+					},
+					PeerPoliciesGroupKey: &cb.ConfigGroup{
 						Policies: map[string]*cb.ConfigPolicy{
-							"other": dummyPolicy,
+							"foo": dummyPolicy,
+							"bar": dummyPolicy,
+						},
+						Groups: map[string]*cb.ConfigGroup{
+							"subGroup": &cb.ConfigGroup{
+								Policies: map[string]*cb.ConfigPolicy{
+									"other": dummyPolicy,
+								},
+							},
 						},
 					},
 				},
@@ -64,8 +70,8 @@ func TestBundleGreenPath(t *testing.T) {
 	b, err := New(env, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, b)
-	assert.Equal(t, "/Resources/foo", b.ResourcePolicyMapper().PolicyRefForResource("Foo"))
-	assert.Equal(t, "/Channel/foo", b.ResourcePolicyMapper().PolicyRefForResource("Bar"))
+	assert.Equal(t, "/Resources/APIs/foo", b.APIPolicyMapper().PolicyRefForAPI("Foo"))
+	assert.Equal(t, "/Channel/foo", b.APIPolicyMapper().PolicyRefForAPI("Bar"))
 
 	t.Run("Code coverage nits", func(t *testing.T) {
 		assert.Equal(t, b.RootGroupKey(), RootGroupKey)
@@ -79,7 +85,7 @@ func TestBundleBadSubGroup(t *testing.T) {
 		Config: &cb.Config{
 			ChannelGroup: &cb.ConfigGroup{
 				Groups: map[string]*cb.ConfigGroup{
-					"subGroup": &cb.ConfigGroup{
+					PeerPoliciesGroupKey: &cb.ConfigGroup{
 						Values: map[string]*cb.ConfigValue{
 							"Foo": &cb.ConfigValue{
 								Value: utils.MarshalOrPanic(&pb.Resource{

@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package resources
+package resourcesconfig
 
 import (
 	"fmt"
@@ -25,9 +25,9 @@ var logger = flogging.MustGetLogger("common/config/resource")
 
 // PolicyMapper is an interface for
 type PolicyMapper interface {
-	// PolicyRefForResource takes the name of a resource, and returns the policy name for a resource
-	// or the empty string is the resource is not found
-	PolicyRefForResource(resourceName string) string
+	// PolicyRefForAPI takes the name of an API, and returns the policy name
+	// or the empty string if the API is not found
+	PolicyRefForAPI(apiName string) string
 }
 
 type Bundle struct {
@@ -107,6 +107,6 @@ func (b *Bundle) PolicyManager() policies.Manager {
 	return b.pm
 }
 
-func (b *Bundle) ResourcePolicyMapper() PolicyMapper {
-	return b.rg
+func (b *Bundle) APIPolicyMapper() PolicyMapper {
+	return b.rg.apisGroup
 }
