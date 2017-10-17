@@ -30,7 +30,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-const commandDescription = "Joins the peer to a chain."
+const commandDescription = "Joins the peer to a channel."
 
 func joinCmd(cf *ChannelCmdFactory) *cobra.Command {
 	// Set the flags on the channel start command.
