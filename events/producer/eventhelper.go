@@ -64,44 +64,56 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 					if err != nil {
 						return nil, nil, "", fmt.Errorf("error unmarshalling transaction payload for block event: %s", err)
 					}
-					chaincodeActionPayload, err := utils.GetChaincodeActionPayload(tx.Actions[0].Payload)
-					if err != nil {
-						return nil, nil, "", fmt.Errorf("error unmarshalling transaction action payload for block event: %s", err)
-					}
-					propRespPayload, err := utils.GetProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
-					if err != nil {
-						return nil, nil, "", fmt.Errorf("error unmarshalling proposal response payload for block event: %s", err)
-					}
-					//ENDORSER_ACTION, ProposalResponsePayload.Extension field contains ChaincodeAction
-					caPayload, err := utils.GetChaincodeAction(propRespPayload.Extension)
-					if err != nil {
-						return nil, nil, "", fmt.Errorf("error unmarshalling chaincode action for block event: %s", err)
-					}
 
-					ccEvent, err := utils.GetChaincodeEvents(caPayload.Events)
 					filteredTx := &pb.FilteredTransaction{Txid: chdr.TxId, TxValidationCode: txsFltr.Flag(txIndex)}
+					filteredActionArray := []*pb.FilteredAction{}
+					for _, action := range tx.Actions {
+						chaincodeActionPayload, err := utils.GetChaincodeActionPayload(action.Payload)
+						if err != nil {
+							return nil, nil, "", fmt.Errorf("error unmarshalling transaction action payload for block event: %s", err)
+						}
+						propRespPayload, err := utils.GetProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
+						if err != nil {
+							return nil, nil, "", fmt.Errorf("error unmarshalling proposal response payload for block event: %s", err)
+						}
+						//ENDORSER_ACTION, ProposalResponsePayload.Extension field contains ChaincodeAction
+						caPayload, err := utils.GetChaincodeAction(propRespPayload.Extension)
+						if err != nil {
+							return nil, nil, "", fmt.Errorf("error unmarshalling chaincode action for block event: %s", err)
+						}
 
-					if err != nil {
-						filteredCcEvent := ccEvent
-						// nil out ccevent payload
-						filteredCcEvent.Payload = nil
-						filteredTx.CcEvent = filteredCcEvent
+						ccEvent, err := utils.GetChaincodeEvents(caPayload.Events)
+						if err != nil {
+							return nil, nil, "", fmt.Errorf("error unmarshalling chaincode event for block event: %s", err)
+						}
+
+						filteredAction := &pb.FilteredAction{}
+						if ccEvent.GetChaincodeId() != "" {
+							filteredCcEvent := ccEvent
+							// nil out ccevent payload
+							filteredCcEvent.Payload = nil
+							filteredAction.CcEvent = filteredCcEvent
+						}
+						filteredActionArray = append(filteredActionArray, filteredAction)
+
+						// Drop read write set from transaction before sending block event
+						// Performance issue with chaincode deploy txs and causes nodejs grpc
+						// to hit max message size bug
+						// Dropping the read write set may cause issues for security and
+						// we will need to revist when event security is addressed
+						caPayload.Results = nil
+						chaincodeActionPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(propRespPayload.ProposalHash, caPayload.Response, caPayload.Results, caPayload.Events, caPayload.ChaincodeId)
+						if err != nil {
+							return nil, nil, "", fmt.Errorf("error marshalling tx proposal payload for block event: %s", err)
+						}
+						action.Payload, err = utils.GetBytesChaincodeActionPayload(chaincodeActionPayload)
+						if err != nil {
+							return nil, nil, "", fmt.Errorf("error marshalling tx action payload for block event: %s", err)
+						}
 					}
+					filteredTx.FilteredAction = filteredActionArray
 					filteredTxArray = append(filteredTxArray, filteredTx)
-					// Drop read write set from transaction before sending block event
-					// Performance issue with chaincode deploy txs and causes nodejs grpc
-					// to hit max message size bug
-					// Dropping the read write set may cause issues for security and
-					// we will need to revist when event security is addressed
-					caPayload.Results = nil
-					chaincodeActionPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(propRespPayload.ProposalHash, caPayload.Response, caPayload.Results, caPayload.Events, caPayload.ChaincodeId)
-					if err != nil {
-						return nil, nil, "", fmt.Errorf("error marshalling tx proposal payload for block event: %s", err)
-					}
-					tx.Actions[0].Payload, err = utils.GetBytesChaincodeActionPayload(chaincodeActionPayload)
-					if err != nil {
-						return nil, nil, "", fmt.Errorf("error marshalling tx action payload for block event: %s", err)
-					}
+
 					payload.Data, err = utils.GetBytesTransaction(tx)
 					if err != nil {
 						return nil, nil, "", fmt.Errorf("error marshalling payload for block event: %s", err)

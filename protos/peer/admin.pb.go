@@ -49,6 +49,7 @@ It has these top-level messages:
 	Unregister
 	FilteredBlock
 	FilteredTransaction
+	FilteredAction
 	SignedEvent
 	Event
 	PeerID
