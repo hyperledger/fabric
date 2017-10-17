@@ -760,7 +760,7 @@ func TestUpgrade(t *testing.T) {
 	testUpgrade(t, "example02", "0", "example02", "1", path, "")
 	testUpgrade(t, "example02", "0", "example02", "", path, EmptyVersionErr("example02").Error())
 	testUpgrade(t, "example02", "0", "example02", "0", path, IdenticalVersionErr("example02").Error())
-	testUpgrade(t, "example02", "0", "example03", "1", path, NotFoundErr("test").Error())
+	testUpgrade(t, "example02", "0", "example03", "1", path, NotFoundErr("example03").Error())
 	testUpgrade(t, "example02", "0", "example02", "1{}0", path, InvalidVersionErr("1{}0").Error())
 	testUpgrade(t, "example02", "0", "example*02", "1{}0", path, InvalidChaincodeNameErr("example*02").Error())
 	testUpgrade(t, "example02", "0", "", "1", path, EmptyChaincodeNameErr("").Error())
