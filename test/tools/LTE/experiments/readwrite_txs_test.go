@@ -66,19 +66,38 @@ func runReadWriteClientsForChain(chain *chainmgmt.Chain) {
 }
 
 func runReadWriteClient(chain *chainmgmt.Chain, rand *rand.Rand, numTx int, wg *sync.WaitGroup) {
-	numKeysPerTx := conf.txConf.numKeysInEachTx
+	numWritesPerTx := conf.txConf.numWritesPerTx
+	numReadsPerTx := conf.txConf.numReadsPerTx
 	maxKeyNumber := calculateShare(conf.dataConf.numKVs, conf.chainMgrConf.NumChains, int(chain.ID))
+	kvSize := conf.dataConf.kvSize
+	useJSON := conf.dataConf.useJSON
+	var value []byte
 
 	for i := 0; i < numTx; i++ {
 		simulator, err := chain.NewTxSimulator(util.GenerateUUID())
 		common.PanicOnError(err)
-		for i := 0; i < numKeysPerTx; i++ {
+		for i := 0; i < numWritesPerTx; i++ {
 			keyNumber := rand.Intn(maxKeyNumber)
 			key := constructKey(keyNumber)
-			value, err := simulator.GetState(chaincodeName, key)
-			common.PanicOnError(err)
-			if !verifyValue(keyNumber, value) {
-				panic(fmt.Errorf("Value %s is not expected for key number %d", value, keyNumber))
+			// check to see if the number of reads is exceeded
+			if i < numReadsPerTx-1 {
+				value, err = simulator.GetState(chaincodeName, key)
+				common.PanicOnError(err)
+				if useJSON {
+					if !verifyJSONValue(keyNumber, value) {
+						panic(fmt.Errorf("Value %s is not expected for key number %d", value, keyNumber))
+					}
+				} else {
+					if !verifyValue(keyNumber, value) {
+						panic(fmt.Errorf("Value %s is not expected for key number %d", value, keyNumber))
+					}
+				}
+			} else {
+				if useJSON {
+					value = []byte(constructJSONValue(keyNumber, kvSize))
+				} else {
+					value = []byte(constructValue(keyNumber, kvSize))
+				}
 			}
 			common.PanicOnError(simulator.SetState(chaincodeName, key, value))
 		}

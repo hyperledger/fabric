@@ -6,12 +6,14 @@
 #
 
 export useCouchDB="yes"
+UseJSONFormat="true"
 DataDir="/tmp/fabric/test/tools/LTE/data"
 NumChains=10
 NumParallelTxPerChain=10
 NumKVs=10000
 NumTotalTx=10000
-NumKeysInEachTx=4
+NumWritesPerTx=4
+NumReadsPerTx=4
 BatchSize=50
 KVSize=200
 
@@ -25,12 +27,12 @@ KVSize=200
 # NumParallelTxPerChain=10
 # NumKVs=10000
 # NumTotalTx=10000
-# NumKeysInEachTx=4
+# NumWritesPerTx=4
 # BatchSize=50
 # KVSize=200
 ArrayNumParallelTxPerChain=(1 5 10 20 50 100)
 ArrayNumChains=(1 5 10 20 50)
-ArrayNumKeysInEachTx=(1 2 5 10 20)
+ArrayNumWritesPerTx=(1 2 5 10 20)
 ArrayKVSize=(100 200 500 1000 2000)
 ArrayBatchSize=(10 20 100 500)
 ArrayNumParallelTxWithSingleChain=(1 5 10 20 50 100)
