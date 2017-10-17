@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 	"golang.org/x/net/context"
@@ -29,17 +30,17 @@ func init() {
 	logger = flogging.MustGetLogger("deliveryClient")
 }
 
-var (
-	reConnectTotalTimeThreshold = time.Second * 60 * 5
-	connTimeout                 = time.Second * 3
-	reConnectBackoffThreshold   = float64(time.Hour)
+const (
+	defaultReConnectTotalTimeThreshold = time.Second * 60 * 60
 )
 
-// SetReconnectTotalTimeThreshold sets the total time the delivery service
-// may spend in reconnection attempts until its retry logic gives up
-// and returns an error
-func SetReconnectTotalTimeThreshold(duration time.Duration) {
-	reConnectTotalTimeThreshold = duration
+var (
+	connTimeout               = time.Second * 3
+	reConnectBackoffThreshold = float64(time.Hour)
+)
+
+func getReConnectTotalTimeThreshold() time.Duration {
+	return util.GetDurationOrDefault("peer.deliveryclient.reconnectTotalTimeThreshold", defaultReConnectTotalTimeThreshold)
 }
 
 // DeliverService used to communicate with orderers to obtain
@@ -191,7 +192,7 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		return requester.RequestBlocks(ledgerInfoProvider)
 	}
 	backoffPolicy := func(attemptNum int, elapsedTime time.Duration) (time.Duration, bool) {
-		if elapsedTime.Nanoseconds() > reConnectTotalTimeThreshold.Nanoseconds() {
+		if elapsedTime.Nanoseconds() > getReConnectTotalTimeThreshold().Nanoseconds() {
 			return 0, false
 		}
 		sleepIncrement := float64(time.Millisecond * 500)

@@ -96,7 +96,7 @@ func TestLeaderYield(t *testing.T) {
 	// There isn't any orderer present so the leader peer won't be able to
 	// connect to the orderer, and should relinquish its leadership after a while.
 	// Make sure the other peer declares itself as the leader soon after.
-	deliverclient.SetReconnectTotalTimeThreshold(time.Second * 5)
+	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", time.Second*5)
 	viper.Set("peer.gossip.useLeaderElection", true)
 	viper.Set("peer.gossip.orgLeader", false)
 	n := 2
