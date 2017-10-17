@@ -31,7 +31,7 @@ func newAPIsGroup(group *cb.ConfigGroup) (*apisGroup, error) {
 	apiPolicyRefs := make(map[string]string)
 
 	for key, value := range group.Values {
-		api := &pb.Resource{}
+		api := &pb.APIResource{}
 		if err := proto.Unmarshal(value.Value, api); err != nil {
 			return nil, err
 		}

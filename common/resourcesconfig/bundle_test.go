@@ -37,12 +37,12 @@ func TestBundleGreenPath(t *testing.T) {
 					APIsGroupKey: &cb.ConfigGroup{
 						Values: map[string]*cb.ConfigValue{
 							"Foo": &cb.ConfigValue{
-								Value: utils.MarshalOrPanic(&pb.Resource{
+								Value: utils.MarshalOrPanic(&pb.APIResource{
 									PolicyRef: "foo",
 								}),
 							},
 							"Bar": &cb.ConfigValue{
-								Value: utils.MarshalOrPanic(&pb.Resource{
+								Value: utils.MarshalOrPanic(&pb.APIResource{
 									PolicyRef: "/Channel/foo",
 								}),
 							},
@@ -87,8 +87,8 @@ func TestBundleBadSubGroup(t *testing.T) {
 				Groups: map[string]*cb.ConfigGroup{
 					PeerPoliciesGroupKey: &cb.ConfigGroup{
 						Values: map[string]*cb.ConfigValue{
-							"Foo": {
-								Value: utils.MarshalOrPanic(&pb.Resource{
+							"Foo": &cb.ConfigValue{
+								Value: utils.MarshalOrPanic(&pb.APIResource{
 									PolicyRef: "foo",
 								}),
 							},
