@@ -9,7 +9,6 @@ package channelconfig
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -24,25 +23,33 @@ func TestMSPConfigManager(t *testing.T) {
 
 	// test success:
 
-	mspCH := NewMSPConfigHandler(capabilities.MSPv1_0)
+	mspVers := []msp.MSPVersion{msp.MSPv1_0, msp.MSPv1_1}
 
-	_, err = mspCH.ProposeMSP(conf)
-	assert.NoError(t, err)
+	for _, ver := range mspVers {
+		mspCH := NewMSPConfigHandler(ver)
 
-	mgr, err := mspCH.CreateMSPManager()
-	assert.NoError(t, err)
-	assert.NotNil(t, mgr)
+		_, err = mspCH.ProposeMSP(conf)
+		assert.NoError(t, err)
 
-	msps, err := mgr.GetMSPs()
-	assert.NoError(t, err)
+		mgr, err := mspCH.CreateMSPManager()
+		assert.NoError(t, err)
+		assert.NotNil(t, mgr)
 
-	if msps == nil || len(msps) == 0 {
-		t.Fatalf("There are no MSPS in the manager")
+		msps, err := mgr.GetMSPs()
+		assert.NoError(t, err)
+
+		if msps == nil || len(msps) == 0 {
+			t.Fatalf("There are no MSPS in the manager")
+		}
+
+		for _, mspInst := range msps {
+			assert.Equal(t, mspInst.GetVersion(), msp.MSPVersion(ver))
+		}
 	}
 }
 
 func TestMSPConfigFailure(t *testing.T) {
-	mspCH := NewMSPConfigHandler(capabilities.MSPv1_0)
+	mspCH := NewMSPConfigHandler(msp.MSPv1_0)
 
 	// begin/propose/commit
 	t.Run("Bad proto", func(t *testing.T) {

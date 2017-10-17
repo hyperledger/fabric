@@ -213,6 +213,11 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	return msp.internalSetupFunc(conf)
 }
 
+// GetVersion returns the version of this MSP
+func (msp *bccspmsp) GetVersion() MSPVersion {
+	return msp.version
+}
+
 // GetType returns the type for this MSP
 func (msp *bccspmsp) GetType() ProviderType {
 	return FABRIC

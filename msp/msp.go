@@ -65,6 +65,9 @@ type MSP interface {
 	// Setup the MSP instance according to configuration information
 	Setup(config *msp.MSPConfig) error
 
+	// GetVersion returns the version of this MSP
+	GetVersion() MSPVersion
+
 	// GetType returns the provider type
 	GetType() ProviderType
 

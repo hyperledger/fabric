@@ -9,7 +9,6 @@ package channelconfig
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/common/capabilities"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -109,7 +108,7 @@ type ChannelCapabilities interface {
 
 	// MSPVersion specifies the version of the MSP this channel must understand, including the MSP types
 	// and MSP principal types.
-	MSPVersion() capabilities.MSPVersion
+	MSPVersion() msp.MSPVersion
 }
 
 // ApplicationCapabilities defines the capabilities for the application portion of a channel
