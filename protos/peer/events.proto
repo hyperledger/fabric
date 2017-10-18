@@ -81,7 +81,8 @@ message Unregister {
 message FilteredBlock {
     string channel_id = 1;
     uint64 number = 2; // The position in the blockchain
-    repeated FilteredTransaction filtered_tx = 3;
+    common.HeaderType type = 3;
+    repeated FilteredTransaction filtered_tx = 4;
 }
 
 //FilteredTransaction is a minimal set of information about a transaction

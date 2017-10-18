@@ -35,6 +35,7 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 	blockForEvent := &common.Block{}
 	filteredBlockForEvent := &pb.FilteredBlock{}
 	filteredTxArray := []*pb.FilteredTransaction{}
+	var headerType common.HeaderType
 	blockForEvent.Header = block.Header
 	blockForEvent.Metadata = block.Metadata
 	blockForEvent.Data = &common.BlockData{}
@@ -56,9 +57,11 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 				if err != nil {
 					return nil, nil, "", err
 				}
-				channelID = chdr.ChannelId
 
-				if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+				channelID = chdr.ChannelId
+				headerType = common.HeaderType(chdr.Type)
+
+				if headerType == common.HeaderType_ENDORSER_TRANSACTION {
 					logger.Debugf("Channel [%s]: Block event for block number [%d] contains transaction id: %s", channelID, block.Header.Number, chdr.TxId)
 					tx, err := utils.GetTransaction(payload.Data)
 					if err != nil {
@@ -133,6 +136,7 @@ func CreateBlockEvents(block *common.Block) (bevent *pb.Event, fbevent *pb.Event
 	}
 	filteredBlockForEvent.ChannelId = channelID
 	filteredBlockForEvent.Number = block.Header.Number
+	filteredBlockForEvent.Type = headerType
 	filteredBlockForEvent.FilteredTx = filteredTxArray
 
 	return CreateBlockEvent(blockForEvent), CreateFilteredBlockEvent(filteredBlockForEvent), channelID, nil
