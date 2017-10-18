@@ -26,6 +26,7 @@ import (
 	ctxt "github.com/hyperledger/fabric/common/configtx/test"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -36,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/mocks/ccprovider"
+	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -61,9 +63,9 @@ func setupLedgerAndValidator(t *testing.T) (ledger.PeerLedger, Validator) {
 	theLedger, err := ledgermgmt.CreateLedger(gb)
 	assert.NoError(t, err)
 	vcs := struct {
-		*mockSupport
+		*mocktxvalidator.Support
 		*semaphore.Weighted
-	}{&mockSupport{l: theLedger}, semaphore.NewWeighted(10)}
+	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	theValidator := NewTxValidator(vcs)
 
 	return theLedger, theValidator
@@ -140,26 +142,6 @@ func putCCInfoWithVSCCAndVer(theLedger ledger.PeerLedger, ccname, vscc, ver stri
 
 func putCCInfo(theLedger ledger.PeerLedger, ccname string, policy []byte, t *testing.T) {
 	putCCInfoWithVSCCAndVer(theLedger, ccname, "vscc", ccVersion, policy, t)
-}
-
-type mockSupport struct {
-	l ledger.PeerLedger
-}
-
-func (m *mockSupport) Ledger() ledger.PeerLedger {
-	return m.l
-}
-
-func (m *mockSupport) MSPManager() msp.MSPManager {
-	return mgmt.GetManagerForChain(util.GetTestChainID())
-}
-
-func (m *mockSupport) Apply(configtx *common.ConfigEnvelope) error {
-	return nil
-}
-
-func (m *mockSupport) GetMSPIDs(cid string) []string {
-	return []string{"DEFAULT"}
 }
 
 func assertInvalid(block *common.Block, t *testing.T, code peer.TxValidationCode) {
@@ -568,9 +550,9 @@ func (exec *mockQueryExecutor) Done() {
 func TestLedgerIsNoAvailable(t *testing.T) {
 	theLedger := new(mockLedger)
 	vcs := struct {
-		*mockSupport
+		*mocktxvalidator.Support
 		*semaphore.Weighted
-	}{&mockSupport{l: theLedger}, semaphore.NewWeighted(10)}
+	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	validator := NewTxValidator(vcs)
 
 	ccID := "mycc"
@@ -596,9 +578,9 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 func TestValidationInvalidEndorsing(t *testing.T) {
 	theLedger := new(mockLedger)
 	vcs := struct {
-		*mockSupport
+		*mocktxvalidator.Support
 		*semaphore.Weighted
-	}{&mockSupport{l: theLedger}, semaphore.NewWeighted(10)}
+	}{&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}}, semaphore.NewWeighted(10)}
 	validator := NewTxValidator(vcs)
 
 	ccID := "mycc"
