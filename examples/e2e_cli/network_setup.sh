@@ -73,7 +73,7 @@ function networkUp () {
 }
 
 function networkDown () {
-    docker-compose -f $COMPOSE_FILE down
+    docker-compose -f $COMPOSE_FILE -f $COMPOSE_FILE_COUCH down
 
     #Cleanup the chaincode containers
     clearContainers
