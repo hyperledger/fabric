@@ -216,8 +216,8 @@ func (m *KVWriteHash) GetValueHash() []byte {
 
 // Version encapsulates the version of a Key
 // A version of a committed key is maintained as the height of the transaction that committed the key.
-// The height is represenetd as a tuple <blockNum, txNum> where the txNum is the height of the transaction
-// (starting with 1) within block
+// The height is represenetd as a tuple <blockNum, txNum> where the txNum is the position of the transaction
+// (starting with 0) within block
 type Version struct {
 	BlockNum uint64 `protobuf:"varint,1,opt,name=block_num,json=blockNum" json:"block_num,omitempty"`
 	TxNum    uint64 `protobuf:"varint,2,opt,name=tx_num,json=txNum" json:"tx_num,omitempty"`

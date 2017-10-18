@@ -66,8 +66,8 @@ message KVWriteHash {
 
 // Version encapsulates the version of a Key
 // A version of a committed key is maintained as the height of the transaction that committed the key.
-// The height is represenetd as a tuple <blockNum, txNum> where the txNum is the height of the transaction
-// (starting with 1) within block
+// The height is represenetd as a tuple <blockNum, txNum> where the txNum is the position of the transaction
+// (starting with 0) within block
 message Version {
     uint64 block_num = 1;
     uint64 tx_num = 2;
