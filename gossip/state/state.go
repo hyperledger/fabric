@@ -172,6 +172,10 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 		if !(msg.IsRemoteStateMessage() || msg.GetPrivateData() != nil) {
 			return false
 		}
+		// Ensure we deal only with messages that belong to this channel
+		if !bytes.Equal(msg.Channel, []byte(chainID)) {
+			return false
+		}
 		connInfo := receivedMsg.GetConnectionInfo()
 		authErr := services.VerifyByChannel(msg.Channel, connInfo.Identity, connInfo.Auth.Signature, connInfo.Auth.SignedData)
 		if authErr != nil {
