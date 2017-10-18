@@ -152,8 +152,14 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		return errors.Wrap(err, "Credential is not cryptographically valid")
 	}
 
+	// Create the cryptographic evidence that this identity is valid
+	proof, err := idemix.NewSignature(cred, sk, Nym, RandNym, ipk, discloseFlags, nil, rng)
+	if err != nil {
+		return errors.Wrap(err, "Failed to setup cryptographic proof of identity")
+	}
+
 	// Set up default signer
-	msp.signer = &idemixSigningIdentity{newIdemixIdentity(msp, Nym, role, ou), rng, cred, sk, RandNym}
+	msp.signer = &idemixSigningIdentity{newIdemixIdentity(msp, Nym, role, ou, proof), rng, cred, sk, RandNym}
 
 	return nil
 }
@@ -216,30 +222,46 @@ func (msp *idemixmsp) deserializeIdentityInternal(serializedID []byte) (Identity
 		return nil, errors.Wrap(err, "cannot deserialize the role of the identity")
 	}
 
-	return newIdemixIdentity(msp, Nym, role, ou), nil
+	proof := &idemix.Signature{}
+	err = proto.Unmarshal(serialized.Proof, proof)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot deserialize the proof of the identity")
+	}
+
+	return newIdemixIdentity(msp, Nym, role, ou, proof), nil
 
 }
 
 func (msp *idemixmsp) Validate(id Identity) error {
 	mspLogger.Infof("Validating identity %s", id)
 
-	// NOTE: in idemix, an identity consists of a pseudonym. Validate checks that this pseudonym could be valid
-	// with respect to this msp, but there is no cryptographic guarantee that a user that can sign wrt this
-	// pseudonym exists.
+	var identity *idemixidentity
 	switch t := id.(type) {
 	case *idemixidentity:
-		if id.(*idemixidentity).GetMSPIdentifier() != msp.name {
-			return errors.Errorf("the supplied identity does not belong to this msp")
-		}
-		return msp.ipk.Check()
+		identity = id.(*idemixidentity)
 	case *idemixSigningIdentity:
-		if id.(*idemixSigningIdentity).GetMSPIdentifier() != msp.name {
-			return errors.Errorf("the supplied identity does not belong to this msp")
-		}
-		return msp.ipk.Check()
+		identity = id.(*idemixSigningIdentity).idemixidentity
 	default:
 		return errors.Errorf("identity type %T is not recognized", t)
 	}
+	if identity.GetMSPIdentifier() != msp.name {
+		return errors.Errorf("the supplied identity does not belong to this msp")
+	}
+	return identity.verifyProof()
+}
+
+func (id *idemixidentity) verifyProof() error {
+	ouBytes, err := proto.Marshal(id.OU)
+	if err != nil {
+		return errors.Wrapf(err, "error marshalling OU of identity %s", id.GetIdentifier())
+	}
+	roleBytes, err := proto.Marshal(id.Role)
+	if err != nil {
+		return errors.Wrapf(err, "error marshalling Role of identity %s", id.GetIdentifier())
+	}
+	attributeValues := []*amcl.BIG{idemix.HashModOrder(ouBytes), idemix.HashModOrder(roleBytes)}
+
+	return id.associationProof.Ver(discloseFlags, id.msp.ipk, nil, attributeValues)
 }
 
 func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
@@ -356,15 +378,20 @@ type idemixidentity struct {
 	id   *IdentityIdentifier
 	Role *m.MSPRole
 	OU   *m.OrganizationUnit
+	// associationProof contains cryptographic proof that this identity
+	// belongs to the MSP id.msp, i.e., it proves that the pseudonym
+	// is constructed from a secret key on which the CA issued a credential.
+	associationProof *idemix.Signature
 }
 
-func newIdemixIdentity(msp *idemixmsp, nym *amcl.ECP, role *m.MSPRole, ou *m.OrganizationUnit) *idemixidentity {
+func newIdemixIdentity(msp *idemixmsp, nym *amcl.ECP, role *m.MSPRole, ou *m.OrganizationUnit, proof *idemix.Signature) *idemixidentity {
 	id := &idemixidentity{}
 	id.Nym = nym
 	id.msp = msp
 	id.id = &IdentityIdentifier{Mspid: msp.name, Id: nym.ToString()}
 	id.Role = role
 	id.OU = ou
+	id.associationProof = proof
 	return id
 }
 
@@ -403,21 +430,13 @@ func (id *idemixidentity) Verify(msg []byte, sig []byte) error {
 		mspIdentityLogger.Debugf("Verify Idemix sig: sig = %s", hex.Dump(sig))
 	}
 
-	signature := new(idemix.Signature)
+	signature := new(idemix.NymSignature)
 	err := proto.Unmarshal(sig, signature)
 	if err != nil {
 		return errors.Wrap(err, "error unmarshalling signature")
 	}
-	ouBytes, err := proto.Marshal(id.OU)
-	if err != nil {
-		return errors.Wrapf(err, "error marshalling OU of identity %s", id.GetIdentifier())
-	}
-	roleBytes, err := proto.Marshal(id.Role)
-	if err != nil {
-		return errors.Wrapf(err, "error marshalling Role of identity %s", id.GetIdentifier())
-	}
-	attributeValues := []*amcl.BIG{idemix.HashModOrder(ouBytes), idemix.HashModOrder(roleBytes)}
-	return signature.Ver(discloseFlags, id.msp.ipk, msg, attributeValues)
+
+	return signature.Ver(id.Nym, id.msp.ipk, msg)
 }
 
 func (id *idemixidentity) SatisfiesPrincipal(principal *m.MSPPrincipal) error {
@@ -440,6 +459,11 @@ func (id *idemixidentity) Serialize() ([]byte, error) {
 
 	serialized.OU = ouBytes
 	serialized.Role = roleBytes
+
+	serialized.Proof, err = proto.Marshal(id.associationProof)
+	if err != nil {
+		return nil, err
+	}
 
 	idemixIDBytes, err := proto.Marshal(serialized)
 	if err != nil {
@@ -465,7 +489,11 @@ type idemixSigningIdentity struct {
 
 func (id *idemixSigningIdentity) Sign(msg []byte) ([]byte, error) {
 	mspLogger.Debugf("Idemix identity %s is signing", id.GetIdentifier())
-	return proto.Marshal(idemix.NewSignature(id.Cred, id.Sk, id.Nym, id.RandNym, id.msp.ipk, discloseFlags, msg, id.rng))
+	sig, err := idemix.NewNymSignature(id.Sk, id.Nym, id.RandNym, id.msp.ipk, msg, id.rng)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Marshal(sig)
 }
 
 func (id *idemixSigningIdentity) GetPublicVersion() Identity {

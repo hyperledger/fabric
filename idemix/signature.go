@@ -42,7 +42,11 @@ func hiddenIndices(Disclosure []byte) []int {
 // The []byte Disclosure steers which attributes are disclosed:
 // if Disclosure[i] == 0 then attribute i remains hidden and otherwise it is disclosed.
 // We use the zero-knowledge proof by http://eprint.iacr.org/2016/663.pdf to prove knowledge of a BBS+ signature
-func NewSignature(cred *Credential, sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG, ipk *IssuerPublicKey, Disclosure []byte, msg []byte, rng *amcl.RAND) *Signature {
+func NewSignature(cred *Credential, sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG, ipk *IssuerPublicKey, Disclosure []byte, msg []byte, rng *amcl.RAND) (*Signature, error) {
+	if cred == nil || sk == nil || Nym == nil || RNym == nil || ipk == nil || rng == nil {
+		return nil, errors.Errorf("cannot create idemix signature: received nil input")
+	}
+
 	HiddenIndices := hiddenIndices(Disclosure)
 
 	// Start sig
@@ -137,19 +141,20 @@ func NewSignature(cred *Credential, sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG,
 	}
 
 	return &Signature{
-		EcpToProto(APrime),
-		EcpToProto(ABar),
-		EcpToProto(BPrime),
-		BigToBytes(ProofC),
-		BigToBytes(ProofSSk),
-		BigToBytes(ProofSE),
-		BigToBytes(ProofSR2),
-		BigToBytes(ProofSR3),
-		BigToBytes(ProofSSPrime),
-		ProofSAttrs,
-		BigToBytes(Nonce),
-		EcpToProto(Nym),
-		BigToBytes(ProofSRNym)}
+			EcpToProto(APrime),
+			EcpToProto(ABar),
+			EcpToProto(BPrime),
+			BigToBytes(ProofC),
+			BigToBytes(ProofSSk),
+			BigToBytes(ProofSE),
+			BigToBytes(ProofSR2),
+			BigToBytes(ProofSR3),
+			BigToBytes(ProofSSPrime),
+			ProofSAttrs,
+			BigToBytes(Nonce),
+			EcpToProto(Nym),
+			BigToBytes(ProofSRNym)},
+		nil
 }
 
 // Ver verifies an idemix signature

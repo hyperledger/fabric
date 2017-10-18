@@ -101,7 +101,8 @@ func TestIdemix(t *testing.T) {
 
 	disclosure := []byte{0, 0, 0, 0, 0}
 	msg := []byte{1, 2, 3, 4, 5}
-	sig := NewSignature(cred, sk, Nym, RandNym, key.IPk, disclosure, msg, rng)
+	sig, err := NewSignature(cred, sk, Nym, RandNym, key.IPk, disclosure, msg, rng)
+	assert.NoError(t, err)
 
 	err = sig.Ver(disclosure, key.IPk, msg, nil)
 	if err != nil {
@@ -111,11 +112,22 @@ func TestIdemix(t *testing.T) {
 
 	// Test signing selective disclosure
 	disclosure = []byte{0, 1, 1, 1, 1}
-	sig = NewSignature(cred, sk, Nym, RandNym, key.IPk, disclosure, msg, rng)
+	sig, err = NewSignature(cred, sk, Nym, RandNym, key.IPk, disclosure, msg, rng)
+	assert.NoError(t, err)
 
 	err = sig.Ver(disclosure, key.IPk, msg, attrs)
 	if err != nil {
 		t.Fatalf("Signature should be valid but verification returned error: %s", err)
+		return
+	}
+
+	// Test NymSignatures
+	nymsig, err := NewNymSignature(sk, Nym, RandNym, key.IPk, []byte("testing"), rng)
+	assert.NoError(t, err)
+
+	err = nymsig.Ver(Nym, key.IPk, []byte("testing"))
+	if err != nil {
+		t.Fatalf("NymSig should be valid but verification returned error: %s", err)
 		return
 	}
 }
