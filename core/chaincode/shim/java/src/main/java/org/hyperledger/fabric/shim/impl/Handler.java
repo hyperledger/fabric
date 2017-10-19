@@ -1,17 +1,7 @@
 /*
-Copyright DTCC, IBM 2016, 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-         http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package org.hyperledger.fabric.shim.impl;
@@ -50,9 +40,11 @@ import org.hyperledger.fabric.protos.peer.Chaincode.ChaincodeSpec;
 import org.hyperledger.fabric.protos.peer.ChaincodeEventPackage.ChaincodeEvent;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.ChaincodeMessage.Type;
+import org.hyperledger.fabric.protos.peer.ChaincodeShim.DelState;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.GetQueryResult;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.GetStateByRange;
-import org.hyperledger.fabric.protos.peer.ChaincodeShim.PutStateInfo;
+import org.hyperledger.fabric.protos.peer.ChaincodeShim.GetState;
+import org.hyperledger.fabric.protos.peer.ChaincodeShim.PutState;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.QueryResponse;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.QueryStateClose;
 import org.hyperledger.fabric.protos.peer.ChaincodeShim.QueryStateNext;
@@ -178,7 +170,7 @@ public class Handler {
 
 	/**
 	 * Marks a UUID as either a transaction or a query
-	 * 
+	 *
 	 * @param uuid
 	 *            ID to be marked
 	 * @param isTransaction
@@ -205,7 +197,7 @@ public class Handler {
 
 	/**
 	 * Handles requests to initialize chaincode
-	 * 
+	 *
 	 * @param message
 	 *            chaincode to be initialized
 	 */
@@ -333,12 +325,12 @@ public class Handler {
 		 * TODO- revisit. This may no longer be needed with the
 		 * serialized/streamlined messaging model There are two situations in
 		 * which the ERROR event can be triggered:
-		 * 
+		 *
 		 * 1. When an error is encountered within handleInit or
 		 * handleTransaction - some issue at the chaincode side; In this case
 		 * there will be no responseChannel and the message has been sent to the
 		 * validator.
-		 * 
+		 *
 		 * 2. The chaincode has initiated a request (get/put/del state) to the
 		 * validator and is expecting a response on the responseChannel; If
 		 * ERROR is received from validator, this needs to be notified on the
@@ -479,7 +471,7 @@ public class Handler {
 	public synchronized void handleMessage(ChaincodeMessage message) throws Exception {
 
 		if (message.getType() == ChaincodeMessage.Type.KEEPALIVE) {
-			logger.debug(String.format("[%-8s] Recieved KEEPALIVE message, do nothing", message.getTxid()));
+			logger.debug(String.format("[%-8s] Received KEEPALIVE message, do nothing", message.getTxid()));
 			// Received a keep alive message, we don't do anything with it for
 			// now and it does not touch the state machine
 			return;
@@ -519,18 +511,22 @@ public class Handler {
 	}
 
 	private static ChaincodeMessage newGetStateEventMessage(final String txId, final String key) {
-		return newEventMessage(GET_STATE, txId, ByteString.copyFromUtf8(key));
+		return newEventMessage(GET_STATE, txId, GetState.newBuilder()
+                .setKey(key)
+                .build().toByteString());
 	}
 
 	private static ChaincodeMessage newPutStateEventMessage(final String txId, final String key, final ByteString value) {
-		return newEventMessage(PUT_STATE, txId, PutStateInfo.newBuilder()
+		return newEventMessage(PUT_STATE, txId, PutState.newBuilder()
 				.setKey(key)
 				.setValue(value)
 				.build().toByteString());
 	}
 
 	private static ChaincodeMessage newDeleteStateEventMessage(final String txId, final String key) {
-		return newEventMessage(DEL_STATE, txId, ByteString.copyFromUtf8(key));
+		return newEventMessage(DEL_STATE, txId, DelState.newBuilder()
+                .setKey(key)
+                .build().toByteString());
 	}
 
 	private static ChaincodeMessage newErrorEventMessage(final String txId, final Throwable throwable) {
