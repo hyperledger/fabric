@@ -9,6 +9,7 @@ package resourcesconfig
 import (
 	"testing"
 
+	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -32,7 +33,7 @@ func TestBundle(t *testing.T) {
 	}, 0, 0)
 	assert.NoError(t, err)
 
-	b, err := New(env, nil, nil)
+	b, err := NewBundleFromEnvelope(env, &mockchannelconfig.Resources{})
 	assert.NoError(t, err)
 	assert.NotNil(t, b)
 
@@ -40,7 +41,9 @@ func TestBundle(t *testing.T) {
 	assert.NotNil(t, b.ConfigtxManager())
 	assert.NotNil(t, b.PolicyManager())
 	assert.NotNil(t, b.APIPolicyMapper())
+	assert.NotNil(t, b.ChannelConfig())
 	assert.NotNil(t, b.ChaincodeRegistry())
+	assert.Nil(t, b.ValidateNew(nil))
 }
 
 func TestBundleFailure(t *testing.T) {
@@ -55,7 +58,7 @@ func TestBundleFailure(t *testing.T) {
 	}, 0, 0)
 	assert.NoError(t, err)
 
-	b, err := New(env, nil, nil)
+	b, err := NewBundleFromEnvelope(env, &mockchannelconfig.Resources{})
 	assert.Error(t, err)
 	assert.Nil(t, b)
 }

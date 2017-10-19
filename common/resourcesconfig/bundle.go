@@ -10,13 +10,15 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/pkg/errors"
 )
 
 // RootGroupKey is the namespace in the config tree for this set of config
@@ -26,29 +28,18 @@ var logger = flogging.MustGetLogger("common/config/resource")
 
 // Bundle stores an immutable group of resources configuration
 type Bundle struct {
-	rg  *resourceGroup
-	cm  configtxapi.Manager
-	pm  policies.Manager
-	rpm policies.Manager
+	channelID string
+	resConf   *cb.Config
+	chanConf  channelconfig.Resources
+	rg        *resourceGroup
+	cm        configtxapi.Manager
+	pm        *policyRouter
 }
 
-// New creates a new resources config bundle
-// TODO, change interface to take config and not an envelope
+// NewBundleFromEnvelope creates a new resources config bundle.
+// TODO, this method should probably be removed, as the resourcesconfig is never in an Envelope naturally.
 // TODO, add an atomic BundleSource
-func New(envConfig *cb.Envelope, mspManager msp.MSPManager, channelPolicyManager policies.Manager) (*Bundle, error) {
-	policyProviderMap := make(map[int32]policies.Provider)
-	for pType := range cb.Policy_PolicyType_name {
-		rtype := cb.Policy_PolicyType(pType)
-		switch rtype {
-		case cb.Policy_UNKNOWN:
-			// Do not register a handler
-		case cb.Policy_SIGNATURE:
-			policyProviderMap[pType] = cauthdsl.NewPolicyProvider(mspManager)
-		case cb.Policy_MSP:
-			// Add hook for MSP Handler here
-		}
-	}
-
+func NewBundleFromEnvelope(envConfig *cb.Envelope, chanConf channelconfig.Resources) (*Bundle, error) {
 	payload, err := utils.UnmarshalPayload(envConfig.Payload)
 	if err != nil {
 		return nil, err
@@ -63,31 +54,28 @@ func New(envConfig *cb.Envelope, mspManager msp.MSPManager, channelPolicyManager
 		return nil, fmt.Errorf("config is nil")
 	}
 
-	resourcesPolicyManager, err := policies.NewManagerImpl(RootGroupKey, policyProviderMap, configEnvelope.Config.ChannelGroup)
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to unmarshal channel header")
 	}
 
-	resourceGroup, err := newResourceGroup(configEnvelope.Config.ChannelGroup)
+	return NewBundle(chdr.ChannelId, configEnvelope.Config, chanConf)
+}
+
+// NewBundle creates a resources config bundle which implements the Resources interface.
+func NewBundle(channelID string, config *cb.Config, chanConf channelconfig.Resources) (*Bundle, error) {
+	resourceGroup, err := newResourceGroup(config.ChannelGroup)
 	if err != nil {
 		return nil, err
 	}
 
 	b := &Bundle{
-		rpm: resourcesPolicyManager,
-		rg:  resourceGroup,
-		pm: &policyRouter{
-			channelPolicyManager:   channelPolicyManager,
-			resourcesPolicyManager: resourcesPolicyManager,
-		},
+		channelID: channelID,
+		rg:        resourceGroup,
+		resConf:   config,
 	}
 
-	b.cm, err = configtx.NewManagerImpl(envConfig, b)
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
+	return b.NewFromChannelConfig(chanConf)
 }
 
 // RootGroupKey returns the name of the key for the root group (the namespace for this config).
@@ -113,4 +101,67 @@ func (b *Bundle) APIPolicyMapper() PolicyMapper {
 // ChaincodeRegistery returns a way to query for chaincodes defined in this channel.
 func (b *Bundle) ChaincodeRegistry() ChaincodeRegistry {
 	return b.rg.chaincodesGroup
+}
+
+// ChannelConfig returns the channel config which this resources config depends on.
+// Note, consumers of the resourcesconfig should almost never refer to the PolicyManager
+// within the channel config, and should instead refer to the PolicyManager exposed by
+// this Bundle.
+func (b *Bundle) ChannelConfig() channelconfig.Resources {
+	return b.chanConf
+}
+
+// ValidateNew is currently a no-op.  The idea is that there may be additional checking which needs to be done
+// between an old resource configuration and a new one.  In the channel resource configuration case, we add some
+// checks to make sure that the MSP IDs have not changed, and that the consensus type has not changed.  There is
+// currently no such check required in the peer resources, but, in the interest of following the pattern established
+// by the channel configuration, it is included here.
+func (b *Bundle) ValidateNew(resources Resources) error {
+	return nil
+}
+
+// NewFromChannelConfig builds a new Bundle, based on this Bundle, but with a different underlying
+// channel config.  This is usually invoked when a channel config update is processed.
+func (b *Bundle) NewFromChannelConfig(chanConf channelconfig.Resources) (*Bundle, error) {
+	policyProviderMap := make(map[int32]policies.Provider)
+	for pType := range cb.Policy_PolicyType_name {
+		rtype := cb.Policy_PolicyType(pType)
+		switch rtype {
+		case cb.Policy_UNKNOWN:
+			// Do not register a handler
+		case cb.Policy_SIGNATURE:
+			policyProviderMap[pType] = cauthdsl.NewPolicyProvider(chanConf.MSPManager())
+		case cb.Policy_MSP:
+			// Add hook for MSP Handler here
+		}
+	}
+
+	resourcesPolicyManager, err := policies.NewManagerImpl(RootGroupKey, policyProviderMap, b.resConf.ChannelGroup)
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := &Bundle{
+		channelID: b.channelID,
+		chanConf:  chanConf,
+		pm: &policyRouter{
+			channelPolicyManager:   chanConf.PolicyManager(),
+			resourcesPolicyManager: resourcesPolicyManager,
+		},
+		rg:      b.rg,
+		resConf: b.resConf,
+	}
+
+	env, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, b.channelID, nil, &cb.ConfigEnvelope{Config: b.resConf}, 0, 0)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating envelope for configtx manager failed")
+	}
+
+	result.cm, err = configtx.NewManagerImpl(env, b)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

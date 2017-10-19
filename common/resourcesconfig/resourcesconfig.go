@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package resourcesconfig
 
 import (
+	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 )
@@ -53,6 +54,8 @@ type Resources interface {
 	ConfigtxManager() configtxapi.Manager
 
 	// PolicyManager returns a policy manager which can resolve names both in the /Channel and /Resources namespaces.
+	// Note, the result of this method is almost definitely the one you want.  Calling ChannelConfig().PolicyManager()
+	// will return a policy manager which can only resolve policies in the /Channel namespace.
 	PolicyManager() policies.Manager
 
 	// APIPolicyMapper returns a way to map API names to policies governing their invocation.
@@ -60,4 +63,7 @@ type Resources interface {
 
 	// ChaincodeRegistery returns a way to query for chaincodes defined in this channel.
 	ChaincodeRegistry() ChaincodeRegistry
+
+	// ChannelConfig returns the channelconfig.Resources which this config depends on.
+	ChannelConfig() channelconfig.Resources
 }
