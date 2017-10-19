@@ -213,7 +213,7 @@ func doPrintOrg(t *genesisconfig.TopLevel, printOrg string) error {
 				return errors.Wrapf(err, "bad org definition for org %s", org.Name)
 			}
 
-			if err := protolator.DeepMarshalJSON(os.Stdout, og); err != nil {
+			if err := protolator.DeepMarshalJSON(os.Stdout, &cb.DynamicConsortiumOrgGroup{ConfigGroup: og}); err != nil {
 				return errors.Wrapf(err, "malformed org definition for org: %s", org.Name)
 			}
 			return nil
