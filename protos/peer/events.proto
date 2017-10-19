@@ -17,6 +17,7 @@ limitations under the License.
 syntax = "proto3";
 
 import "common/common.proto";
+import "google/protobuf/timestamp.proto";
 import "peer/chaincode_event.proto";
 import "peer/transaction.proto";
 
@@ -103,8 +104,6 @@ message SignedEvent {
 //  - consumers (adapters) to send Register
 //  - producer to advertise supported types and events
 message Event {
-    //TODO need timestamp
-
     oneof Event {
         //Register consumer sent event
         Register register = 1;
@@ -121,6 +120,8 @@ message Event {
     }
     // Creator of the event, specified as a certificate chain
     bytes creator = 6;
+    // Timestamp of the client - used to mitigate replay attacks
+    google.protobuf.Timestamp timestamp = 8;
 }
 
 // Interface exported by the events server

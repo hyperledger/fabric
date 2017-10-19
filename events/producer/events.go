@@ -210,6 +210,10 @@ type eventProcessor struct {
 	//if 0, if buffer full, will block and guarantee the event will be sent out
 	//if > 0, if buffer full, blocks till timeout
 	timeout time.Duration
+
+	//time difference from peer time where registration events can be considered
+	//valid
+	timeWindow time.Duration
 }
 
 //global eventProcessor singleton created by initializeEvents. Openchain producers
@@ -243,12 +247,12 @@ func (ep *eventProcessor) start() {
 }
 
 //initialize and start
-func initializeEvents(bufferSize uint, tout time.Duration) {
+func initializeEvents(config *EventsServerConfig) {
 	if gEventProcessor != nil {
 		panic("should not be called twice")
 	}
 
-	gEventProcessor = &eventProcessor{eventConsumers: make(map[pb.EventType]handlerList), eventChannel: make(chan *pb.Event, bufferSize), timeout: tout}
+	gEventProcessor = &eventProcessor{eventConsumers: make(map[pb.EventType]handlerList), eventChannel: make(chan *pb.Event, config.BufferSize), timeout: config.Timeout, timeWindow: config.TimeWindow}
 
 	addInternalEventTypes()
 

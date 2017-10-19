@@ -215,6 +215,10 @@ peer:
         # if > 0, if buffer full, blocks till timeout
         timeout: 10ms
 
+        # timewindow is the acceptable difference between the peer's current
+        # time and the client's time as specified in a registration event
+        timewindow: 15m
+
     # TLS Settings
     # Note that peer-chaincode connections through chaincodeListenAddress is
     # not mutual TLS auth. See comments on chaincodeListenAddress for more info

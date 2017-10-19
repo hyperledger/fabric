@@ -18,7 +18,9 @@ package producer
 
 import (
 	"fmt"
+	"math"
 	"strconv"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -103,7 +105,7 @@ func (d *handler) deregisterAll() {
 func (d *handler) HandleMessage(msg *pb.SignedEvent) error {
 	evt, err := validateEventMessage(msg)
 	if err != nil {
-		return fmt.Errorf("event message must be properly signed by an identity from the same organization as the peer: [%s]", err)
+		return fmt.Errorf("event message validation failed: [%s]", err)
 	}
 
 	switch evt.Event.(type) {
@@ -158,6 +160,16 @@ func validateEventMessage(signedEvt *pb.SignedEvent) (*pb.Event, error) {
 	err := proto.Unmarshal(signedEvt.EventBytes, evt)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling the event bytes in the SignedEvent: %s", err)
+	}
+
+	if evt.GetTimestamp() != nil {
+		evtTime := time.Unix(evt.GetTimestamp().Seconds, int64(evt.GetTimestamp().Nanos)).UTC().UnixNano()
+		peerTime := time.Now().UnixNano()
+
+		if math.Abs(float64(peerTime-evtTime)) > float64(gEventProcessor.timeWindow.Nanoseconds()) {
+			logger.Warningf("event timestamp %s is more than the %s `peer.events.timewindow` difference above/below peer time %s. either the peer and client clocks are out of sync or a replay attack has been attempted", evtTime, gEventProcessor.timeWindow, peerTime)
+			return nil, fmt.Errorf("event timestamp out of acceptable range. must be within %s above/below peer time", gEventProcessor.timeWindow)
+		}
 	}
 
 	localMSP := mgmt.GetLocalMSP()

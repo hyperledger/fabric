@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/util"
 	coreutil "github.com/hyperledger/fabric/core/testutil"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -159,7 +160,8 @@ func TestUnregisterAsync(t *testing.T) {
 		t.Fail()
 	}
 
-	obcEHClient.RegisterAsync(ies)
+	regConfig := &RegistrationConfig{InterestedEvents: ies, Timestamp: util.CreateUtcTimestamp()}
+	obcEHClient.RegisterAsync(regConfig)
 	err = obcEHClient.UnregisterAsync(ies)
 	assert.NoError(t, err)
 
@@ -254,9 +256,8 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	ehServer := producer.NewEventsServer(
-		uint(viper.GetInt("peer.events.buffersize")),
-		viper.GetDuration("peer.events.timeout"))
+	ehConfig := &producer.EventsServerConfig{BufferSize: uint(viper.GetInt("peer.events.buffersize")), Timeout: viper.GetDuration("peer.events.timeout"), TimeWindow: viper.GetDuration("peer.events.timewindow")}
+	ehServer := producer.NewEventsServer(ehConfig)
 	ehpb.RegisterEventsServer(grpcServer, ehServer)
 
 	go grpcServer.Serve(lis)
