@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	flogging "github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
@@ -95,7 +95,9 @@ func newClient(t *testing.T, port int, cert *tls.Certificate) (*ccClient, error)
 		tlsCfg.Certificates = []tls.Certificate{*cert}
 	}
 	tlsOpts := grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))
-	conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", port), tlsOpts, grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Second)
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("localhost:%d", port), tlsOpts, grpc.WithBlock())
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +304,9 @@ func TestAccessControlNoTLS(t *testing.T) {
 	pb.RegisterChaincodeSupportServer(s.grpcSrv, auth)
 	go s.grpcSrv.Serve(s.l)
 	defer s.stop()
-	conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", 8052), grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Second)
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("localhost:%d", 8052), grpc.WithInsecure(), grpc.WithBlock())
 	assert.NoError(t, err)
 	chaincodeSupportClient := pb.NewChaincodeSupportClient(conn)
 	stream, err := chaincodeSupportClient.Register(context.Background())
@@ -317,7 +321,7 @@ func TestAccessControlNoTLS(t *testing.T) {
 
 	auth.DisableAccessCheck()
 	// Now it should work
-	conn, err = grpc.Dial(fmt.Sprintf("localhost:%d", 8052), grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	conn, err = grpc.DialContext(ctx, fmt.Sprintf("localhost:%d", 8052), grpc.WithInsecure(), grpc.WithBlock())
 	assert.NoError(t, err)
 	defer conn.Close()
 	chaincodeSupportClient = pb.NewChaincodeSupportClient(conn)

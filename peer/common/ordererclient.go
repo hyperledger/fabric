@@ -61,10 +61,10 @@ func GetBroadcastClient(orderingEndpoint string, tlsEnabled bool, caFile string)
 		opts = append(opts, grpc.WithInsecure())
 	}
 
-	opts = append(opts, grpc.WithTimeout(3*time.Second))
 	opts = append(opts, grpc.WithBlock())
-
-	conn, err := grpc.Dial(orderingEndpoint, opts...)
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 3*time.Second)
+	conn, err := grpc.DialContext(ctx, orderingEndpoint, opts...)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("error connecting to %s due to", orderingEndpoint))
 	}

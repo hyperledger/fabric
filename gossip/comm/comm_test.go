@@ -134,7 +134,9 @@ func handshaker(endpoint string, comm Comm, t *testing.T, connMutator msgMutator
 		secureOpts = grpc.WithInsecure()
 	}
 	acceptChan := comm.Accept(acceptAll)
-	conn, err := grpc.Dial("localhost:9611", secureOpts, grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Second)
+	conn, err := grpc.DialContext(ctx, "localhost:9611", secureOpts, grpc.WithBlock())
 	assert.NoError(t, err, "%v", err)
 	if err != nil {
 		return nil
@@ -412,7 +414,9 @@ func TestCloseConn(t *testing.T) {
 	}
 	ta := credentials.NewTLS(tlsCfg)
 
-	conn, err := grpc.Dial("localhost:1611", grpc.WithTransportCredentials(ta), grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Second)
+	conn, err := grpc.DialContext(ctx, "localhost:1611", grpc.WithTransportCredentials(ta), grpc.WithBlock())
 	assert.NoError(t, err, "%v", err)
 	cl := proto.NewGossipClient(conn)
 	stream, err := cl.GossipStream(context.Background())

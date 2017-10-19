@@ -59,10 +59,6 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 	var s *grpc.Server
 	var certHash []byte
 
-	if len(dialOpts) == 0 {
-		dialOpts = []grpc.DialOption{grpc.WithTimeout(util.GetDurationOrDefault("peer.gossip.dialTimeout", defDialTimeout))}
-	}
-
 	if port > 0 {
 		s, ll, secureDialOpts, certHash = createGRPCLayer(port)
 	}
@@ -85,6 +81,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		stopping:       int32(0),
 		exitChan:       make(chan struct{}, 1),
 		subscriptions:  make([]chan proto.ReceivedMessage, 0),
+		dialTimeout:    util.GetDurationOrDefault("peer.gossip.dialTimeout", defDialTimeout),
 	}
 	commInst.connStore = newConnStore(commInst, commInst.logger)
 
@@ -105,7 +102,6 @@ func NewCommInstance(s *grpc.Server, cert *tls.Certificate, idStore identity.Map
 	peerIdentity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts,
 	dialOpts ...grpc.DialOption) (Comm, error) {
 
-	dialOpts = append(dialOpts, grpc.WithTimeout(util.GetDurationOrDefault("peer.gossip.dialTimeout", defDialTimeout)))
 	commInst, err := NewCommInstanceWithServer(-1, idStore, peerIdentity, secureDialOpts, dialOpts...)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -145,6 +141,7 @@ type commImpl struct {
 	subscriptions  []chan proto.ReceivedMessage
 	port           int
 	stopping       int32
+	dialTimeout    time.Duration
 }
 
 func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
@@ -164,7 +161,9 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 	dialOpts = append(dialOpts, c.secureDialOpts()...)
 	dialOpts = append(dialOpts, grpc.WithBlock())
 	dialOpts = append(dialOpts, c.opts...)
-	cc, err = grpc.Dial(endpoint, dialOpts...)
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, c.dialTimeout)
+	cc, err = grpc.DialContext(ctx, endpoint, dialOpts...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -262,8 +261,9 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	dialOpts = append(dialOpts, c.secureDialOpts()...)
 	dialOpts = append(dialOpts, grpc.WithBlock())
 	dialOpts = append(dialOpts, c.opts...)
-
-	cc, err := grpc.Dial(remotePeer.Endpoint, dialOpts...)
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, c.dialTimeout)
+	cc, err := grpc.DialContext(ctx, remotePeer.Endpoint, dialOpts...)
 	if err != nil {
 		c.logger.Debugf("Returning %v", err)
 		return err
@@ -282,8 +282,9 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 	dialOpts = append(dialOpts, c.secureDialOpts()...)
 	dialOpts = append(dialOpts, grpc.WithBlock())
 	dialOpts = append(dialOpts, c.opts...)
-
-	cc, err := grpc.Dial(remotePeer.Endpoint, dialOpts...)
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, c.dialTimeout)
+	cc, err := grpc.DialContext(ctx, remotePeer.Endpoint, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
