@@ -31,9 +31,27 @@ import (
 var regex *regexp.Regexp = regexp.MustCompile("^([[:alnum:]]+)([.])(member|admin)$")
 var regexErr *regexp.Regexp = regexp.MustCompile("^No parameter '([^']+)' found[.]$")
 
-func and(args ...interface{}) (interface{}, error) {
-	toret := "outof(" + strconv.Itoa(len(args))
-	for _, arg := range args {
+// a stub function - it returns the same string as it's passed.
+// This will be evaluated by second/third passes to convert to a proto policy
+func outof(args ...interface{}) (interface{}, error) {
+	toret := "outof("
+	if len(args) < 2 {
+		return nil, fmt.Errorf("Expected at least two arguments to NOutOf. Given %d", len(args))
+	}
+
+	arg0 := args[0]
+	// govaluate treats all numbers as float64 only. But and/or may pass int/string. Allowing int/string for flexibility of caller
+	if n, ok := arg0.(float64); ok {
+		toret += strconv.Itoa(int(n))
+	} else if n, ok := arg0.(int); ok {
+		toret += strconv.Itoa(n)
+	} else if n, ok := arg0.(string); ok {
+		toret += n
+	} else {
+		return nil, fmt.Errorf("Unexpected type %s", reflect.TypeOf(arg0))
+	}
+
+	for _, arg := range args[1:] {
 		toret += ", "
 		switch t := arg.(type) {
 		case string:
@@ -46,27 +64,17 @@ func and(args ...interface{}) (interface{}, error) {
 			return nil, fmt.Errorf("Unexpected type %s", reflect.TypeOf(arg))
 		}
 	}
-
 	return toret + ")", nil
 }
 
-func or(args ...interface{}) (interface{}, error) {
-	toret := "outof(" + strconv.Itoa(1)
-	for _, arg := range args {
-		toret += ", "
-		switch t := arg.(type) {
-		case string:
-			if regex.MatchString(t) {
-				toret += "'" + t + "'"
-			} else {
-				toret += t
-			}
-		default:
-			return nil, fmt.Errorf("Unexpected type %s", reflect.TypeOf(arg))
-		}
-	}
+func and(args ...interface{}) (interface{}, error) {
+	args = append([]interface{}{len(args)}, args...)
+	return outof(args...)
+}
 
-	return toret + ")", nil
+func or(args ...interface{}) (interface{}, error) {
+	args = append([]interface{}{1}, args...)
+	return outof(args...)
 }
 
 func firstPass(args ...interface{}) (interface{}, error) {
@@ -205,7 +213,7 @@ func newContext() *context {
 //	- ROLE is either the string "member" or the string "admin" representing the required role
 func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 	// first we translate the and/or business into outof gates
-	intermediate, err := govaluate.NewEvaluableExpressionWithFunctions(policy, map[string]govaluate.ExpressionFunction{"AND": and, "and": and, "OR": or, "or": or})
+	intermediate, err := govaluate.NewEvaluableExpressionWithFunctions(policy, map[string]govaluate.ExpressionFunction{"AND": and, "and": and, "OR": or, "or": or, "OUTOF": outof, "outof": outof, "OutOf": outof})
 	if err != nil {
 		return nil, err
 	}

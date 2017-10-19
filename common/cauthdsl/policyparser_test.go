@@ -17,7 +17,6 @@ limitations under the License.
 package cauthdsl
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/hyperledger/fabric/protos/common"
@@ -25,6 +24,52 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestOutOf1(t *testing.T) {
+	p1, err := FromString("OutOf(1, 'A.member', 'B.member')")
+	assert.NoError(t, err)
+
+	principals := make([]*msp.MSPPrincipal, 0)
+
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "A"})})
+
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "B"})})
+
+	p2 := &common.SignaturePolicyEnvelope{
+		Version:    0,
+		Rule:       NOutOf(1, []*common.SignaturePolicy{SignedBy(0), SignedBy(1)}),
+		Identities: principals,
+	}
+
+	assert.Equal(t, p1, p2)
+}
+
+func TestOutOf2(t *testing.T) {
+	p1, err := FromString("OutOf(2, 'A.member', 'B.member')")
+	assert.NoError(t, err)
+
+	principals := make([]*msp.MSPPrincipal, 0)
+
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "A"})})
+
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "B"})})
+
+	p2 := &common.SignaturePolicyEnvelope{
+		Version:    0,
+		Rule:       NOutOf(2, []*common.SignaturePolicy{SignedBy(0), SignedBy(1)}),
+		Identities: principals,
+	}
+
+	assert.Equal(t, p1, p2)
+}
 
 func TestAnd(t *testing.T) {
 	p1, err := FromString("AND('A.member', 'B.member')")
@@ -46,7 +91,7 @@ func TestAnd(t *testing.T) {
 		Identities: principals,
 	}
 
-	assert.True(t, reflect.DeepEqual(p1, p2))
+	assert.Equal(t, p1, p2)
 }
 
 func TestOr(t *testing.T) {
@@ -69,7 +114,7 @@ func TestOr(t *testing.T) {
 		Identities: principals,
 	}
 
-	assert.True(t, reflect.DeepEqual(p1, p2))
+	assert.Equal(t, p1, p2)
 }
 
 func TestComplex1(t *testing.T) {
@@ -96,7 +141,7 @@ func TestComplex1(t *testing.T) {
 		Identities: principals,
 	}
 
-	assert.True(t, reflect.DeepEqual(p1, p2))
+	assert.Equal(t, p1, p2)
 }
 
 func TestComplex2(t *testing.T) {
@@ -127,7 +172,7 @@ func TestComplex2(t *testing.T) {
 		Identities: principals,
 	}
 
-	assert.True(t, reflect.DeepEqual(p1, p2))
+	assert.Equal(t, p1, p2)
 }
 
 func TestBadStringsNoPanic(t *testing.T) {
