@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
@@ -200,13 +201,14 @@ func newClientConnectionWithAddressWithKa(peerAddress string, block bool, tslEna
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
-	opts = append(opts, grpc.WithTimeout(defaultTimeout))
 	if block {
 		opts = append(opts, grpc.WithBlock())
 	}
 	opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(MaxRecvMsgSize()),
 		grpc.MaxCallSendMsgSize(MaxSendMsgSize())))
-	conn, err := grpc.Dial(peerAddress, opts...)
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, defaultTimeout)
+	conn, err := grpc.DialContext(ctx, peerAddress, opts...)
 	if err != nil {
 		return nil, err
 	}

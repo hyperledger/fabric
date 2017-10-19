@@ -83,7 +83,9 @@ func TestCertificateExtraction(t *testing.T) {
 		Certificates:       []tls.Certificate{clientCert},
 		InsecureSkipVerify: true,
 	})
-	conn, err := grpc.Dial("localhost:5611", grpc.WithTransportCredentials(ta), grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Second)
+	conn, err := grpc.DialContext(ctx, "localhost:5611", grpc.WithTransportCredentials(ta), grpc.WithBlock())
 	assert.NoError(t, err, "%v", err)
 
 	cl := proto.NewGossipClient(conn)

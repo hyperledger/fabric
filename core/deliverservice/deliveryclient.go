@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -205,7 +206,7 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 
 func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.ClientConn, error) {
 	return func(endpoint string) (*grpc.ClientConn, error) {
-		dialOpts := []grpc.DialOption{grpc.WithTimeout(connTimeout), grpc.WithBlock()}
+		dialOpts := []grpc.DialOption{grpc.WithBlock()}
 		// set max send/recv msg sizes
 		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
 			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
@@ -222,7 +223,9 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}
 		grpc.EnableTracing = true
-		return grpc.Dial(endpoint, dialOpts...)
+		ctx := context.Background()
+		ctx, _ = context.WithTimeout(ctx, connTimeout)
+		return grpc.DialContext(ctx, endpoint, dialOpts...)
 	}
 }
 

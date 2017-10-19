@@ -288,7 +288,9 @@ func testInvoke(t *testing.T, channelID string, s *srv, shouldSucceed bool) {
 	creds, err := GetCASupport().GetDeliverServiceCredentials(channelID)
 	assert.NoError(t, err)
 	endpoint := fmt.Sprintf("localhost:%d", s.port)
-	conn, err := grpc.Dial(endpoint, grpc.WithTimeout(time.Second*3), grpc.WithTransportCredentials(creds), grpc.WithBlock())
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, time.Second*3)
+	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithTransportCredentials(creds), grpc.WithBlock())
 	if shouldSucceed {
 		assert.NoError(t, err)
 		defer conn.Close()

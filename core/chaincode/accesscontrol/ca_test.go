@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -65,7 +66,9 @@ func TestTLSCA(t *testing.T) {
 			Certificates:       []tls.Certificate{cert},
 		}
 		tlsOpts := grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))
-		conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", randomPort), tlsOpts, grpc.WithBlock(), grpc.WithTimeout(time.Second))
+		ctx := context.Background()
+		ctx, _ = context.WithTimeout(ctx, time.Second)
+		conn, err := grpc.DialContext(ctx, fmt.Sprintf("localhost:%d", randomPort), tlsOpts, grpc.WithBlock())
 		if err != nil {
 			return err
 		}

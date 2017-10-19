@@ -61,9 +61,10 @@ func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Emp
 
 	//add DialOptions
 	dialOptions = append(dialOptions, grpc.WithBlock())
-	dialOptions = append(dialOptions, grpc.WithTimeout(timeout))
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, timeout)
 	//create GRPC client conn
-	clientConn, err := grpc.Dial(address, dialOptions...)
+	clientConn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -72,12 +73,12 @@ func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Emp
 	//create GRPC client
 	client := testpb.NewTestServiceClient(clientConn)
 
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	callCtx := context.Background()
+	callCtx, cancel := context.WithTimeout(callCtx, timeout)
 	defer cancel()
 
 	//invoke service
-	empty, err := client.EmptyCall(ctx, new(testpb.Empty))
+	empty, err := client.EmptyCall(callCtx, new(testpb.Empty))
 	if err != nil {
 		return nil, err
 	}
