@@ -267,6 +267,12 @@ peer:
     # will not be identified as valid by other nodes.
     localMspId: DEFAULT
 
+    # Delivery service related config
+    deliveryclient:
+        # It sets the total time the delivery service may spend in reconnection
+        # attempts until its retry logic gives up and returns an error
+        reconnectTotalTimeThreshold: 3600s
+
     # Used with Go profiling tools only in none production environment. In
     # production, it should be disabled (eg enabled: false)
     profile:
