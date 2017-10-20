@@ -75,7 +75,7 @@ hours. If not, please bump the issue with a comment and request that it be
 reviewed. You can also post to the relevant fabric channel in
 `Hyperledger Rocket Chat <https://chat.hyperledger.org>`__.  For example, a doc bug should
 be broadcast to ``#fabric-documentation``, a database bug to ``#fabric-ledger``,
-and so on... 
+and so on...
 
 Fixing issues and working stories
 ---------------------------------
@@ -253,9 +253,12 @@ change set to the :doc:`MAINTAINERS.rst <MAINTAINERS>` file. A nominated
 Contributor may become a Maintainer by a majority approval of the proposal
 by the existing Maintainers. Once approved, the change set is then merged
 and the individual is added to (or alternatively, removed from) the maintainers
-group. Maintainers may be removed by explicit resignation, or for some
-infraction of the `code of conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
-or by consistently demonstrating poor judgement.
+group. Maintainers may be removed by explicit resignation, for prolonged
+inactivity (3 or more months), or for some infraction of the `code of conduct
+<https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
+or by consistently demonstrating poor judgement. A maintainer removed for
+inactivity should be restored following a sustained resumption of contributions
+and reviews (a month or more) demonstrating a renewed commitment to the project.
 
 Legal stuff
 -----------
