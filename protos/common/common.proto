@@ -111,7 +111,7 @@ message ChannelHeader {
 }
 
 message SignatureHeader {
-    // Creator of the message, specified as a certificate chain
+    // Creator of the message, a marshaled msp.SerializedIdentity
     bytes creator = 1;
 
     // Arbitrary number that may only be used once. Can be used to detect replay attacks.
