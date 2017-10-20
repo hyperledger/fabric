@@ -3,6 +3,9 @@ node-cli/node-cli
 *.pyc
 /build/*
 /bin
+docs/build/*
+gotools/build/*
+examples/e2e_cli/docker-compose-e2e.yamlt
 .idea
 *.iml
 .DS_Store
