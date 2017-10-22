@@ -489,8 +489,10 @@ func TestNewGRPCServer(t *testing.T) {
 	assert.Equal(t, srv.Address(), addr.String())
 	assert.Equal(t, srv.Listener().Addr().String(), addr.String())
 
-	//TlSEnabled should be false
+	//TLSEnabled should be false
 	assert.Equal(t, srv.TLSEnabled(), false)
+	//MutualTLSRequired should be false
+	assert.Equal(t, srv.MutualTLSRequired(), false)
 
 	//register the GRPC test server
 	testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
@@ -542,8 +544,10 @@ func TestNewGRPCServerFromListener(t *testing.T) {
 	assert.Equal(t, srv.Address(), addr.String())
 	assert.Equal(t, srv.Listener().Addr().String(), addr.String())
 
-	//TlSEnabled should be false
+	//TLSEnabled should be false
 	assert.Equal(t, srv.TLSEnabled(), false)
+	//MutualTLSRequired should be false
+	assert.Equal(t, srv.MutualTLSRequired(), false)
 
 	//register the GRPC test server
 	testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
@@ -594,8 +598,10 @@ func TestNewSecureGRPCServer(t *testing.T) {
 	cert, _ := tls.X509KeyPair([]byte(selfSignedCertPEM), []byte(selfSignedKeyPEM))
 	assert.Equal(t, srv.ServerCertificate(), cert)
 
-	//TlSEnabled should be true
+	//TLSEnabled should be true
 	assert.Equal(t, srv.TLSEnabled(), true)
+	//MutualTLSRequired should be false
+	assert.Equal(t, srv.MutualTLSRequired(), false)
 
 	//register the GRPC test server
 	testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
@@ -677,8 +683,10 @@ func TestNewSecureGRPCServerFromListener(t *testing.T) {
 	cert, _ := tls.X509KeyPair([]byte(selfSignedCertPEM), []byte(selfSignedKeyPEM))
 	assert.Equal(t, srv.ServerCertificate(), cert)
 
-	//TlSEnabled should be true
+	//TLSEnabled should be true
 	assert.Equal(t, srv.TLSEnabled(), true)
+	//MutualTLSRequired should be false
+	assert.Equal(t, srv.MutualTLSRequired(), false)
 
 	//register the GRPC test server
 	testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
@@ -893,6 +901,9 @@ func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrusted
 		if err != nil {
 			return err
 		}
+
+		//MutualTLSRequired should be true
+		assert.Equal(t, srv.MutualTLSRequired(), true)
 
 		//register the GRPC test server and start the GRPCServer
 		testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
