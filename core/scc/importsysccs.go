@@ -84,6 +84,8 @@ var systemChaincodes = []*SystemChaincode{
 //RegisterSysCCs is the hook for system chaincodes where system chaincodes are registered with the fabric
 //note the chaincode must still be deployed and launched like a user chaincode will be
 func RegisterSysCCs() {
+	systemChaincodes = append(systemChaincodes, loadSysCCs()...)
+
 	var aclProvider aclmgmt.ACLProvider
 	for _, sysCC := range systemChaincodes {
 		if reg, _ := registerSysCC(sysCC); reg {

@@ -33,7 +33,6 @@ func init() {
 	viper.Set("chaincode.system", map[string]string{"lscc": "enable", "a": "enable"})
 	viper.Set("peer.fileSystemPath", os.TempDir())
 	ccprovider.RegisterChaincodeProviderFactory(&ccprovider2.MockCcProviderFactory{})
-	RegisterSysCCs()
 }
 
 func TestDeploy(t *testing.T) {
@@ -103,6 +102,8 @@ func TestMockRegisterAndResetSysCCs(t *testing.T) {
 }
 
 func TestRegisterSysCC(t *testing.T) {
+	assert.NotPanics(t, func() { RegisterSysCCs() }, "expected successful init")
+
 	_, err := registerSysCC(&SystemChaincode{
 		Name:    "lscc",
 		Path:    "path",
