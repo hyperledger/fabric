@@ -9,7 +9,6 @@ package chaincode
 import (
 	"fmt"
 	"io"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -21,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -132,7 +130,7 @@ func NewChaincodeSupport(
 	caCert []byte,
 	certGenerator CertGenerator,
 ) *ChaincodeSupport {
-	ccprovider.SetChaincodesPath(config.GetPath("peer.fileSystemPath") + string(filepath.Separator) + "chaincodes")
+	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
 	pnid := viper.GetString("peer.networkId")
 	pid := viper.GetString("peer.id")
 

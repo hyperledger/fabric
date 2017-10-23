@@ -34,7 +34,7 @@ type principalEvaluator interface {
 type chaincodeMetadataFetcher interface {
 	// ChaincodeMetadata returns the metadata of the chaincode as appears in the ledger,
 	// or nil if the channel doesn't exist, or the chaincode isn't found in the ledger
-	ChaincodeMetadata(channel string, cc string) *chaincode.InstantiatedChaincode
+	ChaincodeMetadata(channel string, cc string) *chaincode.Metadata
 }
 
 type policyFetcher interface {
@@ -338,7 +338,7 @@ func (l layouts) groupsSet() map[string]struct{} {
 	return m
 }
 
-func peersWithChaincode(ccMD *chaincode.InstantiatedChaincode) func(member discovery2.NetworkMember) bool {
+func peersWithChaincode(ccMD *chaincode.Metadata) func(member discovery2.NetworkMember) bool {
 	return func(member discovery2.NetworkMember) bool {
 		if member.Properties == nil {
 			return false

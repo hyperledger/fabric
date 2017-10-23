@@ -78,9 +78,13 @@ func SetChaincodesPath(path string) {
 	chaincodeInstallPath = path
 }
 
-// GetChaincodePackage returns the chaincode package from the file system
 func GetChaincodePackage(ccname string, ccversion string) ([]byte, error) {
-	path := fmt.Sprintf("%s/%s.%s", chaincodeInstallPath, ccname, ccversion)
+	return GetChaincodePackageFromPath(ccname, ccversion, chaincodeInstallPath)
+}
+
+// GetChaincodePackage returns the chaincode package from the file system
+func GetChaincodePackageFromPath(ccname string, ccversion string, ccInstallPath string) ([]byte, error) {
+	path := fmt.Sprintf("%s/%s.%s", ccInstallPath, ccname, ccversion)
 	var ccbytes []byte
 	var err error
 	if ccbytes, err = ioutil.ReadFile(path); err != nil {
@@ -110,14 +114,20 @@ type CCCacheSupport interface {
 type CCInfoFSImpl struct{}
 
 // GetChaincodeFromFS this is a wrapper for hiding package implementation.
-func (*CCInfoFSImpl) GetChaincode(ccname string, ccversion string) (CCPackage, error) {
+// It calls GetChaincodeFromPath with the chaincodeInstallPath
+func (cifs *CCInfoFSImpl) GetChaincode(ccname string, ccversion string) (CCPackage, error) {
+	return cifs.GetChaincodeFromPath(ccname, ccversion, chaincodeInstallPath)
+}
+
+// GetChaincodeFromPath this is a wrapper for hiding package implementation.
+func (*CCInfoFSImpl) GetChaincodeFromPath(ccname string, ccversion string, path string) (CCPackage, error) {
 	// try raw CDS
 	cccdspack := &CDSPackage{}
-	_, _, err := cccdspack.InitFromFS(ccname, ccversion)
+	_, _, err := cccdspack.InitFromPath(ccname, ccversion, path)
 	if err != nil {
 		// try signed CDS
 		ccscdspack := &SignedCDSPackage{}
-		_, _, err = ccscdspack.InitFromFS(ccname, ccversion)
+		_, _, err = ccscdspack.InitFromPath(ccname, ccversion, path)
 		if err != nil {
 			return nil, err
 		}

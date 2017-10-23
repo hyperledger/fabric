@@ -227,11 +227,11 @@ func (ccpack *CDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, error) {
 }
 
 //InitFromFS returns the chaincode and its package from the file system
-func (ccpack *CDSPackage) InitFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
+func (ccpack *CDSPackage) InitFromPath(ccname string, ccversion string, path string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
 	//incase ccpack is reused
 	ccpack.reset()
 
-	buf, err := GetChaincodePackage(ccname, ccversion)
+	buf, err := GetChaincodePackageFromPath(ccname, ccversion, path)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -241,6 +241,11 @@ func (ccpack *CDSPackage) InitFromFS(ccname string, ccversion string) ([]byte, *
 	}
 
 	return ccpack.buf, ccpack.depSpec, nil
+}
+
+//InitFromFS returns the chaincode and its package from the file system
+func (ccpack *CDSPackage) InitFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
+	return ccpack.InitFromPath(ccname, ccversion, chaincodeInstallPath)
 }
 
 //PutChaincodeToFS - serializes chaincode to a package on the file system

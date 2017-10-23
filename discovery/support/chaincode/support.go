@@ -18,7 +18,7 @@ import (
 var logger = flogging.MustGetLogger("discovery/DiscoverySupport")
 
 type MetadataRetriever interface {
-	Metadata(channel string, cc string) *chaincode.InstantiatedChaincode
+	Metadata(channel string, cc string) *chaincode.Metadata
 }
 
 // DiscoverySupport implements support that is used for service discovery
