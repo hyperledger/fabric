@@ -18,7 +18,9 @@ package cid
 
 import (
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -95,10 +97,13 @@ func New(stub ChaincodeStubInterface) (ClientIdentity, error) {
 	return c, nil
 }
 
-// GetID returns the ID associated with the invoking identity.  This ID
-// is guaranteed to be unique within the MSP.
+// GetID returns a unique ID associated with the invoking identity.
 func (c *clientIdentityImpl) GetID() (string, error) {
-	return getDN(c.cert), nil
+	// The leading "x509::" distinquishes this as an X509 certificate, and
+	// the subject and issuer DNs uniquely identify the X509 certificate.
+	// The resulting ID will remain the same if the certificate is renewed.
+	id := fmt.Sprintf("x509::%s::%s", getDN(&c.cert.Subject), getDN(&c.cert.Issuer))
+	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
 // GetMSPID returns the ID of the MSP associated with the identity that
@@ -176,12 +181,12 @@ func (c *clientIdentityImpl) getIdentity() (*msp.SerializedIdentity, error) {
 	return sid, nil
 }
 
-// Get the DN (distinquished name) associated with the subject of the certificate.
+// Get the DN (distinquished name) associated with a pkix.Name.
 // NOTE: This code is almost a direct copy of the String() function in
 // https://go-review.googlesource.com/c/go/+/67270/1/src/crypto/x509/pkix/pkix.go#26
 // which returns a DN as defined by RFC 2253.
-func getDN(cert *x509.Certificate) string {
-	r := cert.Subject.ToRDNSequence()
+func getDN(name *pkix.Name) string {
+	r := name.ToRDNSequence()
 	s := ""
 	for i := 0; i < len(r); i++ {
 		rdn := r[len(r)-1-i]
