@@ -31,7 +31,7 @@ import (
 type ChainID int
 
 func (chainID ChainID) String() string {
-	return fmt.Sprintf("%s%04d", "chain_", chainID)
+	return fmt.Sprintf("%s%04d", "chain-", chainID)
 }
 
 // SimulationResult is a type used for simulation results

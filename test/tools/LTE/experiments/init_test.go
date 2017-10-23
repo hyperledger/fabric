@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 
 	"fmt"
+	"github.com/spf13/viper"
 )
 
 const chaincodeName = "testChaincode"
@@ -43,6 +44,9 @@ func TestMain(m *testing.M) {
 	testutil.SetupCoreYAMLConfig()
 	testParams := parseTestParams()
 	conf = confFromTestParams(testParams)
+	if os.Getenv("useCouchDB") == "yes" {
+		viper.Set("ledger.state.stateDatabase", "CouchDB")
+	}
 	logger.Infof("Running experiment with configuration: %s\n", spew.Sdump(conf))
 	disableLogging()
 	os.Exit(m.Run())
