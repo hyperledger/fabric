@@ -14,11 +14,13 @@ import (
 	_ "net/http/pprof" // This is essentially the main package for the orderer
 	"os"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/ledger"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -75,14 +77,27 @@ func Main() {
 // Start provides a layer of abstraction for benchmark test
 func Start(cmd string, conf *config.TopLevel) {
 	signer := localmsp.NewSigner()
-	manager := initializeMultichannelRegistrar(conf, signer)
+	secureConfig := initializeSecureServerConfig(conf)
+	grpcServer := initializeGrpcServer(conf, secureConfig)
+	caSupport := &comm.CASupport{
+		AppRootCAsByChain:     make(map[string][][]byte),
+		OrdererRootCAsByChain: make(map[string][][]byte),
+		ClientRootCAs:         secureConfig.ClientRootCAs,
+	}
+	tlsCallback := func(bundle *channelconfig.Bundle) {
+		// only need to do this if mutual TLS is required
+		if grpcServer.MutualTLSRequired() {
+			logger.Debug("Executing callback to update root CAs")
+			updateTrustedRoots(grpcServer, caSupport, bundle)
+		}
+	}
+	manager := initializeMultichannelRegistrar(conf, signer, tlsCallback)
 	server := NewServer(manager, signer, &conf.Debug)
 
 	switch cmd {
 	case start.FullCommand(): // "start" command
 		logger.Infof("Starting %s", metadata.GetVersionInfo())
 		initializeProfilingService(conf)
-		grpcServer := initializeGrpcServer(conf)
 		ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 		logger.Info("Beginning to serve requests")
 		grpcServer.Start()
@@ -119,7 +134,7 @@ func initializeSecureServerConfig(conf *config.TopLevel) comm.SecureServerConfig
 	}
 	// check to see if TLS is enabled
 	if secureConfig.UseTLS {
-		logger.Info("Starting orderer with TLS enabled")
+		msg := "TLS"
 		// load crypto material from files
 		serverCertificate, err := ioutil.ReadFile(conf.General.TLS.Certificate)
 		if err != nil {
@@ -149,11 +164,13 @@ func initializeSecureServerConfig(conf *config.TopLevel) comm.SecureServerConfig
 				}
 				clientRootCAs = append(clientRootCAs, root)
 			}
+			msg = "mutual TLS"
 		}
 		secureConfig.ServerKey = serverKey
 		secureConfig.ServerCertificate = serverCertificate
 		secureConfig.ServerRootCAs = serverRootCAs
 		secureConfig.ClientRootCAs = clientRootCAs
+		logger.Infof("Starting orderer with %s enabled", msg)
 	}
 	return secureConfig
 }
@@ -186,9 +203,7 @@ func initializeBootstrapChannel(conf *config.TopLevel, lf ledger.Factory) {
 	}
 }
 
-func initializeGrpcServer(conf *config.TopLevel) comm.GRPCServer {
-	secureConfig := initializeSecureServerConfig(conf)
-
+func initializeGrpcServer(conf *config.TopLevel, secureConfig comm.SecureServerConfig) comm.GRPCServer {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
 	if err != nil {
 		logger.Fatal("Failed to listen:", err)
@@ -211,7 +226,8 @@ func initializeLocalMsp(conf *config.TopLevel) {
 	}
 }
 
-func initializeMultichannelRegistrar(conf *config.TopLevel, signer crypto.LocalSigner) *multichannel.Registrar {
+func initializeMultichannelRegistrar(conf *config.TopLevel, signer crypto.LocalSigner,
+	callbacks ...func(bundle *channelconfig.Bundle)) *multichannel.Registrar {
 	lf, _ := createLedgerFactory(conf)
 	// Are we bootstrapping?
 	if len(lf.ChainIDs()) == 0 {
@@ -224,5 +240,92 @@ func initializeMultichannelRegistrar(conf *config.TopLevel, signer crypto.LocalS
 	consenters["solo"] = solo.New()
 	consenters["kafka"] = kafka.New(conf.Kafka)
 
-	return multichannel.NewRegistrar(lf, consenters, signer)
+	return multichannel.NewRegistrar(lf, consenters, signer, callbacks...)
+}
+
+func updateTrustedRoots(srv comm.GRPCServer, rootCASupport *comm.CASupport,
+	cm channelconfig.Resources) {
+	rootCASupport.Lock()
+	defer rootCASupport.Unlock()
+
+	appRootCAs := [][]byte{}
+	ordererRootCAs := [][]byte{}
+	appOrgMSPs := make(map[string]struct{})
+	ordOrgMSPs := make(map[string]struct{})
+
+	if ac, ok := cm.ApplicationConfig(); ok {
+		//loop through app orgs and build map of MSPIDs
+		for _, appOrg := range ac.Organizations() {
+			appOrgMSPs[appOrg.MSPID()] = struct{}{}
+		}
+	}
+
+	if ac, ok := cm.OrdererConfig(); ok {
+		//loop through orderer orgs and build map of MSPIDs
+		for _, ordOrg := range ac.Organizations() {
+			ordOrgMSPs[ordOrg.MSPID()] = struct{}{}
+		}
+	}
+
+	cid := cm.ConfigtxManager().ChainID()
+	logger.Debugf("updating root CAs for channel [%s]", cid)
+	msps, err := cm.MSPManager().GetMSPs()
+	if err != nil {
+		logger.Errorf("Error getting root CAs for channel %s (%s)", cid, err)
+	}
+	if err == nil {
+		for k, v := range msps {
+			// check to see if this is a FABRIC MSP
+			if v.GetType() == msp.FABRIC {
+				for _, root := range v.GetTLSRootCerts() {
+					// check to see of this is an app org MSP
+					if _, ok := appOrgMSPs[k]; ok {
+						logger.Debugf("adding app root CAs for MSP [%s]", k)
+						appRootCAs = append(appRootCAs, root)
+					}
+					// check to see of this is an orderer org MSP
+					if _, ok := ordOrgMSPs[k]; ok {
+						logger.Debugf("adding orderer root CAs for MSP [%s]", k)
+						ordererRootCAs = append(ordererRootCAs, root)
+					}
+				}
+				for _, intermediate := range v.GetTLSIntermediateCerts() {
+					// check to see of this is an app org MSP
+					if _, ok := appOrgMSPs[k]; ok {
+						logger.Debugf("adding app root CAs for MSP [%s]", k)
+						appRootCAs = append(appRootCAs, intermediate)
+					}
+					// check to see of this is an orderer org MSP
+					if _, ok := ordOrgMSPs[k]; ok {
+						logger.Debugf("adding orderer root CAs for MSP [%s]", k)
+						ordererRootCAs = append(ordererRootCAs, intermediate)
+					}
+				}
+			}
+		}
+		rootCASupport.AppRootCAsByChain[cid] = appRootCAs
+		rootCASupport.OrdererRootCAsByChain[cid] = ordererRootCAs
+
+		// now iterate over all roots for all app and orderer chains
+		trustedRoots := [][]byte{}
+		for _, roots := range rootCASupport.AppRootCAsByChain {
+			trustedRoots = append(trustedRoots, roots...)
+		}
+		for _, roots := range rootCASupport.OrdererRootCAsByChain {
+			trustedRoots = append(trustedRoots, roots...)
+		}
+		// also need to append statically configured root certs
+		if len(rootCASupport.ClientRootCAs) > 0 {
+			trustedRoots = append(trustedRoots, rootCASupport.ClientRootCAs...)
+		}
+
+		// now update the client roots for the gRPC server
+		err := srv.SetClientRootCAs(trustedRoots)
+		if err != nil {
+			msg := "Failed to update trusted roots for orderer from latest config " +
+				"block.  This orderer may not be able to communicate " +
+				"with members of channel %s (%s)"
+			logger.Warningf(msg, cm.ConfigtxManager().ChainID(), err)
+		}
+	}
 }

@@ -12,15 +12,18 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/core/comm"
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/op/go-logging"
@@ -217,25 +220,7 @@ func TestInitializeLocalMsp(t *testing.T) {
 }
 
 func TestInitializeMultiChainManager(t *testing.T) {
-	localMSPDir, _ := coreconfig.GetDevMspDir()
-	conf := &config.TopLevel{
-		General: config.General{
-			LedgerType:     "ram",
-			GenesisMethod:  "provisional",
-			GenesisProfile: "SampleSingleMSPSolo",
-			SystemChannel:  genesisconfig.TestChainID,
-			LocalMSPDir:    localMSPDir,
-			LocalMSPID:     "DEFAULT",
-			BCCSP: &factory.FactoryOpts{
-				ProviderName: "SW",
-				SwOpts: &factory.SwOpts{
-					HashFamily: "SHA2",
-					SecLevel:   256,
-					Ephemeral:  true,
-				},
-			},
-		},
-	}
+	conf := genesisConfig(t)
 	assert.NotPanics(t, func() {
 		initializeLocalMsp(conf)
 		initializeMultichannelRegistrar(conf, localmsp.NewSigner())
@@ -251,23 +236,115 @@ func TestInitializeGrpcServer(t *testing.T) {
 	}()
 	host := strings.Split(listenAddr, ":")[0]
 	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
+	conf := &config.TopLevel{
+		General: config.General{
+			ListenAddress: host,
+			ListenPort:    uint16(port),
+			TLS: config.TLS{
+				Enabled:           false,
+				ClientAuthEnabled: false,
+			},
+		},
+	}
 	assert.NotPanics(t, func() {
-		grpcServer := initializeGrpcServer(
-			&config.TopLevel{
-				General: config.General{
-					ListenAddress: host,
-					ListenPort:    uint16(port),
-					TLS: config.TLS{
-						Enabled:           false,
-						ClientAuthEnabled: false,
-					},
-				},
-			})
+		grpcServer := initializeGrpcServer(conf, initializeSecureServerConfig(conf))
 		grpcServer.Listener().Close()
 	})
 }
 
-// var originalLogger *Logger
+func TestUpdateTrustedRoots(t *testing.T) {
+	initializeLocalMsp(genesisConfig(t))
+	// get a free random port
+	listenAddr := func() string {
+		l, _ := net.Listen("tcp", "localhost:0")
+		l.Close()
+		return l.Addr().String()
+	}()
+	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
+	conf := &config.TopLevel{
+		General: config.General{
+			ListenAddress: "localhost",
+			ListenPort:    uint16(port),
+			TLS: config.TLS{
+				Enabled:           false,
+				ClientAuthEnabled: false,
+			},
+		},
+	}
+	grpcServer := initializeGrpcServer(conf, initializeSecureServerConfig(conf))
+	caSupport := &comm.CASupport{
+		AppRootCAsByChain:     make(map[string][][]byte),
+		OrdererRootCAsByChain: make(map[string][][]byte),
+	}
+	callback := func(bundle *channelconfig.Bundle) {
+		if grpcServer.MutualTLSRequired() {
+			t.Log("callback called")
+			updateTrustedRoots(grpcServer, caSupport, bundle)
+		}
+	}
+	initializeMultichannelRegistrar(genesisConfig(t), localmsp.NewSigner(), callback)
+	t.Logf("# app CAs: %d", len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
+	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	// mutual TLS not required so no updates should have occurred
+	assert.Equal(t, 0, len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
+	assert.Equal(t, 0, len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	grpcServer.Listener().Close()
+
+	conf = &config.TopLevel{
+		General: config.General{
+			ListenAddress: "localhost",
+			ListenPort:    uint16(port),
+			TLS: config.TLS{
+				Enabled:           true,
+				ClientAuthEnabled: true,
+				PrivateKey:        filepath.Join(".", "testdata", "tls", "server.key"),
+				Certificate:       filepath.Join(".", "testdata", "tls", "server.crt"),
+			},
+		},
+	}
+	grpcServer = initializeGrpcServer(conf, initializeSecureServerConfig(conf))
+	caSupport = &comm.CASupport{
+		AppRootCAsByChain:     make(map[string][][]byte),
+		OrdererRootCAsByChain: make(map[string][][]byte),
+	}
+	callback = func(bundle *channelconfig.Bundle) {
+		if grpcServer.MutualTLSRequired() {
+			t.Log("callback called")
+			updateTrustedRoots(grpcServer, caSupport, bundle)
+		}
+	}
+	initializeMultichannelRegistrar(genesisConfig(t), localmsp.NewSigner(), callback)
+	t.Logf("# app CAs: %d", len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
+	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	// mutual TLS is required so updates should have occurred
+	// we expect an intermediate and root CA for apps and orderers
+	assert.Equal(t, 2, len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
+	assert.Equal(t, 2, len(caSupport.OrdererRootCAsByChain[genesisconfig.TestChainID]))
+	grpcServer.Listener().Close()
+}
+
+func genesisConfig(t *testing.T) *config.TopLevel {
+	t.Helper()
+	localMSPDir, _ := coreconfig.GetDevMspDir()
+	return &config.TopLevel{
+		General: config.General{
+			LedgerType:     "ram",
+			GenesisMethod:  "provisional",
+			GenesisProfile: "SampleDevModeSolo",
+			SystemChannel:  genesisconfig.TestChainID,
+			LocalMSPDir:    localMSPDir,
+			LocalMSPID:     "DEFAULT",
+			BCCSP: &factory.FactoryOpts{
+				ProviderName: "SW",
+				SwOpts: &factory.SwOpts{
+					HashFamily: "SHA2",
+					SecLevel:   256,
+					Ephemeral:  true,
+				},
+			},
+		},
+	}
+}
 
 func newPanicOnCriticalBackend() *panicOnCriticalBackend {
 	return &panicOnCriticalBackend{
