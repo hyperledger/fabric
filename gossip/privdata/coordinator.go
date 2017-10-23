@@ -40,14 +40,8 @@ const (
 
 var logger *logging.Logger // package-level logger
 
-var transientBlockRetention = uint64(viper.GetInt(transientBlockRetentionConfigKey))
-
 func init() {
 	logger = util.GetLogger(util.LoggingPrivModule, "")
-	if transientBlockRetention == 0 {
-		logger.Warning("Configuration key", transientBlockRetentionConfigKey, "isn't set, defaulting to", transientBlockRetentionDefault)
-		transientBlockRetention = transientBlockRetentionDefault
-	}
 }
 
 // TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger
@@ -120,11 +114,17 @@ type Support struct {
 type coordinator struct {
 	selfSignedData common.SignedData
 	Support
+	transientBlockRetention uint64
 }
 
 // NewCoordinator creates a new instance of coordinator
 func NewCoordinator(support Support, selfSignedData common.SignedData) Coordinator {
-	return &coordinator{Support: support, selfSignedData: selfSignedData}
+	transientBlockRetention := uint64(viper.GetInt(transientBlockRetentionConfigKey))
+	if transientBlockRetention == 0 {
+		logger.Warning("Configuration key", transientBlockRetentionConfigKey, "isn't set, defaulting to", transientBlockRetentionDefault)
+		transientBlockRetention = transientBlockRetentionDefault
+	}
+	return &coordinator{Support: support, selfSignedData: selfSignedData, transientBlockRetention: transientBlockRetention}
 }
 
 // StorePvtData used to persist private date into transient store
@@ -217,8 +217,8 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 
 	seq := block.Header.Number
-	if seq%transientBlockRetention == 0 && seq > transientBlockRetention {
-		err := c.PurgeByHeight(seq - transientBlockRetention)
+	if seq%c.transientBlockRetention == 0 && seq > c.transientBlockRetention {
+		err := c.PurgeByHeight(seq - c.transientBlockRetention)
 		if err != nil {
 			logger.Error("Failed purging data from transient store at block", seq, ":", err)
 		}
