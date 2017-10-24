@@ -1412,11 +1412,17 @@ func IsJSON(s string) bool {
 // '+' is replaced by %2B, otherwise path encoding will ignore it, while CouchDB will unencode the plus as a space
 // Note that all other URL special characters have been tested successfully without need for special handling
 func encodePathElement(str string) string {
+
+	logger.Debugf("Entering encodePathElement()  string=%s", str)
+
 	u := &url.URL{}
 	u.Path = str
-	encodedStr := u.String() // url encode using golang url path encoding rules
+	encodedStr := u.EscapedPath() // url encode using golang url path encoding rules
 	encodedStr = strings.Replace(encodedStr, "/", "%2F", -1)
 	encodedStr = strings.Replace(encodedStr, "+", "%2B", -1)
+
+	logger.Debugf("Exiting encodePathElement()  encodedStr=%s", encodedStr)
+
 	return encodedStr
 }
 
