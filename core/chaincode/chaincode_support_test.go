@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -198,6 +199,26 @@ var mockPeerCCSupport = mockpeer.NewMockPeerSupport()
 
 func mockChaincodeStreamGetter(name string) (shim.PeerChaincodeStream, error) {
 	return mockPeerCCSupport.GetCC(name)
+}
+
+type mockCCLauncher struct {
+	execTime *time.Duration
+	resp     container.VMCResp
+	retErr   error
+	notfyb   bool
+}
+
+func (ccl *mockCCLauncher) launch(ctxt context.Context, notfy chan bool) (interface{}, error) {
+	if ccl.execTime != nil {
+		time.Sleep(*ccl.execTime)
+	}
+
+	//no error on launch, notify
+	if ccl.resp.Err == nil {
+		notfy <- ccl.notfyb
+	}
+
+	return ccl.resp, ccl.retErr
 }
 
 func setupcc(name string) (*mockpeer.MockCCComm, *mockpeer.MockCCComm) {
@@ -837,6 +858,71 @@ func getLaunchConfigs(t *testing.T, auth accesscontrol.Authenticator) {
 	if envs[0] != "CORE_CHAINCODE_ID_NAME=mycc:v0" || envs[1] != "CORE_PEER_TLS_ENABLED=false" ||
 		envs[2] != "CORE_CHAINCODE_LOGGING_LEVEL=debug" || envs[3] != "CORE_CHAINCODE_LOGGING_SHIM=info" {
 		t.Fatalf("calling getLaunchConfigs() with TLS disabled should have returned the proper environment variables, but got %v", envs)
+	}
+}
+
+//success case
+func TestLaunchAndWaitSuccess(t *testing.T) {
+	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(500) * time.Millisecond, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
+	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
+	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
+
+	//actual test - everythings good
+	launcher := &mockCCLauncher{execTime: nil, resp: container.VMCResp{}, retErr: nil, notfyb: true}
+	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds, launcher)
+	if err != nil {
+		t.Fatalf("expected success but failed with error %s", err)
+	}
+}
+
+//test timeout error
+func TestLaunchAndWaitTimeout(t *testing.T) {
+	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(500) * time.Millisecond, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
+	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
+	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
+
+	//the actual test - timeout 1000 > 500
+	sleepTime := time.Duration(1) * time.Second
+	launcher := &mockCCLauncher{execTime: &sleepTime, resp: container.VMCResp{}, retErr: nil, notfyb: true}
+	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds, launcher)
+	if err == nil {
+		t.Fatalf("expected error but succeeded")
+	}
+}
+
+//test notification error case
+func TestLaunchAndWaitNotificationError(t *testing.T) {
+	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(500) * time.Millisecond, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
+	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
+	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
+
+	//the actual test - notify false
+	launcher := &mockCCLauncher{execTime: nil, resp: container.VMCResp{}, retErr: nil, notfyb: false}
+	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds, launcher)
+	if err == nil {
+		t.Fatalf("expected error but succeeded")
+	}
+}
+
+//test container return error
+func TestLaunchAndWaitLaunchError(t *testing.T) {
+	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(500) * time.Millisecond, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
+	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
+	cccid := ccprovider.NewCCContext("testchannel", "testcc", "0", "landwtimertest_txid", false, nil, nil)
+
+	//actual test - container launch gives error
+	launcher := &mockCCLauncher{execTime: nil, resp: container.VMCResp{Err: errors.New("Bad launch")}, retErr: nil}
+	err := newCCSupport.launchAndWaitForRegister(context.Background(), cccid, cds, launcher)
+	if err == nil {
+		t.Fatalf("expected error but succeeded")
 	}
 }
 
