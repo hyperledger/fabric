@@ -103,6 +103,7 @@ type Registrar struct {
 	systemChannelID string
 	systemChannel   *ChainSupport
 	templator       msgprocessor.ChannelConfigTemplator
+	callbacks       []func(bundle *channelconfig.Bundle)
 }
 
 func getConfigTx(reader ledger.Reader) *cb.Envelope {
@@ -120,12 +121,14 @@ func getConfigTx(reader ledger.Reader) *cb.Envelope {
 }
 
 // NewRegistrar produces an instance of a *Registrar.
-func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.Consenter, signer crypto.LocalSigner) *Registrar {
+func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.Consenter,
+	signer crypto.LocalSigner, callbacks ...func(bundle *channelconfig.Bundle)) *Registrar {
 	r := &Registrar{
 		chains:        make(map[string]*ChainSupport),
 		ledgerFactory: ledgerFactory,
 		consenters:    consenters,
 		signer:        signer,
+		callbacks:     callbacks,
 	}
 
 	existingChains := ledgerFactory.ChainIDs()
@@ -258,8 +261,10 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 	}
 
 	return &ledgerResources{
-		configResources: &configResources{mutableResources: channelconfig.NewBundleSource(bundle)},
-		ReadWriter:      ledger,
+		configResources: &configResources{
+			mutableResources: channelconfig.NewBundleSource(bundle, r.callbacks...),
+		},
+		ReadWriter: ledger,
 	}
 }
 

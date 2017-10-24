@@ -243,7 +243,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 			createChannel: func() { createChannel("channel1", channel1Block) },
 			goodOptions:   []grpc.DialOption{grpc.WithTransportCredentials(org1Creds)},
 			badOptions:    []grpc.DialOption{grpc.WithTransportCredentials(ordererOrgCreds)},
-			numAppCAs:     2, // each channel also has a DEFAULT MSP
+			numAppCAs:     3, // each channel also has a DEFAULT MSP
 			numOrdererCAs: 1,
 		},
 		{
@@ -261,7 +261,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 				grpc.WithTransportCredentials(org2Creds)},
 			badOptions: []grpc.DialOption{
 				grpc.WithTransportCredentials(ordererOrgCreds)},
-			numAppCAs:     4,
+			numAppCAs:     6,
 			numOrdererCAs: 2,
 		},
 		{
@@ -279,7 +279,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 				grpc.WithTransportCredentials(org2IntermediateCreds)},
 			badOptions: []grpc.DialOption{
 				grpc.WithTransportCredentials(ordererOrgCreds)},
-			numAppCAs:     7,
+			numAppCAs:     10,
 			numOrdererCAs: 3,
 		},
 	}
