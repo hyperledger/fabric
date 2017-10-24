@@ -124,6 +124,10 @@ type OrdererCapabilities interface {
 	// group's mod_policy to "" should be fixed or not.
 	SetChannelModPolicyDuringCreate() bool
 
+	// Resubmission specifies whether the v1.0 non-deterministic commitment of tx should be fixed by re-submitting
+	// the re-validated tx.
+	Resubmission() bool
+
 	// Supported returns an error if there are unknown capabilities in this channel which are required
 	Supported() error
 }

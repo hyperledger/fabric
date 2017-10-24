@@ -73,6 +73,9 @@ type OrdererCapabilities struct {
 
 	// SetChannelModPolicyDuringCreateVal is returned by SetChannelModPolicyDuringCreate()
 	SetChannelModPolicyDuringCreateVal bool
+
+	// ResubmissionVal is returned by Resubmission()
+	ResubmissionVal bool
 }
 
 // Supported returns SupportedErr
@@ -83,4 +86,9 @@ func (oc *OrdererCapabilities) Supported() error {
 // SetChannelModPolicyDuringCreate returns SetChannelModPolicyDuringCreateVal
 func (oc *OrdererCapabilities) SetChannelModPolicyDuringCreate() bool {
 	return oc.SetChannelModPolicyDuringCreateVal
+}
+
+// Resubmission returns ResubmissionVal
+func (oc *OrdererCapabilities) Resubmission() bool {
+	return oc.ResubmissionVal
 }

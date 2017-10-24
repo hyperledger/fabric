@@ -52,3 +52,9 @@ func (cp *OrdererProvider) HasCapability(capability string) bool {
 func (cp *OrdererProvider) SetChannelModPolicyDuringCreate() bool {
 	return cp.v11BugFixes
 }
+
+// Resubmission specifies whether the v1.0 non-deterministic commitment of tx should be fixed by re-submitting
+// the re-validated tx.
+func (cp *OrdererProvider) Resubmission() bool {
+	return cp.v11BugFixes
+}
