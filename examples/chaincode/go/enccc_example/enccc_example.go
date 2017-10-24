@@ -150,7 +150,7 @@ func (t *EncCC) EncrypterSigner(stub shim.ChaincodeStubInterface, f string, args
 
 type keyValuePair struct {
 	Key   string `json:"key"`
-	Value []byte `json:"value"`
+	Value string `json:"value"`
 }
 
 // RangeDecrypter shows how range queries may be satisfied by using the encrypter
@@ -182,7 +182,7 @@ func (t *EncCC) RangeDecrypter(stub shim.ChaincodeStubInterface, encKey []byte) 
 			return shim.Error(fmt.Sprintf("ent.Decrypt failed, err %s", err))
 		}
 
-		keyvalueset = append(keyvalueset, keyValuePair{el.Key, v})
+		keyvalueset = append(keyvalueset, keyValuePair{el.Key, string(v)})
 	}
 
 	bytes, err := json.Marshal(keyvalueset)
