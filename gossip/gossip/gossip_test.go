@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"reflect"
+
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
@@ -283,17 +285,17 @@ func TestLeaveChannel(t *testing.T) {
 
 	p0 := newGossipInstance(portPrefix, 0, 100, 2)
 	p0.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	p0.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	p0.UpdateLedgerHeight(1, common.ChainID("A"))
 	defer p0.Stop()
 
 	p1 := newGossipInstance(portPrefix, 1, 100, 0)
 	p1.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	p1.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	p1.UpdateLedgerHeight(1, common.ChainID("A"))
 	defer p1.Stop()
 
 	p2 := newGossipInstance(portPrefix, 2, 100, 1)
 	p2.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	p2.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	p2.UpdateLedgerHeight(1, common.ChainID("A"))
 	defer p2.Stop()
 
 	countMembership := func(g Gossip, expected int) func() bool {
@@ -352,7 +354,7 @@ func TestPull(t *testing.T) {
 			defer wg.Done()
 			pI := newGossipInstanceWithOnlyPull(portPrefix, i, 100, 0)
 			pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-			pI.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+			pI.UpdateLedgerHeight(1, common.ChainID("A"))
 			peers[i-1] = pI
 		}(i)
 	}
@@ -362,7 +364,7 @@ func TestPull(t *testing.T) {
 
 	boot := newGossipInstanceWithOnlyPull(portPrefix, 0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	boot.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	boot.UpdateLedgerHeight(1, common.ChainID("A"))
 
 	knowAll := func() bool {
 		for i := 1; i <= n; i++ {
@@ -450,7 +452,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 		go func(i int) {
 			peers[i] = newGossipInstance(portPrefix, i+anchorPeercount, 100)
 			peers[i].JoinChan(jcm, common.ChainID("A"))
-			peers[i].UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+			peers[i].UpdateLedgerHeight(1, common.ChainID("A"))
 			wg.Done()
 		}(i)
 	}
@@ -462,7 +464,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 	// Now start a random anchor peer
 	anchorPeer := newGossipInstance(portPrefix, rand.Intn(anchorPeercount), 100)
 	anchorPeer.JoinChan(jcm, common.ChainID("A"))
-	anchorPeer.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	anchorPeer.UpdateLedgerHeight(1, common.ChainID("A"))
 
 	defer anchorPeer.Stop()
 	waitUntilOrFail(t, checkPeersMembership(t, peers, n))
@@ -503,7 +505,7 @@ func TestMembership(t *testing.T) {
 	var lastPeer = fmt.Sprintf("localhost:%d", n+portPrefix)
 	boot := newGossipInstance(portPrefix, 0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	boot.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	boot.UpdateLedgerHeight(1, common.ChainID("A"))
 
 	peers := make([]Gossip, n)
 	wg := sync.WaitGroup{}
@@ -514,7 +516,7 @@ func TestMembership(t *testing.T) {
 			pI := newGossipInstance(portPrefix, i, 100, 0)
 			peers[i-1] = pI
 			pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-			pI.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+			pI.UpdateLedgerHeight(1, common.ChainID("A"))
 		}(i)
 	}
 
@@ -576,11 +578,11 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 
 	boot := newGossipInstance(portPrefix, 0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	boot.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	boot.UpdateLedgerHeight(1, common.ChainID("A"))
 
 	peer := newGossipInstance(portPrefix, 1, 100, 0)
 	peer.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	peer.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	peer.UpdateLedgerHeight(1, common.ChainID("A"))
 
 	// Wait until both peers get connected
 	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{peer}, 1))
@@ -647,7 +649,8 @@ func TestDissemination(t *testing.T) {
 	msgsCount2Send := 10
 	boot := newGossipInstance(portPrefix, 0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	boot.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+	boot.UpdateLedgerHeight(1, common.ChainID("A"))
+	boot.UpdateChaincodes([]*proto.Chaincode{{Name: "exampleCC", Version: "1.2"}}, common.ChainID("A"))
 
 	peers := make([]Gossip, n)
 	receivedMessages := make([]int, n)
@@ -657,7 +660,8 @@ func TestDissemination(t *testing.T) {
 		pI := newGossipInstance(portPrefix, i, 100, 0)
 		peers[i-1] = pI
 		pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-		pI.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+		pI.UpdateLedgerHeight(1, common.ChainID("A"))
+		pI.UpdateChaincodes([]*proto.Chaincode{{Name: "exampleCC", Version: "1.2"}}, common.ChainID("A"))
 		acceptChan, _ := pI.Accept(acceptData, false)
 		go func(index int, ch <-chan *proto.GossipMessage) {
 			defer wg.Done()
@@ -668,17 +672,26 @@ func TestDissemination(t *testing.T) {
 		}(i-1, acceptChan)
 		// Change metadata in last node
 		if i == n {
-			pI.UpdateChannelMetadata(createMetadata(2), common.ChainID("A"))
+			pI.UpdateLedgerHeight(2, common.ChainID("A"))
 		}
 	}
 	var lastPeer = fmt.Sprintf("localhost:%d", n+portPrefix)
 	metaDataUpdated := func() bool {
-		if !bytes.Equal(createMetadata(2), metadataOfPeer(boot.PeersOfChannel(common.ChainID("A")), lastPeer)) {
+		if 2 != heightOfPeer(boot.PeersOfChannel(common.ChainID("A")), lastPeer) {
 			return false
 		}
 		for i := 0; i < n-1; i++ {
-			if !bytes.Equal(createMetadata(2), metadataOfPeer(peers[i].PeersOfChannel(common.ChainID("A")), lastPeer)) {
+			if 2 != heightOfPeer(peers[i].PeersOfChannel(common.ChainID("A")), lastPeer) {
 				return false
+			}
+			for _, p := range peers[i].PeersOfChannel(common.ChainID("A")) {
+				if len(p.Properties.Chaincodes) != 1 {
+					return false
+				}
+
+				if !reflect.DeepEqual(p.Properties.Chaincodes, []*proto.Chaincode{{Name: "exampleCC", Version: "1.2"}}) {
+					return false
+				}
 			}
 		}
 		return true
@@ -965,20 +978,16 @@ func TestDataLeakage(t *testing.T) {
 
 	channels := []common.ChainID{common.ChainID("A"), common.ChainID("B")}
 
-	channelAmetadata := createMetadata(1)
-	channelBmetadata := createMetadata(2)
+	height := uint64(1)
 
 	for i, channel := range channels {
 		for j := 0; j < (n / 2); j++ {
 			instanceIndex := (n/2)*i + j
 			peers[instanceIndex].JoinChan(&joinChanMsg{}, channel)
-			var metadata []byte
-			if i == 0 {
-				metadata = channelAmetadata
-			} else {
-				metadata = channelBmetadata
+			if i != 0 {
+				height = uint64(2)
 			}
-			peers[instanceIndex].UpdateChannelMetadata(metadata, channel)
+			peers[instanceIndex].UpdateLedgerHeight(height, channel)
 			t.Log(instanceIndex, "joined", string(channel))
 		}
 	}
@@ -1004,10 +1013,8 @@ func TestDataLeakage(t *testing.T) {
 			instanceIndex := (n/2)*i + j
 			assert.Len(t, peers[instanceIndex].PeersOfChannel(channel), 2)
 			if i == 0 {
-				assert.Equal(t, channelAmetadata, peers[instanceIndex].PeersOfChannel(channel)[0].Metadata)
 				assert.Equal(t, uint64(1), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.LedgerHeight)
 			} else {
-				assert.Equal(t, channelBmetadata, peers[instanceIndex].PeersOfChannel(channel)[0].Metadata)
 				assert.Equal(t, uint64(2), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.LedgerHeight)
 			}
 		}
@@ -1068,7 +1075,7 @@ func TestDisseminateAll2All(t *testing.T) {
 			bootPeers := append(totPeers, totalPeers[i+1:]...)
 			pI := newGossipInstance(portPrefix, i, 100, bootPeers...)
 			pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-			pI.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+			pI.UpdateLedgerHeight(1, common.ChainID("A"))
 			peers[i] = pI
 			wg.Done()
 		}(i)
@@ -1126,12 +1133,9 @@ func TestSendByCriteria(t *testing.T) {
 	g3 := newGossipInstance(portPrefix, 2, 100, 0)
 	g4 := newGossipInstance(portPrefix, 3, 100, 0)
 	peers := []Gossip{g1, g2, g3, g4}
-	metaState := &common.NodeMetastate{}
-	metaState.LedgerHeight = 1
-	b, _ := metaState.Bytes()
 	for _, p := range peers {
 		p.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-		p.UpdateChannelMetadata(b, common.ChainID("A"))
+		p.UpdateLedgerHeight(1, common.ChainID("A"))
 	}
 	defer stopPeers(peers)
 	msg, _ := createDataMsg(1, []byte{}, common.ChainID("A")).NoopSign()
@@ -1466,6 +1470,15 @@ func metadataOfPeer(members []discovery.NetworkMember, endpoint string) []byte {
 	return nil
 }
 
+func heightOfPeer(members []discovery.NetworkMember, endpoint string) int {
+	for _, member := range members {
+		if member.InternalEndpoint == endpoint {
+			return int(member.Properties.LedgerHeight)
+		}
+	}
+	return -1
+}
+
 func waitForTestCompletion(stopFlag *int32, t *testing.T) {
 	time.Sleep(timeout)
 	if atomic.LoadInt32(stopFlag) == int32(1) {
@@ -1573,10 +1586,4 @@ func checkPeersMembership(t *testing.T, peers []Gossip, n int) func() bool {
 		}
 		return true
 	}
-}
-
-func createMetadata(height int) []byte {
-	nodeMeta := common.NewNodeMetastate(uint64(height))
-	metaBytes, _ := nodeMeta.Bytes()
-	return metaBytes
 }

@@ -49,7 +49,7 @@ func TestGossipMock(t *testing.T) {
 		g.Gossip(nil)
 	})
 	assert.NotPanics(t, func() {
-		g.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+		g.UpdateLedgerHeight(0, common.ChainID("A"))
 		g.Stop()
 		g.JoinChan(nil, common.ChainID("A"))
 	})

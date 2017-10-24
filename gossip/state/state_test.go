@@ -714,7 +714,7 @@ func TestGossipReception(t *testing.T) {
 	}
 }
 
-func TestMetadataCompatibility(t *testing.T) {
+func TestLedgerHeightFromProperties(t *testing.T) {
 	// Scenario: For each test, spawn a peer and supply it
 	// with a specific mock of PeersOfChannel from peers that
 	// either set both metadata properly, or only the properties, or none, or both.
@@ -737,12 +737,9 @@ func TestMetadataCompatibility(t *testing.T) {
 		})
 		g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
 		g.On("Accept", mock.Anything, true).Return(nil, make(chan proto.ReceivedMessage))
-		metaState := common.NewNodeMetastate(5)
-		b, _ := metaState.Bytes()
 		defaultPeer := discovery.NetworkMember{
 			InternalEndpoint: "b",
 			PKIid:            common.PKIidType("b"),
-			Metadata:         b,
 			Properties: &proto.Properties{
 				LedgerHeight: 5,
 			},
@@ -763,7 +760,7 @@ func TestMetadataCompatibility(t *testing.T) {
 		return atomic.LoadInt32(&wasGivenNetworkMemberSelected) == 1
 	}
 
-	peerWithoutMetadata := discovery.NetworkMember{
+	peerWithProperties := discovery.NetworkMember{
 		PKIid: common.PKIidType("peerWithoutMetadata"),
 		Properties: &proto.Properties{
 			LedgerHeight: 10,
@@ -771,38 +768,17 @@ func TestMetadataCompatibility(t *testing.T) {
 		InternalEndpoint: "peerWithoutMetadata",
 	}
 
-	ms := common.NodeMetastate{
-		LedgerHeight: 10,
-	}
-	b, _ := ms.Bytes()
 	peerWithoutProperties := discovery.NetworkMember{
 		PKIid:            common.PKIidType("peerWithoutProperties"),
 		InternalEndpoint: "peerWithoutProperties",
-		Metadata:         b,
-	}
-
-	peerWithoutEverything := discovery.NetworkMember{
-		PKIid:            common.PKIidType("peerWithoutProperties"),
-		InternalEndpoint: "peerWithoutProperties",
-	}
-
-	peerWithEverything := discovery.NetworkMember{
-		PKIid:            common.PKIidType("peerWitEverything"),
-		InternalEndpoint: "peerWitEverything",
-		Metadata:         b,
-		Properties: &proto.Properties{
-			LedgerHeight: 10,
-		},
 	}
 
 	tests := []struct {
 		shouldGivenBeSelected bool
 		member                discovery.NetworkMember
 	}{
-		{member: peerWithoutMetadata, shouldGivenBeSelected: true},
-		{member: peerWithoutProperties, shouldGivenBeSelected: true},
-		{member: peerWithoutEverything, shouldGivenBeSelected: false},
-		{member: peerWithEverything, shouldGivenBeSelected: true},
+		{member: peerWithProperties, shouldGivenBeSelected: true},
+		{member: peerWithoutProperties, shouldGivenBeSelected: false},
 	}
 
 	var wg sync.WaitGroup
@@ -1583,24 +1559,22 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 	}}, nil)
 
 	// Return membership of the peers
-	metastate := &common.NodeMetastate{LedgerHeight: uint64(2)}
-	metaBytes, err := metastate.Bytes()
-	assert.NoError(t, err)
 	member2 := discovery.NetworkMember{
 		PKIid:            common.PKIidType([]byte{2}),
 		Endpoint:         "peer2:7051",
 		InternalEndpoint: "peer2:7051",
-		Metadata:         metaBytes,
+		Properties: &proto.Properties{
+			LedgerHeight: 2,
+		},
 	}
 
-	metastate = &common.NodeMetastate{LedgerHeight: uint64(3)}
-	metaBytes, err = metastate.Bytes()
-	assert.NoError(t, err)
 	member1 := discovery.NetworkMember{
 		PKIid:            common.PKIidType([]byte{1}),
 		Endpoint:         "peer1:7051",
 		InternalEndpoint: "peer1:7051",
-		Metadata:         metaBytes,
+		Properties: &proto.Properties{
+			LedgerHeight: 3,
+		},
 	}
 
 	peers["peer1"].On("PeersOfChannel", mock.Anything).Return([]discovery.NetworkMember{member2})

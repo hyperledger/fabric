@@ -135,7 +135,6 @@ message GossipMessage {
 // StateInfo is used for a peer to relay its state information
 // to other peers
 message StateInfo {
-    bytes metadata     = 1;
     PeerTime timestamp = 2;
     bytes pki_id       = 3;
 

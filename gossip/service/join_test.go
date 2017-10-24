@@ -64,7 +64,15 @@ func (*gossipMock) UpdateMetadata(metadata []byte) {
 	panic("implement me")
 }
 
-func (*gossipMock) UpdateChannelMetadata(metadata []byte, chainID common.ChainID) {
+// UpdateLedgerHeight updates the ledger height the peer
+// publishes to other peers in the channel
+func (*gossipMock) UpdateLedgerHeight(height uint64, chainID common.ChainID) {
+	panic("implement me")
+}
+
+// UpdateChaincodes updates the chaincodes the peer publishes
+// to other peers in the channel
+func (*gossipMock) UpdateChaincodes(chaincode []*proto.Chaincode, chainID common.ChainID) {
 	panic("implement me")
 }
 
