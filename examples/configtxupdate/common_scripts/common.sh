@@ -101,7 +101,7 @@ encode() {
 	OUTPUT_FILE=$3
 
 	echo Executing:
-	echo -e "\t" curl -X POST --data-binary @${INPUT_FILE} "$CONFIGTXLATOR_URL/protolator/decode/${MSG_TYPE} > ${OUTPUT_FILE}"
+	echo -e "\t" curl -X POST --data-binary @${INPUT_FILE} "$CONFIGTXLATOR_URL/protolator/encode/${MSG_TYPE} > ${OUTPUT_FILE}"
 
 	curl -s -X POST --data-binary @${INPUT_FILE} "$CONFIGTXLATOR_URL/protolator/encode/${MSG_TYPE}" >  "${OUTPUT_FILE}"
 	[ $? -eq 0 ] || die "unable to encode via REST"

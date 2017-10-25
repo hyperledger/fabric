@@ -30,7 +30,7 @@ bigMsg "Decoding genesis block"
 decode common.Block "${GENESIS_BLOCK_PB}" "${GENESIS_BLOCK_JSON}"
 
 bigMsg "Updating the genesis config"
-ORIGINAL_BATCHSIZE=$(jq ".data.data[0].payload.data.config.channel_group.groups.Orderer.values.BatchSize.value.max_message_count" genesis_block.json)
+ORIGINAL_BATCHSIZE=$(jq ".data.data[0].payload.data.config.channel_group.groups.Orderer.values.BatchSize.value.max_message_count" ${GENESIS_BLOCK_JSON})
 NEW_BATCHSIZE=$(( ${ORIGINAL_BATCHSIZE} + 1 ))
 echo "Updating batch size from ${ORIGINAL_BATCHSIZE} to ${NEW_BATCHSIZE}."
 echo -e "Executing\n\tjq '.data.data[0].payload.data.config.channel_group.groups.Orderer.values.BatchSize.value.max_message_count = ${NEW_BATCHSIZE}' '${GENESIS_BLOCK_JSON}' > '${UPDATED_GENESIS_BLOCK_JSON}'"
