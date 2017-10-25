@@ -179,7 +179,7 @@ func GetResponse(resBytes []byte) (*peer.Response, error) {
 	return response, err
 }
 
-// GetChaincodeEvents gets the ChaincodeEvents given chaicnode event bytes
+// GetChaincodeEvents gets the ChaincodeEvents given chaincode event bytes
 func GetChaincodeEvents(eBytes []byte) (*peer.ChaincodeEvent, error) {
 	chaincodeEvent := &peer.ChaincodeEvent{}
 	err := proto.Unmarshal(eBytes, chaincodeEvent)

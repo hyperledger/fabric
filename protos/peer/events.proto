@@ -89,7 +89,13 @@ message FilteredBlock {
 message FilteredTransaction {
     string txid = 1;
     TxValidationCode tx_validation_code = 2;
-    ChaincodeEvent ccEvent = 3;
+    repeated FilteredAction filtered_action = 3;
+}
+
+//FilteredAction is a minimal set of information about an action within a
+//transaction.
+message FilteredAction {
+    ChaincodeEvent ccEvent = 1;
 }
 
 // SignedEvent is used for any communication between consumer and producer
