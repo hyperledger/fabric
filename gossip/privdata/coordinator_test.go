@@ -683,6 +683,99 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	assert.Contains(t, err.Error(), "Block data is empty")
 }
 
+func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
+	/*
+		Test case, where peer receives new block for commit
+		it has ns1:c1 in transient store, while it has wrong
+		hash, hence it will fetch ns1:c1 from other peers
+	*/
+	peerSelfSignedData := common.SignedData{
+		Identity:  []byte{0, 1, 2},
+		Signature: []byte{3, 4, 5},
+		Data:      []byte{6, 7, 8},
+	}
+
+	expectedPvtData := map[uint64]*ledger.TxPvtData{
+		0: {SeqInBlock: 0, WriteSet: &rwset.TxPvtReadWriteSet{
+			DataModel: rwset.TxReadWriteSet_KV,
+			NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+				{
+					Namespace: "ns1",
+					CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+						{
+							CollectionName: "c1",
+							Rwset:          []byte("rws-original"),
+						},
+					},
+				},
+			},
+		}},
+	}
+
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
+	committer := &committerMock{}
+	store := &mockTransientStore{t: t}
+
+	fetcher := &fetcherMock{t: t}
+
+	var commitHappened bool
+
+	committer.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
+		var privateDataPassed2Ledger privateData = args.Get(0).(*ledger.BlockAndPvtData).BlockPvtData
+		assert.True(t, privateDataPassed2Ledger.Equal(expectedPvtData))
+		commitHappened = true
+	}).Return(nil)
+
+	hash := util2.ComputeSHA256([]byte("rws-original"))
+	bf := &blockFactory{
+		channelID: "test",
+	}
+
+	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", "c1").create()
+	store.On("GetTxPvtRWSetByTxid", "tx1", mock.Anything).Return((&mockRWSetScanner{}).withRWSet("ns1", "c1"), nil)
+
+	coordinator := NewCoordinator(Support{
+		CollectionStore: cs,
+		Committer:       committer,
+		Fetcher:         fetcher,
+		TransientStore:  store,
+		Validator:       &validatorMock{},
+	}, peerSelfSignedData)
+
+	fetcher.On("fetch", mock.Anything).expectingDigests([]*proto.PvtDataDigest{
+		{
+			TxId: "tx1", Namespace: "ns1", Collection: "c1", BlockSeq: 1,
+		},
+	}).expectingEndorsers("org1").Return([]*proto.PvtDataElement{
+		{
+			Digest: &proto.PvtDataDigest{
+				BlockSeq:   1,
+				Collection: "c1",
+				Namespace:  "ns1",
+				TxId:       "tx1",
+			},
+			Payload: [][]byte{[]byte("rws-original")},
+		},
+	}, nil)
+	store.On("Persist", mock.Anything, uint64(1), mock.Anything).
+		expectRWSet("ns1", "c1", []byte("rws-original")).Return(nil)
+
+	purgedTxns := make(map[string]struct{})
+	store.On("PurgeByTxids", mock.Anything).Run(func(args mock.Arguments) {
+		for _, txn := range args.Get(0).([]string) {
+			purgedTxns[txn] = struct{}{}
+		}
+	}).Return(nil)
+
+	coordinator.StoreBlock(block, nil)
+	// Assert blocks was eventually committed
+	assert.True(t, commitHappened)
+
+	// Assert transaction has been purged
+	_, exists := purgedTxns["tx1"]
+	assert.True(t, exists)
+}
+
 func TestCoordinatorStoreBlock(t *testing.T) {
 	peerSelfSignedData := common.SignedData{
 		Identity:  []byte{0, 1, 2},
