@@ -54,6 +54,10 @@ func (mch *mockChain) Configure(config *cb.Envelope, configSeq uint64) error {
 	return nil
 }
 
+func (mch *mockChain) WaitReady() error {
+	return nil
+}
+
 func (mch *mockChain) Start() {
 	go func() {
 		defer close(mch.done)

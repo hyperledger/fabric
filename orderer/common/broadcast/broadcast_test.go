@@ -111,6 +111,10 @@ type mockSupport struct {
 	rejectEnqueue    bool
 }
 
+func (ms *mockSupport) WaitReady() error {
+	return nil
+}
+
 // Order sends a message for ordering
 func (ms *mockSupport) Order(env *cb.Envelope, configSeq uint64) error {
 	if ms.rejectEnqueue {

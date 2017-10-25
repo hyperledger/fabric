@@ -40,6 +40,7 @@ func TestChain(t *testing.T) {
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
 	lastOriginalOffsetProcessed := int64(0)
+	lastResubmittedConfigOffset := int64(0)
 
 	message := sarama.StringEncoder("messageFoo")
 
@@ -69,7 +70,7 @@ func TestChain(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		_, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
-		chain, err := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+		chain, err := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		assert.NoError(t, err, "Expected newChain to return without errors")
 		select {
@@ -98,7 +99,7 @@ func TestChain(t *testing.T) {
 		_, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
 		// Set to -1 because we haven't sent the CONNECT message yet
-		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		chain.Start()
 		select {
@@ -115,7 +116,7 @@ func TestChain(t *testing.T) {
 	t.Run("Halt", func(t *testing.T) {
 		_, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
-		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		chain.Start()
 		select {
@@ -146,7 +147,7 @@ func TestChain(t *testing.T) {
 	t.Run("DoubleHalt", func(t *testing.T) {
 		_, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
-		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		chain.Start()
 		select {
@@ -168,7 +169,7 @@ func TestChain(t *testing.T) {
 		mockSupportCopy := *mockSupport
 		mockSupportCopy.SharedConfigVal = &mockconfig.Orderer{KafkaBrokersVal: []string{}}
 
-		chain, _ := newChain(mockConsenter, &mockSupportCopy, newestOffset-1, lastOriginalOffsetProcessed)
+		chain, _ := newChain(mockConsenter, &mockSupportCopy, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		// The production path will actually call chain.Start(). This is
 		// functionally equivalent and allows us to run assertions on it.
@@ -182,7 +183,7 @@ func TestChain(t *testing.T) {
 		// - Metadata.Retry.Max
 		mockChannel, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
-		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		// Have the broker return an ErrNotLeaderForPartition error
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
@@ -204,7 +205,7 @@ func TestChain(t *testing.T) {
 	t.Run("enqueueIfNotStarted", func(t *testing.T) {
 		mockChannel, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
-		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		// As in StartWithConnectMessageError, have the broker return an
 		// ErrNotLeaderForPartition error, i.e. cause an error in the
@@ -236,7 +237,7 @@ func TestChain(t *testing.T) {
 		defer func() { mockBroker.Close() }()
 
 		// Provide an out-of-range offset
-		chain, _ := newChain(mockConsenter, mockSupport, newestOffset, lastOriginalOffsetProcessed)
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 			"MetadataRequest": sarama.NewMockMetadataResponse(t).
@@ -257,7 +258,7 @@ func TestChain(t *testing.T) {
 	t.Run("enqueueProper", func(t *testing.T) {
 		mockChannel, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
-		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 			"MetadataRequest": sarama.NewMockMetadataResponse(t).
@@ -290,7 +291,7 @@ func TestChain(t *testing.T) {
 	t.Run("enqueueIfHalted", func(t *testing.T) {
 		mockChannel, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
-		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 			"MetadataRequest": sarama.NewMockMetadataResponse(t).
@@ -322,7 +323,7 @@ func TestChain(t *testing.T) {
 	t.Run("enqueueError", func(t *testing.T) {
 		mockChannel, mockBroker, mockSupport := newMocks(t)
 		defer func() { mockBroker.Close() }()
-		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+		chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 		// Use the "good" handler map that allows the Stage to complete without
 		// issues
@@ -362,7 +363,7 @@ func TestChain(t *testing.T) {
 		t.Run("ErrorIfNotStarted", func(t *testing.T) {
 			_, mockBroker, mockSupport := newMocks(t)
 			defer func() { mockBroker.Close() }()
-			chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+			chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 			// We don't need to create a legit envelope here as it's not inspected during this test
 			assert.Error(t, chain.Order(&cb.Envelope{}, uint64(0)))
@@ -371,7 +372,7 @@ func TestChain(t *testing.T) {
 		t.Run("Proper", func(t *testing.T) {
 			mockChannel, mockBroker, mockSupport := newMocks(t)
 			defer func() { mockBroker.Close() }()
-			chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+			chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 			mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 				"MetadataRequest": sarama.NewMockMetadataResponse(t).
@@ -405,7 +406,7 @@ func TestChain(t *testing.T) {
 		t.Run("ErrorIfNotStarted", func(t *testing.T) {
 			_, mockBroker, mockSupport := newMocks(t)
 			defer func() { mockBroker.Close() }()
-			chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+			chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 			// We don't need to create a legit envelope here as it's not inspected during this test
 			assert.Error(t, chain.Configure(&cb.Envelope{}, uint64(0)))
@@ -414,7 +415,7 @@ func TestChain(t *testing.T) {
 		t.Run("Proper", func(t *testing.T) {
 			mockChannel, mockBroker, mockSupport := newMocks(t)
 			defer func() { mockBroker.Close() }()
-			chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed)
+			chain, _ := newChain(mockConsenter, mockSupport, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
 			mockBroker.SetHandlerByMap(map[string]sarama.MockResponse{
 				"MetadataRequest": sarama.NewMockMetadataResponse(t).
@@ -645,26 +646,29 @@ func TestGetLastOffsetPersisted(t *testing.T) {
 	mockMetadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{
 		LastOffsetPersisted:         int64(5),
 		LastOriginalOffsetProcessed: int64(3),
+		LastResubmittedConfigOffset: int64(4),
 	})}
 
 	testCases := []struct {
-		name              string
-		md                []byte
-		expectedPersisted int64
-		expectedProcessed int64
-		panics            bool
+		name                string
+		md                  []byte
+		expectedPersisted   int64
+		expectedProcessed   int64
+		expectedResubmitted int64
+		panics              bool
 	}{
-		{"Proper", mockMetadata.Value, int64(5), int64(3), false},
-		{"Empty", nil, sarama.OffsetOldest - 1, int64(0), false},
-		{"Panics", tamperBytes(mockMetadata.Value), sarama.OffsetOldest - 1, int64(0), true},
+		{"Proper", mockMetadata.Value, int64(5), int64(3), int64(4), false},
+		{"Empty", nil, sarama.OffsetOldest - 1, int64(0), int64(0), false},
+		{"Panics", tamperBytes(mockMetadata.Value), sarama.OffsetOldest - 1, int64(0), int64(0), true},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			if !tc.panics {
-				persisted, processed := getOffsets(tc.md, mockChannel.String())
+				persisted, processed, resubmitted := getOffsets(tc.md, mockChannel.String())
 				assert.Equal(t, tc.expectedPersisted, persisted)
 				assert.Equal(t, tc.expectedProcessed, processed)
+				assert.Equal(t, tc.expectedResubmitted, resubmitted)
 			} else {
 				assert.Panics(t, func() {
 					getOffsets(tc.md, mockChannel.String())
@@ -2166,6 +2170,25 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 
 // This ensures message is re-validated if config seq has advanced
 func TestResubmission(t *testing.T) {
+	blockIngressMsg := func(t *testing.T, block bool, fn func() error) {
+		wait := make(chan struct{})
+		go func() {
+			fn()
+			wait <- struct{}{}
+		}()
+
+		select {
+		case <-wait:
+			if block {
+				t.Fatalf("Expected WaitReady to block")
+			}
+		case <-time.After(100 * time.Millisecond):
+			if !block {
+				t.Fatalf("Expected WaitReady not to block")
+			}
+		}
+	}
+
 	mockBroker := sarama.NewMockBroker(t, 0)
 	defer func() { mockBroker.Close() }()
 
@@ -2403,6 +2426,14 @@ func TestResubmission(t *testing.T) {
 			assert.Equal(t, uint64(1), counts[indexProcessRegularError], "Expected 1 REGULAR message error")
 		})
 
+		// This tests resubmission path with following steps:
+		// 1) Kafka emits a message with lagged config seq, consenter is expected to re-process and
+		//    re-submit the message. However, `WaitReady` shouldn't be blocked for a normal message
+		// 2) Kafka is expected to receive a producer message where config seq is advanced to catch
+		//    up with current config seq, and OriginalOffset is not nil to capture the offset that
+		//    consenter previously received from Kafka
+		// 3) when consenter receives Kafka message submitted in 2), where config seq is in sync,
+		//    it cuts a block for it.
 		t.Run("ValidResubmit", func(t *testing.T) {
 			if testing.Short() {
 				t.Skip("Skipping test in short mode")
@@ -2413,6 +2444,8 @@ func TestResubmission(t *testing.T) {
 			errorChan := make(chan struct{})
 			close(errorChan)
 			haltChan := make(chan struct{})
+			doneReprocessing := make(chan struct{})
+			close(doneReprocessing)
 
 			lastCutBlockNumber := uint64(3)
 
@@ -2432,14 +2465,14 @@ func TestResubmission(t *testing.T) {
 			}
 			defer close(mockSupport.BlockCutterVal.Block)
 
+			expectedKafkaMsg := &ab.KafkaMessage{}
 			producer := mocks.NewSyncProducer(t, mockBrokerConfig)
 			producer.ExpectSendMessageWithCheckerFunctionAndSucceed(func(val []byte) error {
-				msg := &ab.KafkaMessage{}
-				if err := proto.Unmarshal(val, msg); err != nil {
+				if err := proto.Unmarshal(val, expectedKafkaMsg); err != nil {
 					return err
 				}
 
-				regular := msg.GetRegular()
+				regular := expectedKafkaMsg.GetRegular()
 				if regular == nil {
 					return fmt.Errorf("Expect message type to be regular")
 				}
@@ -2468,6 +2501,7 @@ func TestResubmission(t *testing.T) {
 				errorChan:                      errorChan,
 				haltChan:                       haltChan,
 				doneProcessingMessagesToBlocks: make(chan struct{}),
+				doneReprocessingMsgInFlight:    doneReprocessing,
 			}
 
 			var counts []uint64
@@ -2477,6 +2511,8 @@ func TestResubmission(t *testing.T) {
 				counts, err = bareMinimumChain.processMessagesToBlocks()
 				done <- struct{}{}
 			}()
+
+			mockSupport.BlockCutterVal.CutNext = true
 
 			mpc.YieldMessage(newMockConsumerMessage(newNormalMessage(
 				utils.MarshalOrPanic(newMockNormalEnvelope(t)),
@@ -2488,16 +2524,41 @@ func TestResubmission(t *testing.T) {
 			case <-time.After(shortTimeout):
 			}
 
+			// check that WaitReady is not blocked for a in-flight reprocessed messages of type NORMAL
+			waitReady := make(chan struct{})
+			go func() {
+				bareMinimumChain.WaitReady()
+				waitReady <- struct{}{}
+			}()
+
+			select {
+			case <-waitReady:
+			case <-time.After(100 * time.Millisecond):
+				t.Fatalf("Expected WaitReady call to be unblock because all reprocessed messages are consumed")
+			}
+
+			// Emits the kafka message produced by consenter
+			mpc.YieldMessage(newMockConsumerMessage(expectedKafkaMsg))
+			mockSupport.BlockCutterVal.Block <- struct{}{}
+
+			select {
+			case <-mockSupport.Blocks:
+			case <-time.After(shortTimeout):
+				t.Fatalf("Expected one block being cut")
+			}
+
 			close(haltChan) // Identical to chain.Halt()
 			<-done
 
 			assert.NoError(t, err, "Expected the processMessagesToBlocks call to return without errors")
-			assert.Equal(t, uint64(1), counts[indexRecvPass], "Expected 1 message received and unmarshaled")
-			assert.Equal(t, uint64(1), counts[indexProcessRegularPass], "Expected 1 REGULAR message error")
+			assert.Equal(t, uint64(2), counts[indexRecvPass], "Expected 2 message received and unmarshaled")
+			assert.Equal(t, uint64(2), counts[indexProcessRegularPass], "Expected 2 REGULAR message error")
 		})
 	})
 
 	t.Run("Config", func(t *testing.T) {
+		// This test lets kafka emit a mock re-submitted message that does not require reprocessing
+		// (by setting OriginalOffset <= lastOriginalOffsetProcessed)
 		t.Run("AlreadyProcessedDiscard", func(t *testing.T) {
 			if testing.Short() {
 				t.Skip("Skipping test in short mode")
@@ -2563,11 +2624,124 @@ func TestResubmission(t *testing.T) {
 			assert.Equal(t, uint64(1), counts[indexProcessRegularPass], "Expected 1 REGULAR message processed")
 		})
 
-		t.Run("ResubmittedMsgEnqueue", func(t *testing.T) {
+		// This test simulated the non-deterministic case, where somebody resubmitted message at offset X,
+		// whereas we didn't. That message was considered invalid by us during revalidation, however somebody
+		// else deemed it to be valid, and resubmitted it.
+		t.Run("Non-determinism", func(t *testing.T) {
 			if testing.Short() {
 				t.Skip("Skipping test in short mode")
 			}
 
+			startChan := make(chan struct{})
+			close(startChan)
+			errorChan := make(chan struct{})
+			close(errorChan)
+			haltChan := make(chan struct{})
+			doneReprocessing := make(chan struct{})
+			close(doneReprocessing)
+
+			lastCutBlockNumber := uint64(3)
+
+			mockSupport := &mockmultichannel.ConsenterSupport{
+				Blocks:         make(chan *cb.Block), // WriteBlock will post here
+				BlockCutterVal: mockblockcutter.NewReceiver(),
+				ChainIDVal:     mockChannel.topic(),
+				HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
+				SharedConfigVal: &mockconfig.Orderer{
+					BatchTimeoutVal: longTimeout,
+					CapabilitiesVal: &mockconfig.OrdererCapabilities{
+						ResubmissionVal: true,
+					},
+				},
+				SequenceVal:         uint64(1),
+				ConfigSeqVal:        uint64(1),
+				ProcessConfigMsgVal: newMockConfigEnvelope(),
+			}
+			defer close(mockSupport.BlockCutterVal.Block)
+
+			bareMinimumChain := &chainImpl{
+				parentConsumer:  mockParentConsumer,
+				channelConsumer: mockChannelConsumer,
+
+				channel:            mockChannel,
+				ConsenterSupport:   mockSupport,
+				lastCutBlockNumber: lastCutBlockNumber,
+
+				lastResubmittedConfigOffset: int64(0),
+
+				startChan:                      startChan,
+				errorChan:                      errorChan,
+				haltChan:                       haltChan,
+				doneProcessingMessagesToBlocks: make(chan struct{}),
+				doneReprocessingMsgInFlight:    doneReprocessing,
+			}
+
+			var counts []uint64
+			done := make(chan struct{})
+
+			go func() {
+				counts, err = bareMinimumChain.processMessagesToBlocks()
+				done <- struct{}{}
+			}()
+
+			// check that WaitReady is not blocked at beginning
+			blockIngressMsg(t, false, bareMinimumChain.WaitReady)
+
+			// Message should be revalidated but considered invalid, so we don't resubmit it
+			mockSupport.ProcessConfigMsgErr = fmt.Errorf("invalid message found during revalidation")
+
+			// Emits a config message with lagged config sequence
+			mpc.YieldMessage(newMockConsumerMessage(newConfigMessage(
+				utils.MarshalOrPanic(newMockConfigEnvelope()),
+				uint64(0),
+				int64(0))))
+			select {
+			case <-mockSupport.Blocks:
+				t.Fatalf("Expected no block being cut")
+			case <-time.After(shortTimeout):
+			}
+
+			// check that WaitReady is still not blocked because we haven't resubmitted anything
+			blockIngressMsg(t, false, bareMinimumChain.WaitReady)
+
+			// Somebody else resubmitted the message which we deemed to be invalid
+			// We deliberately keep ProcessConfigMsgErr unchanged, so we could be
+			// certain that we are not running into revalidation path.
+			mpc.YieldMessage(newMockConsumerMessage(newConfigMessage(
+				utils.MarshalOrPanic(newMockConfigEnvelope()),
+				uint64(1),
+				int64(5))))
+
+			select {
+			case block := <-mockSupport.Blocks:
+				metadata, err := utils.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
+				assert.NoError(t, err, "Failed to get metadata from block")
+				kafkaMetadata := &ab.KafkaMetadata{}
+				err = proto.Unmarshal(metadata.Value, kafkaMetadata)
+				assert.NoError(t, err, "Failed to unmarshal metadata")
+
+				assert.Equal(t, kafkaMetadata.LastResubmittedConfigOffset, int64(5), "LastResubmittedConfigOffset didn't catch up")
+				assert.Equal(t, kafkaMetadata.LastOriginalOffsetProcessed, int64(5), "LastOriginalOffsetProcessed doesn't match")
+			case <-time.After(shortTimeout):
+				t.Fatalf("Expected one block being cut")
+			}
+
+			close(haltChan) // Identical to chain.Halt()
+			<-done
+
+			assert.NoError(t, err, "Expected the processMessagesToBlocks call to return without errors")
+			assert.Equal(t, uint64(2), counts[indexRecvPass], "Expected 2 message received and unmarshaled")
+			assert.Equal(t, uint64(1), counts[indexProcessRegularPass], "Expected 2 REGULAR message error")
+		})
+
+		// This test lets kafka emit a mock re-submitted message whose config seq is still behind
+		t.Run("ResubmittedMsgStillBehind", func(t *testing.T) {
+			if testing.Short() {
+				t.Skip("Skipping test in short mode")
+			}
+
+			startChan := make(chan struct{})
+			close(startChan)
 			errorChan := make(chan struct{})
 			close(errorChan)
 			haltChan := make(chan struct{})
@@ -2586,11 +2760,18 @@ func TestResubmission(t *testing.T) {
 						ResubmissionVal: true,
 					},
 				},
-				SequenceVal: uint64(0),
+				SequenceVal:         uint64(2),
+				ProcessConfigMsgVal: newMockConfigEnvelope(),
 			}
 			defer close(mockSupport.BlockCutterVal.Block)
 
+			producer := mocks.NewSyncProducer(t, mockBrokerConfig)
+			producer.ExpectSendMessageWithCheckerFunctionAndSucceed(func(val []byte) error {
+				return nil
+			})
+
 			bareMinimumChain := &chainImpl{
+				producer:        producer,
 				parentConsumer:  mockParentConsumer,
 				channelConsumer: mockChannelConsumer,
 
@@ -2599,10 +2780,15 @@ func TestResubmission(t *testing.T) {
 				lastCutBlockNumber:          lastCutBlockNumber,
 				lastOriginalOffsetProcessed: lastOriginalOffsetProcessed,
 
+				startChan:                      startChan,
 				errorChan:                      errorChan,
 				haltChan:                       haltChan,
 				doneProcessingMessagesToBlocks: make(chan struct{}),
+				doneReprocessingMsgInFlight:    make(chan struct{}),
 			}
+
+			// WaitReady should block at beginning since we are in the middle of reprocessing
+			blockIngressMsg(t, true, bareMinimumChain.WaitReady)
 
 			var counts []uint64
 			done := make(chan struct{})
@@ -2612,20 +2798,22 @@ func TestResubmission(t *testing.T) {
 				done <- struct{}{}
 			}()
 
-			mpc.YieldMessage(newMockConsumerMessage(newConfigMessage(utils.MarshalOrPanic(newMockEnvelope("fooMessage")), uint64(0), int64(4))))
-
+			mpc.YieldMessage(newMockConsumerMessage(newConfigMessage(utils.MarshalOrPanic(newMockEnvelope("fooMessage")), uint64(1), int64(4))))
 			select {
 			case <-mockSupport.Blocks:
+				t.Fatalf("Expected no block being cut")
 			case <-time.After(shortTimeout):
-				t.Fatalf("Expected one block being cut")
 			}
+
+			// WaitReady should still block as resubmitted config message is still behind current config seq
+			blockIngressMsg(t, true, bareMinimumChain.WaitReady)
 
 			close(haltChan)
 			logger.Debug("haltChan closed")
 			<-done
 
 			assert.NoError(t, err, "Expected the processMessagesToBlocks call to return without errors")
-			assert.Equal(t, uint64(1), counts[indexRecvPass], "Expected 2 message received and unmarshaled")
+			assert.Equal(t, uint64(1), counts[indexRecvPass], "Expected 1 message received and unmarshaled")
 			assert.Equal(t, uint64(1), counts[indexProcessRegularPass], "Expected 1 REGULAR message processed")
 		})
 
@@ -2695,6 +2883,14 @@ func TestResubmission(t *testing.T) {
 			assert.Equal(t, uint64(1), counts[indexProcessRegularError], "Expected 1 REGULAR message error")
 		})
 
+		// This tests resubmission path with following steps:
+		// 1) Kafka emits a message with lagged config seq, consenter is expected to re-process and
+		//    re-submit the message, as well as block `WaitReady` API
+		// 2) Kafka is expected to receive a producer message where config seq is advanced to catch
+		//    up with current config seq, and OriginalOffset is not nil to capture the offset that
+		//    consenter previously received from Kafka
+		// 3) when consenter receives Kafka message submitted in 2), where config seq is in sync,
+		//    it cuts a block for it and lifts block on `WaitReady`.
 		t.Run("ValidResubmit", func(t *testing.T) {
 			if testing.Short() {
 				t.Skip("Skipping test in short mode")
@@ -2705,6 +2901,8 @@ func TestResubmission(t *testing.T) {
 			errorChan := make(chan struct{})
 			close(errorChan)
 			haltChan := make(chan struct{})
+			doneReprocessing := make(chan struct{})
+			close(doneReprocessing)
 
 			lastCutBlockNumber := uint64(3)
 
@@ -2725,14 +2923,14 @@ func TestResubmission(t *testing.T) {
 			}
 			defer close(mockSupport.BlockCutterVal.Block)
 
+			expectedKafkaMsg := &ab.KafkaMessage{}
 			producer := mocks.NewSyncProducer(t, mockBrokerConfig)
 			producer.ExpectSendMessageWithCheckerFunctionAndSucceed(func(val []byte) error {
-				msg := &ab.KafkaMessage{}
-				if err := proto.Unmarshal(val, msg); err != nil {
+				if err := proto.Unmarshal(val, expectedKafkaMsg); err != nil {
 					return err
 				}
 
-				regular := msg.GetRegular()
+				regular := expectedKafkaMsg.GetRegular()
 				if regular == nil {
 					return fmt.Errorf("Expect message type to be regular")
 				}
@@ -2761,6 +2959,7 @@ func TestResubmission(t *testing.T) {
 				errorChan:                      errorChan,
 				haltChan:                       haltChan,
 				doneProcessingMessagesToBlocks: make(chan struct{}),
+				doneReprocessingMsgInFlight:    doneReprocessing,
 			}
 
 			var counts []uint64
@@ -2771,22 +2970,41 @@ func TestResubmission(t *testing.T) {
 				done <- struct{}{}
 			}()
 
+			// check that WaitReady is not blocked at beginning
+			blockIngressMsg(t, false, bareMinimumChain.WaitReady)
+
+			// Emits a config message with lagged config sequence
 			mpc.YieldMessage(newMockConsumerMessage(newConfigMessage(
 				utils.MarshalOrPanic(newMockConfigEnvelope()),
 				uint64(0),
 				int64(0))))
 			select {
 			case <-mockSupport.Blocks:
-				t.Fatalf("Expected no block being cut given invalid config message")
+				t.Fatalf("Expected no block being cut given lagged config message")
 			case <-time.After(shortTimeout):
 			}
+
+			// check that WaitReady is actually blocked because of in-flight reprocessed messages
+			blockIngressMsg(t, true, bareMinimumChain.WaitReady)
+
+			// Emits the kafka message produced by consenter
+			mpc.YieldMessage(newMockConsumerMessage(expectedKafkaMsg))
+
+			select {
+			case <-mockSupport.Blocks:
+			case <-time.After(shortTimeout):
+				t.Fatalf("Expected one block being cut")
+			}
+
+			// `WaitReady` should be unblocked now
+			blockIngressMsg(t, false, bareMinimumChain.WaitReady)
 
 			close(haltChan) // Identical to chain.Halt()
 			<-done
 
 			assert.NoError(t, err, "Expected the processMessagesToBlocks call to return without errors")
-			assert.Equal(t, uint64(1), counts[indexRecvPass], "Expected 1 message received and unmarshaled")
-			assert.Equal(t, uint64(1), counts[indexProcessRegularPass], "Expected 1 REGULAR message error")
+			assert.Equal(t, uint64(2), counts[indexRecvPass], "Expected 2 message received and unmarshaled")
+			assert.Equal(t, uint64(2), counts[indexProcessRegularPass], "Expected 2 REGULAR message error")
 		})
 	})
 }

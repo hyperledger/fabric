@@ -81,6 +81,10 @@ func (ch *chain) Halt() {
 	}
 }
 
+func (ch *chain) WaitReady() error {
+	return nil
+}
+
 // Order accepts normal messages for ordering
 func (ch *chain) Order(env *cb.Envelope, configSeq uint64) error {
 	select {
