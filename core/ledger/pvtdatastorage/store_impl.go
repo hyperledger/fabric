@@ -92,6 +92,7 @@ func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData) error {
 		return err
 	}
 	s.batchPending = true
+	logger.Debugf("Saved private data for block [%d]", blockNum)
 	return nil
 }
 

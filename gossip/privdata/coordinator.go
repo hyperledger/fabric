@@ -144,6 +144,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	if block.Header == nil {
 		return errors.New("Block header is nil")
 	}
+	logger.Infof("Received block [%d]", block.Header.Number)
 
 	logger.Debug("Validating block", block.Header.Number)
 	err := c.Validator.Validate(block)
@@ -161,7 +162,6 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 		logger.Warning("Failed computing owned RWSets", err)
 		return err
 	}
-	logger.Info("Got block", block.Header.Number, "with", len(privateDataSets), "rwsets")
 
 	privateInfo, err := c.listMissingPrivateData(block, ownedRWsets)
 	if err != nil {
@@ -170,23 +170,33 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 
 	retryThresh := viper.GetDuration("peer.gossip.pvtData.pullRetryThreshold")
-	logger.Debug("Fetching", len(privateInfo.missingKeys), "rwsets from peers for a maximum duration of", retryThresh)
+	var bFetchFromPeers bool // defaults to false
+	if len(privateInfo.missingKeys) == 0 {
+		logger.Debug("No missing collection private write sets to fetch from remote peers")
+	} else {
+		bFetchFromPeers = true
+		logger.Debug("Fetching", len(privateInfo.missingKeys), "collection private write sets from remote peers for a maximum duration of", retryThresh)
+	}
 	start := time.Now()
 	limit := start.Add(retryThresh)
 	for len(privateInfo.missingKeys) > 0 && time.Now().Before(limit) {
 		c.fetchFromPeers(block.Header.Number, ownedRWsets, privateInfo)
 		time.Sleep(pullRetrySleepInterval)
 	}
-	if len(privateInfo.missingKeys) == 0 {
-		logger.Debug("Fetched all missing rwsets from peers")
-	} else {
-		logger.Warning("Missing", privateInfo.missingKeys)
+
+	// Only log results if we actually attempted to fetch
+	if bFetchFromPeers {
+		if len(privateInfo.missingKeys) == 0 {
+			logger.Debug("Fetched all missing collection private write sets from remote peers")
+		} else {
+			logger.Warning("Could not fetch all missing collection private write sets from remote peers. Will commit block with missing private write sets:", privateInfo.missingKeys)
+		}
 	}
 
 	// populate the private RWSets passed to the ledger
 	for seqInBlock, nsRWS := range ownedRWsets.bySeqsInBlock() {
 		rwsets := nsRWS.toRWSet()
-		logger.Debug("Added", len(rwsets.NsPvtRwset), "rwsets to sequence", seqInBlock, "for block", block.Header.Number)
+		logger.Debug("Added", len(rwsets.NsPvtRwset), "namespace private write sets to transaction", seqInBlock, "for block", block.Header.Number)
 		blockAndPvtData.BlockPvtData[seqInBlock] = &ledger.TxPvtData{
 			SeqInBlock: seqInBlock,
 			WriteSet:   rwsets,
@@ -318,16 +328,17 @@ func (c *coordinator) fetchFromTransientStore(txAndSeq txAndSeqInBlock, filter l
 	} // iterating over the TxPvtRWSet results
 }
 
-func computeOwnedRWsets(block *common.Block, data util.PvtDataCollections) (rwsetByKeys, error) {
+// computeOwnedRWsets identifies which block private data we already have
+func computeOwnedRWsets(block *common.Block, blockPvtData util.PvtDataCollections) (rwsetByKeys, error) {
 	lastBlockSeq := len(block.Data.Data) - 1
 
 	ownedRWsets := make(map[rwSetKey][]byte)
-	for _, item := range data {
-		if lastBlockSeq < int(item.SeqInBlock) {
-			logger.Warningf("Claimed SeqInBlock %d but block has only %d transactions", item.SeqInBlock, len(block.Data.Data))
+	for _, txPvtData := range blockPvtData {
+		if lastBlockSeq < int(txPvtData.SeqInBlock) {
+			logger.Warningf("Claimed SeqInBlock %d but block has only %d transactions", txPvtData.SeqInBlock, len(block.Data.Data))
 			continue
 		}
-		env, err := utils.GetEnvelopeFromBlock(block.Data.Data[item.SeqInBlock])
+		env, err := utils.GetEnvelopeFromBlock(block.Data.Data[txPvtData.SeqInBlock])
 		if err != nil {
 			return nil, err
 		}
@@ -340,12 +351,12 @@ func computeOwnedRWsets(block *common.Block, data util.PvtDataCollections) (rwse
 		if err != nil {
 			return nil, err
 		}
-		for _, ns := range item.WriteSet.NsPvtRwset {
+		for _, ns := range txPvtData.WriteSet.NsPvtRwset {
 			for _, col := range ns.CollectionPvtRwset {
 				computedHash := hex.EncodeToString(util2.ComputeSHA256(col.Rwset))
 				ownedRWsets[rwSetKey{
 					txID:       chdr.TxId,
-					seqInBlock: item.SeqInBlock,
+					seqInBlock: txPvtData.SeqInBlock,
 					collection: col.CollectionName,
 					namespace:  ns.Namespace,
 					hash:       computedHash,
@@ -584,6 +595,7 @@ type privateDataInfo struct {
 	txns               txns
 }
 
+// listMissingPrivateData identifies missing private write sets and attempts to retrieve them from local transient store
 func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets map[rwSetKey][]byte) (*privateDataInfo, error) {
 	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_TRANSACTIONS_FILTER) {
 		return nil, errors.New("Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
@@ -623,7 +635,7 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 		txns:               txList,
 	}
 
-	logger.Debug("Missing", len(privateInfo.missingKeysByTxIDs), "rwsets")
+	logger.Debug("Retrieving private write sets for", len(privateInfo.missingKeysByTxIDs), "transactions from transient store")
 
 	// Put into ownedRWsets RW sets that are missing and found in the transient store
 	c.fetchMissingFromTransientStore(privateInfo.missingKeysByTxIDs, ownedRWsets)
