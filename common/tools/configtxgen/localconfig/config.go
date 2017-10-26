@@ -54,7 +54,7 @@ const (
 	// SampleSingleMSPSoloProfile references the sample profile which includes only the sample MSP and uses solo for ordering.
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
 	// SampleSingleMSPSoloV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities defined and uses solo for ordering.
-	SampleSingleMSPSoloV11Profile = "SampleSingleMSPSoloV1.1"
+	SampleSingleMSPSoloV11Profile = "SampleSingleMSPSoloV1_1"
 
 	// SampleInsecureKafkaProfile references the sample profile which does not include any MSPs and uses Kafka for ordering.
 	SampleInsecureKafkaProfile = "SampleInsecureKafka"
@@ -62,11 +62,13 @@ const (
 	SampleDevModeKafkaProfile = "SampleDevModeKafka"
 	// SampleSingleMSPKafkaProfile references the sample profile which includes only the sample MSP and uses Kafka for ordering.
 	SampleSingleMSPKafkaProfile = "SampleSingleMSPKafka"
-	// SampleSingleMSPKafkaV11Profile references the sample profile which includes only the sample MSPwith v1.1 capabilities defined  and uses Kafka for ordering.
-	SampleSingleMSPKafkaV11Profile = "SampleSingleMSPKafkaV1.1"
+	// SampleSingleMSPKafkaV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities defined and uses Kafka for ordering.
+	SampleSingleMSPKafkaV11Profile = "SampleSingleMSPKafkaV1_1"
 
 	// SampleSingleMSPChannelProfile references the sample profile which includes only the sample MSP and is used to create a channel
 	SampleSingleMSPChannelProfile = "SampleSingleMSPChannel"
+	// SampleSingleMSPChannelV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities and is used to create a channel
+	SampleSingleMSPChannelV11Profile = "SampleSingleMSPChannelV1_1"
 
 	// SampleConsortiumName is the sample consortium from the sample configtx.yaml
 	SampleConsortiumName = "SampleConsortium"
