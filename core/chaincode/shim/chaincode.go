@@ -301,14 +301,15 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 				return
 			case in = <-msgAvail:
 				if err == io.EOF {
-					chaincodeLogger.Debugf("Received EOF, ending chaincode stream: %+v", err)
+					err = errors.Wrapf(err, "received EOF, ending chaincode stream")
+					chaincodeLogger.Debugf("%+v", err)
 					return
 				} else if err != nil {
 					chaincodeLogger.Errorf("Received error from server, ending chaincode stream: %+v", err)
 					return
 				} else if in == nil {
 					err = errors.New("received nil message, ending chaincode stream")
-					chaincodeLogger.Debug("%+v", err)
+					chaincodeLogger.Debugf("%+v", err)
 					return
 				}
 				chaincodeLogger.Debugf("[%s]Received message %s from shim", shorttxid(in.Txid), in.Type.String())

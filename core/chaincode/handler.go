@@ -303,14 +303,15 @@ func (handler *Handler) processStream() error {
 		case in = <-msgAvail:
 			// Defer the deregistering of the this handler.
 			if err == io.EOF {
-				chaincodeLogger.Debugf("Received EOF, ending chaincode support stream: %+v", err)
+				err = errors.Wrapf(err, "received EOF, ending chaincode support stream")
+				chaincodeLogger.Debugf("%+v", err)
 				return err
 			} else if err != nil {
 				chaincodeLogger.Errorf("Error handling chaincode support stream: %+v", err)
 				return err
 			} else if in == nil {
 				err = errors.New("received nil message, ending chaincode support stream")
-				chaincodeLogger.Debug("%+v", err)
+				chaincodeLogger.Debugf("%+v", err)
 				return err
 			}
 			chaincodeLogger.Debugf("[%s]Received message %s from shim", shorttxid(in.Txid), in.Type.String())
@@ -331,7 +332,7 @@ func (handler *Handler) processStream() error {
 			in = nsInfo.msg
 			if in == nil {
 				err = errors.New("next state nil message, ending chaincode support stream")
-				chaincodeLogger.Debug("%+v", err)
+				chaincodeLogger.Debugf("%+v", err)
 				return err
 			}
 			chaincodeLogger.Debugf("[%s]Move state message %s", shorttxid(in.Txid), in.Type.String())
