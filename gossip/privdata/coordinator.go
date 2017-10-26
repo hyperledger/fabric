@@ -620,14 +620,6 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	// In the end, iterate over the ownedRWsets, and if the key doesn't exist in
-	// the privateRWsetsInBlock - delete it from the ownedRWsets
-	for k := range ownedRWsets {
-		if _, exists := privateRWsetsInBlock[k]; !exists {
-			logger.Warning("Removed", k.namespace, k.collection, "hash", k.hash, "from the data passed to the ledger")
-			delete(ownedRWsets, k)
-		}
-	}
 
 	privateInfo := &privateDataInfo{
 		sources:            sources,
@@ -639,6 +631,15 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 
 	// Put into ownedRWsets RW sets that are missing and found in the transient store
 	c.fetchMissingFromTransientStore(privateInfo.missingKeysByTxIDs, ownedRWsets)
+
+	// In the end, iterate over the ownedRWsets, and if the key doesn't exist in
+	// the privateRWsetsInBlock - delete it from the ownedRWsets
+	for k := range ownedRWsets {
+		if _, exists := privateRWsetsInBlock[k]; !exists {
+			logger.Warning("Removed", k.namespace, k.collection, "hash", k.hash, "from the data passed to the ledger")
+			delete(ownedRWsets, k)
+		}
+	}
 
 	privateInfo.missingKeys = privateInfo.missingKeysByTxIDs.flatten()
 	// Remove all keys we already own
