@@ -99,7 +99,7 @@ func initPeer(chainID string) (*testEnvironment, error) {
 		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
 	}
 
-	ccStartupTimeout := time.Duration(30000) * time.Millisecond
+	ccStartupTimeout := time.Duration(3) * time.Minute
 	ca, _ := accesscontrol.NewCA()
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout, ca))
 

@@ -387,7 +387,7 @@ chaincode:
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
-    startuptimeout: 300000
+    startuptimeout: 1800000
 
     #timeout in millisecs for deploying chaincode from a remote repository.
     deploytimeout: 30000
