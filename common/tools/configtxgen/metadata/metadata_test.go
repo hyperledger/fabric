@@ -26,11 +26,17 @@ import (
 )
 
 func TestGetVersionInfo(t *testing.T) {
-	testVersion := "TestVersion"
-	metadata.Version = testVersion
+	testVersions := []string{"", "TestVersion"}
 
-	expected := fmt.Sprintf("%s:\n Version: %s\n Go version: %s\n OS/Arch: %s",
-		metadata.ProgramName, testVersion, runtime.Version(),
-		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH))
-	assert.Equal(t, expected, metadata.GetVersionInfo())
+	for _, version := range testVersions {
+		metadata.Version = version
+		if version == "" {
+			version = "development build"
+		}
+
+		expected := fmt.Sprintf("%s:\n Version: %s\n Go version: %s\n OS/Arch: %s",
+			metadata.ProgramName, version, runtime.Version(),
+			fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH))
+		assert.Equal(t, expected, metadata.GetVersionInfo())
+	}
 }

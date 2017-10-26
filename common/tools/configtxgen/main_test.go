@@ -66,6 +66,16 @@ func TestMissingOrdererSection(t *testing.T) {
 	assert.Panics(t, func() { doOutputBlock(config, "foo", blockDest) }, "Missing orderer section")
 }
 
+func TestMissingConsortiumSection(t *testing.T) {
+	blockDest := tmpDir + string(os.PathSeparator) + "block"
+
+	factory.InitFactories(nil)
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile)
+	config.Consortiums = nil
+
+	assert.NoError(t, doOutputBlock(config, "foo", blockDest), "Missing consortiums section")
+}
+
 func TestMissingConsortiumValue(t *testing.T) {
 	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
 
@@ -76,6 +86,15 @@ func TestMissingConsortiumValue(t *testing.T) {
 	assert.Error(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Missing Consortium value in Application Profile definition")
 }
 
+func TestMissingApplicationValue(t *testing.T) {
+	configTxDest := tmpDir + string(os.PathSeparator) + "configtx"
+
+	factory.InitFactories(nil)
+	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config.Application = nil
+
+	assert.Error(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Missing Application value in Application Profile definition")
+}
 func TestInspectMissingConfigTx(t *testing.T) {
 	assert.Error(t, doInspectChannelCreateTx("ChannelCreateTxFileWhichDoesn'tReallyExist"), "Missing channel create tx file")
 }
@@ -97,6 +116,23 @@ func TestGenerateAnchorPeersUpdate(t *testing.T) {
 	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
 
 	assert.NoError(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "Good anchorPeerUpdate request")
+}
+
+func TestBadAnchorPeersUpdates(t *testing.T) {
+	configTxDest := tmpDir + string(os.PathSeparator) + "anchorPeerUpdate"
+
+	factory.InitFactories(nil)
+	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+
+	assert.Error(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, ""), "Bad anchorPeerUpdate request - asOrg empty")
+
+	backupApplication := config.Application
+	config.Application = nil
+	assert.Error(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "Bad anchorPeerUpdate request")
+	config.Application = backupApplication
+
+	config.Application.Organizations[0] = &genesisconfig.Organization{Name: "FakeOrg", ID: "FakeOrg"}
+	assert.Error(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "Bad anchorPeerUpdate request - fake org")
 }
 
 func TestConfigTxFlags(t *testing.T) {
@@ -151,4 +187,9 @@ func TestPrintOrg(t *testing.T) {
 	err := doPrintOrg(config, genesisconfig.SampleOrgName+".wrong")
 	assert.Error(t, err, "Bad org name")
 	assert.Regexp(t, "organization [^ ]* not found", err.Error())
+
+	config.Organizations[0] = &genesisconfig.Organization{Name: "FakeOrg", ID: "FakeOrg"}
+	err = doPrintOrg(config, "FakeOrg")
+	assert.Error(t, err, "Fake org")
+	assert.Regexp(t, "bad org definition", err.Error())
 }
