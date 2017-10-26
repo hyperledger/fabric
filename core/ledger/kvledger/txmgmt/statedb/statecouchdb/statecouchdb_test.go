@@ -171,7 +171,7 @@ func TestUtilityFunctions(t *testing.T) {
 	err = db.ValidateKey("testKey")
 	testutil.AssertNil(t, err)
 
-	// ValidateKey should return nil for a valid key
+	// ValidateKey should return an error for an invalid key
 	err = db.ValidateKey(string([]byte{0xff, 0xfe, 0xfd}))
 	testutil.AssertError(t, err, "ValidateKey should have thrown an error for an invalid utf-8 string")
 
