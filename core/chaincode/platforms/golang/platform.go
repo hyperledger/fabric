@@ -140,7 +140,7 @@ func (goPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSp
 	// the container itself needs to be the last line of defense and be configured to be
 	// resilient in enforcing constraints. However, we should still do our best to keep as much
 	// garbage out of the system as possible.
-	re := regexp.MustCompile(`(/)?src/.*`)
+	re := regexp.MustCompile(`(/)?src/|\\.*`)
 	is := bytes.NewReader(cds.CodePackage)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
