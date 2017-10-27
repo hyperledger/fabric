@@ -52,3 +52,9 @@ func (ap *ApplicationProvider) HasCapability(capability string) bool {
 func (ap *ApplicationProvider) LifecycleViaConfig() bool {
 	return ap.v11
 }
+
+// ForbidDuplicateTXIdInBlock specifies whether two transactions with the same TXId are permitted
+// in the same block or whether we mark the second one as TxValidationCode_DUPLICATE_TXID
+func (ap *ApplicationProvider) ForbidDuplicateTXIdInBlock() bool {
+	return ap.v11
+}

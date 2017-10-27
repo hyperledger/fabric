@@ -116,6 +116,10 @@ type ChannelCapabilities interface {
 type ApplicationCapabilities interface {
 	// Supported returns an error if there are unknown capabilities in this channel which are required
 	Supported() error
+
+	// ForbidDuplicateTXIdInBlock specifies whether two transactions with the same TXId are permitted
+	// in the same block or whether we mark the second one as TxValidationCode_DUPLICATE_TXID
+	ForbidDuplicateTXIdInBlock() bool
 }
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel

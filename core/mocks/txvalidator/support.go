@@ -17,6 +17,7 @@ limitations under the License.
 package support
 
 import (
+	"github.com/hyperledger/fabric/common/channelconfig"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -28,6 +29,11 @@ type Support struct {
 	LedgerVal     ledger.PeerLedger
 	MSPManagerVal msp.MSPManager
 	ApplyVal      error
+	ACVal         channelconfig.ApplicationCapabilities
+}
+
+func (ms *Support) Capabilities() channelconfig.ApplicationCapabilities {
+	return ms.ACVal
 }
 
 // Ledger returns LedgerVal

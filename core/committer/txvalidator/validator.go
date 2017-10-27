@@ -29,6 +29,7 @@ import (
 	"github.com/op/go-logging"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 )
 
@@ -52,6 +53,9 @@ type Support interface {
 	// GetMSPIDs returns the IDs for the application MSPs
 	// that have been defined in the channel
 	GetMSPIDs(cid string) []string
+
+	// Capabilities defines the capabilities for the application portion of this channel
+	Capabilities() channelconfig.ApplicationCapabilities
 }
 
 //Validator interface which defines API to validate block transactions
@@ -138,6 +142,7 @@ type blockValidationResult struct {
 	txsChaincodeName     *sysccprovider.ChaincodeInstance
 	txsUpgradedChaincode *sysccprovider.ChaincodeInstance
 	err                  error
+	txid                 string
 }
 
 // NewTxValidator creates new transactions validator
@@ -187,6 +192,8 @@ func (v *txValidator) Validate(block *common.Block) error {
 	txsChaincodeNames := make(map[int]*sysccprovider.ChaincodeInstance)
 	// upgradedChaincodes records all the chaincodes that are upgraded in a block
 	txsUpgradedChaincodes := make(map[int]*sysccprovider.ChaincodeInstance)
+	// array of txids
+	txidArray := make([]string, len(block.Data.Data))
 
 	results := make(chan *blockValidationResult)
 	go func() {
@@ -240,6 +247,7 @@ func (v *txValidator) Validate(block *common.Block) error {
 				if res.txsUpgradedChaincode != nil {
 					txsUpgradedChaincodes[res.tIdx] = res.txsUpgradedChaincode
 				}
+				txidArray[res.tIdx] = res.txid
 			}
 		}
 	}
@@ -249,6 +257,12 @@ func (v *txValidator) Validate(block *common.Block) error {
 	// tx in this block that returned an error
 	if err != nil {
 		return err
+	}
+
+	// if we operate with this capability, we mark invalid any transaction that has a txid
+	// which is equal to that of a previous tx in this block
+	if v.support.Capabilities().ForbidDuplicateTXIdInBlock() {
+		markTXIdDuplicates(txidArray, txsfltr)
 	}
 
 	// if we're here, all workers have completed validation and
@@ -265,11 +279,30 @@ func (v *txValidator) Validate(block *common.Block) error {
 	return nil
 }
 
+func markTXIdDuplicates(txids []string, txsfltr ledgerUtil.TxValidationFlags) {
+	txidMap := make(map[string]struct{})
+
+	for id, txid := range txids {
+		if txid == "" {
+			continue
+		}
+
+		_, in := txidMap[txid]
+		if in {
+			logger.Error("Duplicate txid", txid, "found, skipping")
+			txsfltr.SetFlag(id, peer.TxValidationCode_DUPLICATE_TXID)
+		} else {
+			txidMap[txid] = struct{}{}
+		}
+	}
+}
+
 func validateTx(req *blockValidationRequest, results chan<- *blockValidationResult) {
 	block := req.block
 	d := req.d
 	tIdx := req.tIdx
 	v := req.v
+	txID := ""
 
 	if d == nil {
 		results <- &blockValidationResult{
@@ -332,7 +365,7 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 
 		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 			// Check duplicate transactions
-			txID := chdr.TxId
+			txID = chdr.TxId
 			if _, err := v.support.Ledger().GetTransactionByID(txID); err == nil {
 				logger.Error("Duplicate transaction found, ", txID, ", skipping")
 				results <- &blockValidationResult{
@@ -346,7 +379,6 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 			logger.Debug("Validating transaction vscc tx validate")
 			err, cde := v.vscc.VSCCValidateTx(payload, d, env)
 			if err != nil {
-				txID := txID
 				logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
 				switch err.(type) {
 				case *VSCCExecutionFailureError:
@@ -430,6 +462,7 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 			txsChaincodeName:     txsChaincodeName,
 			txsUpgradedChaincode: txsUpgradedChaincode,
 			validationCode:       peer.TxValidationCode_VALID,
+			txid:                 txID,
 		}
 		return
 	} else {
