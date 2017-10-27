@@ -2,7 +2,7 @@ Building Your First Network
 ===========================
 
 .. note:: These instructions have been verified to work against the
-          version "1.0.0" tagged Docker images and the pre-compiled
+          latest stable Docker images and the pre-compiled
           setup utilities within the supplied tar file. If you run
           these commands with images or tools from the current master
           branch, it is possible that you will see configuration and panic
@@ -27,7 +27,7 @@ sub-directory now.
 
 .. code:: bash
 
-  cd first-network
+  cd fabric-samples/first-network
 
 .. note:: The supplied commands in this documentation
           **MUST** be run from your ``first-network`` sub-directory
@@ -49,28 +49,32 @@ Here's the help text for the ``byfn.sh`` script:
 
 .. code:: bash
 
-  ./byfn.sh -h
+  ./byfn.sh --help
   Usage:
-    byfn.sh -m up|down|restart|generate [-c <channel name>] [-t <timeout>]
-    byfn.sh -h|--help (print this message)
-      -m <mode> - one of 'up', 'down', 'restart' or 'generate'
-        - 'up' - bring up the network with docker-compose up
-        - 'down' - clear the network with docker-compose down
-        - 'restart' - restart the network
-        - 'generate' - generate required certificates and genesis block
-      -c <channel name> - config name to use (defaults to "mychannel")
-      -t <timeout> - CLI timeout duration in microseconds (defaults to 10000)
+  byfn.sh -m up|down|restart|generate [-c <channel name>] [-t <timeout>] [-d <delay>] [-f <docker-compose-file>] [-s <dbtype>]
+  byfn.sh -h|--help (print this message)
+    -m <mode> - one of 'up', 'down', 'restart' or 'generate'
+      - 'up' - bring up the network with docker-compose up
+      - 'down' - clear the network with docker-compose down
+      - 'restart' - restart the network
+      - 'generate' - generate required certificates and genesis block
+    -c <channel name> - channel name to use (defaults to "mychannel")
+    -t <timeout> - CLI timeout duration in seconds (defaults to 10000)
+    -d <delay> - delay duration in seconds (defaults to 3)
+    -f <docker-compose-file> - specify which docker-compose file use (defaults to docker-compose-cli.yaml)
+    -s <dbtype> - the database backend to use: goleveldb (default) or couchdb
+    -l <language> - the chaincode language: golang (default) or node
 
-  Typically, one would first generate the required certificates and
-  genesis block, then bring up the network. e.g.:
+Typically, one would first generate the required certificates and
+genesis block, then bring up the network. e.g.:
 
-    byfn.sh -m generate -c <channelname>
-    byfn.sh -m up -c <channelname>
+	byfn.sh -m generate -c mychannel
+	byfn.sh -m up -c mychannel -s couchdb
 
 If you choose not to supply a channel name, then the
 script will use a default name of ``mychannel``.  The CLI timeout parameter
 (specified with the -t flag) is an optional value; if you choose not to set
-it, then your CLI container will exit upon conclusion of the script.
+it, then your CLI container will exit after the default setting of 10000 seconds.
 
 Generate Network Artifacts
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -137,11 +141,26 @@ and a collection of configuration transactions required to configure a
 Bring Up the Network
 ^^^^^^^^^^^^^^^^^^^^
 
-Next, you can bring the network up with the following command:
+Next, you can bring the network up with one of the following commands:
 
 .. code:: bash
 
   ./byfn.sh -m up
+
+The above command will compile Golang chaincode images and spin up the corresponding
+containers.  Go is the default chaincode language, however there is also support
+for Node.js chaincode.  If you'd like to run through this tutorial with node
+chaincode, pass the following command instead:
+
+.. code:: bash
+
+  # we use the -l flag to specify the chaincode language
+  # forgoing the -l flag will default to Golang
+
+  ./byfn.sh -m up -l node
+
+.. note:: View the `Hyperledger Fabric Shim <https://fabric-shim.github.io/ChaincodeStub.html>`__
+          documentation for more info on the node.js chaincode shim APIs.
 
 Once again, you will be prompted as to whether you wish to continue or abort.
 Respond with a ``y``:
@@ -367,46 +386,49 @@ directory, so we need to provide the relative path to where the tool resides.
 
     ../bin/cryptogen generate --config=./crypto-config.yaml
 
-You will likely see the following warning.  It's innocuous, ignore it:
+You should see the following in your terminal:
 
 .. code:: bash
 
-    [bccsp] GetDefault -> WARN 001 Before using BCCSP, please call InitFactories(). Falling back to bootBCCSP.
+  org1.example.com
+  org2.example.com
+
+The certs and keys (i.e. the MSP material) will be output into a directory - ``crypto-config`` -
+at the root of the ``first-network`` directory.
 
 Next, we need to tell the ``configtxgen`` tool where to look for the
 ``configtx.yaml`` file that it needs to ingest.  We will tell it look in our
 present working directory:
 
-First, we need to set an environment variable to specify where ``configtxgen``
-should look for the configtx.yaml configuration file:
-
 .. code:: bash
 
     export FABRIC_CFG_PATH=$PWD
 
-Then, we'll invoke the ``configtxgen`` tool which will create the orderer genesis block:
+Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
 
 .. code:: bash
 
     ../bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
 
-You can ignore the log warnings regarding intermediate certificates, certificate
-revocation lists (crls) and MSP configurations. We are not using any of those
-in this sample network.
+You should see an output similar to the following in your terminal:
 
 .. code: bash
 
-  2017-06-12 21:01:37.562 EDT [msp] getMspConfig -> INFO 002 intermediate certs folder not found at [/Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/intermediatecerts]. Skipping.: [stat /Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/intermediatecerts: no such file or directory]
-  2017-06-12 21:01:37.562 EDT [msp] getMspConfig -> INFO 003 crls folder not found at [/Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/intermediatecerts]. Skipping.: [stat /Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/crls: no such file or directory]
-  2017-06-12 21:01:37.562 EDT [msp] getMspConfig -> INFO 004 MSP configuration file not found at [/Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/config.yaml]: [stat /Users/xxx/dev/byfn/crypto-config/ordererOrganizations/example.com/msp/config.yaml: no such file or directory]
+  2017-10-26 19:21:56.301 EDT [common/tools/configtxgen] main -> INFO 001 Loading configuration
+  2017-10-26 19:21:56.309 EDT [common/tools/configtxgen] doOutputBlock -> INFO 002 Generating genesis block
+  2017-10-26 19:21:56.309 EDT [common/tools/configtxgen] doOutputBlock -> INFO 003 Writing genesis block
+
+.. note:: The orderer genesis block and the subsequent artifacts we are about to create
+          will be output into the ``channel-artifacts`` directory at the root of this
+          project.
 
 .. _createchanneltx:
 
 Create a Channel Configuration Transaction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Next, we need to create the channel transaction artifact. Be sure to replace $CHANNEL_NAME or
-set CHANNEL_NAME as an environment variable that can be used throughout these instructions:
+Next, we need to create the channel transaction artifact. Be sure to replace ``$CHANNEL_NAME`` or
+set ``CHANNEL_NAME`` as an environment variable that can be used throughout these instructions:
 
 .. code:: bash
 
@@ -415,9 +437,17 @@ set CHANNEL_NAME as an environment variable that can be used throughout these in
     # this file contains the definitions for our sample channel
     ../bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID $CHANNEL_NAME
 
+You should see an ouput similar to the following in your terminal:
+
+.. code:: bash
+
+  2017-10-26 19:24:05.324 EDT [common/tools/configtxgen] main -> INFO 001 Loading configuration
+  2017-10-26 19:24:05.329 EDT [common/tools/configtxgen] doOutputChannelCreateTx -> INFO 002 Generating new channel configtx
+  2017-10-26 19:24:05.329 EDT [common/tools/configtxgen] doOutputChannelCreateTx -> INFO 003 Writing new channel tx
+
 Next, we will define the anchor peer for Org1 on the channel that we are
-constructing. Again, be sure to replace $CHANNEL_NAME or set the environment variable
-for the following commands:
+constructing. Again, be sure to replace ``$CHANNEL_NAME`` or set the environment variable
+for the following commands.  The terminal output will mimic that of the channel transaction artifact:
 
 .. code:: bash
 
@@ -436,9 +466,9 @@ We will leverage a docker-compose script to spin up our network. The
 docker-compose file references the images that we have previously downloaded,
 and bootstraps the orderer with our previously generated ``genesis.block``.
 
-.. note: Before launching the network, open the ``docker-compose-cli.yaml`` file
-         and comment out the script.sh in the CLI container. Your docker-compose
-         should be modified to look like this:
+.. note:: Before launching the network, open the ``docker-compose-cli.yaml`` file
+          and comment out the script.sh in the CLI container. Your docker-compose
+          should be modified to look like this:
 
 .. code:: bash
 
@@ -451,12 +481,15 @@ network is started, as we describe in the :ref:`behind-scenes` section.
 However, we want to go through the commands manually in order
 to expose the syntax and functionality of each call.
 
-Pass in a moderately high value for the ``TIMEOUT`` variable (specified in seconds);
-otherwise the CLI container, by default, will exit after 60 seconds.
+The CLI timeout defaults to 10000 seconds.  If you need the container available
+for longer, you can overwrite this setting by passing in a value for the ``TIMEOUT``
+environment variable as shown below.
 
 Start your network:
 
 .. code:: bash
+
+          # you do not need to pass the TIMEOUT variable; it defaults to 10000 seconds
 
           CHANNEL_NAME=$CHANNEL_NAME TIMEOUT=<pick_a_value> docker-compose -f docker-compose-cli.yaml up -d
 
@@ -515,7 +548,9 @@ it ``channel.tx``) to the orderer as part of the create channel request.
 
 We specify our channel name with the ``-c`` flag and our channel configuration
 transaction with the ``-f`` flag. In this case it is ``channel.tx``, however
-you can mount your own configuration transaction with a different name.
+you can mount your own configuration transaction with a different name.  Once again
+we will set the ``CHANNEL_NAME`` environment variable within our CLI container so that
+we don't have to explicitly pass this argument:
 
 .. code:: bash
 
@@ -524,7 +559,7 @@ you can mount your own configuration transaction with a different name.
         # the channel.tx file is mounted in the channel-artifacts directory within your CLI container
         # as a result, we pass the full path for the file
         # we also pass the path for the orderer ca-cert in order to verify the TLS handshake
-        # be sure to replace the $CHANNEL_NAME variable appropriately
+        # be sure to export or replace the $CHANNEL_NAME variable appropriately
 
         peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME -f ./channel-artifacts/channel.tx --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
@@ -533,7 +568,9 @@ you can mount your own configuration transaction with a different name.
           TLS handshake.
 
 This command returns a genesis block - ``<channel-ID.block>`` - which we will use to join the channel.
-It contains the configuration information specified in ``channel.tx``.
+It contains the configuration information specified in ``channel.tx``  If you have not
+made any modifications to the default channel name, then the command will return you a
+proto titled ``mychannel.block``.
 
 .. note:: You will remain in the CLI container for the remainder of
           these manual commands. You must also remember to preface all commands
@@ -546,12 +583,49 @@ Now let's join ``peer0.org1.example.com`` to the channel.
 
         # By default, this joins ``peer0.org1.example.com`` only
         # the <channel-ID.block> was returned by the previous command
+        # if you have not modified the channel name, you will join with mychannel.block
 
          peer channel join -b <channel-ID.block>
 
 You can make other peers join the channel as necessary by making appropriate
 changes in the four environment variables we used in the :ref:`peerenvvars`
 section, above.
+
+Rather than join every peer, we will simply join ``peer0.org2.example.com`` so that
+we can properly update the anchor peer definitions in our channel.  Since we are
+overriding the default environment variables baked into the CLI container, this full
+command will be the following:
+
+.. code:: bash
+
+  CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp CORE_PEER_ADDRESS=peer0.org2.example.com:7051 CORE_PEER_LOCALMSPID="Org2MSP" CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt peer channel join -b mychannel.block
+
+Alternatively, you could choose to set these environment variables individually
+rather than passing in the entire string.  Once they've been set, you simply need
+to issue the ``peer channel join`` command again and the CLI container will act
+on behalf of ``peer0.org2.example.com``.
+
+Update the anchor peers
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The following commands are channel updates and they will propagate to the definition
+of the channel.  In essence, we adding additional configuration information on top
+of the channel's genesis block.  Note that we are not modifying the genesis block, but
+simply adding deltas into the chain that will define the anchor peers.
+
+Update the channel definition to define the anchor peer for Org1 as ``peer0.org1.example.com``:
+
+.. code:: bash
+
+  peer channel update -o orderer.example.com:7050 -c $CHANNEL_NAME -f ./channel-artifacts/Org1MSPanchors.tx --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+Now update the channel definition to define the anchor peer for Org2 as ``peer0.org2.example.com``.
+Identically to the ``peer channel join`` command for the Org2 peer, we will need to
+preface this call with the appropriate environment variables.
+
+.. code:: bash
+
+  CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp CORE_PEER_ADDRESS=peer0.org2.example.com:7051 CORE_PEER_LOCALMSPID="Org2MSP" CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt peer channel update -o orderer.example.com:7050 -c $CHANNEL_NAME -f ./channel-artifacts/Org2MSPanchors.tx --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
 Install & Instantiate Chaincode
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -563,12 +637,29 @@ Applications interact with the blockchain ledger through ``chaincode``.  As
 such we need to install the chaincode on every peer that will execute and
 endorse our transactions, and then instantiate the chaincode on the channel.
 
-First, install the sample Go code onto one of the four peer nodes.  This command
-places the source code onto our peer's filesystem.
+First, install the sample Go or Node.js chaincode onto one of the four peer nodes.  These commands
+place the specified source code flavor onto our peer's filesystem.
+
+.. note:: You can only install one version of the source code per chaincode name
+          and version.  The source code exists on the peer's file system in the
+          context of chaincode name and version; it is language agnostic.  Similarly
+          the instantiated chaincode container will be reflective of whichever
+          language has been installed on the peer.
+
+**Golang**
 
 .. code:: bash
 
-    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+    # this installs the Go chaincode
+    peer chaincode install -n mycc -v 1.0 -p github.com/chaincode_example02/go/
+
+**Node.js**
+
+.. code:: bash
+
+    # this installs the Node.js chaincode
+    # make note of the -l flag; we use this to specify the language
+    peer chaincode install -n mycc -v 1.0 -l node -p /opt/gopath/src/github.com/chaincode_example02/node/
 
 Next, instantiate the chaincode on the channel. This will initialize the
 chaincode on the channel, set the endorsement policy for the chaincode, and
@@ -581,16 +672,42 @@ In the command below you’ll notice that we specify our policy as
 “endorsement” from a peer belonging to Org1 **OR** Org2 (i.e. only one endorsement).
 If we changed the syntax to ``AND`` then we would need two endorsements.
 
+**Golang**
+
 .. code:: bash
 
-    # be sure to replace the $CHANNEL_NAME environment variable
+    # be sure to replace the $CHANNEL_NAME environment variable if you have not exported it
     # if you did not install your chaincode with a name of mycc, then modify that argument as well
 
     peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org1MSP.member','Org2MSP.member')"
 
+**Node.js**
+
+.. note::  The instantiation of the Node.js chaincode will take roughly a minute.
+           The command is not hanging; rather it is installing the fabric-shim
+           layer as the image is being compiled.
+
+.. code:: bash
+
+    # be sure to replace the $CHANNEL_NAME environment variable if you have not exported it
+    # if you did not install your chaincode with a name of mycc, then modify that argument as well
+    # notice that we must pass the -l flag after the chaincode name to identify the language
+
+    peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C $CHANNEL_NAME -n mycc -l node -v 1.0 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org1MSP.member','Org2MSP.member')"
+
 See the `endorsement
 policies <http://hyperledger-fabric.readthedocs.io/en/latest/endorsement-policies.html>`__
 documentation for more details on policy implementation.
+
+If you want additional peers to interact with ledger, then you will need to join
+them to the channel, and install the same name, version and language of the
+chaincode source onto the appropriate peer's filesystem.  A chaincode container
+will be launched for each peer as soon as they try to interact with that specific
+chaincode.  Again, be cognizant of the fact that the Node.js images will be slower
+to compile.
+
+Once the chaincode has been instantiated on the channel, we can forgo the ``l``
+flag.  We need only pass in the channel identifier and name of the chaincode.
 
 Query
 ^^^^^
@@ -603,7 +720,6 @@ instantiated and the state DB was populated. The syntax for query is as follows:
   # be sure to set the -C and -n flags appropriately
 
   peer chaincode query -C $CHANNEL_NAME -n mycc -c '{"Args":["query","a"]}'
-
 
 Invoke
 ^^^^^^
