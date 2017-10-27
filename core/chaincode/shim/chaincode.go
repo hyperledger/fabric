@@ -51,6 +51,7 @@ const (
 // APIs.
 type ChaincodeStub struct {
 	TxID           string
+	ChannelId      string
 	chaincodeEvent *pb.ChaincodeEvent
 	args           [][]byte
 	handler        *Handler
@@ -346,8 +347,9 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 // -- init stub ---
 // ChaincodeInvocation functionality
 
-func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.ChaincodeInput, signedProposal *pb.SignedProposal) error {
+func (stub *ChaincodeStub) init(handler *Handler, channelId string, txid string, input *pb.ChaincodeInput, signedProposal *pb.SignedProposal) error {
 	stub.TxID = txid
+	stub.ChannelId = channelId
 	stub.args = input.Args
 	stub.handler = handler
 	stub.signedProposal = signedProposal
@@ -379,9 +381,14 @@ func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.Chainco
 	return nil
 }
 
-// GetTxID returns the transaction ID
+// GetTxID returns the transaction ID for the proposal
 func (stub *ChaincodeStub) GetTxID() string {
 	return stub.TxID
+}
+
+// GetChannelID returns the channel for the proposal
+func (stub *ChaincodeStub) GetChannelID() string {
+	return stub.ChannelId
 }
 
 func (stub *ChaincodeStub) GetDecorations() map[string][]byte {
@@ -396,7 +403,7 @@ func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte, 
 	if channel != "" {
 		chaincodeName = chaincodeName + "/" + channel
 	}
-	return stub.handler.handleInvokeChaincode(chaincodeName, args, stub.TxID)
+	return stub.handler.handleInvokeChaincode(chaincodeName, args, stub.ChannelId, stub.TxID)
 }
 
 // --------- State functions ----------
@@ -405,7 +412,7 @@ func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte, 
 func (stub *ChaincodeStub) GetState(key string) ([]byte, error) {
 	// Access public data by setting the collection to empty string
 	collection := ""
-	return stub.handler.handleGetState(collection, key, stub.TxID)
+	return stub.handler.handleGetState(collection, key, stub.ChannelId, stub.TxID)
 }
 
 // PutState documentation can be found in interfaces.go
@@ -415,31 +422,32 @@ func (stub *ChaincodeStub) PutState(key string, value []byte) error {
 	}
 	// Access public data by setting the collection to empty string
 	collection := ""
-	return stub.handler.handlePutState(collection, key, value, stub.TxID)
+	return stub.handler.handlePutState(collection, key, value, stub.ChannelId, stub.TxID)
 }
 
 // GetQueryResult documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInterface, error) {
 	// Access public data by setting the collection to empty string
 	collection := ""
-	response, err := stub.handler.handleGetQueryResult(collection, query, stub.TxID)
+	response, err := stub.handler.handleGetQueryResult(collection, query, stub.ChannelId, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.ChannelId, stub.TxID, response, 0}}, nil
 }
 
 // DelState documentation can be found in interfaces.go
 func (stub *ChaincodeStub) DelState(key string) error {
 	// Access public data by setting the collection to empty string
 	collection := ""
-	return stub.handler.handleDelState(collection, key, stub.TxID)
+	return stub.handler.handleDelState(collection, key, stub.ChannelId, stub.TxID)
 }
 
 // CommonIterator documentation can be found in interfaces.go
 type CommonIterator struct {
 	handler    *Handler
-	uuid       string
+	channelId  string
+	txid       string
 	response   *pb.QueryResponse
 	currentLoc int
 }
@@ -462,11 +470,11 @@ const (
 )
 
 func (stub *ChaincodeStub) handleGetStateByRange(collection, startKey, endKey string) (StateQueryIteratorInterface, error) {
-	response, err := stub.handler.handleGetStateByRange(collection, startKey, endKey, stub.TxID)
+	response, err := stub.handler.handleGetStateByRange(collection, startKey, endKey, stub.ChannelId, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.ChannelId, stub.TxID, response, 0}}, nil
 }
 
 // GetStateByRange documentation can be found in interfaces.go
@@ -483,11 +491,11 @@ func (stub *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryI
 
 // GetHistoryForKey documentation can be found in interfaces.go
 func (stub *ChaincodeStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error) {
-	response, err := stub.handler.handleGetHistoryForKey(key, stub.TxID)
+	response, err := stub.handler.handleGetHistoryForKey(key, stub.ChannelId, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
-	return &HistoryQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
+	return &HistoryQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.ChannelId, stub.TxID, response, 0}}, nil
 }
 
 //CreateCompositeKey documentation can be found in interfaces.go
@@ -616,7 +624,7 @@ func (iter *CommonIterator) getResultFromBytes(queryResultBytes *pb.QueryResultB
 }
 
 func (iter *CommonIterator) fetchNextQueryResult() error {
-	if response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.uuid); err == nil {
+	if response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.channelId, iter.txid); err == nil {
 		iter.currentLoc = 0
 		iter.response = response
 		return nil
@@ -659,7 +667,7 @@ func (iter *CommonIterator) nextResult(rType resultType) (commonledger.QueryResu
 
 // Close documentation can be found in interfaces.go
 func (iter *CommonIterator) Close() error {
-	_, err := iter.handler.handleQueryStateClose(iter.response.Id, iter.uuid)
+	_, err := iter.handler.handleQueryStateClose(iter.response.Id, iter.channelId, iter.txid)
 	return err
 }
 

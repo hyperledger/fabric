@@ -19,7 +19,7 @@ func (stub *ChaincodeStub) GetPrivateData(collection string, key string) ([]byte
 	if collection == "" {
 		return nil, fmt.Errorf("collection must not be an empty string")
 	}
-	return stub.handler.handleGetState(collection, key, stub.TxID)
+	return stub.handler.handleGetState(collection, key, stub.ChannelId, stub.TxID)
 }
 
 // PutPrivateData documentation can be found in interfaces.go
@@ -30,7 +30,7 @@ func (stub *ChaincodeStub) PutPrivateData(collection string, key string, value [
 	if key == "" {
 		return fmt.Errorf("key must not be an empty string")
 	}
-	return stub.handler.handlePutState(collection, key, value, stub.TxID)
+	return stub.handler.handlePutState(collection, key, value, stub.ChannelId, stub.TxID)
 }
 
 // DelPrivateData documentation can be found in interfaces.go
@@ -38,7 +38,7 @@ func (stub *ChaincodeStub) DelPrivateData(collection string, key string) error {
 	if collection == "" {
 		return fmt.Errorf("collection must not be an empty string")
 	}
-	return stub.handler.handleDelState(collection, key, stub.TxID)
+	return stub.handler.handleDelState(collection, key, stub.ChannelId, stub.TxID)
 }
 
 // GetPrivateDataByRange documentation can be found in interfaces.go
@@ -72,9 +72,9 @@ func (stub *ChaincodeStub) GetPrivateDataQueryResult(collection, query string) (
 	if collection == "" {
 		return nil, fmt.Errorf("collection must not be an empty string")
 	}
-	response, err := stub.handler.handleGetQueryResult(collection, query, stub.TxID)
+	response, err := stub.handler.handleGetQueryResult(collection, query, stub.ChannelId, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
-	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, response, 0}}, nil
+	return &StateQueryIterator{CommonIterator: &CommonIterator{stub.handler, stub.TxID, stub.ChannelId, response, 0}}, nil
 }

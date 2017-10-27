@@ -54,10 +54,17 @@ type MockStub struct {
 
 	// mocked signedProposal
 	signedProposal *pb.SignedProposal
+
+	// stores a channel ID of the proposal
+	ChannelID string
 }
 
 func (stub *MockStub) GetTxID() string {
 	return stub.TxID
+}
+
+func (stub *MockStub) GetChannelID() string {
+	return stub.ChannelID
 }
 
 func (stub *MockStub) GetArgs() [][]byte {

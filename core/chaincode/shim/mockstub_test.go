@@ -249,6 +249,7 @@ func TestMockMock(t *testing.T) {
 	stub.GetStringArgs()
 	stub.GetFunctionAndParameters()
 	stub.GetTxID()
+	stub.GetChannelID()
 	stub.MockInvoke("id", nil)
 	stub.MockInvokeWithSignedProposal("id", nil, nil)
 	stub.DelState("dummy")

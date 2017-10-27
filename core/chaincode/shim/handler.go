@@ -90,17 +90,25 @@ func (handler *Handler) serialSendAsync(msg *pb.ChaincodeMessage, errc chan erro
 	}()
 }
 
-func (handler *Handler) createChannel(txid string) (chan pb.ChaincodeMessage, error) {
+//transaction context id should be composed of chainID and txid. While
+//needed for CC-2-CC, it also allows users to concurrently send proposals
+//with the same TXID to a CC on two multiple channels
+func (handler *Handler) getTxCtxId(chainID string, txid string) string {
+	return chainID + txid
+}
+
+func (handler *Handler) createChannel(channelID, txid string) (chan pb.ChaincodeMessage, error) {
 	handler.Lock()
 	defer handler.Unlock()
 	if handler.responseChannel == nil {
 		return nil, errors.Errorf("[%s]cannot create response channel", shorttxid(txid))
 	}
-	if handler.responseChannel[txid] != nil {
-		return nil, errors.Errorf("[%s]channel exists", shorttxid(txid))
+	txCtxID := handler.getTxCtxId(channelID, txid)
+	if handler.responseChannel[txCtxID] != nil {
+		return nil, errors.Errorf("[%s]channel exists", shorttxid(txCtxID))
 	}
 	c := make(chan pb.ChaincodeMessage)
-	handler.responseChannel[txid] = c
+	handler.responseChannel[txCtxID] = c
 	return c, nil
 }
 
@@ -110,12 +118,13 @@ func (handler *Handler) sendChannel(msg *pb.ChaincodeMessage) error {
 	if handler.responseChannel == nil {
 		return errors.Errorf("[%s]Cannot send message response channel", shorttxid(msg.Txid))
 	}
-	if handler.responseChannel[msg.Txid] == nil {
+	txCtxID := handler.getTxCtxId(msg.ChannelId, msg.Txid)
+	if handler.responseChannel[txCtxID] == nil {
 		return errors.Errorf("[%s]sendChannel does not exist", shorttxid(msg.Txid))
 	}
 
 	chaincodeLogger.Debugf("[%s]before send", shorttxid(msg.Txid))
-	handler.responseChannel[msg.Txid] <- *msg
+	handler.responseChannel[txCtxID] <- *msg
 	chaincodeLogger.Debugf("[%s]after send", shorttxid(msg.Txid))
 
 	return nil
@@ -149,11 +158,12 @@ func (handler *Handler) sendReceive(msg *pb.ChaincodeMessage, c chan pb.Chaincod
 	}
 }
 
-func (handler *Handler) deleteChannel(txid string) {
+func (handler *Handler) deleteChannel(channelID, txid string) {
 	handler.Lock()
 	defer handler.Unlock()
 	if handler.responseChannel != nil {
-		delete(handler.responseChannel, txid)
+		txCtxID := handler.getTxCtxId(channelID, txid)
+		delete(handler.responseChannel, txCtxID)
 	}
 }
 
@@ -222,7 +232,7 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 					payload = []byte(err.Error())
 				}
 				chaincodeLogger.Errorf(errFmt, args...)
-				return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChaincodeEvent: ce}
+				return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChaincodeEvent: ce, ChannelId: msg.ChannelId}
 			}
 			return nil
 		}
@@ -236,7 +246,7 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
-		err := stub.init(handler, msg.Txid, input, msg.Proposal)
+		err := stub.init(handler, msg.ChannelId, msg.Txid, input, msg.Proposal)
 		if nextStateMsg = errFunc(err, nil, stub.chaincodeEvent, "[%s]Init get error response [%s]. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR.String()); nextStateMsg != nil {
 			return
 		}
@@ -257,7 +267,7 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 		}
 
 		// Send COMPLETED message to chaincode support and change state
-		nextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent}
+		nextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: stub.ChannelId}
 		chaincodeLogger.Debugf("[%s]Init succeeded. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_COMPLETED)
 	}()
 }
@@ -296,7 +306,7 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 			if err != nil {
 				payload := []byte(err.Error())
 				chaincodeLogger.Errorf(errStr, args...)
-				return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChaincodeEvent: ce}
+				return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChaincodeEvent: ce, ChannelId: msg.ChannelId}
 			}
 			return nil
 		}
@@ -311,7 +321,7 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
-		err := stub.init(handler, msg.Txid, input, msg.Proposal)
+		err := stub.init(handler, msg.ChannelId, msg.Txid, input, msg.Proposal)
 		if nextStateMsg = errFunc(err, stub.chaincodeEvent, "[%s]Transaction execution failed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR.String()); nextStateMsg != nil {
 			return
 		}
@@ -326,7 +336,7 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 
 		// Send COMPLETED message to chaincode support and change state
 		chaincodeLogger.Debugf("[%s]Transaction completed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_COMPLETED)
-		nextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent}
+		nextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: resBytes, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent, ChannelId: stub.ChannelId}
 	}()
 }
 
@@ -378,29 +388,29 @@ func (handler *Handler) afterError(e *fsm.Event) {
 
 // callPeerWithChaincodeMsg sends a chaincode message (for e.g., GetState along with the key) to the peer for a given txid
 // and receives the response.
-func (handler *Handler) callPeerWithChaincodeMsg(msg *pb.ChaincodeMessage, txid string) (pb.ChaincodeMessage, error) {
+func (handler *Handler) callPeerWithChaincodeMsg(msg *pb.ChaincodeMessage, channelID, txid string) (pb.ChaincodeMessage, error) {
 	// Create the channel on which to communicate the response from the peer
 	var respChan chan pb.ChaincodeMessage
 	var err error
-	if respChan, err = handler.createChannel(txid); err != nil {
+	if respChan, err = handler.createChannel(channelID, txid); err != nil {
 		return pb.ChaincodeMessage{}, err
 	}
 
-	defer handler.deleteChannel(txid)
+	defer handler.deleteChannel(channelID, txid)
 
 	return handler.sendReceive(msg, respChan)
 }
 
 // TODO: Implement a method to get multiple keys at a time [FAB-1244]
 // handleGetState communicates with the peer to fetch the requested state information from the ledger.
-func (handler *Handler) handleGetState(collection string, key string, txid string) ([]byte, error) {
+func (handler *Handler) handleGetState(collection string, key string, channelId string, txid string) ([]byte, error) {
 	// Construct payload for GET_STATE
 	payloadBytes, _ := proto.Marshal(&pb.GetState{Collection: collection, Key: key})
 
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: payloadBytes, Txid: txid}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE)
 
-	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, txid)
+	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("[%s]error sending GET_STATE", shorttxid(txid)))
 	}
@@ -422,15 +432,15 @@ func (handler *Handler) handleGetState(collection string, key string, txid strin
 
 // TODO: Implement a method to set multiple keys at a time [FAB-1244]
 // handlePutState communicates with the peer to put state information into the ledger.
-func (handler *Handler) handlePutState(collection string, key string, value []byte, txid string) error {
+func (handler *Handler) handlePutState(collection string, key string, value []byte, channelId string, txid string) error {
 	// Construct payload for PUT_STATE
 	payloadBytes, _ := proto.Marshal(&pb.PutState{Collection: collection, Key: key, Value: value})
 
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: payloadBytes, Txid: txid}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_PUT_STATE)
 
 	// Execute the request and get response
-	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, txid)
+	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
 		return errors.WithMessage(err, fmt.Sprintf("[%s]error sending PUT_STATE", msg.Txid))
 	}
@@ -452,15 +462,15 @@ func (handler *Handler) handlePutState(collection string, key string, value []by
 }
 
 // handleDelState communicates with the peer to delete a key from the state in the ledger.
-func (handler *Handler) handleDelState(collection string, key string, txid string) error {
+func (handler *Handler) handleDelState(collection string, key string, channelId string, txid string) error {
 	//payloadBytes, _ := proto.Marshal(&pb.GetState{Collection: collection, Key: key})
 	payloadBytes, _ := proto.Marshal(&pb.DelState{Collection: collection, Key: key})
 
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Payload: payloadBytes, Txid: txid}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE)
 
 	// Execute the request and get response
-	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, txid)
+	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
 		return errors.Errorf("[%s]error sending DEL_STATE %s", shorttxid(msg.Txid), pb.ChaincodeMessage_DEL_STATE)
 	}
@@ -480,15 +490,15 @@ func (handler *Handler) handleDelState(collection string, key string, txid strin
 	return errors.Errorf("[%s]incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
-func (handler *Handler) handleGetStateByRange(collection, startKey, endKey string, txid string) (*pb.QueryResponse, error) {
+func (handler *Handler) handleGetStateByRange(collection, startKey, endKey string, channelId string, txid string) (*pb.QueryResponse, error) {
 	// Send GET_STATE_BY_RANGE message to peer chaincode support
 	//we constructed a valid object. No need to check for error
 	payloadBytes, _ := proto.Marshal(&pb.GetStateByRange{Collection: collection, StartKey: startKey, EndKey: endKey})
 
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Payload: payloadBytes, Txid: txid}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE_BY_RANGE)
 
-	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, txid)
+	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
 		return nil, errors.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE_BY_RANGE)
 	}
@@ -514,21 +524,21 @@ func (handler *Handler) handleGetStateByRange(collection, startKey, endKey strin
 	return nil, errors.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
-func (handler *Handler) handleQueryStateNext(id, txid string) (*pb.QueryResponse, error) {
+func (handler *Handler) handleQueryStateNext(id, channelId, txid string) (*pb.QueryResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
 	var respChan chan pb.ChaincodeMessage
 	var err error
-	if respChan, err = handler.createChannel(txid); err != nil {
+	if respChan, err = handler.createChannel(channelId, txid); err != nil {
 		return nil, err
 	}
 
-	defer handler.deleteChannel(txid)
+	defer handler.deleteChannel(channelId, txid)
 
 	// Send QUERY_STATE_NEXT message to peer chaincode support
 	//we constructed a valid object. No need to check for error
 	payloadBytes, _ := proto.Marshal(&pb.QueryStateNext{Id: id})
 
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: payloadBytes, Txid: txid}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_NEXT)
 
 	var responseMsg pb.ChaincodeMessage
@@ -558,21 +568,21 @@ func (handler *Handler) handleQueryStateNext(id, txid string) (*pb.QueryResponse
 	return nil, errors.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
-func (handler *Handler) handleQueryStateClose(id, txid string) (*pb.QueryResponse, error) {
+func (handler *Handler) handleQueryStateClose(id, channelId, txid string) (*pb.QueryResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
 	var respChan chan pb.ChaincodeMessage
 	var err error
-	if respChan, err = handler.createChannel(txid); err != nil {
+	if respChan, err = handler.createChannel(channelId, txid); err != nil {
 		return nil, err
 	}
 
-	defer handler.deleteChannel(txid)
+	defer handler.deleteChannel(channelId, txid)
 
 	// Send QUERY_STATE_CLOSE message to peer chaincode support
 	//we constructed a valid object. No need to check for error
 	payloadBytes, _ := proto.Marshal(&pb.QueryStateClose{Id: id})
 
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: payloadBytes, Txid: txid}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_CLOSE)
 
 	var responseMsg pb.ChaincodeMessage
@@ -602,15 +612,15 @@ func (handler *Handler) handleQueryStateClose(id, txid string) (*pb.QueryRespons
 	return nil, errors.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
-func (handler *Handler) handleGetQueryResult(collection string, query string, txid string) (*pb.QueryResponse, error) {
+func (handler *Handler) handleGetQueryResult(collection string, query string, channelId string, txid string) (*pb.QueryResponse, error) {
 	// Send GET_QUERY_RESULT message to peer chaincode support
 	//we constructed a valid object. No need to check for error
 	payloadBytes, _ := proto.Marshal(&pb.GetQueryResult{Collection: collection, Query: query})
 
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Payload: payloadBytes, Txid: txid}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_QUERY_RESULT)
 
-	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, txid)
+	responseMsg, err := handler.callPeerWithChaincodeMsg(msg, channelId, txid)
 	if err != nil {
 		return nil, errors.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_QUERY_RESULT)
 	}
@@ -636,21 +646,21 @@ func (handler *Handler) handleGetQueryResult(collection string, query string, tx
 	return nil, errors.Errorf("incorrect chaincode message %s received. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
-func (handler *Handler) handleGetHistoryForKey(key string, txid string) (*pb.QueryResponse, error) {
+func (handler *Handler) handleGetHistoryForKey(key string, channelId string, txid string) (*pb.QueryResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
 	var respChan chan pb.ChaincodeMessage
 	var err error
-	if respChan, err = handler.createChannel(txid); err != nil {
+	if respChan, err = handler.createChannel(channelId, txid); err != nil {
 		return nil, err
 	}
 
-	defer handler.deleteChannel(txid)
+	defer handler.deleteChannel(channelId, txid)
 
 	// Send GET_HISTORY_FOR_KEY message to peer chaincode support
 	//we constructed a valid object. No need to check for error
 	payloadBytes, _ := proto.Marshal(&pb.GetHistoryForKey{Key: key})
 
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Payload: payloadBytes, Txid: txid}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_HISTORY_FOR_KEY)
 
 	var responseMsg pb.ChaincodeMessage
@@ -685,21 +695,21 @@ func (handler *Handler) createResponse(status int32, payload []byte) pb.Response
 }
 
 // handleInvokeChaincode communicates with the peer to invoke another chaincode.
-func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, txid string) pb.Response {
+func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, channelId string, txid string) pb.Response {
 	//we constructed a valid object. No need to check for error
 	payloadBytes, _ := proto.Marshal(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: chaincodeName}, Input: &pb.ChaincodeInput{Args: args}})
 
 	// Create the channel on which to communicate the response from validating peer
 	var respChan chan pb.ChaincodeMessage
 	var err error
-	if respChan, err = handler.createChannel(txid); err != nil {
+	if respChan, err = handler.createChannel(channelId, txid); err != nil {
 		return handler.createResponse(ERROR, []byte(err.Error()))
 	}
 
-	defer handler.deleteChannel(txid)
+	defer handler.deleteChannel(channelId, txid)
 
 	// Send INVOKE_CHAINCODE message to peer chaincode support
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: payloadBytes, Txid: txid}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: payloadBytes, Txid: txid, ChannelId: channelId}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_INVOKE_CHAINCODE)
 
 	var responseMsg pb.ChaincodeMessage
@@ -747,7 +757,7 @@ func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 	chaincodeLogger.Debugf("[%s]Handling ChaincodeMessage of type: %s(state:%s)", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
 	if handler.FSM.Cannot(msg.Type.String()) {
 		err := errors.Errorf("[%s]chaincode handler FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type.String(), len(msg.Payload), handler.FSM.Current())
-		handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(err.Error()), Txid: msg.Txid})
+		handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(err.Error()), Txid: msg.Txid, ChannelId: msg.ChannelId})
 		return err
 	}
 	err := handler.FSM.Event(msg.Type.String(), msg)

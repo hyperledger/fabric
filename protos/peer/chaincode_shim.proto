@@ -49,6 +49,9 @@ message ChaincodeMessage {
     // This event is then stored (currently)
     //with Block.NonHashData.TransactionResult
     ChaincodeEvent chaincode_event = 6;
+
+    //channel id
+    string channel_id = 7;
 }
 
 // TODO: We need to finalize the design on chaincode container
