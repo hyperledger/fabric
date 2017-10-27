@@ -82,7 +82,7 @@ You should see the following:
 
 .. code:: bash
 
-   chaincode	invoke.js	network		package.json	query.js	startFabric.sh
+   creds invoke.js package.json query.js startFabric.sh
 
 Use the ``startFabric.sh`` script to launch the network. This script downloads
 and extracts the Fabric docker images, so it will take a few minutes to
