@@ -65,8 +65,8 @@ Here's the help text for the ``byfn.sh`` script:
     -s <dbtype> - the database backend to use: goleveldb (default) or couchdb
     -l <language> - the chaincode language: golang (default) or node
 
-Typically, one would first generate the required certificates and
-genesis block, then bring up the network. e.g.:
+    Typically, one would first generate the required certificates and
+    genesis block, then bring up the network. e.g.:
 
 	byfn.sh -m generate -c mychannel
 	byfn.sh -m up -c mychannel -s couchdb
@@ -133,7 +133,7 @@ prompt. Respond with a ``y`` to execute the described action.
   2017-06-12 21:01:37.704 EDT [common/configtx/tool] doOutputAnchorPeersUpdate -> INFO 002 Generating anchor peer update
   2017-06-12 21:01:37.704 EDT [common/configtx/tool] doOutputAnchorPeersUpdate -> INFO 003 Writing anchor peer update
 
-This first step generates all of the certificates and keys for all our various
+This first step generates all of the certificates and keys for our various
 network entities, the ``genesis block`` used to bootstrap the ordering service,
 and a collection of configuration transactions required to configure a
 :ref:`Channel`.
@@ -250,7 +250,7 @@ Crypto Generator
 ----------------
 
 We will use the ``cryptogen`` tool to generate the cryptographic material
-(x509 certs) for our various network entities.  These certificates are
+(x509 certs and signing keys) for our various network entities.  These certificates are
 representative of identities, and they allow for sign/verify authentication to
 take place as our entities communicate and transact.
 
@@ -324,14 +324,13 @@ Configuration Transaction Generator
 The ``configtxgen tool`` is used to create four configuration artifacts:
 
   * orderer ``genesis block``,
-  * channel ``channel configuration transaction``,
+  * channel ``configuration transaction``,
   * and two ``anchor peer transactions`` - one for each Peer Org.
 
-Please see :doc:`configtxgen` for a complete description of the use of this
-tool.
+Please see :doc:`configtxgen` for a complete description of this tool's functionality.
 
 The orderer block is the :ref:`Genesis-Block` for the ordering service, and the
-channel transaction file is broadcast to the orderer at :ref:`Channel` creation
+channel configuration transaction file is broadcast to the orderer at :ref:`Channel` creation
 time.  The anchor peer transactions, as the name might suggest, specify each
 Org's :ref:`Anchor-Peer` on this channel.
 
@@ -412,7 +411,7 @@ Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
 
 You should see an output similar to the following in your terminal:
 
-.. code: bash
+.. code:: bash
 
   2017-10-26 19:21:56.301 EDT [common/tools/configtxgen] main -> INFO 001 Loading configuration
   2017-10-26 19:21:56.309 EDT [common/tools/configtxgen] doOutputBlock -> INFO 002 Generating genesis block
@@ -432,10 +431,9 @@ set ``CHANNEL_NAME`` as an environment variable that can be used throughout thes
 
 .. code:: bash
 
-    export CHANNEL_NAME=mychannel
+    # The channel.tx artifact contains the definitions for our sample channel
 
-    # this file contains the definitions for our sample channel
-    ../bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID $CHANNEL_NAME
+    export CHANNEL_NAME=mychannel  && ../bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID $CHANNEL_NAME
 
 You should see an ouput similar to the following in your terminal:
 
@@ -483,15 +481,16 @@ to expose the syntax and functionality of each call.
 
 The CLI timeout defaults to 10000 seconds.  If you need the container available
 for longer, you can overwrite this setting by passing in a value for the ``TIMEOUT``
-environment variable as shown below.
+environment variable.
 
 Start your network:
 
 .. code:: bash
 
-          # you do not need to pass the TIMEOUT variable; it defaults to 10000 seconds
+    # if you need the CLI accessible beyond 10000 seconds, pass in TIMEOUT=<your_desired_value>
+    # after the CHANNEL_NAME variable
 
-          CHANNEL_NAME=$CHANNEL_NAME TIMEOUT=<pick_a_value> docker-compose -f docker-compose-cli.yaml up -d
+    CHANNEL_NAME=$CHANNEL_NAME docker-compose -f docker-compose-cli.yaml up -d
 
 If you want to see the realtime logs for your network, then do not supply the ``-d`` flag.
 If you let the logs stream, then you will need to open a second terminal to execute the CLI calls.
@@ -584,8 +583,9 @@ Now let's join ``peer0.org1.example.com`` to the channel.
         # By default, this joins ``peer0.org1.example.com`` only
         # the <channel-ID.block> was returned by the previous command
         # if you have not modified the channel name, you will join with mychannel.block
+        # if you have created a different channel name, then pass in the appropriately named block
 
-         peer channel join -b <channel-ID.block>
+         peer channel join -b mychannel.block
 
 You can make other peers join the channel as necessary by making appropriate
 changes in the four environment variables we used in the :ref:`peerenvvars`
