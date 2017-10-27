@@ -176,13 +176,11 @@ func (cm *configManager) policyForItem(item comparable) (policies.Policy, bool) 
 	logger.Debugf("Getting policy for item %s with mod_policy %s", item.key, modPolicy)
 
 	// If the mod_policy path is relative, get the right manager for the context
-	// if the mod_policy path is absolute (starts with /) evaluate at the root
-	if len(modPolicy) > 0 && modPolicy[0] != policies.PathSeparator[0] {
-		// path should always be at least length 1, panic if not
-		if len(item.path) == 0 {
-			logger.Panicf("Empty path for item %s", item.key)
-		}
+	// If the item has a zero length path, it is the root group, use the base policy manager
+	// if the mod_policy path is absolute (starts with /) also use the base policy manager
+	if len(modPolicy) > 0 && modPolicy[0] != policies.PathSeparator[0] && len(item.path) != 0 {
 		var ok bool
+
 		manager, ok = manager.Manager(item.path[1:])
 		if !ok {
 			logger.Debugf("Could not find manager at path: %v", item.path[1:])
