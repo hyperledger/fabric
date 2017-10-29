@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package comm
@@ -155,7 +145,10 @@ func TestCASupport(t *testing.T) {
 		t.Fatalf("failed to load root certificates")
 	}
 
-	cas := GetCASupport()
+	cas := &CASupport{
+		AppRootCAsByChain:     make(map[string][][]byte),
+		OrdererRootCAsByChain: make(map[string][][]byte),
+	}
 	cas.AppRootCAsByChain["channel1"] = [][]byte{rootCAs[0]}
 	cas.AppRootCAsByChain["channel2"] = [][]byte{rootCAs[1]}
 	cas.AppRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
@@ -175,25 +168,56 @@ func TestCASupport(t *testing.T) {
 		len(ordererClientRoots))
 	assert.Equal(t, 4, len(appClientRoots), "Expected 4 app client root CAs")
 	assert.Equal(t, 2, len(ordererClientRoots), "Expected 4 orderer client root CAs")
+}
+
+func TestCredentialSupport(t *testing.T) {
+
+	rootCAs := loadRootCAs()
+	t.Logf("loaded %d root certificates", len(rootCAs))
+	if len(rootCAs) != 6 {
+		t.Fatalf("failed to load root certificates")
+	}
+
+	cs := GetCredentialSupport()
+	cs.ClientCert = tls.Certificate{}
+	cs.AppRootCAsByChain["channel1"] = [][]byte{rootCAs[0]}
+	cs.AppRootCAsByChain["channel2"] = [][]byte{rootCAs[1]}
+	cs.AppRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
+	cs.OrdererRootCAsByChain["channel1"] = [][]byte{rootCAs[3]}
+	cs.OrdererRootCAsByChain["channel2"] = [][]byte{rootCAs[4]}
+	cs.ServerRootCAs = [][]byte{rootCAs[5]}
+	cs.ClientRootCAs = [][]byte{rootCAs[5]}
+
+	appServerRoots, ordererServerRoots := cs.GetServerRootCAs()
+	t.Logf("%d appServerRoots | %d ordererServerRoots", len(appServerRoots),
+		len(ordererServerRoots))
+	assert.Equal(t, 4, len(appServerRoots), "Expected 4 app server root CAs")
+	assert.Equal(t, 2, len(ordererServerRoots), "Expected 2 orderer server root CAs")
+
+	appClientRoots, ordererClientRoots := cs.GetClientRootCAs()
+	t.Logf("%d appClientRoots | %d ordererClientRoots", len(appClientRoots),
+		len(ordererClientRoots))
+	assert.Equal(t, 4, len(appClientRoots), "Expected 4 app client root CAs")
+	assert.Equal(t, 2, len(ordererClientRoots), "Expected 4 orderer client root CAs")
 
 	// make sure we really have a singleton
-	casClone := GetCASupport()
-	assert.Exactly(t, casClone, cas, "Expected GetCASupport to be a singleton")
+	csClone := GetCredentialSupport()
+	assert.Exactly(t, csClone, cs, "Expected GetCredentialSupport to be a singleton")
 
-	creds, _ := cas.GetDeliverServiceCredentials("channel1")
+	creds, _ := cs.GetDeliverServiceCredentials("channel1")
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
-	creds = cas.GetPeerCredentials(tls.Certificate{})
+	creds = cs.GetPeerCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 
 	// append some bad certs and make sure things still work
-	cas.ServerRootCAs = append(cas.ServerRootCAs, []byte("badcert"))
-	cas.ServerRootCAs = append(cas.ServerRootCAs, []byte(badPEM))
-	creds, _ = cas.GetDeliverServiceCredentials("channel1")
+	cs.ServerRootCAs = append(cs.ServerRootCAs, []byte("badcert"))
+	cs.ServerRootCAs = append(cs.ServerRootCAs, []byte(badPEM))
+	creds, _ = cs.GetDeliverServiceCredentials("channel1")
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
-	creds = cas.GetPeerCredentials(tls.Certificate{})
+	creds = cs.GetPeerCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 
@@ -270,12 +294,12 @@ func TestImpersonation(t *testing.T) {
 	defer osB.Stop()
 	time.Sleep(time.Second)
 
-	cas := GetCASupport()
-	_, err := GetCASupport().GetDeliverServiceCredentials("C")
+	cs := GetCredentialSupport()
+	_, err := GetCredentialSupport().GetDeliverServiceCredentials("C")
 	assert.Error(t, err)
 
-	cas.OrdererRootCAsByChain["A"] = [][]byte{osA.caCert}
-	cas.OrdererRootCAsByChain["B"] = [][]byte{osB.caCert}
+	cs.OrdererRootCAsByChain["A"] = [][]byte{osA.caCert}
+	cs.OrdererRootCAsByChain["B"] = [][]byte{osB.caCert}
 
 	testInvoke(t, "A", osA, true)
 	testInvoke(t, "B", osB, true)
@@ -285,7 +309,7 @@ func TestImpersonation(t *testing.T) {
 }
 
 func testInvoke(t *testing.T, channelID string, s *srv, shouldSucceed bool) {
-	creds, err := GetCASupport().GetDeliverServiceCredentials(channelID)
+	creds, err := GetCredentialSupport().GetDeliverServiceCredentials(channelID)
 	assert.NoError(t, err)
 	endpoint := fmt.Sprintf("localhost:%d", s.port)
 	ctx := context.Background()

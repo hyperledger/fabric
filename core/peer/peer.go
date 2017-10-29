@@ -44,8 +44,8 @@ var peerLogger = flogging.MustGetLogger("peer")
 
 var peerServer comm.GRPCServer
 
-// singleton instance to manage CAs for the peer across channel config changes
-var rootCASupport = comm.GetCASupport()
+// singleton instance to manage credentials for the peer across channel config changes
+var credSupport = comm.GetCredentialSupport()
 
 type gossipSupport struct {
 	channelconfig.Application
@@ -446,9 +446,9 @@ func updateTrustedRoots(cm channelconfig.Resources) {
 
 		// now iterate over all roots for all app and orderer chains
 		trustedRoots := [][]byte{}
-		rootCASupport.RLock()
-		defer rootCASupport.RUnlock()
-		for _, roots := range rootCASupport.AppRootCAsByChain {
+		credSupport.RLock()
+		defer credSupport.RUnlock()
+		for _, roots := range credSupport.AppRootCAsByChain {
 			trustedRoots = append(trustedRoots, roots...)
 		}
 		// also need to append statically configured root certs
@@ -476,8 +476,8 @@ func updateTrustedRoots(cm channelconfig.Resources) {
 // populates the appRootCAs and orderRootCAs maps by getting the
 // root and intermediate certs for all msps associated with the MSPManager
 func buildTrustedRootsForChain(cm channelconfig.Resources) {
-	rootCASupport.Lock()
-	defer rootCASupport.Unlock()
+	credSupport.Lock()
+	defer credSupport.Unlock()
 
 	appRootCAs := [][]byte{}
 	ordererRootCAs := [][]byte{}
@@ -534,8 +534,8 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 				}
 			}
 		}
-		rootCASupport.AppRootCAsByChain[cid] = appRootCAs
-		rootCASupport.OrdererRootCAsByChain[cid] = ordererRootCAs
+		credSupport.AppRootCAsByChain[cid] = appRootCAs
+		credSupport.OrdererRootCAsByChain[cid] = ordererRootCAs
 	}
 }
 

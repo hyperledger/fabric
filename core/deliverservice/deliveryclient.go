@@ -215,7 +215,7 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions()...)
 
 		if comm.TLSEnabled() {
-			creds, err := comm.GetCASupport().GetDeliverServiceCredentials(channelID)
+			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID)
 			if err != nil {
 				return nil, fmt.Errorf("Failed obtaining credentials for channel %s: %v", channelID, err)
 			}
