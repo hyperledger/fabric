@@ -59,8 +59,8 @@ type CollectionStore interface {
 	// latest configuration that was committed into the ledger before this txID
 	// was committed.
 	// Else - it's the latest configuration for the collection.
-	RetrieveCollection(common.CollectionCriteria) Collection
+	RetrieveCollection(common.CollectionCriteria) (Collection, error)
 
 	// GetCollectionAccessPolicy retrieves a collection's access policy
-	RetrieveCollectionAccessPolicy(common.CollectionCriteria) CollectionAccessPolicy
+	RetrieveCollectionAccessPolicy(common.CollectionCriteria) (CollectionAccessPolicy, error)
 }

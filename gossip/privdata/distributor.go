@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -82,10 +83,10 @@ func (d *distributorImpl) computeDisseminationPlan(txID string, privData *rwset.
 				TxId:       txID,
 				Channel:    d.chainID,
 			}
-			colAP := cs.RetrieveCollectionAccessPolicy(cc)
-			if colAP == nil {
-				logger.Error("Could not find collection access policy for", cc)
-				return nil, errors.Errorf("Collection access policy for %v not found", cc)
+			colAP, err := cs.RetrieveCollectionAccessPolicy(cc)
+			if err != nil {
+				logger.Error("Could not find collection access policy for", cc, "error", err)
+				return nil, errors.WithMessage(err, fmt.Sprintf("collection access policy for %v not found", cc))
 			}
 
 			colFilter := colAP.AccessFilter()

@@ -698,9 +698,9 @@ func (c *coordinator) accessPolicyForCollection(chdr *common.ChannelHeader, name
 		Collection: col,
 		TxId:       chdr.TxId,
 	}
-	sp := c.CollectionStore.RetrieveCollectionAccessPolicy(cp)
-	if sp == nil {
-		logger.Warning("Failed obtaining policy for", cp, "skipping collection")
+	sp, err := c.CollectionStore.RetrieveCollectionAccessPolicy(cp)
+	if err != nil {
+		logger.Warning("Failed obtaining policy for", cp, ":", err, "skipping collection")
 		return nil
 	}
 	return sp
@@ -786,9 +786,9 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common
 					Namespace:  ns.Namespace,
 					Collection: col.CollectionName,
 				}
-				sp := c.CollectionStore.RetrieveCollectionAccessPolicy(cc)
-				if sp == nil {
-					logger.Warning("Failed obtaining policy for", cc)
+				sp, err := c.CollectionStore.RetrieveCollectionAccessPolicy(cc)
+				if err != nil {
+					logger.Warning("Failed obtaining policy for", cc, ":", err)
 					continue
 				}
 				isAuthorized := sp.AccessFilter()
