@@ -27,6 +27,8 @@ JOWqAZxKKsBxBC5Ssu+fS26VPfdNWxDsFQ==
 )
 
 func TestInit(t *testing.T) {
+	factory.InitFactories(nil)
+
 	scc := new(EncCC)
 	stub := shim.NewMockStub("enccc", scc)
 	stub.MockTransactionStart("a")
@@ -40,6 +42,8 @@ func TestInit(t *testing.T) {
 // and the tests below focus on the functionality by invoking
 // functions as opposed to cc
 func TestInvoke(t *testing.T) {
+	factory.InitFactories(nil)
+
 	scc := &EncCC{factory.GetDefault()}
 	stub := shim.NewMockStub("enccc", scc)
 
@@ -48,6 +52,8 @@ func TestInvoke(t *testing.T) {
 	res = stub.MockInvoke("tx", [][]byte{[]byte("ENC")})
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 	res = stub.MockInvoke("tx", [][]byte{[]byte("SIG")})
+	assert.NotEqual(t, res.Status, int32(shim.OK))
+	res = stub.MockInvoke("tx", [][]byte{[]byte("RANGE")})
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 }
 
@@ -190,6 +196,10 @@ func TestEncCC_RangeDecrypter(t *testing.T) {
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 
+	// failed range query
+	res = scc.RangeDecrypter(stub, nil)
+	assert.NotEqual(t, res.Status, int32(shim.OK))
+
 	// success range query
 	stub.MockTransactionStart("a")
 	res = scc.RangeDecrypter(stub, []byte(AESKEY1))
@@ -204,6 +214,9 @@ func TestEncCC_RangeDecrypter(t *testing.T) {
 	assert.Equal(t, string(keys[1].Value), "value2")
 	assert.Equal(t, keys[2].Key, "key3")
 	assert.Equal(t, string(keys[2].Value), "value3")
+
+	_, err = getStateByRangeAndDecrypt(stub, nil, string([]byte{0}), string([]byte{0}))
+	assert.Error(t, err)
 }
 
 func TestDeterministicEncryption(t *testing.T) {
