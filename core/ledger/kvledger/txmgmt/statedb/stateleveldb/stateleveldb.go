@@ -148,7 +148,8 @@ func (vdb *versionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 		}
 	}
 	dbBatch.Put(savePointKey, height.ToBytes())
-	if err := vdb.db.WriteBatch(dbBatch, false); err != nil {
+	// Setting snyc to true as a precaution, false may be an ok optimization after further testing.
+	if err := vdb.db.WriteBatch(dbBatch, true); err != nil {
 		return err
 	}
 	return nil
