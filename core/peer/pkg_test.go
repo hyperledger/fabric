@@ -310,7 +310,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 				test.createChannel()
 
 				// make sure we have the expected number of CAs
-				appCAs, ordererCAs := comm.GetCASupport().GetClientRootCAs()
+				appCAs, ordererCAs := comm.GetCredentialSupport().GetClientRootCAs()
 				assert.Equal(t, test.numAppCAs, len(appCAs),
 					"Did not find expected number of app CAs for channel")
 				assert.Equal(t, test.numOrdererCAs, len(ordererCAs),
