@@ -128,6 +128,28 @@ func TestIsHistoryDBEnabledFalse(t *testing.T) {
 	testutil.AssertEquals(t, updatedValue, false) //test config returns false
 }
 
+func TestIsAutoWarmIndexesEnabledDefault(t *testing.T) {
+	setUpCoreYAMLConfig()
+	defaultValue := IsAutoWarmIndexesEnabled()
+	testutil.AssertEquals(t, defaultValue, true) //test default config is true
+}
+
+func TestIsAutoWarmIndexesEnabledTrue(t *testing.T) {
+	setUpCoreYAMLConfig()
+	defer ledgertestutil.ResetConfigToDefaultValues()
+	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", true)
+	updatedValue := IsAutoWarmIndexesEnabled()
+	testutil.AssertEquals(t, updatedValue, true) //test config returns true
+}
+
+func TestIsAutoWarmIndexesEnabledFalse(t *testing.T) {
+	setUpCoreYAMLConfig()
+	defer ledgertestutil.ResetConfigToDefaultValues()
+	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
+	updatedValue := IsAutoWarmIndexesEnabled()
+	testutil.AssertEquals(t, updatedValue, false) //test config returns false
+}
+
 func setUpCoreYAMLConfig() {
 	//call a helper method to load the core.yaml
 	ledgertestutil.SetupCoreYAMLConfig()
