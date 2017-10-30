@@ -1,6 +1,8 @@
 Bringing up a Kafka-based Ordering Service
 ===========================================
 
+.. _kafka-caveat:
+
 Caveat emptor
 -------------
 
