@@ -654,6 +654,29 @@ func (v *vsccValidatorImpl) GetInfoForValidate(txid, chID, ccID string) (*sysccp
 	return cc, vscc, policy, nil
 }
 
+// txWritesToNamespace returns true if the supplied NsRwSet
+// performs a ledger write
+func (v *vsccValidatorImpl) txWritesToNamespace(ns *rwsetutil.NsRwSet) bool {
+	// check for public writes first
+	if ns.KvRwSet != nil && len(ns.KvRwSet.Writes) > 0 {
+		return true
+	}
+
+	// do not look at collection data if we don't support that capability
+	if !v.support.Capabilities().PrivateChannelData() {
+		return false
+	}
+
+	// check for private writes for all collections
+	for _, c := range ns.CollHashedRwSets {
+		if c.HashedRwSet != nil && len(c.HashedRwSet.HashedWrites) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) (error, peer.TxValidationCode) {
 	logger.Debugf("VSCCValidateTx starts for env %p envbytes %p", env, envBytes)
 	defer logger.Debugf("VSCCValidateTx completes for env %p envbytes %p", env, envBytes)
@@ -687,7 +710,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		return fmt.Errorf("txRWSet.FromProtoBytes failed, error %s", err), peer.TxValidationCode_BAD_RWSET
 	}
 	for _, ns := range txRWSet.NsRwSets {
-		if len(ns.KvRwSet.Writes) > 0 {
+		if v.txWritesToNamespace(ns) {
 			wrNamespace = append(wrNamespace, ns.NameSpace)
 
 			if !writesToLSCC && ns.NameSpace == "lscc" {

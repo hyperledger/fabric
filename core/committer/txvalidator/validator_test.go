@@ -208,6 +208,38 @@ func TestInvokeOK(t *testing.T) {
 	assertValid(b, t)
 }
 
+func TestInvokeOKPvtDataOnly(t *testing.T) {
+	l, v := setupLedgerAndValidator(t)
+	defer ledgermgmt.CleanupTestEnv()
+	defer l.Close()
+
+	v.(*txValidator).support.(struct {
+		*mocktxvalidator.Support
+		*semaphore.Weighted
+	}).ACVal = &mockconfig.MockApplicationCapabilities{PrivateChannelDataRv: true}
+
+	ccID := "mycc"
+
+	putCCInfo(l, ccID, signedByAnyMember([]string{"DEFAULT"}), t)
+
+	rwsetBuilder := rwsetutil.NewRWSetBuilder()
+	rwsetBuilder.AddToPvtAndHashedWriteSet(ccID, "mycollection", "somekey", nil)
+	rwset, err := rwsetBuilder.GetTxSimulationResults()
+	assert.NoError(t, err)
+	rwsetBytes, err := rwset.GetPubSimulationBytes()
+	assert.NoError(t, err)
+
+	tx := getEnv(ccID, rwsetBytes, t)
+	b := &common.Block{Data: &common.BlockData{Data: [][]byte{utils.MarshalOrPanic(tx)}}}
+
+	v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteResultProvider = nil
+	v.(*txValidator).vscc.(*vsccValidatorImpl).ccprovider.(*ccprovider.MockCcProviderImpl).ExecuteChaincodeResponse = &peer.Response{Status: shim.ERROR}
+
+	err = v.Validate(b)
+	assert.NoError(t, err)
+	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
+}
+
 func TestInvokeOKSCC(t *testing.T) {
 	l, v := setupLedgerAndValidator(t)
 	defer ledgermgmt.CleanupTestEnv()
