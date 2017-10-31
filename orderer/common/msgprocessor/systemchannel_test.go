@@ -674,6 +674,6 @@ func TestNewChannelConfig(t *testing.T) {
 		assert.Nil(t, err)
 		res, err := templator.NewChannelConfig(createTx)
 		assert.Nil(t, err)
-		assert.NotEmpty(t, res.ConfigtxManager().ConfigEnvelope().Config.ChannelGroup.ModPolicy)
+		assert.NotEmpty(t, res.ConfigtxManager().ConfigProto().ChannelGroup.ModPolicy)
 	})
 }

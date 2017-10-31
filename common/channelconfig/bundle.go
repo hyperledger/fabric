@@ -217,12 +217,7 @@ func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
 		return nil, errors.Wrap(err, "initializing policymanager failed")
 	}
 
-	env, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID, nil, &cb.ConfigEnvelope{Config: config}, 0, 0)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating envelope for configtx manager failed")
-	}
-
-	configtxManager, err := configtx.NewManagerImpl(env, simpleProposer{
+	configtxManager, err := configtx.NewManagerImpl(channelID, config, simpleProposer{
 		policyManager: policyManager,
 	})
 	if err != nil {

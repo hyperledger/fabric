@@ -121,9 +121,9 @@ func (cs *ChainSupport) ChainID() string {
 	return cs.ConfigtxManager().ChainID()
 }
 
-// ConfigEnvelope passes through to the underlying configtxapi.Manager
-func (cs *ChainSupport) ConfigEnvelope() *cb.ConfigEnvelope {
-	return cs.ConfigtxManager().ConfigEnvelope()
+// ConfigProto passes through to the underlying configtxapi.Manager
+func (cs *ChainSupport) ConfigProto() *cb.Config {
+	return cs.ConfigtxManager().ConfigProto()
 }
 
 // Sequence passes through to the underlying configtxapi.Manager

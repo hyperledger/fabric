@@ -46,12 +46,18 @@ func makeConfigPair(id, modificationPolicy string, lastModified uint64, data []b
 	}
 }
 
-func makeEnvelopeConfig(channelID string, configPairs ...*configPair) *cb.Envelope {
+func makeConfig(configPairs ...*configPair) *cb.Config {
 	channelGroup := cb.NewConfigGroup()
 	for _, pair := range configPairs {
 		channelGroup.Values[pair.key] = pair.value
 	}
 
+	return &cb.Config{
+		ChannelGroup: channelGroup,
+	}
+}
+
+func makeEnvelopeConfig(channelID string, configPairs ...*configPair) *cb.Envelope {
 	return &cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
@@ -60,11 +66,7 @@ func makeEnvelopeConfig(channelID string, configPairs ...*configPair) *cb.Envelo
 					ChannelId: channelID,
 				}),
 			},
-			Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
-				Config: &cb.Config{
-					ChannelGroup: channelGroup,
-				},
-			}),
+			Data: utils.MarshalOrPanic(makeConfig(configPairs...)),
 		}),
 	}
 }
@@ -97,26 +99,15 @@ func makeConfigUpdateEnvelope(chainID string, readSet, writeSet *cb.ConfigGroup)
 }
 
 func TestEmptyChannel(t *testing.T) {
-	_, err := NewManagerImpl(&cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
-			Header: &cb.Header{
-				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
-					Type:      int32(cb.HeaderType_CONFIG),
-					ChannelId: "foo",
-				}),
-			},
-			Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
-				Config: &cb.Config{},
-			}),
-		}),
-	}, defaultInitializer())
+	_, err := NewManagerImpl("foo", &cb.Config{}, defaultInitializer())
 	assert.Error(t, err)
 }
 
 // TestDifferentChainID tests that a config update for a different chain ID fails
 func TestDifferentChainID(t *testing.T) {
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
+		defaultChain,
+		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		defaultInitializer())
 
 	if err != nil {
@@ -134,7 +125,8 @@ func TestDifferentChainID(t *testing.T) {
 // TestOldConfigReplay tests that resubmitting a config for a sequence number which is not newer is ignored
 func TestOldConfigReplay(t *testing.T) {
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
+		defaultChain,
+		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		defaultInitializer())
 
 	if err != nil {
@@ -152,7 +144,8 @@ func TestOldConfigReplay(t *testing.T) {
 // TestValidConfigChange tests the happy path of updating a config value with no defaultModificationPolicy
 func TestValidConfigChange(t *testing.T) {
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
+		defaultChain,
+		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		defaultInitializer())
 
 	if err != nil {
@@ -176,7 +169,8 @@ func TestValidConfigChange(t *testing.T) {
 // config values while advancing another
 func TestConfigChangeRegressedSequence(t *testing.T) {
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo"))),
+		defaultChain,
+		makeConfig(makeConfigPair("foo", "foo", 1, []byte("foo"))),
 		defaultInitializer())
 
 	if err != nil {
@@ -199,7 +193,8 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 // config values while advancing another
 func TestConfigChangeOldSequence(t *testing.T) {
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo"))),
+		defaultChain,
+		makeConfig(makeConfigPair("foo", "foo", 1, []byte("foo"))),
 		defaultInitializer())
 
 	if err != nil {
@@ -225,8 +220,8 @@ func TestConfigChangeOldSequence(t *testing.T) {
 // of the config and still be accepted
 func TestConfigPartialUpdate(t *testing.T) {
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(
-			defaultChain,
+		defaultChain,
+		makeConfig(
 			makeConfigPair("foo", "foo", 0, []byte("foo")),
 			makeConfigPair("bar", "bar", 0, []byte("bar")),
 		),
@@ -249,7 +244,8 @@ func TestConfigPartialUpdate(t *testing.T) {
 // TestEmptyConfigUpdate tests to make sure that an empty config is rejected as an update
 func TestEmptyConfigUpdate(t *testing.T) {
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
+		defaultChain,
+		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		defaultInitializer())
 
 	if err != nil {
@@ -269,8 +265,8 @@ func TestEmptyConfigUpdate(t *testing.T) {
 // increasing the config item's LastModified
 func TestSilentConfigModification(t *testing.T) {
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(
-			defaultChain,
+		defaultChain,
+		makeConfig(
 			makeConfigPair("foo", "foo", 0, []byte("foo")),
 			makeConfigPair("bar", "bar", 0, []byte("bar")),
 		),
@@ -300,7 +296,8 @@ func TestSilentConfigModification(t *testing.T) {
 func TestConfigChangeViolatesPolicy(t *testing.T) {
 	initializer := defaultInitializer()
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
+		defaultChain,
+		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		initializer)
 
 	if err != nil {
@@ -322,7 +319,8 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 	initializer := defaultInitializer()
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
+		defaultChain,
+		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		initializer)
 
 	if err != nil {
@@ -355,7 +353,8 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 func TestInvalidProposal(t *testing.T) {
 	initializer := defaultInitializer()
 	cm, err := NewManagerImpl(
-		makeEnvelopeConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
+		defaultChain,
+		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		initializer)
 
 	if err != nil {
@@ -369,29 +368,5 @@ func TestInvalidProposal(t *testing.T) {
 	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
 		t.Error("Should have errored proposing config because the handler rejected it")
-	}
-}
-
-// TestMissingHeader checks that a config envelope with a missing header causes the config to be rejected
-func TestMissingHeader(t *testing.T) {
-	group := cb.NewConfigGroup()
-	group.Values["foo"] = &cb.ConfigValue{}
-	_, err := NewManagerImpl(
-		&cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: group}})})},
-		defaultInitializer())
-
-	if err == nil {
-		t.Error("Should have errored creating the config manager because of the missing header")
-	}
-}
-
-// TestMissingChainID checks that a config item with a missing chainID causes the config to be rejected
-func TestMissingChainID(t *testing.T) {
-	_, err := NewManagerImpl(
-		makeEnvelopeConfig("", makeConfigPair("foo", "foo", 0, []byte("foo"))),
-		defaultInitializer())
-
-	if err == nil {
-		t.Error("Should have errored creating the config manager because of the missing header")
 	}
 }
