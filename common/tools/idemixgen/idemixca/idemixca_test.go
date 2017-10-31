@@ -93,7 +93,7 @@ func writeSignerToFile(signerBytes []byte) error {
 // with the generated config bytes
 func setupMSP() error {
 	// setup an idemix msp from the test directory
-	msp, err := m.New(&m.IdemixNewOpts{NewBaseOpts: m.NewBaseOpts{Version: m.MSPv1_0}})
+	msp, err := m.New(&m.IdemixNewOpts{NewBaseOpts: m.NewBaseOpts{Version: m.MSPv1_1}})
 	if err != nil {
 		return errors.Wrap(err, "Getting MSP failed")
 	}
