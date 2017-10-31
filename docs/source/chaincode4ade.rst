@@ -523,5 +523,28 @@ By default, we mount only ``sacc``.  However, you can easily test different
 chaincodes by adding them to the ``chaincode`` subdirectory and relaunching
 your network.  At this point they will be accessible in your ``chaincode`` container.
 
+Chaincode encryption
+--------------------
+
+In certain scenarios, it may be useful to encrypt values associated with a key
+in their entirety or simply in part.  For example, if a person's social security
+number or address was being written to the ledger, then you likely would not want
+this data to appear in plaintext.  Chaincode encryption is achieved by leveraging
+the `entities extension <https://github.com/hyperledger/fabric/tree/master/core/chaincode/shim/ext/entities>`__
+which is a BCCSP wrapper with commodity factories and functions to perform cryptographic
+operations such as encryption and elliptic curve digital signatures.  For example,
+to encrypt, the invoker of a chaincode passes in a cryptographic key via the
+transient field.  The same key may then be used for subsequent query operations, allowing
+for proper decryption of the encrypted state values.
+
+For more information and samples, see the
+`Encc Example <https://github.com/hyperledger/fabric/tree/master/examples/chaincode/go/enccc_example>`__
+within the ``fabric/examples`` directory.  Pay specific attention to the ``utils.go``
+helper program.  This utility loads the chaincode shim APIs and Entities extension
+and builds a new class of functions (e.g. ``encryptAndPutState`` & ``getStateAndDecrypt``)
+that the sample encryption chaincode then leverages.  As such, the chaincode can
+now marry the basic shim APIs of ``Get`` and ``Put`` with the added functionality of
+``Encrypt`` and ``Decrypt``.
+
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

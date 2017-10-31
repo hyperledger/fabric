@@ -94,9 +94,14 @@ thereby isolate/segregate their transactions and ledger.  In order to solve
 scenarios that want to bridge the gap between total transparency and privacy,
 chaincode can be installed only on peers that need to access the asset states
 to perform reads and writes (in other words, if a chaincode is not installed on
-a peer, it will not be able to properly interface with the ledger).  To further
-obfuscate the data, values within chaincode can be encrypted (in part or in total) using common
-cryptographic algorithms such as AES before appending to the ledger.
+a peer, it will not be able to properly interface with the ledger).
+
+To further obfuscate the data, values within chaincode can be encrypted
+(in part or in total) using common cryptographic algorithms such as AES before
+sending transactions to the ordering service and appending blocks to the ledger.
+Once encrypted data has been written to the ledger, it can only be decrypted by
+a user in possession of the corresponding key that was used to generate the cipher text.  
+For further details on chaincode encryption, see the :doc:`chaincode4ade` topic.
 
 .. _Security-Membership-Services:
 
