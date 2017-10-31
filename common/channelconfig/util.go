@@ -148,7 +148,7 @@ func ChannelRestrictionsValue(maxChannelCount uint64) *StandardConfigValue {
 	}
 }
 
-// ChannelRestrictionsValue returns the config definition for the orderer channel restrictions.
+// KafkaBrokersValue returns the config definition for the addresses of the ordering service's Kafka brokers.
 // It is a value for the /Channel/Orderer group.
 func KafkaBrokersValue(brokers []string) *StandardConfigValue {
 	return &StandardConfigValue{
