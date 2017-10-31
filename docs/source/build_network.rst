@@ -651,7 +651,7 @@ place the specified source code flavor onto our peer's filesystem.
 .. code:: bash
 
     # this installs the Go chaincode
-    peer chaincode install -n mycc -v 1.0 -p github.com/chaincode_example02/go/
+    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/
 
 **Node.js**
 
