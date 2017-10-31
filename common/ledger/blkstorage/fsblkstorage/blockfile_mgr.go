@@ -22,6 +22,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
@@ -112,16 +114,23 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 	if err != nil {
 		panic(fmt.Sprintf("Could not get block file info for current block file from db: %s", err))
 	}
-	if cpInfo == nil { //if no cpInfo stored in db initiate to zero
-		cpInfo = &checkpointInfo{0, 0, true, 0}
-		err = mgr.saveCurrentInfo(cpInfo, true)
-		if err != nil {
-			panic(fmt.Sprintf("Could not save next block file info to db: %s", err))
+	if cpInfo == nil {
+		logger.Info(`No info about blocks file found in the db. 
+			This could happen if this is the first time the ledger is constructed or the index is dropped.
+			Scanning blocks dir for the latest info`)
+		if cpInfo, err = constructCheckpointInfoFromBlockFiles(rootDir); err != nil {
+			panic(fmt.Sprintf("Could not build checkpoint info from block files: %s", err))
 		}
+		logger.Infof("Info constructed by scanning the blocks dir = %s", spew.Sdump(cpInfo))
+	} else {
+		logger.Info(`Synching the info about block files`)
+		syncCPInfoFromFS(rootDir, cpInfo)
 	}
-	//Verify that the checkpoint stored in db is accurate with what is actually stored in block file system
-	// If not the same, sync the cpInfo and the file system
-	syncCPInfoFromFS(rootDir, cpInfo)
+	err = mgr.saveCurrentInfo(cpInfo, true)
+	if err != nil {
+		panic(fmt.Sprintf("Could not save next block file info to db: %s", err))
+	}
+
 	//Open a writer to the file identified by the number and truncate it to only contain the latest block
 	// that was completely saved (file system, index, cpinfo, etc)
 	currentFileWriter, err := newBlockfileWriter(deriveBlockfilePath(rootDir, cpInfo.latestFileChunkSuffixNum))
@@ -193,7 +202,7 @@ func syncCPInfoFromFS(rootDir string, cpInfo *checkpointInfo) {
 		return
 	}
 	//Scan the file system to verify that the checkpoint info stored in db is correct
-	endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(
+	_, endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(
 		rootDir, cpInfo.latestFileChunkSuffixNum, int64(cpInfo.latestFileChunksize))
 	if err != nil {
 		panic(fmt.Sprintf("Could not open current file for detecting last block in the file: %s", err))
@@ -325,24 +334,35 @@ func (mgr *blockfileMgr) syncIndex() error {
 		}
 		indexEmpty = true
 	}
+
 	//initialize index to file number:zero, offset:zero and blockNum:0
 	startFileNum := 0
 	startOffset := 0
-	blockNum := uint64(0)
 	skipFirstBlock := false
 	//get the last file that blocks were added to using the checkpoint info
 	endFileNum := mgr.cpInfo.latestFileChunkSuffixNum
+	startingBlockNum := uint64(0)
+
 	//if the index stored in the db has value, update the index information with those values
 	if !indexEmpty {
+		if lastBlockIndexed == mgr.cpInfo.lastBlockNumber {
+			logger.Infof("Both the block files and indices are in sync.")
+			return nil
+		}
+		logger.Infof("Last block indexed [%d], Last block present in block files=[%d]", lastBlockIndexed, mgr.cpInfo.lastBlockNumber)
 		var flp *fileLocPointer
 		if flp, err = mgr.index.getBlockLocByBlockNum(lastBlockIndexed); err != nil {
 			return err
 		}
 		startFileNum = flp.fileSuffixNum
 		startOffset = flp.locPointer.offset
-		blockNum = lastBlockIndexed
 		skipFirstBlock = true
+		startingBlockNum = lastBlockIndexed + 1
+	} else {
+		logger.Infof("No block indexed, Last block present in block files=[%d]", mgr.cpInfo.lastBlockNumber)
 	}
+
+	logger.Infof("Start building index from block [%d]", startingBlockNum)
 
 	//open a blockstream to the file location that was stored in the index
 	var stream *blockStream
@@ -365,6 +385,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 	//Should be at the last block already, but go ahead and loop looking for next blockBytes.
 	//If there is another block, add it to the index.
 	//This will ensure block indexes are correct, for example if peer had crashed before indexes got updated.
+	blockIdxInfo := &blockIdxInfo{}
 	for {
 		if blockBytes, blockPlacementInfo, err = stream.nextBlockBytesAndPlacementInfo(); err != nil {
 			return err
@@ -385,7 +406,6 @@ func (mgr *blockfileMgr) syncIndex() error {
 		}
 
 		//Update the blockIndexInfo with what was actually stored in file system
-		blockIdxInfo := &blockIdxInfo{}
 		blockIdxInfo.blockHash = info.blockHeader.Hash()
 		blockIdxInfo.blockNum = info.blockHeader.Number
 		blockIdxInfo.flp = &fileLocPointer{fileSuffixNum: blockPlacementInfo.fileNum,
@@ -397,8 +417,11 @@ func (mgr *blockfileMgr) syncIndex() error {
 		if err = mgr.index.indexBlock(blockIdxInfo); err != nil {
 			return err
 		}
-		blockNum++
+		if blockIdxInfo.blockNum%10000 == 0 {
+			logger.Infof("Indexed block number [%d]", blockIdxInfo.blockNum)
+		}
 	}
+	logger.Infof("Finished building index. Last block indexed [%d]", blockIdxInfo.blockNum)
 	return nil
 }
 
@@ -581,12 +604,13 @@ func (mgr *blockfileMgr) saveCurrentInfo(i *checkpointInfo, sync bool) error {
 
 // scanForLastCompleteBlock scan a given block file and detects the last offset in the file
 // after which there may lie a block partially written (towards the end of the file in a crash scenario).
-func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64) (int64, int, error) {
+func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64) ([]byte, int64, int, error) {
 	//scan the passed file number suffix starting from the passed offset to find the last completed block
 	numBlocks := 0
+	var lastBlockBytes []byte
 	blockStream, errOpen := newBlockfileStream(rootDir, fileNum, startingOffset)
 	if errOpen != nil {
-		return 0, 0, errOpen
+		return nil, 0, 0, errOpen
 	}
 	defer blockStream.close()
 	var errRead error
@@ -596,6 +620,7 @@ func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64)
 		if blockBytes == nil || errRead != nil {
 			break
 		}
+		lastBlockBytes = blockBytes
 		numBlocks++
 	}
 	if errRead == ErrUnexpectedEndOfBlockfile {
@@ -605,7 +630,7 @@ func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64)
 		errRead = nil
 	}
 	logger.Debugf("scanForLastCompleteBlock(): last complete block ends at offset=[%d]", blockStream.currentOffset)
-	return blockStream.currentOffset, numBlocks, errRead
+	return lastBlockBytes, blockStream.currentOffset, numBlocks, errRead
 }
 
 // checkpointInfo
