@@ -223,13 +223,27 @@ peer:
     # Note that peer-chaincode connections through chaincodeListenAddress is
     # not mutual TLS auth. See comments on chaincodeListenAddress for more info
     tls:
+        # require server-side TLS
         enabled:  false
+        # require client certificates / mutual TLS.
+        # note that clients that are not configured to use a certificate will
+        # fail to connect to the peer.
+        clientAuthRequired: false
+        # X.509 certificate used for TLS server (and client if clientAuthEnabled
+        # is set to true
         cert:
             file: tls/server.crt
+        # private key used for TLS server (and client if clientAuthEnabled
+        # is set to true
         key:
             file: tls/server.key
+        # trusted root certificate chain for tls.cert
         rootcert:
             file: tls/ca.crt
+        # set of root certificate authorities used to verify client certificates
+        clientRootCAs:
+            files:
+              - tls/ca.crt
 
         # The server name use to verify the hostname returned by TLS handshake
         serverhostoverride:
