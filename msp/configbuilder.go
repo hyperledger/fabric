@@ -172,8 +172,16 @@ func GetLocalMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) 
 	return getMspConfig(dir, ID, sigid)
 }
 
-func GetVerifyingMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
-	return getMspConfig(dir, ID, nil)
+// GetVerifyingMspConfig returns an MSP config given directory, ID and type
+func GetVerifyingMspConfig(dir, ID, mspType string) (*msp.MSPConfig, error) {
+	switch mspType {
+	case ProviderTypeToString(FABRIC):
+		return getMspConfig(dir, ID, nil)
+	case ProviderTypeToString(IDEMIX):
+		return GetIdemixMspConfig(dir, ID)
+	default:
+		return nil, errors.Errorf("unknown MSP type '%s'", mspType)
+	}
 }
 
 func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.MSPConfig, error) {

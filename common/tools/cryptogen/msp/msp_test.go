@@ -135,7 +135,7 @@ func TestGenerateVerifyingMSP(t *testing.T) {
 			"Expected to find file "+file)
 	}
 	// finally check to see if we can load this as a verifying MSP config
-	testMSPConfig, err := fabricmsp.GetVerifyingMspConfig(mspDir, testName)
+	testMSPConfig, err := fabricmsp.GetVerifyingMspConfig(mspDir, testName, fabricmsp.ProviderTypeToString(fabricmsp.FABRIC))
 	assert.NoError(t, err, "Error parsing verifying MSP config")
 	testMSP, err := fabricmsp.New(&fabricmsp.BCCSPNewOpts{NewBaseOpts: fabricmsp.NewBaseOpts{Version: fabricmsp.MSPv1_0}})
 	assert.NoError(t, err, "Error creating new BCCSP MSP")
