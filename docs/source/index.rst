@@ -55,6 +55,7 @@ Business:
    chaincode
    chaincode4ade
    chaincode4noah
+   systemchaincode
    videos
 
 .. toctree::
