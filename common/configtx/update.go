@@ -1,39 +1,30 @@
 /*
-Copyright IBM Corp. 2016-2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package configtx
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/pkg/errors"
 )
 
-func (c *configSet) verifyReadSet(readSet map[string]comparable) error {
+func (c *ValidatorImpl) verifyReadSet(readSet map[string]comparable) error {
 	for key, value := range readSet {
 		existing, ok := c.configMap[key]
 		if !ok {
-			return fmt.Errorf("Existing config does not contain element for %s but was in the read set", key)
+			return errors.Errorf("existing config does not contain element for %s but was in the read set", key)
 		}
 
 		if existing.version() != value.version() {
-			return fmt.Errorf("Readset expected key %s at version %d, but got version %d", key, value.version(), existing.version())
+			return errors.Errorf("readset expected key %s at version %d, but got version %d", key, value.version(), existing.version())
 		}
 	}
 	return nil
@@ -49,7 +40,7 @@ func ComputeDeltaSet(readSet, writeSet map[string]comparable) map[string]compara
 		}
 
 		// If the key in the readset is a different version, we include it
-		// Error checking on the sanity of the update is done against the current config
+		// Error checking on the sanity of the update is done against the config
 		result[key] = value
 	}
 	return result
@@ -57,7 +48,7 @@ func ComputeDeltaSet(readSet, writeSet map[string]comparable) map[string]compara
 
 func validateModPolicy(modPolicy string) error {
 	if modPolicy == "" {
-		return fmt.Errorf("mod_policy not set")
+		return errors.Errorf("mod_policy not set")
 	}
 
 	trimmed := modPolicy
@@ -68,7 +59,7 @@ func validateModPolicy(modPolicy string) error {
 	for i, pathElement := range strings.Split(trimmed, PathSeparator) {
 		err := validateConfigID(pathElement)
 		if err != nil {
-			return fmt.Errorf("path element at %d is invalid: %s", i, err)
+			return errors.Wrapf(err, "path element at %d is invalid", i)
 		}
 	}
 	return nil
@@ -77,36 +68,36 @@ func validateModPolicy(modPolicy string) error {
 
 func (cm *ValidatorImpl) verifyDeltaSet(deltaSet map[string]comparable, signedData []*cb.SignedData) error {
 	if len(deltaSet) == 0 {
-		return fmt.Errorf("Delta set was empty.  Update would have no effect.")
+		return errors.Errorf("delta set was empty -- update would have no effect")
 	}
 
 	for key, value := range deltaSet {
 		logger.Debugf("Processing change to key: %s", key)
 		if err := validateModPolicy(value.modPolicy()); err != nil {
-			return fmt.Errorf("invalid mod_policy for element %s: %s", key, err)
+			return errors.Wrapf(err, "invalid mod_policy for element %s", key)
 		}
 
-		existing, ok := cm.current.configMap[key]
+		existing, ok := cm.configMap[key]
 		if !ok {
 			if value.version() != 0 {
-				return fmt.Errorf("Attempted to set key %s to version %d, but key does not exist", key, value.version())
+				return errors.Errorf("attempted to set key %s to version %d, but key does not exist", key, value.version())
 			} else {
 				continue
 			}
 
 		}
 		if value.version() != existing.version()+1 {
-			return fmt.Errorf("Attempt to set key %s to version %d, but key is at version %d", key, value.version(), existing.version())
+			return errors.Errorf("attempt to set key %s to version %d, but key is at version %d", key, value.version(), existing.version())
 		}
 
 		policy, ok := cm.policyForItem(existing)
 		if !ok {
-			return fmt.Errorf("Unexpected missing policy %s for item %s", existing.modPolicy(), key)
+			return errors.Errorf("unexpected missing policy %s for item %s", existing.modPolicy(), key)
 		}
 
 		// Ensure the policy is satisfied
 		if err := policy.Evaluate(signedData); err != nil {
-			return fmt.Errorf("Policy for %s not satisfied: %s", key, err)
+			return errors.Wrapf(err, "policy for %s not satisfied", key)
 		}
 	}
 	return nil
@@ -115,7 +106,7 @@ func (cm *ValidatorImpl) verifyDeltaSet(deltaSet map[string]comparable, signedDa
 func verifyFullProposedConfig(writeSet, fullProposedConfig map[string]comparable) error {
 	for key := range writeSet {
 		if _, ok := fullProposedConfig[key]; !ok {
-			return fmt.Errorf("Writeset contained key %s which did not appear in proposed config", key)
+			return errors.Errorf("writeset contained key %s which did not appear in proposed config", key)
 		}
 	}
 	return nil
@@ -125,7 +116,7 @@ func verifyFullProposedConfig(writeSet, fullProposedConfig map[string]comparable
 // it returns a map of the modified config
 func (cm *ValidatorImpl) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelope) (map[string]comparable, error) {
 	if configUpdateEnv == nil {
-		return nil, fmt.Errorf("Cannot process nil ConfigUpdateEnvelope")
+		return nil, errors.Errorf("cannot process nil ConfigUpdateEnvelope")
 	}
 
 	configUpdate, err := UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
@@ -133,22 +124,22 @@ func (cm *ValidatorImpl) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 		return nil, err
 	}
 
-	if configUpdate.ChannelId != cm.current.channelID {
-		return nil, fmt.Errorf("Update not for correct channel: %s for %s", configUpdate.ChannelId, cm.current.channelID)
+	if configUpdate.ChannelId != cm.channelID {
+		return nil, errors.Errorf("Update not for correct channel: %s for %s", configUpdate.ChannelId, cm.channelID)
 	}
 
 	readSet, err := MapConfig(configUpdate.ReadSet, cm.namespace)
 	if err != nil {
-		return nil, fmt.Errorf("Error mapping ReadSet: %s", err)
+		return nil, errors.Wrapf(err, "error mapping ReadSet")
 	}
-	err = cm.current.verifyReadSet(readSet)
+	err = cm.verifyReadSet(readSet)
 	if err != nil {
-		return nil, fmt.Errorf("Error validating ReadSet: %s", err)
+		return nil, errors.Wrapf(err, "error validating ReadSet")
 	}
 
 	writeSet, err := MapConfig(configUpdate.WriteSet, cm.namespace)
 	if err != nil {
-		return nil, fmt.Errorf("Error mapping WriteSet: %s", err)
+		return nil, errors.Wrapf(err, "error mapping WriteSet")
 	}
 
 	deltaSet := ComputeDeltaSet(readSet, writeSet)
@@ -158,12 +149,12 @@ func (cm *ValidatorImpl) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 	}
 
 	if err = cm.verifyDeltaSet(deltaSet, signedData); err != nil {
-		return nil, fmt.Errorf("Error validating DeltaSet: %s", err)
+		return nil, errors.Wrapf(err, "error validating DeltaSet")
 	}
 
 	fullProposedConfig := cm.computeUpdateResult(deltaSet)
 	if err := verifyFullProposedConfig(writeSet, fullProposedConfig); err != nil {
-		return nil, fmt.Errorf("Full config did not verify: %s", err)
+		return nil, errors.Wrapf(err, "full config did not verify")
 	}
 
 	return fullProposedConfig, nil
@@ -203,7 +194,7 @@ func (cm *ValidatorImpl) policyForItem(item comparable) (policies.Policy, bool) 
 // computeUpdateResult takes a configMap generated by an update and produces a new configMap overlaying it onto the old config
 func (cm *ValidatorImpl) computeUpdateResult(updatedConfig map[string]comparable) map[string]comparable {
 	newConfigMap := make(map[string]comparable)
-	for key, value := range cm.current.configMap {
+	for key, value := range cm.configMap {
 		newConfigMap[key] = value
 	}
 

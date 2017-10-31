@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package configtx
@@ -27,7 +17,7 @@ import (
 )
 
 func TestReadSetNotPresent(t *testing.T) {
-	cm := &configSet{
+	cm := &ValidatorImpl{
 		configMap: make(map[string]comparable),
 	}
 
@@ -42,7 +32,7 @@ func TestReadSetNotPresent(t *testing.T) {
 }
 
 func TestReadSetBackVersioned(t *testing.T) {
-	cm := &configSet{
+	cm := &ValidatorImpl{
 		configMap: make(map[string]comparable),
 	}
 
@@ -76,12 +66,10 @@ func TestVerifyDeltaSet(t *testing.T) {
 		pm: &mockpolicies.Manager{
 			Policy: &mockpolicies.Policy{},
 		},
-		current: &configSet{
-			configMap: make(map[string]comparable),
-		},
+		configMap: make(map[string]comparable),
 	}
 
-	cm.current.configMap["foo"] = comparable{path: []string{"foo"}}
+	cm.configMap["foo"] = comparable{path: []string{"foo"}}
 
 	t.Run("Green path", func(t *testing.T) {
 		deltaSet := make(map[string]comparable)
@@ -127,7 +115,7 @@ func TestVerifyDeltaSet(t *testing.T) {
 	t.Run("Empty delta set", func(t *testing.T) {
 		err := (&ValidatorImpl{}).verifyDeltaSet(map[string]comparable{}, nil)
 		assert.Error(t, err, "Empty delta set should be rejected")
-		assert.Contains(t, err.Error(), "Delta set was empty.  Update would have no effect.")
+		assert.Contains(t, err.Error(), "delta set was empty -- update would have no effect")
 	})
 }
 

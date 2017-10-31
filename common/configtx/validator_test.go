@@ -363,3 +363,50 @@ func TestInvalidProposal(t *testing.T) {
 		t.Error("Should have errored proposing config because the handler rejected it")
 	}
 }
+
+func TestValidateErrors(t *testing.T) {
+	t.Run("TestNilConfigEnv", func(t *testing.T) {
+		err := (&ValidatorImpl{}).Validate(nil)
+		assert.Error(t, err)
+		assert.Regexp(t, "config envelope is nil", err.Error())
+	})
+
+	t.Run("TestNilConfig", func(t *testing.T) {
+		err := (&ValidatorImpl{}).Validate(&cb.ConfigEnvelope{})
+		assert.Error(t, err)
+		assert.Regexp(t, "config envelope has nil config", err.Error())
+	})
+
+	t.Run("TestSequenceSkip", func(t *testing.T) {
+		err := (&ValidatorImpl{}).Validate(&cb.ConfigEnvelope{
+			Config: &cb.Config{
+				Sequence: 2,
+			},
+		})
+		assert.Error(t, err)
+		assert.Regexp(t, "config currently at sequence 0", err.Error())
+	})
+}
+
+func TestConstructionErrors(t *testing.T) {
+	t.Run("NilConfig", func(t *testing.T) {
+		v, err := NewValidatorImpl("test", nil, "foonamespace", &mockpolicies.Manager{})
+		assert.Nil(t, v)
+		assert.Error(t, err)
+		assert.Regexp(t, "nil config parameter", err.Error())
+	})
+
+	t.Run("NilChannelGroup", func(t *testing.T) {
+		v, err := NewValidatorImpl("test", &cb.Config{}, "foonamespace", &mockpolicies.Manager{})
+		assert.Nil(t, v)
+		assert.Error(t, err)
+		assert.Regexp(t, "nil channel group", err.Error())
+	})
+
+	t.Run("BadChannelID", func(t *testing.T) {
+		v, err := NewValidatorImpl("*&$#@*&@$#*&", &cb.Config{ChannelGroup: &cb.ConfigGroup{}}, "foonamespace", &mockpolicies.Manager{})
+		assert.Nil(t, v)
+		assert.Error(t, err)
+		assert.Regexp(t, "bad channel ID", err.Error())
+	})
+}
