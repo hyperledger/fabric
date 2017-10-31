@@ -16,13 +16,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setup(configPath string) (MSP, error) {
+func setup(configPath string, ID string) (MSP, error) {
 	msp, err := newIdemixMsp()
 	if err != nil {
 		return nil, err
 	}
 
-	conf, err := GetIdemixMspConfig(configPath)
+	conf, err := GetIdemixMspConfig(configPath, ID)
 	if err != nil {
 		return nil, errors.Wrap(err, "Getting MSP config failed")
 	}
@@ -54,14 +54,14 @@ func getDefaultSigner(msp MSP) (SigningIdentity, error) {
 }
 
 func TestSetup(t *testing.T) {
-	msp, err := setup("testdata/idemix/MSP1OU1")
+	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	assert.Equal(t, IDEMIX, msp.GetType())
 }
 
 func TestSetupBad(t *testing.T) {
-	_, err := setup("testdata/idemix/badpath")
+	_, err := setup("testdata/idemix/badpath", "MSPID")
 	assert.Error(t, err)
 
 	msp1, err := newIdemixMsp()
@@ -81,7 +81,7 @@ func TestSetupBad(t *testing.T) {
 	err = msp1.Setup(conf)
 	assert.Error(t, err)
 
-	conf, err = GetIdemixMspConfig("testdata/idemix/MSP1OU1")
+	conf, err = GetIdemixMspConfig("testdata/idemix/MSP1OU1", "IdemixMSP1")
 	idemixconfig := &msp.IdemixMSPConfig{}
 	err = proto.Unmarshal(conf.Config, idemixconfig)
 	assert.NoError(t, err)
@@ -115,7 +115,7 @@ func TestSetupBad(t *testing.T) {
 }
 
 func TestSigning(t *testing.T) {
-	msp, err := setup("testdata/idemix/MSP1OU1")
+	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1")
 	assert.NoError(t, err)
 
 	id, err := getDefaultSigner(msp)
@@ -131,7 +131,7 @@ func TestSigning(t *testing.T) {
 	err = id.Verify([]byte("OtherMessage"), sig)
 	assert.Error(t, err)
 
-	verMsp, err := setup("testdata/idemix/MSP1Verifier")
+	verMsp, err := setup("testdata/idemix/MSP1Verifier", "MSP1")
 	assert.NoError(t, err)
 	err = verMsp.Validate(id)
 	assert.NoError(t, err)
@@ -140,7 +140,7 @@ func TestSigning(t *testing.T) {
 }
 
 func TestSigningBad(t *testing.T) {
-	msp, err := setup("testdata/idemix/MSP1OU1")
+	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id, err := getDefaultSigner(msp)
@@ -154,7 +154,7 @@ func TestSigningBad(t *testing.T) {
 }
 
 func TestIdentitySerialization(t *testing.T) {
-	msp, err := setup("testdata/idemix/MSP1OU1")
+	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id, err := getDefaultSigner(msp)
@@ -174,7 +174,7 @@ func TestIdentitySerialization(t *testing.T) {
 }
 
 func TestIdentitySerializationBad(t *testing.T) {
-	msp, err := setup("testdata/idemix/MSP1OU1")
+	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	_, err = msp.DeserializeIdentity([]byte("barf"))
@@ -182,9 +182,9 @@ func TestIdentitySerializationBad(t *testing.T) {
 }
 
 func TestIdentitySerializationWrongMSP(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
-	msp2, err := setup("testdata/idemix/MSP2OU1")
+	msp2, err := setup("testdata/idemix/MSP2OU1", "MSP2OU1")
 	assert.NoError(t, err)
 	id2, err := getDefaultSigner(msp2)
 	assert.NoError(t, err)
@@ -197,7 +197,7 @@ func TestIdentitySerializationWrongMSP(t *testing.T) {
 }
 
 func TestPrincipalIdentity(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -215,13 +215,13 @@ func TestPrincipalIdentity(t *testing.T) {
 }
 
 func TestPrincipalIdentityWrongIdentity(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
 	assert.NoError(t, err)
 
-	msp2, err := setup("testdata/idemix/MSP1OU2")
+	msp2, err := setup("testdata/idemix/MSP1OU2", "MSP1OU2")
 	assert.NoError(t, err)
 
 	id2, err := getDefaultSigner(msp2)
@@ -239,7 +239,7 @@ func TestPrincipalIdentityWrongIdentity(t *testing.T) {
 }
 
 func TestPrincipalIdentityBadIdentity(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -256,7 +256,7 @@ func TestPrincipalIdentityBadIdentity(t *testing.T) {
 }
 
 func TestIdemixIsWellFormed(t *testing.T) {
-	idemixMSP, err := setup("testdata/idemix/MSP1OU1")
+	idemixMSP, err := setup("testdata/idemix/MSP1OU1", "TestName")
 	assert.NoError(t, err)
 
 	id, err := getDefaultSigner(idemixMSP)
@@ -276,7 +276,7 @@ func TestIdemixIsWellFormed(t *testing.T) {
 }
 
 func TestPrincipalOU(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -299,7 +299,7 @@ func TestPrincipalOU(t *testing.T) {
 }
 
 func TestPrincipalOUWrongOU(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -322,7 +322,7 @@ func TestPrincipalOUWrongOU(t *testing.T) {
 }
 
 func TestPrincipalOUWrongMSP(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -345,7 +345,7 @@ func TestPrincipalOUWrongMSP(t *testing.T) {
 }
 
 func TestPrincipalOUBad(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -363,7 +363,7 @@ func TestPrincipalOUBad(t *testing.T) {
 }
 
 func TestPrincipalRoleMember(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -381,7 +381,7 @@ func TestPrincipalRoleMember(t *testing.T) {
 }
 
 func TestPrincipalRoleAdmin(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1Admin")
+	msp1, err := setup("testdata/idemix/MSP1OU1Admin", "MSP1OU1Admin")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -410,7 +410,7 @@ func TestPrincipalRoleAdmin(t *testing.T) {
 }
 
 func TestPrincipalRoleNotAdmin(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -428,7 +428,7 @@ func TestPrincipalRoleNotAdmin(t *testing.T) {
 }
 
 func TestPrincipalRoleWrongMSP(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -446,7 +446,7 @@ func TestPrincipalRoleWrongMSP(t *testing.T) {
 }
 
 func TestPrincipalRoleBadRole(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -465,7 +465,7 @@ func TestPrincipalRoleBadRole(t *testing.T) {
 }
 
 func TestPrincipalBad(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1")
+	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	assert.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
