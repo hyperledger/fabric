@@ -74,7 +74,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 		return nil, fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
-	prop, _, err := utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, policyMarhsalled, []byte(escc), []byte(vscc))
+	prop, _, err := utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc))
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal %s: %s", chainFuncName, err)
 	}

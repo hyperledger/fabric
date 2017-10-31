@@ -187,7 +187,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		if err != nil {
 			return fmt.Errorf("Invalid policy %s", policy)
 		}
-		policyMarhsalled = putils.MarshalOrPanic(p)
+		policyMarshalled = putils.MarshalOrPanic(p)
 	}
 
 	// Check that non-empty chaincode parameters contain only Args as a key.

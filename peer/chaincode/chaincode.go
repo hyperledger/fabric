@@ -64,7 +64,7 @@ var (
 	policy            string
 	escc              string
 	vscc              string
-	policyMarhsalled  []byte
+	policyMarshalled  []byte
 	orderingEndpoint  string
 	tls               bool
 	caFile            string
