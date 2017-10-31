@@ -43,7 +43,7 @@ func TestBundleSource(t *testing.T) {
 	assert.True(t, calledBack)
 	assert.Equal(t, b, calledBackWith)
 
-	assert.Equal(t, b.ConfigtxManager(), bs.ConfigtxManager())
+	assert.Equal(t, b.ConfigtxValidator(), bs.ConfigtxValidator())
 	assert.Equal(t, b.PolicyManager(), bs.PolicyManager())
 	assert.Equal(t, b.APIPolicyMapper(), bs.APIPolicyMapper())
 	assert.Equal(t, b.ChannelConfig(), bs.ChannelConfig())

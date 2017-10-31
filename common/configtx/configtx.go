@@ -4,15 +4,15 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package api
+package configtx
 
 import (
-	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-// Manager provides a mechanism to query and update config
-type Manager interface {
+// Validator provides a mechanism to propose config updates, see the config update results
+// and validate the results of a config update.
+type Validator interface {
 	// Validate attempts to apply a configtx to become the new config
 	Validate(configEnv *cb.ConfigEnvelope) error
 
@@ -27,14 +27,4 @@ type Manager interface {
 
 	// Sequence returns the current sequence number of the config
 	Sequence() uint64
-}
-
-// Proposer contains the references necessary to appropriately unmarshal
-// a cb.ConfigGroup
-type Proposer interface {
-	// RootGroupKey is the string to use to namespace the root group
-	RootGroupKey() string
-
-	// PolicyManager() returns the policy manager for considering config changes
-	PolicyManager() policies.Manager
 }

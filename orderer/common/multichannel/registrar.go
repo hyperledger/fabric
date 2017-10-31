@@ -59,7 +59,7 @@ func checkResources(res channelconfig.Resources) error {
 // checkResourcesOrPanic invokes checkResources and panics if an error is returned
 func checkResourcesOrPanic(res channelconfig.Resources) {
 	if err := checkResources(res); err != nil {
-		logger.Panicf("[channel %s] %s", res.ConfigtxManager().ChainID(), err)
+		logger.Panicf("[channel %s] %s", res.ConfigtxValidator().ChainID(), err)
 	}
 }
 
@@ -84,7 +84,7 @@ func (cr *configResources) Update(bndl *channelconfig.Bundle) {
 func (cr *configResources) SharedConfig() channelconfig.Orderer {
 	oc, ok := cr.OrdererConfig()
 	if !ok {
-		logger.Panicf("[channel %s] has no orderer configuration", cr.ConfigtxManager().ChainID())
+		logger.Panicf("[channel %s] has no orderer configuration", cr.ConfigtxValidator().ChainID())
 	}
 	return oc
 }
@@ -142,7 +142,7 @@ func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.
 			logger.Panic("Programming error, configTx should never be nil here")
 		}
 		ledgerResources := r.newLedgerResources(configTx)
-		chainID := ledgerResources.ConfigtxManager().ChainID()
+		chainID := ledgerResources.ConfigtxValidator().ChainID()
 
 		if _, ok := ledgerResources.ConsortiumsConfig(); ok {
 			if r.systemChannelID != "" {
@@ -279,7 +279,7 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 	}
 
 	cs := newChainSupport(r, ledgerResources, r.consenters, r.signer)
-	chainID := ledgerResources.ConfigtxManager().ChainID()
+	chainID := ledgerResources.ConfigtxValidator().ChainID()
 
 	logger.Infof("Created and starting new chain %s", chainID)
 

@@ -8,14 +8,14 @@ package config
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 )
 
 type Resources struct {
-	// ConfigtxManagerVal is returned as the result of ConfigtxManager
-	ConfigtxManagerVal configtxapi.Manager
+	// ConfigtxValidatorVal is returned as the result of ConfigtxValidator
+	ConfigtxValidatorVal configtx.Validator
 
 	// PolicyManagerVal is returned as the result of PolicyManager()
 	PolicyManagerVal policies.Manager
@@ -39,9 +39,9 @@ type Resources struct {
 	ValidateNewErr error
 }
 
-// ConfigtxMangaer returns ConfigtxManagerVal
-func (r *Resources) ConfigtxManager() configtxapi.Manager {
-	return r.ConfigtxManagerVal
+// ConfigtxMangaer returns ConfigtxValidatorVal
+func (r *Resources) ConfigtxValidator() configtx.Validator {
+	return r.ConfigtxValidatorVal
 }
 
 // Returns the PolicyManagerVal

@@ -188,7 +188,7 @@ func TestNewChain(t *testing.T) {
 	res, err := manager.NewChannelConfig(envConfigUpdate)
 	assert.NoError(t, err, "Constructing initial channel config")
 
-	configEnv, err := res.ConfigtxManager().ProposeConfigUpdate(envConfigUpdate)
+	configEnv, err := res.ConfigtxValidator().ProposeConfigUpdate(envConfigUpdate)
 	assert.NoError(t, err, "Proposing initial update")
 	assert.Equal(t, expectedLastConfigSeq, configEnv.GetConfig().Sequence, "Sequence of config envelope for new channel should always be set to %d", expectedLastConfigSeq)
 

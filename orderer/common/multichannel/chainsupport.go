@@ -41,7 +41,7 @@ func newChainSupport(
 	// Assuming a block created with cb.NewBlock(), this should not
 	// error even if the orderer metadata is an empty byte slice
 	if err != nil {
-		logger.Fatalf("[channel: %s] Error extracting orderer metadata: %s", ledgerResources.ConfigtxManager().ChainID(), err)
+		logger.Fatalf("[channel: %s] Error extracting orderer metadata: %s", ledgerResources.ConfigtxValidator().ChainID(), err)
 	}
 
 	// Construct limited support needed as a parameter for additional support
@@ -92,14 +92,14 @@ func (cs *ChainSupport) BlockCutter() blockcutter.Receiver {
 	return cs.cutter
 }
 
-// Validate passes through to the underlying configtxapi.Manager
+// Validate passes through to the underlying configtx.Validator
 func (cs *ChainSupport) Validate(configEnv *cb.ConfigEnvelope) error {
-	return cs.ConfigtxManager().Validate(configEnv)
+	return cs.ConfigtxValidator().Validate(configEnv)
 }
 
-// ProposeConfigUpdate passes through to the underlying configtxapi.Manager
+// ProposeConfigUpdate passes through to the underlying configtx.Validator
 func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
-	env, err := cs.ConfigtxManager().ProposeConfigUpdate(configtx)
+	env, err := cs.ConfigtxValidator().ProposeConfigUpdate(configtx)
 	if err != nil {
 		return nil, err
 	}
@@ -116,17 +116,17 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 	return env, cs.ValidateNew(bundle)
 }
 
-// ChainID passes through to the underlying configtxapi.Manager
+// ChainID passes through to the underlying configtx.Validator
 func (cs *ChainSupport) ChainID() string {
-	return cs.ConfigtxManager().ChainID()
+	return cs.ConfigtxValidator().ChainID()
 }
 
-// ConfigProto passes through to the underlying configtxapi.Manager
+// ConfigProto passes through to the underlying configtx.Validator
 func (cs *ChainSupport) ConfigProto() *cb.Config {
-	return cs.ConfigtxManager().ConfigProto()
+	return cs.ConfigtxValidator().ConfigProto()
 }
 
-// Sequence passes through to the underlying configtxapi.Manager
+// Sequence passes through to the underlying configtx.Validator
 func (cs *ChainSupport) Sequence() uint64 {
-	return cs.ConfigtxManager().Sequence()
+	return cs.ConfigtxValidator().Sequence()
 }

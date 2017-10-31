@@ -44,7 +44,7 @@ type GossipService interface {
 	// DistributePrivateData distributes private data to the peers in the collections
 	// according to policies induced by the PolicyStore and PolicyParser
 	DistributePrivateData(chainID string, txID string, privateData *rwset.TxPvtReadWriteSet) error
-	// NewConfigEventer creates a ConfigProcessor which the configtx.Manager can ultimately route config updates to
+	// NewConfigEventer creates a ConfigProcessor which the channelconfig.BundleSource can ultimately route config updates to
 	NewConfigEventer() ConfigProcessor
 	// InitializeChannel allocates the state provider and should be invoked once per channel per execution
 	InitializeChannel(chainID string, endpoints []string, support Support)
@@ -192,7 +192,7 @@ func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, p
 	return nil
 }
 
-// NewConfigEventer creates a ConfigProcessor which the configtx.Manager can ultimately route config updates to
+// NewConfigEventer creates a ConfigProcessor which the channelconfig.BundleSource can ultimately route config updates to
 func (g *gossipServiceImpl) NewConfigEventer() ConfigProcessor {
 	return newConfigEventer(g)
 }

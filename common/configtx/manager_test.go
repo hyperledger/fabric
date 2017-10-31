@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"testing"
 
-	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -21,12 +20,9 @@ import (
 
 var defaultChain = "default.chain.id"
 
-func defaultInitializer() *mockconfigtx.Initializer {
-	return &mockconfigtx.Initializer{
-		PolicyManagerVal: &mockpolicies.Manager{
-			Policy: &mockpolicies.Policy{},
-		},
-		RootGroupKeyVal: "foo",
+func defaultPolicyManager() *mockpolicies.Manager {
+	return &mockpolicies.Manager{
+		Policy: &mockpolicies.Policy{},
 	}
 }
 
@@ -54,20 +50,6 @@ func makeConfig(configPairs ...*configPair) *cb.Config {
 
 	return &cb.Config{
 		ChannelGroup: channelGroup,
-	}
-}
-
-func makeEnvelopeConfig(channelID string, configPairs ...*configPair) *cb.Envelope {
-	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
-			Header: &cb.Header{
-				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
-					Type:      int32(cb.HeaderType_CONFIG),
-					ChannelId: channelID,
-				}),
-			},
-			Data: utils.MarshalOrPanic(makeConfig(configPairs...)),
-		}),
 	}
 }
 
@@ -99,16 +81,17 @@ func makeConfigUpdateEnvelope(chainID string, readSet, writeSet *cb.ConfigGroup)
 }
 
 func TestEmptyChannel(t *testing.T) {
-	_, err := NewManagerImpl("foo", &cb.Config{}, defaultInitializer())
+	_, err := NewValidatorImpl("foo", &cb.Config{}, "foonamespace", defaultPolicyManager())
 	assert.Error(t, err)
 }
 
 // TestDifferentChainID tests that a config update for a different chain ID fails
 func TestDifferentChainID(t *testing.T) {
-	cm, err := NewManagerImpl(
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
-		defaultInitializer())
+		"foonamespace",
+		defaultPolicyManager())
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
@@ -124,10 +107,11 @@ func TestDifferentChainID(t *testing.T) {
 
 // TestOldConfigReplay tests that resubmitting a config for a sequence number which is not newer is ignored
 func TestOldConfigReplay(t *testing.T) {
-	cm, err := NewManagerImpl(
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
-		defaultInitializer())
+		"foonamespace",
+		defaultPolicyManager())
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
@@ -143,10 +127,11 @@ func TestOldConfigReplay(t *testing.T) {
 
 // TestValidConfigChange tests the happy path of updating a config value with no defaultModificationPolicy
 func TestValidConfigChange(t *testing.T) {
-	cm, err := NewManagerImpl(
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
-		defaultInitializer())
+		"foonamespace",
+		defaultPolicyManager())
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
@@ -168,10 +153,11 @@ func TestValidConfigChange(t *testing.T) {
 // TestConfigChangeRegressedSequence tests to make sure that a new config cannot roll back one of the
 // config values while advancing another
 func TestConfigChangeRegressedSequence(t *testing.T) {
-	cm, err := NewManagerImpl(
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 1, []byte("foo"))),
-		defaultInitializer())
+		"foonamespace",
+		defaultPolicyManager())
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
@@ -192,10 +178,11 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 // TestConfigChangeOldSequence tests to make sure that a new config cannot roll back one of the
 // config values while advancing another
 func TestConfigChangeOldSequence(t *testing.T) {
-	cm, err := NewManagerImpl(
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 1, []byte("foo"))),
-		defaultInitializer())
+		"foonamespace",
+		defaultPolicyManager())
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
@@ -219,13 +206,14 @@ func TestConfigChangeOldSequence(t *testing.T) {
 // TestConfigPartialUpdate tests to make sure that a new config can set only part
 // of the config and still be accepted
 func TestConfigPartialUpdate(t *testing.T) {
-	cm, err := NewManagerImpl(
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(
 			makeConfigPair("foo", "foo", 0, []byte("foo")),
 			makeConfigPair("bar", "bar", 0, []byte("bar")),
 		),
-		defaultInitializer())
+		"foonamespace",
+		defaultPolicyManager())
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
@@ -243,10 +231,11 @@ func TestConfigPartialUpdate(t *testing.T) {
 
 // TestEmptyConfigUpdate tests to make sure that an empty config is rejected as an update
 func TestEmptyConfigUpdate(t *testing.T) {
-	cm, err := NewManagerImpl(
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
-		defaultInitializer())
+		"foonamespace",
+		defaultPolicyManager())
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
@@ -264,13 +253,14 @@ func TestEmptyConfigUpdate(t *testing.T) {
 // is substituted into an otherwise valid new config, that the new config is rejected for attempting a modification without
 // increasing the config item's LastModified
 func TestSilentConfigModification(t *testing.T) {
-	cm, err := NewManagerImpl(
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(
 			makeConfigPair("foo", "foo", 0, []byte("foo")),
 			makeConfigPair("bar", "bar", 0, []byte("bar")),
 		),
-		defaultInitializer())
+		"foonamespace",
+		defaultPolicyManager())
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
@@ -294,17 +284,18 @@ func TestSilentConfigModification(t *testing.T) {
 // TestConfigChangeViolatesPolicy checks to make sure that if policy rejects the validation of a config item that
 // it is rejected in a config update
 func TestConfigChangeViolatesPolicy(t *testing.T) {
-	initializer := defaultInitializer()
-	cm, err := NewManagerImpl(
+	pm := defaultPolicyManager()
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
-		initializer)
+		"foonamespace",
+		pm)
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 	// Set the mock policy to error
-	initializer.PolicyManagerVal.Policy.Err = fmt.Errorf("err")
+	pm.Policy.Err = fmt.Errorf("err")
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
@@ -317,19 +308,20 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 // TestUnchangedConfigViolatesPolicy checks to make sure that existing config items are not revalidated against their modification policies
 // as the policy may have changed, certs revoked, etc. since the config was adopted.
 func TestUnchangedConfigViolatesPolicy(t *testing.T) {
-	initializer := defaultInitializer()
-	cm, err := NewManagerImpl(
+	pm := defaultPolicyManager()
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
-		initializer)
+		"foonamespace",
+		pm)
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
 	// Set the mock policy to error
-	initializer.PolicyManagerVal.PolicyMap = make(map[string]policies.Policy)
-	initializer.PolicyManagerVal.PolicyMap["foo"] = &mockpolicies.Policy{Err: fmt.Errorf("err")}
+	pm.PolicyMap = make(map[string]policies.Policy)
+	pm.PolicyMap["foo"] = &mockpolicies.Policy{Err: fmt.Errorf("err")}
 
 	newConfig := makeConfigUpdateEnvelope(
 		defaultChain,
@@ -351,17 +343,18 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 // TestInvalidProposal checks that even if the policy allows the transaction and the sequence etc. is well formed,
 // that if the handler does not accept the config, it is rejected
 func TestInvalidProposal(t *testing.T) {
-	initializer := defaultInitializer()
-	cm, err := NewManagerImpl(
+	pm := defaultPolicyManager()
+	cm, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
-		initializer)
+		"foonamespace",
+		pm)
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	initializer.PolicyManagerVal.Policy.Err = fmt.Errorf("err")
+	pm.Policy.Err = fmt.Errorf("err")
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 

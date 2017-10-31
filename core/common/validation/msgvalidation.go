@@ -268,7 +268,7 @@ func validateConfigTransaction(data []byte, hdr *common.Header) error {
 		return errors.New("Nil arguments")
 	}
 
-	// There is no need to do this validation here, the configtx.Manager handles this
+	// There is no need to do this validation here, the configtx.Validator handles this
 
 	return nil
 }

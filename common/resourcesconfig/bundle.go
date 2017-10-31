@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -32,7 +31,7 @@ type Bundle struct {
 	resConf   *cb.Config
 	chanConf  channelconfig.Resources
 	rg        *resourceGroup
-	cm        configtxapi.Manager
+	cm        configtx.Validator
 	pm        *policyRouter
 }
 
@@ -83,8 +82,8 @@ func (b *Bundle) RootGroupKey() string {
 	return RootGroupKey
 }
 
-// ConfigtxManager returns a reference to a configtx.Manager which can process updates to this config.
-func (b *Bundle) ConfigtxManager() configtxapi.Manager {
+// ConfigtxValidator returns a reference to a configtx.Validator which can process updates to this config.
+func (b *Bundle) ConfigtxValidator() configtx.Validator {
 	return b.cm
 }
 
@@ -153,7 +152,7 @@ func (b *Bundle) NewFromChannelConfig(chanConf channelconfig.Resources) (*Bundle
 		resConf: b.resConf,
 	}
 
-	result.cm, err = configtx.NewManagerImpl(b.channelID, b.resConf, b)
+	result.cm, err = configtx.NewValidatorImpl(b.channelID, result.resConf, RootGroupKey, result.pm)
 	if err != nil {
 		return nil, err
 	}

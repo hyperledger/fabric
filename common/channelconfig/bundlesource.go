@@ -9,7 +9,7 @@ package channelconfig
 import (
 	"sync/atomic"
 
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 )
@@ -83,15 +83,15 @@ func (bs *BundleSource) ConsortiumsConfig() (Consortiums, bool) {
 	return bs.StableBundle().ConsortiumsConfig()
 }
 
-// ApplicationConfig returns the configtxapplication.SharedConfig for the channel
+// ApplicationConfig returns the Application config for the channel
 // and whether the Application config exists
 func (bs *BundleSource) ApplicationConfig() (Application, bool) {
 	return bs.StableBundle().ApplicationConfig()
 }
 
-// ConfigtxManager returns the configtx.Manager for the channel
-func (bs *BundleSource) ConfigtxManager() configtxapi.Manager {
-	return bs.StableBundle().ConfigtxManager()
+// ConfigtxValidator returns the configtx.Validator for the channel
+func (bs *BundleSource) ConfigtxValidator() configtx.Validator {
+	return bs.StableBundle().ConfigtxValidator()
 }
 
 // ValidateNew passes through to the current bundle
