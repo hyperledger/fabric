@@ -1,3 +1,17 @@
+## v1.0.4
+Tue Oct 31 09:17:51 EDT 2017
+
+* [b043904](https://github.com/hyperledger/fabric/commit/b043904) [FAB-6779](https://jira.hyperledger.org/browse/FAB-6779) Allow rebuilding block storage indexes
+* [ee23940](https://github.com/hyperledger/fabric/commit/ee23940) [FAB-6345](https://jira.hyperledger.org/browse/FAB-6345) examples/configupdate some error.
+* [fa562e2](https://github.com/hyperledger/fabric/commit/fa562e2) [FAB-6279](https://jira.hyperledger.org/browse/FAB-6279) Fix minor typos in documentation
+* [5aea52b](https://github.com/hyperledger/fabric/commit/5aea52b) [FAB-6738](https://jira.hyperledger.org/browse/FAB-6738) GetState in CouchDB fails to return database
+* [efd8dab](https://github.com/hyperledger/fabric/commit/efd8dab) [FAB-6307](https://jira.hyperledger.org/browse/FAB-6307) Fix WYFA to reflect new folder
+* [15ce217](https://github.com/hyperledger/fabric/commit/15ce217) [FAB-6488](https://jira.hyperledger.org/browse/FAB-6488) Fixing a typo in chaincode4noah.rst
+* [5226188](https://github.com/hyperledger/fabric/commit/5226188) [FAB-5964](https://jira.hyperledger.org/browse/FAB-5964) BCCSP PKCS11 CKA_LABEL set to SKI
+* [572dcd5](https://github.com/hyperledger/fabric/commit/572dcd5) [FAB-6592](https://jira.hyperledger.org/browse/FAB-6592) Update docs in release branch
+* [5afac39](https://github.com/hyperledger/fabric/commit/5afac39) [FAB-6366](https://jira.hyperledger.org/browse/FAB-6366) Add ci.properties file
+* [26eb660](https://github.com/hyperledger/fabric/commit/26eb660) [FAB-6376](https://jira.hyperledger.org/browse/FAB-6376) Prepare fabric for v1.0.4 release
+
 ## v1.0.3
 Tue Oct  3 05:02:04 EDT 2017
 
