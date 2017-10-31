@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package capabilities
 
 import (
+	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -15,17 +16,6 @@ const (
 
 	// ChannelV1_1 is the capabilties string for standard new non-backwards compatible fabric v1.1 channel capabilities.
 	ChannelV1_1 = "V1.1"
-)
-
-// MSPVersion is used to communicate the level of the Channel MSP to the MSP implementations.
-type MSPVersion int
-
-const (
-	// MSPv1_0 is the version of the MSP framework shipped with v1.0.x of fabric.
-	MSPv1_0 = iota
-
-	// MSPv1_1 is the version of the MSP framework enabled in v1.1.0 of fabric.
-	MSPv1_1
 )
 
 // ChannelProvider provides capabilities information for channel level config.
@@ -59,11 +49,11 @@ func (cp *ChannelProvider) HasCapability(capability string) bool {
 }
 
 // MSPVersion returns the level of MSP support required by this channel.
-func (cp *ChannelProvider) MSPVersion() MSPVersion {
+func (cp *ChannelProvider) MSPVersion() msp.MSPVersion {
 	switch {
 	case cp.v11:
-		return MSPv1_1
+		return msp.MSPv1_1
 	default:
-		return MSPv1_0
+		return msp.MSPv1_0
 	}
 }

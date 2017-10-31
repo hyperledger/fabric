@@ -32,6 +32,11 @@ func (m *MockMSP) Setup(config *pmsp.MSPConfig) error {
 	return args.Error(0)
 }
 
+func (m *MockMSP) GetVersion() msp.MSPVersion {
+	args := m.Called()
+	return args.Get(0).(msp.MSPVersion)
+}
+
 func (m *MockMSP) GetType() msp.ProviderType {
 	args := m.Called()
 	return args.Get(0).(msp.ProviderType)

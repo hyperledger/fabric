@@ -11,13 +11,14 @@ import (
 
 	cb "github.com/hyperledger/fabric/protos/common"
 
+	"github.com/hyperledger/fabric/msp"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestChannelV10(t *testing.T) {
 	op := NewChannelProvider(map[string]*cb.Capability{})
 	assert.NoError(t, op.Supported())
-	assert.True(t, op.MSPVersion() == MSPv1_0)
+	assert.True(t, op.MSPVersion() == msp.MSPv1_0)
 }
 
 func TestChannelV11(t *testing.T) {
@@ -25,5 +26,5 @@ func TestChannelV11(t *testing.T) {
 		ChannelV1_1: &cb.Capability{},
 	})
 	assert.NoError(t, op.Supported())
-	assert.True(t, op.MSPVersion() == MSPv1_1)
+	assert.True(t, op.MSPVersion() == msp.MSPv1_1)
 }

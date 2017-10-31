@@ -157,6 +157,11 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	return nil
 }
 
+// GetVersion returns the version of this MSP
+func (msp *idemixmsp) GetVersion() MSPVersion {
+	return MSPv1_1
+}
+
 func (msp *idemixmsp) GetType() ProviderType {
 	return IDEMIX
 }

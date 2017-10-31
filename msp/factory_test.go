@@ -48,6 +48,11 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalValidateIdentityOusFunc).Pointer()).Name(), "github.com/hyperledger/fabric/msp.(*bccspmsp).(github.com/hyperledger/fabric/msp.validateIdentityOUsV11)-fm")
 
 	i, err = New(&IdemixNewOpts{NewBaseOpts{Version: MSPv1_0}})
+	assert.Error(t, err)
+	assert.Nil(t, i)
+	assert.Contains(t, err.Error(), "Invalid *IdemixNewOpts. Version not recognized [0]")
+
+	i, err = New(&IdemixNewOpts{NewBaseOpts{Version: MSPv1_1}})
 	assert.NoError(t, err)
 	assert.NotNil(t, i)
 }

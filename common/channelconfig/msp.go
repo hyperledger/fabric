@@ -9,7 +9,6 @@ package channelconfig
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -24,11 +23,11 @@ type pendingMSPConfig struct {
 
 // MSPConfigHandler
 type MSPConfigHandler struct {
-	version capabilities.MSPVersion
+	version msp.MSPVersion
 	idMap   map[string]*pendingMSPConfig
 }
 
-func NewMSPConfigHandler(mspVersion capabilities.MSPVersion) *MSPConfigHandler {
+func NewMSPConfigHandler(mspVersion msp.MSPVersion) *MSPConfigHandler {
 	return &MSPConfigHandler{
 		version: mspVersion,
 		idMap:   make(map[string]*pendingMSPConfig),
@@ -37,15 +36,13 @@ func NewMSPConfigHandler(mspVersion capabilities.MSPVersion) *MSPConfigHandler {
 
 // ProposeValue called when an org defines an MSP
 func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP, error) {
-	// TODO utilize bh.version to initialize the MSP
-
 	// check that the type for that MSP is supported
 	if mspConfig.Type != int32(msp.FABRIC) {
 		return nil, fmt.Errorf("Setup error: unsupported msp type %d", mspConfig.Type)
 	}
 
 	// create the msp instance
-	mspInst, err := msp.New(&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_0}})
+	mspInst, err := msp.New(&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: bh.version}})
 	if err != nil {
 		return nil, fmt.Errorf("Creating the MSP manager failed, err %s", err)
 	}

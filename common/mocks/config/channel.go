@@ -17,9 +17,9 @@ limitations under the License.
 package config
 
 import (
-	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/msp"
 )
 
 func nearIdentityHash(input []byte) []byte {
@@ -67,7 +67,7 @@ type ChannelCapabilities struct {
 	SupportedErr error
 
 	// MSPVersionVal is returned by MSPVersion()
-	MSPVersionVal capabilities.MSPVersion
+	MSPVersionVal msp.MSPVersion
 }
 
 // Supported returns SupportedErr
@@ -76,6 +76,6 @@ func (cc *ChannelCapabilities) Supported() error {
 }
 
 // MSPVersion returns MSPVersionVal
-func (cc *ChannelCapabilities) MSPVersion() capabilities.MSPVersion {
+func (cc *ChannelCapabilities) MSPVersion() msp.MSPVersion {
 	return cc.MSPVersionVal
 }

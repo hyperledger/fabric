@@ -35,6 +35,10 @@ func (msp *noopmsp) Setup(*msp.MSPConfig) error {
 	return nil
 }
 
+func (msp *noopmsp) GetVersion() m.MSPVersion {
+	return m.MSPv1_0
+}
+
 func (msp *noopmsp) GetType() m.ProviderType {
 	return 0
 }
