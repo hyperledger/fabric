@@ -25,7 +25,7 @@ execute the following commands:
 
 .. code:: bash
 
-  git clone https://github.com/hyperledger/fabric-samples.git
+  git clone -b master https://github.com/hyperledger/fabric-samples.git
   cd fabric-samples
 
 .. _binaries:
@@ -44,7 +44,7 @@ you will extract the platform-specific binaries:
 
 .. code:: bash
 
-  curl -sSL https://goo.gl/Q3YRTi | bash
+  curl -sSL https://goo.gl/fMh2s3 | bash
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl. Please visit the
