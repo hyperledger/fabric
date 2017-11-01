@@ -38,12 +38,12 @@ func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, err
 
 	if lastFileNum == -1 {
 		cpInfo := &checkpointInfo{0, 0, true, 0}
-		logger.Info("No block file found")
+		logger.Debugf("No block file found")
 		return cpInfo, nil
 	}
 
 	fileInfo := getFileInfoOrPanic(rootDir, lastFileNum)
-	logger.Infof("Last Block file info: FileName=[%s], FileSize=[%d]", fileInfo.Name(), fileInfo.Size())
+	logger.Debugf("Last Block file info: FileName=[%s], FileSize=[%d]", fileInfo.Name(), fileInfo.Size())
 	if lastBlockBytes, endOffsetLastBlock, numBlocksInFile, err = scanForLastCompleteBlock(rootDir, lastFileNum, 0); err != nil {
 		logger.Errorf("Error while scanning last file [file num=%d]: %s", lastFileNum, err)
 		return nil, err
@@ -52,7 +52,7 @@ func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, err
 	if numBlocksInFile == 0 && lastFileNum > 0 {
 		secondLastFileNum := lastFileNum - 1
 		fileInfo := getFileInfoOrPanic(rootDir, secondLastFileNum)
-		logger.Infof("Second last Block file info: FileName=[%s], FileSize=[%d]", fileInfo.Name(), fileInfo.Size())
+		logger.Debugf("Second last Block file info: FileName=[%s], FileSize=[%d]", fileInfo.Name(), fileInfo.Size())
 		if lastBlockBytes, _, _, err = scanForLastCompleteBlock(rootDir, secondLastFileNum, 0); err != nil {
 			logger.Errorf("Error while scanning second last file [file num=%d]: %s", secondLastFileNum, err)
 			return nil, err
