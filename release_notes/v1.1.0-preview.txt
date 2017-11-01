@@ -1,0 +1,49 @@
+v1.1.0-preview November 1, 2017
+-------------------------------
+
+Release Notes
+-------------
+This is a *preview* release of the up-coming 1.1 release. We are not feature
+complete for 1.1 just yet, but we wanted to get the following functionality
+published to gain some early community feedback on the following features:
+
+  - https://jira.hyperledger.org/browse/FAB-2331- Node.js Chaincode
+  - https://jira.hyperledger.org/browse/FAB-5363 - Node.js SDK Connection Profile
+  - https://jira.hyperledger.org/browse/FAB-830 - Encryption library for chaincode
+  - https://jira.hyperledger.org/browse/FAB-5346 - Attribute-based Access Control
+  - https://jira.hyperledger.org/browse/FAB-6089 - Chaincode APIs to retrieve
+    creator cert info
+  - https://jira.hyperledger.org/browse/FAB-6421 - Performance improvements
+
+Additionally, there are the usual bug fixes, documentation and test coverage
+improvements, UX improvements based on user feedback and changes to address a
+variety of static scan findings (unused code, static security scanning, spelling,
+linting and more).
+
+Known Vulnerabilities
+---------------------
+none
+
+Resolved Vulnerabilities
+------------------------
+none
+
+Known Issues & Workarounds
+--------------------------
+The fabric-ccenv image which is used to build chaincode, currently includes
+the github.com/hyperledger/fabric/core/chaincode/shim ("shim") package.
+This is convenient, as it provides the ability to package chaincode
+without the need to include the "shim". However, this may cause issues in future
+releases (and/or when trying to use packages which are included by the "shim").
+
+In order to avoid any issues, users are advised to manually vendor the "shim"
+package with their chaincode prior to using the peer CLI for packaging and/or
+for installing chaincode.
+
+Please refer to https://jira.hyperledger.org/browse/FAB-5177 for more details,
+and kindly be aware that given the above, we may end up changing the
+fabric-ccenv in the future.
+
+Change Log
+----------
+https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v110-preview
