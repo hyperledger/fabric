@@ -115,15 +115,13 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 		panic(fmt.Sprintf("Could not get block file info for current block file from db: %s", err))
 	}
 	if cpInfo == nil {
-		logger.Info(`No info about blocks file found in the db. 
-			This could happen if this is the first time the ledger is constructed or the index is dropped.
-			Scanning blocks dir for the latest info`)
+		logger.Info(`Getting block information from block storage`)
 		if cpInfo, err = constructCheckpointInfoFromBlockFiles(rootDir); err != nil {
 			panic(fmt.Sprintf("Could not build checkpoint info from block files: %s", err))
 		}
-		logger.Infof("Info constructed by scanning the blocks dir = %s", spew.Sdump(cpInfo))
+		logger.Debugf("Info constructed by scanning the blocks dir = %s", spew.Sdump(cpInfo))
 	} else {
-		logger.Info(`Synching the info about block files`)
+		logger.Debug(`Synching block information from block storage (if needed)`)
 		syncCPInfoFromFS(rootDir, cpInfo)
 	}
 	err = mgr.saveCurrentInfo(cpInfo, true)
@@ -153,18 +151,15 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 	// or announcing the occurrence of an event.
 	mgr.cpInfoCond = sync.NewCond(&sync.Mutex{})
 
-	// Verify that the index stored in db is accurate with what is actually stored in block file system
-	// If not the same, sync the index and the file system
-	mgr.syncIndex()
-
 	// init BlockchainInfo for external API's
 	bcInfo := &common.BlockchainInfo{
 		Height:            0,
 		CurrentBlockHash:  nil,
 		PreviousBlockHash: nil}
 
-	//If start up is a restart of an existing storage, update BlockchainInfo for external API's
 	if !cpInfo.isChainEmpty {
+		//If start up is a restart of an existing storage, sync the index from block storage and update BlockchainInfo for external API's
+		mgr.syncIndex()
 		lastBlockHeader, err := mgr.retrieveBlockHeaderByNumber(cpInfo.lastBlockNumber)
 		if err != nil {
 			panic(fmt.Sprintf("Could not retrieve header of the last block form file: %s", err))
@@ -177,7 +172,6 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 			PreviousBlockHash: previousBlockHash}
 	}
 	mgr.bcInfo.Store(bcInfo)
-	//return the new manager (blockfileMgr)
 	return mgr
 }
 
@@ -346,10 +340,10 @@ func (mgr *blockfileMgr) syncIndex() error {
 	//if the index stored in the db has value, update the index information with those values
 	if !indexEmpty {
 		if lastBlockIndexed == mgr.cpInfo.lastBlockNumber {
-			logger.Infof("Both the block files and indices are in sync.")
+			logger.Debug("Both the block files and indices are in sync.")
 			return nil
 		}
-		logger.Infof("Last block indexed [%d], Last block present in block files=[%d]", lastBlockIndexed, mgr.cpInfo.lastBlockNumber)
+		logger.Debugf("Last block indexed [%d], Last block present in block files [%d]", lastBlockIndexed, mgr.cpInfo.lastBlockNumber)
 		var flp *fileLocPointer
 		if flp, err = mgr.index.getBlockLocByBlockNum(lastBlockIndexed); err != nil {
 			return err
@@ -359,10 +353,10 @@ func (mgr *blockfileMgr) syncIndex() error {
 		skipFirstBlock = true
 		startingBlockNum = lastBlockIndexed + 1
 	} else {
-		logger.Infof("No block indexed, Last block present in block files=[%d]", mgr.cpInfo.lastBlockNumber)
+		logger.Debugf("No block indexed, Last block present in block files=[%d]", mgr.cpInfo.lastBlockNumber)
 	}
 
-	logger.Infof("Start building index from block [%d]", startingBlockNum)
+	logger.Infof("Start building index from block [%d] to last block [%d]", startingBlockNum, mgr.cpInfo.lastBlockNumber)
 
 	//open a blockstream to the file location that was stored in the index
 	var stream *blockStream
