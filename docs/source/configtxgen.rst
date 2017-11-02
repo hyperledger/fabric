@@ -51,16 +51,18 @@ After creating a configuration profile as desired, simply invoke
 
 ::
 
-    configtxgen -profile <profile_name>
+    configtxgen -profile <profile_name> -outputBlock orderer_genesisblock.pb
 
-This will produce a ``genesis.block`` file in the current directory. You
-may optionally specify another filename by passing in the ``-path``
-parameter, or, you may skip the writing of the file by passing the
-``dryRun`` parameter if you simply wish to test parsing of the file.
+This will produce an ``orderer_genesisblock.pb`` file in the current directory.
+This genesis block is used to bootstrap the ordering system channel, which the
+orderers use to authorize and orchestrate creation of other channels.  By
+default, the channel ID encoded into the genesis block by ``configtxgen`` will be
+``testchainid``.  It is recommended that you modify this identifier to something
+which will be globally unique.
 
 Then, to utilize this genesis block, before starting the orderer, simply
 specify ``ORDERER_GENERAL_GENESISMETHOD=file`` and
-``ORDERER_GENERAL_GENESISFILE=$PWD/genesis.block`` or modify the
+``ORDERER_GENERAL_GENESISFILE=$PWD/orderer_genesisblock.pb`` or modify the
 ``orderer.yaml`` file to encode these values.
 
 Creating a channel
@@ -92,111 +94,237 @@ example:
 
 ::
 
-    $ build/bin/configtxgen -channelID foo -outputBlock foo.block -inspectBlock foo.block
-    2017/03/01 21:24:24 Loading configuration
-    2017/03/01 21:24:24 Checking for configtx.yaml at:
-    2017/03/01 21:24:24 Checking for configtx.yaml at:
-    2017/03/01 21:24:24 Checking for configtx.yaml at: /home/yellickj/go/src/github.com/hyperledger/fabric/common/configtx/tool
-    2017/03/01 21:24:24 map[orderer:map[BatchSize:map[MaxMessageCount:10 AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:<nil> OrdererType:solo Addresses:[127.0.0.1:7050] BatchTimeout:10s] application:map[Organizations:<nil>] profiles:map[SampleInsecureSolo:map[Orderer:map[BatchTimeout:10s BatchSize:map[MaxMessageCount:10 AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:<nil> OrdererType:solo Addresses:[127.0.0.1:7050]] Application:map[Organizations:<nil>]] SampleInsecureKafka:map[Orderer:map[Addresses:[127.0.0.1:7050] BatchTimeout:10s BatchSize:map[AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB MaxMessageCount:10] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:<nil> OrdererType:kafka] Application:map[Organizations:<nil>]] SampleSingleMSPSolo:map[Orderer:map[OrdererType:solo Addresses:[127.0.0.1:7050] BatchTimeout:10s BatchSize:map[MaxMessageCount:10 AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:[map[Name:SampleOrg ID:DEFAULT MSPDir:msp BCCSP:map[Default:SW SW:map[Hash:SHA3 Security:256 FileKeyStore:map[KeyStore:<nil>]]] AnchorPeers:[map[Host:127.0.0.1 Port:7051]]]]] Application:map[Organizations:[map[Name:SampleOrg ID:DEFAULT MSPDir:msp BCCSP:map[Default:SW SW:map[Hash:SHA3 Security:256 FileKeyStore:map[KeyStore:<nil>]]] AnchorPeers:[map[Port:7051 Host:127.0.0.1]]]]]]] organizations:[map[Name:SampleOrg ID:DEFAULT MSPDir:msp BCCSP:map[Default:SW SW:map[Hash:SHA3 Security:256 FileKeyStore:map[KeyStore:<nil>]]] AnchorPeers:[map[Host:127.0.0.1 Port:7051]]]]]
-    2017/03/01 21:24:24 Generating genesis block
-    2017/03/01 21:24:24 Writing genesis block
-    2017/03/01 21:24:24 Inspecting block
-    2017/03/01 21:24:24 Parsing genesis block
-    Config for channel: foo
+    $ build/bin/configtxgen -channelID foo -outputBlock foo_genesisblock.pb -inspectBlock foo_genesisblock.pb
+    2017-11-02 17:56:04.489 EDT [common/tools/configtxgen] main -> INFO 001 Loading configuration
+    2017-11-02 17:56:04.564 EDT [common/tools/configtxgen] doOutputBlock -> INFO 002 Generating genesis block
+    2017-11-02 17:56:04.564 EDT [common/tools/configtxgen] doOutputBlock -> INFO 003 Writing genesis block
+    2017-11-02 17:56:04.564 EDT [common/tools/configtxgen] doInspectBlock -> INFO 004 Inspecting block
+    2017-11-02 17:56:04.564 EDT [common/tools/configtxgen] doInspectBlock -> INFO 005 Parsing genesis block
     {
-        "": {
-            "Values": {},
-            "Groups": {
-                "/Channel": {
-                    "Values": {
-                        "HashingAlgorithm": {
-                            "Version": "0",
-                            "ModPolicy": "",
-                            "Value": {
-                                "name": "SHA256"
-                            }
-                        },
-                        "BlockDataHashingStructure": {
-                            "Version": "0",
-                            "ModPolicy": "",
-                            "Value": {
-                                "width": 4294967295
-                            }
-                        },
-                        "OrdererAddresses": {
-                            "Version": "0",
-                            "ModPolicy": "",
-                            "Value": {
-                                "addresses": [
-                                    "127.0.0.1:7050"
-                                ]
-                            }
-                        }
-                    },
-                    "Groups": {
-                        "/Channel/Orderer": {
-                            "Values": {
-                                "ChainCreationPolicyNames": {
-                                    "Version": "0",
-                                    "ModPolicy": "",
-                                    "Value": {
-                                        "names": [
-                                            "AcceptAllPolicy"
-                                        ]
-                                    }
+      "data": {
+        "data": [
+          {
+            "payload": {
+              "data": {
+                "config": {
+                  "channel_group": {
+                    "groups": {
+                      "Consortiums": {
+                        "groups": {
+                          "SampleConsortium": {
+                            "mod_policy": "/Channel/Orderer/Admins",
+                            "values": {
+                              "ChannelCreationPolicy": {
+                                "mod_policy": "/Channel/Orderer/Admins",
+                                "value": {
+                                  "type": 3,
+                                  "value": {
+                                    "rule": "ANY",
+                                    "sub_policy": "Admins"
+                                  }
                                 },
-                                "ConsensusType": {
-                                    "Version": "0",
-                                    "ModPolicy": "",
-                                    "Value": {
-                                        "type": "solo"
-                                    }
-                                },
-                                "BatchSize": {
-                                    "Version": "0",
-                                    "ModPolicy": "",
-                                    "Value": {
-                                        "maxMessageCount": 10,
-                                        "absoluteMaxBytes": 103809024,
-                                        "preferredMaxBytes": 524288
-                                    }
-                                },
-                                "BatchTimeout": {
-                                    "Version": "0",
-                                    "ModPolicy": "",
-                                    "Value": {
-                                        "timeout": "10s"
-                                    }
-                                },
-                                "IngressPolicyNames": {
-                                    "Version": "0",
-                                    "ModPolicy": "",
-                                    "Value": {
-                                        "names": [
-                                            "AcceptAllPolicy"
-                                        ]
-                                    }
-                                },
-                                "EgressPolicyNames": {
-                                    "Version": "0",
-                                    "ModPolicy": "",
-                                    "Value": {
-                                        "names": [
-                                            "AcceptAllPolicy"
-                                        ]
-                                    }
-                                }
+                                "version": "0"
+                              }
                             },
-                            "Groups": {}
+                            "version": "0"
+                          }
                         },
-                        "/Channel/Application": {
-                            "Values": {},
-                            "Groups": {}
-                        }
-                    }
+                        "mod_policy": "/Channel/Orderer/Admins",
+                        "policies": {
+                          "Admins": {
+                            "mod_policy": "/Channel/Orderer/Admins",
+                            "policy": {
+                              "type": 1,
+                              "value": {
+                                "rule": {
+                                  "n_out_of": {
+                                    "n": 0
+                                  }
+                                },
+                                "version": 0
+                              }
+                            },
+                            "version": "0"
+                          }
+                        },
+                        "version": "0"
+                      },
+                      "Orderer": {
+                        "mod_policy": "Admins",
+                        "policies": {
+                          "Admins": {
+                            "mod_policy": "Admins",
+                            "policy": {
+                              "type": 3,
+                              "value": {
+                                "rule": "MAJORITY",
+                                "sub_policy": "Admins"
+                              }
+                            },
+                            "version": "0"
+                          },
+                          "BlockValidation": {
+                            "mod_policy": "Admins",
+                            "policy": {
+                              "type": 3,
+                              "value": {
+                                "rule": "ANY",
+                                "sub_policy": "Writers"
+                              }
+                            },
+                            "version": "0"
+                          },
+                          "Readers": {
+                            "mod_policy": "Admins",
+                            "policy": {
+                              "type": 3,
+                              "value": {
+                                "rule": "ANY",
+                                "sub_policy": "Readers"
+                              }
+                            },
+                            "version": "0"
+                          },
+                          "Writers": {
+                            "mod_policy": "Admins",
+                            "policy": {
+                              "type": 3,
+                              "value": {
+                                "rule": "ANY",
+                                "sub_policy": "Writers"
+                              }
+                            },
+                            "version": "0"
+                          }
+                        },
+                        "values": {
+                          "BatchSize": {
+                            "mod_policy": "Admins",
+                            "value": {
+                              "absolute_max_bytes": 10485760,
+                              "max_message_count": 10,
+                              "preferred_max_bytes": 524288
+                            },
+                            "version": "0"
+                          },
+                          "BatchTimeout": {
+                            "mod_policy": "Admins",
+                            "value": {
+                              "timeout": "2s"
+                            },
+                            "version": "0"
+                          },
+                          "ChannelRestrictions": {
+                            "mod_policy": "Admins",
+                            "version": "0"
+                          },
+                          "ConsensusType": {
+                            "mod_policy": "Admins",
+                            "value": {
+                              "type": "solo"
+                            },
+                            "version": "0"
+                          }
+                        },
+                        "version": "0"
+                      }
+                    },
+                    "mod_policy": "Admins",
+                    "policies": {
+                      "Admins": {
+                        "mod_policy": "Admins",
+                        "policy": {
+                          "type": 3,
+                          "value": {
+                            "rule": "MAJORITY",
+                            "sub_policy": "Admins"
+                          }
+                        },
+                        "version": "0"
+                      },
+                      "Readers": {
+                        "mod_policy": "Admins",
+                        "policy": {
+                          "type": 3,
+                          "value": {
+                            "rule": "ANY",
+                            "sub_policy": "Readers"
+                          }
+                        },
+                        "version": "0"
+                      },
+                      "Writers": {
+                        "mod_policy": "Admins",
+                        "policy": {
+                          "type": 3,
+                          "value": {
+                            "rule": "ANY",
+                            "sub_policy": "Writers"
+                          }
+                        },
+                        "version": "0"
+                      }
+                    },
+                    "values": {
+                      "BlockDataHashingStructure": {
+                        "mod_policy": "Admins",
+                        "value": {
+                          "width": 4294967295
+                        },
+                        "version": "0"
+                      },
+                      "HashingAlgorithm": {
+                        "mod_policy": "Admins",
+                        "value": {
+                          "name": "SHA256"
+                        },
+                        "version": "0"
+                      },
+                      "OrdererAddresses": {
+                        "mod_policy": "/Channel/Orderer/Admins",
+                        "value": {
+                          "addresses": [
+                            "127.0.0.1:7050"
+                          ]
+                        },
+                        "version": "0"
+                      }
+                    },
+                    "version": "0"
+                  },
+                  "sequence": "0",
+                  "type": 0
                 }
+              },
+              "header": {
+                "channel_header": {
+                  "channel_id": "foo",
+                  "epoch": "0",
+                  "timestamp": "2017-11-02T21:56:04.000Z",
+                  "tx_id": "6acfe1257c23a4f844cc299cbf53acc7bf8fa8bcf8aae8d049193098fe982eab",
+                  "type": 1,
+                  "version": 1
+                },
+                "signature_header": {
+                  "nonce": "eZOKru6jmeiWykBtSDwnkGjyQt69GwuS"
+                }
+              }
             }
-        }
+          }
+        ]
+      },
+      "header": {
+        "data_hash": "/86I/7NScbH/bHcDcYG0/9qTmVPWVoVVfSN8NKMARKI=",
+        "number": "0"
+      },
+      "metadata": {
+        "metadata": [
+          "",
+          "",
+          "",
+          ""
+        ]
+      }
     }
 
 .. Licensed under Creative Commons Attribution 4.0 International License
