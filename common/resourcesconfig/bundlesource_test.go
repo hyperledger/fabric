@@ -16,6 +16,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestBundleSourceInterface(t *testing.T) {
+	_ = Resources(&BundleSource{})
+}
+
 func TestBundleSource(t *testing.T) {
 	env, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, "foo", nil, &cb.ConfigEnvelope{
 		Config: &cb.Config{

@@ -88,3 +88,8 @@ func (bs *BundleSource) ChannelConfig() channelconfig.Resources {
 func (bs *BundleSource) ValidateNew(resources Resources) error {
 	return bs.StableBundle().ValidateNew(resources)
 }
+
+// NewFromChannelConfig passes through the the underlying bundle
+func (bs *BundleSource) NewFromChannelConfig(chanConf channelconfig.Resources) (*Bundle, error) {
+	return bs.StableBundle().NewFromChannelConfig(chanConf)
+}
