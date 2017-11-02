@@ -68,7 +68,7 @@ CORE_PEER_LOCALMSPID="Org1MSP"
 
 Create an invoke transaction. If TLS is enabled:
 ```sh
-peer chaincode invoke -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C mychannel -n mycc -c '{"Args":["invoke","a","b","10"]}'
+peer chaincode invoke -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C mychannel -n mycc -c '{"Args":["invoke","a","b","10"]}'
 ```
 If TLS is disabled:
 ```sh

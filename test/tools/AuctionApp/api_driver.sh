@@ -81,7 +81,7 @@ createChannel() {
 		peer channel create -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f $GOPATH/src/github.com/hyperledger/fabric/peer/channel-artifacts/channel$CH_NUM.tx -t 10 >&$LOG_FILE
 		wait 5
 	else
-		peer channel create -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f $GOPATH/src/github.com/hyperledger/fabric/peer/channel-artifacts/channel$CH_NUM.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -t 10 >&$LOG_FILE
+		peer channel create -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f $GOPATH/src/github.com/hyperledger/fabric/peer/channel-artifacts/channel$CH_NUM.tx --tls --cafile $ORDERER_CA -t 10 >&$LOG_FILE
 		wait 5
 	fi
 
@@ -99,7 +99,7 @@ updateAnchorPeers() {
 	if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
 		peer channel create -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f $GOPATH/src/github.com/hyperledger/fabric/peer/channel-artifacts/${CORE_PEER_LOCALMSPID}anchors$CH_NUM.tx >>$LOG_FILE
 	else
-		peer channel create -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f $GOPATH/src/github.com/hyperledger/fabric/peer/channel-artifacts/${CORE_PEER_LOCALMSPID}anchors$CH_NUM.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >>$LOG_FILE
+		peer channel create -o $ORDERER_IP -c $CHANNEL_NAME$CH_NUM -f $GOPATH/src/github.com/hyperledger/fabric/peer/channel-artifacts/${CORE_PEER_LOCALMSPID}anchors$CH_NUM.tx --tls --cafile $ORDERER_CA >>$LOG_FILE
 	fi
 
 	res=$?
@@ -161,7 +161,7 @@ instantiateChaincode() {
 			if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
 				peer chaincode instantiate -o $ORDERER_IP -C $CHANNEL_NAME$i -n $CHAINCODE_NAME$ch -v 1 -c '{"Args":["init"]}' -P "OR ('Org1MSP.member','Org2MSP.member')" >>$LOG_FILE
 			else
-				peer chaincode instantiate -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$i -n $CHAINCODE_NAME$ch -v 1 -c '{"Args":["init"]}' -P "OR ('Org1MSP.member','Org2MSP.member')" >>$LOG_FILE
+				peer chaincode instantiate -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$i -n $CHAINCODE_NAME$ch -v 1 -c '{"Args":["init"]}' -P "OR ('Org1MSP.member','Org2MSP.member')" >>$LOG_FILE
 			fi
 
 			res=$?
@@ -212,35 +212,35 @@ function postUsers() {
 		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	else
 		setGlobals $(((RANDOM % 3)))
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","100", "USER", "Ashley Hart", "TRD",  "Morrisville Parkway, #216, Morrisville, NC 27560", "9198063535", "ashley@itpeople.com", "SUNTRUST", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","100", "USER", "Ashley Hart", "TRD",  "Morrisville Parkway, #216, Morrisville, NC 27560", "9198063535", "ashley@itpeople.com", "SUNTRUST", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","200", "USER", "Sotheby", "AH",  "One Picadally Circus , #216, London, UK ", "9198063535", "admin@sotheby.com", "Standard Chartered", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","200", "USER", "Sotheby", "AH",  "One Picadally Circus , #216, London, UK ", "9198063535", "admin@sotheby.com", "Standard Chartered", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","300", "USER", "Barry Smith", "TRD",  "155 Regency Parkway, #111, Cary, 27518 ", "9198063535", "barry@us.ibm.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
-		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-
-		setGlobals $(((RANDOM % 3)))
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","400", "USER", "Cindy Patterson", "TRD",  "155 Sunset Blvd, Beverly Hills, CA, USA ", "9058063535", "cpatterson@hotmail.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
-		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","500", "USER", "Tamara Haskins", "TRD",  "155 Sunset Blvd, Beverly Hills, CA, USA ", "9058063535", "tamara@yahoo.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
-		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","600", "USER", "NY Life", "INS",  "155 Broadway, New York, NY, USA ", "9058063535", "barry@nyl.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","300", "USER", "Barry Smith", "TRD",  "155 Regency Parkway, #111, Cary, 27518 ", "9198063535", "barry@us.ibm.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 
 		setGlobals $(((RANDOM % 3)))
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","700", "USER", "J B Hunt", "SHP",  "One Johnny Blvd, Rogers, AR, USA ", "9058063535", "jess@jbhunt.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","400", "USER", "Cindy Patterson", "TRD",  "155 Sunset Blvd, Beverly Hills, CA, USA ", "9058063535", "cpatterson@hotmail.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","800", "USER", "R&R Trading", "AH",  "155 Sunset Blvd, Beverly Hills, CA, USA ", "9058063535", "larry@rr.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","500", "USER", "Tamara Haskins", "TRD",  "155 Sunset Blvd, Beverly Hills, CA, USA ", "9058063535", "tamara@yahoo.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","900", "USER", "Gregory Huffman", "TRD",  "155 Sunset Blvd, Beverly Hills, CA, USA ", "9058063535", "tamara@yahoo.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","600", "USER", "NY Life", "INS",  "155 Broadway, New York, NY, USA ", "9058063535", "barry@nyl.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 
 		setGlobals $(((RANDOM % 3)))
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","1000", "USER", "Texas Life", "INS",  "155 Broadway, New York, NY, USA ", "9058063535", "barry@nyl.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","700", "USER", "J B Hunt", "SHP",  "One Johnny Blvd, Rogers, AR, USA ", "9058063535", "jess@jbhunt.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","1100", "USER", "B J Hunt", "SHP",  "One Johnny Blvd, Rogers, AR, USA ", "9058063535", "jess@jbhunt.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","800", "USER", "R&R Trading", "AH",  "155 Sunset Blvd, Beverly Hills, CA, USA ", "9058063535", "larry@rr.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","1200", "USER", "R&S Trading", "AH",  "155 Sunset Blvd, Beverly Hills, CA, USA ", "9058063535", "larry@rr.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","900", "USER", "Gregory Huffman", "TRD",  "155 Sunset Blvd, Beverly Hills, CA, USA ", "9058063535", "tamara@yahoo.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
+
+		setGlobals $(((RANDOM % 3)))
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","1000", "USER", "Texas Life", "INS",  "155 Broadway, New York, NY, USA ", "9058063535", "barry@nyl.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","1100", "USER", "B J Hunt", "SHP",  "One Johnny Blvd, Rogers, AR, USA ", "9058063535", "jess@jbhunt.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostUser","1200", "USER", "R&S Trading", "AH",  "155 Sunset Blvd, Beverly Hills, CA, USA ", "9058063535", "larry@rr.com", "RBC Centura", "0001732345", "0234678", "2017-01-02 15:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postUsers() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	fi
 
@@ -276,7 +276,7 @@ function downloadImages() {
 		peer chaincode invoke -o $ORDERER_IP -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iDownloadImages", "DOWNLOAD"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "downloadImages() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	else
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iDownloadImages", "DOWNLOAD"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iDownloadImages", "DOWNLOAD"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "downloadImages() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	fi
 
@@ -317,31 +317,31 @@ function postItems() {
 		verifyResult $? "postItems() transaction on PEER1.ORG2 on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	else
 		setGlobals $(((RANDOM % 3)))
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "100", "ARTINV", "Shadows by Asppen", "Asppen Messer", "20140202", "Original", "landscape", "Canvas", "15 x 15 in", "art1.png","600", "100", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "100", "ARTINV", "Shadows by Asppen", "Asppen Messer", "20140202", "Original", "landscape", "Canvas", "15 x 15 in", "art1.png","600", "100", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "200", "ARTINV", "modern Wall Painting", "Scott Palmer", "20140202", "Reprint", "landscape", "Acrylic", "10 x 10 in", "art2.png","2600", "200", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
-		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-
-		setGlobals $(((RANDOM % 3)))
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "300", "ARTINV", "Splash of Color", "Jennifer Drew", "20160115", "Reprint", "modern", "Water Color", "15 x 15 in", "art3.png","1600", "300", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
-		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "400", "ARTINV", "Female Water Color", "David Crest", "19900115", "Original", "modern", "Water Color", "12 x 17 in", "art4.png","9600", "400", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "200", "ARTINV", "modern Wall Painting", "Scott Palmer", "20140202", "Reprint", "landscape", "Acrylic", "10 x 10 in", "art2.png","2600", "200", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 
 		setGlobals $(((RANDOM % 3)))
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "500", "ARTINV", "Nature", "James Thomas", "19900115", "Original", "modern", "Water Color", "12 x 17 in", "item-001.jpg","1800", "500", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "300", "ARTINV", "Splash of Color", "Jennifer Drew", "20160115", "Reprint", "modern", "Water Color", "15 x 15 in", "art3.png","1600", "300", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "600", "ARTINV", "Ladys Hair", "James Thomas", "19900115", "Original", "landscape", "Acrylic", "12 x 17 in", "item-002.jpg","1200", "600", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
-		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "700", "ARTINV", "Flowers", "James Thomas", "19900115", "Original", "modern", "Acrylic", "12 x 17 in", "item-003.jpg","1000", "700", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
-		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "800", "ARTINV", "Women at work", "James Thomas", "19900115", "Original", "modern", "Acrylic", "12 x 17 in", "item-004.jpg","1500", "800", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "400", "ARTINV", "Female Water Color", "David Crest", "19900115", "Original", "modern", "Water Color", "12 x 17 in", "art4.png","9600", "400", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 
 		setGlobals $(((RANDOM % 3)))
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "900", "ARTINV", "People", "James Thomas", "19900115", "Original", "modern", "Acrylic", "12 x 17 in", "people.gif","900", "900", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "500", "ARTINV", "Nature", "James Thomas", "19900115", "Original", "modern", "Water Color", "12 x 17 in", "item-001.jpg","1800", "500", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "1000", "ARTINV", "Shadows by Asppen", "Asppen Messer", "20140202", "Original", "landscape", "Canvas", "15 x 15 in", "art5.png","600", "1000", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "600", "ARTINV", "Ladys Hair", "James Thomas", "19900115", "Original", "landscape", "Acrylic", "12 x 17 in", "item-002.jpg","1200", "600", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "700", "ARTINV", "Flowers", "James Thomas", "19900115", "Original", "modern", "Acrylic", "12 x 17 in", "item-003.jpg","1000", "700", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "800", "ARTINV", "Women at work", "James Thomas", "19900115", "Original", "modern", "Acrylic", "12 x 17 in", "item-004.jpg","1500", "800", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
+
+		setGlobals $(((RANDOM % 3)))
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "900", "ARTINV", "People", "James Thomas", "19900115", "Original", "modern", "Acrylic", "12 x 17 in", "people.gif","900", "900", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["iPostItem", "1000", "ARTINV", "Shadows by Asppen", "Asppen Messer", "20140202", "Original", "landscape", "Canvas", "15 x 15 in", "art5.png","600", "1000", "2017-01-23 14:04:05"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postItems() transaction on $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	fi
 
@@ -359,7 +359,7 @@ function postAuction() {
 		verifyResult $? "postAuction() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	else
 		echo "{\"Args\":[\"iPostAuctionRequest\", \"$4\", \"AUCREQ\", \"$5\", \"200\", \"$6\", \"04012016\", \"$7\", \"$8\", \"INIT\", \"2017-02-13 09:05:00\", \"2017-02-13 09:05:00\", \"2017-02-13 09:10:00\"]}"
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\":[\"iPostAuctionRequest\", \"$4\", \"AUCREQ\", \"$5\", \"200\", \"$6\", \"04012016\", \"$7\", \"$8\", \"INIT\", \"2017-02-13 09:05:00\", \"2017-02-13 09:05:00\", \"2017-02-13 09:10:00\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\":[\"iPostAuctionRequest\", \"$4\", \"AUCREQ\", \"$5\", \"200\", \"$6\", \"04012016\", \"$7\", \"$8\", \"INIT\", \"2017-02-13 09:05:00\", \"2017-02-13 09:05:00\", \"2017-02-13 09:10:00\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "postAuction() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	fi
 
@@ -376,7 +376,7 @@ function openAuctionRequestForBids() {
 		peer chaincode invoke -o $ORDERER_IP -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\":[\"iOpenAuctionForBids\", \"$4\", \"OPENAUC\", \"$5\", \"2017-02-13 09:18:00\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "openAuctionRequestForBids() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	else
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\":[\"iOpenAuctionForBids\", \"$4\", \"OPENAUC\", \"$5\", \"2017-02-13 09:18:00\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\":[\"iOpenAuctionForBids\", \"$4\", \"OPENAUC\", \"$5\", \"2017-02-13 09:18:00\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "openAuctionRequestForBids() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	fi
 	wait $SLEEP_TIME
@@ -393,7 +393,7 @@ function submitBids() {
 		peer chaincode invoke -o $ORDERER_IP -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\":[\"iPostBid\", \"$4\", \"BID\", \"$5\", \"$6\", \"$7\", \"$8\", \"2017-02-13 09:19:01\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "submitBids() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	else
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\":[\"iPostBid\", \"$4\", \"BID\", \"$5\", \"$6\", \"$7\", \"$8\", \"2017-02-13 09:19:01\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\":[\"iPostBid\", \"$4\", \"BID\", \"$5\", \"$6\", \"$7\", \"$8\", \"2017-02-13 09:19:01\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "submitBids() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	fi
 	wait $SLEEP_TIME
@@ -410,7 +410,7 @@ function closeAuction() {
 		peer chaincode invoke -o $ORDERER_IP -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args": ["iCloseOpenAuctions", "2016", "CLAUC", "2017-01-23 13:53:00.3 +0000 UTC"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "closeAuction() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	else
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args": ["iCloseOpenAuctions", "2016", "CLAUC", "2017-01-23 13:53:00.3 +0000 UTC"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args": ["iCloseOpenAuctions", "2016", "CLAUC", "2017-01-23 13:53:00.3 +0000 UTC"]}' --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "closeAuction() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	fi
 
@@ -439,7 +439,7 @@ function transferItem() {
 		peer chaincode invoke -o $ORDERER_IP -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\": [\"iTransferItem\", \"$4\", $USER_ID, $AES_KEY, \"$4\", \"XFER\",\"2017-01-24 11:00:00\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "transferItem() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	else
-		peer chaincode invoke -o $ORDERER_IP --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\": [\"iTransferItem\", \"$4\", $USER_ID, $AES_KEY, \"$4\", \"XFER\",\"2017-01-24 11:00:00\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
+		peer chaincode invoke -o $ORDERER_IP --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c "{\"Args\": [\"iTransferItem\", \"$4\", $USER_ID, $AES_KEY, \"$4\", \"XFER\",\"2017-01-24 11:00:00\"]}" --logging-level=$LOG_LEVEL >>$LOG_FILE
 		verifyResult $? "transferItem() transaction on PEER$3 $CHANNEL_NAME$CH_NUM/$CHAINCODE_NAME$CHAIN_NUM failed"
 	fi
 

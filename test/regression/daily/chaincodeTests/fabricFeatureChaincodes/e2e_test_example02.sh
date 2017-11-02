@@ -89,7 +89,7 @@ instantiateChaincode () {
                         if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
                                 peer chaincode instantiate -o orderer.example.com:7050 -C $CHANNEL_NAME$i -n $CHAINCODE_NAME$ch -v 1 -c '{"Args":["init","a","1000","b","2000"]}' -P "OR        ('Org0MSP.member','Org1MSP.member')" >>$LOG_FILE
 	                else
-		                peer chaincode instantiate -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$i -n $CHAINCODE_NAME$ch -v 1 -c '{"Args":["init","a","1000","b","2000"]}' -P "OR	('Org1MSP.member','Org2MSP.member')" >>$LOG_FILE
+		                peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$i -n $CHAINCODE_NAME$ch -v 1 -c '{"Args":["init","a","1000","b","2000"]}' -P "OR	('Org1MSP.member','Org2MSP.member')" >>$LOG_FILE
 	                fi
                         res=$?
                         verifyResult $res "Chaincode '$CHAINCODE_NAME$ch' instantiation on PEER$PEER on channel '$CHANNEL_NAME$i' failed"
@@ -108,7 +108,7 @@ chaincodeInvoke () {
         if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
              peer chaincode invoke -o ordere.example.com:7050  -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["invoke","a","b","10"]}' >>$LOG_FILE
 	else
-	     peer chaincode invoke -o orderer.example.com:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["invoke","a","b","10"]}' >>$LOG_FILE
+	     peer chaincode invoke -o orderer.example.com:7050  --tls --cafile $ORDERER_CA -C $CHANNEL_NAME$CH_NUM -n $CHAINCODE_NAME$CHAIN_NUM -c '{"Args":["invoke","a","b","10"]}' >>$LOG_FILE
 	fi
         res=$?
         verifyResult $res "Invoke execution on PEER$PEER failed "
