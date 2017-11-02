@@ -575,10 +575,10 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 
 	// Error case 4
 	mockchannel := "mockchannel"
-	cid := chainID
-	chainID = mockchannel
+	cid := channelID
+	channelID = mockchannel
 	defer func() {
-		chainID = cid
+		channelID = cid
 	}()
 	ch := &cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIG_UPDATE), ChannelId: mockchannel}
 	data, err = proto.Marshal(ch)
