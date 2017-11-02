@@ -108,6 +108,10 @@ message ChannelHeader {
 
     // Extension that may be attached based on the header type
     bytes extension = 7;
+
+    // If mutual TLS is employed, this represents
+    // the hash of the client's TLS certificate
+    bytes tls_cert_hash = 8;
 }
 
 message SignatureHeader {
