@@ -46,7 +46,7 @@ func (cc *endorserClient) getBlockChainInfo() (*cb.BlockchainInfo, error) {
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]),
 			ChaincodeId: &pb.ChaincodeID{Name: "qscc"},
-			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte(qscc.GetChainInfo), []byte(chainID)}},
+			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte(qscc.GetChainInfo), []byte(channelID)}},
 		},
 	}
 
@@ -84,7 +84,7 @@ func (cc *endorserClient) getBlockChainInfo() (*cb.BlockchainInfo, error) {
 
 func getinfo(cf *ChannelCmdFactory) error {
 	//the global chainID filled by the "-c" command
-	if chainID == common.UndefinedParamValue {
+	if channelID == common.UndefinedParamValue {
 		return errors.New("Must supply channel ID")
 	}
 

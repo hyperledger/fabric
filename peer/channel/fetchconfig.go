@@ -97,7 +97,7 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 
 	var file string
 	if len(args) == 1 {
-		file = chainID + "_" + args[0] + ".block"
+		file = channelID + "_" + args[0] + ".block"
 	} else {
 		file = args[1]
 	}

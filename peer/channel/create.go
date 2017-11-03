@@ -76,7 +76,7 @@ func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
 		return nil, err
 	}
 
-	chCrtEnv, err := encoder.MakeChannelCreationTransaction(chainID, genesisconfig.SampleConsortiumName, signer, nil)
+	chCrtEnv, err := encoder.MakeChannelCreationTransaction(channelID, genesisconfig.SampleConsortiumName, signer, nil)
 
 	if err != nil {
 		return nil, err
@@ -119,12 +119,12 @@ func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope) (*cb.Envelope, err
 
 	// Specifying the chainID on the CLI is usually redundant, as a hack, set it
 	// here if it has not been set explicitly
-	if chainID == "" {
-		chainID = ch.ChannelId
+	if channelID == "" {
+		channelID = ch.ChannelId
 	}
 
-	if ch.ChannelId != chainID {
-		return nil, InvalidCreateTx(fmt.Sprintf("mismatched channel ID %s != %s", ch.ChannelId, chainID))
+	if ch.ChannelId != channelID {
+		return nil, InvalidCreateTx(fmt.Sprintf("mismatched channel ID %s != %s", ch.ChannelId, channelID))
 	}
 
 	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
@@ -146,7 +146,7 @@ func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope) (*cb.Envelope, err
 
 	configUpdateEnv.Signatures = append(configUpdateEnv.Signatures, configSig)
 
-	return utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, signer, configUpdateEnv, 0, 0)
+	return utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, configUpdateEnv, 0, 0)
 }
 
 func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
@@ -196,7 +196,7 @@ func executeCreate(cf *ChannelCmdFactory) error {
 		return err
 	}
 
-	file := chainID + ".block"
+	file := channelID + ".block"
 	if err = ioutil.WriteFile(file, b, 0644); err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func executeCreate(cf *ChannelCmdFactory) error {
 
 func create(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	//the global chainID filled by the "-c" command
-	if chainID == common.UndefinedParamValue {
+	if channelID == common.UndefinedParamValue {
 		return errors.New("Must supply channel ID")
 	}
 
