@@ -9,6 +9,7 @@ package endorser
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
@@ -83,6 +84,10 @@ type Support interface {
 	// CheckInsantiationPolicy returns an error if the instantiation in the supplied
 	// ChaincodeDefinition differs from the instantiation policy stored on the ledger
 	CheckInsantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error
+
+	// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
+	// and whether the Application config exists
+	GetApplicationConfig(cid string) (channelconfig.Application, bool)
 }
 
 // Endorser provides the Endorser service ProcessProposal
@@ -98,11 +103,6 @@ func NewEndorserServer(privDist privateDataDistributor, s Support) pb.EndorserSe
 		s: s,
 	}
 	return e
-}
-
-//TODO - check for escc and vscc
-func (*Endorser) checkEsccAndVscc(prop *pb.Proposal) error {
-	return nil
 }
 
 //call specified chaincode (system or user)
@@ -230,11 +230,6 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		return nil, nil, nil, nil, err
 	}
 
-	//---1. check ESCC and VSCC for the chaincode
-	if err = e.checkEsccAndVscc(prop); err != nil {
-		return nil, nil, nil, nil, err
-	}
-
 	var cdLedger resourcesconfig.ChaincodeDefinition
 	var version string
 
@@ -245,9 +240,19 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		}
 		version = cdLedger.CCVersion()
 
-		err = e.s.CheckInsantiationPolicy(cid.Name, version, cdLedger)
-		if err != nil {
-			return nil, nil, nil, nil, err
+		ac, exists := e.s.GetApplicationConfig(chainID)
+		if !exists {
+			endorserLogger.Panicf("Programming error, application config could not be found for channel '%s'", chainID)
+		}
+
+		if !ac.Capabilities().LifecycleViaConfig() {
+			err = e.s.CheckInsantiationPolicy(cid.Name, version, cdLedger)
+			if err != nil {
+				return nil, nil, nil, nil, err
+			}
+		} else {
+			// FIXME: consider checking the instantiation policy
+			//        a better place to do it would be the chaincodeSupport.Launch function
 		}
 	} else {
 		version = util.GetSysCCVersion()
