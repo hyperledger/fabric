@@ -79,16 +79,18 @@ func (c *ccProviderImpl) GetCCValidationInfoFromLSCC(ctxt context.Context, txid 
 		panic("GetCCValidationInfoFromLSCC invoke for LSCC")
 	}
 
-	data, err := GetChaincodeDataFromLSCC(ctxt, txid, signedProp, prop, chainID, chaincodeID)
+	data, err := GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
 	if err != nil {
 		return "", nil, err
 	}
 
-	if data == nil || data.Vscc == "" || data.Policy == nil {
+	valcc, valarg := data.Validation()
+
+	if data == nil || valcc == "" || valarg == nil {
 		return "", nil, errors.New("incorrect validation info in LSCC")
 	}
 
-	return data.Vscc, data.Policy, nil
+	return valcc, valarg, nil
 }
 
 // ExecuteChaincode executes the chaincode specified in the context with the specified arguments

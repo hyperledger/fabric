@@ -693,7 +693,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
 		//this will also validate the ID from the LSCC
-		depPayload, err = GetCDSFromLSCC(context, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, cID.Name)
+		depPayload, err = GetCDS(context, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, cID.Name)
 		if err != nil {
 			return cID, cMsg, errors.WithMessage(err, fmt.Sprintf("could not get deployment transaction from LSCC for %s", canName))
 		}

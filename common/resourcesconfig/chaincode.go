@@ -27,7 +27,7 @@ type ChaincodeGroup struct {
 }
 
 // Name returns the name of this chaincode (the name it was put in the ChaincodeRegistry with).
-func (cg *ChaincodeGroup) Name() string {
+func (cg *ChaincodeGroup) CCName() string {
 	return cg.name
 }
 
@@ -37,7 +37,7 @@ func (cg *ChaincodeGroup) Hash() []byte {
 }
 
 // Version returns the version of the chaincode.
-func (cg *ChaincodeGroup) Version() string {
+func (cg *ChaincodeGroup) CCVersion() string {
 	return cg.protos.ChaincodeIdentifier.Version
 }
 

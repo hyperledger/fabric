@@ -54,8 +54,8 @@ func TestGreenChaincodePath(t *testing.T) {
 	assert.NotNil(t, ccg)
 	assert.NoError(t, err)
 
-	assert.Equal(t, sampleChaincodeName, ccg.Name())
-	assert.Equal(t, sampleChaincodeVersion, ccg.Version())
+	assert.Equal(t, sampleChaincodeName, ccg.CCName())
+	assert.Equal(t, sampleChaincodeVersion, ccg.CCVersion())
 	assert.Equal(t, sampleChaincodeHash, ccg.Hash())
 
 	validationName, validationArg := ccg.Validation()

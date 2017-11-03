@@ -28,14 +28,14 @@ type ChaincodeRegistry interface {
 // ChaincodeDefinition describes all of the necessary information for a peer to decide whether to endorse
 // a proposal and whether to validate a transaction, for a particular chaincode.
 type ChaincodeDefinition interface {
-	// Name returns the name of this chaincode (the name it was put in the ChaincodeRegistry with).
-	Name() string
+	// CCName returns the name of this chaincode (the name it was put in the ChaincodeRegistry with).
+	CCName() string
 
 	// Hash returns the hash of the chaincode.
 	Hash() []byte
 
-	// Version returns the version of the chaincode.
-	Version() string
+	// CCVersion returns the version of the chaincode.
+	CCVersion() string
 
 	// Validation returns how to validate transactions for this chaincode.
 	// The string returned is the name of the validation method (usually 'vscc')
