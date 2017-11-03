@@ -37,7 +37,7 @@ func TestInstantiateCmd(t *testing.T) {
 	}{
 		{
 			name:          "successful",
-			args:          []string{"-n", "example02", "-v", "anotherversion", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
+			args:          []string{"-n", "example02", "-v", "anotherversion", "-C", "mychannel", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
 			errorExpected: false,
 			errMsg:        "Run chaincode instantiate cmd error",
 		},
@@ -49,19 +49,25 @@ func TestInstantiateCmd(t *testing.T) {
 		},
 		{
 			name:          "missing version",
-			args:          []string{"-n", "example02", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
+			args:          []string{"-n", "example02", "-C", "mychannel", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
 			errorExpected: true,
 			errMsg:        "Expected error executing instantiate command without the -v option",
 		},
 		{
 			name:          "missing name",
-			args:          []string{"-v", "anotherversion", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
+			args:          []string{"-v", "anotherversion", "-C", "mychannel", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
 			errorExpected: true,
 			errMsg:        "Expected error executing instantiate command without the -n option",
 		},
 		{
+			name:          "missing channelID",
+			args:          []string{"-n", "example02", "-v", "anotherversion", "-c", "{\"Args\": [\"init\",\"a\",\"100\",\"b\",\"200\"]}"},
+			errorExpected: true,
+			errMsg:        "Expected error executing instantiate command without the -C option",
+		},
+		{
 			name:          "missing ctor",
-			args:          []string{"-n", "example02", "-v", "anotherversion"},
+			args:          []string{"-n", "example02", "-C", "mychannel", "-v", "anotherversion"},
 			errorExpected: true,
 			errMsg:        "Expected error executing instantiate command without the -c option",
 		},

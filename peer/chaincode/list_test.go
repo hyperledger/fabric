@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestChaincodeListCmd(t *testing.T) {
@@ -48,13 +49,19 @@ func TestChaincodeListCmd(t *testing.T) {
 		Signer:          signer,
 		BroadcastClient: mockBroadcastClient,
 	}
+	// reset channelID, it might have been set by previous test
+	channelID = ""
 
 	// Get installed chaincodes
 	installedChaincodesCmd := listCmd(mockCF)
 
 	args := []string{"--installed"}
 	installedChaincodesCmd.SetArgs(args)
+	err = installedChaincodesCmd.Execute()
+	assert.Error(t, err, "Run chaincode list cmd to get installed chaincodes should fail if invoked without -C flag")
 
+	args = []string{"--installed", "-C", "mychannel"}
+	installedChaincodesCmd.SetArgs(args)
 	if err := installedChaincodesCmd.Execute(); err != nil {
 		t.Errorf("Run chaincode list cmd to get installed chaincodes error:%v", err)
 	}
@@ -63,10 +70,13 @@ func TestChaincodeListCmd(t *testing.T) {
 
 	// Get instantiated chaincodes
 	instantiatedChaincodesCmd := listCmd(mockCF)
-
 	args = []string{"--instantiated"}
 	instantiatedChaincodesCmd.SetArgs(args)
+	err = instantiatedChaincodesCmd.Execute()
+	assert.Error(t, err, "Run chaincode list cmd to get instantiated chaincodes should fail if invoked without -C flag")
 
+	args = []string{"--instantiated", "-C", "mychannel"}
+	instantiatedChaincodesCmd.SetArgs(args)
 	if err := instantiatedChaincodesCmd.Execute(); err != nil {
 		t.Errorf("Run chaincode list cmd to get instantiated chaincodes error:%v", err)
 	}
@@ -75,10 +85,13 @@ func TestChaincodeListCmd(t *testing.T) {
 
 	// Wrong case: Set both "--installed" and "--instantiated"
 	Cmd := listCmd(mockCF)
-
 	args = []string{"--installed", "--instantiated"}
 	Cmd.SetArgs(args)
+	err = Cmd.Execute()
+	assert.Error(t, err, "Run chaincode list cmd to get instantiated/installed chaincodes should fail if invoked without -C flag")
 
+	args = []string{"--installed", "--instantiated", "-C", "mychannel"}
+	Cmd.SetArgs(args)
 	expectErr := fmt.Errorf("Must explicitly specify \"--installed\" or \"--instantiated\"")
 	if err := Cmd.Execute(); err == nil || err.Error() != expectErr.Error() {
 		t.Errorf("Expect error: %s", expectErr)
@@ -89,7 +102,7 @@ func TestChaincodeListCmd(t *testing.T) {
 	// Wrong case: Miss "--intsalled" and "--instantiated"
 	nilCmd := listCmd(mockCF)
 
-	args = []string{}
+	args = []string{"-C", "mychannel"}
 	nilCmd.SetArgs(args)
 
 	expectErr = fmt.Errorf("Must explicitly specify \"--installed\" or \"--instantiated\"")

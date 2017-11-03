@@ -17,6 +17,7 @@ limitations under the License.
 package chaincode
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -46,6 +47,9 @@ func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 }
 
 func chaincodeInvoke(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
+	if channelID == "" {
+		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
+	}
 	var err error
 	if cf == nil {
 		cf, err = InitCmdFactory(true, true)

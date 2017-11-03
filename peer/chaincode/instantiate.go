@@ -17,6 +17,7 @@ limitations under the License.
 package chaincode
 
 import (
+	"errors"
 	"fmt"
 
 	protcommon "github.com/hyperledger/fabric/protos/common"
@@ -75,7 +76,7 @@ func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envel
 		return nil, fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
-	prop, _, err := utils.CreateDeployProposalFromCDS(chainID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc))
+	prop, _, err := utils.CreateDeployProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc))
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s", chainFuncName, err)
 	}
@@ -108,6 +109,9 @@ func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envel
 // (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
 // commands.
 func chaincodeDeploy(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
+	if channelID == "" {
+		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
+	}
 	var err error
 	if cf == nil {
 		cf, err = InitCmdFactory(true, true)
