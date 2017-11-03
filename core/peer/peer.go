@@ -20,6 +20,7 @@ import (
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -53,7 +54,7 @@ type gossipSupport struct {
 }
 
 type chainSupport struct {
-	bundleSource *channelconfig.BundleSource
+	bundleSource *resourcesconfig.BundleSource
 	channelconfig.Resources
 	channelconfig.Application
 	ledger ledger.PeerLedger
@@ -90,14 +91,19 @@ func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
 
 		channelconfig.LogSanityChecks(bundle)
 
-		err = cs.bundleSource.ValidateNew(bundle)
+		err = cs.bundleSource.ChannelConfig().ValidateNew(bundle)
 		if err != nil {
 			return err
 		}
 
 		capabilitiesSupportedOrPanic(bundle)
 
-		cs.bundleSource.Update(bundle)
+		rBundle, err := cs.bundleSource.NewFromChannelConfig(bundle)
+		if err != nil {
+			return err
+		}
+
+		cs.bundleSource.Update(rBundle)
 	}
 	return nil
 }
@@ -257,14 +263,14 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 
-	gossipCallbackWrapper := func(bundle *channelconfig.Bundle) {
-		ac, ok := bundle.ApplicationConfig()
+	gossipCallbackWrapper := func(bundle *resourcesconfig.Bundle) {
+		ac, ok := bundle.ChannelConfig().ApplicationConfig()
 		if !ok {
 			// TODO, handle a missing ApplicationConfig more gracefully
 			ac = nil
 		}
 		gossipEventer.ProcessConfigUpdate(&gossipSupport{
-			Manager:     bundle.ConfigtxManager(),
+			Manager:     bundle.ChannelConfig().ConfigtxManager(),
 			Application: ac,
 		})
 		service.GetGossipService().SuspectPeers(func(identity api.PeerIdentityType) bool {
@@ -276,13 +282,13 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		})
 	}
 
-	trustedRootsCallbackWrapper := func(bundle *channelconfig.Bundle) {
-		updateTrustedRoots(bundle)
+	trustedRootsCallbackWrapper := func(bundle *resourcesconfig.Bundle) {
+		updateTrustedRoots(bundle.ChannelConfig())
 	}
 
-	mspCallback := func(bundle *channelconfig.Bundle) {
+	mspCallback := func(bundle *resourcesconfig.Bundle) {
 		// TODO remove once all references to mspmgmt are gone from peer code
-		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
+		mspmgmt.XXXSetMSPManager(cid, bundle.ChannelConfig().MSPManager())
 	}
 
 	ac, ok := bundle.ApplicationConfig()
@@ -294,23 +300,28 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		ledger:      ledger,
 	}
 
-	peerSingletonCallback := func(bundle *channelconfig.Bundle) {
-		ac, ok := bundle.ApplicationConfig()
+	peerSingletonCallback := func(bundle *resourcesconfig.Bundle) {
+		ac, ok := bundle.ChannelConfig().ApplicationConfig()
 		if !ok {
 			ac = nil
 		}
 		cs.Application = ac
+		cs.Resources = bundle.ChannelConfig()
 	}
 
-	bundleSource := channelconfig.NewBundleSource(
-		bundle,
+	// TODO, actually use the seed data from the genesis block to bootstrap the resources config
+	rBundle, err := resourcesconfig.NewBundle(cid, &common.Config{ChannelGroup: &common.ConfigGroup{}}, bundle)
+	if err != nil {
+		return err
+	}
+
+	cs.bundleSource = resourcesconfig.NewBundleSource(
+		rBundle,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
 		peerSingletonCallback,
 	)
-	cs.Resources = bundleSource
-	cs.bundleSource = bundleSource
 
 	vcs := struct {
 		*chainSupport
@@ -407,6 +418,17 @@ func GetLedger(cid string) ledger.PeerLedger {
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
 		return c.cs.ledger
+	}
+	return nil
+}
+
+// GetChannelConfig returns the channel configuration of the chain with channel ID. Note that this
+// call returns nil if chain cid has not been created.
+func GetChannelConfig(cid string) channelconfig.Resources {
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.cs
 	}
 	return nil
 }

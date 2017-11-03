@@ -24,6 +24,7 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	. "github.com/hyperledger/fabric/common/tools/protolator"
 	cb "github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
@@ -71,4 +72,55 @@ func TestGenesisBlock(t *testing.T) {
 	gb := p.GenesisBlockForChannel("foo")
 
 	bidirectionalMarshal(t, gb)
+}
+
+func TestResourcesConfig(t *testing.T) {
+	p := &cb.Config{
+		Type: int32(cb.ConfigType_RESOURCE),
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Chaincodes": &cb.ConfigGroup{
+					Groups: map[string]*cb.ConfigGroup{
+						"cc1": &cb.ConfigGroup{
+							Values: map[string]*cb.ConfigValue{
+								"ChaincodeIdentifier": &cb.ConfigValue{
+									Value: utils.MarshalOrPanic(&pb.ChaincodeIdentifier{
+										Hash:    []byte("somehashvalue"),
+										Version: "aversionstring",
+									}),
+								},
+								"ChaincodeValidation": &cb.ConfigValue{
+									Value: utils.MarshalOrPanic(
+										&pb.ChaincodeValidation{
+											Name: "vscc",
+											Argument: utils.MarshalOrPanic(&pb.VSCCArgs{
+												EndorsementPolicyRef: "foo",
+											}),
+										}),
+								},
+								"ChaincodeEndorsement": &cb.ConfigValue{
+									Value: utils.MarshalOrPanic(&pb.ChaincodeEndorsement{
+										Name: "escc",
+									}),
+								},
+							},
+						},
+					},
+				},
+				"APIs": &cb.ConfigGroup{
+					Values: map[string]*cb.ConfigValue{
+						"Test": &cb.ConfigValue{
+							Value: utils.MarshalOrPanic(&pb.APIResource{PolicyRef: "Foo"}),
+						},
+						"Another": &cb.ConfigValue{
+							Value: utils.MarshalOrPanic(&pb.APIResource{PolicyRef: "Bar"}),
+						},
+					},
+				},
+				"PeerPolicies": &cb.ConfigGroup{},
+			},
+		},
+	}
+
+	bidirectionalMarshal(t, p)
 }

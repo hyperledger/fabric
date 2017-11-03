@@ -11,15 +11,13 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -221,8 +219,8 @@ func (rscc *Rscc) getEnvelopeFromConfig(channel string, cfgb []byte) (*common.En
 }
 
 //create the evaluator to provide evaluation services for resources
-func (rscc *Rscc) createPolicyEvaluator(env *common.Envelope, mspMgr msp.MSPManager, polMgr policies.Manager) (policyEvaluator, error) {
-	bundle, err := resourcesconfig.New(env, mspMgr, polMgr)
+func (rscc *Rscc) createPolicyEvaluator(env *common.Envelope, chanRes channelconfig.Resources) (policyEvaluator, error) {
+	bundle, err := resourcesconfig.NewBundleFromEnvelope(env, chanRes)
 	if err != nil {
 		return nil, err
 	}
@@ -245,18 +243,13 @@ func (rscc *Rscc) updateConfig(channel string, cfgb []byte, defProv aclmgmt.ACLP
 		return err
 	}
 
-	mspMgr := mgmt.GetManagerForChain(channel)
-	if mspMgr == nil {
-		return fmt.Errorf("msp manager not found for %s", channel)
-	}
-
-	polMgr := peer.GetPolicyManager(channel)
-	if polMgr == nil {
-		return fmt.Errorf("policies manager not found for %s", channel)
+	chanRes := peer.GetChannelConfig(channel)
+	if chanRes == nil {
+		return fmt.Errorf("Channel config not found for %s", channel)
 	}
 
 	//associate the evaluator with the managers
-	pEvaluator, err := rscc.createPolicyEvaluator(env, mspMgr, polMgr)
+	pEvaluator, err := rscc.createPolicyEvaluator(env, chanRes)
 	if err != nil {
 		return fmt.Errorf("cannot create provider for channel %s(%s)", channel, err)
 	}

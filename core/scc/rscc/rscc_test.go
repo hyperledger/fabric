@@ -96,7 +96,7 @@ func createConfig() []byte {
 					// All of the default seed data values would inside this ConfigGroup
 					Values: map[string]*common.ConfigValue{
 						"res": &common.ConfigValue{
-							Value: utils.MarshalOrPanic(&pb.Resource{
+							Value: utils.MarshalOrPanic(&pb.APIResource{
 								PolicyRef: "respol",
 							}),
 							ModPolicy: "resmodpol",
