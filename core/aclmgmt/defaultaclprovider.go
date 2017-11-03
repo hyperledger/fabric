@@ -119,6 +119,12 @@ func (d *defaultACLProvider) CheckACL(resName string, channelID string, idinfo i
 	switch idinfo.(type) {
 	case *pb.SignedProposal:
 		return d.policyChecker.CheckPolicy(channelID, policy, idinfo.(*pb.SignedProposal))
+	case *common.Envelope:
+		sd, err := idinfo.(*common.Envelope).AsSignedData()
+		if err != nil {
+			return err
+		}
+		return d.policyChecker.CheckPolicyBySignedData(channelID, policy, sd)
 	default:
 		aclLogger.Errorf("Unmapped id on checkACL %s", resName)
 		return fmt.Errorf("Unknown id on checkACL %s", resName)
