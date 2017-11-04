@@ -1309,18 +1309,15 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			ctxt = context.WithValue(ctxt, TXSimulatorKey, txsim)
 			ctxt = context.WithValue(ctxt, HistoryQueryExecutorKey, historyQueryExecutor)
 
-			chaincodeLogger.Debugf("[%s] calling lscc to get chaincode data for %s on channel %s",
+			chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s",
 				shorttxid(msg.Txid), calledCcIns.ChaincodeName, calledCcIns.ChainID)
-
-			//Call LSCC to get the called chaincode artifacts
 
 			//is the chaincode a system chaincode ?
 			isscc := sysccprovider.GetSystemChaincodeProvider().IsSysCC(calledCcIns.ChaincodeName)
 
 			var version string
 			if !isscc {
-				//if its a user chaincode, get the details from LSCC
-				//Call LSCC to get the called chaincode artifacts
+				//if its a user chaincode, get the details
 				cd, err := GetChaincodeDefinition(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcIns.ChainID, calledCcIns.ChaincodeName)
 				if err != nil {
 					errHandler([]byte(err.Error()), "[%s]Failed to get chaincode data (%s) for invoked chaincode. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)

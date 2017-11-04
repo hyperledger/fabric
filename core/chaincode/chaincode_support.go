@@ -680,13 +680,13 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 		var depPayload []byte
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
-		//this will also validate the ID from the LSCC
+		//(this will also validate the ID from the LSCC if we're not using the config-tree approach)
 		depPayload, err = GetCDS(context, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, cID.Name)
 		if err != nil {
-			return cID, cMsg, errors.WithMessage(err, fmt.Sprintf("could not get deployment transaction from LSCC for %s", canName))
+			return cID, cMsg, errors.WithMessage(err, fmt.Sprintf("could not get ChaincodeDeploymentSpec for %s", canName))
 		}
 		if depPayload == nil {
-			return cID, cMsg, errors.WithMessage(err, fmt.Sprintf("failed to get deployment payload %s", canName))
+			return cID, cMsg, errors.WithMessage(err, fmt.Sprintf("nil ChaincodeDeploymentSpec for %s", canName))
 		}
 
 		cds = &pb.ChaincodeDeploymentSpec{}

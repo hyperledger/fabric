@@ -296,8 +296,6 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 	var escc string
 	//ie, not "lscc" or system chaincodes
 	if isSysCC {
-		// FIXME: getCDSFromLSCC seems to fail for lscc - not sure this is expected?
-		// TODO: who should endorse a call to LSCC?
 		escc = "escc"
 	} else {
 		escc = cd.Endorsement()

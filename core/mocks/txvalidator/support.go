@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -30,6 +31,10 @@ type Support struct {
 	MSPManagerVal msp.MSPManager
 	ApplyVal      error
 	ACVal         channelconfig.ApplicationCapabilities
+}
+
+func (ms *Support) ChaincodeByName(chainname, ccname string) (resourcesconfig.ChaincodeDefinition, bool) {
+	return nil, false
 }
 
 func (ms *Support) Capabilities() channelconfig.ApplicationCapabilities {
