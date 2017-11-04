@@ -78,6 +78,13 @@ public interface ChaincodeStub {
 	String getTxId();
 
 	/**
+	 * Returns the channel id
+	 *
+	 * @return the channel id
+	 */
+	String getChannelId();
+
+	/**
 	 * Invoke another chaincode using the same transaction context.
 	 *
 	 * @param chaincodeName
