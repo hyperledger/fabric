@@ -364,7 +364,7 @@ Example of chaincode commands:
     peer chaincode install -n mycc -v 1 -p path/to/my/chaincode/v1
     peer chaincode upgrade -n mycc -v 1 -c '{"Args":["d", "e", "f"]}' -C mychannel
     peer chaincode query -C mychannel -n mycc -c '{"Args":["query","e"]}'
-    peer chaincode invoke -o orderer.example.com:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C mychannel -n mycc -c '{"Args":["invoke","a","b","10"]}'
+    peer chaincode invoke -o orderer.example.com:7050  --tls --cafile $ORDERER_CA -C mychannel -n mycc -c '{"Args":["invoke","a","b","10"]}'
 
 .. _System Chaincode:
 

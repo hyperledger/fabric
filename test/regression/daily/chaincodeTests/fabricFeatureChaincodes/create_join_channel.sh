@@ -76,7 +76,7 @@ createChannel() {
         if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
 		peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/channel$CH_NUM.tx >>$LOG_FILE
 	else
-		peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/channel$CH_NUM.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >>$LOG_FILE
+		peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/channel$CH_NUM.tx --tls --cafile $ORDERER_CA >>$LOG_FILE
 	fi
 	res=$?
 	verifyResult $res "Channel creation failed"
@@ -93,7 +93,7 @@ updateAnchorPeers() {
         if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
 		peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/${CORE_PEER_LOCALMSPID}anchors$CH_NUM.tx >>$LOG_FILE
 	else
-		peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/${CORE_PEER_LOCALMSPID}anchors$CH_NUM.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >>$LOG_FILE
+		peer channel create -o orderer.example.com:7050 -c $CHANNEL_NAME$CH_NUM -f ./channel-artifacts/${CORE_PEER_LOCALMSPID}anchors$CH_NUM.tx --tls --cafile $ORDERER_CA >>$LOG_FILE
 	fi
 	res=$?
 	verifyResult $res "Anchor peer update failed"
