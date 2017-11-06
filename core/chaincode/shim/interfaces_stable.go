@@ -190,9 +190,10 @@ type ChaincodeStubInterface interface {
 	// client's timestamp, and will have the same value across all endorsers.
 	GetTxTimestamp() (*timestamp.Timestamp, error)
 
-	// SetEvent allows the chaincode to propose an event on the transaction
-	// proposal. If the transaction is validated and successfully committed,
-	// the event will be delivered to the current event listeners.
+	// SetEvent allows the chaincode to set an event on the response to the
+	// proposal to be included as part of a transaction. The event will be
+	// available within the transaction in the committed block regardless of the
+	// validity of the transaction.
 	SetEvent(name string, payload []byte) error
 }
 
