@@ -627,7 +627,7 @@ func (lscc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 	// have deleted it
 	cdbytes, _ := lscc.getCCInstance(stub, chaincodeName)
 	if cdbytes == nil {
-		return nil, NotFoundErr(chainName)
+		return nil, NotFoundErr(chaincodeName)
 	}
 
 	//we need the cd to compare the version
