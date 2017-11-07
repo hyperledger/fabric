@@ -33,10 +33,10 @@ func TestConfigMapMultiGroup(t *testing.T) {
 	config.Groups["0"].Groups["1"].Groups["2.2"] = cb.NewConfigGroup()
 	config.Groups["0"].Groups["1"].Groups["2.2"].Values["Value"] = &cb.ConfigValue{}
 
-	confMap, err := MapConfig(config, "Channel")
+	confMap, err := mapConfig(config, "Channel")
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"Channel", "0", "1", "2.1"}, confMap["[Values] /Channel/0/1/2.1/Value"].path)
-	assert.Equal(t, []string{"Channel", "0", "1", "2.2"}, confMap["[Values] /Channel/0/1/2.2/Value"].path)
+	assert.Equal(t, []string{"Channel", "0", "1", "2.1"}, confMap["[Value]  /Channel/0/1/2.1/Value"].path)
+	assert.Equal(t, []string{"Channel", "0", "1", "2.2"}, confMap["[Value]  /Channel/0/1/2.2/Value"].path)
 }
 
 func TestConfigMap(t *testing.T) {
@@ -48,25 +48,25 @@ func TestConfigMap(t *testing.T) {
 	config.Groups["0DeepGroup"].Groups["1DeepGroup"] = cb.NewConfigGroup()
 	config.Groups["0DeepGroup"].Groups["1DeepGroup"].Values["2DeepValue"] = &cb.ConfigValue{}
 
-	confMap, err := MapConfig(config, "Channel")
+	confMap, err := mapConfig(config, "Channel")
 	assert.NoError(t, err, "Should not have errored building map")
 
 	assert.Len(t, confMap, 7, "There should be 7 entries in the config map")
 
 	assert.Equal(t, comparable{key: "Channel", path: []string{}, ConfigGroup: config},
-		confMap["[Groups] /Channel"])
+		confMap["[Group]  /Channel"])
 	assert.Equal(t, comparable{key: "0DeepGroup", path: []string{"Channel"}, ConfigGroup: config.Groups["0DeepGroup"]},
-		confMap["[Groups] /Channel/0DeepGroup"])
+		confMap["[Group]  /Channel/0DeepGroup"])
 	assert.Equal(t, comparable{key: "0DeepValue1", path: []string{"Channel"}, ConfigValue: config.Values["0DeepValue1"]},
-		confMap["[Values] /Channel/0DeepValue1"])
+		confMap["[Value]  /Channel/0DeepValue1"])
 	assert.Equal(t, comparable{key: "0DeepValue2", path: []string{"Channel"}, ConfigValue: config.Values["0DeepValue2"]},
-		confMap["[Values] /Channel/0DeepValue2"])
+		confMap["[Value]  /Channel/0DeepValue2"])
 	assert.Equal(t, comparable{key: "1DeepPolicy", path: []string{"Channel", "0DeepGroup"}, ConfigPolicy: config.Groups["0DeepGroup"].Policies["1DeepPolicy"]},
 		confMap["[Policy] /Channel/0DeepGroup/1DeepPolicy"])
 	assert.Equal(t, comparable{key: "1DeepGroup", path: []string{"Channel", "0DeepGroup"}, ConfigGroup: config.Groups["0DeepGroup"].Groups["1DeepGroup"]},
-		confMap["[Groups] /Channel/0DeepGroup/1DeepGroup"])
+		confMap["[Group]  /Channel/0DeepGroup/1DeepGroup"])
 	assert.Equal(t, comparable{key: "2DeepValue", path: []string{"Channel", "0DeepGroup", "1DeepGroup"}, ConfigValue: config.Groups["0DeepGroup"].Groups["1DeepGroup"].Values["2DeepValue"]},
-		confMap["[Values] /Channel/0DeepGroup/1DeepGroup/2DeepValue"])
+		confMap["[Value]  /Channel/0DeepGroup/1DeepGroup/2DeepValue"])
 }
 
 func TestMapConfigBack(t *testing.T) {
@@ -78,7 +78,7 @@ func TestMapConfigBack(t *testing.T) {
 	config.Groups["0DeepGroup"].Groups["1DeepGroup"] = cb.NewConfigGroup()
 	config.Groups["0DeepGroup"].Groups["1DeepGroup"].Values["2DeepValue"] = &cb.ConfigValue{}
 
-	confMap, err := MapConfig(config, "Channel")
+	confMap, err := mapConfig(config, "Channel")
 	assert.NoError(t, err, "Should not have errored building map")
 
 	newConfig, err := configMapToConfig(confMap, "Channel")
@@ -90,7 +90,7 @@ func TestMapConfigBack(t *testing.T) {
 	assert.NotEqual(t, config, newConfig, "Mutating the new config should not mutate the existing config")
 }
 
-func TestHackInMapConfigBack(t *testing.T) {
+func TestHackInmapConfigBack(t *testing.T) {
 	config := cb.NewConfigGroup()
 	config.Values["ChannelValue1"] = &cb.ConfigValue{}
 	config.Values["ChannelValue2"] = &cb.ConfigValue{}
@@ -103,7 +103,7 @@ func TestHackInMapConfigBack(t *testing.T) {
 	config.Groups["Application"].Policies["ApplicationPolicy"] = &cb.ConfigPolicy{}
 	config.Groups["Application"].Policies["ApplicationValue"] = &cb.ConfigPolicy{}
 
-	confMap, err := MapConfig(config, "Channel")
+	confMap, err := mapConfig(config, "Channel")
 	assert.NoError(t, err, "Should not have errored building map")
 
 	newConfig, err := configMapToConfig(confMap, "Channel")

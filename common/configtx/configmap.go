@@ -16,20 +16,20 @@ import (
 )
 
 const (
-	GroupPrefix  = "[Groups] "
-	ValuePrefix  = "[Values] "
-	PolicyPrefix = "[Policy] " // The plurarility doesn't match, but, it makes the logs much easier being the same length as "Groups" and "Values"
+	groupPrefix  = "[Group]  "
+	valuePrefix  = "[Value]  "
+	policyPrefix = "[Policy] "
 
-	PathSeparator = "/"
+	pathSeparator = "/"
 
 	// Hacky fix constants, used in recurseConfigMap
-	hackyFixOrdererCapabilities = "[Values] /Channel/Orderer/Capabilities"
+	hackyFixOrdererCapabilities = "[Value]  /Channel/Orderer/Capabilities"
 	hackyFixNewModPolicy        = "Admins"
 )
 
-// MapConfig is intended to be called outside this file
+// mapConfig is intended to be called outside this file
 // it takes a ConfigGroup and generates a map of fqPath to comparables (or error on invalid keys)
-func MapConfig(channelGroup *cb.ConfigGroup, rootGroupKey string) (map[string]comparable, error) {
+func mapConfig(channelGroup *cb.ConfigGroup, rootGroupKey string) (map[string]comparable, error) {
 	result := make(map[string]comparable)
 	if channelGroup != nil {
 		err := recurseConfig(result, []string{rootGroupKey}, channelGroup)
@@ -40,17 +40,17 @@ func MapConfig(channelGroup *cb.ConfigGroup, rootGroupKey string) (map[string]co
 	return result, nil
 }
 
-// addToMap is used only internally by MapConfig
+// addToMap is used only internally by mapConfig
 func addToMap(cg comparable, result map[string]comparable) error {
 	var fqPath string
 
 	switch {
 	case cg.ConfigGroup != nil:
-		fqPath = GroupPrefix
+		fqPath = groupPrefix
 	case cg.ConfigValue != nil:
-		fqPath = ValuePrefix
+		fqPath = valuePrefix
 	case cg.ConfigPolicy != nil:
-		fqPath = PolicyPrefix
+		fqPath = policyPrefix
 	}
 
 	if err := validateConfigID(cg.key); err != nil {
@@ -58,9 +58,9 @@ func addToMap(cg comparable, result map[string]comparable) error {
 	}
 
 	if len(cg.path) == 0 {
-		fqPath += PathSeparator + cg.key
+		fqPath += pathSeparator + cg.key
 	} else {
-		fqPath += PathSeparator + strings.Join(cg.path, PathSeparator) + PathSeparator + cg.key
+		fqPath += pathSeparator + strings.Join(cg.path, pathSeparator) + pathSeparator + cg.key
 	}
 
 	logger.Debugf("Adding to config map: %s", fqPath)
@@ -70,7 +70,7 @@ func addToMap(cg comparable, result map[string]comparable) error {
 	return nil
 }
 
-// recurseConfig is used only internally by MapConfig
+// recurseConfig is used only internally by mapConfig
 func recurseConfig(result map[string]comparable, path []string, group *cb.ConfigGroup) error {
 	if err := addToMap(comparable{key: path[len(path)-1], path: path[:len(path)-1], ConfigGroup: group}, result); err != nil {
 		return err
@@ -103,14 +103,14 @@ func recurseConfig(result map[string]comparable, path []string, group *cb.Config
 // configMapToConfig is intended to be called from outside this file
 // It takes a configMap and converts it back into a *cb.ConfigGroup structure
 func configMapToConfig(configMap map[string]comparable, rootGroupKey string) (*cb.ConfigGroup, error) {
-	rootPath := PathSeparator + rootGroupKey
+	rootPath := pathSeparator + rootGroupKey
 	return recurseConfigMap(rootPath, configMap)
 }
 
 // recurseConfigMap is used only internally by configMapToConfig
 // Note, this function no longer mutates the cb.Config* entries within configMap
 func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigGroup, error) {
-	groupPath := GroupPrefix + path
+	groupPath := groupPrefix + path
 	group, ok := configMap[groupPath]
 	if !ok {
 		return nil, fmt.Errorf("Missing group at path: %s", groupPath)
@@ -124,7 +124,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 	proto.Merge(newConfigGroup, group.ConfigGroup)
 
 	for key := range group.Groups {
-		updatedGroup, err := recurseConfigMap(path+PathSeparator+key, configMap)
+		updatedGroup, err := recurseConfigMap(path+pathSeparator+key, configMap)
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +132,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 	}
 
 	for key := range group.Values {
-		valuePath := ValuePrefix + path + PathSeparator + key
+		valuePath := valuePrefix + path + pathSeparator + key
 		value, ok := configMap[valuePath]
 		if !ok {
 			return nil, fmt.Errorf("Missing value at path: %s", valuePath)
@@ -144,7 +144,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 	}
 
 	for key := range group.Policies {
-		policyPath := PolicyPrefix + path + PathSeparator + key
+		policyPath := policyPrefix + path + pathSeparator + key
 		policy, ok := configMap[policyPath]
 		if !ok {
 			return nil, fmt.Errorf("Missing policy at path: %s", policyPath)
@@ -172,14 +172,14 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 
 		for key, value := range newConfigGroup.Values {
 			if value.ModPolicy == "" {
-				logger.Debugf("Performing upgrade of value %s empty mod_policy", ValuePrefix+path+PathSeparator+key)
+				logger.Debugf("Performing upgrade of value %s empty mod_policy", valuePrefix+path+pathSeparator+key)
 				value.ModPolicy = hackyFixNewModPolicy
 			}
 		}
 
 		for key, policy := range newConfigGroup.Policies {
 			if policy.ModPolicy == "" {
-				logger.Debugf("Performing upgrade of policy %s empty mod_policy", PolicyPrefix+path+PathSeparator+key)
+				logger.Debugf("Performing upgrade of policy %s empty mod_policy", policyPrefix+path+pathSeparator+key)
 
 				policy.ModPolicy = hackyFixNewModPolicy
 			}
