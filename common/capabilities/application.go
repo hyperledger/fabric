@@ -14,7 +14,7 @@ const (
 	applicationTypeName = "Application"
 
 	// ApplicationV1_1 is the capabilties string for standard new non-backwards compatible fabric v1.1 application capabilities.
-	ApplicationV1_1 = "V1.1"
+	ApplicationV1_1 = "V1_1"
 )
 
 // ApplicationProvider provides capabilities information for application level config.

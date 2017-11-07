@@ -14,7 +14,7 @@ const (
 	ordererTypeName = "Orderer"
 
 	// OrdererV1_1 is the capabilties string for standard new non-backwards compatible fabric v1.1 orderer capabilities.
-	OrdererV1_1 = "V1.1"
+	OrdererV1_1 = "V1_1"
 )
 
 // OrdererProvider provides capabilities information for orderer level config.

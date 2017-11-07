@@ -319,7 +319,7 @@ Capabilities:
         # determined to be desired for all orderers and peers running v1.0.x,
         # but the modification of which would cause imcompatibilities.  Users
         # should leave this flag set to true.
-        "V1.1": true
+        V1_1: true
 
     # Orderer capabilities apply only to the orderers, and may be safely
     # manipulated without concern for upgrading peers.  Set the value of the
@@ -329,7 +329,7 @@ Capabilities:
         # determined to be desired for all orderers running v1.0.x, but the
         # modification of which  would cause imcompatibilities.  Users should
         # leave this flag set to true.
-        "V1.1": true
+        V1_1: true
 
     # Application capabilities apply only to the peer network, and may be safely
     # manipulated without concern for upgrading orderers.  Set the value of the
@@ -339,4 +339,4 @@ Capabilities:
         # determined to be desired for all peers running v1.0.x, but the
         # modification of which would cause imcompatibilities.  Users should
         # leave this flag set to true.
-        "V1.1": true
+        V1_1: true
