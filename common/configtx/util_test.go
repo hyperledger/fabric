@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package configtx
@@ -19,6 +9,11 @@ package configtx
 import (
 	"math/rand"
 	"testing"
+
+	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestValidConfigID checks that the constraints on chain IDs are enforced properly
@@ -119,4 +114,96 @@ func randomAlphaString(size int) string {
 		output[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(output)
+}
+
+func TestUnmarshalConfig(t *testing.T) {
+	goodConfigBytes := utils.MarshalOrPanic(&cb.Config{})
+	badConfigBytes := []byte("garbage")
+
+	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
+		_, err := UnmarshalConfig(goodConfigBytes)
+		assert.NoError(t, err)
+	})
+
+	t.Run("GoodUnmarshalOrpanic", func(t *testing.T) {
+		assert.NotPanics(t, func() { UnmarshalConfigOrPanic(goodConfigBytes) })
+	})
+
+	t.Run("BadUnmarshalNormal", func(t *testing.T) {
+		_, err := UnmarshalConfig(badConfigBytes)
+		assert.Error(t, err)
+	})
+
+	t.Run("BadUnmarshalOrpanic", func(t *testing.T) {
+		assert.Panics(t, func() { UnmarshalConfigOrPanic(badConfigBytes) })
+	})
+}
+
+func TestUnmarshalConfigEnvelope(t *testing.T) {
+	goodConfigEnvelopeBytes := utils.MarshalOrPanic(&cb.ConfigEnvelope{})
+	badConfigEnvelopeBytes := []byte("garbage")
+
+	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
+		_, err := UnmarshalConfigEnvelope(goodConfigEnvelopeBytes)
+		assert.NoError(t, err)
+	})
+
+	t.Run("GoodUnmarshalOrpanic", func(t *testing.T) {
+		assert.NotPanics(t, func() { UnmarshalConfigEnvelopeOrPanic(goodConfigEnvelopeBytes) })
+	})
+
+	t.Run("BadUnmarshalNormal", func(t *testing.T) {
+		_, err := UnmarshalConfigEnvelope(badConfigEnvelopeBytes)
+		assert.Error(t, err)
+	})
+
+	t.Run("BadUnmarshalOrpanic", func(t *testing.T) {
+		assert.Panics(t, func() { UnmarshalConfigEnvelopeOrPanic(badConfigEnvelopeBytes) })
+	})
+}
+
+func TestUnmarshalConfigUpdate(t *testing.T) {
+	goodConfigUpdateBytes := utils.MarshalOrPanic(&cb.ConfigUpdate{})
+	badConfigUpdateBytes := []byte("garbage")
+
+	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
+		_, err := UnmarshalConfigUpdate(goodConfigUpdateBytes)
+		assert.NoError(t, err)
+	})
+
+	t.Run("GoodUnmarshalOrpanic", func(t *testing.T) {
+		assert.NotPanics(t, func() { UnmarshalConfigUpdateOrPanic(goodConfigUpdateBytes) })
+	})
+
+	t.Run("BadUnmarshalNormal", func(t *testing.T) {
+		_, err := UnmarshalConfigUpdate(badConfigUpdateBytes)
+		assert.Error(t, err)
+	})
+
+	t.Run("BadUnmarshalOrpanic", func(t *testing.T) {
+		assert.Panics(t, func() { UnmarshalConfigUpdateOrPanic(badConfigUpdateBytes) })
+	})
+}
+
+func TestUnmarshalConfigUpdateEnvelope(t *testing.T) {
+	goodConfigUpdateEnvelopeBytes := utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{})
+	badConfigUpdateEnvelopeBytes := []byte("garbage")
+
+	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
+		_, err := UnmarshalConfigUpdateEnvelope(goodConfigUpdateEnvelopeBytes)
+		assert.NoError(t, err)
+	})
+
+	t.Run("GoodUnmarshalOrpanic", func(t *testing.T) {
+		assert.NotPanics(t, func() { UnmarshalConfigUpdateEnvelopeOrPanic(goodConfigUpdateEnvelopeBytes) })
+	})
+
+	t.Run("BadUnmarshalNormal", func(t *testing.T) {
+		_, err := UnmarshalConfigUpdateEnvelope(badConfigUpdateEnvelopeBytes)
+		assert.Error(t, err)
+	})
+
+	t.Run("BadUnmarshalOrpanic", func(t *testing.T) {
+		assert.Panics(t, func() { UnmarshalConfigUpdateEnvelopeOrPanic(badConfigUpdateEnvelopeBytes) })
+	})
 }

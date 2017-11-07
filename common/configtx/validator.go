@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package configtx
 
 import (
-	"fmt"
 	"regexp"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -15,6 +14,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("common/configtx")
@@ -30,17 +30,13 @@ var (
 	}
 )
 
-type configSet struct {
+type ValidatorImpl struct {
 	channelID   string
 	sequence    uint64
 	configMap   map[string]comparable
 	configProto *cb.Config
-}
-
-type ValidatorImpl struct {
-	namespace string
-	pm        policies.Manager
-	current   *configSet
+	namespace   string
+	pm          policies.Manager
 }
 
 // validateConfigID makes sure that the config element names (ie map key of
@@ -52,19 +48,19 @@ func validateConfigID(configID string) error {
 	re, _ := regexp.Compile(configAllowedChars)
 	// Length
 	if len(configID) <= 0 {
-		return fmt.Errorf("config ID illegal, cannot be empty")
+		return errors.New("config ID illegal, cannot be empty")
 	}
 	if len(configID) > maxLength {
-		return fmt.Errorf("config ID illegal, cannot be longer than %d", maxLength)
+		return errors.Errorf("config ID illegal, cannot be longer than %d", maxLength)
 	}
 	// Illegal name
 	if _, ok := illegalNames[configID]; ok {
-		return fmt.Errorf("name '%s' for config ID is not allowed", configID)
+		return errors.Errorf("name '%s' for config ID is not allowed", configID)
 	}
 	// Illegal characters
 	matched := re.FindString(configID)
 	if len(matched) != len(configID) {
-		return fmt.Errorf("config ID '%s' contains illegal characters", configID)
+		return errors.Errorf("config ID '%s' contains illegal characters", configID)
 	}
 
 	return nil
@@ -84,16 +80,16 @@ func validateChannelID(channelID string) error {
 	re, _ := regexp.Compile(channelAllowedChars)
 	// Length
 	if len(channelID) <= 0 {
-		return fmt.Errorf("channel ID illegal, cannot be empty")
+		return errors.Errorf("channel ID illegal, cannot be empty")
 	}
 	if len(channelID) > maxLength {
-		return fmt.Errorf("channel ID illegal, cannot be longer than %d", maxLength)
+		return errors.Errorf("channel ID illegal, cannot be longer than %d", maxLength)
 	}
 
 	// Illegal characters
 	matched := re.FindString(channelID)
 	if len(matched) != len(channelID) {
-		return fmt.Errorf("channel ID '%s' contains illegal characters", channelID)
+		return errors.Errorf("channel ID '%s' contains illegal characters", channelID)
 	}
 
 	return nil
@@ -101,31 +97,29 @@ func validateChannelID(channelID string) error {
 
 func NewValidatorImpl(channelID string, config *cb.Config, namespace string, pm policies.Manager) (*ValidatorImpl, error) {
 	if config == nil {
-		return nil, fmt.Errorf("Nil config envelope Config")
+		return nil, errors.Errorf("nil config parameter")
 	}
 
 	if config.ChannelGroup == nil {
-		return nil, fmt.Errorf("nil channel group")
+		return nil, errors.Errorf("nil channel group")
 	}
 
 	if err := validateChannelID(channelID); err != nil {
-		return nil, fmt.Errorf("Bad channel id: %s", err)
+		return nil, errors.Errorf("bad channel ID: %s", err)
 	}
 
 	configMap, err := MapConfig(config.ChannelGroup, namespace)
 	if err != nil {
-		return nil, fmt.Errorf("Error converting config to map: %s", err)
+		return nil, errors.Errorf("error converting config to map: %s", err)
 	}
 
 	return &ValidatorImpl{
-		namespace: namespace,
-		pm:        pm,
-		current: &configSet{
-			sequence:    config.Sequence,
-			configMap:   configMap,
-			channelID:   channelID,
-			configProto: config,
-		},
+		namespace:   namespace,
+		pm:          pm,
+		sequence:    config.Sequence,
+		configMap:   configMap,
+		channelID:   channelID,
+		configProto: config,
 	}, nil
 }
 
@@ -138,22 +132,22 @@ func (cm *ValidatorImpl) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 func (cm *ValidatorImpl) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
 	configUpdateEnv, err := envelopeToConfigUpdate(configtx)
 	if err != nil {
-		return nil, fmt.Errorf("Error converting envelope to config update: %s", err)
+		return nil, errors.Errorf("error converting envelope to config update: %s", err)
 	}
 
 	configMap, err := cm.authorizeUpdate(configUpdateEnv)
 	if err != nil {
-		return nil, fmt.Errorf("Error authorizing update: %s", err)
+		return nil, errors.Errorf("error authorizing update: %s", err)
 	}
 
 	channelGroup, err := configMapToConfig(configMap, cm.namespace)
 	if err != nil {
-		return nil, fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
+		return nil, errors.Errorf("could not turn configMap back to channelGroup: %s", err)
 	}
 
 	return &cb.ConfigEnvelope{
 		Config: &cb.Config{
-			Sequence:     cm.current.sequence + 1,
+			Sequence:     cm.sequence + 1,
 			ChannelGroup: channelGroup,
 		},
 		LastUpdate: configtx,
@@ -163,15 +157,15 @@ func (cm *ValidatorImpl) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 // Validate simulates applying a ConfigEnvelope to become the new config
 func (cm *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 	if configEnv == nil {
-		return fmt.Errorf("config envelope is nil")
+		return errors.Errorf("config envelope is nil")
 	}
 
 	if configEnv.Config == nil {
-		return fmt.Errorf("config envelope has nil config")
+		return errors.Errorf("config envelope has nil config")
 	}
 
-	if configEnv.Config.Sequence != cm.current.sequence+1 {
-		return fmt.Errorf("config currently at sequence %d, cannot validate config at sequence %d", cm.current.sequence, configEnv.Config.Sequence)
+	if configEnv.Config.Sequence != cm.sequence+1 {
+		return errors.Errorf("config currently at sequence %d, cannot validate config at sequence %d", cm.sequence, configEnv.Config.Sequence)
 	}
 
 	configUpdateEnv, err := envelopeToConfigUpdate(configEnv.LastUpdate)
@@ -186,12 +180,12 @@ func (cm *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 
 	channelGroup, err := configMapToConfig(configMap, cm.namespace)
 	if err != nil {
-		return fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
+		return errors.Errorf("could not turn configMap back to channelGroup: %s", err)
 	}
 
 	// reflect.Equal will not work here, because it considers nil and empty maps as different
 	if !proto.Equal(channelGroup, configEnv.Config.ChannelGroup) {
-		return fmt.Errorf("ConfigEnvelope LastUpdate did not produce the supplied config result")
+		return errors.Errorf("ConfigEnvelope LastUpdate did not produce the supplied config result")
 	}
 
 	return nil
@@ -199,15 +193,15 @@ func (cm *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 
 // ChainID retrieves the chain ID associated with this manager
 func (cm *ValidatorImpl) ChainID() string {
-	return cm.current.channelID
+	return cm.channelID
 }
 
-// Sequence returns the current sequence number of the config
+// Sequence returns the sequence number of the config
 func (cm *ValidatorImpl) Sequence() uint64 {
-	return cm.current.sequence
+	return cm.sequence
 }
 
-// ConfigEnvelope returns the current config envelope
+// ConfigEnvelope returns the config proto which initialized this Validator
 func (cm *ValidatorImpl) ConfigProto() *cb.Config {
-	return cm.current.configProto
+	return cm.configProto
 }
