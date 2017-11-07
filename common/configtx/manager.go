@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
@@ -37,9 +37,10 @@ type configSet struct {
 	configProto *cb.Config
 }
 
-type configManager struct {
-	initializer api.Proposer
-	current     *configSet
+type ValidatorImpl struct {
+	namespace string
+	pm        policies.Manager
+	current   *configSet
 }
 
 // validateConfigID makes sure that the config element names (ie map key of
@@ -98,7 +99,7 @@ func validateChannelID(channelID string) error {
 	return nil
 }
 
-func NewManagerImpl(channelID string, config *cb.Config, initializer api.Proposer) (api.Manager, error) {
+func NewValidatorImpl(channelID string, config *cb.Config, namespace string, pm policies.Manager) (*ValidatorImpl, error) {
 	if config == nil {
 		return nil, fmt.Errorf("Nil config envelope Config")
 	}
@@ -111,13 +112,14 @@ func NewManagerImpl(channelID string, config *cb.Config, initializer api.Propose
 		return nil, fmt.Errorf("Bad channel id: %s", err)
 	}
 
-	configMap, err := MapConfig(config.ChannelGroup, initializer.RootGroupKey())
+	configMap, err := MapConfig(config.ChannelGroup, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("Error converting config to map: %s", err)
 	}
 
-	return &configManager{
-		initializer: initializer,
+	return &ValidatorImpl{
+		namespace: namespace,
+		pm:        pm,
 		current: &configSet{
 			sequence:    config.Sequence,
 			configMap:   configMap,
@@ -129,11 +131,11 @@ func NewManagerImpl(channelID string, config *cb.Config, initializer api.Propose
 
 // ProposeConfigUpdate takes in an Envelope of type CONFIG_UPDATE and produces a
 // ConfigEnvelope to be used as the Envelope Payload Data of a CONFIG message
-func (cm *configManager) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
+func (cm *ValidatorImpl) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
 	return cm.proposeConfigUpdate(configtx)
 }
 
-func (cm *configManager) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
+func (cm *ValidatorImpl) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
 	configUpdateEnv, err := envelopeToConfigUpdate(configtx)
 	if err != nil {
 		return nil, fmt.Errorf("Error converting envelope to config update: %s", err)
@@ -144,7 +146,7 @@ func (cm *configManager) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 		return nil, fmt.Errorf("Error authorizing update: %s", err)
 	}
 
-	channelGroup, err := configMapToConfig(configMap, cm.initializer.RootGroupKey())
+	channelGroup, err := configMapToConfig(configMap, cm.namespace)
 	if err != nil {
 		return nil, fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
 	}
@@ -159,7 +161,7 @@ func (cm *configManager) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 }
 
 // Validate simulates applying a ConfigEnvelope to become the new config
-func (cm *configManager) Validate(configEnv *cb.ConfigEnvelope) error {
+func (cm *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 	if configEnv == nil {
 		return fmt.Errorf("config envelope is nil")
 	}
@@ -182,7 +184,7 @@ func (cm *configManager) Validate(configEnv *cb.ConfigEnvelope) error {
 		return err
 	}
 
-	channelGroup, err := configMapToConfig(configMap, cm.initializer.RootGroupKey())
+	channelGroup, err := configMapToConfig(configMap, cm.namespace)
 	if err != nil {
 		return fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
 	}
@@ -196,16 +198,16 @@ func (cm *configManager) Validate(configEnv *cb.ConfigEnvelope) error {
 }
 
 // ChainID retrieves the chain ID associated with this manager
-func (cm *configManager) ChainID() string {
+func (cm *ValidatorImpl) ChainID() string {
 	return cm.current.channelID
 }
 
 // Sequence returns the current sequence number of the config
-func (cm *configManager) Sequence() uint64 {
+func (cm *ValidatorImpl) Sequence() uint64 {
 	return cm.current.sequence
 }
 
 // ConfigEnvelope returns the current config envelope
-func (cm *configManager) ConfigProto() *cb.Config {
+func (cm *ValidatorImpl) ConfigProto() *cb.Config {
 	return cm.current.configProto
 }

@@ -38,7 +38,7 @@ func TestBundle(t *testing.T) {
 	assert.NotNil(t, b)
 
 	assert.Equal(t, b.RootGroupKey(), RootGroupKey)
-	assert.NotNil(t, b.ConfigtxManager())
+	assert.NotNil(t, b.ConfigtxValidator())
 	assert.NotNil(t, b.PolicyManager())
 	assert.NotNil(t, b.APIPolicyMapper())
 	assert.NotNil(t, b.ChannelConfig())

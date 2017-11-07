@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"testing"
 
-	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -73,11 +72,9 @@ func TestComputeDeltaSet(t *testing.T) {
 }
 
 func TestVerifyDeltaSet(t *testing.T) {
-	cm := &configManager{
-		initializer: &mockconfigtx.Initializer{
-			PolicyManagerVal: &mockpolicies.Manager{
-				Policy: &mockpolicies.Policy{},
-			},
+	cm := &ValidatorImpl{
+		pm: &mockpolicies.Manager{
+			Policy: &mockpolicies.Policy{},
 		},
 		current: &configSet{
 			configMap: make(map[string]comparable),
@@ -122,13 +119,13 @@ func TestVerifyDeltaSet(t *testing.T) {
 		deltaSet := make(map[string]comparable)
 
 		deltaSet["foo"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1, ModPolicy: "foo"}}
-		cm.initializer.(*mockconfigtx.Initializer).PolicyManagerVal.Policy = &mockpolicies.Policy{Err: fmt.Errorf("Err")}
+		cm.pm.(*mockpolicies.Manager).Policy = &mockpolicies.Policy{Err: fmt.Errorf("Err")}
 
 		assert.Error(t, cm.verifyDeltaSet(deltaSet, nil), "Policy evaluation should have failed")
 	})
 
 	t.Run("Empty delta set", func(t *testing.T) {
-		err := (&configManager{}).verifyDeltaSet(map[string]comparable{}, nil)
+		err := (&ValidatorImpl{}).verifyDeltaSet(map[string]comparable{}, nil)
 		assert.Error(t, err, "Empty delta set should be rejected")
 		assert.Contains(t, err.Error(), "Delta set was empty.  Update would have no effect.")
 	})
@@ -139,14 +136,12 @@ func TestPolicyForItem(t *testing.T) {
 	rootPolicy := &mockpolicies.Policy{Err: fmt.Errorf("rootPolicy")}
 	fooPolicy := &mockpolicies.Policy{Err: fmt.Errorf("fooPolicy")}
 
-	cm := &configManager{
-		initializer: &mockconfigtx.Initializer{
-			PolicyManagerVal: &mockpolicies.Manager{
-				Policy: rootPolicy,
-				SubManagersMap: map[string]*mockpolicies.Manager{
-					"foo": {
-						Policy: fooPolicy,
-					},
+	cm := &ValidatorImpl{
+		pm: &mockpolicies.Manager{
+			Policy: rootPolicy,
+			SubManagersMap: map[string]*mockpolicies.Manager{
+				"foo": &mockpolicies.Manager{
+					Policy: fooPolicy,
 				},
 			},
 		},

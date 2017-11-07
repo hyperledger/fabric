@@ -101,7 +101,7 @@ func GetDeserializers() map[string]msp.IdentityDeserializer {
 }
 
 // XXXSetMSPManager is a stopgap solution to transition from the custom MSP config block
-// parsing to the configtx.Manager interface, while preserving the problematic singleton
+// parsing to the channelconfig.Resources interface, while preserving the problematic singleton
 // nature of the MSP manager
 func XXXSetMSPManager(chainID string, manager msp.MSPManager) {
 	m.Lock()

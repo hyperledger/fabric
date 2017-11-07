@@ -9,7 +9,6 @@ package channelconfig
 import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -34,7 +33,7 @@ type Bundle struct {
 	policyManager   policies.Manager
 	mspManager      msp.MSPManager
 	channelConfig   *ChannelConfig
-	configtxManager configtxapi.Manager
+	configtxManager configtx.Validator
 }
 
 // PolicyManager returns the policy manager constructed for this config
@@ -73,8 +72,8 @@ func (b *Bundle) ApplicationConfig() (Application, bool) {
 	return result, result != nil
 }
 
-// ConfigtxManager returns the configtx.Manager for the channel
-func (b *Bundle) ConfigtxManager() configtxapi.Manager {
+// ConfigtxValidator returns the configtx.Validator for the channel
+func (b *Bundle) ConfigtxValidator() configtx.Validator {
 	return b.configtxManager
 }
 
@@ -149,20 +148,6 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 	return nil
 }
 
-type simpleProposer struct {
-	policyManager policies.Manager
-}
-
-// RootGroupKey returns RootGroupKey constant
-func (sp simpleProposer) RootGroupKey() string {
-	return RootGroupKey
-}
-
-// PolicyManager() returns the policy manager for considering config changes
-func (sp simpleProposer) PolicyManager() policies.Manager {
-	return sp.policyManager
-}
-
 // NewBundleFromEnvelope wraps the NewBundle function, extracting the needed
 // information from a full configtx
 func NewBundleFromEnvelope(env *cb.Envelope) (*Bundle, error) {
@@ -217,9 +202,7 @@ func NewBundle(channelID string, config *cb.Config) (*Bundle, error) {
 		return nil, errors.Wrap(err, "initializing policymanager failed")
 	}
 
-	configtxManager, err := configtx.NewManagerImpl(channelID, config, simpleProposer{
-		policyManager: policyManager,
-	})
+	configtxManager, err := configtx.NewValidatorImpl(channelID, config, RootGroupKey, policyManager)
 	if err != nil {
 		return nil, errors.Wrap(err, "initializing configtx manager failed")
 	}

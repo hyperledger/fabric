@@ -8,7 +8,7 @@ package resourcesconfig
 
 import (
 	"github.com/hyperledger/fabric/common/channelconfig"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 )
 
@@ -50,8 +50,8 @@ type ChaincodeDefinition interface {
 
 // Resources defines a way to query peer resources associated with a channel.
 type Resources interface {
-	// ConfigtxManager returns a reference to a configtx.Manager which can process updates to this config.
-	ConfigtxManager() configtxapi.Manager
+	// ConfigtxValidator returns a reference to a configtx.Validator which can process updates to this config.
+	ConfigtxValidator() configtx.Validator
 
 	// PolicyManager returns a policy manager which can resolve names both in the /Channel and /Resources namespaces.
 	// Note, the result of this method is almost definitely the one you want.  Calling ChannelConfig().PolicyManager()

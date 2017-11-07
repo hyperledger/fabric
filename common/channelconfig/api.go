@@ -9,7 +9,7 @@ package channelconfig
 import (
 	"time"
 
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -139,8 +139,8 @@ type OrdererCapabilities interface {
 // Depending on whether chain is used at the orderer or at the peer, other
 // config resources may be available
 type Resources interface {
-	// ConfigtxManager returns the configtx.Manager for the channel
-	ConfigtxManager() configtxapi.Manager
+	// ConfigtxValidator returns the configtx.Validator for the channel
+	ConfigtxValidator() configtx.Validator
 
 	// PolicyManager returns the policies.Manager for the channel
 	PolicyManager() policies.Manager

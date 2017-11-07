@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 )
 
@@ -56,9 +56,9 @@ func (bs *BundleSource) StableBundle() *Bundle {
 	return bs.bundle.Load().(*Bundle)
 }
 
-// ConfigtxManager returns a reference to a configtx.Manager which can process updates to this config.
-func (bs *BundleSource) ConfigtxManager() configtxapi.Manager {
-	return bs.StableBundle().ConfigtxManager()
+// ConfigtxValidator returns a reference to a configtx.Validator which can process updates to this config.
+func (bs *BundleSource) ConfigtxValidator() configtx.Validator {
+	return bs.StableBundle().ConfigtxValidator()
 }
 
 // PolicyManager returns a policy manager which can resolve names both in the /Channel and /Resources namespaces.

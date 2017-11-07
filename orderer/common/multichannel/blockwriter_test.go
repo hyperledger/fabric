@@ -30,7 +30,7 @@ import (
 )
 
 type mockBlockWriterSupport struct {
-	*mockconfigtx.Manager
+	*mockconfigtx.Validator
 	crypto.LocalSigner
 	ledger.ReadWriter
 }
@@ -78,7 +78,7 @@ func TestBlockLastConfig(t *testing.T) {
 	bw := &BlockWriter{
 		support: &mockBlockWriterSupport{
 			LocalSigner: mockCrypto(),
-			Manager: &mockconfigtx.Manager{
+			Validator: &mockconfigtx.Validator{
 				SequenceVal: newConfigSeq,
 			},
 		},
@@ -171,7 +171,7 @@ func TestGoodWriteConfig(t *testing.T) {
 		support: &mockBlockWriterSupport{
 			LocalSigner: mockCrypto(),
 			ReadWriter:  l,
-			Manager:     &mockconfigtx.Manager{},
+			Validator:   &mockconfigtx.Validator{},
 		},
 	}
 

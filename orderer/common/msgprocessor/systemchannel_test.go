@@ -23,13 +23,13 @@ import (
 )
 
 type mockSystemChannelSupport struct {
-	NewChannelConfigVal *mockconfigtx.Manager
+	NewChannelConfigVal *mockconfigtx.Validator
 	NewChannelConfigErr error
 }
 
 func (mscs *mockSystemChannelSupport) NewChannelConfig(env *cb.Envelope) (channelconfig.Resources, error) {
 	return &mockchannelconfig.Resources{
-		ConfigtxManagerVal: mscs.NewChannelConfigVal,
+		ConfigtxValidatorVal: mscs.NewChannelConfigVal,
 	}, mscs.NewChannelConfigErr
 }
 
@@ -122,7 +122,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("BadProposedUpdate", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Manager{
+			NewChannelConfigVal: &mockconfigtx.Validator{
 				ProposeConfigUpdateError: fmt.Errorf("An error"),
 			},
 		}
@@ -142,7 +142,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("BadSignEnvelope", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Manager{},
+			NewChannelConfigVal: &mockconfigtx.Validator{},
 		}
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
@@ -160,7 +160,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("BadByFilter", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Manager{
+			NewChannelConfigVal: &mockconfigtx.Validator{
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			},
 		}
@@ -181,7 +181,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("Good", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Manager{
+			NewChannelConfigVal: &mockconfigtx.Validator{
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			},
 		}
@@ -208,7 +208,7 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 	t.Run("ConfigMsg", func(t *testing.T) {
 		t.Run("BadPayloadData", func(t *testing.T) {
 			mscs := &mockSystemChannelSupport{
-				NewChannelConfigVal: &mockconfigtx.Manager{
+				NewChannelConfigVal: &mockconfigtx.Validator{
 					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 				},
 			}
@@ -232,7 +232,7 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 
 		t.Run("Good", func(t *testing.T) {
 			mscs := &mockSystemChannelSupport{
-				NewChannelConfigVal: &mockconfigtx.Manager{
+				NewChannelConfigVal: &mockconfigtx.Validator{
 					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 				},
 			}
@@ -265,7 +265,7 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 	t.Run("OrdererTxMsg", func(t *testing.T) {
 		t.Run("BadPayloadData", func(t *testing.T) {
 			mscs := &mockSystemChannelSupport{
-				NewChannelConfigVal: &mockconfigtx.Manager{
+				NewChannelConfigVal: &mockconfigtx.Validator{
 					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 				},
 			}
@@ -289,7 +289,7 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 
 		t.Run("WrongEnvelopeType", func(t *testing.T) {
 			mscs := &mockSystemChannelSupport{
-				NewChannelConfigVal: &mockconfigtx.Manager{
+				NewChannelConfigVal: &mockconfigtx.Validator{
 					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 				},
 			}
@@ -322,7 +322,7 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 
 		t.Run("GoodConfigMsg", func(t *testing.T) {
 			mscs := &mockSystemChannelSupport{
-				NewChannelConfigVal: &mockconfigtx.Manager{
+				NewChannelConfigVal: &mockconfigtx.Validator{
 					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 				},
 			}
@@ -376,7 +376,7 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 
 	t.Run("OtherMsgType", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Manager{
+			NewChannelConfigVal: &mockconfigtx.Validator{
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			},
 		}
@@ -674,6 +674,6 @@ func TestNewChannelConfig(t *testing.T) {
 		assert.Nil(t, err)
 		res, err := templator.NewChannelConfig(createTx)
 		assert.Nil(t, err)
-		assert.NotEmpty(t, res.ConfigtxManager().ConfigProto().ChannelGroup.ModPolicy)
+		assert.NotEmpty(t, res.ConfigtxValidator().ConfigProto().ChannelGroup.ModPolicy)
 	})
 }

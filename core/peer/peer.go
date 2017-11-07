@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configtx"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/flogging"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
@@ -50,7 +50,7 @@ var credSupport = comm.GetCredentialSupport()
 
 type gossipSupport struct {
 	channelconfig.Application
-	configtxapi.Manager
+	configtx.Validator
 }
 
 type chainSupport struct {
@@ -77,14 +77,14 @@ func (sp *storeProvider) OpenStore(ledgerID string) (transientstore.Store, error
 }
 
 func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
-	err := cs.ConfigtxManager().Validate(configtx)
+	err := cs.ConfigtxValidator().Validate(configtx)
 	if err != nil {
 		return err
 	}
 
 	// If the chainSupport is being mocked, this field will be nil
 	if cs.bundleSource != nil {
-		bundle, err := channelconfig.NewBundle(cs.ConfigtxManager().ChainID(), configtx.Config)
+		bundle, err := channelconfig.NewBundle(cs.ConfigtxValidator().ChainID(), configtx.Config)
 		if err != nil {
 			return err
 		}
@@ -111,15 +111,15 @@ func (cs *chainSupport) Apply(configtx *common.ConfigEnvelope) error {
 func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 	ac, ok := res.ApplicationConfig()
 	if !ok {
-		peerLogger.Panicf("[channel %s] does not have application config so is incompatible", res.ConfigtxManager().ChainID())
+		peerLogger.Panicf("[channel %s] does not have application config so is incompatible", res.ConfigtxValidator().ChainID())
 	}
 
 	if err := ac.Capabilities().Supported(); err != nil {
-		peerLogger.Panicf("[channel %s] incompatible %s", res.ConfigtxManager(), err)
+		peerLogger.Panicf("[channel %s] incompatible %s", res.ConfigtxValidator(), err)
 	}
 
 	if err := res.ChannelConfig().Capabilities().Supported(); err != nil {
-		peerLogger.Panicf("[channel %s] incompatible %s", res.ConfigtxManager(), err)
+		peerLogger.Panicf("[channel %s] incompatible %s", res.ConfigtxValidator(), err)
 	}
 }
 
@@ -270,7 +270,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 			ac = nil
 		}
 		gossipEventer.ProcessConfigUpdate(&gossipSupport{
-			Manager:     bundle.ChannelConfig().ConfigtxManager(),
+			Validator:   bundle.ChannelConfig().ConfigtxValidator(),
 			Application: ac,
 		})
 		service.GetGossipService().SuspectPeers(func(identity api.PeerIdentityType) bool {
@@ -342,11 +342,11 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	}
 
 	// TODO: does someone need to call Close() on the transientStoreFactory at shutdown of the peer?
-	store, err := transientStoreFactory.OpenStore(bundle.ConfigtxManager().ChainID())
+	store, err := transientStoreFactory.OpenStore(bundle.ConfigtxValidator().ChainID())
 	if err != nil {
-		return errors.Wrapf(err, "Failed opening transient store for %s", bundle.ConfigtxManager().ChainID())
+		return errors.Wrapf(err, "Failed opening transient store for %s", bundle.ConfigtxValidator().ChainID())
 	}
-	service.GetGossipService().InitializeChannel(bundle.ConfigtxManager().ChainID(), ordererAddresses, service.Support{
+	service.GetGossipService().InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, service.Support{
 		Validator: validator,
 		Committer: c,
 		Store:     store,
@@ -401,9 +401,7 @@ func MockCreateChain(cid string) error {
 				PolicyManagerVal: &mockpolicies.Manager{
 					Policy: &mockpolicies.Policy{},
 				},
-				ConfigtxManagerVal: &mockconfigtx.Manager{
-					Initializer: mockconfigtx.Initializer{},
-				},
+				ConfigtxValidatorVal: &mockconfigtx.Validator{},
 			},
 			ledger: ledger},
 	}
@@ -458,7 +456,7 @@ func GetCurrConfigBlock(cid string) *common.Block {
 // updates the trusted roots for the peer based on updates to channels
 func updateTrustedRoots(cm channelconfig.Resources) {
 	// this is triggered on per channel basis so first update the roots for the channel
-	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ConfigtxManager().ChainID())
+	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ConfigtxValidator().ChainID())
 	var secureConfig comm.SecureServerConfig
 	var err error
 	// only run is TLS is enabled
@@ -489,7 +487,7 @@ func updateTrustedRoots(cm channelconfig.Resources) {
 				msg := "Failed to update trusted roots for peer from latest config " +
 					"block.  This peer may not be able to communicate " +
 					"with members of channel %s (%s)"
-				peerLogger.Warningf(msg, cm.ConfigtxManager().ChainID(), err)
+				peerLogger.Warningf(msg, cm.ConfigtxValidator().ChainID(), err)
 			}
 		}
 	}
@@ -520,7 +518,7 @@ func buildTrustedRootsForChain(cm channelconfig.Resources) {
 		}
 	}
 
-	cid := cm.ConfigtxManager().ChainID()
+	cid := cm.ConfigtxValidator().ChainID()
 	peerLogger.Debugf("updating root CAs for channel [%s]", cid)
 	msps, err := cm.MSPManager().GetMSPs()
 	if err != nil {

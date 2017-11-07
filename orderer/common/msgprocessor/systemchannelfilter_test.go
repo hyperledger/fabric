@@ -102,7 +102,7 @@ func (mcc *mockChainCreator) ChannelsCount() int {
 
 func (mcc *mockChainCreator) CreateBundle(channelID string, config *cb.Config) (channelconfig.Resources, error) {
 	return &mockconfig.Resources{
-		ConfigtxManagerVal: &mockconfigtx.Manager{
+		ConfigtxValidatorVal: &mockconfigtx.Validator{
 			ChainIDVal: channelID,
 		},
 		OrdererConfigVal: &mockconfig.Orderer{
@@ -119,7 +119,7 @@ func (mcc *mockChainCreator) NewChannelConfig(envConfigUpdate *cb.Envelope) (cha
 		return nil, mcc.NewChannelConfigErr
 	}
 	return &mockconfig.Resources{
-		ConfigtxManagerVal: &mockconfigtx.Manager{
+		ConfigtxValidatorVal: &mockconfigtx.Validator{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{
 				Config:     validConfig,
 				LastUpdate: envConfigUpdate,

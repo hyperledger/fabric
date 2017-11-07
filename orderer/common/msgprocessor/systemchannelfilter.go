@@ -126,7 +126,7 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	}
 
 	// Make sure that the config was signed by the appropriate authorized entities
-	newChannelConfigEnv, err := res.ConfigtxManager().ProposeConfigUpdate(configEnvelope.LastUpdate)
+	newChannelConfigEnv, err := res.ConfigtxValidator().ProposeConfigUpdate(configEnvelope.LastUpdate)
 	if err != nil {
 		return errors.Errorf("error proposing channel update to new channel config: %s", err)
 	}
@@ -136,7 +136,7 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return errors.Errorf("config proposed by the channel creation request did not match the config received with the channel creation request")
 	}
 
-	bundle, err := scf.cc.CreateBundle(res.ConfigtxManager().ChainID(), newChannelConfigEnv.Config)
+	bundle, err := scf.cc.CreateBundle(res.ConfigtxValidator().ChainID(), newChannelConfigEnv.Config)
 	if err != nil {
 		return errors.Wrap(err, "config does not validly parse")
 	}
