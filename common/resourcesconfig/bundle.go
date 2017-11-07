@@ -153,12 +153,7 @@ func (b *Bundle) NewFromChannelConfig(chanConf channelconfig.Resources) (*Bundle
 		resConf: b.resConf,
 	}
 
-	env, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, b.channelID, nil, &cb.ConfigEnvelope{Config: b.resConf}, 0, 0)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating envelope for configtx manager failed")
-	}
-
-	result.cm, err = configtx.NewManagerImpl(env, b)
+	result.cm, err = configtx.NewManagerImpl(b.channelID, b.resConf, b)
 	if err != nil {
 		return nil, err
 	}

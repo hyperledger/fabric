@@ -78,13 +78,13 @@ type Manager struct {
 	// ProposeConfigUpdateVal is returns as the value for ProposeConfigUpdate
 	ProposeConfigUpdateVal *cb.ConfigEnvelope
 
-	// ConfigEnvelopeVal is returned as the value for ConfigEnvelope()
-	ConfigEnvelopeVal *cb.ConfigEnvelope
+	// ConfigProtoVal is returned as the value for ConfigProtoVal()
+	ConfigProtoVal *cb.Config
 }
 
-// ConfigEnvelope returns the ConfigEnvelopeVal
-func (cm *Manager) ConfigEnvelope() *cb.ConfigEnvelope {
-	return cm.ConfigEnvelopeVal
+// ConfigProto returns the ConfigProtoVal
+func (cm *Manager) ConfigProto() *cb.Config {
+	return cm.ConfigProtoVal
 }
 
 // ConsensusType returns the ConsensusTypeVal

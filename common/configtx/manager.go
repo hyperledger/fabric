@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package configtx
@@ -23,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/flogging"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -42,10 +31,10 @@ var (
 )
 
 type configSet struct {
-	channelID string
-	sequence  uint64
-	configMap map[string]comparable
-	configEnv *cb.ConfigEnvelope
+	channelID   string
+	sequence    uint64
+	configMap   map[string]comparable
+	configProto *cb.Config
 }
 
 type configManager struct {
@@ -109,30 +98,20 @@ func validateChannelID(channelID string) error {
 	return nil
 }
 
-func NewManagerImpl(envConfig *cb.Envelope, initializer api.Proposer) (api.Manager, error) {
-	if envConfig == nil {
-		return nil, fmt.Errorf("Nil envelope")
-	}
-
-	configEnv := &cb.ConfigEnvelope{}
-	header, err := utils.UnmarshalEnvelopeOfType(envConfig, cb.HeaderType_CONFIG, configEnv)
-	if err != nil {
-		return nil, fmt.Errorf("Bad envelope: %s", err)
-	}
-
-	if configEnv.Config == nil {
+func NewManagerImpl(channelID string, config *cb.Config, initializer api.Proposer) (api.Manager, error) {
+	if config == nil {
 		return nil, fmt.Errorf("Nil config envelope Config")
 	}
 
-	if configEnv.Config.ChannelGroup == nil {
+	if config.ChannelGroup == nil {
 		return nil, fmt.Errorf("nil channel group")
 	}
 
-	if err := validateChannelID(header.ChannelId); err != nil {
+	if err := validateChannelID(channelID); err != nil {
 		return nil, fmt.Errorf("Bad channel id: %s", err)
 	}
 
-	configMap, err := MapConfig(configEnv.Config.ChannelGroup, initializer.RootGroupKey())
+	configMap, err := MapConfig(config.ChannelGroup, initializer.RootGroupKey())
 	if err != nil {
 		return nil, fmt.Errorf("Error converting config to map: %s", err)
 	}
@@ -140,10 +119,10 @@ func NewManagerImpl(envConfig *cb.Envelope, initializer api.Proposer) (api.Manag
 	return &configManager{
 		initializer: initializer,
 		current: &configSet{
-			sequence:  configEnv.Config.Sequence,
-			configMap: configMap,
-			channelID: header.ChannelId,
-			configEnv: configEnv,
+			sequence:    config.Sequence,
+			configMap:   configMap,
+			channelID:   channelID,
+			configProto: config,
 		},
 	}, nil
 }
@@ -227,6 +206,6 @@ func (cm *configManager) Sequence() uint64 {
 }
 
 // ConfigEnvelope returns the current config envelope
-func (cm *configManager) ConfigEnvelope() *cb.ConfigEnvelope {
-	return cm.current.configEnv
+func (cm *configManager) ConfigProto() *cb.Config {
+	return cm.current.configProto
 }

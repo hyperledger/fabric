@@ -277,7 +277,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	applicationGroup.ModPolicy = channelconfig.ChannelCreationPolicyKey
 
 	// Get the current system channel config
-	systemChannelGroup := dt.support.ConfigtxManager().ConfigEnvelope().Config.ChannelGroup
+	systemChannelGroup := dt.support.ConfigtxManager().ConfigProto().ChannelGroup
 
 	// If the consortium group has no members, allow the source request to have no members.  However,
 	// if the consortium group has any members, there must be at least one member in the source request
