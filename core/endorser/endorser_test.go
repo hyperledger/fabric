@@ -780,7 +780,7 @@ func TestMain(m *testing.M) {
 
 	endorserServer = NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error {
 		return nil
-	})
+	}, &SupportImpl{})
 
 	// setup the MSP manager so that we can sign/verify
 	err = msptesttools.LoadMSPSetupForTesting()
