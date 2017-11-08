@@ -15,7 +15,7 @@ const (
 	channelTypeName = "Channel"
 
 	// ChannelV1_1 is the capabilties string for standard new non-backwards compatible fabric v1.1 channel capabilities.
-	ChannelV1_1 = "V1.1"
+	ChannelV1_1 = "V1_1"
 )
 
 // ChannelProvider provides capabilities information for channel level config.
