@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -215,7 +216,7 @@ func (e *Endorser) disableJavaCCInst(cid *pb.ChaincodeID, cis *pb.ChaincodeInvoc
 }
 
 //simulate the proposal by calling the chaincode
-func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (*ccprovider.ChaincodeData, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
+func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (resourcesconfig.ChaincodeDefinition, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
 	endorserLogger.Debugf("Entry - txid: %s channel id: %s", txid, chainID)
 	defer endorserLogger.Debugf("Exit")
 	//we do expect the payload to be a ChaincodeInvocationSpec
@@ -236,7 +237,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		return nil, nil, nil, nil, err
 	}
 
-	var cdLedger *ccprovider.ChaincodeData
+	var cdLedger resourcesconfig.ChaincodeDefinition
 	var version string
 
 	if !syscc.IsSysCC(cid.Name) {
@@ -244,9 +245,9 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		if err != nil {
 			return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("make sure the chaincode %s has been successfully instantiated and try again", cid.Name))
 		}
-		version = cdLedger.Version
+		version = cdLedger.CCVersion()
 
-		err = ccprovider.CheckInsantiationPolicy(cid.Name, version, cdLedger)
+		err = ccprovider.CheckInsantiationPolicy(cid.Name, version, cdLedger.(*ccprovider.ChaincodeData))
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -282,17 +283,17 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	return cdLedger, res, pubSimResBytes, ccevent, nil
 }
 
-func (e *Endorser) getCDSFromLSCC(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (*ccprovider.ChaincodeData, error) {
+func (e *Endorser) getCDSFromLSCC(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (resourcesconfig.ChaincodeDefinition, error) {
 	ctxt := ctx
 	if txsim != nil {
 		ctxt = context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
 	}
 
-	return chaincode.GetChaincodeDataFromLSCC(ctxt, txid, signedProp, prop, chainID, chaincodeID)
+	return chaincode.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
 }
 
 //endorse the proposal by calling the ESCC
-func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd *ccprovider.ChaincodeData) (*pb.ProposalResponse, error) {
+func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd resourcesconfig.ChaincodeDefinition) (*pb.ProposalResponse, error) {
 	endorserLogger.Debugf("Entry - txid: %s channel id: %s chaincode id: %s", txid, chainID, ccid)
 	defer endorserLogger.Debugf("Exit")
 
@@ -305,7 +306,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 		// TODO: who should endorse a call to LSCC?
 		escc = "escc"
 	} else {
-		escc = cd.Escc
+		escc = cd.Endorsement()
 		if escc == "" { // this should never happen, LSCC always fills this field
 			panic("No ESCC specified in ChaincodeData")
 		}
@@ -334,7 +335,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 		// set syscc version to ""
 		ccid.Version = util.GetSysCCVersion()
 	} else {
-		ccid.Version = cd.Version
+		ccid.Version = cd.CCVersion()
 	}
 
 	ccidBytes, err := putils.Marshal(ccid)

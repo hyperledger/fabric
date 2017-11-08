@@ -408,6 +408,37 @@ type ChaincodeData struct {
 	InstantiationPolicy []byte `protobuf:"bytes,8,opt,name=instantiation_policy,proto3"`
 }
 
+// implement functions needed by resourcesconfig.ChaincodeDefinition
+
+// CCName returns the name of this chaincode (the name it was put in the ChaincodeRegistry with).
+func (cd *ChaincodeData) CCName() string {
+	return cd.Name
+}
+
+// Hash returns the hash of the chaincode.
+func (cd *ChaincodeData) Hash() []byte {
+	return cd.Id
+}
+
+// CCVersion returns the version of the chaincode.
+func (cd *ChaincodeData) CCVersion() string {
+	return cd.Version
+}
+
+// Validation returns how to validate transactions for this chaincode.
+// The string returned is the name of the validation method (usually 'vscc')
+// and the bytes returned are the argument to the validation (in the case of
+// 'vscc', this is a marshaled pb.VSCCArgs message).
+func (cd *ChaincodeData) Validation() (string, []byte) {
+	return cd.Vscc, cd.Policy
+}
+
+// Endorsement returns how to endorse proposals for this chaincode.
+// The string returns is the name of the endorsement method (usually 'escc').
+func (cd *ChaincodeData) Endorsement() string {
+	return cd.Escc
+}
+
 //implement functions needed from proto.Message for proto's mar/unmarshal functions
 
 //Reset resets
