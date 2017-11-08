@@ -9,7 +9,6 @@ package endorser
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
@@ -17,8 +16,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -512,34 +509,4 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	pResp.Response.Payload = res.Payload
 
 	return pResp, nil
-}
-
-// Only exposed for testing purposes - commit the tx simulation so that
-// a deploy transaction is persisted and that chaincode can be invoked.
-// This makes the endorser test self-sufficient
-func (e *Endorser) commitTxSimulation(proposal *pb.Proposal, chainID string, signer msp.SigningIdentity, pResp *pb.ProposalResponse, blockNumber uint64) error {
-	tx, err := putils.CreateSignedTx(proposal, signer, pResp)
-	if err != nil {
-		return err
-	}
-
-	lgr := peer.GetLedger(chainID)
-	if lgr == nil {
-		return errors.Errorf("failed to look up the ledger for channel %s", chainID)
-	}
-
-	txBytes, err := proto.Marshal(tx)
-	if err != nil {
-		return err
-	}
-	block := common.NewBlock(blockNumber, []byte{})
-	block.Data.Data = [][]byte{txBytes}
-	block.Header.DataHash = block.Data.Hash()
-	if err = lgr.CommitWithPvtData(&ledger.BlockAndPvtData{
-		Block: block,
-	}); err != nil {
-		return err
-	}
-
-	return nil
 }
