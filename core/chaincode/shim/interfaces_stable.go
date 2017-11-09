@@ -55,6 +55,12 @@ type ChaincodeStubInterface interface {
 	// in protos/common/common.proto)
 	GetTxID() string
 
+	// GetChannelID returns the channel the proposal is sent to for chaincode to process.
+	// This would be the channel_id of the transaction proposal (see ChannelHeader
+	// in protos/common/common.proto) except where the chaincode is calling another on
+	// a different channel
+	GetChannelID() string
+
 	// InvokeChaincode locally calls the specified chaincode `Invoke` using the
 	// same transaction context; that is, chaincode calling chaincode doesn't
 	// create a new transaction message.
