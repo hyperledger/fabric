@@ -1144,6 +1144,53 @@ func isCollectionSet(collection string) bool {
 	return true
 }
 
+func (handler *Handler) getTxContextForMessage(channelID string, txid string, msgType string, payload []byte, fmtStr string, args ...interface{}) (*transactionContext, *pb.ChaincodeMessage) {
+	//if we have a channelID, just get the txsim from isValidTxSim
+	//if this is NOT an INVOKE_CHAINCODE, then let isValidTxSim handle retrieving the txContext
+	if channelID != "" || msgType != pb.ChaincodeMessage_INVOKE_CHAINCODE.String() {
+		return handler.isValidTxSim(channelID, txid, fmtStr, args)
+	}
+
+	var calledCcIns *sysccprovider.ChaincodeInstance
+	var txContext *transactionContext
+	var triggerNextStateMsg *pb.ChaincodeMessage
+
+	// prepare to get isscc (only for INVOKE_CHAINCODE, any other msgType will always call isValidTxSim to get the tx context)
+
+	chaincodeSpec := &pb.ChaincodeSpec{}
+	unmarshalErr := proto.Unmarshal(payload, chaincodeSpec)
+	if unmarshalErr != nil {
+		errStr := fmt.Sprintf("[%s]Unable to decipher payload. Sending %s", shorttxid(txid), pb.ChaincodeMessage_ERROR)
+		triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(errStr), Txid: txid}
+		return nil, triggerNextStateMsg
+	}
+	// Get the chaincodeID to invoke. The chaincodeID to be called may
+	// contain composite info like "chaincode-name:version/channel-name"
+	// We are not using version now but default to the latest
+	if calledCcIns = getChaincodeInstance(chaincodeSpec.ChaincodeId.Name); calledCcIns == nil {
+		triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte("could not get chaincode name for INVOKE_CHAINCODE"), Txid: txid}
+		return nil, triggerNextStateMsg
+	}
+
+	//   If calledCcIns is not an SCC, isValidTxSim should be called which will return an err.
+	//   We do not want to propagate calls to user CCs when the original call was to a SCC
+	//   without a channel context (ie, no ledger context).
+	if isscc := sysccprovider.GetSystemChaincodeProvider().IsSysCC(calledCcIns.ChaincodeName); !isscc {
+		// normal path - UCC invocation with an empty ("") channel: isValidTxSim will return an error
+		return handler.isValidTxSim("", txid, fmtStr, args)
+	}
+
+	// Calling SCC without a  ChainID, then the assumption this is an external SCC called by the client (special case) and no UCC involved,
+	// so no Transaction Simulator validation needed as there are no commits to the ledger, get the txContext directly if it is not nil
+	if txContext = handler.getTxContext(channelID, txid); txContext == nil {
+		errStr := fmt.Sprintf(fmtStr, args)
+		triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(errStr), Txid: txid}
+		return nil, triggerNextStateMsg
+	}
+
+	return txContext, nil
+}
+
 // Handles request to ledger to put state
 func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 	go func() {
@@ -1159,8 +1206,8 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 
 		var triggerNextStateMsg *pb.ChaincodeMessage
 		var txContext *transactionContext
-		txContext, triggerNextStateMsg = handler.isValidTxSim(msg.ChannelId, msg.Txid, "[%s]No ledger context for %s. Sending %s",
-			shorttxid(msg.Txid), msg.Type.String(), pb.ChaincodeMessage_ERROR)
+		txContext, triggerNextStateMsg = handler.getTxContextForMessage(msg.ChannelId, msg.Txid, msg.Type.String(), msg.Payload,
+			"[%s]No ledger context for %s. Sending %s", shorttxid(msg.Txid), msg.Type.String(), pb.ChaincodeMessage_ERROR)
 
 		defer func() {
 			handler.deleteTXIDEntry(msg.ChannelId, msg.Txid)
