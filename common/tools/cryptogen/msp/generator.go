@@ -29,8 +29,14 @@ import (
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 )
 
+const (
+	CLIENT = iota
+	ORDERER
+	PEER
+)
+
 func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
-	tlsCA *ca.CA) error {
+	tlsCA *ca.CA, nodeType int) error {
 
 	// create folder structure
 	mspDir := filepath.Join(baseDir, "msp")
@@ -122,13 +128,17 @@ func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
 	}
 
 	// rename the generated TLS X509 cert
+	tlsFilePrefix := "server"
+	if nodeType == CLIENT {
+		tlsFilePrefix = "client"
+	}
 	err = os.Rename(filepath.Join(tlsDir, x509Filename(name)),
-		filepath.Join(tlsDir, "server.crt"))
+		filepath.Join(tlsDir, tlsFilePrefix+".crt"))
 	if err != nil {
 		return err
 	}
 
-	err = keyExport(tlsDir, filepath.Join(tlsDir, "server.key"), tlsPrivKey)
+	err = keyExport(tlsDir, filepath.Join(tlsDir, tlsFilePrefix+".key"), tlsPrivKey)
 	if err != nil {
 		return err
 	}

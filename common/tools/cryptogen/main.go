@@ -423,7 +423,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 		os.Exit(1)
 	}
 
-	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA)
+	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA, msp.PEER)
 
 	// TODO: add ability to specify usernames
 	users := []NodeSpec{}
@@ -440,7 +440,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	}
 
 	users = append(users, adminUser)
-	generateNodes(usersDir, users, signCA, tlsCA)
+	generateNodes(usersDir, users, signCA, tlsCA, msp.CLIENT)
 
 	// copy the admin cert to the org's MSP admincerts
 	err = copyAdminCert(usersDir, adminCertsDir, adminUser.CommonName)
@@ -483,11 +483,11 @@ func copyAdminCert(usersDir, adminCertsDir, adminUserName string) error {
 
 }
 
-func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA) {
+func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA, nodeType int) {
 
 	for _, node := range nodes {
 		nodeDir := filepath.Join(baseDir, node.CommonName)
-		err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA)
+		err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, nodeType)
 		if err != nil {
 			fmt.Printf("Error generating local MSP for %s:\n%v\n", node, err)
 			os.Exit(1)
@@ -526,7 +526,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 		os.Exit(1)
 	}
 
-	generateNodes(orderersDir, orgSpec.Specs, signCA, tlsCA)
+	generateNodes(orderersDir, orgSpec.Specs, signCA, tlsCA, msp.ORDERER)
 
 	adminUser := NodeSpec{
 		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
@@ -536,7 +536,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 	users := []NodeSpec{}
 	// add an admin user
 	users = append(users, adminUser)
-	generateNodes(usersDir, users, signCA, tlsCA)
+	generateNodes(usersDir, users, signCA, tlsCA, msp.CLIENT)
 
 	// copy the admin cert to the org's MSP admincerts
 	err = copyAdminCert(usersDir, adminCertsDir, adminUser.CommonName)
