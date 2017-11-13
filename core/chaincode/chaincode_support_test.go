@@ -825,16 +825,17 @@ func getLaunchConfigs(t *testing.T, auth accesscontrol.Authenticator) {
 	if args[0] != "chaincode" || !strings.HasPrefix(args[1], "-peer.address") {
 		t.Fatalf("calling getLaunchConfigs() should have returned the start command for golang chaincode, but got %v", args)
 	}
-	if len(envs) != 6 {
-		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 6 elements for Envs, but got %v", envs)
+	if len(envs) != 7 {
+		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 7 elements for Envs, but got %v", envs)
 	}
 	if envs[0] != "CORE_CHAINCODE_ID_NAME=mycc:v0" || envs[1] != "CORE_PEER_TLS_ENABLED=true" ||
 		envs[2] != "CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key" || envs[3] != "CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt" ||
-		envs[4] != "CORE_CHAINCODE_LOGGING_LEVEL=debug" || envs[5] != "CORE_CHAINCODE_LOGGING_SHIM=info" {
+		envs[4] != "CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/peer.crt" ||
+		envs[5] != "CORE_CHAINCODE_LOGGING_LEVEL=debug" || envs[6] != "CORE_CHAINCODE_LOGGING_SHIM=info" {
 		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned the proper environment variables, but got %v", envs)
 	}
-	if len(filesToUpload) != 2 {
-		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 2 elements for filesToUpload, but got %v", len(filesToUpload))
+	if len(filesToUpload) != 3 {
+		t.Fatalf("calling getLaunchConfigs() with TLS enabled should have returned an array of 3 elements for filesToUpload, but got %v", len(filesToUpload))
 	}
 
 	args, envs, _, err = newCCSupport.getLaunchConfigs(ccContext, pb.ChaincodeSpec_NODE)
@@ -859,7 +860,7 @@ func getLaunchConfigs(t *testing.T, auth accesscontrol.Authenticator) {
 
 //success case
 func TestLaunchAndWaitSuccess(t *testing.T) {
-	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(10) * time.Second, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	newCCSupport := &ChaincodeSupport{peerTLS: false, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(10) * time.Second, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
@@ -875,7 +876,7 @@ func TestLaunchAndWaitSuccess(t *testing.T) {
 
 //test timeout error
 func TestLaunchAndWaitTimeout(t *testing.T) {
-	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(500) * time.Millisecond, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	newCCSupport := &ChaincodeSupport{peerTLS: false, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(500) * time.Millisecond, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
@@ -892,7 +893,7 @@ func TestLaunchAndWaitTimeout(t *testing.T) {
 
 //test notification error case
 func TestLaunchAndWaitNotificationError(t *testing.T) {
-	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(10) * time.Second, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	newCCSupport := &ChaincodeSupport{peerTLS: false, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(10) * time.Second, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
@@ -908,7 +909,7 @@ func TestLaunchAndWaitNotificationError(t *testing.T) {
 
 //test container return error
 func TestLaunchAndWaitLaunchError(t *testing.T) {
-	newCCSupport := &ChaincodeSupport{peerTLS: true, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(10) * time.Second, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
+	newCCSupport := &ChaincodeSupport{peerTLS: false, chaincodeLogLevel: "debug", shimLogLevel: "info", ccStartupTimeout: time.Duration(10) * time.Second, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv), launchStarted: make(map[string]bool)}, peerNetworkID: "networkID", peerID: "peerID"}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}}
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}

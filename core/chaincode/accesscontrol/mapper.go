@@ -69,8 +69,10 @@ func certKeyPairFromString(privKey string, pubKey string) (*certKeyPair, error) 
 		return nil, err
 	}
 	return &certKeyPair{
-		certBytes: pub,
-		keyBytes:  priv,
+		CertKeyPair: &CertKeyPair{
+			Key:  priv,
+			Cert: pub,
+		},
 	}, nil
 }
 

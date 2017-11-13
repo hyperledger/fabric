@@ -59,8 +59,9 @@ const (
 	HistoryQueryExecutorKey key = "historyqueryexecutorkey"
 
 	// Mutual TLS auth client key and cert paths in the chaincode container
-	TLSClientKeyPath  string = "/etc/hyperledger/fabric/client.key"
-	TLSClientCertPath string = "/etc/hyperledger/fabric/client.crt"
+	TLSClientKeyPath      string = "/etc/hyperledger/fabric/client.key"
+	TLSClientCertPath     string = "/etc/hyperledger/fabric/client.crt"
+	TLSClientRootCertPath string = "/etc/hyperledger/fabric/peer.crt"
 )
 
 //this is basically the singleton that supports the
@@ -141,6 +142,7 @@ func NewChaincodeSupport(ccEndpoint string, userrunsCC bool, ccstartuptimeout ti
 	pid := viper.GetString("peer.id")
 
 	theChaincodeSupport = &ChaincodeSupport{
+		ca: ca,
 		runningChaincodes: &runningChaincodes{
 			chaincodeMap:  make(map[string]*chaincodeRTEnv),
 			launchStarted: make(map[string]bool),
@@ -155,11 +157,7 @@ func NewChaincodeSupport(ccEndpoint string, userrunsCC bool, ccstartuptimeout ti
 	theChaincodeSupport.ccStartupTimeout = ccstartuptimeout
 
 	theChaincodeSupport.peerTLS = viper.GetBool("peer.tls.enabled")
-	if theChaincodeSupport.peerTLS {
-		theChaincodeSupport.peerTLSCertFile = config.GetPath("peer.tls.cert.file")
-		theChaincodeSupport.peerTLSKeyFile = config.GetPath("peer.tls.key.file")
-		theChaincodeSupport.peerTLSSvrHostOrd = viper.GetString("peer.tls.serverhostoverride")
-	} else {
+	if !theChaincodeSupport.peerTLS {
 		theChaincodeSupport.auth.DisableAccessCheck()
 	}
 
@@ -217,15 +215,13 @@ func getLogLevelFromViper(module string) string {
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
+	ca                accesscontrol.CA
 	auth              accesscontrol.Authenticator
 	runningChaincodes *runningChaincodes
 	peerAddress       string
 	ccStartupTimeout  time.Duration
 	peerNetworkID     string
 	peerID            string
-	peerTLSCertFile   string
-	peerTLSKeyFile    string
-	peerTLSSvrHostOrd string
 	keepalive         time.Duration
 	chaincodeLogLevel string
 	shimLogLevel      string
@@ -360,8 +356,9 @@ func (chaincodeSupport *ChaincodeSupport) getTLSFiles(keyPair *accesscontrol.Cer
 	}
 
 	return map[string][]byte{
-		TLSClientKeyPath:  []byte(keyPair.Key),
-		TLSClientCertPath: []byte(keyPair.Cert),
+		TLSClientKeyPath:      []byte(keyPair.Key),
+		TLSClientCertPath:     []byte(keyPair.Cert),
+		TLSClientRootCertPath: chaincodeSupport.ca.CertBytes(),
 	}
 }
 
@@ -387,11 +384,9 @@ func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(cccid *ccprovider.CCC
 			return nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("failed generating TLS cert for %s", cccid.GetCanonicalName()))
 		}
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
-		if chaincodeSupport.peerTLSSvrHostOrd != "" {
-			envs = append(envs, "CORE_PEER_TLS_SERVERHOSTOVERRIDE="+chaincodeSupport.peerTLSSvrHostOrd)
-		}
 		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_KEY_PATH=%s", TLSClientKeyPath))
 		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_CERT_PATH=%s", TLSClientCertPath))
+		envs = append(envs, fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=%s", TLSClientRootCertPath))
 	} else {
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=false")
 	}

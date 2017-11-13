@@ -238,9 +238,6 @@ func InitTLSForPeer() credentials.TransportCredentials {
 
 func InitTLSForShim(key, certStr string) credentials.TransportCredentials {
 	var sn string
-	if viper.GetString("peer.tls.serverhostoverride") != "" {
-		sn = viper.GetString("peer.tls.serverhostoverride")
-	}
 	priv, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
 		commLogger.Panicf("failed decoding private key from base64, string: %s, error: %v", key, err)

@@ -53,7 +53,7 @@ type authenticator struct {
 // NewAuthenticator returns a new authenticator that would wrap the given chaincode service
 func NewAuthenticator(srv pb.ChaincodeSupportServer, ca CA) Authenticator {
 	auth := &authenticator{
-		mapper: newCertMapper(ca.newCertKeyPair),
+		mapper: newCertMapper(ca.newClientCertKeyPair),
 	}
 	auth.ChaincodeSupportServer = newInterceptor(srv, auth.authenticate)
 	return auth

@@ -58,7 +58,6 @@ var _VGetBool = viper.GetBool
 var _OSStat = os.Stat
 var _IOUtilReadFile = ioutil.ReadFile
 var _CUtilWriteBytesToPackage = cutil.WriteBytesToPackage
-var _getPeerTLSCert = getPeerTLSCert
 var _generateDockerfile = generateDockerfile
 var _generateDockerBuild = generateDockerBuild
 
@@ -89,28 +88,7 @@ func GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
 	return platform.GetDeploymentPayload(spec)
 }
 
-func getPeerTLSCert() ([]byte, error) {
-
-	if _VGetBool("peer.tls.enabled") == false {
-		// no need for certificates if TLS is not enabled
-		return nil, nil
-	}
-	var path string
-	// first we check for the rootcert
-	path = _GetPath("peer.tls.rootcert.file")
-	if path == "" {
-		// check for tls cert
-		path = _GetPath("peer.tls.cert.file")
-	}
-	// this should not happen if the peer is running with TLS enabled
-	if _, err := _OSStat(path); err != nil {
-		return nil, err
-	}
-	// FIXME: FAB-2037 - ensure we sanely resolve relative paths specified in the yaml
-	return _IOUtilReadFile(path)
-}
-
-func generateDockerfile(platform Platform, cds *pb.ChaincodeDeploymentSpec, tls bool) ([]byte, error) {
+func generateDockerfile(platform Platform, cds *pb.ChaincodeDeploymentSpec) ([]byte, error) {
 
 	var buf []string
 
@@ -131,19 +109,11 @@ func generateDockerfile(platform Platform, cds *pb.ChaincodeDeploymentSpec, tls 
 	buf = append(buf, fmt.Sprintf("      %s.chaincode.type=\"%s\" \\", metadata.BaseDockerLabel, cds.ChaincodeSpec.Type.String()))
 	buf = append(buf, fmt.Sprintf("      %s.version=\"%s\" \\", metadata.BaseDockerLabel, metadata.Version))
 	buf = append(buf, fmt.Sprintf("      %s.base.version=\"%s\"", metadata.BaseDockerLabel, metadata.BaseVersion))
-
 	// ----------------------------------------------------------------------------------------------------
 	// Then augment it with any general options
 	// ----------------------------------------------------------------------------------------------------
 	//append version so chaincode build version can be compared against peer build version
 	buf = append(buf, fmt.Sprintf("ENV CORE_CHAINCODE_BUILDLEVEL=%s", metadata.Version))
-
-	if tls {
-		const guestTLSPath = "/etc/hyperledger/fabric/peer.crt"
-
-		buf = append(buf, "ENV CORE_PEER_TLS_ROOTCERT_FILE="+guestTLSPath)
-		buf = append(buf, "COPY peer.crt "+guestTLSPath)
-	}
 
 	// ----------------------------------------------------------------------------------------------------
 	// Finalize it
@@ -194,23 +164,9 @@ func GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec) (io.Reader, error) {
 	}
 
 	// ----------------------------------------------------------------------------------------------------
-	// Transfer the peer's TLS certificate to our list of input files, if applicable
-	// ----------------------------------------------------------------------------------------------------
-	// NOTE: We bake the peer TLS certificate in at the time we build the chaincode container if a cert is
-	// found, regardless of whether TLS is enabled or not.  The main implication is that if the administrator
-	// updates the peer cert, the chaincode containers will need to be invalidated and rebuilt.
-	// We will manage enabling or disabling TLS at container run time via CORE_PEER_TLS_ENABLED
-	cert, err := _getPeerTLSCert()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to read the TLS certificate: %s", err)
-	}
-
-	inputFiles["peer.crt"] = cert
-
-	// ----------------------------------------------------------------------------------------------------
 	// Generate the Dockerfile specific to our context
 	// ----------------------------------------------------------------------------------------------------
-	dockerFile, err := _generateDockerfile(platform, cds, cert != nil)
+	dockerFile, err := _generateDockerfile(platform, cds)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to generate a Dockerfile: %s", err)
 	}

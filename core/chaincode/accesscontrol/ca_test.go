@@ -22,18 +22,16 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-func createTLSService(t *testing.T, clientCAcert []byte) *grpc.Server {
-	ca, err := NewCA()
-	assert.NoError(t, err)
-	keyPair, err := ca.newCertKeyPair()
-	cert, err := tls.X509KeyPair(keyPair.certBytes, keyPair.keyBytes)
+func createTLSService(t *testing.T, ca CA, host string) *grpc.Server {
+	keyPair, err := ca.NewServerCertKeyPair(host)
+	cert, err := tls.X509KeyPair(keyPair.Cert, keyPair.Key)
 	assert.NoError(t, err)
 	tlsConf := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		ClientCAs:    x509.NewCertPool(),
 	}
-	tlsConf.ClientCAs.AppendCertsFromPEM(clientCAcert)
+	tlsConf.ClientCAs.AppendCertsFromPEM(ca.CertBytes())
 	return grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConf)))
 }
 
@@ -48,8 +46,9 @@ func TestTLSCA(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ca)
 
-	srv := createTLSService(t, ca.CertBytes())
-	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", randomPort))
+	endpoint := fmt.Sprintf("127.0.0.1:%d", randomPort)
+	srv := createTLSService(t, ca, "127.0.0.1")
+	l, err := net.Listen("tcp", endpoint)
 	assert.NoError(t, err)
 	go srv.Serve(l)
 	defer srv.Stop()
@@ -62,13 +61,14 @@ func TestTLSCA(t *testing.T) {
 		assert.NoError(t, err)
 		cert, err := tls.X509KeyPair(certBytes, keyBytes)
 		tlsCfg := &tls.Config{
-			InsecureSkipVerify: true,
-			Certificates:       []tls.Certificate{cert},
+			RootCAs:      x509.NewCertPool(),
+			Certificates: []tls.Certificate{cert},
 		}
+		tlsCfg.RootCAs.AppendCertsFromPEM(ca.CertBytes())
 		tlsOpts := grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))
 		ctx := context.Background()
 		ctx, _ = context.WithTimeout(ctx, time.Second)
-		conn, err := grpc.DialContext(ctx, fmt.Sprintf("localhost:%d", randomPort), tlsOpts, grpc.WithBlock())
+		conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", randomPort), tlsOpts, grpc.WithBlock())
 		if err != nil {
 			return err
 		}
@@ -78,14 +78,14 @@ func TestTLSCA(t *testing.T) {
 
 	// Good path - use a cert key pair generated from the CA
 	// that the TLS server started with
-	kp, err := ca.newCertKeyPair()
+	kp, err := ca.newClientCertKeyPair()
 	assert.NoError(t, err)
 	err = probeTLS(kp)
 	assert.NoError(t, err)
 
 	// Bad path - use a cert key pair generated from a foreign CA
 	foreignCA, _ := NewCA()
-	kp, err = foreignCA.newCertKeyPair()
+	kp, err = foreignCA.newClientCertKeyPair()
 	assert.NoError(t, err)
 	err = probeTLS(kp)
 	assert.Error(t, err)

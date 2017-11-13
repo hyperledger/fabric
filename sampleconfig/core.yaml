@@ -291,8 +291,6 @@ peer:
         # If not set, peer.tls.cert.file will be used instead
         clientCert:
             file:
-        # The server name use to verify the hostname returned by TLS handshake
-        serverhostoverride:
 
     # Path on the file system where peer will store data (eg ledger). This
     # location must be access control protected to prevent unintended

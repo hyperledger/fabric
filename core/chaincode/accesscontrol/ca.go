@@ -6,6 +6,15 @@ SPDX-License-Identifier: Apache-2.0
 
 package accesscontrol
 
+// CertKeyPair denotes a TLS certificate and corresponding key,
+// both PEM encoded
+type CertKeyPair struct {
+	// Cert is the certificate, PEM encoded
+	Cert []byte
+	// Key is the key corresponding to the certificate, PEM encoded
+	Key []byte
+}
+
 // CA defines a certificate authority that can generate
 // certificates signed by it
 type CA interface {
@@ -14,8 +23,14 @@ type CA interface {
 
 	// newCertKeyPair returns a certificate and private key pair and nil,
 	// or nil, error in case of failure
-	// The certificate is signed by the CA
-	newCertKeyPair() (*certKeyPair, error)
+	// The certificate is signed by the CA and is used for TLS client authentication
+	newClientCertKeyPair() (*certKeyPair, error)
+
+	// NewServerCertKeyPair returns a CertKeyPair and nil,
+	// with a given custom SAN.
+	// The certificate is signed by the CA.
+	// Returns nil, error in case of failure
+	NewServerCertKeyPair(host string) (*CertKeyPair, error)
 }
 
 type ca struct {
@@ -25,7 +40,7 @@ type ca struct {
 func NewCA() (CA, error) {
 	c := &ca{}
 	var err error
-	c.caCert, err = newCertKeyPair(true, nil, nil)
+	c.caCert, err = newCertKeyPair(true, false, "", nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -34,12 +49,23 @@ func NewCA() (CA, error) {
 
 // CertBytes returns the certificate of the CA in PEM encoding
 func (c *ca) CertBytes() []byte {
-	return c.caCert.certBytes
+	return c.caCert.Cert
 }
 
-// newCertKeyPair returns a certificate and private key pair and nil,
+// newClientCertKeyPair returns a certificate and private key pair and nil,
 // or nil, error in case of failure
-// The certificate is signed by the CA
-func (c *ca) newCertKeyPair() (*certKeyPair, error) {
-	return newCertKeyPair(false, c.caCert.Signer, c.caCert.cert)
+// The certificate is signed by the CA and is used as a client TLS certificate
+func (c *ca) newClientCertKeyPair() (*certKeyPair, error) {
+	return newCertKeyPair(false, false, "", c.caCert.Signer, c.caCert.cert)
+}
+
+// newServerCertKeyPair returns a certificate and private key pair and nil,
+// or nil, error in case of failure
+// The certificate is signed by the CA and is used as a server TLS certificate
+func (c *ca) NewServerCertKeyPair(host string) (*CertKeyPair, error) {
+	keypair, err := newCertKeyPair(false, true, host, c.caCert.Signer, c.caCert.cert)
+	if err != nil {
+		return nil, err
+	}
+	return keypair.CertKeyPair, nil
 }
