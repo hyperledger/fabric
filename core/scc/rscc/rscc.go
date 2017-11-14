@@ -117,7 +117,7 @@ func (rscc *Rscc) CheckACL(resName string, channelID string, idinfo interface{})
 
 //GenerateSimulationResults called to add config state. Currently only handles "join" requests.
 //Note that this is just a ledger hook and does not modify RSCC data structures
-func (rscc *Rscc) GenerateSimulationResults(txEnv *common.Envelope, sim ledger.TxSimulator) error {
+func (rscc *Rscc) GenerateSimulationResults(txEnv *common.Envelope, sim ledger.TxSimulator, initializingLedger bool) error {
 	//should never happen, but check anyway
 	if txEnv == nil || sim == nil {
 		return fmt.Errorf("nil parameters")

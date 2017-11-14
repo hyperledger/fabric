@@ -88,7 +88,7 @@ func validatePvtdata(tx *valinternal.Transaction, pvtdata *ledger.TxPvtData) err
 
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
 // The retuned 'Block' structure contains only transactions that are endorser transactions and are not alredy marked as invalid
-func preprocessProtoBlock(txmgr txmgr.TxMgr, block *common.Block) (*valinternal.Block, error) {
+func preprocessProtoBlock(txmgr txmgr.TxMgr, block *common.Block, doMVCCValidation bool) (*valinternal.Block, error) {
 	b := &valinternal.Block{Num: block.Header.Number}
 	// Committer validator has already set validation flags based on well formed tran checks
 	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
@@ -135,7 +135,11 @@ func preprocessProtoBlock(txmgr txmgr.TxMgr, block *common.Block) (*valinternal.
 				continue
 			}
 		} else {
-			rwsetProto, err := processNonEndorserTx(env, chdr.TxId, txType, txmgr)
+			rwsetProto, err := processNonEndorserTx(env, chdr.TxId, txType, txmgr, !doMVCCValidation)
+			if _, ok := err.(*customtx.InvalidTxError); ok {
+				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
+				continue
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -152,10 +156,10 @@ func preprocessProtoBlock(txmgr txmgr.TxMgr, block *common.Block) (*valinternal.
 	return b, nil
 }
 
-func processNonEndorserTx(txEnv *common.Envelope, txid string, txType common.HeaderType, txmgr txmgr.TxMgr) (*rwset.TxReadWriteSet, error) {
+func processNonEndorserTx(txEnv *common.Envelope, txid string, txType common.HeaderType, txmgr txmgr.TxMgr, synchingState bool) (*rwset.TxReadWriteSet, error) {
 	logger.Debugf("Performing custom processing for transaction [txid=%s], [txType=%s]", txid, txType)
 	processor := customtx.GetProcessor(txType)
-	logger.Debug("Processor for custom tx processing:%#v", processor)
+	logger.Debugf("Processor for custom tx processing:%#v", processor)
 	if processor == nil {
 		return nil, nil
 	}
@@ -163,11 +167,11 @@ func processNonEndorserTx(txEnv *common.Envelope, txid string, txType common.Hea
 	var err error
 	var sim ledger.TxSimulator
 	var simRes *ledger.TxSimulationResults
-
 	if sim, err = txmgr.NewTxSimulator(txid); err != nil {
 		return nil, err
 	}
-	if err = processor.GenerateSimulationResults(txEnv, sim); err != nil {
+	defer sim.Done()
+	if err = processor.GenerateSimulationResults(txEnv, sim, synchingState); err != nil {
 		return nil, err
 	}
 	if simRes, err = sim.GetTxSimulationResults(); err != nil {

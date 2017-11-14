@@ -51,10 +51,10 @@ func newACLMgmt(r ACLProvider) ACLProvider {
 	return &aclMgmtImpl{aclOverrides: make(map[string]aclMethod)}
 }
 
-func (am *aclMgmtImpl) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator) error {
+func (am *aclMgmtImpl) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	if rscc == nil {
 		panic("-----RegisterACLProvider not called ----")
 	}
 
-	return rscc.GenerateSimulationResults(txEnvelop, simulator)
+	return rscc.GenerateSimulationResults(txEnvelop, simulator, initializingLedger)
 }
