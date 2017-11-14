@@ -50,24 +50,26 @@ func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
 
 // Chaincode-related variables.
 var (
-	chaincodeLang     string
-	chaincodeCtorJSON string
-	chaincodePath     string
-	chaincodeName     string
-	chaincodeUsr      string // Not used
-	chaincodeQueryRaw bool
-	chaincodeQueryHex bool
-	customIDGenAlg    string
-	channelID         string
-	chaincodeVersion  string
-	policy            string
-	escc              string
-	vscc              string
-	policyMarshalled  []byte
-	orderingEndpoint  string
-	tls               bool
-	caFile            string
-	transient         string
+	chaincodeLang            string
+	chaincodeCtorJSON        string
+	chaincodePath            string
+	chaincodeName            string
+	chaincodeUsr             string // Not used
+	chaincodeQueryRaw        bool
+	chaincodeQueryHex        bool
+	customIDGenAlg           string
+	channelID                string
+	chaincodeVersion         string
+	policy                   string
+	escc                     string
+	vscc                     string
+	policyMarshalled         []byte
+	orderingEndpoint         string
+	tls                      bool
+	caFile                   string
+	transient                string
+	resourceEnvelopeSavePath string
+	resourceEnvelopeLoadPath string
 )
 
 var chaincodeCmd = &cobra.Command{
@@ -108,6 +110,10 @@ func resetFlags() {
 		fmt.Sprint("The name of the endorsement system chaincode to be used for this chaincode"))
 	flags.StringVarP(&vscc, "vscc", "V", common.UndefinedParamValue,
 		fmt.Sprint("The name of the verification system chaincode to be used for this chaincode"))
+	flags.StringVarP(&resourceEnvelopeSavePath, "resourceEnvelopeSavePath", "S", common.UndefinedParamValue,
+		fmt.Sprint("Specifies the file to save the resource config update to. If not specified, sends config update"))
+	flags.StringVarP(&resourceEnvelopeLoadPath, "resourceEnvelopeLoadPath", "L", common.UndefinedParamValue,
+		fmt.Sprint("Specifies the file to load the resource config update from. If not specified, creates a new config update"))
 	flags.BoolVarP(&getInstalledChaincodes, "installed", "", false,
 		"Get the installed chaincodes on a peer")
 	flags.BoolVarP(&getInstantiatedChaincodes, "instantiated", "", false,
@@ -120,7 +126,7 @@ func attachFlags(cmd *cobra.Command, names []string) {
 		if flag := flags.Lookup(name); flag != nil {
 			cmdFlags.AddFlag(flag)
 		} else {
-			logger.Fatalf("Could not find flag '%s' to attach to commond '%s'", name, cmd.Name())
+			logger.Fatalf("Could not find flag '%s' to attach to command '%s'", name, cmd.Name())
 		}
 	}
 }
