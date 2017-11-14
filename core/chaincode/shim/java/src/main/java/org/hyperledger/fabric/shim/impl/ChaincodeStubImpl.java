@@ -39,12 +39,14 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 class ChaincodeStubImpl implements ChaincodeStub {
 
+	private final String channelId;
 	private final String txId;
 	private final Handler handler;
 	private final List<ByteString> args;
 	private ChaincodeEvent event;
 
-	ChaincodeStubImpl(String txId, Handler handler, List<ByteString> args) {
+	ChaincodeStubImpl(String channelId, String txId, Handler handler, List<ByteString> args) {
+		this.channelId = channelId;
 		this.txId = txId;
 		this.handler = handler;
 		this.args = Collections.unmodifiableList(args);
@@ -91,29 +93,34 @@ class ChaincodeStubImpl implements ChaincodeStub {
 	}
 
 	@Override
+	public String getChannelId() {
+		return channelId;
+	}
+
+	@Override
 	public String getTxId() {
 		return txId;
 	}
 
 	@Override
 	public byte[] getState(String key) {
-		return handler.getState(txId, key).toByteArray();
+		return handler.getState(channelId, txId, key).toByteArray();
 	}
 
 	@Override
 	public void putState(String key, byte[] value) {
-		handler.putState(txId, key, ByteString.copyFrom(value));
+		handler.putState(channelId, txId, key, ByteString.copyFrom(value));
 	}
 
 	@Override
 	public void delState(String key) {
-		handler.deleteState(txId, key);
+		handler.deleteState(channelId, txId, key);
 	}
 
 	@Override
 	public QueryResultsIterator<KeyValue> getStateByRange(String startKey, String endKey) {
-		return new QueryResultsIteratorImpl<KeyValue>(this.handler, getTxId(),
-				handler.getStateByRange(getTxId(), startKey, endKey),
+		return new QueryResultsIteratorImpl<KeyValue>(this.handler, getChannelId(), getTxId(),
+				handler.getStateByRange(getChannelId(), getTxId(), startKey, endKey),
 				queryResultBytesToKv.andThen(KeyValueImpl::new)
 				);
 	}
@@ -145,16 +152,16 @@ class ChaincodeStubImpl implements ChaincodeStub {
 
 	@Override
 	public QueryResultsIterator<KeyValue> getQueryResult(String query) {
-		return new QueryResultsIteratorImpl<KeyValue>(this.handler, getTxId(),
-				handler.getQueryResult(getTxId(), query),
+		return new QueryResultsIteratorImpl<KeyValue>(this.handler, getChannelId(), getTxId(),
+				handler.getQueryResult(getChannelId(), getTxId(), query),
 				queryResultBytesToKv.andThen(KeyValueImpl::new)
 				);
 	}
 
 	@Override
 	public QueryResultsIterator<KeyModification> getHistoryForKey(String key) {
-		return new QueryResultsIteratorImpl<KeyModification>(this.handler, getTxId(),
-				handler.getHistoryForKey(getTxId(), key),
+		return new QueryResultsIteratorImpl<KeyModification>(this.handler, getChannelId(), getTxId(),
+				handler.getHistoryForKey(getChannelId(), getTxId(), key),
 				queryResultBytesToKeyModification.andThen(KeyModificationImpl::new)
 				);
 	}
@@ -178,7 +185,7 @@ class ChaincodeStubImpl implements ChaincodeStub {
 		} else {
 			compositeName = chaincodeName;
 		}
-		return handler.invokeChaincode(this.txId, compositeName, args);
+		return handler.invokeChaincode(this.channelId, this.txId, compositeName, args);
 	}
 
 }

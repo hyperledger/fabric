@@ -27,13 +27,15 @@ import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
 class QueryResultsIteratorImpl<T> implements QueryResultsIterator<T> {
 		
 	private final Handler handler;
+	private final String channelId;
 	private final String txId;
 	private Iterator<QueryResultBytes> currentIterator;
 	private QueryResponse currentQueryResponse;
 	private Function<QueryResultBytes, T> mapper;
 	
-	public QueryResultsIteratorImpl(final Handler handler, final String txId, final QueryResponse queryResponse, Function<QueryResultBytes, T> mapper) {
+	public QueryResultsIteratorImpl(final Handler handler, final String channelId, final String txId, final QueryResponse queryResponse, Function<QueryResultBytes, T> mapper) {
 		this.handler = handler;
+		this.channelId = channelId;
 		this.txId = txId;
 		this.currentQueryResponse = queryResponse;
 		this.currentIterator = currentQueryResponse.getResultsList().iterator();
@@ -59,7 +61,7 @@ class QueryResultsIteratorImpl<T> implements QueryResultsIterator<T> {
 				if(!currentQueryResponse.getHasMore()) throw new NoSuchElementException();
 				
 				// get more results from peer
-				currentQueryResponse = handler.queryStateNext(txId, currentQueryResponse.getId());
+				currentQueryResponse = handler.queryStateNext(channelId, txId, currentQueryResponse.getId());
 				currentIterator = currentQueryResponse.getResultsList().iterator();
 				
 				// return next fetched result
@@ -72,7 +74,7 @@ class QueryResultsIteratorImpl<T> implements QueryResultsIterator<T> {
 
 	@Override
 	public void close() throws Exception {
-		this.handler.queryStateClose(txId, currentQueryResponse.getId());
+		this.handler.queryStateClose(channelId, txId, currentQueryResponse.getId());
 		this.currentIterator = Collections.emptyIterator();
 		this.currentQueryResponse = QueryResponse.newBuilder().setHasMore(false).build();
 	}
