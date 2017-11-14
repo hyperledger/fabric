@@ -46,6 +46,8 @@ you will extract the platform-specific binaries:
 
   curl -sSL https://goo.gl/fMh2s3 | bash
 
+You can find out the same script under ``fabric-samples/scripts/fabric-preload.sh``.
+
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl. Please visit the
           :doc:`prereqs` page for additional information on where to
