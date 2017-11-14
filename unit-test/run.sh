@@ -63,7 +63,6 @@ PKGS=`go list ${TEST_PKGS} 2> /dev/null | \
                                                   grep -v /core/ledger/kvledger/example | \
                                                   grep -v /core/ledger/kvledger/marble_example | \
                                                   grep -v /core/deliverservice/mocks | \
-                                                  grep -v /core/scc/samplesyscc | \
                                                   grep -v /test | \
                                                   grep -v /examples`
 

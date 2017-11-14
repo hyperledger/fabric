@@ -232,3 +232,32 @@ func (*mockStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
 func (*mockStub) SetEvent(name string, payload []byte) error {
 	panic("implement me")
 }
+func (*mockStub) GetDecorations() map[string][]byte {
+	panic("implement me")
+}
+func (stub *mockStub) GetPrivateData(collection string, key string) ([]byte, error) {
+	panic("implement me")
+}
+
+func (stub *mockStub) PutPrivateData(collection string, key string, value []byte) error {
+	panic("implement me")
+}
+
+func (stub *mockStub) DelPrivateData(collection string, key string) error {
+	panic("implement me")
+}
+
+func (stub *mockStub) GetPrivateDataByRange(collection, startKey, endKey string) (shim.StateQueryIteratorInterface, error) {
+	panic("implement me")
+}
+
+func (stub *mockStub) GetPrivateDataByPartialCompositeKey(collection, objectType string, attributes []string) (shim.StateQueryIteratorInterface, error) {
+	panic("implement me")
+}
+
+func (stub *mockStub) GetPrivateDataQueryResult(collection, query string) (shim.StateQueryIteratorInterface, error) {
+	panic("implement me")
+}
+func (stub *mockStub) GetChannelID() string {
+	panic("implement me")
+}
