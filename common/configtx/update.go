@@ -205,7 +205,7 @@ func (vi *ValidatorImpl) computeUpdateResult(updatedConfig map[string]comparable
 
 func envelopeToConfigUpdate(configtx *cb.Envelope) (*cb.ConfigUpdateEnvelope, error) {
 	configUpdateEnv := &cb.ConfigUpdateEnvelope{}
-	_, err := utils.UnmarshalEnvelopeOfType(configtx, cb.HeaderType_CONFIG_UPDATE, configUpdateEnv)
+	_, err := utils.UnmarshalEnvelopeOfTypes(configtx, []cb.HeaderType{cb.HeaderType_CONFIG_UPDATE, cb.HeaderType_PEER_RESOURCE_UPDATE}, configUpdateEnv)
 	if err != nil {
 		return nil, err
 	}
