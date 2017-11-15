@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/customtx"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
+	cc "github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/deliver"
@@ -736,4 +737,42 @@ func (flbs fileLedgerBlockStore) AddBlock(*common.Block) error {
 
 func (flbs fileLedgerBlockStore) RetrieveBlocks(startBlockNumber uint64) (commonledger.ResultsIterator, error) {
 	return flbs.GetBlocksIterator(startBlockNumber)
+}
+
+// NewResourceConfigSupport returns
+func NewConfigSupport() cc.Manager {
+	return &configSupport{}
+}
+
+type configSupport struct {
+}
+
+// GetChannelConfig returns an instance of a object that represents
+// current channel configuration tree of the specified channel. The
+// ConfigProto method of the returned object can be used to get the
+// proto representing the channel configuration.
+func (*configSupport) GetChannelConfig(channel string) cc.Config {
+	chains.RLock()
+	defer chains.RUnlock()
+	chain := chains.list[channel]
+	if chain == nil {
+		peerLogger.Error("GetChannelConfig: channel", channel, "not found in the list of channels associated with this peer")
+		return nil
+	}
+	return chain.cs.bundleSource.ChannelConfig().ConfigtxValidator()
+}
+
+// GetResourceConfig returns an instance of a object that represents
+// current resource configuration tree of the specified channel. The
+// ConfigProto method of the returned object can be used to get the
+// proto representing the resource configuration.
+func (*configSupport) GetResourceConfig(channel string) cc.Config {
+	chains.RLock()
+	defer chains.RUnlock()
+	chain := chains.list[channel]
+	if chain == nil {
+		peerLogger.Error("GetResourceConfig: channel", channel, "not found in the list of channels associated with this peer")
+		return nil
+	}
+	return chain.cs.bundleSource.ConfigtxValidator()
 }

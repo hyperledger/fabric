@@ -124,7 +124,7 @@ func executeJoin(cf *ChannelCmdFactory) (err error) {
 	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != 200 {
 		return ProposalFailedErr(fmt.Sprintf("bad proposal response %d", proposalResp.Response.Status))
 	}
-	logger.Infof("Successfully submitted proposal to join channel '%s'", channelID)
+	logger.Info("Successfully submitted proposal to join channel")
 	return nil
 }
 

@@ -72,6 +72,7 @@ It has these top-level messages:
 	ChaincodeValidation
 	VSCCArgs
 	ChaincodeEndorsement
+	ConfigTree
 	SignedChaincodeDeploymentSpec
 	SignedTransaction
 	ProcessedTransaction

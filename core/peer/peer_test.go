@@ -159,6 +159,13 @@ func TestCreateChainFromBlock(t *testing.T) {
 		t.Fatalf("failed to get correct block")
 	}
 
+	cfgSupport := configSupport{}
+	chCfg := cfgSupport.GetChannelConfig(testChainID)
+	assert.NotNil(t, chCfg, "failed to get channel config")
+
+	resCfg := cfgSupport.GetResourceConfig(testChainID)
+	assert.NotNil(t, resCfg, "failed to get resource config")
+
 	// Bad block
 	block = GetCurrConfigBlock("BogusBlock")
 	if block != nil {

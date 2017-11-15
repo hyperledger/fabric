@@ -42,9 +42,11 @@ const (
 	QSCC_GetBlockByTxID     = "QSCC.GetBlockByTxID"
 
 	//CSCC resources
-	CSCC_JoinChain      = "CSCC.JoinChain"
-	CSCC_GetConfigBlock = "CSCC.GetConfigBlock"
-	CSCC_GetChannels    = "CSCC.GetChannels"
+	CSCC_JoinChain                = "CSCC.JoinChain"
+	CSCC_GetConfigBlock           = "CSCC.GetConfigBlock"
+	CSCC_GetChannels              = "CSCC.GetChannels"
+	CSCC_GetConfigTree            = "CSCC.GetConfigTree"
+	CSCC_SimulateConfigTreeUpdate = "CSCC.SimulateConfigTreeUpdate"
 
 	//Chaincode-to-Chaincode call
 	CC2CC = "CC2CC"

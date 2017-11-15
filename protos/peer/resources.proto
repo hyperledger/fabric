@@ -11,6 +11,8 @@ option go_package = "github.com/hyperledger/fabric/protos/peer";
 
 package protos;
 
+import "common/configtx.proto";
+
 // APIResource represents an API resource in the peer whose ACL is determined by the policy_ref field
 message APIResource {
     string policy_ref = 1; // The policy name to use for this API
@@ -49,4 +51,11 @@ message ChaincodeEndorsement {
     string name = 1; // Specifies what code to run for endorsements, defaults 'escc'
     // Eventually we may wish add an arg here, just like the ChaincodeValidation message, but
     // omitting now until there is a need for it.
+}
+
+// ConfigTree encapsulates channel and resources configuration of a channel.
+// Both configurations are represented as common.Config
+message ConfigTree {
+    common.Config channel_config = 1;
+    common.Config resources_config = 2;
 }
