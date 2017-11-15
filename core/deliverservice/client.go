@@ -228,6 +228,16 @@ func (bc *broadcastClient) Disconnect(disableEndpoint bool) {
 	bc.BlocksDeliverer = nil
 }
 
+// UpdateEndpoints update endpoints to new values
+func (bc *broadcastClient) UpdateEndpoints(endpoints []string) {
+	bc.prod.UpdateEndpoints(endpoints)
+}
+
+// GetEndpoints returns ordering service endpoints
+func (bc *broadcastClient) GetEndpoints() []string {
+	return bc.prod.GetEndpoints()
+}
+
 type connection struct {
 	sync.Once
 	*grpc.ClientConn

@@ -143,6 +143,10 @@ func (cp *connProducer) UpdateEndpoints(endpoints []string) {
 	panic("Not implemented")
 }
 
+func (cp *connProducer) GetEndpoints() []string {
+	panic("Not implemented")
+}
+
 func (cp *connProducer) DisableEndpoint(endpoint string) {
 	panic("Not implemented")
 }

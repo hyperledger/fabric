@@ -313,6 +313,10 @@ type mockDeliverService struct {
 	running map[string]bool
 }
 
+func (ds *mockDeliverService) UpdateEndpoints(chainID string, endpoints []string) error {
+	panic("implement me")
+}
+
 func (ds *mockDeliverService) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, finalizer func()) error {
 	ds.running[chainID] = true
 	return nil
@@ -795,6 +799,6 @@ func TestChannelConfig(t *testing.T) {
 		},
 	}
 	gService.JoinChan(jcm, gossipCommon.ChainID("A"))
-	gService.configUpdated(mc)
+	gService.updateAnchors(mc)
 	assert.True(t, gService.amIinChannel(string(orgInChannelA), mc))
 }

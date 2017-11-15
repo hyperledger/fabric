@@ -26,13 +26,20 @@ type mockReceiver struct {
 	sequence uint64
 }
 
-func (mr *mockReceiver) configUpdated(config Config) {
+func (mr *mockReceiver) updateAnchors(config Config) {
 	logger.Debugf("[TEST] Setting config to %d %v", config.Sequence(), config.Organizations())
 	mr.orgs = config.Organizations()
 	mr.sequence = config.Sequence()
 }
 
+func (mr *mockReceiver) updateEndpoints(chainID string, endpoints []string) {
+}
+
 type mockConfig mockReceiver
+
+func (mc *mockConfig) OrdererAddresses() []string {
+	return []string{"localhost:7050"}
+}
 
 func (mc *mockConfig) Sequence() uint64 {
 	return mc.sequence

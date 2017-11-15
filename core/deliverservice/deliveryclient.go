@@ -55,6 +55,9 @@ type DeliverService interface {
 	// to channel peers.
 	StopDeliverForChannel(chainID string) error
 
+	// UpdateEndpoints
+	UpdateEndpoints(chainID string, endpoints []string) error
+
 	// Stop terminates delivery service and closes the connection
 	Stop()
 }
@@ -101,6 +104,17 @@ func NewDeliverService(conf *Config) (DeliverService, error) {
 		return nil, err
 	}
 	return ds, nil
+}
+
+func (d *deliverServiceImpl) UpdateEndpoints(chainID string, endpoints []string) error {
+	// Use chainID to obtain blocks provider and pass endpoints
+	// for update
+	if bp, ok := d.blockProviders[chainID]; ok {
+		// We have found specified channel so we can safely update it
+		bp.UpdateOrderingEndpoints(endpoints)
+		return nil
+	}
+	return errors.New(fmt.Sprintf("Channel with %s id was not found", chainID))
 }
 
 func (d *deliverServiceImpl) validateConfiguration() error {

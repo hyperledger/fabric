@@ -51,6 +51,7 @@ var credSupport = comm.GetCredentialSupport()
 type gossipSupport struct {
 	channelconfig.Application
 	configtx.Validator
+	channelconfig.Channel
 }
 
 type chainSupport struct {
@@ -272,6 +273,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		gossipEventer.ProcessConfigUpdate(&gossipSupport{
 			Validator:   bundle.ChannelConfig().ConfigtxValidator(),
 			Application: ac,
+			Channel:     bundle.ChannelConfig().ChannelConfig(),
 		})
 		service.GetGossipService().SuspectPeers(func(identity api.PeerIdentityType) bool {
 			// TODO: this is a place-holder that would somehow make the MSP layer suspect

@@ -129,6 +129,14 @@ func (mock *MockBlocksDeliverer) Close() {
 	mock.CloseCalled <- struct{}{}
 }
 
+func (mock *MockBlocksDeliverer) UpdateEndpoints(endpoints []string) {
+
+}
+
+func (mock *MockBlocksDeliverer) GetEndpoints() []string {
+	return []string{} // empty slice
+}
+
 // MockLedgerInfo mocking implementation of LedgerInfo interface, needed
 // for test initialization purposes
 type MockLedgerInfo struct {

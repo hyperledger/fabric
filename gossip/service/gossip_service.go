@@ -293,8 +293,8 @@ func (g *gossipServiceImpl) createSelfSignedData() common.SignedData {
 	}
 }
 
-// configUpdated constructs a joinChannelMessage and sends it to the gossipSvc
-func (g *gossipServiceImpl) configUpdated(config Config) {
+// updateAnchors constructs a joinChannelMessage and sends it to the gossipSvc
+func (g *gossipServiceImpl) updateAnchors(config Config) {
 	myOrg := string(g.secAdv.OrgByPeerIdentity(api.PeerIdentityType(g.peerIdentity)))
 	if !g.amIinChannel(myOrg, config) {
 		logger.Error("Tried joining channel", config.ChainID(), "but our org(", myOrg, "), isn't "+
@@ -317,6 +317,17 @@ func (g *gossipServiceImpl) configUpdated(config Config) {
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for chainID", config.ChainID())
 	g.JoinChan(jcm, gossipCommon.ChainID(config.ChainID()))
+}
+
+func (g *gossipServiceImpl) updateEndpoints(chainID string, endpoints []string) {
+	if ds, ok := g.deliveryService[chainID]; ok {
+		logger.Debugf("Updating endpoints for chainID", chainID)
+		if err := ds.UpdateEndpoints(chainID, endpoints); err != nil {
+			// The only reason to fail is because of absence of block provider
+			// for given channel id, hence printing a warning will be enough
+			logger.Warningf("Failed to update ordering service endpoints, due to %s", err)
+		}
+	}
 }
 
 // AddPayload appends message payload to for given chain

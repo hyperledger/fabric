@@ -8,16 +8,15 @@ package blocksprovider
 
 import (
 	"math"
+	"sync/atomic"
 	"time"
 
-	"sync/atomic"
-
 	"github.com/golang/protobuf/proto"
-	gossipcommon "github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/discovery"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/gossip/api"
+	gossipcommon "github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
 	gossip_proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/orderer"
@@ -50,6 +49,9 @@ type BlocksProvider interface {
 	// DeliverBlocks starts delivering and disseminating blocks
 	DeliverBlocks()
 
+	// UpdateClientEndpoints update endpoints
+	UpdateOrderingEndpoints(endpoints []string)
+
 	// Stop shutdowns blocks provider and stops delivering new blocks
 	Stop()
 }
@@ -69,6 +71,12 @@ type BlocksDeliverer interface {
 
 type streamClient interface {
 	BlocksDeliverer
+
+	// UpdateEndpoint update ordering service endpoints
+	UpdateEndpoints(endpoints []string)
+
+	// GetEndpoints
+	GetEndpoints() []string
 
 	// Close closes the stream and its underlying connection
 	Close()
@@ -195,6 +203,35 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 func (b *blocksProviderImpl) Stop() {
 	atomic.StoreInt32(&b.done, 1)
 	b.client.Close()
+}
+
+// UpdateOrderingEndpoints update endpoints of ordering service
+func (b *blocksProviderImpl) UpdateOrderingEndpoints(endpoints []string) {
+	if !b.isEndpointsUpdated(endpoints) {
+		// No new endpoints for ordering service were provided
+		return
+	}
+	// We have got new set of endpoints, updating client
+	logger.Debug("Updating endpoint, to %s", endpoints)
+	b.client.UpdateEndpoints(endpoints)
+	logger.Debug("Disconnecting so endpoints update will take effect")
+	// We need to disconnect the client to make it reconnect back
+	// to newly updated endpoints
+	b.client.Disconnect(false)
+}
+func (b *blocksProviderImpl) isEndpointsUpdated(endpoints []string) bool {
+	if len(endpoints) != len(b.client.GetEndpoints()) {
+		return true
+	}
+	// Check that endpoints was actually updated
+	for _, endpoint := range endpoints {
+		if !util.Contains(endpoint, b.client.GetEndpoints()) {
+			// Found new endpoint
+			return true
+		}
+	}
+	// Nothing has changed
+	return false
 }
 
 // Check whenever provider is stopped

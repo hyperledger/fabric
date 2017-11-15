@@ -24,6 +24,9 @@ type Config interface {
 
 	// Sequence should return the sequence number of the current configuration
 	Sequence() uint64
+
+	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+	OrdererAddresses() []string
 }
 
 // ConfigProcessor receives config updates
@@ -38,7 +41,8 @@ type configStore struct {
 }
 
 type configEventReceiver interface {
-	configUpdated(config Config)
+	updateAnchors(config Config)
+	updateEndpoints(chainID string, endpoints []string)
 }
 
 type configEventer struct {
@@ -61,22 +65,23 @@ func (ce *configEventer) ProcessConfigUpdate(config Config) {
 	orgMap := cloneOrgConfig(config.Organizations())
 	if ce.lastConfig != nil && reflect.DeepEqual(ce.lastConfig.orgMap, orgMap) {
 		logger.Debugf("Ignoring new config for channel %s because it contained no anchor peer updates", config.ChainID())
-		return
-	}
+	} else {
 
-	var newAnchorPeers []*peer.AnchorPeer
-	for _, group := range config.Organizations() {
-		newAnchorPeers = append(newAnchorPeers, group.AnchorPeers()...)
-	}
+		var newAnchorPeers []*peer.AnchorPeer
+		for _, group := range config.Organizations() {
+			newAnchorPeers = append(newAnchorPeers, group.AnchorPeers()...)
+		}
 
-	newConfig := &configStore{
-		orgMap:      orgMap,
-		anchorPeers: newAnchorPeers,
-	}
-	ce.lastConfig = newConfig
+		newConfig := &configStore{
+			orgMap:      orgMap,
+			anchorPeers: newAnchorPeers,
+		}
+		ce.lastConfig = newConfig
 
-	logger.Debugf("Calling out because config was updated for channel %s", config.ChainID())
-	ce.receiver.configUpdated(config)
+		logger.Debugf("Calling out because config was updated for channel %s", config.ChainID())
+		ce.receiver.updateAnchors(config)
+	}
+	ce.receiver.updateEndpoints(config.ChainID(), config.OrdererAddresses())
 }
 
 func cloneOrgConfig(src map[string]channelconfig.ApplicationOrg) map[string]channelconfig.ApplicationOrg {

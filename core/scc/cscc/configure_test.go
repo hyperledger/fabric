@@ -59,6 +59,10 @@ import (
 type mockDeliveryClient struct {
 }
 
+func (ds *mockDeliveryClient) UpdateEndpoints(chainID string, endpoints []string) error {
+	return nil
+}
+
 // StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
 // to channel peers.
 func (ds *mockDeliveryClient) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, f func()) error {
