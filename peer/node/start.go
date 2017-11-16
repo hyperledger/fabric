@@ -176,7 +176,7 @@ func serve(args []string) error {
 		return service.GetGossipService().DistributePrivateData(channel, txID, privateData)
 	}
 
-	serverEndorser := endorser.NewEndorserServer(privDataDist)
+	serverEndorser := endorser.NewEndorserServer(privDataDist, &endorser.SupportImpl{})
 	libConf := library.Config{}
 	if err = viperutil.EnhancedExactUnmarshalKey("peer.handlers", &libConf); err != nil {
 		return errors.WithMessage(err, "could not load YAML config")
