@@ -132,7 +132,7 @@ func GetLocalMSP() msp.MSP {
 			if err != nil {
 				mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
 			}
-			localMsp = mspInst
+			localMsp = lclMsp
 		}
 	}
 
