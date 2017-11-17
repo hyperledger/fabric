@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"google.golang.org/grpc"
 )
@@ -46,6 +47,8 @@ type GRPCServer interface {
 	// SetClientRootCAs sets the list of authorities used to verify client
 	// certificates based on a list of PEM-encoded X509 certificate authorities
 	SetClientRootCAs(clientRoots [][]byte) error
+	// SetServerCertificate assigns the current TLS certificate to be the peer's server certificate
+	SetServerCertificate(tls.Certificate)
 }
 
 type grpcServerImpl struct {
@@ -56,7 +59,8 @@ type grpcServerImpl struct {
 	// GRPC server
 	server *grpc.Server
 	// Certificate presented by the server for TLS communication
-	serverCertificate tls.Certificate
+	// stored as an atomic reference
+	serverCertificate atomic.Value
 	// Key used by the server for TLS communication
 	serverKeyPEM []byte
 	// List of certificate authorities to optionally pass to the client during
@@ -112,14 +116,17 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 			if err != nil {
 				return nil, err
 			}
-			grpcServer.serverCertificate = cert
+			grpcServer.serverCertificate.Store(cert)
 
 			//set up our TLS config
 
+			getCert := func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+				cert := grpcServer.serverCertificate.Load().(tls.Certificate)
+				return &cert, nil
+			}
 			//base server certificate
-			certificates := []tls.Certificate{grpcServer.serverCertificate}
 			grpcServer.tlsConfig = &tls.Config{
-				Certificates:           certificates,
+				GetCertificate:         getCert,
 				SessionTicketsDisabled: true,
 			}
 			grpcServer.tlsConfig.ClientAuth = tls.RequestClientCert
@@ -160,6 +167,11 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 	return grpcServer, nil
 }
 
+// SetServerCertificate assigns the current TLS certificate to be the peer's server certificate
+func (gServer *grpcServerImpl) SetServerCertificate(cert tls.Certificate) {
+	gServer.serverCertificate.Store(cert)
+}
+
 // Address returns the listen address for this GRPCServer instance
 func (gServer *grpcServerImpl) Address() string {
 	return gServer.address
@@ -177,7 +189,7 @@ func (gServer *grpcServerImpl) Server() *grpc.Server {
 
 // ServerCertificate returns the tls.Certificate used by the grpc.Server
 func (gServer *grpcServerImpl) ServerCertificate() tls.Certificate {
-	return gServer.serverCertificate
+	return gServer.serverCertificate.Load().(tls.Certificate)
 }
 
 // TLSEnabled is a flag indicating whether or not TLS is enabled for the

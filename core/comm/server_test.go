@@ -20,15 +20,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/core/comm"
+	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
 	"github.com/stretchr/testify/assert"
-
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/transport"
-
-	"github.com/hyperledger/fabric/core/comm"
-	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
 )
 
 //Embedded certificates for testing
@@ -1424,4 +1422,71 @@ func TestKeepaliveClientResponse(t *testing.T) {
 	// try to create a stream
 	_, err = clientTransport.NewStream(context.Background(), &transport.CallHdr{})
 	assert.NoError(t, err, "Unexpected error creating stream")
+}
+
+func TestUpdateTLSCert(t *testing.T) {
+	readFile := func(path string) []byte {
+		fName := filepath.Join("testdata", "dynamic_cert_update", path)
+		data, err := ioutil.ReadFile(fName)
+		if err != nil {
+			panic(fmt.Errorf("Failed reading %s: %v", fName, err))
+		}
+		return data
+	}
+	loadBytes := func(prefix string) (key, cert, caCert []byte) {
+		cert = readFile(filepath.Join(prefix, "server.crt"))
+		key = readFile(filepath.Join(prefix, "server.key"))
+		caCert = readFile(filepath.Join("ca.crt"))
+		return
+	}
+
+	key, cert, caCert := loadBytes("notlocalhost")
+
+	cfg := comm.ServerConfig{
+		SecOpts: &comm.SecureOptions{
+			UseTLS:            true,
+			ServerKey:         key,
+			ServerCertificate: cert,
+		},
+	}
+	srv, err := comm.NewGRPCServer("localhost:8333", cfg)
+	assert.NoError(t, err)
+	testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
+	go srv.Start()
+	defer srv.Stop()
+
+	certPool := x509.NewCertPool()
+	certPool.AppendCertsFromPEM(caCert)
+
+	probeServer := func() error {
+		_, err = invokeEmptyCall("localhost:8333",
+			[]grpc.DialOption{grpc.WithTransportCredentials(
+				credentials.NewTLS(&tls.Config{
+					RootCAs: certPool}))})
+		return err
+	}
+
+	// bootstrap TLS certificate has a SAN of "notlocalhost" so it should fail
+	err = probeServer()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "certificate is valid for notlocalhost.org1.example.com, notlocalhost, not localhost")
+
+	// new TLS certificate has a SAN of "localhost" so it should succeed
+	certPath := filepath.Join("testdata", "dynamic_cert_update", "localhost", "server.crt")
+	keyPath := filepath.Join("testdata", "dynamic_cert_update", "localhost", "server.key")
+	tlsCert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	assert.NoError(t, err)
+	srv.SetServerCertificate(tlsCert)
+	err = probeServer()
+	assert.NoError(t, err)
+
+	// revert back to the old certificate, should fail.
+	certPath = filepath.Join("testdata", "dynamic_cert_update", "notlocalhost", "server.crt")
+	keyPath = filepath.Join("testdata", "dynamic_cert_update", "notlocalhost", "server.key")
+	tlsCert, err = tls.LoadX509KeyPair(certPath, keyPath)
+	assert.NoError(t, err)
+	srv.SetServerCertificate(tlsCert)
+	err = probeServer()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "certificate is valid for notlocalhost.org1.example.com, notlocalhost, not localhost")
 }
