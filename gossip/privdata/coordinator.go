@@ -52,7 +52,7 @@ type TransientStore interface {
 	// write sets persisted from different endorsers (via Gossip)
 	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error)
 
-	// PurgeByTxids removes private read-write set of a given set of transactions from the
+	// PurgeByTxids removes private read-write sets for a given set of transactions from the
 	// transient store
 	PurgeByTxids(txids []string) error
 
@@ -73,7 +73,7 @@ type Coordinator interface {
 	// returns missing transaction ids
 	StoreBlock(block *common.Block, data util.PvtDataCollections) error
 
-	// StorePvtData used to persist private date into transient store
+	// StorePvtData used to persist private data into transient store
 	StorePvtData(txid string, privData *rwset.TxPvtReadWriteSet) error
 
 	// GetPvtDataAndBlockByNum get block by number and returns also all related private data
