@@ -926,6 +926,134 @@ func TestLaunchAndWaitLaunchError(t *testing.T) {
 	}
 }
 
+func TestGetTxContextFromHandler(t *testing.T) {
+	h := Handler{txCtxs: map[string]*transactionContext{}}
+
+	chnl := "TEST"
+	txid := "1"
+	// test getTxContext for TEST channel, tx=1, msgType=IVNOKE_CHAINCODE and empty payload - empty payload => expect to return empty txContext
+	txContext, _ := h.getTxContextForMessage(chnl, "1", pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), []byte(""), "[%s]No ledger context for %s. Sending %s", 12345, "TestCC", pb.ChaincodeMessage_ERROR)
+	if txContext != nil {
+		t.Fatalf("expected empty txContext for empty payload")
+	}
+
+	// mock a peer ldger for our channel
+	peer.MockInitialize()
+
+	err := peer.MockCreateChain(chnl)
+	if err != nil {
+		t.Fatalf("failed to create Peer Ledger %s", err)
+	}
+
+	pldgr := peer.GetLedger(chnl)
+
+	// prepare a payload and generate a TxContext in the handler to be used in the following getTxContextFroMessage with a normal UCC
+	txCtxGenerated, payload := genNewPldAndCtxFromLdgr(t, "shimTestCC", chnl, txid, pldgr, &h)
+
+	// test getTxContext for TEST channel, tx=1, msgType=IVNOKE_CHAINCODE and non empty payload => must return a non empty txContext
+	txContext, ccMsg := h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	if txContext == nil || ccMsg != nil || txContext != txCtxGenerated {
+		t.Fatalf("expected successful txContext for non empty payload and INVOKE_CHAINCODE msgType. triggerNextStateMsg: %s.", ccMsg)
+	}
+
+	// test for another msgType (PUT_STATE) with the same payload ==> must return a non empty txContext
+	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_PUT_STATE.String(), payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_PUT_STATE.String(), pb.ChaincodeMessage_ERROR)
+	if txContext == nil || ccMsg != nil || txContext != txCtxGenerated {
+		t.Fatalf("expected successful txContext for non empty payload and PUT_STATE msgType. triggerNextStateMsg: %s.", ccMsg)
+	}
+
+	// get a new txContext for our SCC tests
+	txid = "2"
+	// reset channel to "" to test getting a context for an SCC without a channel
+	chnl = ""
+	txCtxGenerated, payload = genNewPldAndCtxFromLdgr(t, "lscc", chnl, txid, pldgr, &h)
+
+	// test getting a TxContext with an SCC without a channel => expect to return a non empty txContext
+	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	if txContext == nil || ccMsg != nil || txContext != txCtxGenerated {
+		t.Fatalf("expected successful txContext for non empty payload and INVOKE_CHAINCODE msgType. triggerNextStateMsg: %s.", ccMsg)
+	}
+
+	// now reset back to non empty channel and test with an SCC
+	txid = "3"
+	chnl = "TEST"
+	txCtxGenerated, payload = genNewPldAndCtxFromLdgr(t, "lscc", chnl, txid, pldgr, &h)
+
+	// test getting a TxContext with an SCC with channel TEST => expect to return a non empty txContext
+	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	if txContext == nil || ccMsg != nil || txContext != txCtxGenerated {
+		t.Fatalf("expected successful txContext for non empty payload and INVOKE_CHAINCODE msgType. triggerNextStateMsg: %s.", ccMsg)
+	}
+
+	// now test getting a context with an empty channel and a UCC instead of an SCC
+	txid = "4"
+	chnl = ""
+	txCtxGenerated, payload = genNewPldAndCtxFromLdgr(t, "shimTestCC", chnl, txid, pldgr, &h)
+	// test getting a TxContext with an SCC with channel TEST => expect to return a non empty txContext
+	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	if txContext == nil || ccMsg != nil || txContext != txCtxGenerated {
+		t.Fatalf("expected successful txContext for non empty payload and INVOKE_CHAINCODE msgType. triggerNextStateMsg: %s.", ccMsg)
+	}
+
+	// new test getting a context with an empty channel without the ledger creating a new context for a UCC
+	txid = "5"
+	payload = genNewPld(t, "shimTestCC")
+	// test getting a TxContext with an SCC with channel TEST => expect to return a non empty txContext
+	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	if txContext != nil || ccMsg == nil {
+		t.Fatal("expected nil txContext for non empty payload and INVOKE_CHAINCODE msgType without the ledger generating a TxContext . unexpected non nil tcContext")
+	}
+
+	// test same scenario as above but for an SCC this time
+	txid = "6"
+	payload = genNewPld(t, "lscc")
+	// test getting a TxContext with an SCC with channel TEST => expect to return a non empty txContext
+	txContext, ccMsg = h.getTxContextForMessage(chnl, txid, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), payload,
+		"[%s]No ledger context for %s. Sending %s", 12345, pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), pb.ChaincodeMessage_ERROR)
+	if txContext != nil || ccMsg == nil {
+		t.Fatal("expected nil txContext for non empty payload and INVOKE_CHAINCODE msgType without the ledger generating a TxContext . unexpected non nil tcContext")
+	}
+}
+
+func genNewPldAndCtxFromLdgr(t *testing.T, ccName string, chnl string, txid string, pldgr ledger.PeerLedger, h *Handler) (*transactionContext, []byte) {
+	// create a new TxSimulator for the received txid
+	txsim, err := pldgr.NewTxSimulator(txid)
+	if err != nil {
+		t.Fatalf("failed to create TxSimulator %s", err)
+	}
+	// get a context for this txsim
+	ctxt := context.WithValue(context.Background(), TXSimulatorKey, txsim)
+	// create a new txContext in the handler to be retrieved by the tested function (ie: getTxContextForMessage)
+	newTxCtxt, err := h.createTxContext(ctxt, chnl, txid, nil, nil)
+	if err != nil {
+		t.Fatalf("Error creating TxContext by the handler for cc %s and channel '%s': %s", ccName, chnl, err)
+	}
+	if newTxCtxt == nil {
+		t.Fatalf("Error creating TxContext: newTxCtxt created by the handler is nil for cc %s and channel '%s'.", ccName, chnl)
+	}
+	// build a new cds and payload for the CC called ccName
+	payload := genNewPld(t, ccName)
+	return newTxCtxt, payload
+}
+
+func genNewPld(t *testing.T, ccName string) []byte {
+	// build a new cds and payload for the CC called ccName
+	chaincodeID := &pb.ChaincodeID{Name: ccName, Version: "0"}
+	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("deploycc")}, Decorations: nil}
+	cds := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}
+	payload, err := proto.Marshal(cds)
+	if err != nil {
+		t.Fatalf("failed to marshal CDS %s", err)
+	}
+	return payload
+}
+
 func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.MockCCComm) {
 	//first deploy the CC on chainID2
 	chaincodeID := &pb.ChaincodeID{Name: ccname, Version: "0"}
