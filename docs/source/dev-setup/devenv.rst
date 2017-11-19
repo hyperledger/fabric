@@ -51,7 +51,7 @@ Prerequisites
 ``pip``, ``behave`` and ``docker-compose``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Using pip install on macOS will likely require `user flag <https://packaging.python.org/tutorials/installing-packages/#installing-to-the-user-site>`__
+- Using pip install on macOS will likely require the `user flag <https://packaging.python.org/tutorials/installing-packages/#installing-to-the-user-site>`__
 
 ::
 
