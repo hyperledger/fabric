@@ -49,79 +49,80 @@ type mockCcProviderImpl struct {
 type mockCcProviderContextImpl struct {
 }
 
-type mockTxSim struct {
+type MockTxSim struct {
+	GetTxSimulationResultsRv *ledger.TxSimulationResults
 }
 
-func (m *mockTxSim) GetState(namespace string, key string) ([]byte, error) {
+func (m *MockTxSim) GetState(namespace string, key string) ([]byte, error) {
 	return nil, nil
 }
 
-func (m *mockTxSim) GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error) {
+func (m *MockTxSim) GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error) {
 	return nil, nil
 }
 
-func (m *mockTxSim) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
+func (m *MockTxSim) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
 	return nil, nil
 }
 
-func (m *mockTxSim) ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error) {
+func (m *MockTxSim) ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error) {
 	return nil, nil
 }
 
-func (m *mockTxSim) Done() {
+func (m *MockTxSim) Done() {
 }
 
-func (m *mockTxSim) SetState(namespace string, key string, value []byte) error {
+func (m *MockTxSim) SetState(namespace string, key string, value []byte) error {
 	return nil
 }
 
-func (m *mockTxSim) DeleteState(namespace string, key string) error {
+func (m *MockTxSim) DeleteState(namespace string, key string) error {
 	return nil
 }
 
-func (m *mockTxSim) SetStateMultipleKeys(namespace string, kvs map[string][]byte) error {
+func (m *MockTxSim) SetStateMultipleKeys(namespace string, kvs map[string][]byte) error {
 	return nil
 }
 
-func (m *mockTxSim) ExecuteUpdate(query string) error {
+func (m *MockTxSim) ExecuteUpdate(query string) error {
 	return nil
 }
 
-func (m *mockTxSim) GetTxSimulationResults() (*ledger.TxSimulationResults, error) {
-	return nil, nil
+func (m *MockTxSim) GetTxSimulationResults() (*ledger.TxSimulationResults, error) {
+	return m.GetTxSimulationResultsRv, nil
 }
 
-func (m *mockTxSim) DeletePrivateData(namespace, collection, key string) error {
+func (m *MockTxSim) DeletePrivateData(namespace, collection, key string) error {
 	return nil
 }
 
-func (m *mockTxSim) ExecuteQueryOnPrivateData(namespace, collection, query string) (commonledger.ResultsIterator, error) {
+func (m *MockTxSim) ExecuteQueryOnPrivateData(namespace, collection, query string) (commonledger.ResultsIterator, error) {
 	return nil, nil
 }
 
-func (m *mockTxSim) GetPrivateData(namespace, collection, key string) ([]byte, error) {
+func (m *MockTxSim) GetPrivateData(namespace, collection, key string) ([]byte, error) {
 	return nil, nil
 }
 
-func (m *mockTxSim) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error) {
+func (m *MockTxSim) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([][]byte, error) {
 	return nil, nil
 }
 
-func (m *mockTxSim) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error) {
+func (m *MockTxSim) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error) {
 	return nil, nil
 }
 
-func (m *mockTxSim) SetPrivateData(namespace, collection, key string, value []byte) error {
+func (m *MockTxSim) SetPrivateData(namespace, collection, key string, value []byte) error {
 	return nil
 }
 
-func (m *mockTxSim) SetPrivateDataMultipleKeys(namespace, collection string, kvs map[string][]byte) error {
+func (m *MockTxSim) SetPrivateDataMultipleKeys(namespace, collection string, kvs map[string][]byte) error {
 	return nil
 }
 
 // GetContext does nothing
 func (c *mockCcProviderImpl) GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error) {
-	return nil, &mockTxSim{}, nil
+	return nil, &MockTxSim{}, nil
 }
 
 // GetCCContext does nothing
