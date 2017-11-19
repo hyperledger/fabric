@@ -55,13 +55,17 @@ type CommService interface {
 	Ping(peer *NetworkMember) bool
 
 	// Accept returns a read-only channel for membership messages sent from remote peers
-	Accept() <-chan *proto.SignedGossipMessage
+	Accept() <-chan proto.ReceivedMessage
 
 	// PresumedDead returns a read-only channel for peers that are presumed to be dead
 	PresumedDead() <-chan common.PKIidType
 
 	// CloseConn orders to close the connection with a certain peer
 	CloseConn(peer *NetworkMember)
+
+	// Forward sends message to the next hop, excluding the hop
+	// from which message was initially received
+	Forward(msg proto.ReceivedMessage)
 }
 
 // NetworkMember is a peer's representation

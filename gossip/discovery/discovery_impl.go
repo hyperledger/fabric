@@ -309,10 +309,11 @@ func (d *gossipDiscoveryImpl) handleMessages() {
 	}
 }
 
-func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
-	if m == nil {
+func (d *gossipDiscoveryImpl) handleMsgFromComm(msg proto.ReceivedMessage) {
+	if msg == nil {
 		return
 	}
+	m := msg.GetGossipMessage()
 	if m.GetAliveMsg() == nil && m.GetMemRes() == nil && m.GetMemReq() == nil {
 		d.logger.Warning("Got message with wrong type (expected Alive or MembershipResponse or MembershipRequest message):", m.GossipMessage)
 		return
@@ -345,13 +346,12 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 	}
 
 	if m.IsAliveMsg() {
-
 		if !d.msgStore.Add(m) {
 			return
 		}
 		d.handleAliveMessage(m)
 
-		d.comm.Gossip(m)
+		d.comm.Forward(msg)
 		return
 	}
 

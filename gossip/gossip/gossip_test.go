@@ -50,6 +50,7 @@ var tests = []func(t *testing.T){
 	TestConfidentiality,
 	TestAnchorPeer,
 	TestBootstrapPeerMisConfiguration,
+	TestNoMessagesSelfLoop,
 }
 
 func init() {
@@ -566,6 +567,68 @@ func TestMembership(t *testing.T) {
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestMembership>>>")
 
+}
+
+func TestNoMessagesSelfLoop(t *testing.T) {
+	t.Parallel()
+	defer testWG.Done()
+	portPrefix := 17610
+
+	boot := newGossipInstance(portPrefix, 0, 100)
+	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	boot.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+
+	peer := newGossipInstance(portPrefix, 1, 100, 0)
+	peer.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	peer.UpdateChannelMetadata(createMetadata(1), common.ChainID("A"))
+
+	// Wait until both peers get connected
+	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{peer}, 1))
+	_, commCh := boot.Accept(func(msg interface{}) bool {
+		return msg.(proto.ReceivedMessage).GetGossipMessage().IsDataMsg()
+	}, true)
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	// Make sure sending peer is not getting his own
+	// message back
+	go func(ch <-chan proto.ReceivedMessage) {
+		defer wg.Done()
+		for {
+			select {
+			case msg := <-ch:
+				{
+					if msg.GetGossipMessage().IsDataMsg() {
+						t.Fatal("Should not receive data message back, got", msg)
+					}
+				}
+				// Waiting for 2 seconds to make sure we won't
+				// get message back w.h.p.
+			case <-time.After(2 * time.Second):
+				{
+					return
+				}
+			}
+		}
+	}(commCh)
+
+	peerCh, _ := peer.Accept(acceptData, false)
+
+	// Ensure recipient gets his message
+	go func(ch <-chan *proto.GossipMessage) {
+		defer wg.Done()
+		<-ch
+	}(peerCh)
+
+	boot.Gossip(createDataMsg(uint64(2), []byte{}, common.ChainID("A")))
+	waitUntilOrFailBlocking(t, wg.Wait)
+
+	stop := func() {
+		stopPeers([]Gossip{peer, boot})
+	}
+
+	waitUntilOrFailBlocking(t, stop)
 }
 
 func TestDissemination(t *testing.T) {

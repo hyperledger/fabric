@@ -92,6 +92,9 @@ type Adapter interface {
 	// Gossip gossips a message in the channel
 	Gossip(message *proto.SignedGossipMessage)
 
+	// Forward sends a message to the next hops
+	Forward(message proto.ReceivedMessage)
+
 	// DeMultiplex de-multiplexes an item to subscribers
 	DeMultiplex(interface{})
 
@@ -541,7 +544,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 
 		if added {
 			// Forward the message
-			gc.Gossip(msg.GetGossipMessage())
+			gc.Forward(msg)
 			// DeMultiplex to local subscribers
 			gc.DeMultiplex(m)
 
