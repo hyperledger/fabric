@@ -26,7 +26,7 @@ Prerequisites
 -  `Git client <https://git-scm.com/downloads>`__
 -  `Go <https://golang.org/>`__ - 1.9 or later (for v1.0.X releases, use
    Go 1.7.X)
--  For macOS,
+-  (macOS)
    `Xcode <https://itunes.apple.com/us/app/xcode/id497799835?mt=12>`__
    must be installed
 -  `Docker <https://www.docker.com/products/overview>`__ - 17.06.2-ce or later
@@ -39,6 +39,13 @@ Prerequisites
 ::
 
     brew install gnu-tar --with-default-names
+
+-  (macOS) `Libtool <https://www.gnu.org/software/libtool/>`__. You can use
+   Homebrew to install it as follows:
+
+::
+
+    brew install libtool
 
 -  (only if using Vagrant) - `Vagrant <https://www.vagrantup.com/>`__ -
    1.9 or later
