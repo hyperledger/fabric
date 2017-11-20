@@ -9,7 +9,9 @@ import (
 	"net"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -122,6 +124,14 @@ func TestGetServerConfig(t *testing.T) {
 	sc, _ := GetServerConfig()
 	assert.Equal(t, false, sc.SecOpts.UseTLS,
 		"ServerConfig.SecOpts.UseTLS should be false")
+
+	// keepalive options
+	assert.Equal(t, comm.DefaultKeepaliveOptions(), sc.KaOpts,
+		"ServerConfig.KaOpts should be set to default values")
+	viper.Set("peer.keepalive.minInterval", "2m")
+	sc, _ = GetServerConfig()
+	assert.Equal(t, time.Duration(2)*time.Minute, sc.KaOpts.ServerMinInterval,
+		"ServerConfig.KaOpts.ServerMinInterval should be set to 2 min")
 
 	// good config with TLS
 	viper.Set("peer.tls.enabled", true)

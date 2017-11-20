@@ -119,6 +119,12 @@ func SetMaxSendMsgSize(size int) {
 	maxSendMsgSize = size
 }
 
+// DefaultKeepaliveOptions returns sane default keepalive settings for gRPC
+// servers and clients
+func DefaultKeepaliveOptions() *KeepaliveOptions {
+	return keepaliveOptions
+}
+
 // ServerKeepaliveOptions returns gRPC keepalive options for server.  If
 // opts is nil, the default keepalive options are returned
 func ServerKeepaliveOptions(ka *KeepaliveOptions) []grpc.ServerOption {

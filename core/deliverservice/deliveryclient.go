@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
+	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -226,7 +227,16 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
 			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
 		// set the keepalive options
-		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(nil)...)
+		kaOpts := comm.DefaultKeepaliveOptions()
+		if viper.IsSet("peer.keepalive.deliveryClient.interval") {
+			kaOpts.ClientInterval = viper.GetDuration(
+				"peer.keepalive.deliveryClient.interval")
+		}
+		if viper.IsSet("peer.keepalive.deliveryClient.timeout") {
+			kaOpts.ClientTimeout = viper.GetDuration(
+				"peer.keepalive.deliveryClient.timeout")
+		}
+		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
 
 		if comm.TLSEnabled() {
 			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID)

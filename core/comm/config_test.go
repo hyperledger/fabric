@@ -17,6 +17,7 @@ func TestConfig(t *testing.T) {
 	// check the defaults
 	assert.EqualValues(t, maxRecvMsgSize, MaxRecvMsgSize())
 	assert.EqualValues(t, maxSendMsgSize, MaxSendMsgSize())
+	assert.EqualValues(t, keepaliveOptions, DefaultKeepaliveOptions())
 	assert.EqualValues(t, false, TLSEnabled())
 	assert.EqualValues(t, true, configurationCached)
 

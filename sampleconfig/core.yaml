@@ -93,6 +93,33 @@ peer:
     # current setting
     gomaxprocs: -1
 
+    # Keepalive settings for peer server and clients
+    keepalive:
+        # MinInterval is the minimum permitted time between client pings.
+        # If clients send pings more frequently, the peer server will
+        # disconnect them
+        minInterval: 60s
+        # Client keepalive settings for communicating with other peer nodes
+        client:
+            # Interval is the time between pings to peer nodes.  This must
+            # greater than or equal to the minInterval specified by peer
+            # nodes
+            interval: 60s
+            # Timeout is the duration the client waits for a response from
+            # peer nodes before closing the connection
+            timeout: 20s
+        # DeliveryClient keepalive settings for communication with ordering
+        # nodes.
+        deliveryClient:
+            # Interval is the time between pings to ordering nodes.  This must
+            # greater than or equal to the minInterval specified by ordering
+            # nodes.
+            interval: 60s
+            # Timeout is the duration the client waits for a response from
+            # ordering nodes before closing the connection
+            timeout: 20s
+
+
     # Gossip related configuration
     gossip:
         # Bootstrap set to initialize gossip with.
@@ -218,6 +245,13 @@ peer:
         # timewindow is the acceptable difference between the peer's current
         # time and the client's time as specified in a registration event
         timewindow: 15m
+
+        # Keepalive settings for peer server and clients
+        keepalive:
+            # MinInterval is the minimum permitted time in seconds which clients
+            # can send keepalive pings.  If clients send pings more frequently,
+            # the events server will disconnect them
+            minInterval: 60s
 
     # TLS Settings
     # Note that peer-chaincode connections through chaincodeListenAddress is
