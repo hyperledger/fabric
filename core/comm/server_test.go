@@ -1373,13 +1373,12 @@ func TestSetClientRootCAs(t *testing.T) {
 func TestKeepaliveNoClientResponse(t *testing.T) {
 	t.Parallel()
 	// set up GRPCServer instance
-	kap := comm.KeepaliveOptions{
-		ServerKeepaliveTime:    2,
-		ServerKeepaliveTimeout: 1,
+	kap := &comm.KeepaliveOptions{
+		ServerInterval: time.Duration(2) * time.Second,
+		ServerTimeout:  time.Duration(1) * time.Second,
 	}
-	comm.SetKeepaliveOptions(kap)
 	testAddress := "localhost:9400"
-	srv, err := comm.NewGRPCServer(testAddress, comm.ServerConfig{})
+	srv, err := comm.NewGRPCServer(testAddress, comm.ServerConfig{KaOpts: kap})
 	assert.NoError(t, err, "Unexpected error starting GRPCServer")
 	go srv.Start()
 	defer srv.Stop()
@@ -1405,13 +1404,12 @@ func TestKeepaliveNoClientResponse(t *testing.T) {
 func TestKeepaliveClientResponse(t *testing.T) {
 	t.Parallel()
 	// set up GRPCServer instance
-	kap := comm.KeepaliveOptions{
-		ServerKeepaliveTime:    2,
-		ServerKeepaliveTimeout: 1,
+	kap := &comm.KeepaliveOptions{
+		ServerInterval: time.Duration(2) * time.Second,
+		ServerTimeout:  time.Duration(1) * time.Second,
 	}
-	comm.SetKeepaliveOptions(kap)
 	testAddress := "localhost:9401"
-	srv, err := comm.NewGRPCServer(testAddress, comm.ServerConfig{})
+	srv, err := comm.NewGRPCServer(testAddress, comm.ServerConfig{KaOpts: kap})
 	assert.NoError(t, err, "Unexpected error starting GRPCServer")
 	go srv.Start()
 	defer srv.Stop()

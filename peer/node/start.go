@@ -207,7 +207,7 @@ func serve(args []string) error {
 		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
 			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
 		// set the keepalive options
-		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions()...)
+		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(nil)...)
 
 		if comm.TLSEnabled() {
 			comm.GetCredentialSupport().ClientCert = peerServer.ServerCertificate()
@@ -319,7 +319,15 @@ func createChaincodeServer(caCert []byte, peerHostname string) (comm.GRPCServer,
 		config.SecOpts.ClientRootCAs = append(config.SecOpts.ClientRootCAs, caCert)
 	}
 
-	srv, err = comm.NewChaincodeGRPCServer(cclistenAddress, config)
+	// Chaincode keepalive options - static for now
+	chaincodeKeepaliveOptions := &comm.KeepaliveOptions{
+		ServerInterval:    time.Duration(2) * time.Hour,    // 2 hours - gRPC default
+		ServerTimeout:     time.Duration(20) * time.Second, // 20 sec - gRPC default
+		ServerMinInterval: time.Duration(1) * time.Minute,  // match ClientInterval
+	}
+	config.KaOpts = chaincodeKeepaliveOptions
+
+	srv, err = comm.NewGRPCServer(cclistenAddress, config)
 	if err != nil {
 		panic(err)
 	}

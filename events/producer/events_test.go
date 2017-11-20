@@ -39,7 +39,8 @@ type client struct {
 }
 
 func newClient() *client {
-	conn, err := comm.NewClientConnectionWithAddress(peerAddress, true, false, nil)
+	conn, err := comm.NewClientConnectionWithAddress(peerAddress, true, false,
+		nil, nil)
 	if err != nil {
 		panic(err)
 	}
