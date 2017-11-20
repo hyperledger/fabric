@@ -38,7 +38,7 @@ func (tss *testServiceServer) EmptyCall(context.Context, *testpb.Empty) (*testpb
 func TestStatusCmd(t *testing.T) {
 
 	viper.Set("peer.address", "localhost:7070")
-	peerServer, err := peer.CreatePeerServer("localhost:7070", comm.SecureServerConfig{})
+	peerServer, err := peer.CreatePeerServer("localhost:7070", comm.ServerConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create peer server (%s)", err)
 	} else {
@@ -80,7 +80,7 @@ func TestStatus(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Logf("Running test: %s", test.name)
 			viper.Set("peer.address", test.peerAddress)
-			peerServer, err := peer.CreatePeerServer(test.listenAddress, comm.SecureServerConfig{})
+			peerServer, err := peer.CreatePeerServer(test.listenAddress, comm.ServerConfig{})
 			if err != nil {
 				t.Fatalf("Failed to create peer server (%s)", err)
 			} else {
@@ -99,7 +99,7 @@ func TestStatus(t *testing.T) {
 
 func TestStatusWithGetStatusError(t *testing.T) {
 	viper.Set("peer.address", "localhost:7073")
-	peerServer, err := peer.CreatePeerServer(":7073", comm.SecureServerConfig{})
+	peerServer, err := peer.CreatePeerServer(":7073", comm.ServerConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create peer server (%s)", err)
 	}

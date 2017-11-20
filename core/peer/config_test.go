@@ -115,39 +115,40 @@ func TestConfiguration(t *testing.T) {
 	}
 }
 
-func TestGetSecureConfig(t *testing.T) {
+func TestGetServerConfig(t *testing.T) {
 
 	// good config without TLS
 	viper.Set("peer.tls.enabled", false)
-	sc, _ := GetSecureConfig()
-	assert.Equal(t, false, sc.UseTLS, "SecureConfig.UseTLS should be false")
+	sc, _ := GetServerConfig()
+	assert.Equal(t, false, sc.SecOpts.UseTLS,
+		"ServerConfig.SecOpts.UseTLS should be false")
 
 	// good config with TLS
 	viper.Set("peer.tls.enabled", true)
 	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org1-server1-cert.pem"))
 	viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
 	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org1-cert.pem"))
-	sc, _ = GetSecureConfig()
-	assert.Equal(t, true, sc.UseTLS, "SecureConfig.UseTLS should be true")
-	assert.Equal(t, false, sc.RequireClientCert,
-		"SecureConfig.RequireClientCert should be false")
+	sc, _ = GetServerConfig()
+	assert.Equal(t, true, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be true")
+	assert.Equal(t, false, sc.SecOpts.RequireClientCert,
+		"ServerConfig.SecOpts.RequireClientCert should be false")
 	viper.Set("peer.tls.clientAuthRequired", true)
 	viper.Set("peer.tls.clientRootCAs.files",
 		[]string{filepath.Join("testdata", "Org1-cert.pem"),
 			filepath.Join("testdata", "Org2-cert.pem")})
-	sc, _ = GetSecureConfig()
-	assert.Equal(t, true, sc.RequireClientCert,
-		"SecureConfig.RequireClientCert should be true")
-	assert.Equal(t, 2, len(sc.ClientRootCAs),
-		"SecureConfig.ClientRootCAs should contain 2 entries")
+	sc, _ = GetServerConfig()
+	assert.Equal(t, true, sc.SecOpts.RequireClientCert,
+		"ServerConfig.SecOpts.RequireClientCert should be true")
+	assert.Equal(t, 2, len(sc.SecOpts.ClientRootCAs),
+		"ServerConfig.SecOpts.ClientRootCAs should contain 2 entries")
 
 	// bad config with TLS
 	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org11-cert.pem"))
-	_, err := GetSecureConfig()
-	assert.Error(t, err, "GetSecureConfig should return error with bad root cert path")
+	_, err := GetServerConfig()
+	assert.Error(t, err, "GetServerConfig should return error with bad root cert path")
 	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org11-cert.pem"))
-	_, err = GetSecureConfig()
-	assert.Error(t, err, "GetSecureConfig should return error with bad tls cert path")
+	_, err = GetServerConfig()
+	assert.Error(t, err, "GetServerConfig should return error with bad tls cert path")
 
 	// disable TLS for remaining tests
 	viper.Set("peer.tls.enabled", false)

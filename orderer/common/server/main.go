@@ -77,12 +77,12 @@ func Main() {
 // Start provides a layer of abstraction for benchmark test
 func Start(cmd string, conf *config.TopLevel) {
 	signer := localmsp.NewSigner()
-	secureConfig := initializeSecureServerConfig(conf)
-	grpcServer := initializeGrpcServer(conf, secureConfig)
+	serverConfig := initializeServerConfig(conf)
+	grpcServer := initializeGrpcServer(conf, serverConfig)
 	caSupport := &comm.CASupport{
 		AppRootCAsByChain:     make(map[string][][]byte),
 		OrdererRootCAsByChain: make(map[string][][]byte),
-		ClientRootCAs:         secureConfig.ClientRootCAs,
+		ClientRootCAs:         serverConfig.SecOpts.ClientRootCAs,
 	}
 	tlsCallback := func(bundle *channelconfig.Bundle) {
 		// only need to do this if mutual TLS is required
@@ -126,14 +126,14 @@ func initializeProfilingService(conf *config.TopLevel) {
 	}
 }
 
-func initializeSecureServerConfig(conf *config.TopLevel) comm.SecureServerConfig {
+func initializeServerConfig(conf *config.TopLevel) comm.ServerConfig {
 	// secure server config
-	secureConfig := comm.SecureServerConfig{
+	secureOpts := &comm.SecureOptions{
 		UseTLS:            conf.General.TLS.Enabled,
 		RequireClientCert: conf.General.TLS.ClientAuthEnabled,
 	}
 	// check to see if TLS is enabled
-	if secureConfig.UseTLS {
+	if secureOpts.UseTLS {
 		msg := "TLS"
 		// load crypto material from files
 		serverCertificate, err := ioutil.ReadFile(conf.General.TLS.Certificate)
@@ -155,7 +155,7 @@ func initializeSecureServerConfig(conf *config.TopLevel) comm.SecureServerConfig
 			}
 			serverRootCAs = append(serverRootCAs, root)
 		}
-		if secureConfig.RequireClientCert {
+		if secureOpts.RequireClientCert {
 			for _, clientRoot := range conf.General.TLS.ClientRootCAs {
 				root, err := ioutil.ReadFile(clientRoot)
 				if err != nil {
@@ -166,13 +166,13 @@ func initializeSecureServerConfig(conf *config.TopLevel) comm.SecureServerConfig
 			}
 			msg = "mutual TLS"
 		}
-		secureConfig.ServerKey = serverKey
-		secureConfig.ServerCertificate = serverCertificate
-		secureConfig.ServerRootCAs = serverRootCAs
-		secureConfig.ClientRootCAs = clientRootCAs
+		secureOpts.ServerKey = serverKey
+		secureOpts.ServerCertificate = serverCertificate
+		secureOpts.ServerRootCAs = serverRootCAs
+		secureOpts.ClientRootCAs = clientRootCAs
 		logger.Infof("Starting orderer with %s enabled", msg)
 	}
-	return secureConfig
+	return comm.ServerConfig{SecOpts: secureOpts}
 }
 
 func initializeBootstrapChannel(conf *config.TopLevel, lf ledger.Factory) {
@@ -203,14 +203,14 @@ func initializeBootstrapChannel(conf *config.TopLevel, lf ledger.Factory) {
 	}
 }
 
-func initializeGrpcServer(conf *config.TopLevel, secureConfig comm.SecureServerConfig) comm.GRPCServer {
+func initializeGrpcServer(conf *config.TopLevel, serverConfig comm.ServerConfig) comm.GRPCServer {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
 	if err != nil {
 		logger.Fatal("Failed to listen:", err)
 	}
 
 	// Create GRPC server - return if an error occurs
-	grpcServer, err := comm.NewGRPCServerFromListener(lis, secureConfig)
+	grpcServer, err := comm.NewGRPCServerFromListener(lis, serverConfig)
 	if err != nil {
 		logger.Fatal("Failed to return new GRPC server:", err)
 	}

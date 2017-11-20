@@ -17,25 +17,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-//A SecureServerConfig structure is used to configure security (e.g. TLS) for a
-//GRPCServer instance
-type SecureServerConfig struct {
-	//PEM-encoded X509 public key to be used by the server for TLS communication
-	ServerCertificate []byte
-	//PEM-encoded private key to be used by the server for TLS communication
-	ServerKey []byte
-	//Set of PEM-encoded X509 certificate authorities to optionally send
-	//as part of the server handshake
-	ServerRootCAs [][]byte
-	//Set of PEM-encoded X509 certificate authorities to use when verifying
-	//client certificates
-	ClientRootCAs [][]byte
-	//Whether or not to use TLS for communication
-	UseTLS bool
-	//Whether or not TLS client must present certificates for authentication
-	RequireClientCert bool
-}
-
 //GRPCServer defines an interface representing a GRPC-based server
 type GRPCServer interface {
 	//Address returns the listen address for the GRPCServer
@@ -96,25 +77,25 @@ type grpcServerImpl struct {
 
 //NewGRPCServer creates a new implementation of a GRPCServer given a
 //listen address
-func NewGRPCServer(address string, secureConfig SecureServerConfig) (GRPCServer, error) {
-	return newGRPCServerWithKa(address, secureConfig, &keepaliveOptions)
+func NewGRPCServer(address string, serverConfig ServerConfig) (GRPCServer, error) {
+	return newGRPCServerWithKa(address, serverConfig, &keepaliveOptions)
 }
 
 //NewChaincodeGRPCServer creates a new implementation of a chaincode GRPCServer given a
 //listen address
-func NewChaincodeGRPCServer(address string, secureConfig SecureServerConfig) (GRPCServer, error) {
-	return newGRPCServerWithKa(address, secureConfig, &chaincodeKeepaliveOptions)
+func NewChaincodeGRPCServer(address string, serverConfig ServerConfig) (GRPCServer, error) {
+	return newGRPCServerWithKa(address, serverConfig, &chaincodeKeepaliveOptions)
 }
 
 //NewGRPCServerFromListener creates a new implementation of a GRPCServer given
 //an existing net.Listener instance using default keepalive
-func NewGRPCServerFromListener(listener net.Listener, secureConfig SecureServerConfig) (GRPCServer, error) {
-	return newGRPCServerFromListenerWithKa(listener, secureConfig, &keepaliveOptions)
+func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig) (GRPCServer, error) {
+	return newGRPCServerFromListenerWithKa(listener, serverConfig, &keepaliveOptions)
 }
 
 //newGRPCServerWithKa creates a new implementation of a GRPCServer given a
 //listen address with specified keepalive options
-func newGRPCServerWithKa(address string, secureConfig SecureServerConfig, ka *KeepaliveOptions) (GRPCServer, error) {
+func newGRPCServerWithKa(address string, serverConfig ServerConfig, ka *KeepaliveOptions) (GRPCServer, error) {
 
 	if address == "" {
 		return nil, errors.New("Missing address parameter")
@@ -126,13 +107,14 @@ func newGRPCServerWithKa(address string, secureConfig SecureServerConfig, ka *Ke
 		return nil, err
 	}
 
-	return newGRPCServerFromListenerWithKa(lis, secureConfig, ka)
+	return newGRPCServerFromListenerWithKa(lis, serverConfig, ka)
 
 }
 
 //newGRPCServerFromListenerWithKa creates a new implementation of a GRPCServer given
 //an existing net.Listener instance with specfied keepalive
-func newGRPCServerFromListenerWithKa(listener net.Listener, secureConfig SecureServerConfig, ka *KeepaliveOptions) (GRPCServer, error) {
+func newGRPCServerFromListenerWithKa(listener net.Listener, serverConfig ServerConfig,
+	ka *KeepaliveOptions) (GRPCServer, error) {
 	grpcServer := &grpcServerImpl{
 		address:  listener.Addr().String(),
 		listener: listener,
@@ -141,8 +123,9 @@ func newGRPCServerFromListenerWithKa(listener net.Listener, secureConfig SecureS
 
 	//set up our server options
 	var serverOpts []grpc.ServerOption
-	//check secureConfig
-	if secureConfig.UseTLS {
+	//check SecOpts
+	secureConfig := serverConfig.SecOpts
+	if secureConfig != nil && secureConfig.UseTLS {
 		//both key and cert are required
 		if secureConfig.ServerKey != nil && secureConfig.ServerCertificate != nil {
 			grpcServer.tlsEnabled = true
@@ -184,7 +167,7 @@ func newGRPCServerFromListenerWithKa(listener net.Listener, secureConfig SecureS
 			creds := NewServerTransportCredentials(grpcServer.tlsConfig)
 			serverOpts = append(serverOpts, grpc.Creds(creds))
 		} else {
-			return nil, errors.New("secureConfig must contain both ServerKey and " +
+			return nil, errors.New("serverConfig.SecOpts must contain both ServerKey and " +
 				"ServerCertificate when UseTLS is true")
 		}
 	}

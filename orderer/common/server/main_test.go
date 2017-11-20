@@ -75,8 +75,8 @@ func TestInitializeProfilingService(t *testing.T) {
 	}
 }
 
-func TestInitializeSecureServerConfig(t *testing.T) {
-	initializeSecureServerConfig(
+func TestInitializeServerConfig(t *testing.T) {
+	initializeServerConfig(
 		&config.TopLevel{
 			General: config.General{
 				TLS: config.TLS{
@@ -113,7 +113,7 @@ func TestInitializeSecureServerConfig(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Panics(t, func() {
-				initializeSecureServerConfig(
+				initializeServerConfig(
 					&config.TopLevel{
 						General: config.General{
 							TLS: config.TLS{
@@ -247,7 +247,7 @@ func TestInitializeGrpcServer(t *testing.T) {
 		},
 	}
 	assert.NotPanics(t, func() {
-		grpcServer := initializeGrpcServer(conf, initializeSecureServerConfig(conf))
+		grpcServer := initializeGrpcServer(conf, initializeServerConfig(conf))
 		grpcServer.Listener().Close()
 	})
 }
@@ -271,7 +271,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			},
 		},
 	}
-	grpcServer := initializeGrpcServer(conf, initializeSecureServerConfig(conf))
+	grpcServer := initializeGrpcServer(conf, initializeServerConfig(conf))
 	caSupport := &comm.CASupport{
 		AppRootCAsByChain:     make(map[string][][]byte),
 		OrdererRootCAsByChain: make(map[string][][]byte),
@@ -302,7 +302,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			},
 		},
 	}
-	grpcServer = initializeGrpcServer(conf, initializeSecureServerConfig(conf))
+	grpcServer = initializeGrpcServer(conf, initializeServerConfig(conf))
 	caSupport = &comm.CASupport{
 		AppRootCAsByChain:     make(map[string][][]byte),
 		OrdererRootCAsByChain: make(map[string][][]byte),

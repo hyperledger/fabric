@@ -39,6 +39,33 @@ var (
 	}
 )
 
+// ServerConfig defines the parameters for configuring a GRPCServer instance
+type ServerConfig struct {
+	// SecOpts defines the security parameters
+	SecOpts *SecureOptions
+	// KaOpts defines the keepalive parameters
+	KaOpts *KeepaliveOptions
+}
+
+// SecureOptions defines the security parameters (e.g. TLS) for a
+// GRPCServer instance
+type SecureOptions struct {
+	//PEM-encoded X509 public key to be used by the server for TLS communication
+	ServerCertificate []byte
+	//PEM-encoded private key to be used by the server for TLS communication
+	ServerKey []byte
+	//Set of PEM-encoded X509 certificate authorities to optionally send
+	//as part of the server handshake
+	ServerRootCAs [][]byte
+	//Set of PEM-encoded X509 certificate authorities to use when verifying
+	//client certificates
+	ClientRootCAs [][]byte
+	//Whether or not to use TLS for communication
+	UseTLS bool
+	//Whether or not TLS client must present certificates for authentication
+	RequireClientCert bool
+}
+
 // KeepAliveOptions is used to set the gRPC keepalive settings for both
 // clients and servers
 type KeepaliveOptions struct {

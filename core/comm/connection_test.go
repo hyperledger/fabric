@@ -258,10 +258,12 @@ func newServer(org string, port int) *srv {
 	if err != nil {
 		panic(fmt.Errorf("Failed listening on port %d: %v", port, err))
 	}
-	gSrv, err := NewGRPCServerFromListener(l, SecureServerConfig{
-		ServerCertificate: certs["server.crt"],
-		ServerKey:         certs["server.key"],
-		UseTLS:            true,
+	gSrv, err := NewGRPCServerFromListener(l, ServerConfig{
+		SecOpts: &SecureOptions{
+			ServerCertificate: certs["server.crt"],
+			ServerKey:         certs["server.key"],
+			UseTLS:            true,
+		},
 	})
 	if err != nil {
 		panic(fmt.Errorf("Failed starting gRPC server: %v", err))

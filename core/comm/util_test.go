@@ -129,11 +129,12 @@ func (is *inspectingServer) inspect(envelope *common.Envelope) error {
 }
 
 func newInspectingServer(addr string, inspector comm.BindingInspector) *inspectingServer {
-	srv, err := comm.NewGRPCServer(addr, comm.SecureServerConfig{
-		UseTLS:            true,
-		ServerCertificate: []byte(selfSignedCertPEM),
-		ServerKey:         []byte(selfSignedKeyPEM),
-	})
+	srv, err := comm.NewGRPCServer(addr, comm.ServerConfig{
+		SecOpts: &comm.SecureOptions{
+			UseTLS:            true,
+			ServerCertificate: []byte(selfSignedCertPEM),
+			ServerKey:         []byte(selfSignedKeyPEM),
+		}})
 	if err != nil {
 		panic(err)
 	}

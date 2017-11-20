@@ -112,46 +112,46 @@ func GetPeerEndpoint() (*pb.PeerEndpoint, error) {
 	return peerEndpoint, peerEndpointError
 }
 
-// GetSecureConfig returns the secure server configuration for the peer
-func GetSecureConfig() (comm.SecureServerConfig, error) {
-	secureConfig := comm.SecureServerConfig{
+// GetServerConfig returns the gRPC server configuration for the peer
+func GetServerConfig() (comm.ServerConfig, error) {
+	secureOptions := &comm.SecureOptions{
 		UseTLS: viper.GetBool("peer.tls.enabled"),
 	}
-	if secureConfig.UseTLS {
+	serverConfig := comm.ServerConfig{SecOpts: secureOptions}
+	if secureOptions.UseTLS {
 		// get the certs from the file system
 		serverKey, err := ioutil.ReadFile(config.GetPath("peer.tls.key.file"))
 		if err != nil {
-			return secureConfig, fmt.Errorf("error loading TLS key (%s)", err)
+			return serverConfig, fmt.Errorf("error loading TLS key (%s)", err)
 		}
 		serverCert, err := ioutil.ReadFile(config.GetPath("peer.tls.cert.file"))
 		if err != nil {
-			return secureConfig, fmt.Errorf("error loading TLS certificate (%s)", err)
+			return serverConfig, fmt.Errorf("error loading TLS certificate (%s)", err)
 		}
-		secureConfig.ServerCertificate = serverCert
-		secureConfig.ServerKey = serverKey
-		secureConfig.RequireClientCert = viper.GetBool("peer.tls.clientAuthRequired")
-		if secureConfig.RequireClientCert {
+		secureOptions.ServerCertificate = serverCert
+		secureOptions.ServerKey = serverKey
+		secureOptions.RequireClientCert = viper.GetBool("peer.tls.clientAuthRequired")
+		if secureOptions.RequireClientCert {
 			var clientRoots [][]byte
 			for _, file := range viper.GetStringSlice("peer.tls.clientRootCAs.files") {
 				clientRoot, err := ioutil.ReadFile(
 					config.TranslatePath(filepath.Dir(viper.ConfigFileUsed()), file))
 				if err != nil {
-					return secureConfig,
+					return serverConfig,
 						fmt.Errorf("error loading client root CAs (%s)", err)
 				}
 				clientRoots = append(clientRoots, clientRoot)
 			}
-			secureConfig.ClientRootCAs = clientRoots
+			secureOptions.ClientRootCAs = clientRoots
 		}
 		// check for root cert
 		if config.GetPath("peer.tls.rootcert.file") != "" {
 			rootCert, err := ioutil.ReadFile(config.GetPath("peer.tls.rootcert.file"))
 			if err != nil {
-				return secureConfig, fmt.Errorf("error loading TLS root certificate (%s)", err)
+				return serverConfig, fmt.Errorf("error loading TLS root certificate (%s)", err)
 			}
-			secureConfig.ServerRootCAs = [][]byte{rootCert}
+			secureOptions.ServerRootCAs = [][]byte{rootCert}
 		}
-		return secureConfig, nil
 	}
-	return secureConfig, nil
+	return serverConfig, nil
 }

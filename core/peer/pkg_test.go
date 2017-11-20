@@ -222,7 +222,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	var tests = []struct {
 		name          string
 		listenAddress string
-		secureConfig  comm.SecureServerConfig
+		serverConfig  comm.ServerConfig
 		createChannel func()
 		goodOptions   []grpc.DialOption
 		badOptions    []grpc.DialOption
@@ -233,12 +233,14 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		{
 			name:          "MutualTLSOrg1Org1",
 			listenAddress: fmt.Sprintf("localhost:%d", 4051),
-			secureConfig: comm.SecureServerConfig{
-				UseTLS:            true,
-				ServerCertificate: org1Server1Cert,
-				ServerKey:         org1Server1Key,
-				ServerRootCAs:     [][]byte{org1CA},
-				RequireClientCert: true,
+			serverConfig: comm.ServerConfig{
+				SecOpts: &comm.SecureOptions{
+					UseTLS:            true,
+					ServerCertificate: org1Server1Cert,
+					ServerKey:         org1Server1Key,
+					ServerRootCAs:     [][]byte{org1CA},
+					RequireClientCert: true,
+				},
 			},
 			createChannel: func() { createChannel("channel1", channel1Block) },
 			goodOptions:   []grpc.DialOption{grpc.WithTransportCredentials(org1Creds)},
@@ -249,12 +251,14 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		{
 			name:          "MutualTLSOrg1Org2",
 			listenAddress: fmt.Sprintf("localhost:%d", 4052),
-			secureConfig: comm.SecureServerConfig{
-				UseTLS:            true,
-				ServerCertificate: org1Server1Cert,
-				ServerKey:         org1Server1Key,
-				ServerRootCAs:     [][]byte{org1CA},
-				RequireClientCert: true,
+			serverConfig: comm.ServerConfig{
+				SecOpts: &comm.SecureOptions{
+					UseTLS:            true,
+					ServerCertificate: org1Server1Cert,
+					ServerKey:         org1Server1Key,
+					ServerRootCAs:     [][]byte{org1CA},
+					RequireClientCert: true,
+				},
 			},
 			createChannel: func() { createChannel("channel2", channel2Block) },
 			goodOptions: []grpc.DialOption{
@@ -267,12 +271,14 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		{
 			name:          "MutualTLSOrg1Org2Intermediate",
 			listenAddress: fmt.Sprintf("localhost:%d", 4053),
-			secureConfig: comm.SecureServerConfig{
-				UseTLS:            true,
-				ServerCertificate: org1Server1Cert,
-				ServerKey:         org1Server1Key,
-				ServerRootCAs:     [][]byte{org1CA},
-				RequireClientCert: true,
+			serverConfig: comm.ServerConfig{
+				SecOpts: &comm.SecureOptions{
+					UseTLS:            true,
+					ServerCertificate: org1Server1Cert,
+					ServerKey:         org1Server1Key,
+					ServerRootCAs:     [][]byte{org1CA},
+					RequireClientCert: true,
+				},
 			},
 			createChannel: func() { createChannel("channel3", channel3Block) },
 			goodOptions: []grpc.DialOption{
@@ -288,7 +294,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Logf("Running test %s ...", test.name)
-			_, err := peer.CreatePeerServer(test.listenAddress, test.secureConfig)
+			_, err := peer.CreatePeerServer(test.listenAddress, test.serverConfig)
 			if err != nil {
 				t.Fatalf("CreatePeerServer failed with error [%s]", err)
 			} else {
