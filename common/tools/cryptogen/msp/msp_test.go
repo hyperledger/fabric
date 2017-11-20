@@ -44,12 +44,13 @@ func TestGenerateLocalMSP(t *testing.T) {
 
 	cleanup(testDir)
 
-	err := msp.GenerateLocalMSP(testDir, testName, nil, &ca.CA{}, &ca.CA{})
+	err := msp.GenerateLocalMSP(testDir, testName, nil, &ca.CA{}, &ca.CA{}, msp.PEER)
 	assert.Error(t, err, "Empty CA should have failed")
 
 	caDir := filepath.Join(testDir, "ca")
 	tlsCADir := filepath.Join(testDir, "tlsca")
 	mspDir := filepath.Join(testDir, "msp")
+	tlsDir := filepath.Join(testDir, "tls")
 
 	// generate signing CA
 	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
@@ -71,20 +72,44 @@ func TestGenerateLocalMSP(t *testing.T) {
 	assert.NotEmpty(t, signCA.SignCert.Subject.PostalCode, "postalCode cannot be empty.")
 	assert.Equal(t, testPostalCode, signCA.SignCert.Subject.PostalCode[0], "Failed to match postalCode")
 
-	// generate local MSP
-	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA)
+	// generate local MSP for nodeType=PEER
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.PEER)
 	assert.NoError(t, err, "Failed to generate local MSP")
 
 	// check to see that the right files were generated/saved
-	files := []string{
+	mspFiles := []string{
 		filepath.Join(mspDir, "admincerts", testName+"-cert.pem"),
 		filepath.Join(mspDir, "cacerts", testCAName+"-cert.pem"),
 		filepath.Join(mspDir, "tlscacerts", testCAName+"-cert.pem"),
 		filepath.Join(mspDir, "keystore"),
 		filepath.Join(mspDir, "signcerts", testName+"-cert.pem"),
 	}
+	tlsFiles := []string{
+		filepath.Join(tlsDir, "ca.crt"),
+		filepath.Join(tlsDir, "server.key"),
+		filepath.Join(tlsDir, "server.crt"),
+	}
 
-	for _, file := range files {
+	for _, file := range mspFiles {
+		assert.Equal(t, true, checkForFile(file),
+			"Expected to find file "+file)
+	}
+	for _, file := range tlsFiles {
+		assert.Equal(t, true, checkForFile(file),
+			"Expected to find file "+file)
+	}
+
+	// generate local MSP for nodeType=CLIENT
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.CLIENT)
+	assert.NoError(t, err, "Failed to generate local MSP")
+	//only need to check for the TLS certs
+	tlsFiles = []string{
+		filepath.Join(tlsDir, "ca.crt"),
+		filepath.Join(tlsDir, "client.key"),
+		filepath.Join(tlsDir, "client.crt"),
+	}
+
+	for _, file := range tlsFiles {
 		assert.Equal(t, true, checkForFile(file),
 			"Expected to find file "+file)
 	}
@@ -98,10 +123,10 @@ func TestGenerateLocalMSP(t *testing.T) {
 	assert.NoError(t, err, "Error setting up local MSP")
 
 	tlsCA.Name = "test/fail"
-	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA)
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.CLIENT)
 	assert.Error(t, err, "Should have failed with CA name 'test/fail'")
 	signCA.Name = "test/fail"
-	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA)
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.ORDERER)
 	assert.Error(t, err, "Should have failed with CA name 'test/fail'")
 	t.Log(err)
 	cleanup(testDir)
