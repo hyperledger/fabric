@@ -181,18 +181,15 @@ func GetPeerTestingAddress(port string) string {
 }
 
 // NewClientConnectionWithAddress Returns a new grpc.ClientConn to the given address
-func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled bool, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
-	return newClientConnectionWithAddressWithKa(peerAddress, block, tslEnabled, creds, nil)
+func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled bool,
+	creds credentials.TransportCredentials, ka *KeepaliveOptions) (*grpc.ClientConn, error) {
+	return newClientConnectionWithAddressWithKa(peerAddress, block, tslEnabled, creds, ka)
 }
 
 // NewChaincodeClientConnectionWithAddress Returns a new chaincode type grpc.ClientConn to the given address
 func NewChaincodeClientConnectionWithAddress(peerAddress string, block bool, tslEnabled bool, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
-	ka := chaincodeKeepaliveOptions
-	//client side's keepalive parameter better be greater than EnforcementPolicies MinTime
-	//to prevent server killing the connection due to timing issues. Just increase by a min
-	ka.ClientKeepaliveTime += 60
-
-	return newClientConnectionWithAddressWithKa(peerAddress, block, tslEnabled, creds, &ka)
+	ka := &KeepaliveOptions{}
+	return newClientConnectionWithAddressWithKa(peerAddress, block, tslEnabled, creds, ka)
 }
 
 // newClientConnectionWithAddressWithKa Returns a new grpc.ClientConn to the given address using specied keepalive options
@@ -203,7 +200,7 @@ func newClientConnectionWithAddressWithKa(peerAddress string, block bool, tslEna
 	//want to change this in future to have peer client
 	//send keepalives too
 	if ka != nil {
-		opts = clientKeepaliveOptionsWithKa(ka)
+		opts = ClientKeepaliveOptions(ka)
 	}
 
 	if tslEnabled {

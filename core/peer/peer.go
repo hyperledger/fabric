@@ -629,9 +629,11 @@ func GetLocalIP() string {
 // NewPeerClientConnectionWithAddress Returns a new grpc.ClientConn to the configured local PEER.
 func NewPeerClientConnectionWithAddress(peerAddress string) (*grpc.ClientConn, error) {
 	if comm.TLSEnabled() {
-		return comm.NewClientConnectionWithAddress(peerAddress, true, true, comm.InitTLSForPeer())
+		return comm.NewClientConnectionWithAddress(peerAddress, true, true,
+			comm.InitTLSForPeer(), nil)
 	}
-	return comm.NewClientConnectionWithAddress(peerAddress, true, false, nil)
+	return comm.NewClientConnectionWithAddress(peerAddress, true, false,
+		nil, nil)
 }
 
 // GetChannelsInfo returns an array with information about all channels for

@@ -226,7 +226,7 @@ func DefaultConnectionFactory(channelID string) func(endpoint string) (*grpc.Cli
 		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
 			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
 		// set the keepalive options
-		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions()...)
+		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(nil)...)
 
 		if comm.TLSEnabled() {
 			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID)
