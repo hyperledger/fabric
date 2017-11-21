@@ -65,50 +65,44 @@ func TestEnc(t *testing.T) {
 
 	// success
 	stub.MockTransactionStart("a")
-	res := scc.Encrypter(stub, "PUT", []string{"key", "value"}, []byte(AESKEY1), nil)
+	res := scc.Encrypter(stub, []string{"key", "value"}, []byte(AESKEY1), nil)
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 
 	// fail - bad key
 	stub.MockTransactionStart("a")
-	res = scc.Encrypter(stub, "PUT", []string{"key", "value"}, []byte("badkey"), nil)
+	res = scc.Encrypter(stub, []string{"key", "value"}, []byte("badkey"), nil)
 	stub.MockTransactionEnd("a")
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 
 	// fail - not enough args
 	stub.MockTransactionStart("a")
-	res = scc.Encrypter(stub, "PUT", []string{"key"}, []byte(AESKEY1), nil)
+	res = scc.Encrypter(stub, []string{"key"}, []byte(AESKEY1), nil)
 	stub.MockTransactionEnd("a")
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 
 	// success
 	stub.MockTransactionStart("a")
-	res = scc.Encrypter(stub, "GET", []string{"key"}, []byte(AESKEY1), nil)
+	res = scc.Decrypter(stub, []string{"key"}, []byte(AESKEY1), nil)
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 	assert.True(t, bytes.Equal(res.Payload, []byte("value")))
 
 	// fail - not enough args
 	stub.MockTransactionStart("a")
-	res = scc.Encrypter(stub, "GET", []string{}, []byte(AESKEY1), nil)
-	stub.MockTransactionEnd("a")
-	assert.NotEqual(t, res.Status, int32(shim.OK))
-
-	// fail - wrong function name
-	stub.MockTransactionStart("a")
-	res = scc.Encrypter(stub, "barf", []string{}, []byte(AESKEY1), nil)
+	res = scc.Decrypter(stub, []string{}, []byte(AESKEY1), nil)
 	stub.MockTransactionEnd("a")
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 
 	// fail - bad kvs key
 	stub.MockTransactionStart("a")
-	res = scc.Encrypter(stub, "GET", []string{"badkey"}, []byte(AESKEY1), nil)
+	res = scc.Decrypter(stub, []string{"badkey"}, []byte(AESKEY1), nil)
 	stub.MockTransactionEnd("a")
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 
 	// fail - bad key
 	stub.MockTransactionStart("a")
-	res = scc.Encrypter(stub, "GET", []string{"key"}, []byte(AESKEY2), nil)
+	res = scc.Decrypter(stub, []string{"key"}, []byte(AESKEY2), nil)
 	stub.MockTransactionEnd("a")
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 }
@@ -121,55 +115,49 @@ func TestSig(t *testing.T) {
 
 	// success
 	stub.MockTransactionStart("a")
-	res := scc.EncrypterSigner(stub, "PUT", []string{"key", "value"}, []byte(AESKEY1), []byte(ECDSAKEY1))
+	res := scc.EncrypterSigner(stub, []string{"key", "value"}, []byte(AESKEY1), []byte(ECDSAKEY1))
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 
 	// fail - bad key
 	stub.MockTransactionStart("a")
-	res = scc.EncrypterSigner(stub, "PUT", []string{"key", "value"}, []byte(AESKEY1), []byte("barf"))
+	res = scc.EncrypterSigner(stub, []string{"key", "value"}, []byte(AESKEY1), []byte("barf"))
 	stub.MockTransactionEnd("a")
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 
 	// fail - bad args
 	stub.MockTransactionStart("a")
-	res = scc.EncrypterSigner(stub, "PUT", []string{"key"}, []byte(AESKEY1), []byte("barf"))
+	res = scc.EncrypterSigner(stub, []string{"key"}, []byte(AESKEY1), []byte("barf"))
 	stub.MockTransactionEnd("a")
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 
 	// fail - bad signing key
 	stub.MockTransactionStart("a")
-	res = scc.EncrypterSigner(stub, "GET", []string{"key"}, []byte(AESKEY1), []byte(ECDSAKEY2))
+	res = scc.DecrypterVerify(stub, []string{"key"}, []byte(AESKEY1), []byte(ECDSAKEY2))
 	stub.MockTransactionEnd("a")
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 
 	// fail - bad args
 	stub.MockTransactionStart("a")
-	res = scc.EncrypterSigner(stub, "GET", []string{}, []byte(AESKEY1), []byte(ECDSAKEY1))
+	res = scc.DecrypterVerify(stub, []string{}, []byte(AESKEY1), []byte(ECDSAKEY1))
 	stub.MockTransactionEnd("a")
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 
 	// fail - bad kvs key
 	stub.MockTransactionStart("a")
-	res = scc.EncrypterSigner(stub, "GET", []string{"badkey"}, []byte(AESKEY1), []byte(ECDSAKEY1))
-	stub.MockTransactionEnd("a")
-	assert.NotEqual(t, res.Status, int32(shim.OK))
-
-	// fail - wrong function name
-	stub.MockTransactionStart("a")
-	res = scc.EncrypterSigner(stub, "barf", []string{"badkey"}, []byte(AESKEY1), []byte(ECDSAKEY1))
+	res = scc.DecrypterVerify(stub, []string{"badkey"}, []byte(AESKEY1), []byte(ECDSAKEY1))
 	stub.MockTransactionEnd("a")
 	assert.NotEqual(t, res.Status, int32(shim.OK))
 
 	// success
 	stub.MockTransactionStart("a")
-	res = scc.EncrypterSigner(stub, "PUT", []string{"key", "value"}, []byte(AESKEY1), []byte(ECDSAKEY1))
+	res = scc.EncrypterSigner(stub, []string{"key", "value"}, []byte(AESKEY1), []byte(ECDSAKEY1))
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 
 	// success
 	stub.MockTransactionStart("a")
-	res = scc.EncrypterSigner(stub, "GET", []string{"key"}, []byte(AESKEY1), []byte(ECDSAKEY1))
+	res = scc.DecrypterVerify(stub, []string{"key"}, []byte(AESKEY1), []byte(ECDSAKEY1))
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 	assert.True(t, bytes.Equal(res.Payload, []byte("value")))
@@ -182,17 +170,17 @@ func TestEncCC_RangeDecrypter(t *testing.T) {
 	stub := shim.NewMockStub("enccc", scc)
 
 	stub.MockTransactionStart("a")
-	res := scc.Encrypter(stub, "PUT", []string{"key1", "value1"}, []byte(AESKEY1), nil)
+	res := scc.Encrypter(stub, []string{"key1", "value1"}, []byte(AESKEY1), nil)
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 
 	stub.MockTransactionStart("a")
-	res = scc.Encrypter(stub, "PUT", []string{"key2", "value2"}, []byte(AESKEY1), nil)
+	res = scc.Encrypter(stub, []string{"key2", "value2"}, []byte(AESKEY1), nil)
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 
 	stub.MockTransactionStart("a")
-	res = scc.Encrypter(stub, "PUT", []string{"key3", "value3"}, []byte(AESKEY1), nil)
+	res = scc.Encrypter(stub, []string{"key3", "value3"}, []byte(AESKEY1), nil)
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 
@@ -226,7 +214,7 @@ func TestDeterministicEncryption(t *testing.T) {
 	stub := shim.NewMockStub("enccc", scc)
 
 	stub.MockTransactionStart("a")
-	res := scc.Encrypter(stub, "PUT", []string{"key1", "value1"}, []byte(AESKEY1), []byte(IV1))
+	res := scc.Encrypter(stub, []string{"key1", "value1"}, []byte(AESKEY1), []byte(IV1))
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 
@@ -235,7 +223,7 @@ func TestDeterministicEncryption(t *testing.T) {
 	assert.NotNil(t, c1)
 
 	stub.MockTransactionStart("a")
-	res = scc.Encrypter(stub, "PUT", []string{"key1", "value1"}, []byte(AESKEY1), []byte(IV1))
+	res = scc.Encrypter(stub, []string{"key1", "value1"}, []byte(AESKEY1), []byte(IV1))
 	stub.MockTransactionEnd("a")
 	assert.Equal(t, res.Status, int32(shim.OK))
 
