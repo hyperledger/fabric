@@ -8,7 +8,7 @@ ENV SCALA_VERSION=2.11 \
     KAFKA_VERSION=0.10.2.1 \
     KAFKA_DOWNLOAD_SHA256=b86f75c8f078bc818031568155dd442ba6c1ed849663d0a7da9870efc96be461
 
-RUN curl -fsSL "http://www-us.apache.org/dist/kafka/${KAFKA_VERSION}/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz" -o kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz \
+RUN curl -fsSL "http://archive.apache.org/dist/kafka/${KAFKA_VERSION}/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz" -o kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz \
     && echo "${KAFKA_DOWNLOAD_SHA256} kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz" | sha256sum -c - \
     && tar xfz kafka_"$SCALA_VERSION"-"$KAFKA_VERSION".tgz -C /opt \
     && mv /opt/kafka_"$SCALA_VERSION"-"$KAFKA_VERSION" /opt/kafka \
