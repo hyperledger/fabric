@@ -27,11 +27,13 @@
 			"revisionTime": "2016-12-26T20:32:30Z"
 		},
 		{
-			"checksumSHA1": "lMwkVVL8s9jMaeUXb/4FaIpUfAk=",
+			"checksumSHA1": "p7JEU9v4991/GEts6Wcm7+ZI30E=",
 			"path": "github.com/Shopify/sarama",
-			"revision": "3efb95dad8fbcd194d3c06f7b9c40eabeb719b36",
-			"revisionTime": "2017-03-12T22:14:04Z",
-			"tree": true
+			"revision": "c01858abb625b73a3af51d0798e4ad42c8147093",
+			"revisionTime": "2017-05-08T18:36:27Z",
+			"tree": true,
+			"version": "v1.12.0",
+			"versionExact": "v1.12.0"
 		},
 		{
 			"checksumSHA1": "yRNw/uu/4N7XHVe1PHtKPl6xtDg=",
@@ -300,6 +302,12 @@
 			"path": "github.com/hashicorp/go-cleanhttp",
 			"revision": "ad28ea4487f05916463e2423a55166280e8254b5",
 			"revisionTime": "2016-04-07T17:41:26Z"
+		},
+		{
+			"checksumSHA1": "tUGxc7rfX0cmhOOUDhMuAZ9rWsA=",
+			"path": "github.com/hashicorp/go-version",
+			"revision": "fc61389e27c71d120f87031ca8c88a3428f372dd",
+			"revisionTime": "2017-09-14T15:41:28Z"
 		},
 		{
 			"checksumSHA1": "WI+JevQX15p9zqngb1BMHvrPAgU=",
