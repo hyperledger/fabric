@@ -30,6 +30,7 @@ var (
 	}
 )
 
+// ValidatorImpl implements the Validator interface
 type ValidatorImpl struct {
 	channelID   string
 	sequence    uint64
@@ -95,6 +96,7 @@ func validateChannelID(channelID string) error {
 	return nil
 }
 
+// NewValidatorImpl constructs a new implementation of the Validator interface.
 func NewValidatorImpl(channelID string, config *cb.Config, namespace string, pm policies.Manager) (*ValidatorImpl, error) {
 	if config == nil {
 		return nil, errors.Errorf("nil config parameter")
@@ -108,7 +110,7 @@ func NewValidatorImpl(channelID string, config *cb.Config, namespace string, pm 
 		return nil, errors.Errorf("bad channel ID: %s", err)
 	}
 
-	configMap, err := MapConfig(config.ChannelGroup, namespace)
+	configMap, err := mapConfig(config.ChannelGroup, namespace)
 	if err != nil {
 		return nil, errors.Errorf("error converting config to map: %s", err)
 	}
@@ -125,29 +127,29 @@ func NewValidatorImpl(channelID string, config *cb.Config, namespace string, pm 
 
 // ProposeConfigUpdate takes in an Envelope of type CONFIG_UPDATE and produces a
 // ConfigEnvelope to be used as the Envelope Payload Data of a CONFIG message
-func (cm *ValidatorImpl) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
-	return cm.proposeConfigUpdate(configtx)
+func (vi *ValidatorImpl) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
+	return vi.proposeConfigUpdate(configtx)
 }
 
-func (cm *ValidatorImpl) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
+func (vi *ValidatorImpl) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
 	configUpdateEnv, err := envelopeToConfigUpdate(configtx)
 	if err != nil {
 		return nil, errors.Errorf("error converting envelope to config update: %s", err)
 	}
 
-	configMap, err := cm.authorizeUpdate(configUpdateEnv)
+	configMap, err := vi.authorizeUpdate(configUpdateEnv)
 	if err != nil {
 		return nil, errors.Errorf("error authorizing update: %s", err)
 	}
 
-	channelGroup, err := configMapToConfig(configMap, cm.namespace)
+	channelGroup, err := configMapToConfig(configMap, vi.namespace)
 	if err != nil {
 		return nil, errors.Errorf("could not turn configMap back to channelGroup: %s", err)
 	}
 
 	return &cb.ConfigEnvelope{
 		Config: &cb.Config{
-			Sequence:     cm.sequence + 1,
+			Sequence:     vi.sequence + 1,
 			ChannelGroup: channelGroup,
 		},
 		LastUpdate: configtx,
@@ -155,7 +157,7 @@ func (cm *ValidatorImpl) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 }
 
 // Validate simulates applying a ConfigEnvelope to become the new config
-func (cm *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
+func (vi *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 	if configEnv == nil {
 		return errors.Errorf("config envelope is nil")
 	}
@@ -164,8 +166,8 @@ func (cm *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 		return errors.Errorf("config envelope has nil config")
 	}
 
-	if configEnv.Config.Sequence != cm.sequence+1 {
-		return errors.Errorf("config currently at sequence %d, cannot validate config at sequence %d", cm.sequence, configEnv.Config.Sequence)
+	if configEnv.Config.Sequence != vi.sequence+1 {
+		return errors.Errorf("config currently at sequence %d, cannot validate config at sequence %d", vi.sequence, configEnv.Config.Sequence)
 	}
 
 	configUpdateEnv, err := envelopeToConfigUpdate(configEnv.LastUpdate)
@@ -173,12 +175,12 @@ func (cm *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 		return err
 	}
 
-	configMap, err := cm.authorizeUpdate(configUpdateEnv)
+	configMap, err := vi.authorizeUpdate(configUpdateEnv)
 	if err != nil {
 		return err
 	}
 
-	channelGroup, err := configMapToConfig(configMap, cm.namespace)
+	channelGroup, err := configMapToConfig(configMap, vi.namespace)
 	if err != nil {
 		return errors.Errorf("could not turn configMap back to channelGroup: %s", err)
 	}
@@ -192,16 +194,16 @@ func (cm *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 }
 
 // ChainID retrieves the chain ID associated with this manager
-func (cm *ValidatorImpl) ChainID() string {
-	return cm.channelID
+func (vi *ValidatorImpl) ChainID() string {
+	return vi.channelID
 }
 
 // Sequence returns the sequence number of the config
-func (cm *ValidatorImpl) Sequence() uint64 {
-	return cm.sequence
+func (vi *ValidatorImpl) Sequence() uint64 {
+	return vi.sequence
 }
 
-// ConfigEnvelope returns the config proto which initialized this Validator
-func (cm *ValidatorImpl) ConfigProto() *cb.Config {
-	return cm.configProto
+// ConfigProto returns the config proto which initialized this Validator
+func (vi *ValidatorImpl) ConfigProto() *cb.Config {
+	return vi.configProto
 }

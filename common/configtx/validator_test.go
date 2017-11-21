@@ -87,7 +87,7 @@ func TestEmptyChannel(t *testing.T) {
 
 // TestDifferentChainID tests that a config update for a different chain ID fails
 func TestDifferentChainID(t *testing.T) {
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
@@ -99,7 +99,7 @@ func TestDifferentChainID(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope("wrongChain", makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
-	_, err = cm.ProposeConfigUpdate(newConfig)
+	_, err = vi.ProposeConfigUpdate(newConfig)
 	if err == nil {
 		t.Error("Should have errored when proposing a new config set the wrong chain ID")
 	}
@@ -107,7 +107,7 @@ func TestDifferentChainID(t *testing.T) {
 
 // TestOldConfigReplay tests that resubmitting a config for a sequence number which is not newer is ignored
 func TestOldConfigReplay(t *testing.T) {
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
@@ -119,7 +119,7 @@ func TestOldConfigReplay(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 0, []byte("foo"))))
 
-	_, err = cm.ProposeConfigUpdate(newConfig)
+	_, err = vi.ProposeConfigUpdate(newConfig)
 	if err == nil {
 		t.Error("Should have errored when proposing a config that is not a newer sequence number")
 	}
@@ -127,7 +127,7 @@ func TestOldConfigReplay(t *testing.T) {
 
 // TestValidConfigChange tests the happy path of updating a config value with no defaultModificationPolicy
 func TestValidConfigChange(t *testing.T) {
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
@@ -139,12 +139,12 @@ func TestValidConfigChange(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
-	configEnv, err := cm.ProposeConfigUpdate(newConfig)
+	configEnv, err := vi.ProposeConfigUpdate(newConfig)
 	if err != nil {
 		t.Errorf("Should not have errored proposing config: %s", err)
 	}
 
-	err = cm.Validate(configEnv)
+	err = vi.Validate(configEnv)
 	if err != nil {
 		t.Errorf("Should not have errored validating config: %s", err)
 	}
@@ -153,7 +153,7 @@ func TestValidConfigChange(t *testing.T) {
 // TestConfigChangeRegressedSequence tests to make sure that a new config cannot roll back one of the
 // config values while advancing another
 func TestConfigChangeRegressedSequence(t *testing.T) {
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 1, []byte("foo"))),
 		"foonamespace",
@@ -169,7 +169,7 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 		makeConfigSet(makeConfigPair("bar", "bar", 2, []byte("bar"))),
 	)
 
-	_, err = cm.ProposeConfigUpdate(newConfig)
+	_, err = vi.ProposeConfigUpdate(newConfig)
 	if err == nil {
 		t.Error("Should have errored proposing config because foo's sequence number regressed")
 	}
@@ -178,7 +178,7 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 // TestConfigChangeOldSequence tests to make sure that a new config cannot roll back one of the
 // config values while advancing another
 func TestConfigChangeOldSequence(t *testing.T) {
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 1, []byte("foo"))),
 		"foonamespace",
@@ -197,7 +197,7 @@ func TestConfigChangeOldSequence(t *testing.T) {
 		),
 	)
 
-	_, err = cm.ProposeConfigUpdate(newConfig)
+	_, err = vi.ProposeConfigUpdate(newConfig)
 	if err == nil {
 		t.Error("Should have errored proposing config because bar was new but its sequence number was old")
 	}
@@ -206,7 +206,7 @@ func TestConfigChangeOldSequence(t *testing.T) {
 // TestConfigPartialUpdate tests to make sure that a new config can set only part
 // of the config and still be accepted
 func TestConfigPartialUpdate(t *testing.T) {
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(
 			makeConfigPair("foo", "foo", 0, []byte("foo")),
@@ -225,13 +225,13 @@ func TestConfigPartialUpdate(t *testing.T) {
 		makeConfigSet(makeConfigPair("bar", "bar", 1, []byte("bar"))),
 	)
 
-	_, err = cm.ProposeConfigUpdate(newConfig)
+	_, err = vi.ProposeConfigUpdate(newConfig)
 	assert.NoError(t, err, "Should have allowed partial update")
 }
 
 // TestEmptyConfigUpdate tests to make sure that an empty config is rejected as an update
 func TestEmptyConfigUpdate(t *testing.T) {
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
@@ -243,7 +243,7 @@ func TestEmptyConfigUpdate(t *testing.T) {
 
 	newConfig := &cb.Envelope{}
 
-	_, err = cm.ProposeConfigUpdate(newConfig)
+	_, err = vi.ProposeConfigUpdate(newConfig)
 	if err == nil {
 		t.Error("Should not errored proposing config because new config is empty")
 	}
@@ -253,7 +253,7 @@ func TestEmptyConfigUpdate(t *testing.T) {
 // is substituted into an otherwise valid new config, that the new config is rejected for attempting a modification without
 // increasing the config item's LastModified
 func TestSilentConfigModification(t *testing.T) {
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(
 			makeConfigPair("foo", "foo", 0, []byte("foo")),
@@ -275,7 +275,7 @@ func TestSilentConfigModification(t *testing.T) {
 		),
 	)
 
-	_, err = cm.ProposeConfigUpdate(newConfig)
+	_, err = vi.ProposeConfigUpdate(newConfig)
 	if err == nil {
 		t.Error("Should have errored proposing config because foo was silently modified (despite modification allowed by policy)")
 	}
@@ -285,7 +285,7 @@ func TestSilentConfigModification(t *testing.T) {
 // it is rejected in a config update
 func TestConfigChangeViolatesPolicy(t *testing.T) {
 	pm := defaultPolicyManager()
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
@@ -299,7 +299,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
-	_, err = cm.ProposeConfigUpdate(newConfig)
+	_, err = vi.ProposeConfigUpdate(newConfig)
 	if err == nil {
 		t.Error("Should have errored proposing config because policy rejected modification")
 	}
@@ -309,7 +309,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 // as the policy may have changed, certs revoked, etc. since the config was adopted.
 func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 	pm := defaultPolicyManager()
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
@@ -329,12 +329,12 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 		makeConfigSet(makeConfigPair("bar", "bar", 0, []byte("foo"))),
 	)
 
-	configEnv, err := cm.ProposeConfigUpdate(newConfig)
+	configEnv, err := vi.ProposeConfigUpdate(newConfig)
 	if err != nil {
 		t.Errorf("Should not have errored proposing config, but got %s", err)
 	}
 
-	err = cm.Validate(configEnv)
+	err = vi.Validate(configEnv)
 	if err != nil {
 		t.Errorf("Should not have errored validating config, but got %s", err)
 	}
@@ -344,7 +344,7 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 // that if the handler does not accept the config, it is rejected
 func TestInvalidProposal(t *testing.T) {
 	pm := defaultPolicyManager()
-	cm, err := NewValidatorImpl(
+	vi, err := NewValidatorImpl(
 		defaultChain,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
@@ -358,7 +358,7 @@ func TestInvalidProposal(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
-	_, err = cm.ProposeConfigUpdate(newConfig)
+	_, err = vi.ProposeConfigUpdate(newConfig)
 	if err == nil {
 		t.Error("Should have errored proposing config because the handler rejected it")
 	}

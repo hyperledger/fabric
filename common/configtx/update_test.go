@@ -17,32 +17,32 @@ import (
 )
 
 func TestReadSetNotPresent(t *testing.T) {
-	cm := &ValidatorImpl{
+	vi := &ValidatorImpl{
 		configMap: make(map[string]comparable),
 	}
 
-	cm.configMap["1"] = comparable{}
-	cm.configMap["2"] = comparable{}
+	vi.configMap["1"] = comparable{}
+	vi.configMap["2"] = comparable{}
 
 	readSet := make(map[string]comparable)
 	readSet["1"] = comparable{}
 	readSet["3"] = comparable{}
 
-	assert.Error(t, cm.verifyReadSet(readSet), "ReadSet contained '3', not in config")
+	assert.Error(t, vi.verifyReadSet(readSet), "ReadSet contained '3', not in config")
 }
 
 func TestReadSetBackVersioned(t *testing.T) {
-	cm := &ValidatorImpl{
+	vi := &ValidatorImpl{
 		configMap: make(map[string]comparable),
 	}
 
-	cm.configMap["1"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1}}
-	cm.configMap["2"] = comparable{}
+	vi.configMap["1"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1}}
+	vi.configMap["2"] = comparable{}
 
 	readSet := make(map[string]comparable)
 	readSet["1"] = comparable{}
 
-	assert.Error(t, cm.verifyReadSet(readSet), "ReadSet contained '1', at old version")
+	assert.Error(t, vi.verifyReadSet(readSet), "ReadSet contained '1', at old version")
 }
 
 func TestComputeDeltaSet(t *testing.T) {
@@ -55,28 +55,28 @@ func TestComputeDeltaSet(t *testing.T) {
 	writeSet["2"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1}}
 	writeSet["3"] = comparable{}
 
-	result := ComputeDeltaSet(readSet, writeSet)
+	result := computeDeltaSet(readSet, writeSet)
 	assert.Len(t, result, 2, "Should have two values in the delta set")
 	assert.NotNil(t, result["2"], "Element had version increased")
 	assert.NotNil(t, result["3"], "Element was new")
 }
 
 func TestVerifyDeltaSet(t *testing.T) {
-	cm := &ValidatorImpl{
+	vi := &ValidatorImpl{
 		pm: &mockpolicies.Manager{
 			Policy: &mockpolicies.Policy{},
 		},
 		configMap: make(map[string]comparable),
 	}
 
-	cm.configMap["foo"] = comparable{path: []string{"foo"}}
+	vi.configMap["foo"] = comparable{path: []string{"foo"}}
 
 	t.Run("Green path", func(t *testing.T) {
 		deltaSet := make(map[string]comparable)
 
 		deltaSet["foo"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1, ModPolicy: "foo"}}
 
-		assert.NoError(t, cm.verifyDeltaSet(deltaSet, nil), "Good update")
+		assert.NoError(t, vi.verifyDeltaSet(deltaSet, nil), "Good update")
 	})
 
 	t.Run("Bad mod policy", func(t *testing.T) {
@@ -84,7 +84,7 @@ func TestVerifyDeltaSet(t *testing.T) {
 
 		deltaSet["foo"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1}}
 
-		assert.Regexp(t, "invalid mod_policy for element", cm.verifyDeltaSet(deltaSet, nil))
+		assert.Regexp(t, "invalid mod_policy for element", vi.verifyDeltaSet(deltaSet, nil))
 	})
 
 	t.Run("Big Skip", func(t *testing.T) {
@@ -92,7 +92,7 @@ func TestVerifyDeltaSet(t *testing.T) {
 
 		deltaSet["foo"] = comparable{ConfigValue: &cb.ConfigValue{Version: 2, ModPolicy: "foo"}}
 
-		assert.Error(t, cm.verifyDeltaSet(deltaSet, nil), "Version skip from 0 to 2")
+		assert.Error(t, vi.verifyDeltaSet(deltaSet, nil), "Version skip from 0 to 2")
 	})
 
 	t.Run("New item high version", func(t *testing.T) {
@@ -100,16 +100,16 @@ func TestVerifyDeltaSet(t *testing.T) {
 
 		deltaSet["bar"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1, ModPolicy: "foo"}}
 
-		assert.Error(t, cm.verifyDeltaSet(deltaSet, nil), "New key not at version 0")
+		assert.Error(t, vi.verifyDeltaSet(deltaSet, nil), "New key not at version 0")
 	})
 
 	t.Run("Policy evalaution to false", func(t *testing.T) {
 		deltaSet := make(map[string]comparable)
 
 		deltaSet["foo"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1, ModPolicy: "foo"}}
-		cm.pm.(*mockpolicies.Manager).Policy = &mockpolicies.Policy{Err: fmt.Errorf("Err")}
+		vi.pm.(*mockpolicies.Manager).Policy = &mockpolicies.Policy{Err: fmt.Errorf("Err")}
 
-		assert.Error(t, cm.verifyDeltaSet(deltaSet, nil), "Policy evaluation should have failed")
+		assert.Error(t, vi.verifyDeltaSet(deltaSet, nil), "Policy evaluation should have failed")
 	})
 
 	t.Run("Empty delta set", func(t *testing.T) {
@@ -124,7 +124,7 @@ func TestPolicyForItem(t *testing.T) {
 	rootPolicy := &mockpolicies.Policy{Err: fmt.Errorf("rootPolicy")}
 	fooPolicy := &mockpolicies.Policy{Err: fmt.Errorf("fooPolicy")}
 
-	cm := &ValidatorImpl{
+	vi := &ValidatorImpl{
 		pm: &mockpolicies.Manager{
 			Policy: rootPolicy,
 			SubManagersMap: map[string]*mockpolicies.Manager{
@@ -136,7 +136,7 @@ func TestPolicyForItem(t *testing.T) {
 	}
 
 	t.Run("Root manager", func(t *testing.T) {
-		policy, ok := cm.policyForItem(comparable{
+		policy, ok := vi.policyForItem(comparable{
 			path: []string{"root"},
 			ConfigValue: &cb.ConfigValue{
 				ModPolicy: "rootPolicy",
@@ -147,7 +147,7 @@ func TestPolicyForItem(t *testing.T) {
 	})
 
 	t.Run("Nonexistent manager", func(t *testing.T) {
-		_, ok := cm.policyForItem(comparable{
+		_, ok := vi.policyForItem(comparable{
 			path: []string{"root", "wrong"},
 			ConfigValue: &cb.ConfigValue{
 				ModPolicy: "rootPolicy",
@@ -157,7 +157,7 @@ func TestPolicyForItem(t *testing.T) {
 	})
 
 	t.Run("Foo manager", func(t *testing.T) {
-		policy, ok := cm.policyForItem(comparable{
+		policy, ok := vi.policyForItem(comparable{
 			path: []string{"root", "foo"},
 			ConfigValue: &cb.ConfigValue{
 				ModPolicy: "foo",
@@ -168,7 +168,7 @@ func TestPolicyForItem(t *testing.T) {
 	})
 
 	t.Run("Foo group", func(t *testing.T) {
-		policy, ok := cm.policyForItem(comparable{
+		policy, ok := vi.policyForItem(comparable{
 			key:  "foo",
 			path: []string{"root"},
 			ConfigGroup: &cb.ConfigGroup{
@@ -180,7 +180,7 @@ func TestPolicyForItem(t *testing.T) {
 	})
 
 	t.Run("Root group manager", func(t *testing.T) {
-		policy, ok := cm.policyForItem(comparable{
+		policy, ok := vi.policyForItem(comparable{
 			path: []string{},
 			key:  "root",
 			ConfigGroup: &cb.ConfigGroup{
