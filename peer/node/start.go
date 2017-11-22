@@ -207,7 +207,14 @@ func serve(args []string) error {
 		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize()),
 			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize())))
 		// set the keepalive options
-		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(nil)...)
+		kaOpts := comm.DefaultKeepaliveOptions()
+		if viper.IsSet("peer.keepalive.client.interval") {
+			kaOpts.ClientInterval = viper.GetDuration("peer.keepalive.client.interval")
+		}
+		if viper.IsSet("peer.keepalive.client.timeout") {
+			kaOpts.ClientTimeout = viper.GetDuration("peer.keepalive.client.timeout")
+		}
+		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
 
 		if comm.TLSEnabled() {
 			comm.GetCredentialSupport().ClientCert = peerServer.ServerCertificate()
@@ -386,6 +393,12 @@ func createEventHubServer(serverConfig comm.ServerConfig) (comm.GRPCServer, erro
 	lis, err = net.Listen("tcp", viper.GetString("peer.events.address"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen: %v", err)
+	}
+
+	// set the keepalive options
+	serverConfig.KaOpts = comm.DefaultKeepaliveOptions()
+	if viper.IsSet("peer.events.keepalive.minInterval") {
+		serverConfig.KaOpts.ServerMinInterval = viper.GetDuration("peer.events.keepalive.minInterval")
 	}
 
 	grpcServer, err := comm.NewGRPCServerFromListener(lis, serverConfig)
