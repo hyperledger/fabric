@@ -37,6 +37,18 @@ General:
         ClientAuthEnabled: false
         ClientRootCAs:
 
+    # Keepalive settings for the GRPC server.
+    Keepalive:
+        # ServerMinInterval is the minimum permitted time between client pings.
+        # If clients send pings more frequently, the server will
+        # disconnect them.
+        ServerMinInterval: 60s
+        # ServerInterval is the time between pings to clients.
+        ServerInterval: 7200s
+        # ServerTimeout is the duration the server waits for a response from
+        # a client before closing the connection.
+        ServerTimeout: 20s
+
     # Log Level: The level at which to log. This accepts logging specifications
     # per: fabric/docs/Setup/logging-control.md
     LogLevel: info
