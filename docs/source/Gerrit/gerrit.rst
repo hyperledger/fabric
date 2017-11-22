@@ -103,7 +103,7 @@ Currently, Gerrit is the only method to submit a change for review.
 **Note:** Please review the :doc:`guidelines <changes>` for making and
 submitting a change.
 
-Use git review
+Using git review
 ~~~~~~~~~~~~~~
 
 **Note:** if you prefer, you can use the `git-review <#git-review>`__
@@ -128,7 +128,7 @@ Then submit your change with ``git review``.
 When you update your patch, you can commit with ``git commit --amend``,
 and then repeat the ``git review`` command.
 
-Not Use git review
+Not using git review
 ~~~~~~~~~~~~~~~~~~
 
 See the :doc:`directions for building the source code <../dev-setup/build>`.
