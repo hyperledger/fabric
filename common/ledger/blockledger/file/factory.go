@@ -21,17 +21,17 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
-	"github.com/hyperledger/fabric/orderer/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 )
 
 type fileLedgerFactory struct {
 	blkstorageProvider blkstorage.BlockStoreProvider
-	ledgers            map[string]ledger.ReadWriter
+	ledgers            map[string]blockledger.ReadWriter
 	mutex              sync.Mutex
 }
 
 // GetOrCreate gets an existing ledger (if it exists) or creates it if it does not
-func (flf *fileLedgerFactory) GetOrCreate(chainID string) (ledger.ReadWriter, error) {
+func (flf *fileLedgerFactory) GetOrCreate(chainID string) (blockledger.ReadWriter, error) {
 	flf.mutex.Lock()
 	defer flf.mutex.Unlock()
 
@@ -66,13 +66,13 @@ func (flf *fileLedgerFactory) Close() {
 }
 
 // New creates a new ledger factory
-func New(directory string) ledger.Factory {
+func New(directory string) blockledger.Factory {
 	return &fileLedgerFactory{
 		blkstorageProvider: fsblkstorage.NewProvider(
 			fsblkstorage.NewConf(directory, -1),
 			&blkstorage.IndexConfig{
 				AttrsToIndex: []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum}},
 		),
-		ledgers: make(map[string]ledger.ReadWriter),
+		ledgers: make(map[string]blockledger.ReadWriter),
 	}
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/orderer/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -91,14 +91,14 @@ func (cr *configResources) SharedConfig() channelconfig.Orderer {
 
 type ledgerResources struct {
 	*configResources
-	ledger.ReadWriter
+	blockledger.ReadWriter
 }
 
 // Registrar serves as a point of access and control for the individual channel resources.
 type Registrar struct {
 	chains          map[string]*ChainSupport
 	consenters      map[string]consensus.Consenter
-	ledgerFactory   ledger.Factory
+	ledgerFactory   blockledger.Factory
 	signer          crypto.LocalSigner
 	systemChannelID string
 	systemChannel   *ChainSupport
@@ -106,13 +106,13 @@ type Registrar struct {
 	callbacks       []func(bundle *channelconfig.Bundle)
 }
 
-func getConfigTx(reader ledger.Reader) *cb.Envelope {
-	lastBlock := ledger.GetBlock(reader, reader.Height()-1)
+func getConfigTx(reader blockledger.Reader) *cb.Envelope {
+	lastBlock := blockledger.GetBlock(reader, reader.Height()-1)
 	index, err := utils.GetLastConfigIndexFromBlock(lastBlock)
 	if err != nil {
 		logger.Panicf("Chain did not have appropriately encoded last config in its latest block: %s", err)
 	}
-	configBlock := ledger.GetBlock(reader, index)
+	configBlock := blockledger.GetBlock(reader, index)
 	if configBlock == nil {
 		logger.Panicf("Config block does not exist")
 	}
@@ -121,7 +121,7 @@ func getConfigTx(reader ledger.Reader) *cb.Envelope {
 }
 
 // NewRegistrar produces an instance of a *Registrar.
-func NewRegistrar(ledgerFactory ledger.Factory, consenters map[string]consensus.Consenter,
+func NewRegistrar(ledgerFactory blockledger.Factory, consenters map[string]consensus.Consenter,
 	signer crypto.LocalSigner, callbacks ...func(bundle *channelconfig.Bundle)) *Registrar {
 	r := &Registrar{
 		chains:        make(map[string]*ChainSupport),
@@ -270,7 +270,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 
 func (r *Registrar) newChain(configtx *cb.Envelope) {
 	ledgerResources := r.newLedgerResources(configtx)
-	ledgerResources.Append(ledger.CreateNextBlock(ledgerResources, []*cb.Envelope{configtx}))
+	ledgerResources.Append(blockledger.CreateNextBlock(ledgerResources, []*cb.Envelope{configtx}))
 
 	// Copy the map to allow concurrent reads from broadcast/deliver while the new chainSupport is
 	newChains := make(map[string]*ChainSupport)

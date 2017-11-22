@@ -24,7 +24,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	ledger "github.com/hyperledger/fabric/orderer/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
@@ -114,9 +114,9 @@ func (cu *cursor) ReadyChan() <-chan struct{} {
 
 func (cu *cursor) Close() {}
 
-// Iterator returns an Iterator, as specified by a cb.SeekInfo message, and its
+// Iterator returns an Iterator, as specified by a ab.SeekInfo message, and its
 // starting block number
-func (jl *jsonLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator, uint64) {
+func (jl *jsonLedger) Iterator(startPosition *ab.SeekPosition) (blockledger.Iterator, uint64) {
 	switch start := startPosition.Type.(type) {
 	case *ab.SeekPosition_Oldest:
 		return &cursor{jl: jl, blockNumber: 0}, 0
@@ -125,11 +125,11 @@ func (jl *jsonLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator,
 		return &cursor{jl: jl, blockNumber: high}, high
 	case *ab.SeekPosition_Specified:
 		if start.Specified.Number > jl.height {
-			return &ledger.NotFoundErrorIterator{}, 0
+			return &blockledger.NotFoundErrorIterator{}, 0
 		}
 		return &cursor{jl: jl, blockNumber: start.Specified.Number}, start.Specified.Number
 	default:
-		return &ledger.NotFoundErrorIterator{}, 0
+		return &blockledger.NotFoundErrorIterator{}, 0
 	}
 }
 

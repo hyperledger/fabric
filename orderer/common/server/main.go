@@ -18,12 +18,12 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
-	"github.com/hyperledger/fabric/orderer/common/ledger"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/metadata"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
@@ -185,7 +185,7 @@ func initializeServerConfig(conf *config.TopLevel) comm.ServerConfig {
 	return comm.ServerConfig{SecOpts: secureOpts, KaOpts: kaOpts}
 }
 
-func initializeBootstrapChannel(conf *config.TopLevel, lf ledger.Factory) {
+func initializeBootstrapChannel(conf *config.TopLevel, lf blockledger.Factory) {
 	var genesisBlock *cb.Block
 
 	// Select the bootstrapping mechanism

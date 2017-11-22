@@ -14,55 +14,56 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ledger_test
+package blockledger_test
 
 import (
 	"io/ioutil"
 	"os"
 
+	. "github.com/hyperledger/fabric/common/ledger/blockledger"
+	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	. "github.com/hyperledger/fabric/orderer/common/ledger"
-	jsonledger "github.com/hyperledger/fabric/orderer/common/ledger/json"
-	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-var genesisBlock = cb.NewBlock(0, nil)
-
 func init() {
-	testables = append(testables, &jsonLedgerTestEnv{})
+	testables = append(testables, &fileLedgerTestEnv{})
 }
 
-type jsonLedgerTestFactory struct {
+type fileLedgerTestFactory struct {
 	location string
 }
 
-type jsonLedgerTestEnv struct {
+type fileLedgerTestEnv struct {
 }
 
-func (env *jsonLedgerTestEnv) Initialize() (ledgerTestFactory, error) {
+func (env *fileLedgerTestEnv) Initialize() (ledgerTestFactory, error) {
 	var err error
 	location, err := ioutil.TempDir("", "hyperledger")
 	if err != nil {
 		return nil, err
 	}
-	return &jsonLedgerTestFactory{location: location}, nil
+	return &fileLedgerTestFactory{location: location}, nil
 }
 
-func (env *jsonLedgerTestEnv) Name() string {
-	return "jsonledger"
+func (env *fileLedgerTestEnv) Name() string {
+	return "fileledger"
 }
 
-func (env *jsonLedgerTestFactory) Destroy() error {
+func (env *fileLedgerTestEnv) Close(lf Factory) {
+	lf.Close()
+}
+
+func (env *fileLedgerTestFactory) Destroy() error {
 	err := os.RemoveAll(env.location)
 	return err
 }
 
-func (env *jsonLedgerTestFactory) Persistent() bool {
+func (env *fileLedgerTestFactory) Persistent() bool {
 	return true
 }
 
-func (env *jsonLedgerTestFactory) New() (Factory, ReadWriter) {
-	flf := jsonledger.New(env.location)
+func (env *fileLedgerTestFactory) New() (Factory, ReadWriter) {
+	flf := fileledger.New(env.location)
 	fl, err := flf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
 		panic(err)

@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/orderer/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
@@ -73,9 +73,9 @@ func (cu *cursor) ReadyChan() <-chan struct{} {
 // Close does nothing
 func (cu *cursor) Close() {}
 
-// Iterator returns an Iterator, as specified by a cb.SeekInfo message, and its
+// Iterator returns an Iterator, as specified by a ab.SeekInfo message, and its
 // starting block number
-func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator, uint64) {
+func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (blockledger.Iterator, uint64) {
 	var list *simpleList
 	switch start := startPosition.Type.(type) {
 	case *ab.SeekPosition_Oldest:
@@ -103,7 +103,7 @@ func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator, 
 		if specified+1 < oldest.block.Header.Number+1 || specified > rl.newest.block.Header.Number+1 {
 			logger.Debugf("Returning error iterator because specified seek was %d with oldest %d and newest %d",
 				specified, rl.oldest.block.Header.Number, rl.newest.block.Header.Number)
-			return &ledger.NotFoundErrorIterator{}, 0
+			return &blockledger.NotFoundErrorIterator{}, 0
 		}
 
 		if specified == oldest.block.Header.Number {

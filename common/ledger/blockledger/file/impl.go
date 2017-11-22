@@ -18,11 +18,12 @@ package fileledger
 
 import (
 	"github.com/hyperledger/fabric/common/flogging"
-	cl "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	ledger "github.com/hyperledger/fabric/orderer/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
 	"github.com/op/go-logging"
 )
 
@@ -38,6 +39,7 @@ func init() {
 	close(closedChan)
 }
 
+// FileLedger is a struct used to interact with a node's ledger
 type fileLedger struct {
 	blockStore blkstorage.BlockStore
 	signal     chan struct{}
@@ -46,7 +48,7 @@ type fileLedger struct {
 type fileLedgerIterator struct {
 	ledger         *fileLedger
 	blockNumber    uint64
-	commonIterator cl.ResultsIterator
+	commonIterator ledger.ResultsIterator
 }
 
 // Next blocks until there is a new block available, or returns an error if the
@@ -79,9 +81,9 @@ func (i *fileLedgerIterator) Close() {
 	i.commonIterator.Close()
 }
 
-// Iterator returns an Iterator, as specified by a cb.SeekInfo message, and its
+// Iterator returns an Iterator, as specified by an ab.SeekInfo message, and its
 // starting block number
-func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator, uint64) {
+func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (blockledger.Iterator, uint64) {
 	var startingBlockNumber uint64
 	switch start := startPosition.Type.(type) {
 	case *ab.SeekPosition_Oldest:
@@ -97,15 +99,15 @@ func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator,
 		startingBlockNumber = start.Specified.Number
 		height := fl.Height()
 		if startingBlockNumber > height {
-			return &ledger.NotFoundErrorIterator{}, 0
+			return &blockledger.NotFoundErrorIterator{}, 0
 		}
 	default:
-		return &ledger.NotFoundErrorIterator{}, 0
+		return &blockledger.NotFoundErrorIterator{}, 0
 	}
 
 	iterator, err := fl.blockStore.RetrieveBlocks(startingBlockNumber)
 	if err != nil {
-		return &ledger.NotFoundErrorIterator{}, 0
+		return &blockledger.NotFoundErrorIterator{}, 0
 	}
 
 	return &fileLedgerIterator{ledger: fl, blockNumber: startingBlockNumber, commonIterator: iterator}, startingBlockNumber

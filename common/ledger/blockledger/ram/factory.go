@@ -19,18 +19,18 @@ package ramledger
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/orderer/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 type ramLedgerFactory struct {
 	maxSize int
-	ledgers map[string]ledger.ReadWriter
+	ledgers map[string]blockledger.ReadWriter
 	mutex   sync.Mutex
 }
 
 // GetOrCreate gets an existing ledger (if it exists) or creates it if it does not
-func (rlf *ramLedgerFactory) GetOrCreate(chainID string) (ledger.ReadWriter, error) {
+func (rlf *ramLedgerFactory) GetOrCreate(chainID string) (blockledger.ReadWriter, error) {
 	rlf.mutex.Lock()
 	defer rlf.mutex.Unlock()
 
@@ -47,7 +47,7 @@ func (rlf *ramLedgerFactory) GetOrCreate(chainID string) (ledger.ReadWriter, err
 }
 
 // newChain creates a new chain backed by a RAM ledger
-func newChain(maxSize int) ledger.ReadWriter {
+func newChain(maxSize int) blockledger.ReadWriter {
 	preGenesis := &cb.Block{
 		Header: &cb.BlockHeader{
 			Number: ^uint64(0),
@@ -87,10 +87,10 @@ func (rlf *ramLedgerFactory) Close() {
 }
 
 // New creates a new ledger factory
-func New(maxSize int) ledger.Factory {
+func New(maxSize int) blockledger.Factory {
 	rlf := &ramLedgerFactory{
 		maxSize: maxSize,
-		ledgers: make(map[string]ledger.ReadWriter),
+		ledgers: make(map[string]blockledger.ReadWriter),
 	}
 
 	return rlf
