@@ -328,6 +328,12 @@
 			"revisionTime": "2016-04-07T17:41:26Z"
 		},
 		{
+			"checksumSHA1": "tUGxc7rfX0cmhOOUDhMuAZ9rWsA=",
+			"path": "github.com/hashicorp/go-version",
+			"revision": "fc61389e27c71d120f87031ca8c88a3428f372dd",
+			"revisionTime": "2017-09-14T15:41:28Z"
+		},
+		{
 			"checksumSHA1": "WI+JevQX15p9zqngb1BMHvrPAgU=",
 			"path": "github.com/howeyc/gopass",
 			"revision": "66487b23f2880ba32e185121d2cd51a338ea069a",
@@ -855,7 +861,6 @@
 			"revisionTime": "2017-03-28T23:38:35Z"
 		},
 		{
-			
 			"checksumSHA1": "Omo/Z5hYCGVrR6tDwoJWUCSQgNg=",
 			"path": "gopkg.in/cheggaaa/pb.v1",
 			"revision": "657164d0228d6bebe316fdf725c69f131a50fb10",
