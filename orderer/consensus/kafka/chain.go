@@ -41,6 +41,7 @@ func newChain(
 	support consensus.ConsenterSupport,
 	lastOffsetPersisted int64,
 	lastOriginalOffsetProcessed int64,
+	lastResubmittedConfigOffset int64,
 ) (*chainImpl, error) {
 	lastCutBlockNumber := getLastCutBlockNumber(support.Height())
 	logger.Infof("[channel: %s] Starting chain with last persisted offset %d and last recorded block %d",
@@ -49,17 +50,32 @@ func newChain(
 	errorChan := make(chan struct{})
 	close(errorChan) // We need this closed when starting up
 
+	doneReprocessingMsgInFlight := make(chan struct{})
+	// In either one of following cases, we should unblock ingress messages:
+	// - lastResubmittedConfigOffset == 0, where we've never resubmitted any config messages
+	// - lastResubmittedConfigOffset == lastOriginalOffsetProcessed, where the latest config message we resubmitted
+	//   has been processed already
+	// - lastResubmittedConfigOffset < lastOriginalOffsetProcessed, where we've processed one or more resubmitted
+	//   normal messages after the latest resubmitted config message. (we advance `lastResubmittedConfigOffset` for
+	//   config messages, but not normal messages)
+	if lastResubmittedConfigOffset == 0 || lastResubmittedConfigOffset <= lastOriginalOffsetProcessed {
+		// If we've already caught up with the reprocessing resubmitted messages, close the channel to unblock broadcast
+		close(doneReprocessingMsgInFlight)
+	}
+
 	return &chainImpl{
 		consenter:                   consenter,
 		ConsenterSupport:            support,
 		channel:                     newChannel(support.ChainID(), defaultPartition),
 		lastOffsetPersisted:         lastOffsetPersisted,
 		lastOriginalOffsetProcessed: lastOriginalOffsetProcessed,
+		lastResubmittedConfigOffset: lastResubmittedConfigOffset,
 		lastCutBlockNumber:          lastCutBlockNumber,
 
-		errorChan: errorChan,
-		haltChan:  make(chan struct{}),
-		startChan: make(chan struct{}),
+		errorChan:                   errorChan,
+		haltChan:                    make(chan struct{}),
+		startChan:                   make(chan struct{}),
+		doneReprocessingMsgInFlight: doneReprocessingMsgInFlight,
 	}, nil
 }
 
@@ -70,11 +86,15 @@ type chainImpl struct {
 	channel                     channel
 	lastOffsetPersisted         int64
 	lastOriginalOffsetProcessed int64
+	lastResubmittedConfigOffset int64
 	lastCutBlockNumber          uint64
 
 	producer        sarama.SyncProducer
 	parentConsumer  sarama.Consumer
 	channelConsumer sarama.PartitionConsumer
+
+	// notification that there are in-flight messages need to wait for
+	doneReprocessingMsgInFlight chan struct{}
 
 	// When the partition consumer errors, close the channel. Otherwise, make
 	// this an open, unbuffered channel.
@@ -132,6 +152,21 @@ func (chain *chainImpl) Halt() {
 		logger.Warningf("[channel: %s] Waiting for chain to finish starting before halting", chain.ChainID())
 		<-chain.startChan
 		chain.Halt()
+	}
+}
+
+func (chain *chainImpl) WaitReady() error {
+	select {
+	case <-chain.startChan: // The Start phase has completed
+		select {
+		case <-chain.haltChan: // The chain has been halted, stop here
+			return fmt.Errorf("consenter for this channel has been halted")
+			// Block waiting for all re-submitted messages to be reprocessed
+		case <-chain.doneReprocessingMsgInFlight:
+			return nil
+		}
+	default: // Not ready yet
+		return fmt.Errorf("will not enqueue, consenter for this channel hasn't started yet")
 	}
 }
 
@@ -430,7 +465,7 @@ func getLastCutBlockNumber(blockchainHeight uint64) uint64 {
 	return blockchainHeight - 1
 }
 
-func getOffsets(metadataValue []byte, chainID string) (persisted int64, processed int64) {
+func getOffsets(metadataValue []byte, chainID string) (persisted int64, processed int64, resubmitted int64) {
 	if metadataValue != nil {
 		// Extract orderer-related metadata from the tip of the ledger first
 		kafkaMetadata := &ab.KafkaMetadata{}
@@ -438,9 +473,11 @@ func getOffsets(metadataValue []byte, chainID string) (persisted int64, processe
 			logger.Panicf("[channel: %s] Ledger may be corrupted:"+
 				"cannot unmarshal orderer metadata in most recent block", chainID)
 		}
-		return kafkaMetadata.LastOffsetPersisted, kafkaMetadata.LastOriginalOffsetProcessed
+		return kafkaMetadata.LastOffsetPersisted,
+			kafkaMetadata.LastOriginalOffsetProcessed,
+			kafkaMetadata.LastResubmittedConfigOffset
 	}
-	return sarama.OffsetOldest - 1, int64(0) // default
+	return sarama.OffsetOldest - 1, int64(0), int64(0) // default
 }
 
 func newConnectMessage() *ab.KafkaMessage {
@@ -545,6 +582,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
 			LastOffsetPersisted:         offset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
+			LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
 		})
 		chain.WriteBlock(block, metadata)
 		chain.lastCutBlockNumber++
@@ -559,6 +597,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
 				LastOffsetPersisted:         offset,
 				LastOriginalOffsetProcessed: newOffset,
+				LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
 			})
 			chain.WriteBlock(block, metadata)
 			chain.lastCutBlockNumber++
@@ -583,6 +622,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
 				LastOffsetPersisted:         receivedOffset - 1,
 				LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
+				LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
 			})
 			chain.WriteBlock(block, metadata)
 			chain.lastCutBlockNumber++
@@ -594,6 +634,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
 			LastOffsetPersisted:         receivedOffset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
+			LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
 		})
 		chain.WriteConfigBlock(block, metadata)
 		chain.lastCutBlockNumber++
@@ -659,13 +700,20 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 	case ab.KafkaMessageRegular_NORMAL:
 		// This is a message that is re-validated and re-ordered
 		if regularMessage.OriginalOffset != 0 {
+			logger.Debugf("[channel: %s] Received re-submitted normal message with original offset %d", chain.ChainID(), regularMessage.OriginalOffset)
+
 			// But we've reprocessed it already
 			if regularMessage.OriginalOffset <= chain.lastOriginalOffsetProcessed {
 				logger.Debugf(
-					"[channel: %s] OriginalOffset(%d) <= LastOriginalOffsetProcessd(%d), message has been processed already, discard",
+					"[channel: %s] OriginalOffset(%d) <= LastOriginalOffsetProcessed(%d), message has been consumed already, discard",
 					chain.ChainID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
 				return nil
 			}
+
+			logger.Debugf(
+				"[channel: %s] OriginalOffset(%d) > LastOriginalOffsetProcessed(%d), "+
+					"this is the first time we receive this re-submitted normal message",
+				chain.ChainID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
 
 			// In case we haven't reprocessed the message, there's no need to differentiate it from those
 			// messages that will be processed for the first time.
@@ -704,15 +752,34 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 	case ab.KafkaMessageRegular_CONFIG:
 		// This is a message that is re-validated and re-ordered
 		if regularMessage.OriginalOffset != 0 {
+			logger.Debugf("[channel: %s] Received re-submitted config message with original offset %d", chain.ChainID(), regularMessage.OriginalOffset)
+
 			// But we've reprocessed it already
 			if regularMessage.OriginalOffset <= chain.lastOriginalOffsetProcessed {
 				logger.Debugf(
-					"[channel: %s] OriginalOffset(%d) <= LastOriginalOffsetProcessd(%d), message has been processed already, discard",
+					"[channel: %s] OriginalOffset(%d) <= LastOriginalOffsetProcessed(%d), message has been consumed already, discard",
 					chain.ChainID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
 				return nil
+			}
 
-				// In case we haven't reprocessed the message, there's no need to differentiate it from those
-				// messages that will be processed for the first time.
+			logger.Debugf(
+				"[channel: %s] OriginalOffset(%d) > LastOriginalOffsetProcessed(%d), "+
+					"this is the first time we receive this re-submitted config message",
+				chain.ChainID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
+
+			if regularMessage.OriginalOffset == chain.lastResubmittedConfigOffset && // This is very last resubmitted config message
+				regularMessage.ConfigSeq == seq { // AND we don't need to resubmit it again
+				logger.Debugf("[channel: %s] Config message with original offset %d is the last in-flight resubmitted message"+
+					"and it does not require revalidation, unblock ingress messages now", chain.ChainID(), regularMessage.OriginalOffset)
+				close(chain.doneReprocessingMsgInFlight) // Therefore, we could finally close the channel to unblock broadcast
+			}
+
+			// Somebody resubmitted message at offset X, whereas we didn't. This is due to non-determinism where
+			// that message was considered invalid by us during revalidation, however somebody else deemed it to
+			// be valid, and resubmitted it. We need to advance lastResubmittedConfigOffset in this case in order
+			// to enforce consistency across the network.
+			if chain.lastResubmittedConfigOffset < regularMessage.OriginalOffset {
+				chain.lastResubmittedConfigOffset = regularMessage.OriginalOffset
 			}
 		}
 
@@ -729,6 +796,10 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			if err := chain.configure(configEnv, configSeq, receivedOffset); err != nil {
 				return fmt.Errorf("error re-submitting config message because = %s", err)
 			}
+
+			logger.Debugf("[channel: %s] Resubmitted config message with offset %d, block ingress messages", chain.ChainID(), receivedOffset)
+			chain.lastResubmittedConfigOffset = receivedOffset      // Keep track of last resubmitted message offset
+			chain.doneReprocessingMsgInFlight = make(chan struct{}) // Create the channel to block ingress messages
 
 			return nil
 		}

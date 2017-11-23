@@ -51,9 +51,14 @@ type Chain interface {
 	// it is the responsibility of the consenter to recompute the resulting config,
 	// discarding the message if the reconfiguration is no longer valid.
 	// The consenter may return an error, indicating the message was not accepted
-	//
-	// TODO block Order/Configure calls while a configure message is in flight, see FAB-5969
 	Configure(config *cb.Envelope, configSeq uint64) error
+
+	// WaitReady blocks waiting for consenter to be ready for accepting new messages.
+	// This is useful when consenter needs to temporarily block ingress messages so
+	// that in-flight messages can be consumed. It could return error if consenter is
+	// in erroneous states. If this blocking behavior is not desired, consenter could
+	// simply return nil.
+	WaitReady() error
 
 	// Errored returns a channel which will close when an error has occurred.
 	// This is especially useful for the Deliver client, who must terminate waiting

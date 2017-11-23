@@ -71,4 +71,13 @@ message KafkaMetadata {
     // This value is used to deduplicate re-submitted messages from
     // multiple orderer so that we don't bother re-processing it again.
     int64 last_original_offset_processed = 2;
+
+    // LastResubmittedConfigOffset is used to capture the newest offset of
+    // CONFIG kafka message, which is revalidated and resubmitted. By comparing
+    // this with LastOriginalOffsetProcessed, we could detemine whether there
+    // are still CONFIG messages that have been resubmitted but NOT processed
+    // yet. It's used as condition to block ingress messages, so we could reduce
+    // the overhead of repeatedly resubmitting messages as config seq keeps
+    // advancing.
+    int64 last_resubmitted_config_offset = 3;
 }

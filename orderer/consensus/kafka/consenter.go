@@ -44,8 +44,8 @@ type consenterImpl struct {
 // multichannel.NewManagerImpl() when ranging over the ledgerFactory's
 // existingChains.
 func (consenter *consenterImpl) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
-	lastOffsetPersisted, lastOriginalOffsetProcessed := getOffsets(metadata.Value, support.ChainID())
-	return newChain(consenter, support, lastOffsetPersisted, lastOriginalOffsetProcessed)
+	lastOffsetPersisted, lastOriginalOffsetProcessed, lastResubmittedConfigOffset := getOffsets(metadata.Value, support.ChainID())
+	return newChain(consenter, support, lastOffsetPersisted, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 }
 
 // commonConsenter allows us to retrieve the configuration options set on the
