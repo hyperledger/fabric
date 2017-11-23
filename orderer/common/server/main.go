@@ -13,6 +13,7 @@ import (
 	"net/http"
 	_ "net/http/pprof" // This is essentially the main package for the orderer
 	"os"
+	"time"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -172,7 +173,16 @@ func initializeServerConfig(conf *config.TopLevel) comm.ServerConfig {
 		secureOpts.ClientRootCAs = clientRootCAs
 		logger.Infof("Starting orderer with %s enabled", msg)
 	}
-	return comm.ServerConfig{SecOpts: secureOpts}
+	kaOpts := comm.DefaultKeepaliveOptions()
+	// keepalive settings
+	// ServerMinInterval must be greater than 0
+	if conf.General.Keepalive.ServerMinInterval > time.Duration(0) {
+		kaOpts.ServerMinInterval = conf.General.Keepalive.ServerMinInterval
+	}
+	kaOpts.ServerInterval = conf.General.Keepalive.ServerInterval
+	kaOpts.ServerTimeout = conf.General.Keepalive.ServerTimeout
+
+	return comm.ServerConfig{SecOpts: secureOpts, KaOpts: kaOpts}
 }
 
 func initializeBootstrapChannel(conf *config.TopLevel, lf ledger.Factory) {

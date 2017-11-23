@@ -76,19 +76,33 @@ func TestInitializeProfilingService(t *testing.T) {
 }
 
 func TestInitializeServerConfig(t *testing.T) {
-	initializeServerConfig(
-		&config.TopLevel{
-			General: config.General{
-				TLS: config.TLS{
-					Enabled:           true,
-					ClientAuthEnabled: true,
-					Certificate:       "main.go",
-					PrivateKey:        "main.go",
-					RootCAs:           []string{"main.go"},
-					ClientRootCAs:     []string{"main.go"},
-				},
+	conf := &config.TopLevel{
+		General: config.General{
+			TLS: config.TLS{
+				Enabled:           true,
+				ClientAuthEnabled: true,
+				Certificate:       "main.go",
+				PrivateKey:        "main.go",
+				RootCAs:           []string{"main.go"},
+				ClientRootCAs:     []string{"main.go"},
 			},
-		})
+		},
+	}
+	sc := initializeServerConfig(conf)
+	defaultOpts := comm.DefaultKeepaliveOptions()
+	assert.Equal(t, defaultOpts.ServerMinInterval, sc.KaOpts.ServerMinInterval)
+	assert.Equal(t, time.Duration(0), sc.KaOpts.ServerInterval)
+	assert.Equal(t, time.Duration(0), sc.KaOpts.ServerTimeout)
+	testDuration := 10 * time.Second
+	conf.General.Keepalive = config.Keepalive{
+		ServerMinInterval: testDuration,
+		ServerInterval:    testDuration,
+		ServerTimeout:     testDuration,
+	}
+	sc = initializeServerConfig(conf)
+	assert.Equal(t, testDuration, sc.KaOpts.ServerMinInterval)
+	assert.Equal(t, testDuration, sc.KaOpts.ServerInterval)
+	assert.Equal(t, testDuration, sc.KaOpts.ServerTimeout)
 
 	goodFile := "main.go"
 	badFile := "does_not_exist"

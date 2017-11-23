@@ -74,6 +74,7 @@ type General struct {
 	ListenAddress  string
 	ListenPort     uint16
 	TLS            TLS
+	Keepalive      Keepalive
 	GenesisMethod  string
 	GenesisProfile string
 	SystemChannel  string
@@ -86,7 +87,14 @@ type General struct {
 	BCCSP          *bccsp.FactoryOpts
 }
 
-// TLS contains config for TLS connections.
+// Keepalive contains configuration for gRPC servers
+type Keepalive struct {
+	ServerMinInterval time.Duration
+	ServerInterval    time.Duration
+	ServerTimeout     time.Duration
+}
+
+// TLS contains configuration for TLS connections.
 type TLS struct {
 	Enabled           bool
 	PrivateKey        string
