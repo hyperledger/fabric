@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
@@ -248,10 +249,16 @@ func getPeerAddress() string {
 
 func newPeerClientConnection() (*grpc.ClientConn, error) {
 	var peerAddress = getPeerAddress()
-	if comm.TLSEnabled() {
-		return comm.NewChaincodeClientConnectionWithAddress(peerAddress, true, true, comm.InitTLSForShim(key, cert))
+	// set the keepalive options to match static settings for chaincode server
+	kaOpts := &comm.KeepaliveOptions{
+		ClientInterval: time.Duration(1) * time.Minute,
+		ClientTimeout:  time.Duration(20) * time.Second,
 	}
-	return comm.NewChaincodeClientConnectionWithAddress(peerAddress, true, false, nil)
+	if comm.TLSEnabled() {
+		return comm.NewClientConnectionWithAddress(peerAddress, true, true,
+			comm.InitTLSForShim(key, cert), kaOpts)
+	}
+	return comm.NewClientConnectionWithAddress(peerAddress, true, false, nil, kaOpts)
 }
 
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {
