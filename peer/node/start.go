@@ -37,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
@@ -93,6 +94,17 @@ func initSysCCs() {
 }
 
 func serve(args []string) error {
+	// currently the peer only works with the standard MSP
+	// because in certain scenarios the MSP has to make sure
+	// that from a single credential you only have a single 'identity'.
+	// Idemix does not support this *YET* but it can be easily
+	// fixed to support it. For now, we just make sure that
+	// the peer only comes up with the standard MSP
+	mspType := mgmt.GetLocalMSP().GetType()
+	if mspType != msp.FABRIC {
+		panic("Unsupported msp type " + msp.ProviderTypeToString(mspType))
+	}
+
 	logger.Infof("Starting %s", version.GetInfo())
 
 	//aclmgmt initializes a proxy Processor that will be redirected to RSCC provider

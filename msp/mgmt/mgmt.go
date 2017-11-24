@@ -26,7 +26,22 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
+
+// LoadLocalMspWithType loads the local MSP with the specified type from the specified directory
+func LoadLocalMspWithType(dir string, bccspConfig *factory.FactoryOpts, mspID, mspType string) error {
+	if mspID == "" {
+		return errors.New("the local MSP must have an ID")
+	}
+
+	conf, err := msp.GetLocalMspConfigWithType(dir, bccspConfig, mspID, mspType)
+	if err != nil {
+		return err
+	}
+
+	return GetLocalMSP().Setup(conf)
+}
 
 // LoadLocalMsp loads the local MSP from the specified directory
 func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) error {
@@ -115,6 +130,23 @@ func GetLocalMSP() msp.MSP {
 	var lclMsp msp.MSP
 	var created bool = false
 	{
+		// determine the type of MSP (by default, we'll use bccspMSP)
+		mspType := viper.GetString("peer.localMspType")
+		if mspType == "" {
+			mspType = msp.ProviderTypeToString(msp.FABRIC)
+		}
+
+		// based on the MSP type, generate the new opts
+		var newOpts msp.NewOpts
+		switch mspType {
+		case msp.ProviderTypeToString(msp.FABRIC):
+			newOpts = &msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_0}}
+		case msp.ProviderTypeToString(msp.IDEMIX):
+			newOpts = &msp.IdemixNewOpts{msp.NewBaseOpts{Version: msp.MSPv1_1}}
+		default:
+			panic("msp type " + mspType + " unknown")
+		}
+
 		m.Lock()
 		defer m.Unlock()
 
@@ -123,14 +155,21 @@ func GetLocalMSP() msp.MSP {
 			var err error
 			created = true
 
-			mspInst, err := msp.New(&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_0}})
+			mspInst, err := msp.New(newOpts)
 			if err != nil {
 				mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
 			}
 
-			lclMsp, err = cache.New(mspInst)
-			if err != nil {
-				mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
+			switch mspType {
+			case msp.ProviderTypeToString(msp.FABRIC):
+				lclMsp, err = cache.New(mspInst)
+				if err != nil {
+					mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
+				}
+			case msp.ProviderTypeToString(msp.IDEMIX):
+				lclMsp = mspInst
+			default:
+				panic("msp type " + mspType + " unknown")
 			}
 			localMsp = lclMsp
 		}
