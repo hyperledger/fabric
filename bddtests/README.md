@@ -34,16 +34,7 @@ This will automaticall switch you to the new environment if successful.  In the 
 **NOTE**: If you have issues installing the modules below, and you are running the vagrant environment, consider performing a **vagrant destroy** followed by a **vagrant up**.
 
 ```
-    pip install behave
-    pip install grpcio-tools
-    pip install "pysha3==1.0b1"
-    pip install b3j0f.aop
-    pip install jinja2
-    # The pyopenssl install gives errors, but installs succeeds
-    pip install pyopenssl
-    pip install ecdsa
-    pip install python-slugify
-    pip install pyyaml
+    pip install -r ../devenv/bddtests-requirements.txt
 ```
 
 ### Running behave
