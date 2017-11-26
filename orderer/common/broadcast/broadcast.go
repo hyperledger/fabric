@@ -10,11 +10,10 @@ import (
 	"io"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-
-	"github.com/hyperledger/fabric/orderer/common/util"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
