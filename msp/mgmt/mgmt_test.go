@@ -60,3 +60,24 @@ func TestGetLocalSigningIdentityOrPanic(t *testing.T) {
 	sid := GetLocalSigningIdentityOrPanic()
 	assert.NotNil(t, sid)
 }
+
+func TestUpdateLocalMspCache(t *testing.T) {
+	// reset localMsp to force it to be initialized on the first call
+	localMsp = nil
+
+	// first call should initialize local MSP and returned the cached version
+	firstMsp := GetLocalMSP()
+	// second call should return the same
+	secondMsp := GetLocalMSP()
+	// third call should return the same
+	thirdMsp := GetLocalMSP()
+
+	// the same (non-cached if not patched) instance
+	if thirdMsp != secondMsp {
+		t.Fatalf("thirdMsp != secondMsp")
+	}
+	// first (cached) and second (non-cached) different unless patched
+	if firstMsp != secondMsp {
+		t.Fatalf("firstMsp != secondMsp")
+	}
+}
