@@ -37,10 +37,21 @@ func TestInvokeCmd(t *testing.T) {
 	InitMSP()
 	mockCF, err := getMockChaincodeCmdFactory()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
+	// reset channelID, it might have been set by previous test
+	channelID = ""
 
+	// Error case 0: no channelID specified
 	cmd := invokeCmd(mockCF)
 	addFlags(cmd)
 	args := []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
+	cmd.SetArgs(args)
+	err = cmd.Execute()
+	assert.Error(t, err, "'peer chaincode invoke' command should have returned error when called without -C flag")
+
+	// Success case
+	cmd = invokeCmd(mockCF)
+	addFlags(cmd)
+	args = []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}", "-C", "mychannel"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.NoError(t, err, "Run chaincode invoke cmd error")
@@ -65,7 +76,7 @@ func TestInvokeCmd(t *testing.T) {
 	}
 	cmd = invokeCmd(nil)
 	addFlags(cmd)
-	args = []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
+	args = []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}", "-C", "mychannel"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.Error(t, err)
@@ -128,7 +139,7 @@ func TestInvokeCmdEndorsementError(t *testing.T) {
 
 	cmd := invokeCmd(mockCF)
 	addFlags(cmd)
-	args := []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
+	args := []string{"-n", "example02", "-C", "mychannel", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.Error(t, err, "Expected error executing invoke command")

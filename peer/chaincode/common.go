@@ -99,7 +99,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 
 	proposalResp, err := ChaincodeInvokeOrQuery(
 		spec,
-		chainID,
+		channelID,
 		invoke,
 		cf.Signer,
 		cf.EndorserClient,
@@ -246,14 +246,14 @@ func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFa
 	var broadcastClient common.BroadcastClient
 	if isOrdererRequired {
 		if len(orderingEndpoint) == 0 {
-			orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(chainID, signer, endorserClient)
+			orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(channelID, signer, endorserClient)
 			if err != nil {
-				return nil, fmt.Errorf("Error getting (%s) orderer endpoint: %s", chainID, err)
+				return nil, fmt.Errorf("Error getting (%s) orderer endpoint: %s", channelID, err)
 			}
 			if len(orderingEndpoints) == 0 {
-				return nil, fmt.Errorf("Error no orderer endpoint got for %s", chainID)
+				return nil, fmt.Errorf("Error no orderer endpoint got for %s", channelID)
 			}
-			logger.Infof("Get chain(%s) orderer endpoint: %s", chainID, orderingEndpoints[0])
+			logger.Infof("Get chain(%s) orderer endpoint: %s", channelID, orderingEndpoints[0])
 			orderingEndpoint = orderingEndpoints[0]
 		}
 

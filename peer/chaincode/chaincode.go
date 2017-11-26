@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -59,7 +58,7 @@ var (
 	chaincodeQueryRaw bool
 	chaincodeQueryHex bool
 	customIDGenAlg    string
-	chainID           string
+	channelID         string
 	chaincodeVersion  string
 	policy            string
 	escc              string
@@ -101,7 +100,7 @@ func resetFlags() {
 		fmt.Sprint("Username for chaincode operations when security is enabled"))
 	flags.StringVarP(&customIDGenAlg, "tid", "t", common.UndefinedParamValue,
 		fmt.Sprint("Name of a custom ID generation algorithm (hashing and decoding) e.g. sha256base64"))
-	flags.StringVarP(&chainID, "channelID", "C", util.GetTestChainID(),
+	flags.StringVarP(&channelID, "channelID", "C", "",
 		fmt.Sprint("The channel on which this command should be executed"))
 	flags.StringVarP(&policy, "policy", "P", common.UndefinedParamValue,
 		fmt.Sprint("The endorsement policy associated to this chaincode"))

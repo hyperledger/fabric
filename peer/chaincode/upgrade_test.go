@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/stretchr/testify/assert"
 )
 
 var once sync.Once
@@ -63,6 +64,8 @@ func TestUpgradeCmd(t *testing.T) {
 		Signer:          signer,
 		BroadcastClient: mockBroadcastClient,
 	}
+	// reset channelID, it might have been set by previous test
+	channelID = ""
 
 	cmd := upgradeCmd(mockCF)
 	addFlags(cmd)
@@ -70,10 +73,14 @@ func TestUpgradeCmd(t *testing.T) {
 	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
 		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
+	err = cmd.Execute()
+	assert.Error(t, err, "'peer chaincode upgrade' command should have failed without -C flag")
 
-	if err := cmd.Execute(); err != nil {
-		t.Errorf("Run chaincode upgrade cmd error:%v", err)
-	}
+	args = []string{"-C", "mychannel", "-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
+	cmd.SetArgs(args)
+	err = cmd.Execute()
+	assert.NoError(t, err, "'peer chaincode upgrade' command failed")
 }
 
 func TestUpgradeCmdEndorseFail(t *testing.T) {
@@ -101,7 +108,7 @@ func TestUpgradeCmdEndorseFail(t *testing.T) {
 	cmd := upgradeCmd(mockCF)
 	addFlags(cmd)
 
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+	args := []string{"-C", "mychannel", "-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
 		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
 
@@ -142,7 +149,7 @@ func TestUpgradeCmdSendTXFail(t *testing.T) {
 	cmd := upgradeCmd(mockCF)
 	addFlags(cmd)
 
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
+	args := []string{"-C", "mychannel", "-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
 
 	expectErrMsg := sendErr.Error()

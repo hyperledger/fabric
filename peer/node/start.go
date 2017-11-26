@@ -60,7 +60,6 @@ const (
 type ccEndpointFunc func() (*pb.PeerEndpoint, error)
 
 var chaincodeDevMode bool
-var peerDefaultChain bool
 var orderingEndpoint string
 
 // XXXDefaultChannelMSPID should not be defined in production code
@@ -74,8 +73,6 @@ func startCmd() *cobra.Command {
 	flags := nodeStartCmd.Flags()
 	flags.BoolVarP(&chaincodeDevMode, "peer-chaincodedev", "", false,
 		"Whether peer in chaincode development mode")
-	flags.BoolVarP(&peerDefaultChain, "peer-defaultchain", "", false,
-		"Whether to start peer with chain testchainid")
 	flags.StringVarP(&orderingEndpoint, "orderer", "o", "orderer:7050", "Ordering service endpoint")
 
 	return nodeStartCmd

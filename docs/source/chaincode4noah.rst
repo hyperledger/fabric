@@ -325,30 +325,23 @@ Which shows output similar to the example below:
     install     Package the specified chaincode into a deployment spec and save it on the peer's path.
     instantiate Deploy the specified chaincode to the network.
     invoke      Invoke the specified chaincode.
+    list        Get the instantiated chaincodes on a channel or installed chaincodes on a peer.
     package     Package the specified chaincode into a deployment spec.
     query       Query using the specified chaincode.
     signpackage Sign the specified chaincode package
     upgrade     Upgrade chaincode.
 
   Flags:
-        --cafile string     Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
-    -C, --chainID string    The chain on which this command should be executed (default "testchainid")
-    -c, --ctor string       Constructor message for the chaincode in JSON format (default "{}")
-    -E, --escc string       The name of the endorsement system chaincode to be used for this chaincode
-    -l, --lang string       Language the chaincode is written in (default "golang")
-    -n, --name string       Name of the chaincode
-    -o, --orderer string    Ordering service endpoint
-    -p, --path string       Path to chaincode
-    -P, --policy string     The endorsement policy associated to this chaincode
-    -t, --tid string        Name of a custom ID generation algorithm (hashing and decoding) e.g. sha256base64
-        --tls               Use TLS when communicating with the orderer endpoint
-    -u, --username string   Username for chaincode operations when security is enabled
-    -v, --version string    Version of the chaincode specified in install/instantiate/upgrade commands
-    -V, --vscc string       The name of the verification system chaincode to be used for this chaincode
+      --cafile string      Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
+  -h, --help               help for chaincode
+  -o, --orderer string     Ordering service endpoint
+      --tls                Use TLS when communicating with the orderer endpoint
+      --transient string   Transient map of arguments in JSON encoding
 
-  Global Flags:
-        --logging-level string       Default logging level and overrides, see core.yaml for full syntax
-        --test.coverprofile string   Done (default "coverage.cov")
+Global Flags:
+      --logging-level string       Default logging level and overrides, see core.yaml for full syntax
+      --test.coverprofile string   Done (default "coverage.cov")
+  -v, --version
 
   Use "peer chaincode [command] --help" for more information about a command.
 

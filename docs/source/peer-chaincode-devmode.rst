@@ -7,9 +7,8 @@ during chaincode development phase for rapid code/build/run/debug cycle
 turnaround.
 
 To keep this a realistic “dev” environment, we are going to keep it “out
-of the box” - with one exception: we create two channels instead of
-using the default ``testchainid`` channel to show how the single running
-instance can be accessed from multiple channels.
+of the box” - with one exception: we create two channels to show how the
+single running instance can be accessed from multiple channels.
 
 - Note: Make sure peer is not using TLS when running in dev mode.
 

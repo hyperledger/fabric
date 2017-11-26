@@ -17,6 +17,7 @@ limitations under the License.
 package chaincode
 
 import (
+	"errors"
 	"fmt"
 
 	protcommon "github.com/hyperledger/fabric/protos/common"
@@ -59,6 +60,9 @@ func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 
 //upgrade the command via Endorser
 func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, error) {
+	if channelID == "" {
+		return nil, errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
+	}
 	spec, err := getChaincodeSpec(cmd)
 	if err != nil {
 		return nil, err
@@ -74,7 +78,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 		return nil, fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
-	prop, _, err := utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc))
+	prop, _, err := utils.CreateUpgradeProposalFromCDS(channelID, cds, creator, policyMarshalled, []byte(escc), []byte(vscc))
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal %s: %s", chainFuncName, err)
 	}
