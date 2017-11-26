@@ -375,8 +375,9 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 
 // ProcessProposal process the Proposal
 func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
-	endorserLogger.Debugf("Entry")
-	defer endorserLogger.Debugf("Exit")
+	addr := util.ExtractRemoteAddress(ctx)
+	endorserLogger.Debug("Entering: Got request from", addr)
+	defer endorserLogger.Debugf("Exit: request from", addr)
 	// at first, we check whether the message is valid
 	prop, hdr, hdrExt, err := validation.ValidateProposalMessage(signedProp)
 	if err != nil {
