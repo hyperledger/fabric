@@ -220,7 +220,8 @@ It should return something like this:
 
 .. code:: json
 
-  Query result count =  1
+  Successfully loaded user1 from persistence
+  Query has completed, checking results
   Response is  [{"Key":"CAR0", "Record":{"colour":"blue","make":"Toyota","model":"Prius","owner":"Tomoko"}},
   {"Key":"CAR1",   "Record":{"colour":"red","make":"Ford","model":"Mustang","owner":"Brad"}},
   {"Key":"CAR2", "Record":{"colour":"green","make":"Hyundai","model":"Tucson","owner":"Jin Soo"}},
