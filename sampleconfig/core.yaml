@@ -79,6 +79,12 @@ peer:
     # the peer's address (see below) with port 7052
     # chaincodeListenAddress: 0.0.0.0:7052
 
+    # The endpoint the chaincode for this peer uses to connect to the peer.
+    # If this is not specified, the chaincodeListenAddress address is selected.
+    # And if chaincodeListenAddress is not specified, address is selected from
+    # peer listenAddress.
+    # chaincodeAddress: 0.0.0.0:7052
+
     # When used as peer config, this represents the endpoint to other peers
     # in the same organization. For peers in other organization, see
     # gossip.externalEndpoint for more info.
@@ -420,9 +426,6 @@ vm:
 #
 ###############################################################################
 chaincode:
-    # This is used if chaincode endpoint resolution fails with the
-    # chaincodeListenAddress property
-    peerAddress:
 
     # The id is used by the Chaincode stub to register the executing Chaincode
     # ID with the Peer and is generally supplied through ENV variables

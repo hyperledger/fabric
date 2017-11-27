@@ -52,6 +52,7 @@ import (
 )
 
 const (
+	chaincodeAddrKey       = "peer.chaincodeAddress"
 	chaincodeListenAddrKey = "peer.chaincodeListenAddress"
 	defaultChaincodePort   = 7052
 )
@@ -343,22 +344,81 @@ func createChaincodeServer(caCert []byte, peerHostname string) (comm.GRPCServer,
 			return nil, err
 		}
 
-		ccendpoint := viper.GetString(chaincodeListenAddrKey)
-		if ccendpoint == "" {
-			return nil, fmt.Errorf("%s not specified", chaincodeListenAddrKey)
-		}
-
-		if _, _, err = net.SplitHostPort(ccendpoint); err != nil {
+		ccEndpoint, err := computeChaincodeEndpoint(peerHostname)
+		if err != nil {
 			return nil, err
 		}
 
 		return &pb.PeerEndpoint{
 			Id:      peerEndpoint.Id,
-			Address: ccendpoint,
+			Address: ccEndpoint,
 		}, nil
 	}
 
 	return srv, ccEpFunc
+}
+
+// There could be following cases of computing chaincode endpoint:
+// Case A: if chaincodeAddrKey is set, use it
+// Case B: else if chaincodeListenAddrKey is set and not "0.0.0.0" or ("::"), use it
+// Case C: else use peer address if not "0.0.0.0" (or "::")
+// Case D: else return error
+func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error) {
+	logger.Infof("Entering computeChaincodeEndpoint with peerHostname: %s", peerHostname)
+	// set this to the host/ip the chaincode will resolve to. It could be
+	// the same address as the peer (such as in the sample docker env using
+	// the container name as the host name across the board)
+	ccEndpoint = viper.GetString(chaincodeAddrKey)
+	if ccEndpoint == "" {
+		// the chaincodeAddrKey is not set, try to get the address from listener
+		// (may finally use the peer address)
+		ccEndpoint = viper.GetString(chaincodeListenAddrKey)
+		if ccEndpoint == "" {
+			// Case C: chaincodeListenAddrKey is not set, use peer address
+			peerIp := net.ParseIP(peerHostname)
+			if peerIp != nil && peerIp.IsUnspecified() {
+				// Case D: all we have is "0.0.0.0" or "::" which chaincode cannot connect to
+				logger.Errorf("ChaincodeAddress and chaincodeListenAddress are nil and peerIP is %s", peerIp)
+				return "", errors.New("invalid endpoint for chaincode to connect")
+			}
+			// use peerAddress:defaultChaincodePort
+			ccEndpoint = fmt.Sprintf("%s:%d", peerHostname, defaultChaincodePort)
+
+		} else {
+			// Case B: chaincodeListenAddrKey is set
+			host, port, err := net.SplitHostPort(ccEndpoint)
+			if err != nil {
+				// and the listener was brought up above...
+				// so this should really not happen.. just a paranoid check
+				logger.Errorf("ChaincodeAddress is nil and fail to split chaincodeListenAddress: %s", err)
+				return "", err
+			}
+
+			ccListenerIp := net.ParseIP(host)
+			// ignoring other values such as Multicast address etc ...as the server
+			// wouldn't start up with this address anyway
+			if ccListenerIp != nil && ccListenerIp.IsUnspecified() {
+				// Case C: if "0.0.0.0" or "::", we have to use peer address with the listen port
+				peerIp := net.ParseIP(peerHostname)
+				if peerIp != nil && peerIp.IsUnspecified() {
+					// Case D: all we have is "0.0.0.0" or "::" which chaincode cannot connect to
+					logger.Error("ChaincodeAddress is nil while both chaincodeListenAddressIP and peerIP are 0.0.0.0")
+					return "", errors.New("invalid endpoint for chaincode to connect")
+				}
+				ccEndpoint = fmt.Sprintf("%s:%s", peerHostname, port)
+			}
+		}
+
+	} else {
+		// Case A: the chaincodeAddrKey is set
+		if _, _, err = net.SplitHostPort(ccEndpoint); err != nil {
+			logger.Errorf("Fail to split chaincodeAddress: %s", err)
+			return "", err
+		}
+	}
+
+	logger.Infof("Exit with ccEndpoint: %s", ccEndpoint)
+	return ccEndpoint, nil
 }
 
 //NOTE - when we implement JOIN we will no longer pass the chainID as param

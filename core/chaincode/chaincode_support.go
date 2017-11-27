@@ -151,8 +151,15 @@ func NewChaincodeSupport(getCCEndpoint func() (*pb.PeerEndpoint, error), userrun
 
 	ccEndpoint, err := getCCEndpoint()
 	if err != nil {
-		chaincodeLogger.Errorf("Error getting chaincode endpoint using %s: %+v", peerAddressDefault, err)
-		theChaincodeSupport.peerAddress = peerAddressDefault
+		// getCCEndpoint has already done necessary checks,
+		// therefore it will panic if any error returns and it's in dev mode.
+		// peerAddressDefault is acceptable only in dev mode.
+		if IsDevMode() {
+			chaincodeLogger.Errorf("Error getting chaincode endpoint in dev mode, using %s: %+v", peerAddressDefault, err)
+			theChaincodeSupport.peerAddress = peerAddressDefault
+		} else {
+			chaincodeLogger.Panicf("Error getting chaincode endpoint: %+v", err)
+		}
 	} else {
 		theChaincodeSupport.peerAddress = ccEndpoint.Address
 	}
