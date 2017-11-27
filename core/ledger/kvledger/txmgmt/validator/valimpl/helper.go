@@ -77,7 +77,7 @@ func validatePvtdata(tx *valinternal.Transaction, pvtdata *ledger.TxPvtData) err
 			hashInPubdata := tx.RetrieveHash(nsPvtdata.Namespace, collPvtdata.CollectionName)
 			if !bytes.Equal(collPvtdataHash, hashInPubdata) {
 				return &validator.ErrPvtdataHashMissmatch{
-					Msg: fmt.Sprintf(`Hash of pvt data for collection [%s:%s] does not match with the corresponding hash in the public data. 
+					Msg: fmt.Sprintf(`Hash of pvt data for collection [%s:%s] does not match with the corresponding hash in the public data.
 					public hash = [%#v], pvt data hash = [%#v]`, nsPvtdata.Namespace, collPvtdata.CollectionName, hashInPubdata, collPvtdataHash),
 				}
 			}
@@ -98,24 +98,27 @@ func preprocessProtoBlock(txmgr txmgr.TxMgr, block *common.Block) (*valinternal.
 		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 	}
 	for txIndex, envBytes := range block.Data.Data {
+		var env *common.Envelope
+		var chdr *common.ChannelHeader
+		var payload *common.Payload
+		var err error
+		if env, err = utils.GetEnvelopeFromBlock(envBytes); err == nil {
+			if payload, err = utils.GetPayload(env); err == nil {
+				chdr, err = utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+			}
+		}
 		if txsFilter.IsInvalid(txIndex) {
-			// Skiping invalid transaction
-			logger.Warningf("Block [%d] Transaction index [%d] marked as invalid by committer. Reason code [%d]",
-				block.Header.Number, txIndex, txsFilter.Flag(txIndex))
+			// Skipping invalid transaction
+			logger.Warningf("Channel [%s]: Block [%d] Transaction index [%d] TxId [%s]"+
+				" marked as invalid by committer. Reason code [%s]",
+				chdr.GetChannelId(), block.Header.Number, txIndex, chdr.GetTxId(),
+				txsFilter.Flag(txIndex).String())
 			continue
 		}
-		env, err := utils.GetEnvelopeFromBlock(envBytes)
 		if err != nil {
 			return nil, err
 		}
-		payload, err := utils.GetPayload(env)
-		if err != nil {
-			return nil, err
-		}
-		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-		if err != nil {
-			return nil, err
-		}
+
 		var txRWSet *rwsetutil.TxRwSet
 		txType := common.HeaderType(chdr.Type)
 		logger.Debugf("txType=%s", txType)
