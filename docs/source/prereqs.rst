@@ -18,7 +18,7 @@ Docker and Docker Compose
 You will need the following installed on the platform on which you will be
 operating, or developing on (or for), Hyperledger Fabric:
 
-  - MacOSX, *nix, or Windows 10: `Docker <https://www.docker.com/products/overview>`__
+  - MacOSX, \*nix, or Windows 10: `Docker <https://www.docker.com/products/overview>`__
     Docker version 17.06.2-ce or greater is required.
   - Older versions of Windows: `Docker
     Toolbox <https://docs.docker.com/toolbox/toolbox_install_windows/>`__ -
@@ -117,16 +117,22 @@ Check your version(s):
 Windows extras
 --------------
 
-If you are developing on Windows, you will want to work within the
-Docker Quickstart Terminal which provides a better alternative to the
-built-in Windows such as `Git Bash <https://git-scm.com/downloads>`__
-which you typically get as part of installing Docker Toolbox on
-Windows 7.
+If you are developing on Windows 7, you will want to work within the
+Docker Quickstart Terminal which uses `Git Bash
+<https://git-scm.com/downloads>`__ and provides a better alternative
+to the built-in Windows shell.
 
 However experience has shown this to be a poor development environment
 with limited functionality. It is suitable to run Docker based
 scenarios, such as :doc:`getting_started`, but you may have
-difficulties with operations involving the ``make`` command.
+difficulties with operations involving the ``make`` and ``docker``
+commands.
+
+On Windows 10 you should use the native Docker distribution and you
+may use the Windows PowerShell. However, for the :ref:`binaries`
+command to succeed you will still need to have the ``uname`` command
+available. You can get it as part of Git but beware that only the
+64bit version is supported.
 
 Before running any ``git clone`` commands, run the following commands:
 

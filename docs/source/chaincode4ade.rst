@@ -414,7 +414,7 @@ Download Docker images
 
 We need four Docker images in order for "dev mode" to run against the supplied
 docker compose script.  If you installed the ``fabric-samples`` repo clone and
-followed the instructions to :ref:`download-platform-specific-binaries`, then
+followed the instructions to :ref:`binaries`, then
 you should have the necessary Docker images installed locally.
 
 .. note:: If you choose to manually pull the images then you must retag them as
@@ -436,7 +436,7 @@ should see something similar to following:
   hyperledger/fabric-ccenv       latest                               4b70698a71d3        4 hours ago         1.29 GB
   hyperledger/fabric-ccenv       x86_64-1.0.0                         4b70698a71d3        4 hours ago         1.29 GB
 
-.. note:: If you retrieved the images through the :ref:`download-platform-specific-binaries`,
+.. note:: If you retrieved the images through the :ref:`binaries`,
           then you will see additional images listed.  However, we are only concerned with
           these four.
 
