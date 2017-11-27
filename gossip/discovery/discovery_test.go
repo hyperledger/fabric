@@ -43,6 +43,31 @@ func init() {
 	maxConnectionAttempts = 10000
 }
 
+type dummyReceivedMessage struct {
+	msg  *proto.SignedGossipMessage
+	info *proto.ConnectionInfo
+}
+
+func (*dummyReceivedMessage) Respond(msg *proto.GossipMessage) {
+	panic("implement me")
+}
+
+func (rm *dummyReceivedMessage) GetGossipMessage() *proto.SignedGossipMessage {
+	return rm.msg
+}
+
+func (*dummyReceivedMessage) GetSourceEnvelope() *proto.Envelope {
+	panic("implement me")
+}
+
+func (rm *dummyReceivedMessage) GetConnectionInfo() *proto.ConnectionInfo {
+	return rm.info
+}
+
+func (*dummyReceivedMessage) Ack(err error) {
+	panic("implement me")
+}
+
 type dummyCommModule struct {
 	msgsReceived uint32
 	msgsSent     uint32
@@ -52,7 +77,7 @@ type dummyCommModule struct {
 	streams      map[string]proto.Gossip_GossipStreamClient
 	conns        map[string]*grpc.ClientConn
 	lock         *sync.RWMutex
-	incMsgs      chan *proto.SignedGossipMessage
+	incMsgs      chan proto.ReceivedMessage
 	lastSeqs     map[string]uint64
 	shouldGossip bool
 	mock         *mock.Mock
@@ -98,6 +123,17 @@ func (comm *dummyCommModule) Gossip(msg *proto.SignedGossipMessage) {
 	defer comm.lock.Unlock()
 	for _, conn := range comm.streams {
 		conn.Send(msg.Envelope)
+	}
+}
+
+func (comm *dummyCommModule) Forward(msg proto.ReceivedMessage) {
+	if !comm.shouldGossip {
+		return
+	}
+	comm.lock.Lock()
+	defer comm.lock.Unlock()
+	for _, conn := range comm.streams {
+		conn.Send(msg.GetGossipMessage().Envelope)
 	}
 }
 
@@ -152,7 +188,7 @@ func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
 	return true
 }
 
-func (comm *dummyCommModule) Accept() <-chan *proto.SignedGossipMessage {
+func (comm *dummyCommModule) Accept() <-chan proto.ReceivedMessage {
 	return comm.incMsgs
 }
 
@@ -217,7 +253,12 @@ func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) er
 		}
 
 		lgr.Debug(g.Discovery.Self().Endpoint, "Got message:", gMsg)
-		g.comm.incMsgs <- gMsg
+		g.comm.incMsgs <- &dummyReceivedMessage{
+			msg: gMsg,
+			info: &proto.ConnectionInfo{
+				ID: common.PKIidType("testID"),
+			},
+		}
 		atomic.AddUint32(&g.comm.msgsReceived, 1)
 
 		if aliveMsg := gMsg.GetAliveMsg(); aliveMsg != nil {
@@ -294,7 +335,7 @@ func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []st
 	comm := &dummyCommModule{
 		conns:        make(map[string]*grpc.ClientConn),
 		streams:      make(map[string]proto.Gossip_GossipStreamClient),
-		incMsgs:      make(chan *proto.SignedGossipMessage, 1000),
+		incMsgs:      make(chan proto.ReceivedMessage, 1000),
 		presumeDead:  make(chan common.PKIidType, 10000),
 		id:           id,
 		detectedDead: make(chan string, 10000),
@@ -364,7 +405,12 @@ func TestBadInput(t *testing.T) {
 			DataMsg: &proto.DataMessage{},
 		},
 	}).NoopSign()
-	inst.Discovery.(*gossipDiscoveryImpl).handleMsgFromComm(s)
+	inst.Discovery.(*gossipDiscoveryImpl).handleMsgFromComm(&dummyReceivedMessage{
+		msg: s,
+		info: &proto.ConnectionInfo{
+			ID: common.PKIidType("testID"),
+		},
+	})
 }
 
 func TestConnect(t *testing.T) {
@@ -944,7 +990,12 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	// Handling Alive
 	for i := 0; i < peersNum; i++ {
 		for k := 0; k < peersNum; k++ {
-			instances[i].discoveryImpl().handleMsgFromComm(aliveMsgs[k])
+			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
+				msg: aliveMsgs[k],
+				info: &proto.ConnectionInfo{
+					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
+				},
+			})
 		}
 	}
 
@@ -1006,7 +1057,12 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	// Handling new Alive set
 	for i := 0; i < peersNum; i++ {
 		for k := 0; k < peersNum; k++ {
-			instances[i].discoveryImpl().handleMsgFromComm(newAliveMsgs[k])
+			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
+				msg: newAliveMsgs[k],
+				info: &proto.ConnectionInfo{
+					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
+				},
+			})
 		}
 	}
 
@@ -1041,7 +1097,12 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 				return k == i
 			},
 			func(k int) {
-				instances[i].discoveryImpl().handleMsgFromComm(memReqMsgs[k])
+				instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
+					msg: memReqMsgs[k],
+					info: &proto.ConnectionInfo{
+						ID: common.PKIidType(fmt.Sprintf("d%d", i)),
+					},
+				})
 			})
 	}
 
@@ -1053,7 +1114,12 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	// Processing old (later) Alive messages
 	for i := 0; i < peersNum; i++ {
 		for k := 0; k < peersNum; k++ {
-			instances[i].discoveryImpl().handleMsgFromComm(aliveMsgs[k])
+			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
+				msg: aliveMsgs[k],
+				info: &proto.ConnectionInfo{
+					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
+				},
+			})
 		}
 	}
 
@@ -1074,7 +1140,12 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 					MemRes: msg,
 				},
 			}).NoopSign()
-			instances[i].discoveryImpl().handleMsgFromComm(sMsg)
+			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
+				msg: sMsg,
+				info: &proto.ConnectionInfo{
+					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
+				},
+			})
 		}
 	}
 
