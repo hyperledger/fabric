@@ -150,13 +150,9 @@ func initMockPeer(chainIDs ...string) error {
 
 	peer.MockSetMSPIDGetter(mspGetter)
 
-	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
-		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "testpeer"}}, nil
-	}
-
 	ccStartupTimeout := time.Duration(10) * time.Second
 	ca, _ := accesscontrol.NewCA()
-	NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout, ca)
+	NewChaincodeSupport("0.0.0.0:7052", false, ccStartupTimeout, ca)
 	theChaincodeSupport.executetimeout = time.Duration(1) * time.Second
 
 	// Mock policy checker

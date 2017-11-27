@@ -57,9 +57,6 @@ const (
 	defaultChaincodePort   = 7052
 )
 
-//function used by chaincode support
-type ccEndpointFunc func() (*pb.PeerEndpoint, error)
-
 var chaincodeDevMode bool
 var orderingEndpoint string
 
@@ -161,8 +158,11 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Panic("Failed creating authentication layer:", err)
 	}
-	ccSrv, ccEpFunc := createChaincodeServer(ca.CertBytes(), peerHost)
-	registerChaincodeSupport(ccSrv, ccEpFunc, ca)
+	ccSrv, ccEndpoint, err := createChaincodeServer(ca.CertBytes(), peerHost)
+	if err != nil {
+		logger.Panicf("Failed to create chaincode server: %s", err)
+	}
+	registerChaincodeSupport(ccSrv, ccEndpoint, ca)
 	go ccSrv.Start()
 
 	logger.Debugf("Running peer")
@@ -303,7 +303,21 @@ func serve(args []string) error {
 }
 
 //create a CC listener using peer.chaincodeListenAddress (and if that's not set use peer.peerAddress)
-func createChaincodeServer(caCert []byte, peerHostname string) (comm.GRPCServer, ccEndpointFunc) {
+func createChaincodeServer(caCert []byte, peerHostname string) (srv comm.GRPCServer, ccEndpoint string, err error) {
+	// before potentially setting chaincodeListenAddress, compute chaincode endpoint at first
+	ccEndpoint, err = computeChaincodeEndpoint(peerHostname)
+	if err != nil {
+		if chaincode.IsDevMode() {
+			// if any error for dev mode, we use 0.0.0.0:7052
+			ccEndpoint = fmt.Sprintf("%s:%d", "0.0.0.0", defaultChaincodePort)
+			logger.Warningf("use %s as chaincode endpoint because of error in computeChaincodeEndpoint: %s", ccEndpoint, err)
+		} else {
+			// for non-dev mode, we have to return error
+			logger.Errorf("Error computing chaincode endpoint: %s", err)
+			return nil, "", err
+		}
+	}
+
 	cclistenAddress := viper.GetString(chaincodeListenAddrKey)
 	if cclistenAddress == "" {
 		cclistenAddress = fmt.Sprintf("%s:%d", peerHostname, defaultChaincodePort)
@@ -311,12 +325,10 @@ func createChaincodeServer(caCert []byte, peerHostname string) (comm.GRPCServer,
 		viper.Set(chaincodeListenAddrKey, cclistenAddress)
 	}
 
-	var srv comm.GRPCServer
-	var ccEpFunc ccEndpointFunc
-
 	config, err := peer.GetServerConfig()
 	if err != nil {
-		panic(err)
+		logger.Errorf("Error getting server config: %s", err)
+		return nil, "", err
 	}
 
 	if config.SecOpts.UseTLS {
@@ -334,32 +346,17 @@ func createChaincodeServer(caCert []byte, peerHostname string) (comm.GRPCServer,
 
 	srv, err = comm.NewGRPCServer(cclistenAddress, config)
 	if err != nil {
-		panic(err)
+		logger.Errorf("Error creating GRPC server: %s", err)
+		return nil, "", err
 	}
 
-	ccEpFunc = func() (*pb.PeerEndpoint, error) {
-		//need this for the ID to create chaincode endpoint
-		peerEndpoint, err := peer.GetPeerEndpoint()
-		if err != nil {
-			return nil, err
-		}
-
-		ccEndpoint, err := computeChaincodeEndpoint(peerHostname)
-		if err != nil {
-			return nil, err
-		}
-
-		return &pb.PeerEndpoint{
-			Id:      peerEndpoint.Id,
-			Address: ccEndpoint,
-		}, nil
-	}
-
-	return srv, ccEpFunc
+	return srv, ccEndpoint, nil
 }
 
+// computeChaincodeEndpoint will utilize chaincode address, chaincode listen
+// address (these two are from viper) and peer address to compute chaincode endpoint.
 // There could be following cases of computing chaincode endpoint:
-// Case A: if chaincodeAddrKey is set, use it
+// Case A: if chaincodeAddrKey is set, use it if not "0.0.0.0" (or "::")
 // Case B: else if chaincodeListenAddrKey is set and not "0.0.0.0" or ("::"), use it
 // Case C: else use peer address if not "0.0.0.0" (or "::")
 // Case D: else return error
@@ -381,6 +378,7 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 				logger.Errorf("ChaincodeAddress and chaincodeListenAddress are nil and peerIP is %s", peerIp)
 				return "", errors.New("invalid endpoint for chaincode to connect")
 			}
+
 			// use peerAddress:defaultChaincodePort
 			ccEndpoint = fmt.Sprintf("%s:%d", peerHostname, defaultChaincodePort)
 
@@ -388,8 +386,6 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 			// Case B: chaincodeListenAddrKey is set
 			host, port, err := net.SplitHostPort(ccEndpoint)
 			if err != nil {
-				// and the listener was brought up above...
-				// so this should really not happen.. just a paranoid check
 				logger.Errorf("ChaincodeAddress is nil and fail to split chaincodeListenAddress: %s", err)
 				return "", err
 			}
@@ -407,13 +403,20 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 				}
 				ccEndpoint = fmt.Sprintf("%s:%s", peerHostname, port)
 			}
+
 		}
 
 	} else {
 		// Case A: the chaincodeAddrKey is set
-		if _, _, err = net.SplitHostPort(ccEndpoint); err != nil {
+		if host, _, err := net.SplitHostPort(ccEndpoint); err != nil {
 			logger.Errorf("Fail to split chaincodeAddress: %s", err)
 			return "", err
+		} else {
+			ccIP := net.ParseIP(host)
+			if ccIP != nil && ccIP.IsUnspecified() {
+				logger.Errorf("ChaincodeAddress' IP cannot be %s in non-dev mode", ccIP)
+				return "", errors.New("invalid endpoint for chaincode to connect")
+			}
 		}
 	}
 
@@ -424,7 +427,7 @@ func computeChaincodeEndpoint(peerHostname string) (ccEndpoint string, err error
 //NOTE - when we implement JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
-func registerChaincodeSupport(grpcServer comm.GRPCServer, ccEpFunc ccEndpointFunc, ca accesscontrol.CA) {
+func registerChaincodeSupport(grpcServer comm.GRPCServer, ccEndpoint string, ca accesscontrol.CA) {
 	//get user mode
 	userRunsCC := chaincode.IsDevMode()
 
@@ -437,7 +440,7 @@ func registerChaincodeSupport(grpcServer comm.GRPCServer, ccEpFunc ccEndpointFun
 		logger.Debugf("Chaincode startup timeout value set to %s", ccStartupTimeout)
 	}
 
-	ccSrv := chaincode.NewChaincodeSupport(ccEpFunc, userRunsCC, ccStartupTimeout, ca)
+	ccSrv := chaincode.NewChaincodeSupport(ccEndpoint, userRunsCC, ccStartupTimeout, ca)
 
 	//Now that chaincode is initialized, register all system chaincodes.
 	scc.RegisterSysCCs()

@@ -67,13 +67,9 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 		return nil, nil, err
 	}
 
-	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
-		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
-	}
-
 	ccStartupTimeout := time.Duration(5000) * time.Millisecond
 	ca, _ := accesscontrol.NewCA()
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout, ca))
+	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(peerAddress, false, ccStartupTimeout, ca))
 
 	go grpcServer.Serve(lis)
 
