@@ -25,19 +25,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// >>>>> begin errors section >>>>>
-//chaincodeError is a fabric error signifying error from chaincode
-type chaincodeError struct {
-	status int32
-	msg    string
-}
-
-func (ce chaincodeError) Error() string {
-	return fmt.Sprintf("chaincode error (status: %d, message: %s)", ce.status, ce.msg)
-}
-
-// <<<<< end errors section <<<<<<
-
 var endorserLogger = flogging.MustGetLogger("endorser")
 
 // The Jira issue that documents Endorser flow along with its relationship to
@@ -423,7 +410,9 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 	if chainID != "" {
 		// here we handle uniqueness check and ACLs for proposals targeting a chain
 		if _, err = e.s.GetTransactionByID(chainID, txid); err == nil {
-			return vr, errors.Errorf("duplicate transaction found [%s]. Creator [%x]", txid, shdr.Creator)
+			err = errors.Errorf("duplicate transaction found [%s]. Creator [%x]", txid, shdr.Creator)
+			vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
+			return vr, err
 		}
 
 		// check ACL only for application chaincodes; ACLs
@@ -468,10 +457,10 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	var historyQueryExecutor ledger.HistoryQueryExecutor
 	if chainID != "" {
 		if txsim, err = e.s.GetTxSimulator(chainID, txid); err != nil {
-			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
 		if historyQueryExecutor, err = e.s.GetHistoryQueryExecutor(chainID); err != nil {
-			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
 		// Add the historyQueryExecutor to context
 		// TODO shouldn't we also add txsim to context here as well? Rather than passing txsim parameter
@@ -490,7 +479,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	//1 -- simulate
 	cd, res, simulationResult, ccevent, err := e.simulateProposal(ctx, chainID, txid, signedProp, prop, hdrExt.ChaincodeId, txsim)
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 	}
 	if res != nil {
 		if res.Status >= shim.ERROR {
@@ -504,10 +493,10 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 			}
 			pResp, err := putils.CreateProposalResponseFailure(prop.Header, prop.Payload, res, simulationResult, cceventBytes, hdrExt.ChaincodeId, hdrExt.PayloadVisibility)
 			if err != nil {
-				return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+				return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 			}
 
-			return pResp, &chaincodeError{res.Status, res.Message}
+			return pResp, nil
 		}
 	}
 
@@ -521,20 +510,18 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	} else {
 		pResp, err = e.endorseProposal(ctx, chainID, txid, signedProp, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeId, txsim, cd)
 		if err != nil {
-			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
-		if pResp != nil {
-			if res.Status >= shim.ERRORTHRESHOLD {
-				endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", chainID, shorttxid(txid), hdrExt.ChaincodeId, txid)
-				return pResp, &chaincodeError{res.Status, res.Message}
-			}
+		if pResp.Response.Status >= shim.ERRORTHRESHOLD {
+			endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", chainID, shorttxid(txid), hdrExt.ChaincodeId, txid)
+			return pResp, nil
 		}
 	}
 
 	// Set the proposal response payload - it
 	// contains the "return value" from the
 	// chaincode invocation
-	pResp.Response.Payload = res.Payload
+	pResp.Response = res
 
 	return pResp, nil
 }

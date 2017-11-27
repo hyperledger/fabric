@@ -454,7 +454,7 @@ func TestCreateProposalResponseFailure(t *testing.T) {
 		return
 	}
 
-	assert.Equal(t, int32(500), prespFailure.Response.Status)
+	assert.Equal(t, int32(502), prespFailure.Response.Status)
 	// drilldown into the response to find the chaincode response
 	pRespPayload, err := utils.GetProposalResponsePayload(prespFailure.Payload)
 	assert.NoError(t, err, "Error while unmarshaling proposal response payload: %s", err)

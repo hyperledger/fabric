@@ -112,7 +112,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 	}
 
 	if response.Status >= shim.ERRORTHRESHOLD {
-		return shim.Error(fmt.Sprintf("Status code less than %d will be endorsed, received status code: %d", shim.ERRORTHRESHOLD, response.Status))
+		return *response
 	}
 
 	// handle simulation results
