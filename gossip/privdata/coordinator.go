@@ -237,8 +237,6 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	return nil
 }
 
-type dataSources map[rwSetKey][]*peer.Endorsement
-
 func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][]byte, privateInfo *privateDataInfo) {
 	dig2src := make(map[*gossip2.PvtDataDigest][]*peer.Endorsement)
 	privateInfo.missingKeys.foreach(func(k rwSetKey) {
