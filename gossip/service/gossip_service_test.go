@@ -652,11 +652,11 @@ func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gos
 		PublishStateInfoInterval:   time.Duration(1) * time.Second,
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 	}
-	selfId := api.PeerIdentityType(conf.InternalEndpoint)
+	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	cryptoService := &naiveCryptoService{}
 
 	gossip := gossip.NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService,
-		selfId, nil)
+		selfID, nil)
 
 	gossipService := &gossipServiceImpl{
 		mcs:             cryptoService,

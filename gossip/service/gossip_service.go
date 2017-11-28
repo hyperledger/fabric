@@ -197,6 +197,8 @@ func (g *gossipServiceImpl) NewConfigEventer() ConfigProcessor {
 	return newConfigEventer(g)
 }
 
+// Support aggregates functionality of several
+// interfaces required by gossip service
 type Support struct {
 	Validator txvalidator.Validator
 	Committer committer.Committer
@@ -204,6 +206,8 @@ type Support struct {
 	Cs        privdata.CollectionStore
 }
 
+// DataStoreSupport aggregates interfaces capable
+// of handling either incoming blocks or private data
 type DataStoreSupport struct {
 	committer.Committer
 	privdata2.TransientStore

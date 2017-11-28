@@ -154,7 +154,7 @@ func init() {
 	logger = util.GetLogger(util.LoggingStateModule, "")
 }
 
-// NewGossipCoordinatedStateProvider creates state provider with coordinator instance
+// NewGossipStateProvider creates state provider with coordinator instance
 // to orchestrate arrival of private rwsets and blocks before committing them into the ledger.
 func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger ledgerResources) GossipStateProvider {
 
