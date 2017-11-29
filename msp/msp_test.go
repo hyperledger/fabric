@@ -23,6 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
@@ -1095,16 +1096,16 @@ func TestMSPIdentityIdentifier(t *testing.T) {
 	assert.NotEqual(t, certFromFile.Raw, id.(*signingidentity).cert)
 
 	// Check that certFromFile is in HighS
-	_, S, err := sw.UnmarshalECDSASignature(certFromFile.Signature)
+	_, S, err := utils.UnmarshalECDSASignature(certFromFile.Signature)
 	assert.NoError(t, err)
-	lowS, err := sw.IsLowS(caCertFromFile.PublicKey.(*ecdsa.PublicKey), S)
+	lowS, err := utils.IsLowS(caCertFromFile.PublicKey.(*ecdsa.PublicKey), S)
 	assert.NoError(t, err)
 	assert.False(t, lowS)
 
 	// Check that id.(*signingidentity).cert is in LoswS
-	_, S, err = sw.UnmarshalECDSASignature(id.(*signingidentity).cert.Signature)
+	_, S, err = utils.UnmarshalECDSASignature(id.(*signingidentity).cert.Signature)
 	assert.NoError(t, err)
-	lowS, err = sw.IsLowS(caCertFromFile.PublicKey.(*ecdsa.PublicKey), S)
+	lowS, err = utils.IsLowS(caCertFromFile.PublicKey.(*ecdsa.PublicKey), S)
 	assert.NoError(t, err)
 	assert.True(t, lowS)
 

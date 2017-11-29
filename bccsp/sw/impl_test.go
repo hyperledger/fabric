@@ -974,35 +974,35 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 
 func TestECDSASignatureEncoding(t *testing.T) {
 	v := []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0xff, 0xf1}
-	_, err := asn1.Unmarshal(v, &ECDSASignature{})
+	_, err := asn1.Unmarshal(v, &utils.ECDSASignature{})
 	if err == nil {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
 	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
 
 	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0x00, 0x01}
-	_, err = asn1.Unmarshal(v, &ECDSASignature{})
+	_, err = asn1.Unmarshal(v, &utils.ECDSASignature{})
 	if err == nil {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
 	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
 
 	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x01}
-	_, err = asn1.Unmarshal(v, &ECDSASignature{})
+	_, err = asn1.Unmarshal(v, &utils.ECDSASignature{})
 	if err == nil {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
 	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
 
 	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x8F}
-	_, err = asn1.Unmarshal(v, &ECDSASignature{})
+	_, err = asn1.Unmarshal(v, &utils.ECDSASignature{})
 	if err == nil {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
 	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
 
 	v = []byte{0x30, 0x0A, 0x02, 0x01, 0x8F, 0x02, 0x05, 0x00, 0x00, 0x00, 0x00, 0x8F}
-	_, err = asn1.Unmarshal(v, &ECDSASignature{})
+	_, err = asn1.Unmarshal(v, &utils.ECDSASignature{})
 	if err == nil {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
@@ -1029,12 +1029,12 @@ func TestECDSALowS(t *testing.T) {
 		t.Fatalf("Failed generating ECDSA signature [%s]", err)
 	}
 
-	_, S, err := UnmarshalECDSASignature(signature)
+	_, S, err := utils.UnmarshalECDSASignature(signature)
 	if err != nil {
 		t.Fatalf("Failed unmarshalling signature [%s]", err)
 	}
 
-	if S.Cmp(curveHalfOrders[k.(*ecdsaPrivateKey).privKey.Curve]) >= 0 {
+	if S.Cmp(utils.GetCurveHalfOrdersAt(k.(*ecdsaPrivateKey).privKey.Curve)) >= 0 {
 		t.Fatal("Invalid signature. It must have low-S")
 	}
 
@@ -1054,12 +1054,12 @@ func TestECDSALowS(t *testing.T) {
 			t.Fatalf("Failed generating signature [%s]", err)
 		}
 
-		if S.Cmp(curveHalfOrders[k.(*ecdsaPrivateKey).privKey.Curve]) > 0 {
+		if S.Cmp(utils.GetCurveHalfOrdersAt(k.(*ecdsaPrivateKey).privKey.Curve)) > 0 {
 			break
 		}
 	}
 
-	sig, err := MarshalECDSASignature(R, S)
+	sig, err := utils.MarshalECDSASignature(R, S)
 	if err != nil {
 		t.Fatalf("Failing unmarshalling signature [%s]", err)
 	}

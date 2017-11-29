@@ -25,53 +25,9 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestUnmarshalECDSASignature(t *testing.T) {
-	_, _, err := UnmarshalECDSASignature(nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed unmashalling signature [")
-
-	_, _, err = UnmarshalECDSASignature([]byte{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed unmashalling signature [")
-
-	_, _, err = UnmarshalECDSASignature([]byte{0})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed unmashalling signature [")
-
-	sigma, err := MarshalECDSASignature(big.NewInt(-1), big.NewInt(1))
-	assert.NoError(t, err)
-	_, _, err = UnmarshalECDSASignature(sigma)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid signature. R must be larger than zero")
-
-	sigma, err = MarshalECDSASignature(big.NewInt(0), big.NewInt(1))
-	assert.NoError(t, err)
-	_, _, err = UnmarshalECDSASignature(sigma)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid signature. R must be larger than zero")
-
-	sigma, err = MarshalECDSASignature(big.NewInt(1), big.NewInt(0))
-	assert.NoError(t, err)
-	_, _, err = UnmarshalECDSASignature(sigma)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid signature. S must be larger than zero")
-
-	sigma, err = MarshalECDSASignature(big.NewInt(1), big.NewInt(-1))
-	assert.NoError(t, err)
-	_, _, err = UnmarshalECDSASignature(sigma)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid signature. S must be larger than zero")
-
-	sigma, err = MarshalECDSASignature(big.NewInt(1), big.NewInt(1))
-	assert.NoError(t, err)
-	R, S, err := UnmarshalECDSASignature(sigma)
-	assert.NoError(t, err)
-	assert.Equal(t, big.NewInt(1), R)
-	assert.Equal(t, big.NewInt(1), S)
-}
 
 func TestSignECDSA(t *testing.T) {
 	// Generate a key
@@ -87,14 +43,6 @@ func TestSignECDSA(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "zero parameter")
 	lowLevelKey.Params().N = oldN
-
-	oldCurveHalfOrders := curveHalfOrders
-	curveHalfOrders = nil
-	defer func() { curveHalfOrders = oldCurveHalfOrders }()
-	_, err = signECDSA(lowLevelKey, msg, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Curve not recognized [")
-	curveHalfOrders = oldCurveHalfOrders
 }
 
 func TestVerifyECDSA(t *testing.T) {
@@ -114,22 +62,14 @@ func TestVerifyECDSA(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed unmashalling signature [")
 
-	oldCurveHalfOrders := curveHalfOrders
-	curveHalfOrders = nil
-	defer func() { curveHalfOrders = oldCurveHalfOrders }()
-	_, err = verifyECDSA(&lowLevelKey.PublicKey, sigma, msg, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Curve not recognized [")
-	curveHalfOrders = oldCurveHalfOrders
-
 	_, err = verifyECDSA(&lowLevelKey.PublicKey, nil, msg, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed unmashalling signature [")
 
-	R, S, err := UnmarshalECDSASignature(sigma)
+	R, S, err := utils.UnmarshalECDSASignature(sigma)
 	assert.NoError(t, err)
-	S.Add(curveHalfOrders[elliptic.P256()], big.NewInt(1))
-	sigmaWrongS, err := MarshalECDSASignature(R, S)
+	S.Add(utils.GetCurveHalfOrdersAt(elliptic.P256()), big.NewInt(1))
+	sigmaWrongS, err := utils.MarshalECDSASignature(R, S)
 	assert.NoError(t, err)
 	_, err = verifyECDSA(&lowLevelKey.PublicKey, sigmaWrongS, msg, nil)
 	assert.Error(t, err)
@@ -235,53 +175,4 @@ func TestEcdsaPublicKey(t *testing.T) {
 	_, err = k.Bytes()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed marshalling key [")
-}
-
-func TestIsLowS(t *testing.T) {
-	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	assert.NoError(t, err)
-
-	lowS, err := IsLowS(&lowLevelKey.PublicKey, big.NewInt(0))
-	assert.NoError(t, err)
-	assert.True(t, lowS)
-
-	s := new(big.Int)
-	s = s.Set(curveHalfOrders[elliptic.P256()])
-
-	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.True(t, lowS)
-
-	s = s.Add(s, big.NewInt(1))
-	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.False(t, lowS)
-	s, modified, err := ToLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.True(t, modified)
-	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.True(t, lowS)
-}
-
-func TestSignatureToLowS(t *testing.T) {
-	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	assert.NoError(t, err)
-
-	s := new(big.Int)
-	s = s.Set(curveHalfOrders[elliptic.P256()])
-	s = s.Add(s, big.NewInt(1))
-
-	lowS, err := IsLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.False(t, lowS)
-	sigma, err := MarshalECDSASignature(big.NewInt(1), s)
-	assert.NoError(t, err)
-	sigma2, err := SignatureToLowS(&lowLevelKey.PublicKey, sigma)
-	assert.NoError(t, err)
-	_, s, err = UnmarshalECDSASignature(sigma2)
-	assert.NoError(t, err)
-	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.True(t, lowS)
 }
