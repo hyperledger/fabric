@@ -9,10 +9,13 @@ package encoder
 import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/resourcesconfig"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -281,12 +284,30 @@ func NewConsortiumGroup(conf *genesisconfig.Consortium) (*cb.ConfigGroup, error)
 
 // NewChannelCreateConfigUpdate generates a ConfigUpdate which can be sent to the orderer to create a new channel.  Optionally, the channel group of the
 // ordering system channel may be passed in, and the resulting ConfigUpdate will extract the appropriate versions from this file.
-func NewChannelCreateConfigUpdate(channelID, consortiumName string, orgs []string, orderingSystemChannelGroup *cb.ConfigGroup) (*cb.ConfigUpdate, error) {
-	var applicationGroup *cb.ConfigGroup
-	channelGroupVersion := uint64(0)
+func NewChannelCreateConfigUpdate(channelID string, orderingSystemChannelGroup *cb.ConfigGroup, conf *genesisconfig.Profile) (*cb.ConfigUpdate, error) {
+	if conf.Application == nil {
+		return nil, errors.New("cannot define a new channel with no Application section")
+	}
+
+	if conf.Consortium == "" {
+		return nil, errors.New("cannot define a new channel with no Consortium value")
+	}
+
+	// Otherwise, parse only the application section, and encapsulate it inside a channel group
+	ag, err := NewApplicationGroup(conf.Application)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not turn channel application profile into application group")
+	}
+
+	agc, err := channelconfig.NewApplicationConfig(ag, channelconfig.NewMSPConfigHandler(msp.MSPv1_1))
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not parse application to application group")
+	}
+
+	var template, newChannelGroup *cb.ConfigGroup
 
 	if orderingSystemChannelGroup != nil {
-		// In the case that a ordering system channel definition was provided, pull the appropriate versions
+		// In the case that a ordering system channel definition was provided, use it to compute the update
 		if orderingSystemChannelGroup.Groups == nil {
 			return nil, errors.New("missing all channel groups")
 		}
@@ -296,58 +317,86 @@ func NewChannelCreateConfigUpdate(channelID, consortiumName string, orgs []strin
 			return nil, errors.New("bad consortiums group")
 		}
 
-		consortium, ok := consortiums.Groups[consortiumName]
-		if !ok || (len(orgs) > 0 && consortium.Groups == nil) {
-			return nil, errors.Errorf("bad consortium: %s", consortiumName)
+		consortium, ok := consortiums.Groups[conf.Consortium]
+		if !ok {
+			return nil, errors.Errorf("bad consortium: %s", conf.Consortium)
 		}
 
-		applicationGroup = cb.NewConfigGroup()
-		for _, org := range orgs {
-			orgGroup, ok := consortium.Groups[org]
-			if !ok {
-				return nil, errors.Errorf("missing organization: %s", org)
+		template = proto.Clone(orderingSystemChannelGroup).(*cb.ConfigGroup)
+		template.Groups[channelconfig.ApplicationGroupKey] = proto.Clone(consortium).(*cb.ConfigGroup)
+		// This is a bit of a hack. If the channel config specifies all consortium members, then it does not look
+		// like a modification.  The below adds a fake org with an illegal name which cannot actually exist, which
+		// will always appear to be deleted, triggering the correct update computation.
+		template.Groups[channelconfig.ApplicationGroupKey].Groups["*IllegalKey*!"] = &cb.ConfigGroup{}
+		delete(template.Groups, channelconfig.ConsortiumsGroupKey)
+
+		newChannelGroup = proto.Clone(orderingSystemChannelGroup).(*cb.ConfigGroup)
+		delete(newChannelGroup.Groups, channelconfig.ConsortiumsGroupKey)
+		newChannelGroup.Groups[channelconfig.ApplicationGroupKey].Values = ag.Values
+		newChannelGroup.Groups[channelconfig.ApplicationGroupKey].Policies = ag.Policies
+
+		for orgName, org := range template.Groups[channelconfig.ApplicationGroupKey].Groups {
+			if _, ok := ag.Groups[orgName]; ok {
+				newChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups[orgName] = org
 			}
-			applicationGroup.Groups[org] = &cb.ConfigGroup{Version: orgGroup.Version}
+		}
+	} else {
+		newChannelGroup = &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				channelconfig.ApplicationGroupKey: ag,
+			},
 		}
 
-		channelGroupVersion = orderingSystemChannelGroup.Version
-	} else {
 		// Otherwise assume the orgs have not been modified
-		applicationGroup = cb.NewConfigGroup()
-		for _, org := range orgs {
-			applicationGroup.Groups[org] = &cb.ConfigGroup{}
+		template = proto.Clone(newChannelGroup).(*cb.ConfigGroup)
+		template.Groups[channelconfig.ApplicationGroupKey].Values = nil
+		template.Groups[channelconfig.ApplicationGroupKey].Policies = nil
+	}
+
+	updt, err := update.Compute(&cb.Config{ChannelGroup: template}, &cb.Config{ChannelGroup: newChannelGroup})
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not compute update")
+	}
+
+	// Add the consortium name to create the channel for into the write set as required.
+	updt.ChannelId = channelID
+	updt.ReadSet.Values[channelconfig.ConsortiumKey] = &cb.ConfigValue{Version: 0}
+	updt.WriteSet.Values[channelconfig.ConsortiumKey] = &cb.ConfigValue{
+		Version: 0,
+		Value: utils.MarshalOrPanic(&cb.Consortium{
+			Name: conf.Consortium,
+		}),
+	}
+
+	// If this channel uses the new lifecycle config, specify the seed data
+	if agc.Capabilities().LifecycleViaConfig() {
+		updt.IsolatedData = map[string][]byte{
+			pb.RSCCSeedDataKey: utils.MarshalOrPanic(&cb.Config{
+				Type: int32(cb.ConfigType_RESOURCE),
+				ChannelGroup: &cb.ConfigGroup{
+					Groups: map[string]*cb.ConfigGroup{
+						resourcesconfig.ChaincodesGroupKey: &cb.ConfigGroup{
+							ModPolicy: policies.ChannelApplicationAdmins,
+						},
+						resourcesconfig.PeerPoliciesGroupKey: &cb.ConfigGroup{
+							ModPolicy: policies.ChannelApplicationAdmins,
+						},
+						resourcesconfig.APIsGroupKey: &cb.ConfigGroup{
+							ModPolicy: policies.ChannelApplicationAdmins,
+						},
+					},
+					ModPolicy: policies.ChannelApplicationAdmins,
+				},
+			}),
 		}
 	}
 
-	rSet := cb.NewConfigGroup()
-	rSet.Version = channelGroupVersion
-
-	// add the consortium name to the rSet
-
-	addValue(rSet, channelconfig.ConsortiumValue(consortiumName), "") // TODO, this emulates the old behavior, but is it desirable?
-
-	// create the new channel's application group
-
-	rSet.Groups[channelconfig.ApplicationGroupKey] = applicationGroup
-
-	wSet := proto.Clone(rSet).(*cb.ConfigGroup)
-
-	applicationGroup = wSet.Groups[channelconfig.ApplicationGroupKey]
-	applicationGroup.Version = 1
-	applicationGroup.Policies = make(map[string]*cb.ConfigPolicy)
-	addImplicitMetaPolicyDefaults(applicationGroup)
-	applicationGroup.ModPolicy = channelconfig.AdminsPolicyKey
-
-	return &cb.ConfigUpdate{
-		ChannelId: channelID,
-		ReadSet:   rSet,
-		WriteSet:  wSet,
-	}, nil
+	return updt, nil
 }
 
 // MakeChannelCreationTransaction is a handy utility function for creating transactions for channel creation
-func MakeChannelCreationTransaction(channelID string, consortium string, signer msp.SigningIdentity, orderingSystemChannelConfigGroup *cb.ConfigGroup, orgs ...string) (*cb.Envelope, error) {
-	newChannelConfigUpdate, err := NewChannelCreateConfigUpdate(channelID, consortium, orgs, orderingSystemChannelConfigGroup)
+func MakeChannelCreationTransaction(channelID string, signer crypto.LocalSigner, orderingSystemChannelConfigGroup *cb.ConfigGroup, conf *genesisconfig.Profile) (*cb.Envelope, error) {
+	newChannelConfigUpdate, err := NewChannelCreateConfigUpdate(channelID, orderingSystemChannelConfigGroup, conf)
 	if err != nil {
 		return nil, errors.Wrap(err, "config update generation failure")
 	}
@@ -356,15 +405,14 @@ func MakeChannelCreationTransaction(channelID string, consortium string, signer 
 		ConfigUpdate: utils.MarshalOrPanic(newChannelConfigUpdate),
 	}
 
-	payloadSignatureHeader := &cb.SignatureHeader{}
 	if signer != nil {
-		sSigner, err := signer.Serialize()
+		sigHeader, err := signer.NewSignatureHeader()
 		if err != nil {
-			return nil, errors.Wrap(err, "serialization of identity failed")
+			return nil, errors.Wrap(err, "creating signature header failed")
 		}
 
 		newConfigUpdateEnv.Signatures = []*cb.ConfigSignature{&cb.ConfigSignature{
-			SignatureHeader: utils.MarshalOrPanic(utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())),
+			SignatureHeader: utils.MarshalOrPanic(sigHeader),
 		}}
 
 		newConfigUpdateEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigUpdateEnv.Signatures[0].SignatureHeader, newConfigUpdateEnv.ConfigUpdate))
@@ -372,25 +420,9 @@ func MakeChannelCreationTransaction(channelID string, consortium string, signer 
 			return nil, errors.Wrap(err, "signature failure over config update")
 		}
 
-		payloadSignatureHeader = utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())
 	}
 
-	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG_UPDATE, msgVersion, channelID, epoch)
-	utils.SetTxID(payloadChannelHeader, payloadSignatureHeader)
-	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(newConfigUpdateEnv)}
-	paylBytes := utils.MarshalOrPanic(payload)
-
-	var sig []byte
-	if signer != nil {
-		// sign the payload
-		sig, err = signer.Sign(paylBytes)
-		if err != nil {
-			return nil, errors.Wrap(err, "signature failure over config update envelope")
-		}
-	}
-
-	return &cb.Envelope{Payload: paylBytes, Signature: sig}, nil
+	return utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, newConfigUpdateEnv, msgVersion, epoch)
 }
 
 // Bootstrapper is a wrapper around NewChannelConfigGroup which can produce genesis blocks

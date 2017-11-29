@@ -113,7 +113,7 @@ const (
 )
 
 var envvars = map[string]string{
-	"ORDERER_GENERAL_GENESISPROFILE":                            localconfig.SampleDevModeSoloProfile,
+	"ORDERER_GENERAL_GENESISPROFILE":                            localconfig.SampleDevModeSoloV11Profile,
 	"ORDERER_GENERAL_LEDGERTYPE":                                "file",
 	"ORDERER_GENERAL_LOGLEVEL":                                  "error",
 	"ORDERER_KAFKA_VERBOSE":                                     "false",

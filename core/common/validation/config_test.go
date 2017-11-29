@@ -29,7 +29,7 @@ import (
 
 func TestValidateConfigTx(t *testing.T) {
 	chainID := util.GetTestChainID()
-	chCrtEnv, err := encoder.MakeChannelCreationTransaction(genesisconfig.SampleConsortiumName, chainID, signer, nil)
+	chCrtEnv, err := encoder.MakeChannelCreationTransaction(genesisconfig.SampleConsortiumName, nil, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
 	if err != nil {
 		t.Fatalf("MakeChannelCreationTransaction failed, err %s", err)
 		return

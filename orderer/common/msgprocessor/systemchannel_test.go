@@ -670,7 +670,7 @@ func TestNewChannelConfig(t *testing.T) {
 
 	// Successful
 	t.Run("Success", func(t *testing.T) {
-		createTx, err := encoder.MakeChannelCreationTransaction("foo", genesisconfig.SampleConsortiumName, nil, nil, genesisconfig.SampleOrgName)
+		createTx, err := encoder.MakeChannelCreationTransaction("foo", nil, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
 		assert.Nil(t, err)
 		res, err := templator.NewChannelConfig(createTx)
 		assert.Nil(t, err)

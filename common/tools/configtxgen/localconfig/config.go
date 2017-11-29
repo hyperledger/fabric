@@ -52,6 +52,8 @@ const (
 	SampleInsecureSoloProfile = "SampleInsecureSolo"
 	// SampleDevModeSoloProfile references the sample profile which requires only basic membership for admin privileges and uses solo for ordering.
 	SampleDevModeSoloProfile = "SampleDevModeSolo"
+	// SampleDevModeSoloProfileV11 references the sample profile which requires only basic membership for admin privileges and uses solo for ordering, but has v1.1 capabilities enabled
+	SampleDevModeSoloV11Profile = "SampleDevModeSoloV1_1"
 	// SampleSingleMSPSoloProfile references the sample profile which includes only the sample MSP and uses solo for ordering.
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
 	// SampleSingleMSPSoloV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities defined and uses solo for ordering.
@@ -61,6 +63,8 @@ const (
 	SampleInsecureKafkaProfile = "SampleInsecureKafka"
 	// SampleDevModeKafkaProfile references the sample profile which requires only basic membership for admin privileges and uses Kafka for ordering.
 	SampleDevModeKafkaProfile = "SampleDevModeKafka"
+	// SampleDevModeKafkaProfileV11 references the sample profile which requires only basic membership for admin privileges and uses Kafka for ordering, but has v1.1 capabilities enabled.
+	SampleDevModeKafkaV11Profile = "SampleDevModeKafkaV1_1"
 	// SampleSingleMSPKafkaProfile references the sample profile which includes only the sample MSP and uses Kafka for ordering.
 	SampleSingleMSPKafkaProfile = "SampleSingleMSPKafka"
 	// SampleSingleMSPKafkaV11Profile references the sample profile which includes only the sample MSP with v1.1 capabilities defined and uses Kafka for ordering.

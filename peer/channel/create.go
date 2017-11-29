@@ -28,7 +28,6 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/util"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -71,13 +70,7 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 }
 
 func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
-	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
-	if err != nil {
-		return nil, err
-	}
-
-	chCrtEnv, err := encoder.MakeChannelCreationTransaction(channelID, genesisconfig.SampleConsortiumName, signer, nil)
-
+	chCrtEnv, err := encoder.MakeChannelCreationTransaction(channelID, localsigner.NewSigner(), nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
 	if err != nil {
 		return nil, err
 	}
