@@ -82,8 +82,6 @@ func main() {
 
 	mainFlags.String("logging-level", "", "Default logging level and overrides, see core.yaml for full syntax")
 	viper.BindPFlag("logging_level", mainFlags.Lookup("logging-level"))
-	testCoverProfile := ""
-	mainFlags.StringVarP(&testCoverProfile, "test.coverprofile", "", "coverage.cov", "Done")
 
 	err := common.InitConfig(cmdRoot)
 	if err != nil { // Handle errors reading the config file
