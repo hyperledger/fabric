@@ -17,8 +17,6 @@ import (
 	"math/big"
 	"os"
 
-	"errors"
-
 	"github.com/hyperledger/fabric/common/util"
 	gutil "github.com/hyperledger/fabric/gossip/util"
 	"golang.org/x/net/context"
@@ -35,6 +33,8 @@ func writeFile(filename string, keyType string, data []byte) error {
 	return pem.Encode(f, &pem.Block{Type: keyType, Bytes: data})
 }
 
+// GenerateCertificatesOrPanic generates a a random pair of public and private keys
+// and return TLS certificate
 func GenerateCertificatesOrPanic() tls.Certificate {
 	privKeyFile := fmt.Sprintf("key.%d.priv", gutil.RandomUInt64())
 	certKeyFile := fmt.Sprintf("cert.%d.pub", gutil.RandomUInt64())
@@ -76,7 +76,7 @@ func GenerateCertificatesOrPanic() tls.Certificate {
 		panic(err)
 	}
 	if len(cert.Certificate) == 0 {
-		panic(errors.New("Certificate chain is empty"))
+		panic("Certificate chain is empty")
 	}
 	return cert
 }

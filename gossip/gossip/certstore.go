@@ -44,11 +44,11 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 		certStore.logger.Panicf("Failed associating self PKIID to cert: %+v", errors.WithStack(err))
 	}
 
-	selfIdMsg, err := certStore.createIdentityMessage()
+	selfIDMsg, err := certStore.createIdentityMessage()
 	if err != nil {
 		certStore.logger.Panicf("Failed creating self identity message: %+v", errors.WithStack(err))
 	}
-	puller.Add(selfIdMsg)
+	puller.Add(selfIDMsg)
 	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
 		for _, msg := range msgs {
 			pkiID := common.PKIidType(msg.GetPeerIdentity().PkiId)

@@ -3,6 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package privdata
 
 import (
@@ -40,6 +41,8 @@ type dataRetriever struct {
 	store DataStore
 }
 
+// NewDataRetriever constructing function for implementation of the
+// StorageDataRetriever interface
 func NewDataRetriever(store DataStore) StorageDataRetriever {
 	return &dataRetriever{store: store}
 }

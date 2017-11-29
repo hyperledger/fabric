@@ -1246,7 +1246,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 
 	coord1.On("LedgerHeight", mock.Anything).Return(uint64(5), nil)
 
-	var data map[uint64]*testData = map[uint64]*testData{
+	var data = map[uint64]*testData{
 		uint64(2): {
 			block: &pcomm.Block{
 				Header: &pcomm.BlockHeader{
@@ -1422,7 +1422,7 @@ func (t testPeer) Comm() chan proto.ReceivedMessage {
 	return t.commChannel
 }
 
-var peers map[string]testPeer = map[string]testPeer{
+var peers = map[string]testPeer{
 	"peer1": {
 		id:            "peer1",
 		gossipChannel: make(chan *proto.GossipMessage),

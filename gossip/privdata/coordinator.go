@@ -99,10 +99,14 @@ func (d2s dig2sources) keys() []*gossip2.PvtDataDigest {
 	return res
 }
 
+// Fetcher interface which defines API to fetch missing
+// private data elements
 type Fetcher interface {
 	fetch(dig2src dig2sources) ([]*gossip2.PvtDataElement, error)
 }
 
+// Support encapsulates set of interfaces to
+// aggregate required functionality by single struct
 type Support struct {
 	privdata.CollectionStore
 	txvalidator.Validator
@@ -571,14 +575,14 @@ func (data blockData) forEachTxn(txsFilter txValidationFlags, consumer blockCons
 func endorsersFromOrgs(ns string, col string, endorsers []*peer.Endorsement, orgs []string) []*peer.Endorsement {
 	var res []*peer.Endorsement
 	for _, e := range endorsers {
-		sId := &msp.SerializedIdentity{}
-		err := proto.Unmarshal(e.Endorser, sId)
+		sID := &msp.SerializedIdentity{}
+		err := proto.Unmarshal(e.Endorser, sID)
 		if err != nil {
 			logger.Warning("Failed unmarshalling endorser:", err)
 			continue
 		}
-		if !util.Contains(sId.Mspid, orgs) {
-			logger.Debug(sId.Mspid, "isn't among the collection's orgs:", orgs, "for namespace", ns, ",collection", col)
+		if !util.Contains(sID.Mspid, orgs) {
+			logger.Debug(sID.Mspid, "isn't among the collection's orgs:", orgs, "for namespace", ns, ",collection", col)
 			continue
 		}
 		res = append(res, e)

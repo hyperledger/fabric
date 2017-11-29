@@ -27,11 +27,13 @@ import (
 )
 
 const (
-	MembershipPollingBackoff    = time.Second
+	membershipPollingBackoff    = time.Second
 	responseWaitTime            = time.Second * 5
 	maxMembershipPollIterations = 5
 )
 
+// PrivateDataRetriever interfacce which defines API capable
+// of retrieving required private data
 type PrivateDataRetriever interface {
 	// CollectionRWSet returns the bytes of CollectionPvtReadWriteSet for a given txID and collection from the transient store
 	CollectionRWSet(dig *proto.PvtDataDigest) []util.PrivateRWSet
@@ -67,6 +69,7 @@ type puller struct {
 	PrivateDataRetriever
 }
 
+// NewPuller creates new private data puller
 func NewPuller(cs privdata.CollectionStore, g gossip, dataRetriever PrivateDataRetriever, channel string) *puller {
 	p := &puller{
 		pubSub:               util.NewPubSub(),
@@ -195,7 +198,7 @@ func (p *puller) waitForMembership() []discovery.NetworkMember {
 		if polIteration == maxMembershipPollIterations {
 			return nil
 		}
-		time.Sleep(MembershipPollingBackoff)
+		time.Sleep(membershipPollingBackoff)
 	}
 	return members
 }
@@ -354,10 +357,10 @@ func (dig2f digestToFilterMapping) flattenFilterValues() []filter.RoutingFilter 
 }
 
 // String returns a string representation of t he digestToFilterMapping
-func (dig2Filter digestToFilterMapping) String() string {
+func (dig2f digestToFilterMapping) String() string {
 	var buffer bytes.Buffer
 	collection2TxID := make(map[string][]string)
-	for dig := range dig2Filter {
+	for dig := range dig2f {
 		collection2TxID[dig.Collection] = append(collection2TxID[dig.Collection], dig.TxId)
 	}
 	for col, txIDs := range collection2TxID {

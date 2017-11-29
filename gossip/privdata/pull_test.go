@@ -152,9 +152,8 @@ func (g *mockGossip) PeerFilter(channel common.ChainID, messagePredicate api.Sub
 			args := g.Called(channel, messagePredicate)
 			if args.Get(1) != nil {
 				return nil, args.Get(1).(error)
-			} else {
-				return args.Get(0).(filter.RoutingFilter), nil
 			}
+			return args.Get(0).(filter.RoutingFilter), nil
 		}
 	}
 	return func(member discovery.NetworkMember) bool {

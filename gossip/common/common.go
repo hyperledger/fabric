@@ -23,8 +23,8 @@ type PKIidType []byte
 // IsNotSameFilter generate filter function which
 // provides a predicate to identify whenever current id
 // equals to another one.
-func (this PKIidType) IsNotSameFilter(that PKIidType) bool {
-	return !bytes.Equal(this, that)
+func (id PKIidType) IsNotSameFilter(that PKIidType) bool {
+	return !bytes.Equal(id, that)
 }
 
 // MessageAcceptor is a predicate that is used to
