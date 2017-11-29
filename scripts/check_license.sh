@@ -12,13 +12,12 @@ function filterExcludedFiles {
   | grep -v .md$ | grep -v ^vendor/ | grep -v ^build/ | grep -v .pb.go$ | sort -u`
 }
 
-CHECK=$(git diff --name-only HEAD --diff-filter=ACMRTUXB *)
+CHECK=$(git diff --name-only --diff-filter=ACMRTUXB HEAD)
 filterExcludedFiles
-
 if [[ -z "$CHECK" ]]; then
-  CHECK=$(git diff-tree --no-commit-id --name-only --diff-filter=ACMRTUXB -r $(git log -2 \
-    --pretty=format:"%h"))
-    filterExcludedFiles
+  LAST_COMMITS=($(git log -2 --pretty=format:"%h"))
+  CHECK=$(git diff-tree --no-commit-id --name-only --diff-filter=ACMRTUXB -r ${LAST_COMMITS[1]} ${LAST_COMMITS[0]})
+  filterExcludedFiles
 fi
 
 if [[ -z "$CHECK" ]]; then
