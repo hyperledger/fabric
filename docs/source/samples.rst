@@ -44,7 +44,7 @@ you will extract the platform-specific binaries:
 
 .. code:: bash
 
-  curl -sSL https://goo.gl/x2LhaE | bash -s 1.1.0-preview
+  curl -sSL https://goo.gl/6wtTN5 | bash -s 1.1.0-preview
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle redirects.
