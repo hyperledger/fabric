@@ -19,6 +19,8 @@ package msp
 import (
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -130,10 +132,189 @@ func TestInvalidAdminOU(t *testing.T) {
 	thisMSP, err := getLocalMSPWithVersionAndError(t, "testdata/nodeous4", MSPv1_1)
 	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "admin 0 is invalid: could not validate identity's OUs: certifiersIdentifier does not match")
+	assert.Contains(t, err.Error(), "admin 0 is invalid: The identity is not valid under this MSP [DEFAULT]: could not validate identity's OUs: certifiersIdentifier does not match")
 
 	// MSPv1_0 should not fail as well
 	thisMSP, err = getLocalMSPWithVersionAndError(t, "testdata/nodeous4", MSPv1_0)
 	assert.False(t, thisMSP.(*bccspmsp).ouEnforcement)
 	assert.NoError(t, err)
+}
+
+func TestInvalidAdminOUNotAClient(t *testing.T) {
+	// testdata/nodeous4:
+	// the configuration enables NodeOUs and admin is not a client
+	thisMSP, err := getLocalMSPWithVersionAndError(t, "testdata/nodeous8", MSPv1_1)
+	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "The identity does not contain OU [CLIENT]")
+
+	// MSPv1_0 should not fail
+	thisMSP, err = getLocalMSPWithVersionAndError(t, "testdata/nodeous8", MSPv1_0)
+	assert.False(t, thisMSP.(*bccspmsp).ouEnforcement)
+	assert.NoError(t, err)
+}
+
+func TestSatisfiesPrincipalPeer(t *testing.T) {
+	// testdata/nodeous3:
+	// the configuration enables NodeOUs and admin and signing identity are valid
+	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeous3", MSPv1_1)
+	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+
+	// The default signing identity is a peer
+	id, err := thisMSP.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	err = id.Validate()
+	assert.NoError(t, err)
+
+	assert.True(t, t.Run("Check that id is a peer", func(t *testing.T) {
+		// Check that id is a peer
+		mspID, err := thisMSP.GetIdentifier()
+		assert.NoError(t, err)
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: mspID})
+		assert.NoError(t, err)
+		principal := &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id.SatisfiesPrincipal(principal)
+		assert.NoError(t, err)
+	}))
+
+	assert.True(t, t.Run("Check that id is not a orderer", func(t *testing.T) {
+		// Check that id is not a orderer
+		mspID, err := thisMSP.GetIdentifier()
+		assert.NoError(t, err)
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: mspID})
+		assert.NoError(t, err)
+		principal := &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id.SatisfiesPrincipal(principal)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "The identity is not a [ORDERER] under this MSP [DEFAULT]")
+	}))
+
+	assert.True(t, t.Run("Check that id is not a client", func(t *testing.T) {
+		// Check that id is not a client
+		mspID, err := thisMSP.GetIdentifier()
+		assert.NoError(t, err)
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_CLIENT, MspIdentifier: mspID})
+		assert.NoError(t, err)
+		principal := &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id.SatisfiesPrincipal(principal)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "The identity is not a [CLIENT] under this MSP [DEFAULT]")
+	}))
+}
+
+func TestSatisfiesPrincipalClient(t *testing.T) {
+	// testdata/nodeous3:
+	// the configuration enables NodeOUs and admin and signing identity are valid
+	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeous3", MSPv1_1)
+	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+
+	// The admin of this msp is a client
+	assert.Equal(t, 1, len(thisMSP.(*bccspmsp).admins))
+	id := thisMSP.(*bccspmsp).admins[0]
+
+	err := id.Validate()
+	assert.NoError(t, err)
+
+	// Check that id is a client
+	assert.True(t, t.Run("Check that id is a client", func(t *testing.T) {
+		mspID, err := thisMSP.GetIdentifier()
+		assert.NoError(t, err)
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_CLIENT, MspIdentifier: mspID})
+		assert.NoError(t, err)
+		principal := &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id.SatisfiesPrincipal(principal)
+		assert.NoError(t, err)
+	}))
+
+	assert.True(t, t.Run("Check that id is not a orderer", func(t *testing.T) {
+		// Check that id is not a orderer
+		mspID, err := thisMSP.GetIdentifier()
+		assert.NoError(t, err)
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: mspID})
+		assert.NoError(t, err)
+		principal := &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id.SatisfiesPrincipal(principal)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "The identity is not a [ORDERER] under this MSP [DEFAULT]")
+	}))
+
+	assert.True(t, t.Run("Check that id is not a peer", func(t *testing.T) {
+		// Check that id is not a peer
+		mspID, err := thisMSP.GetIdentifier()
+		assert.NoError(t, err)
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: mspID})
+		assert.NoError(t, err)
+		principal := &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id.SatisfiesPrincipal(principal)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "The identity is not a [PEER] under this MSP [DEFAULT]")
+	}))
+}
+
+func TestSatisfiesPrincipalOrderer(t *testing.T) {
+	// testdata/nodeous5:
+	// the configuration enables NodeOUs and admin and signing identity are valid
+	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeous5", MSPv1_1)
+	assert.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+
+	// The default signing identity is an orderer
+	id, err := thisMSP.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	err = id.Validate()
+	assert.NoError(t, err)
+
+	assert.True(t, t.Run("Check that id is a peer", func(t *testing.T) {
+		// Check that id is a peer
+		mspID, err := thisMSP.GetIdentifier()
+		assert.NoError(t, err)
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: mspID})
+		assert.NoError(t, err)
+		principal := &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id.SatisfiesPrincipal(principal)
+		assert.NoError(t, err)
+	}))
+
+	assert.True(t, t.Run("Check that id is not a orderer", func(t *testing.T) {
+		// Check that id is not a orderer
+		mspID, err := thisMSP.GetIdentifier()
+		assert.NoError(t, err)
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: mspID})
+		assert.NoError(t, err)
+		principal := &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id.SatisfiesPrincipal(principal)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "The identity is not a [PEER] under this MSP [DEFAULT]")
+	}))
+
+	assert.True(t, t.Run("Check that id is not a client", func(t *testing.T) {
+		// Check that id is not a client
+		mspID, err := thisMSP.GetIdentifier()
+		assert.NoError(t, err)
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_CLIENT, MspIdentifier: mspID})
+		assert.NoError(t, err)
+		principal := &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id.SatisfiesPrincipal(principal)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "The identity is not a [CLIENT] under this MSP [DEFAULT]")
+	}))
 }

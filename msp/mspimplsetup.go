@@ -12,9 +12,10 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	m "github.com/hyperledger/fabric/protos/msp"
-	"github.com/pkg/errors"
+	errors "github.com/pkg/errors"
 )
 
 func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {
@@ -454,9 +455,34 @@ func (msp *bccspmsp) setupV11(conf *m.FabricMSPConfig) error {
 		return err
 	}
 
-	err = msp.postSetupV1(conf)
+	err = msp.postSetupV11(conf)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) postSetupV11(conf *m.FabricMSPConfig) error {
+	// Check for OU enforcement
+	if !msp.ouEnforcement {
+		// No enforcement required. Call post setup as per V1
+		return msp.postSetupV1(conf)
+	}
+
+	// Check that admins are clients
+	principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_CLIENT, MspIdentifier: msp.name})
+	if err != nil {
+		return errors.Wrapf(err, "failed creating MSPRole_CLIENT")
+	}
+	principal := &m.MSPPrincipal{
+		PrincipalClassification: m.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+	for i, admin := range msp.admins {
+		err = admin.SatisfiesPrincipal(principal)
+		if err != nil {
+			return errors.WithMessage(err, fmt.Sprintf("admin %d is invalid", i))
+		}
 	}
 
 	return nil
