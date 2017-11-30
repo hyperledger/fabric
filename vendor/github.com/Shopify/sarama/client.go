@@ -49,9 +49,9 @@ type Client interface {
 	RefreshMetadata(topics ...string) error
 
 	// GetOffset queries the cluster to get the most recent available offset at the
-	// given time on the topic/partition combination. Time should be OffsetOldest for
-	// the earliest available offset, OffsetNewest for the offset of the message that
-	// will be produced next, or a time.
+	// given time (in milliseconds) on the topic/partition combination.
+	// Time should be OffsetOldest for the earliest available offset,
+	// OffsetNewest for the offset of the message that will be produced next, or a time.
 	GetOffset(topic string, partitionID int32, time int64) (int64, error)
 
 	// Coordinator returns the coordinating broker for a consumer group. It will
@@ -141,18 +141,20 @@ func NewClient(addrs []string, conf *Config) (Client, error) {
 		client.seedBrokers = append(client.seedBrokers, NewBroker(addrs[index]))
 	}
 
-	// do an initial fetch of all cluster metadata by specifying an empty list of topics
-	err := client.RefreshMetadata()
-	switch err {
-	case nil:
-		break
-	case ErrLeaderNotAvailable, ErrReplicaNotAvailable, ErrTopicAuthorizationFailed, ErrClusterAuthorizationFailed:
-		// indicates that maybe part of the cluster is down, but is not fatal to creating the client
-		Logger.Println(err)
-	default:
-		close(client.closed) // we haven't started the background updater yet, so we have to do this manually
-		_ = client.Close()
-		return nil, err
+	if conf.Metadata.Full {
+		// do an initial fetch of all cluster metadata by specifying an empty list of topics
+		err := client.RefreshMetadata()
+		switch err {
+		case nil:
+			break
+		case ErrLeaderNotAvailable, ErrReplicaNotAvailable, ErrTopicAuthorizationFailed, ErrClusterAuthorizationFailed:
+			// indicates that maybe part of the cluster is down, but is not fatal to creating the client
+			Logger.Println(err)
+		default:
+			close(client.closed) // we haven't started the background updater yet, so we have to do this manually
+			_ = client.Close()
+			return nil, err
+		}
 	}
 	go withRecover(client.backgroundMetadataUpdater)
 
@@ -295,9 +297,9 @@ func (client *client) Replicas(topic string, partitionID int32) ([]int32, error)
 	}
 
 	if metadata.Err == ErrReplicaNotAvailable {
-		return nil, metadata.Err
+		return dupInt32Slice(metadata.Replicas), metadata.Err
 	}
-	return dupeAndSort(metadata.Replicas), nil
+	return dupInt32Slice(metadata.Replicas), nil
 }
 
 func (client *client) InSyncReplicas(topic string, partitionID int32) ([]int32, error) {
@@ -320,9 +322,9 @@ func (client *client) InSyncReplicas(topic string, partitionID int32) ([]int32, 
 	}
 
 	if metadata.Err == ErrReplicaNotAvailable {
-		return nil, metadata.Err
+		return dupInt32Slice(metadata.Isr), metadata.Err
 	}
-	return dupeAndSort(metadata.Isr), nil
+	return dupInt32Slice(metadata.Isr), nil
 }
 
 func (client *client) Leader(topic string, partitionID int32) (*Broker, error) {
@@ -605,7 +607,20 @@ func (client *client) backgroundMetadataUpdater() {
 	for {
 		select {
 		case <-ticker.C:
-			if err := client.RefreshMetadata(); err != nil {
+			topics := []string{}
+			if !client.conf.Metadata.Full {
+				if specificTopics, err := client.Topics(); err != nil {
+					Logger.Println("Client background metadata topic load:", err)
+					break
+				} else if len(specificTopics) == 0 {
+					Logger.Println("Client background metadata update: no specific topics to update")
+					break
+				} else {
+					topics = specificTopics
+				}
+			}
+
+			if err := client.RefreshMetadata(topics...); err != nil {
 				Logger.Println("Client background metadata update:", err)
 			}
 		case <-client.closer:
