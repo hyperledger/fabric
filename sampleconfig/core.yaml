@@ -438,6 +438,11 @@ chaincode:
     # Generic builder environment, suitable for most chaincode types
     builder: $(DOCKER_NS)/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
 
+    # Enables/disables force pulling of the base docker images (listed below)
+    # during user chaincode instantiation.
+    # Useful when using moving image tags (such as :latest)
+    pull: false
+
     golang:
         # golang will never need more than baseos
         runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)

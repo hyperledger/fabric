@@ -179,7 +179,7 @@ func (vm *DockerVM) deployImage(client dockerClient, ccid ccintf.CCID,
 	outputbuf := bytes.NewBuffer(nil)
 	opts := docker.BuildImageOptions{
 		Name:         id,
-		Pull:         false,
+		Pull:         viper.GetBool("chaincode.pull"),
 		InputStream:  reader,
 		OutputStream: outputbuf,
 	}
