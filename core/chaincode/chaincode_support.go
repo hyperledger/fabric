@@ -135,7 +135,7 @@ func (chaincodeSupport *ChaincodeSupport) launchStarted(chaincode string) bool {
 }
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance
-func NewChaincodeSupport(getCCEndpoint func() (*pb.PeerEndpoint, error), userrunsCC bool, ccstartuptimeout time.Duration, ca accesscontrol.CA) pb.ChaincodeSupportServer {
+func NewChaincodeSupport(ccEndpoint string, userrunsCC bool, ccstartuptimeout time.Duration, ca accesscontrol.CA) pb.ChaincodeSupportServer {
 	ccprovider.SetChaincodesPath(config.GetPath("peer.fileSystemPath") + string(filepath.Separator) + "chaincodes")
 	pnid := viper.GetString("peer.networkId")
 	pid := viper.GetString("peer.id")
@@ -148,21 +148,7 @@ func NewChaincodeSupport(getCCEndpoint func() (*pb.PeerEndpoint, error), userrun
 	}
 
 	theChaincodeSupport.auth = accesscontrol.NewAuthenticator(theChaincodeSupport, ca)
-
-	ccEndpoint, err := getCCEndpoint()
-	if err != nil {
-		// getCCEndpoint has already done necessary checks,
-		// therefore it will panic if any error returns and it's in dev mode.
-		// peerAddressDefault is acceptable only in dev mode.
-		if IsDevMode() {
-			chaincodeLogger.Errorf("Error getting chaincode endpoint in dev mode, using %s: %+v", peerAddressDefault, err)
-			theChaincodeSupport.peerAddress = peerAddressDefault
-		} else {
-			chaincodeLogger.Panicf("Error getting chaincode endpoint: %+v", err)
-		}
-	} else {
-		theChaincodeSupport.peerAddress = ccEndpoint.Address
-	}
+	theChaincodeSupport.peerAddress = ccEndpoint
 	chaincodeLogger.Infof("Chaincode support using peerAddress: %s\n", theChaincodeSupport.peerAddress)
 
 	theChaincodeSupport.userRunsCC = userrunsCC

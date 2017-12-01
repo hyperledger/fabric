@@ -98,13 +98,9 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 		return nil, fmt.Errorf("Error starting peer listener %s", err)
 	}
 
-	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
-		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
-	}
-
 	ccStartupTimeout := time.Duration(3) * time.Minute
 	ca, _ := accesscontrol.NewCA()
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout, ca))
+	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(peerAddress, false, ccStartupTimeout, ca))
 
 	// Mock policy checker
 	policy.RegisterPolicyCheckerFactory(&mockPolicyCheckerFactory{})

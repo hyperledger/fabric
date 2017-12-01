@@ -197,12 +197,10 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	stub := shim.NewMockStub("PeerConfiger", e)
 
 	peerEndpoint := "localhost:13611"
-	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
-		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "cscctestpeer"}, Address: peerEndpoint}, nil
-	}
+
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
 	ca, _ := accesscontrol.NewCA()
-	chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout, ca)
+	chaincode.NewChaincodeSupport(peerEndpoint, false, ccStartupTimeout, ca)
 
 	// Init the policy checker
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
