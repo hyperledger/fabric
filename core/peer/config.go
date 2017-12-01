@@ -25,11 +25,11 @@ import (
 	"net"
 	"path/filepath"
 
-	"github.com/spf13/viper"
-
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 // Is the configuration cached?
@@ -48,22 +48,33 @@ var peerEndpointError error
 // computed constants as package variables. Routines which were previously
 // global have been embedded here to preserve the original abstraction.
 func CacheConfiguration() (err error) {
-
 	// getLocalAddress returns the address:port the local peer is operating on.  Affected by env:peer.addressAutoDetect
-	getLocalAddress := func() (peerAddress string, err error) {
-		if viper.GetBool("peer.addressAutoDetect") {
-			// Need to get the port from the peer.address setting, and append to the determined host IP
-			_, port, err := net.SplitHostPort(viper.GetString("peer.address"))
-			if err != nil {
-				err = fmt.Errorf("Error auto detecting Peer's address: %s", err)
-				return "", err
-			}
-			peerAddress = net.JoinHostPort(GetLocalIP(), port)
-			peerLogger.Infof("Auto detected peer address: %s", peerAddress)
-		} else {
-			peerAddress = viper.GetString("peer.address")
+	getLocalAddress := func() (string, error) {
+		peerAddress := viper.GetString("peer.address")
+		if peerAddress == "" {
+			return "", fmt.Errorf("peer.address isn't set")
 		}
-		return
+		host, port, err := net.SplitHostPort(peerAddress)
+		if err != nil {
+			return "", errors.Errorf("peer.address isn't in host:port format: %s", peerAddress)
+		}
+
+		autoDetectedIPAndPort := net.JoinHostPort(GetLocalIP(), port)
+		peerLogger.Info("Auto-detected peer address:", autoDetectedIPAndPort)
+		// If host is the IPv4 address "0.0.0.0" or the IPv6 address "::",
+		// then fallback to auto-detected address
+		if ip := net.ParseIP(host); ip != nil && ip.IsUnspecified() {
+			peerLogger.Info("Host is", host, ", falling back to auto-detected address:", autoDetectedIPAndPort)
+			return autoDetectedIPAndPort, nil
+		}
+
+		if viper.GetBool("peer.addressAutoDetect") {
+			peerLogger.Info("Auto-detect flag is set, returning", autoDetectedIPAndPort)
+			return autoDetectedIPAndPort, nil
+		}
+		peerLogger.Info("Returning", peerAddress)
+		return peerAddress, nil
+
 	}
 
 	// getPeerEndpoint returns the PeerEndpoint for this Peer instance.  Affected by env:peer.addressAutoDetect

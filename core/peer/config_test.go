@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
+	"fmt"
 	"net"
 	"path/filepath"
 	"testing"
@@ -67,6 +68,16 @@ func TestConfiguration(t *testing.T) {
 			},
 			validAddresses:   ips,
 			invalidAddresses: []string{"testing.com:7051"},
+		},
+		{
+			name: "test3",
+			settings: map[string]interface{}{
+				"peer.addressAutoDetect": false,
+				"peer.address":           "0.0.0.0:7051",
+				"peer.id":                "testPeer",
+			},
+			validAddresses:   []string{fmt.Sprintf("%s:7051", GetLocalIP())},
+			invalidAddresses: []string{"0.0.0.0:7051"},
 		},
 	}
 
