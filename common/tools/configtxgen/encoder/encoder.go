@@ -370,22 +370,26 @@ func NewChannelCreateConfigUpdate(channelID string, orderingSystemChannelGroup *
 
 	// If this channel uses the new lifecycle config, specify the seed data
 	if agc.Capabilities().LifecycleViaConfig() {
+		defaultModPolicy := policies.ChannelApplicationAdmins
+		if conf.Application.Resources != nil {
+			defaultModPolicy = conf.Application.Resources.DefaultModPolicy
+		}
 		updt.IsolatedData = map[string][]byte{
 			pb.RSCCSeedDataKey: utils.MarshalOrPanic(&cb.Config{
 				Type: int32(cb.ConfigType_RESOURCE),
 				ChannelGroup: &cb.ConfigGroup{
 					Groups: map[string]*cb.ConfigGroup{
 						resourcesconfig.ChaincodesGroupKey: &cb.ConfigGroup{
-							ModPolicy: policies.ChannelApplicationAdmins,
+							ModPolicy: defaultModPolicy,
 						},
 						resourcesconfig.PeerPoliciesGroupKey: &cb.ConfigGroup{
-							ModPolicy: policies.ChannelApplicationAdmins,
+							ModPolicy: defaultModPolicy,
 						},
 						resourcesconfig.APIsGroupKey: &cb.ConfigGroup{
-							ModPolicy: policies.ChannelApplicationAdmins,
+							ModPolicy: defaultModPolicy,
 						},
 					},
-					ModPolicy: policies.ChannelApplicationAdmins,
+					ModPolicy: defaultModPolicy,
 				},
 			}),
 		}
