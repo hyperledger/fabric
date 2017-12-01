@@ -19,12 +19,10 @@ package vscc
 import (
 	"fmt"
 
-	"errors"
-
 	"github.com/golang/protobuf/proto"
-
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -36,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("vscc")
@@ -109,13 +108,43 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		return shim.Error(err.Error())
 	}
 
-	// get the policy
-	mgr := mspmgmt.GetManagerForChain(chdr.ChannelId)
-	pProvider := cauthdsl.NewPolicyProvider(mgr)
-	policy, _, err := pProvider.NewPolicy(args[2])
-	if err != nil {
-		logger.Errorf("VSCC error: pProvider.NewPolicy failed, err %s", err)
+	ac, exists := vscc.sccprovider.GetApplicationConfig(chdr.ChannelId)
+	if !exists {
+		err = errors.Wrap(err, "failure while unmarshalling VSCCArgs")
+		logger.Errorf(err.Error())
 		return shim.Error(err.Error())
+	}
+
+	// get the policy
+	var policy policies.Policy
+	if ac.Capabilities().LifecycleViaConfig() {
+		vsccArgs := &pb.VSCCArgs{}
+		err = proto.Unmarshal(args[2], vsccArgs)
+		if err != nil {
+			err = errors.Wrap(err, "failure while unmarshalling VSCCArgs")
+			logger.Errorf(err.Error())
+			return shim.Error(err.Error())
+		}
+
+		mgr, exists := vscc.sccprovider.PolicyManager(chdr.ChannelId)
+		if !exists {
+			logger.Errorf("Policy manager could not be found for channel %s", chdr.ChannelId)
+			return shim.Error(fmt.Sprintf("Policy manager could not be found for channel %s", chdr.ChannelId))
+		}
+
+		policy, exists = mgr.GetPolicy(vsccArgs.GetEndorsementPolicyRef())
+		if !exists {
+			logger.Errorf("Policy '%s' could not be found for channel %s", vsccArgs.GetEndorsementPolicyRef(), chdr.ChannelId)
+			return shim.Error(fmt.Sprintf("Policy '%s' could not be found for channel %s", vsccArgs.GetEndorsementPolicyRef(), chdr.ChannelId))
+		}
+	} else {
+		mgr := mspmgmt.GetManagerForChain(chdr.ChannelId)
+		pProvider := cauthdsl.NewPolicyProvider(mgr)
+		policy, _, err = pProvider.NewPolicy(args[2])
+		if err != nil {
+			logger.Errorf("VSCC error: pProvider.NewPolicy failed, err %s", err)
+			return shim.Error(err.Error())
+		}
 	}
 
 	// validate the payload type

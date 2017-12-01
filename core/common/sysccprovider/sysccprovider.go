@@ -17,6 +17,8 @@ limitations under the License.
 package sysccprovider
 
 import (
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
@@ -41,6 +43,14 @@ type SystemChaincodeProvider interface {
 	// That's useful for system chaincodes that require unfettered
 	// access to the ledger
 	GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error)
+
+	// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
+	// and whether the Application config exists
+	GetApplicationConfig(cid string) (channelconfig.Application, bool)
+
+	// Returns the policy manager associated to the passed channel
+	// and whether the policy manager exists
+	PolicyManager(channelID string) (policies.Manager, bool)
 }
 
 var sccFactory SystemChaincodeProviderFactory
