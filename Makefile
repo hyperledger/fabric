@@ -36,7 +36,7 @@
 #   - unit-test-clean - cleans unit test state (particularly from docker)
 
 BASE_VERSION = 1.1.0-alpha
-PREV_VERSION = 1.0.0-preview
+PREV_VERSION = 1.1.0-preview
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,
 # export PROJECT_NAME=hyperledger/fabric-test
@@ -95,7 +95,7 @@ PROJECT_FILES = $(shell git ls-files  | grep -v ^test | grep -v ^unit-test | \
 	grep -v ^.git | grep -v ^examples | grep -v ^devenv | grep -v .png$ | \
 	grep -v ^LICENSE )
 RELEASE_TEMPLATES = $(shell git ls-files | grep "release/templates")
-IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka couchdb tools
+IMAGES = peer orderer ccenv javaenv buildenv testenv tools
 RELEASE_PLATFORMS = windows-amd64 darwin-amd64 linux-amd64 linux-ppc64le linux-s390x
 RELEASE_PKGS = configtxgen cryptogen configtxlator peer orderer
 
@@ -113,6 +113,15 @@ all: native docker checks
 checks: license spelling linter unit-test behave
 
 desk-check: license spelling linter verify behave
+
+.PHONY: docker-thirdparty
+docker-thirdparty:
+	docker pull $(DOCKER_NS)/fabric-couchdb:$(PREV_TAG)
+	docker tag $(DOCKER_NS)/fabric-couchdb:$(PREV_TAG) $(DOCKER_NS)/fabric-couchdb
+	docker pull $(DOCKER_NS)/fabric-zookeeper:$(PREV_TAG)
+	docker tag $(DOCKER_NS)/fabric-zookeeper:$(PREV_TAG) $(DOCKER_NS)/fabric-zookeeper
+	docker pull $(DOCKER_NS)/fabric-kafka:$(PREV_TAG)
+	docker tag $(DOCKER_NS)/fabric-kafka:$(PREV_TAG) $(DOCKER_NS)/fabric-kafka
 
 .PHONY: spelling
 spelling:
@@ -163,25 +172,20 @@ buildenv: build/image/buildenv/$(DUMMY)
 build/image/testenv/$(DUMMY): build/image/buildenv/$(DUMMY)
 testenv: build/image/testenv/$(DUMMY)
 
-couchdb: build/image/couchdb/$(DUMMY)
-
-kafka: build/image/kafka/$(DUMMY)
-
-zookeeper: build/image/zookeeper/$(DUMMY)
-
-unit-test: unit-test-clean peer-docker testenv couchdb
+unit-test: unit-test-clean peer-docker testenv
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
 
-verify: unit-test-clean peer-docker testenv couchdb
+verify: unit-test-clean peer-docker testenv
 	cd unit-test && JOB_TYPE=VERIFY docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 # Generates a string to the terminal suitable for manual augmentation / re-issue, useful for running tests by hand
 test-cmd:
 	@echo "go test -tags \"$(GO_TAGS)\" -ldflags \"$(GO_LDFLAGS)\""
 
-docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
+docker: docker-thirdparty $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
+
 native: peer orderer configtxgen cryptogen configtxlator
 
 behave-deps: docker peer build/bin/block-listener configtxgen cryptogen
@@ -259,12 +263,6 @@ build/image/testenv/payload:    build/docker/bin/orderer \
 				build/docker/bin/peer \
 				build/sampleconfig.tar.bz2 \
 				images/testenv/install-softhsm2.sh
-build/image/zookeeper/payload:  images/zookeeper/docker-entrypoint.sh
-build/image/kafka/payload:      images/kafka/docker-entrypoint.sh \
-				images/kafka/kafka-run-class.sh
-build/image/couchdb/payload:	images/couchdb/docker-entrypoint.sh \
-				images/couchdb/local.ini \
-				images/couchdb/vm.args
 build/image/tools/payload:      build/docker/bin/cryptogen \
 	                        build/docker/bin/configtxgen \
 	                        build/docker/bin/configtxlator \
