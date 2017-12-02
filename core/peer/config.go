@@ -20,6 +20,7 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -171,4 +172,60 @@ func GetServerConfig() (comm.ServerConfig, error) {
 		serverConfig.KaOpts.ServerMinInterval = viper.GetDuration("peer.keepalive.minInterval")
 	}
 	return serverConfig, nil
+}
+
+// GetClientCertificate returns the TLS certificate to use for gRPC client
+// connections
+func GetClientCertificate() (tls.Certificate, error) {
+	cert := tls.Certificate{}
+
+	keyPath := viper.GetString("peer.tls.clientKey.file")
+	certPath := viper.GetString("peer.tls.clientCert.file")
+
+	if keyPath != "" || certPath != "" {
+		// need both keyPath and certPath to be set
+		if keyPath == "" || certPath == "" {
+			return cert, errors.New("peer.tls.clientKey.file and " +
+				"peer.tls.clientCert.file must both be set or must both be empty")
+		}
+		keyPath = config.GetPath("peer.tls.clientKey.file")
+		certPath = config.GetPath("peer.tls.clientCert.file")
+
+	} else {
+		// use the TLS server keypair
+		keyPath = viper.GetString("peer.tls.key.file")
+		certPath = viper.GetString("peer.tls.key.file")
+
+		if keyPath != "" || certPath != "" {
+			// need both keyPath and certPath to be set
+			if keyPath == "" || certPath == "" {
+				return cert, errors.New("peer.tls.key.file and " +
+					"peer.tls.cert.file must both be set or must both be empty")
+			}
+			keyPath = config.GetPath("peer.tls.key.file")
+			certPath = config.GetPath("peer.tls.cert.file")
+		} else {
+			return cert, errors.New("must set either " +
+				"[peer.tls.key.file and peer.tls.cert.file] or " +
+				"[peer.tls.clientKey.file and peer.tls.clientCert.file]" +
+				"when peer.tls.clientAuthEnabled is set to true")
+		}
+	}
+	// get the keypair from the file system
+	clientKey, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		return cert, errors.WithMessage(err,
+			"error loading client TLS key")
+	}
+	clientCert, err := ioutil.ReadFile(certPath)
+	if err != nil {
+		return cert, errors.WithMessage(err,
+			"error loading client TLS certificate")
+	}
+	cert, err = tls.X509KeyPair(clientCert, clientKey)
+	if err != nil {
+		return cert, errors.WithMessage(err,
+			"error parsing client TLS key pair")
+	}
+	return cert, nil
 }

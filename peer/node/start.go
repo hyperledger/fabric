@@ -142,6 +142,13 @@ func serve(args []string) error {
 		// set up credential support
 		cs := comm.GetCredentialSupport()
 		cs.ServerRootCAs = serverConfig.SecOpts.ServerRootCAs
+
+		// set the cert to use if client auth is requested by remote endpoints
+		clientCert, err := peer.GetClientCertificate()
+		if err != nil {
+			logger.Fatalf("Failed to set TLS client certficate (%s)", err)
+		}
+		comm.GetCredentialSupport().SetClientCertificate(clientCert)
 	}
 
 	//TODO - do we need different SSL material for events ?
@@ -215,7 +222,6 @@ func serve(args []string) error {
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
 
 		if comm.TLSEnabled() {
-			comm.GetCredentialSupport().ClientCert = peerServer.ServerCertificate()
 			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCredentialSupport().GetPeerCredentials()))
 		} else {
 			dialOpts = append(dialOpts, grpc.WithInsecure())

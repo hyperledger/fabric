@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -175,4 +176,76 @@ func TestGetServerConfig(t *testing.T) {
 	viper.Set("peer.tls.enabled", false)
 	viper.Set("peer.tls.clientAuthRequired", false)
 
+}
+
+func TestGetClientCertificate(t *testing.T) {
+	viper.Set("peer.tls.key.file", "")
+	viper.Set("peer.tls.cert.file", "")
+	viper.Set("peer.tls.clientKey.file", "")
+	viper.Set("peer.tls.clientCert.file", "")
+
+	// neither client nor server key pairs set - expect error
+	_, err := GetClientCertificate()
+	assert.Error(t, err)
+
+	viper.Set("peer.tls.key.file", "")
+	viper.Set("peer.tls.cert.file",
+		filepath.Join("testdata", "Org1-server1-cert.pem"))
+	// missing server key file - expect error
+	_, err = GetClientCertificate()
+	assert.Error(t, err)
+
+	viper.Set("peer.tls.key.file",
+		filepath.Join("testdata", "Org1-server1-key.pem"))
+	viper.Set("peer.tls.cert.file", "")
+	// missing server cert file - expect error
+	_, err = GetClientCertificate()
+	assert.Error(t, err)
+
+	// set server TLS settings to ensure we get the client TLS settings
+	// when they are set properly
+	viper.Set("peer.tls.key.file",
+		filepath.Join("testdata", "Org1-server1-key.pem"))
+	viper.Set("peer.tls.cert.file",
+		filepath.Join("testdata", "Org1-server1-cert.pem"))
+
+	// peer.tls.clientCert.file not set - expect error
+	viper.Set("peer.tls.clientKey.file",
+		filepath.Join("testdata", "Org2-server1-key.pem"))
+	_, err = GetClientCertificate()
+	assert.Error(t, err)
+
+	// peer.tls.clientKey.file not set - expect error
+	viper.Set("peer.tls.clientKey.file", "")
+	viper.Set("peer.tls.clientCert.file",
+		filepath.Join("testdata", "Org2-server1-cert.pem"))
+	_, err = GetClientCertificate()
+	assert.Error(t, err)
+
+	// client auth required and clientKey/clientCert set
+	expected, err := tls.LoadX509KeyPair(
+		filepath.Join("testdata", "Org2-server1-cert.pem"),
+		filepath.Join("testdata", "Org2-server1-key.pem"))
+	if err != nil {
+		t.Fatalf("Failed to load test certificate (%s)", err)
+	}
+	viper.Set("peer.tls.clientKey.file",
+		filepath.Join("testdata", "Org2-server1-key.pem"))
+	cert, err := GetClientCertificate()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, cert)
+
+	// client auth required and clientKey/clientCert not set - expect
+	// client cert to be the server cert
+	viper.Set("peer.tls.clientKey.file", "")
+	viper.Set("peer.tls.clientCert.file", "")
+	expected, err = tls.LoadX509KeyPair(
+		filepath.Join("testdata", "Org1-server1-cert.pem"),
+		filepath.Join("testdata", "Org1-server1-key.pem"))
+	if err != nil {
+		t.Fatalf("Failed to load test certificate (%s)", err)
+	}
+	cert, err = GetClientCertificate()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, cert)
 }

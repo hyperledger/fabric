@@ -195,7 +195,10 @@ func TestCredentialSupport(t *testing.T) {
 	}
 
 	cs := GetCredentialSupport()
-	cs.ClientCert = tls.Certificate{}
+	cert := tls.Certificate{Certificate: [][]byte{}}
+	cs.SetClientCertificate(cert)
+	assert.Equal(t, cert, cs.clientCert)
+
 	cs.AppRootCAsByChain["channel1"] = [][]byte{rootCAs[0]}
 	cs.AppRootCAsByChain["channel2"] = [][]byte{rootCAs[1]}
 	cs.AppRootCAsByChain["channel3"] = [][]byte{rootCAs[2]}
