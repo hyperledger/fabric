@@ -49,7 +49,6 @@ VQQLDAtIeXBlcmxlZGdlcjESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0C
 func TestClientConnections(t *testing.T) {
 	t.Parallel()
 
-	testPort := 9050
 	//use Org1 test crypto material
 	fileBase := "Org1"
 	certPEMBlock, _ := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-cert.pem"))
@@ -64,12 +63,14 @@ func TestClientConnections(t *testing.T) {
 		creds      credentials.TransportCredentials
 		clientPort int
 		fail       bool
+		serverPort int
 	}{
 		{
 			name: "ValidConnection",
 			sc: ServerConfig{
 				SecOpts: &SecureOptions{
 					UseTLS: false}},
+			serverPort: 8050,
 		},
 		{
 			name: "InvalidConnection",
@@ -78,6 +79,7 @@ func TestClientConnections(t *testing.T) {
 					UseTLS: false}},
 			clientPort: 20040,
 			fail:       true,
+			serverPort: 8051,
 		},
 		{
 			name: "ValidConnectionTLS",
@@ -86,7 +88,8 @@ func TestClientConnections(t *testing.T) {
 					UseTLS:            true,
 					ServerCertificate: certPEMBlock,
 					ServerKey:         keyPEMBlock}},
-			creds: credentials.NewClientTLSFromCert(certPool, ""),
+			creds:      credentials.NewClientTLSFromCert(certPool, ""),
+			serverPort: 8052,
 		},
 		{
 			name: "InvalidConnectionTLS",
@@ -95,8 +98,9 @@ func TestClientConnections(t *testing.T) {
 					UseTLS:            true,
 					ServerCertificate: certPEMBlock,
 					ServerKey:         keyPEMBlock}},
-			creds: credentials.NewClientTLSFromCert(nil, ""),
-			fail:  true,
+			creds:      credentials.NewClientTLSFromCert(nil, ""),
+			fail:       true,
+			serverPort: 8053,
 		},
 	}
 
@@ -105,8 +109,7 @@ func TestClientConnections(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			t.Logf("Running test %s ...", test.name)
-			testPort++
-			serverAddress := fmt.Sprintf("localhost:%d", testPort)
+			serverAddress := fmt.Sprintf("localhost:%d", test.serverPort)
 			clientAddress := serverAddress
 			if test.clientPort > 0 {
 				clientAddress = fmt.Sprintf("localhost:%d", test.clientPort)
