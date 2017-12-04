@@ -920,7 +920,7 @@ The output should display the two marbles owned by ``jerry``:
 
 Why CouchDB
 -------------
-CouchDB is a kind of NoSQL solution. It is a document oriented database where document fields are stored as key-value mpas. Fields can be either a simple key/value pair, list, or map.
+CouchDB is a kind of NoSQL solution. It is a document oriented database where document fields are stored as key-value maps. Fields can be either a simple key/value pair, list, or map.
 In addition to keyed/composite-key/key-range queries which are supported by LevelDB, CouchDB also supports full data rich queries capability, such as non-key queries against the whole blockchain data,
 since its data content is stored in JSON format and fully queryable. Therefore, CouchDB can meet chaincode, auditing, reporting requirements for many use cases that not supported by LevelDB.
 
