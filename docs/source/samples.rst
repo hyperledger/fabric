@@ -44,7 +44,7 @@ you will extract the platform-specific binaries:
 
 .. code:: bash
 
-  curl -sSL https://goo.gl/5ftp2f | bash
+  curl -sSL https://goo.gl/u5oW4c | bash -s 1.0.5
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl. Please visit the
