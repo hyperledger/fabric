@@ -1,3 +1,22 @@
+## v1.0.5
+Mon Dec  4 14:54:59 EST 2017
+
+* [e93db02](https://github.com/hyperledger/fabric/commit/e93db02) [FAB-7281](https://jira.hyperledger.org/browse/FAB-7281) Release Hyperledger Fabric v1.0.5
+* [84d3849](https://github.com/hyperledger/fabric/commit/84d3849) [FAB-7283](https://jira.hyperledger.org/browse/FAB-7283) Update docs with new download link
+* [140c45f](https://github.com/hyperledger/fabric/commit/140c45f) [FAB-6879](https://jira.hyperledger.org/browse/FAB-6879) Fix configtxgen inaccuracies in doc
+* [dc3586c](https://github.com/hyperledger/fabric/commit/dc3586c) [FAB-7290](https://jira.hyperledger.org/browse/FAB-7290) Handle Nil pointer panic in blocks iterator
+* [ee63d58](https://github.com/hyperledger/fabric/commit/ee63d58) [FAB-7288](https://jira.hyperledger.org/browse/FAB-7288) Revert back to Kafka 0.9.0.1
+* [9bf243e](https://github.com/hyperledger/fabric/commit/9bf243e) [FAB-7054](https://jira.hyperledger.org/browse/FAB-7054) more flexibility setting Kafka.Version
+* [3404ff7](https://github.com/hyperledger/fabric/commit/3404ff7) [FAB-6853](https://jira.hyperledger.org/browse/FAB-6853) Fix block storage startup messages
+* [dc8d323](https://github.com/hyperledger/fabric/commit/dc8d323) [FAB-6987](https://jira.hyperledger.org/browse/FAB-6987)Fix single_tx_client panic error
+* [b19580a](https://github.com/hyperledger/fabric/commit/b19580a) [FAB-7046](https://jira.hyperledger.org/browse/FAB-7046) update kafka version to 0.10.2.1
+* [71a36d4](https://github.com/hyperledger/fabric/commit/71a36d4) [FAB-6969](https://jira.hyperledger.org/browse/FAB-6969) sampleconfig certificates are expired
+* [21234b6](https://github.com/hyperledger/fabric/commit/21234b6) [FAB-6931](https://jira.hyperledger.org/browse/FAB-6931) update zookeeper reference version
+* [c7c8827](https://github.com/hyperledger/fabric/commit/c7c8827) [FAB-6568](https://jira.hyperledger.org/browse/FAB-6568) Fabcar Documentation for 15049
+* [8395434](https://github.com/hyperledger/fabric/commit/8395434) [FAB-6794](https://jira.hyperledger.org/browse/FAB-6794) Fix Bootstrap and download for v1.0.4
+* [f55a214](https://github.com/hyperledger/fabric/commit/f55a214) [FAB-6795](https://jira.hyperledger.org/browse/FAB-6795) Prepare fabric for v1.0.5 development
+* [c799e3e](https://github.com/hyperledger/fabric/commit/c799e3e) [FAB-6794](https://jira.hyperledger.org/browse/FAB-6794) Bootstrap and download for v1.0.4
+
 ## v1.0.4
 Tue Oct 31 09:17:51 EDT 2017
 
