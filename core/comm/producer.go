@@ -108,8 +108,13 @@ func (cp *connProducer) DisableEndpoint(endpoint string) {
 	cp.Lock()
 	defer cp.Unlock()
 
-	for i := range cp.endpoints {
-		if cp.endpoints[i] == endpoint {
+	if len(cp.endpoints)-len(cp.disabledEndpoints) == 1 {
+		logger.Warning("Only 1 endpoint remained, will not black-list it")
+		return
+	}
+
+	for _, currEndpoint := range cp.endpoints {
+		if currEndpoint == endpoint {
 			cp.disabledEndpoints[endpoint] = time.Now()
 			break
 		}

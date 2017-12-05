@@ -675,21 +675,21 @@ func TestDisconnect(t *testing.T) {
 
 func TestDisconnectAndDisableEndpoint(t *testing.T) {
 	// Scenario:
-	// Start one ordering service and one client
-	// Connect client to ordering service endpoint
-	// Check connection to ordering service
-	// Disconnect and disable endpoint
-	// Check that ordering service don't have connection to the client
-	// Try to reconnect to endpoint (orderer) and check that
-	// ordering service still don't have connection to the client
-	// Wait until endpoint disable expired and reconnect again
-	// Check that we have connection between orderer and client
+	// 1)  Start two ordering service nodes and one client
+	// 2) Have the client connect to some ordering service node
+	// 3) Disconnect and disable the endpoint of the current connection,
+	//    and ensure the client connects to the other node.
+	// 4) Black-list the second connection and ensure it still connects
+	//    to the ordering service node because it's the last one remaining.
 
 	defer ensureNoGoroutineLeak(t)()
-	os := mocks.NewOrderer(5613, t)
-	os.SetNextExpectedSeek(5)
+	os1 := mocks.NewOrderer(5613, t)
+	os1.SetNextExpectedSeek(5)
+	os2 := mocks.NewOrderer(5614, t)
+	os2.SetNextExpectedSeek(5)
 
-	defer os.Shutdown()
+	defer os1.Shutdown()
+	defer os2.Shutdown()
 
 	orgEndpointDisableInterval := comm.EndpointDisableInterval
 	comm.EndpointDisableInterval = time.Millisecond * 1500
@@ -698,7 +698,7 @@ func TestDisconnectAndDisableEndpoint(t *testing.T) {
 	connFact := func(endpoint string) (*grpc.ClientConn, error) {
 		return grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithBlock())
 	}
-	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5613"})
+	prod := comm.NewConnectionProducer(connFact, []string{"localhost:5613", "localhost:5614"})
 	clFact := func(cc *grpc.ClientConn) orderer.AtomicBroadcastClient {
 		return orderer.NewAtomicBroadcastClient(cc)
 	}
@@ -711,6 +711,7 @@ func TestDisconnectAndDisableEndpoint(t *testing.T) {
 	}
 
 	cl := NewBroadcastClient(prod, clFact, onConnect, retryPol)
+	defer cl.Close()
 
 	// First connect to orderer
 	go func() {
@@ -718,38 +719,33 @@ func TestDisconnectAndDisableEndpoint(t *testing.T) {
 	}()
 
 	assert.True(t, waitForWithTimeout(time.Millisecond*100, func() bool {
-		return os.ConnCount() == 1
+		return os1.ConnCount() == 1 || os2.ConnCount() == 1
 	}), "Didn't get connection to orderer")
+
+	connectedToOS1 := os1.ConnCount() == 1
 
 	// Disconnect and disable endpoint
 	cl.Disconnect(true)
 
+	// Ensure we reconnected to the other node
 	assert.True(t, waitForWithTimeout(time.Millisecond*100, func() bool {
-		return os.ConnCount() == 0
-	}), "Didn't disconnect from orderer")
+		if connectedToOS1 {
+			return os1.ConnCount() == 0 && os2.ConnCount() == 1
+		}
+		return os2.ConnCount() == 0 && os1.ConnCount() == 1
+	}), "Didn't disconnect from orderer, or reconnected to a black-listed node")
 
-	// Try to reconnect while endpoint still disabled
-	go func() {
-		assert.False(t, waitForWithTimeout(time.Millisecond*100, func() bool {
-			return os.ConnCount() == 1
-		}), "Recreated connection to orderer, although shouldn't")
-	}()
-
-	_, err := cl.Recv()
-	assert.Error(t, err, "Connection shouldn't have been established because all endpoints have been disabled")
-
-	//Wait until endpoint disable expires and reconnect again
-	time.Sleep(time.Millisecond * 1500)
+	// Disconnect from the node we are currently connected to, and attempt to black-list it
+	cl.Disconnect(true)
 
 	go func() {
 		cl.Recv()
 	}()
 
+	// Ensure we are still connected to some orderer, even though both endpoints are now black-listed
 	assert.True(t, waitForWithTimeout(time.Millisecond*100, func() bool {
-		return os.ConnCount() == 1
-	}), "Didn't got connection to orderer after endpoint disable expired")
-
-	cl.Close()
+		return os1.ConnCount() == 1 || os2.ConnCount() == 1
+	}), "Didn't got connection to orderer")
 }
 
 func waitForWithTimeout(timeout time.Duration, f func() bool) bool {
