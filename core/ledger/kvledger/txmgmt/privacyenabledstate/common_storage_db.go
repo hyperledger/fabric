@@ -78,11 +78,11 @@ func (s *CommonStorageDB) IsBulkOptimizable() bool {
 
 // LoadCommittedVersionsOfPubAndHashedKeys implements corresponding function in interface DB
 func (s *CommonStorageDB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*statedb.CompositeKey,
-	hashedKeys []*HashedCompositeKey) {
+	hashedKeys []*HashedCompositeKey) error {
 
 	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
 	if !ok {
-		return
+		return nil
 	}
 
 	// Here, hashedKeys are merged into pubKeys to get a combined set of keys for combined loading
@@ -101,7 +101,12 @@ func (s *CommonStorageDB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*sta
 		})
 	}
 
-	bulkOptimizable.LoadCommittedVersions(pubKeys)
+	err := bulkOptimizable.LoadCommittedVersions(pubKeys)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ClearCachedVersions implements corresponding function in interface DB

@@ -31,7 +31,7 @@ func NewValidator(db privacyenabledstate.DB) *Validator {
 
 // preLoadCommittedVersionOfRSet loads committed version of all keys in each
 // transaction's read set into a cache.
-func (v *Validator) preLoadCommittedVersionOfRSet(block *valinternal.Block) {
+func (v *Validator) preLoadCommittedVersionOfRSet(block *valinternal.Block) error {
 
 	// Collect both public and hashed keys in read sets of all transactions in a given block
 	var pubKeys []*statedb.CompositeKey
@@ -76,8 +76,13 @@ func (v *Validator) preLoadCommittedVersionOfRSet(block *valinternal.Block) {
 
 	// Load committed version of all keys into a cache
 	if len(pubKeys) > 0 || len(hashedKeys) > 0 {
-		v.db.LoadCommittedVersionsOfPubAndHashedKeys(pubKeys, hashedKeys)
+		err := v.db.LoadCommittedVersionsOfPubAndHashedKeys(pubKeys, hashedKeys)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // ValidateAndPrepareBatch implements method in Validator interface
@@ -86,7 +91,10 @@ func (v *Validator) ValidateAndPrepareBatch(block *valinternal.Block, doMVCCVali
 	// only CouchDB implements BulkOptimizable to reduce the number of REST
 	// API calls from peer to CouchDB instance.
 	if v.db.IsBulkOptimizable() {
-		v.preLoadCommittedVersionOfRSet(block)
+		err := v.preLoadCommittedVersionOfRSet(block)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	updates := valinternal.NewPubAndHashUpdates()

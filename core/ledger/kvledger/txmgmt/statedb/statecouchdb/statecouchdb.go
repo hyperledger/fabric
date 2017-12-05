@@ -407,7 +407,10 @@ func (vdb *VersionedDB) processUpdateBatch(updateBatch *statedb.UpdateBatch, mis
 			logger.Debugf("Retrieving keys with unknown revision numbers, keys= %s", printCompositeKeys(missingKeys))
 		}
 
-		vdb.LoadCommittedVersions(missingKeys)
+		err := vdb.LoadCommittedVersions(missingKeys)
+		if err != nil {
+			return err
+		}
 	}
 
 	// STEP 1: CREATE COUCHDB DOCS FROM UPDATE SET THEN DO A BULK UPDATE IN COUCHDB
@@ -559,13 +562,13 @@ func printCompositeKeys(keys []*statedb.CompositeKey) string {
 // A bulk retrieve from couchdb is used to populate the cache.
 // committedVersions cache will be used for state validation of readsets
 // revisionNumbers cache will be used during commit phase for couchdb bulk updates
-func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) {
+func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) error {
 
 	// initialize version and revision maps
 	versionMap := vdb.committedDataCache.committedVersions
 	revMap := vdb.committedDataCache.revisionNumbers
 
-	keysToRetrieve := []string{}
+	missingKeys := []string{}
 	for _, key := range keys {
 
 		logger.Debugf("Load into version cache: %s~%s", key.Key, key.Namespace)
@@ -592,29 +595,75 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) {
 		// list of keys to be retrieved
 		if !revFound || !versionFound {
 			// add the composite key to the list of required keys
-			keysToRetrieve = append(keysToRetrieve, string(compositeDBKey))
+			missingKeys = append(missingKeys, string(compositeDBKey))
 		}
 
 	}
 
+	//get the max size of the batch from core.yaml
+	maxBatchSize := ledgerconfig.GetMaxBatchUpdateSize()
+
+	// Initialize the array of keys to be retrieved
+	keysToRetrieve := []string{}
+
 	// Call the batch retrieve if there is one or more keys to retrieve
-	if len(keysToRetrieve) > 0 {
+	if len(missingKeys) > 0 {
 
-		documentMetadataArray, _ := vdb.db.BatchRetrieveDocumentMetadata(keysToRetrieve)
+		// Iterate through the missingKeys and build a batch of keys for batch retrieval
+		for _, key := range missingKeys {
 
-		for _, documentMetadata := range documentMetadataArray {
+			keysToRetrieve = append(keysToRetrieve, key)
 
-			if len(documentMetadata.Version) != 0 {
-				ns, key := splitCompositeKey([]byte(documentMetadata.ID))
-				compositeKey := statedb.CompositeKey{Namespace: ns, Key: key}
+			// check to see if the number of keys is greater than the max batch size
+			if len(keysToRetrieve) >= maxBatchSize {
+				err := vdb.batchRetrieveMetaData(keysToRetrieve)
+				if err != nil {
+					return err
+				}
+				// reset the array
+				keysToRetrieve = []string{}
+			}
 
-				versionMap[compositeKey] = createVersionHeightFromVersionString(documentMetadata.Version)
-				revMap[compositeKey] = documentMetadata.Rev
+		}
+
+		// If there are any remaining, retrieve the final batch
+		if len(keysToRetrieve) > 0 {
+			err := vdb.batchRetrieveMetaData(keysToRetrieve)
+			if err != nil {
+				return err
 			}
 		}
 
 	}
 
+	return nil
+}
+
+// batchRetrieveMetaData retrieves a batch of keys and loads metadata into cache
+func (vdb *VersionedDB) batchRetrieveMetaData(keys []string) error {
+
+	versionMap := vdb.committedDataCache.committedVersions
+	revMap := vdb.committedDataCache.revisionNumbers
+
+	documentMetadataArray, err := vdb.db.BatchRetrieveDocumentMetadata(keys)
+
+	if err != nil {
+		logger.Errorf("Batch retrieval of document metadata failed %s\n", err.Error())
+		return err
+	}
+
+	for _, documentMetadata := range documentMetadataArray {
+
+		if len(documentMetadata.Version) != 0 {
+			ns, key := splitCompositeKey([]byte(documentMetadata.ID))
+			compositeKey := statedb.CompositeKey{Namespace: ns, Key: key}
+
+			versionMap[compositeKey] = createVersionHeightFromVersionString(documentMetadata.Version)
+			revMap[compositeKey] = documentMetadata.Rev
+		}
+	}
+
+	return nil
 }
 
 func createVersionHeightFromVersionString(encodedVersion string) *version.Height {
