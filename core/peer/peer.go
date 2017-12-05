@@ -15,7 +15,11 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger/file"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
@@ -58,7 +62,8 @@ type chainSupport struct {
 	bundleSource *resourcesconfig.BundleSource
 	channelconfig.Resources
 	channelconfig.Application
-	ledger ledger.PeerLedger
+	ledger     ledger.PeerLedger
+	fileLedger *fileledger.FileLedger
 }
 
 var transientStoreFactory = &storeProvider{}
@@ -130,6 +135,17 @@ func (cs *chainSupport) Ledger() ledger.PeerLedger {
 
 func (cs *chainSupport) GetMSPIDs(cid string) []string {
 	return GetMSPIDs(cid)
+}
+
+// Sequence passes through to the underlying configtx.Validator
+func (cs *chainSupport) Sequence() uint64 {
+	return cs.ConfigtxValidator().Sequence()
+}
+func (cs *chainSupport) Reader() blockledger.Reader {
+	return cs.fileLedger
+}
+func (cs *chainSupport) Errored() <-chan struct{} {
+	return nil
 }
 
 // chain is a local struct to manage objects in a chain
@@ -300,6 +316,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	cs := &chainSupport{
 		Application: ac, // TODO, refactor as this is accessible through Manager
 		ledger:      ledger,
+		fileLedger:  fileledger.NewFileLedger(fileLedgerBlockStore{ledger}),
 	}
 
 	peerSingletonCallback := func(bundle *resourcesconfig.Bundle) {
@@ -683,4 +700,31 @@ func CreatePeerServer(listenAddress string,
 // GetPeerServer returns the peer server instance
 func GetPeerServer() comm.GRPCServer {
 	return peerServer
+}
+
+//
+//  Deliver service support structs for the peer
+//
+
+// DeliverSupportManager provides access to a channel for performing deliver
+type DeliverSupportManager struct {
+}
+
+func (dsm DeliverSupportManager) GetChain(chainID string) (deliver.Support, bool) {
+	channel, ok := chains.list[chainID]
+	return channel.cs, ok
+}
+
+// fileLedgerBlockStore implements the interface expected by
+// common/ledger/blockledger/file to interact with a file ledger for deliver
+type fileLedgerBlockStore struct {
+	ledger.PeerLedger
+}
+
+func (flbs fileLedgerBlockStore) AddBlock(*common.Block) error {
+	return nil
+}
+
+func (flbs fileLedgerBlockStore) RetrieveBlocks(startBlockNumber uint64) (commonledger.ResultsIterator, error) {
+	return flbs.GetBlocksIterator(startBlockNumber)
 }

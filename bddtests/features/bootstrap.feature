@@ -96,7 +96,7 @@ Feature: Bootstrap
         |  peerOrg1     |
         |  peerOrg2     |
 
-    And user "configAdminOrdererOrg0" using cert alias "config-admin-cert" connects to deliver function on orderer "<orderer0>"
+    And user "configAdminOrdererOrg0" using cert alias "config-admin-cert" connects to deliver function on orderer "<orderer0>" using port "7050"
 
     And user "configAdminOrdererOrg0" retrieves the latest config update "latestOrdererConfig" from orderer "<orderer0>" for channel "{ordererSystemChannelId}"
 
@@ -156,7 +156,7 @@ Feature: Bootstrap
     # Requesting a deliver earlier may result in a SERVICE_UNAVAILABLE response and a connection drop
     And I wait "<ChannelJoinDelay>" seconds
 
-    When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "<orderer0>"
+    When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "<orderer0>" using port "7050"
     And user "dev0Org0" sends deliver a seek request on orderer "<orderer0>" with properties:
       | ChainId                               | Start |  End    |
       | com.acme.blockchain.jdoe.channel1     |   0   |  0      |
@@ -190,7 +190,7 @@ Feature: Bootstrap
         | User            | Peer     | Organization  |
         | peer0Signer     | peer0    | peerOrg0      |
 
-      And user "configAdminPeerOrg0" using cert alias "config-admin-cert" connects to deliver function on orderer "<orderer0>"
+      And user "configAdminPeerOrg0" using cert alias "config-admin-cert" connects to deliver function on orderer "<orderer0>" using port "7050"
 
       And user "configAdminPeerOrg0" retrieves the latest config update "latestChannelConfigUpdate" from orderer "<orderer0>" for channel "com.acme.blockchain.jdoe.channel1"
 
@@ -249,6 +249,19 @@ Feature: Bootstrap
         | User            | Peer     | Organization  |
         | peer2Signer     | peer2    | peerOrg1      |
 
+    When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "peer0" using port "7051"
+         And user "dev0Org0" sends deliver a seek request on orderer "peer0" with properties:
+           | ChainId                               | Start |  End    |
+           | com.acme.blockchain.jdoe.channel1     |   0   |  0      |
+
+    Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannel" from "peer0" of "1" blocks with "1" messages within "1" seconds
+
+    When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "peer2" using port "7051"
+         And user "dev0Org0" sends deliver a seek request on orderer "peer2" with properties:
+           | ChainId                               | Start |  End    |
+           | com.acme.blockchain.jdoe.channel1     |   0   |  0      |
+
+    Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannelFromOtherOrgsPeer" from "peer2" of "1" blocks with "1" messages within "1" seconds
 
     # Entry point for invoking on an existing channel
     When user "peer0Admin" creates a chaincode spec "ccSpec" with name "example02" of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with args
@@ -377,9 +390,6 @@ Feature: Bootstrap
         | com.acme.blockchain.jdoe.channel1     |   3        |  3      |
 
       Then user "dev0Org0" should get a delivery "deliveredInvokeTx1Block" from "<orderer0>" of "1" blocks with "1" messages within "1" seconds
-
-
-    # TODO: Once events are working, consider listen event listener as well.
 
     Examples: Orderer Options
       |          ComposeFile                                                                                                                       |  SystemUpWaitTime   | ConsensusType | ChannelJoinDelay | BroadcastWaitTime | orderer0 | orderer1 | orderer2 |Orderer Specific Info|

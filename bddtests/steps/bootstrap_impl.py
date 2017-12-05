@@ -268,12 +268,12 @@ def step_impl(context, userName, transactionAlias, orderer):
     bootstrap_util.broadcastCreateChannelConfigTx(context=context, certAlias=None, composeService=orderer, user=user, configTxEnvelope=transaction)
 
 
-@when(u'user "{userName}" using cert alias "{certAlias}" connects to deliver function on orderer "{composeService}"')
-@Given(u'user "{userName}" using cert alias "{certAlias}" connects to deliver function on orderer "{composeService}"')
-def step_impl(context, userName, certAlias, composeService):
+@when(u'user "{userName}" using cert alias "{certAlias}" connects to deliver function on orderer "{composeService}" using port "{port}"')
+@Given(u'user "{userName}" using cert alias "{certAlias}" connects to deliver function on orderer "{composeService}" using port "{port}"')
+def step_impl(context, userName, certAlias, composeService, port):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
-    user.connectToDeliverFunction(context, composeService, nodeAdminTuple=user.tags[certAlias])
+    user.connectToDeliverFunction(context, composeService, nodeAdminTuple=user.tags[certAlias], port=port)
 
 @when(u'user "{userName}" sends deliver a seek request on orderer "{composeService}" with properties')
 def step_impl(context, userName, composeService):
