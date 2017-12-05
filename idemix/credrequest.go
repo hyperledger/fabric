@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
-	amcl "github.com/manudrijvers/amcl/go"
+	"github.com/milagro-crypto/amcl/version3/go/amcl"
+	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
 	"github.com/pkg/errors"
 )
 
@@ -30,7 +31,7 @@ const credRequestLabel = "credRequest"
 //    the signature value, a randomness used to create the signature, the user secret, and the attribute values
 
 // NewCredRequest creates a new Credential Request, the first message of the interactive credential issuance protocol (from user to issuer)
-func NewCredRequest(sk *amcl.BIG, credS1 *amcl.BIG, IssuerNonce *amcl.BIG, ipk *IssuerPublicKey, rng *amcl.RAND) *CredRequest {
+func NewCredRequest(sk *FP256BN.BIG, credS1 *FP256BN.BIG, IssuerNonce *FP256BN.BIG, ipk *IssuerPublicKey, rng *amcl.RAND) *CredRequest {
 	HSk := EcpFromProto(ipk.HSk)
 	HRand := EcpFromProto(ipk.HRand)
 	Nym := HSk.Mul2(sk, HRand, credS1)
@@ -55,8 +56,8 @@ func NewCredRequest(sk *amcl.BIG, credS1 *amcl.BIG, IssuerNonce *amcl.BIG, ipk *
 	copy(proofData[index:], ipk.Hash)
 
 	proofC := HashModOrder(proofData)
-	proofS1 := amcl.Modadd(amcl.Modmul(proofC, sk, GroupOrder), rSk, GroupOrder)
-	proofS2 := amcl.Modadd(amcl.Modmul(proofC, credS1, GroupOrder), rRand, GroupOrder)
+	proofS1 := Modadd(FP256BN.Modmul(proofC, sk, GroupOrder), rSk, GroupOrder)
+	proofS2 := Modadd(FP256BN.Modmul(proofC, credS1, GroupOrder), rRand, GroupOrder)
 
 	return &CredRequest{EcpToProto(Nym), BigToBytes(IssuerNonce), BigToBytes(proofC), BigToBytes(proofS1), BigToBytes(proofS2)}
 }
@@ -64,10 +65,10 @@ func NewCredRequest(sk *amcl.BIG, credS1 *amcl.BIG, IssuerNonce *amcl.BIG, ipk *
 // Check cryptographically verifies the credential request
 func (m *CredRequest) Check(ipk *IssuerPublicKey) error {
 	Nym := EcpFromProto(m.GetNym())
-	IssuerNonce := amcl.FromBytes(m.GetIssuerNonce())
-	ProofC := amcl.FromBytes(m.GetProofC())
-	ProofS1 := amcl.FromBytes(m.GetProofS1())
-	ProofS2 := amcl.FromBytes(m.GetProofS2())
+	IssuerNonce := FP256BN.FromBytes(m.GetIssuerNonce())
+	ProofC := FP256BN.FromBytes(m.GetProofC())
+	ProofS1 := FP256BN.FromBytes(m.GetProofS1())
+	ProofS2 := FP256BN.FromBytes(m.GetProofS2())
 
 	HSk := EcpFromProto(ipk.HSk)
 	HRand := EcpFromProto(ipk.HRand)
@@ -93,7 +94,7 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey) error {
 	index = appendBytesBig(proofData, index, IssuerNonce)
 	copy(proofData[index:], ipk.Hash)
 
-	if !ProofC.Equals(HashModOrder(proofData)) {
+	if *ProofC != *HashModOrder(proofData) {
 		return errors.Errorf("zero knowledge proof is invalid")
 	}
 
