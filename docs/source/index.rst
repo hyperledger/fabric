@@ -52,6 +52,7 @@ Business:
 
    build_network
    write_first_app
+   channel_update
    chaincode
    chaincode4ade
    chaincode4noah
