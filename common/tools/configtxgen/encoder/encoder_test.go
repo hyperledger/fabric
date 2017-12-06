@@ -12,9 +12,11 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
-	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
+	"github.com/hyperledger/fabric/common/localmsp"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	cb "github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
@@ -70,23 +72,48 @@ func TestConfigParsing(t *testing.T) {
 
 func TestGoodChannelCreateConfigUpdate(t *testing.T) {
 	config := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
-	group, err := NewChannelGroup(config)
+	systemChannel, err := NewChannelGroup(config)
 	assert.NoError(t, err)
-	assert.NotNil(t, group)
+	assert.NotNil(t, systemChannel)
 
-	configUpdate, err := NewChannelCreateConfigUpdate("channel.id", genesisconfig.SampleConsortiumName, []string{genesisconfig.SampleOrgName}, group)
+	createConfig := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+
+	configUpdate, err := NewChannelCreateConfigUpdate("channel.id", nil, createConfig)
 	assert.NoError(t, err)
 	assert.NotNil(t, configUpdate)
 
-	defaultConfigUpdate, err := NewChannelCreateConfigUpdate("channel.id", genesisconfig.SampleConsortiumName, []string{genesisconfig.SampleOrgName}, nil)
+	defaultConfigUpdate, err := NewChannelCreateConfigUpdate("channel.id", systemChannel, createConfig)
 	assert.NoError(t, err)
 	assert.NotNil(t, configUpdate)
 
 	assert.True(t, proto.Equal(configUpdate, defaultConfigUpdate), "the config used has had no updates, so should equal default")
 }
 
+func TestChannelCreateWithResources(t *testing.T) {
+	t.Run("AtV1.0", func(t *testing.T) {
+		createConfig := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+
+		configUpdate, err := NewChannelCreateConfigUpdate("channel.id", nil, createConfig)
+		assert.NoError(t, err)
+		assert.NotNil(t, configUpdate)
+		assert.Nil(t, configUpdate.IsolatedData)
+	})
+
+	t.Run("AtV1.1", func(t *testing.T) {
+		createConfig := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelV11Profile)
+
+		configUpdate, err := NewChannelCreateConfigUpdate("channel.id", nil, createConfig)
+		assert.NoError(t, err)
+		assert.NotNil(t, configUpdate)
+		assert.NotNil(t, configUpdate.IsolatedData)
+		assert.NotEmpty(t, configUpdate.IsolatedData[pb.RSCCSeedDataKey])
+	})
+
+}
+
 func TestNegativeChannelCreateConfigUpdate(t *testing.T) {
 	config := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)
+	channelConfig := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
 	group, err := NewChannelGroup(config)
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
@@ -94,7 +121,7 @@ func TestNegativeChannelCreateConfigUpdate(t *testing.T) {
 	t.Run("NoGroups", func(t *testing.T) {
 		channelGroup := proto.Clone(group).(*cb.ConfigGroup)
 		channelGroup.Groups = nil
-		_, err := NewChannelCreateConfigUpdate("channel.id", genesisconfig.SampleConsortiumName, []string{genesisconfig.SampleOrgName}, channelGroup)
+		_, err := NewChannelCreateConfigUpdate("channel.id", &cb.ConfigGroup{}, channelConfig)
 		assert.Error(t, err)
 		assert.Regexp(t, "missing all channel groups", err.Error())
 	})
@@ -102,7 +129,7 @@ func TestNegativeChannelCreateConfigUpdate(t *testing.T) {
 	t.Run("NoConsortiumsGroup", func(t *testing.T) {
 		channelGroup := proto.Clone(group).(*cb.ConfigGroup)
 		delete(channelGroup.Groups, channelconfig.ConsortiumsGroupKey)
-		_, err := NewChannelCreateConfigUpdate("channel.id", genesisconfig.SampleConsortiumName, []string{genesisconfig.SampleOrgName}, channelGroup)
+		_, err := NewChannelCreateConfigUpdate("channel.id", channelGroup, channelConfig)
 		assert.Error(t, err)
 		assert.Regexp(t, "bad consortiums group", err.Error())
 	})
@@ -110,26 +137,19 @@ func TestNegativeChannelCreateConfigUpdate(t *testing.T) {
 	t.Run("NoConsortiums", func(t *testing.T) {
 		channelGroup := proto.Clone(group).(*cb.ConfigGroup)
 		delete(channelGroup.Groups[channelconfig.ConsortiumsGroupKey].Groups, genesisconfig.SampleConsortiumName)
-		_, err := NewChannelCreateConfigUpdate("channel.id", genesisconfig.SampleConsortiumName, []string{genesisconfig.SampleOrgName}, channelGroup)
+		_, err := NewChannelCreateConfigUpdate("channel.id", channelGroup, channelConfig)
 		assert.Error(t, err)
 		assert.Regexp(t, "bad consortium:", err.Error())
-	})
-
-	t.Run("MissingOrg", func(t *testing.T) {
-		channelGroup := proto.Clone(group).(*cb.ConfigGroup)
-		_, err := NewChannelCreateConfigUpdate("channel.id", genesisconfig.SampleConsortiumName, []string{genesisconfig.SampleOrgName + ".wrong"}, channelGroup)
-		assert.Error(t, err)
-		assert.Regexp(t, "missing organization:", err.Error())
 	})
 }
 
 func TestMakeChannelCreationTransactionWithSigner(t *testing.T) {
 	channelID := "foo"
 
-	signer, err := mmsp.NewNoopMsp().GetDefaultSigningIdentity()
-	assert.NoError(t, err, "Creating noop MSP")
+	mspmgmt.LoadDevMsp()
+	signer := localmsp.NewSigner()
 
-	cct, err := MakeChannelCreationTransaction(channelID, "test", signer, nil)
+	cct, err := MakeChannelCreationTransaction(channelID, signer, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelV11Profile))
 	assert.NoError(t, err, "Making chain creation tx")
 
 	assert.NotEmpty(t, cct.Signature, "Should have signature")
@@ -149,7 +169,7 @@ func TestMakeChannelCreationTransactionWithSigner(t *testing.T) {
 
 func TestMakeChannelCreationTransactionNoSigner(t *testing.T) {
 	channelID := "foo"
-	cct, err := MakeChannelCreationTransaction(channelID, "test", nil, nil)
+	cct, err := MakeChannelCreationTransaction(channelID, nil, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
 	assert.NoError(t, err, "Making chain creation tx")
 
 	assert.Empty(t, cct.Signature, "Should have empty signature")

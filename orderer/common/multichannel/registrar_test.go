@@ -181,8 +181,9 @@ func TestNewChain(t *testing.T) {
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
 	manager := NewRegistrar(lf, consenters, mockCrypto())
-
-	envConfigUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, genesisconfig.SampleConsortiumName, mockSigningIdentity, nil)
+	orglessChannelConf := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	orglessChannelConf.Application.Organizations = nil
+	envConfigUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, mockCrypto(), nil, orglessChannelConf)
 	assert.NoError(t, err, "Constructing chain creation tx")
 
 	res, err := manager.NewChannelConfig(envConfigUpdate)

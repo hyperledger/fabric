@@ -59,6 +59,23 @@ Profiles:
                     - <<: *SampleOrg
                       AdminPrincipal: Role.MEMBER
 
+    # SampleDevModeSoloV1.1 mimics the SampleDevModeKafka definition
+    # but additionally defines the v1.1 only capabilities which do
+    # not allow a mixed v1.0.x v1.1.x network
+    SampleDevModeSoloV1_1:
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  AdminPrincipal: Role.MEMBER
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - <<: *SampleOrg
+                      AdminPrincipal: Role.MEMBER
+
     # SampleDevModeKafka defines a configuration that differs from the
     # SampleDevModeSolo one only in that it uses the Kafka-based orderer.
     SampleDevModeKafka:
@@ -74,10 +91,10 @@ Profiles:
                     - <<: *SampleOrg
                       AdminPrincipal: Role.MEMBER
 
-    # SampleSingleMSPKafkaV1.1 mimics the SampleDevModeKafka definition
+    # SampleDevModeKafkaV1_1 mimics the SampleDevModeKafka definition
     # but additionally defines the v1.1 only capabilities which do
     # not allow a mixed v1.0.x v1.1.x network
-    SampleDevModeKafkaV1.1:
+    SampleDevModeKafkaV1_1:
         Orderer:
             <<: *OrdererDefaults
             OrdererType: kafka

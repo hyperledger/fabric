@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -29,9 +28,10 @@ const (
 )
 
 var conf *config.TopLevel
-var signer msp.SigningIdentity
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+
+var channelProfile *genesisconfig.Profile
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -44,11 +44,7 @@ func init() {
 		panic(fmt.Errorf("Failed to initialize local MSP: %s", err))
 	}
 
-	msp := mspmgmt.GetLocalMSP()
-	signer, err = msp.GetDefaultSigningIdentity()
-	if err != nil {
-		panic(fmt.Errorf("Failed to get default signer: %s", err))
-	}
+	channelProfile = genesisconfig.Load(genesisconfig.SampleSingleMSPChannelV11Profile)
 }
 
 // MakeNormalTx creates a properly signed transaction that could be used against `broadcast` API
@@ -111,15 +107,14 @@ func CreateChannel(server *BenchmarkServer) string {
 	defer client.Close()
 
 	channelID := RandomID(10)
-	createChannelTx, _ := encoder.MakeChannelCreationTransaction(
-		channelID,
-		genesisconfig.SampleConsortiumName,
-		signer,
-		nil,
-		genesisconfig.SampleOrgName)
+	createChannelTx, err := encoder.MakeChannelCreationTransaction(channelID, localmsp.NewSigner(), nil, channelProfile)
+	if err != nil {
+		logger.Panicf("Failed to create channel creation transaction: %s", err)
+	}
 	client.SendRequest(createChannelTx)
-	if client.GetResponse().Status != cb.Status_SUCCESS {
-		logger.Panicf("Failed to create channel: %s", channelID)
+	response := client.GetResponse()
+	if response.Status != cb.Status_SUCCESS {
+		logger.Panicf("Failed to create channel: %s -- %v:%s", channelID, response.Status, response.Info)
 	}
 	return channelID
 }

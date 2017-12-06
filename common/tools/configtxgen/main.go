@@ -50,25 +50,11 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 func doOutputChannelCreateTx(conf *genesisconfig.Profile, channelID string, outputChannelCreateTx string) error {
 	logger.Info("Generating new channel configtx")
 
-	if conf.Application == nil {
-		return fmt.Errorf("Cannot define a new channel with no Application section")
-	}
-
-	if conf.Consortium == "" {
-		return fmt.Errorf("Cannot define a new channel with no Consortium value")
-	}
-
-	// XXX we ignore the non-application org names here, once the tool supports configuration updates
-	// we should come up with a cleaner way to handle this, but leaving as is for the moment to not break
-	// backwards compatibility
-	var orgNames []string
-	for _, org := range conf.Application.Organizations {
-		orgNames = append(orgNames, org.Name)
-	}
-	configtx, err := encoder.MakeChannelCreationTransaction(channelID, conf.Consortium, nil, nil, orgNames...)
+	configtx, err := encoder.MakeChannelCreationTransaction(channelID, nil, nil, conf)
 	if err != nil {
-		return fmt.Errorf("Error generating configtx: %s", err)
+		return err
 	}
+
 	logger.Info("Writing new channel tx")
 	err = ioutil.WriteFile(outputChannelCreateTx, utils.MarshalOrPanic(configtx), 0644)
 	if err != nil {
@@ -251,8 +237,9 @@ func main() {
 				logger.Error("Could not find configtx.yaml. " +
 					"Please make sure that FABRIC_CFG_PATH is set to a path " +
 					"which contains configtx.yaml")
+				os.Exit(1)
 			}
-			os.Exit(1)
+			logger.Panic(err)
 		}
 	}()
 
