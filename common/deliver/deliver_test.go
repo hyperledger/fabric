@@ -41,6 +41,8 @@ var genesisBlock = cb.NewBlock(0, nil)
 
 var systemChainID = "systemChain"
 
+var policyName = policies.ChannelReaders
+
 const ledgerSize = 10
 
 func init() {
@@ -156,7 +158,7 @@ func initializeDeliverHandler() Handler {
 		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
-	return NewHandlerImpl(mm)
+	return NewHandlerImpl(mm, policyName)
 }
 
 func newMockMultichainManager() *mockSupportManager {
@@ -288,7 +290,7 @@ func TestUnauthorizedSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm)
+	ds := NewHandlerImpl(mm, policyName)
 
 	go ds.Handle(m)
 
@@ -313,7 +315,7 @@ func TestRevokedAuthorizationSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm)
+	ds := NewHandlerImpl(mm, policyName)
 
 	go ds.Handle(m)
 
@@ -396,7 +398,7 @@ func TestBlockingSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm)
+	ds := NewHandlerImpl(mm, policyName)
 
 	go ds.Handle(m)
 
@@ -450,7 +452,7 @@ func TestErroredSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm)
+	ds := NewHandlerImpl(mm, policyName)
 
 	go ds.Handle(m)
 
@@ -474,7 +476,7 @@ func TestErroredBlockingSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm)
+	ds := NewHandlerImpl(mm, policyName)
 
 	go ds.Handle(m)
 
@@ -499,7 +501,7 @@ func TestErroredBlockingSeek(t *testing.T) {
 
 func TestSGracefulShutdown(t *testing.T) {
 	m := newMockD()
-	ds := NewHandlerImpl(nil)
+	ds := NewHandlerImpl(nil, policyName)
 
 	close(m.recvChan)
 	assert.NoError(t, ds.Handle(m), "Expected no error for hangup")
@@ -527,7 +529,7 @@ func TestReversedSeqSeek(t *testing.T) {
 }
 
 func TestBadStreamRecv(t *testing.T) {
-	bh := NewHandlerImpl(nil)
+	bh := NewHandlerImpl(nil, policyName)
 	assert.Error(t, bh.Handle(&erroneousRecvMockD{}), "Should catch unexpected stream error")
 }
 
@@ -616,7 +618,7 @@ func TestChainNotFound(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := NewHandlerImpl(mm)
+	ds := NewHandlerImpl(mm, policyName)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})

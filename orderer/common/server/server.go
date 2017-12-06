@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/deliver"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
@@ -48,7 +49,7 @@ type server struct {
 // NewServer creates a ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
 func NewServer(r *multichannel.Registrar, _ crypto.LocalSigner, debug *localconfig.Debug) ab.AtomicBroadcastServer {
 	s := &server{
-		dh:    deliver.NewHandlerImpl(deliverSupport{Registrar: r}),
+		dh:    deliver.NewHandlerImpl(deliverSupport{Registrar: r}, policies.ChannelReaders),
 		bh:    broadcast.NewHandlerImpl(broadcastSupport{Registrar: r}),
 		debug: debug,
 	}
