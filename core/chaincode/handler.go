@@ -1329,10 +1329,21 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 
 				version = cd.CCVersion()
 
-				err = ccprovider.CheckInsantiationPolicy(calledCcIns.ChaincodeName, version, cd.(*ccprovider.ChaincodeData))
+				ac, err := getApplicationConfigForChain(calledCcIns.ChainID)
 				if err != nil {
-					errHandler([]byte(err.Error()), "[%s]CheckInsantiationPolicy, error %s. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
+					errHandler([]byte(err.Error()), "[%s]Failed to get application config (%s) for invoked chaincode. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
 					return
+				}
+
+				if !ac.Capabilities().LifecycleViaConfig() {
+					err = ccprovider.CheckInsantiationPolicy(calledCcIns.ChaincodeName, version, cd.(*ccprovider.ChaincodeData))
+					if err != nil {
+						errHandler([]byte(err.Error()), "[%s]CheckInsantiationPolicy, error %s. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
+						return
+					}
+				} else {
+					// FIXME: consider checking the instantiation policy
+					//        a better place to do it would be the chaincodeSupport.Launch function
 				}
 			} else {
 				//this is a system cc, just call it directly

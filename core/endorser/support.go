@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package endorser
 
 import (
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -125,4 +126,10 @@ func (s *SupportImpl) IsJavaCC(buf []byte) (bool, error) {
 // ChaincodeDefinition differs from the instantiation policy stored on the ledger
 func (s *SupportImpl) CheckInsantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error {
 	return ccprovider.CheckInsantiationPolicy(name, version, cd.(*ccprovider.ChaincodeData))
+}
+
+// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
+// and whether the Application config exists
+func (s *SupportImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
+	return peer.GetSupport().GetApplicationConfig(cid)
 }

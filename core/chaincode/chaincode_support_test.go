@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	mc "github.com/hyperledger/fabric/common/mocks/config"
 	mocklgr "github.com/hyperledger/fabric/common/mocks/ledger"
 	mockpeer "github.com/hyperledger/fabric/common/mocks/peer"
 	"github.com/hyperledger/fabric/common/util"
@@ -34,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	cmp "github.com/hyperledger/fabric/core/mocks/peer"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
@@ -137,6 +139,12 @@ var mockAclProvider *mocks.MockACLProvider
 
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) error {
+	msi := &cmp.MockSupportImpl{
+		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{}},
+		GetApplicationConfigBoolRv: true,
+	}
+	peer.RegisterSupportFactory(&cmp.MockSupportFactoryImpl{msi})
+
 	mockAclProvider = &mocks.MockACLProvider{}
 	mockAclProvider.Reset()
 

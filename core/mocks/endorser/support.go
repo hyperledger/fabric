@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package endorser
 
 import (
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/ledger"
 	mc "github.com/hyperledger/fabric/core/mocks/ccprovider"
@@ -34,6 +35,8 @@ type MockSupport struct {
 	SysCCMap                         map[string]struct{}
 	IsJavaRV                         bool
 	IsJavaErr                        error
+	GetApplicationConfigRv           channelconfig.Application
+	GetApplicationConfigBoolRv       bool
 }
 
 func (s *MockSupport) IsSysCCAndNotInvokableExternal(name string) bool {
@@ -84,4 +87,8 @@ func (s *MockSupport) IsJavaCC(buf []byte) (bool, error) {
 
 func (s *MockSupport) CheckInsantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error {
 	return s.CheckInsantiationPolicyError
+}
+
+func (s *MockSupport) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
+	return s.GetApplicationConfigRv, s.GetApplicationConfigBoolRv
 }

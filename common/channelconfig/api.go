@@ -119,6 +119,10 @@ type ApplicationCapabilities interface {
 	// ForbidDuplicateTXIdInBlock specifies whether two transactions with the same TXId are permitted
 	// in the same block or whether we mark the second one as TxValidationCode_DUPLICATE_TXID
 	ForbidDuplicateTXIdInBlock() bool
+
+	// LifecycleViaConfig returns true if chaincode lifecycle should be managed via the resources config
+	// tree rather than via the deprecated v1.0 endorser tx mechanism.
+	LifecycleViaConfig() bool
 }
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel
