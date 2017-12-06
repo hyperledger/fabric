@@ -26,6 +26,7 @@ import (
 
 // PeerLedgerProvider provides handle to ledger instances
 type PeerLedgerProvider interface {
+	Initialize(statelisteners StateListeners)
 	// Create creates a new ledger with the given genesis block.
 	// This function guarantees that the creation of ledger and committing the genesis block would an atomic action
 	// The chain id retrieved from the genesis block is treated as a ledger id
@@ -265,3 +266,24 @@ func (txSim *TxSimulationResults) GetPvtSimulationBytes() ([]byte, error) {
 func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 	return txSim.PvtSimulationResults != nil
 }
+
+// StateListener allows a custom code for performing additional stuff upon state change
+// for a perticular namespace against which the listener is registered.
+// This helps to perform custom tasks other than the state updates.
+// A ledger implemetation is expected to invoke Function `HandleStateUpdates` once per block and
+// the `stateUpdates` parameter passed to the function captures the state changes caused by the block
+// for the namespace. The actual data type of stateUpdates depends on the data model enabled.
+// For instance, for KV data model, the actual type would be proto message
+// `github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset.KVWrite`
+// Function `HandleStateUpdates` is expected to be invoked before block is committed and if this
+// function returns an error, the ledger implementation is expected to halt block commit operation
+// and result in a panic
+type StateListener interface {
+	HandleStateUpdates(ledgerID string, stateUpdates StateUpdates) error
+}
+
+// StateUpdates is the generic type to represent the state updates
+type StateUpdates interface{}
+
+// StateListeners maintains the association between a namespace to its corresponding listener
+type StateListeners map[string]StateListener

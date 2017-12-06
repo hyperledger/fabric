@@ -15,6 +15,7 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
@@ -39,17 +40,27 @@ type kvLedger struct {
 
 // NewKVLedger constructs new `KVLedger`
 func newKVLedger(ledgerID string, blockStore *ledgerstorage.Store,
-	versionedDB privacyenabledstate.DB, historyDB historydb.HistoryDB) (*kvLedger, error) {
+	versionedDB privacyenabledstate.DB, historyDB historydb.HistoryDB,
+	stateListeners ledger.StateListeners) (*kvLedger, error) {
 
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 
 	//Initialize transaction manager using state database
 	var txmgmt txmgr.TxMgr
-	txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(versionedDB)
+	txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(ledgerID, versionedDB, stateListeners)
 
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying
 	// id store, blockstore, txmgr (state database), history database
 	l := &kvLedger{ledgerID, blockStore, txmgmt, historyDB, &sync.RWMutex{}}
+
+	// TODO Move the function `GetChaincodeEventListener` to ledger interface and
+	// this functionality of regiserting for events to ledgermgmt package so that this
+	// is reused across other future ledger implementations
+	ccEventListener := versionedDB.GetChaincodeEventListener()
+	logger.Debugf("Register state db for chaincode lifecycle events: %t", ccEventListener != nil)
+	if ccEventListener != nil {
+		cceventmgmt.GetMgr().Register(ledgerID, ccEventListener)
+	}
 
 	//Recover both state DB and history DB if they are out of sync with block storage
 	if err := l.recoverDBs(); err != nil {

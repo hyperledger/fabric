@@ -42,6 +42,7 @@ type Provider struct {
 	ledgerStoreProvider *ledgerstorage.Provider
 	vdbProvider         privacyenabledstate.DBProvider
 	historydbProvider   historydb.HistoryDBProvider
+	stateListeners      ledger.StateListeners
 }
 
 // NewProvider instantiates a new Provider.
@@ -66,9 +67,14 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	historydbProvider = historyleveldb.NewHistoryDBProvider()
 
 	logger.Info("ledger provider Initialized")
-	provider := &Provider{idStore, ledgerStoreProvider, vdbProvider, historydbProvider}
+	provider := &Provider{idStore, ledgerStoreProvider, vdbProvider, historydbProvider, nil}
 	provider.recoverUnderConstructionLedger()
 	return provider, nil
+}
+
+// Initialize implements the corresponding method from interface ledger.PeerLedgerProvider
+func (provider *Provider) Initialize(stateListeners ledger.StateListeners) {
+	provider.stateListeners = stateListeners
 }
 
 // Create implements the corresponding method from interface ledger.PeerLedgerProvider
@@ -143,7 +149,7 @@ func (provider *Provider) openInternal(ledgerID string) (ledger.PeerLedger, erro
 
 	// Create a kvLedger for this chain/ledger, which encasulates the underlying data stores
 	// (id store, blockstore, state database, history database)
-	l, err := newKVLedger(ledgerID, blockStore, vDB, historyDB)
+	l, err := newKVLedger(ledgerID, blockStore, vDB, historyDB, provider.stateListeners)
 	if err != nil {
 		return nil, err
 	}

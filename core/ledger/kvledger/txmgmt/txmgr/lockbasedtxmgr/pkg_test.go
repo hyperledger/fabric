@@ -72,7 +72,7 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string) {
 	env.testDBEnv.Init(t)
 	env.testDB = env.testDBEnv.GetDBHandle(testLedgerID)
 	testutil.AssertNoError(t, err, "")
-	env.txmgr = NewLockBasedTxMgr(env.testDB)
+	env.txmgr = NewLockBasedTxMgr(testLedgerID, env.testDB, nil)
 }
 
 func (env *lockBasedEnv) getTxMgr() txmgr.TxMgr {
