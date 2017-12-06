@@ -22,7 +22,7 @@ source ./common.sh
 PKG_NAME="github.com/hyperledger/fabric/test/tools/LTE/experiments"
 
 function setCommonTestParams {
-  TEST_PARAMS="-DataDir=$DataDir, -NumChains=$NumChains, -NumParallelTxPerChain=$NumParallelTxPerChain, -NumKeysInEachTx=$NumKeysInEachTx, -BatchSize=$BatchSize, -NumKVs=$NumKVs, -KVSize=$KVSize"
+  TEST_PARAMS="-DataDir=$DataDir, -NumChains=$NumChains, -NumParallelTxPerChain=$NumParallelTxPerChain, -NumWritesPerTx=$NumWritesPerTx, -NumReadsPerTx=$NumReadsPerTx, -BatchSize=$BatchSize, -NumKVs=$NumKVs, -KVSize=$KVSize, -UseJSONFormat=$UseJSONFormat"
   RESULTANT_DIRS="$DataDir/ledgersData/chains/chains $DataDir/ledgersData/chains/index $DataDir/ledgersData/stateLeveldb $DataDir/ledgersData/historyLeveldb"
 }
 
@@ -36,7 +36,7 @@ function runReadWriteTxs {
   FUNCTION_NAME="BenchmarkReadWriteTxs"
   if [ "$CLEAR_OS_CACHE" == "true" ]; then
     clearOSCache
-  fi    
+  fi
   setCommonTestParams
   TEST_PARAMS="$TEST_PARAMS, -NumTotalTx=$NumTotalTx"
   executeTest

@@ -15,19 +15,24 @@ import (
 // txConf captures the transaction related configurations
 // numTotalTxs specifies the total transactions that should be executed and committed across chains
 // numParallelTxsPerChain specifies the parallel transactions on each of the chains
-// numKeysInEachTx specifies the number of keys that each of transactions should operate
+// numWritesPerTx specifies the number of keys to write in each transaction
+// numReadsPerTx specifies the number of keys to read in each transaction, Note:  this parameters
+//   match the numWritesPerTx for normal benchmarks.  This can be set to zero to make batch update measurements.
 type txConf struct {
 	numTotalTxs            int
 	numParallelTxsPerChain int
-	numKeysInEachTx        int
+	numWritesPerTx         int
+	numReadsPerTx          int
 }
 
 // dataConf captures the data related configurations
 // numKVs specifies number of total key-values across chains
 // kvSize specifies the size of a key-value (in bytes)
+// useJSON specifies if the value stored is in JSON format
 type dataConf struct {
-	numKVs int
-	kvSize int
+	numKVs  int
+	kvSize  int
+	useJSON bool
 }
 
 // configuration captures all the configurations for an experiment
@@ -44,8 +49,8 @@ func defaultConf() *configuration {
 	conf := &configuration{}
 	conf.chainMgrConf = &chainmgmt.ChainMgrConf{DataDir: "/tmp/fabric/ledgerPerfTests", NumChains: 1}
 	conf.batchConf = &chainmgmt.BatchConf{BatchSize: 10, SignBlock: false}
-	conf.txConf = &txConf{numTotalTxs: 100000, numParallelTxsPerChain: 100, numKeysInEachTx: 4}
-	conf.dataConf = &dataConf{numKVs: 100000, kvSize: 200}
+	conf.txConf = &txConf{numTotalTxs: 100000, numParallelTxsPerChain: 100, numWritesPerTx: 4, numReadsPerTx: 4}
+	conf.dataConf = &dataConf{numKVs: 100000, kvSize: 200, useJSON: false}
 	return conf
 }
 
@@ -76,8 +81,11 @@ func confFromTestParams(testParams []string) *configuration {
 	numTotalTxs := flags.Int("NumTotalTx",
 		conf.txConf.numTotalTxs, "Number of total transactions")
 
-	numKeysInEachTx := flags.Int("NumKeysInEachTx",
-		conf.txConf.numKeysInEachTx, "number of keys operated upon in each Tx")
+	numWritesPerTx := flags.Int("NumWritesPerTx",
+		conf.txConf.numWritesPerTx, "number of keys written in each Tx")
+
+	numReadsPerTx := flags.Int("NumReadsPerTx",
+		conf.txConf.numReadsPerTx, "number of keys to read in each Tx")
 
 	// batchConf
 	batchSize := flags.Int("BatchSize",
@@ -90,15 +98,19 @@ func confFromTestParams(testParams []string) *configuration {
 	kvSize := flags.Int("KVSize",
 		conf.dataConf.kvSize, "size of the key-value in bytes")
 
+	useJSON := flags.Bool("UseJSONFormat", conf.dataConf.useJSON, "should CouchDB use JSON for values")
+
 	flags.Parse(testParams)
 
 	conf.chainMgrConf.DataDir = *dataDir
 	conf.chainMgrConf.NumChains = *numChains
 	conf.txConf.numParallelTxsPerChain = *numParallelTxsPerChain
 	conf.txConf.numTotalTxs = *numTotalTxs
-	conf.txConf.numKeysInEachTx = *numKeysInEachTx
+	conf.txConf.numWritesPerTx = *numWritesPerTx
+	conf.txConf.numReadsPerTx = *numReadsPerTx
 	conf.batchConf.BatchSize = *batchSize
 	conf.dataConf.numKVs = *numKVs
 	conf.dataConf.kvSize = *kvSize
+	conf.dataConf.useJSON = *useJSON
 	return conf
 }
