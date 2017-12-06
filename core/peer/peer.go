@@ -450,6 +450,17 @@ func GetLedger(cid string) ledger.PeerLedger {
 	return nil
 }
 
+// GetResourcesConfig returns the resources configuration of the chain with channel ID. Note that this
+// call returns nil if chain cid has not been created.
+func GetResourcesConfig(cid string) resourcesconfig.Resources {
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.cs.bundleSource.StableBundle()
+	}
+	return nil
+}
+
 // GetChannelConfig returns the channel configuration of the chain with channel ID. Note that this
 // call returns nil if chain cid has not been created.
 func GetChannelConfig(cid string) channelconfig.Resources {
