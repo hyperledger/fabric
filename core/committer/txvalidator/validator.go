@@ -9,29 +9,26 @@ package txvalidator
 import (
 	"fmt"
 
-	"golang.org/x/net/context"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/resourcesconfig"
 	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/msp"
-
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
-
-	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/resourcesconfig"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"golang.org/x/net/context"
 )
 
 // Support provides all of the needed to evaluate the VSCC
@@ -337,7 +334,7 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 		var txsChaincodeName *sysccprovider.ChaincodeInstance
 		var txsUpgradedChaincode *sysccprovider.ChaincodeInstance
 
-		if payload, txResult = validation.ValidateTransaction(env); txResult != peer.TxValidationCode_VALID {
+		if payload, txResult = validation.ValidateTransaction(env, v.support.Capabilities()); txResult != peer.TxValidationCode_VALID {
 			logger.Errorf("Invalid transaction with index %d", tIdx)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,
@@ -443,6 +440,16 @@ func validateTx(req *blockValidationRequest, results chan<- *blockValidationResu
 				return
 			}
 			logger.Debugf("config transaction received for chain %s", channel)
+		} else if common.HeaderType(chdr.Type) == common.HeaderType_PEER_RESOURCE_UPDATE {
+			// FIXME: in the context of FAB-7341, we should introduce validation
+			//        for this kind of transaction here. For now we just ignore this
+			//        type of transaction and delegate its validation to other components
+
+			results <- &blockValidationResult{
+				tIdx: tIdx,
+				err:  nil,
+			}
+			return
 		} else {
 			logger.Warningf("Unknown transaction type [%s] in block number [%d] transaction index [%d]",
 				common.HeaderType(chdr.Type), block.Header.Number, tIdx)

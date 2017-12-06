@@ -19,6 +19,7 @@ package validation
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/util"
@@ -52,7 +53,7 @@ func TestValidateConfigTx(t *testing.T) {
 		}),
 	}
 	updateResult.Signature, _ = signer.Sign(updateResult.Payload)
-	_, txResult := ValidateTransaction(updateResult)
+	_, txResult := ValidateTransaction(updateResult, &config.MockApplicationCapabilities{})
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
