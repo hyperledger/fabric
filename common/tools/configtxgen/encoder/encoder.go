@@ -375,7 +375,7 @@ func NewChannelCreateConfigUpdate(channelID string, orderingSystemChannelGroup *
 			defaultModPolicy = conf.Application.Resources.DefaultModPolicy
 		}
 		updt.IsolatedData = map[string][]byte{
-			pb.RSCCSeedDataKey: utils.MarshalOrPanic(&cb.Config{
+			pb.ResourceConfigSeedDataKey: utils.MarshalOrPanic(&cb.Config{
 				Type: int32(cb.ConfigType_RESOURCE),
 				ChannelGroup: &cb.ConfigGroup{
 					Groups: map[string]*cb.ConfigGroup{

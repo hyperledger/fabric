@@ -106,7 +106,7 @@ func TestChannelCreateWithResources(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, configUpdate)
 		assert.NotNil(t, configUpdate.IsolatedData)
-		assert.NotEmpty(t, configUpdate.IsolatedData[pb.RSCCSeedDataKey])
+		assert.NotEmpty(t, configUpdate.IsolatedData[pb.ResourceConfigSeedDataKey])
 	})
 
 }
