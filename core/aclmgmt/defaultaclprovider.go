@@ -124,6 +124,6 @@ func (d *defaultACLProvider) CheckACL(resName string, channelID string, idinfo i
 
 //GenerateSimulationResults does nothing for default provider currently as it defaults to
 //1.0 behavior
-func (d *defaultACLProvider) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator) error {
+func (d *defaultACLProvider) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	return nil
 }

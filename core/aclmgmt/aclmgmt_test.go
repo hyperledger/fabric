@@ -35,9 +35,9 @@ func registerACLProvider() *mocks.MockACLProvider {
 
 func TestACLProcessor(t *testing.T) {
 	reinit()
-	assert.NotNil(t, GetConfigTxProcessor().GenerateSimulationResults(nil, nil), "Expected non-nil error")
+	assert.NotNil(t, GetConfigTxProcessor().GenerateSimulationResults(nil, nil, false), "Expected non-nil error")
 	RegisterACLProvider(nil)
-	assert.Nil(t, GetConfigTxProcessor().GenerateSimulationResults(nil, nil), "Expected nil error")
+	assert.Nil(t, GetConfigTxProcessor().GenerateSimulationResults(nil, nil, false), "Expected nil error")
 }
 
 func TestPanicOnUnregistered(t *testing.T) {

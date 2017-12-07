@@ -75,14 +75,14 @@ var aclMgmtCfgTxProcessor = &AclMgmtConfigTxProcessor{}
 
 //GenerateSimulationResults this is just a proxy to delegate registered aclProvider.
 //Need this as aclmgmt is initialized with ledger initialization as required by ledger
-func (*AclMgmtConfigTxProcessor) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator) error {
+func (*AclMgmtConfigTxProcessor) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	configtxLock.RLock()
 	defer configtxLock.RUnlock()
 
 	//this should not be nil (aclProvider is initialized at the outset to either
 	//rscc or default)
 	if aclProvider != nil {
-		return aclProvider.GenerateSimulationResults(txEnvelop, simulator)
+		return aclProvider.GenerateSimulationResults(txEnvelop, simulator, initializingLedger)
 	}
 
 	return fmt.Errorf("warning! call to handle config tx before setting ACL provider")

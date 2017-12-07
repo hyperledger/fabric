@@ -44,7 +44,7 @@ func (impl *DefaultImpl) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAn
 	var err error
 
 	logger.Debug("preprocessing ProtoBlock...")
-	if internalBlock, err = preprocessProtoBlock(impl.txmgr, block); err != nil {
+	if internalBlock, err = preprocessProtoBlock(impl.txmgr, block, doMVCCValidation); err != nil {
 		return nil, err
 	}
 

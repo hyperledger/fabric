@@ -30,7 +30,7 @@ func (m *MockACLProvider) CheckACL(resName string, channelID string, idinfo inte
 	return args.Error(0)
 }
 
-func (m *MockACLProvider) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator) error {
+func (m *MockACLProvider) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	return nil
 }
 

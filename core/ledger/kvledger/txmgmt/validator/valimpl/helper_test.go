@@ -25,21 +25,21 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	// good block
 	//_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gb := testutil.ConstructTestBlock(t, 10, 1, 1)
-	_, err := preprocessProtoBlock(nil, gb)
+	_, err := preprocessProtoBlock(nil, gb, false)
 	assert.NoError(t, err)
 	// bad envelope
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
 	gb.Data = &common.BlockData{Data: [][]byte{[]byte{123}}}
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		lutils.NewTxValidationFlags(len(gb.Data.Data))
-	_, err = preprocessProtoBlock(nil, gb)
+	_, err = preprocessProtoBlock(nil, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
 	// bad payload
 	gb = testutil.ConstructTestBlock(t, 12, 1, 1)
 	envBytes, _ := putils.GetBytesEnvelope(&common.Envelope{Payload: []byte{123}})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
-	_, err = preprocessProtoBlock(nil, gb)
+	_, err = preprocessProtoBlock(nil, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
 	// bad channel header
@@ -49,7 +49,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	})
 	envBytes, _ = putils.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
-	_, err = preprocessProtoBlock(nil, gb)
+	_, err = preprocessProtoBlock(nil, gb, false)
 	assert.Error(t, err)
 	t.Log(err)
 
@@ -63,7 +63,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	flags := lutils.NewTxValidationFlags(len(gb.Data.Data))
 	flags.SetFlag(0, peer.TxValidationCode_BAD_CHANNEL_HEADER)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags
-	_, err = preprocessProtoBlock(nil, gb)
+	_, err = preprocessProtoBlock(nil, gb, false)
 	assert.NoError(t, err) // invalid filter should take precendence
 
 	// new block
@@ -77,7 +77,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	// set logging backend for test
 	backend := logging.NewMemoryBackend(1)
 	logging.SetBackend(backend)
-	_, err = preprocessProtoBlock(nil, gb)
+	_, err = preprocessProtoBlock(nil, gb, false)
 	assert.NoError(t, err)
 	expected := fmt.Sprintf("Channel [%s]: Block [%d] Transaction index [%d] TxId [%s]"+
 		" marked as invalid by committer. Reason code [%s]",
