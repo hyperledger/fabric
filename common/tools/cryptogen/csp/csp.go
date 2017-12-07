@@ -19,11 +19,70 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/x509"
+	"encoding/pem"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/signer"
 )
+
+// LoadPrivateKey loads a private key from file in keystorePath
+func LoadPrivateKey(keystorePath string) (bccsp.Key, crypto.Signer, error) {
+	var err error
+	var priv bccsp.Key
+	var s crypto.Signer
+
+	opts := &factory.FactoryOpts{
+		ProviderName: "SW",
+		SwOpts: &factory.SwOpts{
+			HashFamily: "SHA2",
+			SecLevel:   256,
+
+			FileKeystore: &factory.FileKeystoreOpts{
+				KeyStorePath: keystorePath,
+			},
+		},
+	}
+
+	csp, err := factory.GetBCCSPFromOpts(opts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	walkFunc := func(path string, info os.FileInfo, err error) error {
+		if strings.HasSuffix(path, "_sk") {
+			rawKey, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+
+			block, _ := pem.Decode(rawKey)
+			priv, err = csp.KeyImport(block.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
+			if err != nil {
+				return err
+			}
+
+			s, err = signer.New(csp, priv)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+		return nil
+	}
+
+	err = filepath.Walk(keystorePath, walkFunc)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return priv, s, err
+}
 
 // GeneratePrivateKey creates a private key and stores it in keystorePath
 func GeneratePrivateKey(keystorePath string) (bccsp.Key,
