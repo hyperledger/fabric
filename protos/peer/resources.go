@@ -14,7 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-const RSCCSeedDataKey = "rscc_seed_data"
+const ResourceConfigSeedDataKey = "resource_config_seed_data"
 
 func init() {
 	common.DynamicConfigTypes[common.ConfigType_RESOURCE] = func(cg *common.ConfigGroup) proto.Message {
@@ -23,7 +23,7 @@ func init() {
 		}
 	}
 
-	common.ConfigUpdateIsolatedDataTypes[RSCCSeedDataKey] = func(key string) proto.Message {
+	common.ConfigUpdateIsolatedDataTypes[ResourceConfigSeedDataKey] = func(key string) proto.Message {
 		return &common.Config{}
 	}
 }

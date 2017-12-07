@@ -934,7 +934,7 @@ func TestLaunchAndWaitLaunchError(t *testing.T) {
 func TestGetTxContextFromHandler(t *testing.T) {
 	h := Handler{txCtxs: map[string]*transactionContext{}}
 
-	chnl := "TEST"
+	chnl := "test"
 	txid := "1"
 	// test getTxContext for TEST channel, tx=1, msgType=IVNOKE_CHAINCODE and empty payload - empty payload => expect to return empty txContext
 	txContext, _ := h.getTxContextForMessage(chnl, "1", pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), []byte(""), "[%s]No ledger context for %s. Sending %s", 12345, "TestCC", pb.ChaincodeMessage_ERROR)

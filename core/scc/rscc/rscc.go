@@ -171,7 +171,7 @@ func (rscc *Rscc) GenerateSimulationResults(txEnv *common.Envelope, sim ledger.T
 	}
 
 	iso := cup.IsolatedData
-	if err := sim.SetState("rscc", POLICY, iso[pb.RSCCSeedDataKey]); err != nil {
+	if err := sim.SetState("rscc", POLICY, iso[pb.ResourceConfigSeedDataKey]); err != nil {
 		rsccLogger.Errorf("error on setting policy state %s", err)
 		return err
 	}

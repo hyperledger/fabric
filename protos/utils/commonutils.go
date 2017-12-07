@@ -121,6 +121,12 @@ func UnmarshalBlock(encoded []byte) (*cb.Block, error) {
 // UnmarshalEnvelopeOfType unmarshals an envelope of the specified type, including
 // the unmarshaling the payload data
 func UnmarshalEnvelopeOfType(envelope *cb.Envelope, headerType cb.HeaderType, message proto.Message) (*cb.ChannelHeader, error) {
+	return UnmarshalEnvelopeOfTypes(envelope, []cb.HeaderType{headerType}, message)
+}
+
+// UnmarshalEnvelopeOfTypes unmarshals an envelope of the one of the specified types, including
+// the unmarshaling the payload data
+func UnmarshalEnvelopeOfTypes(envelope *cb.Envelope, expectedHeaderTypes []cb.HeaderType, message proto.Message) (*cb.ChannelHeader, error) {
 	payload, err := UnmarshalPayload(envelope.Payload)
 	if err != nil {
 		return nil, err
@@ -135,12 +141,19 @@ func UnmarshalEnvelopeOfType(envelope *cb.Envelope, headerType cb.HeaderType, me
 		return nil, fmt.Errorf("Invalid ChannelHeader")
 	}
 
-	if chdr.Type != int32(headerType) {
-		return nil, fmt.Errorf("Not a tx of type %v", headerType)
+	headerTypeMatched := false
+	for i := 0; i < len(expectedHeaderTypes); i++ {
+		if chdr.Type == int32(expectedHeaderTypes[i]) {
+			headerTypeMatched = true
+			break
+		}
+	}
+	if !headerTypeMatched {
+		return nil, fmt.Errorf("Not a tx of type %v", expectedHeaderTypes)
 	}
 
 	if err = proto.Unmarshal(payload.Data, message); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling message for type %v: %s", headerType, err)
+		return nil, fmt.Errorf("Error unmarshaling message for type %v: %s", expectedHeaderTypes, err)
 	}
 
 	return chdr, nil
@@ -268,6 +281,16 @@ func UnmarshalChannelHeader(bytes []byte) (*cb.ChannelHeader, error) {
 	}
 
 	return chdr, nil
+}
+
+// UnmarshalChannelHeaderOrPanic unmarshals bytes to a ChannelHeader or panics on error
+func UnmarshalChannelHeaderOrPanic(bytes []byte) *cb.ChannelHeader {
+	chdr := &cb.ChannelHeader{}
+	err := proto.Unmarshal(bytes, chdr)
+	if err != nil {
+		panic(fmt.Errorf("UnmarshalChannelHeader failed, err %s", err))
+	}
+	return chdr
 }
 
 // UnmarshalChaincodeID returns a ChaincodeID from bytes

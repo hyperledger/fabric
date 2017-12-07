@@ -12,6 +12,8 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/hyperledger/fabric/core/ledger/customtx"
+
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
@@ -48,6 +50,12 @@ import (
 var peerLogger = flogging.MustGetLogger("peer")
 
 var peerServer comm.GRPCServer
+
+var configTxProcessor = newConfigTxProcessor()
+var ConfigTxProcessors = customtx.Processors{
+	common.HeaderType_CONFIG:               configTxProcessor,
+	common.HeaderType_PEER_RESOURCE_UPDATE: configTxProcessor,
+}
 
 // singleton instance to manage credentials for the peer across channel config changes
 var credSupport = comm.GetCredentialSupport()
@@ -163,7 +171,7 @@ var chains = struct {
 
 //MockInitialize resets chains for test env
 func MockInitialize() {
-	ledgermgmt.InitializeTestEnv()
+	ledgermgmt.InitializeTestEnvWithCustomProcessors(ConfigTxProcessors)
 	chains.list = nil
 	chains.list = make(map[string]*chain)
 	chainInitializer = func(string) { return }
@@ -195,7 +203,7 @@ func Initialize(init func(string)) {
 
 	var cb *common.Block
 	var ledger ledger.PeerLedger
-	ledgermgmt.Initialize(nil)
+	ledgermgmt.Initialize(ConfigTxProcessors)
 	ledgerIds, err := ledgermgmt.GetLedgerIDs()
 	if err != nil {
 		panic(fmt.Errorf("Error in initializing ledgermgmt: %s", err))
@@ -263,13 +271,12 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 
 // createChain creates a new chain object and insert it into the chains
 func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
-
-	envelopeConfig, err := utils.ExtractEnvelope(cb, 0)
+	chanConf, err := retrievePersistedChannelConfig(ledger)
 	if err != nil {
 		return err
 	}
 
-	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig)
+	bundle, err := channelconfig.NewBundle(cid, chanConf)
 	if err != nil {
 		return err
 	}
@@ -328,11 +335,13 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		cs.Resources = bundle.ChannelConfig()
 	}
 
-	// TODO, actually use the seed data from the genesis block to bootstrap the resources config
-	rBundle, err := resourcesconfig.NewBundle(cid, &common.Config{ChannelGroup: &common.ConfigGroup{}}, bundle)
-	if err != nil {
-		return err
+	resConf := &common.Config{ChannelGroup: &common.ConfigGroup{}}
+	if ac != nil && ac.Capabilities().LifecycleViaConfig() {
+		if resConf, err = retrievePersistedResourceConfig(ledger); err != nil {
+			return err
+		}
 	}
+	rBundle, err := resourcesconfig.NewBundle(cid, resConf, bundle)
 
 	cs.bundleSource = resourcesconfig.NewBundleSource(
 		rBundle,
