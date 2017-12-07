@@ -190,12 +190,13 @@ class UserRegistration:
             deliverStreamHelper.send(None)
         self.abDeliversStreamHelperDict.clear()
 
-    def connectToDeliverFunction(self, context, composeService, nodeAdminTuple, timeout=1):
+    def connectToDeliverFunction(self, context, composeService, nodeAdminTuple, timeout=1, port=7050):
         'Connect to the deliver function and drain messages to associated orderer queue'
         assert not composeService in self.abDeliversStreamHelperDict, "Already connected to deliver stream on {0}".format(composeService)
         streamHelper = DeliverStreamHelper(directory=self.directory,
                                            ordererStub=self.getABStubForComposeService(context=context,
-                                                                                       composeService=composeService),
+                                                                                       composeService=composeService,
+                                                                                       port=port),
                                            entity=self, nodeAdminTuple=nodeAdminTuple)
         self.abDeliversStreamHelperDict[composeService] = streamHelper
         return streamHelper
@@ -220,15 +221,16 @@ class UserRegistration:
         print("Done")
         assert counter == int(numMsgsToBroadcast), "counter = {0}, expected {1}".format(counter, numMsgsToBroadcast)
 
-    def getABStubForComposeService(self, context, composeService):
+    def getABStubForComposeService(self, context, composeService,port=7050):
         'Return a Stub for the supplied composeService, will cache'
         if composeService in self.atomicBroadcastStubsDict:
             return self.atomicBroadcastStubsDict[composeService]
         # Get the IP address of the server that the user registered on
         root_certificates = self.directory.getTrustedRootsForOrdererNetworkAsPEM()
-        ipAddress, port = bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050)
+        peer_root_certificates = self.directory.getTrustedRootsForPeerNetworkAsPEM()
+        ipAddress, port_to_use = bdd_test_util.getPortHostMapping(context.compose_containers, composeService, port)
         # print("ipAddress in getABStubForComposeService == {0}:{1}".format(ipAddress, port))
-        channel = bdd_grpc_util.getGRPCChannel(ipAddress=ipAddress, port=port, root_certificates=root_certificates, ssl_target_name_override=composeService)
+        channel = bdd_grpc_util.getGRPCChannel(ipAddress=ipAddress, port=port_to_use, root_certificates="".join([root_certificates,peer_root_certificates]), ssl_target_name_override=composeService)
         newABStub = ab_pb2_grpc.AtomicBroadcastStub(channel)
         self.atomicBroadcastStubsDict[composeService] = newABStub
         return newABStub

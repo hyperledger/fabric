@@ -43,6 +43,7 @@ import (
 	"github.com/hyperledger/fabric/peer/version"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -156,6 +157,11 @@ func serve(args []string) error {
 	if err != nil {
 		grpclog.Fatalf("Failed to create ehub server: %v", err)
 	}
+
+	// create the peer's AtomicBroadcastServer, which supports deliver but not
+	// broadcast
+	abServer := peer.NewAtomicBroadcastServer()
+	ab.RegisterAtomicBroadcastServer(peerServer.Server(), abServer)
 
 	// enable the cache of chaincode info
 	ccprovider.EnableCCInfoCache()
