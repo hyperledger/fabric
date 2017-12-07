@@ -46,7 +46,7 @@ func (flf *fileLedgerFactory) GetOrCreate(chainID string) (blockledger.ReadWrite
 	if err != nil {
 		return nil, err
 	}
-	ledger = &fileLedger{blockStore: blockStore, signal: make(chan struct{})}
+	ledger = NewFileLedger(blockStore)
 	flf.ledgers[key] = ledger
 	return ledger, nil
 }
