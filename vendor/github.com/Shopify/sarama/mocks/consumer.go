@@ -20,7 +20,7 @@ type Consumer struct {
 
 // NewConsumer returns a new mock Consumer instance. The t argument should
 // be the *testing.T instance of your test method. An error will be written to it if
-// an expectation is violated. The config argument is currently unused and can be set to nil.
+// an expectation is violated. The config argument can be set to nil.
 func NewConsumer(t ErrorReporter, config *sarama.Config) *Consumer {
 	if config == nil {
 		config = sarama.NewConfig()

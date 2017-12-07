@@ -95,9 +95,13 @@ func TestKafkaVersionDecode(t *testing.T) {
 		{"0.10.2.1", sarama.V0_10_2_0, false},
 		{"0.10.2.2", sarama.V0_10_2_0, false},
 		{"0.10.2.3", sarama.V0_10_2_0, false},
-		{"0.11", sarama.KafkaVersion{}, true},
-		{"0.11.0", sarama.KafkaVersion{}, true},
-		{"0.11.0.0", sarama.KafkaVersion{}, true},
+		{"0.11", sarama.V0_11_0_0, false},
+		{"0.11.0", sarama.V0_11_0_0, false},
+		{"0.11.0.0", sarama.V0_11_0_0, false},
+		{"1", sarama.V1_0_0_0, false},
+		{"1.0", sarama.V1_0_0_0, false},
+		{"1.0.0", sarama.V1_0_0_0, false},
+		{"1.0.1", sarama.V1_0_0_0, true},
 		{"Malformed", sarama.KafkaVersion{}, true},
 	}
 
