@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package msgprocessor
+package deliver
 
 import (
 	"fmt"
@@ -15,28 +15,34 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ErrPermissionDenied is returned by errors which are caused by transactions
+// which are not permitted due to an authorization failure.
+var ErrPermissionDenied = errors.New("permission denied")
+
 // SigFilterSupport provides the resources required for the signature filter
 type SigFilterSupport interface {
 	// PolicyManager returns a reference to the current policy manager
 	PolicyManager() policies.Manager
 }
 
-type sigFilter struct {
+// SigFilter stores the name of the policy to apply to deliver requests to
+// determine whether a client is authorized
+type SigFilter struct {
 	policyName string
 	support    SigFilterSupport
 }
 
 // NewSigFilter creates a new signature filter, at every evaluation, the policy manager is called
 // to retrieve the latest version of the policy
-func NewSigFilter(policyName string, support SigFilterSupport) Rule {
-	return &sigFilter{
+func NewSigFilter(policyName string, support SigFilterSupport) *SigFilter {
+	return &SigFilter{
 		policyName: policyName,
 		support:    support,
 	}
 }
 
 // Apply applies the policy given, resulting in Reject or Forward, never Accept
-func (sf *sigFilter) Apply(message *cb.Envelope) error {
+func (sf *SigFilter) Apply(message *cb.Envelope) error {
 	signedData, err := message.AsSignedData()
 
 	if err != nil {

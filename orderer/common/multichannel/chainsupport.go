@@ -8,8 +8,8 @@ package multichannel
 
 import (
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/ledger"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -35,7 +35,7 @@ func newChainSupport(
 	signer crypto.LocalSigner,
 ) *ChainSupport {
 	// Read in the last block and metadata for the channel
-	lastBlock := ledger.GetBlock(ledgerResources, ledgerResources.Height()-1)
+	lastBlock := blockledger.GetBlock(ledgerResources, ledgerResources.Height()-1)
 
 	metadata, err := utils.GetMetadataFromBlock(lastBlock, cb.BlockMetadataIndex_ORDERER)
 	// Assuming a block created with cb.NewBlock(), this should not
@@ -74,7 +74,7 @@ func newChainSupport(
 	return cs
 }
 
-func (cs *ChainSupport) Reader() ledger.Reader {
+func (cs *ChainSupport) Reader() blockledger.Reader {
 	return cs
 }
 

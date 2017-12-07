@@ -24,17 +24,17 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/hyperledger/fabric/orderer/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 )
 
 type jsonLedgerFactory struct {
 	directory string
-	ledgers   map[string]ledger.ReadWriter
+	ledgers   map[string]blockledger.ReadWriter
 	mutex     sync.Mutex
 }
 
 // GetOrCreate gets an existing ledger (if it exists) or creates it if it does not
-func (jlf *jsonLedgerFactory) GetOrCreate(chainID string) (ledger.ReadWriter, error) {
+func (jlf *jsonLedgerFactory) GetOrCreate(chainID string) (blockledger.ReadWriter, error) {
 	jlf.mutex.Lock()
 	defer jlf.mutex.Unlock()
 
@@ -60,7 +60,7 @@ func (jlf *jsonLedgerFactory) GetOrCreate(chainID string) (ledger.ReadWriter, er
 }
 
 // newChain creates a new chain backed by a JSON ledger
-func newChain(directory string) ledger.ReadWriter {
+func newChain(directory string) blockledger.ReadWriter {
 	jl := &jsonLedger{
 		directory: directory,
 		signal:    make(chan struct{}),
@@ -128,7 +128,7 @@ func (jlf *jsonLedgerFactory) Close() {
 }
 
 // New creates a new ledger factory
-func New(directory string) ledger.Factory {
+func New(directory string) blockledger.Factory {
 	logger.Debugf("Initializing ledger at: %s", directory)
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		logger.Panicf("Could not create directory %s: %s", directory, err)
@@ -136,7 +136,7 @@ func New(directory string) ledger.Factory {
 
 	jlf := &jsonLedgerFactory{
 		directory: directory,
-		ledgers:   make(map[string]ledger.ReadWriter),
+		ledgers:   make(map[string]blockledger.ReadWriter),
 	}
 
 	infos, err := ioutil.ReadDir(jlf.directory)

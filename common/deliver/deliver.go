@@ -19,19 +19,19 @@ package deliver
 import (
 	"io"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/orderer/common/ledger"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 )
 
-const pkgLogID = "orderer/common/deliver"
+const pkgLogID = "common/deliver"
 
 var logger *logging.Logger
 
@@ -58,7 +58,7 @@ type Support interface {
 	PolicyManager() policies.Manager
 
 	// Reader returns the chain Reader for the chain
-	Reader() ledger.Reader
+	Reader() blockledger.Reader
 
 	// Errored returns a channel which closes when the backing consenter has errored
 	Errored() <-chan struct{}
@@ -137,7 +137,7 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 
 	lastConfigSequence := chain.Sequence()
 
-	sf := msgprocessor.NewSigFilter(policies.ChannelReaders, chain)
+	sf := NewSigFilter(policies.ChannelReaders, chain)
 	if err := sf.Apply(envelope); err != nil {
 		logger.Warningf("[channel: %s] Received unauthorized deliver request from %s: %s", chdr.ChannelId, addr, err)
 		return sendStatusReply(srv, cb.Status_FORBIDDEN)

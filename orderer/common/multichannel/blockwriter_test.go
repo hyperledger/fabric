@@ -21,9 +21,9 @@ import (
 
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +32,7 @@ import (
 type mockBlockWriterSupport struct {
 	*mockconfigtx.Validator
 	crypto.LocalSigner
-	ledger.ReadWriter
+	blockledger.ReadWriter
 }
 
 func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {}
@@ -185,7 +185,7 @@ func TestGoodWriteConfig(t *testing.T) {
 	bw.committingBlock.Lock()
 	bw.committingBlock.Unlock()
 
-	cBlock := ledger.GetBlock(l, block.Header.Number)
+	cBlock := blockledger.GetBlock(l, block.Header.Number)
 	assert.Equal(t, block.Header, cBlock.Header)
 	assert.Equal(t, block.Data, cBlock.Data)
 

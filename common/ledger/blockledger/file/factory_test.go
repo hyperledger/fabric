@@ -22,8 +22,8 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/ledger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,7 +56,7 @@ func (mbsp *mockBlockStoreProvider) Close() {
 func TestBlockstoreProviderError(t *testing.T) {
 	flf := &fileLedgerFactory{
 		blkstorageProvider: &mockBlockStoreProvider{error: fmt.Errorf("blockstorage provider error")},
-		ledgers:            make(map[string]ledger.ReadWriter),
+		ledgers:            make(map[string]blockledger.ReadWriter),
 	}
 	assert.Panics(
 		t,

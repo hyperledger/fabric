@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ledger_test
+package blockledger_test
 
 import (
+	. "github.com/hyperledger/fabric/common/ledger/blockledger"
+	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	. "github.com/hyperledger/fabric/orderer/common/ledger"
-	ramledger "github.com/hyperledger/fabric/orderer/common/ledger/ram"
 )
 
 func init() {

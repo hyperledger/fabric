@@ -14,14 +14,14 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/orderer/common/ledger"
-	ramledger "github.com/hyperledger/fabric/orderer/common/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -50,7 +50,7 @@ func mockCrypto() crypto.LocalSigner {
 	return mockcrypto.FakeLocalSigner
 }
 
-func NewRAMLedgerAndFactory(maxSize int) (ledger.Factory, ledger.ReadWriter) {
+func NewRAMLedgerAndFactory(maxSize int) (blockledger.Factory, blockledger.ReadWriter) {
 	rlf := ramledger.New(10)
 	rl, err := rlf.GetOrCreate(genesisconfig.TestChainID)
 	if err != nil {
@@ -63,7 +63,7 @@ func NewRAMLedgerAndFactory(maxSize int) (ledger.Factory, ledger.ReadWriter) {
 	return rlf, rl
 }
 
-func NewRAMLedger(maxSize int) ledger.ReadWriter {
+func NewRAMLedger(maxSize int) blockledger.ReadWriter {
 	_, rl := NewRAMLedgerAndFactory(maxSize)
 	return rl
 }
@@ -72,13 +72,13 @@ func NewRAMLedger(maxSize int) ledger.ReadWriter {
 func TestGetConfigTx(t *testing.T) {
 	rl := NewRAMLedger(10)
 	for i := 0; i < 5; i++ {
-		rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, i)}))
+		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, i)}))
 	}
-	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(genesisconfig.TestChainID, 5)}))
+	rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(genesisconfig.TestChainID, 5)}))
 	ctx := makeConfigTx(genesisconfig.TestChainID, 6)
-	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
+	rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
 
-	block := ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 7)})
+	block := blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 7)})
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&cb.Metadata{Value: utils.MarshalOrPanic(&cb.LastConfig{Index: 7})})
 	rl.Append(block)
 
@@ -90,15 +90,15 @@ func TestGetConfigTx(t *testing.T) {
 func TestGetConfigTxFailure(t *testing.T) {
 	rl := NewRAMLedger(10)
 	for i := 0; i < 10; i++ {
-		rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{
+		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{
 			makeNormalTx(genesisconfig.TestChainID, i),
 			makeConfigTx(genesisconfig.TestChainID, i),
 		}))
 	}
-	rl.Append(ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 11)}))
+	rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 11)}))
 	assert.Panics(t, func() { getConfigTx(rl) }, "Should have panicked because there was no config tx")
 
-	block := ledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 12)})
+	block := blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChainID, 12)})
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = []byte("bad metadata")
 	assert.Panics(t, func() { getConfigTx(rl) }, "Should have panicked because of bad last config metadata")
 }
