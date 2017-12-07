@@ -37,6 +37,8 @@ Profiles:
                 - *Org2
             Capabilities:
                 <<: *ApplicationCapabilities
+            Resources:
+                DefaultModPolicy: /Channel/Application/Writers
 
 ################################################################################
 #
