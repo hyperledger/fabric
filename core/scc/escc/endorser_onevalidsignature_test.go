@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/validation"
@@ -370,7 +371,7 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, ccid *pb.Ch
 	}
 
 	// validate the transaction
-	_, txResult := validation.ValidateTransaction(tx)
+	_, txResult := validation.ValidateTransaction(tx, &config.MockApplicationCapabilities{})
 	if txResult != pb.TxValidationCode_VALID {
 		return err
 	}

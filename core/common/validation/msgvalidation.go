@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
@@ -115,6 +116,9 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 
 	// continue the validation in a way that depends on the type specified in the header
 	switch common.HeaderType(chdr.Type) {
+	case common.HeaderType_PEER_RESOURCE_UPDATE:
+		// no additional validation required for transactions of this type
+		return prop, hdr, nil, err
 	case common.HeaderType_CONFIG:
 		//which the types are different the validation is the same
 		//viz, validate a proposal to a chaincode. If we need other
@@ -208,7 +212,8 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 	// validate the header type
 	if common.HeaderType(cHdr.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
 		common.HeaderType(cHdr.Type) != common.HeaderType_CONFIG_UPDATE &&
-		common.HeaderType(cHdr.Type) != common.HeaderType_CONFIG {
+		common.HeaderType(cHdr.Type) != common.HeaderType_CONFIG &&
+		common.HeaderType(cHdr.Type) != common.HeaderType_PEER_RESOURCE_UPDATE {
 		return fmt.Errorf("invalid header type %s", common.HeaderType(cHdr.Type))
 	}
 
@@ -358,7 +363,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 }
 
 // ValidateTransaction checks that the transaction envelope is properly formed
-func ValidateTransaction(e *common.Envelope) (*common.Payload, pb.TxValidationCode) {
+func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabilities) (*common.Payload, pb.TxValidationCode) {
 	putilsLogger.Debugf("ValidateTransactionEnvelope starts for envelope %p", e)
 
 	// check for nil argument
@@ -417,6 +422,13 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, pb.TxValidationCo
 		} else {
 			return payload, pb.TxValidationCode_VALID
 		}
+	case common.HeaderType_PEER_RESOURCE_UPDATE:
+		if !c.LifecycleViaConfig() {
+			return nil, pb.TxValidationCode_UNSUPPORTED_TX_PAYLOAD
+		}
+
+		// perform similar validation to common.HeaderType_CONFIG
+		fallthrough
 	case common.HeaderType_CONFIG:
 		// Config transactions have signatures inside which will be validated, especially at genesis there may be no creator or
 		// signature on the outermost envelope

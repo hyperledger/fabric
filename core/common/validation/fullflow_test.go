@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/mocks/config"
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
@@ -157,7 +158,7 @@ func TestGoodPath(t *testing.T) {
 	}
 
 	// validate the transaction
-	payl, txResult := ValidateTransaction(tx)
+	payl, txResult := ValidateTransaction(tx, &config.MockApplicationCapabilities{})
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
@@ -217,7 +218,7 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 	}
 
 	// validate the transaction
-	_, txResult := ValidateTransaction(tx)
+	_, txResult := ValidateTransaction(tx, &config.MockApplicationCapabilities{})
 	if txResult == peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction should have failed")
 		return
@@ -333,7 +334,7 @@ func TestBadTx(t *testing.T) {
 		copy(paylCopy, paylOrig)
 		paylCopy[i] = byte(int(paylCopy[i]+1) % 255)
 		// validate the transaction it should fail
-		_, txResult := ValidateTransaction(&common.Envelope{Signature: tx.Signature, Payload: paylCopy})
+		_, txResult := ValidateTransaction(&common.Envelope{Signature: tx.Signature, Payload: paylCopy}, &config.MockApplicationCapabilities{})
 		if txResult == peer.TxValidationCode_VALID {
 			t.Fatal("ValidateTransaction should have failed")
 			return
@@ -351,7 +352,7 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Signature)
 
 	// validate the transaction it should fail
-	_, txResult := ValidateTransaction(tx)
+	_, txResult := ValidateTransaction(tx, &config.MockApplicationCapabilities{})
 	if txResult == peer.TxValidationCode_VALID {
 		t.Fatal("ValidateTransaction should have failed")
 		return
@@ -394,7 +395,7 @@ func Test2EndorsersAgree(t *testing.T) {
 	}
 
 	// validate the transaction
-	_, txResult := ValidateTransaction(tx)
+	_, txResult := ValidateTransaction(tx, &config.MockApplicationCapabilities{})
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
@@ -438,7 +439,7 @@ func Test2EndorsersDisagree(t *testing.T) {
 }
 
 func TestInvocationsBadArgs(t *testing.T) {
-	_, code := ValidateTransaction(nil)
+	_, code := ValidateTransaction(nil, &config.MockApplicationCapabilities{})
 	assert.Equal(t, code, peer.TxValidationCode_NIL_ENVELOPE)
 	err := validateEndorserTransaction(nil, nil)
 	assert.Error(t, err)
