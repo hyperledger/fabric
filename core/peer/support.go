@@ -43,8 +43,12 @@ func (s *supportImpl) GetApplicationConfig(cid string) (channelconfig.Applicatio
 }
 
 func (s *supportImpl) ChaincodeByName(chainname, ccname string) (resourcesconfig.ChaincodeDefinition, bool) {
-	// FIXME: implement me properly
-	return nil, false
+	rc := GetResourcesConfig(chainname)
+	if rc == nil {
+		return nil, false
+	}
+
+	return rc.ChaincodeRegistry().ChaincodeByName(ccname)
 }
 
 type SupportFactoryImpl struct {
