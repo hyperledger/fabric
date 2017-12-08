@@ -45,6 +45,12 @@ message ChaincodeInfo {
   // the name of the VSCC for this chaincode. This will be
   // blank if the query is returning information about installed chaincodes.
   string vscc = 6;
+  // the chaincode unique id.
+  // computed as: H(
+  //                H(name || version) ||
+  //                H(CodePackage)
+  //              )
+  bytes id = 7;
 }
 
 // ChannelQueryResponse returns information about each channel that pertains

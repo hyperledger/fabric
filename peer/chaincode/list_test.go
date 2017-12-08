@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"testing"
 
+	"encoding/hex"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -26,7 +28,7 @@ func TestChaincodeListCmd(t *testing.T) {
 
 	installedCqr := &pb.ChaincodeQueryResponse{
 		Chaincodes: []*pb.ChaincodeInfo{
-			{Name: "mycc1", Version: "1.0", Path: "codePath1", Input: "input", Escc: "escc", Vscc: "vscc"},
+			{Name: "mycc1", Version: "1.0", Path: "codePath1", Input: "input", Escc: "escc", Vscc: "vscc", Id: []byte{1, 2, 3}},
 			{Name: "mycc2", Version: "1.0", Path: "codePath2", Input: "input", Escc: "escc", Vscc: "vscc"},
 		},
 	}
@@ -109,4 +111,21 @@ func TestChaincodeListCmd(t *testing.T) {
 	if err := nilCmd.Execute(); err == nil || err.Error() != expectErr.Error() {
 		t.Errorf("Expect error: %s", expectErr)
 	}
+}
+
+func TestString(t *testing.T) {
+	id := []byte{1, 2, 3, 4, 5}
+	idBytes := hex.EncodeToString(id)
+	b, _ := hex.DecodeString(idBytes)
+	ccInf := &ccInfo{
+		ChaincodeInfo: &pb.ChaincodeInfo{
+			Name:    "ccName",
+			Id:      b,
+			Version: "1.0",
+			Escc:    "escc",
+			Input:   "input",
+			Vscc:    "vscc",
+		},
+	}
+	assert.Equal(t, "Name: ccName, Version: 1.0, Input: input, Escc: escc, Vscc: vscc, Id: 0102030405", ccInf.String())
 }
