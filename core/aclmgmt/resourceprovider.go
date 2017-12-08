@@ -4,12 +4,13 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package rscc
+package aclmgmt
 
 import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/resourcesconfig"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -41,7 +42,7 @@ type policyEvaluator interface {
 
 //policyEvaluatorImpl implements policyEvaluator
 type policyEvaluatorImpl struct {
-	bundle *resourcesconfig.Bundle
+	bundle resourcesconfig.Resources
 }
 
 func (pe *policyEvaluatorImpl) PolicyRefForAPI(resName string) string {
@@ -64,33 +65,29 @@ func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*common.SignedData)
 
 //------ resourcePolicyProvider ----------
 
-//rsccPolicyProvider is the basic policy provider for RSCC. It is an ACLProvider
-type rsccPolicyProvider interface {
+//aclmgmtPolicyProvider is the interface implemented by resource based ACL.
+type aclmgmtPolicyProvider interface {
+	//GetPolicyName returns policy name given resource name
 	GetPolicyName(resName string) string
-	CheckACL(resName string, idinfo interface{}) error
+
+	//CheckACL backs ACLProvider interface
+	CheckACL(polName string, idinfo interface{}) error
 }
 
-//rsccPolicyProviderImpl holds the bytes from state of the ledger
-type rsccPolicyProviderImpl struct {
-	//this is mainly used for logging and information
-	channel string
-
+//aclmgmtPolicyProviderImpl holds the bytes from state of the ledger
+type aclmgmtPolicyProviderImpl struct {
 	pEvaluator policyEvaluator
 }
 
 //GetPolicyName returns the policy name given the resource string
-func (rp *rsccPolicyProviderImpl) GetPolicyName(resName string) string {
+func (rp *aclmgmtPolicyProviderImpl) GetPolicyName(resName string) string {
 	return rp.pEvaluator.PolicyRefForAPI(resName)
 }
 
-func newRsccPolicyProvider(channel string, pEvaluator policyEvaluator) rsccPolicyProvider {
-	return &rsccPolicyProviderImpl{channel, pEvaluator}
-}
-
-//CheckACL rscc implements AClProvider's CheckACL interface so it can be registered
+//CheckACL implements AClProvider's CheckACL interface so it can be registered
 //as a provider with aclmgmt
-func (rp *rsccPolicyProviderImpl) CheckACL(polName string, idinfo interface{}) error {
-	rsccLogger.Debugf("rscc  acl check(%s)", polName)
+func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}) error {
+	aclLogger.Debugf("acl check(%s)", polName)
 
 	//we will implement other identifiers. In the end we just need a SignedData
 	var sd []*common.SignedData
@@ -134,4 +131,43 @@ func (rp *rsccPolicyProviderImpl) CheckACL(polName string, idinfo interface{}) e
 	}
 
 	return nil
+}
+
+//-------- resource provider - entry point API used by aclmgmtimpl for doing resource based ACL ----------
+
+//resource getter gets resourcesconfig.Resources given channel ID
+type resourceGetter func(channelID string) resourcesconfig.Resources
+
+//resource provider that uses the resource configuration information to provide ACL support
+type resourceProvider struct {
+	//resource getter
+	resGetter resourceGetter
+
+	//default provider to be used for undefined resources
+	defaultProvider ACLProvider
+}
+
+//create a new resourceProvider
+func newResourceProvider(rg resourceGetter, defprov ACLProvider) *resourceProvider {
+	if rg == nil {
+		rg = peer.GetResourcesConfig
+	}
+
+	return &resourceProvider{rg, defprov}
+}
+
+//CheckACL implements the ACL
+func (rp *resourceProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
+	resCfg := rp.resGetter(channelID)
+
+	if resCfg != nil {
+		pp := &aclmgmtPolicyProviderImpl{&policyEvaluatorImpl{resCfg}}
+		policyName := pp.GetPolicyName(resName)
+
+		if policyName != "" {
+			return pp.CheckACL(policyName, idinfo)
+		}
+	}
+
+	return rp.defaultProvider.CheckACL(resName, channelID, idinfo)
 }
