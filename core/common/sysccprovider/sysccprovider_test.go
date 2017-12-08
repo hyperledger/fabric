@@ -19,6 +19,8 @@ package sysccprovider
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/stretchr/testify/assert"
 )
@@ -45,6 +47,14 @@ func (p MockChaincodeProvider) IsSysCCAndNotInvokableCC2CC(name string) bool {
 
 func (p MockChaincodeProvider) IsSysCCAndNotInvokableExternal(name string) bool {
 	return true
+}
+
+func (p MockChaincodeProvider) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
+	return nil, false
+}
+
+func (p MockChaincodeProvider) PolicyManager(channelID string) (policies.Manager, bool) {
+	return nil, false
 }
 
 func (f MockFactory) NewSystemChaincodeProvider() SystemChaincodeProvider {
