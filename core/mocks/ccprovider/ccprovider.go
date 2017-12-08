@@ -130,11 +130,6 @@ func (c *mockCcProviderImpl) GetCCContext(cid, name, version, txid string, syscc
 	return &mockCcProviderContextImpl{}
 }
 
-// GetCCValidationInfoFromLSCC does nothing
-func (c *mockCcProviderImpl) GetCCValidationInfoFromLSCC(ctxt context.Context, txid string, signedProp *peer.SignedProposal, prop *peer.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
-	return "vscc", nil, nil
-}
-
 // ExecuteChaincode does nothing
 func (c *mockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
 	if c.executeResultProvider != nil {

@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/pkg/errors"
 )
 
 // ccProviderFactory implements the ccprovider.ChaincodeProviderFactory
@@ -68,29 +67,6 @@ func (c *ccProviderImpl) GetContext(ledger ledger.PeerLedger, txid string) (cont
 func (c *ccProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) interface{} {
 	ctx := ccprovider.NewCCContext(cid, name, version, txid, syscc, signedProp, prop)
 	return &ccProviderContextImpl{ctx: ctx}
-}
-
-// GetCCValidationInfoFromLSCC returns the VSCC and the policy listed in LSCC for the supplied chaincode
-func (c *ccProviderImpl) GetCCValidationInfoFromLSCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
-	// LSCC does not have any notion about its own
-	// endorsing policy - we should never call this
-	// function with lscc as the chaincodeID
-	if chaincodeID == "lscc" {
-		panic("GetCCValidationInfoFromLSCC invoke for LSCC")
-	}
-
-	data, err := GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
-	if err != nil {
-		return "", nil, err
-	}
-
-	valcc, valarg := data.Validation()
-
-	if data == nil || valcc == "" || valarg == nil {
-		return "", nil, errors.New("incorrect validation info in LSCC")
-	}
-
-	return valcc, valarg, nil
 }
 
 // ExecuteChaincode executes the chaincode specified in the context with the specified arguments
