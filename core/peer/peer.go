@@ -734,6 +734,9 @@ type DeliverSupportManager struct {
 
 func (dsm DeliverSupportManager) GetChain(chainID string) (deliver.Support, bool) {
 	channel, ok := chains.list[chainID]
+	if !ok {
+		return nil, ok
+	}
 	return channel.cs, ok
 }
 
