@@ -395,11 +395,6 @@ func (lscc *LifeCycleSysCC) getInstalledChaincodes() pb.Response {
 	return shim.Success(cqrbytes)
 }
 
-//do access control
-func (lscc *LifeCycleSysCC) acl(stub shim.ChaincodeStubInterface, chainname string, cds *pb.ChaincodeDeploymentSpec) error {
-	return nil
-}
-
 //check validity of chain name
 func (lscc *LifeCycleSysCC) isValidChainName(chainname string) bool {
 	//TODO we probably need more checks
@@ -547,80 +542,65 @@ func (lscc *LifeCycleSysCC) checkInstantiationPolicy(stub shim.ChaincodeStubInte
 	return nil
 }
 
-// executeDeploy implements the "instantiate" Invoke transaction
-func (lscc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chainname string, depSpec []byte, policy []byte, escc []byte, vscc []byte) (*ccprovider.ChaincodeData, error) {
-	cds, err := utils.GetChaincodeDeploymentSpec(depSpec)
+// executeDeployOrUpgrade routes the code path either to executeDeploy or executeUpgrade
+// depending on its function argument
+func (lscc *LifeCycleSysCC) executeDeployOrUpgrade(stub shim.ChaincodeStubInterface, chainname string, cds *pb.ChaincodeDeploymentSpec, policy []byte, escc []byte, vscc []byte, function string) (*ccprovider.ChaincodeData, error) {
+	if err := lscc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
+		return nil, err
+	}
 
+	if err := lscc.isValidChaincodeVersion(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
+		return nil, err
+	}
+
+	ccpack, err := ccprovider.GetChaincodeFromFS(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot get package for chaincode (%s:%s)-%s", cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, err)
 	}
+	cd := ccpack.GetChaincodeData()
 
-	if err = lscc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
-		return nil, err
+	switch function {
+	case DEPLOY:
+		return lscc.executeDeploy(stub, chainname, cds, policy, escc, vscc, cd, ccpack)
+	case UPGRADE:
+		return lscc.executeUpgrade(stub, chainname, cds, policy, escc, vscc, cd, ccpack)
+	default:
+		logger.Panicf("Programming error, unexpected function '%s'", function)
+		panic("") // unreachable code
 	}
+}
 
-	if err = lscc.isValidChaincodeVersion(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
-		return nil, err
-	}
-
-	if err = lscc.acl(stub, chainname, cds); err != nil {
-		return nil, err
-	}
-
+// executeDeploy implements the "instantiate" Invoke transaction
+func (lscc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chainname string, cds *pb.ChaincodeDeploymentSpec, policy []byte, escc []byte, vscc []byte, cdfs *ccprovider.ChaincodeData, ccpackfs ccprovider.CCPackage) (*ccprovider.ChaincodeData, error) {
 	//just test for existence of the chaincode in the LSCC
-	_, err = lscc.getCCInstance(stub, cds.ChaincodeSpec.ChaincodeId.Name)
+	_, err := lscc.getCCInstance(stub, cds.ChaincodeSpec.ChaincodeId.Name)
 	if err == nil {
 		return nil, ExistsErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
-	//get the chaincode from the FS
-	ccpack, err := ccprovider.GetChaincodeFromFS(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get package for the chaincode to be instantiated (%s:%s)-%s", cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, err)
-	}
-
-	//this is guarantees to be not nil
-	cd := ccpack.GetChaincodeData()
-
 	//retain chaincode specific data and fill channel specific ones
-	cd.Escc = string(escc)
-	cd.Vscc = string(vscc)
-	cd.Policy = policy
+	cdfs.Escc = string(escc)
+	cdfs.Vscc = string(vscc)
+	cdfs.Policy = policy
 
 	// retrieve and evaluate instantiation policy
-	cd.InstantiationPolicy, err = lscc.getInstantiationPolicy(chainname, ccpack)
+	cdfs.InstantiationPolicy, err = lscc.getInstantiationPolicy(chainname, ccpackfs)
 	if err != nil {
 		return nil, err
 	}
-	err = lscc.checkInstantiationPolicy(stub, chainname, cd.InstantiationPolicy)
+	err = lscc.checkInstantiationPolicy(stub, chainname, cdfs.InstantiationPolicy)
 	if err != nil {
 		return nil, err
 	}
 
-	err = lscc.createChaincode(stub, cd)
+	err = lscc.createChaincode(stub, cdfs)
 
-	return cd, err
+	return cdfs, err
 }
 
 // executeUpgrade implements the "upgrade" Invoke transaction.
-func (lscc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName string, depSpec []byte, policy []byte, escc []byte, vscc []byte) (*ccprovider.ChaincodeData, error) {
-	cds, err := utils.GetChaincodeDeploymentSpec(depSpec)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = lscc.acl(stub, chainName, cds); err != nil {
-		return nil, err
-	}
-
+func (lscc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName string, cds *pb.ChaincodeDeploymentSpec, policy []byte, escc []byte, vscc []byte, cdfs *ccprovider.ChaincodeData, ccpackfs ccprovider.CCPackage) (*ccprovider.ChaincodeData, error) {
 	chaincodeName := cds.ChaincodeSpec.ChaincodeId.Name
-	if err = lscc.isValidChaincodeName(chaincodeName); err != nil {
-		return nil, err
-	}
-
-	if err = lscc.isValidChaincodeVersion(chaincodeName, cds.ChaincodeSpec.ChaincodeId.Version); err != nil {
-		return nil, err
-	}
 
 	// check for existence of chaincode instance only (it has to exist on the channel)
 	// we dont care about the old chaincode on the FS. In particular, user may even
@@ -631,54 +611,46 @@ func (lscc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 	}
 
 	//we need the cd to compare the version
-	cd, err := lscc.getChaincodeData(chaincodeName, cdbytes)
+	cdLedger, err := lscc.getChaincodeData(chaincodeName, cdbytes)
 	if err != nil {
 		return nil, err
 	}
 
 	//do not upgrade if same version
-	if cd.Version == cds.ChaincodeSpec.ChaincodeId.Version {
+	if cdLedger.Version == cds.ChaincodeSpec.ChaincodeId.Version {
 		return nil, IdenticalVersionErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
 	//do not upgrade if instantiation policy is violated
-	if cd.InstantiationPolicy == nil {
+	if cdLedger.InstantiationPolicy == nil {
 		return nil, InstantiationPolicyMissing("")
 	}
-	err = lscc.checkInstantiationPolicy(stub, chainName, cd.InstantiationPolicy)
+	err = lscc.checkInstantiationPolicy(stub, chainName, cdLedger.InstantiationPolicy)
 	if err != nil {
 		return nil, err
 	}
-
-	ccpack, err := ccprovider.GetChaincodeFromFS(chaincodeName, cds.ChaincodeSpec.ChaincodeId.Version)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get package for the chaincode to be upgraded (%s:%s)-%s", chaincodeName, cds.ChaincodeSpec.ChaincodeId.Version, err)
-	}
-
-	//get the new cd to upgrade to this is guaranteed to be not nil
-	cd = ccpack.GetChaincodeData()
 
 	//retain chaincode specific data and fill channel specific ones
-	cd.Escc = string(escc)
-	cd.Vscc = string(vscc)
-	cd.Policy = policy
+	cdfs.Escc = string(escc)
+	cdfs.Vscc = string(vscc)
+	cdfs.Policy = policy
 
 	// retrieve and evaluate new instantiation policy
-	cd.InstantiationPolicy, err = lscc.getInstantiationPolicy(chainName, ccpack)
+	cdfs.InstantiationPolicy, err = lscc.getInstantiationPolicy(chainName, ccpackfs)
 	if err != nil {
 		return nil, err
 	}
-	err = lscc.checkInstantiationPolicy(stub, chainName, cd.InstantiationPolicy)
-	if err != nil {
-		return nil, err
-	}
-
-	err = lscc.upgradeChaincode(stub, cd)
+	err = lscc.checkInstantiationPolicy(stub, chainName, cdfs.InstantiationPolicy)
 	if err != nil {
 		return nil, err
 	}
 
-	return cd, nil
+	err = lscc.upgradeChaincode(stub, cdfs)
+	if err != nil {
+		return nil, err
+	}
+
+	return cdfs, nil
 }
 
 //-------------- the chaincode stub interface implementation ----------
@@ -731,13 +703,10 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			return shim.Error(err.Error())
 		}
 		return shim.Success([]byte("OK"))
-	case DEPLOY:
+	case DEPLOY, UPGRADE:
 		if len(args) < 3 || len(args) > 6 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
-
-		// TODO: add access control check
-		// once the instantiation process will be completed.
 
 		//chain the chaincode should be associated with. It
 		//should be created with a register call
@@ -748,6 +717,10 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		}
 
 		depSpec := args[2]
+		cds, err := utils.GetChaincodeDeploymentSpec(depSpec)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
 
 		// optional arguments here (they can each be nil and may or may not be present)
 		// args[3] is a marshalled SignaturePolicyEnvelope representing the endorsement policy
@@ -778,60 +751,7 @@ func (lscc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			vscc = []byte("vscc")
 		}
 
-		cd, err := lscc.executeDeploy(stub, chainname, depSpec, policy, escc, vscc)
-		if err != nil {
-			return shim.Error(err.Error())
-		}
-		cdbytes, err := proto.Marshal(cd)
-		if err != nil {
-			return shim.Error(err.Error())
-		}
-		return shim.Success(cdbytes)
-	case UPGRADE:
-		if len(args) < 3 || len(args) > 6 {
-			return shim.Error(InvalidArgsLenErr(len(args)).Error())
-		}
-
-		chainname := string(args[1])
-		if !lscc.isValidChainName(chainname) {
-			return shim.Error(InvalidChainNameErr(chainname).Error())
-		}
-
-		// TODO: add access control check
-		// once the instantiation process will be completed.
-
-		depSpec := args[2]
-
-		// optional arguments here (they can each be nil and may or may not be present)
-		// args[3] is a marshalled SignaturePolicyEnvelope representing the endorsement policy
-		// args[4] is the name of escc
-		// args[5] is the name of vscc
-		var policy []byte
-		if len(args) > 3 && len(args[3]) > 0 {
-			policy = args[3]
-		} else {
-			p := cauthdsl.SignedByAnyMember(peer.GetMSPIDs(chainname))
-			policy, err = utils.Marshal(p)
-			if err != nil {
-				return shim.Error(err.Error())
-			}
-		}
-
-		var escc []byte
-		if len(args) > 4 && args[4] != nil {
-			escc = args[4]
-		} else {
-			escc = []byte("escc")
-		}
-
-		var vscc []byte
-		if len(args) > 5 && args[5] != nil {
-			vscc = args[5]
-		} else {
-			vscc = []byte("vscc")
-		}
-
-		cd, err := lscc.executeUpgrade(stub, chainname, depSpec, policy, escc, vscc)
+		cd, err := lscc.executeDeployOrUpgrade(stub, chainname, cds, policy, escc, vscc, function)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
