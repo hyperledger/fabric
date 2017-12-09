@@ -726,15 +726,6 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		return err, peer.TxValidationCode_INVALID_OTHER_REASON
 	}
 
-	// if we are using the config-tree-based cc lifecycle approach
-	// there's no legitimate reason why a transaction would write to
-	// lscc so we're going to block it
-	if v.support.Capabilities().LifecycleViaConfig() && writesToLSCC {
-		err := fmt.Errorf("lifecycle via config forbids writes to the lscc namespace")
-		logger.Errorf("%s", err)
-		return err, peer.TxValidationCode_ILLEGAL_WRITESET
-	}
-
 	// we've gathered all the info required to proceed to validation;
 	// validation will behave differently depending on the type of
 	// chaincode (system vs. application)
