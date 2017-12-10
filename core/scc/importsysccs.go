@@ -43,7 +43,7 @@ var systemChaincodes = []*SystemChaincode{
 		Name:              "lscc",
 		Path:              "github.com/hyperledger/fabric/core/scc/lscc",
 		InitArgs:          [][]byte{[]byte("")},
-		Chaincode:         &lscc.LifeCycleSysCC{},
+		Chaincode:         lscc.NewLifeCycleSysCC(),
 		InvokableExternal: true, // lscc is invoked to deploy new chaincodes
 		InvokableCC2CC:    true, // lscc can be invoked by other chaincodes
 	},
