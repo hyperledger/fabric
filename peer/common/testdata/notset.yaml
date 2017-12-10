@@ -1,0 +1,9 @@
+peer:
+    BCCSP:
+        Default: SW
+        SW:
+            Hash: SHA2
+            Security: 256
+            FileKeyStore:
+                # not set
+                KeyStore:

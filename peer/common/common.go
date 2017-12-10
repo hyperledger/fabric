@@ -95,6 +95,7 @@ func InitCrypto(mspMgrConfigDir string, localMSPID string) error {
 	}
 
 	// Init the BCCSP
+	SetBCCSPKeystorePath()
 	var bccspConfig *factory.FactoryOpts
 	err = viperutil.EnhancedExactUnmarshalKey("peer.BCCSP", &bccspConfig)
 	if err != nil {
@@ -107,6 +108,13 @@ func InitCrypto(mspMgrConfigDir string, localMSPID string) error {
 	}
 
 	return nil
+}
+
+// SetBCCSPKeystorePath sets the file keystore path for the SW BCCSP provider
+// to an absolute path relative to the config file
+func SetBCCSPKeystorePath() {
+	viper.Set("peer.BCCSP.SW.FileKeyStore.KeyStore",
+		config.GetPath("peer.BCCSP.SW.FileKeyStore.KeyStore"))
 }
 
 // GetEndorserClient returns a new endorser client connection for this peer
