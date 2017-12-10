@@ -51,9 +51,14 @@ type MocksccProviderImpl struct {
 	ApplicationConfigBool bool
 	PolicyManagerRv       policies.Manager
 	PolicyManagerBool     bool
+	SysCCMap              map[string]bool
 }
 
 func (c *MocksccProviderImpl) IsSysCC(name string) bool {
+	if c.SysCCMap != nil {
+		return c.SysCCMap[name]
+	}
+
 	return (name == "lscc") || (name == "escc") || (name == "vscc") || (name == "notext")
 }
 

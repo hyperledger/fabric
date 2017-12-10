@@ -103,7 +103,7 @@ func (s *supportImpl) CheckInstantiationPolicy(signedProp *pb.SignedProposal, ch
 	}}
 	err = instPol.Evaluate(sd)
 	if err != nil {
-		return InstantiationPolicyViolatedErr(err.Error())
+		return errors.WithMessage(err, "instantiation policy violation")
 	}
 	return nil
 }
