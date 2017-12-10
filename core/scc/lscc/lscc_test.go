@@ -93,7 +93,7 @@ func TestInstall(t *testing.T) {
 }
 
 func testInstall(t *testing.T, ccname string, version string, path string, expectedErrorMsg string, caller string) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -181,7 +181,7 @@ func testInstall(t *testing.T, ccname string, version string, path string, expec
 
 //TestReinstall tests the install function
 func TestReinstall(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -209,7 +209,7 @@ func TestReinstall(t *testing.T) {
 
 //TestInvalidCodeDeploy tests the deploy function with invalid code package
 func TestInvalidCodeDeploy(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -249,7 +249,7 @@ func TestDeploy(t *testing.T) {
 }
 
 func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, expectedErrorMsg string) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -345,7 +345,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 
 //TestRedeploy tests the redeploying will fail function(and fail with "exists" error)
 func TestRedeploy(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -380,7 +380,7 @@ func TestRedeploy(t *testing.T) {
 
 //TestMultipleDeploy tests deploying multiple chaincodeschaincodes
 func TestMultipleDeploy(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -473,7 +473,7 @@ func TestMultipleDeploy(t *testing.T) {
 
 //TestRetryFailedDeploy tests re-deploying after a failure
 func TestRetryFailedDeploy(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -540,7 +540,7 @@ func TestRetryFailedDeploy(t *testing.T) {
 
 //TestTamperChaincode modifies the chaincode on the FS after deploy
 func TestTamperChaincode(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -640,7 +640,7 @@ func TestTamperChaincode(t *testing.T) {
 
 //TestIPolDeployFail tests chaincode deploy with an instantiation default policy if the cc package comes without a policy
 func TestIPolDeployDefaultFail(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -686,7 +686,7 @@ func TestIPolDeploy(t *testing.T) {
 }
 
 func testIPolDeploy(t *testing.T, iPol string, successExpected bool) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -767,7 +767,7 @@ func TestUpgrade(t *testing.T) {
 }
 
 func testUpgrade(t *testing.T, ccname string, version string, newccname string, newversion string, path string, expectedErrorMsg string) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -844,7 +844,7 @@ func TestIPolUpgrade(t *testing.T) {
 
 func testIPolUpgrade(t *testing.T, iPol string, successExpected bool) {
 	// deploy version 0 with a default instantiation policy, this should succeed in any case
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
 		t.Fatalf("Init failed %s", string(res.Message))
@@ -934,7 +934,7 @@ func testIPolUpgrade(t *testing.T, iPol string, successExpected bool) {
 //TestGetAPIsWithoutInstall get functions should return the right responses when chaicode is on
 //ledger but not on FS
 func TestGetAPIsWithoutInstall(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -1040,7 +1040,7 @@ func TestGetAPIsWithoutInstall(t *testing.T) {
 // TestGetInstalledChaincodesAccessRights verifies that only authorized parties can call
 // the GETINSTALLEDCHAINCODES function
 func TestGetInstalledChaincodesAccessRights(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -1084,7 +1084,7 @@ func TestGetInstalledChaincodesAccessRights(t *testing.T) {
 // TestGetChaincodesAccessRights verifies that only authorized parties can call
 // the GETCHAINCODES function
 func TestGetChaincodesAccessRights(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
@@ -1128,7 +1128,7 @@ func TestGetChaincodesAccessRights(t *testing.T) {
 // TestGetCCInfoAccessRights verifies that only authorized parties can call
 // the GETCCINFO function
 func TestGetCCAccessRights(t *testing.T) {
-	scc := new(LifeCycleSysCC)
+	scc := NewLifeCycleSysCC()
 	stub := shim.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {

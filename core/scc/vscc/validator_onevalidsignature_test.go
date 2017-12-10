@@ -434,7 +434,7 @@ func TestInvalidFunction(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -490,7 +490,7 @@ func TestRWSetTooBig(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -559,7 +559,7 @@ func TestValidateDeployFail(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -848,7 +848,7 @@ func TestAlreadyDeployed(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -927,7 +927,7 @@ func TestValidateDeployNoLedger(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -985,7 +985,7 @@ func TestValidateDeployOK(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -1043,7 +1043,7 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -1131,7 +1131,7 @@ func TestInvalidUpgrade(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -1187,7 +1187,7 @@ func TestValidateUpgradeOK(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -1268,7 +1268,7 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -1347,7 +1347,7 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
@@ -1430,7 +1430,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	lccc := new(lscc.LifeCycleSysCC)
+	lccc := lscc.NewLifeCycleSysCC()
 	stublccc := shim.NewMockStub("lscc", lccc)
 
 	State := make(map[string]map[string][]byte)
