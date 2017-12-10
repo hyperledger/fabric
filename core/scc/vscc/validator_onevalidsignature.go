@@ -45,7 +45,8 @@ const (
 
 // ValidatorOneValidSignature implements the default transaction validation policy,
 // which is to check the correctness of the read-write set and the endorsement
-// signatures
+// signatures against an endorsement policy that is supplied as argument to
+// every invoke
 type ValidatorOneValidSignature struct {
 	// sccprovider is the interface with which we call
 	// methods of the system chaincode package without
@@ -61,12 +62,11 @@ func (vscc *ValidatorOneValidSignature) Init(stub shim.ChaincodeStubInterface) p
 }
 
 // Invoke is called to validate the specified block of transactions
-// This validation system chaincode will check the read-write set validity and at least 1
-// correct endorsement. Later we can create more validation system
-// chaincodes to provide more sophisticated policy processing such as enabling
-// policy specification to be coded as a transaction of the chaincode and the client
-// selecting which policy to use for validation using parameter function
-// @return serialized Block of valid and invalid transactions identified
+// This validation system chaincode will check that the transaction in
+// the supplied envelope contains endorsements (that is. signatures
+// from entities) that comply with the supplied endorsement policy.
+// @return a successful Response (code 200) in case of success, or
+// an error otherwise
 // Note that Peer calls this function with 3 arguments, where args[0] is the
 // function name, args[1] is the Envelope and args[2] is the validation policy
 func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
