@@ -59,11 +59,6 @@ func TestChaincodeListCmd(t *testing.T) {
 
 	args := []string{"--installed"}
 	installedChaincodesCmd.SetArgs(args)
-	err = installedChaincodesCmd.Execute()
-	assert.Error(t, err, "Run chaincode list cmd to get installed chaincodes should fail if invoked without -C flag")
-
-	args = []string{"--installed", "-C", "mychannel"}
-	installedChaincodesCmd.SetArgs(args)
 	if err := installedChaincodesCmd.Execute(); err != nil {
 		t.Errorf("Run chaincode list cmd to get installed chaincodes error:%v", err)
 	}

@@ -48,7 +48,7 @@ func listCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 }
 
 func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
-	if channelID == "" {
+	if getInstantiatedChaincodes && channelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
 	var err error
