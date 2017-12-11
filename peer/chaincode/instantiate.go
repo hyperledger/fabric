@@ -17,12 +17,12 @@ limitations under the License.
 package chaincode
 
 import (
-	"errors"
 	"fmt"
 
-	protcommon "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -41,7 +41,17 @@ func instantiateCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		Long:      fmt.Sprint(instantiateDesc),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return chaincodeDeploy(cmd, args, cf)
+			cf1 := cf
+			if cf1 == nil {
+				var err error
+				cf1, err = InitCmdFactory(true, true)
+				if err != nil {
+					return err
+				}
+			}
+			return chaincodeDeploy(cf1, func() error {
+				return lsccInstantiate(cmd, cf1)
+			})
 		},
 	}
 	flagList := []string{
@@ -53,14 +63,15 @@ func instantiateCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"policy",
 		"escc",
 		"vscc",
+		"resourceEnvelopeSavePath",
+		"resourceEnvelopeLoadPath",
 	}
 	attachFlags(chaincodeInstantiateCmd, flagList)
-
 	return chaincodeInstantiateCmd
 }
 
 //instantiate the command via Endorser
-func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, error) {
+func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*common.Envelope, error) {
 	spec, err := getChaincodeSpec(cmd)
 	if err != nil {
 		return nil, err
@@ -108,26 +119,29 @@ func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envel
 // chaincodeDeploy instantiates the chaincode. On success, the chaincode name
 // (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
 // commands.
-func chaincodeDeploy(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
+func chaincodeDeploy(cf *ChaincodeCmdFactory, sendInit sendInitTransaction) error {
 	if channelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
 	var err error
-	if cf == nil {
-		cf, err = InitCmdFactory(true, true)
-		if err != nil {
-			return err
-		}
-	}
+
 	defer cf.BroadcastClient.Close()
+
+	ss := &sigSupport{cf.Signer}
+	version, config, err := fetchResourceConfig(cf.EndorserClient, ss, channelID)
+	if err != nil {
+		return errors.Wrap(err, "failed probing channel version")
+	}
+	if version == v11 {
+		return configBasedLifecycleUpdate(ss, cf, config, sendInit)
+	}
+	return sendInit()
+}
+
+func lsccInstantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 	env, err := instantiate(cmd, cf)
 	if err != nil {
 		return err
 	}
-
-	if env != nil {
-		err = cf.BroadcastClient.Send(env)
-	}
-
-	return err
+	return cf.BroadcastClient.Send(env)
 }

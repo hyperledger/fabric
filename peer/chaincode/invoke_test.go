@@ -179,38 +179,31 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 
 // Returns mock chaincode command factory
 func getMockChaincodeCmdFactory() (*ChaincodeCmdFactory, error) {
-	signer, err := common.GetDefaultSigner()
-	if err != nil {
-		return nil, err
-	}
-	mockResponse := &pb.ProposalResponse{
-		Response:    &pb.Response{Status: 200},
-		Endorsement: &pb.Endorsement{},
-	}
-	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-	mockCF := &ChaincodeCmdFactory{
-		EndorserClient:  mockEndorserClient,
-		Signer:          signer,
-		BroadcastClient: mockBroadcastClient,
-	}
-	return mockCF, nil
+	return getMockChaincodeCmdFactoryWithEnorserResponses(common.MockResponse{
+		Response: &pb.ProposalResponse{
+			Response:    &pb.Response{Status: 200},
+			Endorsement: &pb.Endorsement{},
+		},
+	})
 }
 
 // Returns mock chaincode command factory that is constructed with an endorser
 // client that returns an error for proposal request
 func getMockChaincodeCmdFactoryWithErr() (*ChaincodeCmdFactory, error) {
+	return getMockChaincodeCmdFactoryWithEnorserResponses(common.MockResponse{
+		Error: errors.New("invoke error"),
+	})
+}
+
+func getMockChaincodeCmdFactoryWithEnorserResponses(responses ...common.MockResponse) (*ChaincodeCmdFactory, error) {
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
 		return nil, err
 	}
-
-	errMsg := "invoke error"
-	mockEndorerClient := common.GetMockEndorserClient(nil, errors.New(errMsg))
+	mockEndorserClient := common.GetMockMultiEndorserClient(responses...)
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChaincodeCmdFactory{
-		EndorserClient:  mockEndorerClient,
+		EndorserClient:  mockEndorserClient,
 		Signer:          signer,
 		BroadcastClient: mockBroadcastClient,
 	}

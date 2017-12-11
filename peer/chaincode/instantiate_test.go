@@ -17,16 +17,27 @@
 package chaincode
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/hyperledger/fabric/peer/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestInstantiateCmd(t *testing.T) {
 	InitMSP()
 
-	mockCF, err := getMockChaincodeCmdFactory()
-	assert.NoError(t, err, "Error getting mock chaincode command factory")
+	newMockCF := func() *ChaincodeCmdFactory {
+		mockCF, err := getMockChaincodeCmdFactoryWithEnorserResponses(common.MockResponse{Error: errors.New("chaincode error")}, common.MockResponse{
+			Response: &peer.ProposalResponse{
+				Response:    &peer.Response{Status: 200},
+				Endorsement: &peer.Endorsement{},
+			},
+		})
+		assert.NoError(t, err, "Error getting mock chaincode command factory")
+		return mockCF
+	}
 
 	// basic function tests
 	var tests = []struct {
@@ -75,10 +86,10 @@ func TestInstantiateCmd(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resetFlags()
-			cmd := instantiateCmd(mockCF)
+			cmd := instantiateCmd(newMockCF())
 			addFlags(cmd)
 			cmd.SetArgs(test.args)
-			err = cmd.Execute()
+			err := cmd.Execute()
 			checkError(t, err, test.errorExpected, test.errMsg)
 		})
 	}

@@ -9,6 +9,7 @@ package chaincode
 import (
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -258,6 +259,127 @@ func (cube configUpdateBroadcastEvent) signatureCount() int {
 	update := &common.ConfigUpdateEnvelope{}
 	proto.Unmarshal(payload.Data, update)
 	return len(update.Signatures)
+}
+
+func TestDeployResource(t *testing.T) {
+	policy = "OR ('Org1MSP.member','Org2MSP.member')"
+	defer func() {
+		policy = ""
+	}()
+	pol := &common.SignaturePolicyEnvelope{}
+	channelID = "mychannel"
+	noopInit := func() error {
+		return nil
+	}
+	chaincodeName = "example02"
+	chaincodeVersion = "1.0"
+	config, _ := proto.Marshal(&peer.ConfigTree{
+		ResourcesConfig: &common.Config{
+			ChannelGroup: &common.ConfigGroup{
+				Groups: map[string]*common.ConfigGroup{
+					resourcesconfig.ChaincodesGroupKey: {
+						Groups: map[string]*common.ConfigGroup{
+							"example02": ccGroup("example02", "1.0", "vscc", "escc", []byte("hash"), nil, pol),
+						},
+					},
+				},
+			},
+		},
+	})
+	chaincodes, _ := proto.Marshal(&peer.ChaincodeQueryResponse{
+		Chaincodes: []*peer.ChaincodeInfo{
+			{
+				Id:      []byte("hash"),
+				Version: "1.0",
+				Name:    "example02",
+			},
+		},
+	})
+
+	newTestCase := func(creator []byte) (*ChaincodeCmdFactory, *configUpdateBroadcastEvent) {
+		snr := (&mockSigningIdentity{}).
+			thatSerializes(creator, 8).thatSigns([]byte{1, 2, 3}, 8).
+			thatCreatesSignatureHeader(&common.SignatureHeader{})
+		ec := &mockEndorserClient{}
+		ec.On("ProcessProposal").Return(&peer.ProposalResponse{
+			Response: &peer.Response{
+				Status:  shim.OK,
+				Payload: config,
+			},
+		}, nil).Times(1)
+		ec.On("ProcessProposal").Return(&peer.ProposalResponse{
+			Response: &peer.Response{
+				Status:  shim.OK,
+				Payload: chaincodes,
+			},
+		}, nil).Times(1)
+
+		ec.On("ProcessProposal").Return(&peer.ProposalResponse{
+			Response: &peer.Response{
+				Status: shim.ERROR,
+			},
+		}, nil).Once()
+
+		bc := common2.GetMockBroadcastClient(nil)
+
+		return &ChaincodeCmdFactory{
+			EndorserClient:  ec,
+			Signer:          snr,
+			BroadcastClient: bc,
+		}, &configUpdateBroadcastEvent{bc}
+	}
+
+	// Happy paths: peer returns the config and the chaincodes properly
+
+	// Config update is sent to ordering
+	creatorBytes := []byte{1, 2, 3}
+	cmd, broadcastEvent := newTestCase(creatorBytes)
+	err := chaincodeDeploy(cmd, noopInit)
+	assert.NoError(t, err)
+	assert.True(t, broadcastEvent.wasSent(), "Config update wasn't sent to ordering")
+
+	// Config update is saved to disk
+	resourceEnvelopeSavePath = fmt.Sprintf("/tmp/%d.pb", os.Getpid())
+	defer os.Remove(resourceEnvelopeSavePath)
+	cmd, broadcastEvent = newTestCase(creatorBytes)
+	err = chaincodeDeploy(cmd, noopInit)
+	assert.NoError(t, err)
+	assert.False(t, broadcastEvent.wasSent(), "Config update was sent to ordering, but shouldn't have")
+
+	// Config update is loaded from disk and a signature is appended by another identity
+	resourceEnvelopeLoadPath = resourceEnvelopeSavePath
+	cmd, broadcastEvent = newTestCase(append(creatorBytes, 1))
+	err = chaincodeDeploy(cmd, noopInit)
+	assert.NoError(t, err)
+	assert.False(t, broadcastEvent.wasSent(), "Config update was sent to ordering, but shouldn't have")
+
+	// Config update is loaded from disk by the 1st identity, and sent for ordering
+	resourceEnvelopeSavePath = ""
+	cmd, broadcastEvent = newTestCase(creatorBytes)
+	err = chaincodeDeploy(cmd, noopInit)
+	assert.NoError(t, err)
+	assert.True(t, broadcastEvent.wasSent(), "Config update was not sent to ordering, but shouldn't have")
+	assert.Equal(t, 2, broadcastEvent.signatureCount(), "Expected 2 signatures in config update")
+
+	// Bad path: peer returns the config but the chaincodes it returns don't have the wanted name
+	chaincodeName = "example03"
+	cmd, broadcastEvent = newTestCase(creatorBytes)
+	err = chaincodeDeploy(cmd, noopInit)
+	assert.Error(t, err)
+	assert.Equal(t, "chaincode with name example03 and version 1.0 wasn't found", err.Error())
+
+	// Bad path: peer returns an error when it is probed
+	ec := &mockEndorserClient{}
+	snr := (&mockSigningIdentity{}).thatSerializes([]byte{1, 2, 3}, 3).thatSigns([]byte{1, 2, 3}, 3)
+	ec.On("ProcessProposal").Return(nil, errors.New("endorsement failed"))
+	err = chaincodeDeploy(&ChaincodeCmdFactory{
+		EndorserClient:  ec,
+		Signer:          snr,
+		BroadcastClient: common2.GetMockBroadcastClient(nil),
+	}, noopInit)
+	assert.Error(t, err)
+	assert.Equal(t, "failed probing channel version: endorsement failed", err.Error())
+
 }
 
 type mockSigningIdentity struct {
