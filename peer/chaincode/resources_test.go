@@ -279,7 +279,7 @@ func TestDeployResource(t *testing.T) {
 				Groups: map[string]*common.ConfigGroup{
 					resourcesconfig.ChaincodesGroupKey: {
 						Groups: map[string]*common.ConfigGroup{
-							"example02": ccGroup("example02", "1.0", "vscc", "escc", []byte("hash"), nil, pol),
+							"example01": ccGroup("example01", "1.0", "vscc", "escc", []byte("hash"), nil, pol),
 						},
 					},
 				},
@@ -360,6 +360,7 @@ func TestDeployResource(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, broadcastEvent.wasSent(), "Config update was not sent to ordering, but shouldn't have")
 	assert.Equal(t, 2, broadcastEvent.signatureCount(), "Expected 2 signatures in config update")
+	resourceEnvelopeLoadPath = ""
 
 	// Bad path: peer returns the config but the chaincodes it returns don't have the wanted name
 	chaincodeName = "example03"
@@ -380,6 +381,62 @@ func TestDeployResource(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "failed probing channel version: endorsement failed", err.Error())
 
+	// Bad path: vscc is empty and policy is missing
+	policy = ""
+	chaincodeName = "example02"
+	cmd, broadcastEvent = newTestCase(creatorBytes)
+	err = chaincodeDeploy(cmd, noopInit)
+	assert.Error(t, err)
+	assert.Equal(t, "policy must be specified when vscc flag is set to 'vscc' or missing", err.Error())
+
+	// Bad path: vscc is 'vscc' and policy is missing
+	vscc = "vscc"
+	cmd, broadcastEvent = newTestCase(creatorBytes)
+	err = chaincodeDeploy(cmd, noopInit)
+	assert.Error(t, err)
+	assert.Equal(t, "policy must be specified when vscc flag is set to 'vscc' or missing", err.Error())
+
+	extractVSCCArgAndCheckPoliciesPresent := func(env *common.ConfigUpdateEnvelope) (*peer.VSCCArgs, bool) {
+		cu := &common.ConfigUpdate{}
+		proto.Unmarshal(env.ConfigUpdate, cu)
+		ccVal := &peer.ChaincodeValidation{}
+		ccGrp := cu.WriteSet.Groups["Chaincodes"].Groups[chaincodeName]
+		proto.Unmarshal(ccGrp.Values["ChaincodeValidation"].Value, ccVal)
+		vsccArg := &peer.VSCCArgs{}
+		proto.Unmarshal(ccVal.Argument, vsccArg)
+		return vsccArg, ccGrp.Policies != nil
+	}
+	// Good path: vscc is set to 'static-endorsement-policy'.
+	// We make sure that if no policy is specified, the config update sets the endorsement policy
+	// to be "/Channel/Application/Writers" (default)
+	vscc = "static-endorsement-policy"
+	resourceEnvelopeSavePath = fmt.Sprintf("/tmp/%d.pb", os.Getpid())
+	defer os.Remove(resourceEnvelopeSavePath)
+	cmd, broadcastEvent = newTestCase(creatorBytes)
+	err = chaincodeDeploy(cmd, noopInit)
+	assert.NoError(t, err)
+	env, err := loadEnvelope(resourceEnvelopeSavePath)
+	assert.NoError(t, err)
+	vsccArg, policiesPresent := extractVSCCArgAndCheckPoliciesPresent(env)
+	assert.Equal(t, "/Channel/Application/Writers", vsccArg.EndorsementPolicyRef)
+	// If static policy is employed and policy is nil, then no policies should have been defined
+	assert.False(t, policiesPresent)
+
+	// Good path: vscc is set to 'static-endorsement-policy', but this time the policy exists.
+	// We make sure that the Policies are now initialized, and that the EndorsementPolicyRef is set
+	// to the policies of the chaincode group
+	policy = "AND ('Org1MSP.member','Org2MSP.member')"
+	resourceEnvelopeSavePath = fmt.Sprintf("/tmp/%d.pb", os.Getpid())
+	defer os.Remove(resourceEnvelopeSavePath)
+	cmd, broadcastEvent = newTestCase(creatorBytes)
+	err = chaincodeDeploy(cmd, noopInit)
+	assert.NoError(t, err)
+	env, err = loadEnvelope(resourceEnvelopeSavePath)
+	assert.NoError(t, err)
+	vsccArg, policiesPresent = extractVSCCArgAndCheckPoliciesPresent(env)
+	assert.Equal(t, "/Resources/Chaincodes/example02/Endorsement", vsccArg.EndorsementPolicyRef)
+	// If static policy is employed and policy is nil, then no policies should have been defined
+	assert.True(t, policiesPresent)
 }
 
 type mockSigningIdentity struct {
