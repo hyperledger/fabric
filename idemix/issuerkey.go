@@ -8,7 +8,8 @@ package idemix
 
 import (
 	"github.com/golang/protobuf/proto"
-	amcl "github.com/manudrijvers/amcl/go"
+	"github.com/milagro-crypto/amcl/version3/go/amcl"
+	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
 	"github.com/pkg/errors"
 )
 
@@ -81,7 +82,7 @@ func NewIssuerKey(AttributeNames []string, rng *amcl.RAND) (*IssuerKey, error) {
 	proofC := HashModOrder(proofData)
 	key.IPk.ProofC = BigToBytes(proofC)
 
-	proofS := amcl.Modadd(amcl.Modmul(proofC, ISk, GroupOrder), r, GroupOrder)
+	proofS := Modadd(FP256BN.Modmul(proofC, ISk, GroupOrder), r, GroupOrder)
 	key.IPk.ProofS = BigToBytes(proofS)
 
 	serializedIPk, err := proto.Marshal(key.IPk)
@@ -99,15 +100,15 @@ func (IPk *IssuerPublicKey) Check() error {
 	NumAttrs := len(IPk.GetAttributeNames())
 	HSk := EcpFromProto(IPk.GetHSk())
 	HRand := EcpFromProto(IPk.GetHRand())
-	HAttrs := make([]*amcl.ECP, len(IPk.GetHAttrs()))
+	HAttrs := make([]*FP256BN.ECP, len(IPk.GetHAttrs()))
 	for i := 0; i < len(IPk.GetHAttrs()); i++ {
 		HAttrs[i] = EcpFromProto(IPk.GetHAttrs()[i])
 	}
 	BarG1 := EcpFromProto(IPk.GetBarG1())
 	BarG2 := EcpFromProto(IPk.GetBarG2())
 	W := Ecp2FromProto(IPk.GetW())
-	ProofC := amcl.FromBytes(IPk.GetProofC())
-	ProofS := amcl.FromBytes(IPk.GetProofS())
+	ProofC := FP256BN.FromBytes(IPk.GetProofC())
+	ProofS := FP256BN.FromBytes(IPk.GetProofS())
 
 	if NumAttrs < 0 ||
 		HSk == nil ||
@@ -130,9 +131,9 @@ func (IPk *IssuerPublicKey) Check() error {
 	index := 0
 
 	t1 := GenG2.Mul(ProofS)
-	t1.Add(W.Mul(amcl.Modneg(ProofC, GroupOrder)))
+	t1.Add(W.Mul(FP256BN.Modneg(ProofC, GroupOrder)))
 	t2 := BarG1.Mul(ProofS)
-	t2.Add(BarG2.Mul(amcl.Modneg(ProofC, GroupOrder)))
+	t2.Add(BarG2.Mul(FP256BN.Modneg(ProofC, GroupOrder)))
 
 	index = appendBytesG2(proofData, index, t1)
 	index = appendBytesG1(proofData, index, t2)
@@ -141,7 +142,7 @@ func (IPk *IssuerPublicKey) Check() error {
 	index = appendBytesG2(proofData, index, W)
 	index = appendBytesG1(proofData, index, BarG2)
 
-	if !ProofC.Equals(HashModOrder(proofData)) {
+	if *ProofC != *HashModOrder(proofData) {
 		return errors.Errorf("zero knowledge proof in public key invalid")
 	}
 

@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
-	amcl "github.com/manudrijvers/amcl/go"
+	"github.com/milagro-crypto/amcl/version3/go/amcl"
+	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
 	"github.com/pkg/errors"
 )
 
@@ -42,7 +43,7 @@ func hiddenIndices(Disclosure []byte) []int {
 // The []byte Disclosure steers which attributes are disclosed:
 // if Disclosure[i] == 0 then attribute i remains hidden and otherwise it is disclosed.
 // We use the zero-knowledge proof by http://eprint.iacr.org/2016/663.pdf to prove knowledge of a BBS+ signature
-func NewSignature(cred *Credential, sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG, ipk *IssuerPublicKey, Disclosure []byte, msg []byte, rng *amcl.RAND) (*Signature, error) {
+func NewSignature(cred *Credential, sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP256BN.BIG, ipk *IssuerPublicKey, Disclosure []byte, msg []byte, rng *amcl.RAND) (*Signature, error) {
 	if cred == nil || sk == nil || Nym == nil || RNym == nil || ipk == nil || rng == nil {
 		return nil, errors.Errorf("cannot create idemix signature: received nil input")
 	}
@@ -52,7 +53,7 @@ func NewSignature(cred *Credential, sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG,
 	// Start sig
 	r1 := RandModOrder(rng)
 	r2 := RandModOrder(rng)
-	r3 := amcl.NewBIGcopy(r1)
+	r3 := FP256BN.NewBIGcopy(r1)
 	r3.Invmodp(GroupOrder)
 
 	Nonce := RandModOrder(rng)
@@ -60,19 +61,19 @@ func NewSignature(cred *Credential, sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG,
 	A := EcpFromProto(cred.A)
 	B := EcpFromProto(cred.B)
 
-	APrime := amcl.G1mul(A, r1) // A' = A^{r1}
-	ABar := amcl.G1mul(B, r1)
-	ABar.Sub(amcl.G1mul(APrime, amcl.FromBytes(cred.E))) // barA = A'^{-e} b^{r1}
+	APrime := FP256BN.G1mul(A, r1) // A' = A^{r1}
+	ABar := FP256BN.G1mul(B, r1)
+	ABar.Sub(FP256BN.G1mul(APrime, FP256BN.FromBytes(cred.E))) // barA = A'^{-e} b^{r1}
 
-	BPrime := amcl.G1mul(B, r1)
+	BPrime := FP256BN.G1mul(B, r1)
 	HRand := EcpFromProto(ipk.HRand)
 	HSk := EcpFromProto(ipk.HSk)
 
-	BPrime.Sub(amcl.G1mul(HRand, r2)) // b' = b^{r1} h_r^{-r2}
+	BPrime.Sub(FP256BN.G1mul(HRand, r2)) // b' = b^{r1} h_r^{-r2}
 
-	S := amcl.FromBytes(cred.S)
-	E := amcl.FromBytes(cred.E)
-	sPrime := amcl.Modsub(S, amcl.Modmul(r2, r3, GroupOrder), GroupOrder)
+	S := FP256BN.FromBytes(cred.S)
+	E := FP256BN.FromBytes(cred.E)
+	sPrime := Modsub(S, FP256BN.Modmul(r2, r3, GroupOrder), GroupOrder)
 
 	// Construct ZK proof
 	rSk := RandModOrder(rng)
@@ -81,20 +82,20 @@ func NewSignature(cred *Credential, sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG,
 	rR3 := RandModOrder(rng)
 	rSPrime := RandModOrder(rng)
 	rRNym := RandModOrder(rng)
-	rAttrs := make([]*amcl.BIG, len(HiddenIndices))
+	rAttrs := make([]*FP256BN.BIG, len(HiddenIndices))
 	for i := range HiddenIndices {
 		rAttrs[i] = RandModOrder(rng)
 	}
 
 	t1 := APrime.Mul2(re, HRand, rR2)
-	t2 := amcl.G1mul(HRand, rSPrime)
+	t2 := FP256BN.G1mul(HRand, rSPrime)
 	t2.Add(BPrime.Mul2(rR3, HSk, rSk))
 
 	for i := 0; i < len(HiddenIndices)/2; i++ {
 		t2.Add(EcpFromProto(ipk.HAttrs[HiddenIndices[2*i]]).Mul2(rAttrs[2*i], EcpFromProto(ipk.HAttrs[HiddenIndices[2*i+1]]), rAttrs[2*i+1]))
 	}
 	if len(HiddenIndices)%2 != 0 {
-		t2.Add(amcl.G1mul(EcpFromProto(ipk.HAttrs[HiddenIndices[len(HiddenIndices)-1]]), rAttrs[len(HiddenIndices)-1]))
+		t2.Add(FP256BN.G1mul(EcpFromProto(ipk.HAttrs[HiddenIndices[len(HiddenIndices)-1]]), rAttrs[len(HiddenIndices)-1]))
 	}
 
 	t3 := HSk.Mul2(rSk, HRand, rRNym)
@@ -128,16 +129,16 @@ func NewSignature(cred *Credential, sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG,
 	index = appendBytesBig(proofData, index, c)
 	index = appendBytesBig(proofData, index, Nonce)
 	ProofC := HashModOrder(proofData)
-	ProofSSk := amcl.Modadd(rSk, amcl.Modmul(ProofC, sk, GroupOrder), GroupOrder)
-	ProofSE := amcl.Modsub(re, amcl.Modmul(ProofC, E, GroupOrder), GroupOrder)
-	ProofSR2 := amcl.Modadd(rR2, amcl.Modmul(ProofC, r2, GroupOrder), GroupOrder)
-	ProofSR3 := amcl.Modsub(rR3, amcl.Modmul(ProofC, r3, GroupOrder), GroupOrder)
-	ProofSSPrime := amcl.Modadd(rSPrime, amcl.Modmul(ProofC, sPrime, GroupOrder), GroupOrder)
-	ProofSRNym := amcl.Modadd(rRNym, amcl.Modmul(ProofC, RNym, GroupOrder), GroupOrder)
+	ProofSSk := Modadd(rSk, FP256BN.Modmul(ProofC, sk, GroupOrder), GroupOrder)
+	ProofSE := Modsub(re, FP256BN.Modmul(ProofC, E, GroupOrder), GroupOrder)
+	ProofSR2 := Modadd(rR2, FP256BN.Modmul(ProofC, r2, GroupOrder), GroupOrder)
+	ProofSR3 := Modsub(rR3, FP256BN.Modmul(ProofC, r3, GroupOrder), GroupOrder)
+	ProofSSPrime := Modadd(rSPrime, FP256BN.Modmul(ProofC, sPrime, GroupOrder), GroupOrder)
+	ProofSRNym := Modadd(rRNym, FP256BN.Modmul(ProofC, RNym, GroupOrder), GroupOrder)
 
 	ProofSAttrs := make([][]byte, len(HiddenIndices))
 	for i, j := range HiddenIndices {
-		ProofSAttrs[i] = BigToBytes(amcl.Modadd(rAttrs[i], amcl.Modmul(ProofC, amcl.FromBytes(cred.Attrs[j]), GroupOrder), GroupOrder))
+		ProofSAttrs[i] = BigToBytes(Modadd(rAttrs[i], FP256BN.Modmul(ProofC, FP256BN.FromBytes(cred.Attrs[j]), GroupOrder), GroupOrder))
 	}
 
 	return &Signature{
@@ -160,30 +161,30 @@ func NewSignature(cred *Credential, sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG,
 // Ver verifies an idemix signature
 // Disclosure steers which attributes it expects to be disclosed
 // attributeValues[i] contains the desired attribute value for the i-th undisclosed attribute in Disclosure
-func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, attributeValues []*amcl.BIG) error {
+func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, attributeValues []*FP256BN.BIG) error {
 	HiddenIndices := hiddenIndices(Disclosure)
 
 	APrime := EcpFromProto(sig.GetAPrime())
 	ABar := EcpFromProto(sig.GetABar())
 	BPrime := EcpFromProto(sig.GetBPrime())
 	Nym := EcpFromProto(sig.GetNym())
-	ProofC := amcl.FromBytes(sig.GetProofC())
-	ProofSSk := amcl.FromBytes(sig.GetProofSSk())
-	ProofSE := amcl.FromBytes(sig.GetProofSE())
-	ProofSR2 := amcl.FromBytes(sig.GetProofSR2())
-	ProofSR3 := amcl.FromBytes(sig.GetProofSR3())
-	ProofSSPrime := amcl.FromBytes(sig.GetProofSSPrime())
-	ProofSRNym := amcl.FromBytes(sig.GetProofSRNym())
-	ProofSAttrs := make([]*amcl.BIG, len(sig.GetProofSAttrs()))
+	ProofC := FP256BN.FromBytes(sig.GetProofC())
+	ProofSSk := FP256BN.FromBytes(sig.GetProofSSk())
+	ProofSE := FP256BN.FromBytes(sig.GetProofSE())
+	ProofSR2 := FP256BN.FromBytes(sig.GetProofSR2())
+	ProofSR3 := FP256BN.FromBytes(sig.GetProofSR3())
+	ProofSSPrime := FP256BN.FromBytes(sig.GetProofSSPrime())
+	ProofSRNym := FP256BN.FromBytes(sig.GetProofSRNym())
+	ProofSAttrs := make([]*FP256BN.BIG, len(sig.GetProofSAttrs()))
 
 	if len(sig.ProofSAttrs) != len(HiddenIndices) {
 		return errors.Errorf("signature invalid: incorrect amount of s-values for AttributeProofSpec")
 	}
 	for i, b := range sig.ProofSAttrs {
-		ProofSAttrs[i] = amcl.FromBytes(b)
+		ProofSAttrs[i] = FP256BN.FromBytes(b)
 	}
 
-	Nonce := amcl.FromBytes(sig.GetNonce())
+	Nonce := FP256BN.FromBytes(sig.GetNonce())
 
 	W := Ecp2FromProto(ipk.W)
 	HRand := EcpFromProto(ipk.HRand)
@@ -192,39 +193,39 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 	if APrime.Is_infinity() {
 		return errors.Errorf("signature invalid: APrime = 1")
 	}
-	temp1 := amcl.Ate(W, APrime)
-	temp2 := amcl.Ate(GenG2, ABar)
+	temp1 := FP256BN.Ate(W, APrime)
+	temp2 := FP256BN.Ate(GenG2, ABar)
 	temp2.Inverse()
 	temp1.Mul(temp2)
-	if !amcl.Fexp(temp1).Isunity() {
+	if !FP256BN.Fexp(temp1).Isunity() {
 		return errors.Errorf("signature invalid: APrime and ABar don't have the expected structure")
 	}
 
 	t1 := APrime.Mul2(ProofSE, HRand, ProofSR2)
-	temp := amcl.NewECP()
+	temp := FP256BN.NewECP()
 	temp.Copy(ABar)
 	temp.Sub(BPrime)
-	t1.Sub(amcl.G1mul(temp, ProofC))
+	t1.Sub(FP256BN.G1mul(temp, ProofC))
 
-	t2 := amcl.G1mul(HRand, ProofSSPrime)
+	t2 := FP256BN.G1mul(HRand, ProofSSPrime)
 	t2.Add(BPrime.Mul2(ProofSR3, HSk, ProofSSk))
 
 	for i := 0; i < len(HiddenIndices)/2; i++ {
 		t2.Add(EcpFromProto(ipk.HAttrs[HiddenIndices[2*i]]).Mul2(ProofSAttrs[2*i], EcpFromProto(ipk.HAttrs[HiddenIndices[2*i+1]]), ProofSAttrs[2*i+1]))
 	}
 	if len(HiddenIndices)%2 != 0 {
-		t2.Add(amcl.G1mul(EcpFromProto(ipk.HAttrs[HiddenIndices[len(HiddenIndices)-1]]), ProofSAttrs[len(HiddenIndices)-1]))
+		t2.Add(FP256BN.G1mul(EcpFromProto(ipk.HAttrs[HiddenIndices[len(HiddenIndices)-1]]), ProofSAttrs[len(HiddenIndices)-1]))
 	}
 
-	temp = amcl.NewECP()
+	temp = FP256BN.NewECP()
 	temp.Copy(GenG1)
 
 	for index, disclose := range Disclosure {
 		if disclose != 0 {
-			temp.Add(amcl.G1mul(EcpFromProto(ipk.HAttrs[index]), attributeValues[index]))
+			temp.Add(FP256BN.G1mul(EcpFromProto(ipk.HAttrs[index]), attributeValues[index]))
 		}
 	}
-	t2.Add(amcl.G1mul(temp, ProofC))
+	t2.Add(FP256BN.G1mul(temp, ProofC))
 
 	t3 := HSk.Mul2(ProofSSk, HRand, ProofSRNym)
 	t3.Sub(Nym.Mul(ProofC))
@@ -256,7 +257,7 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 	proofData = proofData[:2*FieldBytes]
 	index = appendBytesBig(proofData, index, c)
 	index = appendBytesBig(proofData, index, Nonce)
-	if !ProofC.Equals(HashModOrder(proofData)) {
+	if *ProofC != *HashModOrder(proofData) {
 		return errors.Errorf("signature invalid: zero-knowledge proof is invalid")
 	}
 

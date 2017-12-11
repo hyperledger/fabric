@@ -7,12 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
-	amcl "github.com/manudrijvers/amcl/go"
+	"github.com/milagro-crypto/amcl/version3/go/amcl"
+	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
 	"github.com/pkg/errors"
 )
 
 // NewSignature creates a new idemix pseudonym signature
-func NewNymSignature(sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG, ipk *IssuerPublicKey, msg []byte, rng *amcl.RAND) (*NymSignature, error) {
+func NewNymSignature(sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP256BN.BIG, ipk *IssuerPublicKey, msg []byte, rng *amcl.RAND) (*NymSignature, error) {
 	if sk == nil || Nym == nil || RNym == nil || ipk == nil || rng == nil {
 		return nil, errors.Errorf("cannot create NymSignature: received nil input")
 	}
@@ -57,8 +58,8 @@ func NewNymSignature(sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG, ipk *IssuerPub
 	ProofC := HashModOrder(proofData)
 
 	// Finally, we compute the s-values, which form the response answering challenge c
-	ProofSSk := amcl.Modadd(rSk, amcl.Modmul(ProofC, sk, GroupOrder), GroupOrder)
-	ProofSRNym := amcl.Modadd(rRNym, amcl.Modmul(ProofC, RNym, GroupOrder), GroupOrder)
+	ProofSSk := Modadd(rSk, FP256BN.Modmul(ProofC, sk, GroupOrder), GroupOrder)
+	ProofSRNym := Modadd(rRNym, FP256BN.Modmul(ProofC, RNym, GroupOrder), GroupOrder)
 
 	// The signature consists of the Fiat-Shamir hash (ProofC), the s-values (ProofSSk, ProofSRNym), and the nonce.
 	return &NymSignature{
@@ -69,12 +70,12 @@ func NewNymSignature(sk *amcl.BIG, Nym *amcl.ECP, RNym *amcl.BIG, ipk *IssuerPub
 }
 
 // Ver verifies an idemix NymSignature
-func (sig *NymSignature) Ver(nym *amcl.ECP, ipk *IssuerPublicKey, msg []byte) error {
-	ProofC := amcl.FromBytes(sig.GetProofC())
-	ProofSSk := amcl.FromBytes(sig.GetProofSSk())
-	ProofSRNym := amcl.FromBytes(sig.GetProofSRNym())
+func (sig *NymSignature) Ver(nym *FP256BN.ECP, ipk *IssuerPublicKey, msg []byte) error {
+	ProofC := FP256BN.FromBytes(sig.GetProofC())
+	ProofSSk := FP256BN.FromBytes(sig.GetProofSSk())
+	ProofSRNym := FP256BN.FromBytes(sig.GetProofSRNym())
 
-	Nonce := amcl.FromBytes(sig.GetNonce())
+	Nonce := FP256BN.FromBytes(sig.GetNonce())
 
 	HRand := EcpFromProto(ipk.HRand)
 	HSk := EcpFromProto(ipk.HSk)
@@ -102,7 +103,7 @@ func (sig *NymSignature) Ver(nym *amcl.ECP, ipk *IssuerPublicKey, msg []byte) er
 	proofData = proofData[:2*FieldBytes]
 	index = appendBytesBig(proofData, index, c)
 	index = appendBytesBig(proofData, index, Nonce)
-	if !ProofC.Equals(HashModOrder(proofData)) {
+	if *ProofC != *HashModOrder(proofData) {
 		return errors.Errorf("pseudonym signature invalid: zero-knowledge proof is invalid")
 	}
 

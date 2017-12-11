@@ -7,19 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	"bytes"
 	"testing"
 
-	"bytes"
-
-	amcl "github.com/manudrijvers/amcl/go"
+	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIdemix(t *testing.T) {
 	AttributeNames := []string{"Attr1", "Attr2", "Attr3", "Attr4", "Attr5"}
-	attrs := make([]*amcl.BIG, len(AttributeNames))
+	attrs := make([]*FP256BN.BIG, len(AttributeNames))
 	for i := range AttributeNames {
-		attrs[i] = amcl.NewBIGint(i)
+		attrs[i] = FP256BN.NewBIGint(i)
 	}
 
 	// Test issuer key generation
@@ -77,7 +76,7 @@ func TestIdemix(t *testing.T) {
 	assert.NoError(t, cred.Ver(sk, key.IPk), "credential should be valid")
 
 	// Issuing a credential with the incorrect amount of attributes should fail
-	_, err = NewCredential(key, m, []*amcl.BIG{}, rng)
+	_, err = NewCredential(key, m, []*FP256BN.BIG{}, rng)
 	assert.Error(t, err, "issuing a credential with the incorrect amount of attributes should fail")
 
 	// Breaking the ZK proof of the CredRequest should make it invalid

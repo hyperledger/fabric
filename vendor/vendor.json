@@ -3,6 +3,22 @@
 	"ignore": "test",
 	"package": [
 		{
+			"path": "amcl",
+			"revision": ""
+		},
+		{
+			"path": "amcl/BN254",
+			"revision": ""
+		},
+		{
+			"path": "amcl/ED25519",
+			"revision": ""
+		},
+		{
+			"path": "amcl/RSA2048",
+			"revision": ""
+		},
+		{
 			"path": "github.com/BurntSushi/toml",
 			"revision": "056c9bc7be7190eaa7715723883caffa5f8fa3e4",
 			"revisionTime": "2015-05-01T06:40:42-04:00"
@@ -371,12 +387,6 @@
 			"revisionTime": "2015-07-31T22:42:12+02:00"
 		},
 		{
-			"checksumSHA1": "rdXfB1cKQi3dvOggO/w9QgPK01w=",
-			"path": "github.com/manudrijvers/amcl/go",
-			"revision": "765b9c1a68e0d5b22dc09dc7fa7bb46b69b700a8",
-			"revisionTime": "2017-01-30T13:11:20Z"
-		},
-		{
 			"checksumSHA1": "cJE7dphDlam/i7PhnsyosNWtbd4=",
 			"path": "github.com/mattn/go-runewidth",
 			"revision": "97311d9f7767e3d6f422ea06661bc2c7a19e8a5d",
@@ -393,6 +403,16 @@
 			"path": "github.com/miekg/pkcs11",
 			"revision": "2c6cdd29253e84b5f0f1bec7d77cce36f12d15bd",
 			"revisionTime": "2016-12-07T19:14:20Z"
+		},
+		{
+			"checksumSHA1": "k8BLoBCJFqzsCFeg0yp0WpakxyM=",
+			"path": "github.com/milagro-crypto/amcl/version3/go",
+			"revision": "281d0829b307c911bb2f14f2fedc414a257cb8c8",
+			"revisionTime": "2017-12-07T16:03:24Z"
+		},
+		{
+			"path": "github.com/milagro-crypto/amcl/version3/go/amcl",
+			"revision": "281d0829b307c911bb2f14f2fedc414a257cb8c8"
 		},
 		{
 			"path": "github.com/mitchellh/mapstructure",

@@ -11,7 +11,7 @@ import (
 	"github.com/hyperledger/fabric/idemix"
 	"github.com/hyperledger/fabric/msp"
 	m "github.com/hyperledger/fabric/protos/msp"
-	amcl "github.com/manudrijvers/amcl/go"
+	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
 	"github.com/pkg/errors"
 )
 
@@ -44,7 +44,7 @@ func GenerateIssuerKey() ([]byte, []byte, error) {
 // (meaning it is used only for verification)
 // then only a public key of the CA (issuer) is added to the MSP config (besides the name)
 func GenerateSignerConfig(isAdmin bool, ouString string, key *idemix.IssuerKey) ([]byte, error) {
-	attrs := make([]*amcl.BIG, 2)
+	attrs := make([]*FP256BN.BIG, 2)
 
 	if ouString == "" {
 		return nil, errors.Errorf("the OU attribute value is empty")
@@ -57,7 +57,7 @@ func GenerateSignerConfig(isAdmin bool, ouString string, key *idemix.IssuerKey) 
 	}
 
 	attrs[0] = idemix.HashModOrder([]byte(ouString))
-	attrs[1] = amcl.NewBIGint(int(role))
+	attrs[1] = FP256BN.NewBIGint(int(role))
 
 	rng, err := idemix.GetRand()
 	if err != nil {

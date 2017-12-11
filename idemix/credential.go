@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
-	amcl "github.com/manudrijvers/amcl/go"
+	"github.com/milagro-crypto/amcl/version3/go/amcl"
+	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
 	"github.com/pkg/errors"
 )
 
@@ -33,7 +34,7 @@ import (
 // NewCredential issues a new credential, which is the last step of the interactive issuance protocol
 // All attribute values are added by the issuer at this step and then signed together with a commitment to
 // the user's secret key from a credential request
-func NewCredential(key *IssuerKey, m *CredRequest, attrs []*amcl.BIG, rng *amcl.RAND) (*Credential, error) {
+func NewCredential(key *IssuerKey, m *CredRequest, attrs []*FP256BN.BIG, rng *amcl.RAND) (*Credential, error) {
 	// check the credential request that contains
 	err := m.Check(key.IPk)
 	if err != nil {
@@ -49,7 +50,7 @@ func NewCredential(key *IssuerKey, m *CredRequest, attrs []*amcl.BIG, rng *amcl.
 	E := RandModOrder(rng)
 	S := RandModOrder(rng)
 
-	B := amcl.NewECP()
+	B := FP256BN.NewECP()
 	B.Copy(GenG1)
 	Nym := EcpFromProto(m.Nym)
 	B.Add(Nym)
@@ -63,7 +64,7 @@ func NewCredential(key *IssuerKey, m *CredRequest, attrs []*amcl.BIG, rng *amcl.
 		B.Add(EcpFromProto(key.IPk.HAttrs[len(attrs)-1]).Mul(attrs[len(attrs)-1]))
 	}
 
-	Exp := amcl.Modadd(amcl.FromBytes(key.GetISk()), E, GroupOrder)
+	Exp := Modadd(FP256BN.FromBytes(key.GetISk()), E, GroupOrder)
 	Exp.Invmodp(GroupOrder)
 	A := B.Mul(Exp)
 
@@ -81,19 +82,19 @@ func NewCredential(key *IssuerKey, m *CredRequest, attrs []*amcl.BIG, rng *amcl.
 }
 
 // Complete completes the credential by updating it with the randomness used to generate CredRequest
-func (cred *Credential) Complete(credS1 *amcl.BIG) {
-	cred.S = BigToBytes(amcl.Modadd(amcl.FromBytes(cred.S), credS1, GroupOrder))
+func (cred *Credential) Complete(credS1 *FP256BN.BIG) {
+	cred.S = BigToBytes(Modadd(FP256BN.FromBytes(cred.S), credS1, GroupOrder))
 }
 
 // Ver cryptographically verifies the credential by verifying the signature
 // on the attribute values and user's secret key
-func (cred *Credential) Ver(sk *amcl.BIG, ipk *IssuerPublicKey) error {
+func (cred *Credential) Ver(sk *FP256BN.BIG, ipk *IssuerPublicKey) error {
 
 	// parse the credential
 	A := EcpFromProto(cred.GetA())
 	B := EcpFromProto(cred.GetB())
-	E := amcl.FromBytes(cred.GetE())
-	S := amcl.FromBytes(cred.GetS())
+	E := FP256BN.FromBytes(cred.GetE())
+	S := FP256BN.FromBytes(cred.GetS())
 
 	// verify that all attribute values are present
 	for i := 0; i < len(cred.GetAttrs()); i++ {
@@ -103,14 +104,14 @@ func (cred *Credential) Ver(sk *amcl.BIG, ipk *IssuerPublicKey) error {
 	}
 
 	// verify cryptographic signature on the attributes and the user secret key
-	BPrime := amcl.NewECP()
+	BPrime := FP256BN.NewECP()
 	BPrime.Copy(GenG1)
 	BPrime.Add(EcpFromProto(ipk.HSk).Mul2(sk, EcpFromProto(ipk.HRand), S))
 	for i := 0; i < len(cred.Attrs)/2; i++ {
-		BPrime.Add(EcpFromProto(ipk.HAttrs[2*i]).Mul2(amcl.FromBytes(cred.Attrs[2*i]), EcpFromProto(ipk.HAttrs[2*i+1]), amcl.FromBytes(cred.Attrs[2*i+1])))
+		BPrime.Add(EcpFromProto(ipk.HAttrs[2*i]).Mul2(FP256BN.FromBytes(cred.Attrs[2*i]), EcpFromProto(ipk.HAttrs[2*i+1]), FP256BN.FromBytes(cred.Attrs[2*i+1])))
 	}
 	if len(cred.Attrs)%2 != 0 {
-		BPrime.Add(EcpFromProto(ipk.HAttrs[len(cred.Attrs)-1]).Mul(amcl.FromBytes(cred.Attrs[len(cred.Attrs)-1])))
+		BPrime.Add(EcpFromProto(ipk.HAttrs[len(cred.Attrs)-1]).Mul(FP256BN.FromBytes(cred.Attrs[len(cred.Attrs)-1])))
 	}
 	if !B.Equals(BPrime) {
 		return errors.Errorf("b-value from credential does not match the attribute values")
@@ -118,8 +119,9 @@ func (cred *Credential) Ver(sk *amcl.BIG, ipk *IssuerPublicKey) error {
 
 	a := GenG2.Mul(E)
 	a.Add(Ecp2FromProto(ipk.W))
+	a.Affine()
 
-	if !amcl.Fexp(amcl.Ate(a, A)).Equals(amcl.Fexp(amcl.Ate(GenG2, B))) {
+	if !FP256BN.Fexp(FP256BN.Ate(a, A)).Equals(FP256BN.Fexp(FP256BN.Ate(GenG2, B))) {
 		return errors.Errorf("credential is not cryptographically valid")
 	}
 	return nil

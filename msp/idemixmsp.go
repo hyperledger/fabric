@@ -14,7 +14,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/idemix"
 	m "github.com/hyperledger/fabric/protos/msp"
-	amcl "github.com/manudrijvers/amcl/go"
+	"github.com/milagro-crypto/amcl/version3/go/amcl"
+	"github.com/milagro-crypto/amcl/version3/go/amcl/FP256BN"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
@@ -106,7 +107,7 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		return errors.Wrap(err, "Failed to unmarshal credential from config")
 	}
 
-	sk := amcl.FromBytes(conf.Signer.Sk)
+	sk := FP256BN.FromBytes(conf.Signer.Sk)
 
 	Nym, RandNym := idemix.MakeNym(sk, msp.ipk, rng)
 	role := &m.MSPRole{
@@ -135,7 +136,7 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	}
 
 	// Check if credential contains the correct OU attribute value
-	if !bytes.Equal(idemix.BigToBytes(amcl.NewBIGint(int(role.Role))), cred.Attrs[1]) {
+	if !bytes.Equal(idemix.BigToBytes(FP256BN.NewBIGint(int(role.Role))), cred.Attrs[1]) {
 		return errors.New("Credential does not contain the correct Role attribute value")
 	}
 
@@ -207,7 +208,7 @@ func (msp *idemixmsp) deserializeIdentityInternal(serializedID []byte) (Identity
 	if serialized.NymX == nil || serialized.NymY == nil {
 		return nil, errors.Errorf("unable to deserialize idemix identity: pseudonym is invalid")
 	}
-	Nym := amcl.NewECPbigs(amcl.FromBytes(serialized.NymX), amcl.FromBytes(serialized.NymY))
+	Nym := FP256BN.NewECPbigs(FP256BN.FromBytes(serialized.NymX), FP256BN.FromBytes(serialized.NymY))
 
 	ou := &m.OrganizationUnit{}
 	err = proto.Unmarshal(serialized.OU, ou)
@@ -250,7 +251,7 @@ func (msp *idemixmsp) Validate(id Identity) error {
 
 func (id *idemixidentity) verifyProof() error {
 	ouBytes := []byte(id.OU.OrganizationalUnitIdentifier)
-	attributeValues := []*amcl.BIG{idemix.HashModOrder(ouBytes), amcl.NewBIGint(int(id.Role.Role))}
+	attributeValues := []*FP256BN.BIG{idemix.HashModOrder(ouBytes), FP256BN.NewBIGint(int(id.Role.Role))}
 
 	return id.associationProof.Ver(discloseFlags, id.msp.ipk, nil, attributeValues)
 }
@@ -364,7 +365,7 @@ func (msp *idemixmsp) GetTLSIntermediateCerts() [][]byte {
 }
 
 type idemixidentity struct {
-	Nym  *amcl.ECP
+	Nym  *FP256BN.ECP
 	msp  *idemixmsp
 	id   *IdentityIdentifier
 	Role *m.MSPRole
@@ -375,11 +376,11 @@ type idemixidentity struct {
 	associationProof *idemix.Signature
 }
 
-func newIdemixIdentity(msp *idemixmsp, nym *amcl.ECP, role *m.MSPRole, ou *m.OrganizationUnit, proof *idemix.Signature) *idemixidentity {
+func newIdemixIdentity(msp *idemixmsp, nym *FP256BN.ECP, role *m.MSPRole, ou *m.OrganizationUnit, proof *idemix.Signature) *idemixidentity {
 	id := &idemixidentity{}
 	id.Nym = nym
 	id.msp = msp
-	id.id = &IdentityIdentifier{Mspid: msp.name, Id: nym.ToString()}
+	id.id = &IdentityIdentifier{Mspid: msp.name, Id: proto.MarshalTextString(idemix.EcpToProto(nym))}
 	id.Role = role
 	id.OU = ou
 	id.associationProof = proof
@@ -474,8 +475,8 @@ type idemixSigningIdentity struct {
 	*idemixidentity
 	rng     *amcl.RAND
 	Cred    *idemix.Credential
-	Sk      *amcl.BIG
-	RandNym *amcl.BIG
+	Sk      *FP256BN.BIG
+	RandNym *FP256BN.BIG
 }
 
 func (id *idemixSigningIdentity) Sign(msg []byte) ([]byte, error) {
