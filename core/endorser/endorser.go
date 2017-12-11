@@ -240,19 +240,9 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		}
 		version = cdLedger.CCVersion()
 
-		ac, exists := e.s.GetApplicationConfig(chainID)
-		if !exists {
-			endorserLogger.Panicf("Programming error, application config could not be found for channel '%s'", chainID)
-		}
-
-		if !ac.Capabilities().LifecycleViaConfig() {
-			err = e.s.CheckInsantiationPolicy(cid.Name, version, cdLedger)
-			if err != nil {
-				return nil, nil, nil, nil, err
-			}
-		} else {
-			// FIXME: consider checking the instantiation policy
-			//        a better place to do it would be the chaincodeSupport.Launch function
+		err = e.s.CheckInsantiationPolicy(cid.Name, version, cdLedger)
+		if err != nil {
+			return nil, nil, nil, nil, err
 		}
 	} else {
 		version = util.GetSysCCVersion()

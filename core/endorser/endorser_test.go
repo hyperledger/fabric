@@ -378,24 +378,6 @@ func TestEndorserLSCCJava2(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestEndorserLifecycleViaConfigGood(t *testing.T) {
-	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error {
-		return nil
-	}, &em.MockSupport{
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{&mc.MockApplicationCapabilities{LifecycleViaConfigRv: true}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv:           &ccprovider.MockTxSim{&ledger.TxSimulationResults{PubSimulationResults: &rwset.TxReadWriteSet{}}},
-	})
-
-	signedProp := getSignedProp("ccid", "0", t)
-
-	_, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-}
-
 func TestEndorserGoodPathWEvents(t *testing.T) {
 	es := NewEndorserServer(func(channel string, txID string, privateData *rwset.TxPvtReadWriteSet) error {
 		return nil
