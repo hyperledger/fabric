@@ -113,13 +113,6 @@ func (f InvalidCCOnFSError) Error() string {
 	return fmt.Sprintf("chaincode fingerprint mismatch %s", string(f))
 }
 
-//InstantiationPolicyViolatedErr when chaincode instantiation policy has been violated on instantiate or upgrade
-type InstantiationPolicyViolatedErr string
-
-func (f InstantiationPolicyViolatedErr) Error() string {
-	return fmt.Sprintf("chaincode instantiation policy violated(%s)", string(f))
-}
-
 //InstantiationPolicyMissing when no existing instantiation policy is found when upgrading CC
 type InstantiationPolicyMissing string
 
