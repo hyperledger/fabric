@@ -9,6 +9,7 @@ package common_test
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
@@ -16,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,6 +75,36 @@ func TestInitCrypto(t *testing.T) {
 	assert.Error(t, err, fmt.Sprintf("Expected error [%s] calling InitCrypto()", err))
 }
 
+func TestSetBCCSPKeystorePath(t *testing.T) {
+	cfgKey := "peer.BCCSP.SW.FileKeyStore.KeyStore"
+	cfgPath := "./testdata"
+	absPath, _ := filepath.Abs(cfgPath)
+	keystorePath := "/msp/keystore"
+
+	os.Setenv("FABRIC_CFG_PATH", cfgPath)
+	viper.Reset()
+	_ = common.InitConfig("notset")
+	common.SetBCCSPKeystorePath()
+	t.Log(viper.GetString(cfgKey))
+	assert.Equal(t, "", viper.GetString(cfgKey))
+
+	viper.Reset()
+	_ = common.InitConfig("absolute")
+	common.SetBCCSPKeystorePath()
+	t.Log(viper.GetString(cfgKey))
+	assert.Equal(t, keystorePath, viper.GetString(cfgKey))
+
+	viper.Reset()
+	_ = common.InitConfig("relative")
+	common.SetBCCSPKeystorePath()
+	t.Log(viper.GetString(cfgKey))
+	assert.Equal(t, filepath.Join(absPath, keystorePath),
+		viper.GetString(cfgKey))
+
+	viper.Reset()
+	os.Unsetenv("FABRIC_CFG_PATH")
+}
+
 func TestGetEndorserClient(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -97,6 +129,8 @@ func TestGetEndorserClient(t *testing.T) {
 }
 
 func TestSetLogLevelFromViper(t *testing.T) {
+	viper.Reset()
+	common.InitConfig("core")
 	type args struct {
 		module string
 	}
