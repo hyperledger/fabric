@@ -17,6 +17,7 @@ package peer
 
 import (
 	"runtime/debug"
+	"time"
 
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -61,9 +62,9 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 
 // NewAtomicBroadcastServer creates an ab.AtomicBroadcastServer based on the
 // ledger Reader. Broadcast is not implemented/supported on the peer.
-func NewAtomicBroadcastServer() ab.AtomicBroadcastServer {
+func NewAtomicBroadcastServer(timeWindow time.Duration, mutualTLS bool) ab.AtomicBroadcastServer {
 	s := &server{
-		dh: deliver.NewHandlerImpl(DeliverSupportManager{}, policies.ChannelReaders),
+		dh: deliver.NewHandlerImpl(DeliverSupportManager{}, policies.ChannelReaders, timeWindow, mutualTLS),
 		bh: broadcast.NewHandlerImpl(nil),
 	}
 	return s

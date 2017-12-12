@@ -18,14 +18,18 @@ package deliver
 
 import (
 	"io"
+	"math"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/comm"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
@@ -65,15 +69,29 @@ type Support interface {
 }
 
 type deliverServer struct {
-	sm         SupportManager
-	policyName string
+	sm               SupportManager
+	policyName       string
+	timeWindow       time.Duration
+	bindingInspector comm.BindingInspector
 }
 
 // NewHandlerImpl creates an implementation of the Handler interface
-func NewHandlerImpl(sm SupportManager, policyName string) Handler {
+func NewHandlerImpl(sm SupportManager, policyName string, timeWindow time.Duration, mutualTLS bool) Handler {
+	// function to extract the TLS cert hash from a channel header
+	extract := func(msg proto.Message) []byte {
+		chdr, isChannelHeader := msg.(*cb.ChannelHeader)
+		if !isChannelHeader || chdr == nil {
+			return nil
+		}
+		return chdr.TlsCertHash
+	}
+	bindingInspector := comm.NewBindingInspector(mutualTLS, extract)
+
 	return &deliverServer{
-		sm:         sm,
-		policyName: policyName,
+		sm:               sm,
+		policyName:       policyName,
+		timeWindow:       timeWindow,
+		bindingInspector: bindingInspector,
 	}
 }
 
@@ -117,6 +135,12 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		logger.Warningf("Failed to unmarshal channel header from %s: %s", addr, err)
+		return sendStatusReply(srv, cb.Status_BAD_REQUEST)
+	}
+
+	err = ds.validateChannelHeader(srv, chdr)
+	if err != nil {
+		logger.Warningf("Rejecting deliver for %s due to envelope validation error: %s", addr, err)
 		return sendStatusReply(srv, cb.Status_BAD_REQUEST)
 	}
 
@@ -220,6 +244,28 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 
 	return nil
 
+}
+
+func (ds *deliverServer) validateChannelHeader(srv ab.AtomicBroadcast_DeliverServer, chdr *cb.ChannelHeader) error {
+	if chdr.GetTimestamp() == nil {
+		err := errors.New("channel header in envelope must contain timestamp")
+		return err
+	}
+
+	envTime := time.Unix(chdr.GetTimestamp().Seconds, int64(chdr.GetTimestamp().Nanos)).UTC()
+	serverTime := time.Now()
+
+	if math.Abs(float64(serverTime.UnixNano()-envTime.UnixNano())) > float64(ds.timeWindow.Nanoseconds()) {
+		err := errors.Errorf("timestamp %s is more than the %s time window difference above/below server time %s. either the server and client clocks are out of sync or a relay attack has been attempted", envTime, ds.timeWindow, serverTime)
+		return err
+	}
+
+	err := ds.bindingInspector(srv.Context(), chdr)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func nextBlock(cursor blockledger.Iterator, cancel <-chan struct{}) (block *cb.Block, status cb.Status) {
