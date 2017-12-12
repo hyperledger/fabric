@@ -9,11 +9,10 @@ package chaincode
 import (
 	"bytes"
 	"fmt"
-	"strings"
-	"time"
-
 	"io/ioutil"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -36,6 +35,8 @@ const (
 	v1 = iota
 	v11
 )
+
+const defaultEndorsementPolicy = "/Channel/Application/Writers"
 
 // SignatureSupport creates signature headers, signs messages,
 // and also serializes its identity to bytes
@@ -184,6 +185,7 @@ func fetchResourceConfig(ec peer.EndorserClient, ss SignatureSupport, channel st
 func ccGroup(ccName string, version string, validation string, endorsement string, hash []byte, modpolicies map[string]string, policy *common.SignaturePolicyEnvelope) *common.ConfigGroup {
 	logger.Infof("creating ccGroup using %s and %s", validation, endorsement)
 	var vsccArg []byte
+	appendConfigPolicy := true
 	if validation == "" {
 		validation = "vscc"
 	}
@@ -191,25 +193,23 @@ func ccGroup(ccName string, version string, validation string, endorsement strin
 		endorsement = "escc"
 	}
 	if validation == "static-endorsement-policy" {
-		vsccArg = utils.MarshalOrPanic(&peer.VSCCArgs{
-			EndorsementPolicyRef: fmt.Sprintf("/Resources/Chaincodes/%s/Endorsement", ccName),
-		})
+		if policy == nil {
+			appendConfigPolicy = false
+			logger.Info("Policy not specified, defaulting to", defaultEndorsementPolicy)
+			vsccArg = utils.MarshalOrPanic(&peer.VSCCArgs{
+				EndorsementPolicyRef: defaultEndorsementPolicy,
+			})
+		} else {
+			vsccArg = utils.MarshalOrPanic(&peer.VSCCArgs{
+				EndorsementPolicyRef: fmt.Sprintf("/Resources/Chaincodes/%s/Endorsement", ccName),
+			})
+		}
 	}
 	if validation == "vscc" {
 		logger.Infof("Setting VSCC arg to simple policy, using %s and %s", validation, endorsement)
 		vsccArg = utils.MarshalOrPanic(policy)
 	}
-	return &common.ConfigGroup{
-		Policies: map[string]*common.ConfigPolicy{
-			// TODO: make a constant in some other package
-			"Endorsement": {
-				ModPolicy: modpolicies["[Policy] Endorsement"],
-				Policy: &common.Policy{
-					Type:  int32(common.Policy_SIGNATURE),
-					Value: utils.MarshalOrPanic(policy),
-				},
-			},
-		},
+	cfgGrp := &common.ConfigGroup{
 		ModPolicy: modpolicies["Base"],
 		Values: map[string]*common.ConfigValue{
 			// TODO: make a constant in some other package
@@ -237,6 +237,19 @@ func ccGroup(ccName string, version string, validation string, endorsement strin
 			},
 		},
 	}
+	if appendConfigPolicy {
+		cfgGrp.Policies = map[string]*common.ConfigPolicy{
+			// TODO: make a constant in some other package
+			"Endorsement": {
+				ModPolicy: modpolicies["[Policy] Endorsement"],
+				Policy: &common.Policy{
+					Type:  int32(common.Policy_SIGNATURE),
+					Value: utils.MarshalOrPanic(policy),
+				},
+			},
+		}
+	}
+	return cfgGrp
 }
 
 func (update ccUpdate) addChaincode() {
@@ -338,13 +351,18 @@ func configBasedLifecycleUpdate(ss *sigSupport, cf *ChaincodeCmdFactory, config 
 	if err != nil {
 		return err
 	}
-	if policy == "" {
-		return errors.New("empty policy")
+	var pol *common.SignaturePolicyEnvelope
+	if policy != "" {
+		pol, err = cauthdsl.FromString(policy)
+		if err != nil {
+			return err
+		}
 	}
-	pol, err := cauthdsl.FromString(policy)
-	if err != nil {
-		return err
+
+	if policy == "" && (vscc == "vscc" || vscc == "") {
+		return errors.New("policy must be specified when vscc flag is set to 'vscc' or missing")
 	}
+
 	update := ccUpdate{
 		policy:           pol,
 		computeDelta:     update2.Compute,
