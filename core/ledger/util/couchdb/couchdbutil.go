@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-var expectedChannelNamePattern = `[a-z][a-z0-9.-]*`
+var expectedDatabaseNamePattern = `[a-z][a-z0-9.$_-]*`
 var maxLength = 249
 
 //CreateCouchInstance creates a CouchDB instance
@@ -143,10 +143,10 @@ func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
 //
 //Restictions have already been applied to the database name from Orderer based on
 //restrictions required by Kafka and couchDB (except a '.' char). The databaseName
-// passed in here is expected to follow `[a-z][a-z0-9.-]*` pattern.
+// passed in here is expected to follow `[a-z][a-z0-9.$_-]*` pattern.
 //
 //This validation will simply check whether the database name matches the above pattern and will replace
-// all occurence of '.' by '-'. This will not cause collisions in the trnasformed named
+// all occurence of '.' by '$'. This will not cause collisions in the transformed named
 func mapAndValidateDatabaseName(databaseName string) (string, error) {
 	// test Length
 	if len(databaseName) <= 0 {
@@ -155,15 +155,16 @@ func mapAndValidateDatabaseName(databaseName string) (string, error) {
 	if len(databaseName) > maxLength {
 		return "", fmt.Errorf("Database name is illegal, cannot be longer than %d", maxLength)
 	}
-	re, err := regexp.Compile(expectedChannelNamePattern)
+	re, err := regexp.Compile(expectedDatabaseNamePattern)
 	if err != nil {
 		return "", err
 	}
 	matched := re.FindString(databaseName)
 	if len(matched) != len(databaseName) {
-		return "", fmt.Errorf("databaseName '%s' does not matches pattern '%s'", databaseName, expectedChannelNamePattern)
+		return "", fmt.Errorf("databaseName '%s' does not matches pattern '%s'", databaseName, expectedDatabaseNamePattern)
 	}
-	// replace all '.' to '_'. The databaseName passed in will never contain an '_'. So, this translation will not cause collisions
-	databaseName = strings.Replace(databaseName, ".", "_", -1)
+	// replace all '.' to '$'. The databaseName passed in will never contain an '$'.
+	// So, this translation will not cause collisions
+	databaseName = strings.Replace(databaseName, ".", "$", -1)
 	return databaseName, nil
 }

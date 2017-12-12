@@ -308,7 +308,7 @@ func TestIterator(t *testing.T) {
 }
 
 func testIterator(t *testing.T, env testEnv, numKeys int, startKeyNum int, endKeyNum int) {
-	cID := "cID"
+	cID := "cid"
 	txMgr := env.getTxMgr()
 	txMgrHelper := newTxMgrTestHelper(t, txMgr)
 	s, _ := txMgr.NewTxSimulator("test_tx1")
@@ -376,7 +376,7 @@ func TestIteratorWithDeletes(t *testing.T) {
 }
 
 func testIteratorWithDeletes(t *testing.T, env testEnv) {
-	cID := "cID"
+	cID := "cid"
 	txMgr := env.getTxMgr()
 	txMgrHelper := newTxMgrTestHelper(t, txMgr)
 	s, _ := txMgr.NewTxSimulator("test_tx1")
@@ -418,7 +418,7 @@ func TestTxValidationWithItr(t *testing.T) {
 }
 
 func testTxValidationWithItr(t *testing.T, env testEnv) {
-	cID := "cID"
+	cID := "cid"
 	txMgr := env.getTxMgr()
 	txMgrHelper := newTxMgrTestHelper(t, txMgr)
 
@@ -483,7 +483,7 @@ func TestGetSetMultipeKeys(t *testing.T) {
 }
 
 func testGetSetMultipeKeys(t *testing.T, env testEnv) {
-	cID := "cID"
+	cID := "cid"
 	txMgr := env.getTxMgr()
 	txMgrHelper := newTxMgrTestHelper(t, txMgr)
 	// simulate tx1
