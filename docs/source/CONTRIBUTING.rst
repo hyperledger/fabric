@@ -27,19 +27,6 @@ access to all the Hyperledger community development tools, including
 `Jira <https://jira.hyperledger.org>`__ and the
 `Wiki <https://wiki.hyperledger.org/start>`__ (for editing, only).
 
-Setting up your SSH key
-~~~~~~~~~~~~~~~~~~~~~~~
-
-For Gerrit, before you can submit any change set for review, you will
-need to register your public SSH key. Login to
-`Gerrit <https://gerrit.hyperledger.org>`__ with your
-:doc:`LFID <Gerrit/lf-account>`, and click on your name in the upper
-right-hand corner of your browser window and then click 'Settings'. In
-the left-hand margin, you should see a link for 'SSH Public Keys'.
-Copy-n-paste your `public SSH
-key <https://help.github.com/articles/generating-an-ssh-key/>`__ into
-the window and press 'Add'.
-
 Getting help
 ------------
 
@@ -54,28 +41,37 @@ and will be glad to help. The only silly question is the one you don't
 ask. Questions are in fact a great way to help improve the project as
 they highlight where our documentation could be clearer.
 
-Requirements and Use Cases
---------------------------
-
-We have a `Requirements
-WG <https://wiki.hyperledger.org/groups/requirements/requirements-wg>`__
-that is documenting use cases and from those use cases deriving
-requirements. If you are interested in contributing to this effort,
-please feel free to join the discussion in
-`chat <https://chat.hyperledger.org/channel/requirements/>`__.
-
 Reporting bugs
 --------------
 
-If you are a user and you find a bug, please submit an issue using
+If you are a user and you have found a bug, please submit an issue using
 `JIRA <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`__.
-Please try to provide sufficient information for someone else to reproduce the
+Before you create a new JIRA issue, please try to search the existing items to
+be sure no one else has previously reported it. If it has been previously
+reported, then you might add a comment that you also are interested in seeing
+the defect fixed.
+
+.. note:: If the defect is security-related, please follow the Hyperledger
+          `security bug reporting process <https://wiki.hyperledger.org/security/bug-handling-process>`.
+
+If it has not been previously reported, create a new JIRA. Please try to provide
+sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
 hours. If not, please bump the issue with a comment and request that it be
 reviewed. You can also post to the relevant fabric channel in
 `Hyperledger Rocket Chat <https://chat.hyperledger.org>`__.  For example, a doc bug should
 be broadcast to ``#fabric-documentation``, a database bug to ``#fabric-ledger``,
 and so on...
+
+Submitting your fix
+-------------------
+
+If you just submitted a JIRA for a bug you've discovered, and would like to
+provide a fix, we would welcome that gladly! Please assign the JIRA issue to
+yourself, then you can submit a change request (CR).
+
+.. note:: If you need help with submitting your first CR, we have created a
+          brief :doc:`tutorial <submit_cr>` for you.
 
 Fixing issues and working stories
 ---------------------------------
@@ -117,28 +113,11 @@ Getting the support of three or more of the Hyperledger Fabric maintainers for t
 feature will greatly enhance the probability that the feature's related CRs
 will be merged.
 
-Working with a local clone and Gerrit
--------------------------------------
-
-We are using
-`Gerrit <https://gerrit.hyperledger.org/r/#/admin/projects/fabric>`__ to
-manage code contributions. If you are unfamiliar, please review this
-:doc:`document <Gerrit/gerrit>` before proceeding.
-
-After you have familiarized yourself with ``Gerrit``, and maybe played
-around with the ``lf-sandbox``
-`project <https://gerrit.hyperledger.org/r/#/admin/projects/lf-sandbox,branches>`__,
-you should be ready to set up your local development
-:doc:`environment <dev-setup/devenv>`.
+Setting up development environment
+----------------------------------
 
 Next, try :doc:`building the project <dev-setup/build>` in your local
 development environment to ensure that everything is set up correctly.
-
-The :doc:`logging-control` document describes how to tweak
-the logging levels of various components within Hyperledger Fabric. Finally,
-every source file needs to include a
-`license header <https://github.com/hyperledger/fabric/blob/master/docs/source/dev-setup/headers.txt>`__: modified to include a copyright
-statement for the principle author(s).
 
 What makes a good change request?
 ---------------------------------
@@ -189,9 +168,9 @@ What makes a good change request?
    bunch of generated code (protobufs, etc.). Again, there can be
    exceptions.
 
-   Note: large change requests, e.g. those with more than 300 LOC are more likely
-   than not going to receive a -2, and you'll be asked to refactor the change
-   to conform with this guidance.
+.. note:: Large change requests, e.g. those with more than 300 LOC are more likely
+          than not going to receive a -2, and you'll be asked to refactor the
+          change to conform with this guidance.
 
 -  Do not stack change requests (e.g. submit a CR from the same local branch
    as your previous CR) unless they are related. This will minimize merge
@@ -203,18 +182,19 @@ What makes a good change request?
    character title, followed by a blank line, followed by a more
    comprehensive description of the change. Each change MUST include the JIRA
    identifier corresponding to the change (e.g. [FAB-1234]). This can be
-   in the title but should also be in the body of the commit message.
+   in the title but should also be in the body of the commit message. See the
+   :doc:`complete requirements <Gerrit/changes>` for an acceptable change
+   request.
 
-   Note that Gerrit will automatically create a hyperlink to the JIRA item.
+.. note:: That Gerrit will automatically create a hyperlink to the JIRA item.
+          e.g.
 
-e.g.
+          ::
 
-::
+              [FAB-1234] fix foobar() panic
 
-    [FAB-1234] fix foobar() panic
-
-    Fix [FAB-1234] added a check to ensure that when foobar(foo string) is called,
-    that there is a non-empty string argument.
+              Fix [FAB-1234] added a check to ensure that when foobar(foo string)
+              is called, that there is a non-empty string argument.
 
 Finally, be responsive. Don't let a change request fester with review
 comments such that it gets to a point that it requires a rebase. It only

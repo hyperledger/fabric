@@ -31,7 +31,7 @@ Informationally, ``commit messages`` must include:
 -  **why** you chose that approach, and
 -  **how** you know it works -- for example, which tests you ran.
 
-Commits must :doc:`build cleanly <../dev-setup/build>` when applied in
+Commits must :doc:`build cleanly <../dev-setup/build>` when applied on
 top of each other, thus avoiding breaking bisectability. Each commit
 must address a single identifiable issue and must be logically
 self-contained.
@@ -70,4 +70,3 @@ will not be part of the final set, please let the reviewers know this.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-
