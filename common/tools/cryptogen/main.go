@@ -16,22 +16,20 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"text/template"
 
-	"gopkg.in/yaml.v2"
-
-	"gopkg.in/alecthomas/kingpin.v2"
-
-	"bytes"
-	"io/ioutil"
-
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
+	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/metadata"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/msp"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -209,13 +207,16 @@ PeerOrgs:
 var (
 	app = kingpin.New("cryptogen", "Utility for generating Hyperledger Fabric key material")
 
-	gen        = app.Command("generate", "Generate key material")
-	outputDir  = gen.Flag("output", "The output directory in which to place artifacts").Default("crypto-config").String()
-	configFile = gen.Flag("config", "The configuration template to use").File()
+	gen           = app.Command("generate", "Generate key material")
+	outputDir     = gen.Flag("output", "The output directory in which to place artifacts").Default("crypto-config").String()
+	genConfigFile = gen.Flag("config", "The configuration template to use").File()
 
 	showtemplate = app.Command("showtemplate", "Show the default configuration template")
 
-	version = app.Command("version", "Show version information")
+	version       = app.Command("version", "Show version information")
+	ext           = app.Command("extend", "Extend existing network")
+	inputDir      = ext.Flag("input", "The input directory in which existing network place").Default("crypto-config").String()
+	extConfigFile = ext.Flag("config", "The configuration template to use").File()
 )
 
 func main() {
@@ -226,12 +227,15 @@ func main() {
 	case gen.FullCommand():
 		generate()
 
-	// "showtemplate" command
+	case ext.FullCommand():
+		extend()
+
+		// "showtemplate" command
 	case showtemplate.FullCommand():
 		fmt.Print(defaultConfig)
 		os.Exit(0)
 
-	// "version" command
+		// "version" command
 	case version.FullCommand():
 		printVersion()
 	}
@@ -241,8 +245,15 @@ func main() {
 func getConfig() (*Config, error) {
 	var configData string
 
-	if *configFile != nil {
-		data, err := ioutil.ReadAll(*configFile)
+	if *genConfigFile != nil {
+		data, err := ioutil.ReadAll(*genConfigFile)
+		if err != nil {
+			return nil, fmt.Errorf("Error reading configuration: %s", err)
+		}
+
+		configData = string(data)
+	} else if *extConfigFile != nil {
+		data, err := ioutil.ReadAll(*extConfigFile)
 		if err != nil {
 			return nil, fmt.Errorf("Error reading configuration: %s", err)
 		}
@@ -259,6 +270,111 @@ func getConfig() (*Config, error) {
 	}
 
 	return config, nil
+}
+
+func extend() {
+	config, err := getConfig()
+	if err != nil {
+		fmt.Printf("Error reading config: %s", err)
+		os.Exit(-1)
+	}
+
+	for _, orgSpec := range config.PeerOrgs {
+		err = renderOrgSpec(&orgSpec, "peer")
+		if err != nil {
+			fmt.Printf("Error processing peer configuration: %s", err)
+			os.Exit(-1)
+		}
+		extendPeerOrg(orgSpec)
+	}
+
+	for _, orgSpec := range config.OrdererOrgs {
+		renderOrgSpec(&orgSpec, "orderer")
+		if err != nil {
+			fmt.Printf("Error processing orderer configuration: %s", err)
+			os.Exit(-1)
+		}
+		extendOrdererOrg(orgSpec)
+	}
+
+}
+
+func extendPeerOrg(orgSpec OrgSpec) {
+	orgName := orgSpec.Domain
+	orgDir := filepath.Join(*inputDir, "peerOrganizations", orgName)
+	if _, err := os.Stat(orgDir); os.IsNotExist(err) {
+		generatePeerOrg(*inputDir, orgSpec)
+		return
+	}
+
+	peersDir := filepath.Join(orgDir, "peers")
+	usersDir := filepath.Join(orgDir, "users")
+	caDir := filepath.Join(orgDir, "ca")
+	tlscaDir := filepath.Join(orgDir, "tlsca")
+
+	signCA := getCA(caDir, orgSpec, orgSpec.CA.CommonName)
+	tlsCA := getCA(tlscaDir, orgSpec, "tls"+orgSpec.CA.CommonName)
+
+	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA, msp.PEER)
+
+	adminUser := NodeSpec{
+		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
+	}
+	// copy the admin cert to each of the org's peer's MSP admincerts
+	for _, spec := range orgSpec.Specs {
+		err := copyAdminCert(usersDir,
+			filepath.Join(peersDir, spec.CommonName, "msp", "admincerts"), adminUser.CommonName)
+		if err != nil {
+			fmt.Printf("Error copying admin cert for org %s peer %s:\n%v\n",
+				orgName, spec.CommonName, err)
+			os.Exit(1)
+		}
+	}
+
+	// TODO: add ability to specify usernames
+	users := []NodeSpec{}
+	for j := 1; j <= orgSpec.Users.Count; j++ {
+		user := NodeSpec{
+			CommonName: fmt.Sprintf("%s%d@%s", userBaseName, j, orgName),
+		}
+
+		users = append(users, user)
+	}
+
+	generateNodes(usersDir, users, signCA, tlsCA, msp.CLIENT)
+}
+
+func extendOrdererOrg(orgSpec OrgSpec) {
+	orgName := orgSpec.Domain
+
+	orgDir := filepath.Join(*inputDir, "ordererOrganizations", orgName)
+	caDir := filepath.Join(orgDir, "ca")
+	usersDir := filepath.Join(orgDir, "users")
+	tlscaDir := filepath.Join(orgDir, "tlsca")
+	orderersDir := filepath.Join(orgDir, "orderers")
+	if _, err := os.Stat(orgDir); os.IsNotExist(err) {
+		generateOrdererOrg(*inputDir, orgSpec)
+		return
+	}
+
+	signCA := getCA(caDir, orgSpec, orgSpec.CA.CommonName)
+	tlsCA := getCA(tlscaDir, orgSpec, "tls"+orgSpec.CA.CommonName)
+
+	generateNodes(orderersDir, orgSpec.Specs, signCA, tlsCA, msp.ORDERER)
+
+	adminUser := NodeSpec{
+		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
+	}
+
+	for _, spec := range orgSpec.Specs {
+		err := copyAdminCert(usersDir,
+			filepath.Join(orderersDir, spec.CommonName, "msp", "admincerts"), adminUser.CommonName)
+		if err != nil {
+			fmt.Printf("Error copying admin cert for org %s orderer %s:\n%v\n",
+				orgName, spec.CommonName, err)
+			os.Exit(1)
+		}
+	}
 }
 
 func generate() {
@@ -463,6 +579,10 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 }
 
 func copyAdminCert(usersDir, adminCertsDir, adminUserName string) error {
+	if _, err := os.Stat(filepath.Join(adminCertsDir,
+		adminUserName+"-cert.pem")); err == nil {
+		return nil
+	}
 	// delete the contents of admincerts
 	err := os.RemoveAll(adminCertsDir)
 	if err != nil {
@@ -487,10 +607,12 @@ func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA
 
 	for _, node := range nodes {
 		nodeDir := filepath.Join(baseDir, node.CommonName)
-		err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, nodeType)
-		if err != nil {
-			fmt.Printf("Error generating local MSP for %s:\n%v\n", node, err)
-			os.Exit(1)
+		if _, err := os.Stat(nodeDir); os.IsNotExist(err) {
+			err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, nodeType)
+			if err != nil {
+				fmt.Printf("Error generating local MSP for %s:\n%v\n", node, err)
+				os.Exit(1)
+			}
 		}
 	}
 }
@@ -580,4 +702,21 @@ func copyFile(src, dst string) error {
 
 func printVersion() {
 	fmt.Println(metadata.GetVersionInfo())
+}
+
+func getCA(caDir string, spec OrgSpec, name string) *ca.CA {
+	_, signer, _ := csp.LoadPrivateKey(caDir)
+	cert, _ := ca.LoadCertificateECDSA(caDir)
+
+	return &ca.CA{
+		Name:               name,
+		Signer:             signer,
+		SignCert:           cert,
+		Country:            spec.CA.Country,
+		Province:           spec.CA.Province,
+		Locality:           spec.CA.Locality,
+		OrganizationalUnit: spec.CA.OrganizationalUnit,
+		StreetAddress:      spec.CA.StreetAddress,
+		PostalCode:         spec.CA.PostalCode,
+	}
 }

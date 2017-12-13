@@ -22,13 +22,15 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
-	"path/filepath"
-
+	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 )
 
@@ -218,4 +220,29 @@ func genCertificateECDSA(baseDir, name string, template, parent *x509.Certificat
 		return nil, err
 	}
 	return x509Cert, nil
+}
+
+// LoadCertificateECDSA load a ecdsa cert from a file in cert path
+func LoadCertificateECDSA(certPath string) (*x509.Certificate, error) {
+	var cert *x509.Certificate
+	var err error
+
+	walkFunc := func(path string, info os.FileInfo, err error) error {
+		if strings.HasSuffix(path, ".pem") {
+			rawCert, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			block, _ := pem.Decode(rawCert)
+			cert, err = utils.DERToX509Certificate(block.Bytes)
+		}
+		return nil
+	}
+
+	err = filepath.Walk(certPath, walkFunc)
+	if err != nil {
+		return nil, err
+	}
+
+	return cert, err
 }

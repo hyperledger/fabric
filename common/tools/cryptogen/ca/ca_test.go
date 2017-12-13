@@ -31,8 +31,10 @@ import (
 const (
 	testCAName             = "root0"
 	testCA2Name            = "root1"
+	testCA3Name            = "root2"
 	testName               = "cert0"
 	testName2              = "cert1"
+	testName3              = "cert2"
 	testIP                 = "172.16.10.31"
 	testCountry            = "US"
 	testProvince           = "California"
@@ -43,6 +45,38 @@ const (
 )
 
 var testDir = filepath.Join(os.TempDir(), "ca-test")
+
+func TestLoadCertificateECDSA(t *testing.T) {
+	caDir := filepath.Join(testDir, "ca")
+	certDir := filepath.Join(testDir, "certs")
+	// generate private key
+	priv, _, err := csp.GeneratePrivateKey(certDir)
+	assert.NoError(t, err, "Failed to generate signed certificate")
+
+	// get EC public key
+	ecPubKey, err := csp.GetECPublicKey(priv)
+	assert.NoError(t, err, "Failed to generate signed certificate")
+	assert.NotNil(t, ecPubKey, "Failed to generate signed certificate")
+
+	// create our CA
+	rootCA, err := ca.NewCA(caDir, testCA3Name, testCA3Name, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
+	assert.NoError(t, err, "Error generating CA")
+
+	cert, err := rootCA.SignCertificate(certDir, testName3, nil, ecPubKey,
+		x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
+		[]x509.ExtKeyUsage{x509.ExtKeyUsageAny})
+	assert.NoError(t, err, "Failed to generate signed certificate")
+	// KeyUsage should be x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment
+	assert.Equal(t, x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
+		cert.KeyUsage)
+	assert.Contains(t, cert.ExtKeyUsage, x509.ExtKeyUsageAny)
+
+	loadedCert, err := ca.LoadCertificateECDSA(certDir)
+	assert.NotNil(t, loadedCert, "Should load cert")
+	assert.Equal(t, cert.SerialNumber, loadedCert.SerialNumber, "Should have same serial number")
+	assert.Equal(t, cert.Subject.CommonName, loadedCert.Subject.CommonName, "Should have same CN")
+	cleanup(testDir)
+}
 
 func TestNewCA(t *testing.T) {
 

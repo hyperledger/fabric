@@ -57,6 +57,17 @@ func (mk *mockKey) Private() bool { return false }
 
 var testDir = filepath.Join(os.TempDir(), "csp-test")
 
+func TestLoadPrivateKey(t *testing.T) {
+	priv, _, _ := csp.GeneratePrivateKey(testDir)
+	pkFile := filepath.Join(testDir, hex.EncodeToString(priv.SKI())+"_sk")
+	assert.Equal(t, true, checkForFile(pkFile),
+		"Expected to find private key file")
+	loadedPriv, _, _ := csp.LoadPrivateKey(testDir)
+	assert.NotNil(t, loadedPriv, "Should have returned a bccsp.Key")
+	assert.Equal(t, priv.SKI(), loadedPriv.SKI(), "Should have same subject identifier")
+	cleanup(testDir)
+}
+
 func TestGeneratePrivateKey(t *testing.T) {
 
 	priv, signer, err := csp.GeneratePrivateKey(testDir)
