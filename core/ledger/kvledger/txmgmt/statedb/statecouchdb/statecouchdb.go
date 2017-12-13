@@ -6,16 +6,21 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
+	"archive/tar"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -65,6 +70,68 @@ func NewVersionedDBProvider() (*VersionedDBProvider, error) {
 	}
 
 	return &VersionedDBProvider{couchInstance, make(map[string]*VersionedDB), sync.Mutex{}, 0}, nil
+}
+
+//HandleChaincodeDeploy initializes database artifacts for the database associated with the namespace
+func (vdb *VersionedDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
+
+	logger.Debugf("Entering HandleChaincodeDeploy")
+
+	if chaincodeDefinition == nil {
+		return fmt.Errorf("chaincodeDefinition must not be nil")
+	}
+
+	db, err := vdb.getNamespaceDBHandle(chaincodeDefinition.Name)
+	if err != nil {
+		return err
+	}
+
+	//initialize a reader for the artifacts tar file
+	artifactReader := bytes.NewReader(dbArtifactsTar)
+	tarReader := tar.NewReader(artifactReader)
+
+	for {
+
+		//read the next header from the tar
+		tarHeader, err := tarReader.Next()
+
+		//if the EOF is detected, then exit
+		if err == io.EOF {
+			// end of tar archive
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		logger.Debugf("Reading artifact from file: %s", tarHeader.Name)
+
+		//Ensure that this is not a directory
+		if !tarHeader.FileInfo().IsDir() {
+
+			//split the filename into directory and file name
+			dir, file := filepath.Split(tarHeader.Name)
+
+			if dir == "META-INF/statedb/couchdb/indexes/" {
+
+				logger.Debugf("Creating index from file file: %s", file)
+
+				//read the tar entry into a byte array
+				indexData, err := ioutil.ReadAll(tarReader)
+				if err != nil {
+					return err
+				}
+
+				//create the index from the tar entry
+				err = db.CreateIndex(string(indexData))
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetDBHandle gets the handle to a named database

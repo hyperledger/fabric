@@ -91,6 +91,7 @@ func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	sp, err = db.GetLatestSavePoint()
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, sp, savePoint)
+
 }
 
 // TestMultiDBBasicRW tests basic read-write on multiple dbs
