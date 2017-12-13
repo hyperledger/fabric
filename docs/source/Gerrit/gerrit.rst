@@ -1,5 +1,5 @@
 Working with Gerrit
-===================
+-------------------
 
 Follow these instructions to collaborate on Hyperledger Fabric
 through the Gerrit review system.
@@ -24,7 +24,7 @@ process <reviewing>`. However, anyone is welcome to (and
 encouraged!) review changes, and hence may find that document of value.
 
 Git-review
-----------
+~~~~~~~~~~
 
 There's a **very** useful tool for working with Gerrit called
 `git-review <https://www.mediawiki.org/wiki/Gerrit/git-review>`__. This
@@ -32,17 +32,8 @@ command-line tool can automate most of the ensuing sections for you. Of
 course, reading the information below is also highly recommended so that
 you understand what's going on behind the scenes.
 
-Sandbox project
----------------
-
-We have created a `sandbox
-project <https://gerrit.hyperledger.org/r/#/admin/projects/lf-sandbox>`__
-to allow developers to familiarize themselves with Gerrit and our
-workflows. Please do feel free to use this project to experiment with
-the commands and tools, below.
-
 Getting deeper into Gerrit
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A comprehensive walk-through of Gerrit is beyond the scope of this
 document. There are plenty of resources available on the Internet. A
@@ -52,7 +43,7 @@ provided a set of :doc:`Best Practices <best-practices>` that you may
 find helpful.
 
 Working with a local clone of the repository
---------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To work on something, whether a new feature or a bugfix:
 
@@ -65,14 +56,14 @@ To work on something, whether a new feature or a bugfix:
    ``Clone with git hook`` URL. Be sure that ``ssh`` is also selected,
    as this will make authentication much simpler:
 
-   ::
+.. code::
 
-       git clone ssh://LFID@gerrit.hyperledger.org:29418/fabric && scp -p -P 29418 LFID@gerrit.hyperledger.org:hooks/commit-msg fabric/.git/hooks/
+   git clone ssh://LFID@gerrit.hyperledger.org:29418/fabric && scp -p -P 29418 LFID@gerrit.hyperledger.org:hooks/commit-msg fabric/.git/hooks/
 
-**Note:** if you are cloning the fabric project repository, you will
-want to clone it to the ``$GOPATH/src/github.com/hyperledger`` directory
-so that it will build, and so that you can use it with the Vagrant
-:doc:`development environment <../dev-setup/devenv>`.
+.. note:: If you are cloning the fabric project repository, you will
+          want to clone it to the ``$GOPATH/src/github.com/hyperledger``
+          directory so that it will build, and so that you can use it
+          with the Vagrant :doc:`development environment <../dev-setup/devenv>`.
 
 4. Create a descriptively-named branch off of your cloned repository
 
@@ -96,18 +87,18 @@ Then input precise and readable commit msg and submit.
    change will be reversed as well.
 
 Submitting a Change
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 Currently, Gerrit is the only method to submit a change for review.
 
-**Note:** Please review the :doc:`guidelines <changes>` for making and
-submitting a change.
+.. note:: Please review the :doc:`guidelines <changes>` for making and
+          submitting a change.
 
 Using git review
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
-**Note:** if you prefer, you can use the `git-review <#git-review>`__
-tool instead of the following. e.g.
+.. note:: if you prefer, you can use the `git-review <#git-review>`__
+          tool instead of the following. e.g.
 
 Add the following section to ``.git/config``, and replace ``<USERNAME>``
 with your gerrit id.
@@ -129,7 +120,7 @@ When you update your patch, you can commit with ``git commit --amend``,
 and then repeat the ``git review`` command.
 
 Not using git review
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 See the :doc:`directions for building the source code <../dev-setup/build>`.
 
@@ -166,34 +157,6 @@ this:
     * [new branch]      HEAD -> refs/for/master
 
 The gerrit server generates a link where the change can be tracked.
-
-Adding reviewers
-----------------
-
-Optionally, you can add reviewers to your change.
-
-To specify a list of reviewers via the command line, add
-``%r=reviewer@project.org`` to your push command. For example:
-
-::
-
-    git push origin HEAD:refs/for/master%r=rev1@email.com,r=rev2@notemail.com
-
-Alternatively, you can auto-configure GIT to add a set of reviewers if
-your commits will have the same reviewers all at the time.
-
-To add a list of default reviewers, open the :file:``.git/config`` file
-in the project directory and add the following line in the
-``[ branch “master” ]`` section:
-
-::
-
-    [branch "master"] #.... push =
-    HEAD:refs/for/master%r=rev1@email.com,r=rev2@notemail.com`
-
-Make sure to use actual email addresses instead of the
-``@email.com and @notemail.com`` addressses. Don't forget to replace
-``origin`` with your git remote name.
 
 Reviewing Using Gerrit
 ----------------------
@@ -247,4 +210,3 @@ link <https://gerrit.hyperledger.org/r/#/dashboard/self>`__
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-
