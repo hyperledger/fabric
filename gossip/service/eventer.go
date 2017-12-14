@@ -56,7 +56,7 @@ func newConfigEventer(receiver configEventReceiver) *configEventer {
 	}
 }
 
-// ProcessConfigUpdate should be invoked whenever a channel's configuration is intialized or updated
+// ProcessConfigUpdate should be invoked whenever a channel's configuration is initialized or updated
 // it invokes the associated method in configEventReceiver when configuration is updated
 // but only if the configuration value actually changed
 // Note, that a changing sequence number is ignored as changing configuration
