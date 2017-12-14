@@ -43,7 +43,7 @@ func (rp *retryProcess) retry() error {
 	return nil
 }
 
-func (rp *retryProcess) try(interval, total time.Duration) error {
+func (rp *retryProcess) try(interval, total time.Duration) (err error) {
 	// Configuration validation will not allow non-positive ticker values
 	// (which would result in panic). The path below is for those test cases
 	// when we cannot avoid the creation of a retriable process but we wish
@@ -52,14 +52,14 @@ func (rp *retryProcess) try(interval, total time.Duration) error {
 		return fmt.Errorf("illegal value")
 	}
 
-	var err error
-
 	// If initial operation is successful, we don't bother start retry process
 	logger.Debugf("[channel: %s] "+rp.msg, rp.channel.topic())
-	if err := rp.fn(); err == nil {
+	if err = rp.fn(); err == nil {
 		logger.Debugf("[channel: %s] Error is nil, breaking the retry loop", rp.channel.topic())
-		return err
+		return
 	}
+
+	logger.Debugf("[channel: %s] Initial attempt failed = %s", rp.channel.topic(), err)
 
 	tickInterval := time.NewTicker(interval)
 	tickTotal := time.NewTicker(total)
@@ -74,13 +74,15 @@ func (rp *retryProcess) try(interval, total time.Duration) error {
 			logger.Warning(exitErr.Error()) // Log it at the warning level
 			return exitErr
 		case <-tickTotal.C:
-			return err
+			return
 		case <-tickInterval.C:
 			logger.Debugf("[channel: %s] "+rp.msg, rp.channel.topic())
 			if err = rp.fn(); err == nil {
 				logger.Debugf("[channel: %s] Error is nil, breaking the retry loop", rp.channel.topic())
-				return err
+				return
 			}
+
+			logger.Debugf("[channel: %s] Need to retry because process failed = %s", rp.channel.topic(), err)
 		}
 	}
 }
