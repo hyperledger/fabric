@@ -27,6 +27,8 @@ import (
 )
 
 func TestVerify(t *testing.T) {
+	t.Parallel()
+
 	expectedKey := &mocks2.MockKey{}
 	expectetSignature := []byte{1, 2, 3, 4, 5}
 	expectetDigest := []byte{1, 2, 3, 4}

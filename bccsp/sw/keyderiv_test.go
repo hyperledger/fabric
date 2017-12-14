@@ -27,6 +27,8 @@ import (
 )
 
 func TestKeyDeriv(t *testing.T) {
+	t.Parallel()
+
 	expectedKey := &mocks2.MockKey{BytesValue: []byte{1, 2, 3}}
 	expectedOpts := &mocks2.KeyDerivOpts{EphemeralValue: true}
 	expectetValue := &mocks2.MockKey{BytesValue: []byte{1, 2, 3, 4, 5}}
@@ -58,6 +60,8 @@ func TestKeyDeriv(t *testing.T) {
 }
 
 func TestECDSAPublicKeyKeyDeriver(t *testing.T) {
+	t.Parallel()
+
 	kd := ecdsaPublicKeyKeyDeriver{}
 
 	_, err := kd.KeyDeriv(&mocks2.MockKey{}, nil)
@@ -70,6 +74,8 @@ func TestECDSAPublicKeyKeyDeriver(t *testing.T) {
 }
 
 func TestECDSAPrivateKeyKeyDeriver(t *testing.T) {
+	t.Parallel()
+
 	kd := ecdsaPrivateKeyKeyDeriver{}
 
 	_, err := kd.KeyDeriv(&mocks2.MockKey{}, nil)
@@ -82,6 +88,8 @@ func TestECDSAPrivateKeyKeyDeriver(t *testing.T) {
 }
 
 func TestAESPrivateKeyKeyDeriver(t *testing.T) {
+	t.Parallel()
+
 	kd := aesPrivateKeyKeyDeriver{}
 
 	_, err := kd.KeyDeriv(&mocks2.MockKey{}, nil)

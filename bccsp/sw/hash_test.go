@@ -28,6 +28,8 @@ import (
 )
 
 func TestHash(t *testing.T) {
+	t.Parallel()
+
 	expectetMsg := []byte{1, 2, 3, 4}
 	expectedOpts := &mocks2.HashOpts{}
 	expectetValue := []byte{1, 2, 3, 4, 5}
@@ -59,6 +61,8 @@ func TestHash(t *testing.T) {
 }
 
 func TestGetHash(t *testing.T) {
+	t.Parallel()
+
 	expectedOpts := &mocks2.HashOpts{}
 	expectetValue := sha256.New()
 	expectedErr := errors.New("Expected Error")
@@ -87,6 +91,8 @@ func TestGetHash(t *testing.T) {
 }
 
 func TestHasher(t *testing.T) {
+	t.Parallel()
+
 	hasher := &hasher{hash: sha256.New}
 
 	msg := []byte("Hello World")

@@ -33,6 +33,7 @@ import (
 
 // TestCBCPKCS7EncryptCBCPKCS7Decrypt encrypts using CBCPKCS7Encrypt and decrypts using CBCPKCS7Decrypt.
 func TestCBCPKCS7EncryptCBCPKCS7Decrypt(t *testing.T) {
+	t.Parallel()
 
 	// Note: The purpose of this test is not to test AES-256 in CBC mode's strength
 	// ... but rather to verify the code wrapping/unwrapping the cipher.
@@ -55,11 +56,11 @@ func TestCBCPKCS7EncryptCBCPKCS7Decrypt(t *testing.T) {
 	if string(ptext[:]) != string(decrypted[:]) {
 		t.Fatal("Decrypt( Encrypt( ptext ) ) != ptext: Ciphertext decryption with the same key must result in the original plaintext!")
 	}
-
 }
 
 // TestPKCS7Padding verifies the PKCS#7 padding, using a human readable plaintext.
 func TestPKCS7Padding(t *testing.T) {
+	t.Parallel()
 
 	// 0 byte/length ptext
 	ptext := []byte("")
@@ -109,7 +110,6 @@ func TestPKCS7Padding(t *testing.T) {
 		if !bytes.Equal(result, expected) {
 			t.Fatal("Padding error! Expected: '", expected, "', received: '", result, "'")
 		}
-
 	}
 
 	// aes.BlockSize length ptext
@@ -126,11 +126,11 @@ func TestPKCS7Padding(t *testing.T) {
 	if !bytes.Equal(expected, result) {
 		t.Fatal("Padding error! Expected: '", expected, "', received: '", result, "'")
 	}
-
 }
 
 // TestPKCS7UnPadding verifies the PKCS#7 unpadding, using a human readable plaintext.
 func TestPKCS7UnPadding(t *testing.T) {
+	t.Parallel()
 
 	// 0 byte/length ptext
 	expected := []byte("")
@@ -184,7 +184,6 @@ func TestPKCS7UnPadding(t *testing.T) {
 		if !bytes.Equal(result, expected) {
 			t.Fatal("UnPadding error! Expected: '", expected, "', received: '", result, "'")
 		}
-
 	}
 
 	// aes.BlockSize length ptext
@@ -202,6 +201,7 @@ func TestPKCS7UnPadding(t *testing.T) {
 // TestCBCEncryptCBCPKCS7Decrypt_BlockSizeLengthPlaintext verifies that CBCPKCS7Decrypt returns an error
 // when attempting to decrypt ciphertext of an irreproducible length.
 func TestCBCEncryptCBCPKCS7Decrypt_BlockSizeLengthPlaintext(t *testing.T) {
+	t.Parallel()
 
 	// One of the purposes of this test is to also document and clarify the expected behavior, i.e., that an extra
 	// block is appended to the message at the padding stage, as per the spec of PKCS#7 v1.5 [see RFC-2315 p.21]
@@ -225,6 +225,7 @@ func TestCBCEncryptCBCPKCS7Decrypt_BlockSizeLengthPlaintext(t *testing.T) {
 // TestCBCPKCS7EncryptCBCDecrypt_ExpectingCorruptMessage verifies that CBCDecrypt can decrypt the unpadded
 // version of the ciphertext, of a message of BlockSize length.
 func TestCBCPKCS7EncryptCBCDecrypt_ExpectingCorruptMessage(t *testing.T) {
+	t.Parallel()
 
 	// One of the purposes of this test is to also document and clarify the expected behavior, i.e., that an extra
 	// block is appended to the message at the padding stage, as per the spec of PKCS#7 v1.5 [see RFC-2315 p.21]
@@ -253,11 +254,11 @@ func TestCBCPKCS7EncryptCBCDecrypt_ExpectingCorruptMessage(t *testing.T) {
 	if !bytes.Equal(decrypted[aes.BlockSize:], bytes.Repeat([]byte{byte(aes.BlockSize)}, aes.BlockSize)) {
 		t.Fatal("Expected extra block with padding in encrypted ptext", decrypted)
 	}
-
 }
 
 // TestCBCPKCS7Encrypt_EmptyPlaintext encrypts and pad an empty ptext. Verifying as well that the ciphertext length is as expected.
 func TestCBCPKCS7Encrypt_EmptyPlaintext(t *testing.T) {
+	t.Parallel()
 
 	key := make([]byte, 32)
 	rand.Reader.Read(key)
@@ -285,6 +286,7 @@ func TestCBCPKCS7Encrypt_EmptyPlaintext(t *testing.T) {
 
 // TestCBCEncrypt_EmptyPlaintext encrypts an empty message. Verifying as well that the ciphertext length is as expected.
 func TestCBCEncrypt_EmptyPlaintext(t *testing.T) {
+	t.Parallel()
 
 	key := make([]byte, 32)
 	rand.Reader.Read(key)
@@ -309,6 +311,7 @@ func TestCBCEncrypt_EmptyPlaintext(t *testing.T) {
 
 // TestCBCPKCS7Encrypt_VerifyRandomIVs encrypts twice with same key. The first 16 bytes should be different if IV is generated randomly.
 func TestCBCPKCS7Encrypt_VerifyRandomIVs(t *testing.T) {
+	t.Parallel()
 
 	key := make([]byte, aes.BlockSize)
 	rand.Reader.Read(key)
@@ -341,6 +344,7 @@ func TestCBCPKCS7Encrypt_VerifyRandomIVs(t *testing.T) {
 
 // TestCBCPKCS7Encrypt_CorrectCiphertextLengthCheck verifies that the returned ciphertext lengths are as expected.
 func TestCBCPKCS7Encrypt_CorrectCiphertextLengthCheck(t *testing.T) {
+	t.Parallel()
 
 	key := make([]byte, aes.BlockSize)
 	rand.Reader.Read(key)
@@ -365,6 +369,7 @@ func TestCBCPKCS7Encrypt_CorrectCiphertextLengthCheck(t *testing.T) {
 
 // TestCBCEncryptCBCDecrypt_KeyMismatch attempts to decrypt with a different key than the one used for encryption.
 func TestCBCEncryptCBCDecrypt_KeyMismatch(t *testing.T) {
+	t.Parallel()
 
 	// Generate a random key
 	key := make([]byte, aes.BlockSize)
@@ -393,6 +398,7 @@ func TestCBCEncryptCBCDecrypt_KeyMismatch(t *testing.T) {
 
 // TestCBCEncryptCBCDecrypt encrypts with CBCEncrypt and decrypt with CBCDecrypt.
 func TestCBCEncryptCBCDecrypt(t *testing.T) {
+	t.Parallel()
 
 	key := make([]byte, 32)
 	rand.Reader.Read(key)
@@ -417,6 +423,7 @@ func TestCBCEncryptCBCDecrypt(t *testing.T) {
 
 // TestCBCEncryptWithRandCBCDecrypt encrypts with CBCEncrypt using the passed prng and decrypt with CBCDecrypt.
 func TestCBCEncryptWithRandCBCDecrypt(t *testing.T) {
+	t.Parallel()
 
 	key := make([]byte, 32)
 	rand.Reader.Read(key)
@@ -441,6 +448,7 @@ func TestCBCEncryptWithRandCBCDecrypt(t *testing.T) {
 
 // TestCBCEncryptWithIVCBCDecrypt encrypts with CBCEncrypt using the passed IV and decrypt with CBCDecrypt.
 func TestCBCEncryptWithIVCBCDecrypt(t *testing.T) {
+	t.Parallel()
 
 	key := make([]byte, 32)
 	rand.Reader.Read(key)
@@ -469,6 +477,7 @@ func TestCBCEncryptWithIVCBCDecrypt(t *testing.T) {
 
 // TestAESRelatedUtilFunctions tests various functions commonly used in fabric wrt AES
 func TestAESRelatedUtilFunctions(t *testing.T) {
+	t.Parallel()
 
 	key, err := GetRandomBytes(32)
 	if err != nil {
@@ -498,13 +507,13 @@ func TestAESRelatedUtilFunctions(t *testing.T) {
 		if 0 != bytes.Compare(msg, msg2) {
 			t.Fatalf("Wrong decryption output [%x][%x]", msg, msg2)
 		}
-
 	}
-
 }
 
 // TestVariousAESKeyEncoding tests some AES <-> PEM conversions
 func TestVariousAESKeyEncoding(t *testing.T) {
+	t.Parallel()
+
 	key, err := GetRandomBytes(32)
 	if err != nil {
 		t.Fatalf("Failed generating AES key [%s]", err)
@@ -535,12 +544,16 @@ func TestVariousAESKeyEncoding(t *testing.T) {
 }
 
 func TestPkcs7UnPaddingInvalidInputs(t *testing.T) {
+	t.Parallel()
+
 	_, err := pkcs7UnPadding([]byte{1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
 	assert.Error(t, err)
 	assert.Equal(t, "Invalid pkcs7 padding (pad[i] != unpadding)", err.Error())
 }
 
 func TestAESCBCEncryptInvalidInputs(t *testing.T) {
+	t.Parallel()
+
 	_, err := aesCBCEncrypt(nil, []byte{0, 1, 2, 3})
 	assert.Error(t, err)
 	assert.Equal(t, "Invalid plaintext. It must be a multiple of the block size", err.Error())
@@ -550,6 +563,8 @@ func TestAESCBCEncryptInvalidInputs(t *testing.T) {
 }
 
 func TestAESCBCDecryptInvalidInputs(t *testing.T) {
+	t.Parallel()
+
 	_, err := aesCBCDecrypt([]byte{0}, []byte{1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
 	assert.Error(t, err)
 
@@ -564,6 +579,8 @@ func TestAESCBCDecryptInvalidInputs(t *testing.T) {
 // TestAESCBCPKCS7EncryptorDecrypt tests the integration of
 // aescbcpkcs7Encryptor and aescbcpkcs7Decryptor
 func TestAESCBCPKCS7EncryptorDecrypt(t *testing.T) {
+	t.Parallel()
+
 	raw, err := GetRandomBytes(32)
 	assert.NoError(t, err)
 
@@ -606,6 +623,8 @@ func TestAESCBCPKCS7EncryptorDecrypt(t *testing.T) {
 }
 
 func TestAESCBCPKCS7EncryptorWithIVSameCiphertext(t *testing.T) {
+	t.Parallel()
+
 	raw, err := GetRandomBytes(32)
 	assert.NoError(t, err)
 
@@ -630,6 +649,8 @@ func TestAESCBCPKCS7EncryptorWithIVSameCiphertext(t *testing.T) {
 }
 
 func TestAESCBCPKCS7EncryptorWithRandSameCiphertext(t *testing.T) {
+	t.Parallel()
+
 	raw, err := GetRandomBytes(32)
 	assert.NoError(t, err)
 

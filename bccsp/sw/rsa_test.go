@@ -31,6 +31,8 @@ import (
 )
 
 func TestRSAPrivateKey(t *testing.T) {
+	t.Parallel()
+
 	lowLevelKey, err := rsa.GenerateKey(rand.Reader, 512)
 	assert.NoError(t, err)
 	k := &rsaPrivateKey{lowLevelKey}
@@ -63,6 +65,8 @@ func TestRSAPrivateKey(t *testing.T) {
 }
 
 func TestRSAPublicKey(t *testing.T) {
+	t.Parallel()
+
 	lowLevelKey, err := rsa.GenerateKey(rand.Reader, 512)
 	assert.NoError(t, err)
 	k := &rsaPublicKey{&lowLevelKey.PublicKey}
@@ -93,6 +97,8 @@ func TestRSAPublicKey(t *testing.T) {
 }
 
 func TestRSASignerSign(t *testing.T) {
+	t.Parallel()
+
 	signer := &rsaSigner{}
 	verifierPrivateKey := &rsaPrivateKeyVerifier{}
 	verifierPublicKey := &rsaPublicKeyKeyVerifier{}
@@ -148,6 +154,8 @@ func TestRSASignerSign(t *testing.T) {
 }
 
 func TestRSAVerifiersInvalidInputs(t *testing.T) {
+	t.Parallel()
+
 	verifierPrivate := &rsaPrivateKeyVerifier{}
 	_, err := verifierPrivate.Verify(nil, nil, nil, nil)
 	assert.Error(t, err)

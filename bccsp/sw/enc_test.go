@@ -27,6 +27,8 @@ import (
 )
 
 func TestEncrypt(t *testing.T) {
+	t.Parallel()
+
 	expectedKey := &mocks2.MockKey{}
 	expectedPlaintext := []byte{1, 2, 3, 4}
 	expectedOpts := &mocks2.EncrypterOpts{}

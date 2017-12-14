@@ -27,6 +27,8 @@ import (
 )
 
 func TestSign(t *testing.T) {
+	t.Parallel()
+
 	expectedKey := &mocks2.MockKey{}
 	expectetDigest := []byte{1, 2, 3, 4}
 	expectedOpts := &mocks2.SignerOpts{}

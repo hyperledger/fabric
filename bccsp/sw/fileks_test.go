@@ -17,13 +17,22 @@ package sw
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInvalidStoreKey(t *testing.T) {
-	ks, err := NewFileBasedKeyStore(nil, filepath.Join(os.TempDir(), "bccspks"), false)
+	t.Parallel()
+
+	tempDir, err := ioutil.TempDir("", "bccspks")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	ks, err := NewFileBasedKeyStore(nil, filepath.Join(tempDir, "bccspks"), false)
 	if err != nil {
 		fmt.Printf("Failed initiliazing KeyStore [%s]", err)
 		os.Exit(-1)

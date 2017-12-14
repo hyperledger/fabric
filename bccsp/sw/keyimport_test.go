@@ -31,6 +31,8 @@ import (
 )
 
 func TestKeyImport(t *testing.T) {
+	t.Parallel()
+
 	expectedRaw := []byte{1, 2, 3}
 	expectedOpts := &mocks2.KeyDerivOpts{EphemeralValue: true}
 	expectetValue := &mocks2.MockKey{BytesValue: []byte{1, 2, 3, 4, 5}}
@@ -62,6 +64,8 @@ func TestKeyImport(t *testing.T) {
 }
 
 func TestAES256ImportKeyOptsKeyImporter(t *testing.T) {
+	t.Parallel()
+
 	ki := aes256ImportKeyOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
@@ -82,6 +86,8 @@ func TestAES256ImportKeyOptsKeyImporter(t *testing.T) {
 }
 
 func TestHMACImportKeyOptsKeyImporter(t *testing.T) {
+	t.Parallel()
+
 	ki := hmacImportKeyOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
@@ -98,6 +104,8 @@ func TestHMACImportKeyOptsKeyImporter(t *testing.T) {
 }
 
 func TestECDSAPKIXPublicKeyImportOptsKeyImporter(t *testing.T) {
+	t.Parallel()
+
 	ki := ecdsaPKIXPublicKeyImportOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
@@ -126,6 +134,8 @@ func TestECDSAPKIXPublicKeyImportOptsKeyImporter(t *testing.T) {
 }
 
 func TestECDSAPrivateKeyImportOptsKeyImporter(t *testing.T) {
+	t.Parallel()
+
 	ki := ecdsaPrivateKeyImportOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
@@ -153,6 +163,8 @@ func TestECDSAPrivateKeyImportOptsKeyImporter(t *testing.T) {
 }
 
 func TestECDSAGoPublicKeyImportOptsKeyImporter(t *testing.T) {
+	t.Parallel()
+
 	ki := ecdsaGoPublicKeyImportOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
@@ -165,6 +177,8 @@ func TestECDSAGoPublicKeyImportOptsKeyImporter(t *testing.T) {
 }
 
 func TestRSAGoPublicKeyImportOptsKeyImporter(t *testing.T) {
+	t.Parallel()
+
 	ki := rsaGoPublicKeyImportOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
@@ -177,6 +191,8 @@ func TestRSAGoPublicKeyImportOptsKeyImporter(t *testing.T) {
 }
 
 func TestX509PublicKeyImportOptsKeyImporter(t *testing.T) {
+	t.Parallel()
+
 	ki := x509PublicKeyImportOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})

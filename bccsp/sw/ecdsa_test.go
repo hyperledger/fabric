@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSignECDSA(t *testing.T) {
+func TestSignECDSABadParameter(t *testing.T) {
 	// Generate a key
 	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.NoError(t, err)
@@ -46,6 +46,8 @@ func TestSignECDSA(t *testing.T) {
 }
 
 func TestVerifyECDSA(t *testing.T) {
+	t.Parallel()
+
 	// Generate a key
 	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.NoError(t, err)
@@ -77,6 +79,8 @@ func TestVerifyECDSA(t *testing.T) {
 }
 
 func TestEcdsaSignerSign(t *testing.T) {
+	t.Parallel()
+
 	signer := &ecdsaSigner{}
 	verifierPrivateKey := &ecdsaPrivateKeyVerifier{}
 	verifierPublicKey := &ecdsaPublicKeyKeyVerifier{}
@@ -109,6 +113,8 @@ func TestEcdsaSignerSign(t *testing.T) {
 }
 
 func TestEcdsaPrivateKey(t *testing.T) {
+	t.Parallel()
+
 	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.NoError(t, err)
 	k := &ecdsaPrivateKey{lowLevelKey}
@@ -141,6 +147,8 @@ func TestEcdsaPrivateKey(t *testing.T) {
 }
 
 func TestEcdsaPublicKey(t *testing.T) {
+	t.Parallel()
+
 	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.NoError(t, err)
 	k := &ecdsaPublicKey{&lowLevelKey.PublicKey}
