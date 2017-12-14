@@ -11,9 +11,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
@@ -63,35 +62,40 @@ func pemToX509Certs(pemCerts []byte) ([]*x509.Certificate, []string, error) {
 }
 
 // BindingInspector receives as parameters a gRPC context and an Envelope,
-// and verifies whether the envelopes contains an appropriate binding to the context
-type BindingInspector func(context.Context, *common.Envelope) error
+// and verifies whether the message contains an appropriate binding to the context
+type BindingInspector func(context.Context, proto.Message) error
+
+// CertHashExtractor extracts a certificate from a proto.Message message
+type CertHashExtractor func(proto.Message) []byte
 
 // NewBindingInspector returns a BindingInspector according to whether
-// mutualTLS is configured or not.
-func NewBindingInspector(mutualTLS bool) BindingInspector {
-	if mutualTLS {
-		return mutualTLSBinding
+// mutualTLS is configured or not, and according to a function that extracts
+// TLS certificate hashes from proto messages
+func NewBindingInspector(mutualTLS bool, extractTLSCertHash CertHashExtractor) BindingInspector {
+	if extractTLSCertHash == nil {
+		panic(errors.New("extractTLSCertHash parameter is nil"))
 	}
-	return noopBinding
+	inspectMessage := mutualTLSBinding
+	if !mutualTLS {
+		inspectMessage = noopBinding
+	}
+	return func(ctx context.Context, msg proto.Message) error {
+		if msg == nil {
+			return errors.New("message is nil")
+		}
+		return inspectMessage(ctx, extractTLSCertHash(msg))
+	}
 }
 
-// mutualTLSBinding enforces the client to send its TLS cert hash in the
-// ChannelHeader, and then compares it to the computed hash that is derived
+// mutualTLSBinding enforces the client to send its TLS cert hash in the message,
+// and then compares it to the computed hash that is derived
 // from the gRPC context.
 // In case they don't match, or the cert hash is missing from the request or
 // there is no TLS certificate to be excavated from the gRPC context,
 // an error is returned.
-func mutualTLSBinding(ctx context.Context, env *common.Envelope) error {
-	if env == nil {
-		return errors.New("envelope is nil")
-	}
-	ch, err := utils.ChannelHeader(env)
-	if err != nil {
-		return errors.Errorf("client didn't send a valid channel header: %v", err)
-	}
-	claimedTLScertHash := ch.TlsCertHash
+func mutualTLSBinding(ctx context.Context, claimedTLScertHash []byte) error {
 	if len(claimedTLScertHash) == 0 {
-		return errors.Errorf("client didn't include its TLS cert hash, error is: %v", err)
+		return errors.Errorf("client didn't include its TLS cert hash")
 	}
 	actualTLScertHash := ExtractCertificateHashFromContext(ctx)
 	if len(actualTLScertHash) == 0 {
@@ -104,7 +108,7 @@ func mutualTLSBinding(ctx context.Context, env *common.Envelope) error {
 }
 
 // noopBinding is a BindingInspector that always returns nil
-func noopBinding(_ context.Context, _ *common.Envelope) error {
+func noopBinding(_ context.Context, _ []byte) error {
 	return nil
 }
 

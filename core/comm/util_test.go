@@ -60,14 +60,36 @@ func (*nonTLSConnection) AuthType() string {
 	return ""
 }
 
+func TestBindingInspectorBadInit(t *testing.T) {
+	assert.Panics(t, func() {
+		comm.NewBindingInspector(false, nil)
+	})
+}
+
 func TestNoopBindingInspector(t *testing.T) {
-	// A Noop binding inspector always returns nil
-	assert.Nil(t, comm.NewBindingInspector(false)(context.Background(), nil))
+	extract := func(msg proto.Message) []byte {
+		return nil
+	}
+	assert.Nil(t, comm.NewBindingInspector(false, extract)(context.Background(), &common.Envelope{}))
+	err := comm.NewBindingInspector(false, extract)(context.Background(), nil)
+	assert.Error(t, err)
+	assert.Equal(t, "message is nil", err.Error())
 }
 
 func TestBindingInspector(t *testing.T) {
 	testAddress := "localhost:25000"
-	srv := newInspectingServer(testAddress, comm.NewBindingInspector(true))
+	extract := func(msg proto.Message) []byte {
+		env, isEnvelope := msg.(*common.Envelope)
+		if !isEnvelope || env == nil {
+			return nil
+		}
+		ch, err := utils.ChannelHeader(env)
+		if err != nil {
+			return nil
+		}
+		return ch.TlsCertHash
+	}
+	srv := newInspectingServer(testAddress, comm.NewBindingInspector(true, extract))
 	go srv.Start()
 	defer srv.Stop()
 	time.Sleep(time.Second)
@@ -75,7 +97,7 @@ func TestBindingInspector(t *testing.T) {
 	// Scenario I: Invalid header sent
 	err := srv.newInspection(t).inspectBinding(nil)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "envelope is nil")
+	assert.Contains(t, err.Error(), "client didn't include its TLS cert hash")
 
 	// Scenario II: invalid channel header
 	ch, _ := proto.Marshal(utils.MakeChannelHeader(common.HeaderType_CONFIG, 0, "test", 0))
@@ -83,7 +105,7 @@ func TestBindingInspector(t *testing.T) {
 	ch = append(ch, 0)
 	err = srv.newInspection(t).inspectBinding(envelopeWithChannelHeader(ch))
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "client didn't send a valid channel header")
+	assert.Contains(t, err.Error(), "client didn't include its TLS cert hash")
 
 	// Scenario III: No TLS cert hash in envelope
 	chanHdr := utils.MakeChannelHeader(common.HeaderType_CONFIG, 0, "test", 0)
