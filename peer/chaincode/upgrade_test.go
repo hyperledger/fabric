@@ -140,3 +140,27 @@ func TestUpgradeCmdSendTXFail(t *testing.T) {
 		}
 	}
 }
+
+func TestUpgradeCmdWithNilCF(t *testing.T) {
+
+	// trap possible SIGSEV panic
+	defer func() {
+		var err error = nil
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+		assert.NoError(t, err, "'peer chaincode upgrade' command should have failed without a panic")
+	}()
+
+	channelID = ""
+	InitMSP()
+
+	cmd := upgradeCmd(nil)
+	addFlags(cmd)
+
+	args := []string{"-C", "mychannel", "-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
+		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	assert.Error(t, err, "'peer chaincode upgrade' command should have failed without a panic")
+}

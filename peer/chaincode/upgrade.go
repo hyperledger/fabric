@@ -40,14 +40,15 @@ func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cf1 := cf
+			if cf1 == nil {
+				var err error
+				cf1, err = InitCmdFactory(true, true)
+				if err != nil {
+					return err
+				}
+			}
 			return chaincodeUpgrade(cf1, func() error {
 				var err error
-				if cf1 == nil {
-					cf1, err = InitCmdFactory(true, true)
-					if err != nil {
-						return err
-					}
-				}
 				env, err := upgrade(cmd, cf1)
 				if err != nil {
 					return err
