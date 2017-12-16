@@ -63,7 +63,7 @@ func NewApplicationOrgConfig(id string, orgGroup *cb.ConfigGroup, mspConfig *MSP
 	return aoc, nil
 }
 
-// AnchorPeers returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+// AnchorPeers returns the list of anchor peers of this Organization
 func (aog *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
 	return aog.protos.AnchorPeers.AnchorPeers
 }
