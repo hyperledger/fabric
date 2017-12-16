@@ -231,7 +231,7 @@ func InitTLSForPeer() credentials.TransportCredentials {
 			grpclog.Fatalf("Failed to create TLS credentials %v", err)
 		}
 	} else {
-		creds = credentials.NewClientTLSFromCert(nil, sn)
+		logger.Panic("peer.tls.rootcert.file isn't configured")
 	}
 	return creds
 }
