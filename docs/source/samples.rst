@@ -51,7 +51,7 @@ you will extract the platform-specific binaries:
 					Please visit the :doc:`prereqs` page for additional information on
 					where to find the latest version. Alternately, you can substitute the
 					un-shortened URL:
-					  https://github.com/hyperledger/fabric/blob/master/scripts/bootstrap.sh
+					  https://raw.githubusercontent.com/hyperledger/fabric/master/scripts/bootstrap.sh
 
 .. note:: You can use the command above for any published version of Hyperledger
           Fabric. Simply replace '1.1.0-preview' with the version identifier
