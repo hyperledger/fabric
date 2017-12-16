@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package util
@@ -27,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/pkg/errors"
 )
 
 var vmLogger = flogging.MustGetLogger("container")
@@ -38,6 +29,7 @@ var javaExcludeFileTypes = map[string]bool{
 }
 
 func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, includeFileTypeMap map[string]bool, excludeFileTypeMap map[string]bool) error {
+	fileCount := 0
 	rootDirectory := srcPath
 	vmLogger.Infof("rootDirectory = %s", rootDirectory)
 
@@ -90,6 +82,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 		if err != nil {
 			return fmt.Errorf("Error writing file to package: %s", err)
 		}
+		fileCount++
 
 		vmLogger.Debugf("Writing file %s to tar", newPath)
 
@@ -99,6 +92,10 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 	if err := filepath.Walk(rootDirectory, walkFn); err != nil {
 		vmLogger.Infof("Error walking rootDirectory: %s", err)
 		return err
+	}
+	// return error if no files were found
+	if fileCount == 0 {
+		return errors.Errorf("no source files found in '%s'", srcPath)
 	}
 	return nil
 }

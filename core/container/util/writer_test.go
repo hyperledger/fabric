@@ -1,17 +1,7 @@
 /*
 Copyright London Stock Exchange 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package util
@@ -134,7 +124,7 @@ func Test_WriteStreamToPackage(t *testing.T) {
 		"file content from the archive is not same as original file content")
 }
 
-func Test_WriteFolderToPackage(t *testing.T) {
+func Test_WriteFolderToTarPackage(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(buf)
 	tw := tar.NewWriter(gw)
@@ -177,6 +167,17 @@ func Test_WriteFolderToPackage(t *testing.T) {
 	err = WriteFolderToTarPackage(tarw, srcPath, "SimpleSample",
 		nil, excludeFileTypes)
 	assert.NoError(t, err, "Error writing folder to package")
+
+	// Failure case 1: no files in directory
+	srcPath = filepath.Join(gopath, "src",
+		"github.com/hyperledger/fabric/core/container/util",
+		fmt.Sprintf("%d", os.Getpid()))
+	os.Mkdir(srcPath, os.ModePerm)
+	defer os.Remove(srcPath)
+	tarw = tar.NewWriter(bytes.NewBuffer(nil))
+	defer tarw.Close()
+	err = WriteFolderToTarPackage(tw, srcPath, "", nil, nil)
+	assert.Contains(t, err.Error(), "no source files found")
 }
 
 func Test_WriteJavaProjectToPackage(t *testing.T) {
