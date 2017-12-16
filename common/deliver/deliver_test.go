@@ -17,33 +17,41 @@ limitations under the License.
 package deliver
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )
 
 var genesisBlock = cb.NewBlock(0, nil)
-
 var systemChainID = "systemChain"
-
 var policyName = policies.ChannelReaders
+var timeWindow = time.Duration(15 * time.Minute)
+var testCert = &x509.Certificate{
+	Raw: []byte("test"),
+}
 
 const ledgerSize = 10
+const mutualTLS = true
 
 func init() {
 	flogging.SetModuleLevel(pkgLogID, "DEBUG")
@@ -54,7 +62,15 @@ type mockStream struct {
 }
 
 func (mockStream) Context() context.Context {
-	return peer.NewContext(context.Background(), &peer.Peer{})
+	p := &peer.Peer{}
+	p.AuthInfo = credentials.TLSInfo{
+		State: tls.ConnectionState{
+			PeerCertificates: []*x509.Certificate{
+				testCert,
+			},
+		},
+	}
+	return peer.NewContext(context.Background(), p)
 }
 
 type mockD struct {
@@ -158,7 +174,7 @@ func initializeDeliverHandler() Handler {
 		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
-	return NewHandlerImpl(mm, policyName)
+	return NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
 }
 
 func newMockMultichainManager() *mockSupportManager {
@@ -187,6 +203,23 @@ func makeSeek(chainID string, seekInfo *ab.SeekInfo) *cb.Envelope {
 			Header: &cb.Header{
 				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 					ChannelId: chainID,
+					Timestamp: util.CreateUtcTimestamp(),
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
+			},
+			Data: utils.MarshalOrPanic(seekInfo),
+		}),
+	}
+}
+
+func makeSeekWithTLSCertHash(chainID string, seekInfo *ab.SeekInfo, tlsCert *x509.Certificate) *cb.Envelope {
+	return &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId:   chainID,
+					Timestamp:   util.CreateUtcTimestamp(),
+					TlsCertHash: util.ComputeSHA256(tlsCert.Raw),
 				}),
 				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
@@ -290,7 +323,7 @@ func TestUnauthorizedSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyName)
+	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -315,7 +348,7 @@ func TestRevokedAuthorizationSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyName)
+	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -398,7 +431,7 @@ func TestBlockingSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyName)
+	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -452,7 +485,7 @@ func TestErroredSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyName)
+	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -476,7 +509,7 @@ func TestErroredBlockingSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyName)
+	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -501,7 +534,7 @@ func TestErroredBlockingSeek(t *testing.T) {
 
 func TestSGracefulShutdown(t *testing.T) {
 	m := newMockD()
-	ds := NewHandlerImpl(nil, policyName)
+	ds := NewHandlerImpl(nil, policyName, timeWindow, !mutualTLS)
 
 	close(m.recvChan)
 	assert.NoError(t, ds.Handle(m), "Expected no error for hangup")
@@ -529,7 +562,7 @@ func TestReversedSeqSeek(t *testing.T) {
 }
 
 func TestBadStreamRecv(t *testing.T) {
-	bh := NewHandlerImpl(nil, policyName)
+	bh := NewHandlerImpl(nil, policyName, timeWindow, !mutualTLS)
 	assert.Error(t, bh.Handle(&erroneousRecvMockD{}), "Should catch unexpected stream error")
 }
 
@@ -618,7 +651,7 @@ func TestChainNotFound(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := NewHandlerImpl(mm, policyName)
+	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
@@ -643,6 +676,7 @@ func TestBadSeekInfoPayload(t *testing.T) {
 			Header: &cb.Header{
 				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 					ChannelId: systemChainID,
+					Timestamp: util.CreateUtcTimestamp(),
 				}),
 				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
@@ -670,12 +704,147 @@ func TestMissingSeekPosition(t *testing.T) {
 			Header: &cb.Header{
 				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 					ChannelId: systemChainID,
+					Timestamp: util.CreateUtcTimestamp(),
 				}),
 				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
 			Data: nil,
 		}),
 	}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestNilTimestamp(t *testing.T) {
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := initializeDeliverHandler()
+	go ds.Handle(m)
+
+	m.recvChan <- &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId: systemChainID,
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
+			},
+			Data: nil,
+		}),
+	}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestTimestampOutOfTimeWindow(t *testing.T) {
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := initializeDeliverHandler()
+	go ds.Handle(m)
+
+	m.recvChan <- &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId: systemChainID,
+					Timestamp: &timestamp.Timestamp{Seconds: 0},
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
+			},
+			Data: nil,
+		}),
+	}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestSeekWithMutualTLS(t *testing.T) {
+	mm := newMockMultichainManager()
+	ms := mm.chains[systemChainID]
+	l := ms.ledger
+	for i := 1; i < ledgerSize; i++ {
+		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
+	}
+
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := NewHandlerImpl(mm, policyName, timeWindow, mutualTLS)
+	go ds.Handle(m)
+
+	m.recvChan <- makeSeekWithTLSCertHash(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}, testCert)
+
+	select {
+	case deliverReply := <-m.sendChan:
+		if deliverReply.GetBlock() == nil {
+			t.Fatalf("Received an error on the reply channel")
+		}
+		if deliverReply.GetBlock().Header.Number != uint64(ledgerSize-1) {
+			t.Fatalf("Expected only the most recent block")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestSeekWithMutualTLS_wrongTLSCert(t *testing.T) {
+	mm := newMockMultichainManager()
+	ms := mm.chains[systemChainID]
+	l := ms.ledger
+	for i := 1; i < ledgerSize; i++ {
+		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
+	}
+
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := NewHandlerImpl(mm, policyName, timeWindow, mutualTLS)
+	go ds.Handle(m)
+	wrongCert := &x509.Certificate{
+		Raw: []byte("wrong"),
+	}
+	m.recvChan <- makeSeekWithTLSCertHash(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}, wrongCert)
+
+	select {
+	case deliverReply := <-m.sendChan:
+		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestSeekWithMutualTLS_noTLSCert(t *testing.T) {
+	mm := newMockMultichainManager()
+	ms := mm.chains[systemChainID]
+	l := ms.ledger
+	for i := 1; i < ledgerSize; i++ {
+		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
+	}
+
+	m := newMockD()
+	defer close(m.recvChan)
+
+	ds := NewHandlerImpl(mm, policyName, timeWindow, mutualTLS)
+	go ds.Handle(m)
+
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
 	case deliverReply := <-m.sendChan:

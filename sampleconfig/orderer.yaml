@@ -115,6 +115,13 @@ General:
             FileKeyStore:
                 KeyStore:
 
+    # Authentication contains configuration parameters related to authenticating
+    # client messages
+    Authentication:
+        # the acceptable difference between the current server time and the
+        # client's time as specified in a client request message
+        TimeWindow: 15m
+
 ################################################################################
 #
 #   SECTION: File Ledger

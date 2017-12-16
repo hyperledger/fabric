@@ -159,7 +159,9 @@ func serve(args []string) error {
 
 	// create the peer's AtomicBroadcastServer, which supports deliver but not
 	// broadcast
-	abServer := peer.NewAtomicBroadcastServer()
+	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
+	timeWindow := viper.GetDuration("peer.authentication.timewindow")
+	abServer := peer.NewAtomicBroadcastServer(timeWindow, mutualTLS)
 	ab.RegisterAtomicBroadcastServer(peerServer.Server(), abServer)
 
 	// enable the cache of chaincode info
