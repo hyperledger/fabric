@@ -18,6 +18,7 @@ import (
 	"time"
 
 	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -351,4 +352,20 @@ func testInvoke(t *testing.T, channelID string, s *srv, shouldSucceed bool) {
 	_, err = client.EmptyCall(context.Background(), &testpb.Empty{})
 	assert.NoError(t, err)
 	s.assertServiced(t)
+}
+
+func TestInitTLSForPeerNoCACerts(t *testing.T) {
+	prevCACerts := viper.Get("peer.tls.rootcert.file")
+	defer func() {
+		viper.Set("peer.tls.rootcert.file", prevCACerts)
+	}()
+	viper.Set("peer.tls.rootcert.file", nil)
+	defer func() {
+		r := recover()
+		if r == nil {
+			assert.Fail(t, "should have panicked")
+		}
+		assert.Equal(t, "peer.tls.rootcert.file isn't configured", r)
+	}()
+	InitTLSForPeer()
 }
