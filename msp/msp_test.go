@@ -979,21 +979,6 @@ func getIdentity(t *testing.T, path string) Identity {
 	return id
 }
 
-func getLocalMSPWithError(t *testing.T, dir string) (MSP, error) {
-	conf, err := GetLocalMspConfig(dir, nil, "DEFAULT")
-	assert.NoError(t, err)
-
-	thisMSP, err := newBccspMsp(MSPv1_0)
-	assert.NoError(t, err)
-	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
-	assert.NoError(t, err)
-	csp, err := sw.New(256, "SHA2", ks)
-	assert.NoError(t, err)
-	thisMSP.(*bccspmsp).bccsp = csp
-
-	return thisMSP, thisMSP.Setup(conf)
-}
-
 func getLocalMSPWithVersionAndError(t *testing.T, dir string, version MSPVersion) (MSP, error) {
 	conf, err := GetLocalMspConfig(dir, nil, "DEFAULT")
 	assert.NoError(t, err)
@@ -1032,24 +1017,6 @@ func getLocalMSPWithVersion(t *testing.T, dir string, version MSPVersion) MSP {
 	assert.NoError(t, err)
 
 	thisMSP, err := newBccspMsp(version)
-	assert.NoError(t, err)
-	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
-	assert.NoError(t, err)
-	csp, err := sw.New(256, "SHA2", ks)
-	assert.NoError(t, err)
-	thisMSP.(*bccspmsp).bccsp = csp
-
-	err = thisMSP.Setup(conf)
-	assert.NoError(t, err)
-
-	return thisMSP
-}
-
-func getLocalMSPWithName(t *testing.T, name, dir string) MSP {
-	conf, err := GetLocalMspConfig(dir, nil, name)
-	assert.NoError(t, err)
-
-	thisMSP, err := newBccspMsp(MSPv1_0)
 	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)
