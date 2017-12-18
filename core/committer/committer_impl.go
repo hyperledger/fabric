@@ -63,26 +63,6 @@ func NewLedgerCommitterReactive(ledger ledger.PeerLedger, eventer ConfigBlockEve
 	return &LedgerCommitter{PeerLedger: ledger, eventer: eventer}
 }
 
-// Commit commits block to into the ledger
-// Note, it is important that this always be called serially
-func (lc *LedgerCommitter) Commit(block *common.Block) error {
-	// Do validation and whatever needed before
-	// committing new block
-	if err := lc.preCommit(block); err != nil {
-		return err
-	}
-
-	// Committing new block
-	if err := lc.PeerLedger.CommitWithPvtData(&ledger.BlockAndPvtData{Block: block}); err != nil {
-		return err
-	}
-
-	// post commit actions, such as event publishing
-	lc.postCommit(block)
-
-	return nil
-}
-
 // preCommit takes care to validate the block and update based on its
 // content
 func (lc *LedgerCommitter) preCommit(block *common.Block) error {
@@ -104,8 +84,6 @@ func (lc *LedgerCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvt
 		return err
 	}
 
-	// TODO: Need to validate the hashes of private data with those in the block
-
 	// Committing new block
 	if err := lc.PeerLedger.CommitWithPvtData(blockAndPvtData); err != nil {
 		return err
@@ -119,7 +97,6 @@ func (lc *LedgerCommitter) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvt
 
 // GetPvtDataAndBlockByNum retrieves private data and block for given sequence number
 func (lc *LedgerCommitter) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error) {
-	// TODO: Need to create filter based on chaincode collections policies
 	return lc.PeerLedger.GetPvtDataAndBlockByNum(seqNum, nil)
 }
 
@@ -144,7 +121,7 @@ func (lc *LedgerCommitter) LedgerHeight() (uint64, error) {
 	var info *common.BlockchainInfo
 	var err error
 	if info, err = lc.GetBlockchainInfo(); err != nil {
-		logger.Errorf("Cannot get blockchain info, %s\n", info)
+		logger.Errorf("Cannot get blockchain info, %s", info)
 		return uint64(0), err
 	}
 
@@ -157,7 +134,7 @@ func (lc *LedgerCommitter) GetBlocks(blockSeqs []uint64) []*common.Block {
 
 	for _, seqNum := range blockSeqs {
 		if blck, err := lc.GetBlockByNumber(seqNum); err != nil {
-			logger.Errorf("Not able to acquire block num %d, from the ledger skipping...\n", seqNum)
+			logger.Errorf("Not able to acquire block num %d, from the ledger skipping...", seqNum)
 			continue
 		} else {
 			logger.Debug("Appending next block with seqNum = ", seqNum, " to the resulting set")

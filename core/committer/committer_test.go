@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/util"
+	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
@@ -61,7 +62,9 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simResBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := testutil.ConstructBlock(t, 1, gbHash, [][]byte{simResBytes}, true)
 
-	err = committer.Commit(block1)
+	err = committer.CommitWithPvtData(&ledger2.BlockAndPvtData{
+		Block: block1,
+	})
 	assert.NoError(t, err)
 
 	height, err = committer.LedgerHeight()
@@ -103,6 +106,8 @@ func TestNewLedgerCommitterReactive(t *testing.T) {
 	profile := localconfig.Load(localconfig.SampleSingleMSPSoloProfile)
 	block := encoder.New(profile).GenesisBlockForChannel(chainID)
 
-	committer.Commit(block)
+	committer.CommitWithPvtData(&ledger2.BlockAndPvtData{
+		Block: block,
+	})
 	assert.Equal(t, int32(1), atomic.LoadInt32(&configArrived))
 }
