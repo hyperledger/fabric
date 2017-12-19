@@ -121,7 +121,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 		return dialOpts
 	}
 	err = service.InitGossipServiceCustomDeliveryFactory(
-		identity, "localhost:13611", grpcServer,
+		identity, "localhost:13611", grpcServer, nil,
 		&mockDeliveryClientFactory{},
 		messageCryptoService, secAdv, defaultSecureDialOpts)
 

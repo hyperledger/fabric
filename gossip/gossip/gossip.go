@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package gossip
 
 import (
-	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -113,10 +112,11 @@ type Config struct {
 
 	SkipBlockVerification bool // Should we skip verifying block messages or not
 
-	PublishCertPeriod        time.Duration    // Time from startup certificates are included in Alive messages
-	PublishStateInfoInterval time.Duration    // Determines frequency of pushing state info messages to peers
-	RequestStateInfoInterval time.Duration    // Determines frequency of pulling state info messages from peers
-	TLSServerCert            *tls.Certificate // TLS certificate of the peer
+	PublishCertPeriod        time.Duration // Time from startup certificates are included in Alive messages
+	PublishStateInfoInterval time.Duration // Determines frequency of pushing state info messages to peers
+	RequestStateInfoInterval time.Duration // Determines frequency of pulling state info messages from peers
+
+	TLSCerts *common.TLSCertificates // TLS certificates of the peer
 
 	InternalEndpoint string // Endpoint we publish to peers in our organization
 	ExternalEndpoint string // Peer publishes this endpoint instead of SelfEndpoint to foreign organizations

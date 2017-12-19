@@ -54,13 +54,13 @@ func TestNewGossipCryptoService(t *testing.T) {
 	msptesttools.LoadMSPSetupForTesting()
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	g1, err := NewGossipComponent(peerIdentity, endpoint1, s1, secAdv, cryptSvc,
-		defaultSecureDialOpts)
+		defaultSecureDialOpts, nil)
 	assert.NoError(t, err)
 	g2, err := NewGossipComponent(peerIdentity, endpoint2, s2, secAdv, cryptSvc,
-		defaultSecureDialOpts, endpoint1)
+		defaultSecureDialOpts, nil, endpoint1)
 	assert.NoError(t, err)
 	g3, err := NewGossipComponent(peerIdentity, endpoint3, s3, secAdv, cryptSvc,
-		defaultSecureDialOpts, endpoint1)
+		defaultSecureDialOpts, nil, endpoint1)
 	assert.NoError(t, err)
 	defer g1.Stop()
 	defer g2.Stop()
@@ -68,18 +68,6 @@ func TestNewGossipCryptoService(t *testing.T) {
 	go s1.Serve(ll1)
 	go s2.Serve(ll2)
 	go s3.Serve(ll3)
-}
-
-func TestBadInitialization(t *testing.T) {
-	msptesttools.LoadMSPSetupForTesting()
-	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
-	s1 := grpc.NewServer()
-	_, err := newConfig("anEndpointWithoutAPort", "anEndpointWithoutAPort")
-
-	viper.Set("peer.tls.enabled", true)
-	_, err = NewGossipComponent(peerIdentity, "localhost:5000", s1, secAdv, cryptSvc,
-		defaultSecureDialOpts)
-	assert.Error(t, err)
 }
 
 func setupTestEnv() {
