@@ -855,15 +855,6 @@ func (v *vsccValidatorImpl) VSCCValidateTxForCC(envBytes []byte, txid, chid, vsc
 }
 
 func (v *vsccValidatorImpl) getCDataForCC(chid, ccid string) (resourcesconfig.ChaincodeDefinition, error) {
-	if v.support.Capabilities().LifecycleViaConfig() {
-		cd, exists := v.support.ChaincodeByName(chid, ccid)
-		if !exists {
-			return nil, &VSCCInfoLookupFailureError{fmt.Sprintf("Could not retrieve state for chaincode %s on channel %s", ccid, chid)}
-		}
-
-		return cd, nil
-	}
-
 	l := v.support.Ledger()
 	if l == nil {
 		return nil, fmt.Errorf("nil ledger instance")
