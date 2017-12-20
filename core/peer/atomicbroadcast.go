@@ -22,10 +22,9 @@ import (
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	logging "github.com/op/go-logging"
+	"github.com/op/go-logging"
 )
 
 const pkgLogID = "common/peer"
@@ -37,7 +36,6 @@ func init() {
 }
 
 type server struct {
-	bh broadcast.Handler
 	dh deliver.Handler
 }
 
@@ -65,7 +63,6 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 func NewAtomicBroadcastServer(timeWindow time.Duration, mutualTLS bool) ab.AtomicBroadcastServer {
 	s := &server{
 		dh: deliver.NewHandlerImpl(DeliverSupportManager{}, policies.ChannelReaders, timeWindow, mutualTLS),
-		bh: broadcast.NewHandlerImpl(nil),
 	}
 	return s
 }
