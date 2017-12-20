@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -23,6 +22,7 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 // gossipAdapter an adapter for API's required from gossip module
@@ -125,7 +125,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	}
 
 	sc := gossip2.SendCriteria{
-		Timeout:  time.Second,
+		Timeout:  viper.GetDuration("peer.gossip.pvtData.pushAckTimeout"),
 		Channel:  gossipCommon.ChainID(d.chainID),
 		MaxPeers: colAP.MaximumPeerCount(),
 		MinAck:   colAP.RequiredPeerCount(),

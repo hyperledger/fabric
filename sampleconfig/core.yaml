@@ -225,6 +225,9 @@ peer:
             # Private data is purged from the transient store when blocks with sequences that are multiples
             # of transientstoreMaxBlockRetention are committed.
             transientstoreMaxBlockRetention: 1000
+            # pushAckTimeout is the maximum time to wait for an acknowledgement from each peer
+            # at private data push at endorsement time.
+            pushAckTimeout: 3s
 
     # EventHub related configuration
     events:
