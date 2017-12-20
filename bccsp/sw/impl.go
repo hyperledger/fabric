@@ -316,9 +316,10 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 		return nil, errors.New("Invalid digest. Cannot be empty.")
 	}
 
-	signer, found := csp.signers[reflect.TypeOf(k)]
+	keyType := reflect.TypeOf(k)
+	signer, found := csp.signers[keyType]
 	if !found {
-		return nil, errors.Errorf("Unsupported 'SignKey' provided [%v]", k)
+		return nil, errors.Errorf("Unsupported 'SignKey' provided [%s]", keyType)
 	}
 
 	signature, err = signer.Sign(k, digest, opts)
