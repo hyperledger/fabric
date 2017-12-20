@@ -27,3 +27,10 @@ func TestApplicationV11(t *testing.T) {
 	assert.NoError(t, op.Supported())
 	assert.True(t, op.LifecycleViaConfig())
 }
+
+func TestApplicationPvtDataExperimental(t *testing.T) {
+	op := NewApplicationProvider(map[string]*cb.Capability{
+		ApplicationPvtDataExperimental: {},
+	})
+	assert.True(t, op.PrivateChannelData())
+}
