@@ -153,7 +153,7 @@ defining that currency will get called) every time a transaction is processed
 on its chain.
 
 Differences in Most Recent Releases
------------
+-----------------------------------
 Q. As part of the v1.0.0 release, what are the highlight differences between v0.6 and v1.0?
 
 A. The differences between any subsequent releases are provided together with the

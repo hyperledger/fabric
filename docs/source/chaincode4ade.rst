@@ -398,7 +398,7 @@ a sample dev network.  As such, the user can immediately jump into the process
 of compiling chaincode and driving calls.
 
 Install Hyperledger Fabric Samples
-----------------------
+----------------------------------
 
 If you haven't already done so, please install the :doc:`samples`.
 
