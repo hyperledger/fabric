@@ -25,9 +25,10 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	"github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
@@ -44,7 +45,10 @@ import (
 
 var genesisBlock = cb.NewBlock(0, nil)
 var systemChainID = "systemChain"
-var policyName = policies.ChannelReaders
+var policyNameProvider = func(_ string) (string, error) {
+	return policies.ChannelReaders, nil
+}
+
 var timeWindow = time.Duration(15 * time.Minute)
 var testCert = &x509.Certificate{
 	Raw: []byte("test"),
@@ -55,6 +59,7 @@ const mutualTLS = true
 
 func init() {
 	flogging.SetModuleLevel(pkgLogID, "DEBUG")
+	factory.InitFactories(nil)
 }
 
 type mockStream struct {
@@ -174,7 +179,7 @@ func initializeDeliverHandler() Handler {
 		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
-	return NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
+	return NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
 }
 
 func newMockMultichainManager() *mockSupportManager {
@@ -323,7 +328,7 @@ func TestUnauthorizedSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
+	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -348,7 +353,7 @@ func TestRevokedAuthorizationSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
+	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -431,7 +436,7 @@ func TestBlockingSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
+	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -485,7 +490,7 @@ func TestErroredSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
+	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -509,7 +514,7 @@ func TestErroredBlockingSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
+	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -534,7 +539,7 @@ func TestErroredBlockingSeek(t *testing.T) {
 
 func TestSGracefulShutdown(t *testing.T) {
 	m := newMockD()
-	ds := NewHandlerImpl(nil, policyName, timeWindow, !mutualTLS)
+	ds := NewHandlerImpl(nil, policyNameProvider, timeWindow, !mutualTLS)
 
 	close(m.recvChan)
 	assert.NoError(t, ds.Handle(m), "Expected no error for hangup")
@@ -562,7 +567,7 @@ func TestReversedSeqSeek(t *testing.T) {
 }
 
 func TestBadStreamRecv(t *testing.T) {
-	bh := NewHandlerImpl(nil, policyName, timeWindow, !mutualTLS)
+	bh := NewHandlerImpl(nil, policyNameProvider, timeWindow, !mutualTLS)
 	assert.Error(t, bh.Handle(&erroneousRecvMockD{}), "Should catch unexpected stream error")
 }
 
@@ -651,7 +656,7 @@ func TestChainNotFound(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := NewHandlerImpl(mm, policyName, timeWindow, !mutualTLS)
+	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
@@ -786,7 +791,7 @@ func TestSeekWithMutualTLS(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := NewHandlerImpl(mm, policyName, timeWindow, mutualTLS)
+	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeekWithTLSCertHash(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}, testCert)
@@ -815,7 +820,7 @@ func TestSeekWithMutualTLS_wrongTLSCert(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := NewHandlerImpl(mm, policyName, timeWindow, mutualTLS)
+	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, mutualTLS)
 	go ds.Handle(m)
 	wrongCert := &x509.Certificate{
 		Raw: []byte("wrong"),
@@ -841,7 +846,7 @@ func TestSeekWithMutualTLS_noTLSCert(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := NewHandlerImpl(mm, policyName, timeWindow, mutualTLS)
+	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})

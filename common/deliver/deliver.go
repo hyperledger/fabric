@@ -68,15 +68,18 @@ type Support interface {
 	Errored() <-chan struct{}
 }
 
+// PolicyNameProvider provides a policy name given the channel id
+type PolicyNameProvider func(chainID string) (string, error)
+
 type deliverServer struct {
 	sm               SupportManager
-	policyName       string
+	policyProvider   PolicyNameProvider
 	timeWindow       time.Duration
 	bindingInspector comm.BindingInspector
 }
 
 // NewHandlerImpl creates an implementation of the Handler interface
-func NewHandlerImpl(sm SupportManager, policyName string, timeWindow time.Duration, mutualTLS bool) Handler {
+func NewHandlerImpl(sm SupportManager, policyProvider PolicyNameProvider, timeWindow time.Duration, mutualTLS bool) Handler {
 	// function to extract the TLS cert hash from a channel header
 	extract := func(msg proto.Message) []byte {
 		chdr, isChannelHeader := msg.(*cb.ChannelHeader)
@@ -89,7 +92,7 @@ func NewHandlerImpl(sm SupportManager, policyName string, timeWindow time.Durati
 
 	return &deliverServer{
 		sm:               sm,
-		policyName:       policyName,
+		policyProvider:   policyProvider,
 		timeWindow:       timeWindow,
 		bindingInspector: bindingInspector,
 	}
@@ -163,7 +166,12 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 
 	lastConfigSequence := chain.Sequence()
 
-	sf := NewSigFilter(ds.policyName, chain)
+	policyName, err := ds.policyProvider(chdr.ChannelId)
+	if err != nil {
+		logger.Warningf("[channel: %s] failed to obtain policy name due to %s", chdr.ChannelId, err)
+		return sendStatusReply(srv, cb.Status_BAD_REQUEST)
+	}
+	sf := NewSigFilter(policyName, chain)
 	if err := sf.Apply(envelope); err != nil {
 		logger.Warningf("[channel: %s] Received unauthorized deliver request from %s: %s", chdr.ChannelId, addr, err)
 		return sendStatusReply(srv, cb.Status_FORBIDDEN)

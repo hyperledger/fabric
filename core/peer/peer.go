@@ -809,3 +809,17 @@ func (*configSupport) GetResourceConfig(channel string) cc.Config {
 	}
 	return chain.cs.bundleSource.ConfigtxValidator()
 }
+
+// GetPolicyMapper returns an instance of a object that represents
+// an API policy mapper which provides a mapping from specific API
+// function to its policy
+func (*configSupport) GetPolicyMapper(channel string) resourcesconfig.PolicyMapper {
+	chains.RLock()
+	defer chains.RUnlock()
+	chain := chains.list[channel]
+	if chain == nil {
+		peerLogger.Error("GetPolicyMapper: channel", channel, "not found in the list of channels associated with this peer")
+		return nil
+	}
+	return chain.cs.bundleSource.APIPolicyMapper()
+}

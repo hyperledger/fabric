@@ -254,14 +254,14 @@ Feature: Bootstrap
            | ChainId                               | Start |  End    |
            | com.acme.blockchain.jdoe.channel1     |   0   |  0      |
 
-    Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannel" from "peer0" of "1" blocks with "1" messages within "1" seconds
+    Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannel" from "peer0" of "0" blocks with "0" messages within "1" seconds
 
     When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "peer2" using port "7051"
          And user "dev0Org0" sends deliver a seek request on orderer "peer2" with properties:
            | ChainId                               | Start |  End    |
            | com.acme.blockchain.jdoe.channel1     |   0   |  0      |
 
-    Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannelFromOtherOrgsPeer" from "peer2" of "1" blocks with "1" messages within "1" seconds
+    Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannelFromOtherOrgsPeer" from "peer2" of "0" blocks with "0" messages within "1" seconds
 
     # Entry point for invoking on an existing channel
     When user "peer0Admin" creates a chaincode spec "ccSpec" with name "example02" of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with args

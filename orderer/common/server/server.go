@@ -49,7 +49,9 @@ type server struct {
 // NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
 func NewServer(r *multichannel.Registrar, _ crypto.LocalSigner, debug *localconfig.Debug, timeWindow time.Duration, mutualTLS bool) ab.AtomicBroadcastServer {
 	s := &server{
-		dh:    deliver.NewHandlerImpl(deliverSupport{Registrar: r}, policies.ChannelReaders, timeWindow, mutualTLS),
+		dh: deliver.NewHandlerImpl(deliverSupport{Registrar: r}, func(_ string) (string, error) {
+			return policies.ChannelReaders, nil
+		}, timeWindow, mutualTLS),
 		bh:    broadcast.NewHandlerImpl(broadcastSupport{Registrar: r}),
 		debug: debug,
 	}
