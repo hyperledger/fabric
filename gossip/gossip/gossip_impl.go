@@ -8,7 +8,6 @@ package gossip
 
 import (
 	"bytes"
-	"crypto/tls"
 	"fmt"
 	"reflect"
 	"sync"
@@ -97,7 +96,7 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 	if s == nil {
 		g.comm, err = createCommWithServer(conf.BindPort, g.idMapper, selfIdentity, secureDialOpts)
 	} else {
-		g.comm, err = createCommWithoutServer(s, conf.TLSServerCert, g.idMapper, selfIdentity, secureDialOpts)
+		g.comm, err = createCommWithoutServer(s, conf.TLSCerts, g.idMapper, selfIdentity, secureDialOpts)
 	}
 
 	if err != nil {
@@ -159,9 +158,9 @@ func newChannelState(g *gossipServiceImpl) *channelState {
 	}
 }
 
-func createCommWithoutServer(s *grpc.Server, cert *tls.Certificate, idStore identity.Mapper,
+func createCommWithoutServer(s *grpc.Server, certs *common.TLSCertificates, idStore identity.Mapper,
 	identity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts) (comm.Comm, error) {
-	return comm.NewCommInstance(s, cert, idStore, identity, secureDialOpts)
+	return comm.NewCommInstance(s, certs, idStore, identity, secureDialOpts)
 }
 
 // NewGossipServiceWithServer creates a new gossip instance with a gRPC server

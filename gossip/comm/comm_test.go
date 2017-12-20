@@ -350,22 +350,18 @@ func TestBasic(t *testing.T) {
 
 func TestProdConstructor(t *testing.T) {
 	t.Parallel()
-	peerIdentity := GenerateCertificatesOrPanic()
-	srv, lsnr, dialOpts, certHash := createGRPCLayer(20000)
+	srv, lsnr, dialOpts, certs := createGRPCLayer(20000)
 	defer srv.Stop()
 	defer lsnr.Close()
 	id := []byte("localhost:20000")
-	comm1, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity), id, dialOpts)
-	comm1.(*commImpl).selfCertHash = certHash
+	comm1, _ := NewCommInstance(srv, certs, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity), id, dialOpts)
 	go srv.Serve(lsnr)
 
-	peerIdentity = GenerateCertificatesOrPanic()
-	srv, lsnr, dialOpts, certHash = createGRPCLayer(30000)
+	srv, lsnr, dialOpts, certs = createGRPCLayer(30000)
 	defer srv.Stop()
 	defer lsnr.Close()
 	id = []byte("localhost:30000")
-	comm2, _ := NewCommInstance(srv, &peerIdentity, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity), id, dialOpts)
-	comm2.(*commImpl).selfCertHash = certHash
+	comm2, _ := NewCommInstance(srv, certs, identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity), id, dialOpts)
 	go srv.Serve(lsnr)
 	defer comm1.Stop()
 	defer comm2.Stop()

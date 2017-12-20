@@ -57,15 +57,14 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 
 	var ll net.Listener
 	var s *grpc.Server
-	var certHash []byte
+	var certs *common.TLSCertificates
 
 	if port > 0 {
-		s, ll, secureDialOpts, certHash = createGRPCLayer(port)
+		s, ll, secureDialOpts, certs = createGRPCLayer(port)
 	}
 
 	commInst := &commImpl{
 		pubSub:         util.NewPubSub(),
-		selfCertHash:   certHash,
 		PKIID:          idMapper.GetPKIidOfCert(peerIdentity),
 		idMapper:       idMapper,
 		logger:         util.GetLogger(util.LoggingCommModule, fmt.Sprintf("%d", port)),
@@ -82,6 +81,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		exitChan:       make(chan struct{}, 1),
 		subscriptions:  make([]chan proto.ReceivedMessage, 0),
 		dialTimeout:    util.GetDurationOrDefault("peer.gossip.dialTimeout", defDialTimeout),
+		tlsCerts:       certs,
 	}
 	commInst.connStore = newConnStore(commInst, commInst.logger)
 
@@ -98,7 +98,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 }
 
 // NewCommInstance creates a new comm instance that binds itself to the given gRPC server
-func NewCommInstance(s *grpc.Server, cert *tls.Certificate, idStore identity.Mapper,
+func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore identity.Mapper,
 	peerIdentity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts,
 	dialOpts ...grpc.DialOption) (Comm, error) {
 
@@ -107,14 +107,7 @@ func NewCommInstance(s *grpc.Server, cert *tls.Certificate, idStore identity.Map
 		return nil, errors.WithStack(err)
 	}
 
-	if cert != nil {
-		inst := commInst.(*commImpl)
-		if len(cert.Certificate) == 0 {
-			inst.logger.Panic("Certificate supplied but certificate chain is empty")
-		} else {
-			inst.selfCertHash = certHashFromRawCert(cert.Certificate[0])
-		}
-	}
+	commInst.(*commImpl).tlsCerts = certs
 
 	proto.RegisterGossipServer(s, commInst.(*commImpl))
 
@@ -122,8 +115,8 @@ func NewCommInstance(s *grpc.Server, cert *tls.Certificate, idStore identity.Map
 }
 
 type commImpl struct {
+	tlsCerts       *common.TLSCertificates
 	pubSub         *util.PubSub
-	selfCertHash   []byte
 	peerIdentity   api.PeerIdentityType
 	idMapper       identity.Mapper
 	logger         *logging.Logger
@@ -179,7 +172,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 
 	ctx, cf := context.WithCancel(context.Background())
 	if stream, err = cl.GossipStream(ctx); err == nil {
-		connInfo, err = c.authenticateRemotePeer(stream)
+		connInfo, err = c.authenticateRemotePeer(stream, true)
 		if err == nil {
 			pkiID = connInfo.ID
 			if expectedPKIID != nil && !bytes.Equal(pkiID, expectedPKIID) {
@@ -301,7 +294,7 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 	if err != nil {
 		return nil, err
 	}
-	connInfo, err := c.authenticateRemotePeer(stream)
+	connInfo, err := c.authenticateRemotePeer(stream, true)
 	if err != nil {
 		c.logger.Warningf("Authentication failed: %v", err)
 		return nil, err
@@ -402,13 +395,22 @@ func extractRemoteAddress(stream stream) string {
 	return remoteAddress
 }
 
-func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo, error) {
+func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*proto.ConnectionInfo, error) {
 	ctx := stream.Context()
 	remoteAddress := extractRemoteAddress(stream)
 	remoteCertHash := extractCertificateHashFromContext(ctx)
 	var err error
 	var cMsg *proto.SignedGossipMessage
-	useTLS := c.selfCertHash != nil
+	useTLS := c.tlsCerts != nil
+	var selfCertHash []byte
+
+	if useTLS {
+		certReference := c.tlsCerts.TLSServerCert
+		if initiator {
+			certReference = c.tlsCerts.TLSClientCert
+		}
+		selfCertHash = certHashFromRawCert(certReference.Load().(*tls.Certificate).Certificate[0])
+	}
 
 	signer := func(msg []byte) ([]byte, error) {
 		return c.idMapper.Sign(msg)
@@ -420,7 +422,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 		return nil, fmt.Errorf("No TLS certificate")
 	}
 
-	cMsg, err = c.createConnectionMsg(c.PKIID, c.selfCertHash, c.peerIdentity, signer)
+	cMsg, err = c.createConnectionMsg(c.PKIID, selfCertHash, c.peerIdentity, signer)
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +547,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	if c.isStopping() {
 		return fmt.Errorf("Shutting down")
 	}
-	connInfo, err := c.authenticateRemotePeer(stream)
+	connInfo, err := c.authenticateRemotePeer(stream, false)
 	if err != nil {
 		c.logger.Errorf("Authentication failed: %v", err)
 		return err
@@ -653,25 +655,24 @@ type stream interface {
 	grpc.Stream
 }
 
-func createGRPCLayer(port int) (*grpc.Server, net.Listener, api.PeerSecureDialOpts, []byte) {
-	var returnedCertHash []byte
+func createGRPCLayer(port int) (*grpc.Server, net.Listener, api.PeerSecureDialOpts, *common.TLSCertificates) {
 	var s *grpc.Server
 	var ll net.Listener
 	var err error
 	var serverOpts []grpc.ServerOption
 	var dialOpts []grpc.DialOption
 
-	cert := GenerateCertificatesOrPanic()
-	returnedCertHash = certHashFromRawCert(cert.Certificate[0])
+	clientCert := GenerateCertificatesOrPanic()
+	serverCert := GenerateCertificatesOrPanic()
 
 	tlsConf := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
+		Certificates:       []tls.Certificate{serverCert},
 		ClientAuth:         tls.RequestClientCert,
 		InsecureSkipVerify: true,
 	}
 	serverOpts = append(serverOpts, grpc.Creds(credentials.NewTLS(tlsConf)))
 	ta := credentials.NewTLS(&tls.Config{
-		Certificates:       []tls.Certificate{cert},
+		Certificates:       []tls.Certificate{clientCert},
 		InsecureSkipVerify: true,
 	})
 	dialOpts = append(dialOpts, grpc.WithTransportCredentials(ta))
@@ -685,7 +686,10 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, api.PeerSecureDialOp
 		return dialOpts
 	}
 	s = grpc.NewServer(serverOpts...)
-	return s, ll, secureDialOpts, returnedCertHash
+	certs := &common.TLSCertificates{}
+	certs.TLSServerCert.Store(&serverCert)
+	certs.TLSClientCert.Store(&clientCert)
+	return s, ll, secureDialOpts, certs
 }
 
 func topicForAck(nonce uint64, pkiID common.PKIidType) string {

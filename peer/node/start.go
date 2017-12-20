@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/events/producer"
+	common2 "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
@@ -235,7 +236,20 @@ func serve(args []string) error {
 		}
 		return dialOpts
 	}
-	err = service.InitGossipService(serializedIdentity, peerEndpoint.Address, peerServer.Server(),
+
+	var certs *common2.TLSCertificates
+	if peerServer.TLSEnabled() {
+		serverCert := peerServer.ServerCertificate()
+		clientCert, err := peer.GetClientCertificate()
+		if err != nil {
+			return errors.Wrap(err, "failed obtaining client certificates")
+		}
+		certs = &common2.TLSCertificates{}
+		certs.TLSServerCert.Store(&serverCert)
+		certs.TLSClientCert.Store(&clientCert)
+	}
+
+	err = service.InitGossipService(serializedIdentity, peerEndpoint.Address, peerServer.Server(), certs,
 		messageCryptoService, secAdv, secureDialOpts, bootstrap...)
 	if err != nil {
 		return err
