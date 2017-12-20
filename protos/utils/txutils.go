@@ -17,9 +17,10 @@ limitations under the License.
 package utils
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
+
+	"bytes"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -29,11 +30,6 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 )
-
-type signer interface {
-	// Sign the message
-	Sign(msg []byte) ([]byte, error)
-}
 
 // GetPayloads get's the underlying payload objects in a TransactionAction
 func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayload, *peer.ChaincodeAction, error) {
@@ -292,9 +288,9 @@ func CreateProposalResponseFailure(hdrbytes []byte, payl []byte, response *peer.
 }
 
 // GetSignedProposal returns a signed proposal given a Proposal message and a signing identity
-func GetSignedProposal(prop *peer.Proposal, s signer) (*peer.SignedProposal, error) {
+func GetSignedProposal(prop *peer.Proposal, signer msp.SigningIdentity) (*peer.SignedProposal, error) {
 	// check for nil argument
-	if prop == nil || s == nil {
+	if prop == nil || signer == nil {
 		return nil, fmt.Errorf("Nil arguments")
 	}
 
@@ -303,7 +299,7 @@ func GetSignedProposal(prop *peer.Proposal, s signer) (*peer.SignedProposal, err
 		return nil, err
 	}
 
-	signature, err := s.Sign(propBytes)
+	signature, err := signer.Sign(propBytes)
 	if err != nil {
 		return nil, err
 	}
