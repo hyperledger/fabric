@@ -17,12 +17,12 @@ limitations under the License.
 package chaincode
 
 import (
+	"errors"
 	"fmt"
 
 	protcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -39,28 +39,7 @@ func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		Long:      "Upgrade an existing chaincode with the specified one. The new chaincode will immediately replace the existing chaincode upon the transaction committed.",
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cf1 := cf
-			if cf1 == nil {
-				var err error
-				cf1, err = InitCmdFactory(true, true)
-				if err != nil {
-					return err
-				}
-			}
-			return chaincodeUpgrade(cf1, func() error {
-				var err error
-				env, err := upgrade(cmd, cf1)
-				if err != nil {
-					return err
-				}
-
-				if env != nil {
-					logger.Debug("Send signed envelope to orderer")
-					err = cf1.BroadcastClient.Send(env)
-					return err
-				}
-				return nil
-			})
+			return chaincodeUpgrade(cmd, args, cf)
 		},
 	}
 	flagList := []string{
@@ -73,8 +52,6 @@ func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		"policy",
 		"escc",
 		"vscc",
-		"resourceEnvelopeSavePath",
-		"resourceEnvelopeLoadPath",
 	}
 	attachFlags(chaincodeUpgradeCmd, flagList)
 
@@ -134,20 +111,26 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 
 // chaincodeUpgrade upgrades the chaincode. On success, the new chaincode
 // version is printed to STDOUT
-func chaincodeUpgrade(cf *ChaincodeCmdFactory, sendInit sendInitTransaction) error {
-	if channelID == "" {
-		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
-	}
+func chaincodeUpgrade(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	var err error
+	if cf == nil {
+		cf, err = InitCmdFactory(true, true)
+		if err != nil {
+			return err
+		}
+	}
 	defer cf.BroadcastClient.Close()
 
-	ss := &sigSupport{cf.Signer}
-	version, config, err := fetchResourceConfig(cf.EndorserClient, ss, channelID)
+	env, err := upgrade(cmd, cf)
 	if err != nil {
-		return errors.Wrap(err, "failed probing channel version")
+		return err
 	}
-	if version == v11 {
-		return configBasedLifecycleUpdate(ss, cf, config, sendInit)
+
+	if env != nil {
+		logger.Debug("Send signed envelope to orderer")
+		err = cf.BroadcastClient.Send(env)
+		return err
 	}
-	return sendInit()
+
+	return nil
 }
