@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -250,13 +251,13 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 
 		mockAclProvider.Reset()
-		mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, "test", sProp).Return(nil)
+		mockAclProvider.On("CheckACL", resources.LSCC_GETCCINFO, "test", sProp).Return(nil)
 		args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 		res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
 
 		mockAclProvider.Reset()
-		mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, "test", sProp).Return(nil)
+		mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, "test", sProp).Return(nil)
 		args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 		res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -270,7 +271,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 
 		scc.support.(*lscc.MockSupport).GetChaincodeFromLocalStorageRv = nil
 		mockAclProvider.Reset()
-		mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, "test", sProp).Return(nil)
+		mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, "test", sProp).Return(nil)
 		args = [][]byte{[]byte(GETCCDATA), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 		res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 		assert.Equal(t, res.Status, int32(shim.OK), res.Message)
@@ -401,12 +402,12 @@ func TestGETCCINFO(t *testing.T) {
 	sProp.Signature = sProp.ProposalBytes
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, "chain", sProp).Return(errors.New("Failed access control"))
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCINFO, "chain", sProp).Return(errors.New("Failed access control"))
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETCCINFO), []byte("chain"), []byte("chaincode")}, sProp)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCINFO, "chain", sProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCINFO, "chain", sProp).Return(nil)
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte(GETCCINFO), []byte("chain"), []byte("nonexistentchaincode")}, sProp)
 	assert.NotEqual(t, res.Status, int32(shim.OK), res.Message)
 }

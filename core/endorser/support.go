@@ -10,6 +10,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
@@ -107,7 +108,7 @@ func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string
 //CheckACL checks the ACL for the resource for the channel using the
 //SignedProposal from which an id can be extracted for testing against a policy
 func (s *SupportImpl) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
-	return aclmgmt.GetACLProvider().CheckACL(aclmgmt.PROPOSE, chdr.ChannelId, signedProp)
+	return aclmgmt.GetACLProvider().CheckACL(resources.PROPOSE, chdr.ChannelId, signedProp)
 }
 
 // IsJavaCC returns true if the CDS package bytes describe a chaincode

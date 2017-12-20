@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 
@@ -56,7 +57,7 @@ func TestRegisterNilProvider(t *testing.T) {
 func TestBadID(t *testing.T) {
 	reinit()
 	RegisterACLProvider(nil)
-	err := GetACLProvider().CheckACL(PROPOSE, "somechain", "badidtype")
+	err := GetACLProvider().CheckACL(resources.PROPOSE, "somechain", "badidtype")
 	assert.Error(t, err, "Expected error")
 }
 
@@ -70,20 +71,20 @@ func TestBadResource(t *testing.T) {
 func TestOverride(t *testing.T) {
 	reinit()
 	RegisterACLProvider(nil)
-	GetACLProvider().(*aclMgmtImpl).aclOverrides[PROPOSE] = func(res, c string, idinfo interface{}) error {
+	GetACLProvider().(*aclMgmtImpl).aclOverrides[resources.PROPOSE] = func(res, c string, idinfo interface{}) error {
 		return nil
 	}
-	err := GetACLProvider().CheckACL(PROPOSE, "somechain", &pb.SignedProposal{})
+	err := GetACLProvider().CheckACL(resources.PROPOSE, "somechain", &pb.SignedProposal{})
 	assert.NoError(t, err)
-	delete(GetACLProvider().(*aclMgmtImpl).aclOverrides, PROPOSE)
+	delete(GetACLProvider().(*aclMgmtImpl).aclOverrides, resources.PROPOSE)
 }
 
 func TestWithProvider(t *testing.T) {
 	reinit()
 	aclprov := registerACLProvider()
 	prop := &pb.SignedProposal{}
-	aclprov.On("CheckACL", PROPOSE, "somechain", prop).Return(nil)
-	err := GetACLProvider().CheckACL(PROPOSE, "somechain", prop)
+	aclprov.On("CheckACL", resources.PROPOSE, "somechain", prop).Return(nil)
+	err := GetACLProvider().CheckACL(resources.PROPOSE, "somechain", prop)
 	assert.NoError(t, err)
 }
 
@@ -91,7 +92,7 @@ func TestBadACL(t *testing.T) {
 	reinit()
 	aclprov := registerACLProvider()
 	prop := &pb.SignedProposal{}
-	aclprov.On("CheckACL", PROPOSE, "somechain", prop).Return(errors.New("badacl"))
-	err := GetACLProvider().CheckACL(PROPOSE, "somechain", prop)
+	aclprov.On("CheckACL", resources.PROPOSE, "somechain", prop).Return(errors.New("badacl"))
+	err := GetACLProvider().CheckACL(resources.PROPOSE, "somechain", prop)
 	assert.Error(t, err, "Expected error")
 }

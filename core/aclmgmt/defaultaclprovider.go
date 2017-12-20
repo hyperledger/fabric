@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
@@ -53,47 +54,47 @@ func (d *defaultACLProvider) initialize() {
 
 	//-------------- LSCC --------------
 	//p resources (implemented by the chaincode currently)
-	d.pResourcePolicyMap[LSCC_INSTALL] = ""
-	d.pResourcePolicyMap[LSCC_GETCHAINCODES] = ""
-	d.pResourcePolicyMap[LSCC_GETINSTALLEDCHAINCODES] = ""
+	d.pResourcePolicyMap[resources.LSCC_INSTALL] = ""
+	d.pResourcePolicyMap[resources.LSCC_GETCHAINCODES] = ""
+	d.pResourcePolicyMap[resources.LSCC_GETINSTALLEDCHAINCODES] = ""
 
 	//c resources
-	d.cResourcePolicyMap[LSCC_DEPLOY] = ""  //ACL check covered by PROPOSAL
-	d.cResourcePolicyMap[LSCC_UPGRADE] = "" //ACL check covered by PROPOSAL
-	d.cResourcePolicyMap[LSCC_GETCCINFO] = CHANNELREADERS
-	d.cResourcePolicyMap[LSCC_GETDEPSPEC] = CHANNELREADERS
-	d.cResourcePolicyMap[LSCC_GETCCDATA] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.LSCC_DEPLOY] = ""  //ACL check covered by PROPOSAL
+	d.cResourcePolicyMap[resources.LSCC_UPGRADE] = "" //ACL check covered by PROPOSAL
+	d.cResourcePolicyMap[resources.LSCC_GETCCINFO] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.LSCC_GETDEPSPEC] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.LSCC_GETCCDATA] = CHANNELREADERS
 
 	//-------------- QSCC --------------
 	//p resources (none)
 
 	//c resources
-	d.cResourcePolicyMap[QSCC_GetChainInfo] = CHANNELREADERS
-	d.cResourcePolicyMap[QSCC_GetBlockByNumber] = CHANNELREADERS
-	d.cResourcePolicyMap[QSCC_GetBlockByHash] = CHANNELREADERS
-	d.cResourcePolicyMap[QSCC_GetTransactionByID] = CHANNELREADERS
-	d.cResourcePolicyMap[QSCC_GetBlockByTxID] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.QSCC_GetChainInfo] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.QSCC_GetBlockByNumber] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.QSCC_GetBlockByHash] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.QSCC_GetTransactionByID] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.QSCC_GetBlockByTxID] = CHANNELREADERS
 
 	//--------------- CSCC resources -----------
 	//p resources (implemented by the chaincode currently)
-	d.pResourcePolicyMap[CSCC_JoinChain] = ""
-	d.pResourcePolicyMap[CSCC_GetChannels] = ""
+	d.pResourcePolicyMap[resources.CSCC_JoinChain] = ""
+	d.pResourcePolicyMap[resources.CSCC_GetChannels] = ""
 
 	//c resources
-	d.cResourcePolicyMap[CSCC_GetConfigBlock] = CHANNELREADERS
-	d.cResourcePolicyMap[CSCC_GetConfigTree] = CHANNELREADERS
-	d.cResourcePolicyMap[CSCC_SimulateConfigTreeUpdate] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.CSCC_GetConfigBlock] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.CSCC_GetConfigTree] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.CSCC_SimulateConfigTreeUpdate] = CHANNELWRITERS
 
 	//---------------- non-scc resources ------------
 	//Propose
-	d.cResourcePolicyMap[PROPOSE] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.PROPOSE] = CHANNELWRITERS
 
 	//Chaincode-to-Chaincode
-	d.cResourcePolicyMap[CC2CC] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.CC2CC] = CHANNELWRITERS
 
 	//Events (not used currently - for future)
-	d.cResourcePolicyMap[BLOCKEVENT] = CHANNELREADERS
-	d.cResourcePolicyMap[FILTEREDBLOCKEVENT] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.BLOCKEVENT] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.FILTEREDBLOCKEVENT] = CHANNELREADERS
 }
 
 //this should cover an exhaustive list of everything called from the peer

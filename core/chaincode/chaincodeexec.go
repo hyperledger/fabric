@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/peer"
@@ -62,7 +63,7 @@ func GetCDS(ctxt context.Context, txid string, signedProp *pb.SignedProposal, pr
 	}
 
 	if ac.Capabilities().LifecycleViaConfig() {
-		if err := aclmgmt.GetACLProvider().CheckACL(aclmgmt.LSCC_GETDEPSPEC, chainID, signedProp); err != nil {
+		if err := aclmgmt.GetACLProvider().CheckACL(resources.LSCC_GETDEPSPEC, chainID, signedProp); err != nil {
 			return nil, errors.Errorf("Authorization request failed %s: %s", chainID, err)
 		}
 
@@ -104,7 +105,7 @@ func GetChaincodeDefinition(ctxt context.Context, txid string, signedProp *pb.Si
 	}
 
 	if ac.Capabilities().LifecycleViaConfig() {
-		if err := aclmgmt.GetACLProvider().CheckACL(aclmgmt.LSCC_GETCCDATA, chainID, signedProp); err != nil {
+		if err := aclmgmt.GetACLProvider().CheckACL(resources.LSCC_GETCCDATA, chainID, signedProp); err != nil {
 			return nil, errors.Errorf("Authorization request failed %s: %s", chainID, err)
 		}
 

@@ -32,6 +32,7 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -132,7 +133,7 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	assert.Equal(t, res.Message, "Requested function fooFunction not found.")
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.CSCC_GetConfigBlock, "testChainID", (*pb.SignedProposal)(nil)).Return(errors.New("Nil SignedProposal"))
+	mockAclProvider.On("CheckACL", resources.CSCC_GetConfigBlock, "testChainID", (*pb.SignedProposal)(nil)).Return(errors.New("Nil SignedProposal"))
 	args = [][]byte{[]byte("GetConfigBlock"), []byte("testChainID")}
 	res = stub.MockInvokeWithSignedProposal("4", args, nil)
 	assert.Equal(t, res.Status, int32(shim.ERROR), "CSCC invoke expected to fail no signed proposal provided")
@@ -274,7 +275,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	// Test an ACL failure on GetConfigBlock
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.CSCC_GetConfigBlock, "mytestchainid", sProp).Return(errors.New("Failed authorization"))
+	mockAclProvider.On("CheckACL", resources.CSCC_GetConfigBlock, "mytestchainid", sProp).Return(errors.New("Failed authorization"))
 	args = [][]byte{[]byte("GetConfigBlock"), []byte(chainID)}
 	res = stub.MockInvokeWithSignedProposal("2", args, sProp)
 	if res.Status == shim.OK {
@@ -285,7 +286,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	// Test with ACL okay
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.CSCC_GetConfigBlock, "mytestchainid", sProp).Return(nil)
+	mockAclProvider.On("CheckACL", resources.CSCC_GetConfigBlock, "mytestchainid", sProp).Return(nil)
 	if res := stub.MockInvokeWithSignedProposal("2", args, sProp); res.Status != shim.OK {
 		t.Fatalf("cscc invoke GetConfigBlock failed with: %v", res.Message)
 	}

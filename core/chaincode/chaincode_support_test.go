@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -381,9 +382,9 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 
 	//setup CheckACL calls
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID, sprop).Return(nil)
 
 	//bad txid in response (should be "1"), should fail
 	resp := &mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("init succeeded")}), Txid: "unknowntxid", ChannelId: chainID}}
@@ -410,11 +411,11 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 	//    correct block number for ending sim
 
 	respSet = &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "", Key: "A", Value: []byte("100")}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "", Key: "B", Value: []byte("200")}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "c1", Key: "C", Value: []byte("300")}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "c2", Key: "C", Value: []byte("300")}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), ChaincodeEvent: &pb.ChaincodeEvent{ChaincodeId: ccname}, Txid: txid, ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "", Key: "A", Value: []byte("100")}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "", Key: "B", Value: []byte("200")}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "c1", Key: "C", Value: []byte("300")}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "c2", Key: "C", Value: []byte("300")}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), ChaincodeEvent: &pb.ChaincodeEvent{ChaincodeId: ccname}, Txid: txid, ChannelId: chainID}}}}
 
 	cccid.Version = "1"
 	execCC(t, ctxt, ccSide, cccid, false, false, done, cis, respSet)
@@ -439,26 +440,26 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm)
 
 	//setup CheckACL calls
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID, sprop).Return(nil)
 
 	respSet := &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "", Key: "A"}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "", Key: "B"}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "", Key: "A", Value: []byte("90")}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "", Key: "B", Value: []byte("210")}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "", Key: "TODEL", Value: []byte("-to-be-deleted-")}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "", Key: "A"}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "", Key: "B"}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "", Key: "A", Value: []byte("90")}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "", Key: "B", Value: []byte("210")}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "", Key: "TODEL", Value: []byte("-to-be-deleted-")}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID}}}}
 
 	cccid := ccprovider.NewCCContext(chainID, ccname, "0", txid, false, sprop, prop)
 	execCC(t, ctxt, ccSide, cccid, false, false, done, cis, respSet)
 
 	//delete the extra var
 	respSet = &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "", Key: "TODEL"}), Txid: "3", ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Payload: putils.MarshalOrPanic(&pb.DelState{Collection: "", Key: "TODEL"}), Txid: "3", ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: "3", ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "", Key: "TODEL"}), Txid: "3", ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Payload: putils.MarshalOrPanic(&pb.DelState{Collection: "", Key: "TODEL"}), Txid: "3", ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: "3", ChannelId: chainID}}}}
 
 	cccid.TxID = "3"
 	execCC(t, ctxt, ccSide, cccid, false, false, done, cis, respSet)
@@ -466,8 +467,8 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm)
 	//get the extra var and delete it
 	//NOTE- we are calling ExecuteWithErrorFilter which returns error if chaincode returns ERROR response
 	respSet = &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "", Key: "TODEL"}), Txid: "4", ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.ERROR, Message: "variable not found"}), Txid: "4", ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "", Key: "TODEL"}), Txid: "4", ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.ERROR, Message: "variable not found"}), Txid: "4", ChannelId: chainID}}}}
 
 	cccid.TxID = "4"
 	execCC(t, ctxt, ccSide, cccid, false, true, done, cis, respSet)
@@ -491,19 +492,19 @@ func invokePrivateDataGetPutDelCC(t *testing.T, chainID, ccname string, ccSide *
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
 
 	respSet := &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "", Key: "C"}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.ERROR, Message: "variable not found"}), Txid: txid, ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "", Key: "C"}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.ERROR, Message: "variable not found"}), Txid: txid, ChannelId: chainID}}}}
 
 	cccid := ccprovider.NewCCContext(chainID, ccname, "0", txid, false, sprop, prop)
 	execCC(t, ctxt, ccSide, cccid, false, true, done, cis, respSet)
 
 	respSet = &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "c1", Key: "C"}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "c1", Key: "C", Value: []byte("310")}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "c1", Key: "A", Value: []byte("100")}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "c1", Key: "B", Value: []byte("100")}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Payload: putils.MarshalOrPanic(&pb.DelState{Collection: "c2", Key: "C"}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "c1", Key: "C"}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "c1", Key: "C", Value: []byte("310")}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "c1", Key: "A", Value: []byte("100")}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: putils.MarshalOrPanic(&pb.PutState{Collection: "c1", Key: "B", Value: []byte("100")}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Payload: putils.MarshalOrPanic(&pb.DelState{Collection: "c2", Key: "C"}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID}}}}
 
 	cccid = ccprovider.NewCCContext(chainID, ccname, "0", txid, false, sprop, prop)
 	execCC(t, ctxt, ccSide, cccid, false, false, done, cis, respSet)
@@ -514,8 +515,8 @@ func invokePrivateDataGetPutDelCC(t *testing.T, chainID, ccname string, ccSide *
 	ctxt, txsim, sprop, prop = startTx(t, chainID, cis, txid)
 
 	respSet = &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "c2", Key: "C"}), Txid: txid, ChannelId: chainID}},
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.ERROR, Message: "variable not found"}), Txid: txid, ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: putils.MarshalOrPanic(&pb.GetState{Collection: "c2", Key: "C"}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.ERROR, Message: "variable not found"}), Txid: txid, ChannelId: chainID}}}}
 
 	cccid = ccprovider.NewCCContext(chainID, ccname, "0", txid, false, sprop, prop)
 	execCC(t, ctxt, ccSide, cccid, false, true, done, cis, respSet)
@@ -540,9 +541,9 @@ func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSi
 
 	//setup CheckACL calls
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID, sprop).Return(nil)
 
 	//create the response
 	queryStateNextFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
@@ -607,10 +608,10 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 
 	//setup CheckACL calls
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.CC2CC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID, sprop).Return(nil)
 
 	cccid := ccprovider.NewCCContext(chainID, calledCC, "0", txid, false, sprop, prop)
 
@@ -628,21 +629,21 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 
 	//we want hooks for both chaincodes
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.CC2CC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.CC2CC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID, sprop).Return(nil)
 
 	sysCCVers := util.GetSysCCVersion()
 	//call a callable system CC, a regular cc, a regular but different cc on a different chain, a regular but same cc on a different chain,  and an uncallable system cc and expect an error inthe last one
 	respSet := &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "lscc:" + sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte{}}}}), Txid: txid, ChannelId: chainID}},
-		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte{}}}}), Txid: txid, ChannelId: chainID}},
-		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID2}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte{}}}}), Txid: txid, ChannelId: chainID}},
-		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "vscc:" + sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte{}}}}), Txid: txid, ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "lscc:" + sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID2}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "vscc:" + sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}}}}
 
 	respSet2 := &mockpeer.MockResponseSet{nil, nil, []*mockpeer.MockResponse{
 		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID}}}}
@@ -662,19 +663,19 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	ctxt, txsim, sprop, prop = startTx(t, chainID, cis, txid)
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID, sprop).Return(errors.New("Bad ACL calling CC"))
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.CC2CC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.CC2CC, chainID, sprop).Return(errors.New("Bad ACL calling CC"))
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID, sprop).Return(nil)
 	//call regular cc but without ACL on called CC
 	respSet = &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte{}}}}), Txid: txid, ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}}}}
 
 	respSet2 = &mockpeer.MockResponseSet{nil, nil, []*mockpeer.MockResponse{
-		&mockpeer.MockResponse{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: putils.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID}}}}
 
 	calledCCSide.SetResponses(respSet2)
 
@@ -701,9 +702,9 @@ func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mo
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID, sprop).Return(nil)
 
 	kvs := make([]*plgr.KV, 1000)
 	for i := 0; i < 1000; i++ {
@@ -769,9 +770,9 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 	ctxt, txsim, sprop, prop := startTx(t, chainID, cis, txid)
 
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID, sprop).Return(nil)
 
 	kvs := make([]*plgr.KV, 1000)
 	for i := 0; i < 1000; i++ {
@@ -1066,10 +1067,10 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 
 	//setup CheckACL calls
 	mockAclProvider.Reset()
-	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.CC2CC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID2, sprop).Return(nil)
 
 	cccid := ccprovider.NewCCContext(chainID2, ccname, "0", txid, false, sprop, prop)
 
@@ -1091,20 +1092,20 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 	txid = util.GenerateUUID()
 	ctxt, txsim, sprop, prop = startTx(t, chainID, cis, txid)
 
-	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.CC2CC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID, sprop).Return(nil)
 
-	mockAclProvider.On("CheckACL", aclmgmt.CC2CC, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETDEPSPEC, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.LSCC_GETCCDATA, chainID2, sprop).Return(nil)
-	mockAclProvider.On("CheckACL", aclmgmt.PROPOSE, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.CC2CC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETDEPSPEC, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.LSCC_GETCCDATA, chainID2, sprop).Return(nil)
+	mockAclProvider.On("CheckACL", resources.PROPOSE, chainID2, sprop).Return(nil)
 
 	txid = "cctosamecctx"
 	respSet := &mockpeer.MockResponseSet{errorFunc, nil, []*mockpeer.MockResponse{
-		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: ccname + ":0/" + chainID2}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte{}}}}), Txid: txid, ChannelId: chainID}},
-		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: ccname + ":0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte{}}}}), Txid: txid, ChannelId: chainID}}}}
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: ccname + ":0/" + chainID2}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
+		{&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: putils.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: ccname + ":0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}}}}
 
 	cccid = ccprovider.NewCCContext(chainID, ccname, "0", txid, false, sprop, prop)
 

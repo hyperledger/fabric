@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -588,11 +589,11 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		var resource string
 		switch function {
 		case GETCCINFO:
-			resource = aclmgmt.LSCC_GETCCINFO
+			resource = resources.LSCC_GETCCINFO
 		case GETDEPSPEC:
-			resource = aclmgmt.LSCC_GETDEPSPEC
+			resource = resources.LSCC_GETDEPSPEC
 		case GETCCDATA:
-			resource = aclmgmt.LSCC_GETCCDATA
+			resource = resources.LSCC_GETCCDATA
 		}
 		if err = aclmgmt.GetACLProvider().CheckACL(resource, chain, sp); err != nil {
 			return shim.Error(fmt.Sprintf("Authorization request failed %s: %s", chain, err))
