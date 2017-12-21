@@ -119,7 +119,9 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 			grpcServer.serverCertificate.Store(cert)
 
 			//set up our TLS config
-
+			if len(secureConfig.CipherSuites) == 0 {
+				secureConfig.CipherSuites = tlsCipherSuites
+			}
 			getCert := func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 				cert := grpcServer.serverCertificate.Load().(tls.Certificate)
 				return &cert, nil
@@ -128,6 +130,7 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 			grpcServer.tlsConfig = &tls.Config{
 				GetCertificate:         getCert,
 				SessionTicketsDisabled: true,
+				CipherSuites:           secureConfig.CipherSuites,
 			}
 			grpcServer.tlsConfig.ClientAuth = tls.RequestClientCert
 			//check if client authentication is required

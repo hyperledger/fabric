@@ -1490,3 +1490,103 @@ func TestUpdateTLSCert(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "certificate is valid for notlocalhost.org1.example.com, notlocalhost, not localhost")
 }
+
+func TestCipherSuites(t *testing.T) {
+	t.Parallel()
+
+	// default cipher suites
+	defaultCipherSuites := []uint16{
+		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+	}
+	// the other cipher suites supported by Go
+	otherCipherSuites := []uint16{
+		tls.TLS_RSA_WITH_RC4_128_SHA,
+		tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+		tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+		tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
+		tls.TLS_ECDHE_ECDSA_WITH_RC4_128_SHA,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+		tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA,
+		tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
+		tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+		tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+	}
+	certPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs",
+		"Org1-server1-cert.pem"))
+	assert.NoError(t, err)
+	keyPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs",
+		"Org1-server1-key.pem"))
+	assert.NoError(t, err)
+	caPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs",
+		"Org1-cert.pem"))
+	assert.NoError(t, err)
+	certPool, err := createCertPool([][]byte{caPEM})
+	assert.NoError(t, err)
+
+	serverConfig := comm.ServerConfig{
+		SecOpts: &comm.SecureOptions{
+			ServerCertificate: certPEM,
+			ServerKey:         keyPEM,
+			UseTLS:            true,
+		}}
+
+	var tests = []struct {
+		name          string
+		port          int
+		clientCiphers []uint16
+		success       bool
+	}{
+		{
+			name:    "server default / client all",
+			port:    8340,
+			success: true,
+		},
+		{
+			name:          "server default / client match",
+			port:          8341,
+			clientCiphers: defaultCipherSuites,
+			success:       true,
+		},
+		{
+			name:          "server default / client no match",
+			port:          8342,
+			clientCiphers: otherCipherSuites,
+			success:       false,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			t.Logf("Running test %s ...", test.name)
+			address := fmt.Sprintf("localhost:%d", test.port)
+			srv, err := comm.NewGRPCServer(address, serverConfig)
+			assert.NoError(t, err)
+			go srv.Start()
+			defer srv.Stop()
+			tlsConfig := &tls.Config{
+				RootCAs:      certPool,
+				CipherSuites: test.clientCiphers,
+			}
+			_, err = tls.Dial("tcp", address, tlsConfig)
+			if test.success {
+				assert.NoError(t, err)
+			} else {
+				t.Log(err)
+				assert.Contains(t, err.Error(), "handshake failure")
+			}
+		})
+	}
+}
