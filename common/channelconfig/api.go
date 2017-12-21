@@ -123,6 +123,9 @@ type ApplicationCapabilities interface {
 	// LifecycleViaConfig returns true if chaincode lifecycle should be managed via the resources config
 	// tree rather than via the deprecated v1.0 endorser tx mechanism.
 	LifecycleViaConfig() bool
+
+	// PrivateChannelData returns true if support for private channel data (a.k.a. collections) is enabled.
+	PrivateChannelData() bool
 }
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel
