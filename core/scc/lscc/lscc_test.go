@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/mocks/config"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -32,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -547,6 +549,45 @@ func TestErrors(t *testing.T) {
 	assert.True(t, len(err3.Error()) > 0)
 }
 
+func TestPutChaincodeCollectionData(t *testing.T) {
+	scc := new(lifeCycleSysCC)
+	stub := shim.NewMockStub("lscc", scc)
+
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+
+	err := scc.putChaincodeCollectionData(stub, nil, nil)
+	assert.Error(t, err)
+
+	cd := &ccprovider.ChaincodeData{Name: "foo"}
+
+	err = scc.putChaincodeCollectionData(stub, cd, nil)
+	assert.NoError(t, err)
+
+	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection"}}}
+	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{cc}}
+	ccpBytes, err := proto.Marshal(ccp)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccpBytes)
+
+	stub.MockTransactionStart("foo")
+	err = scc.putChaincodeCollectionData(stub, cd, []byte("barf"))
+	assert.Error(t, err)
+	stub.MockTransactionEnd("foo")
+
+	stub.MockTransactionStart("foo")
+	err = scc.putChaincodeCollectionData(stub, cd, ccpBytes)
+	assert.NoError(t, err)
+	stub.MockTransactionEnd("foo")
+
+	stub.MockTransactionStart("foo")
+	err = scc.putChaincodeCollectionData(stub, cd, ccpBytes)
+	assert.Error(t, err)
+	stub.MockTransactionEnd("foo")
+}
+
 var id msp.SigningIdentity
 var chainid string = util.GetTestChainID()
 var mockAclProvider *mocks.MockACLProvider
@@ -563,7 +604,14 @@ func TestMain(m *testing.M) {
 	mockAclProvider = &mocks.MockACLProvider{}
 	mockAclProvider.Reset()
 
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&mscc.MocksccProviderFactory{})
+	sysccprovider.RegisterSystemChaincodeProviderFactory(
+		&mscc.MocksccProviderFactory{
+			ApplicationConfigBool: true,
+			ApplicationConfigRv: &config.MockApplication{
+				CapabilitiesRv: &config.MockApplicationCapabilities{},
+			},
+		},
+	)
 	aclmgmt.RegisterACLProvider(mockAclProvider)
 
 	os.Exit(m.Run())

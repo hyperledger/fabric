@@ -17,13 +17,16 @@ limitations under the License.
 package vscc
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/scc/lscc"
@@ -107,6 +110,13 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		return shim.Error(err.Error())
 	}
 
+	ac, exists := vscc.sccprovider.GetApplicationConfig(chdr.ChannelId)
+	if !exists {
+		err = errors.Wrap(err, "failure while unmarshalling VSCCArgs")
+		logger.Errorf(err.Error())
+		return shim.Error(err.Error())
+	}
+
 	// get the policy
 	mgr := mspmgmt.GetManagerForChain(chdr.ChannelId)
 	pProvider := cauthdsl.NewPolicyProvider(mgr)
@@ -163,7 +173,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		if hdrExt.ChaincodeId.Name == "lscc" {
 			logger.Debugf("VSCC info: doing special validation for LSCC")
 
-			err = vscc.ValidateLSCCInvocation(stub, chdr.ChannelId, env, cap, payl)
+			err = vscc.ValidateLSCCInvocation(stub, chdr.ChannelId, env, cap, payl, ac.Capabilities())
 			if err != nil {
 				logger.Errorf("VSCC error: ValidateLSCCInvocation failed, err %s", err)
 				return shim.Error(err.Error())
@@ -211,7 +221,72 @@ func (vscc *ValidatorOneValidSignature) checkInstantiationPolicy(chainName strin
 	return nil
 }
 
-func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.ChaincodeStubInterface, chid string, env *common.Envelope, cap *pb.ChaincodeActionPayload, payl *common.Payload) error {
+// validateDeployRWSetAndCollection performs validation of the rwset
+// of an LSCC deploy operation and then it validates any collection
+// configuration
+func (vscc *ValidatorOneValidSignature) validateDeployRWSetAndCollection(
+	lsccrwset *kvrwset.KVRWSet,
+	cdRWSet *ccprovider.ChaincodeData,
+	lsccArgs [][]byte,
+) error {
+	/********************************************/
+	/* security check 0.a - validation of rwset */
+	/********************************************/
+	// there can only be one or two writes
+	if len(lsccrwset.Writes) > 2 {
+		return errors.New("LSCC can only issue one or two putState upon deploy")
+	}
+
+	/**********************************************************/
+	/* security check 0.b - validation of the collection data */
+	/**********************************************************/
+	var collectionsConfigArgs []byte
+	if len(lsccArgs) > 5 {
+		collectionsConfigArgs = lsccArgs[5]
+	}
+
+	var collectionsConfigLedger []byte
+	if len(lsccrwset.Writes) == 2 {
+		key := privdata.BuildCollectionKVSKey(cdRWSet.Name)
+		if lsccrwset.Writes[1].Key != key {
+			return errors.Errorf("invalid key for the collection of chaincode %s:%s; expected '%s', received '%s'",
+				cdRWSet.Name, cdRWSet.Version, key, lsccrwset.Writes[1].Key)
+		}
+
+		collectionsConfigLedger = lsccrwset.Writes[1].Value
+	}
+
+	if !bytes.Equal(collectionsConfigArgs, collectionsConfigLedger) {
+		return errors.Errorf("collection configuration mismatch for chaincode %s:%s",
+			cdRWSet.Name, cdRWSet.Version)
+	}
+
+	// TODO: make sure there isn't any existing collection on the ledger for this chaincode
+	//       I'll take care of this as soon as we have implemented a collection store interface
+	//	 to retrieve collection configuration data from the ledger (https://jira.hyperledger.org/browse/FAB-5872)
+
+	if collectionsConfigArgs != nil {
+		collections := &common.CollectionConfigPackage{}
+		err := proto.Unmarshal(collectionsConfigArgs, collections)
+		if err != nil {
+			return errors.Errorf("invalid collection configuration supplied for chaincode %s:%s",
+				cdRWSet.Name, cdRWSet.Version)
+		}
+	}
+
+	// TODO: FAB-6526 - to add validation of the collections object
+
+	return nil
+}
+
+func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
+	stub shim.ChaincodeStubInterface,
+	chid string,
+	env *common.Envelope,
+	cap *pb.ChaincodeActionPayload,
+	payl *common.Payload,
+	ac channelconfig.ApplicationCapabilities,
+) error {
 	cpp, err := utils.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
 	if err != nil {
 		logger.Errorf("VSCC error: GetChaincodeProposalPayload failed, err %s", err)
@@ -241,8 +316,13 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.Chainco
 	case lscc.UPGRADE, lscc.DEPLOY:
 		logger.Debugf("VSCC info: validating invocation of lscc function %s on arguments %#v", lsccFunc, lsccArgs)
 
-		if len(lsccArgs) < 2 || len(lsccArgs) > 5 {
-			return fmt.Errorf("Wrong number of arguments for invocation lscc(%s): expected between 2 and 5, received %d", lsccFunc, len(lsccArgs))
+		if len(lsccArgs) < 2 {
+			return fmt.Errorf("Wrong number of arguments for invocation lscc(%s): expected at least 2, received %d", lsccFunc, len(lsccArgs))
+		}
+
+		if (!ac.PrivateChannelData() && len(lsccArgs) > 5) ||
+			(ac.PrivateChannelData() && len(lsccArgs) > 6) {
+			return fmt.Errorf("Wrong number of arguments for invocation lscc(%s): received %d", lsccFunc, len(lsccArgs))
 		}
 
 		cdsArgs, err := utils.GetChaincodeDeploymentSpec(lsccArgs[1])
@@ -291,15 +371,15 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.Chainco
 		/******************************************/
 		/* security check 0 - validation of rwset */
 		/******************************************/
-		// there has to be one
+		// there has to be a write-set
 		if lsccrwset == nil {
 			return errors.New("No read write set for lscc was found")
 		}
-		// there can only be a single one
-		if len(lsccrwset.Writes) != 1 {
-			return errors.New("LSCC can only issue a single putState upon deploy/upgrade")
+		// there must be at least one write
+		if len(lsccrwset.Writes) < 1 {
+			return errors.New("LSCC must issue at least one single putState upon deploy/upgrade")
 		}
-		// the key name must be the chaincode id
+		// the first key name must be the chaincode id
 		if lsccrwset.Writes[0].Key != cdsArgs.ChaincodeSpec.ChaincodeId.Name {
 			return fmt.Errorf("Expected key %s, found %s", cdsArgs.ChaincodeSpec.ChaincodeId.Name, lsccrwset.Writes[0].Key)
 		}
@@ -328,6 +408,22 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.Chainco
 
 		switch lsccFunc {
 		case lscc.DEPLOY:
+			/****************************************************************************/
+			/* security check 0.a - validation of rwset (and of collections if enabled) */
+			/****************************************************************************/
+			if ac.PrivateChannelData() {
+				// do extra validation for collections
+				err = vscc.validateDeployRWSetAndCollection(lsccrwset, cdRWSet, lsccArgs)
+				if err != nil {
+					return err
+				}
+			} else {
+				// there can only be a single ledger write
+				if len(lsccrwset.Writes) != 1 {
+					return errors.New("LSCC can only issue a single putState upon deploy/upgrade")
+				}
+			}
+
 			/*****************************************************/
 			/* security check 1 - check the instantiation policy */
 			/*****************************************************/
@@ -353,6 +449,14 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(stub shim.Chainco
 			}
 
 		case lscc.UPGRADE:
+			/********************************************/
+			/* security check 0.a - validation of rwset */
+			/********************************************/
+			// there can only be a single ledger write
+			if len(lsccrwset.Writes) != 1 {
+				return errors.New("LSCC can only issue one putState upon upgrade")
+			}
+
 			/**************************************************************/
 			/* security check 1 - cc in the LCCC table of instantiated cc */
 			/**************************************************************/

@@ -27,13 +27,16 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/policyprovider"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/pkg/errors"
 )
 
 //The life cycle system chaincode manages chaincodes deployed
@@ -74,6 +77,18 @@ const (
 
 	allowedCharsChaincodeName = "[A-Za-z0-9_-]+"
 	allowedCharsVersion       = "[A-Za-z0-9_.-]+"
+
+	// Collecion-specific constants
+
+	// collectionSeparator is the separator used to build the KVS
+	// key storing the collections of a chaincode; note that we are
+	// using as separator a character which is illegal for either the
+	// name or the version of a chaincode so there cannot be any
+	// collisions when chosing the name
+	collectionSeparator = "~"
+	// collectionSuffix is the suffix of the KVS key storing the
+	// collections of a chaincode
+	collectionSuffix = "collection"
 )
 
 // Support contains functions that LSCC requires to execute its tasks
@@ -146,6 +161,44 @@ func (lscc *lifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, c
 	err = stub.PutState(cd.Name, cdbytes)
 
 	return err
+}
+
+// putChaincodeCollectionData adds collection data for the chaincode
+func (lscc *lifeCycleSysCC) putChaincodeCollectionData(stub shim.ChaincodeStubInterface, cd *ccprovider.ChaincodeData, collectionConfigBytes []byte) error {
+	if cd == nil {
+		return errors.New("nil ChaincodeData")
+	}
+
+	if len(collectionConfigBytes) == 0 {
+		logger.Debug("No collection configuration specified")
+		return nil
+	}
+
+	collections := &common.CollectionConfigPackage{}
+	err := proto.Unmarshal(collectionConfigBytes, collections)
+	if err != nil {
+		return errors.Errorf("invalid collection configuration supplied for chaincode %s:%s", cd.Name, cd.Version)
+	}
+
+	// TODO: FAB-6526 - to add validation of the collections object
+
+	key := privdata.BuildCollectionKVSKey(cd.Name)
+
+	existingCollection, err := stub.GetState(key)
+	if err != nil {
+		return errors.WithMessage(err, fmt.Sprintf("unable to check whether collection existed earlier for chaincode %s:%s", cd.Name, cd.Version))
+	}
+	// currently, collections are immutable. Support for collection upgrade will be added later
+	if existingCollection != nil {
+		return errors.Errorf("collection data should not exist for chaincode %s:%s", cd.Name, cd.Version)
+	}
+
+	err = stub.PutState(key, collectionConfigBytes)
+	if err != nil {
+		return errors.WithMessage(err, fmt.Sprintf("error putting collection for chaincode %s:%s", cd.Name, cd.Version))
+	}
+
+	return nil
 }
 
 //checks for existence of chaincode on the given channel
@@ -351,7 +404,13 @@ func (lscc *lifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 
 // executeDeployOrUpgrade routes the code path either to executeDeploy or executeUpgrade
 // depending on its function argument
-func (lscc *lifeCycleSysCC) executeDeployOrUpgrade(stub shim.ChaincodeStubInterface, chainname string, cds *pb.ChaincodeDeploymentSpec, policy []byte, escc []byte, vscc []byte, function string) (*ccprovider.ChaincodeData, error) {
+func (lscc *lifeCycleSysCC) executeDeployOrUpgrade(
+	stub shim.ChaincodeStubInterface,
+	chainname string,
+	cds *pb.ChaincodeDeploymentSpec,
+	policy, escc, vscc, collectionConfigBytes []byte,
+	function string,
+) (*ccprovider.ChaincodeData, error) {
 	if err := lscc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name); err != nil {
 		return nil, err
 	}
@@ -368,7 +427,7 @@ func (lscc *lifeCycleSysCC) executeDeployOrUpgrade(stub shim.ChaincodeStubInterf
 
 	switch function {
 	case DEPLOY:
-		return lscc.executeDeploy(stub, chainname, cds, policy, escc, vscc, cd, ccpack)
+		return lscc.executeDeploy(stub, chainname, cds, policy, escc, vscc, cd, ccpack, collectionConfigBytes)
 	case UPGRADE:
 		return lscc.executeUpgrade(stub, chainname, cds, policy, escc, vscc, cd, ccpack)
 	default:
@@ -378,7 +437,17 @@ func (lscc *lifeCycleSysCC) executeDeployOrUpgrade(stub shim.ChaincodeStubInterf
 }
 
 // executeDeploy implements the "instantiate" Invoke transaction
-func (lscc *lifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chainname string, cds *pb.ChaincodeDeploymentSpec, policy []byte, escc []byte, vscc []byte, cdfs *ccprovider.ChaincodeData, ccpackfs ccprovider.CCPackage) (*ccprovider.ChaincodeData, error) {
+func (lscc *lifeCycleSysCC) executeDeploy(
+	stub shim.ChaincodeStubInterface,
+	chainname string,
+	cds *pb.ChaincodeDeploymentSpec,
+	policy []byte,
+	escc []byte,
+	vscc []byte,
+	cdfs *ccprovider.ChaincodeData,
+	ccpackfs ccprovider.CCPackage,
+	collectionConfigBytes []byte,
+) (*ccprovider.ChaincodeData, error) {
 	//just test for existence of the chaincode in the LSCC
 	_, err := lscc.getCCInstance(stub, cds.ChaincodeSpec.ChaincodeId.Name)
 	if err == nil {
@@ -406,8 +475,16 @@ func (lscc *lifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 	}
 
 	err = lscc.putChaincodeData(stub, cdfs)
+	if err != nil {
+		return nil, err
+	}
 
-	return cdfs, err
+	err = lscc.putChaincodeCollectionData(stub, cdfs, collectionConfigBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return cdfs, nil
 }
 
 // executeUpgrade implements the "upgrade" Invoke transaction.
@@ -521,7 +598,9 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		}
 		return shim.Success([]byte("OK"))
 	case DEPLOY, UPGRADE:
-		if len(args) < 3 || len(args) > 6 {
+		// we expect a minimum of 3 arguments, the function
+		// name, the chain name and deployment spec
+		if len(args) < 3 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 
@@ -531,6 +610,17 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 
 		if !lscc.isValidChainName(chainname) {
 			return shim.Error(InvalidChainNameErr(chainname).Error())
+		}
+
+		ac, exists := lscc.sccprovider.GetApplicationConfig(chainname)
+		if !exists {
+			logger.Panicf("programming error, non-existent appplication config for channel '%s'", chainname)
+		}
+
+		// the maximum number of arguments depends on the capability of the channel
+		if (!ac.Capabilities().PrivateChannelData() && len(args) > 6) ||
+			(ac.Capabilities().PrivateChannelData() && len(args) > 7) {
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 
 		depSpec := args[2]
@@ -543,12 +633,13 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		// args[3] is a marshalled SignaturePolicyEnvelope representing the endorsement policy
 		// args[4] is the name of escc
 		// args[5] is the name of vscc
-		var policy []byte
+		// args[6] is a marshalled CollectionConfigPackage struct
+		var EP []byte
 		if len(args) > 3 && len(args[3]) > 0 {
-			policy = args[3]
+			EP = args[3]
 		} else {
 			p := cauthdsl.SignedByAnyMember(peer.GetMSPIDs(chainname))
-			policy, err = utils.Marshal(p)
+			EP, err = utils.Marshal(p)
 			if err != nil {
 				return shim.Error(err.Error())
 			}
@@ -568,7 +659,14 @@ func (lscc *lifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			vscc = []byte("vscc")
 		}
 
-		cd, err := lscc.executeDeployOrUpgrade(stub, chainname, cds, policy, escc, vscc, function)
+		var collectionsConfig []byte
+		// we proceed with a non-nil collection configuration only if
+		// we support the PrivateChannelData capability
+		if ac.Capabilities().PrivateChannelData() && len(args) > 6 {
+			collectionsConfig = args[6]
+		}
+
+		cd, err := lscc.executeDeployOrUpgrade(stub, chainname, cds, EP, escc, vscc, collectionsConfig, function)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
