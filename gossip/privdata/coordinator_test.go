@@ -335,7 +335,11 @@ func (cap *collectionAccessPolicy) MemberOrgs() []string {
 }
 
 func (cap *collectionAccessPolicy) RequiredPeerCount() int {
-	return viper.GetInt("peer.gossip.pvtData.minPeers")
+	return 1
+}
+
+func (cap *collectionAccessPolicy) MaximumPeerCount() int {
+	return 2
 }
 
 func (cap *collectionAccessPolicy) AccessFilter() privdata.Filter {
