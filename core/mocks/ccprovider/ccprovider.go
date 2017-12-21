@@ -38,12 +38,13 @@ type MockCcProviderFactory struct {
 
 // NewChaincodeProvider returns a mock implementation of the ccprovider.ChaincodeProvider interface
 func (c *MockCcProviderFactory) NewChaincodeProvider() ccprovider.ChaincodeProvider {
-	return &mockCcProviderImpl{c.ExecuteResultProvider}
+	return &MockCcProviderImpl{ExecuteResultProvider: c.ExecuteResultProvider}
 }
 
 // mockCcProviderImpl is a mock implementation of the chaincode provider
-type mockCcProviderImpl struct {
-	executeResultProvider ExecuteChaincodeResultProvider
+type MockCcProviderImpl struct {
+	ExecuteResultProvider    ExecuteChaincodeResultProvider
+	ExecuteChaincodeResponse *peer.Response
 }
 
 type mockCcProviderContextImpl struct {
@@ -121,34 +122,43 @@ func (m *MockTxSim) SetPrivateDataMultipleKeys(namespace, collection string, kvs
 }
 
 // GetContext does nothing
-func (c *mockCcProviderImpl) GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error) {
+func (c *MockCcProviderImpl) GetContext(ledger ledger.PeerLedger, txid string) (context.Context, ledger.TxSimulator, error) {
 	return nil, &MockTxSim{}, nil
 }
 
 // GetCCContext does nothing
-func (c *mockCcProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, signedProp *peer.SignedProposal, prop *peer.Proposal) interface{} {
+func (c *MockCcProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, signedProp *peer.SignedProposal, prop *peer.Proposal) interface{} {
 	return &mockCcProviderContextImpl{}
 }
 
+// GetCCValidationInfoFromLSCC does nothing
+func (c *MockCcProviderImpl) GetCCValidationInfoFromLSCC(ctxt context.Context, txid string, signedProp *peer.SignedProposal, prop *peer.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
+	return "vscc", nil, nil
+}
+
 // ExecuteChaincode does nothing
-func (c *mockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
-	if c.executeResultProvider != nil {
-		return c.executeResultProvider.ExecuteChaincodeResult()
+func (c *MockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
+	if c.ExecuteResultProvider != nil {
+		return c.ExecuteResultProvider.ExecuteChaincodeResult()
 	}
-	return &peer.Response{Status: shim.OK}, nil, nil
+	if c.ExecuteChaincodeResponse == nil {
+		return &peer.Response{Status: shim.OK}, nil, nil
+	} else {
+		return c.ExecuteChaincodeResponse, nil, nil
+	}
 }
 
 // Execute executes the chaincode given context and spec (invocation or deploy)
-func (c *mockCcProviderImpl) Execute(ctxt context.Context, cccid interface{}, spec interface{}) (*peer.Response, *peer.ChaincodeEvent, error) {
+func (c *MockCcProviderImpl) Execute(ctxt context.Context, cccid interface{}, spec interface{}) (*peer.Response, *peer.ChaincodeEvent, error) {
 	return nil, nil, nil
 }
 
 // ExecuteWithErrorFilter executes the chaincode given context and spec and returns payload
-func (c *mockCcProviderImpl) ExecuteWithErrorFilter(ctxt context.Context, cccid interface{}, spec interface{}) ([]byte, *peer.ChaincodeEvent, error) {
+func (c *MockCcProviderImpl) ExecuteWithErrorFilter(ctxt context.Context, cccid interface{}, spec interface{}) ([]byte, *peer.ChaincodeEvent, error) {
 	return nil, nil, nil
 }
 
 // Stop stops the chaincode given context and deployment spec
-func (c *mockCcProviderImpl) Stop(ctxt context.Context, cccid interface{}, spec *peer.ChaincodeDeploymentSpec) error {
+func (c *MockCcProviderImpl) Stop(ctxt context.Context, cccid interface{}, spec *peer.ChaincodeDeploymentSpec) error {
 	return nil
 }
