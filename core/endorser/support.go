@@ -123,10 +123,10 @@ func (s *SupportImpl) IsJavaCC(buf []byte) (bool, error) {
 	return (cds.ChaincodeSpec.Type == pb.ChaincodeSpec_JAVA), nil
 }
 
-// CheckInsantiationPolicy returns an error if the instantiation in the supplied
+// CheckInstantiationPolicy returns an error if the instantiation in the supplied
 // ChaincodeDefinition differs from the instantiation policy stored on the ledger
-func (s *SupportImpl) CheckInsantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error {
-	return ccprovider.CheckInsantiationPolicy(name, version, cd.(*ccprovider.ChaincodeData))
+func (s *SupportImpl) CheckInstantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error {
+	return ccprovider.CheckInstantiationPolicy(name, version, cd.(*ccprovider.ChaincodeData))
 }
 
 // GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
