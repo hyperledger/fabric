@@ -20,6 +20,8 @@ import (
 	"math"
 
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
@@ -27,6 +29,7 @@ import (
 )
 
 type blocksRequester struct {
+	tls     bool
 	chainID string
 	client  blocksprovider.BlocksDeliverer
 }
@@ -53,6 +56,13 @@ func (b *blocksRequester) RequestBlocks(ledgerInfoProvider blocksprovider.Ledger
 	return nil
 }
 
+func (b *blocksRequester) getTLSCertHash() []byte {
+	if b.tls {
+		return util.ComputeSHA256(comm.GetCredentialSupport().GetClientCertificate().Certificate[0])
+	}
+	return nil
+}
+
 func (b *blocksRequester) seekOldest() error {
 	seekInfo := &orderer.SeekInfo{
 		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Oldest{Oldest: &orderer.SeekOldest{}}},
@@ -63,7 +73,8 @@ func (b *blocksRequester) seekOldest() error {
 	//TODO- epoch and msgVersion may need to be obtained for nowfollowing usage in orderer/configupdate/configupdate.go
 	msgVersion := int32(0)
 	epoch := uint64(0)
-	env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch)
+	tlsCertHash := b.getTLSCertHash()
+	env, err := utils.CreateSignedEnvelopeWithTLSBinding(common.HeaderType_CONFIG_UPDATE, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch, tlsCertHash)
 	if err != nil {
 		return err
 	}
@@ -80,7 +91,8 @@ func (b *blocksRequester) seekLatestFromCommitter(height uint64) error {
 	//TODO- epoch and msgVersion may need to be obtained for nowfollowing usage in orderer/configupdate/configupdate.go
 	msgVersion := int32(0)
 	epoch := uint64(0)
-	env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch)
+	tlsCertHash := b.getTLSCertHash()
+	env, err := utils.CreateSignedEnvelopeWithTLSBinding(common.HeaderType_CONFIG_UPDATE, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch, tlsCertHash)
 	if err != nil {
 		return err
 	}

@@ -115,6 +115,11 @@ func (cs *CredentialSupport) SetClientCertificate(cert tls.Certificate) {
 	cs.clientCert = cert
 }
 
+// GetClientCertificate returns the client certificate of the CredentialSupport
+func (cs *CredentialSupport) GetClientCertificate() tls.Certificate {
+	return cs.clientCert
+}
+
 // GetDeliverServiceCredentials returns GRPC transport credentials for given channel to be used by GRPC
 // clients which communicate with ordering service endpoints.
 // If the channel isn't found, error is returned.
