@@ -50,24 +50,26 @@ func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
 
 // Chaincode-related variables.
 var (
-	chaincodeLang     string
-	chaincodeCtorJSON string
-	chaincodePath     string
-	chaincodeName     string
-	chaincodeUsr      string // Not used
-	chaincodeQueryRaw bool
-	chaincodeQueryHex bool
-	customIDGenAlg    string
-	channelID         string
-	chaincodeVersion  string
-	policy            string
-	escc              string
-	vscc              string
-	policyMarshalled  []byte
-	orderingEndpoint  string
-	tls               bool
-	caFile            string
-	transient         string
+	chaincodeLang         string
+	chaincodeCtorJSON     string
+	chaincodePath         string
+	chaincodeName         string
+	chaincodeUsr          string // Not used
+	chaincodeQueryRaw     bool
+	chaincodeQueryHex     bool
+	customIDGenAlg        string
+	channelID             string
+	chaincodeVersion      string
+	policy                string
+	escc                  string
+	vscc                  string
+	policyMarshalled      []byte
+	orderingEndpoint      string
+	tls                   bool
+	caFile                string
+	transient             string
+	collectionsConfigFile string
+	collectionConfigBytes []byte
 )
 
 var chaincodeCmd = &cobra.Command{
@@ -112,6 +114,8 @@ func resetFlags() {
 		"Get the installed chaincodes on a peer")
 	flags.BoolVarP(&getInstantiatedChaincodes, "instantiated", "", false,
 		"Get the instantiated chaincodes on a channel")
+	flags.StringVar(&collectionsConfigFile, "collections-config", common.UndefinedParamValue,
+		fmt.Sprint("The file containing the configuration for the chaincode's collection"))
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {

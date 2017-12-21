@@ -210,7 +210,7 @@ func TestCDSProposals(t *testing.T) {
 	assert.NotEqual(t, "", txid, "txid should not be empty")
 
 	// deploy
-	prop, txid, err = utils.CreateDeployProposalFromCDS(chainID, cds, creator, policy, escc, vscc)
+	prop, txid, err = utils.CreateDeployProposalFromCDS(chainID, cds, creator, policy, escc, vscc, nil)
 	assert.NotNil(t, prop, "Deploy proposal should not be nil")
 	assert.NoError(t, err, "Unexpected error creating deploy proposal")
 	assert.NotEqual(t, "", txid, "txid should not be empty")

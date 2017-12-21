@@ -190,7 +190,7 @@ func endTxSimulationCDS(chainID string, txid string, txsim ledger.TxSimulator, p
 	}
 
 	// get a proposal - we need it to get a transaction
-	prop, _, err := putils.CreateDeployProposalFromCDS(chainID, cds, ss, nil, nil, nil)
+	prop, _, err := putils.CreateDeployProposalFromCDS(chainID, cds, ss, nil, nil, nil, nil)
 	if err != nil {
 		return err
 	}

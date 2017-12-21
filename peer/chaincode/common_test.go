@@ -20,10 +20,13 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/peer/common"
+	common2 "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
@@ -172,4 +175,44 @@ func TestGetOrdererEndpointFail(t *testing.T) {
 
 	_, err = common.GetOrdererEndpointOfChain(mockchain, signer, mockEndorserClient)
 	assert.Error(t, err, "GetOrdererEndpointOfChain from invalid response")
+}
+
+const sampleCollectionConfigGood = `[
+	{
+		"name": "foo",
+		"policy": "OR('A.member', 'B.member')",
+		"requiredPeerCount": 3,
+		"maxPeerCount": 483279847
+	}
+]`
+
+const sampleCollectionConfigBad = `[
+	{
+		"name": "foo",
+		"policy": "barf",
+		"requiredPeerCount": 3,
+		"maxPeerCount": 483279847
+	}
+]`
+
+func TestCollectionParsing(t *testing.T) {
+	cc, err := getCollectionConfigFromBytes([]byte(sampleCollectionConfigGood))
+	assert.NoError(t, err)
+	assert.NotNil(t, cc)
+	ccp := &common2.CollectionConfigPackage{}
+	proto.Unmarshal(cc, ccp)
+	conf := ccp.Config[0].GetStaticCollectionConfig()
+	pol, _ := cauthdsl.FromString("OR('A.member', 'B.member')")
+	assert.Equal(t, 3, int(conf.RequiredPeerCount))
+	assert.Equal(t, 483279847, int(conf.MaximumPeerCount))
+	assert.Equal(t, "foo", conf.Name)
+	assert.Equal(t, pol, conf.MemberOrgsPolicy.GetSignaturePolicy())
+
+	cc, err = getCollectionConfigFromBytes([]byte(sampleCollectionConfigBad))
+	assert.Error(t, err)
+	assert.Nil(t, cc)
+
+	cc, err = getCollectionConfigFromBytes([]byte("barf"))
+	assert.Error(t, err)
+	assert.Nil(t, cc)
 }
