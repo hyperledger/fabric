@@ -24,53 +24,37 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-type MockResponse struct {
-	Response *pb.ProposalResponse
-	Error    error
-}
-
 // GetMockEndorserClient return a endorser client return specified ProposalResponse and err(nil or error)
-func GetMockMultiEndorserClient(responses ...MockResponse) pb.EndorserClient {
+func GetMockEndorserClient(response *pb.ProposalResponse, err error) pb.EndorserClient {
 	return &mockEndorserClient{
-		responses: responses,
+		response: response,
+		err:      err,
 	}
-}
-
-// GetMockEndorserClient return a endorser client return specified ProposalResponse and err(nil or error)
-func GetMockEndorserClient(resp *pb.ProposalResponse, err error) pb.EndorserClient {
-	return GetMockMultiEndorserClient(MockResponse{resp, err})
 }
 
 type mockEndorserClient struct {
-	i         int
-	responses []MockResponse
-}
-
-func (m *mockEndorserClient) ProcessProposal(ctx context.Context, in *pb.SignedProposal, opts ...grpc.CallOption) (*pb.ProposalResponse, error) {
-	if len(m.responses) == 1 {
-		// Constant response
-		return m.responses[0].Response, m.responses[0].Error
-	}
-	m.i++
-	return m.responses[m.i-1].Response, m.responses[m.i-1].Error
-}
-
-func GetMockBroadcastClient(err error) *MockBroadcastClient {
-	return &MockBroadcastClient{err: err}
-}
-
-// MockBroadcastClient return success immediately
-type MockBroadcastClient struct {
-	Envelope *cb.Envelope
+	response *pb.ProposalResponse
 	err      error
 }
 
-func (m *MockBroadcastClient) Send(env *cb.Envelope) error {
-	m.Envelope = env
+func (m *mockEndorserClient) ProcessProposal(ctx context.Context, in *pb.SignedProposal, opts ...grpc.CallOption) (*pb.ProposalResponse, error) {
+	return m.response, m.err
+}
+
+func GetMockBroadcastClient(err error) BroadcastClient {
+	return &mockBroadcastClient{err: err}
+}
+
+// mockBroadcastClient return success immediately
+type mockBroadcastClient struct {
+	err error
+}
+
+func (m *mockBroadcastClient) Send(env *cb.Envelope) error {
 	return m.err
 }
 
-func (m *MockBroadcastClient) Close() error {
+func (m *mockBroadcastClient) Close() error {
 	return nil
 }
 
