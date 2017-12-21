@@ -48,7 +48,7 @@ func NewSimpleCollectionStore(s Support) CollectionStore {
 	return &simpleCollectionStore{s}
 }
 
-func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCriteria) (*SimpleCollection, error) {
+func (c *simpleCollectionStore) retrieveCollectionConfigPackage(cc common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
 	qe, err := c.s.GetQueryExecutorForLedger(cc.Channel)
 	if err != nil {
 		return nil, errors.WithMessage(err, fmt.Sprintf("could not retrieve query executor for collection criteria %#v", cc))
@@ -67,6 +67,18 @@ func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCri
 	err = proto.Unmarshal(cb, collections)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid configuration for collection criteria %#v", cc)
+	}
+
+	return collections, nil
+}
+
+func (c *simpleCollectionStore) retrieveSimpleCollection(cc common.CollectionCriteria) (*SimpleCollection, error) {
+	collections, err := c.retrieveCollectionConfigPackage(cc)
+	if err != nil {
+		return nil, err
+	}
+	if collections == nil {
+		return nil, nil
 	}
 
 	for _, cconf := range collections.Config {
@@ -96,4 +108,8 @@ func (c *simpleCollectionStore) RetrieveCollection(cc common.CollectionCriteria)
 
 func (c *simpleCollectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCriteria) (CollectionAccessPolicy, error) {
 	return c.retrieveSimpleCollection(cc)
+}
+
+func (c *simpleCollectionStore) RetrieveCollectionConfigPackage(cc common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
+	return c.retrieveCollectionConfigPackage(cc)
 }

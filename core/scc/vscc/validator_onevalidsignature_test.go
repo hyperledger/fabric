@@ -1484,10 +1484,17 @@ func (c *mockPolicyChecker) CheckPolicyNoChannel(policyName string, signedProp *
 }
 
 func TestValidateDeployRWSetAndCollection(t *testing.T) {
+	chid := "ch"
+	ccid := "cc"
+
 	cd := &ccprovider.ChaincodeData{Name: "mycc"}
 
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
+
+	State := make(map[string]map[string][]byte)
+	State["lscc"] = make(map[string][]byte)
+	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{Qe: lm.NewMockQueryExecutor(State)})
 
 	r1 := stub.MockInit("1", [][]byte{})
 	if r1.Status != shim.OK {
@@ -1497,38 +1504,38 @@ func TestValidateDeployRWSetAndCollection(t *testing.T) {
 
 	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: "b"}, {Key: "c"}}}
 
-	err := v.validateDeployRWSetAndCollection(rwset, nil, nil)
+	err := v.validateDeployRWSetAndCollection(rwset, nil, nil, chid, ccid)
 	assert.Error(t, err)
 
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: "b"}}}
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, nil)
+	err = v.validateDeployRWSetAndCollection(rwset, cd, nil, chid, ccid)
 	assert.Error(t, err)
 
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}}}
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, nil)
+	err = v.validateDeployRWSetAndCollection(rwset, cd, nil, chid, ccid)
 	assert.NoError(t, err)
 
 	lsccargs := [][]byte{nil, nil, nil, nil, nil, nil}
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs)
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
 	assert.NoError(t, err)
 
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc")}}}
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs)
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
 	assert.NoError(t, err)
 
 	lsccargs = [][]byte{nil, nil, nil, nil, nil, []byte("barf")}
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs)
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
 	assert.Error(t, err)
 
 	lsccargs = [][]byte{nil, nil, nil, nil, nil, []byte("barf")}
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: []byte("barf")}}}
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs)
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
 	assert.Error(t, err)
 
 	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection"}}}
@@ -1540,8 +1547,18 @@ func TestValidateDeployRWSetAndCollection(t *testing.T) {
 	lsccargs = [][]byte{nil, nil, nil, nil, nil, ccpBytes}
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: "a"}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: ccpBytes}}}
 
-	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs)
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
 	assert.NoError(t, err)
+
+	State["lscc"][(&collectionStoreSupport{v.sccprovider}).GetCollectionKVSKey(common.CollectionCriteria{Channel: chid, Namespace: ccid})] = []byte("barf")
+
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
+	assert.Error(t, err)
+
+	State["lscc"][(&collectionStoreSupport{v.sccprovider}).GetCollectionKVSKey(common.CollectionCriteria{Channel: chid, Namespace: ccid})] = ccpBytes
+
+	err = v.validateDeployRWSetAndCollection(rwset, cd, lsccargs, chid, ccid)
+	assert.Error(t, err)
 }
 
 var lccctestpath = "/tmp/lscc-validation-test"

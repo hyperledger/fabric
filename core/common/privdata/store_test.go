@@ -93,4 +93,8 @@ func TestCollectionStore(t *testing.T) {
 	c, err = cs.RetrieveCollection(common.CollectionCriteria{Channel: "ch", Namespace: "cc", Collection: "asd"})
 	assert.Error(t, err)
 	assert.Nil(t, c)
+
+	ccc, err := cs.RetrieveCollectionConfigPackage(ccr)
+	assert.NoError(t, err)
+	assert.NotNil(t, ccc)
 }

@@ -68,6 +68,10 @@ type CollectionStore interface {
 
 	// GetCollectionAccessPolicy retrieves a collection's access policy
 	RetrieveCollectionAccessPolicy(common.CollectionCriteria) (CollectionAccessPolicy, error)
+
+	// RetrieveCollectionConfigPackage retrieves the configuration
+	// for the collection with the supplied criteria
+	RetrieveCollectionConfigPackage(common.CollectionCriteria) (*common.CollectionConfigPackage, error)
 }
 
 const (
