@@ -22,8 +22,6 @@ import (
 	"sync"
 	"testing"
 
-	"strings"
-
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -45,29 +43,39 @@ func initMSP() {
 }
 
 func TestUpgradeCmd(t *testing.T) {
-	channelID = ""
 	InitMSP()
 
-	newMockCF := func() *ChaincodeCmdFactory {
-		mockCF, err := getMockChaincodeCmdFactoryWithEnorserResponses(common.MockResponse{Error: fmt.Errorf("chaincode problem")}, common.MockResponse{
-			Response: &pb.ProposalResponse{
-				Response:    &pb.Response{Status: 200},
-				Endorsement: &pb.Endorsement{},
-			},
-		})
-		assert.NoError(t, err, "Error getting mock chaincode command factory")
-		return mockCF
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		t.Fatalf("Get default signer error: %v", err)
 	}
 
+	mockResponse := &pb.ProposalResponse{
+		Response:    &pb.Response{Status: 200},
+		Endorsement: &pb.Endorsement{},
+	}
+
+	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
+
+	mockBroadcastClient := common.GetMockBroadcastClient(nil)
+
+	mockCF := &ChaincodeCmdFactory{
+		EndorserClient:  mockEndorerClient,
+		Signer:          signer,
+		BroadcastClient: mockBroadcastClient,
+	}
 	// reset channelID, it might have been set by previous test
-	cmd := upgradeCmd(newMockCF())
+	channelID = ""
+
+	cmd := upgradeCmd(mockCF)
 	addFlags(cmd)
 
 	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
 		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
-	err := cmd.Execute()
+	err = cmd.Execute()
 	assert.Error(t, err, "'peer chaincode upgrade' command should have failed without -C flag")
+
 	args = []string{"-C", "mychannel", "-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02",
 		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
@@ -117,15 +125,28 @@ func TestUpgradeCmdEndorseFail(t *testing.T) {
 func TestUpgradeCmdSendTXFail(t *testing.T) {
 	InitMSP()
 
-	sendErr := errors.New("send tx failed")
-	newMockCF := func() *ChaincodeCmdFactory {
-		mockCF, err := getMockChaincodeCmdFactoryWithEnorserResponses(common.MockResponse{Error: fmt.Errorf("chaincode problem")},
-			common.MockResponse{Error: sendErr})
-		assert.NoError(t, err, "Error getting mock chaincode command factory")
-		return mockCF
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		t.Fatalf("Get default signer error: %v", err)
 	}
 
-	cmd := upgradeCmd(newMockCF())
+	mockResponse := &pb.ProposalResponse{
+		Response:    &pb.Response{Status: 200},
+		Endorsement: &pb.Endorsement{},
+	}
+
+	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
+
+	sendErr := errors.New("send tx failed")
+	mockBroadcastClient := common.GetMockBroadcastClient(sendErr)
+
+	mockCF := &ChaincodeCmdFactory{
+		EndorserClient:  mockEndorerClient,
+		Signer:          signer,
+		BroadcastClient: mockBroadcastClient,
+	}
+
+	cmd := upgradeCmd(mockCF)
 	addFlags(cmd)
 
 	args := []string{"-C", "mychannel", "-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
@@ -135,7 +156,7 @@ func TestUpgradeCmdSendTXFail(t *testing.T) {
 	if err := cmd.Execute(); err == nil {
 		t.Errorf("Run chaincode upgrade cmd error:%v", err)
 	} else {
-		if !strings.Contains(err.Error(), expectErrMsg) {
+		if err.Error() != expectErrMsg {
 			t.Errorf("Run chaincode upgrade cmd get unexpected error: %s", err.Error())
 		}
 	}
