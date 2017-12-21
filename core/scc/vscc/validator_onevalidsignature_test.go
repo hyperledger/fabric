@@ -27,8 +27,6 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
 	lm "github.com/hyperledger/fabric/common/mocks/ledger"
-	"github.com/hyperledger/fabric/common/mocks/policies"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -374,59 +372,6 @@ func TestInvoke(t *testing.T) {
 	args = [][]byte{[]byte("dv"), envBytes, policy}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK || res.Message != DUPLICATED_IDENTITY_ERROR {
 		t.Fatalf("vscc invoke should have failed due to policy evaluation failure caused by duplicated identity")
-	}
-}
-
-func TestInvokeNewLifecycle(t *testing.T) {
-	v := new(ValidatorOneValidSignature)
-	stub := shim.NewMockStub("validatoronevalidsignature", v)
-
-	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{LifecycleViaConfigRv: true}},
-		PolicyManagerBool:     true,
-		PolicyManagerRv:       &policies.Manager{Policy: &mockpolicies.Policy{}},
-	})
-
-	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		t.Fatalf("vscc init failed with %s", res.Message)
-	}
-
-	tx, err := createTx(false)
-	if err != nil {
-		t.Fatalf("createTx returned err %s", err)
-	}
-
-	envBytes, err := utils.GetBytesEnvelope(tx)
-	if err != nil {
-		t.Fatalf("GetBytesEnvelope returned err %s", err)
-	}
-
-	args := [][]byte{[]byte("dv"), envBytes, []byte("barf")}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
-		t.Fatalf("vscc invoke should have failed")
-	}
-
-	v.sccprovider.(*scc.MocksccProviderImpl).PolicyManagerBool = false
-
-	args = [][]byte{[]byte("dv"), envBytes, utils.MarshalOrPanic(&peer.VSCCArgs{EndorsementPolicyRef: "somePolicy"})}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
-		t.Fatalf("vscc invoke should have failed")
-	}
-
-	v.sccprovider.(*scc.MocksccProviderImpl).PolicyManagerBool = true
-	v.sccprovider.(*scc.MocksccProviderImpl).PolicyManagerRv = &policies.Manager{}
-
-	args = [][]byte{[]byte("dv"), envBytes, utils.MarshalOrPanic(&peer.VSCCArgs{EndorsementPolicyRef: "somePolicy"})}
-	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
-		t.Fatalf("vscc invoke should have failed")
-	}
-
-	v.sccprovider.(*scc.MocksccProviderImpl).PolicyManagerRv = &policies.Manager{Policy: &mockpolicies.Policy{}}
-
-	args = [][]byte{[]byte("dv"), envBytes, utils.MarshalOrPanic(&peer.VSCCArgs{EndorsementPolicyRef: "somePolicy"})}
-	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
-		t.Fatalf("vscc invoke should have succeeded but got error %s", res.Message)
 	}
 }
 
