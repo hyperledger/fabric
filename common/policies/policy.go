@@ -14,6 +14,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/msp"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
@@ -52,10 +53,49 @@ const (
 
 var logger = flogging.MustGetLogger("policies")
 
+// PrincipalSet is a collection of MSPPrincipals
+type PrincipalSet []*msp.MSPPrincipal
+
+// UniqueSet returns a histogram that is induced by the PrincipalSet
+func (ps PrincipalSet) UniqueSet() map[*msp.MSPPrincipal]int {
+	// Create a histogram that holds the MSPPrincipals and counts them
+	histogram := make(map[struct {
+		cls       int32
+		principal string
+	}]int)
+	// Now, populate the histogram
+	for _, principal := range ps {
+		key := struct {
+			cls       int32
+			principal string
+		}{
+			cls:       int32(principal.PrincipalClassification),
+			principal: string(principal.Principal),
+		}
+		histogram[key]++
+	}
+	// Finally, convert to a histogram of MSPPrincipal pointers
+	res := make(map[*msp.MSPPrincipal]int)
+	for principal, count := range histogram {
+		res[&msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_Classification(principal.cls),
+			Principal:               []byte(principal.principal),
+		}] = count
+	}
+	return res
+}
+
 // Policy is used to determine if a signature is valid
 type Policy interface {
 	// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
 	Evaluate(signatureSet []*cb.SignedData) error
+}
+
+// InquireablePolicy is a Policy that one can inquire
+type InquireablePolicy interface {
+	// SatisfiedBy returns a slice of PrincipalSets that each of them
+	// satisfies the policy.
+	SatisfiedBy() []PrincipalSet
 }
 
 // Manager is a read only subset of the policy ManagerImpl
