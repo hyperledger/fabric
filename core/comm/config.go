@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
+	"crypto/tls"
 	"time"
 
 	"github.com/spf13/viper"
@@ -30,6 +31,15 @@ var (
 		ServerTimeout:     time.Duration(20) * time.Second, // 20 sec - gRPC default
 		ServerMinInterval: time.Duration(1) * time.Minute,  // match ClientInterval
 	}
+	// strong TLS cipher suites
+	tlsCipherSuites = []uint16{
+		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+	}
 )
 
 // ServerConfig defines the parameters for configuring a GRPCServer instance
@@ -43,20 +53,22 @@ type ServerConfig struct {
 // SecureOptions defines the security parameters (e.g. TLS) for a
 // GRPCServer instance
 type SecureOptions struct {
-	//PEM-encoded X509 public key to be used by the server for TLS communication
+	// PEM-encoded X509 public key to be used by the server for TLS communication
 	ServerCertificate []byte
-	//PEM-encoded private key to be used by the server for TLS communication
+	// PEM-encoded private key to be used by the server for TLS communication
 	ServerKey []byte
-	//Set of PEM-encoded X509 certificate authorities to optionally send
-	//as part of the server handshake
+	// Set of PEM-encoded X509 certificate authorities to optionally send
+	// as part of the server handshake
 	ServerRootCAs [][]byte
-	//Set of PEM-encoded X509 certificate authorities to use when verifying
-	//client certificates
+	// Set of PEM-encoded X509 certificate authorities to use when verifying
+	// client certificates
 	ClientRootCAs [][]byte
-	//Whether or not to use TLS for communication
+	// Whether or not to use TLS for communication
 	UseTLS bool
-	//Whether or not TLS client must present certificates for authentication
+	// Whether or not TLS client must present certificates for authentication
 	RequireClientCert bool
+	// CipherSuites is a list of supported cipher suites for TLS
+	CipherSuites []uint16
 }
 
 // KeepAliveOptions is used to set the gRPC keepalive settings for both
