@@ -29,7 +29,7 @@ type MockSupport struct {
 	ChaincodeDefinitionError         error
 	GetTxSimulatorRv                 *mc.MockTxSim
 	GetTxSimulatorErr                error
-	CheckInsantiationPolicyError     error
+	CheckInstantiationPolicyError    error
 	GetTransactionByIDErr            error
 	CheckACLErr                      error
 	SysCCMap                         map[string]struct{}
@@ -85,8 +85,8 @@ func (s *MockSupport) IsJavaCC(buf []byte) (bool, error) {
 	return s.IsJavaRV, s.IsJavaErr
 }
 
-func (s *MockSupport) CheckInsantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error {
-	return s.CheckInsantiationPolicyError
+func (s *MockSupport) CheckInstantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error {
+	return s.CheckInstantiationPolicyError
 }
 
 func (s *MockSupport) GetApplicationConfig(cid string) (channelconfig.Application, bool) {

@@ -213,7 +213,7 @@ func GetChaincodeData(ccname string, ccversion string) (*ChaincodeData, error) {
 	}
 }
 
-func CheckInsantiationPolicy(name, version string, cdLedger *ChaincodeData) error {
+func CheckInstantiationPolicy(name, version string, cdLedger *ChaincodeData) error {
 	ccdata, err := GetChaincodeData(name, version)
 	if err != nil {
 		return err

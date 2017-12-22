@@ -81,9 +81,9 @@ type Support interface {
 	// that requires the java runtime environment to execute
 	IsJavaCC(buf []byte) (bool, error)
 
-	// CheckInsantiationPolicy returns an error if the instantiation in the supplied
+	// CheckInstantiationPolicy returns an error if the instantiation in the supplied
 	// ChaincodeDefinition differs from the instantiation policy stored on the ledger
-	CheckInsantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error
+	CheckInstantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error
 
 	// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
 	// and whether the Application config exists
@@ -240,7 +240,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		}
 		version = cdLedger.CCVersion()
 
-		err = e.s.CheckInsantiationPolicy(cid.Name, version, cdLedger)
+		err = e.s.CheckInstantiationPolicy(cid.Name, version, cdLedger)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
