@@ -365,7 +365,7 @@ directory, so we need to provide the relative path to where the tool resides.
 
 .. code:: bash
 
-    ../bin/cryptogen generate --config=./crypto-config.yaml
+    ../../bin/cryptogen generate --config=./crypto-config.yaml
 
 You will likely see the following warning.  It's innocuous, ignore it:
 
@@ -388,7 +388,7 @@ Then, we'll invoke the ``configtxgen`` tool which will create the orderer genesi
 
 .. code:: bash
 
-    ../bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
+    ../../bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block
 
 You can ignore the log warnings regarding intermediate certificates, certificate
 revocation lists (crls) and MSP configurations. We are not using any of those
