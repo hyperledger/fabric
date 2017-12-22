@@ -12,12 +12,15 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
+
+var logger = flogging.MustGetLogger("transientstore")
 
 var emptyValue = []byte{}
 
@@ -119,6 +122,9 @@ func (provider *storeProvider) Close() {
 // based on txid and the block height the private data was received at
 func (s *store) Persist(txid string, blockHeight uint64,
 	privateSimulationResults *rwset.TxPvtReadWriteSet) error {
+
+	logger.Debugf("Persisting private data to transient store for txid = %s", txid)
+
 	dbBatch := leveldbhelper.NewUpdateBatch()
 
 	// Create compositeKey with appropriate prefix, txid, uuid and blockHeight
@@ -161,6 +167,9 @@ func (s *store) Persist(txid string, blockHeight uint64,
 // GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 // write sets persisted from different endorsers.
 func (s *store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (RWSetScanner, error) {
+
+	logger.Debugf("Getting private data from transient store for transaction %s", txid)
+
 	// Construct startKey and endKey to do an range query
 	startKey := createTxidRangeStartKey(txid)
 	endKey := createTxidRangeEndKey(txid)
@@ -173,6 +182,9 @@ func (s *store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) 
 // transient store. PurgeByTxids() is expected to be called by coordinator after
 // committing a block to ledger.
 func (s *store) PurgeByTxids(txids []string) error {
+
+	logger.Debug("Purging private data from transient store for committed txids")
+
 	dbBatch := leveldbhelper.NewUpdateBatch()
 
 	for _, txid := range txids {
@@ -216,6 +228,9 @@ func (s *store) PurgeByTxids(txids []string) error {
 // after successful block commit, PurgeByHeight() is still required to remove orphan entries (as
 // transaction that gets endorsed may not be submitted by the client for commit)
 func (s *store) PurgeByHeight(maxBlockNumToRetain uint64) error {
+
+	logger.Debugf("Purging orphaned private data from transient store received prior to block [%d]", maxBlockNumToRetain)
+
 	// Do a range query with 0 as startKey and maxBlockNumToRetain-1 as endKey
 	startKey := createPurgeIndexByHeightRangeStartKey(0)
 	endKey := createPurgeIndexByHeightRangeEndKey(maxBlockNumToRetain - 1)

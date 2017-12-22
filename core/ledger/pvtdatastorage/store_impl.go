@@ -84,7 +84,7 @@ func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData) error {
 		if value, err = encodePvtRwSet(txPvtData.WriteSet); err != nil {
 			return err
 		}
-		logger.Debugf("Adding private data to batch blockNum=%d, tranNum=%d", blockNum, txPvtData.SeqInBlock)
+		logger.Debugf("Adding private data to LevelDB batch for block [%d], tran [%d]", blockNum, txPvtData.SeqInBlock)
 		batch.Put(key, value)
 	}
 	batch.Put(pendingCommitKey, emptyValue)
@@ -92,7 +92,7 @@ func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData) error {
 		return err
 	}
 	s.batchPending = true
-	logger.Debugf("Saved private data for block [%d]", blockNum)
+	logger.Debugf("Saved %d private data write sets for block [%d]", len(pvtData), blockNum)
 	return nil
 }
 
@@ -102,7 +102,7 @@ func (s *store) Commit() error {
 		return &ErrIllegalCall{"No pending batch to commit"}
 	}
 	committingBlockNum := s.nextBlockNum()
-	logger.Debugf("Committing pvt data for block = %d", committingBlockNum)
+	logger.Debugf("Committing private data for block [%d]", committingBlockNum)
 	batch := leveldbhelper.NewUpdateBatch()
 	batch.Delete(pendingCommitKey)
 	batch.Put(lastCommittedBlkkey, encodeBlockNum(committingBlockNum))
@@ -112,7 +112,7 @@ func (s *store) Commit() error {
 	s.batchPending = false
 	s.isEmpty = false
 	s.lastCommittedBlock = committingBlockNum
-	logger.Debugf("Committed pvt data for block = %d", committingBlockNum)
+	logger.Debugf("Committed private data for block [%d]", committingBlockNum)
 	return nil
 }
 
@@ -124,7 +124,7 @@ func (s *store) Rollback() error {
 		return &ErrIllegalCall{"No pending batch to rollback"}
 	}
 	rollingbackBlockNum := s.nextBlockNum()
-	logger.Debugf("Rolling back pvt data for block = %d", rollingbackBlockNum)
+	logger.Debugf("Rolling back private data for block [%d]", rollingbackBlockNum)
 
 	if pendingBatchKeys, err = s.retrievePendingBatchKeys(); err != nil {
 		return err
@@ -138,7 +138,7 @@ func (s *store) Rollback() error {
 		return err
 	}
 	s.batchPending = false
-	logger.Debugf("Rolled back pvt data for block = %d", rollingbackBlockNum)
+	logger.Debugf("Rolled back private data for block [%d]", rollingbackBlockNum)
 	return nil
 }
 
@@ -146,7 +146,7 @@ func (s *store) Rollback() error {
 // If the store is empty or the last committed block number is smaller then the
 // requested block number, an 'ErrOutOfRange' is thrown
 func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
-	logger.Debugf("GetPvtDataByBlockNum(): blockNum=%d, filter=%#v", blockNum, filter)
+	logger.Debugf("Get private data for block [%d], filter=%#v", blockNum, filter)
 	if s.isEmpty {
 		return nil, &ErrOutOfRange{"The store is empty"}
 	}
@@ -156,7 +156,7 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 	}
 	var pvtData []*ledger.TxPvtData
 	startKey, endKey := getKeysForRangeScanByBlockNum(blockNum)
-	logger.Debugf("GetPvtDataByBlockNum(): startKey=%#v, endKey=%#v", startKey, endKey)
+	logger.Debugf("Querying private data storage for write sets using startKey=%#v, endKey=%#v", startKey, endKey)
 	itr := s.db.GetIterator(startKey, endKey)
 	defer itr.Release()
 
@@ -167,7 +167,7 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 		if pvtWSet, err = decodePvtRwSet(itr.Value()); err != nil {
 			return nil, err
 		}
-		logger.Debugf("Retrieving pvtdata for bNum=%d, tNum=%d", bNum, tNum)
+		logger.Debugf("Retrieved private data write set for block [%d] tran [%d]", bNum, tNum)
 		filteredWSet := TrimPvtWSet(pvtWSet, filter)
 		pvtData = append(pvtData, &ledger.TxPvtData{SeqInBlock: tNum, WriteSet: filteredWSet})
 	}
@@ -177,7 +177,7 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 // InitLastCommittedBlock implements the function in the interface `Store`
 func (s *store) InitLastCommittedBlock(blockNum uint64) error {
 	if !(s.isEmpty && !s.batchPending) {
-		return &ErrIllegalCall{"The pvtdata store is not empty. InitLastCommittedBlock() function call is not allowed"}
+		return &ErrIllegalCall{"The private data store is not empty. InitLastCommittedBlock() function call is not allowed"}
 	}
 	batch := leveldbhelper.NewUpdateBatch()
 	batch.Put(lastCommittedBlkkey, encodeBlockNum(blockNum))
@@ -186,7 +186,7 @@ func (s *store) InitLastCommittedBlock(blockNum uint64) error {
 	}
 	s.isEmpty = false
 	s.lastCommittedBlock = blockNum
-	logger.Debugf("InitLastCommittedBlock set to = %d", blockNum)
+	logger.Debugf("InitLastCommittedBlock set to block [%d]", blockNum)
 	return nil
 }
 

@@ -150,7 +150,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 	logger.Infof("Received block [%d]", block.Header.Number)
 
-	logger.Debug("Validating block", block.Header.Number)
+	logger.Debugf("Validating block [%d]", block.Header.Number)
 	err := c.Validator.Validate(block)
 	if err != nil {
 		return errors.WithMessage(err, "Validation failed")
@@ -179,6 +179,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 		logger.Debug("No missing collection private write sets to fetch from remote peers")
 	} else {
 		bFetchFromPeers = true
+		logger.Debug("Could not find all collection private write sets in local peer transient store.")
 		logger.Debug("Fetching", len(privateInfo.missingKeys), "collection private write sets from remote peers for a maximum duration of", retryThresh)
 	}
 	start := time.Now()
@@ -200,7 +201,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	// populate the private RWSets passed to the ledger
 	for seqInBlock, nsRWS := range ownedRWsets.bySeqsInBlock() {
 		rwsets := nsRWS.toRWSet()
-		logger.Debug("Added", len(rwsets.NsPvtRwset), "namespace private write sets to transaction", seqInBlock, "for block", block.Header.Number)
+		logger.Debugf("Added %d namespace private write sets for block [%d], tran [%d]", len(rwsets.NsPvtRwset), block.Header.Number, seqInBlock)
 		blockAndPvtData.BlockPvtData[seqInBlock] = &ledger.TxPvtData{
 			SeqInBlock: seqInBlock,
 			WriteSet:   rwsets,
