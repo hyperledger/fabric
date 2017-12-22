@@ -459,7 +459,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			/*****************************************************/
 			pol := cdRWSet.InstantiationPolicy
 			if pol == nil {
-				return fmt.Errorf("No installation policy was specified")
+				return fmt.Errorf("No instantiation policy was specified")
 			}
 			// FIXME: could we actually pull the cds package from the
 			// file system to verify whether the policy that is specified
@@ -499,7 +499,7 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			/*****************************************************/
 			pol := cdLedger.InstantiationPolicy
 			if pol == nil {
-				return fmt.Errorf("No installation policy was specified")
+				return fmt.Errorf("No instantiation policy was specified")
 			}
 			// FIXME: could we actually pull the cds package from the
 			// file system to verify whether the policy that is specified
@@ -516,6 +516,24 @@ func (vscc *ValidatorOneValidSignature) ValidateLSCCInvocation(
 			/**********************************************************/
 			if cdLedger.Version == cdsArgs.ChaincodeSpec.ChaincodeId.Version {
 				return fmt.Errorf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", cdsArgs.ChaincodeSpec.ChaincodeId.Version)
+			}
+
+			/******************************************************************/
+			/* security check 4 - check the instantiation policy in the rwset */
+			/******************************************************************/
+			if ac.V1_1Validation() {
+				polNew := cdRWSet.InstantiationPolicy
+				if polNew == nil {
+					return errors.New("No instantiation policy was specified")
+				}
+
+				// no point in checking it again if they are the same policy
+				if !bytes.Equal(polNew, pol) {
+					err = vscc.checkInstantiationPolicy(chid, env, polNew, payl)
+					if err != nil {
+						return errors.WithMessage(err, "a failure occurred during the verfication of the upgraded instantiation policy")
+					}
+				}
 			}
 		}
 
