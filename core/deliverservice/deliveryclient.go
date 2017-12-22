@@ -201,6 +201,7 @@ func (d *deliverServiceImpl) Stop() {
 
 func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocksprovider.LedgerInfo) *broadcastClient {
 	requester := &blocksRequester{
+		tls:     comm.TLSEnabled(),
 		chainID: chainID,
 	}
 	broadcastSetup := func(bd blocksprovider.BlocksDeliverer) error {
