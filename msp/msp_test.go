@@ -807,6 +807,29 @@ func TestIdentityExpiresAt(t *testing.T) {
 	assert.Equal(t, time.Date(2027, 8, 17, 12, 19, 48, 0, time.UTC), expirationDate)
 }
 
+func TestIdentityExpired(t *testing.T) {
+	expiredCertsDir := "testdata/expired"
+	conf, err := GetLocalMspConfig(expiredCertsDir, nil, "DEFAULT")
+	assert.NoError(t, err)
+
+	thisMSP, err := newBccspMsp(MSPv1_0)
+	assert.NoError(t, err)
+
+	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(expiredCertsDir, "keystore"), true)
+	assert.NoError(t, err)
+
+	csp, err := sw.New(256, "SHA2", ks)
+	assert.NoError(t, err)
+	thisMSP.(*bccspmsp).bccsp = csp
+
+	err = thisMSP.Setup(conf)
+	if err != nil {
+		assert.Contains(t, err.Error(), "signing identity expired")
+	} else {
+		t.Fatal("Should have failed when loading expired certs")
+	}
+}
+
 func TestIdentityPolicyPrincipal(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
