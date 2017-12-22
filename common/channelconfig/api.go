@@ -126,6 +126,10 @@ type ApplicationCapabilities interface {
 
 	// PrivateChannelData returns true if support for private channel data (a.k.a. collections) is enabled.
 	PrivateChannelData() bool
+
+	// V1_1Validation returns true is this channel is configured to perform stricter validation
+	// of transactions (as introduced in v1.1).
+	V1_1Validation() bool
 }
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel

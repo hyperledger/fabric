@@ -26,6 +26,8 @@ func TestApplicationV11(t *testing.T) {
 	})
 	assert.NoError(t, op.Supported())
 	assert.True(t, op.LifecycleViaConfig())
+	assert.True(t, op.ForbidDuplicateTXIdInBlock())
+	assert.True(t, op.V1_1Validation())
 }
 
 func TestApplicationPvtDataExperimental(t *testing.T) {

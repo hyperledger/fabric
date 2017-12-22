@@ -57,3 +57,9 @@ func (ap *ApplicationProvider) ForbidDuplicateTXIdInBlock() bool {
 func (ap *ApplicationProvider) PrivateChannelData() bool {
 	return ap.v11PvtDataExperimental
 }
+
+// V1_1Validation returns true is this channel is configured to perform stricter validation
+// of transactions (as introduced in v1.1).
+func (ap *ApplicationProvider) V1_1Validation() bool {
+	return ap.v11
+}
