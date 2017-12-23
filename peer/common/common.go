@@ -85,7 +85,7 @@ func InitConfig(cmdRoot string) error {
 }
 
 //InitCrypto initializes crypto for this peer
-func InitCrypto(mspMgrConfigDir string, localMSPID string) error {
+func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	var err error
 	// Check whenever msp folder exists
 	_, err = os.Stat(mspMgrConfigDir)
@@ -102,9 +102,9 @@ func InitCrypto(mspMgrConfigDir string, localMSPID string) error {
 		return errors.WithMessage(err, "could not parse YAML config")
 	}
 
-	err = mspmgmt.LoadLocalMsp(mspMgrConfigDir, bccspConfig, localMSPID)
+	err = mspmgmt.LoadLocalMspWithType(mspMgrConfigDir, bccspConfig, localMSPID, localMSPType)
 	if err != nil {
-		return errors.WithMessage(err, fmt.Sprintf("error when setting up MSP from directory %s", mspMgrConfigDir))
+		return errors.WithMessage(err, fmt.Sprintf("error when setting up MSP of type %s from directory %s", localMSPType, mspMgrConfigDir))
 	}
 
 	return nil

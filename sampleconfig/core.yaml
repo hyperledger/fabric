@@ -333,6 +333,9 @@ peer:
         # attempts until its retry logic gives up and returns an error
         reconnectTotalTimeThreshold: 3600s
 
+    # Type for the local MSP - by default it's of type bccsp
+    localMspType: bccsp
+
     # Used with Go profiling tools only in none production environment. In
     # production, it should be disabled (eg enabled: false)
     profile:
