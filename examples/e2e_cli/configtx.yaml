@@ -206,5 +206,4 @@ Capabilities:
         # determined to be desired for all peers running v1.0.x, but the
         # modification of which would cause imcompatibilities.  Users should
         # leave this flag set to true.
-        # TODO, re-enable once the new lifecycle work is complete
-        V1_1: false 
+        V1_1: true
