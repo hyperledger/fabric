@@ -6,8 +6,15 @@ SPDX-License-Identifier: Apache-2.0
 
 package common
 
-import "testing"
+import (
+	"testing"
 
-func TestNoop(t *testing.T) {
-	// This is just to make this package included in the code-coverage statistics
+	"github.com/stretchr/testify/assert"
+)
+
+func TestIsNotSame(t *testing.T) {
+	id := PKIidType("1")
+	assert.True(t, id.IsNotSameFilter(PKIidType("2")))
+	assert.False(t, id.IsNotSameFilter(PKIidType("1")))
+	assert.False(t, id.IsNotSameFilter(id))
 }
