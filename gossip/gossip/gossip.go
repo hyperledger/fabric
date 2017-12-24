@@ -72,6 +72,9 @@ type Gossip interface {
 	// any connections to peers with identities that are found invalid
 	SuspectPeers(s api.PeerSuspector)
 
+	// IdentityInfo returns information known peer identities
+	IdentityInfo() api.PeerIdentitySet
+
 	// Stop stops the gossip component
 	Stop()
 }

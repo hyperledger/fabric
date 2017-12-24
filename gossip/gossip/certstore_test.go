@@ -437,7 +437,7 @@ func createObjects(updateFactory func(uint64) proto.ReceivedMessage, msgCons pro
 		Mediator: pullMediator,
 	}, identity.NewIdentityMapper(cs, selfIdentity, func(pkiID common.PKIidType, _ api.PeerIdentityType) {
 		pullMediator.Remove(string(pkiID))
-	}), selfIdentity, cs)
+	}, cs), selfIdentity, cs)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)

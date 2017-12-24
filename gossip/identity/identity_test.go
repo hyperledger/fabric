@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"strings"
+
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -38,6 +40,19 @@ func init() {
 	msgCryptoService.On("Expiration", api.PeerIdentityType("yacovm")).Return(time.Now().Add(time.Hour), nil)
 	msgCryptoService.On("Expiration", api.PeerIdentityType("not-yacovm")).Return(time.Now().Add(time.Hour), nil)
 	msgCryptoService.On("Expiration", api.PeerIdentityType("invalidIdentity")).Return(time.Now().Add(time.Hour), nil)
+}
+
+func (cs *naiveCryptoService) OrgByPeerIdentity(id api.PeerIdentityType) api.OrgIdentityType {
+	found := false
+	for _, call := range cs.Mock.ExpectedCalls {
+		if call.Method == "OrgByPeerIdentity" {
+			found = true
+		}
+	}
+	if !found {
+		return nil
+	}
+	return cs.Called(id).Get(0).(api.OrgIdentityType)
 }
 
 func (cs *naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Time, error) {
@@ -91,7 +106,7 @@ func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, 
 }
 
 func TestPut(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger, msgCryptoService)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	identity3 := []byte("invalidIdentity")
@@ -109,7 +124,7 @@ func TestPut(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger, msgCryptoService)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -124,7 +139,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
-	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger)
+	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger, msgCryptoService)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -152,7 +167,7 @@ func TestListInvalidIdentities(t *testing.T) {
 	selfPKIID := msgCryptoService.GetPKIidOfCert(dummyID)
 	idStore := NewIdentityMapper(msgCryptoService, dummyID, func(_ common.PKIidType, identity api.PeerIdentityType) {
 		deletedIdentities <- string(identity)
-	})
+	}, msgCryptoService)
 	identity := []byte("yacovm")
 	// Test for a revoked identity
 	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
@@ -228,7 +243,7 @@ func TestExpiration(t *testing.T) {
 	SetIdentityUsageThreshold(time.Second * 500)
 	idStore := NewIdentityMapper(msgCryptoService, dummyID, func(_ common.PKIidType, identity api.PeerIdentityType) {
 		deletedIdentities <- string(identity)
-	})
+	}, msgCryptoService)
 	assertDeletedIdentity := func(expected string) {
 		select {
 		case <-time.After(time.Second * 10):
@@ -296,6 +311,29 @@ func TestExpirationPanic(t *testing.T) {
 	identity3 := []byte("invalidIdentity")
 	msgCryptoService.revokedIdentities[string(identity3)] = struct{}{}
 	assert.Panics(t, func() {
-		NewIdentityMapper(msgCryptoService, identity3, noopPurgeTrigger)
+		NewIdentityMapper(msgCryptoService, identity3, noopPurgeTrigger, msgCryptoService)
 	})
+}
+
+func TestIdentityInfo(t *testing.T) {
+	cs := &naiveCryptoService{}
+	alice := api.PeerIdentityType("alicePeer")
+	bob := api.PeerIdentityType("bobPeer")
+	aliceID := cs.GetPKIidOfCert(alice)
+	bobId := cs.GetPKIidOfCert(bob)
+	cs.On("OrgByPeerIdentity", dummyID).Return(api.OrgIdentityType("D"))
+	cs.On("OrgByPeerIdentity", alice).Return(api.OrgIdentityType("A"))
+	cs.On("OrgByPeerIdentity", bob).Return(api.OrgIdentityType("B"))
+	cs.On("Expiration", mock.Anything).Return(time.Now().Add(time.Minute), nil)
+	idStore := NewIdentityMapper(cs, dummyID, noopPurgeTrigger, cs)
+	idStore.Put(aliceID, alice)
+	idStore.Put(bobId, bob)
+	for org, id := range idStore.IdentityInfo().ByOrg() {
+		identity := string(id[0].Identity)
+		pkiID := string(id[0].PKIId)
+		orgId := string(id[0].Organization)
+		assert.Equal(t, org, orgId)
+		assert.Equal(t, strings.ToLower(org), string(identity[0]))
+		assert.Equal(t, strings.ToLower(org), string(pkiID[0]))
+	}
 }
