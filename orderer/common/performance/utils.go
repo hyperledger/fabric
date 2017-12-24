@@ -15,8 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
+
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	protosutils "github.com/hyperledger/fabric/protos/utils"
@@ -27,25 +26,9 @@ const (
 	Kilo = 1024 // TODO Consider adding a unit pkg
 )
 
-var conf *config.TopLevel
-
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
 
-var channelProfile *genesisconfig.Profile
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-
-	conf = config.Load()
-
-	// Load local MSP
-	err := mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
-	if err != nil {
-		panic(fmt.Errorf("Failed to initialize local MSP: %s", err))
-	}
-
-	channelProfile = genesisconfig.Load(genesisconfig.SampleSingleMSPChannelV11Profile)
-}
+var seedOnce sync.Once
 
 // MakeNormalTx creates a properly signed transaction that could be used against `broadcast` API
 func MakeNormalTx(channelID string, size int) *cb.Envelope {
@@ -94,6 +77,8 @@ func OrdererExec(f func(s *BenchmarkServer)) {
 
 // RandomID generates a random string of num chars
 func RandomID(num int) string {
+	seedOnce.Do(func() { rand.Seed(time.Now().UnixNano()) })
+
 	b := make([]rune, num)
 	for i := range b {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
@@ -102,7 +87,7 @@ func RandomID(num int) string {
 }
 
 // CreateChannel creates a channel with randomly generated ID of length 10
-func CreateChannel(server *BenchmarkServer) string {
+func CreateChannel(server *BenchmarkServer, channelProfile *genesisconfig.Profile) string {
 	client := server.CreateBroadcastClient()
 	defer client.Close()
 
