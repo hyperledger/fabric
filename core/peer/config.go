@@ -140,8 +140,8 @@ func GetServerConfig() (comm.ServerConfig, error) {
 		if err != nil {
 			return serverConfig, fmt.Errorf("error loading TLS certificate (%s)", err)
 		}
-		secureOptions.ServerCertificate = serverCert
-		secureOptions.ServerKey = serverKey
+		secureOptions.Certificate = serverCert
+		secureOptions.Key = serverKey
 		secureOptions.RequireClientCert = viper.GetBool("peer.tls.clientAuthRequired")
 		if secureOptions.RequireClientCert {
 			var clientRoots [][]byte

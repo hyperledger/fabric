@@ -53,15 +53,15 @@ type ServerConfig struct {
 // SecureOptions defines the security parameters (e.g. TLS) for a
 // GRPCServer instance
 type SecureOptions struct {
-	// PEM-encoded X509 public key to be used by the server for TLS communication
-	ServerCertificate []byte
-	// PEM-encoded private key to be used by the server for TLS communication
-	ServerKey []byte
-	// Set of PEM-encoded X509 certificate authorities to optionally send
-	// as part of the server handshake
+	// PEM-encoded X509 public key to be used for TLS communication
+	Certificate []byte
+	// PEM-encoded private key to be used for TLS communication
+	Key []byte
+	// Set of PEM-encoded X509 certificate authorities used by clients to
+	// verify server certificates
 	ServerRootCAs [][]byte
-	// Set of PEM-encoded X509 certificate authorities to use when verifying
-	// client certificates
+	// Set of PEM-encoded X509 certificate authorities used by servers to
+	// verify client certificates
 	ClientRootCAs [][]byte
 	// Whether or not to use TLS for communication
 	UseTLS bool

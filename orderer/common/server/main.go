@@ -141,7 +141,7 @@ func initializeServerConfig(conf *config.TopLevel) comm.ServerConfig {
 		// load crypto material from files
 		serverCertificate, err := ioutil.ReadFile(conf.General.TLS.Certificate)
 		if err != nil {
-			logger.Fatalf("Failed to load ServerCertificate file '%s' (%s)",
+			logger.Fatalf("Failed to load server Certificate file '%s' (%s)",
 				conf.General.TLS.Certificate, err)
 		}
 		serverKey, err := ioutil.ReadFile(conf.General.TLS.PrivateKey)
@@ -169,8 +169,8 @@ func initializeServerConfig(conf *config.TopLevel) comm.ServerConfig {
 			}
 			msg = "mutual TLS"
 		}
-		secureOpts.ServerKey = serverKey
-		secureOpts.ServerCertificate = serverCertificate
+		secureOpts.Key = serverKey
+		secureOpts.Certificate = serverCertificate
 		secureOpts.ServerRootCAs = serverRootCAs
 		secureOpts.ClientRootCAs = clientRootCAs
 		logger.Infof("Starting orderer with %s enabled", msg)

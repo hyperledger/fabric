@@ -389,8 +389,8 @@ func createChaincodeServer(ca accesscontrol.CA, peerHostname string) (srv comm.G
 			// Trust only client certificates signed by ourselves
 			ClientRootCAs: [][]byte{ca.CertBytes()},
 			// Use our own self-signed TLS certificate and key
-			ServerCertificate: certKeyPair.Cert,
-			ServerKey:         certKeyPair.Key,
+			Certificate: certKeyPair.Cert,
+			Key:         certKeyPair.Key,
 			// No point in specifying server root CAs since this TLS config is only used for
 			// a gRPC server and not a client
 			ServerRootCAs: nil,

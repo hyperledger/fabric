@@ -196,8 +196,8 @@ func (org *testOrg) testServers(port int, clientRootCAs [][]byte) []testServer {
 			comm.ServerConfig{
 				SecOpts: &comm.SecureOptions{
 					UseTLS:            true,
-					ServerCertificate: serverCert.certPEM,
-					ServerKey:         serverCert.keyPEM,
+					Certificate:       serverCert.certPEM,
+					Key:               serverCert.keyPEM,
 					RequireClientCert: true,
 					ClientRootCAs:     clientRootCAs,
 				},
@@ -395,39 +395,39 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 		t.Log(err.Error())
 	}
 
-	//missing serverCertificate
+	//missing server Certificate
 	_, err = comm.NewGRPCServer(":9041",
 		comm.ServerConfig{
 			SecOpts: &comm.SecureOptions{
-				UseTLS:            true,
-				ServerCertificate: []byte{}}})
+				UseTLS:      true,
+				Certificate: []byte{}}})
 	//check for error
-	msg = "serverConfig.SecOpts must contain both ServerKey and " +
-		"ServerCertificate when UseTLS is true"
+	msg = "serverConfig.SecOpts must contain both Key and " +
+		"Certificate when UseTLS is true"
 	assert.EqualError(t, err, msg)
 	if err != nil {
 		t.Log(err.Error())
 	}
 
-	//missing serverKey
+	//missing server Key
 	_, err = comm.NewGRPCServer(":9042",
 		comm.ServerConfig{
 			SecOpts: &comm.SecureOptions{
-				UseTLS:            true,
-				ServerCertificate: []byte{}}})
+				UseTLS:      true,
+				Certificate: []byte{}}})
 	//check for error
 	assert.EqualError(t, err, msg)
 	if err != nil {
 		t.Log(err.Error())
 	}
 
-	//bad serverKey
+	//bad server Key
 	_, err = comm.NewGRPCServer(":9043",
 		comm.ServerConfig{
 			SecOpts: &comm.SecureOptions{
-				UseTLS:            true,
-				ServerCertificate: []byte(selfSignedCertPEM),
-				ServerKey:         []byte{}}})
+				UseTLS:      true,
+				Certificate: []byte(selfSignedCertPEM),
+				Key:         []byte{}}})
 
 	//check for error
 	msg = "tls: failed to find any PEM data in key input"
@@ -436,13 +436,13 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 		t.Log(err.Error())
 	}
 
-	//bad serverCertificate
+	//bad server Certificate
 	_, err = comm.NewGRPCServer(":9044",
 		comm.ServerConfig{
 			SecOpts: &comm.SecureOptions{
-				UseTLS:            true,
-				ServerCertificate: []byte{},
-				ServerKey:         []byte(selfSignedKeyPEM)}})
+				UseTLS:      true,
+				Certificate: []byte{},
+				Key:         []byte(selfSignedKeyPEM)}})
 	//check for error
 	msg = "tls: failed to find any PEM data in certificate input"
 	assert.EqualError(t, err, msg)
@@ -454,8 +454,8 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 		comm.ServerConfig{
 			SecOpts: &comm.SecureOptions{
 				UseTLS:            true,
-				ServerCertificate: []byte(selfSignedCertPEM),
-				ServerKey:         []byte(selfSignedKeyPEM),
+				Certificate:       []byte(selfSignedCertPEM),
+				Key:               []byte(selfSignedKeyPEM),
 				RequireClientCert: true}})
 	badRootCAs := [][]byte{[]byte(badPEM)}
 	err = srv.SetClientRootCAs(badRootCAs)
@@ -576,9 +576,9 @@ func TestNewSecureGRPCServer(t *testing.T) {
 	testAddress := "localhost:9055"
 	srv, err := comm.NewGRPCServer(testAddress, comm.ServerConfig{
 		SecOpts: &comm.SecureOptions{
-			UseTLS:            true,
-			ServerCertificate: []byte(selfSignedCertPEM),
-			ServerKey:         []byte(selfSignedKeyPEM)}})
+			UseTLS:      true,
+			Certificate: []byte(selfSignedCertPEM),
+			Key:         []byte(selfSignedKeyPEM)}})
 	//check for error
 	if err != nil {
 		t.Fatalf("Failed to return new GRPC server: %v", err)
@@ -661,9 +661,9 @@ func TestNewSecureGRPCServerFromListener(t *testing.T) {
 
 	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{
 		SecOpts: &comm.SecureOptions{
-			UseTLS:            true,
-			ServerCertificate: []byte(selfSignedCertPEM),
-			ServerKey:         []byte(selfSignedKeyPEM)}})
+			UseTLS:      true,
+			Certificate: []byte(selfSignedCertPEM),
+			Key:         []byte(selfSignedKeyPEM)}})
 	//check for error
 	if err != nil {
 		t.Fatalf("Failed to return new GRPC server: %v", err)
@@ -743,9 +743,9 @@ func TestWithSignedRootCertificates(t *testing.T) {
 
 	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{
 		SecOpts: &comm.SecureOptions{
-			UseTLS:            true,
-			ServerCertificate: certPEMBlock,
-			ServerKey:         keyPEMBlock}})
+			UseTLS:      true,
+			Certificate: certPEMBlock,
+			Key:         keyPEMBlock}})
 	//check for error
 	if err != nil {
 		t.Fatalf("Failed to return new GRPC server: %v", err)
@@ -822,9 +822,9 @@ func TestWithSignedIntermediateCertificates(t *testing.T) {
 
 	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{
 		SecOpts: &comm.SecureOptions{
-			UseTLS:            true,
-			ServerCertificate: certPEMBlock,
-			ServerKey:         keyPEMBlock}})
+			UseTLS:      true,
+			Certificate: certPEMBlock,
+			Key:         keyPEMBlock}})
 	//check for error
 	if err != nil {
 		t.Fatalf("Failed to return new GRPC server: %v", err)
@@ -1444,9 +1444,9 @@ func TestUpdateTLSCert(t *testing.T) {
 
 	cfg := comm.ServerConfig{
 		SecOpts: &comm.SecureOptions{
-			UseTLS:            true,
-			ServerKey:         key,
-			ServerCertificate: cert,
+			UseTLS:      true,
+			Key:         key,
+			Certificate: cert,
 		},
 	}
 	srv, err := comm.NewGRPCServer("localhost:8333", cfg)
@@ -1536,9 +1536,9 @@ func TestCipherSuites(t *testing.T) {
 
 	serverConfig := comm.ServerConfig{
 		SecOpts: &comm.SecureOptions{
-			ServerCertificate: certPEM,
-			ServerKey:         keyPEM,
-			UseTLS:            true,
+			Certificate: certPEM,
+			Key:         keyPEM,
+			UseTLS:      true,
 		}}
 
 	var tests = []struct {

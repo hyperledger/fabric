@@ -42,8 +42,8 @@ func TestTLSBinding(t *testing.T) {
 	s, err := comm.NewGRPCServer("localhost:9435", comm.ServerConfig{
 		SecOpts: &comm.SecureOptions{
 			RequireClientCert: true,
-			ServerKey:         serverKey,
-			ServerCertificate: serverCert,
+			Key:               serverKey,
+			Certificate:       serverCert,
 			ClientRootCAs:     [][]byte{caCert},
 			UseTLS:            true,
 		},

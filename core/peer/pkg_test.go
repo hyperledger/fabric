@@ -236,8 +236,8 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 			serverConfig: comm.ServerConfig{
 				SecOpts: &comm.SecureOptions{
 					UseTLS:            true,
-					ServerCertificate: org1Server1Cert,
-					ServerKey:         org1Server1Key,
+					Certificate:       org1Server1Cert,
+					Key:               org1Server1Key,
 					ServerRootCAs:     [][]byte{org1CA},
 					RequireClientCert: true,
 				},
@@ -254,8 +254,8 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 			serverConfig: comm.ServerConfig{
 				SecOpts: &comm.SecureOptions{
 					UseTLS:            true,
-					ServerCertificate: org1Server1Cert,
-					ServerKey:         org1Server1Key,
+					Certificate:       org1Server1Cert,
+					Key:               org1Server1Key,
 					ServerRootCAs:     [][]byte{org1CA},
 					RequireClientCert: true,
 				},
@@ -274,8 +274,8 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 			serverConfig: comm.ServerConfig{
 				SecOpts: &comm.SecureOptions{
 					UseTLS:            true,
-					ServerCertificate: org1Server1Cert,
-					ServerKey:         org1Server1Key,
+					Certificate:       org1Server1Cert,
+					Key:               org1Server1Key,
 					ServerRootCAs:     [][]byte{org1CA},
 					RequireClientCert: true,
 				},

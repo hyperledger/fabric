@@ -109,10 +109,10 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 	secureConfig := serverConfig.SecOpts
 	if secureConfig != nil && secureConfig.UseTLS {
 		//both key and cert are required
-		if secureConfig.ServerKey != nil && secureConfig.ServerCertificate != nil {
+		if secureConfig.Key != nil && secureConfig.Certificate != nil {
 			grpcServer.tlsEnabled = true
 			//load server public and private keys
-			cert, err := tls.X509KeyPair(secureConfig.ServerCertificate, secureConfig.ServerKey)
+			cert, err := tls.X509KeyPair(secureConfig.Certificate, secureConfig.Key)
 			if err != nil {
 				return nil, err
 			}
@@ -155,8 +155,8 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 			creds := NewServerTransportCredentials(grpcServer.tlsConfig)
 			serverOpts = append(serverOpts, grpc.Creds(creds))
 		} else {
-			return nil, errors.New("serverConfig.SecOpts must contain both ServerKey and " +
-				"ServerCertificate when UseTLS is true")
+			return nil, errors.New("serverConfig.SecOpts must contain both Key and " +
+				"Certificate when UseTLS is true")
 		}
 	}
 	// set max send and recv msg sizes
