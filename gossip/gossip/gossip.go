@@ -21,6 +21,12 @@ import (
 // Gossip is the interface of the gossip component
 type Gossip interface {
 
+	// SelfMembershipInfo returns the peer's membership information
+	SelfMembershipInfo() discovery.NetworkMember
+
+	// SelfChannelInfo returns the peer's latest StateInfo message of a given channel
+	SelfChannelInfo(common.ChainID) *proto.SignedGossipMessage
+
 	// Send sends a message to remote peers
 	Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer)
 

@@ -282,6 +282,29 @@ func TestBadInput(t *testing.T) {
 	assert.False(t, gc.verifyMsg(&receivedMsg{msg: nil, PKIID: nil}))
 }
 
+func TestSelf(t *testing.T) {
+	t.Parallel()
+
+	cs := &cryptoService{}
+	pkiID1 := common.PKIidType("1")
+	jcm := &joinChanMsg{
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(orgInChannelA): {},
+		},
+	}
+	adapter := new(gossipAdapterMock)
+	configureAdapter(adapter)
+	adapter.On("Gossip", mock.Anything)
+	gc := NewGossipChannel(pkiID1, orgInChannelA, cs, channelA, adapter, jcm)
+	gc.UpdateLedgerHeight(1)
+	gMsg := gc.Self().GossipMessage
+	env := gc.Self().Envelope
+	sMsg, _ := env.ToGossipMessage()
+	assert.Equal(t, gMsg, sMsg.GossipMessage)
+	assert.Equal(t, gMsg.GetStateInfo().Properties.LedgerHeight, uint64(1))
+	assert.Equal(t, gMsg.GetStateInfo().PkiId, []byte("1"))
+}
+
 func TestMsgStoreNotExpire(t *testing.T) {
 	t.Parallel()
 
@@ -1659,6 +1682,10 @@ func TestChannelGetPeers(t *testing.T) {
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDinOrg2, channelA)})
 	assert.Len(t, gc.GetPeers(), 1)
 	assert.Equal(t, pkiIDInOrg1, gc.GetPeers()[0].PKIid)
+
+	// Ensure envelope from GetPeers is valid
+	gMsg, _ := gc.GetPeers()[0].Envelope.ToGossipMessage()
+	assert.Equal(t, []byte(pkiIDInOrg1), gMsg.GetStateInfo().PkiId)
 
 	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1ButNotEligible, channelA), PKIID: pkiIDInOrg1ButNotEligible})
 	cs.On("VerifyByChannel", mock.Anything).Return(errors.New("Not eligible"))
