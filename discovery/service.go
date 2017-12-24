@@ -38,18 +38,18 @@ type service struct {
 	dispatchers map[discovery.QueryType]dispatcher
 	auth        *authCache
 	tlsEnabled  bool
-	support
+	Support
 }
 
 // NewService creates a new discovery service instance
-func NewService(tlsEnabled bool, sup support) *service {
+func NewService(tlsEnabled bool, sup Support) *service {
 	s := &service{
 		tlsEnabled: tlsEnabled,
 		auth: newAuthCache(sup, authCacheConfig{
 			maxCacheSize:        defaultMaxCacheSize,
 			purgeRetentionRatio: defaultRetentionRatio,
 		}),
-		support: sup,
+		Support: sup,
 	}
 	s.dispatchers = map[discovery.QueryType]dispatcher{
 		discovery.ConfigQueryType:         s.configQuery,

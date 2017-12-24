@@ -378,6 +378,14 @@ func bootPeer(port int) string {
 	return fmt.Sprintf("localhost:%d", port)
 }
 
+func TestHasExternalEndpoints(t *testing.T) {
+	memberWithEndpoint := NetworkMember{Endpoint: "foo"}
+	memberWithoutEndpoint := NetworkMember{}
+
+	assert.True(t, HasExternalEndpoint(memberWithEndpoint))
+	assert.False(t, HasExternalEndpoint(memberWithoutEndpoint))
+}
+
 func TestToString(t *testing.T) {
 	nm := NetworkMember{
 		Endpoint:         "a",
