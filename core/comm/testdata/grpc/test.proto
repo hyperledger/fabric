@@ -20,8 +20,14 @@ option go_package = "github.com/hyperledger/fabric/core/comm/testdata/grpc";
 
 message Empty {}
 
+message Echo {
+	bytes payload = 1;
+}
+
 service TestService {
-
   rpc EmptyCall(Empty) returns (Empty);
+}
 
+service EchoService {
+  rpc EchoCall(Echo) returns (Echo);
 }
