@@ -1373,6 +1373,118 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	}
 }
 
+func TestValidateUpgradeWithNewFailAllIP(t *testing.T) {
+	// we're testing upgrade.
+	// In particular, we want to test the scenario where the upgrader
+	// complies with the instantiation policy of the current version
+	// BUT NOT the instantiation policy of the new version. For this
+	// reason we first deploy a cc with IP whic is equal to the AcceptAllPolicy
+	// and then try to upgrade with a cc with the RejectAllPolicy.
+	// We run this test twice, once with the V11 capability (and expect
+	// a failure) and once without (and we expect success).
+
+	validateUpgradeWithNewFailAllIP(t, true, true)
+	validateUpgradeWithNewFailAllIP(t, false, false)
+}
+
+func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool) {
+	// create the validator
+	v := new(ValidatorOneValidSignature)
+	stub := shim.NewMockStub("validatoronevalidsignature", v)
+
+	lccc := lscc.NewLifeCycleSysCC()
+	stublccc := shim.NewMockStub("lscc", lccc)
+
+	State := make(map[string]map[string][]byte)
+	State["lscc"] = stublccc.State
+	sysccprovider.RegisterSystemChaincodeProviderFactory(&scc.MocksccProviderFactory{
+		Qe: lm.NewMockQueryExecutor(State),
+		ApplicationConfigBool: true,
+		ApplicationConfigRv:   &mc.MockApplication{&mc.MockApplicationCapabilities{V1_1ValidationRv: v11capability}},
+	})
+	stub.MockPeerChaincode("lscc", stublccc)
+
+	// init both chaincodes
+	r1 := stub.MockInit("1", [][]byte{})
+	if r1.Status != shim.OK {
+		fmt.Println("Init failed", string(r1.Message))
+		t.FailNow()
+	}
+
+	r := stublccc.MockInit("1", [][]byte{})
+	if r.Status != shim.OK {
+		fmt.Println("Init failed", string(r.Message))
+		t.FailNow()
+	}
+
+	// deploy the chaincode with an accept all policy
+
+	ccname := "mycc"
+	ccver := "1"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	ppath := lccctestpath + "/" + ccname + "." + ccver
+
+	os.Remove(ppath)
+
+	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		t.FailNow()
+	}
+	_, err = processSignedCDS(cds, cauthdsl.AcceptAllPolicy)
+	assert.NoError(t, err)
+	defer os.Remove(ppath)
+	var b []byte
+	if b, err = proto.Marshal(cds); err != nil || b == nil {
+		t.FailNow()
+	}
+
+	sProp2, _ := utils.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
+	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
+	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
+		fmt.Printf("%#v\n", res)
+		t.FailNow()
+	}
+
+	// if we're here, we have a cc deployed with an accept all IP
+
+	// now we upgrade, with v 2 of the same cc, with the crucial difference that it has a reject all IP
+
+	ccver = "2"
+
+	simresres, err := createCCDataRWset(ccname, ccname, ccver,
+		cauthdsl.MarshaledRejectAllPolicy, // here's where we specify the IP of the upgraded cc
+	)
+	assert.NoError(t, err)
+
+	tx, err := createLSCCTx(ccname, ccver, lscc.UPGRADE, simresres)
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+	}
+
+	envBytes, err := utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+	}
+
+	policy, err := getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+
+	// execute the upgrade tx
+	args = [][]byte{[]byte("dv"), envBytes, policy}
+	if expecterr {
+		if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+			t.Fatalf("vscc invoke should have failed")
+		}
+	} else {
+		if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+			t.Fatalf("vscc invoke failed with %s", res.Message)
+		}
+	}
+}
+
 func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
