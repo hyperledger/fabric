@@ -169,7 +169,6 @@ Profiles:
                 Organizations:
                     - *SampleOrg
 
-
     # SampleNoConsortium is very similar to SampleInsecureSolo, except it does
     # not define Consortiums.
     SampleNoConsortium:
@@ -357,6 +356,12 @@ Capabilities:
         # modification of which would cause imcompatibilities.  Users should
         # leave this flag set to true.
         V1_1: true
+        # V1_1_PVTDATA_EXPERIMENTAL is an Application capability to enable the
+        # private data capability.  It is only supported when using peers built
+        # with experimental build tag.  When set to true, private data
+        # collections can be configured upon chaincode instantiation and
+        # utilized within chaincode Invokes.
+        V1_1_PVTDATA_EXPERIMENTAL: false
 
 ################################################################################
 #
