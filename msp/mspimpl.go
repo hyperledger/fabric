@@ -588,30 +588,21 @@ func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, er
 	if isECDSASignedCert(cert) {
 		// Lookup for a parent certificate to perform the sanitization
 		var parentCert *x509.Certificate
-		if cert.IsCA {
-			// at this point, cert might be a root CA certificate
-			// or an intermediate CA certificate
-			chain, err := msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
-			if err != nil {
-				return nil, err
-			}
-			if len(chain) == 1 {
-				// cert is a root CA certificate
-				parentCert = cert
-			} else {
-				// cert is an intermediate CA certificate
-				parentCert = chain[1]
-			}
+		chain, err := msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
+		if err != nil {
+			return nil, err
+		}
+
+		// at this point, cert might be a root CA certificate
+		// or an intermediate CA certificate
+		if cert.IsCA && len(chain) == 1 {
+			// cert is a root CA certificate
+			parentCert = cert
 		} else {
-			chain, err := msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
-			if err != nil {
-				return nil, err
-			}
 			parentCert = chain[1]
 		}
 
 		// Sanitize
-		var err error
 		cert, err = sanitizeECDSASignedCert(cert, parentCert)
 		if err != nil {
 			return nil, err
