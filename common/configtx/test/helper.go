@@ -60,7 +60,7 @@ func MakeGenesisBlockFromMSPs(chainID string, appMSPConf, ordererMSPConf *msppro
 	}
 
 	channelGroup.Groups[channelconfig.OrdererGroupKey].Groups[ordererOrgID] = ordererOrg
-	channelGroup.Groups[channelconfig.ApplicationGroupKey].Groups[ordererOrgID] = applicationOrg
+	channelGroup.Groups[channelconfig.ApplicationGroupKey].Groups[appOrgID] = applicationOrg
 
 	return genesis.NewFactoryImpl(channelGroup).Block(chainID)
 }
