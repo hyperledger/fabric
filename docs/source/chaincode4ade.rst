@@ -514,7 +514,7 @@ Finally, query ``a``.  We should see a value of ``20``.
 
 .. code:: bash
 
-  peer chaincode query -n mycc -c '{"Args":["query","a"]}' -C myc
+  peer chaincode query -n mycc -c '{"Args":["get","a"]}' -C myc
 
 Testing new chaincode
 ---------------------
