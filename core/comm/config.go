@@ -50,6 +50,17 @@ type ServerConfig struct {
 	KaOpts *KeepaliveOptions
 }
 
+// ClientConfig defines the parameters for configuring a GRPCClient instance
+type ClientConfig struct {
+	// SecOpts defines the security parameters
+	SecOpts *SecureOptions
+	// KaOpts defines the keepalive parameters
+	KaOpts *KeepaliveOptions
+	// Timeout specifies how long the client will block when attempting to
+	// establish a connection
+	Timeout time.Duration
+}
+
 // SecureOptions defines the security parameters (e.g. TLS) for a
 // GRPCServer instance
 type SecureOptions struct {
