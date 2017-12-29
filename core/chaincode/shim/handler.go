@@ -41,9 +41,13 @@ func (handler *Handler) triggerNextState(msg *pb.ChaincodeMessage, errc chan err
 
 // Handler handler implementation for shim side of chaincode.
 type Handler struct {
-	sync.RWMutex
+	//need lock to protect chaincode from attempting
+	//concurrent requests to the peer
+	sync.Mutex
+
 	//shim to peer grpc serializer. User only in serialSend
 	serialLock sync.Mutex
+
 	To         string
 	ChatStream PeerChaincodeStream
 	cc         Chaincode
