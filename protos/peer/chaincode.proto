@@ -81,6 +81,7 @@ message ChaincodeDeploymentSpec {
     enum ExecutionEnvironment {
         DOCKER = 0;
         SYSTEM = 1;
+        KUBERNETES = 2;
     }
 
     ChaincodeSpec chaincode_spec = 1;
