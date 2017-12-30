@@ -33,12 +33,12 @@ type handler struct {
 	interestedEvents map[string]*pb.Interest
 }
 
-func newEventHandler(stream pb.Events_ChatServer) (*handler, error) {
+func newEventHandler(stream pb.Events_ChatServer) *handler {
 	d := &handler{
 		ChatStream: stream,
 	}
 	d.interestedEvents = make(map[string]*pb.Interest)
-	return d, nil
+	return d
 }
 
 // Stop stops this handler
@@ -103,7 +103,7 @@ func (d *handler) deregisterAll() {
 
 // HandleMessage handles the Openchain messages for the Peer.
 func (d *handler) HandleMessage(msg *pb.SignedEvent) error {
-	evt, err := validateEventMessage(msg)
+	evt, err := d.validateEventMessage(msg)
 	if err != nil {
 		return fmt.Errorf("event message validation failed: [%s]", err)
 	}
@@ -151,8 +151,8 @@ func (d *handler) SendMessage(msg *pb.Event) error {
 // However, this is not being done for v1.0 due to complexity concerns and the need to complex a stable,
 // minimally viable release. Eventually events will be made channel-specific, at which point this method
 // should be revisited
-func validateEventMessage(signedEvt *pb.SignedEvent) (*pb.Event, error) {
-	logger.Debugf("ValidateEventMessage starts for signed event %p", signedEvt)
+func (d *handler) validateEventMessage(signedEvt *pb.SignedEvent) (*pb.Event, error) {
+	logger.Debugf("validating for signed event %p", signedEvt)
 
 	// messages from the client for registering and unregistering must be signed
 	// and accompanied by the signing certificate in the "Creator" field
@@ -163,13 +163,18 @@ func validateEventMessage(signedEvt *pb.SignedEvent) (*pb.Event, error) {
 	}
 
 	if evt.GetTimestamp() != nil {
-		evtTime := time.Unix(evt.GetTimestamp().Seconds, int64(evt.GetTimestamp().Nanos)).UTC().UnixNano()
-		peerTime := time.Now().UnixNano()
+		evtTime := time.Unix(evt.GetTimestamp().Seconds, int64(evt.GetTimestamp().Nanos)).UTC()
+		peerTime := time.Now()
 
-		if math.Abs(float64(peerTime-evtTime)) > float64(gEventProcessor.timeWindow.Nanoseconds()) {
-			logger.Warningf("event timestamp %s is more than the %s `peer.events.timewindow` difference above/below peer time %s. either the peer and client clocks are out of sync or a replay attack has been attempted", evtTime, gEventProcessor.timeWindow, peerTime)
-			return nil, fmt.Errorf("event timestamp out of acceptable range. must be within %s above/below peer time", gEventProcessor.timeWindow)
+		if math.Abs(float64(peerTime.UnixNano()-evtTime.UnixNano())) > float64(gEventProcessor.TimeWindow.Nanoseconds()) {
+			logger.Warningf("Message timestamp %s more than %s apart from current server time %s", evtTime, gEventProcessor.TimeWindow, peerTime)
+			return nil, fmt.Errorf("message timestamp out of acceptable range. must be within %s of current server time", gEventProcessor.TimeWindow)
 		}
+	}
+
+	err = gEventProcessor.BindingInspector(d.ChatStream.Context(), evt)
+	if err != nil {
+		return nil, err
 	}
 
 	localMSP := mgmt.GetLocalMSP()

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/comm"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -33,9 +34,10 @@ type EventsServer struct {
 
 // EventsServerConfig contains the setup config for the events server
 type EventsServerConfig struct {
-	BufferSize uint
-	Timeout    time.Duration
-	TimeWindow time.Duration
+	BufferSize       uint
+	Timeout          time.Duration
+	TimeWindow       time.Duration
+	BindingInspector comm.BindingInspector
 }
 
 //singleton - if we want to create multiple servers, we need to subsume events.gEventConsumers into EventsServer
@@ -54,10 +56,7 @@ func NewEventsServer(config *EventsServerConfig) *EventsServer {
 
 // Chat implementation of the Chat bidi streaming RPC function
 func (p *EventsServer) Chat(stream pb.Events_ChatServer) error {
-	handler, err := newEventHandler(stream)
-	if err != nil {
-		return fmt.Errorf("error creating handler during handleChat initiation: %s", err)
-	}
+	handler := newEventHandler(stream)
 	defer handler.Stop()
 	for {
 		in, err := stream.Recv()

@@ -17,6 +17,7 @@ limitations under the License.
 package consumer
 
 import (
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -51,6 +52,7 @@ type EventsClient struct {
 type RegistrationConfig struct {
 	InterestedEvents []*ehpb.Interest
 	Timestamp        *timestamp.Timestamp
+	TlsCert          *x509.Certificate
 }
 
 //NewEventsClient Returns a new grpc.ClientConn to the configured local PEER.
@@ -114,6 +116,9 @@ func (ec *EventsClient) RegisterAsync(config *RegistrationConfig) error {
 	}
 	emsg := &ehpb.Event{Event: &ehpb.Event_Register{Register: &ehpb.Register{Events: config.InterestedEvents}}, Creator: creator, Timestamp: config.Timestamp}
 
+	if config.TlsCert != nil {
+		emsg.TlsCertHash = util.ComputeSHA256(config.TlsCert.Raw)
+	}
 	if err = ec.send(emsg); err != nil {
 		consumerLogger.Errorf("error on Register send %s\n", err)
 	}

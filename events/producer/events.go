@@ -205,15 +205,7 @@ type eventProcessor struct {
 	//we could generalize this with mutiple channels each with its own size
 	eventChannel chan *pb.Event
 
-	//timeout duration for producer to send an event.
-	//if < 0, if buffer full, unblocks immediately and not send
-	//if 0, if buffer full, will block and guarantee the event will be sent out
-	//if > 0, if buffer full, blocks till timeout
-	timeout time.Duration
-
-	//time difference from peer time where registration events can be considered
-	//valid
-	timeWindow time.Duration
+	*EventsServerConfig
 }
 
 //global eventProcessor singleton created by initializeEvents. Openchain producers
@@ -252,8 +244,7 @@ func initializeEvents(config *EventsServerConfig) {
 		panic("should not be called twice")
 	}
 
-	gEventProcessor = &eventProcessor{eventConsumers: make(map[pb.EventType]handlerList), eventChannel: make(chan *pb.Event, config.BufferSize), timeout: config.Timeout, timeWindow: config.TimeWindow}
-
+	gEventProcessor = &eventProcessor{eventConsumers: make(map[pb.EventType]handlerList), eventChannel: make(chan *pb.Event, config.BufferSize), EventsServerConfig: config}
 	addInternalEventTypes()
 
 	//start the event processor
@@ -327,21 +318,21 @@ func Send(e *pb.Event) error {
 		return nil
 	}
 
-	if gEventProcessor.timeout < 0 {
+	if gEventProcessor.Timeout < 0 {
 		logger.Debugf("Event processor timeout < 0")
 		select {
 		case gEventProcessor.eventChannel <- e:
 		default:
 			return fmt.Errorf("could not send the blocking event")
 		}
-	} else if gEventProcessor.timeout == 0 {
+	} else if gEventProcessor.Timeout == 0 {
 		logger.Debugf("Event processor timeout = 0")
 		gEventProcessor.eventChannel <- e
 	} else {
 		logger.Debugf("Event processor timeout > 0")
 		select {
 		case gEventProcessor.eventChannel <- e:
-		case <-time.After(gEventProcessor.timeout):
+		case <-time.After(gEventProcessor.Timeout):
 			return fmt.Errorf("could not send the blocking event")
 		}
 	}

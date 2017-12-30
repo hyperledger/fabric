@@ -129,6 +129,10 @@ message Event {
     bytes creator = 6;
     // Timestamp of the client - used to mitigate replay attacks
     google.protobuf.Timestamp timestamp = 8;
+
+    // If mutual TLS is employed, this represents
+    // the hash of the client's TLS certificate
+    bytes tls_cert_hash = 9;
 }
 
 // Interface exported by the events server

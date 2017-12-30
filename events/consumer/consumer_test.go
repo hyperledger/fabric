@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package consumer
 
 import (
+	"crypto/x509"
 	"fmt"
 	"net"
 	"os"
@@ -14,7 +15,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/comm"
 	coreutil "github.com/hyperledger/fabric/core/testutil"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -41,6 +44,9 @@ type BadAdapter struct {
 
 var peerAddress = "0.0.0.0:7303"
 var ies = []*ehpb.Interest{{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event1"}}}}
+var testCert = &x509.Certificate{
+	Raw: []byte("test"),
+}
 
 var adapter *MockAdapter
 var obcEHClient *EventsClient
@@ -160,7 +166,7 @@ func TestUnregisterAsync(t *testing.T) {
 		t.Fail()
 	}
 
-	regConfig := &RegistrationConfig{InterestedEvents: ies, Timestamp: util.CreateUtcTimestamp()}
+	regConfig := &RegistrationConfig{InterestedEvents: ies, Timestamp: util.CreateUtcTimestamp(), TlsCert: testCert}
 	obcEHClient.RegisterAsync(regConfig)
 	err = obcEHClient.UnregisterAsync(ies)
 	assert.NoError(t, err)
@@ -256,8 +262,21 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	ehConfig := &producer.EventsServerConfig{BufferSize: uint(viper.GetInt("peer.events.buffersize")), Timeout: viper.GetDuration("peer.events.timeout"), TimeWindow: viper.GetDuration("peer.events.timewindow")}
+	extract := func(msg proto.Message) []byte {
+		evt, isEvent := msg.(*ehpb.Event)
+		if !isEvent || evt == nil {
+			return nil
+		}
+		return evt.TlsCertHash
+	}
+
+	ehConfig := &producer.EventsServerConfig{
+		BufferSize:       uint(viper.GetInt("peer.events.buffersize")),
+		Timeout:          viper.GetDuration("peer.events.timeout"),
+		TimeWindow:       viper.GetDuration("peer.events.timewindow"),
+		BindingInspector: comm.NewBindingInspector(false, extract)}
 	ehServer := producer.NewEventsServer(ehConfig)
+
 	ehpb.RegisterEventsServer(grpcServer, ehServer)
 
 	go grpcServer.Serve(lis)
