@@ -31,7 +31,7 @@ type acSupport interface {
 	// service from the discovery service for a given channel
 	EligibleForService(channel string, data common.SignedData) error
 
-	// ConfigSequence returns the configuration sequence of the a given channel
+	// ConfigSequence returns the configuration sequence of the given channel
 	ConfigSequence(channel string) uint64
 }
 
@@ -41,7 +41,7 @@ type authCacheConfig struct {
 	maxCacheSize int
 	// purgeRetentionRatio is the % of entries that remain in the cache
 	// after the cache is purged due to overpopulation
-	purgeRetentionRatio float32
+	purgeRetentionRatio float64
 }
 
 // authCache defines an interface that authenticates a request in a channel context,
@@ -150,7 +150,7 @@ func (cache *accessCache) purgeEntriesIfNeeded() {
 
 	maxCacheSize := cache.ac.conf.maxCacheSize
 	purgeRatio := cache.ac.conf.purgeRetentionRatio
-	entries2evict := maxCacheSize - int(purgeRatio*float32(maxCacheSize))
+	entries2evict := maxCacheSize - int(purgeRatio*float64(maxCacheSize))
 
 	for key := range cache.entries {
 		if entries2evict == 0 {

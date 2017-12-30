@@ -121,8 +121,6 @@ func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoServi
 	go d.periodicalReconnectToDead()
 	go d.handlePresumedDeadPeers()
 
-	d.logger.Info("Started", self, "incTime is", d.incTime)
-
 	return d
 }
 
