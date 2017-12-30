@@ -57,6 +57,8 @@ func instantiateCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	}
 	attachFlags(chaincodeInstantiateCmd, flagList)
 
+	chaincodeInstantiateCmd.Flags().BoolVarP(&useKubernetes, "use-kubernetes", "K", false, "use kubernetes to instantiate")
+
 	return chaincodeInstantiateCmd
 }
 
@@ -70,6 +72,10 @@ func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envel
 	cds, err := getChaincodeDeploymentSpec(spec, false)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
+	}
+
+	if useKubernetes {
+		cds.ExecEnv = pb.ChaincodeDeploymentSpec_KUBERNETES
 	}
 
 	creator, err := cf.Signer.Serialize()

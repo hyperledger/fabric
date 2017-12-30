@@ -50,6 +50,7 @@ var vmcontroller *VMController
 //constants for supported containers
 const (
 	DOCKER = "Docker"
+	KUBERNETES = "Kubernetes"
 	SYSTEM = "System"
 )
 
@@ -67,6 +68,8 @@ func (vmc *VMController) newVM(typ string) api.VM {
 	switch typ {
 	case DOCKER:
 		v = dockercontroller.NewDockerVM()
+	case KUBERNETES:
+		v = kubernetescontroller.NemKubernetesVM()
 	case SYSTEM:
 		v = &inproccontroller.InprocVM{}
 	default:
