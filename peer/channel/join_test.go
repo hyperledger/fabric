@@ -156,5 +156,5 @@ func TestJoinNilCF(t *testing.T) {
 
 	err = cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error trying to connect to local peer")
+	assert.Contains(t, err.Error(), "endorser client failed to connect to")
 }

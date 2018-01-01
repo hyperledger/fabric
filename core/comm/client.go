@@ -35,8 +35,10 @@ type GRPCClient interface {
 	// SetServerRootCAs sets the list of authorities used to verify server
 	// certificates based on a list of PEM-encoded X509 certificate authorities
 	SetServerRootCAs(clientRoots [][]byte) error
-	// NewConnection returns a grpc.ClientConn for the target address
-	NewConnection(address string) (*grpc.ClientConn, error)
+	// NewConnection returns a grpc.ClientConn for the target address and
+	// overrides the server name used to verify the hostname on the
+	// certificate returned by a server when using TLS
+	NewConnection(address string, serverNameOverride string) (*grpc.ClientConn, error)
 }
 
 type grpcClient struct {
@@ -185,8 +187,10 @@ func (client *grpcClient) SetServerRootCAs(serverRoots [][]byte) error {
 	return nil
 }
 
-// NewConnection returns a grpc.ClientConn for the target address
-func (client *grpcClient) NewConnection(address string) (
+// NewConnection returns a grpc.ClientConn for the target address and
+// overrides the server name used to verify the hostname on the
+// certificate returned by a server when using TLS
+func (client *grpcClient) NewConnection(address string, serverNameOverride string) (
 	*grpc.ClientConn, error) {
 
 	var dialOpts []grpc.DialOption
@@ -197,6 +201,7 @@ func (client *grpcClient) NewConnection(address string) (
 	// SetServerRootCAs / SetMaxRecvMsgSize / SetMaxSendMsgSize
 	//  to take effect on a per connection basis
 	if client.tlsConfig != nil {
+		client.tlsConfig.ServerName = serverNameOverride
 		dialOpts = append(dialOpts,
 			grpc.WithTransportCredentials(
 				credentials.NewTLS(client.tlsConfig)))

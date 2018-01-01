@@ -1,0 +1,58 @@
+/*
+Copyright IBM Corp. 2016-2017 All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+package common
+
+import (
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+var (
+	OrderingEndpoint           string
+	tlsEnabled                 bool
+	clientAuth                 bool
+	caFile                     string
+	keyFile                    string
+	certFile                   string
+	ordererTLSHostnameOverride string
+)
+
+// SetOrdererEnv adds orderer-specific settings to the global Viper environment
+func SetOrdererEnv(cmd *cobra.Command, args []string) {
+	// need to init logging here as cobra does not currently support
+	// chaining PersistentPreRun functions
+	loggingSpec := viper.GetString("logging.level")
+	flogging.InitFromSpec(loggingSpec)
+	// set the orderer environment from flags
+	viper.Set("orderer.tls.rootcert.file", caFile)
+	viper.Set("orderer.tls.clientKey.file", keyFile)
+	viper.Set("orderer.tls.clientCert.file", certFile)
+	viper.Set("orderer.address", OrderingEndpoint)
+	viper.Set("orderer.tls.serverhostoverride", ordererTLSHostnameOverride)
+	viper.Set("orderer.tls.enabled", tlsEnabled)
+	viper.Set("orderer.tls.clientAuthRequired", clientAuth)
+}
+
+// AddOrdererFlags adds flags for orderer-related commands
+func AddOrdererFlags(cmd *cobra.Command) {
+	flags := cmd.PersistentFlags()
+
+	flags.StringVarP(&OrderingEndpoint, "orderer", "o", "", "Ordering service endpoint")
+	flags.BoolVarP(&tlsEnabled, "tls", "", false, "Use TLS when communicating with the orderer endpoint")
+	flags.BoolVarP(&clientAuth, "clientauth", "", false,
+		"Use mutual TLS when communicating with the orderer endpoint")
+	flags.StringVarP(&caFile, "cafile", "", "",
+		"Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint")
+	flags.StringVarP(&keyFile, "keyfile", "", "",
+		"Path to file containing PEM-encoded private key to use for mutual TLS "+
+			"communication with the orderer endpoint")
+	flags.StringVarP(&certFile, "certfile", "", "",
+		"Path to file containing PEM-encoded X509 public key to use for "+
+			"mutual TLS communication with the orderer endpoint")
+	flags.StringVarP(&ordererTLSHostnameOverride, "ordererTLSHostnameOverride",
+		"", "", "The hostname override to use when validating the TLS connection to the orderer.")
+}

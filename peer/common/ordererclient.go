@@ -1,104 +1,74 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2016-2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
-
 package common
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
-	"strings"
 	"time"
 
-	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/core/comm"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
-type BroadcastClient interface {
-	//Send data to orderer
-	Send(env *cb.Envelope) error
-	Close() error
+// OrdererClient represents a client for communicating with an ordering
+// service
+type OrdererClient struct {
+	commonClient
 }
 
-type broadcastClient struct {
-	conn   *grpc.ClientConn
-	client ab.AtomicBroadcast_BroadcastClient
-}
-
-// GetBroadcastClient creates a simple instance of the BroadcastClient interface
-func GetBroadcastClient(orderingEndpoint string, tlsEnabled bool, caFile string) (BroadcastClient, error) {
-
-	if len(strings.Split(orderingEndpoint, ":")) != 2 {
-		return nil, errors.Errorf("ordering service endpoint %s is not valid or missing", orderingEndpoint)
-	}
-
-	var opts []grpc.DialOption
-	// check for TLS
-	if tlsEnabled {
-		if caFile != "" {
-			creds, err := credentials.NewClientTLSFromFile(caFile, "")
-			if err != nil {
-				return nil, errors.WithMessage(err, fmt.Sprintf("error connecting to %s due to", orderingEndpoint))
-			}
-			opts = append(opts, grpc.WithTransportCredentials(creds))
-		}
-	} else {
-		opts = append(opts, grpc.WithInsecure())
-	}
-
-	opts = append(opts, grpc.WithBlock())
-	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, 3*time.Second)
-	conn, err := grpc.DialContext(ctx, orderingEndpoint, opts...)
+// NewOrdererClientFromEnv creates an instance of an OrdererClient from the
+// global Viper instance
+func NewOrdererClientFromEnv() (*OrdererClient, error) {
+	address, override, clientConfig, err := configFromEnv("orderer")
 	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error connecting to %s due to", orderingEndpoint))
+		return nil, errors.WithMessage(err,
+			"failed to load config for OrdererClient")
 	}
-	client, err := ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
+	// set timeout
+	clientConfig.Timeout = time.Second * 3
+	gClient, err := comm.NewGRPCClient(clientConfig)
 	if err != nil {
-		conn.Close()
-		return nil, errors.WithMessage(err, fmt.Sprintf("error connecting to %s due to", orderingEndpoint))
+		return nil, errors.WithMessage(err,
+			"failed to create OrdererClient from config")
 	}
-
-	return &broadcastClient{conn: conn, client: client}, nil
+	oClient := &OrdererClient{
+		commonClient: commonClient{
+			GRPCClient: gClient,
+			address:    address,
+			sn:         override}}
+	return oClient, nil
 }
 
-func (s *broadcastClient) getAck() error {
-	msg, err := s.client.Recv()
+// Broadcast returns a broadcast client for the AtomicBroadcast service
+func (oc *OrdererClient) Broadcast() (ab.AtomicBroadcast_BroadcastClient, error) {
+	conn, err := oc.commonClient.NewConnection(oc.address, oc.sn)
 	if err != nil {
-		return err
+		return nil, errors.WithMessage(err,
+			fmt.Sprintf("orderer client failed to connect to %s", oc.address))
 	}
-	if msg.Status != cb.Status_SUCCESS {
-		return errors.Errorf("got unexpected status: %v -- %s", msg.Status, msg.Info)
-	}
-	return nil
+	// TODO: check to see if we should actually handle error before returning
+	return ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
 }
 
-//Send data to orderer
-func (s *broadcastClient) Send(env *cb.Envelope) error {
-	if err := s.client.Send(env); err != nil {
-		return errors.WithMessage(err, "could not send")
+// Deliver returns a deliver client for the AtomicBroadcast service
+func (oc *OrdererClient) Deliver() (ab.AtomicBroadcast_DeliverClient, error) {
+	conn, err := oc.commonClient.NewConnection(oc.address, oc.sn)
+	if err != nil {
+		return nil, errors.WithMessage(err,
+			fmt.Sprintf("orderer client failed to connect to %s", oc.address))
 	}
+	// TODO: check to see if we should actually handle error before returning
+	return ab.NewAtomicBroadcastClient(conn).Deliver(context.TODO())
 
-	err := s.getAck()
-
-	return err
 }
 
-func (s *broadcastClient) Close() error {
-	return s.conn.Close()
+// Certificate returns the TLS client certificate (if available)
+func (oc *OrdererClient) Certificate() tls.Certificate {
+	return oc.commonClient.Certificate()
 }

@@ -117,7 +117,7 @@ func TestInvokeCmd(t *testing.T) {
 	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer msp.SigningIdentity, endorserClient pb.EndorserClient) ([]string, error) {
 		return []string{"localhost:9999"}, nil
 	}
-	common.GetBroadcastClientFnc = func(orderingEndpoint string, tlsEnabled bool, caFile string) (common.BroadcastClient, error) {
+	common.GetBroadcastClientFnc = func() (common.BroadcastClient, error) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
@@ -125,7 +125,7 @@ func TestInvokeCmd(t *testing.T) {
 
 	// Success case
 	t.Logf("Start success case")
-	common.GetBroadcastClientFnc = func(orderingEndpoint string, tlsEnabled bool, caFile string) (common.BroadcastClient, error) {
+	common.GetBroadcastClientFnc = func() (common.BroadcastClient, error) {
 		return mockCF.BroadcastClient, nil
 	}
 	err = cmd.Execute()

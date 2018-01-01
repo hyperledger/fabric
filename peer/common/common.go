@@ -1,23 +1,14 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2016-2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package common
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -25,8 +16,8 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -56,14 +47,19 @@ var (
 
 	// GetBroadcastClientFnc returns an instance of the BroadcastClient interface
 	// by default it is set to GetBroadcastClient function
-	GetBroadcastClientFnc func(orderingEndpoint string, tlsEnabled bool,
-		caFile string) (BroadcastClient, error)
+	GetBroadcastClientFnc func() (BroadcastClient, error)
 
 	// GetOrdererEndpointOfChainFnc returns orderer endpoints of given chain
 	// by default it is set to GetOrdererEndpointOfChain function
 	GetOrdererEndpointOfChainFnc func(chainID string, signer msp.SigningIdentity,
 		endorserClient pb.EndorserClient) ([]string, error)
 )
+
+type commonClient struct {
+	comm.GRPCClient
+	address string
+	sn      string
+}
 
 func init() {
 	GetEndorserClientFnc = GetEndorserClient
@@ -115,26 +111,6 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 func SetBCCSPKeystorePath() {
 	viper.Set("peer.BCCSP.SW.FileKeyStore.KeyStore",
 		config.GetPath("peer.BCCSP.SW.FileKeyStore.KeyStore"))
-}
-
-// GetEndorserClient returns a new endorser client connection for this peer
-func GetEndorserClient() (pb.EndorserClient, error) {
-	clientConn, err := peer.NewPeerClientConnection()
-	if err != nil {
-		return nil, errors.WithMessage(err, "error trying to connect to local peer")
-	}
-	endorserClient := pb.NewEndorserClient(clientConn)
-	return endorserClient, nil
-}
-
-// GetAdminClient returns a new admin client connection for this peer
-func GetAdminClient() (pb.AdminClient, error) {
-	clientConn, err := peer.NewPeerClientConnection()
-	if err != nil {
-		return nil, errors.WithMessage(err, "error trying to connect to local peer")
-	}
-	adminClient := pb.NewAdminClient(clientConn)
-	return adminClient, nil
 }
 
 // GetDefaultSigner return a default Signer(Default/PERR) for cli
@@ -232,4 +208,41 @@ func CheckLogLevel(level string) error {
 		err = errors.Errorf("invalid log level provided - %s", level)
 	}
 	return err
+}
+
+func configFromEnv(prefix string) (address, override string,
+	clientConfig comm.ClientConfig, err error) {
+	address = viper.GetString(prefix + ".address")
+	override = viper.GetString(prefix + ".tls.serverhostoverride")
+	clientConfig = comm.ClientConfig{}
+	secOpts := &comm.SecureOptions{
+		UseTLS:            viper.GetBool(prefix + ".tls.enabled"),
+		RequireClientCert: viper.GetBool(prefix + ".tls.clientAuthRequired")}
+	if secOpts.UseTLS {
+		caPEM, res := ioutil.ReadFile(config.GetPath(prefix + ".tls.rootcert.file"))
+		if res != nil {
+			err = errors.WithMessage(res,
+				fmt.Sprintf("unable to load %s.tls.rootcert.file", prefix))
+			return
+		}
+		secOpts.ServerRootCAs = [][]byte{caPEM}
+	}
+	if secOpts.RequireClientCert {
+		keyPEM, res := ioutil.ReadFile(config.GetPath(prefix + ".tls.clientKey.file"))
+		if res != nil {
+			err = errors.WithMessage(res,
+				fmt.Sprintf("unable to load %s.tls.clientKey.file", prefix))
+			return
+		}
+		secOpts.Key = keyPEM
+		certPEM, res := ioutil.ReadFile(config.GetPath(prefix + ".tls.clientCert.file"))
+		if res != nil {
+			err = errors.WithMessage(res,
+				fmt.Sprintf("unable to load %s.tls.clientCert.file", prefix))
+			return
+		}
+		secOpts.Certificate = certPEM
+	}
+	clientConfig.SecOpts = secOpts
+	return
 }

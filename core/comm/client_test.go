@@ -135,7 +135,7 @@ func TestNewConnection_Timeout(t *testing.T) {
 	config := comm.ClientConfig{
 		Timeout: 1 * time.Second}
 	client, err := comm.NewGRPCClient(config)
-	conn, err := client.NewConnection(testAddress)
+	conn, err := client.NewConnection(testAddress, "")
 	assert.Contains(t, err.Error(), "context deadline exceeded")
 	t.Log(err)
 	assert.Nil(t, conn)
@@ -292,7 +292,7 @@ func TestNewConnection(t *testing.T) {
 				t.Fatalf("error creating client for test: %v", err)
 			}
 			conn, err := client.NewConnection(fmt.Sprintf("localhost:%d",
-				test.clientPort))
+				test.clientPort), "")
 			if test.success {
 				assert.NoError(t, err)
 				assert.NotNil(t, conn)
@@ -348,7 +348,7 @@ func TestSetServerRootCAs(t *testing.T) {
 
 	// initial config should work
 	t.Log("running initial good config")
-	conn, err := client.NewConnection(address)
+	conn, err := client.NewConnection(address, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 	if conn != nil {
@@ -360,7 +360,7 @@ func TestSetServerRootCAs(t *testing.T) {
 	err = client.SetServerRootCAs([][]byte{})
 	assert.NoError(t, err)
 	// now connection should fail
-	_, err = client.NewConnection(address)
+	_, err = client.NewConnection(address, "")
 	assert.Error(t, err)
 
 	// good root cert
@@ -368,7 +368,7 @@ func TestSetServerRootCAs(t *testing.T) {
 	err = client.SetServerRootCAs([][]byte{[]byte(caPEM)})
 	assert.NoError(t, err)
 	// now connection should succeed again
-	conn, err = client.NewConnection(address)
+	conn, err = client.NewConnection(address, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 	conn.Close()
@@ -442,7 +442,7 @@ func TestSetMessageSize(t *testing.T) {
 			if test.maxSendSize > 0 {
 				client.SetMaxSendMsgSize(test.maxSendSize)
 			}
-			conn, err := client.NewConnection(address)
+			conn, err := client.NewConnection(address, "")
 			assert.NoError(t, err)
 			defer conn.Close()
 			// create service client from conn

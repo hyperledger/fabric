@@ -21,10 +21,12 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/util"
+	pcommon "github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"google.golang.org/grpc"
+	"github.com/pkg/errors"
 )
 
 type deliverClientIntf interface {
@@ -35,26 +37,43 @@ type deliverClientIntf interface {
 }
 
 type deliverClient struct {
-	conn    *grpc.ClientConn
-	client  ab.AtomicBroadcast_DeliverClient
-	chainID string
+	client      ab.AtomicBroadcast_DeliverClient
+	chainID     string
+	tlsCertHash []byte
 }
 
-func newDeliverClient(conn *grpc.ClientConn, client ab.AtomicBroadcast_DeliverClient, chainID string) *deliverClient {
-	return &deliverClient{conn: conn, client: client, chainID: chainID}
+func newDeliverClient(chainID string) (*deliverClient, error) {
+	var tlsCertHash []byte
+	oc, err := pcommon.NewOrdererClientFromEnv()
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to create deliver client")
+	}
+	dc, err := oc.Deliver()
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to create deliver client")
+	}
+	// check for client certificate and create hash if present
+	if len(oc.Certificate().Certificate) > 0 {
+		tlsCertHash = util.ComputeSHA256(oc.Certificate().Certificate[0])
+	}
+	return &deliverClient{client: dc, chainID: chainID, tlsCertHash: tlsCertHash}, nil
 }
 
-func seekHelper(chainID string, position *ab.SeekPosition) *common.Envelope {
+func seekHelper(
+	chainID string,
+	position *ab.SeekPosition,
+	tlsCertHash []byte,
+) *common.Envelope {
+
 	seekInfo := &ab.SeekInfo{
 		Start:    position,
 		Stop:     position,
 		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 	}
 
-	//TODO- epoch and msgVersion may need to be obtained for nowfollowing usage in orderer/configupdate/configupdate.go
-	msgVersion := int32(0)
-	epoch := uint64(0)
-	env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch)
+	env, err := utils.CreateSignedEnvelopeWithTLSBinding(
+		common.HeaderType_CONFIG_UPDATE, chainID, localmsp.NewSigner(),
+		seekInfo, int32(0), uint64(0), tlsCertHash)
 	if err != nil {
 		logger.Errorf("Error signing envelope:  %s", err)
 		return nil
@@ -63,15 +82,22 @@ func seekHelper(chainID string, position *ab.SeekPosition) *common.Envelope {
 }
 
 func (r *deliverClient) seekSpecified(blockNumber uint64) error {
-	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: blockNumber}}}))
+	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{
+		Type: &ab.SeekPosition_Specified{
+			Specified: &ab.SeekSpecified{
+				Number: blockNumber}}}, r.tlsCertHash))
 }
 
 func (r *deliverClient) seekOldest() error {
-	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}}))
+	return r.client.Send(seekHelper(r.chainID,
+		&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{
+			Oldest: &ab.SeekOldest{}}}, r.tlsCertHash))
 }
 
 func (r *deliverClient) seekNewest() error {
-	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}}))
+	return r.client.Send(seekHelper(r.chainID,
+		&ab.SeekPosition{Type: &ab.SeekPosition_Newest{
+			Newest: &ab.SeekNewest{}}}, r.tlsCertHash))
 }
 
 func (r *deliverClient) readBlock() (*common.Block, error) {
@@ -123,7 +149,7 @@ func (r *deliverClient) getNewestBlock() (*common.Block, error) {
 }
 
 func (r *deliverClient) Close() error {
-	return r.conn.Close()
+	return r.client.CloseSend()
 }
 
 func getGenesisBlock(cf *ChannelCmdFactory) (*common.Block, error) {

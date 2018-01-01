@@ -24,11 +24,8 @@ const (
 var logger = flogging.MustGetLogger("chaincodeCmd")
 
 func addFlags(cmd *cobra.Command) {
+	common.AddOrdererFlags(cmd)
 	flags := cmd.PersistentFlags()
-
-	flags.StringVarP(&orderingEndpoint, "orderer", "o", "", "Ordering service endpoint")
-	flags.BoolVarP(&tls, "tls", "", false, "Use TLS when communicating with the orderer endpoint")
-	flags.StringVarP(&caFile, "cafile", "", "", "Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint")
 	flags.StringVarP(&transient, "transient", "", "", "Transient map of arguments in JSON encoding")
 }
 
@@ -64,18 +61,16 @@ var (
 	escc                  string
 	vscc                  string
 	policyMarshalled      []byte
-	orderingEndpoint      string
-	tls                   bool
-	caFile                string
 	transient             string
 	collectionsConfigFile string
 	collectionConfigBytes []byte
 )
 
 var chaincodeCmd = &cobra.Command{
-	Use:   chainFuncName,
-	Short: fmt.Sprint(shortDes),
-	Long:  fmt.Sprint(longDes),
+	Use:              chainFuncName,
+	Short:            fmt.Sprint(shortDes),
+	Long:             fmt.Sprint(longDes),
+	PersistentPreRun: common.SetOrdererEnv,
 }
 
 var flags *pflag.FlagSet
