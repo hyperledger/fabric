@@ -56,7 +56,7 @@ func TestService(t *testing.T) {
 	mockSup.On("PeersForEndorsement", "cc2").Return(ed2, nil)
 	mockSup.On("PeersForEndorsement", "cc3").Return(ed3, nil)
 
-	service := newService(false, mockSup)
+	service := NewService(false, mockSup)
 
 	// Scenario I: Channel does not exist
 	resp, err := service.Discover(ctx, toSignedRequest(req))

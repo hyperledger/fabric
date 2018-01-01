@@ -41,7 +41,8 @@ type service struct {
 	support
 }
 
-func newService(tlsEnabled bool, sup support) *service {
+// NewService creates a new discovery service instance
+func NewService(tlsEnabled bool, sup support) *service {
 	s := &service{
 		tlsEnabled: tlsEnabled,
 		auth: newAuthCache(sup, authCacheConfig{

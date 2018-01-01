@@ -41,3 +41,24 @@ func (sr *SignedRequest) ToRequest() (*Request, error) {
 	req := &Request{}
 	return req, proto.Unmarshal(sr.Payload, req)
 }
+
+// ConfigAt returns the ConfigResult at a given index in the Response,
+// or an Error if present.
+func (m *Response) ConfigAt(i int) (*ConfigResult, *Error) {
+	r := m.Results[i]
+	return r.GetConfigResult(), r.GetError()
+}
+
+// MembershipAt returns the PeerMembershipResult at a given index in the Response,
+// or an Error if present.
+func (m *Response) MembershipAt(i int) (*PeerMembershipResult, *Error) {
+	r := m.Results[i]
+	return r.GetMembers(), r.GetError()
+}
+
+// EndorsersAt returns the PeerMembershipResult at a given index in the Response,
+// or an Error if present.
+func (m *Response) EndorsersAt(i int) (*ChaincodeQueryResult, *Error) {
+	r := m.Results[i]
+	return r.GetCcQueryRes(), r.GetError()
+}
