@@ -106,6 +106,8 @@ func TestInstall(t *testing.T) {
 	testInstall(t, "", "0", path, EmptyChaincodeNameErr("").Error(), "Alice", scc, stub)
 	testInstall(t, "example02", "1{}0", path, InvalidVersionErr("1{}0").Error(), "Alice", scc, stub)
 	testInstall(t, "example02", "0", path, "Authorization for INSTALL has been denied", "Bob", scc, stub)
+	testInstall(t, "example02-2", "1.0-alpha+001", path, "", "Alice", scc, stub)
+	testInstall(t, "example02-2", "1.0+sha.c0ffee", path, "", "Alice", scc, stub)
 
 	scc.support.(*lscc.MockSupport).PutChaincodeToLocalStorageErr = errors.New("barf")
 
