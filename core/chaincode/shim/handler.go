@@ -1,19 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
 */
 
 package shim
@@ -25,6 +13,15 @@ import (
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
+)
+
+type state string
+
+const (
+	created     state = "created"     //start state
+	established state = "established" //connection established
+	ready       state = "ready"       //ready for requests
+
 )
 
 // PeerChaincodeStream interface for stream between Peer and chaincode instance.
@@ -51,7 +48,7 @@ type Handler struct {
 	To         string
 	ChatStream PeerChaincodeStream
 	cc         Chaincode
-	state      string
+	state      state
 	// Multiple queries (and one transaction) with different txids can be executing in parallel for this chaincode
 	// responseChannel is the channel on which responses are communicated by the shim to the chaincodeStub.
 	responseChannel map[string]chan pb.ChaincodeMessage
@@ -172,7 +169,7 @@ func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode
 		cc:         chaincode,
 	}
 	v.responseChannel = make(map[string]chan pb.ChaincodeMessage)
-	v.state = "created"
+	v.state = created
 	return v
 }
 
@@ -713,7 +710,7 @@ func (handler *Handler) handleReady(msg *pb.ChaincodeMessage, errc chan error) e
 //handle established state
 func (handler *Handler) handleEstablished(msg *pb.ChaincodeMessage, errc chan error) error {
 	if msg.Type == pb.ChaincodeMessage_READY {
-		handler.state = "ready"
+		handler.state = ready
 		return nil
 	}
 	return errors.Errorf("[%s]Chaincode handler cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
@@ -722,7 +719,7 @@ func (handler *Handler) handleEstablished(msg *pb.ChaincodeMessage, errc chan er
 //handle created state
 func (handler *Handler) handleCreated(msg *pb.ChaincodeMessage, errc chan error) error {
 	if msg.Type == pb.ChaincodeMessage_REGISTERED {
-		handler.state = "established"
+		handler.state = established
 		return nil
 	}
 	return errors.Errorf("[%s]Chaincode handler cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
@@ -739,11 +736,11 @@ func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage, errc chan error)
 	var err error
 
 	switch handler.state {
-	case "ready":
+	case ready:
 		err = handler.handleReady(msg, errc)
-	case "established":
+	case established:
 		err = handler.handleEstablished(msg, errc)
-	case "created":
+	case created:
 		err = handler.handleCreated(msg, errc)
 	default:
 		err = errors.Errorf("[%s]Chaincode handler cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type, len(msg.Payload), handler.state)
