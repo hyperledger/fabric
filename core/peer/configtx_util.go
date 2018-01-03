@@ -52,7 +52,7 @@ func isResConfigCapabilityOn(chainid string, chanConfig *common.Config) (bool, e
 	if !exists {
 		return false, fmt.Errorf("Application config missing")
 	}
-	return appConfig.Capabilities().LifecycleViaConfig(), nil
+	return appConfig.Capabilities().ResourcesTree(), nil
 }
 
 // extractFullConfigFromSeedTx pulls out the seed resource config tx from the config transaction in the genesis block

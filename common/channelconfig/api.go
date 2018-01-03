@@ -120,9 +120,8 @@ type ApplicationCapabilities interface {
 	// in the same block or whether we mark the second one as TxValidationCode_DUPLICATE_TXID
 	ForbidDuplicateTXIdInBlock() bool
 
-	// LifecycleViaConfig returns true if chaincode lifecycle should be managed via the resources config
-	// tree rather than via the deprecated v1.0 endorser tx mechanism.
-	LifecycleViaConfig() bool
+	// ResourcesTree returns true if the peer should process the experimental resources transactions
+	ResourcesTree() bool
 
 	// PrivateChannelData returns true if support for private channel data (a.k.a. collections) is enabled.
 	PrivateChannelData() bool

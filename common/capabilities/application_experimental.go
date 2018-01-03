@@ -16,6 +16,8 @@ func (ap *ApplicationProvider) HasCapability(capability string) bool {
 		return true
 	case ApplicationPvtDataExperimental:
 		return true
+	case ApplicationResourcesTreeExperimental:
+		return true
 	default:
 		return false
 	}

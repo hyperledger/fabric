@@ -362,16 +362,3 @@ Capabilities:
         # collections can be configured upon chaincode instantiation and
         # utilized within chaincode Invokes.
         V1_1_PVTDATA_EXPERIMENTAL: false
-
-################################################################################
-#
-#   SECTION: Resources
-#
-#   - This section defines the peer resources for a fabric network.  These
-#   resources include chaincode definitions, as well as policies for how those
-#   resources can be modified.  Note, this section is only applicable if the V1_1
-#   application capability is enabled.
-#
-################################################################################
-Resources:
-    DefaultModPolicy: /Channel/Application/Admins

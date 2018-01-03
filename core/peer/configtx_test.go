@@ -209,6 +209,7 @@ func (h *testHelper) sampleChannelConfig(sequence uint64, enableV11Capability bo
 		profile.Orderer.Capabilities[capabilities.ApplicationV1_1] = true
 		profile.Application.Capabilities = make(map[string]bool)
 		profile.Application.Capabilities[capabilities.ApplicationV1_1] = true
+		profile.Application.Capabilities[capabilities.ApplicationResourcesTreeExperimental] = true
 	}
 	channelGroup, _ := encoder.NewChannelGroup(profile)
 	return &common.Config{
@@ -271,7 +272,7 @@ func (h *testHelper) constructResourceBundle(chainid string, ledger ledger.PeerL
 	appConfig, capabilityOn := chanConfigBundle.ApplicationConfig()
 
 	resConf := &common.Config{ChannelGroup: &common.ConfigGroup{}}
-	if capabilityOn && appConfig.Capabilities().LifecycleViaConfig() {
+	if capabilityOn && appConfig.Capabilities().ResourcesTree() {
 		resConf, err = retrievePersistedResourceConfig(ledger)
 		if err != nil {
 			return nil, err

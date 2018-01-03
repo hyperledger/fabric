@@ -9,6 +9,7 @@ package encoder
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -101,6 +102,7 @@ func TestChannelCreateWithResources(t *testing.T) {
 
 	t.Run("AtV1.1", func(t *testing.T) {
 		createConfig := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelV11Profile)
+		createConfig.Application.Capabilities[capabilities.ApplicationResourcesTreeExperimental] = true
 
 		configUpdate, err := NewChannelCreateConfigUpdate("channel.id", nil, createConfig)
 		assert.NoError(t, err)
