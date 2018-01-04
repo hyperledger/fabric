@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/viperutil"
@@ -528,11 +529,30 @@ func createEventHubServer(serverConfig comm.ServerConfig) (comm.GRPCServer, erro
 		return nil, err
 	}
 
-	ehConfig := &producer.EventsServerConfig{BufferSize: uint(viper.GetInt("peer.events.buffersize")), Timeout: viper.GetDuration("peer.events.timeout"), TimeWindow: viper.GetDuration("peer.events.timewindow")}
+	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
+	ehConfig := initializeEventsServerConfig(mutualTLS)
 	ehServer := producer.NewEventsServer(ehConfig)
 	pb.RegisterEventsServer(grpcServer.Server(), ehServer)
 
 	return grpcServer, nil
+}
+
+func initializeEventsServerConfig(mutualTLS bool) *producer.EventsServerConfig {
+	extract := func(msg proto.Message) []byte {
+		evt, isEvent := msg.(*pb.Event)
+		if !isEvent || evt == nil {
+			return nil
+		}
+		return evt.TlsCertHash
+	}
+
+	ehConfig := &producer.EventsServerConfig{
+		BufferSize:       uint(viper.GetInt("peer.events.buffersize")),
+		Timeout:          viper.GetDuration("peer.events.timeout"),
+		TimeWindow:       viper.GetDuration("peer.events.timewindow"),
+		BindingInspector: comm.NewBindingInspector(mutualTLS, extract)}
+
+	return ehConfig
 }
 
 func writePid(fileName string, pid int) error {

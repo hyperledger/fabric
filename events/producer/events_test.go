@@ -99,18 +99,18 @@ func TestEvents(t *testing.T) {
 		Send(&peer.Event{})
 		gEventProcessorBck := gEventProcessor
 		gEventProcessor = nil
-		e, err := createEvent()
+		e, err := createRegisterEvent(nil, nil)
 		assert.NoError(t, err)
 		Send(e)
 		gEventProcessor = gEventProcessorBck
 		Send(e)
 	}
-	prevTimeout := gEventProcessor.timeout
+	prevTimeout := gEventProcessor.Timeout
 	for _, timeout := range []time.Duration{0, -1, 1} {
-		gEventProcessor.timeout = timeout
+		gEventProcessor.Timeout = timeout
 		test(timeout)
 	}
-	gEventProcessor.timeout = prevTimeout
+	gEventProcessor.Timeout = prevTimeout
 }
 
 func TestDeRegister(t *testing.T) {
@@ -134,11 +134,13 @@ func TestRegisterHandler(t *testing.T) {
 	assert.Error(t, registerHandler(&peer.Interest{EventType: peer.EventType_CHAINCODE}, nil))
 
 	// attempt to register valid handler
-	recvChan := make(chan *streamEvent)
-	stream := &mockstream{c: recvChan}
-	handler, err := newEventHandler(stream)
-	assert.Nil(t, err, "error should have been nil")
+	m := newMockEventhub()
+	defer close(m.recvChan)
+	handler := newEventHandler(m)
 	assert.NoError(t, registerHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, handler))
+
+	// clean up by deregistering handler
+	assert.NoError(t, deRegisterHandler(&peer.Interest{EventType: peer.EventType_BLOCK}, handler))
 }
 
 func TestProcessEvents(t *testing.T) {
@@ -149,7 +151,7 @@ func TestProcessEvents(t *testing.T) {
 		{EventType: peer.EventType_CHAINCODE, RegInfo: &peer.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &peer.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event2"}}},
 	}
 	cl.register(interests)
-	e, err := createEvent()
+	e, err := createRegisterEvent(nil, nil)
 	assert.NoError(t, err)
 	go Send(e)
 	time.Sleep(time.Second * 2)
