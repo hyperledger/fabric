@@ -33,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const pkgLogID = "common/deliver"
@@ -45,7 +46,7 @@ func init() {
 
 // Handler defines an interface which handles Deliver requests
 type Handler interface {
-	Handle(srv ab.AtomicBroadcast_DeliverServer) error
+	Handle(srv *DeliverServer) error
 }
 
 // SupportManager provides a way for the Handler to look up the Support for a chain
@@ -73,11 +74,37 @@ type Support interface {
 // function
 type PolicyChecker func(envelope *cb.Envelope, channelID string) error
 
-type deliverServer struct {
+type deliverHandler struct {
 	sm               SupportManager
 	policyChecker    PolicyChecker
 	timeWindow       time.Duration
 	bindingInspector comm.BindingInspector
+}
+
+// DeliverSupport abstract out minimal subset of API
+// such that it will be sufficient to generalize the
+// implementation of handler.
+type DeliverSupport interface {
+	Recv() (*cb.Envelope, error)
+	Context() context.Context
+	CreateStatusReply(status cb.Status) proto.Message
+	CreateBlockReply(block *cb.Block) proto.Message
+}
+
+// DeliverServer a polymorphic structure to support
+// generalization of this handler to be able to deliver
+// different type of responses
+type DeliverServer struct {
+	DeliverSupport
+	Send func(msg proto.Message) error
+}
+
+// NewDeliverServer constructing deliver
+func NewDeliverServer(support DeliverSupport, send func(msg proto.Message) error) *DeliverServer {
+	return &DeliverServer{
+		DeliverSupport: support,
+		Send:           send,
+	}
 }
 
 // NewHandlerImpl creates an implementation of the Handler interface
@@ -92,7 +119,7 @@ func NewHandlerImpl(sm SupportManager, policyChecker PolicyChecker, timeWindow t
 	}
 	bindingInspector := comm.NewBindingInspector(mutualTLS, extract)
 
-	return &deliverServer{
+	return &deliverHandler{
 		sm:               sm,
 		policyChecker:    policyChecker,
 		timeWindow:       timeWindow,
@@ -100,7 +127,7 @@ func NewHandlerImpl(sm SupportManager, policyChecker PolicyChecker, timeWindow t
 	}
 }
 
-func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
+func (ds *deliverHandler) Handle(srv *DeliverServer) error {
 	addr := util.ExtractRemoteAddress(srv.Context())
 	logger.Debugf("Starting new deliver loop for %s", addr)
 	for {
@@ -124,7 +151,7 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 	}
 }
 
-func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, envelope *cb.Envelope) error {
+func (ds *deliverHandler) deliverBlocks(srv *DeliverServer, envelope *cb.Envelope) error {
 	addr := util.ExtractRemoteAddress(srv.Context())
 	payload, err := utils.UnmarshalPayload(envelope.Payload)
 	if err != nil {
@@ -251,7 +278,7 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 
 }
 
-func (ds *deliverServer) validateChannelHeader(srv ab.AtomicBroadcast_DeliverServer, chdr *cb.ChannelHeader) error {
+func (ds *deliverHandler) validateChannelHeader(srv *DeliverServer, chdr *cb.ChannelHeader) error {
 	if chdr.GetTimestamp() == nil {
 		err := errors.New("channel header in envelope must contain timestamp")
 		return err
@@ -289,15 +316,11 @@ func nextBlock(cursor blockledger.Iterator, cancel <-chan struct{}) (block *cb.B
 	}
 }
 
-func sendStatusReply(srv ab.AtomicBroadcast_DeliverServer, status cb.Status) error {
-	return srv.Send(&ab.DeliverResponse{
-		Type: &ab.DeliverResponse_Status{Status: status},
-	})
+func sendStatusReply(srv *DeliverServer, status cb.Status) error {
+	return srv.Send(srv.CreateStatusReply(status))
 
 }
 
-func sendBlockReply(srv ab.AtomicBroadcast_DeliverServer, block *cb.Block) error {
-	return srv.Send(&ab.DeliverResponse{
-		Type: &ab.DeliverResponse_Block{Block: block},
-	})
+func sendBlockReply(srv *DeliverServer, block *cb.Block) error {
+	return srv.Send(srv.CreateBlockReply(block))
 }

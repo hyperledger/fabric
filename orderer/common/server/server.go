@@ -48,6 +48,24 @@ type server struct {
 	debug *localconfig.Debug
 }
 
+type deliverHandlerSupport struct {
+	ab.AtomicBroadcast_DeliverServer
+}
+
+// CreateStatusReply generates status reply proto message
+func (*deliverHandlerSupport) CreateStatusReply(status cb.Status) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Status{Status: status},
+	}
+}
+
+// CreateBlockReply generates deliver response with block message
+func (*deliverHandlerSupport) CreateBlockReply(block *cb.Block) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Block{Block: block},
+	}
+}
+
 // NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
 func NewServer(r *multichannel.Registrar, _ crypto.LocalSigner, debug *localconfig.Debug, timeWindow time.Duration, mutualTLS bool) ab.AtomicBroadcastServer {
 	s := &server{
@@ -106,12 +124,12 @@ func (bmt *broadcastMsgTracer) Recv() (*cb.Envelope, error) {
 }
 
 type deliverMsgTracer struct {
-	ab.AtomicBroadcast_DeliverServer
+	deliver.DeliverSupport
 	msgTracer
 }
 
 func (dmt *deliverMsgTracer) Recv() (*cb.Envelope, error) {
-	msg, err := dmt.AtomicBroadcast_DeliverServer.Recv()
+	msg, err := dmt.DeliverSupport.Recv()
 	if traceDir := dmt.debug.DeliverTraceDir; traceDir != "" {
 		dmt.trace(traceDir, msg, err)
 	}
@@ -145,11 +163,22 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		}
 		logger.Debugf("Closing Deliver stream")
 	}()
-	return s.dh.Handle(&deliverMsgTracer{
-		AtomicBroadcast_DeliverServer: srv,
+	return s.dh.Handle(deliver.NewDeliverServer(&deliverMsgTracer{
+		DeliverSupport: &deliverHandlerSupport{AtomicBroadcast_DeliverServer: srv},
 		msgTracer: msgTracer{
 			debug:    s.debug,
 			function: "Deliver",
 		},
-	})
+	}, s.sendProducer(srv)))
+}
+
+func (s *server) sendProducer(srv ab.AtomicBroadcast_DeliverServer) func(msg proto.Message) error {
+	return func(msg proto.Message) error {
+		response, ok := msg.(*ab.DeliverResponse)
+		if !ok {
+			logger.Errorf("received wrong response type, expected response type ab.DeliverResponse")
+			return errors.New("expected response type ab.DeliverResponse")
+		}
+		return srv.Send(response)
+	}
 }

@@ -19,11 +19,13 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 const pkgLogID = "common/peer"
@@ -36,6 +38,24 @@ func init() {
 
 type server struct {
 	dh deliver.Handler
+}
+
+type deliverHandlerSupport struct {
+	ab.AtomicBroadcast_DeliverServer
+}
+
+// CreateStatusReply generates status reply proto message
+func (*deliverHandlerSupport) CreateStatusReply(status common.Status) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Status{Status: status},
+	}
+}
+
+// CreateBlockReply generates deliver response with block message
+func (*deliverHandlerSupport) CreateBlockReply(block *common.Block) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Block{Block: block},
+	}
 }
 
 // Broadcast is not implemented/supported on a peer
@@ -54,7 +74,10 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		}
 		logger.Debugf("Closing Deliver stream")
 	}()
-	return s.dh.Handle(srv)
+	srvSupport := &deliverHandlerSupport{
+		AtomicBroadcast_DeliverServer: srv,
+	}
+	return s.dh.Handle(deliver.NewDeliverServer(srvSupport, s.sendProducer(srv)))
 }
 
 // NewAtomicBroadcastServer creates an ab.AtomicBroadcastServer based on the
@@ -64,4 +87,15 @@ func NewAtomicBroadcastServer(timeWindow time.Duration, mutualTLS bool, policyCh
 		dh: deliver.NewHandlerImpl(DeliverSupportManager{}, policyChecker, timeWindow, mutualTLS),
 	}
 	return s
+}
+
+func (s *server) sendProducer(srv ab.AtomicBroadcast_DeliverServer) func(msg proto.Message) error {
+	return func(msg proto.Message) error {
+		response, ok := msg.(*ab.DeliverResponse)
+		if !ok {
+			logger.Errorf("received wrong response type, expected response type ab.DeliverResponse")
+			return errors.New("expected response type ab.DeliverResponse")
+		}
+		return srv.Send(response)
+	}
 }

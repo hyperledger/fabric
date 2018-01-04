@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -59,6 +60,18 @@ func (mb *mockBroadcastSrv) Send(br *ab.BroadcastResponse) error {
 }
 
 type mockDeliverSrv mockSrv
+
+func (mds *mockDeliverSrv) CreateStatusReply(status cb.Status) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Status{Status: status},
+	}
+}
+
+func (mds *mockDeliverSrv) CreateBlockReply(block *cb.Block) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Block{Block: block},
+	}
+}
 
 func (mds *mockDeliverSrv) Recv() (*cb.Envelope, error) {
 	return mds.msg, mds.err
@@ -124,7 +137,7 @@ func TestBroadcastMsgTrace(t *testing.T) {
 func TestDeliverMsgTrace(t *testing.T) {
 	testMsgTrace(func(dir string, msg *cb.Envelope) recvr {
 		return &deliverMsgTracer{
-			AtomicBroadcast_DeliverServer: &mockDeliverSrv{
+			DeliverSupport: &mockDeliverSrv{
 				msg: msg,
 			},
 			msgTracer: msgTracer{

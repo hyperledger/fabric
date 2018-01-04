@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -46,6 +47,16 @@ import (
 
 var genesisBlock = cb.NewBlock(0, nil)
 var systemChainID = "systemChain"
+var policyNameProvider = func(_ string) (string, error) {
+	return policies.ChannelReaders, nil
+}
+
+var sendDeliverResponseProducer = func(srv ab.AtomicBroadcast_DeliverServer) func(msg proto.Message) error {
+	return func(msg proto.Message) error {
+		return srv.Send(msg.(*ab.DeliverResponse))
+	}
+}
+
 var timeWindow = time.Duration(15 * time.Minute)
 var testCert = &x509.Certificate{
 	Raw: []byte("test"),
@@ -81,6 +92,18 @@ type mockD struct {
 	sendChan chan *ab.DeliverResponse
 }
 
+func (m *mockD) CreateStatusReply(status cb.Status) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Status{Status: status},
+	}
+}
+
+func (m *mockD) CreateBlockReply(block *cb.Block) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Block{Block: block},
+	}
+}
+
 func newMockD() *mockD {
 	return &mockD{
 		recvChan: make(chan *cb.Envelope),
@@ -105,6 +128,18 @@ type erroneousRecvMockD struct {
 	mockStream
 }
 
+func (m *erroneousRecvMockD) CreateStatusReply(status cb.Status) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Status{Status: status},
+	}
+}
+
+func (m *erroneousRecvMockD) CreateBlockReply(block *cb.Block) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Block{Block: block},
+	}
+}
+
 func (m *erroneousRecvMockD) Send(br *ab.DeliverResponse) error {
 	return nil
 }
@@ -118,6 +153,18 @@ func (m *erroneousRecvMockD) Recv() (*cb.Envelope, error) {
 type erroneousSendMockD struct {
 	mockStream
 	recvVal *cb.Envelope
+}
+
+func (m *erroneousSendMockD) CreateStatusReply(status cb.Status) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Status{Status: status},
+	}
+}
+
+func (m *erroneousSendMockD) CreateBlockReply(block *cb.Block) proto.Message {
+	return &ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Block{Block: block},
+	}
 }
 
 func (m *erroneousSendMockD) Send(br *ab.DeliverResponse) error {
@@ -247,18 +294,19 @@ func makeSeekWithTLSCertHash(chainID string, seekInfo *ab.SeekInfo, tlsCert *x50
 }
 
 func TestWholeChainSeek(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	m := NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv))
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekOldest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekOldest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	count := uint64(0)
 	for {
 		select {
-		case deliverReply := <-m.sendChan:
+		case deliverReply := <-mockSrv.sendChan:
 			if deliverReply.GetBlock() == nil {
 				if deliverReply.GetStatus() != cb.Status_SUCCESS {
 					t.Fatalf("Received an error on the reply channel")
@@ -279,16 +327,17 @@ func TestWholeChainSeek(t *testing.T) {
 }
 
 func TestNewestSeek(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	m := NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv))
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		if deliverReply.GetBlock() == nil {
 			t.Fatalf("Received an error on the reply channel")
 		}
@@ -301,20 +350,21 @@ func TestNewestSeek(t *testing.T) {
 }
 
 func TestSpecificSeek(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	m := NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv))
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	specifiedStart := uint64(3)
 	specifiedStop := uint64(7)
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(specifiedStart), Stop: seekSpecified(specifiedStop), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(specifiedStart), Stop: seekSpecified(specifiedStop), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	count := uint64(0)
 	for {
 		select {
-		case deliverReply := <-m.sendChan:
+		case deliverReply := <-mockSrv.sendChan:
 			if deliverReply.GetBlock() == nil {
 				if deliverReply.GetStatus() != cb.Status_SUCCESS {
 					t.Fatalf("Received an error on the reply channel")
@@ -339,16 +389,17 @@ func TestUnauthorizedSeek(t *testing.T) {
 	}
 	mm.chains[systemChainID].policyManager.Policy.Err = fmt.Errorf("Fail to evaluate policy")
 
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 	ds := initializeDeliverHandler(mm, !mutualTLS)
+	m := NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv))
 
 	go ds.Handle(m)
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(0)), Stop: seekSpecified(uint64(0)), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(0)), Stop: seekSpecified(uint64(0)), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		if deliverReply.GetStatus() != cb.Status_FORBIDDEN {
 			t.Fatalf("Received wrong error on the reply channel: %s", deliverReply.GetStatus())
 		}
@@ -364,16 +415,17 @@ func TestRevokedAuthorizationSeek(t *testing.T) {
 		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 	ds := initializeDeliverHandler(mm, !mutualTLS)
+	m := NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv))
 
 	go ds.Handle(m)
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.NotNil(t, deliverReply.GetBlock(), "First should succeed")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -386,7 +438,7 @@ func TestRevokedAuthorizationSeek(t *testing.T) {
 	l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", ledgerSize+1))}}))
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_FORBIDDEN, deliverReply.GetStatus(), "Second should been forbidden ")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -395,16 +447,17 @@ func TestRevokedAuthorizationSeek(t *testing.T) {
 }
 
 func TestOutOfBoundSeek(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	m := NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv))
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(3 * ledgerSize)), Stop: seekSpecified(uint64(3 * ledgerSize)), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(3 * ledgerSize)), Stop: seekSpecified(uint64(3 * ledgerSize)), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		if deliverReply.GetStatus() != cb.Status_NOT_FOUND {
 			t.Fatalf("Received wrong error on the reply channel")
 		}
@@ -414,16 +467,17 @@ func TestOutOfBoundSeek(t *testing.T) {
 }
 
 func TestFailFastSeek(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	m := NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv))
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_FAIL_IF_NOT_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_FAIL_IF_NOT_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		if deliverReply.GetBlock() == nil {
 			t.Fatalf("Expected to receive first block")
 		}
@@ -432,7 +486,7 @@ func TestFailFastSeek(t *testing.T) {
 	}
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		if deliverReply.GetStatus() != cb.Status_NOT_FOUND {
 			t.Fatalf("Expected to receive failure for second block")
 		}
@@ -448,16 +502,17 @@ func TestBlockingSeek(t *testing.T) {
 		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 	ds := initializeDeliverHandler(mm, !mutualTLS)
+	m := NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv))
 
 	go ds.Handle(m)
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		if deliverReply.GetBlock() == nil {
 			t.Fatalf("Expected to receive first block")
 		}
@@ -466,7 +521,7 @@ func TestBlockingSeek(t *testing.T) {
 	}
 
 	select {
-	case <-m.sendChan:
+	case <-mockSrv.sendChan:
 		t.Fatalf("Should not have delivered an error or second block")
 	case <-time.After(50 * time.Millisecond):
 	}
@@ -475,7 +530,7 @@ func TestBlockingSeek(t *testing.T) {
 	l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", ledgerSize+1))}}))
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		if deliverReply.GetBlock() == nil {
 			t.Fatalf("Expected to receive new block")
 		}
@@ -484,7 +539,7 @@ func TestBlockingSeek(t *testing.T) {
 	}
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		if deliverReply.GetStatus() != cb.Status_SUCCESS {
 			t.Fatalf("Expected delivery to complete")
 		}
@@ -502,16 +557,17 @@ func TestErroredSeek(t *testing.T) {
 		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 	ds := initializeDeliverHandler(mm, !mutualTLS)
+	m := NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv))
 
 	go ds.Handle(m)
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_SERVICE_UNAVAILABLE, deliverReply.GetStatus(), "Mock support errored")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting for error response")
@@ -526,16 +582,16 @@ func TestErroredBlockingSeek(t *testing.T) {
 		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 	ds := initializeDeliverHandler(mm, !mutualTLS)
 
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.NotNil(t, deliverReply.GetBlock(), "Expected first block")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get first block")
@@ -544,7 +600,7 @@ func TestErroredBlockingSeek(t *testing.T) {
 	close(ms.erroredChan)
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_SERVICE_UNAVAILABLE, deliverReply.GetStatus(), "Mock support errored")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting for error response")
@@ -552,26 +608,26 @@ func TestErroredBlockingSeek(t *testing.T) {
 }
 
 func TestSGracefulShutdown(t *testing.T) {
-	m := newMockD()
+	mockSrv := newMockD()
 	ds := initializeDeliverHandler(nil, !mutualTLS)
 
-	close(m.recvChan)
-	assert.NoError(t, ds.Handle(m), "Expected no error for hangup")
+	close(mockSrv.recvChan)
+	assert.NoError(t, ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv))), "Expected no error for hangup")
 }
 
 func TestReversedSeqSeek(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
 	specifiedStart := uint64(7)
 	specifiedStop := uint64(3)
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(specifiedStart), Stop: seekSpecified(specifiedStop), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(specifiedStart), Stop: seekSpecified(specifiedStop), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		if deliverReply.GetStatus() != cb.Status_BAD_REQUEST {
 			t.Fatalf("Received wrong error on the reply channel")
 		}
@@ -582,26 +638,26 @@ func TestReversedSeqSeek(t *testing.T) {
 
 func TestBadStreamRecv(t *testing.T) {
 	bh := initializeDeliverHandler(nil, !mutualTLS)
-	assert.Error(t, bh.Handle(&erroneousRecvMockD{}), "Should catch unexpected stream error")
+	assert.Error(t, bh.Handle(NewDeliverServer(&erroneousRecvMockD{}, sendDeliverResponseProducer(&erroneousRecvMockD{}))), "Should catch unexpected stream error")
 }
 
 func TestBadStreamSend(t *testing.T) {
 	m := &erroneousSendMockD{recvVal: makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})}
 	ds := initializeDeliverHandler(nil, !mutualTLS)
-	assert.Error(t, ds.Handle(m), "Should catch unexpected stream error")
+	assert.Error(t, ds.Handle(NewDeliverServer(m, sendDeliverResponseProducer(m))), "Should catch unexpected stream error")
 }
 
 func TestOldestSeek(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekOldest, Stop: seekOldest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekOldest, Stop: seekOldest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.NotEqual(t, nil, deliverReply.GetBlock(), "Received an error on the reply channel")
 		assert.Equal(t, uint64(0), deliverReply.GetBlock().Header.Number, "Expected only the most recent block")
 	case <-time.After(time.Second):
@@ -610,16 +666,16 @@ func TestOldestSeek(t *testing.T) {
 }
 
 func TestNoPayloadSeek(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- &cb.Envelope{Payload: []byte("Foo")}
+	mockSrv.recvChan <- &cb.Envelope{Payload: []byte("Foo")}
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -627,16 +683,16 @@ func TestNoPayloadSeek(t *testing.T) {
 }
 
 func TestNilPayloadHeaderSeek(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{})}
+	mockSrv.recvChan <- &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{})}
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -644,18 +700,18 @@ func TestNilPayloadHeaderSeek(t *testing.T) {
 }
 
 func TestBadChannelHeader(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{
+	mockSrv.recvChan <- &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{
 		Header: &cb.Header{ChannelHeader: []byte("Foo")},
 	})}
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -667,16 +723,16 @@ func TestChainNotFound(t *testing.T) {
 		chains: make(map[string]*mockSupport),
 	}
 
-	m := newMockD()
-	defer close(m.recvChan)
-
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 	ds := initializeDeliverHandler(mm, !mutualTLS)
-	go ds.Handle(m)
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
+
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_NOT_FOUND, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -684,13 +740,13 @@ func TestChainNotFound(t *testing.T) {
 }
 
 func TestBadSeekInfoPayload(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- &cb.Envelope{
+	mockSrv.recvChan <- &cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
 				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -704,7 +760,7 @@ func TestBadSeekInfoPayload(t *testing.T) {
 	}
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -712,13 +768,13 @@ func TestBadSeekInfoPayload(t *testing.T) {
 }
 
 func TestMissingSeekPosition(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- &cb.Envelope{
+	mockSrv.recvChan <- &cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
 				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -732,7 +788,7 @@ func TestMissingSeekPosition(t *testing.T) {
 	}
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -740,13 +796,13 @@ func TestMissingSeekPosition(t *testing.T) {
 }
 
 func TestNilTimestamp(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- &cb.Envelope{
+	mockSrv.recvChan <- &cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
 				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -759,7 +815,7 @@ func TestNilTimestamp(t *testing.T) {
 	}
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -767,13 +823,13 @@ func TestNilTimestamp(t *testing.T) {
 }
 
 func TestTimestampOutOfTimeWindow(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, !mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- &cb.Envelope{
+	mockSrv.recvChan <- &cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
 				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
@@ -787,7 +843,7 @@ func TestTimestampOutOfTimeWindow(t *testing.T) {
 	}
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -795,16 +851,16 @@ func TestTimestampOutOfTimeWindow(t *testing.T) {
 }
 
 func TestSeekWithMutualTLS(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- makeSeekWithTLSCertHash(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}, testCert)
+	mockSrv.recvChan <- makeSeekWithTLSCertHash(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}, testCert)
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		if deliverReply.GetBlock() == nil {
 			t.Fatalf("Received an error on the reply channel")
 		}
@@ -817,18 +873,18 @@ func TestSeekWithMutualTLS(t *testing.T) {
 }
 
 func TestSeekWithMutualTLS_wrongTLSCert(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 	wrongCert := &x509.Certificate{
 		Raw: []byte("wrong"),
 	}
-	m.recvChan <- makeSeekWithTLSCertHash(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}, wrongCert)
+	mockSrv.recvChan <- makeSeekWithTLSCertHash(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}, wrongCert)
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -836,16 +892,18 @@ func TestSeekWithMutualTLS_wrongTLSCert(t *testing.T) {
 }
 
 func TestSeekWithMutualTLS_noTLSCert(t *testing.T) {
-	m := newMockD()
-	defer close(m.recvChan)
+	mockSrv := newMockD()
+	defer close(mockSrv.recvChan)
 
 	ds := initializeDeliverHandler(nil, mutualTLS)
-	go ds.Handle(m)
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
 
-	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
+	go ds.Handle(NewDeliverServer(mockSrv, sendDeliverResponseProducer(mockSrv)))
+
+	mockSrv.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
-	case deliverReply := <-m.sendChan:
+	case deliverReply := <-mockSrv.sendChan:
 		assert.Equal(t, cb.Status_BAD_REQUEST, deliverReply.GetStatus(), "Received wrong error on the reply channel")
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
