@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -103,29 +102,6 @@ func TestSetBCCSPKeystorePath(t *testing.T) {
 
 	viper.Reset()
 	os.Unsetenv("FABRIC_CFG_PATH")
-}
-
-func TestGetEndorserClient(t *testing.T) {
-	tests := []struct {
-		name    string
-		want    pb.EndorserClient
-		wantErr bool
-	}{
-		{
-			name:    "Should not return EndorserClient, there is no peer running",
-			want:    nil,
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := common.GetEndorserClient()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetEndorserClient() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-		})
-	}
 }
 
 func TestSetLogLevelFromViper(t *testing.T) {

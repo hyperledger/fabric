@@ -85,7 +85,7 @@ func testListChannelsEmptyCF(t *testing.T, mockCF *ChannelCmdFactory) {
 	common.GetEndorserClientFnc = func() (pb.EndorserClient, error) {
 		return mockCF.EndorserClient, nil
 	}
-	common.GetBroadcastClientFnc = func(orderingEndpoint string, tlsEnabled bool, caFile string) (common.BroadcastClient, error) {
+	common.GetBroadcastClientFnc = func() (common.BroadcastClient, error) {
 		broadcastClient := common.GetMockBroadcastClient(nil)
 		return broadcastClient, nil
 	}

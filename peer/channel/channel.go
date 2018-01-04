@@ -23,13 +23,9 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -55,13 +51,9 @@ var (
 	genesisBlockPath string
 
 	// create related variables
-	channelID                  string
-	channelTxFile              string
-	orderingEndpoint           string
-	tls                        bool
-	caFile                     string
-	ordererTLSHostnameOverride string
-	timeout                    int
+	channelID     string
+	channelTxFile string
+	timeout       int
 )
 
 // Cmd returns the cobra command for Node
@@ -81,12 +73,7 @@ func Cmd(cf *ChannelCmdFactory) *cobra.Command {
 
 // AddFlags adds flags for create and join
 func AddFlags(cmd *cobra.Command) {
-	flags := cmd.PersistentFlags()
-
-	flags.StringVarP(&orderingEndpoint, "orderer", "o", "", "Ordering service endpoint")
-	flags.BoolVarP(&tls, "tls", "", false, "Use TLS when communicating with the orderer endpoint")
-	flags.StringVarP(&caFile, "cafile", "", "", "Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint")
-	flags.StringVarP(&ordererTLSHostnameOverride, "ordererTLSHostnameOverride", "", "", "The hostname override to use when validating the TLS connection to the orderer.")
+	common.AddOrdererFlags(cmd)
 }
 
 var flags *pflag.FlagSet
@@ -117,9 +104,10 @@ func attachFlags(cmd *cobra.Command, names []string) {
 }
 
 var channelCmd = &cobra.Command{
-	Use:   channelFuncName,
-	Short: fmt.Sprint(shortDes),
-	Long:  fmt.Sprint(longDes),
+	Use:              channelFuncName,
+	Short:            fmt.Sprint(shortDes),
+	Long:             fmt.Sprint(longDes),
+	PersistentPreRun: common.SetOrdererEnv,
 }
 
 type BroadcastClientFactory func() (common.BroadcastClient, error)
@@ -145,7 +133,7 @@ func InitCmdFactory(isEndorserRequired EndorserRequirement, isOrdererRequired Or
 	}
 
 	cmdFact.BroadcastFactory = func() (common.BroadcastClient, error) {
-		return common.GetBroadcastClientFnc(orderingEndpoint, tls, caFile)
+		return common.GetBroadcastClientFnc()
 	}
 
 	//for join and list, we need the endorser as well
@@ -158,34 +146,13 @@ func InitCmdFactory(isEndorserRequired EndorserRequirement, isOrdererRequired Or
 
 	//for create and fetch, we need the orderer as well
 	if isOrdererRequired {
-		if len(strings.Split(orderingEndpoint, ":")) != 2 {
-			return nil, fmt.Errorf("Ordering service endpoint %s is not valid or missing", orderingEndpoint)
+		if len(strings.Split(common.OrderingEndpoint, ":")) != 2 {
+			return nil, fmt.Errorf("ordering service endpoint %s is not valid or missing", common.OrderingEndpoint)
 		}
-
-		var opts []grpc.DialOption
-		// check for TLS
-		if tls {
-			if caFile != "" {
-				creds, err := credentials.NewClientTLSFromFile(caFile, ordererTLSHostnameOverride)
-				if err != nil {
-					return nil, fmt.Errorf("Error connecting to %s due to %s", orderingEndpoint, err)
-				}
-				opts = append(opts, grpc.WithTransportCredentials(creds))
-			}
-		} else {
-			opts = append(opts, grpc.WithInsecure())
-		}
-		conn, err := grpc.Dial(orderingEndpoint, opts...)
+		cmdFact.DeliverClient, err = newDeliverClient(channelID)
 		if err != nil {
 			return nil, err
 		}
-
-		client, err := ab.NewAtomicBroadcastClient(conn).Deliver(context.TODO())
-		if err != nil {
-			return nil, fmt.Errorf("Error connecting due to  %s", err)
-		}
-
-		cmdFact.DeliverClient = newDeliverClient(conn, client, channelID)
 	}
 	logger.Infof("Endorser and orderer connections initialized")
 	return cmdFact, nil

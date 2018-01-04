@@ -26,6 +26,7 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
 
@@ -315,7 +316,7 @@ func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFa
 
 	var broadcastClient common.BroadcastClient
 	if isOrdererRequired {
-		if len(orderingEndpoint) == 0 {
+		if len(common.OrderingEndpoint) == 0 {
 			orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(channelID, signer, endorserClient)
 			if err != nil {
 				return nil, fmt.Errorf("Error getting (%s) orderer endpoint: %s", channelID, err)
@@ -324,10 +325,11 @@ func InitCmdFactory(isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFa
 				return nil, fmt.Errorf("Error no orderer endpoint got for %s", channelID)
 			}
 			logger.Infof("Get chain(%s) orderer endpoint: %s", channelID, orderingEndpoints[0])
-			orderingEndpoint = orderingEndpoints[0]
+			// override viper env
+			viper.Set("orderer.address", orderingEndpoints[0])
 		}
 
-		broadcastClient, err = common.GetBroadcastClientFnc(orderingEndpoint, tls, caFile)
+		broadcastClient, err = common.GetBroadcastClientFnc()
 
 		if err != nil {
 			return nil, fmt.Errorf("Error getting broadcast client: %s", err)

@@ -218,11 +218,10 @@ func TestCreateChainWithWaitSuccess(t *testing.T) {
 		t.Fatalf("Get default signer error: %v", err)
 	}
 
-	sendErr := errors.New("timeout waiting for channel creation")
 	mockCF := &ChannelCmdFactory{
 		BroadcastFactory: mockBroadcastClientFactory,
 		Signer:           signer,
-		DeliverClient:    &mockDeliverClient{sendErr},
+		DeliverClient:    &mockDeliverClient{nil},
 	}
 	fakeOrderer := newOrderer(8101, t)
 	defer fakeOrderer.Shutdown()
@@ -261,12 +260,13 @@ func TestCreateChainWithTimeoutErr(t *testing.T) {
 
 	cmd := createCmd(mockCF)
 	AddFlags(cmd)
+	channelCmd.AddCommand(cmd)
 
-	args := []string{"-c", mockchain, "-o", "localhost:8102", "-t", "1"}
-	cmd.SetArgs(args)
+	args := []string{"create", "-c", mockchain, "-o", "localhost:8102", "-t", "1"}
+	channelCmd.SetArgs(args)
 
 	expectedErrMsg := sendErr.Error()
-	if err := cmd.Execute(); err == nil {
+	if err := channelCmd.Execute(); err == nil {
 		t.Error("expected create chain to fail with broadcast error")
 	} else {
 		if err.Error() != expectedErrMsg {
@@ -526,23 +526,24 @@ func TestCreateChainNilCF(t *testing.T) {
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error: code = Unavailable desc = grpc: the connection is unavailable")
+	assert.Contains(t, err.Error(), "failed to create deliver client")
 
 	// Error case: invalid ordering service endpoint
 	args = []string{"-c", mockchannel, "-f", file, "-o", "localhost"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Ordering service endpoint localhost is not valid or missing")
+	assert.Contains(t, err.Error(), "ordering service endpoint localhost is not valid or missing")
 
 	// Error case: invalid ca file
 	defer os.RemoveAll(dir) // clean up
-	args = []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050", "--tls", "true", "--cafile", dir + "/ca.pem"}
-	cmd.SetArgs(args)
-	err = cmd.Execute()
+	channelCmd.AddCommand(cmd)
+	args = []string{"create", "-c", mockchannel, "-f", file, "-o", "localhost:7050", "--tls", "true", "--cafile", dir + "/ca.pem"}
+	channelCmd.SetArgs(args)
+	err = channelCmd.Execute()
 	assert.Error(t, err)
-	var msgExpr = regexp.MustCompile(`Error connecting.*no such file or directory.*`)
-	assert.True(t, msgExpr.MatchString(err.Error()))
+	t.Log(err)
+	assert.Contains(t, err.Error(), "no such file or directory")
 }
 
 func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
