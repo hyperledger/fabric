@@ -1,17 +1,6 @@
 /*
-Copyright IBM Corp. 2016, 2017 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package couchdb
@@ -144,7 +133,7 @@ type CouchInstance struct {
 
 //CouchDatabase represents a database within a CouchDB instance
 type CouchDatabase struct {
-	CouchInstance    CouchInstance //connection configuration
+	CouchInstance    *CouchInstance //connection configuration
 	DBName           string
 	IndexWarmCounter int
 }
@@ -209,20 +198,6 @@ type BatchUpdateResponse struct {
 type Base64Attachment struct {
 	ContentType    string `json:"content_type"`
 	AttachmentData string `json:"data"`
-}
-
-//ListIndexResponse contains the definition for listing couchdb indexes
-type ListIndexResponse struct {
-	TotalRows int               `json:"total_rows"`
-	Indexes   []IndexDefinition `json:"indexes"`
-}
-
-//IndexDefinition contains the definition for a couchdb index
-type IndexDefinition struct {
-	DesignDocument string          `json:"ddoc"`
-	Name           string          `json:"name"`
-	Type           string          `json:"type"`
-	Definition     json.RawMessage `json:"def"`
 }
 
 //IndexResult contains the definition for a couchdb index
@@ -410,7 +385,7 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 	//Verifying the existence of the system database accomplishes two steps
 	//1.  Ensures the system databases are created
 	//2.  Verifies the username password provided in the CouchDB config are valid for system admin
-	err = CreateSystemDatabasesIfNotExist(*couchInstance)
+	err = CreateSystemDatabasesIfNotExist(couchInstance)
 	if err != nil {
 		logger.Errorf("Unable to connect to CouchDB,  error: %s   Check the admin username and password.\n", err.Error())
 		return nil, nil, fmt.Errorf("Unable to connect to CouchDB,  error: %s   Check the admin username and password.\n", err.Error())
@@ -1082,9 +1057,23 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 }
 
 // ListIndex method lists the defined indexes for a database
-func (dbclient *CouchDatabase) ListIndex() (*[]IndexResult, error) {
+func (dbclient *CouchDatabase) ListIndex() ([]*IndexResult, error) {
 
-	logger.Debugf("Entering ListIndex()")
+	//IndexDefinition contains the definition for a couchdb index
+	type indexDefinition struct {
+		DesignDocument string          `json:"ddoc"`
+		Name           string          `json:"name"`
+		Type           string          `json:"type"`
+		Definition     json.RawMessage `json:"def"`
+	}
+
+	//ListIndexResponse contains the definition for listing couchdb indexes
+	type listIndexResponse struct {
+		TotalRows int               `json:"total_rows"`
+		Indexes   []indexDefinition `json:"indexes"`
+	}
+
+	logger.Debug("Entering ListIndex()")
 
 	indexURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
@@ -1109,14 +1098,14 @@ func (dbclient *CouchDatabase) ListIndex() (*[]IndexResult, error) {
 		return nil, err
 	}
 
-	var jsonResponse = &ListIndexResponse{}
+	var jsonResponse = &listIndexResponse{}
 
-	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
+	err2 := json.Unmarshal(jsonResponseRaw, jsonResponse)
 	if err2 != nil {
 		return nil, err2
 	}
 
-	var results []IndexResult
+	var results []*IndexResult
 
 	for _, row := range jsonResponse.Indexes {
 
@@ -1129,14 +1118,14 @@ func (dbclient *CouchDatabase) ListIndex() (*[]IndexResult, error) {
 
 			//Add the index definition to the results
 			var addIndexResult = &IndexResult{DesignDocument: designDoc, Name: row.Name, Definition: fmt.Sprintf("%s", row.Definition)}
-			results = append(results, *addIndexResult)
+			results = append(results, addIndexResult)
 		}
 
 	}
 
 	logger.Debugf("Exiting ListIndex()")
 
-	return &results, nil
+	return results, nil
 
 }
 
@@ -1281,7 +1270,7 @@ func (dbclient *CouchDatabase) WarmIndexAllIndexes() error {
 	}
 
 	//For each index definition, execute an index refresh
-	for _, elem := range *listResult {
+	for _, elem := range listResult {
 
 		err := dbclient.WarmIndex(elem.DesignDocument, elem.Name)
 		if err != nil {
