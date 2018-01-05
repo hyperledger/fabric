@@ -546,5 +546,22 @@ that the sample encryption chaincode then leverages.  As such, the chaincode can
 now marry the basic shim APIs of ``Get`` and ``Put`` with the added functionality of
 ``Encrypt`` and ``Decrypt``.
 
+Managing external dependencies for chaincode written in Go
+----------------------------------------------------------
+If your chaincode requires packages not provided by the Go standard library, you will need
+to include those packages with your chaincode.  There are `many tools available <https://github.com/golang/go/wiki/PackageManagementTools>`__
+for managing (or "vendoring") these dependencies.  The following demonstrates how to use
+``govendor``:
+
+.. code:: bash
+
+  govendor init
+  govendor add +external  // Add all external package, or
+  govendor add github.com/external/pkg // Add specific external package
+
+This imports the external dependencies into a local ``vendor`` directory. ``peer chaincode package``
+and ``peer chaincode install`` operations will then include code associated with the
+dependencies into the chaincode package.
+
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
