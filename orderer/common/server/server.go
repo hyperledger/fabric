@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -56,7 +57,7 @@ func NewServer(r *multichannel.Registrar, _ crypto.LocalSigner, debug *localconf
 				if !ok {
 					return errors.Errorf("channel %s not found", channelID)
 				}
-				sf := deliver.NewSigFilter(policies.ChannelReaders, chain)
+				sf := msgprocessor.NewSigFilter(policies.ChannelReaders, chain)
 				return sf.Apply(env)
 			}, timeWindow, mutualTLS),
 		bh:    broadcast.NewHandlerImpl(broadcastSupport{Registrar: r}),

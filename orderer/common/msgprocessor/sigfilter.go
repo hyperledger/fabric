@@ -4,20 +4,15 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package deliver
+package msgprocessor
 
 import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/pkg/errors"
 )
-
-// ErrPermissionDenied is returned by errors which are caused by transactions
-// which are not permitted due to an authorization failure.
-var ErrPermissionDenied = errors.New("permission denied")
 
 // SigFilterSupport provides the resources required for the signature filter
 type SigFilterSupport interface {
