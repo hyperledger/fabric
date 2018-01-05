@@ -369,7 +369,7 @@ func NewChannelCreateConfigUpdate(channelID string, orderingSystemChannelGroup *
 	}
 
 	// If this channel uses the new lifecycle config, specify the seed data
-	if agc.Capabilities().LifecycleViaConfig() {
+	if agc.Capabilities().ResourcesTree() {
 		defaultModPolicy := policies.ChannelApplicationAdmins
 		if conf.Application.Resources != nil {
 			defaultModPolicy = conf.Application.Resources.DefaultModPolicy

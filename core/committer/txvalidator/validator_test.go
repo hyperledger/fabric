@@ -688,7 +688,7 @@ func TestValidationResourceUpdate(t *testing.T) {
 	})
 	err := validator.Validate(b1)
 	assert.NoError(t, err)
-	sup.ACVal = &mockconfig.MockApplicationCapabilities{LifecycleViaConfigRv: true}
+	sup.ACVal = &mockconfig.MockApplicationCapabilities{ResourcesTreeRv: true}
 	err = validator.Validate(b2)
 	assert.NoError(t, err)
 	// Restore default callback

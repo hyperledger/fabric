@@ -423,7 +423,7 @@ func ValidateTransaction(e *common.Envelope, c channelconfig.ApplicationCapabili
 			return payload, pb.TxValidationCode_VALID
 		}
 	case common.HeaderType_PEER_RESOURCE_UPDATE:
-		if !c.LifecycleViaConfig() {
+		if !c.ResourcesTree() {
 			return nil, pb.TxValidationCode_UNSUPPORTED_TX_PAYLOAD
 		}
 

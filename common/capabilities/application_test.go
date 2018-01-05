@@ -17,7 +17,6 @@ import (
 func TestApplicationV10(t *testing.T) {
 	op := NewApplicationProvider(map[string]*cb.Capability{})
 	assert.NoError(t, op.Supported())
-	assert.False(t, op.LifecycleViaConfig())
 }
 
 func TestApplicationV11(t *testing.T) {
@@ -25,7 +24,6 @@ func TestApplicationV11(t *testing.T) {
 		ApplicationV1_1: &cb.Capability{},
 	})
 	assert.NoError(t, op.Supported())
-	assert.True(t, op.LifecycleViaConfig())
 	assert.True(t, op.ForbidDuplicateTXIdInBlock())
 	assert.True(t, op.V1_1Validation())
 }

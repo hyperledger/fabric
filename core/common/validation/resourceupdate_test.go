@@ -37,6 +37,6 @@ func TestValidateResourceUpdateTx(t *testing.T) {
 	updateResult.Signature, _ = signer.Sign(updateResult.Payload)
 	_, txResult := ValidateTransaction(updateResult, &config.MockApplicationCapabilities{})
 	assert.Equal(t, txResult, peer.TxValidationCode_UNSUPPORTED_TX_PAYLOAD)
-	_, txResult = ValidateTransaction(updateResult, &config.MockApplicationCapabilities{LifecycleViaConfigRv: true})
+	_, txResult = ValidateTransaction(updateResult, &config.MockApplicationCapabilities{ResourcesTreeRv: true})
 	assert.Equal(t, txResult, peer.TxValidationCode_VALID)
 }

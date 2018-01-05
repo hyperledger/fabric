@@ -336,7 +336,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	}
 
 	resConf := &common.Config{ChannelGroup: &common.ConfigGroup{}}
-	if ac != nil && ac.Capabilities().LifecycleViaConfig() {
+	if ac != nil && ac.Capabilities().ResourcesTree() {
 		if resConf, err = retrievePersistedResourceConfig(ledger); err != nil {
 			return err
 		}
