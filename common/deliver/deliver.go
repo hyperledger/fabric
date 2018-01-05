@@ -68,18 +68,19 @@ type Support interface {
 	Errored() <-chan struct{}
 }
 
-// PolicyNameProvider provides a policy name given the channel id
-type PolicyNameProvider func(chainID string) (string, error)
+// PolicyChecker checks the envelope against the policy logic supplied by the
+// function
+type PolicyChecker func(envelope *cb.Envelope, channelID string) error
 
 type deliverServer struct {
 	sm               SupportManager
-	policyProvider   PolicyNameProvider
+	policyChecker    PolicyChecker
 	timeWindow       time.Duration
 	bindingInspector comm.BindingInspector
 }
 
 // NewHandlerImpl creates an implementation of the Handler interface
-func NewHandlerImpl(sm SupportManager, policyProvider PolicyNameProvider, timeWindow time.Duration, mutualTLS bool) Handler {
+func NewHandlerImpl(sm SupportManager, policyChecker PolicyChecker, timeWindow time.Duration, mutualTLS bool) Handler {
 	// function to extract the TLS cert hash from a channel header
 	extract := func(msg proto.Message) []byte {
 		chdr, isChannelHeader := msg.(*cb.ChannelHeader)
@@ -92,7 +93,7 @@ func NewHandlerImpl(sm SupportManager, policyProvider PolicyNameProvider, timeWi
 
 	return &deliverServer{
 		sm:               sm,
-		policyProvider:   policyProvider,
+		policyChecker:    policyChecker,
 		timeWindow:       timeWindow,
 		bindingInspector: bindingInspector,
 	}
@@ -166,13 +167,7 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 
 	lastConfigSequence := chain.Sequence()
 
-	policyName, err := ds.policyProvider(chdr.ChannelId)
-	if err != nil {
-		logger.Warningf("[channel: %s] failed to obtain policy name due to %s", chdr.ChannelId, err)
-		return sendStatusReply(srv, cb.Status_BAD_REQUEST)
-	}
-	sf := NewSigFilter(policyName, chain)
-	if err := sf.Apply(envelope); err != nil {
+	if err := ds.policyChecker(envelope, chdr.ChannelId); err != nil {
 		logger.Warningf("[channel: %s] Received unauthorized deliver request from %s: %s", chdr.ChannelId, addr, err)
 		return sendStatusReply(srv, cb.Status_FORBIDDEN)
 	}
@@ -225,7 +220,7 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 		currentConfigSequence := chain.Sequence()
 		if currentConfigSequence > lastConfigSequence {
 			lastConfigSequence = currentConfigSequence
-			if err := sf.Apply(envelope); err != nil {
+			if err := ds.policyChecker(envelope, chdr.ChannelId); err != nil {
 				logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.ChannelId, addr, err)
 				return sendStatusReply(srv, cb.Status_FORBIDDEN)
 			}

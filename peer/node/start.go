@@ -23,6 +23,8 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/comm"
@@ -42,6 +44,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	peergossip "github.com/hyperledger/fabric/peer/gossip"
 	"github.com/hyperledger/fabric/peer/version"
+	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -175,7 +178,10 @@ func serve(args []string) error {
 	// broadcast
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	timeWindow := viper.GetDuration("peer.authentication.timewindow")
-	abServer := peer.NewAtomicBroadcastServer(timeWindow, mutualTLS)
+	policyChecker := func(env *cb.Envelope, channelID string) error {
+		return aclmgmt.GetACLProvider().CheckACL(resources.BLOCKEVENT, channelID, env)
+	}
+	abServer := peer.NewAtomicBroadcastServer(timeWindow, mutualTLS, policyChecker)
 	ab.RegisterAtomicBroadcastServer(peerServer.Server(), abServer)
 
 	// enable the cache of chaincode info
