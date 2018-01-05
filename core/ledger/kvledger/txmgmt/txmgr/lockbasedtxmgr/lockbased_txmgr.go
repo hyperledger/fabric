@@ -140,8 +140,5 @@ func (txmgr *LockBasedTxMgr) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvt
 		return err
 	}
 	logger.Debugf("Committing block %d to state database", block.Header.Number)
-	if err := txmgr.Commit(); err != nil {
-		return err
-	}
-	return nil
+	return txmgr.Commit()
 }
