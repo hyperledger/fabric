@@ -16,17 +16,14 @@ limitations under the License.
 package peer
 
 import (
-	"fmt"
 	"runtime/debug"
 	"time"
 
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
-	"github.com/pkg/errors"
 )
 
 const pkgLogID = "common/peer"
@@ -62,16 +59,9 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 
 // NewAtomicBroadcastServer creates an ab.AtomicBroadcastServer based on the
 // ledger Reader. Broadcast is not implemented/supported on the peer.
-func NewAtomicBroadcastServer(timeWindow time.Duration, mutualTLS bool) ab.AtomicBroadcastServer {
-	configSupport := NewConfigSupport()
+func NewAtomicBroadcastServer(timeWindow time.Duration, mutualTLS bool, policyChecker deliver.PolicyChecker) ab.AtomicBroadcastServer {
 	s := &server{
-		dh: deliver.NewHandlerImpl(DeliverSupportManager{}, func(chainID string) (string, error) {
-			policyMapper := configSupport.GetPolicyMapper(chainID)
-			if policyMapper == nil {
-				return "", errors.New(fmt.Sprintf("cannot find policy mapper for channel %s", chainID))
-			}
-			return policyMapper.PolicyRefForAPI(resources.BLOCKEVENT), nil
-		}, timeWindow, mutualTLS),
+		dh: deliver.NewHandlerImpl(DeliverSupportManager{}, policyChecker, timeWindow, mutualTLS),
 	}
 	return s
 }

@@ -92,37 +92,45 @@ func newRsccPolicyProvider(channel string, pEvaluator policyEvaluator) rsccPolic
 func (rp *rsccPolicyProviderImpl) CheckACL(polName string, idinfo interface{}) error {
 	rsccLogger.Debugf("rscc  acl check(%s)", polName)
 
-	//we will implemented other identifiers. In the end we just need a SignedData`
-	signedProp, _ := idinfo.(*pb.SignedProposal)
-	if signedProp == nil {
+	//we will implement other identifiers. In the end we just need a SignedData
+	var sd []*common.SignedData
+	var err error
+	switch idinfo.(type) {
+	case *pb.SignedProposal:
+		signedProp, _ := idinfo.(*pb.SignedProposal)
+		// Prepare SignedData
+		proposal, err := utils.GetProposal(signedProp.ProposalBytes)
+		if err != nil {
+			return fmt.Errorf("Failing extracting proposal during check policy with policy [%s]: [%s]", polName, err)
+		}
+
+		header, err := utils.GetHeader(proposal.Header)
+		if err != nil {
+			return fmt.Errorf("Failing extracting header during check policy [%s]: [%s]", polName, err)
+		}
+
+		shdr, err := utils.GetSignatureHeader(header.SignatureHeader)
+		if err != nil {
+			return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy [%s]: [%s]", polName, err)
+		}
+
+		sd = []*common.SignedData{{
+			Data:      signedProp.ProposalBytes,
+			Identity:  shdr.Creator,
+			Signature: signedProp.Signature,
+		}}
+	case *common.Envelope:
+		sd, err = idinfo.(*common.Envelope).AsSignedData()
+		if err != nil {
+			return err
+		}
+	default:
 		return InvalidIdInfo(polName)
 	}
 
-	// Prepare SignedData
-	proposal, err := utils.GetProposal(signedProp.ProposalBytes)
-	if err != nil {
-		return fmt.Errorf("Failing extracting proposal during check policy with policy [%s]: [%s]", polName, err)
-	}
-
-	header, err := utils.GetHeader(proposal.Header)
-	if err != nil {
-		return fmt.Errorf("Failing extracting header during check policy [%s]: [%s]", polName, err)
-	}
-
-	shdr, err := utils.GetSignatureHeader(header.SignatureHeader)
-	if err != nil {
-		return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy [%s]: [%s]", polName, err)
-	}
-
-	sd := []*common.SignedData{{
-		Data:      signedProp.ProposalBytes,
-		Identity:  shdr.Creator,
-		Signature: signedProp.Signature,
-	}}
-
 	err = rp.pEvaluator.Evaluate(polName, sd)
 	if err != nil {
-		return fmt.Errorf("Failed evaluating policy on signed data during check policy [%s]: [%s]", polName, err)
+		return fmt.Errorf("failed evaluating policy on signed data during check policy [%s]: [%s]", polName, err)
 	}
 
 	return nil

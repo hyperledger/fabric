@@ -16,9 +16,13 @@ limitations under the License.
 package rscc
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -53,6 +57,11 @@ func TestRsccPolicyBase(t *testing.T) {
 	sProp, _ := utils.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	err := pprov.CheckACL("pol", sProp)
 	assert.NoError(t, err)
+
+	env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG, "myc", localmsp.NewSigner(), &common.ConfigEnvelope{}, 0, 0)
+	assert.NoError(t, err)
+	err = pprov.CheckACL("pol", env)
+	assert.NoError(t, err)
 }
 
 func TestRsccPolicyBad(t *testing.T) {
@@ -81,4 +90,15 @@ func TestRsccPolicyBad(t *testing.T) {
 	sProp.ProposalBytes = utils.MarshalOrPanic(prop)
 	err = pprov.CheckACL("res", sProp)
 	assert.Error(t, err)
+}
+
+func init() {
+	var err error
+	// setup the MSP manager so that we can sign/verify
+	err = msptesttools.LoadMSPSetupForTesting()
+	if err != nil {
+		fmt.Printf("Could not load msp config, err %s", err)
+		os.Exit(-1)
+		return
+	}
 }

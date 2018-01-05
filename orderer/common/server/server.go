@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/pkg/errors"
 )
 
 type broadcastSupport struct {
@@ -49,9 +50,15 @@ type server struct {
 // NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
 func NewServer(r *multichannel.Registrar, _ crypto.LocalSigner, debug *localconfig.Debug, timeWindow time.Duration, mutualTLS bool) ab.AtomicBroadcastServer {
 	s := &server{
-		dh: deliver.NewHandlerImpl(deliverSupport{Registrar: r}, func(_ string) (string, error) {
-			return policies.ChannelReaders, nil
-		}, timeWindow, mutualTLS),
+		dh: deliver.NewHandlerImpl(deliverSupport{Registrar: r},
+			func(env *cb.Envelope, channelID string) error {
+				chain, ok := r.GetChain(channelID)
+				if !ok {
+					return errors.Errorf("channel %s not found", channelID)
+				}
+				sf := deliver.NewSigFilter(policies.ChannelReaders, chain)
+				return sf.Apply(env)
+			}, timeWindow, mutualTLS),
 		bh:    broadcast.NewHandlerImpl(broadcastSupport{Registrar: r}),
 		debug: debug,
 	}

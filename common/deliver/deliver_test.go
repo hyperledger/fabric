@@ -45,10 +45,6 @@ import (
 
 var genesisBlock = cb.NewBlock(0, nil)
 var systemChainID = "systemChain"
-var policyNameProvider = func(_ string) (string, error) {
-	return policies.ChannelReaders, nil
-}
-
 var timeWindow = time.Duration(15 * time.Minute)
 var testCert = &x509.Certificate{
 	Raw: []byte("test"),
@@ -172,14 +168,24 @@ func NewRAMLedger() blockledger.ReadWriter {
 	return rl
 }
 
-func initializeDeliverHandler() Handler {
-	mm := newMockMultichainManager()
-	for i := 1; i < ledgerSize; i++ {
-		l := mm.chains[systemChainID].ledger
-		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
+func initializeDeliverHandler(mm *mockSupportManager, mutualTLS bool) Handler {
+	if mm == nil {
+		mm = newMockMultichainManager()
+		ms := mm.chains[systemChainID]
+		l := ms.ledger
+		for i := 1; i < ledgerSize; i++ {
+			l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
+		}
 	}
-
-	return NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
+	policyChecker := func(env *cb.Envelope, channelID string) error {
+		chain, ok := mm.GetChain(channelID)
+		if !ok {
+			return fmt.Errorf("channel %s not found", channelID)
+		}
+		sf := NewSigFilter(policies.ChannelReaders, chain)
+		return sf.Apply(env)
+	}
+	return NewHandlerImpl(mm, policyChecker, timeWindow, mutualTLS)
 }
 
 func newMockMultichainManager() *mockSupportManager {
@@ -237,7 +243,7 @@ func TestWholeChainSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekOldest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
@@ -269,7 +275,7 @@ func TestNewestSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
@@ -291,7 +297,7 @@ func TestSpecificSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	specifiedStart := uint64(3)
@@ -328,7 +334,7 @@ func TestUnauthorizedSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
+	ds := initializeDeliverHandler(mm, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -337,7 +343,7 @@ func TestUnauthorizedSeek(t *testing.T) {
 	select {
 	case deliverReply := <-m.sendChan:
 		if deliverReply.GetStatus() != cb.Status_FORBIDDEN {
-			t.Fatalf("Received wrong error on the reply channel")
+			t.Fatalf("Received wrong error on the reply channel: %s", deliverReply.GetStatus())
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -353,7 +359,7 @@ func TestRevokedAuthorizationSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
+	ds := initializeDeliverHandler(mm, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -384,7 +390,7 @@ func TestOutOfBoundSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(3 * ledgerSize)), Stop: seekSpecified(uint64(3 * ledgerSize)), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
@@ -403,7 +409,7 @@ func TestFailFastSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_FAIL_IF_NOT_READY})
@@ -436,7 +442,7 @@ func TestBlockingSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
+	ds := initializeDeliverHandler(mm, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -490,7 +496,7 @@ func TestErroredSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
+	ds := initializeDeliverHandler(mm, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -514,7 +520,7 @@ func TestErroredBlockingSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
+	ds := initializeDeliverHandler(mm, !mutualTLS)
 
 	go ds.Handle(m)
 
@@ -539,7 +545,7 @@ func TestErroredBlockingSeek(t *testing.T) {
 
 func TestSGracefulShutdown(t *testing.T) {
 	m := newMockD()
-	ds := NewHandlerImpl(nil, policyNameProvider, timeWindow, !mutualTLS)
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 
 	close(m.recvChan)
 	assert.NoError(t, ds.Handle(m), "Expected no error for hangup")
@@ -549,7 +555,7 @@ func TestReversedSeqSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	specifiedStart := uint64(7)
@@ -567,13 +573,13 @@ func TestReversedSeqSeek(t *testing.T) {
 }
 
 func TestBadStreamRecv(t *testing.T) {
-	bh := NewHandlerImpl(nil, policyNameProvider, timeWindow, !mutualTLS)
+	bh := initializeDeliverHandler(nil, !mutualTLS)
 	assert.Error(t, bh.Handle(&erroneousRecvMockD{}), "Should catch unexpected stream error")
 }
 
 func TestBadStreamSend(t *testing.T) {
 	m := &erroneousSendMockD{recvVal: makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})}
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	assert.Error(t, ds.Handle(m), "Should catch unexpected stream error")
 }
 
@@ -581,7 +587,7 @@ func TestOldestSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekOldest, Stop: seekOldest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
@@ -599,7 +605,7 @@ func TestNoPayloadSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- &cb.Envelope{Payload: []byte("Foo")}
@@ -616,7 +622,7 @@ func TestNilPayloadHeaderSeek(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{})}
@@ -633,7 +639,7 @@ func TestBadChannelHeader(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{
@@ -656,7 +662,7 @@ func TestChainNotFound(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, !mutualTLS)
+	ds := initializeDeliverHandler(mm, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
@@ -673,7 +679,7 @@ func TestBadSeekInfoPayload(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- &cb.Envelope{
@@ -701,7 +707,7 @@ func TestMissingSeekPosition(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- &cb.Envelope{
@@ -729,7 +735,7 @@ func TestNilTimestamp(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- &cb.Envelope{
@@ -756,7 +762,7 @@ func TestTimestampOutOfTimeWindow(t *testing.T) {
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := initializeDeliverHandler()
+	ds := initializeDeliverHandler(nil, !mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- &cb.Envelope{
@@ -781,17 +787,10 @@ func TestTimestampOutOfTimeWindow(t *testing.T) {
 }
 
 func TestSeekWithMutualTLS(t *testing.T) {
-	mm := newMockMultichainManager()
-	ms := mm.chains[systemChainID]
-	l := ms.ledger
-	for i := 1; i < ledgerSize; i++ {
-		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
-	}
-
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, mutualTLS)
+	ds := initializeDeliverHandler(nil, mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeekWithTLSCertHash(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}, testCert)
@@ -810,17 +809,10 @@ func TestSeekWithMutualTLS(t *testing.T) {
 }
 
 func TestSeekWithMutualTLS_wrongTLSCert(t *testing.T) {
-	mm := newMockMultichainManager()
-	ms := mm.chains[systemChainID]
-	l := ms.ledger
-	for i := 1; i < ledgerSize; i++ {
-		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
-	}
-
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, mutualTLS)
+	ds := initializeDeliverHandler(nil, mutualTLS)
 	go ds.Handle(m)
 	wrongCert := &x509.Certificate{
 		Raw: []byte("wrong"),
@@ -836,17 +828,10 @@ func TestSeekWithMutualTLS_wrongTLSCert(t *testing.T) {
 }
 
 func TestSeekWithMutualTLS_noTLSCert(t *testing.T) {
-	mm := newMockMultichainManager()
-	ms := mm.chains[systemChainID]
-	l := ms.ledger
-	for i := 1; i < ledgerSize; i++ {
-		l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", i))}}))
-	}
-
 	m := newMockD()
 	defer close(m.recvChan)
 
-	ds := NewHandlerImpl(mm, policyNameProvider, timeWindow, mutualTLS)
+	ds := initializeDeliverHandler(nil, mutualTLS)
 	go ds.Handle(m)
 
 	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})

@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
-	"github.com/hyperledger/fabric/common/resourcesconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -26,7 +25,4 @@ type Manager interface {
 
 	// GetResourceConfig defines methods that are related to resource configuration
 	GetResourceConfig(channel string) Config
-
-	// GetPolicyMapper returns API to the policy mapper
-	GetPolicyMapper(channel string) resourcesconfig.PolicyMapper
 }
