@@ -100,19 +100,6 @@ func testValueAndVersionEncoding(t *testing.T, value []byte, version *version.He
 	testutil.AssertEquals(t, ver, version)
 }
 
-func TestCompositeKey(t *testing.T) {
-	testCompositeKey(t, "ns", "key")
-	testCompositeKey(t, "ns", "")
-}
-
-func testCompositeKey(t *testing.T, ns string, key string) {
-	compositeKey := constructCompositeKey(ns, key)
-	t.Logf("compositeKey=%#v", compositeKey)
-	ns1, key1 := splitCompositeKey(compositeKey)
-	testutil.AssertEquals(t, ns1, ns)
-	testutil.AssertEquals(t, key1, key)
-}
-
 // The following tests are unique to couchdb, they are not used in leveldb
 //  query test
 func TestQuery(t *testing.T) {

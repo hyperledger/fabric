@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	nsJoiner       = "/"
+	nsJoiner       = "$"
 	pvtDataPrefix  = "p"
 	hashDataPrefix = "h"
 )

@@ -89,7 +89,7 @@ func TestDatabaseMapping(t *testing.T) {
 	testutil.AssertError(t, err, "Error expected because the name contains capital letters")
 
 	//create a new instance and database object using a database name with special characters
-	_, err = mapAndValidateDatabaseName("test1234_1")
+	_, err = mapAndValidateDatabaseName("test1234/1")
 	testutil.AssertError(t, err, "Error expected because the name contains illegal chars")
 
 	//create a new instance and database object using a database name with special characters
@@ -108,5 +108,5 @@ func TestDatabaseMapping(t *testing.T) {
 
 	transformedName, err := mapAndValidateDatabaseName("test.my.db-1")
 	testutil.AssertNoError(t, err, "")
-	testutil.AssertEquals(t, transformedName, "test_my_db-1")
+	testutil.AssertEquals(t, transformedName, "test$my$db-1")
 }
