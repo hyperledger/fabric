@@ -76,7 +76,7 @@ const (
 	GETINSTALLEDCHAINCODES = "getinstalledchaincodes"
 
 	allowedCharsChaincodeName = "[A-Za-z0-9_-]+"
-	allowedCharsVersion       = "[A-Za-z0-9_.-]+"
+	allowedCharsVersion       = "[A-Za-z0-9_.+-]+"
 
 	// Collecion-specific constants
 
@@ -350,7 +350,7 @@ func (lscc *lifeCycleSysCC) isValidChaincodeName(chaincodeName string) error {
 
 // isValidChaincodeVersion checks the validity of chaincode version. Versions
 // should never be blank and should only consist of alphanumerics, '_',  '-',
-// and '.'
+// '+', and '.'
 func (lscc *lifeCycleSysCC) isValidChaincodeVersion(chaincodeName string, version string) error {
 	if version == "" {
 		return EmptyVersionErr(chaincodeName)

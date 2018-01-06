@@ -75,7 +75,7 @@ func (f EmptyChaincodeNameErr) Error() string {
 type InvalidVersionErr string
 
 func (f InvalidVersionErr) Error() string {
-	return fmt.Sprintf("invalid chaincode version '%s'. Versions can only consist of alphanumerics, '_',  '-', and '.'", string(f))
+	return fmt.Sprintf("invalid chaincode version '%s'. Versions can only consist of alphanumerics, '_',  '-', '+', and '.'", string(f))
 }
 
 //ChaincodeMismatchErr chaincode name from two places don't match
