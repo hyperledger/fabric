@@ -368,6 +368,8 @@ peer:
         authFilters:
           -
             name: DefaultAuth
+          -
+            name: ExpirationCheck    # This filter checks identity x509 certificate expiration
         decorators:
           -
             name: DefaultDecorator
