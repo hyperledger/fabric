@@ -3,24 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-vp:
-  image: hyperledger/fabric-peer
-  log_driver: none
-  expose:
-    - 7051
-    - 7052
-  environment:
-    - CORE_PEER_ADDRESSAUTODETECT=true
-  volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-
 unit-tests:
   image: hyperledger/fabric-testenv
   links:
-    - vp
     - couchdb
   environment:
-    - UNIT_TEST_PEER_IP=vp
     - GO_LDFLAGS
     - GO_TAGS
     - OUTPUT
