@@ -27,9 +27,6 @@ import (
 func NewGrpcClient(peerAddress string) (*grpc.ClientConn, error) {
 	var tmpConn *grpc.ClientConn
 	var err error
-	if comm.TLSEnabled() {
-		tmpConn, err = comm.NewClientConnectionWithAddress(peerAddress, true, true, comm.InitTLSForPeer())
-	}
 	tmpConn, err = comm.NewClientConnectionWithAddress(peerAddress, true, false, nil)
 	if err != nil {
 		fmt.Printf("error connection to server at host:port = %s\n", peerAddress)

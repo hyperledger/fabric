@@ -203,12 +203,6 @@ func TestCreateChainFromBlock(t *testing.T) {
 	}
 }
 
-func TestNewPeerClientConnection(t *testing.T) {
-	if _, err := NewPeerClientConnection(); err != nil {
-		t.Log(err)
-	}
-}
-
 func TestGetLocalIP(t *testing.T) {
 	ip := GetLocalIP()
 	t.Log(ip)

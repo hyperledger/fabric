@@ -70,10 +70,6 @@ func NewEventsClient(peerAddress string, regTimeout time.Duration, adapter Event
 
 //newEventsClientConnectionWithAddress Returns a new grpc.ClientConn to the configured local PEER.
 func newEventsClientConnectionWithAddress(peerAddress string) (*grpc.ClientConn, error) {
-	if comm.TLSEnabled() {
-		return comm.NewClientConnectionWithAddress(peerAddress, true, true,
-			comm.InitTLSForPeer(), nil)
-	}
 	return comm.NewClientConnectionWithAddress(peerAddress, true, false,
 		nil, nil)
 }
