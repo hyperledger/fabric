@@ -110,6 +110,7 @@ const (
 	// be less than 13 KB.
 	AbsoluteMaxBytes  = 15 // KB
 	PreferredMaxBytes = 10 // KB
+	ChannelProfile    = localconfig.SampleSingleMSPChannelV11Profile
 )
 
 var envvars = map[string]string{
@@ -356,6 +357,15 @@ func benchmarkOrderer(
 	numOfOrderer int,
 	multiplex bool,
 ) {
+	// Initialization shared by all orderers
+	conf := config.Load()
+	initializeLoggingLevel(conf)
+	initializeLocalMsp(conf)
+	perf.InitializeServerPool(numOfOrderer)
+
+	// Load sample channel profile
+	channelProfile := localconfig.Load(ChannelProfile)
+
 	// Calculate intermediate variables used internally. See the comment at the beginning
 	// of this file for the purpose of these vars.
 	txPerClient := totalTx / (broadcastClientPerChannel * numOfChannels * numOfOrderer)
@@ -375,12 +385,6 @@ func benchmarkOrderer(
 	blkPerChannel := txPerChannel / txPerBlk
 
 	var txCount uint64 // Atomic counter to keep track of actual tx sent
-
-	// Initialization shared by all orderers
-	conf := config.Load()
-	initializeLoggingLevel(conf)
-	initializeLocalMsp(conf)
-	perf.InitializeServerPool(numOfOrderer)
 
 	// Generate a random system channel id for each test run,
 	// so it does not recover ledgers from previous run.
@@ -419,7 +423,7 @@ func benchmarkOrderer(
 	channelIDs := make([]string, numOfChannels)
 	txs := make(map[string]*cb.Envelope)
 	for i := 0; i < numOfChannels; i++ {
-		id := perf.CreateChannel(benchmarkServers[0]) // We only need to create channel on one orderer
+		id := perf.CreateChannel(benchmarkServers[0], channelProfile) // We only need to create channel on one orderer
 		channelIDs[i] = id
 		txs[id] = perf.MakeNormalTx(id, msgSize)
 	}

@@ -59,7 +59,7 @@ Profiles:
                     - <<: *SampleOrg
                       AdminPrincipal: Role.MEMBER
 
-    # SampleDevModeSoloV1.1 mimics the SampleDevModeKafka definition
+    # SampleDevModeSoloV1.1 mimics the SampleDevModeSolo definition
     # but additionally defines the v1.1 only capabilities which do
     # not allow a mixed v1.0.x v1.1.x network
     SampleDevModeSoloV1_1:
