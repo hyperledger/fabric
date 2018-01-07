@@ -44,7 +44,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/semaphore"
-	"google.golang.org/grpc"
 )
 
 var peerLogger = flogging.MustGetLogger("peer")
@@ -645,11 +644,6 @@ func SetCurrConfigBlock(block *common.Block, cid string) error {
 	return fmt.Errorf("Chain %s doesn't exist on the peer", cid)
 }
 
-// NewPeerClientConnection Returns a new grpc.ClientConn to the configured local PEER.
-func NewPeerClientConnection() (*grpc.ClientConn, error) {
-	return NewPeerClientConnectionWithAddress(viper.GetString("peer.address"))
-}
-
 // GetLocalIP returns the non loopback local IP of the host
 func GetLocalIP() string {
 	addrs, err := net.InterfaceAddrs()
@@ -665,16 +659,6 @@ func GetLocalIP() string {
 		}
 	}
 	return ""
-}
-
-// NewPeerClientConnectionWithAddress Returns a new grpc.ClientConn to the configured local PEER.
-func NewPeerClientConnectionWithAddress(peerAddress string) (*grpc.ClientConn, error) {
-	if comm.TLSEnabled() {
-		return comm.NewClientConnectionWithAddress(peerAddress, true, true,
-			comm.InitTLSForPeer(), nil)
-	}
-	return comm.NewClientConnectionWithAddress(peerAddress, true, false,
-		nil, nil)
 }
 
 // GetChannelsInfo returns an array with information about all channels for
