@@ -46,6 +46,7 @@ type server struct {
 	bh    broadcast.Handler
 	dh    deliver.Handler
 	debug *localconfig.Debug
+	*multichannel.Registrar
 }
 
 type deliverHandlerSupport struct {
@@ -69,17 +70,10 @@ func (*deliverHandlerSupport) CreateBlockReply(block *cb.Block) proto.Message {
 // NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
 func NewServer(r *multichannel.Registrar, _ crypto.LocalSigner, debug *localconfig.Debug, timeWindow time.Duration, mutualTLS bool) ab.AtomicBroadcastServer {
 	s := &server{
-		dh: deliver.NewHandlerImpl(deliverSupport{Registrar: r},
-			func(env *cb.Envelope, channelID string) error {
-				chain, ok := r.GetChain(channelID)
-				if !ok {
-					return errors.Errorf("channel %s not found", channelID)
-				}
-				sf := msgprocessor.NewSigFilter(policies.ChannelReaders, chain)
-				return sf.Apply(env)
-			}, timeWindow, mutualTLS),
-		bh:    broadcast.NewHandlerImpl(broadcastSupport{Registrar: r}),
-		debug: debug,
+		dh:        deliver.NewHandlerImpl(deliverSupport{Registrar: r}, timeWindow, mutualTLS),
+		bh:        broadcast.NewHandlerImpl(broadcastSupport{Registrar: r}),
+		debug:     debug,
+		Registrar: r,
 	}
 	return s
 }
@@ -163,13 +157,22 @@ func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 		}
 		logger.Debugf("Closing Deliver stream")
 	}()
-	return s.dh.Handle(deliver.NewDeliverServer(&deliverMsgTracer{
+	policyChecker := func(env *cb.Envelope, channelID string) error {
+		chain, ok := s.GetChain(channelID)
+		if !ok {
+			return errors.Errorf("channel %s not found", channelID)
+		}
+		sf := msgprocessor.NewSigFilter(policies.ChannelReaders, chain)
+		return sf.Apply(env)
+	}
+	server := &deliverMsgTracer{
 		DeliverSupport: &deliverHandlerSupport{AtomicBroadcast_DeliverServer: srv},
 		msgTracer: msgTracer{
 			debug:    s.debug,
 			function: "Deliver",
 		},
-	}, s.sendProducer(srv)))
+	}
+	return s.dh.Handle(deliver.NewDeliverServer(server, policyChecker, s.sendProducer(srv)))
 }
 
 func (s *server) sendProducer(srv ab.AtomicBroadcast_DeliverServer) func(msg proto.Message) error {

@@ -249,19 +249,21 @@ Feature: Bootstrap
         | User            | Peer     | Organization  |
         | peer2Signer     | peer2    | peerOrg1      |
 
-    When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "peer0" using port "7051"
-         And user "dev0Org0" sends deliver a seek request on orderer "peer0" with properties:
-           | ChainId                               | Start |  End    |
-           | com.acme.blockchain.jdoe.channel1     |   0   |  0      |
+# Commenting out BDD tests below since there is a need to add support to BDD to be able to use Deliver API from peer side
+#
+#    When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "peer0" using port "7051"
+#         And user "dev0Org0" sends deliver a seek request on orderer "peer0" with properties:
+#           | ChainId                               | Start |  End    |
+#           | com.acme.blockchain.jdoe.channel1     |   0   |  0      |
 
-    Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannel" from "peer0" of "1" blocks with "1" messages within "1" seconds
+#    Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannel" from "peer0" of "1" blocks with "1" messages within "1" seconds
 
-    When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "peer2" using port "7051"
-         And user "dev0Org0" sends deliver a seek request on orderer "peer2" with properties:
-           | ChainId                               | Start |  End    |
-           | com.acme.blockchain.jdoe.channel1     |   0   |  0      |
+#    When user "dev0Org0" using cert alias "consortium1-cert" connects to deliver function on orderer "peer2" using port "7051"
+#         And user "dev0Org0" sends deliver a seek request on orderer "peer2" with properties:
+#           | ChainId                               | Start |  End    |
+#           | com.acme.blockchain.jdoe.channel1     |   0   |  0      |
 
-    Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannelFromOtherOrgsPeer" from "peer2" of "1" blocks with "1" messages within "1" seconds
+#    Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannelFromOtherOrgsPeer" from "peer2" of "1" blocks with "1" messages within "1" seconds
 
     # Entry point for invoking on an existing channel
     When user "peer0Admin" creates a chaincode spec "ccSpec" with name "example02" of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with args
