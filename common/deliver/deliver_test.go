@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
+	"sync"
 	"testing"
 	"time"
 
@@ -139,6 +140,7 @@ func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 }
 
 type mockSupport struct {
+	sync.Mutex
 	ledger        blockledger.ReadWriter
 	policyManager *mockpolicies.Manager
 	erroredChan   chan struct{}
@@ -150,6 +152,8 @@ func (mcs *mockSupport) Errored() <-chan struct{} {
 }
 
 func (mcs *mockSupport) Sequence() uint64 {
+	mcs.Lock()
+	defer mcs.Unlock()
 	return mcs.configSeq
 }
 
@@ -182,8 +186,11 @@ func initializeDeliverHandler(mm *mockSupportManager, mutualTLS bool) Handler {
 		if !ok {
 			return fmt.Errorf("channel %s not found", channelID)
 		}
-		sf := NewSigFilter(policies.ChannelReaders, chain)
-		return sf.Apply(env)
+		chain.(*mockSupport).Lock()
+		defer chain.(*mockSupport).Unlock()
+		pol, _ := chain.PolicyManager().GetPolicy(policies.ChannelReaders)
+		sd, _ := env.AsSignedData()
+		return pol.Evaluate(sd)
 	}
 	return NewHandlerImpl(mm, policyChecker, timeWindow, mutualTLS)
 }
@@ -371,10 +378,11 @@ func TestRevokedAuthorizationSeek(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
 	}
-
+	mm.chains[systemChainID].Lock()
 	mm.chains[systemChainID].policyManager.Policy.Err = fmt.Errorf("Fail to evaluate policy")
 	mm.chains[systemChainID].configSeq++
 	l := mm.chains[systemChainID].ledger
+	mm.chains[systemChainID].Unlock()
 	l.Append(blockledger.CreateNextBlock(l, []*cb.Envelope{{Payload: []byte(fmt.Sprintf("%d", ledgerSize+1))}}))
 
 	select {

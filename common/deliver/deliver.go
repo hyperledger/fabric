@@ -21,6 +21,8 @@ import (
 	"math"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
@@ -29,10 +31,8 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/pkg/errors"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 const pkgLogID = "common/deliver"
@@ -55,6 +55,7 @@ type SupportManager interface {
 
 // Support provides the backing resources needed to support deliver on a chain
 type Support interface {
+
 	// Sequence returns the current config sequence number, can be used to detect config changes
 	Sequence() uint64
 
@@ -165,10 +166,14 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 
 	}
 
-	lastConfigSequence := chain.Sequence()
+	accessControl, err := newSessionAC(chain, envelope, ds.policyChecker, chdr.ChannelId, crypto.ExpiresAt)
+	if err != nil {
+		logger.Warningf("[channel: %s] failed to create access control object due to %s", chdr.ChannelId, err)
+		return sendStatusReply(srv, cb.Status_BAD_REQUEST)
+	}
 
-	if err := ds.policyChecker(envelope, chdr.ChannelId); err != nil {
-		logger.Warningf("[channel: %s] Received unauthorized deliver request from %s: %s", chdr.ChannelId, addr, err)
+	if err := accessControl.evaluate(); err != nil {
+		logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.ChannelId, addr, err)
 		return sendStatusReply(srv, cb.Status_FORBIDDEN)
 	}
 
@@ -214,16 +219,13 @@ func (ds *deliverServer) deliverBlocks(srv ab.AtomicBroadcast_DeliverServer, env
 			logger.Errorf("[channel: %s] Error reading from channel, cause was: %v", chdr.ChannelId, status)
 			return sendStatusReply(srv, status)
 		}
+
 		// increment block number to support FAIL_IF_NOT_READY deliver behavior
 		number++
 
-		currentConfigSequence := chain.Sequence()
-		if currentConfigSequence > lastConfigSequence {
-			lastConfigSequence = currentConfigSequence
-			if err := ds.policyChecker(envelope, chdr.ChannelId); err != nil {
-				logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.ChannelId, addr, err)
-				return sendStatusReply(srv, cb.Status_FORBIDDEN)
-			}
+		if err := accessControl.evaluate(); err != nil {
+			logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.ChannelId, addr, err)
+			return sendStatusReply(srv, cb.Status_FORBIDDEN)
 		}
 
 		logger.Debugf("[channel: %s] Delivering block for (%p) for %s", chdr.ChannelId, seekInfo, addr)
