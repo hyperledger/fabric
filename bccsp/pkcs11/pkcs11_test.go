@@ -29,6 +29,9 @@ import (
 )
 
 func TestKeyGenFailures(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestKeyGenFailures")
+	}
 	var testOpts bccsp.KeyGenOpts
 	ki := currentBCCSP
 	_, err := ki.KeyGen(testOpts)
@@ -37,6 +40,9 @@ func TestKeyGenFailures(t *testing.T) {
 }
 
 func TestLoadLib(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestLoadLib")
+	}
 	// Setup PKCS11 library and provide initial set of values
 	lib, pin, label := FindPKCS11Lib()
 
@@ -62,6 +68,9 @@ func TestLoadLib(t *testing.T) {
 }
 
 func TestOIDFromNamedCurve(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestOIDFromNamedCurve")
+	}
 	// Test for valid OID for P224
 	testOID, boolValue := oidFromNamedCurve(elliptic.P224())
 	assert.Equal(t, oidNamedCurveP224, testOID, "Did not receive expected OID for elliptic.P224")
@@ -90,6 +99,9 @@ func TestOIDFromNamedCurve(t *testing.T) {
 }
 
 func TestNamedCurveFromOID(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestNamedCurveFromOID")
+	}
 	// Test for valid P224 elliptic curve
 	namedCurve := namedCurveFromOID(oidNamedCurveP224)
 	assert.Equal(t, elliptic.P224(), namedCurve, "Did not receive expected named curve for oidNamedCurveP224")
@@ -114,6 +126,9 @@ func TestNamedCurveFromOID(t *testing.T) {
 }
 
 func TestPKCS11GetSession(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestPKCS11GetSession")
+	}
 	var sessions []pkcs11.SessionHandle
 	for i := 0; i < 3*sessionCacheSize; i++ {
 		sessions = append(sessions, currentBCCSP.(*impl).getSession())
@@ -147,6 +162,10 @@ func TestPKCS11GetSession(t *testing.T) {
 }
 
 func TestPKCS11ECKeySignVerify(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestPKCS11ECKeySignVerify")
+	}
+
 	if currentBCCSP.(*impl).noPrivImport {
 		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
@@ -207,6 +226,10 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 }
 
 func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestPKCS11ECKeyImportSignVerify")
+	}
+
 	if currentBCCSP.(*impl).noPrivImport {
 		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
@@ -273,6 +296,10 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 }
 
 func TestPKCS11ECKeyExport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestPKCS11ECKeyExport")
+	}
+
 	if currentBCCSP.(*impl).noPrivImport {
 		t.Skip("Key import turned off. Skipping Derivation tests as they currently require Key Import.")
 	}
