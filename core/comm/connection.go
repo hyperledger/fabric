@@ -185,10 +185,6 @@ func getEnv(key, def string) string {
 	}
 }
 
-func GetPeerTestingAddress(port string) string {
-	return getEnv("UNIT_TEST_PEER_IP", "localhost") + ":" + port
-}
-
 // NewClientConnectionWithAddress Returns a new grpc.ClientConn to the given address
 func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled bool,
 	creds credentials.TransportCredentials, ka *KeepaliveOptions) (*grpc.ClientConn, error) {
