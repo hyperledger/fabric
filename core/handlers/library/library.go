@@ -27,6 +27,12 @@ func (r *HandlerLibrary) DefaultAuth() auth.Filter {
 	return filter.NewFilter()
 }
 
+// ExpirationCheck is an auth filter which blocks requests
+// from identities with expired x509 certificates
+func (r *HandlerLibrary) ExpirationCheck() auth.Filter {
+	return filter.NewExpirationCheckFilter()
+}
+
 // DefaultDecorator creates a default decorator
 // that doesn't do anything with the input, simply
 // returns the input as output.
