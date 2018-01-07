@@ -238,17 +238,22 @@ func TestExpiration(t *testing.T) {
 		}
 	}
 	x509Identity := api.PeerIdentityType("x509Identity")
+	expiredX509Identity := api.PeerIdentityType("expiredX509Identity")
 	nonX509Identity := api.PeerIdentityType("nonX509Identity")
 	notSupportedIdentity := api.PeerIdentityType("notSupportedIdentity")
 	x509PkiID := idStore.GetPKIidOfCert(x509Identity)
+	expiredX509PkiID := idStore.GetPKIidOfCert(expiredX509Identity)
 	nonX509PkiID := idStore.GetPKIidOfCert(nonX509Identity)
 	notSupportedPkiID := idStore.GetPKIidOfCert(notSupportedIdentity)
 	msgCryptoService.On("Expiration", x509Identity).Return(time.Now().Add(time.Second), nil)
+	msgCryptoService.On("Expiration", expiredX509Identity).Return(time.Now().Add(-time.Second), nil)
 	msgCryptoService.On("Expiration", nonX509Identity).Return(time.Time{}, nil)
 	msgCryptoService.On("Expiration", notSupportedIdentity).Return(time.Time{}, errors.New("no MSP supports given identity"))
 	// Add all identities
 	err := idStore.Put(x509PkiID, x509Identity)
 	assert.NoError(t, err)
+	err = idStore.Put(expiredX509PkiID, expiredX509Identity)
+	assert.Equal(t, "identity expired", err.Error())
 	err = idStore.Put(nonX509PkiID, nonX509Identity)
 	assert.NoError(t, err)
 	err = idStore.Put(notSupportedPkiID, notSupportedIdentity)
