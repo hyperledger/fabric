@@ -36,55 +36,63 @@ if [ "$JOB_TYPE"  = "VERIFY" ]; then
      echo $TEST_PKGS
      echo " with tags " $GO_TAGS
      # use go test -cover as this is much more efficient than gocov
-     time go test -cover -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $TEST_PKGS -p 1 -timeout=20m
+     time go test -cover -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $TEST_PKGS -short -timeout=20m
   else
      echo "Nothing changed in unit test!!!"
   fi
 
 else
 
-#check to see if TEST_PKGS is set else use default (all packages)
-TEST_PKGS=${TEST_PKGS:-github.com/hyperledger/fabric/...}
-echo -n "Obtaining list of tests to run for the following packages: ${TEST_PKGS}"
+  #check to see if TEST_PKGS is set else use default (all packages)
+  TEST_PKGS=${TEST_PKGS:-github.com/hyperledger/fabric/...}
+  echo -n "Obtaining list of tests to run for the following packages: ${TEST_PKGS}"
 
-# Some examples don't play nice with `go test`
-PKGS=`go list ${TEST_PKGS} 2> /dev/null | \
-                                                  grep -v /vendor/ | \
-                                                  grep -v /build/ | \
-                                                  grep -v /bccsp/mocks | \
-                                                  grep -v /bddtests | \
-                                                  grep -v /orderer/mocks | \
-                                                  grep -v /orderer/sample_clients | \
-                                                  grep -v /common/mocks | \
-                                                  grep -v /common/ledger/testutil | \
-                                                  grep -v /core/mocks | \
-                                                  grep -v /core/testutil | \
-                                                  grep -v /core/ledger/testutil | \
-                                                  grep -v /core/ledger/kvledger/example | \
-                                                  grep -v /core/ledger/kvledger/marble_example | \
-                                                  grep -v /core/deliverservice/mocks | \
-                                                  grep -v /test | \
-                                                  grep -v /examples`
+  # Some examples and packages don't play nice with `go test`
+  PKGS=`go list ${TEST_PKGS} 2> /dev/null | \
+              grep -v /vendor/ | \
+              grep -v /build/ | \
+              grep -v /bccsp/mocks | \
+              grep -v /bddtests | \
+              grep -v /orderer/mocks | \
+              grep -v /orderer/sample_clients | \
+              grep -v /common/mocks | \
+              grep -v /common/ledger/testutil | \
+              grep -v /core/mocks | \
+              grep -v /core/testutil | \
+              grep -v /core/ledger/testutil | \
+              grep -v /core/ledger/kvledger/example | \
+              grep -v /core/ledger/kvledger/marble_example | \
+              grep -v /core/deliverservice/mocks | \
+              # this package's tests need to be mocked
+              grep -v /bccsp/factory | \
+              grep -v github.com/hyperledger/fabric/gossip | \
+              grep -v /test | \
+              grep -v /examples`
 
-if [ x$ARCH == xppc64le -o x$ARCH == xs390x ]
-then
-PKGS=`echo $PKGS | sed  's@'github.com/hyperledger/fabric/core/chaincode/platforms/java/test'@@g'`
-PKGS=`echo $PKGS | sed  's@'github.com/hyperledger/fabric/core/chaincode/platforms/java'@@g'`
-fi
+  if [ x$ARCH == xppc64le -o x$ARCH == xs390x ]; then
+    PKGS=`echo $PKGS | sed  's@'github.com/hyperledger/fabric/core/chaincode/platforms/java/test'@@g'`
+    PKGS=`echo $PKGS | sed  's@'github.com/hyperledger/fabric/core/chaincode/platforms/java'@@g'`
+  fi
 
-echo -e "\nDONE!"
-echo -e "Running tests with tags ${GO_TAGS} ..."
+  echo -e "\nDONE!"
+  echo -e "Running tests with tags ${GO_TAGS} ..."
 
-# Initialize profile.cov
-date
-echo "mode: set" > profile.cov
-for pkg in $PKGS
-do
-    :> profile_tmp.cov
-    go test -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $pkg -timeout=20m
-    tail -n +2 profile_tmp.cov >> profile.cov || echo "Unable to append coverage for $pkg"
-done
-#convert to cobertura format
-gocov convert profile.cov |gocov-xml > report.xml
-date
+  if [ "$JOB_TYPE"  = "PROFILE" ]; then
+    # Initialize profile.cov
+    date
+    echo "mode: set" > profile.cov
+    for pkg in $PKGS
+    do
+      :> profile_tmp.cov
+      go test -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $pkg -timeout=20m
+      tail -n +2 profile_tmp.cov >> profile.cov || echo "Unable to append coverage for $pkg"
+    done
+    #convert to cobertura format
+    gocov convert profile.cov |gocov-xml > report.xml
+    date
+  else
+    time go test -cover -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" $PKGS -short -timeout=20m
+    # gossip packages need to be serialized
+    time go test -cover -tags "$GO_TAGS" -ldflags "$GO_LDFLAGS" ./gossip/... -short -p 1 -timeout=20m
+  fi
 fi

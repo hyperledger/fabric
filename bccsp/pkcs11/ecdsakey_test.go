@@ -28,6 +28,9 @@ import (
 )
 
 func TestECDSAPKIXPublicKeyImportOptsKeyImporter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestECDSAPKIXPublicKeyImportOptsKeyImporter")
+	}
 	ki := currentBCCSP
 
 	_, err := ki.KeyImport("Hello World", &bccsp.ECDSAPKIXPublicKeyImportOpts{})
@@ -60,6 +63,9 @@ func TestECDSAPKIXPublicKeyImportOptsKeyImporter(t *testing.T) {
 }
 
 func TestECDSAPrivateKeyImportOptsKeyImporter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestECDSAPrivateKeyImportOptsKeyImporter")
+	}
 	if currentBCCSP.(*impl).noPrivImport {
 		t.Skip("Key import turned off. Skipping Private Key Importer tests as they currently require Key Import.")
 	}
@@ -91,6 +97,9 @@ func TestECDSAPrivateKeyImportOptsKeyImporter(t *testing.T) {
 }
 
 func TestECDSAGoPublicKeyImportOptsKeyImporter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestECDSAGoPublicKeyImportOptsKeyImporter")
+	}
 	ki := currentBCCSP
 
 	_, err := ki.KeyImport("Hello World", &bccsp.ECDSAGoPublicKeyImportOpts{})
@@ -103,6 +112,9 @@ func TestECDSAGoPublicKeyImportOptsKeyImporter(t *testing.T) {
 }
 
 func TestX509PublicKeyImportOptsKeyImporter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestX509PublicKeyImportOptsKeyImporter")
+	}
 	ki := currentBCCSP
 
 	_, err := ki.KeyImport("Hello World", &bccsp.X509PublicKeyImportOpts{})
