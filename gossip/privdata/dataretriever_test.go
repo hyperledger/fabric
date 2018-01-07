@@ -69,8 +69,10 @@ func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 	namespace := "testChaincodeName1"
 	collectionName := "testCollectionName"
 
-	rwSetScanner.
-		On("Next").Return(&transientstore.EndorserPvtSimulationResults{
+	rwSetScanner.On("Next").Return(&transientstore.EndorserPvtSimulationResults{
+		ReceivedAtBlockHeight: 2,
+		PvtSimulationResults:  nil,
+	}, nil).Once().On("Next").Return(&transientstore.EndorserPvtSimulationResults{
 		ReceivedAtBlockHeight: 2,
 		PvtSimulationResults: &rwset.TxPvtReadWriteSet{
 			DataModel: rwset.TxReadWriteSet_KV,
