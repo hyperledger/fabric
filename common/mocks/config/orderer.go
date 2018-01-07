@@ -76,6 +76,9 @@ type OrdererCapabilities struct {
 
 	// ResubmissionVal is returned by Resubmission()
 	ResubmissionVal bool
+
+	// ExpirationVal is returned by ExpirationCheck()
+	ExpirationVal bool
 }
 
 // Supported returns SupportedErr
@@ -91,4 +94,10 @@ func (oc *OrdererCapabilities) SetChannelModPolicyDuringCreate() bool {
 // Resubmission returns ResubmissionVal
 func (oc *OrdererCapabilities) Resubmission() bool {
 	return oc.ResubmissionVal
+}
+
+// ExpirationCheck specifies whether the orderer checks for identity expiration checks
+// when validating messages
+func (oc *OrdererCapabilities) ExpirationCheck() bool {
+	return oc.ExpirationVal
 }

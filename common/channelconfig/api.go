@@ -143,6 +143,10 @@ type OrdererCapabilities interface {
 
 	// Supported returns an error if there are unknown capabilities in this channel which are required
 	Supported() error
+
+	// ExpirationCheck specifies whether the orderer checks for identity expiration checks
+	// when validating messages
+	ExpirationCheck() bool
 }
 
 // Resources is the common set of config resources for all channels
