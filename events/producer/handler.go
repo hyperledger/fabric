@@ -24,6 +24,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -31,6 +32,7 @@ import (
 type handler struct {
 	ChatStream       pb.Events_ChatServer
 	interestedEvents map[string]*pb.Interest
+	sessionEndTime   time.Time
 }
 
 func newEventHandler(stream pb.Events_ChatServer) *handler {
@@ -161,6 +163,12 @@ func (d *handler) validateEventMessage(signedEvt *pb.SignedEvent) (*pb.Event, er
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling the event bytes in the SignedEvent: %s", err)
 	}
+
+	expirationTime := crypto.ExpiresAt(evt.Creator)
+	if !expirationTime.IsZero() && time.Now().After(expirationTime) {
+		return nil, fmt.Errorf("identity expired")
+	}
+	d.sessionEndTime = expirationTime
 
 	if evt.GetTimestamp() != nil {
 		evtTime := time.Unix(evt.GetTimestamp().Seconds, int64(evt.GetTimestamp().Nanos)).UTC()

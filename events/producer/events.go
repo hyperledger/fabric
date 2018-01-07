@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric/common/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -217,7 +218,6 @@ func (ep *eventProcessor) start() {
 	for {
 		//wait for event
 		e := <-ep.eventChannel
-
 		var hl handlerList
 		eType := getMessageType(e)
 		ep.Lock()
@@ -229,13 +229,25 @@ func (ep *eventProcessor) start() {
 		//lock the handler map lock
 		ep.Unlock()
 
+		now := time.Now()
 		hl.foreach(e, func(h *handler) {
+			if hasSessionExpired(now, h.sessionEndTime) {
+				addr := util.ExtractRemoteAddress(h.ChatStream.Context())
+				logger.Warning("Client's", addr, " identity has expired")
+				// We have to call Stop asynchronously because hl.foreach() holds a lock on hl
+				go h.Stop()
+				return
+			}
 			if e.Event != nil {
 				h.SendMessage(e)
 			}
 		})
 
 	}
+}
+
+func hasSessionExpired(now, sessionEndTime time.Time) bool {
+	return !sessionEndTime.IsZero() && now.After(sessionEndTime)
 }
 
 //initialize and start

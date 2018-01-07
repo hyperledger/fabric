@@ -35,6 +35,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
 
+	"io/ioutil"
+	"path/filepath"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
@@ -47,6 +50,8 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/protos/common"
+	msp2 "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
@@ -110,7 +115,7 @@ func (a *Adapter) Disconnected(err error) {
 	}
 }
 
-func createRegisterEvent(timestamp *timestamp.Timestamp, cert *x509.Certificate) (*pb.Event, error) {
+func createRegisterEvent(timestamp *timestamp.Timestamp, tlsCert *x509.Certificate) (*pb.Event, error) {
 	events := make([]*pb.Interest, 2)
 	events[0] = &pb.Interest{
 		EventType: pb.EventType_BLOCK,
@@ -129,8 +134,8 @@ func createRegisterEvent(timestamp *timestamp.Timestamp, cert *x509.Certificate)
 		Creator:   signerSerialized,
 		Timestamp: timestamp,
 	}
-	if cert != nil {
-		evt.TlsCertHash = util.ComputeSHA256(cert.Raw)
+	if tlsCert != nil {
+		evt.TlsCertHash = util.ComputeSHA256(tlsCert.Raw)
 	}
 	return evt, nil
 }
@@ -157,11 +162,24 @@ func corrupt(bytes []byte) {
 	bytes[r.Int31n(int32(len(bytes)))]--
 }
 
+func createExpiredIdentity(t *testing.T) []byte {
+	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "expiredCert.pem"))
+	assert.NoError(t, err)
+	sId := &msp2.SerializedIdentity{
+		IdBytes: certBytes,
+	}
+	serializedIdentity, err := proto.Marshal(sId)
+	assert.NoError(t, err)
+	return serializedIdentity
+}
+
 func TestSignedEvent(t *testing.T) {
 	recvChan := make(chan *streamEvent)
 	sendChan := make(chan *pb.Event)
 	stream := &mockEventStream{recvChan: recvChan, sendChan: sendChan}
 	mockHandler := &handler{ChatStream: stream}
+	backupSerializedIdentity := signerSerialized
+	signerSerialized = createExpiredIdentity(t)
 	// get a test event
 	evt, err := createRegisterEvent(nil, nil)
 	if err != nil {
@@ -171,6 +189,29 @@ func TestSignedEvent(t *testing.T) {
 
 	// sign it
 	sEvt, err := utils.GetSignedEvent(evt, signer)
+	if err != nil {
+		t.Fatalf("GetSignedEvent failed, err %s", err)
+		return
+	}
+
+	// validate it. Expected to fail because the identity expired
+	_, err = mockHandler.validateEventMessage(sEvt)
+	assert.Equal(t, err.Error(), "identity expired")
+	if err == nil {
+		t.Fatalf("validateEventMessage succeeded but should have failed")
+		return
+	}
+
+	// Restore the original legit serialized identity
+	signerSerialized = backupSerializedIdentity
+	evt, err = createRegisterEvent(nil, nil)
+	if err != nil {
+		t.Fatalf("createEvent failed, err %s", err)
+		return
+	}
+
+	// sign it
+	sEvt, err = utils.GetSignedEvent(evt, signer)
 	if err != nil {
 		t.Fatalf("GetSignedEvent failed, err %s", err)
 		return
@@ -437,6 +478,67 @@ func TestRegister_MutualTLS(t *testing.T) {
 	case <-m.sendChan:
 		t.Fatalf("Received a response when none was expected")
 	case <-time.After(time.Second):
+	}
+}
+
+func TestRegister_ExpiredIdentity(t *testing.T) {
+	m := newMockEventhub()
+	defer close(m.recvChan)
+
+	go ehServer.Chat(m)
+
+	publishBlock := func() {
+		gEventProcessor.eventChannel <- &pb.Event{
+			Event: &pb.Event_Block{
+				Block: &common.Block{
+					Header: &common.BlockHeader{
+						Number: 100,
+					},
+				},
+			},
+		}
+	}
+
+	expireSessions := func() {
+		gEventProcessor.RLock()
+		handlerList := gEventProcessor.eventConsumers[pb.EventType_BLOCK].(*genericHandlerList)
+		handlerList.RLock()
+		for k := range handlerList.handlers {
+			// Artificially move the session end time a minute into the past
+			k.sessionEndTime = time.Now().Add(-1 * time.Minute)
+		}
+		handlerList.RUnlock()
+		gEventProcessor.RUnlock()
+	}
+
+	sEvt, err := createSignedRegisterEvent(util.CreateUtcTimestamp(), nil)
+	assert.NoError(t, err)
+	m.recvChan <- &streamEvent{event: sEvt}
+
+	// Wait for register Ack
+	select {
+	case <-m.sendChan:
+	case <-time.After(time.Millisecond * 500):
+		assert.Fail(t, "Didn't receive back a register ack on time")
+	}
+
+	// Publish a block and make sure we receive it
+	publishBlock()
+	select {
+	case resp := <-m.sendChan:
+		assert.Equal(t, uint64(100), resp.GetBlock().Header.Number)
+	case <-time.After(time.Millisecond * 500):
+		assert.Fail(t, "Didn't receive the block on time, but should have")
+	}
+
+	// Expire the sessions, and publish a block again
+	expireSessions()
+	publishBlock()
+	// Make sure we don't receive it
+	select {
+	case resp := <-m.sendChan:
+		t.Fatalf("Received a block (%v) but wasn't supposed to", resp.GetBlock())
+	case <-time.After(time.Millisecond * 500):
 	}
 }
 
