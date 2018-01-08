@@ -126,7 +126,7 @@ variables.
 
   docker exec -it cli bash
 
-By default the CLI container exits after 10000 seconds.  If the container has
+By default the CLI container exits after 10 seconds.  If the container has
 exited, make sure to restart it before continuing.  First, check the status of
 your containers:
 
