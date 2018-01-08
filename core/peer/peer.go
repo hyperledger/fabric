@@ -146,7 +146,8 @@ func (cs *chainSupport) GetMSPIDs(cid string) []string {
 
 // Sequence passes through to the underlying configtx.Validator
 func (cs *chainSupport) Sequence() uint64 {
-	return cs.ConfigtxValidator().Sequence()
+	sb := cs.bundleSource.StableBundle()
+	return sb.ConfigtxValidator().Sequence() + sb.ChannelConfig().ConfigtxValidator().Sequence()
 }
 func (cs *chainSupport) Reader() blockledger.Reader {
 	return cs.fileLedger
