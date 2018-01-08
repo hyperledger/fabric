@@ -90,6 +90,10 @@ func (dr *dataRetriever) CollectionRWSet(dig *gossip2.PvtDataDigest) []util.Priv
 				return pRWsets
 			}
 			rws := res.PvtSimulationResults
+			if rws == nil {
+				logger.Debug("Skipping empty PvtSimulationResults received at block height", res.ReceivedAtBlockHeight)
+				continue
+			}
 			pRWsets = append(pRWsets, dr.extractPvtRWsets(rws.NsPvtRwset, dig.Namespace, dig.Collection)...)
 		}
 	} else { // Since ledger height is above block sequence number private data is available in the ledger
