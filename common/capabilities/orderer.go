@@ -58,3 +58,9 @@ func (cp *OrdererProvider) SetChannelModPolicyDuringCreate() bool {
 func (cp *OrdererProvider) Resubmission() bool {
 	return cp.v11BugFixes
 }
+
+// ExpirationCheck specifies whether the orderer checks for identity expiration checks
+// when validating messages
+func (cp *OrdererProvider) ExpirationCheck() bool {
+	return cp.v11BugFixes
+}
