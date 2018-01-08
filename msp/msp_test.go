@@ -786,6 +786,99 @@ func TestAdminPolicyPrincipal(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Combine one or more MSPPrincipals into a MSPPrincipal of type
+// MSPPrincipal_COMBINED.
+func createCombinedPrincipal(principals ...*msp.MSPPrincipal) (*msp.MSPPrincipal, error) {
+	if len(principals) == 0 {
+		return nil, errors.New("no principals in CombinedPrincipal")
+	}
+	var principalsArray []*msp.MSPPrincipal
+	for _, principal := range principals {
+		principalsArray = append(principalsArray, principal)
+	}
+	combinedPrincipal := &msp.CombinedPrincipal{Principals: principalsArray}
+	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
+	if err != nil {
+		return nil, err
+	}
+	principalsCombined := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
+	return principalsCombined, nil
+}
+
+func TestMultilevelAdminAndMemberPolicyPrincipal(t *testing.T) {
+	id, err := localMspV13.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	adminPrincipalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+
+	memberPrincipalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+
+	adminPrincipal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               adminPrincipalBytes}
+
+	memberPrincipal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               memberPrincipalBytes}
+
+	// CombinedPrincipal with Admin and Member principals
+	levelOneCombinedPrincipal, err := createCombinedPrincipal(adminPrincipal, memberPrincipal)
+	assert.NoError(t, err)
+	err = id.SatisfiesPrincipal(levelOneCombinedPrincipal)
+	assert.NoError(t, err)
+
+	// Nested CombinedPrincipal
+	levelTwoCombinedPrincipal, err := createCombinedPrincipal(levelOneCombinedPrincipal)
+	assert.NoError(t, err)
+	err = id.SatisfiesPrincipal(levelTwoCombinedPrincipal)
+	assert.NoError(t, err)
+
+	// Double nested CombinedPrincipal
+	levelThreeCombinedPrincipal, err := createCombinedPrincipal(levelTwoCombinedPrincipal)
+	assert.NoError(t, err)
+	err = id.SatisfiesPrincipal(levelThreeCombinedPrincipal)
+	assert.NoError(t, err)
+}
+
+func TestMultilevelAdminAndMemberPolicyPrincipalPreV12(t *testing.T) {
+	id, err := localMspV11.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	adminPrincipalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+
+	memberPrincipalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+
+	adminPrincipal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               adminPrincipalBytes}
+
+	memberPrincipal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               memberPrincipalBytes}
+
+	// CombinedPrincipal with Admin and Member principals
+	levelOneCombinedPrincipal, err := createCombinedPrincipal(adminPrincipal, memberPrincipal)
+	assert.NoError(t, err)
+	err = id.SatisfiesPrincipal(levelOneCombinedPrincipal)
+	assert.Error(t, err)
+
+	// Nested CombinedPrincipal
+	levelTwoCombinedPrincipal, err := createCombinedPrincipal(levelOneCombinedPrincipal)
+	assert.NoError(t, err)
+	err = id.SatisfiesPrincipal(levelTwoCombinedPrincipal)
+	assert.Error(t, err)
+
+	// Double nested CombinedPrincipal
+	levelThreeCombinedPrincipal, err := createCombinedPrincipal(levelTwoCombinedPrincipal)
+	assert.NoError(t, err)
+	err = id.SatisfiesPrincipal(levelThreeCombinedPrincipal)
+	assert.Error(t, err)
+}
+
 func TestAdminPolicyPrincipalFails(t *testing.T) {
 	id, err := localMspV13.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
@@ -801,6 +894,46 @@ func TestAdminPolicyPrincipalFails(t *testing.T) {
 	localMspV13.(*bccspmsp).admins = make([]Identity, 0)
 
 	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+}
+
+func TestMultilevelAdminAndMemberPolicyPrincipalFails(t *testing.T) {
+	id, err := localMspV13.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	adminPrincipalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+
+	memberPrincipalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "SampleOrg"})
+	assert.NoError(t, err)
+
+	adminPrincipal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               adminPrincipalBytes}
+
+	memberPrincipal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               memberPrincipalBytes}
+
+	// remove the admin so validation will fail
+	localMspV13.(*bccspmsp).admins = make([]Identity, 0)
+
+	// CombinedPrincipal with Admin and Member principals
+	levelOneCombinedPrincipal, err := createCombinedPrincipal(adminPrincipal, memberPrincipal)
+	assert.NoError(t, err)
+	err = id.SatisfiesPrincipal(levelOneCombinedPrincipal)
+	assert.Error(t, err)
+
+	// Nested CombinedPrincipal
+	levelTwoCombinedPrincipal, err := createCombinedPrincipal(levelOneCombinedPrincipal)
+	assert.NoError(t, err)
+	err = id.SatisfiesPrincipal(levelTwoCombinedPrincipal)
+	assert.Error(t, err)
+
+	// Double nested CombinedPrincipal
+	levelThreeCombinedPrincipal, err := createCombinedPrincipal(levelTwoCombinedPrincipal)
+	assert.NoError(t, err)
+	err = id.SatisfiesPrincipal(levelThreeCombinedPrincipal)
 	assert.Error(t, err)
 }
 
@@ -1085,6 +1218,28 @@ func getLocalMSPWithVersion(t *testing.T, dir string, version MSPVersion) MSP {
 	return thisMSP
 }
 
+func TestCollectEmptyCombinedPrincipal(t *testing.T) {
+	var principalsArray []*msp.MSPPrincipal
+	combinedPrincipal := &msp.CombinedPrincipal{Principals: principalsArray}
+	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
+	assert.NoError(t, err, "Error marshalling empty combined principal")
+	principalsCombined := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
+	_, err = collectPrincipals(principalsCombined, MSPv1_3)
+	assert.Error(t, err)
+}
+
+func TestCollectPrincipalContainingEmptyCombinedPrincipal(t *testing.T) {
+	var principalsArray []*msp.MSPPrincipal
+	combinedPrincipal := &msp.CombinedPrincipal{Principals: principalsArray}
+	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
+	assert.NoError(t, err, "Error marshalling empty combined principal")
+	emptyPrincipal := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
+	levelOneCombinedPrincipal, err := createCombinedPrincipal(emptyPrincipal)
+	assert.NoError(t, err)
+	_, err = collectPrincipals(levelOneCombinedPrincipal, MSPv1_3)
+	assert.Error(t, err)
+}
+
 func TestMSPIdentityIdentifier(t *testing.T) {
 	// testdata/mspid
 	// 1) a key and a signcert (used to populate the default signing identity) with the cert having a HighS signature
@@ -1140,4 +1295,49 @@ func TestMSPIdentityIdentifier(t *testing.T) {
 
 	// Compare with the digest computed from the sanitised cert
 	assert.NotEqual(t, idid.Id, hex.EncodeToString(digest))
+}
+
+func TestAnonymityIdentity(t *testing.T) {
+	id, err := localMspV13.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPIdentityAnonymity{AnonymityType: msp.MSPIdentityAnonymity_NOMINAL})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
+		Principal:               principalBytes}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.NoError(t, err)
+}
+
+func TestAnonymityIdentityPreV12Fail(t *testing.T) {
+	id, err := localMspV11.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPIdentityAnonymity{AnonymityType: msp.MSPIdentityAnonymity_NOMINAL})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
+		Principal:               principalBytes}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+}
+
+func TestAnonymityIdentityFail(t *testing.T) {
+	id, err := localMspV13.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPIdentityAnonymity{AnonymityType: msp.MSPIdentityAnonymity_ANONYMOUS})
+	assert.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
+		Principal:               principalBytes}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
 }
